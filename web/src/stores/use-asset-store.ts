@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { persist, type PersistStorage, type StorageValue } from "zustand/middleware";
+import { sha256 } from "@noble/hashes/sha256";
 
 import { nanoid } from "nanoid";
 import { normalizeAssetRecord, parseAssetStorageDocument, rebaseAssetSnapshot, serializeAssetStorageDocument, type AssetStorageDocument } from "@/lib/asset-storage-revision";
@@ -258,8 +259,11 @@ async function normalizePersistedAsset(asset: Asset): Promise<Asset> {
 }
 
 async function generationAssetId(effectKey: string) {
-    const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(effectKey));
-    return `generation_${Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("")}`;
+    // `crypto.subtle` is unavailable on plain-HTTP LAN origins. A synchronous,
+    // audited SHA-256 implementation keeps IDs identical across secure and
+    // insecure origins, so recovery never creates a second asset identity.
+    const digest = sha256(new TextEncoder().encode(effectKey));
+    return `generation_${Array.from(digest, (byte) => byte.toString(16).padStart(2, "0")).join("")}`;
 }
 
 export const useAssetStore = create<AssetStore>()(

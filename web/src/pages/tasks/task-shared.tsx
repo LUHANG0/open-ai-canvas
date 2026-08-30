@@ -63,16 +63,17 @@ export function TaskDate({ value }: { value?: string }) {
 }
 
 export function TaskBilling({ billing }: { billing?: GenerationTask["billing"] }) {
-    if (!billing) return <span className="task-record-billing-empty text-xs text-foreground/30">-</span>;
+    if (!billing) return <span className="task-record-billing-empty">未计费</span>;
     const amount = formatCredits(billing.amountMicrocredits);
     const note = billing.status === "settled" ? "已结算" : billing.status === "refunded" ? "已退回" : billing.status === "uncertain" ? "待核对" : "预计";
     return (
-        <div className={`task-record-billing ${billing.status === "uncertain" ? "is-uncertain" : ""}`} title={`积分${note}`}>
-            <Coins className="size-4" />
-            <span>
+        <div className={`task-record-billing is-${billing.status}`} title={`${amount} 积分，${note}`}>
+            <span className="task-record-billing-value">
+                <Coins aria-hidden="true" />
                 <strong>{amount}</strong>
-                <small>{note}</small>
+                <em>积分</em>
             </span>
+            <small>{note}</small>
         </div>
     );
 }

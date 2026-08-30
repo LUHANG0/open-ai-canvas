@@ -142,16 +142,9 @@ func TestAllowedPrivateUpstreamHostUsesExactCaseInsensitiveMatch(t *testing.T) {
 	}
 }
 
-func TestValidateCustomRelayURLAllowsHTTPOnlyForExactPrivateAllowlist(t *testing.T) {
+func TestValidateCustomRelayURLHonorsGlobalPrivateUpstreamOverride(t *testing.T) {
 	t.Setenv("CANVAS_ALLOW_PRIVATE_UPSTREAMS", "true")
 	t.Setenv("CANVAS_ALLOWED_PRIVATE_UPSTREAM_HOSTS", "")
-	if _, err := ValidateCustomRelayURL("http://127.0.0.1:8080/v1/models"); err == nil {
-		t.Fatal("ValidateCustomRelayURL() should reject HTTP without an exact host allowlist")
-	}
-	if _, err := ValidateCustomRelayURL("https://127.0.0.1:8080/v1/models"); err == nil {
-		t.Fatal("ValidateCustomRelayURL() should ignore the global private upstream override")
-	}
-	t.Setenv("CANVAS_ALLOWED_PRIVATE_UPSTREAM_HOSTS", "127.0.0.1")
 	for _, rawURL := range []string{
 		"http://127.0.0.1:8080/v1/models",
 		"https://127.0.0.1:8080/v1/models",
@@ -159,6 +152,15 @@ func TestValidateCustomRelayURLAllowsHTTPOnlyForExactPrivateAllowlist(t *testing
 		if _, err := ValidateCustomRelayURL(rawURL); err != nil {
 			t.Fatalf("ValidateCustomRelayURL(%q) error = %v", rawURL, err)
 		}
+	}
+
+	t.Setenv("CANVAS_ALLOW_PRIVATE_UPSTREAMS", "false")
+	if _, err := ValidateCustomRelayURL("http://127.0.0.1:8080/v1/models"); err == nil {
+		t.Fatal("ValidateCustomRelayURL() should reject HTTP without the global override or exact allowlist")
+	}
+	t.Setenv("CANVAS_ALLOWED_PRIVATE_UPSTREAM_HOSTS", "127.0.0.1")
+	if _, err := ValidateCustomRelayURL("http://127.0.0.1:8080/v1/models"); err != nil {
+		t.Fatalf("ValidateCustomRelayURL() exact allowlist error = %v", err)
 	}
 }
 

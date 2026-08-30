@@ -143,6 +143,7 @@ export default function CreatePage() {
     }, [config, promptOptimizerEnabled, promptOptimizerInstallation]);
     const updateConfig = useConfigStore((state) => state.updateConfig);
     const assets = useAssetStore((state) => state.assets);
+    const assetsHydrated = useAssetStore((state) => state.hydrated);
     const addAsset = useAssetStore((state) => state.addAsset);
     const [conversations, setConversations] = useState<CreationConversation[]>([]);
     const conversationsRef = useRef<CreationConversation[]>([]);
@@ -286,7 +287,7 @@ export default function CreatePage() {
     }, [conversations, hydrated]);
 
     useEffect(() => {
-        if (!hydrated || !pendingTaskKey || !pendingTaskIds.length) return;
+        if (!hydrated || !assetsHydrated || !pendingTaskKey || !pendingTaskIds.length) return;
         let cancelled = false;
         const observationController = new AbortController();
         const applyTasks = async (tasks: GenerationTask[]) => {
@@ -299,7 +300,14 @@ export default function CreatePage() {
                 await consumeGenerationTaskMessage(task, task.clientContext!.messageId!, async ({ effectKey, resultUrls }) => {
                     if (cancelled) return;
                     await updateConversationMessage(task.clientContext!.conversationId!, task.clientContext!.messageId!, (item) =>
-                        applyGenerationConsumerEffect(item, effectKey, (current) => ({ ...current, status: "done" as const, resultUrls: Array.from(new Set([...(current.resultUrls || []), ...resultUrls])) })).value,
+                        applyGenerationConsumerEffect(item, effectKey, (current) => ({
+                            ...current,
+                            status: "done" as const,
+                            content: current.mode === "video" ? "视频已生成" : "图片已生成",
+                            error: undefined,
+                            generationErrorCode: undefined,
+                            resultUrls: Array.from(new Set([...(current.resultUrls || []), ...resultUrls])),
+                        })).value,
                     );
                 }, { signal: observationController.signal, materialize: async () => task, materializedUrls: generationTaskMaterializedUrls });
             }
@@ -322,7 +330,7 @@ export default function CreatePage() {
             observationController.abort();
             unsubscribe();
         };
-    }, [hydrated, pendingTaskKey, toast]);
+    }, [assetsHydrated, hydrated, pendingTaskKey, toast]);
 
     useEffect(() => {
         let cancelled = false;
@@ -1865,6 +1873,7 @@ async function materializeCreationTaskResults(tasks: GenerationTask[], signal?: 
             const creationResultUrls = generationTaskMaterializedUrls(materialized);
             return creationResultUrls.length ? { ...materialized, creationResultUrls } : materialized;
         } catch (error) {
+            console.warn(`创作生成结果资源化失败 [${task.id}]: ${error instanceof Error ? `${error.name}: ${error.message}` : String(error)}`);
             return { ...task, creationError: error instanceof Error ? error.message : "生成结果资源化失败" };
         }
     }));

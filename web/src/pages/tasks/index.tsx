@@ -1,6 +1,6 @@
-import { App, Button, Drawer, Form, Input, Modal, Select, Switch, Tooltip, Typography } from "antd";
-import { Bug, LayoutGrid, List, Plus, RefreshCw, Search, Trash2 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { App, Button, Drawer, Form, Input, Modal, Select, Tooltip } from "antd";
+import { Braces, Bug, ChevronDown, Clock3, FileText, FolderKanban, LayoutGrid, List, Plus, RefreshCw, ScrollText, Search, Settings2, Trash2 } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 
 import { MediaPreview } from "@/components/media-preview";
@@ -19,7 +19,7 @@ import { listProjects, type ProjectSummary } from "@/services/api/projects";
 import { TaskGridCard } from "./task-grid-card";
 import { TaskGroupHeader, type TaskGroup } from "./task-group-header";
 import { TaskListRow } from "./task-list-row";
-import { formatModelName, getTaskCanvasContext, isTaskFailed, providerCancelStatusLabel, taskMediaKind } from "./task-shared";
+import { formatModelName, getTaskCanvasContext, isTaskFailed, providerCancelStatusLabel, statusDotClassName, TaskBilling, taskMediaKind } from "./task-shared";
 import { TaskStatusFilterBar, type TaskStatusFilter } from "./task-status-filter";
 
 type TaskKindFilter = "all" | "text" | "image" | "video";
@@ -247,9 +247,10 @@ export default function TasksPage() {
             setLogsLoading(true);
             try {
                 const [detail, logs] = await Promise.all([queryGenerationTask(task.id), listTaskLogs(task.id)]);
-                setDetailTask(detail);
+                const mergedDetail = mergeTaskSnapshots(task, detail);
+                setDetailTask(mergedDetail);
                 setTaskLogs(logs);
-                if (await syncGenerationTaskToCanvasStore(detail)) message.success("已同步到画布");
+                if (await syncGenerationTaskToCanvasStore(mergedDetail)) message.success("已同步到画布");
             } catch (error) {
                 message.error(error instanceof Error ? error.message : "任务详情加载失败");
             } finally {
@@ -428,6 +429,16 @@ export default function TasksPage() {
         <>
             <WorkspacePage grid className="library-page task-library-page">
                 <div className="studio-band">
+                    <PageHeader
+                        title="任务"
+                        description="跟踪生成进度、结果与异常"
+                        actions={(
+                            <Button className="library-primary-action task-create-action" type="primary" icon={<Plus className="size-3.5" />} onClick={() => setCreateOpen(true)}>
+                                新建任务
+                            </Button>
+                        )}
+                    />
+                    <TaskStatusFilterBar stats={taskStats} value={statusFilter} onChange={(value) => { setStatusFilter(value); setPage(1); }} />
                     <ListToolbar
                         className="library-toolbar task-library-toolbar"
                         active={Boolean(keyword || projectFilter !== "all" || kindFilter !== "all" || modelFilter !== "all" || statusFilter !== "all")}
@@ -435,10 +446,16 @@ export default function TasksPage() {
                         trailing={(
                             <div className="flex flex-wrap items-center gap-2.5">
                                 {viewMode === "list" ? (
-                                    <label className="inline-flex cursor-pointer items-center gap-2 text-xs text-foreground/55">
-                                        <Switch size="small" checked={groupEnabled} onChange={changeGroupEnabled} />
-                                        <span>按画布分组</span>
-                                    </label>
+                                    <Button
+                                        type="default"
+                                        size="small"
+                                        className={`task-group-toggle${groupEnabled ? " is-active" : ""}`}
+                                        icon={<FolderKanban className="size-3.5" />}
+                                        aria-pressed={groupEnabled}
+                                        onClick={() => changeGroupEnabled(!groupEnabled)}
+                                    >
+                                        按画布分组
+                                    </Button>
                                 ) : null}
                                 <div className="task-view-switch" role="group" aria-label="任务视图">
                                     <Tooltip title="列表视图">
@@ -451,8 +468,7 @@ export default function TasksPage() {
                             </div>
                         )}
                     >
-                        <TaskStatusFilterBar stats={taskStats} value={statusFilter} onChange={(value) => { setStatusFilter(value); setPage(1); }} />
-                        <Input id="task-search" name="taskSearch" allowClear className="app-list-search" prefix={<Search className="size-4 text-foreground/40" />} value={keyword} placeholder="搜索任务、模型或画布" onChange={(event) => { setKeyword(event.target.value); setPage(1); }} />
+                        <Input id="task-search" name="taskSearch" allowClear className="task-search-input" prefix={<Search className="size-4 text-foreground/40" />} value={keyword} placeholder="搜索任务、模型或画布" onChange={(event) => { setKeyword(event.target.value); setPage(1); }} />
                         <Select className="w-full sm:w-48" value={projectFilter} onChange={(value) => { setProjectFilter(value); setPage(1); }} options={[{ label: "全部画布", value: "all" }, ...projectOptions]} />
                         <Select className="w-full sm:w-32" value={kindFilter} onChange={(value) => { setKindFilter(value as TaskKindFilter); setPage(1); }} options={[{ label: "全部类型", value: "all" }, { label: "文本", value: "text" }, { label: "图片", value: "image" }, { label: "视频", value: "video" }]} />
                         <Select className="w-full sm:w-44" value={modelFilter} onChange={(value) => { setModelFilter(value); setPage(1); }} options={[{ label: "全部模型", value: "all" }, ...modelOptions.map((model) => ({ label: model, value: model }))]} />
@@ -479,7 +495,10 @@ export default function TasksPage() {
                                     ))}
                                 </div>
                             ) : (
-                                <div className="task-record-list">{visibleTasks.map(renderTaskRow)}</div>
+                                <div className="task-record-table">
+                                    <TaskTableHeader creditsEnabled={creditsEnabled} />
+                                    <div className="task-record-list">{visibleTasks.map(renderTaskRow)}</div>
+                                </div>
                             )
                         ) : (
                             <WorkspaceState
@@ -509,24 +528,52 @@ export default function TasksPage() {
                     </Form.Item>
                 </Form>
             </Modal>
-            <Drawer className="library-drawer" title="任务详情" open={Boolean(detailTask)} onClose={() => setDetailTask(null)} size="large" destroyOnHidden>
+            <Drawer
+                className="library-drawer task-detail-drawer"
+                title={(
+                    <span className="task-detail-drawer-title">
+                        <strong>任务详情</strong>
+                        {detailTask ? <small title={detailTask.id}>ID {detailTask.id.slice(0, 8)}</small> : null}
+                    </span>
+                )}
+                open={Boolean(detailTask)}
+                onClose={() => setDetailTask(null)}
+                size="large"
+                destroyOnHidden
+            >
                 {detailTask ? (
-                    <div className="space-y-5">
-                        <div className="task-detail-facts grid text-sm sm:grid-cols-2">
-                            <InfoItem label="状态" value={statusLabel[detailTask.status]} />
-                            <InfoItem label="画布名称" value={getTaskCanvasContext(detailTask, canvasById, domainProjectNameById).canvasName} />
-                            <InfoItem label="任务类型" value={formatTaskKind(detailTask)} />
-                            <InfoItem label="模型" value={formatModelName(effectiveConfig, detailTask)} />
-                            <InfoItem label="尝试次数" value={`第 ${detailTask.attempts || 1} 次`} />
-                            <InfoItem label="创建时间" value={formatDate(detailTask.createdAt)} />
-                            <InfoItem label="开始时间" value={formatDate(detailTask.startedAt)} />
-                            <InfoItem label="完成时间" value={formatDate(detailTask.completedAt)} />
-                            <InfoItem label="耗时" value={formatTaskDuration(detailTask)} />
-                            {detailTask.providerCancelStatus ? <InfoItem label="上游取消" value={providerCancelStatusLabel(detailTask)} /> : null}
-                            {detailTask.providerCancelRequestedAt ? <InfoItem label="请求取消时间" value={formatDate(detailTask.providerCancelRequestedAt)} /> : null}
-                        </div>
-                        {detailTask.provider === "dreamina-cli" ? <p className="text-xs leading-5 text-foreground/60">官方状态采用最终一致轮询；转入后台后仍会继续等待并同步官方状态。官方即梦 CLI 当前不支持可靠的官方取消。</p> : null}
-                        <div className="flex flex-wrap justify-end gap-2">
+                    <div className="task-detail-content">
+                        <header className={`task-detail-summary is-${detailTask.status}`}>
+                            <div className="task-detail-summary-copy">
+                                <div className="task-detail-summary-status">
+                                    <span className={`task-detail-status is-${detailTask.status}`}>
+                                        <i className={statusDotClassName(detailTask.status)} aria-hidden="true" />
+                                        {statusLabel[detailTask.status]}
+                                    </span>
+                                    <span>{formatTaskKind(detailTask)}</span>
+                                </div>
+                                <h2>{formatModelName(effectiveConfig, detailTask)}</h2>
+                                <p><FolderKanban aria-hidden="true" />{getTaskCanvasContext(detailTask, canvasById, domainProjectNameById).canvasName}</p>
+                            </div>
+                            <div className="task-detail-summary-metrics">
+                                <div>
+                                    <span>耗时</span>
+                                    <strong>{formatTaskDuration(detailTask)}</strong>
+                                </div>
+                                <div>
+                                    <span>尝试</span>
+                                    <strong>第 {detailTask.attempts || 1} 次</strong>
+                                </div>
+                                {creditsEnabled ? (
+                                    <div className="task-detail-billing">
+                                        <span>积分状态</span>
+                                        <TaskBilling billing={detailTask.billing} />
+                                    </div>
+                                ) : null}
+                            </div>
+                        </header>
+
+                        <div className="task-detail-actions">
                             {detailTask.provider === "dreamina-cli" && detailTask.receiptRecorded && detailTask.status === "running" ? (
                                 <Button aria-label="更新官方状态" icon={<RefreshCw className="size-4" />} loading={actingId === detailTask.id} onClick={() => void refreshLocalTaskStatus(detailTask)}>
                                     更新官方状态
@@ -540,17 +587,45 @@ export default function TasksPage() {
                             {canQueryProviderTask(detailTask) ? <Button icon={<RefreshCw className="size-4" />} loading={actingId === detailTask.id} onClick={() => void queryProviderTask(detailTask)}>手动查询任务</Button> : null}
                             {isTaskFailed(detailTask) ? <Button icon={<Bug className="size-4" />} onClick={() => navigate(`/settings?section=diagnostics&taskId=${encodeURIComponent(detailTask.id)}${detailTask.projectId ? `&projectId=${encodeURIComponent(detailTask.projectId)}` : ""}`)}>导出诊断包</Button> : null}
                         </div>
-                        {detailTask.error ? <pre className="task-detail-error max-h-28 overflow-auto whitespace-pre-wrap px-3 py-2 text-xs">{generationErrorMessage(detailTask.error)}</pre> : null}
-                        <TaskResultMedia value={detailTask.resultJson} taskType={detailTask.type} />
-                        <DetailBlock title="提示词" value={detailLoading ? "详情加载中..." : detailTask.prompt || "无"} tall />
+                        {detailTask.provider === "dreamina-cli" ? <p className="task-detail-provider-note">官方状态采用最终一致轮询；转入后台后仍会继续等待并同步官方状态。官方即梦 CLI 当前不支持可靠的官方取消。</p> : null}
+                        {detailTask.error ? (
+                            <section className="task-detail-error" aria-label="失败原因">
+                                <strong>失败原因</strong>
+                                <p>{generationErrorMessage(detailTask.error)}</p>
+                            </section>
+                        ) : null}
+
+                        <TaskDetailSection icon={<Clock3 />} title="执行时间" description="提交、开始与完成时间">
+                            <dl className="task-detail-facts">
+                                <InfoItem label="创建时间" value={formatDate(detailTask.createdAt)} />
+                                <InfoItem label="开始时间" value={formatDate(detailTask.startedAt)} />
+                                <InfoItem label="完成时间" value={formatDate(detailTask.completedAt)} />
+                                <InfoItem label="更新时间" value={formatDate(detailTask.updatedAt)} />
+                                {detailTask.providerCancelStatus ? <InfoItem label="上游取消" value={providerCancelStatusLabel(detailTask)} wrap /> : null}
+                                {detailTask.providerCancelRequestedAt ? <InfoItem label="请求取消时间" value={formatDate(detailTask.providerCancelRequestedAt)} /> : null}
+                            </dl>
+                        </TaskDetailSection>
+
+                        <TaskResultMedia value={detailTask.resultJson} previewUrl={detailTask.previewUrl} taskType={detailTask.type} />
+
+                        <TaskDetailSection icon={<FileText />} title="生成输入" description="本次任务实际使用的提示词">
+                            <div className="task-detail-prompt">{detailLoading ? "详情加载中..." : detailTask.prompt || "无"}</div>
+                        </TaskDetailSection>
+
                         <TaskParameters inputJson={detailLoading ? undefined : detailTask.inputJson} />
-                        <DetailBlock title="结果" value={detailLoading ? "详情加载中..." : formatTaskJson(detailTask.resultJson)} />
-                        <div>
-                            <Typography.Text strong>日志</Typography.Text>
-                            <div className="mt-2 max-h-60 overflow-auto rounded-lg bg-slate-950 p-3 text-xs text-slate-100">
-                                {logsLoading ? "日志加载中..." : taskLogs.length ? taskLogs.map((log) => `[${new Date(log.createdAt).toLocaleString()}] ${log.level.toUpperCase()} ${formatTaskLog(log)}`).join("\n\n") : "暂无日志"}
-                            </div>
-                        </div>
+
+                        <TaskDetailDisclosure
+                            icon={<Braces />}
+                            title="原始结果"
+                            description="用于接口核对和问题排查"
+                            value={detailLoading ? "详情加载中..." : formatTaskJson(detailTask.resultJson)}
+                        />
+                        <TaskDetailDisclosure
+                            icon={<ScrollText />}
+                            title="运行日志"
+                            description={logsLoading ? "日志加载中..." : taskLogs.length ? `${taskLogs.length} 条记录` : "暂无日志"}
+                            value={logsLoading ? "日志加载中..." : taskLogs.length ? taskLogs.map((log) => `[${new Date(log.createdAt).toLocaleString()}] ${log.level.toUpperCase()} ${formatTaskLog(log)}`).join("\n\n") : "暂无日志"}
+                        />
                     </div>
                 ) : null}
             </Drawer>
@@ -579,6 +654,20 @@ export default function TasksPage() {
     );
 }
 
+function TaskTableHeader({ creditsEnabled }: { creditsEnabled: boolean }) {
+    return (
+        <div className="task-record-table-head" aria-hidden="true">
+            <span>任务</span>
+            <span>类型</span>
+            <span>模型</span>
+            <span>画布</span>
+            <span>创建时间</span>
+            <span>{creditsEnabled ? "积分状态" : "计费"}</span>
+            <span>操作</span>
+        </div>
+    );
+}
+
 function canQueryProviderTask(task: GenerationTask) {
     return task.status === "failed" && (task.type.startsWith("canvas_video") || task.type.startsWith("video_")) && Boolean(task.providerRequestId);
 }
@@ -596,13 +685,18 @@ function reconcileTaskSummaries(current: GenerationTask[], next: GenerationTask[
     return changed ? reconciled : current;
 }
 
-function TaskResultMedia({ value, taskType }: { value?: string; taskType: string }) {
+function mergeTaskSnapshots(summary: GenerationTask, detail: GenerationTask): GenerationTask {
+    const definedDetail = Object.fromEntries(Object.entries(detail).filter(([, value]) => value !== undefined));
+    return { ...summary, ...definedDetail } as GenerationTask;
+}
+
+function TaskResultMedia({ value, previewUrl, taskType }: { value?: string; previewUrl?: string; taskType: string }) {
     const urls = resultMediaUrls(value);
+    if (previewUrl && !urls.includes(previewUrl)) urls.unshift(previewUrl);
     if (!urls.length) return null;
     return (
-        <div>
-            <Typography.Text strong>生成结果</Typography.Text>
-            <div className="mt-2 grid max-h-[360px] grid-cols-2 gap-2 overflow-auto rounded-lg bg-stone-950 p-2 md:grid-cols-3">
+        <TaskDetailSection title="生成结果" description={`${urls.length} 个可用结果`}>
+            <div className={`task-detail-media-grid${urls.length === 1 ? " is-single" : ""}`}>
                 {urls.map((url, index) => {
                     const isVideo = isVideoResult(url, taskType);
                     return (
@@ -618,7 +712,7 @@ function TaskResultMedia({ value, taskType }: { value?: string; taskType: string
                     );
                 })}
             </div>
-        </div>
+        </TaskDetailSection>
     );
 }
 
@@ -635,7 +729,7 @@ function resultMediaUrls(value?: string) {
         if (typeof item === "string") {
             const isInlineMedia = /^(data:image\/|data:video\/)/.test(item);
             const isMediaPath = /\.(png|jpe?g|webp|gif|avif|mp4|webm|mov)(?:$|\?)/i.test(item);
-            const isNamedMediaUrl = /^(https?:|blob:)/.test(item) && /(url|image|video|result|output|media)/i.test(key);
+            const isNamedMediaUrl = /^(https?:|blob:|\/)/.test(item) && /(url|image|video|result|output|media)/i.test(key);
             if ((isInlineMedia || isMediaPath || isNamedMediaUrl) && !urls.includes(item)) urls.push(item);
             return;
         }
@@ -693,39 +787,56 @@ function formatTaskDuration(task: GenerationTask) {
 
 function InfoItem({ label, value, wrap = false }: { label: string; value: string; wrap?: boolean }) {
     return (
-        <div className="task-detail-fact min-w-0 px-3 py-2.5">
-            <Typography.Text type="secondary" className="block text-xs">
-                {label}
-            </Typography.Text>
-            <Typography.Text className={`block text-sm ${wrap ? "whitespace-pre-wrap break-words" : "truncate"}`} title={value}>
-                {value}
-            </Typography.Text>
+        <div className="task-detail-fact">
+            <dt>{label}</dt>
+            <dd className={wrap ? "is-wrapped" : ""} title={value}>{value}</dd>
         </div>
     );
 }
 
-function DetailBlock({ title, value, tall = false }: { title: string; value: string; tall?: boolean }) {
+function TaskDetailSection({ icon, title, description, children }: { icon?: ReactNode; title: string; description?: string; children: ReactNode }) {
     return (
-        <div>
-            <Typography.Text strong>{title}</Typography.Text>
-            <pre className={`mt-2 overflow-auto rounded-md bg-slate-950 p-3 text-xs leading-5 text-slate-100 ${tall ? "h-40 whitespace-pre-wrap break-words" : "max-h-60"}`}>{value}</pre>
-        </div>
+        <section className="task-detail-section">
+            <div className="task-detail-section-heading">
+                {icon ? <span className="task-detail-section-icon" aria-hidden="true">{icon}</span> : null}
+                <div>
+                    <h3>{title}</h3>
+                    {description ? <p>{description}</p> : null}
+                </div>
+            </div>
+            {children}
+        </section>
+    );
+}
+
+function TaskDetailDisclosure({ icon, title, description, value }: { icon: ReactNode; title: string; description: string; value: string }) {
+    return (
+        <details className="task-detail-disclosure">
+            <summary>
+                <span className="task-detail-section-icon" aria-hidden="true">{icon}</span>
+                <span>
+                    <strong>{title}</strong>
+                    <small>{description}</small>
+                </span>
+                <ChevronDown className="task-detail-disclosure-chevron" aria-hidden="true" />
+            </summary>
+            <pre>{value}</pre>
+        </details>
     );
 }
 
 function TaskParameters({ inputJson }: { inputJson?: string }) {
     const fields = taskParameterFields(inputJson);
     return (
-        <div>
-            <Typography.Text strong>参数</Typography.Text>
+        <TaskDetailSection icon={<Settings2 />} title="生成参数" description="尺寸、时长与参考素材">
             {fields.length ? (
-                <div className="task-detail-facts mt-2 grid text-sm sm:grid-cols-2">
+                <dl className="task-detail-facts">
                     {fields.map((field) => <InfoItem key={field.label} label={field.label} value={field.value} wrap />)}
-                </div>
+                </dl>
             ) : (
-                <div className="mt-2 rounded-md bg-foreground/[.04] px-3 py-3 text-sm text-foreground/50">暂无参数记录</div>
+                <div className="task-detail-empty">暂无参数记录</div>
             )}
-        </div>
+        </TaskDetailSection>
     );
 }
 
@@ -799,7 +910,10 @@ function formatReferenceList(value: unknown, kind: string) {
 function formatTaskJson(value?: string) {
     if (!value) return "无";
     try {
-        return JSON.stringify(JSON.parse(value), null, 2);
+        return JSON.stringify(JSON.parse(value), (_key, item: unknown) => {
+            if (typeof item !== "string" || !/^data:(?:image|video|audio)\//.test(item) || item.length <= 160) return item;
+            return `${item.slice(0, 72)}…（已省略 ${item.length - 72} 个字符）`;
+        }, 2);
     } catch {
         return value;
     }

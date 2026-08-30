@@ -64,8 +64,8 @@ func ValidateOutboundURL(rawURL string) (*url.URL, error) {
 	return parsed, nil
 }
 
-// 用户自定义渠道必须使用更严格的出口策略：不接受 URL 凭据，且仅部署者精确配置的
-// 主机可以路由到私网或使用会明文传输 API Key 的 HTTP。
+// 用户自定义渠道默认使用更严格的出口策略；部署者也可以通过全局私网上游开关
+// 明确允许 HTTP、私网、本机和链路本地地址。
 func ValidateCustomRelayURL(rawURL string) (*url.URL, error) {
 	if len(strings.TrimSpace(rawURL)) > 4096 {
 		return nil, BadAuthRequest("自定义渠道地址过长")
@@ -78,7 +78,7 @@ func ValidateCustomRelayURL(rawURL string) (*url.URL, error) {
 	if scheme != "https" && scheme != "http" {
 		return nil, BadAuthRequest("自定义渠道地址只支持 http/https")
 	}
-	if scheme == "http" && !allowedPrivateUpstreamHost(parsed.Hostname()) {
+	if scheme == "http" && !allowPrivateUpstreams() && !allowedPrivateUpstreamHost(parsed.Hostname()) {
 		return nil, BadAuthRequest("自定义渠道 HTTP 仅允许访问已配置的可信上游主机")
 	}
 	if parsed.User != nil {
@@ -317,7 +317,7 @@ func resolveOutboundHost(ctx context.Context, host string) ([]net.IP, error) {
 
 func resolveCustomRelayHost(ctx context.Context, host string) ([]net.IP, error) {
 	host = normalizeOutboundHost(host)
-	allowPrivateHost := allowedPrivateUpstreamHost(host)
+	allowPrivateHost := allowPrivateUpstreams() || allowedPrivateUpstreamHost(host)
 	addresses, err := resolveOutboundHostWithPolicy(ctx, host, allowPrivateHost)
 	if err != nil {
 		return nil, err

@@ -1,0 +1,86 @@
+{
+  "apiVersion": "yingce.plugin/v1",
+  "id": "kemei-video",
+  "name": "可美视频 AI",
+  "version": "1.0.2",
+  "author": "KM 可美视频 AI",
+  "description": "可美 OpenAI 兼容异步视频生成协议。",
+  "documentation": "# 可美视频 AI\n\n插件不预填 Base URL，请在渠道中手动填写服务地址和 API Key。\n\n创建任务：`POST /v1/video/generations`\n\n查询任务：`GET /v1/video/generations/{task_id}`\n\n1.0.2 修复了影策界面内部分辨率 `480/720/1080` 到可美接口 `480p/720p/1080p` 的转换。\n\n接口文档：https://token.xinhankr.com/docs/openai/doc0018",
+  "enabled": true,
+  "installable": true,
+  "permissions": ["generation.run", "media.read"],
+  "configuration": {
+    "fields": [
+      {
+        "name": "apiKey",
+        "type": "secret",
+        "label": "API Key",
+        "required": true,
+        "description": "填写可美 API Key；仅保存到渠道密钥配置。"
+      }
+    ]
+  },
+  "contributes": {
+    "providers": [
+      {
+        "id": "kemei-video",
+        "label": "可美视频 AI",
+        "capabilities": ["video"],
+        "scopes": ["admin.system-channel", "user.custom-channel", "canvas", "creation"],
+        "requiresPublicMediaUrls": true,
+        "auth": {
+          "type": "bearer",
+          "field": "apiKey",
+          "header": "Authorization"
+        },
+        "parameters": [
+          {"name": "model", "type": "string", "required": true, "mapping": "model", "description": "视频生成模型名称。"},
+          {"name": "prompt", "type": "string", "required": true, "mapping": "prompt", "description": "视频动作与画面提示词。"},
+          {"name": "negativePrompt", "type": "string", "mapping": "negative_prompt", "description": "负向提示词。"},
+          {"name": "images", "type": "media[]", "mapping": "images", "description": "参考图片 URL 数组。"},
+          {"name": "videos", "type": "media[]", "mapping": "videos", "description": "参考视频 URL 数组。"},
+          {"name": "audios", "type": "media[]", "mapping": "audios", "description": "参考音频 URL 数组。"},
+          {"name": "resolution", "type": "string", "mapping": "resolution", "values": ["480p", "720p", "1080p"], "description": "目标分辨率。"},
+          {"name": "aspectRatio", "type": "string", "mapping": "ratio", "values": ["adaptive", "16:9", "9:16", "1:1", "4:3", "3:4", "21:9"], "description": "目标宽高比。"},
+          {"name": "duration", "type": "integer", "mapping": "duration", "description": "视频时长，单位为秒。"},
+          {"name": "generateAudio", "type": "boolean", "mapping": "generate_audio", "description": "是否同步生成音频。"},
+          {"name": "watermark", "type": "boolean", "mapping": "watermark", "description": "是否添加水印。"},
+          {"name": "webSearch", "type": "boolean", "mapping": "web_search", "description": "是否启用联网搜索。"},
+          {"name": "seed", "type": "integer", "mapping": "seed", "description": "随机数种子。"}
+        ],
+        "create": {
+          "method": "POST",
+          "path": "/v1/video/generations",
+          "contentType": "application/json",
+          "fields": {
+            "model": "request.model|trim",
+            "prompt": "request.prompt|trim",
+            "negative_prompt": "request.extra.negative_prompt|omit_empty",
+            "images": "request.images|media_urls",
+            "videos": "request.videos|media_urls",
+            "audios": "request.audios|media_urls",
+            "resolution": "request.resolution|resolution_p",
+            "ratio": "request.aspectRatio|omit_empty",
+            "duration": "request.duration|omit_zero",
+            "generate_audio": "request.generateAudio",
+            "watermark": "request.watermark",
+            "web_search": "request.extra.web_search",
+            "seed": "request.extra.seed"
+          }
+        },
+        "poll": {
+          "method": "GET",
+          "path": "/v1/video/generations/{{taskId}}"
+        },
+        "response": {
+          "taskIdPaths": ["task_id", "id", "data.task_id", "data.id"],
+          "statusPaths": ["status", "data.status"],
+          "errorPaths": ["error", "data.error"],
+          "messagePaths": ["message", "detail", "error.message", "data.message", "data.error.message"],
+          "resultPaths": ["data", "result.data", "data.results"],
+          "resultKind": "video"
+        }
+      }
+    ]
+  }
+}

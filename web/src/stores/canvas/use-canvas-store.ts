@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { persist, type PersistStorage, type StorageValue } from "zustand/middleware";
 
 import { nanoid } from "nanoid";
+import { withBrowserCrossContextLock } from "@/lib/browser-cross-context-lock";
 import { parseCanvasStorageDocument, rebaseCanvasProjects, serializeCanvasStorageDocument, type CanvasStorageDocument } from "@/lib/canvas/canvas-storage-revision";
 import { localForageStorageForScope } from "@/lib/localforage-storage";
 import { getActiveUserScope } from "@/lib/user-scope";
@@ -70,10 +71,6 @@ type CanvasGenerationPersistenceAttempt = {
 };
 const pendingCanvasGenerationAttempts = new Map<string, Map<string, CanvasGenerationPersistenceAttempt>>();
 
-type AsyncCanvasStorageLock = {
-    request<T>(name: string, callback: () => Promise<T>): Promise<T>;
-};
-
 type CanvasStorageLockOptions = {
     requireCrossRealmLock?: boolean;
 };
@@ -82,13 +79,11 @@ const CANVAS_STORAGE_LOCK_PREFIX = "infinite-canvas:canvas-generation-storage-lo
 const canvasStorageTails = new Map<string, Promise<void>>();
 
 function runWithBrowserCanvasStorageLock<T>(scope: string, operation: () => Promise<T>, options: CanvasStorageLockOptions) {
-    const locks = typeof window !== "undefined" && typeof navigator !== "undefined" ? (navigator.locks as AsyncCanvasStorageLock | undefined) : undefined;
     const lockName = `${CANVAS_STORAGE_LOCK_PREFIX}${scope}`;
-    if (locks) return locks.request(lockName, operation);
-    if (options.requireCrossRealmLock && typeof window !== "undefined" && typeof document !== "undefined") {
-        throw new Error("当前浏览器不支持跨标签存储锁，已停止画布生成持久化");
-    }
-    return operation();
+    return withBrowserCrossContextLock(lockName, operation, {
+        required: options.requireCrossRealmLock,
+        unavailableMessage: "当前浏览器不支持跨标签存储锁，已停止画布生成持久化",
+    });
 }
 
 export function withCanvasStorePersistenceLock<T>(scope: string, operation: () => Promise<T>, options: CanvasStorageLockOptions = {}): Promise<T> {

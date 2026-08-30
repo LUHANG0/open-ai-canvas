@@ -4,7 +4,7 @@ import { parseBackendGenerationResult, type BackendGenerationResult } from "@/se
 import { linkProjectAsset, moveProjectAsset, updateProjectAssetCategory } from "@/services/api/projects";
 import type { GenerationTask, GenerationTaskOutput } from "@/services/api/task-center";
 import { getMediaBlob, resolveMediaUrl, setMediaBlob } from "@/services/file-storage";
-import { createGenerationTaskMaterializer, createIdempotentMaterializeOutput, type MaterializeGenerationTaskOutput } from "@/services/generation-task-materializer";
+import { createGenerationTaskMaterializer, createIdempotentMaterializeOutput, materializeEffectKey, type MaterializeGenerationTaskOutput } from "@/services/generation-task-materializer";
 import { withGenerationArtifactCommitLock } from "@/services/generation-asset-repository";
 import { uploadGeneratedAssetToConfiguredSources } from "@/services/external-asset-sources";
 import { getImageBlob, resolveImageUrl, setImageBlob } from "@/services/image-storage";
@@ -402,7 +402,30 @@ function generationTaskMaterializer(task: GenerationTask) {
 }
 
 export async function materializeGenerationTaskAssets(task: GenerationTask, signal?: AbortSignal): Promise<GenerationTask> {
-    return generationTaskMaterializer(task).materialize(projectGenerationTaskResult(task), signal);
+    const projected = projectGenerationTaskResult(task);
+    const materialized = await generationTaskMaterializer(task).materialize(projected, signal);
+    if (materialized.status !== "succeeded" || !materialized.outputs?.length) return materialized;
+
+    // A browser may have persisted the completed effect marker immediately before
+    // its local asset catalog write was lost (for example, after a reload on an
+    // insecure LAN origin). Repair that split-brain state through the same
+    // deterministic asset insertion path instead of treating the missing asset as
+    // a permanently completed result.
+    const knownAssetIds = new Set(useAssetStore.getState().assets.map((asset) => asset.id));
+    const sourceResult = generationTaskResult(materialized);
+    const outputs: GenerationTaskOutput[] = [];
+    for (const output of materialized.outputs) {
+        const canRepair = output.mediaType === "image" ? Boolean(sourceResult.images?.[output.outputIndex]) : output.mediaType === "video" ? Boolean(sourceResult.video) : Boolean(sourceResult.audio);
+        if (!output.materializedAssetId || knownAssetIds.has(output.materializedAssetId) || !canRepair) {
+            outputs.push(output);
+            continue;
+        }
+        const effectKey = materializeEffectKey(materialized.id, output.outputIndex);
+        const repaired = await materializeGenerationOutput({ task: materialized, output, effectKey, signal });
+        if (repaired.materializedAssetId) knownAssetIds.add(repaired.materializedAssetId);
+        outputs.push({ ...output, materializedAssetId: repaired.materializedAssetId });
+    }
+    return { ...materialized, outputs, resultState: outputs.every((output) => Boolean(output.materializedAssetId)) ? "READY" : "MATERIALIZING" };
 }
 
 export function attachGenerationTaskNode(task: GenerationTask, nodeId: string, outputIndex: number, consumer: Parameters<typeof dreaminaGenerationTaskMaterializer.attachNode>[3], signal?: AbortSignal) {

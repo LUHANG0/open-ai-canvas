@@ -25,11 +25,15 @@ test("creation recovery observes streaming text tasks after reload", () => {
             { id: "text-streaming", role: "assistant" as const, mode: "text", status: "streaming", taskIds: ["task-text"] },
             { id: "text-done", role: "assistant" as const, mode: "text", status: "done", taskIds: ["task-text-done"] },
             { id: "image-pending", role: "assistant" as const, mode: "image", status: "pending", taskIds: ["task-image"] },
+            { id: "video-materialization-error", role: "assistant" as const, mode: "video", status: "error", taskIds: ["task-video"] },
+            { id: "video-done", role: "assistant" as const, mode: "video", status: "done", taskIds: ["task-video-done"] },
         ],
     }];
 
-    expect(pendingCreationTaskIds(conversations)).toEqual(["task-text", "task-image"]);
+    expect(pendingCreationTaskIds(conversations)).toEqual(["task-text", "task-image", "task-video"]);
     expect(pendingCreationTaskKey(conversations)).toContain("conversation-text-recovery:text-streaming:task-text");
+    expect(pendingCreationTaskKey(conversations)).toContain("conversation-text-recovery:video-materialization-error:task-video");
+    expect(pendingCreationTaskKey(conversations)).not.toContain("task-video-done");
 });
 
 test("creation recovery restores completed text and terminal status", () => {

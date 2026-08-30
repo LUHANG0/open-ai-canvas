@@ -33,43 +33,50 @@ export function TaskListRow({
     const context = getTaskCanvasContext(task, canvasById, projectNameById);
     const isActive = task.status === "queued" || task.status === "running";
     const isFailed = isTaskFailed(task);
+    const kind = formatTaskKind(task);
+    const model = formatModelName(effectiveConfig, task);
+    const canvasLabel = context.projectName ? `${context.canvasName} · ${context.projectName}` : context.canvasName;
+    const rowTone = isFailed ? "is-failed" : isActive ? "is-active" : "is-success";
     return (
-        <article className={`task-record-row group${isFailed ? " is-attention" : ""}`}>
-            <TaskPreviewThumbnail task={task} onOpen={onPreview} />
-            <div className="task-record-main">
-                <div className="task-record-heading">
-                    <span className={`task-record-status ${isFailed ? "is-failed" : isActive ? "is-active" : "is-success"}`}>
-                        <i className={statusDotClassName(task.status)} />
-                        {statusLabel[task.status]}
-                    </span>
+        <article className={`task-record-row group ${rowTone}`}>
+            <div className="task-record-identity">
+                <TaskPreviewThumbnail task={task} onOpen={onPreview} />
+                <div className="task-record-main">
+                    <div className="task-record-state-line">
+                        <span className={`task-record-status ${isFailed ? "is-failed" : isActive ? "is-active" : "is-success"}`}>
+                            <i className={statusDotClassName(task.status)} />
+                            {statusLabel[task.status]}
+                        </span>
+                        {isFailed ? (
+                            <p className="task-record-error" title={task.error ? generationErrorMessage(task.error) : undefined}>
+                                {taskAttentionReason(task)}
+                            </p>
+                        ) : null}
+                    </div>
                     <button type="button" className="task-record-title" title={task.prompt} onClick={onOpen}>
                         {task.prompt || "未命名任务"}
                     </button>
-                </div>
-                <div className="task-record-meta">
-                    <span>{formatTaskKind(task)}</span>
-                    <span aria-hidden="true">·</span>
-                    <span>{formatModelName(effectiveConfig, task)}</span>
-                    <span className="task-record-meta-canvas">
-                        <FolderKanban className="size-3" />
-                        {context.canvasName}
-                        {context.projectName ? ` · ${context.projectName}` : ""}
-                    </span>
-                </div>
-                {isActive ? (
-                    <div className="task-record-progress">
-                        <span>{task.stage || "正在生成"}</span>
-                        <span>{task.progress || 0}%</span>
-                        <i>
-                            <b style={{ width: `${task.progress || 0}%` }} />
-                        </i>
+                    <div className="task-record-mobile-meta">
+                        <span>{kind}</span>
+                        <span>{model}</span>
+                        <span>{canvasLabel}</span>
                     </div>
-                ) : null}
-                {isFailed ? (
-                    <p className="task-record-error" title={task.error ? generationErrorMessage(task.error) : undefined}>
-                        {taskAttentionReason(task)}
-                    </p>
-                ) : null}
+                    {isActive ? (
+                        <div className="task-record-progress">
+                            <span>{task.stage || "正在生成"}</span>
+                            <span>{task.progress || 0}%</span>
+                            <i>
+                                <b style={{ width: `${task.progress || 0}%` }} />
+                            </i>
+                        </div>
+                    ) : null}
+                </div>
+            </div>
+            <div className="task-record-kind" title={kind}>{kind}</div>
+            <div className="task-record-model" title={model}>{model}</div>
+            <div className="task-record-canvas" title={canvasLabel}>
+                <FolderKanban className="size-3" />
+                <span>{canvasLabel}</span>
             </div>
             <div className="task-record-date">
                 <TaskDate value={task.createdAt} />

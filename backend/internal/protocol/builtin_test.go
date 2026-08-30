@@ -434,6 +434,24 @@ func TestDeclarativeManifestKeepsLegacyVideoResolutionTransformCompatible(t *tes
 	}
 }
 
+func TestDeclarativeManifestTransformsResolutionAndMediaURLs(t *testing.T) {
+	request := GenerationRequest{
+		Resolution: "480",
+		Images: []MediaReference{
+			{URL: "https://cdn.example/first.png"},
+			{DataURL: "data:image/png;base64,AAAA"},
+		},
+	}
+	values := manifestRequestValues(request)
+	if actual := applyManifestTransform(values["resolution"], "resolution_p", request); actual != "480p" {
+		t.Fatalf("resolution_p = %#v, want 480p", actual)
+	}
+	actual, ok := applyManifestTransform(values["images"], "media_urls", request).([]string)
+	if !ok || len(actual) != 2 || actual[0] != "https://cdn.example/first.png" || actual[1] != "data:image/png;base64,AAAA" {
+		t.Fatalf("media_urls = %#v", actual)
+	}
+}
+
 func TestDeclarativeManifestRequiresDocumentation(t *testing.T) {
 	manifest := Manifest{
 		APIVersion: "v1",

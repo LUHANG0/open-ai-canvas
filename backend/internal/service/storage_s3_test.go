@@ -154,6 +154,24 @@ func TestDefaultOSSPathPrefix(t *testing.T) {
 	}
 }
 
+func TestMissingOSSSettingsReturnNormalizedDefaults(t *testing.T) {
+	svc := newResourceTestService(t)
+
+	_, platform, err := svc.readOSSSetting()
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, user, err := svc.readUserOSSSetting("user-without-storage-setting")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for scope, value := range map[string]ossSettingValue{"platform": platform, "user": user} {
+		if value.Provider != aliyunOSSProvider || value.PathPrefix != defaultOSSPathPrefix || value.S3Preset != "custom" {
+			t.Fatalf("%s default setting is not normalized: %#v", scope, value)
+		}
+	}
+}
+
 func TestResourceObjectKeyPreservesOrInfersExtension(t *testing.T) {
 	setting := ossSettingValue{PathPrefix: "assets"}
 	now := time.Date(2026, time.August, 27, 20, 31, 0, 0, time.UTC)

@@ -651,6 +651,27 @@ func manifestMediaValues(values []MediaReference) []any {
 
 func applyManifestTransform(value any, transform string, request GenerationRequest) any {
 	transform = strings.ToLower(strings.TrimSpace(transform))
+	if transform == "media_urls" {
+		items, ok := value.([]any)
+		if !ok {
+			return value
+		}
+		urls := make([]string, 0, len(items))
+		for _, item := range items {
+			media, ok := item.(map[string]any)
+			if !ok {
+				continue
+			}
+			if mediaURL, ok := media["url"].(string); ok && strings.TrimSpace(mediaURL) != "" {
+				urls = append(urls, strings.TrimSpace(mediaURL))
+				continue
+			}
+			if dataURL, ok := media["dataUrl"].(string); ok && strings.TrimSpace(dataURL) != "" {
+				urls = append(urls, strings.TrimSpace(dataURL))
+			}
+		}
+		return urls
+	}
 	if transform == "bool" || transform == "boolean" {
 		switch v := value.(type) {
 		case bool:

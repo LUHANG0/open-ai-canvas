@@ -1,4 +1,5 @@
 import { localForageStorageForScope } from "@/lib/localforage-storage";
+import { createBrowserCoordinationToken, withBrowserCrossContextLock } from "@/lib/browser-cross-context-lock";
 import { getActiveUserScope } from "@/lib/user-scope";
 import type { GenerationTaskEffectClaim, GenerationTaskEffectResult, GenerationTaskEffectStore } from "@/services/generation-task-materializer";
 
@@ -24,10 +25,6 @@ type EffectLease = {
     fence: number;
 };
 
-type AsyncLock = {
-    request<T>(name: string, callback: () => Promise<T>): Promise<T>;
-};
-
 type EffectStorage = {
     getItem(name: string): string | null | Promise<string | null>;
     setItem(name: string, value: string): unknown | Promise<unknown>;
@@ -49,30 +46,27 @@ function effectStorage(scope: string): EffectStorage {
     };
 }
 
-function effectLock(): AsyncLock {
-    if (typeof window !== "undefined") {
-        const locks = navigator.locks;
-        if (!locks) throw new Error("当前浏览器不支持跨页面生成副作用互斥");
-        return locks;
+async function withEffectLock<T>(name: string, callback: () => Promise<T>) {
+    if (typeof window === "undefined") {
+        const prior = inProcessLockTails.get(name) ?? Promise.resolve();
+        let release!: () => void;
+        const tail = new Promise<void>((resolve) => {
+            release = resolve;
+        });
+        const queued = prior.then(() => tail);
+        inProcessLockTails.set(name, queued);
+        await prior;
+        try {
+            return await callback();
+        } finally {
+            release();
+            if (inProcessLockTails.get(name) === queued) inProcessLockTails.delete(name);
+        }
     }
-    return {
-        async request<T>(name: string, callback: () => Promise<T>) {
-            const prior = inProcessLockTails.get(name) ?? Promise.resolve();
-            let release!: () => void;
-            const tail = new Promise<void>((resolve) => {
-                release = resolve;
-            });
-            const queued = prior.then(() => tail);
-            inProcessLockTails.set(name, queued);
-            await prior;
-            try {
-                return await callback();
-            } finally {
-                release();
-                if (inProcessLockTails.get(name) === queued) inProcessLockTails.delete(name);
-            }
-        },
-    };
+    return withBrowserCrossContextLock(name, callback, {
+        required: true,
+        unavailableMessage: "当前浏览器不支持跨页面生成副作用互斥",
+    });
 }
 
 function recordKey(scope: string, effectKey: string) {
@@ -159,7 +153,7 @@ export function createProviderNeutralGenerationTaskEffectStore(
     }
 
     async function withRecord<T>(scope: string, taskId: string, effectKey: string, action: (record: EffectRecord | undefined, storage: EffectStorage, key: string) => Promise<T>) {
-        return effectLock().request(lockKey(scope, effectKey), async () => {
+        return withEffectLock(lockKey(scope, effectKey), async () => {
             const storage = effectStorage(scope);
             const key = recordKey(scope, effectKey);
             return action(parseRecord(await storage.getItem(key), taskId, effectKey), storage, key);
@@ -181,7 +175,7 @@ export function createProviderNeutralGenerationTaskEffectStore(
                     scope,
                     taskId,
                     effectKey,
-                    leaseToken: crypto.randomUUID(),
+                    leaseToken: createBrowserCoordinationToken(),
                     expiresAt: new Date(current.getTime() + leaseMs).toISOString(),
                     fence: (record?.fence ?? 0) + 1,
                 };

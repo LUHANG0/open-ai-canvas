@@ -181,6 +181,28 @@ func TestAutoDLPluginPackageInstallsThroughUploadRuntime(t *testing.T) {
 	}
 }
 
+func TestKemeiPluginPackageInstallsThroughUploadRuntime(t *testing.T) {
+	data, err := os.ReadFile(filepath.Join("..", "..", "..", "plugin-packages", "kemei-video.yingce-plugin"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	center, err := newPluginRuntime(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	plugin, err := center.install(data, "kemei-video.yingce-plugin")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if plugin.Status != "enabled" || plugin.Manifest.ID != "kemei-video" || plugin.Manifest.Version != "1.0.2" {
+		t.Fatalf("installed Kemei plugin = %#v", plugin)
+	}
+	provider := plugin.Manifest.Contributes.Providers[0]
+	if provider.BaseURL != "" || provider.Create.Fields["resolution"] != "request.resolution|resolution_p" {
+		t.Fatalf("installed Kemei provider = %#v", provider)
+	}
+}
+
 func TestDeclarativeProtocolRuntimeExecutesCreatePollAndDownload(t *testing.T) {
 	manifest := []byte(`{
 		"apiVersion":"yingce.plugin/v1",

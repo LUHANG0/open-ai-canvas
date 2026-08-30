@@ -30,7 +30,9 @@ export function removeCreationConversationSnapshot<T extends { id: string }>(con
 
 function isRecoverableCreationMessage(message: PendingCreationMessage) {
     if (message.role !== "assistant" || !message.taskIds?.length) return false;
-    return message.mode === "text" ? message.status === "streaming" || message.status === "pending" : message.status === "pending";
+    // 媒体任务可能已经在后端成功，但首次浏览器物化失败后消息会被保存为 error。
+    // 返回页面时重新观察这类任务，成功结果可回填；真实失败任务仍会保持 error。
+    return message.mode === "text" ? message.status === "streaming" || message.status === "pending" : message.status === "pending" || message.status === "error";
 }
 
 export function pendingCreationTaskKey(conversations: StoredCreationConversation[]) {

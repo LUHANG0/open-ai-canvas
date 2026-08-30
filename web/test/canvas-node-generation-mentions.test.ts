@@ -32,6 +32,16 @@ function connection(fromNodeId: string): CanvasConnection {
 }
 
 describe("canvas node generation position mentions", () => {
+    test("视频生成会把已连接文本节点加入实际提示词", () => {
+        const target = targetNode();
+        const text = node("text-a", CanvasNodeType.Text, "雨夜天台，镜头缓缓推近霓虹灯牌下的主角");
+
+        const context = buildNodeGenerationContext(target.id, [text, target], [connection(text.id)], "开始", []);
+
+        expect(context.textCount).toBe(1);
+        expect(context.prompt).toBe("开始\n\n雨夜天台，镜头缓缓推近霓虹灯牌下的主角");
+    });
+
     test("已有图片节点显式引用自身时作为图生图参考图提交", () => {
         const source = node("image-self", CanvasNodeType.Image, "data:image/png;base64,a");
         source.metadata.composerContent = "将 @图片1 图片变清晰";
