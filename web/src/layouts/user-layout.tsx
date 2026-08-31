@@ -17,7 +17,7 @@ export default function UserLayout({ children }: { children: ReactNode }) {
     }, [spatialWorkbench]);
 
     return (
-        <div className={cn("app-user-workspace h-dvh overflow-hidden text-foreground", spatialWorkbench && "app-spatial-workspace")}>
+        <div className={cn("app-user-workspace h-dvh overflow-hidden text-foreground", spatialWorkbench && "app-spatial-workspace")} data-workspace-layout={spatialWorkbench ? "standard" : "fullscreen"}>
             <AppWorkspaceShell>{children}</AppWorkspaceShell>
             <CanvasDeleteProjectsDialog />
         </div>

@@ -32,7 +32,7 @@ export function WorkspaceTopBar({ sidebarOpen, onToggleSidebar }: { sidebarOpen:
     const pageContext = (slug && PAGE_CONTEXT[slug]) || { section: "Yingce", title: "影策" };
 
     return (
-        <header className={`app-workspace-topbar flex shrink-0 items-center justify-between gap-2 px-3 sm:px-4 ${extension ? "has-extension" : ""}`}>
+        <header className={`app-workspace-topbar flex shrink-0 items-center justify-between gap-2 px-3 sm:px-4 ${extension ? "has-extension" : ""}`} aria-label="工作区顶栏">
             <div className="flex min-w-0 flex-1 items-center gap-2">
                 <button type="button" className="app-workspace-topbar-icon-button" aria-label={sidebarOpen ? "收起侧栏" : "展开侧栏"} onClick={onToggleSidebar}>
                     {sidebarOpen ? <PanelLeftClose className="size-4" /> : <PanelLeftOpen className="size-4" />}
@@ -42,7 +42,7 @@ export function WorkspaceTopBar({ sidebarOpen, onToggleSidebar }: { sidebarOpen:
                         {pageContext.section}
                     </Link>
                     <span className="app-workspace-context-divider shrink-0" aria-hidden="true" />
-                    <span className="app-workspace-context-title">{pageContext.title}</span>
+                    <span className="app-workspace-context-title" aria-current="page">{pageContext.title}</span>
                 </nav>
                 {extension ? <div className="min-w-0 flex-1">{extension}</div> : null}
             </div>
