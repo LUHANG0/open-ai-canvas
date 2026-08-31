@@ -34,7 +34,7 @@ func TestKemeiPluginArtifactNormalizesResolution(t *testing.T) {
 		t.Fatal("Kemei provider should declare real Token usage support")
 	}
 	spec, err := adapters[0].BuildCreate(context.Background(), RequestContext{Request: GenerationRequest{
-		Model: "artsdance-2-0-mini-260801", Prompt: "test", Resolution: "480", Duration: 4,
+		Model: "artsdance-2-0-mini-260801", Prompt: "test", Resolution: "480", Duration: 4, GenerateAudio: true,
 		Images: []MediaReference{{URL: "https://cdn.example/reference.png"}},
 	}})
 	if err != nil {
@@ -43,6 +43,9 @@ func TestKemeiPluginArtifactNormalizesResolution(t *testing.T) {
 	body := spec.Body.(map[string]any)
 	if body["resolution"] != "480p" {
 		t.Fatalf("resolution = %#v, want 480p", body["resolution"])
+	}
+	if body["generate_audio"] != true {
+		t.Fatalf("generate_audio = %#v, want true", body["generate_audio"])
 	}
 	images, ok := body["images"].([]string)
 	if !ok || len(images) != 1 || images[0] != "https://cdn.example/reference.png" {

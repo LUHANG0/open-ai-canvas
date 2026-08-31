@@ -265,6 +265,9 @@ func DefaultModelCapabilityConfigForModel(protocol string, modelName string) *Mo
 	case model.ChannelInterfaceAgnesVideo:
 		video = applyModelSpecificVideoCapability(video, protocol, modelName)
 	}
+	if strings.EqualFold(strings.TrimSpace(protocol), "kemei-video") {
+		video.GenerateAudio = VideoBooleanConfig{Supported: true, Default: true}
+	}
 	return &ModelCapabilityConfig{Version: 1, Text: text, Image: DefaultImageCapabilityConfig(protocol, modelName), Video: video}
 }
 

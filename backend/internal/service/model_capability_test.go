@@ -138,6 +138,16 @@ func TestDefaultVolcengineArkVideoCapabilitySupportsFullModalReference(t *testin
 	}
 }
 
+func TestDefaultKemeiVideoCapabilitySupportsSynchronousAudio(t *testing.T) {
+	profile := DefaultModelCapabilityConfigForModel("kemei-video", "artsdance-2-5-pro-260801")
+	if profile == nil || profile.Video == nil {
+		t.Fatal("Kemei video profile = nil")
+	}
+	if !profile.Video.GenerateAudio.Supported || !profile.Video.GenerateAudio.Default {
+		t.Fatalf("generateAudio = %#v, want supported and enabled by default", profile.Video.GenerateAudio)
+	}
+}
+
 func TestValidateVolcengineArkFullModalReferenceRejectsTextAndAudioOnly(t *testing.T) {
 	profile := DefaultModelCapabilityConfigForModel("volcengine-ark-video", "doubao-seedance-2-0-260128").Video
 	input := canvasGenerationInput{

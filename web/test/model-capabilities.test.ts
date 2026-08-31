@@ -13,3 +13,9 @@ test("switching to MiniMax H3 replaces an unsupported 720p value with 768P", () 
         resolution: "768P",
     });
 });
+
+test("Kemei video defaults to synchronous audio generation", () => {
+    const profile = defaultModelCapabilityConfig("kemei-video", "artsdance-2-5-pro-260801").video!;
+
+    assert.deepEqual(profile.generateAudio, { supported: true, default: true });
+});
