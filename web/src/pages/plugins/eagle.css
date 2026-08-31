@@ -163,7 +163,18 @@
 }
 
 .eagle-library-page .eagle-inline-error {
-    display: none;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 12px;
+    border: 1px solid color-mix(in srgb, var(--destructive) 28%, var(--border));
+    border-radius: var(--r-md);
+    padding: 8px 10px;
+    background: color-mix(in srgb, var(--destructive) 8%, var(--background));
+    color: var(--destructive);
+    font-size: 12px;
+    line-height: 1.5;
 }
 
 :is(.eagle-library-page, .eagle-asset-drawer) .eagle-drawer-preview {
@@ -216,10 +227,7 @@
 
 @media (min-width: 1024px) {
     .eagle-library-page .eagle-inline-error {
-        display: flex;
         min-height: 42px;
-        align-items: center;
-        justify-content: space-between;
         gap: var(--app-space-3, 12px);
         margin-bottom: var(--app-space-4, 16px);
         border: 1px solid var(--app-status-error-border);

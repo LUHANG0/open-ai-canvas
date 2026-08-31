@@ -827,8 +827,7 @@
     }
 
     .plugins-subnav .pc-subnav-layout__rail {
-        position: sticky;
-        top: var(--app-space-4, 16px);
+        position: static;
         width: 100%;
     }
 
