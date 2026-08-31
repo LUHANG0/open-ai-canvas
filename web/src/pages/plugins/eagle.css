@@ -21,7 +21,7 @@
     color: color-mix(in srgb, var(--foreground) 38%, transparent);
     font-size: var(--fs-tiny);
     font-weight: 650;
-    letter-spacing: .06em;
+    letter-spacing: 0.06em;
     text-transform: uppercase;
 }
 
@@ -58,7 +58,9 @@
     align-items: center;
     border-radius: var(--r-md);
     padding: 6px 4px;
-    transition: background-color var(--motion-state) ease-out, color var(--motion-state) ease-out;
+    transition:
+        background-color var(--motion-state) ease-out,
+        color var(--motion-state) ease-out;
 }
 
 .eagle-library-page .eagle-folder-tree-title {
@@ -95,7 +97,9 @@
     border-radius: var(--r-md);
     background: transparent;
     color: inherit;
-    transition: background-color var(--motion-state) ease-out, color var(--motion-state) ease-out;
+    transition:
+        background-color var(--motion-state) ease-out,
+        color var(--motion-state) ease-out;
 }
 
 .eagle-library-page .eagle-folder-collapse:hover {
@@ -127,10 +131,12 @@
     height: 30px;
     place-items: center;
     border-radius: var(--r-md);
-    background: rgba(10, 10, 10, .62);
+    background: rgba(10, 10, 10, 0.62);
     color: #fff;
     opacity: 0;
-    transition: background-color var(--motion-state) ease-out, opacity var(--motion-state) ease-out;
+    transition:
+        background-color var(--motion-state) ease-out,
+        opacity var(--motion-state) ease-out;
 }
 
 .eagle-library-page .asset-library-card:hover .eagle-cover-download,
@@ -140,7 +146,7 @@
 }
 
 .eagle-library-page .eagle-cover-download:hover {
-    background: rgba(10, 10, 10, .82);
+    background: rgba(10, 10, 10, 0.82);
 }
 
 .eagle-library-page .eagle-cover-download:focus-visible {
@@ -156,7 +162,22 @@
     background: color-mix(in srgb, var(--foreground) 2%, transparent);
 }
 
-.eagle-library-page .eagle-drawer-preview {
+.eagle-library-page .eagle-inline-error {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 12px;
+    border: 1px solid color-mix(in srgb, var(--destructive) 28%, var(--border));
+    border-radius: var(--r-md);
+    padding: 8px 10px;
+    background: color-mix(in srgb, var(--destructive) 8%, var(--background));
+    color: var(--destructive);
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+:is(.eagle-library-page, .eagle-asset-drawer) .eagle-drawer-preview {
     display: grid;
     min-height: 220px;
     max-height: 52vh;
@@ -166,7 +187,7 @@
     background: color-mix(in srgb, var(--foreground) 5%, transparent);
 }
 
-.eagle-library-page .eagle-drawer-preview img {
+:is(.eagle-library-page, .eagle-asset-drawer) .eagle-drawer-preview img {
     display: block;
     width: 100%;
     height: 100%;
@@ -174,14 +195,14 @@
     object-fit: contain;
 }
 
-.eagle-library-page .eagle-drawer-download {
+:is(.eagle-library-page, .eagle-asset-drawer) .eagle-drawer-download {
     width: 100%;
     background: var(--primary);
     color: var(--primary-foreground);
     transition: background-color var(--motion-state) ease-out;
 }
 
-.eagle-library-page .eagle-drawer-download:hover {
+:is(.eagle-library-page, .eagle-asset-drawer) .eagle-drawer-download:hover {
     background: color-mix(in srgb, var(--primary) 88%, var(--foreground));
     color: var(--primary-foreground);
 }
@@ -202,5 +223,115 @@
     .eagle-library-page .eagle-drawer-download {
         transition: none;
     }
+}
 
+@media (min-width: 1024px) {
+    .eagle-library-page .eagle-inline-error {
+        min-height: 42px;
+        gap: var(--app-space-3, 12px);
+        margin-bottom: var(--app-space-4, 16px);
+        border: 1px solid var(--app-status-error-border);
+        border-radius: var(--app-control-radius);
+        padding: var(--app-space-2, 8px) var(--app-space-3, 12px);
+        background: var(--app-status-error-bg);
+        color: var(--app-status-error-fg);
+        font-size: 12px;
+        line-height: 1.5;
+    }
+
+    .eagle-library-page .studio-band {
+        padding-bottom: var(--app-space-4, 16px);
+        border-bottom: 1px solid var(--app-border-subtle, var(--border));
+    }
+
+    .eagle-library-page .eagle-library-frame {
+        padding: var(--app-space-4, 16px);
+        background: var(--app-surface-1, var(--background));
+        border: 1px solid var(--app-border-subtle, var(--border));
+        border-radius: var(--app-radius-surface, 12px);
+        box-shadow: var(--app-shadow-surface, 0 1px 2px rgba(0, 0, 0, 0.04));
+    }
+
+    .eagle-library-page .eagle-library-frame > .grid {
+        grid-template-columns: 208px minmax(0, 1fr);
+        gap: var(--app-space-5, 20px);
+    }
+
+    .eagle-library-page .eagle-folder-sidebar {
+        max-height: calc(100vh - 220px);
+        padding: var(--app-space-3, 12px);
+        background: var(--app-surface-2, var(--surface-card));
+        border: 1px solid var(--app-border-subtle, var(--border));
+        border-radius: var(--app-radius-control, 8px);
+    }
+
+    .eagle-library-page .eagle-folder-sidebar-header {
+        min-height: 36px;
+        padding: 0 var(--app-space-2, 8px) var(--app-space-2, 8px);
+        border-bottom: 1px solid var(--app-border-subtle, var(--border));
+    }
+
+    .eagle-library-page .assets-filter-item {
+        min-height: 36px;
+        border-radius: var(--app-radius-control-sm, 6px);
+    }
+
+    .eagle-library-page .assets-filter-item.is-active {
+        color: var(--app-selection-fg, var(--foreground));
+        background: var(--app-selection-bg, var(--control-selected-bg));
+    }
+
+    .eagle-library-page .eagle-folder-sidebar-label {
+        margin-top: var(--app-space-4, 16px);
+        padding-inline: var(--app-space-2, 8px);
+        color: var(--app-text-muted, var(--muted-foreground));
+        font-size: 11px;
+    }
+
+    .eagle-library-page .eagle-folder-tree .ant-tree-node-content-wrapper {
+        min-height: 32px;
+        color: var(--app-text-secondary, var(--muted-foreground));
+        border-radius: var(--app-radius-control-sm, 6px);
+    }
+
+    .eagle-library-page .eagle-folder-tree .ant-tree-node-content-wrapper:hover {
+        color: var(--app-text-primary, var(--foreground));
+        background: var(--app-action-secondary-hover-bg, var(--surface-card-hover));
+    }
+
+    .eagle-library-page .eagle-folder-tree .ant-tree-node-content-wrapper.ant-tree-node-selected {
+        color: var(--app-selection-fg, var(--foreground));
+        background: var(--app-selection-bg, var(--control-selected-bg));
+    }
+
+    .eagle-library-page .eagle-folder-create {
+        min-height: var(--app-control-height-md, 36px);
+        margin-top: var(--app-space-3, 12px);
+    }
+
+    .eagle-library-page .eagle-empty-state {
+        min-height: 320px;
+        background: var(--app-surface-2, var(--surface-card));
+        border: 1px dashed var(--app-border-default, var(--border));
+        border-radius: var(--app-radius-surface, 12px);
+    }
+
+    :is(.eagle-library-page, .eagle-asset-drawer) .eagle-drawer-preview {
+        min-height: 260px;
+        background: var(--app-surface-2, var(--surface-card));
+        border: 1px solid var(--app-border-subtle, var(--border));
+        border-radius: var(--app-radius-media, 12px);
+    }
+
+    .eagle-asset-drawer .asset-archive-header {
+        padding-bottom: var(--app-space-4, 16px);
+        border-bottom: 1px solid var(--app-border-subtle, var(--border));
+    }
+
+    .eagle-asset-drawer .eagle-drawer-download {
+        min-height: var(--app-control-height-lg, 42px);
+        color: var(--app-text-inverse, #fff);
+        background: var(--app-action-primary-bg, var(--primary));
+        border-radius: var(--app-radius-control, 8px);
+    }
 }

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { App, Button, Drawer, InputNumber, Segmented, Tag } from "antd";
+import { App, Button, InputNumber, Segmented, Tag } from "antd";
 import { ChevronRight, FlaskConical, Settings2 } from "lucide-react";
 
 import { testChannelModelConnection } from "@/lib/model-connection-test";
@@ -9,6 +9,7 @@ import { defaultModelCapabilityConfig } from "@/lib/model-capabilities";
 import { modelProtocolCapability, modelProtocolDefinition, modelProtocolSupportsTokenBilling, type ModelProtocol } from "@/lib/model-protocols";
 import { fetchPluginProviderCatalog } from "@/services/api/plugin-catalog";
 import { modelOptionName, type ModelChannel } from "@/stores/use-config-store";
+import { DrawerFrame } from "@/components/ui/pc";
 
 type ModelCost = NonNullable<ModelChannel["modelCosts"]>[number];
 
@@ -54,7 +55,7 @@ export function ChannelModelSettings({ channel, onChange }: { channel: ModelChan
     const activeTokenBillingSupported = modelProtocolSupportsTokenBilling(activeCapability, activeProtocol, availableProtocols);
 
     return (
-        <div className="mt-4">
+        <div className="settings-model-capabilities mt-4">
             <div className="mb-2 flex items-center justify-between gap-3">
                 <div>
                     <div className="text-xs font-medium">模型能力与请求协议</div>
@@ -71,7 +72,7 @@ export function ChannelModelSettings({ channel, onChange }: { channel: ModelChan
                     const billingMode = cost?.billingMode || "fixed_request";
                     const displayName = cost?.displayName?.trim() || model;
                     return (
-                        <div key={model} className="flex min-w-0 items-center gap-3 rounded-md bg-surface-active px-3 py-2.5 transition-colors hover:bg-surface-hover">
+                        <div key={model} className="settings-model-capability-row flex min-w-0 items-center gap-3 rounded-md bg-surface-active px-3 py-2.5 transition-colors hover:bg-surface-hover">
                             <span className="grid size-8 shrink-0 place-items-center rounded-md bg-foreground/[.045] text-foreground/65">
                                 <Settings2 className="size-4" />
                             </span>
@@ -95,11 +96,12 @@ export function ChannelModelSettings({ channel, onChange }: { channel: ModelChan
                     );
                 })}
             </div>
-            <Drawer
+            <DrawerFrame
                 title={activeModel ? `${activeModel} · 使用配置` : "模型使用配置"}
+                subtitle="能力、协议与计费仅影响当前渠道的当前模型。"
+                frameSize="lg"
                 open={Boolean(activeModel)}
                 onClose={() => setActiveModel(null)}
-                size="min(720px, 100vw)"
                 destroyOnHidden
                 extra={
                     activeModel && activeCapability && activeProtocol ? (
@@ -182,7 +184,7 @@ export function ChannelModelSettings({ channel, onChange }: { channel: ModelChan
                         ) : null}
                     </div>
                 ) : null}
-            </Drawer>
+            </DrawerFrame>
         </div>
     );
 }

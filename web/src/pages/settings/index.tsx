@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 
 import { UserOSSSettingsForm } from "@/components/layout/user-oss-settings-form";
+import { PageHeader, WorkspacePage } from "@/components/layout/workspace-page";
+import { SubnavLayout } from "@/components/ui/pc";
 import { audioFormatOptions, audioVoiceOptions, normalizeAudioSpeedValue } from "@/lib/audio-generation";
 import { refreshSystemChannels } from "@/lib/user-session";
 import { defaultConfig, useConfigStore, useEffectiveConfig } from "@/stores/use-config-store";
@@ -18,6 +20,7 @@ import DiagnosticsPanel from "./diagnostics-panel";
 import { RunningHubSettingsPane } from "./runninghub-settings-pane";
 import { COMFYUI_PLUGIN_ID, RUNNINGHUB_PLUGIN_ID } from "@/lib/plugins/builtin/workflows";
 import { usePluginStore } from "@/stores/use-plugin-store";
+import "./settings.css";
 
 type ConfigSectionKey = "local-cli" | "channels" | "models" | "runninghub" | "comfyui" | "preferences" | "prompts" | "storage" | "diagnostics";
 
@@ -208,50 +211,41 @@ export default function SettingsPage() {
     };
 
     return (
-        <main className="settings-page app-workspace-page flex h-full min-h-0 flex-col text-foreground">
-            <header className="settings-topbar shrink-0">
-                <div className="flex min-w-0 items-center gap-2.5">
-                    {shouldPromptContinue ? (
-                        <button type="button" className="app-workspace-icon-button shrink-0" onClick={() => navigate(-1)} aria-label="返回创作页面" title="返回创作页面">
-                            <ArrowLeft className="size-4" />
-                        </button>
-                    ) : null}
-                    <h1 className="truncate text-sm font-semibold">设置</h1>
-                </div>
-                {shouldPromptContinue ? <Button type="primary" size="small" onClick={finishConfig}>保存并返回</Button> : null}
-            </header>
-            <div className="settings-library-frame flex min-h-0 flex-1 flex-col md:flex-row">
-                <aside className="settings-nav-panel w-full shrink-0 md:w-[200px]">
-                    <nav className="thin-scrollbar flex gap-1 overflow-x-auto p-2 md:block md:space-y-1 md:p-2.5" aria-label="配置分类">
-                        {visibleConfigSections.map((item) => {
-                            const selected = item.key === activeTab;
-                            return (
-                                <button
-                                    key={item.key}
-                                    type="button"
-                                    className={`settings-nav-item flex h-9 shrink-0 items-center gap-2 rounded-md px-3 text-left text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:h-auto md:w-full md:items-start md:gap-3 md:py-2.5 ${selected ? "is-active" : "text-foreground/58 hover:bg-muted/55 hover:text-foreground"}`}
-                                    onClick={() => selectSection(item.key)}
-                                    aria-current={selected ? "page" : undefined}
-                                >
-                                    <span className={`shrink-0 md:mt-0.5 ${selected ? "text-[var(--workspace-accent)]" : ""}`}>{item.icon}</span>
-                                    <span className="min-w-0">
-                                        <span className="block whitespace-nowrap text-sm font-medium">{item.label}</span>
-                                        <span className="mt-1 hidden text-[var(--fs-label)] leading-4 text-current opacity-65 md:block">{item.description}</span>
-                                    </span>
-                                </button>
-                            );
-                        })}
-                    </nav>
-                </aside>
-                <section className="settings-content flex min-h-0 min-w-0 flex-1 flex-col">
-                    <div className="app-workspace-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 md:px-6 md:py-5">
-                        <div className={`settings-pane-root ${activeTab === "prompts" ? "h-full w-full" : "mx-auto w-full max-w-none"}`}>
-                            {panes[activeTab]}
-                        </div>
+        <WorkspacePage className="settings-page" contentClassName="settings-page-content">
+            <PageHeader
+                eyebrow="PERSONAL SETTINGS"
+                title="设置"
+                description="管理本机工具、模型渠道、工作流、生成偏好与个人存储。"
+                actions={shouldPromptContinue ? (
+                    <>
+                        <Button icon={<ArrowLeft className="size-4" />} onClick={() => navigate(-1)}>返回创作</Button>
+                        <Button type="primary" onClick={finishConfig}>保存并返回</Button>
+                    </>
+                ) : undefined}
+            />
+            <SubnavLayout
+                className="settings-subnav"
+                ariaLabel="配置分类"
+                items={visibleConfigSections.map((item) => ({
+                    value: item.key,
+                    label: item.label,
+                    description: item.description,
+                    icon: item.icon,
+                }))}
+                activeValue={activeTab}
+                onChange={selectSection}
+                navigationHeader={(
+                    <div className="settings-subnav-heading">
+                        <span>设置分类</span>
+                        <strong>{visibleConfigSections.length}</strong>
                     </div>
-                </section>
-            </div>
-        </main>
+                )}
+            >
+                <div className={`settings-pane-root ${activeTab === "prompts" ? "is-editor" : ""}`}>
+                    {panes[activeTab]}
+                </div>
+            </SubnavLayout>
+        </WorkspacePage>
     );
 }
 

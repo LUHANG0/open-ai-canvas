@@ -215,7 +215,7 @@ export function ChannelSettingsPane({ onOpenModels, onOpenRunningHub, onOpenComf
     };
 
     return (
-        <Form layout="vertical" requiredMark={false}>
+        <Form className="settings-channel-pane" layout="vertical" requiredMark={false}>
             <div className="settings-pane-header">
                 <div className="min-w-0">
                     <h2>个人渠道</h2>

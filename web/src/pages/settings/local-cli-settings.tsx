@@ -164,8 +164,8 @@ export function LocalCliSettings() {
     };
 
     return (
-        <div className="space-y-4">
-            <section aria-labelledby="local-runtime-title" className="rounded-md border border-border bg-background px-4 py-3">
+        <div className="settings-local-cli space-y-4">
+            <section aria-labelledby="local-runtime-title" className="settings-section settings-runtime-summary rounded-md border border-border bg-background px-4 py-3">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                     <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1">
                         <Server className="size-4 shrink-0 text-foreground/60" />
@@ -184,7 +184,7 @@ export function LocalCliSettings() {
                 </div>
             </section>
 
-            <section aria-labelledby="dreamina-cli-title" className="rounded-md border border-border bg-background p-4 sm:p-5">
+            <section aria-labelledby="dreamina-cli-title" className="settings-section settings-cli-card rounded-md border border-border bg-background p-4 sm:p-5">
                 <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border/70 pb-4">
                     <div className="flex min-w-0 items-start gap-3">
                         <span className="grid size-10 shrink-0 place-items-center rounded-[var(--r-lg)] bg-foreground/5">
