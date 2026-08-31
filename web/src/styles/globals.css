@@ -1,6 +1,7 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
+@import "./pc-user-foundation.css";
 @source "../../node_modules/streamdown/dist/*.js";
 @source "../../node_modules/@streamdown/code/dist/*.js";
 
@@ -215,11 +216,11 @@
 
     /* --- 7. 动效（对应 #99 动效 token）--- */
     /* duration */
-    --motion-dur-instant: 80ms;
-    --motion-dur-fast: 150ms;
-    --motion-dur-base: 250ms;
-    --motion-dur-slow: 400ms;
-    --motion-dur-emphasize: 600ms;
+    --motion-dur-instant: var(--app-duration-fast);
+    --motion-dur-fast: var(--app-duration-fast);
+    --motion-dur-base: var(--app-duration-base);
+    --motion-dur-slow: var(--app-duration-slow);
+    --motion-dur-emphasize: var(--app-duration-slow);
     /* easing */
     --motion-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
     --motion-ease-in: cubic-bezier(0.64, 0, 0.78, 0);
@@ -317,8 +318,8 @@
     --radius-md: calc(var(--radius) - 2px);
     --radius-lg: var(--radius);
     --radius-xl: calc(var(--radius) + 4px);
-    --font-heading: var(--font-sans);
-    --font-sans: var(--font-sans);
+    --font-heading: var(--app-font-sans);
+    --font-sans: var(--app-font-sans);
     --color-sidebar-ring: var(--sidebar-ring);
     --color-sidebar-border: var(--sidebar-border);
     --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -396,36 +397,37 @@
 }
 
 :root {
-    --radius: 0.5rem;
-    --motion-instant: 120ms;
-    --motion-state: 180ms;
-    --motion-panel: 240ms;
+    --radius: var(--app-radius-2);
+    --font-mono: var(--app-font-mono);
+    --motion-instant: var(--app-duration-fast);
+    --motion-state: var(--app-duration-base);
+    --motion-panel: var(--app-duration-slow);
     --ease-aceternity: var(--motion-ease-out);
     --ease-product-enter: cubic-bezier(0.16, 1, 0.3, 1);
-    --workspace-canvas: var(--background);
+    --workspace-canvas: var(--app-bg-canvas);
     /* 页面、导航和内容区共用同一底色；卡片/浮层才允许使用 surface token。 */
-    --workspace-page: var(--workspace-canvas);
-    --workspace-navigation: var(--workspace-page);
-    --workspace-content: var(--workspace-page);
-    --workspace-surface: #ffffff;
-    --workspace-surface-strong: #ffffff;
-    --workspace-border: rgba(17, 17, 17, 0.14);
-    --workspace-border-strong: rgba(17, 17, 17, 0.22);
+    --workspace-page: var(--app-bg-page);
+    --workspace-navigation: var(--app-bg-canvas);
+    --workspace-content: var(--app-bg-page);
+    --workspace-surface: var(--app-surface-1);
+    --workspace-surface-strong: var(--app-surface-overlay);
+    --workspace-border: var(--app-border-default);
+    --workspace-border-strong: var(--app-border-strong);
     --workspace-grid-line: rgba(17, 17, 17, 0.045);
     --workspace-nav: var(--workspace-navigation);
     --workspace-sidebar: var(--workspace-navigation);
-    --workspace-accent: #171717;
-    --workspace-accent-soft: rgba(17, 17, 17, 0.07);
-    --workspace-nav-active-bg: color-mix(in srgb, var(--workspace-accent) 12%, transparent);
-    --workspace-nav-active-hover-bg: color-mix(in srgb, var(--workspace-accent) 16%, transparent);
+    --workspace-accent: var(--app-action-primary-bg);
+    --workspace-accent-soft: var(--app-selection-bg);
+    --workspace-nav-active-bg: var(--app-selection-bg);
+    --workspace-nav-active-hover-bg: var(--app-selection-hover);
     --workspace-nav-active-indicator: color-mix(in srgb, var(--workspace-accent) 78%, transparent);
-    --workspace-sidebar-width: 208px;        /* 侧栏展开宽度：较原 260px 收窄 20% */
-    --workspace-sidebar-nav-width: 208px;    /* 展开态导航内容宽度 */
-    --workspace-sidebar-collapsed-width: 56px; /* 折叠态保留可发现的图标菜单轨 */
+    --workspace-sidebar-width: var(--app-sidebar-width);
+    --workspace-sidebar-nav-width: var(--app-sidebar-width);
+    --workspace-sidebar-collapsed-width: var(--app-sidebar-collapsed-width);
 
-    --workspace-shell-gutter: 6px;        /* 工作区外壳画布留白与卡片间隙（组件 token）*/
+    --workspace-shell-gutter: var(--app-shell-gutter);
 
-    --workspace-card-gap: 4px;       /* 侧边栏与主区卡片之间间隙（组件 token）*/
+    --workspace-card-gap: var(--app-shell-gutter);
 
     /* --- Semantic 层（引用 Primitive，随主题切换）--- */
     /* 通用语义色（引用 Primitive neutral 色板）*/
@@ -543,21 +545,21 @@
     --accent-foreground: oklch(0.985 0 0);
     --destructive: oklch(0.704 0.191 22.216);
     --input: oklch(1 0 0 / 15%);
-    --workspace-canvas: var(--background);
-    --workspace-page: var(--workspace-canvas);
-    --workspace-navigation: var(--workspace-page);
-    --workspace-content: var(--workspace-page);
-    --workspace-surface: #181818;
-    --workspace-surface-strong: #181818;
-    --workspace-border: rgba(255, 255, 255, 0.085);
-    --workspace-border-strong: rgba(255, 255, 255, 0.16);
+    --workspace-canvas: var(--app-bg-canvas);
+    --workspace-page: var(--app-bg-page);
+    --workspace-navigation: var(--app-bg-canvas);
+    --workspace-content: var(--app-bg-page);
+    --workspace-surface: var(--app-surface-1);
+    --workspace-surface-strong: var(--app-surface-overlay);
+    --workspace-border: var(--app-border-default);
+    --workspace-border-strong: var(--app-border-strong);
     --workspace-grid-line: rgba(255, 255, 255, 0.038);
     --workspace-nav: var(--workspace-navigation);
     --workspace-sidebar: var(--workspace-navigation);
-    --workspace-accent: #f5f5f5;
-    --workspace-accent-soft: rgba(255, 255, 255, 0.09);
-    --workspace-nav-active-bg: color-mix(in srgb, var(--workspace-accent) 13%, transparent);
-    --workspace-nav-active-hover-bg: color-mix(in srgb, var(--workspace-accent) 18%, transparent);
+    --workspace-accent: var(--app-action-primary-bg);
+    --workspace-accent-soft: var(--app-selection-bg);
+    --workspace-nav-active-bg: var(--app-selection-bg);
+    --workspace-nav-active-hover-bg: var(--app-selection-hover);
     --workspace-nav-active-indicator: color-mix(in srgb, var(--workspace-accent) 82%, transparent);
     --chart-1: oklch(0.87 0 0);
     --chart-2: oklch(0.556 0 0);
@@ -727,7 +729,7 @@
     --dock-z-popover: 30;                 /* dock 子面板在 toolbar 根 stacking context 内的层级（见 ADR-001）*/
 
     /* 页面顶部栏（PageHeader / 工作台头部）*/
-    --page-topbar-h: 64px;
+    --page-topbar-h: var(--app-topbar-height);
     --page-topbar-px: var(--space-4);
     --page-topbar-surface: var(--bg-secondary);
     --page-topbar-border: var(--workspace-border);
@@ -862,6 +864,7 @@
     body {
         background: var(--workspace-page);
         color: var(--foreground);
+        font-family: var(--app-font-sans);
     }
     #root {
         position: fixed;

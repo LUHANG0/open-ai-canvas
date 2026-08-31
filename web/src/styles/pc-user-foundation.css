@@ -1,0 +1,191 @@
+/*
+ * PC 用户端 Foundation Token
+ *
+ * 只提供 Primitive 、Semantic 和 Component 变量，不声明页面选择器，
+ * 不覆盖 Admin 私有 Token。TypeScript 镜像值维护在 lib/app-theme.ts。
+ */
+
+:root {
+    /* Primitive: typography */
+    --app-font-sans: "SF Pro Display", "SF Pro Text", -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", "Helvetica Neue", Arial, sans-serif;
+    --app-font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+    --app-font-size-label: 12px;
+    --app-font-size-control: 13px;
+    --app-font-size-body: 14px;
+    --app-font-size-section: 16px;
+    --app-font-size-section-lg: 18px;
+    --app-font-size-page-title: 24px;
+
+    /* Primitive: 4px spacing grid */
+    --app-space-0: 0px;
+    --app-space-1: 4px;
+    --app-space-2: 8px;
+    --app-space-3: 12px;
+    --app-space-4: 16px;
+    --app-space-5: 20px;
+    --app-space-6: 24px;
+    --app-space-8: 32px;
+    --app-space-10: 40px;
+    --app-space-12: 48px;
+
+    /* Primitive: size, radius and motion */
+    --app-control-height-sm: 30px;
+    --app-control-height: 36px;
+    --app-control-height-lg: 42px;
+    --app-radius-1: 6px;
+    --app-radius-2: 8px;
+    --app-radius-3: 10px;
+    --app-radius-4: 12px;
+    --app-radius-media: 16px;
+    --app-control-radius-sm: var(--app-radius-1);
+    --app-control-radius: var(--app-radius-2);
+    --app-surface-radius-sm: var(--app-radius-3);
+    --app-surface-radius: var(--app-radius-4);
+    --app-duration-fast: 120ms;
+    --app-duration-base: 180ms;
+    --app-duration-slow: 240ms;
+    --app-ease-standard: cubic-bezier(0.2, 0, 0, 1);
+    --app-ease-enter: cubic-bezier(0.16, 1, 0.3, 1);
+    --app-ease-exit: cubic-bezier(0.4, 0, 1, 1);
+
+    /* Component: desktop layout contract */
+    --app-sidebar-width: 224px;
+    --app-sidebar-collapsed-width: 64px;
+    --app-topbar-height: 52px;
+    --app-shell-gutter: 10px;
+    --app-page-gutter: 24px;
+    --app-page-max-width: 1440px;
+    --app-table-header-height: 42px;
+    --app-table-row-height: 52px;
+    --app-pagination-height: 44px;
+    --app-dialog-width-sm: 480px;
+    --app-dialog-width-md: 640px;
+    --app-dialog-width-lg: 920px;
+
+    /* Semantic: light surfaces and text */
+    --app-bg-canvas: #f3f4f6;
+    --app-bg-page: #f3f4f6;
+    --app-surface-1: #ffffff;
+    --app-surface-2: #f7f8fa;
+    --app-surface-3: #eceff3;
+    --app-surface-overlay: #ffffff;
+    --app-text-primary: #171717;
+    --app-text-secondary: rgba(23, 23, 23, 0.72);
+    --app-text-muted: rgba(23, 23, 23, 0.52);
+    --app-text-inverse: #ffffff;
+    --app-border-subtle: rgba(17, 24, 39, 0.09);
+    --app-border-default: rgba(17, 24, 39, 0.14);
+    --app-border-strong: rgba(17, 24, 39, 0.22);
+
+    /* Semantic: action and selection are intentionally separate roles */
+    --app-action-primary-bg: #171717;
+    --app-action-primary-hover: #303030;
+    --app-action-primary-active: #404040;
+    --app-action-primary-fg: #ffffff;
+    --app-action-secondary-bg: transparent;
+    --app-action-secondary-hover: rgba(17, 17, 17, 0.05);
+    --app-action-secondary-active: rgba(17, 17, 17, 0.09);
+    --app-action-secondary-fg: #171717;
+    --app-action-secondary-border: rgba(17, 17, 17, 0.18);
+    --app-selection-bg: rgba(17, 17, 17, 0.09);
+    --app-selection-hover: rgba(17, 17, 17, 0.13);
+    --app-selection-active: rgba(17, 17, 17, 0.16);
+    --app-selection-fg: #171717;
+    --app-selection-border: rgba(17, 17, 17, 0.18);
+    --app-focus-ring: rgba(17, 17, 17, 0.24);
+    --app-focus-shadow: 0 0 0 2px var(--app-focus-ring);
+
+    /* Semantic: feedback states */
+    --app-status-info-bg: rgba(63, 63, 70, 0.07);
+    --app-status-info-border: rgba(63, 63, 70, 0.18);
+    --app-status-info-fg: #3f3f46;
+    --app-status-success-bg: rgba(21, 128, 61, 0.09);
+    --app-status-success-border: rgba(21, 128, 61, 0.24);
+    --app-status-success-fg: #15803d;
+    --app-status-warning-bg: rgba(180, 83, 9, 0.1);
+    --app-status-warning-border: rgba(180, 83, 9, 0.26);
+    --app-status-warning-fg: #b45309;
+    --app-status-error-bg: rgba(220, 38, 38, 0.09);
+    --app-status-error-border: rgba(220, 38, 38, 0.24);
+    --app-status-error-fg: #dc2626;
+    --app-status-running-bg: rgba(37, 99, 235, 0.09);
+    --app-status-running-border: rgba(37, 99, 235, 0.24);
+    --app-status-running-fg: #2563eb;
+
+    /* Semantic: disabled controls, elevation and skeleton */
+    --app-control-bg: #ffffff;
+    --app-control-border: rgba(17, 17, 17, 0.18);
+    --app-control-disabled-bg: rgba(17, 17, 17, 0.05);
+    --app-control-disabled-fg: rgba(17, 17, 17, 0.36);
+    --app-shadow-surface: 0 1px 2px rgba(17, 24, 39, 0.04);
+    --app-shadow-raised: 0 10px 28px rgba(17, 24, 39, 0.09);
+    --app-shadow-overlay: 0 22px 64px rgba(15, 23, 42, 0.14);
+    --app-skeleton-from: rgba(15, 23, 42, 0.055);
+    --app-skeleton-to: rgba(15, 23, 42, 0.1);
+}
+
+.dark {
+    --app-bg-canvas: #111315;
+    --app-bg-page: #111315;
+    --app-surface-1: #1a1d20;
+    --app-surface-2: #22262a;
+    --app-surface-3: #2b3035;
+    --app-surface-overlay: #1f1f20;
+    --app-text-primary: #f5f5f5;
+    --app-text-secondary: rgba(245, 245, 245, 0.74);
+    --app-text-muted: rgba(245, 245, 245, 0.54);
+    --app-text-inverse: #171717;
+    --app-border-subtle: rgba(255, 255, 255, 0.09);
+    --app-border-default: rgba(255, 255, 255, 0.16);
+    --app-border-strong: rgba(255, 255, 255, 0.24);
+
+    --app-action-primary-bg: #f5f5f5;
+    --app-action-primary-hover: #ffffff;
+    --app-action-primary-active: #e5e5e5;
+    --app-action-primary-fg: #171717;
+    --app-action-secondary-bg: transparent;
+    --app-action-secondary-hover: rgba(255, 255, 255, 0.07);
+    --app-action-secondary-active: rgba(255, 255, 255, 0.12);
+    --app-action-secondary-fg: #f5f5f5;
+    --app-action-secondary-border: rgba(255, 255, 255, 0.24);
+    --app-selection-bg: rgba(255, 255, 255, 0.12);
+    --app-selection-hover: rgba(255, 255, 255, 0.16);
+    --app-selection-active: rgba(255, 255, 255, 0.2);
+    --app-selection-fg: #f5f5f5;
+    --app-selection-border: rgba(255, 255, 255, 0.24);
+    --app-focus-ring: rgba(255, 255, 255, 0.28);
+
+    --app-status-info-bg: rgba(228, 228, 231, 0.09);
+    --app-status-info-border: rgba(228, 228, 231, 0.2);
+    --app-status-info-fg: #e4e4e7;
+    --app-status-success-bg: rgba(74, 222, 128, 0.1);
+    --app-status-success-border: rgba(74, 222, 128, 0.26);
+    --app-status-success-fg: #4ade80;
+    --app-status-warning-bg: rgba(251, 191, 36, 0.11);
+    --app-status-warning-border: rgba(251, 191, 36, 0.28);
+    --app-status-warning-fg: #fbbf24;
+    --app-status-error-bg: rgba(248, 113, 113, 0.1);
+    --app-status-error-border: rgba(248, 113, 113, 0.26);
+    --app-status-error-fg: #f87171;
+    --app-status-running-bg: rgba(96, 165, 250, 0.11);
+    --app-status-running-border: rgba(96, 165, 250, 0.28);
+    --app-status-running-fg: #60a5fa;
+
+    --app-control-bg: rgba(255, 255, 255, 0.035);
+    --app-control-border: rgba(255, 255, 255, 0.24);
+    --app-control-disabled-bg: rgba(255, 255, 255, 0.06);
+    --app-control-disabled-fg: rgba(255, 255, 255, 0.38);
+    --app-shadow-surface: 0 1px 2px rgba(0, 0, 0, 0.32);
+    --app-shadow-raised: 0 12px 32px rgba(0, 0, 0, 0.44);
+    --app-shadow-overlay: 0 24px 72px rgba(0, 0, 0, 0.48);
+    --app-skeleton-from: rgba(255, 255, 255, 0.055);
+    --app-skeleton-to: rgba(255, 255, 255, 0.11);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    :root {
+        --app-duration-fast: 0.01ms;
+        --app-duration-base: 0.01ms;
+        --app-duration-slow: 0.01ms;
+    }
+}
