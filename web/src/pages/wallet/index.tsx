@@ -1,15 +1,16 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { App, Button, Grid, Input, Segmented, Table, Tag } from "antd";
 import type { ColumnsType } from "antd/es/table";
-import { motion, useReducedMotion } from "motion/react";
 import { ArrowDownLeft, ArrowUpRight, CalendarCheck, Coins, RefreshCw, RotateCcw, ShieldCheck, SlidersHorizontal, Sparkles, TicketCheck } from "lucide-react";
 
 import { formatCredits } from "@/constant/credits";
-import { PaginationBar, TableSurface } from "@/components/layout/workspace-page";
+import { PageHeader, PaginationBar, TableSurface, WorkspacePage } from "@/components/layout/workspace-page";
 import { WorkspaceState } from "@/components/layout/workspace-state";
-import { aceternityMotion } from "@/lib/aceternity-motion";
+import { SectionHeader, StatusBadge, Surface } from "@/components/ui/pc";
 import { checkinCredits, getWallet, redeemCredits, type CreditLedgerEntry, type WalletSummary } from "@/services/api/wallet";
 import { modelDisplayName, useEffectiveConfig, type AiConfig } from "@/stores/use-config-store";
+
+import "./wallet-pc.css";
 
 type LedgerFilter = "all" | "income" | "consume" | "refund";
 
@@ -23,7 +24,6 @@ const ledgerFilterOptions = [
 export default function WalletPage() {
     const { message } = App.useApp();
     const screens = Grid.useBreakpoint();
-    const reducedMotion = useReducedMotion();
     const config = useEffectiveConfig();
     const [wallet, setWallet] = useState<WalletSummary | null>(null);
     const [code, setCode] = useState("");
@@ -116,82 +116,105 @@ export default function WalletPage() {
     ];
 
     return (
-        <main className="app-user-content app-workspace-scroll library-page wallet-library-page relative h-full overflow-y-auto text-foreground">
-            <div className="relative w-full px-4 py-6 sm:px-6 lg:px-8">
-                <div className="studio-band">
-                    <motion.header initial={reducedMotion ? false : { opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: aceternityMotion.duration.panel, ease: aceternityMotion.easing.enter }} className="app-page-header flex flex-wrap items-start justify-between gap-4">
-                        <div className="flex min-w-0 items-center gap-3">
-                            <div className="min-w-0">
-                                <h1 className="text-[var(--fs-heading-lg)] font-semibold leading-7">积分中心</h1>
-                                <p className="mt-1 text-xs leading-5 text-foreground/58">模型调用、冻结与退款都在同一条可追溯流水中。</p>
-                            </div>
-                        </div>
-                        <div className="flex flex-wrap items-center gap-2">
-                            <span className="app-projects-header-meta wallet-credit-meta">
-                                <Coins className="size-3" />
-                                可用 {formatCredits(account?.availableMicrocredits || 0, 6)}
-                            </span>
-                            <Button className="library-primary-action" icon={<CalendarCheck className="size-4" />} type={wallet?.policy.checkedInToday ? "default" : "primary"} loading={checkingIn} disabled={wallet?.policy.checkedInToday} onClick={() => void checkin()}>
+        <WorkspacePage className="library-page wallet-library-page" contentClassName="wallet-page-content">
+            <div className="studio-band">
+                <PageHeader
+                    eyebrow="账户与计费"
+                    title="积分中心"
+                    description="模型调用、冻结与退款都在同一条可追溯流水中。"
+                    meta={
+                        <span className="app-projects-header-meta wallet-credit-meta">
+                            <Coins className="size-3" />
+                            可用 {formatCredits(account?.availableMicrocredits || 0, 6)}
+                        </span>
+                    }
+                    actions={
+                        <>
+                            <Button
+                                className="library-primary-action"
+                                icon={<CalendarCheck className="size-4" />}
+                                type={wallet?.policy.checkedInToday ? "default" : "primary"}
+                                loading={checkingIn}
+                                disabled={wallet?.policy.checkedInToday}
+                                onClick={() => void checkin()}
+                            >
                                 {wallet?.policy.checkedInToday ? "今日已签到" : `签到 +${formatCredits(wallet?.policy.checkinBonusMicrocredits || 0)}`}
                             </Button>
                             <Button icon={<RefreshCw className="size-4" />} loading={loading} onClick={() => void reload()}>
                                 刷新余额
                             </Button>
-                        </div>
-                    </motion.header>
-                </div>
+                        </>
+                    }
+                />
+            </div>
 
-                <section className="library-feature-grid mt-6 grid gap-4 lg:grid-cols-[minmax(0,1.35fr)_minmax(340px,0.65fr)]">
-                    <section className="credit-balance-card">
-                        <div className="wallet-balance-inner">
-                            <div className="wallet-balance-primary">
-                                <div className="wallet-balance-heading">
-                                    <span className="library-icon-tile wallet-balance-icon"><Coins /></span>
-                                    <div><strong>可用创作积分</strong><span>最近更新 {formatTime(account?.updatedAt)}</span></div>
+            <section className="library-feature-grid wallet-summary-grid">
+                <Surface className="credit-balance-card" padding="none">
+                    <div className="wallet-balance-inner">
+                        <div className="wallet-balance-primary">
+                            <div className="wallet-balance-heading">
+                                <span className="library-icon-tile wallet-balance-icon">
+                                    <Coins />
+                                </span>
+                                <div>
+                                    <strong>可用创作积分</strong>
+                                    <span>最近更新 {formatTime(account?.updatedAt)}</span>
                                 </div>
-                                <div className="wallet-balance-number">
-                                    <strong>{formatCredits(account?.availableMicrocredits || 0, 6)}</strong>
-                                    <span>积分</span>
-                                </div>
                             </div>
-                            <div className="wallet-balance-details">
-                                <span className="wallet-account-status"><ShieldCheck />账户正常</span>
-                                <BalanceMetric label="冻结积分" description="调用中或待核对" value={account?.reservedMicrocredits || 0} icon={<TicketCheck className="size-4" />} />
-                                <BalanceMetric label="账户总额" description="可用与冻结合计" value={totalMicrocredits} icon={<Coins className="size-4" />} />
+                            <div className="wallet-balance-number">
+                                <strong>{formatCredits(account?.availableMicrocredits || 0, 6)}</strong>
+                                <span>积分</span>
                             </div>
                         </div>
-                    </section>
+                        <div className="wallet-balance-details">
+                            <StatusBadge className="wallet-account-status" tone="success" icon={<ShieldCheck />}>
+                                账户正常
+                            </StatusBadge>
+                            <BalanceMetric label="冻结积分" description="调用中或待核对" value={account?.reservedMicrocredits || 0} icon={<TicketCheck className="size-4" />} />
+                            <BalanceMetric label="账户总额" description="可用与冻结合计" value={totalMicrocredits} icon={<Coins className="size-4" />} />
+                        </div>
+                    </div>
+                </Surface>
 
-                    <motion.div initial={reducedMotion ? false : { opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: aceternityMotion.duration.panel, ease: aceternityMotion.easing.enter }} className="wallet-redeem-panel app-workspace-surface flex flex-col rounded-lg p-5 backdrop-blur-xl sm:p-6">
-                        <div className="flex items-start gap-3">
-                            <span className="wallet-redeem-icon grid size-9 shrink-0 place-items-center rounded-lg">
-                                <TicketCheck className="size-4" />
-                            </span>
-                            <div>
-                                <h2 className="text-base font-semibold">兑换积分</h2>
-                                <p className="mt-1 text-xs leading-5 text-foreground/55">输入管理员发放的 32 位兑换码。</p>
-                            </div>
-                        </div>
-                        <label className="mt-6 block">
-                            <span className="text-xs font-medium text-foreground/70">兑换码</span>
-                            <Input className="mt-2 font-mono" size="large" value={code} maxLength={32} spellCheck={false} autoComplete="off" onChange={(event) => setCode(event.target.value.replace(/[-\s]/g, ""))} placeholder="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" onPressEnter={() => void redeem()} />
-                        </label>
-                        <div className="mt-2 flex items-center justify-between text-xs text-foreground/45">
-                            <span>兑换成功后立即到账</span>
-                            <span className="tabular-nums">{code.length} / 32</span>
-                        </div>
-                        <Button className="mt-5" type="primary" size="large" block loading={redeeming} disabled={code.length !== 32} onClick={() => void redeem()}>
-                            兑换积分
-                        </Button>
-                    </motion.div>
-                </section>
-
-                <section className="wallet-ledger-panel app-workspace-surface mt-9 rounded-lg p-4 backdrop-blur-xl sm:p-5">
-                    <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                <Surface className="wallet-redeem-panel" padding="lg">
+                    <div className="flex items-start gap-3">
+                        <span className="wallet-redeem-icon grid size-9 shrink-0 place-items-center rounded-lg">
+                            <TicketCheck className="size-4" />
+                        </span>
                         <div>
-                            <h2 className="text-base font-semibold">积分流水</h2>
-                            <p className="mt-1 text-xs text-foreground/55">当前展示最近 {wallet?.entries.length || 0} 条记录。</p>
+                            <h2 className="text-base font-semibold">兑换积分</h2>
+                            <p className="mt-1 text-xs leading-5 text-foreground/55">输入管理员发放的 32 位兑换码。</p>
                         </div>
+                    </div>
+                    <label className="mt-6 block">
+                        <span className="text-xs font-medium text-foreground/70">兑换码</span>
+                        <Input
+                            className="mt-2 font-mono"
+                            size="large"
+                            value={code}
+                            maxLength={32}
+                            spellCheck={false}
+                            autoComplete="off"
+                            onChange={(event) => setCode(event.target.value.replace(/[-\s]/g, ""))}
+                            placeholder="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                            onPressEnter={() => void redeem()}
+                        />
+                    </label>
+                    <div className="mt-2 flex items-center justify-between text-xs text-foreground/45">
+                        <span>兑换成功后立即到账</span>
+                        <span className="tabular-nums">{code.length} / 32</span>
+                    </div>
+                    <Button className="mt-5" type="primary" size="large" block loading={redeeming} disabled={code.length !== 32} onClick={() => void redeem()}>
+                        兑换积分
+                    </Button>
+                </Surface>
+            </section>
+
+            <Surface className="wallet-ledger-panel" padding="md">
+                <SectionHeader
+                    title="积分流水"
+                    description={`当前展示最近 ${wallet?.entries.length || 0} 条记录。`}
+                    actions={
                         <Segmented
                             block={!screens.sm}
                             value={filter}
@@ -201,28 +224,34 @@ export default function WalletPage() {
                                 setPage(1);
                             }}
                         />
-                    </div>
+                    }
+                />
 
-                    {screens.md ? (
-                        <TableSurface className="mt-0 rounded-xl border-border/70 bg-transparent">
-                            <Table className="app-data-table wallet-ledger-table" rowKey="id" size="middle" loading={loading} columns={columns} dataSource={entries} pagination={false} tableLayout="fixed" scroll={{ x: 990 }} />
-                        </TableSurface>
-                    ) : (
-                        <div className="grid gap-1 overflow-hidden rounded-md bg-transparent">{entries.length ? entries.map((entry) => <LedgerMobileRow key={entry.id} config={config} entry={entry} />) : <WorkspaceState compact icon="wallet" title="没有匹配的积分记录" description="切换流水类型，或完成一次生成后再回来查看。" />}</div>
-                    )}
-                    <PaginationBar
-                        current={page}
-                        pageSize={pageSize}
-                        total={wallet?.total || 0}
-                        pageSizeOptions={[20, 50, 100]}
-                        onChange={(nextPage, nextPageSize) => {
-                            setPage(nextPageSize !== pageSize ? 1 : nextPage);
-                            setPageSize(nextPageSize);
-                        }}
-                    />
-                </section>
-            </div>
-        </main>
+                {screens.md ? (
+                    <TableSurface className="mt-0 rounded-xl border-border/70 bg-transparent">
+                        <Table className="app-data-table wallet-ledger-table" rowKey="id" size="middle" loading={loading} columns={columns} dataSource={entries} pagination={false} tableLayout="fixed" scroll={{ x: 990 }} />
+                    </TableSurface>
+                ) : (
+                    <div className="grid gap-1 overflow-hidden rounded-md bg-transparent">
+                        {entries.length ? (
+                            entries.map((entry) => <LedgerMobileRow key={entry.id} config={config} entry={entry} />)
+                        ) : (
+                            <WorkspaceState compact icon="wallet" title="没有匹配的积分记录" description="切换流水类型，或完成一次生成后再回来查看。" />
+                        )}
+                    </div>
+                )}
+                <PaginationBar
+                    current={page}
+                    pageSize={pageSize}
+                    total={wallet?.total || 0}
+                    pageSizeOptions={[20, 50, 100]}
+                    onChange={(nextPage, nextPageSize) => {
+                        setPage(nextPageSize !== pageSize ? 1 : nextPage);
+                        setPageSize(nextPageSize);
+                    }}
+                />
+            </Surface>
+        </WorkspacePage>
     );
 }
 
@@ -230,7 +259,11 @@ function BalanceMetric({ label, description, value, icon }: { label: string; des
     return (
         <div className="wallet-balance-metric">
             <span className="wallet-balance-metric-icon">{icon}</span>
-            <div><span>{label}</span><strong>{formatCredits(value, 6)}</strong><small>{description}</small></div>
+            <div>
+                <span>{label}</span>
+                <strong>{formatCredits(value, 6)}</strong>
+                <small>{description}</small>
+            </div>
         </div>
     );
 }

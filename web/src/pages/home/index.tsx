@@ -1,12 +1,14 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { App, Button, Input, Pagination, Segmented, Select } from "antd";
+import { App, Button, Pagination, Segmented, Select } from "antd";
 import { ArrowRight, FolderKanban, Images, LayoutGrid, ListTodo, Plus, Search, Sparkles } from "lucide-react";
 import { Link, useNavigate } from "react-router";
 import { Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip as ChartTooltip, XAxis, YAxis } from "recharts";
 
 import { resolveCanvasStylePreset, resolveProjectCanvasStyle } from "@/components/canvas/canvas-style-picker-modal";
+import { PageHeader, WorkspacePage } from "@/components/layout/workspace-page";
 import { WorkspaceErrorState, WorkspaceLoadingState } from "@/components/layout/workspace-state";
+import { SearchField, StatTile, Surface } from "@/components/ui/pc";
 import { parseStyleProfile } from "@/lib/canvas/style-profile";
 import { projectSummaryCompletion, projectSummaryStage } from "@/lib/project-workbench";
 import { listProjects, type ProjectSummary } from "@/services/api/projects";
@@ -15,6 +17,8 @@ import { createCanvasProjectWithRemoteSync } from "@/services/user-data-sync";
 import { useAssetStore, type AssetKind } from "@/stores/use-asset-store";
 import { useCanvasStore } from "@/stores/canvas/use-canvas-store";
 import { useUserStore } from "@/stores/use-user-store";
+
+import "./home-pc.css";
 
 const workflow = [
     { title: "整理故事", description: "导入小说、粘贴文本或创建章节" },
@@ -81,26 +85,24 @@ export default function IndexPage() {
 
     const loadingUserWorkspace = !userHydrated || (Boolean(user && shortDramaEnabled) && domainProjectsQuery.isLoading);
     return (
-        <main className="app-user-content app-workspace-canvas app-workspace-scroll h-full overflow-y-auto text-foreground">
-            <div className="app-home-dashboard w-full px-4 pb-14 pt-5 sm:px-6 lg:px-8">
-                {loadingUserWorkspace ? (
-                    <WorkspaceLoadingState className="mt-3" label="正在恢复工作台" detail="读取项目、素材和最近任务" rows={5} />
-                ) : user && shortDramaEnabled && domainProjectsQuery.isError ? (
-                    <WorkspaceErrorState title="项目工作台加载失败" description={domainProjectsQuery.error instanceof Error ? domainProjectsQuery.error.message : "暂时无法读取项目列表。"} onRetry={() => void domainProjectsQuery.refetch()} />
-                ) : (
-                    <HomeDashboard
-                        user={user}
-                        shortDramaEnabled={shortDramaEnabled}
-                        domainProjects={domainProjects}
-                        canvasProjects={canvasProjects}
-                        assets={assets}
-                        tasks={tasks}
-                        canvasHydrated={canvasHydrated}
-                        onCreateIndependentCanvas={createIndependentCanvas}
-                    />
-                )}
-            </div>
-        </main>
+        <WorkspacePage className="pc-core-page pc-home-page" contentClassName="app-home-dashboard pc-home-page__content">
+            {loadingUserWorkspace ? (
+                <WorkspaceLoadingState label="正在恢复工作台" detail="读取项目、素材和最近任务" rows={5} />
+            ) : user && shortDramaEnabled && domainProjectsQuery.isError ? (
+                <WorkspaceErrorState title="项目工作台加载失败" description={domainProjectsQuery.error instanceof Error ? domainProjectsQuery.error.message : "暂时无法读取项目列表。"} onRetry={() => void domainProjectsQuery.refetch()} />
+            ) : (
+                <HomeDashboard
+                    user={user}
+                    shortDramaEnabled={shortDramaEnabled}
+                    domainProjects={domainProjects}
+                    canvasProjects={canvasProjects}
+                    assets={assets}
+                    tasks={tasks}
+                    canvasHydrated={canvasHydrated}
+                    onCreateIndependentCanvas={createIndependentCanvas}
+                />
+            )}
+        </WorkspacePage>
     );
 }
 
@@ -182,26 +184,25 @@ function HomeDashboard({
 
     return (
         <>
-            <header className="home-welcome" aria-label="欢迎区">
-                <div className="min-w-0">
-                    <h1 className="home-welcome-title">{hasProjects ? `欢迎回来，${displayName}` : `欢迎使用影策，${displayName}`}</h1>
-                    <p className="home-welcome-sub">{hasProjects ? "回到最近制作，或从一句话故事开始一部新的短剧。" : "从一个故事开始：整理章节、确认设定、制作镜头，直到可交付的结果。"}</p>
-                </div>
-                <div className="home-welcome-actions">
-                    {shortDramaEnabled ? (
-                        <Link
-                            className="inline-flex h-10 items-center gap-2 rounded-md bg-foreground px-4 text-sm font-medium text-background transition-opacity hover:opacity-85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/25"
-                            to={projectHref}
-                        >
-                            <Plus className="size-4" />
-                            开始创作
-                        </Link>
-                    ) : null}
-                    <Button size="large" disabled={!canvasHydrated} icon={<LayoutGrid className="size-4" />} onClick={onCreateIndependentCanvas}>
-                        打开画布
-                    </Button>
-                </div>
-            </header>
+            <PageHeader
+                className="home-welcome"
+                eyebrow="创作工作台"
+                title={hasProjects ? `欢迎回来，${displayName}` : `欢迎使用影策，${displayName}`}
+                description={hasProjects ? "回到最近制作，或从一句话故事开始一部新的短剧。" : "从一个故事开始：整理章节、确认设定、制作镜头，直到可交付的结果。"}
+                actions={
+                    <>
+                        {shortDramaEnabled ? (
+                            <Link className="home-primary-link" to={projectHref}>
+                                <Plus className="size-4" />
+                                开始创作
+                            </Link>
+                        ) : null}
+                        <Button size="large" disabled={!canvasHydrated} icon={<LayoutGrid className="size-4" />} onClick={onCreateIndependentCanvas}>
+                            打开画布
+                        </Button>
+                    </>
+                }
+            />
 
             <section className="home-stats-grid" aria-label="工作台统计">
                 {shortDramaEnabled ? (
@@ -213,7 +214,7 @@ function HomeDashboard({
             </section>
 
             <section className="home-charts-grid mt-3" aria-label="创作数据">
-                <div className="home-panel">
+                <Surface className="home-panel" padding="none">
                     <div className="home-panel-head">
                         <div>
                             <h2 className="home-panel-title">创作活跃度</h2>
@@ -258,9 +259,9 @@ function HomeDashboard({
                             <div className="home-chart-empty">还没有生成记录，去画布或项目开始第一次创作。</div>
                         )}
                     </div>
-                </div>
+                </Surface>
 
-                <div className="home-panel">
+                <Surface className="home-panel" padding="none">
                     <div className="home-panel-head">
                         <div>
                             <h2 className="home-panel-title">素材构成</h2>
@@ -300,11 +301,11 @@ function HomeDashboard({
                             <div className="home-chart-empty">还没有素材资产，生成的图片、视频和音频会沉淀在这里。</div>
                         )}
                     </div>
-                </div>
+                </Surface>
             </section>
 
             <section className="home-lower-grid mt-3" aria-label="最近项目与创作入口">
-                <div className="home-panel">
+                <Surface className="home-panel" padding="none">
                     <div className="home-panel-head">
                         <div>
                             <h2 className="home-panel-title">最近项目</h2>
@@ -316,12 +317,14 @@ function HomeDashboard({
                         </Link>
                     </div>
                     <div className="home-recent-toolbar">
-                        <Input
-                            allowClear
-                            className="home-recent-search"
-                            prefix={<Search className="size-4 text-foreground/40" />}
+                        <SearchField
+                            containerClassName="home-recent-search"
                             value={keyword}
                             placeholder="搜索项目名称或画风"
+                            onClear={() => {
+                                setKeyword("");
+                                setPage(1);
+                            }}
                             onChange={(event) => {
                                 setKeyword(event.target.value);
                                 setPage(1);
@@ -406,10 +409,10 @@ function HomeDashboard({
                         </span>
                         {rows.length > pageSize ? <Pagination size="small" current={safePage} pageSize={pageSize} total={rows.length} showSizeChanger={false} onChange={setPage} /> : null}
                     </div>
-                </div>
+                </Surface>
 
                 <div className="home-side-stack">
-                    <div className="home-panel">
+                    <Surface className="home-panel" padding="none">
                         <div className="home-panel-head">
                             <div>
                                 <h2 className="home-panel-title">快捷创建</h2>
@@ -421,9 +424,9 @@ function HomeDashboard({
                             <QuickItem icon={<LayoutGrid className="size-4" />} title="打开自由画布" description="适合快速试图与提示词实验" onClick={onCreateIndependentCanvas} disabled={!canvasHydrated} />
                             <QuickItem icon={<Images className="size-4" />} title="进入素材库" description="整理角色、场景与媒体资产" href="/assets" />
                         </div>
-                    </div>
+                    </Surface>
 
-                    <div className="home-panel">
+                    <Surface className="home-panel" padding="none">
                         <div className="home-panel-head">
                             <div>
                                 <h2 className="home-panel-title">从工作流开始</h2>
@@ -444,7 +447,7 @@ function HomeDashboard({
                             </div>
                             <p className="home-workflow-hint">{activeProject ? `${projectSummaryStage(activeProject).label} · ${projectSummaryCompletion(activeProject)}%` : "从一句话故事开始，逐步推进到可交付的镜头。"}</p>
                         </div>
-                    </div>
+                    </Surface>
                 </div>
             </section>
         </>
@@ -454,14 +457,7 @@ function HomeDashboard({
 function StatCard({ icon, label, value, hint, to }: { icon: ReactNode; label: string; value: number; hint: string; to: string }) {
     return (
         <Link to={to} className="home-stat-card group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-            <span className="home-stat-top">
-                <span className="home-stat-icon">{icon}</span>
-                <span className="home-stat-value">{value}</span>
-            </span>
-            <span>
-                <span className="home-stat-label block">{label}</span>
-                <span className="home-stat-hint block">{hint}</span>
-            </span>
+            <StatTile icon={icon} label={label} value={value} detail={hint} />
         </Link>
     );
 }

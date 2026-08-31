@@ -1,0 +1,202 @@
+@media (min-width: 1024px) {
+    .assets-library-page {
+        background: var(--app-bg-page);
+    }
+
+    .assets-library-page .studio-band {
+        padding-bottom: var(--app-space-4);
+        border-bottom: 1px solid var(--app-border-subtle);
+    }
+
+    .assets-library-page .app-page-header {
+        min-height: 96px;
+        padding: var(--app-space-3) 0 var(--app-space-4);
+    }
+
+    .assets-library-page .assets-header-meta {
+        color: var(--app-text-muted);
+        font-size: var(--app-font-size-label);
+        font-variant-numeric: tabular-nums;
+    }
+
+    .assets-library-page .assets-header-actions {
+        gap: var(--app-space-2);
+    }
+
+    .assets-library-page .assets-header-action-buttons {
+        gap: var(--app-space-2);
+    }
+
+    .assets-library-page .assets-storage-usage {
+        min-height: var(--app-control-height-sm);
+        color: var(--app-text-secondary);
+        background: var(--app-surface-2);
+        border: 1px solid var(--app-border-subtle);
+        border-radius: var(--app-control-radius);
+    }
+
+    .assets-library-page .assets-storage-usage-title,
+    .assets-library-page .assets-storage-usage-value,
+    .assets-library-page .assets-storage-usage-percent,
+    .assets-library-page .assets-storage-usage-status {
+        color: var(--app-text-secondary);
+    }
+
+    .assets-library-page .library-toolbar {
+        margin-top: 0;
+        padding-top: var(--app-space-3);
+    }
+
+    .assets-library-page .assets-search-field {
+        width: min(380px, 100%);
+    }
+
+    .assets-library-page .assets-library-frame {
+        margin-top: var(--app-space-4);
+        overflow: hidden;
+        background: var(--app-surface-1);
+        border-color: var(--app-border-subtle);
+        box-shadow: var(--app-shadow-surface);
+    }
+
+    .assets-library-page .assets-library-layout {
+        display: grid;
+        min-height: 480px;
+        grid-template-columns: 188px minmax(0, 1fr);
+    }
+
+    .assets-library-page .assets-filter-rail {
+        min-height: 0;
+        padding: var(--app-space-4) var(--app-space-3);
+        overflow-y: auto;
+        background: var(--app-surface-2);
+        border-right: 1px solid var(--app-border-subtle);
+    }
+
+    .assets-library-page .assets-filter-rail + section {
+        min-width: 0;
+        padding: var(--app-space-4);
+    }
+
+    .assets-library-page .assets-filter-item {
+        min-height: 34px;
+        color: var(--app-text-secondary);
+        border-radius: var(--app-control-radius-sm);
+    }
+
+    .assets-library-page .assets-filter-item:hover {
+        color: var(--app-text-primary);
+        background: var(--app-action-secondary-hover);
+    }
+
+    .assets-library-page .assets-filter-item.is-active {
+        color: var(--app-selection-fg);
+        background: var(--app-selection-bg);
+    }
+
+    .assets-library-page .assets-filter-count {
+        color: var(--app-text-muted);
+        background: var(--app-surface-3);
+    }
+
+    .assets-library-page .assets-batch-bar {
+        margin-bottom: var(--app-space-4);
+    }
+
+    .assets-library-page .assets-batch-actions {
+        display: inline-flex;
+        align-items: center;
+        gap: var(--app-space-1);
+    }
+
+    .assets-library-page .assets-library-grid {
+        grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+        gap: var(--app-space-4);
+        margin-top: 0;
+    }
+
+    .assets-library-page .asset-library-card,
+    .assets-library-page .library-create-card {
+        overflow: hidden;
+        background: var(--app-surface-1);
+        border: 1px solid var(--app-border-subtle);
+        border-radius: var(--app-surface-radius-sm);
+        box-shadow: var(--app-shadow-surface);
+        transition:
+            border-color var(--app-duration-fast) var(--app-ease-standard),
+            box-shadow var(--app-duration-fast) var(--app-ease-standard),
+            transform var(--app-duration-fast) var(--app-ease-standard);
+    }
+
+    .assets-library-page .asset-library-card:hover,
+    .assets-library-page .library-create-card:hover {
+        border-color: var(--app-border-default);
+        box-shadow: var(--app-shadow-raised);
+        transform: translateY(-1px);
+    }
+
+    .assets-library-page .assets-cover {
+        background: var(--app-surface-2);
+    }
+
+    .assets-library-page .assets-cover-wave,
+    .assets-library-page .assets-cover-text,
+    .assets-library-page .assets-cover-model,
+    .assets-library-page .assets-cover-fallback,
+    .assets-library-page .library-create-cover {
+        background: var(--app-surface-2);
+    }
+
+    .assets-library-page .assets-empty {
+        min-height: 460px;
+        justify-content: center;
+    }
+
+    .asset-editor-dialog .ant-modal-body {
+        max-height: min(70vh, 720px);
+        overflow-y: auto;
+    }
+
+    .asset-editor-dialog .asset-preview-uploading,
+    .asset-archive-drawer .asset-archive-preview {
+        overflow: hidden;
+        background: var(--app-surface-2);
+        border: 1px solid var(--app-border-subtle);
+        border-radius: var(--app-surface-radius-sm);
+    }
+
+    .asset-archive-drawer .asset-archive-header,
+    .asset-archive-drawer .asset-archive-facts,
+    .asset-archive-drawer .asset-archive-link,
+    .asset-archive-drawer .asset-archive-section {
+        border-color: var(--app-border-subtle);
+        background: var(--app-surface-1);
+    }
+
+    .asset-confirm-dialog .ant-modal-body {
+        color: var(--app-text-secondary);
+        line-height: 1.7;
+    }
+}
+
+@media (min-width: 1024px) and (max-width: 1279px) {
+    .assets-library-page .assets-library-layout {
+        grid-template-columns: 168px minmax(0, 1fr);
+    }
+
+    .assets-library-page .assets-library-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+@media (min-width: 1024px) and (prefers-reduced-motion: reduce) {
+    .assets-library-page .asset-library-card,
+    .assets-library-page .library-create-card {
+        transition: none;
+    }
+
+    .assets-library-page .asset-library-card:hover,
+    .assets-library-page .library-create-card:hover {
+        transform: none;
+    }
+}
