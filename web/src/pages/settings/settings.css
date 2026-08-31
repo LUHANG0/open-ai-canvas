@@ -23,7 +23,7 @@
     padding: 2px 6px;
     color: var(--app-text-muted, var(--muted-foreground));
     background: var(--app-surface-2, var(--surface-card));
-    border-radius: var(--app-radius-control-sm, 6px);
+    border-radius: var(--app-control-radius-sm, 6px);
     font-size: 11px;
     font-variant-numeric: tabular-nums;
     text-align: center;
@@ -105,7 +105,7 @@
 
     .settings-page .pc-subnav-layout__rail {
         border-color: var(--app-border-subtle, var(--border));
-        border-radius: var(--app-radius-surface, 12px);
+        border-radius: var(--app-surface-radius, 12px);
         box-shadow: var(--app-shadow-surface, 0 1px 2px rgba(0, 0, 0, 0.04));
     }
 
@@ -142,7 +142,7 @@
         place-items: center;
         color: var(--app-text-muted, var(--muted-foreground));
         background: var(--app-surface-2, var(--surface-card));
-        border-radius: var(--app-radius-control-sm, 6px);
+        border-radius: var(--app-control-radius-sm, 6px);
     }
 
     .settings-page .pc-subnav-layout__item.is-active .pc-subnav-layout__item-icon {
@@ -153,7 +153,7 @@
     .settings-page .pc-subnav-layout__content {
         min-height: 560px;
         border-color: var(--app-border-subtle, var(--border));
-        border-radius: var(--app-radius-surface, 12px);
+        border-radius: var(--app-surface-radius, 12px);
         box-shadow: var(--app-shadow-surface, 0 1px 2px rgba(0, 0, 0, 0.04));
     }
 
@@ -191,7 +191,7 @@
         padding: var(--app-space-5, 20px);
         background: var(--app-surface-2, var(--surface-card));
         border: 1px solid var(--app-border-subtle, var(--border));
-        border-radius: var(--app-radius-surface, 12px);
+        border-radius: var(--app-surface-radius, 12px);
     }
 
     .settings-page .settings-section + .settings-section {
@@ -231,7 +231,7 @@
         padding: var(--app-space-4, 16px);
         background: var(--app-surface-2, var(--surface-card));
         border: 1px solid var(--app-border-subtle, var(--border));
-        border-radius: var(--app-radius-surface, 12px);
+        border-radius: var(--app-surface-radius, 12px);
     }
 
     .settings-page .settings-prompt-reference {
@@ -256,7 +256,7 @@
         padding: var(--app-space-4, 16px);
         background: var(--app-surface-1, var(--background));
         border: 1px solid var(--app-border-subtle, var(--border));
-        border-radius: var(--app-radius-control, 8px);
+        border-radius: var(--app-control-radius, 8px);
     }
 
     .settings-page .settings-channel:hover,
@@ -279,7 +279,7 @@
 
     .settings-page .settings-model-capability-row:hover,
     .settings-page .settings-model-capability-row:focus-within {
-        background: var(--app-action-secondary-hover-bg, var(--surface-card-hover));
+        background: var(--app-action-secondary-hover, var(--surface-card-hover));
         border-color: var(--app-border-subtle, var(--border));
     }
 
@@ -287,11 +287,11 @@
         min-height: 82px;
         background: var(--app-surface-1, var(--background));
         border-color: var(--app-border-subtle, var(--border));
-        border-radius: var(--app-radius-control, 8px);
+        border-radius: var(--app-control-radius, 8px);
     }
 
     .settings-page .model-default-option:hover {
-        background: var(--app-action-secondary-hover-bg, var(--surface-card-hover));
+        background: var(--app-action-secondary-hover, var(--surface-card-hover));
         border-color: var(--app-border-default, var(--border));
     }
 
@@ -304,7 +304,7 @@
         padding: var(--app-space-3, 12px) var(--app-space-4, 16px);
         background: var(--app-surface-1, var(--background));
         border: 1px solid var(--app-border-subtle, var(--border));
-        border-radius: var(--app-radius-control, 8px);
+        border-radius: var(--app-control-radius, 8px);
     }
 
     .settings-page .workflow-json-details > summary {
@@ -318,7 +318,7 @@
         min-height: 600px;
         background: var(--app-surface-1, var(--background));
         border: 1px solid var(--app-border-subtle, var(--border));
-        border-radius: var(--app-radius-control, 8px);
+        border-radius: var(--app-control-radius, 8px);
     }
 
     .settings-page :where(.ant-form-item-label > label) {
