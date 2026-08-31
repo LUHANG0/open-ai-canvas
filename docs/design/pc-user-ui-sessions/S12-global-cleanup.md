@@ -9,7 +9,7 @@
 
 1. Settings / Plugins 分类栏继承公共滚动容器中的 sticky 偏移，不再重复计算壳层 Topbar 高度；插件分区锚点同步改为容器内偏移。
 2. 钱包旧全局表格强制样式限定到 `<1024px`，PC 端由 `wallet-pc.css` 唯一负责表格边框、表头、行高、背景和 hover。
-3. 公共 PC 组件、Settings、Plugins 与 Eagle 的 8 个未定义 `--app-*` 名称改为 Foundation 中已经存在的规范名称，所有 fallback 保留。
+3. 公共 PC 组件、Settings、Plugins 与 Eagle 的 8 个未定义 `--app-*` 名称改为已经定义的规范变量；胶囊圆角回归全局 Primitive `--r-full`，其余映射使用 Foundation Token，并保留可用 fallback。
 
 ## Token 映射
 
