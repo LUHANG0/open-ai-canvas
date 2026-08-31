@@ -2646,13 +2646,9 @@ function CreationComposer(props: ComposerProps) {
                     ) : null}
                     {showTokenPrice ? (
                         <div className="creation-token-billing-note" role="note">
-                            <span className="creation-token-billing-icon" aria-hidden="true">
-                                <CreditSymbol />
-                            </span>
-                            <span className="creation-token-billing-copy">
-                                <strong>{formattedTokenRate} 积分/百万 Token</strong>
-                                <span>按实际 Token 用量结算 · 提交时仅预授权，多退少补</span>
-                            </span>
+                            <CreditSymbol aria-hidden="true" />
+                            <strong>{formattedTokenRate} 积分/百万 Token</strong>
+                            <span>提交时预授权、完成按实际 usage 多退少补</span>
                         </div>
                     ) : null}
                 </div>

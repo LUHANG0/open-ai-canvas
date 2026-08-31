@@ -1,36 +1,36 @@
 /* /create 专属视觉合同：上方提供创作起点，生成 Composer 稳定停靠在内容区底部。 */
 
 .creation-home {
-    --creation-accent: var(--app-action-primary-bg, var(--workspace-accent, #1493ad));
-    --creation-accent-strong: var(--app-action-primary-bg, var(--workspace-accent, #087f99));
-    --creation-accent-soft: var(--app-selection-bg, var(--workspace-accent-soft, rgba(20, 147, 173, 0.1)));
-    --creation-bg: var(--app-bg-page, var(--workspace-bg, #f6f7f8));
-    --creation-surface: var(--app-surface-1, var(--workspace-surface, #ffffff));
-    --creation-surface-muted: var(--app-surface-2, var(--workspace-surface-muted, rgba(25, 29, 34, 0.045)));
-    --creation-surface-hover: var(--app-action-secondary-hover, var(--workspace-surface-hover, rgba(25, 29, 34, 0.07)));
-    --creation-surface-selected: var(--app-selection-active, var(--workspace-surface-selected, rgba(25, 29, 34, 0.1)));
-    --creation-border: var(--app-border-subtle, var(--workspace-border, rgba(25, 29, 34, 0.1)));
-    --creation-border-strong: var(--app-border-default, var(--workspace-border-strong, rgba(25, 29, 34, 0.18)));
-    --creation-text: var(--app-text-primary, var(--workspace-text, #1a1d21));
-    --creation-muted: var(--app-text-secondary, var(--workspace-muted, #737b84));
-    --creation-faint: var(--app-text-muted, var(--workspace-faint, #a7adb4));
+    --creation-accent: #1493ad;
+    --creation-accent-strong: #087f99;
+    --creation-accent-soft: rgba(20, 147, 173, 0.1);
+    --creation-bg: #f6f7f8;
+    --creation-surface: #ffffff;
+    --creation-surface-muted: rgba(25, 29, 34, 0.045);
+    --creation-surface-hover: rgba(25, 29, 34, 0.07);
+    --creation-surface-selected: rgba(25, 29, 34, 0.1);
+    --creation-border: rgba(25, 29, 34, 0.1);
+    --creation-border-strong: rgba(25, 29, 34, 0.18);
+    --creation-text: #1a1d21;
+    --creation-muted: #737b84;
+    --creation-faint: #a7adb4;
     background: var(--creation-bg);
 }
 
 .dark .creation-home {
-    --creation-accent: var(--app-action-primary-bg, var(--workspace-accent, #4bbbd0));
-    --creation-accent-strong: var(--app-action-primary-bg, var(--workspace-accent, #75cede));
-    --creation-accent-soft: var(--app-selection-bg, var(--workspace-accent-soft, rgba(75, 187, 208, 0.12)));
-    --creation-bg: var(--app-bg-page, var(--workspace-bg, #111214));
-    --creation-surface: var(--app-surface-1, var(--workspace-surface, #1a1c1f));
-    --creation-surface-muted: var(--app-surface-2, var(--workspace-surface-muted, rgba(255, 255, 255, 0.05)));
-    --creation-surface-hover: var(--app-action-secondary-hover, var(--workspace-surface-hover, rgba(255, 255, 255, 0.08)));
-    --creation-surface-selected: var(--app-selection-active, var(--workspace-surface-selected, rgba(255, 255, 255, 0.11)));
-    --creation-border: var(--app-border-subtle, var(--workspace-border, rgba(255, 255, 255, 0.085)));
-    --creation-border-strong: var(--app-border-default, var(--workspace-border-strong, rgba(255, 255, 255, 0.16)));
-    --creation-text: var(--app-text-primary, var(--workspace-text, #f2f2ef));
-    --creation-muted: var(--app-text-secondary, var(--workspace-muted, #979da5));
-    --creation-faint: var(--app-text-muted, var(--workspace-faint, #646970));
+    --creation-accent: #4bbbd0;
+    --creation-accent-strong: #75cede;
+    --creation-accent-soft: rgba(75, 187, 208, 0.12);
+    --creation-bg: #111214;
+    --creation-surface: #1a1c1f;
+    --creation-surface-muted: rgba(255, 255, 255, 0.05);
+    --creation-surface-hover: rgba(255, 255, 255, 0.08);
+    --creation-surface-selected: rgba(255, 255, 255, 0.11);
+    --creation-border: rgba(255, 255, 255, 0.085);
+    --creation-border-strong: rgba(255, 255, 255, 0.16);
+    --creation-text: #f2f2ef;
+    --creation-muted: #979da5;
+    --creation-faint: #646970;
 }
 
 .creation-home .creation-top-actions {
@@ -97,28 +97,12 @@
 }
 
 .creation-empty-starters {
-    width: min(840px, 100%);
-    margin: 28px auto 0;
+    width: min(800px, 100%);
+    margin: 36px auto 0;
 }
 
 .creation-empty-starters-heading {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 12px;
-    margin: 0 4px 10px;
-    color: var(--creation-muted);
-}
-
-.creation-empty-starters-heading > span {
-    color: var(--creation-text);
-    font-size: var(--fs-caption);
-    font-weight: 650;
-}
-
-.creation-empty-starters-heading small {
-    font-size: var(--fs-tiny);
-    line-height: 1.45;
+    display: none;
 }
 
 .creation-home .creation-empty-suggest {
@@ -604,33 +588,15 @@ html:not(.dark) .creation-media-preview-modal.is-image .ant-modal-container {
     color: var(--creation-muted);
 }
 
-.creation-home .creation-token-billing-icon {
-    display: grid;
-    width: 24px;
-    height: 24px;
-    flex: 0 0 24px;
-    place-items: center;
-    border-radius: var(--app-radius-1, 6px);
-    background: var(--app-status-warning-bg, rgba(217, 119, 6, 0.1));
-    color: var(--app-status-warning-fg, #b45309);
-}
-
-.creation-home .creation-token-billing-copy {
-    display: flex;
-    min-width: 0;
-    flex-direction: column;
-    gap: 2px;
-}
-
-.creation-home .creation-token-billing-copy strong {
-    color: var(--creation-text);
+.creation-home .creation-token-billing-note strong {
+    flex: 0 0 auto;
+    color: #d97706;
     font-weight: 700;
     font-variant-numeric: tabular-nums;
 }
 
-.creation-home .creation-token-billing-copy > span {
-    color: var(--creation-muted);
-    line-height: 1.45;
+.dark .creation-home .creation-token-billing-note strong {
+    color: #fcd34d;
 }
 
 .creation-home .creation-file-drop-overlay {
@@ -1942,8 +1908,37 @@ html:not(.dark) .creation-media-preview-modal.is-video .ant-modal-container {
    ------------------------------------------------------------------------- */
 @media (min-width: 1024px) {
     .creation-home {
+        --creation-accent: var(--app-action-primary-bg, var(--workspace-accent, #1493ad));
+        --creation-accent-strong: var(--app-action-primary-bg, var(--workspace-accent, #087f99));
+        --creation-accent-soft: var(--app-selection-bg, var(--workspace-accent-soft, rgba(20, 147, 173, 0.1)));
+        --creation-bg: var(--app-bg-page, var(--workspace-bg, #f6f7f8));
+        --creation-surface: var(--app-surface-1, var(--workspace-surface, #ffffff));
+        --creation-surface-muted: var(--app-surface-2, var(--workspace-surface-muted, rgba(25, 29, 34, 0.045)));
+        --creation-surface-hover: var(--app-action-secondary-hover, var(--workspace-surface-hover, rgba(25, 29, 34, 0.07)));
+        --creation-surface-selected: var(--app-selection-active, var(--workspace-surface-selected, rgba(25, 29, 34, 0.1)));
+        --creation-border: var(--app-border-subtle, var(--workspace-border, rgba(25, 29, 34, 0.1)));
+        --creation-border-strong: var(--app-border-default, var(--workspace-border-strong, rgba(25, 29, 34, 0.18)));
+        --creation-text: var(--app-text-primary, var(--workspace-text, #1a1d21));
+        --creation-muted: var(--app-text-secondary, var(--workspace-muted, #737b84));
+        --creation-faint: var(--app-text-muted, var(--workspace-faint, #a7adb4));
         color: var(--creation-text);
         background: var(--app-bg-page, var(--creation-bg));
+    }
+
+    .dark .creation-home {
+        --creation-accent: var(--app-action-primary-bg, var(--workspace-accent, #4bbbd0));
+        --creation-accent-strong: var(--app-action-primary-bg, var(--workspace-accent, #75cede));
+        --creation-accent-soft: var(--app-selection-bg, var(--workspace-accent-soft, rgba(75, 187, 208, 0.12)));
+        --creation-bg: var(--app-bg-page, var(--workspace-bg, #111214));
+        --creation-surface: var(--app-surface-1, var(--workspace-surface, #1a1c1f));
+        --creation-surface-muted: var(--app-surface-2, var(--workspace-surface-muted, rgba(255, 255, 255, 0.05)));
+        --creation-surface-hover: var(--app-action-secondary-hover, var(--workspace-surface-hover, rgba(255, 255, 255, 0.08)));
+        --creation-surface-selected: var(--app-selection-active, var(--workspace-surface-selected, rgba(255, 255, 255, 0.11)));
+        --creation-border: var(--app-border-subtle, var(--workspace-border, rgba(255, 255, 255, 0.085)));
+        --creation-border-strong: var(--app-border-default, var(--workspace-border-strong, rgba(255, 255, 255, 0.16)));
+        --creation-text: var(--app-text-primary, var(--workspace-text, #f2f2ef));
+        --creation-muted: var(--app-text-secondary, var(--workspace-muted, #979da5));
+        --creation-faint: var(--app-text-muted, var(--workspace-faint, #646970));
     }
 
     .creation-home .creation-top-actions {
@@ -1999,16 +1994,24 @@ html:not(.dark) .creation-media-preview-modal.is-video .ant-modal-container {
     }
 
     .creation-empty-starters-heading {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 12px;
         margin: 0 2px 10px;
+        color: var(--creation-muted);
     }
 
     .creation-empty-starters-heading > span {
+        color: var(--creation-text);
         font-size: var(--app-font-size-control, 13px);
+        font-weight: 650;
     }
 
     .creation-empty-starters-heading small {
         color: var(--app-text-muted, var(--creation-faint));
         font-size: var(--app-font-size-label, 12px);
+        line-height: 1.45;
     }
 
     .creation-home .creation-empty-suggest {
@@ -2070,12 +2073,10 @@ html:not(.dark) .creation-media-preview-modal.is-video .ant-modal-container {
         border-color: var(--app-border-default, var(--creation-border));
         border-radius: 16px;
         background: var(--app-surface-1, var(--creation-surface));
-        box-shadow: var(--app-shadow-raised, 0 10px 28px rgba(17, 24, 39, 0.09)) !important;
     }
 
     .creation-home .creation-chat-composer:is(.is-empty, .is-thread):focus-within {
         border-color: var(--app-border-strong, var(--creation-border-strong));
-        box-shadow: var(--app-shadow-raised, 0 10px 28px rgba(17, 24, 39, 0.09)), 0 0 0 2px var(--app-focus-ring, transparent) !important;
     }
 
     .creation-home .creation-chat-composer:is(.is-empty, .is-thread).has-reference-entry {
@@ -2111,7 +2112,7 @@ html:not(.dark) .creation-media-preview-modal.is-video .ant-modal-container {
     }
 
     .creation-home .creation-reference-action {
-        height: var(--app-control-height, 36px) !important;
+        height: var(--app-control-height, 36px);
     }
 
     .creation-home .creation-reference-config-link {
@@ -2164,16 +2165,36 @@ html:not(.dark) .creation-media-preview-modal.is-video .ant-modal-container {
     }
 
     .creation-home .creation-token-billing-note {
+        display: grid;
+        grid-template-columns: 24px minmax(0, 1fr);
+        column-gap: 9px;
+        row-gap: 2px;
         border-color: var(--app-status-warning-border, transparent);
         background: var(--app-status-warning-bg, transparent);
     }
 
-    .creation-home .creation-token-billing-copy strong {
+    .creation-home .creation-token-billing-note > svg {
+        width: 24px;
+        height: 24px;
+        grid-row: 1 / 3;
+        box-sizing: border-box;
+        border-radius: var(--app-radius-1, 6px);
+        background: var(--app-status-warning-bg, rgba(217, 119, 6, 0.1));
+        color: var(--app-status-warning-fg, #b45309);
+        padding: 5px;
+    }
+
+    .creation-home .creation-token-billing-note > strong {
+        align-self: end;
+        color: var(--app-text-primary, var(--creation-text));
         font-size: var(--app-font-size-control, 13px);
     }
 
-    .creation-home .creation-token-billing-copy > span {
+    .creation-home .creation-token-billing-note > span {
+        align-self: start;
+        color: var(--app-text-secondary, var(--creation-muted));
         font-size: var(--app-font-size-label, 12px);
+        line-height: 1.45;
     }
 
     .creation-home .creation-file-drop-overlay {
@@ -2236,35 +2257,30 @@ html:not(.dark) .creation-media-preview-modal.is-video .ant-modal-container {
 
     .creation-home .creation-entry-button,
     .creation-home .creation-model-picker.creation-entry-button.canvas-composer-model-picker {
-        height: var(--app-control-height, 36px) !important;
-        border-color: var(--app-control-border, var(--creation-border)) !important;
-        border-radius: var(--app-control-radius, 8px) !important;
-        background: var(--app-control-bg, var(--creation-surface)) !important;
-        color: var(--app-text-primary, var(--creation-text)) !important;
         font-size: var(--app-font-size-label, 12px);
     }
 
     .creation-home .creation-model-picker.creation-entry-button.canvas-composer-model-picker {
-        width: clamp(168px, 18vw, 220px) !important;
+        width: clamp(168px, 18vw, 220px);
     }
 
     .creation-home .creation-entry-button:hover:not(:disabled),
     .creation-home .creation-entry-button[aria-expanded="true"],
     .creation-home .creation-model-picker.creation-entry-button.canvas-composer-model-picker:hover,
     .creation-home .creation-model-picker.creation-entry-button.canvas-composer-model-picker[aria-expanded="true"] {
-        border-color: var(--app-border-default, var(--creation-border-strong)) !important;
-        background: var(--app-action-secondary-hover, var(--creation-surface-hover)) !important;
+        border-color: var(--app-border-default, var(--creation-border-strong));
+        background: var(--app-action-secondary-hover, var(--creation-surface-hover));
     }
 
     .creation-home .creation-sound-toggle[aria-pressed="true"] {
-        border-color: var(--app-selection-border, var(--creation-border-strong)) !important;
-        background: var(--app-selection-bg, var(--creation-surface-selected)) !important;
-        color: var(--app-selection-fg, var(--creation-text)) !important;
+        border-color: var(--app-selection-border, var(--creation-border-strong));
+        background: var(--app-selection-bg, var(--creation-surface-selected));
+        color: var(--app-selection-fg, var(--creation-text));
     }
 
     .creation-home .creation-chat-composer:is(.is-empty, .is-thread) .canvas-node-composer-submit {
-        min-width: 42px !important;
-        height: 42px !important;
+        min-width: 42px;
+        height: 42px;
     }
 
     .creation-home .creation-chat-composer:is(.is-empty, .is-thread) .canvas-node-composer-submit-action {
@@ -2692,11 +2708,11 @@ html:not(.dark) .creation-media-preview-modal.is-video .ant-modal-container {
 
     .creation-control-popover-surface,
     .creation-generation-settings-surface {
-        border-color: var(--app-border-default, rgba(17, 17, 17, 0.18)) !important;
-        border-radius: var(--app-surface-radius, 12px) !important;
-        background: var(--app-surface-overlay, #ffffff) !important;
-        color: var(--app-text-primary, #171717) !important;
-        box-shadow: var(--app-shadow-overlay, 0 22px 64px rgba(15, 23, 42, 0.14)) !important;
+        border-color: var(--app-border-default, rgba(17, 17, 17, 0.18));
+        border-radius: var(--app-surface-radius, 12px);
+        background: var(--app-surface-overlay, #ffffff);
+        color: var(--app-text-primary, #171717);
+        box-shadow: var(--app-shadow-overlay, 0 22px 64px rgba(15, 23, 42, 0.14));
     }
 
     .creation-generation-settings-surface .creation-parameter-section + .creation-parameter-section {
@@ -2705,37 +2721,37 @@ html:not(.dark) .creation-media-preview-modal.is-video .ant-modal-container {
 
     .creation-generation-settings-surface .creation-parameter-section h3,
     .creation-generation-settings-surface .creation-choice-copy strong {
-        color: var(--app-text-primary, #171717) !important;
+        color: var(--app-text-primary, #171717);
     }
 
     .creation-generation-settings-surface .creation-parameter-section > header > span,
     .creation-generation-settings-surface .creation-choice-copy small {
         background: transparent;
-        color: var(--app-text-muted, #71717a) !important;
+        color: var(--app-text-muted, #71717a);
     }
 
     .creation-generation-settings-surface .creation-choice-grid.is-ratio button,
     .creation-generation-settings-surface .creation-choice-grid.is-resolution button,
     .creation-generation-settings-surface .creation-choice-grid.is-quality button {
-        border-color: var(--app-border-subtle, rgba(17, 17, 17, 0.1)) !important;
-        background: var(--app-surface-2, #f7f8fa) !important;
-        color: var(--app-text-secondary, #52525b) !important;
+        border-color: var(--app-border-subtle, rgba(17, 17, 17, 0.1));
+        background: var(--app-surface-2, #f7f8fa);
+        color: var(--app-text-secondary, #52525b);
     }
 
     .creation-generation-settings-surface .creation-choice-grid.is-ratio button:hover,
     .creation-generation-settings-surface .creation-choice-grid.is-resolution button:hover,
     .creation-generation-settings-surface .creation-choice-grid.is-quality button:hover {
-        border-color: var(--app-border-default, rgba(17, 17, 17, 0.18)) !important;
-        background: var(--app-action-secondary-hover, rgba(17, 17, 17, 0.05)) !important;
-        color: var(--app-text-primary, #171717) !important;
+        border-color: var(--app-border-default, rgba(17, 17, 17, 0.18));
+        background: var(--app-action-secondary-hover, rgba(17, 17, 17, 0.05));
+        color: var(--app-text-primary, #171717);
     }
 
     .creation-generation-settings-surface .creation-choice-grid.is-ratio button.is-selected,
     .creation-generation-settings-surface .creation-choice-grid.is-resolution button.is-selected,
     .creation-generation-settings-surface .creation-choice-grid.is-quality button.is-selected {
-        border-color: var(--app-selection-border, rgba(17, 17, 17, 0.18)) !important;
-        background: var(--app-selection-bg, rgba(17, 17, 17, 0.09)) !important;
-        color: var(--app-selection-fg, #171717) !important;
+        border-color: var(--app-selection-border, rgba(17, 17, 17, 0.18));
+        background: var(--app-selection-bg, rgba(17, 17, 17, 0.09));
+        color: var(--app-selection-fg, #171717);
     }
 
     .creation-generation-settings-surface .creation-option-check {
