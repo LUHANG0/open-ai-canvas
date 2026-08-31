@@ -99,6 +99,7 @@
 - `abf0dd5` `fix(canvas): reset mode switch at PC boundary`
 - `d427763` `fix(canvas): let workspace shrink beside assistant`
 - `8fbf140` `fix(canvas): compact narrow PC topbar`
+- `39c0f2e` `fix(canvas): use current Dropdown class API`
 - 本记录提交 SHA 由 Git 历史和集成台账登记。
 
 ## 风险与依赖
@@ -136,5 +137,5 @@
 ## 回滚
 
 - 集成前：丢弃 `refactor/pc-ui-r6-canvas-editor` 分支或删除本 worktree，共同基线 `c949021` 不受影响。
-- 集成后按阶段逆序回滚：`git revert 8fbf140`（窄 PC 顶部栏收口）→ `git revert d427763`（侧栏与 Agent 并开列宽保护）→ `git revert abf0dd5`（1024px 模式开关定位）→ `git revert a9ecc9e`（1024px 列宽保护）→ `git revert 2d7eabe`（PC/移动边界加固）→ `git revert 8660673`（公开分享）→ `git revert cbedd68`（面板与浮层）→ `git revert ede47f9`（编辑器外壳），最后回滚文档提交。
+- 集成后按阶段逆序回滚：`git revert 39c0f2e`（Dropdown Portal 类名 API）→ `git revert 8fbf140`（窄 PC 顶部栏收口）→ `git revert d427763`（侧栏与 Agent 并开列宽保护）→ `git revert abf0dd5`（1024px 模式开关定位）→ `git revert a9ecc9e`（1024px 列宽保护）→ `git revert 2d7eabe`（PC/移动边界加固）→ `git revert 8660673`（公开分享）→ `git revert cbedd68`（面板与浮层）→ `git revert ede47f9`（编辑器外壳），最后回滚文档提交。
 - 不使用 `git reset --hard`，避免覆盖集成分支上的其他会话成果。
