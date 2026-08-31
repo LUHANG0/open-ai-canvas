@@ -75,7 +75,7 @@ export function CanvasSelectionToolbar({ anchorRef, containerRef, count, childre
         <div
             ref={toolbarRef}
             data-canvas-no-zoom
-            className={`absolute z-[var(--z-panel-floating)] max-w-[calc(100%_-_24px)] -translate-x-1/2 ${anchor.placement === "above" ? "-translate-y-full" : ""}`}
+            className={`pc-canvas-selection-toolbar absolute z-[var(--z-panel-floating)] max-w-[calc(100%_-_24px)] -translate-x-1/2 ${anchor.placement === "above" ? "-translate-y-full" : ""}`}
             style={{ left: anchor.left, top: anchor.top, color: theme.node.text, transformOrigin: anchor.placement === "above" ? "bottom center" : "top center" }}
             onMouseDown={(event) => event.stopPropagation()}
             onPointerDown={(event) => event.stopPropagation()}
@@ -148,7 +148,7 @@ export function CanvasNodePanelOverlay({ node, viewport, containerRef, panelWidt
         <div
             ref={panelRef}
             data-canvas-no-zoom
-            className="thin-scrollbar absolute max-w-[calc(100%_-_24px)] overflow-y-auto"
+            className="pc-canvas-node-panel thin-scrollbar absolute max-w-[calc(100%_-_24px)] overflow-y-auto"
             style={{ left: initialPosition.left, top: initialPosition.top, width: initialWidth, maxHeight: "calc(100% - 84px)", zIndex }}
             onMouseDown={(event) => event.stopPropagation()}
             onPointerDownCapture={bringToFront}
@@ -200,7 +200,7 @@ export function CanvasConnectionCreateMenu({ pending, viewport, viewportSize, co
             initial={reducedMotion ? { opacity: 0 } : { opacity: 0, y: 6, scale: 0.97, rotateX: 2 }}
             animate={{ opacity: 1, y: 0, scale: 1, rotateX: 0 }}
             transition={{ duration: aceternityMotion.duration.instant, ease: aceternityMotion.easing.enter }}
-            className="aceternity-floating-panel absolute w-[248px] origin-top-left overflow-hidden rounded-[var(--r-2xl)] border p-2 backdrop-blur-2xl"
+            className="pc-canvas-panel pc-canvas-connection-menu aceternity-floating-panel absolute w-[248px] origin-top-left overflow-hidden rounded-[var(--r-2xl)] border p-2 backdrop-blur-2xl"
             data-canvas-no-zoom
             data-connection-create-menu
             style={{ left: initialPosition.left, top: initialPosition.top, zIndex, background: theme.spatial.elevated, borderColor: theme.toolbar.border, color: theme.node.text }}

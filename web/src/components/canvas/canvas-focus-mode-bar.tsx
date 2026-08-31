@@ -27,7 +27,7 @@ export function CanvasFocusModeBar({ dockRevealed, agentOpen, zoomPercent, onTog
             initial={reducedMotion ? { opacity: 0 } : { opacity: 0, y: -12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={reducedMotion ? { duration: 0 } : aceternityMotion.spring.panel}
-            className="pointer-events-auto absolute left-1/2 top-2 z-[var(--z-toolbar)] -translate-x-1/2"
+            className="pc-canvas-focus-bar pointer-events-auto absolute left-1/2 top-2 z-[var(--z-toolbar)] -translate-x-1/2"
             role="toolbar"
             aria-label="专注模式工具栏"
         >

@@ -233,7 +233,7 @@ export function CanvasVideoSegmentDialog({ node, nodes, connections, open, mode,
     );
 
     return (
-        <Modal title={title} open={open} onCancel={onClose} footer={null} width={680} centered destroyOnHidden>
+        <Modal rootClassName="pc-canvas-overlay pc-canvas-modal pc-canvas-media-modal" title={title} open={open} onCancel={onClose} footer={null} width={680} centered destroyOnHidden>
             <div className="space-y-4">
                 <div className="flex min-h-0 items-center justify-center overflow-hidden rounded-xl border bg-black" style={{ borderColor: theme.toolbar.border }}>
                     {videoUrl ? (

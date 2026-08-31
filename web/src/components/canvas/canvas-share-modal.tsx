@@ -67,7 +67,7 @@ export function CanvasShareModal({ projectId, open, onClose, beforeCreate }: { p
     });
 
     return (
-        <Modal title={<span className="inline-flex items-center gap-2"><Share2 className="size-4" />分享画布</span>} open={open} onCancel={onClose} footer={null} centered width={520} destroyOnHidden>
+        <Modal rootClassName="pc-canvas-overlay pc-canvas-modal pc-canvas-share-modal" title={<span className="inline-flex items-center gap-2"><Share2 className="size-4" />分享画布</span>} open={open} onCancel={onClose} footer={null} centered width={520} destroyOnHidden>
             <Spin spinning={loading}>
                 <div className="border-t pt-5" style={{ borderColor: theme.node.stroke }}>
                     <p className="mb-4 text-sm leading-6" style={{ color: theme.node.muted }}>

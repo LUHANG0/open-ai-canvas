@@ -77,7 +77,7 @@ export function StyleAssetBindingModal({ open, profile, onClose, onApply }: Styl
 
     return (
         <Modal
-            rootClassName="style-asset-binding-modal"
+            rootClassName="pc-canvas-overlay pc-canvas-modal pc-canvas-style-modal style-asset-binding-modal"
             open={open}
             title={null}
             footer={null}

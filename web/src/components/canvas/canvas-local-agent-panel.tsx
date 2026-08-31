@@ -845,14 +845,14 @@ export const CanvasLocalAgentPanel = memo(function CanvasLocalAgentPanel({
 
     return (
         <motion.div
-            className="relative z-[var(--z-panel-floating)] flex h-full shrink-0"
+            className="pc-canvas-local-agent-panel relative z-[var(--z-panel-floating)] flex h-full shrink-0"
             initial={{ width: 0, opacity: 0 }}
             animate={{ width: collapsed ? 0 : width + 1, opacity: collapsed ? 0 : 1 }}
             transition={{ duration: resizing ? 0 : PANEL_MOTION_SECONDS, ease: [0.22, 1, 0.36, 1] }}
             style={{ overflow: "clip", pointerEvents: collapsed ? "none" : undefined }}
         >
             <motion.aside
-                className="relative flex h-full shrink-0 flex-col border-l"
+                className="pc-canvas-local-agent-panel__surface relative flex h-full shrink-0 flex-col border-l"
                 initial={{ x: 48 }}
                 animate={{ x: collapsed ? 28 : 0 }}
                 transition={{ duration: resizing ? 0 : PANEL_MOTION_SECONDS, ease: [0.22, 1, 0.36, 1] }}

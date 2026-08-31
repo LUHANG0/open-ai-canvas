@@ -15,7 +15,7 @@ export function CanvasFileDropOverlay({ active, theme }: { active: boolean; them
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
                     transition={{ duration: aceternityMotion.duration.state }}
-                    className="pointer-events-none absolute inset-3 z-[var(--z-modal-overlay)] grid place-items-center overflow-hidden rounded-[var(--r-5xl)] border backdrop-blur-2xl"
+                    className="pc-canvas-file-drop pointer-events-none absolute inset-3 z-[var(--z-modal-overlay)] grid place-items-center overflow-hidden rounded-[var(--r-5xl)] border backdrop-blur-2xl"
                     style={{ background: theme.spatial.dropzone, borderColor: theme.spatial.glowStrong, color: theme.node.text, boxShadow: `inset 0 0 0 1px ${theme.spatial.glow}, 0 30px 100px rgba(0,0,0,.22)` }}
                 >
                     <div className="aceternity-drop-grid absolute inset-0 opacity-70" style={{ color: theme.spatial.glowStrong }} />

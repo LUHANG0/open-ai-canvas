@@ -39,6 +39,7 @@ export function CanvasUploadModal({ open, onClose, onUpload }: CanvasUploadModal
 
     return (
         <Modal
+            rootClassName="pc-canvas-overlay pc-canvas-modal pc-canvas-upload-modal"
             open={open}
             title={null}
             footer={null}

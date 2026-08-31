@@ -100,6 +100,7 @@ export function LibTVImportDialog({ open, projectId, viewport, viewportSize, onC
 
     return (
         <Modal
+            rootClassName="pc-canvas-overlay pc-canvas-modal pc-canvas-import-modal"
             className="workspace-modal"
             open={open}
             onCancel={close}

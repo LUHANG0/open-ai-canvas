@@ -133,6 +133,7 @@ export function ToolbarSettingsModal({ open, onClose, toolbar }: ToolbarSettings
 
     return (
         <Modal
+            rootClassName="pc-canvas-overlay pc-canvas-modal pc-canvas-toolbar-settings-modal"
             className="canvas-toolbar-settings-modal"
             open={open}
             onCancel={onClose}

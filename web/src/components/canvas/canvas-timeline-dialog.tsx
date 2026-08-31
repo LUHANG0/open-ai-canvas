@@ -633,6 +633,7 @@ export function CanvasTimelineDialog({
 
     return (
         <Modal
+            rootClassName="pc-canvas-overlay pc-canvas-modal pc-canvas-timeline-modal"
             className="canvas-timeline-dialog"
             title={title}
             open={open}
