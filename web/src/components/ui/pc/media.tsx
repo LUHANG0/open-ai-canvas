@@ -49,9 +49,10 @@ export type MediaThumbnailProps = Omit<HTMLAttributes<HTMLDivElement>, "children
     fallback?: ReactNode;
     overlay?: ReactNode;
     loading?: "eager" | "lazy";
+    interactive?: boolean;
 };
 
-export function MediaThumbnail({ src, alt, kind = "image", poster, fit = "cover", aspect = "asset", fallback, overlay, loading = "lazy", className, ...props }: MediaThumbnailProps) {
+export function MediaThumbnail({ src, alt, kind = "image", poster, fit = "cover", aspect = "asset", fallback, overlay, loading = "lazy", interactive = false, className, ...props }: MediaThumbnailProps) {
     const [failed, setFailed] = useState(false);
 
     useEffect(() => {
@@ -61,7 +62,7 @@ export function MediaThumbnail({ src, alt, kind = "image", poster, fit = "cover"
     const showFallback = !src || failed;
 
     return (
-        <div className={cn("pc-media-thumbnail", `pc-media-thumbnail--${aspect}`, `pc-media-thumbnail--${fit}`, className)} {...props}>
+        <div className={cn("pc-media-thumbnail", `pc-media-thumbnail--${aspect}`, `pc-media-thumbnail--${fit}`, interactive && "pc-media-thumbnail--interactive", className)} {...props}>
             {showFallback ? (
                 fallback || <MediaFallback kind={kind} label={alt || undefined} />
             ) : kind === "video" ? (

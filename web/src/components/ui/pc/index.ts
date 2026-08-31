@@ -1,4 +1,4 @@
-export { SelectionBar, StatTile, StatusBadge, type SelectionBarProps, type StatTileProps, type StatusBadgeProps, type StatusTone } from "./data-display";
+export { EmptyState, SelectionBar, StatTile, StatusBadge, type EmptyStateProps, type SelectionBarProps, type StatTileProps, type StatusBadgeProps, type StatusTone } from "./data-display";
 export { FilterBar, FilterChip, SearchField, ViewToggle, type FilterBarProps, type FilterChipProps, type SearchFieldProps, type ViewToggleOption, type ViewToggleProps } from "./filters";
 export { DialogFrame, DrawerFrame, FormSection, type DialogFrameProps, type DialogFrameSize, type DrawerFrameProps, type DrawerFrameSize, type FormSectionProps } from "./forms";
 export { MediaFallback, MediaThumbnail, type MediaFallbackProps, type MediaKind, type MediaThumbnailProps } from "./media";
