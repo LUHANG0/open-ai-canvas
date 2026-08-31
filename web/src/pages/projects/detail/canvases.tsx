@@ -6,6 +6,7 @@ import { Link2, Unlink, X } from "lucide-react";
 import { CanvasProjectCard } from "@/components/canvas/canvas-project-card";
 import { PaginationBar } from "@/components/layout/workspace-page";
 import { WorkspaceState } from "@/components/layout/workspace-state";
+import { SectionHeader, StatusBadge } from "@/components/ui/pc";
 import { linkCanvasUnit, listProjectCanvases, unlinkCanvasProject, unlinkCanvasUnit } from "@/services/api/projects";
 import { useCanvasStore, type CanvasProject } from "@/stores/canvas/use-canvas-store";
 
@@ -55,10 +56,15 @@ export default function ProjectCanvasesView({ detail, refreshProject }: ProjectD
     }).sort((left, right) => right.updatedAt.localeCompare(left.updatedAt)), [canvasesQuery.data?.canvases, detail.project.id, localCanvases]);
 
     return (
-        <div>
+        <div className="pc-project-canvases">
+            <SectionHeader
+                title="项目画布"
+                description="按服务端分页读取项目画布，并在每张卡片中维护章节关联。"
+                meta={<StatusBadge tone="neutral">{canvasesQuery.isLoading ? "正在读取" : `${canvasesQuery.data?.total || 0} 张画布`}</StatusBadge>}
+            />
             {canvasesQuery.isLoading ? <WorkspaceState icon="canvas" title="正在读取项目画布" description="按页加载画布摘要与章节关联。" /> : canvases.length ? (
                 <>
-                <div className="project-library-grid library-grid">
+                <div className="project-library-grid library-grid pc-project-canvases-grid">
                     {canvases.map((canvas) => {
                         const links = linksByCanvas[canvas.id] || [];
                         const linkedUnits = links.map((link) => detail.units.find((unit) => unit.id === link.unitId)).filter(Boolean);

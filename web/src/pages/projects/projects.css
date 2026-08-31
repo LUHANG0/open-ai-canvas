@@ -15,7 +15,7 @@
     appearance: none;
     background: var(--app-surface-3, rgba(17, 17, 17, 0.09));
     border: 0;
-    border-radius: var(--app-radius-badge, 999px);
+    border-radius: 999px;
 }
 
 .pc-projects-page .project-library-progress progress::-webkit-progress-bar {
@@ -24,13 +24,13 @@
 }
 
 .pc-projects-page .project-library-progress progress::-webkit-progress-value {
-    background: var(--app-selection-indicator, var(--workspace-accent));
+    background: var(--app-action-primary-bg, var(--workspace-accent));
     border-radius: inherit;
-    transition: width var(--app-motion-slow, 240ms) ease;
+    transition: width var(--app-duration-slow, 240ms) ease;
 }
 
 .pc-projects-page .project-library-progress progress::-moz-progress-bar {
-    background: var(--app-selection-indicator, var(--workspace-accent));
+    background: var(--app-action-primary-bg, var(--workspace-accent));
     border-radius: inherit;
 }
 
@@ -74,7 +74,7 @@
 
     .pc-projects-page .app-story-create-panel {
         margin-top: 0;
-        border-radius: var(--app-radius-surface, 12px);
+        border-radius: var(--app-surface-radius, 12px);
     }
 
     .pc-projects-page .app-story-create-head {
@@ -120,7 +120,7 @@
         margin-top: 12px;
         padding: 10px 12px;
         border: 1px solid var(--app-border-subtle);
-        border-radius: var(--app-radius-surface, 12px);
+        border-radius: var(--app-surface-radius, 12px);
         background: var(--app-surface-1);
         box-shadow: var(--app-shadow-surface);
     }
@@ -160,6 +160,304 @@
         min-height: 44px;
         margin-top: 12px;
         color: var(--app-text-muted);
+    }
+
+    .pc-project-workbench {
+        overflow: hidden;
+        background: var(--app-bg-page);
+    }
+
+    .pc-project-workbench > .app-workspace-page-content {
+        overflow: hidden;
+    }
+
+    .pc-project-workbench-frame {
+        background: var(--app-bg-page);
+    }
+
+    .pc-project-archive-alert {
+        flex: 0 0 auto;
+        border-top: 0;
+        border-right: 0;
+        border-left: 0;
+        border-radius: 0;
+    }
+
+    .pc-project-view-scroll {
+        padding: var(--app-space-6, 24px);
+        overscroll-behavior: contain;
+    }
+
+    .pc-project-view-content:not(.is-workbench) {
+        max-width: var(--app-page-max-width, 1440px);
+        margin-inline: auto;
+    }
+
+    .pc-project-view-content.is-settings {
+        max-width: 1180px;
+    }
+
+    .pc-project-topbar {
+        width: 100%;
+        height: 44px;
+    }
+
+    .pc-project-topbar-back {
+        color: var(--app-text-muted);
+        border-radius: var(--app-control-radius, 8px);
+    }
+
+    .pc-project-topbar-back:hover {
+        color: var(--app-text-primary);
+        background: var(--app-action-secondary-hover);
+    }
+
+    .pc-project-topbar-back:focus-visible,
+    .pc-project-topbar-link:focus-visible {
+        box-shadow: var(--app-focus-shadow);
+    }
+
+    .pc-project-topbar-identity {
+        width: clamp(150px, 16vw, 236px);
+        padding-right: 10px;
+        border-right: 1px solid var(--app-border-subtle);
+    }
+
+    .pc-project-topbar-identity h1 {
+        color: var(--app-text-primary);
+        font-size: 13px;
+        font-weight: 650;
+        line-height: 1.3;
+    }
+
+    .pc-project-status-dot {
+        width: 7px;
+        height: 7px;
+        flex: 0 0 auto;
+        border-radius: 999px;
+    }
+
+    .pc-project-status-dot.is-active {
+        background: var(--app-status-success-fg);
+        box-shadow: 0 0 0 3px var(--app-status-success-bg);
+    }
+
+    .pc-project-status-dot.is-archived {
+        background: var(--app-text-muted);
+    }
+
+    .pc-project-topbar-status {
+        color: var(--app-text-muted);
+        font-size: 11px;
+    }
+
+    .pc-project-topbar-nav {
+        padding-inline: 4px;
+    }
+
+    .pc-project-topbar-link {
+        position: relative;
+        display: inline-flex;
+        height: 32px;
+        flex: 0 0 auto;
+        align-items: center;
+        gap: 6px;
+        padding-inline: 10px;
+        color: var(--app-text-secondary);
+        font-size: 12px;
+        font-weight: 520;
+        border-radius: var(--app-control-radius, 8px);
+        transition: color var(--app-duration-fast, 120ms) ease, background-color var(--app-duration-fast, 120ms) ease;
+    }
+
+    .pc-project-topbar-link:hover {
+        color: var(--app-text-primary);
+        background: var(--app-action-secondary-hover);
+    }
+
+    .pc-project-topbar-link.is-active {
+        color: var(--app-selection-fg);
+        font-weight: 650;
+        background: var(--app-selection-bg);
+    }
+
+    .pc-project-topbar-link.is-active::after {
+        position: absolute;
+        right: 10px;
+        bottom: 1px;
+        left: 10px;
+        height: 2px;
+        content: "";
+        background: var(--app-action-primary-bg);
+        border-radius: 999px;
+    }
+
+    .pc-project-topbar-link.is-active svg {
+        color: var(--app-action-primary-bg);
+    }
+
+    .pc-project-topbar-create {
+        height: 32px;
+        flex: 0 0 auto;
+        padding-inline: 10px;
+    }
+
+    .pc-project-overview {
+        display: grid;
+        gap: 24px;
+    }
+
+    .pc-project-overview > section {
+        min-width: 0;
+    }
+
+    .pc-project-overview .project-overview-focus,
+    .pc-project-overview .project-standard-flow,
+    .pc-project-overview .project-pipeline-surface {
+        border: 1px solid var(--app-border-subtle);
+        border-radius: var(--app-surface-radius, 12px);
+        background: var(--app-surface-1);
+        box-shadow: var(--app-shadow-surface);
+    }
+
+    .pc-project-overview .project-overview-status {
+        border-left: 1px solid var(--app-border-subtle);
+        background: var(--app-surface-2);
+    }
+
+    .pc-project-overview .project-overview-progress-track {
+        display: block;
+        width: 100%;
+        height: 5px;
+        margin-top: 12px;
+        overflow: hidden;
+        appearance: none;
+        background: var(--app-surface-3);
+        border: 0;
+        border-radius: 999px;
+    }
+
+    .pc-project-overview .project-overview-progress-track::-webkit-progress-bar {
+        background: var(--app-surface-3);
+        border-radius: inherit;
+    }
+
+    .pc-project-overview .project-overview-progress-track::-webkit-progress-value {
+        background: var(--app-action-primary-bg);
+        border-radius: inherit;
+    }
+
+    .pc-project-overview .project-overview-progress-track::-moz-progress-bar {
+        background: var(--app-action-primary-bg);
+        border-radius: inherit;
+    }
+
+    .pc-project-canvases > .pc-section-header,
+    .pc-project-assets-header,
+    .pc-project-settings-header {
+        min-height: 68px;
+        padding: 2px 2px 16px;
+        border-bottom: 1px solid var(--app-border-subtle);
+    }
+
+    .pc-project-canvases-grid {
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 18px;
+        margin-top: 18px;
+    }
+
+    .pc-project-assets .project-assets-layout {
+        grid-template-columns: 216px minmax(0, 1fr);
+        gap: 20px;
+        margin-top: 20px;
+    }
+
+    .pc-project-assets-nav {
+        position: sticky;
+        top: 0;
+        align-self: start;
+        max-height: calc(100vh - 168px);
+        overflow-y: auto;
+        padding: 10px;
+        background: var(--app-surface-2);
+        border: 1px solid var(--app-border-subtle);
+        border-radius: var(--app-surface-radius, 12px);
+    }
+
+    .pc-project-assets-content {
+        padding: 2px 0 24px;
+    }
+
+    .pc-project-assets .project-assets-grid {
+        grid-template-columns: repeat(auto-fill, minmax(206px, 1fr));
+        gap: 16px;
+    }
+
+    .pc-project-assets .project-asset-library-card,
+    .pc-project-assets .app-project-character-card {
+        overflow: hidden;
+        border: 1px solid var(--app-border-subtle);
+        border-radius: var(--app-radius-media, 14px);
+        background: var(--app-surface-1);
+        box-shadow: var(--app-shadow-surface);
+    }
+
+    .pc-project-settings {
+        display: grid;
+        gap: 16px;
+        padding-bottom: 28px;
+    }
+
+    .pc-project-settings-section {
+        overflow: hidden;
+        background: var(--app-surface-1);
+        border: 1px solid var(--app-border-subtle);
+        border-radius: var(--app-surface-radius, 12px);
+        box-shadow: var(--app-shadow-surface);
+    }
+
+    .pc-project-settings-section .pc-form-section__header {
+        padding: 16px 18px 12px;
+        background: var(--app-surface-2);
+        border-bottom: 1px solid var(--app-border-subtle);
+    }
+
+    .pc-project-settings-section .pc-form-section__body {
+        padding: 18px;
+    }
+
+    .pc-project-settings-danger {
+        border-color: var(--app-status-error-border);
+    }
+
+    .pc-project-chapters {
+        background: var(--app-bg-page);
+    }
+
+    .pc-project-chapters-rail {
+        background: var(--app-surface-2);
+        border-color: var(--app-border-subtle);
+    }
+
+    .pc-project-chapter-stage {
+        background: var(--app-bg-canvas);
+    }
+
+    .pc-project-chapter-stage > div {
+        border-color: var(--app-border-default);
+        border-radius: var(--app-surface-radius, 12px);
+        background: var(--app-surface-1);
+        box-shadow: var(--app-shadow-surface);
+    }
+
+    .pc-project-chapter-stage .project-chapter-editor-scroll {
+        background: var(--app-surface-1);
+    }
+
+    .pc-projects-import-dialog .ant-modal-container {
+        border: 1px solid var(--app-border-default);
+        border-radius: var(--app-surface-radius, 12px);
+        box-shadow: var(--app-shadow-overlay);
     }
 }
 

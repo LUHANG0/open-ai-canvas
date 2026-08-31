@@ -19,6 +19,8 @@ import ProjectSettingsView from "./detail/settings";
 import ProjectWorkflowView from "./detail/workflow";
 import { WorkflowChapterNavigator } from "./detail/workflow-chapter-navigator";
 
+import "./projects.css";
+
 type DetailView = "overview" | "chapters" | "workflow" | "canvases" | "assets" | "settings";
 
 const views: Array<{ key: DetailView; label: string; shortLabel: string; icon: LucideIcon }> = [
@@ -124,12 +126,12 @@ export default function ProjectDetailPage() {
     if (unitId && !units.some((unit) => unit.id === unitId)) return <Navigate to={firstUnitId ? `/projects/${projectId}/workflow/${firstUnitId}/${stage || "video"}` : `/projects/${projectId}/workflow`} replace />;
     if (activeView === "workflow" && !unitId && detail.units.length) return <Navigate to={`/projects/${projectId}/workflow/${detail.units.slice().sort((left, right) => left.position - right.position)[0].id}/video`} replace />;
     return (
-        <WorkspacePage className="project-workbench-page !overflow-hidden" fluid>
-            <div className="flex h-full min-h-0 flex-col">
-                {detail.project.status === "archived" ? <Alert type="warning" showIcon banner message="项目已归档，恢复后才能创建画布和生成任务" className="!border-x-0 !border-t-0" /> : null}
-                <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-                    <div className={activeView === "chapters" || activeView === "workflow" ? "min-h-0 flex-1" : "thin-scrollbar min-h-0 flex-1 overflow-y-auto px-3 py-5 sm:px-5 lg:px-8 lg:py-7"}>
-                        <div className={activeView === "overview" ? "w-full" : activeView === "chapters" || activeView === "workflow" ? "h-full w-full" : "w-full"}>
+        <WorkspacePage className="project-workbench-page pc-project-workbench" fluid scroll={false}>
+            <div className="pc-project-workbench-frame flex h-full min-h-0 flex-col">
+                {detail.project.status === "archived" ? <Alert type="warning" showIcon banner message="项目已归档，恢复后才能创建画布和生成任务" className="pc-project-archive-alert" /> : null}
+                <main className="pc-project-workbench-main flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+                    <div className={activeView === "chapters" || activeView === "workflow" ? "pc-project-view-stage min-h-0 flex-1" : "pc-project-view-scroll thin-scrollbar min-h-0 flex-1 overflow-y-auto px-3 py-5 sm:px-5 lg:px-0 lg:py-0"}>
+                        <div className={activeView === "chapters" || activeView === "workflow" ? "pc-project-view-content is-workbench h-full w-full" : `pc-project-view-content is-${activeView} w-full`}>
                             {activeView === "overview" ? overviewQuery.isLoading ? <WorkspaceLoadingState label="正在统计制作进度" detail="只读取聚合数据，不加载全部镜头历史" /> : overviewQuery.data ? <ProjectOverviewView detail={detail} overview={overviewQuery.data} refreshProject={refreshProject} onCreateCanvas={createCanvas} /> : <WorkspaceErrorState title="制作概览读取失败" description="请稍后重试。" onRetry={() => void overviewQuery.refetch()} /> : null}
                             {activeView === "chapters" ? workspaceQuery.isLoading ? <WorkspaceLoadingState label="正在读取当前章节" detail="正文与制作数据按章节加载" /> : workspaceQuery.isError ? <WorkspaceErrorState title="章节读取失败" description="当前章节可能已被删除，或服务暂时不可用。" onRetry={() => void workspaceQuery.refetch()} /> : <ProjectChaptersView detail={detail} refreshProject={refreshProject} onCreateCanvas={createCanvas} /> : null}
                             {activeView === "workflow" ? workspaceQuery.isLoading ? <WorkspaceLoadingState label="正在读取当前章节分镜" detail="仅加载本章镜头、版本和产物" /> : workspaceQuery.isError ? <WorkspaceErrorState title="分镜工作区读取失败" description="当前章节制作数据暂时不可用。" onRetry={() => void workspaceQuery.refetch()} /> : <ProjectWorkflowView detail={detail} projectId={projectId} unitId={unitId || ""} stage={stage || "video"} /> : null}
@@ -147,20 +149,20 @@ export default function ProjectDetailPage() {
 function ProjectWorkspaceTopBar({ detail, projectId, activeView, unitId, stage, chapterHref, workflowHref, onCreateCanvas }: { detail: ProjectDetail; projectId: string; activeView: DetailView; unitId?: string; stage?: string; chapterHref: string; workflowHref: string; onCreateCanvas: () => void }) {
     const navigate = useNavigate();
     return (
-        <div className="project-workspace-topbar flex min-w-0 items-center gap-2">
-            <button type="button" onClick={() => navigate("/projects")} className="grid size-8 shrink-0 place-items-center rounded-md text-foreground/42 transition-colors hover:bg-surface-hover hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" aria-label="返回项目" title="返回项目"><ArrowLeft className="size-4" /></button>
-            <div className="hidden min-w-0 items-center gap-2 md:flex lg:w-44 xl:w-56">
-                <h1 className="min-w-0 truncate text-[var(--fs-caption)] font-semibold text-foreground/90">{detail.project.name}</h1>
-                <span className={`size-1.5 shrink-0 rounded-full ${detail.project.status === "archived" ? "bg-foreground/30" : "bg-[var(--workspace-accent)]"}`} />
-                <span className="hidden shrink-0 text-[var(--fs-tiny)] text-foreground/42 xl:inline">{detail.project.status === "archived" ? "已归档" : "进行中"}</span>
+        <div className="project-workspace-topbar pc-project-topbar flex min-w-0 items-center gap-2">
+            <button type="button" onClick={() => navigate("/projects")} className="pc-project-topbar-back grid size-8 shrink-0 place-items-center rounded-md transition-colors focus-visible:outline-none" aria-label="返回项目列表" title="返回项目列表"><ArrowLeft className="size-4" /></button>
+            <div className="pc-project-topbar-identity hidden min-w-0 items-center gap-2 md:flex">
+                <h1 className="min-w-0 truncate">{detail.project.name}</h1>
+                <span className={detail.project.status === "archived" ? "pc-project-status-dot is-archived" : "pc-project-status-dot is-active"} aria-hidden="true" />
+                <span className="pc-project-topbar-status hidden shrink-0 xl:inline">{detail.project.status === "archived" ? "已归档" : "进行中"}</span>
             </div>
-            <nav className="thin-scrollbar flex h-11 min-w-0 flex-1 items-center gap-0.5 overflow-x-auto" aria-label="项目导航">
-                {views.map((item) => { const Icon = item.icon; const active = item.key === activeView; const href = item.key === "chapters" ? chapterHref : item.key === "workflow" ? workflowHref : `/projects/${projectId}/${item.key}`; return <Link key={item.key} to={href} className={`relative flex h-8 shrink-0 items-center gap-1.5 rounded-md px-2 text-[var(--fs-caption)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring xl:px-2.5 ${active ? "bg-[var(--workspace-accent-soft)] font-medium text-foreground after:absolute after:inset-x-2.5 after:bottom-0 after:h-0.5 after:rounded-full after:bg-[var(--workspace-accent)]" : "text-foreground/52 hover:bg-surface-hover hover:text-foreground"}`} aria-current={active ? "page" : undefined}><Icon className={`size-3.5 shrink-0 ${active ? "text-[var(--workspace-accent)]" : "text-foreground/45"}`} /><span className="xl:hidden">{item.shortLabel}</span><span className="hidden xl:inline">{item.label}</span></Link>; })}
+            <nav className="pc-project-topbar-nav thin-scrollbar flex h-11 min-w-0 flex-1 items-center gap-0.5 overflow-x-auto" aria-label="项目导航">
+                {views.map((item) => { const Icon = item.icon; const active = item.key === activeView; const href = item.key === "chapters" ? chapterHref : item.key === "workflow" ? workflowHref : `/projects/${projectId}/${item.key}`; return <Link key={item.key} to={href} className={active ? "pc-project-topbar-link is-active" : "pc-project-topbar-link"} aria-current={active ? "page" : undefined}><Icon className="size-3.5 shrink-0" /><span className="xl:hidden">{item.shortLabel}</span><span className="hidden xl:inline">{item.label}</span></Link>; })}
             </nav>
             {activeView === "workflow" ? (
                 <WorkflowChapterNavigator projectId={projectId} units={detail.units} unitId={unitId} stage={stage} />
             ) : (
-                <Tooltip title={activeView === "chapters" && detail.units.length ? "新建当前章节画布" : "新建项目画布"}><Button size="small" className="!h-8 !shrink-0 !px-2 xl:!px-3" icon={<Plus className="size-3.5" />} onClick={onCreateCanvas} aria-label={activeView === "chapters" && detail.units.length ? "新建当前章节画布" : "新建项目画布"}><span className="hidden xl:inline">新建画布</span></Button></Tooltip>
+                <Tooltip title={activeView === "chapters" && detail.units.length ? "新建当前章节画布" : "新建项目画布"}><Button type="primary" size="small" className="pc-project-topbar-create" icon={<Plus className="size-3.5" />} onClick={onCreateCanvas} aria-label={activeView === "chapters" && detail.units.length ? "新建当前章节画布" : "新建项目画布"}><span className="hidden xl:inline">新建画布</span></Button></Tooltip>
             )}
         </div>
     );
