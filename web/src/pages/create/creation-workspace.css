@@ -101,6 +101,10 @@
     margin: 36px auto 0;
 }
 
+.creation-empty-starters-heading {
+    display: none;
+}
+
 .creation-home .creation-empty-suggest {
     display: grid;
     width: 100%;
@@ -815,6 +819,15 @@ html:not(.dark) .creation-media-preview-modal.is-image .ant-modal-container {
     flex: 0 0 auto;
     align-items: center;
     gap: 6px;
+}
+
+/* 移动端保持原有扁平工具条 DOM；仅 PC 端显示字段层级。 */
+.creation-home .creation-config-field {
+    display: contents;
+}
+
+.creation-home .creation-config-label {
+    display: none;
 }
 
 .creation-home .creation-entry-divider {
@@ -1887,6 +1900,886 @@ html:not(.dark) .creation-media-preview-modal.is-video .ant-modal-container {
     .creation-home .creation-reference-card-remove {
         width: 28px;
         height: 28px;
+    }
+}
+
+/* -------------------------------------------------------------------------
+   PC 创作工作台。仅重组 >=1024px 的视觉层级，不改动移动端 DOM 与业务行为。
+   ------------------------------------------------------------------------- */
+@media (min-width: 1024px) {
+    .creation-home {
+        --creation-accent: var(--app-action-primary-bg, var(--workspace-accent, #1493ad));
+        --creation-accent-strong: var(--app-action-primary-bg, var(--workspace-accent, #087f99));
+        --creation-accent-soft: var(--app-selection-bg, var(--workspace-accent-soft, rgba(20, 147, 173, 0.1)));
+        --creation-bg: var(--app-bg-page, var(--workspace-bg, #f6f7f8));
+        --creation-surface: var(--app-surface-1, var(--workspace-surface, #ffffff));
+        --creation-surface-muted: var(--app-surface-2, var(--workspace-surface-muted, rgba(25, 29, 34, 0.045)));
+        --creation-surface-hover: var(--app-action-secondary-hover, var(--workspace-surface-hover, rgba(25, 29, 34, 0.07)));
+        --creation-surface-selected: var(--app-selection-active, var(--workspace-surface-selected, rgba(25, 29, 34, 0.1)));
+        --creation-border: var(--app-border-subtle, var(--workspace-border, rgba(25, 29, 34, 0.1)));
+        --creation-border-strong: var(--app-border-default, var(--workspace-border-strong, rgba(25, 29, 34, 0.18)));
+        --creation-text: var(--app-text-primary, var(--workspace-text, #1a1d21));
+        --creation-muted: var(--app-text-secondary, var(--workspace-muted, #737b84));
+        --creation-faint: var(--app-text-muted, var(--workspace-faint, #a7adb4));
+        color: var(--creation-text);
+        background: var(--app-bg-page, var(--creation-bg));
+    }
+
+    .dark .creation-home {
+        --creation-accent: var(--app-action-primary-bg, var(--workspace-accent, #4bbbd0));
+        --creation-accent-strong: var(--app-action-primary-bg, var(--workspace-accent, #75cede));
+        --creation-accent-soft: var(--app-selection-bg, var(--workspace-accent-soft, rgba(75, 187, 208, 0.12)));
+        --creation-bg: var(--app-bg-page, var(--workspace-bg, #111214));
+        --creation-surface: var(--app-surface-1, var(--workspace-surface, #1a1c1f));
+        --creation-surface-muted: var(--app-surface-2, var(--workspace-surface-muted, rgba(255, 255, 255, 0.05)));
+        --creation-surface-hover: var(--app-action-secondary-hover, var(--workspace-surface-hover, rgba(255, 255, 255, 0.08)));
+        --creation-surface-selected: var(--app-selection-active, var(--workspace-surface-selected, rgba(255, 255, 255, 0.11)));
+        --creation-border: var(--app-border-subtle, var(--workspace-border, rgba(255, 255, 255, 0.085)));
+        --creation-border-strong: var(--app-border-default, var(--workspace-border-strong, rgba(255, 255, 255, 0.16)));
+        --creation-text: var(--app-text-primary, var(--workspace-text, #f2f2ef));
+        --creation-muted: var(--app-text-secondary, var(--workspace-muted, #979da5));
+        --creation-faint: var(--app-text-muted, var(--workspace-faint, #646970));
+    }
+
+    .creation-home .creation-top-actions {
+        top: 14px;
+        right: 20px;
+    }
+
+    .creation-home .creation-top-action {
+        height: var(--app-control-height, 36px);
+        border-color: var(--app-border-subtle, var(--creation-border));
+        border-radius: var(--app-control-radius, 8px);
+        background: var(--app-surface-1, var(--creation-surface));
+        color: var(--creation-muted);
+        box-shadow: var(--app-shadow-surface, none);
+    }
+
+    .creation-home .creation-top-action:hover,
+    .creation-home .creation-top-action[aria-expanded="true"] {
+        border-color: var(--app-border-default, var(--creation-border-strong));
+        background: var(--app-action-secondary-hover, var(--creation-surface-hover));
+        color: var(--creation-text);
+    }
+
+    .creation-home .creation-top-action:focus-visible,
+    .creation-home :is(button, a, [role="button"]):focus-visible {
+        outline: 2px solid var(--app-focus-ring, var(--creation-border-strong));
+        outline-offset: 2px;
+    }
+
+    .creation-home .creation-empty-workspace {
+        width: min(1120px, calc(100% - 48px));
+        min-height: 100%;
+        padding: clamp(42px, 6vh, 68px) 0 32px;
+        overflow-y: auto;
+    }
+
+    .creation-empty-intro h1 {
+        color: var(--app-text-primary, var(--creation-text));
+        font-size: clamp(30px, 2.6vw, 38px);
+        font-weight: 660;
+        letter-spacing: -0.04em;
+    }
+
+    .creation-empty-intro p {
+        margin-top: 9px;
+        color: var(--app-text-secondary, var(--creation-muted));
+        font-size: var(--app-font-size-body, 14px);
+    }
+
+    .creation-empty-starters {
+        width: min(900px, 100%);
+        margin-top: 30px;
+    }
+
+    .creation-empty-starters-heading {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 12px;
+        margin: 0 2px 10px;
+        color: var(--creation-muted);
+    }
+
+    .creation-empty-starters-heading > span {
+        color: var(--creation-text);
+        font-size: var(--app-font-size-control, 13px);
+        font-weight: 650;
+    }
+
+    .creation-empty-starters-heading small {
+        color: var(--app-text-muted, var(--creation-faint));
+        font-size: var(--app-font-size-label, 12px);
+        line-height: 1.45;
+    }
+
+    .creation-home .creation-empty-suggest {
+        gap: 12px;
+    }
+
+    .creation-home .creation-empty-suggest .suggest-card {
+        border-color: var(--app-border-subtle, var(--creation-border));
+        border-radius: var(--app-surface-radius, 12px);
+        background: var(--app-surface-1, var(--creation-surface));
+        box-shadow: var(--app-shadow-surface, 0 1px 2px rgba(17, 24, 39, 0.04));
+    }
+
+    .creation-home .creation-empty-suggest .suggest-card:hover {
+        border-color: var(--app-border-default, var(--creation-border-strong));
+        box-shadow: var(--app-shadow-raised, 0 10px 28px rgba(17, 24, 39, 0.09));
+        transform: translateY(-2px);
+    }
+
+    .creation-home .suggest-visual {
+        min-height: 98px;
+    }
+
+    .creation-home .suggest-icon {
+        border-color: color-mix(in srgb, var(--app-border-default, var(--creation-border)) 62%, transparent);
+        border-radius: var(--app-radius-3, 10px);
+        background: color-mix(in srgb, var(--app-surface-overlay, var(--creation-surface)) 82%, transparent);
+        color: var(--app-text-primary, var(--creation-text));
+        box-shadow: var(--app-shadow-surface, none);
+    }
+
+    .creation-home .suggest-eyebrow {
+        background: color-mix(in srgb, var(--app-action-primary-bg, #171717) 86%, transparent);
+        color: var(--app-action-primary-fg, #ffffff);
+    }
+
+    .creation-home .suggest-copy {
+        min-height: 88px;
+        padding: 14px 38px 15px 15px;
+    }
+
+    .creation-home .suggest-copy strong {
+        font-size: var(--app-font-size-body, 14px);
+    }
+
+    .creation-home .suggest-copy > span {
+        font-size: var(--app-font-size-label, 12px);
+    }
+
+    .creation-empty-workspace .creation-empty-composer {
+        width: min(1040px, 100%);
+        margin: clamp(30px, 6vh, 64px) auto 0;
+        padding-top: 0;
+    }
+
+    .creation-home .creation-chat-composer:is(.is-empty, .is-thread) {
+        --creation-toolbar-button-bg: var(--app-control-bg, var(--app-surface-1, var(--creation-surface)));
+        --creation-composer-writing-height: 178px;
+        border-color: var(--app-border-default, var(--creation-border));
+        border-radius: 16px;
+        background: var(--app-surface-1, var(--creation-surface));
+    }
+
+    .creation-home .creation-chat-composer:is(.is-empty, .is-thread):focus-within {
+        border-color: var(--app-border-strong, var(--creation-border-strong));
+    }
+
+    .creation-home .creation-chat-composer:is(.is-empty, .is-thread).has-reference-entry {
+        --creation-composer-writing-height: 132px;
+    }
+
+    .creation-home .creation-reference-entry-bar {
+        height: auto;
+        min-height: 66px;
+        border-color: var(--app-border-subtle, var(--creation-border));
+        background: var(--app-surface-2, var(--creation-surface-muted));
+        padding: 10px 14px;
+    }
+
+    .creation-home .creation-reference-entry-copy strong {
+        color: var(--app-text-primary, var(--creation-text));
+        font-size: var(--app-font-size-control, 13px);
+    }
+
+    .creation-home .creation-reference-entry-hint {
+        color: var(--app-text-secondary, var(--creation-muted));
+        font-size: var(--app-font-size-label, 12px);
+    }
+
+    .creation-home .creation-reference-entry-icon {
+        width: 34px;
+        height: 34px;
+        flex-basis: 34px;
+        border-color: var(--app-selection-border, var(--creation-border));
+        border-radius: var(--app-radius-2, 8px);
+        background: var(--app-selection-bg, var(--creation-accent-soft));
+        color: var(--app-selection-fg, var(--creation-text));
+    }
+
+    .creation-home .creation-reference-action {
+        height: var(--app-control-height, 36px);
+    }
+
+    .creation-home .creation-reference-config-link {
+        height: var(--app-control-height-sm, 30px);
+        color: var(--app-text-secondary, var(--creation-muted));
+    }
+
+    .creation-home .creation-reference-config-link:hover {
+        background: var(--app-action-secondary-hover, var(--creation-surface-hover));
+        color: var(--app-text-primary, var(--creation-text));
+    }
+
+    .creation-home .creation-chat-composer:is(.is-empty, .is-thread) .creation-chat-writing-surface {
+        padding: 20px 20px 8px;
+    }
+
+    .creation-home .creation-chat-composer:is(.is-empty, .is-thread) .creation-chat-editor textarea,
+    .creation-home .creation-chat-composer:is(.is-empty, .is-thread) .creation-chat-mention-editor {
+        color: var(--app-text-primary, var(--creation-text));
+        font-size: var(--app-font-size-body, 14px);
+        line-height: 1.72;
+    }
+
+    .creation-home .creation-composer-notices {
+        gap: 8px;
+        border-color: var(--app-border-subtle, var(--creation-border));
+        background: var(--app-surface-1, var(--creation-surface));
+        padding: 8px 14px;
+    }
+
+    .creation-home .creation-upload-status,
+    .creation-home .creation-token-billing-note {
+        align-items: flex-start;
+        gap: 9px;
+        border: 1px solid transparent;
+        border-radius: var(--app-control-radius, 8px);
+        padding: 8px 10px;
+    }
+
+    .creation-home .creation-upload-status.is-pending {
+        border-color: var(--app-status-running-border, transparent);
+        background: var(--app-status-running-bg, var(--creation-surface-muted));
+        color: var(--app-status-running-fg, var(--creation-text));
+    }
+
+    .creation-home .creation-upload-status.is-error {
+        border-color: var(--app-status-error-border, transparent);
+        background: var(--app-status-error-bg, transparent);
+        color: var(--app-status-error-fg, var(--status-error));
+    }
+
+    .creation-home .creation-token-billing-note {
+        display: grid;
+        grid-template-columns: 24px minmax(0, 1fr);
+        column-gap: 9px;
+        row-gap: 2px;
+        border-color: var(--app-status-warning-border, transparent);
+        background: var(--app-status-warning-bg, transparent);
+    }
+
+    .creation-home .creation-token-billing-note > svg {
+        width: 24px;
+        height: 24px;
+        grid-row: 1 / 3;
+        box-sizing: border-box;
+        border-radius: var(--app-radius-1, 6px);
+        background: var(--app-status-warning-bg, rgba(217, 119, 6, 0.1));
+        color: var(--app-status-warning-fg, #b45309);
+        padding: 5px;
+    }
+
+    .creation-home .creation-token-billing-note > strong {
+        align-self: end;
+        color: var(--app-text-primary, var(--creation-text));
+        font-size: var(--app-font-size-control, 13px);
+    }
+
+    .creation-home .creation-token-billing-note > span {
+        align-self: start;
+        color: var(--app-text-secondary, var(--creation-muted));
+        font-size: var(--app-font-size-label, 12px);
+        line-height: 1.45;
+    }
+
+    .creation-home .creation-file-drop-overlay {
+        inset: 10px;
+        border-color: var(--app-selection-border, var(--creation-border-strong));
+        border-radius: var(--app-surface-radius, 12px);
+        background: color-mix(in srgb, var(--app-surface-overlay, var(--creation-surface)) 92%, var(--app-selection-bg, transparent));
+        color: var(--app-text-primary, var(--creation-text));
+        box-shadow: var(--app-shadow-raised, none);
+    }
+
+    .creation-home .creation-chat-composer:is(.is-empty, .is-thread) .creation-chat-dock {
+        height: auto;
+        min-height: 76px;
+        max-height: none;
+        align-items: flex-end;
+        gap: 12px;
+        border-top: 1px solid var(--app-border-subtle, var(--creation-border));
+        padding: 9px 12px 11px 14px;
+        overflow: visible;
+    }
+
+    .creation-home .creation-entry-toolbar {
+        align-items: flex-end;
+        flex-wrap: wrap;
+        gap: 8px 10px;
+        overflow: visible;
+    }
+
+    .creation-home .creation-entry-group.is-config {
+        width: auto;
+        min-width: 0;
+        flex: 1 1 auto;
+        align-items: flex-end;
+        flex-wrap: wrap;
+        gap: 7px;
+    }
+
+    .creation-home .creation-config-field {
+        display: flex;
+        min-width: 0;
+        flex: 0 0 auto;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .creation-home .creation-config-label {
+        display: block;
+        color: var(--app-text-muted, var(--creation-faint));
+        padding-left: 3px;
+        font-size: 10px;
+        font-weight: 600;
+        line-height: 1.1;
+    }
+
+    .creation-home .creation-entry-divider {
+        height: var(--app-control-height, 36px);
+        background: var(--app-border-subtle, var(--creation-border));
+    }
+
+    .creation-home .creation-entry-button,
+    .creation-home .creation-model-picker.creation-entry-button.canvas-composer-model-picker {
+        font-size: var(--app-font-size-label, 12px);
+    }
+
+    .creation-home .creation-model-picker.creation-entry-button.canvas-composer-model-picker {
+        width: clamp(168px, 18vw, 220px);
+    }
+
+    .creation-home .creation-entry-button:hover:not(:disabled),
+    .creation-home .creation-entry-button[aria-expanded="true"],
+    .creation-home .creation-model-picker.creation-entry-button.canvas-composer-model-picker:hover,
+    .creation-home .creation-model-picker.creation-entry-button.canvas-composer-model-picker[aria-expanded="true"] {
+        border-color: var(--app-border-default, var(--creation-border-strong));
+        background: var(--app-action-secondary-hover, var(--creation-surface-hover));
+    }
+
+    .creation-home .creation-sound-toggle[aria-pressed="true"] {
+        border-color: var(--app-selection-border, var(--creation-border-strong));
+        background: var(--app-selection-bg, var(--creation-surface-selected));
+        color: var(--app-selection-fg, var(--creation-text));
+    }
+
+    .creation-home .creation-chat-composer:is(.is-empty, .is-thread) .canvas-node-composer-submit {
+        min-width: 42px;
+        height: 42px;
+    }
+
+    .creation-home .creation-chat-composer:is(.is-empty, .is-thread) .canvas-node-composer-submit-action {
+        width: 38px;
+        height: 38px;
+        flex-basis: 38px;
+    }
+
+    .creation-home .creation-thread-toolbar,
+    .creation-home .storyboard-workbench-bar {
+        min-height: 52px;
+        justify-content: space-between;
+        border-bottom: 1px solid var(--app-border-subtle, var(--creation-border));
+        background: color-mix(in srgb, var(--app-surface-1, var(--creation-surface)) 94%, transparent);
+        padding: 8px 20px;
+        backdrop-filter: blur(16px);
+    }
+
+    .creation-home .creation-view-switch {
+        border: 1px solid var(--app-border-subtle, var(--creation-border));
+        border-radius: var(--app-control-radius, 8px);
+        background: var(--app-surface-2, var(--creation-surface-muted));
+        padding: 3px;
+    }
+
+    .creation-home .creation-view-switch button {
+        min-height: var(--app-control-height-sm, 30px);
+        border-radius: var(--app-radius-1, 6px);
+        color: var(--app-text-secondary, var(--creation-muted));
+        font-size: var(--app-font-size-label, 12px);
+    }
+
+    .creation-home .creation-view-switch button[aria-pressed="true"] {
+        background: var(--app-surface-1, var(--creation-surface));
+        color: var(--app-text-primary, var(--creation-text));
+        box-shadow: var(--app-shadow-surface, none);
+    }
+
+    .creation-home .storyboard-workbench-bar-action,
+    .creation-home .storyboard-workbench-rail-button {
+        width: var(--app-control-height, 36px);
+        height: var(--app-control-height, 36px);
+        border: 1px solid var(--app-border-subtle, var(--creation-border));
+        border-radius: var(--app-control-radius, 8px);
+        background: var(--app-surface-1, var(--creation-surface));
+        color: var(--app-text-secondary, var(--creation-muted));
+        box-shadow: var(--app-shadow-surface, none);
+    }
+
+    .creation-home .storyboard-workbench-bar-action:hover,
+    .creation-home .storyboard-workbench-rail-button:hover {
+        border-color: var(--app-border-default, var(--creation-border-strong));
+        background: var(--app-action-secondary-hover, var(--creation-surface-hover));
+        color: var(--app-text-primary, var(--creation-text));
+        transform: none;
+    }
+
+    .creation-home .storyboard-workbench-rail-button.is-open {
+        border-color: var(--app-action-primary-bg, var(--creation-text));
+        background: var(--app-action-primary-bg, var(--creation-text));
+        color: var(--app-action-primary-fg, var(--creation-bg));
+    }
+
+    .creation-home .creation-thread-stage {
+        width: min(980px, calc(100% - 48px));
+        padding: 32px 0 48px;
+    }
+
+    .creation-home .creation-results {
+        gap: 30px;
+    }
+
+    .creation-home .creation-user-message {
+        max-width: min(660px, 78%);
+        gap: 9px;
+        margin-bottom: 6px;
+        border: 1px solid var(--app-border-subtle, var(--creation-border));
+        border-radius: 14px 14px 4px 14px;
+        background: var(--app-surface-2, var(--creation-surface-muted));
+        padding: 12px 14px;
+        box-shadow: var(--app-shadow-surface, none);
+    }
+
+    .creation-home .creation-user-message-copy-wrap p {
+        font-size: var(--app-font-size-body, 14px);
+        line-height: 1.72;
+        text-align: left;
+    }
+
+    .creation-home .creation-assistant-message {
+        width: min(820px, 100%);
+        margin-bottom: 4px;
+    }
+
+    .creation-home .creation-message-mark {
+        width: 30px;
+        height: 30px;
+        flex-basis: 30px;
+        border: 1px solid var(--app-selection-border, var(--creation-border));
+        border-radius: var(--app-radius-2, 8px);
+        background: var(--app-selection-bg, var(--creation-surface-muted));
+        color: var(--app-selection-fg, var(--creation-text));
+    }
+
+    .creation-home .creation-message-heading strong {
+        font-size: var(--app-font-size-control, 13px);
+    }
+
+    .creation-home .creation-message-model,
+    .creation-home .creation-message-state {
+        border: 1px solid var(--app-border-subtle, var(--creation-border));
+        border-radius: 999px;
+        background: var(--app-surface-2, var(--creation-surface-muted));
+        color: var(--app-text-secondary, var(--creation-muted));
+        padding: 3px 8px;
+        font-size: 10px;
+    }
+
+    .creation-home .creation-message-state.is-pending,
+    .creation-home .creation-message-state.is-streaming {
+        border-color: var(--app-status-running-border, transparent);
+        background: var(--app-status-running-bg, transparent);
+        color: var(--app-status-running-fg, var(--creation-muted));
+    }
+
+    .creation-home .creation-message-state.is-error {
+        border-color: var(--app-status-error-border, transparent);
+        background: var(--app-status-error-bg, transparent);
+        color: var(--app-status-error-fg, var(--status-error));
+    }
+
+    .creation-home .creation-message-state.is-cancelled {
+        border-color: var(--app-status-info-border, var(--creation-border));
+        background: var(--app-status-info-bg, var(--creation-surface-muted));
+        color: var(--app-status-info-fg, var(--creation-muted));
+    }
+
+    .creation-home .creation-message-content,
+    .creation-home .creation-media-result {
+        max-width: 760px;
+        padding-left: 38px;
+    }
+
+    .creation-home .creation-message-error,
+    .creation-home .creation-media-error {
+        border: 1px solid var(--app-status-error-border, transparent);
+        border-radius: var(--app-surface-radius, 12px);
+        background: var(--app-status-error-bg, transparent);
+        color: var(--app-status-error-fg, var(--status-error));
+        padding: 12px 14px;
+    }
+
+    .creation-home .creation-message-error {
+        margin: 12px 0 0 38px;
+    }
+
+    .creation-home .creation-media-error {
+        width: min(720px, calc(100% - 38px));
+        margin-left: 38px;
+    }
+
+    .creation-home .creation-message-error button,
+    .creation-home .creation-media-error button {
+        min-height: var(--app-control-height-sm, 30px);
+        border: 1px solid var(--app-status-error-border, transparent);
+        border-radius: var(--app-control-radius-sm, 6px);
+        background: color-mix(in srgb, var(--app-status-error-fg, #dc2626) 8%, transparent);
+        color: inherit;
+    }
+
+    .creation-home .creation-media-error.is-cancelled,
+    .creation-home .storyboard-workbench-error.is-cancelled {
+        border-color: var(--app-status-info-border, var(--creation-border));
+        background: var(--app-status-info-bg, var(--creation-surface-muted));
+        color: var(--app-status-info-fg, var(--creation-muted));
+    }
+
+    .creation-home .creation-media-pending {
+        width: min(440px, calc(100% - 38px));
+        margin-left: 38px;
+        border: 1px solid var(--app-status-running-border, transparent);
+        border-radius: var(--app-radius-media, 16px);
+        background: linear-gradient(110deg, var(--app-status-running-bg, var(--creation-surface-muted)), var(--app-surface-2, var(--creation-surface-muted)), var(--app-status-running-bg, var(--creation-surface-muted)));
+        background-size: 240% 100%;
+        box-shadow: var(--app-shadow-surface, none);
+    }
+
+    .creation-home .creation-image-result-grid {
+        max-width: 720px;
+        gap: 12px;
+    }
+
+    .creation-home .creation-image-result {
+        max-width: 352px;
+        border-color: var(--app-border-subtle, var(--creation-border));
+        border-radius: var(--app-radius-media, 16px);
+        background: var(--app-surface-2, var(--creation-surface-muted));
+        box-shadow: var(--app-shadow-surface, none);
+        transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+    }
+
+    .creation-home .creation-image-result:hover {
+        border-color: var(--app-border-default, var(--creation-border-strong));
+        box-shadow: var(--app-shadow-raised, none);
+        transform: translateY(-1px);
+    }
+
+    .creation-home .creation-video-result {
+        width: min(720px, 100%);
+        border-color: var(--app-border-subtle, var(--creation-border));
+        border-radius: var(--app-radius-media, 16px);
+        background: var(--app-surface-2, var(--creation-surface-muted));
+        box-shadow: var(--app-shadow-surface, none);
+    }
+
+    .creation-home .creation-media-details {
+        display: flex;
+        max-width: 720px;
+        gap: 0;
+        overflow: hidden;
+        margin-top: 10px;
+        border: 1px solid var(--app-border-subtle, var(--creation-border));
+        border-radius: var(--app-control-radius, 8px);
+        background: var(--app-surface-2, var(--creation-surface-muted));
+    }
+
+    .creation-home .creation-media-details > div {
+        min-width: 112px;
+        flex: 1 1 auto;
+        flex-direction: column;
+        gap: 2px;
+        padding: 9px 12px;
+    }
+
+    .creation-home .creation-media-details > div:first-child {
+        padding-left: 12px;
+    }
+
+    .creation-home .creation-media-details dt {
+        color: var(--app-text-muted, var(--creation-faint));
+        font-size: 10px;
+    }
+
+    .creation-home .creation-media-details dd {
+        color: var(--app-text-primary, var(--creation-text));
+        font-size: var(--app-font-size-label, 12px);
+    }
+
+    .creation-home .creation-media-actions {
+        max-width: 720px;
+        gap: 6px;
+        margin-top: 9px;
+    }
+
+    .creation-home .creation-media-actions a,
+    .creation-home .creation-media-actions button {
+        min-height: var(--app-control-height-sm, 30px);
+        border: 1px solid var(--app-border-subtle, var(--creation-border));
+        border-radius: var(--app-control-radius-sm, 6px);
+        background: var(--app-action-secondary-bg, transparent);
+        color: var(--app-action-secondary-fg, var(--creation-text));
+        padding: 0 10px;
+    }
+
+    .creation-home .creation-media-actions > a:first-of-type {
+        border-color: var(--app-action-primary-bg, var(--creation-text));
+        background: var(--app-action-primary-bg, var(--creation-text));
+        color: var(--app-action-primary-fg, var(--creation-bg));
+    }
+
+    .creation-home .creation-thread-composer,
+    .creation-home .storyboard-workbench-composer .creation-chat-composer {
+        width: min(1040px, calc(100% - 48px));
+    }
+
+    .creation-home .creation-thread-composer {
+        padding: 10px 0 18px;
+        background: var(--app-bg-page, var(--creation-bg));
+    }
+
+    .creation-home .storyboard-workbench-stage {
+        padding: 18px 24px 28px;
+    }
+
+    .creation-home .storyboard-workbench-stage-inner {
+        width: min(1080px, 100%);
+    }
+
+    .creation-home .storyboard-workbench-card {
+        overflow: hidden;
+        border: 1px solid var(--app-border-default, var(--creation-border));
+        border-radius: var(--app-surface-radius, 12px);
+        background: var(--app-surface-1, var(--creation-surface));
+        box-shadow: var(--app-shadow-surface, none);
+    }
+
+    .creation-home .storyboard-workbench-card-head {
+        border-bottom: 1px solid var(--app-border-subtle, var(--creation-border));
+        background: var(--app-surface-2, var(--creation-surface-muted));
+        padding: 13px 16px;
+    }
+
+    .creation-home .storyboard-workbench-card-body {
+        padding: 20px;
+    }
+
+    .creation-home .storyboard-workbench-card-state,
+    .creation-home .storyboard-workbench-rail-row-state {
+        border: 1px solid var(--app-border-subtle, var(--creation-border));
+        background: var(--app-surface-2, var(--creation-surface-muted));
+        color: var(--app-text-secondary, var(--creation-muted));
+    }
+
+    .creation-home .storyboard-workbench-card-state.is-pending,
+    .creation-home .storyboard-workbench-rail-row-state.is-pending {
+        border-color: var(--app-status-running-border, transparent);
+        background: var(--app-status-running-bg, transparent);
+        color: var(--app-status-running-fg, var(--creation-muted));
+    }
+
+    .creation-home .storyboard-workbench-card-state.is-error,
+    .creation-home .storyboard-workbench-rail-row-state.is-error {
+        border-color: var(--app-status-error-border, transparent);
+        background: var(--app-status-error-bg, transparent);
+        color: var(--app-status-error-fg, var(--status-error));
+    }
+
+    .creation-home .storyboard-workbench-card-state.is-done,
+    .creation-home .storyboard-workbench-rail-row-state.is-done {
+        border-color: var(--app-status-success-border, transparent);
+        background: var(--app-status-success-bg, transparent);
+        color: var(--app-status-success-fg, var(--creation-muted));
+    }
+
+    .creation-home .storyboard-workbench-turn.is-user .storyboard-workbench-turn-bubble,
+    .creation-home .storyboard-workbench-brief,
+    .creation-home .storyboard-workbench-next-panel {
+        border: 1px solid var(--app-border-subtle, var(--creation-border));
+        border-radius: var(--app-surface-radius, 12px);
+        background: var(--app-surface-2, var(--creation-surface-muted));
+    }
+
+    .creation-home .storyboard-workbench-pending {
+        border: 1px solid var(--app-status-running-border, transparent);
+        background: var(--app-status-running-bg, var(--creation-surface-muted));
+        color: var(--app-status-running-fg, var(--creation-muted));
+    }
+
+    .creation-home .storyboard-workbench-error,
+    .creation-home .storyboard-workbench-card.is-error {
+        border-color: var(--app-status-error-border, transparent);
+        background: var(--app-status-error-bg, var(--creation-surface));
+        color: var(--app-status-error-fg, var(--status-error));
+    }
+
+    .creation-home .storyboard-workbench-rail-pop {
+        border: 1px solid var(--app-border-default, var(--creation-border));
+        border-radius: var(--app-surface-radius, 12px);
+        background: var(--app-surface-overlay, var(--creation-surface));
+        box-shadow: var(--app-shadow-overlay, 0 22px 64px rgba(15, 23, 42, 0.14));
+    }
+
+    .creation-home .storyboard-workbench-rail-row.is-active {
+        border-color: var(--app-selection-border, var(--creation-border));
+        background: var(--app-selection-bg, var(--creation-surface-selected));
+        color: var(--app-selection-fg, var(--creation-text));
+    }
+
+    .creation-home .storyboard-workbench-composer {
+        padding: 10px 24px 18px;
+    }
+
+    .creation-history-drawer,
+    .creation-history-drawer-root {
+        --creation-history-bg: var(--app-bg-page, #f7f8fa);
+        --creation-history-surface: var(--app-surface-1, #ffffff);
+        --creation-history-hover: var(--app-action-secondary-hover, rgba(17, 17, 17, 0.05));
+        --creation-history-text: var(--app-text-primary, #171717);
+        --creation-history-muted: var(--app-text-secondary, #52525b);
+        --creation-history-faint: var(--app-text-muted, #71717a);
+        --creation-history-line: var(--app-border-subtle, rgba(17, 17, 17, 0.1));
+        --creation-history-accent: var(--app-action-primary-bg, #171717);
+    }
+
+    .creation-history-drawer.ant-drawer-content,
+    .creation-history-drawer .ant-drawer-content,
+    .creation-history-drawer-root .ant-drawer-content {
+        border-left: 1px solid var(--app-border-subtle, var(--creation-history-line));
+        background: var(--app-bg-page, var(--creation-history-bg));
+        box-shadow: var(--app-shadow-overlay, none);
+    }
+
+    .creation-history-drawer .ant-drawer-header {
+        min-height: 60px;
+        border-bottom: 1px solid var(--app-border-subtle, var(--creation-history-line));
+        background: var(--app-surface-1, var(--creation-history-surface));
+        padding: 13px 16px;
+    }
+
+    .creation-history-content {
+        padding: 14px 12px 20px;
+    }
+
+    .creation-history-search {
+        height: var(--app-control-height, 36px);
+        border-color: var(--app-control-border, var(--creation-history-line));
+        border-radius: var(--app-control-radius, 8px);
+        background: var(--app-control-bg, var(--creation-history-surface));
+    }
+
+    .creation-history-search:focus-within {
+        border-color: var(--app-border-strong, var(--creation-history-accent));
+        box-shadow: 0 0 0 2px var(--app-focus-ring, transparent);
+    }
+
+    .creation-history-item-main {
+        min-height: 84px;
+        border-radius: var(--app-control-radius, 8px);
+    }
+
+    .creation-history-list > li.is-active .creation-history-item-main {
+        border-color: var(--app-selection-border, var(--creation-history-line));
+        background: var(--app-selection-bg, var(--creation-history-hover));
+    }
+
+    .creation-control-popover-surface,
+    .creation-generation-settings-surface {
+        border-color: var(--app-border-default, rgba(17, 17, 17, 0.18));
+        border-radius: var(--app-surface-radius, 12px);
+        background: var(--app-surface-overlay, #ffffff);
+        color: var(--app-text-primary, #171717);
+        box-shadow: var(--app-shadow-overlay, 0 22px 64px rgba(15, 23, 42, 0.14));
+    }
+
+    .creation-generation-settings-surface .creation-parameter-section + .creation-parameter-section {
+        border-top-color: var(--app-border-subtle, rgba(17, 17, 17, 0.1));
+    }
+
+    .creation-generation-settings-surface .creation-parameter-section h3,
+    .creation-generation-settings-surface .creation-choice-copy strong {
+        color: var(--app-text-primary, #171717);
+    }
+
+    .creation-generation-settings-surface .creation-parameter-section > header > span,
+    .creation-generation-settings-surface .creation-choice-copy small {
+        background: transparent;
+        color: var(--app-text-muted, #71717a);
+    }
+
+    .creation-generation-settings-surface .creation-choice-grid.is-ratio button,
+    .creation-generation-settings-surface .creation-choice-grid.is-resolution button,
+    .creation-generation-settings-surface .creation-choice-grid.is-quality button {
+        border-color: var(--app-border-subtle, rgba(17, 17, 17, 0.1));
+        background: var(--app-surface-2, #f7f8fa);
+        color: var(--app-text-secondary, #52525b);
+    }
+
+    .creation-generation-settings-surface .creation-choice-grid.is-ratio button:hover,
+    .creation-generation-settings-surface .creation-choice-grid.is-resolution button:hover,
+    .creation-generation-settings-surface .creation-choice-grid.is-quality button:hover {
+        border-color: var(--app-border-default, rgba(17, 17, 17, 0.18));
+        background: var(--app-action-secondary-hover, rgba(17, 17, 17, 0.05));
+        color: var(--app-text-primary, #171717);
+    }
+
+    .creation-generation-settings-surface .creation-choice-grid.is-ratio button.is-selected,
+    .creation-generation-settings-surface .creation-choice-grid.is-resolution button.is-selected,
+    .creation-generation-settings-surface .creation-choice-grid.is-quality button.is-selected {
+        border-color: var(--app-selection-border, rgba(17, 17, 17, 0.18));
+        background: var(--app-selection-bg, rgba(17, 17, 17, 0.09));
+        color: var(--app-selection-fg, #171717);
+    }
+
+    .creation-generation-settings-surface .creation-option-check {
+        background: var(--app-action-primary-bg, #171717);
+        color: var(--app-action-primary-fg, #ffffff);
+    }
+
+    .creation-video-operation-menu,
+    .creation-frame-role-menu {
+        color: var(--app-text-primary, #171717);
+    }
+
+    .creation-video-operation-menu button:hover:not(:disabled),
+    .creation-video-operation-menu button.is-selected,
+    .creation-frame-role-menu button:hover,
+    .creation-frame-role-menu button.is-selected {
+        background: var(--app-selection-bg, rgba(17, 17, 17, 0.09));
+    }
+
+    .creation-video-operation-copy small {
+        color: var(--app-text-muted, #71717a);
+    }
+
+    .creation-media-preview-modal.is-image .ant-modal-close,
+    .creation-media-preview-modal.is-video .ant-modal-close {
+        background: color-mix(in srgb, var(--app-action-primary-bg, #171717) 82%, transparent);
+        color: var(--app-action-primary-fg, #ffffff);
+        box-shadow: var(--app-shadow-surface, none);
     }
 }
 
