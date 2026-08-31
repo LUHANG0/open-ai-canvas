@@ -193,7 +193,7 @@ export function ComfyUIBridgeSettingsPane() {
     };
 
     return (
-        <Form layout="vertical" requiredMark={false}>
+        <Form className="settings-workflow-pane settings-comfyui-pane" layout="vertical" requiredMark={false}>
             <div className="settings-pane-header">
                 <div className="min-w-0">
                     <h2>ComfyUI Bridge</h2>

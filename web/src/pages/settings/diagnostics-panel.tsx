@@ -62,7 +62,7 @@ export default function DiagnosticsPanel({ taskId, projectId }: DiagnosticsPanel
 
     return (
         <div className="settings-pane diagnostics-page">
-            <div className="settings-section max-w-4xl pb-8">
+            <div className="settings-section settings-diagnostics max-w-4xl pb-8">
                 <header className="border-b border-border/60 pb-6 pt-1">
                     <div className="mb-3 flex items-center gap-2 text-[var(--fs-tiny)] font-semibold tracking-[0.12em] text-foreground/42">
                         <span className="h-px w-6 bg-[var(--workspace-accent)]" aria-hidden="true" />

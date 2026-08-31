@@ -148,8 +148,8 @@ export function PromptPreferencesPane() {
     const outputLabel = selected.definition.outputType === "json" ? selected.definition.schemaKey || "JSON" : "文本";
 
     return (
-        <div className="flex min-h-full flex-col">
-            <header className="shrink-0 pb-4">
+        <div className="settings-prompt-preferences flex min-h-full flex-col">
+            <header className="settings-prompt-toolbar shrink-0 pb-4">
                 <div className="flex flex-wrap items-end justify-between gap-4">
                     <div className="min-w-0 flex-1">
                         <label className="mb-2 block text-xs font-medium text-foreground/55" htmlFor="prompt-template-select">提示词模板</label>
@@ -187,8 +187,8 @@ export function PromptPreferencesPane() {
 
             {selected.outdated ? <Alert className="mt-4" type="warning" showIcon title="平台模板已更新" description="当前高级改写基于旧版本。可以保留现有改写，或恢复平台后再基于新版本调整。" /> : null}
 
-            <div className="grid min-h-0 flex-1 gap-4 pt-4 lg:grid-cols-3">
-                <section className="flex min-h-0 flex-col lg:col-span-2">
+            <div className="settings-prompt-workspace grid min-h-0 flex-1 gap-4 pt-4 lg:grid-cols-3">
+                <section className="settings-prompt-editor flex min-h-0 flex-col lg:col-span-2">
                     <div className="mb-3 shrink-0">
                         <h3 className="text-sm font-semibold">{mode === "inherit" ? "当前平台模板" : mode === "append" ? "追加个人要求" : "改写创作策略"}</h3>
                         <p className="mt-1 text-xs leading-5 text-foreground/50">
@@ -216,7 +216,7 @@ export function PromptPreferencesPane() {
                     )}
                 </section>
 
-                <aside className="min-h-0 pt-4 lg:pl-6 lg:pt-0">
+                <aside className="settings-prompt-reference min-h-0 pt-4 lg:pl-6 lg:pt-0">
                     <Tabs
                         size="small"
                         items={[

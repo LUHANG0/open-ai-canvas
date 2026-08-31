@@ -1,0 +1,286 @@
+/* Settings remains functionally responsive; the new information hierarchy is applied to PC only. */
+
+.settings-page-content {
+    min-height: 100%;
+}
+
+.settings-page .settings-subnav {
+    margin-top: var(--app-space-4, 16px);
+}
+
+.settings-subnav-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--app-space-2, 8px);
+    color: var(--app-text-secondary, var(--muted-foreground));
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.settings-subnav-heading strong {
+    min-width: 24px;
+    padding: 2px 6px;
+    color: var(--app-text-muted, var(--muted-foreground));
+    background: var(--app-surface-2, var(--surface-card));
+    border-radius: var(--app-radius-control-sm, 6px);
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+    text-align: center;
+}
+
+.settings-page .settings-pane-root,
+.settings-page .settings-pane {
+    min-width: 0;
+}
+
+@media (min-width: 1024px) {
+    .settings-page .app-page-header {
+        padding-bottom: var(--app-space-4, 16px);
+        border-bottom: 1px solid var(--app-border-subtle, var(--border));
+    }
+
+    .settings-page .settings-subnav {
+        grid-template-columns: 224px minmax(0, 1fr);
+        gap: var(--app-space-6, 24px);
+        align-items: start;
+    }
+
+    .settings-page .pc-subnav-layout__rail {
+        top: var(--app-space-5, 20px);
+        border-color: var(--app-border-subtle, var(--border));
+        border-radius: var(--app-radius-surface, 12px);
+        box-shadow: var(--app-shadow-surface, 0 1px 2px rgba(0, 0, 0, 0.04));
+    }
+
+    .settings-page .pc-subnav-layout__rail-header {
+        padding: var(--app-space-3, 12px) var(--app-space-4, 16px);
+        background: var(--app-surface-2, var(--surface-card));
+    }
+
+    .settings-page .pc-subnav-layout__nav {
+        gap: var(--app-space-1, 4px);
+        padding: var(--app-space-2, 8px);
+    }
+
+    .settings-page .pc-subnav-layout__item {
+        position: relative;
+        min-height: 58px;
+        padding: var(--app-space-2, 8px) var(--app-space-3, 12px);
+    }
+
+    .settings-page .pc-subnav-layout__item.is-active::before {
+        position: absolute;
+        inset: 9px auto 9px 0;
+        width: 3px;
+        content: "";
+        background: var(--app-action-primary-bg, var(--primary));
+        border-radius: 0 4px 4px 0;
+    }
+
+    .settings-page .pc-subnav-layout__item-icon {
+        display: grid;
+        width: 28px;
+        height: 28px;
+        margin-top: 0;
+        place-items: center;
+        color: var(--app-text-muted, var(--muted-foreground));
+        background: var(--app-surface-2, var(--surface-card));
+        border-radius: var(--app-radius-control-sm, 6px);
+    }
+
+    .settings-page .pc-subnav-layout__item.is-active .pc-subnav-layout__item-icon {
+        color: var(--app-selection-fg, var(--foreground));
+        background: var(--app-surface-1, var(--background));
+    }
+
+    .settings-page .pc-subnav-layout__content {
+        min-height: 560px;
+        border-color: var(--app-border-subtle, var(--border));
+        border-radius: var(--app-radius-surface, 12px);
+        box-shadow: var(--app-shadow-surface, 0 1px 2px rgba(0, 0, 0, 0.04));
+    }
+
+    .settings-page .pc-subnav-layout__content-body {
+        padding: var(--app-space-6, 24px);
+    }
+
+    .settings-page .settings-pane-root.is-editor {
+        min-height: 650px;
+    }
+
+    .settings-page .settings-pane-header {
+        align-items: flex-start;
+        margin-bottom: var(--app-space-5, 20px);
+        padding-bottom: var(--app-space-4, 16px);
+        border-bottom: 1px solid var(--app-border-subtle, var(--border));
+    }
+
+    .settings-page .settings-pane-header h2 {
+        color: var(--app-text-primary, var(--foreground));
+        font-size: 18px;
+        font-weight: 650;
+        line-height: 1.4;
+    }
+
+    .settings-page .settings-pane-header p {
+        max-width: 72ch;
+        margin-top: var(--app-space-1, 4px);
+        color: var(--app-text-secondary, var(--muted-foreground));
+        font-size: 13px;
+        line-height: 1.6;
+    }
+
+    .settings-page .settings-section {
+        padding: var(--app-space-5, 20px);
+        background: var(--app-surface-2, var(--surface-card));
+        border: 1px solid var(--app-border-subtle, var(--border));
+        border-radius: var(--app-radius-surface, 12px);
+    }
+
+    .settings-page .settings-section + .settings-section {
+        margin-top: var(--app-space-4, 16px);
+    }
+
+    .settings-page .settings-local-cli .settings-section {
+        margin-top: 0;
+    }
+
+    .settings-page .settings-runtime-summary {
+        padding: var(--app-space-4, 16px);
+        background: var(--app-status-info-bg, var(--app-surface-2, var(--surface-card)));
+        border-color: var(--app-status-info-border, var(--app-border-subtle, var(--border)));
+    }
+
+    .settings-page .settings-cli-card {
+        padding: var(--app-space-5, 20px);
+    }
+
+    .settings-page .settings-model-group + .settings-model-group {
+        border-top: 1px solid var(--app-border-subtle, var(--border));
+    }
+
+    .settings-page .settings-prompt-toolbar {
+        padding-bottom: var(--app-space-5, 20px);
+        border-bottom: 1px solid var(--app-border-subtle, var(--border));
+    }
+
+    .settings-page .settings-prompt-workspace {
+        gap: var(--app-space-5, 20px);
+        padding-top: var(--app-space-5, 20px);
+    }
+
+    .settings-page .settings-prompt-editor,
+    .settings-page .settings-prompt-reference {
+        padding: var(--app-space-4, 16px);
+        background: var(--app-surface-2, var(--surface-card));
+        border: 1px solid var(--app-border-subtle, var(--border));
+        border-radius: var(--app-radius-surface, 12px);
+    }
+
+    .settings-page .settings-prompt-reference {
+        padding-top: var(--app-space-4, 16px);
+        padding-left: var(--app-space-4, 16px);
+    }
+
+    .settings-page .settings-diagnostics {
+        max-width: none;
+    }
+
+    .settings-page .settings-diagnostics > header {
+        padding-top: 0;
+    }
+
+    .settings-page .settings-preference-block + .settings-preference-block {
+        margin-top: 0;
+        border-top: 1px solid var(--app-border-subtle, var(--border));
+    }
+
+    .settings-page .settings-channel {
+        padding: var(--app-space-4, 16px);
+        background: var(--app-surface-1, var(--background));
+        border: 1px solid var(--app-border-subtle, var(--border));
+        border-radius: var(--app-radius-control, 8px);
+    }
+
+    .settings-page .settings-channel:hover,
+    .settings-page .settings-channel:focus-within {
+        background: var(--app-surface-1, var(--background));
+        border-color: var(--app-border-default, var(--border));
+        box-shadow: var(--app-shadow-surface, 0 1px 2px rgba(0, 0, 0, 0.04));
+    }
+
+    .settings-page .settings-model-capabilities {
+        padding-top: var(--app-space-4, 16px);
+        border-top: 1px solid var(--app-border-subtle, var(--border));
+    }
+
+    .settings-page .settings-model-capability-row {
+        min-height: 58px;
+        background: var(--app-surface-2, var(--surface-card));
+        border: 1px solid transparent;
+    }
+
+    .settings-page .settings-model-capability-row:hover,
+    .settings-page .settings-model-capability-row:focus-within {
+        background: var(--app-action-secondary-hover-bg, var(--surface-card-hover));
+        border-color: var(--app-border-subtle, var(--border));
+    }
+
+    .settings-page .model-default-option {
+        min-height: 82px;
+        background: var(--app-surface-1, var(--background));
+        border-color: var(--app-border-subtle, var(--border));
+        border-radius: var(--app-radius-control, 8px);
+    }
+
+    .settings-page .model-default-option:hover {
+        background: var(--app-action-secondary-hover-bg, var(--surface-card-hover));
+        border-color: var(--app-border-default, var(--border));
+    }
+
+    .settings-page .model-default-option.is-selected {
+        background: var(--app-selection-bg, var(--control-selected-bg));
+        border-color: var(--app-selection-border, var(--control-selected-border));
+    }
+
+    .settings-page .workflow-json-details {
+        padding: var(--app-space-3, 12px) var(--app-space-4, 16px);
+        background: var(--app-surface-1, var(--background));
+        border: 1px solid var(--app-border-subtle, var(--border));
+        border-radius: var(--app-radius-control, 8px);
+    }
+
+    .settings-page .workflow-json-details > summary {
+        color: var(--app-text-secondary, var(--muted-foreground));
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+    }
+
+    .settings-page .workflow-graph-editor {
+        min-height: 600px;
+        background: var(--app-surface-1, var(--background));
+        border: 1px solid var(--app-border-subtle, var(--border));
+        border-radius: var(--app-radius-control, 8px);
+    }
+
+    .settings-page :where(.ant-form-item-label > label) {
+        color: var(--app-text-secondary, var(--muted-foreground));
+        font-size: 13px;
+        font-weight: 600;
+    }
+
+    .settings-page :where(.ant-form-item-extra, .ant-form-item-explain) {
+        margin-top: var(--app-space-1, 4px);
+        color: var(--app-text-muted, var(--muted-foreground));
+        font-size: 12px;
+        line-height: 1.55;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .settings-page .settings-channel {
+        transition: none;
+    }
+}

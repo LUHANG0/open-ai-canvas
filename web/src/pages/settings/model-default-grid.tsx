@@ -30,12 +30,12 @@ const groups: Array<{
 export function ModelDefaultGrid({ config, onChange }: { config: AiConfig; onChange: (key: DefaultModelKey, model: string) => void }) {
     const creditsEnabled = useUserStore((state) => state.features.creditsEnabled);
     return (
-        <div className="space-y-1">
+        <div className="settings-model-defaults space-y-1">
             {groups.map((group) => {
                 const models = filterModelsByCapability(config.models, group.capability, config.channels);
                 const Icon = group.icon;
                 return (
-                    <section key={group.capability} className="py-5 first:pt-0 last:pb-0" aria-labelledby={`default-${group.capability}-title`}>
+                    <section key={group.capability} className="settings-model-group py-5 first:pt-0 last:pb-0" aria-labelledby={`default-${group.capability}-title`}>
                         <div className="mb-3 flex items-start gap-3">
                             <span className="grid size-8 shrink-0 place-items-center rounded-md bg-surface-active text-foreground/65"><Icon className="size-4" /></span>
                             <div className="min-w-0">

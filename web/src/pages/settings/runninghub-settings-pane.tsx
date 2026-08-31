@@ -212,7 +212,7 @@ export function RunningHubSettingsPane() {
     };
 
     return (
-        <Form layout="vertical" requiredMark={false}>
+        <Form className="settings-workflow-pane settings-runninghub-pane" layout="vertical" requiredMark={false}>
             <div className="settings-pane-header">
                 <div className="min-w-0">
                     <h2>RunningHub 工作流</h2>
