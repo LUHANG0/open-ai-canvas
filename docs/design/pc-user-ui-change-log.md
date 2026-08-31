@@ -10,6 +10,10 @@
 | S04 | Home / Tasks / Assets / Skills / Wallet | `refactor/pc-ui-r4-core` | `b66da08` | `efa326e`…`fe6a048` | 保留轮询、分页、上传、技能安装与钱包合同；交叉审查后恢复素材筛选移动横向滚动 | `f227298` | `git revert -m 1 f227298` |
 | S05 | Projects 与六阶段工作流 | `refactor/pc-ui-r4-projects` | `b66da08` | `ebb6f47`…`0cdfe8a` | 保留无限加载、任务恢复、轮询、报价、版本和下载；DialogFrame 小屏等价性留集中浏览器回归 | `86d10ad` | `git revert -m 1 86d10ad` |
 | S06 | Create 创作工作台 | `refactor/pc-ui-r5-create` | `b66da08` | `09a636d`…`13b9d35` | 保留生成、上传、计费和恢复链路；交叉审查移除 32 个新增 `!important` 并完成 PC-only 保护 | `b10d635` | `git revert -m 1 b10d635` |
+| S07 | Settings / Plugins / Eagle | `refactor/pc-ui-r6-settings-plugins` | `c949021` | `88b982d`…`94c079c` | Admin 共用弹窗恢复为基线零差异；保留设置、插件启停、Eagle 上传/分页合同与移动端反馈 | `2487057` | `git revert -m 1 2487057` |
+| S08 | Canvas 画布库 | `refactor/pc-ui-r6-canvas-library` | `c949021` | `14c0c16`…`2e102cb` | 保留模式 query、ZIP 导入、50 条无限加载、Store/API 与同步合同 | `673004e` | `git revert -m 1 673004e` |
+| S09 | Canvas 编辑器与公开分享 | `refactor/pc-ui-r6-canvas-editor` | `c949021` | `ede47f9`…`88619ef` | 保留持久化、历史、上传、生成、轮询、Director 与分享权限；交叉审查修复 1024px/多列/Portal 边界 | `a46c265` | `git revert -m 1 a46c265` |
+| S10 | Auth / 系统状态 / 语音原型 | `refactor/pc-user-ui-20260901` | `c949021` | `3d67934`、`eee0a91`、`a9e8657` | 保留 next/OAuth/验证码/倒计时/Session/语音回调；状态页新增信息限定 PC | 直接提交 | 按 `a9e8657` → `eee0a91` → `3d67934` 逆序 `git revert` |
 
 ## R2/R3 冻结结论
 
@@ -28,3 +32,9 @@
 - 第一批代码集成 HEAD：`86d10ad`；冻结文档提交与标签：`74c630c` / `pc-user-ui-page-wave1-20260901`。
 - 三条页面分支均经过其他会话交叉审查，业务合同检查通过；审查发现的 PC/mobile 边界与强制覆盖问题已在合并前修复。
 - 当前仍按总计划不运行完整构建和回归测试；下一批页面从同一冻结提交创建，禁止回写第一批目录。
+
+## 第二批页面集成结论
+
+- Settings / Plugins / Eagle、Canvas 画布库、Canvas 编辑器、Auth / 系统状态 / 语音原型均已合入集成分支，当前页面代码集成 HEAD 为 `a46c265`。
+- S07、S08、S09 均经过独立会话交叉审查；审查发现的 Admin 间接影响、移动端错误反馈、sticky 遮挡、1024px 模式开关、顶部栏和多列裁切问题均在合并前修复。
+- 本阶段没有修改后端、Admin 页面、数据库、API、权限或业务规则；完整构建与业务回归继续按计划延后到 R6 全局整理完成后统一执行。
