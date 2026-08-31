@@ -14,9 +14,30 @@ export type CreationDocumentAttachment = {
     bytes: number;
     previewUrl: string;
 };
-export type CreationAttachment = ((ReferenceImage | ReferenceVideo | ReferenceAudio) & { previewUrl: string }) | CreationDocumentAttachment;
+export type CreationVideoImageRole = "first_frame" | "last_frame" | "reference_image";
+export type CreationAttachment = ((ReferenceImage | ReferenceVideo | ReferenceAudio | CreationDocumentAttachment) & {
+    previewUrl: string;
+    /** 仅对视频生成中的图片附件有效；旧附件未设置时按普通参考图处理。 */
+    videoImageRole?: CreationVideoImageRole;
+});
 export type CreationMode = "text" | "image" | "video";
 export type CreationAttachmentKind = "image" | "video" | "audio" | "file";
+
+export type CreationAttachmentCounts = Record<CreationAttachmentKind, number>;
+
+export type CreationAttachmentLimits = {
+    maxImages: number;
+    maxVideos: number;
+    maxAudios: number;
+    /** 图片/视频创作始终忽略此值，文本创作可显式传入文件上限。 */
+    maxFiles?: number;
+};
+
+export type CreationUploadFileRejection<T> = {
+    file: T;
+    kind?: CreationAttachmentKind;
+    reason: "unsupported_type" | "limit_reached";
+};
 
 const textDocumentExtensions = [".pdf", ".txt", ".md", ".csv", ".json", ".html", ".xml", ".doc", ".docx", ".ppt", ".pptx", ".xls", ".xlsx"];
 
@@ -44,6 +65,161 @@ export function creationAttachmentKind(attachment: Pick<CreationAttachment, "typ
     if (attachment.type.startsWith("video/")) return "video";
     if (attachment.type.startsWith("audio/")) return "audio";
     if (attachment.type.startsWith("image/")) return "image";
+    return "file";
+}
+
+export function countCreationAttachments(attachments: readonly Pick<CreationAttachment, "type">[]): CreationAttachmentCounts {
+    const counts: CreationAttachmentCounts = { image: 0, video: 0, audio: 0, file: 0 };
+    attachments.forEach((attachment) => {
+        counts[creationAttachmentKind(attachment)] += 1;
+    });
+    return counts;
+}
+
+export function creationAttachmentLimit(mode: CreationMode, limits: CreationAttachmentLimits, kind: CreationAttachmentKind) {
+    if (mode === "image" && kind !== "image") return 0;
+    if (mode === "video" && kind === "file") return 0;
+
+    const configured = kind === "image" ? limits.maxImages : kind === "video" ? limits.maxVideos : kind === "audio" ? limits.maxAudios : limits.maxFiles ?? 0;
+    return Number.isFinite(configured) ? Math.max(0, Math.floor(configured)) : 0;
+}
+
+export function canAddCreationAttachment(
+    attachments: readonly Pick<CreationAttachment, "type">[],
+    mode: CreationMode,
+    limits: CreationAttachmentLimits,
+    kind: CreationAttachmentKind,
+) {
+    return countCreationAttachments(attachments)[kind] < creationAttachmentLimit(mode, limits, kind);
+}
+
+export function reconcileCreationAttachmentLimits(attachments: CreationAttachment[], mode: CreationMode, limits: CreationAttachmentLimits) {
+    const counts: CreationAttachmentCounts = { image: 0, video: 0, audio: 0, file: 0 };
+    const nextAttachments: CreationAttachment[] = [];
+    const removedAttachments: CreationAttachment[] = [];
+
+    attachments.forEach((attachment) => {
+        const kind = creationAttachmentKind(attachment);
+        if (counts[kind] < creationAttachmentLimit(mode, limits, kind)) {
+            counts[kind] += 1;
+            nextAttachments.push(attachment);
+            return;
+        }
+        removedAttachments.push(attachment);
+    });
+
+    return {
+        attachments: removedAttachments.length ? nextAttachments : attachments,
+        removedAttachments,
+    };
+}
+
+export function filterCreationUploadFiles<T extends Pick<File, "type" | "name">>(
+    files: readonly T[],
+    mode: CreationMode,
+    limits: CreationAttachmentLimits,
+    currentAttachments: readonly Pick<CreationAttachment, "type">[] = [],
+) {
+    const counts = countCreationAttachments(currentAttachments);
+    const acceptedFiles: T[] = [];
+    const rejectedFiles: T[] = [];
+    const rejections: CreationUploadFileRejection<T>[] = [];
+
+    files.forEach((file) => {
+        if (!creationFileAccepted(mode, file)) {
+            rejectedFiles.push(file);
+            rejections.push({ file, reason: "unsupported_type" });
+            return;
+        }
+
+        const kind = creationUploadFileKind(file);
+        if (counts[kind] >= creationAttachmentLimit(mode, limits, kind)) {
+            rejectedFiles.push(file);
+            rejections.push({ file, kind, reason: "limit_reached" });
+            return;
+        }
+
+        counts[kind] += 1;
+        acceptedFiles.push(file);
+    });
+
+    return { acceptedFiles, rejectedFiles, rejections };
+}
+
+export function creationVideoImageRole(attachment: Pick<CreationAttachment, "type" | "videoImageRole">): CreationVideoImageRole | undefined {
+    if (creationAttachmentKind(attachment) !== "image") return undefined;
+    return attachment.videoImageRole === "first_frame" || attachment.videoImageRole === "last_frame" ? attachment.videoImageRole : "reference_image";
+}
+
+export function setCreationVideoImageRole(attachments: CreationAttachment[], attachmentId: string, role: CreationVideoImageRole) {
+    const target = attachments.find((attachment) => attachment.id === attachmentId);
+    if (!target || creationAttachmentKind(target) !== "image") return attachments;
+
+    let changed = false;
+    const nextAttachments = attachments.map((attachment) => {
+        if (creationAttachmentKind(attachment) !== "image") return attachment;
+        const currentRole = creationVideoImageRole(attachment);
+        if (attachment.id === attachmentId) {
+            if (attachment.videoImageRole === role) return attachment;
+            changed = true;
+            return { ...attachment, videoImageRole: role };
+        }
+        if (role !== "reference_image" && currentRole === role) {
+            changed = true;
+            return { ...attachment, videoImageRole: "reference_image" as const };
+        }
+        return attachment;
+    });
+    return changed ? nextAttachments : attachments;
+}
+
+export function creationVideoFrameAttachmentIds(attachments: readonly CreationAttachment[]) {
+    let videoStartFrameNodeId: string | undefined;
+    let videoEndFrameNodeId: string | undefined;
+    attachments.forEach((attachment) => {
+        const role = creationVideoImageRole(attachment);
+        if (role === "first_frame" && !videoStartFrameNodeId) videoStartFrameNodeId = attachment.id;
+        if (role === "last_frame" && !videoEndFrameNodeId) videoEndFrameNodeId = attachment.id;
+    });
+    return { videoStartFrameNodeId, videoEndFrameNodeId };
+}
+
+export function normalizeCreationVideoImageRoles(attachments: CreationAttachment[], operation: string) {
+    const imageAttachments = attachments.filter((attachment) => creationAttachmentKind(attachment) === "image");
+    if (!imageAttachments.length) return attachments;
+
+    if (operation !== "image_to_video") {
+        let changed = false;
+        const nextAttachments = attachments.map((attachment) => {
+            if (creationAttachmentKind(attachment) !== "image" || (attachment.videoImageRole !== "first_frame" && attachment.videoImageRole !== "last_frame")) return attachment;
+            changed = true;
+            // 离开首尾帧模式时只清除帧标记，不把系统转换误记为用户显式选择的普通参考图。
+            // 如果之后切回首尾帧模式，这些未设置角色的图片仍可以按顺序自动初始化。
+            return { ...attachment, videoImageRole: undefined };
+        });
+        return changed ? nextAttachments : attachments;
+    }
+
+    const hasFirstFrame = imageAttachments.some((attachment) => attachment.videoImageRole === "first_frame");
+    const hasLastFrame = imageAttachments.some((attachment) => attachment.videoImageRole === "last_frame");
+    const unassigned = imageAttachments.filter((attachment) => attachment.videoImageRole === undefined);
+    const autoFirstFrameId = hasFirstFrame ? undefined : unassigned.shift()?.id;
+    const autoLastFrameId = hasLastFrame ? undefined : unassigned.shift()?.id;
+
+    let changed = false;
+    const nextAttachments = attachments.map((attachment) => {
+        if (creationAttachmentKind(attachment) !== "image" || attachment.videoImageRole !== undefined) return attachment;
+        const role: CreationVideoImageRole = attachment.id === autoFirstFrameId ? "first_frame" : attachment.id === autoLastFrameId ? "last_frame" : "reference_image";
+        changed = true;
+        return { ...attachment, videoImageRole: role };
+    });
+    return changed ? nextAttachments : attachments;
+}
+
+function creationUploadFileKind(file: Pick<File, "type" | "name">): CreationAttachmentKind {
+    if (file.type.startsWith("image/")) return "image";
+    if (file.type.startsWith("video/")) return "video";
+    if (file.type.startsWith("audio/")) return "audio";
     return "file";
 }
 

@@ -103,6 +103,27 @@ describe("model request pricing", () => {
         expect(matched[0]?.unitPriceMicrocredits).toBe(30_000);
     });
 
+    test("自动双图使用全模态参考价格，显式首尾帧保留 image_to_video", () => {
+        const config = systemConfig({
+            logicalModelId: "logical-video-operations",
+            tiers: [
+                { selector: { operation: "reference_to_video", vquality: "720p", videoSeconds: "5", imageCount: "2" }, billingMode: "per_second", unitPriceMicrocredits: 45_000 },
+                { selector: { operation: "image_to_video", vquality: "720p", videoSeconds: "5", imageCount: "2" }, billingMode: "per_second", unitPriceMicrocredits: 30_000 },
+            ],
+        });
+        const requirements: ModelRequirements = {
+            ...textVideoRequirements,
+            input: { ...textVideoRequirements.input!, imageCount: 2 },
+            videoOperation: "image_to_video",
+        };
+        const tiers = resolveModelChannel(config, config.model).modelCosts![0]!.logicalPriceTiers!;
+
+        expect(priceTiersForCurrentSelection(tiers, "video", config, requirements)[0]?.unitPriceMicrocredits).toBe(45_000);
+        expect(priceTiersForCurrentSelection(tiers, "video", config, { ...requirements, videoOperationExplicit: true })[0]?.unitPriceMicrocredits).toBe(30_000);
+        expect(modelQuoteRequest(config, config.model, "video", requirements)?.intent.operation).toBe("reference_to_video");
+        expect(modelQuoteRequest(config, config.model, "video", { ...requirements, videoOperationExplicit: true })?.intent.operation).toBe("image_to_video");
+    });
+
     test("multiplies fixed image request pricing by output count", () => {
         const config = systemConfig({
             capability: "image",

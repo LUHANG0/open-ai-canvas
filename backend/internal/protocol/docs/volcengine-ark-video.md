@@ -53,7 +53,7 @@ curl "{channel_base_url}/api/v3/contents/generations/tasks" \
 
 ## 查询、状态与结果
 
-创建响应任务 ID 由统一解析器从顶层、`task` 或 `data` 提取。查询成功后读取视频数组或常见 URL 字段。若 Ark 把结果放在其他嵌套路径，必须用真实 fixture 增加专属解析，不允许只根据 `completed` 返回空成功。
+创建响应任务 ID 由统一解析器从顶层、`task` 或 `data` 提取。查询成功后读取视频数组或常见 URL 字段；开启 `return_last_frame` 时，`last_frame_url` 作为带 `last_frame` 角色的独立图片结果返回，不会覆盖主视频。两者均进入通用资源物化链路。若 Ark 把结果放在其他嵌套路径，必须用真实 fixture 增加专属解析，不允许只根据 `completed` 返回空成功。
 
 任务失败可能来自 endpoint 不可用、素材下载失败、参数组合不受支持、内容审核、并发或额度限制。上游 request ID 应保留用于排查，API Key 和素材正文不得进入日志。
 

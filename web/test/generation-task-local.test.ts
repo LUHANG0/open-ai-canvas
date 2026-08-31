@@ -1307,6 +1307,36 @@ test("remote provider keeps Create resolution semantics and still creates one Ba
     expect(localCalls).toBe(0);
 });
 
+test("视频任务只在显式标记时保留已选 operation", async () => {
+    const operations: string[] = [];
+    const referenceImages = ["first", "second"].map((id) => ({ id, name: `${id}.png`, type: "image/png", dataUrl: "", storageKey: `resource:${id}` }));
+    const task = {
+        id: "remote-operation-explicit-0001",
+        type: "canvas_video",
+        status: "running" as const,
+        attempts: 1,
+        createdAt: "2026-08-13T00:00:00.000Z",
+        updatedAt: "2026-08-13T00:00:00.000Z",
+    };
+    const dependencies = {
+        createTask: async (input: Parameters<Parameters<typeof runBackendGenerationTask>[1]["createTask"]>[0]) => {
+            operations.push(input.operation);
+            return { ...task, operation: input.operation };
+        },
+        waitTask: async () => ({ ...task, status: "succeeded" as const, resultJson: JSON.stringify({ mode: "video", video: { dataUrl: "opaque://video" } }) }),
+        runLocal: async () => {
+            throw new Error("must not use Local Runtime");
+        },
+        createId: () => "unused-operation-id",
+        now: () => "2026-08-13T00:00:00.000Z",
+    };
+
+    await runBackendGenerationTask({ mode: "video", prompt: "auto", config: { ...defaultConfig, model: "default::provider-neutral-model" }, referenceImages, metadata: { videoEditOperation: "image_to_video" } }, dependencies);
+    await runBackendGenerationTask({ mode: "video", prompt: "explicit", config: { ...defaultConfig, model: "default::provider-neutral-model" }, referenceImages, metadata: { videoEditOperation: "image_to_video", videoOperationExplicit: true } }, dependencies);
+
+    expect(operations).toEqual(["reference_to_video", "image_to_video"]);
+});
+
 test("remote image video and audio references keep Backend parity without Dreamina CLI fields", async () => {
     const backendInputs: Array<Record<string, unknown>> = [];
     let localCalls = 0;

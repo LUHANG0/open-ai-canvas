@@ -682,6 +682,154 @@ html:not(.dark) .creation-media-preview-modal.is-image .ant-modal-container {
     color: var(--creation-faint);
 }
 
+.creation-home .creation-entry-button.is-video-operation {
+    max-width: 126px;
+    justify-content: flex-start;
+}
+
+.creation-home .creation-entry-button.is-video-operation > span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.creation-home .creation-entry-button.is-video-operation > svg:last-child {
+    width: 13px;
+    height: 13px;
+    margin-left: auto;
+    color: var(--creation-faint);
+}
+
+.creation-video-operation-menu {
+    width: min(250px, calc(100vw - 24px));
+    padding: 6px;
+    color: #f0f1f2;
+}
+
+.creation-video-operation-menu button {
+    display: flex;
+    width: 100%;
+    min-height: 46px;
+    align-items: center;
+    gap: 10px;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: inherit;
+    padding: 7px 9px;
+    text-align: left;
+}
+
+.creation-video-operation-menu button:hover:not(:disabled),
+.creation-video-operation-menu button.is-selected {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.creation-video-operation-menu button:disabled {
+    cursor: not-allowed;
+    opacity: 0.42;
+}
+
+.creation-video-operation-menu button > svg {
+    width: 14px;
+    height: 14px;
+    margin-left: auto;
+}
+
+.creation-video-operation-copy {
+    display: flex;
+    min-width: 0;
+    flex: 1;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.creation-video-operation-copy strong {
+    font-size: 11px;
+    font-weight: 650;
+}
+
+.creation-video-operation-copy small {
+    overflow: hidden;
+    color: #8e949d;
+    font-size: 9px;
+    line-height: 1.35;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.creation-home .creation-reference-frame-role {
+    position: absolute;
+    bottom: 3px;
+    left: 3px;
+    z-index: 2;
+    display: grid;
+    width: 18px;
+    height: 18px;
+    place-items: center;
+    border: 1px solid rgba(255, 255, 255, 0.34);
+    border-radius: 5px;
+    background: rgba(13, 15, 18, 0.78);
+    color: #fff;
+    padding: 0;
+    font-size: 9px;
+    font-weight: 700;
+    line-height: 1;
+    backdrop-filter: blur(8px);
+}
+
+.creation-home .creation-reference-frame-role:is(.is-first_frame, .is-last_frame) {
+    border-color: color-mix(in srgb, var(--creation-accent) 58%, rgba(255, 255, 255, 0.34));
+    background: color-mix(in srgb, var(--creation-accent) 74%, rgba(13, 15, 18, 0.9));
+}
+
+.creation-frame-role-menu {
+    width: 166px;
+    padding: 5px;
+    color: #f0f1f2;
+}
+
+.creation-frame-role-menu button {
+    display: flex;
+    width: 100%;
+    height: 34px;
+    align-items: center;
+    gap: 8px;
+    border: 0;
+    border-radius: 7px;
+    background: transparent;
+    color: inherit;
+    padding: 0 8px;
+    font-size: 11px;
+    text-align: left;
+}
+
+.creation-frame-role-menu button:hover,
+.creation-frame-role-menu button.is-selected {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.creation-frame-role-menu button > svg {
+    width: 13px;
+    height: 13px;
+    margin-left: auto;
+}
+
+html:not(.dark) .creation-video-operation-menu,
+html:not(.dark) .creation-frame-role-menu {
+    color: #20242a;
+}
+
+html:not(.dark) .creation-video-operation-copy small {
+    color: #727980;
+}
+
+html:not(.dark) .creation-video-operation-menu button:hover:not(:disabled),
+html:not(.dark) .creation-video-operation-menu button.is-selected,
+html:not(.dark) .creation-frame-role-menu button:hover,
+html:not(.dark) .creation-frame-role-menu button.is-selected {
+    background: rgba(28, 32, 37, 0.06);
+}
+
 .creation-home .creation-model-picker.creation-entry-button.canvas-composer-model-picker {
     width: min(200px, 23vw) !important;
     justify-content: flex-start;
@@ -1157,6 +1305,74 @@ html:not(.dark) .creation-generation-settings-surface .creation-custom-trigger {
     height: 100%;
     background: transparent;
     object-fit: cover;
+}
+
+.creation-home .creation-video-result-attachments {
+    display: flex;
+    max-width: 640px;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.creation-home .creation-video-result-attachment {
+    position: relative;
+    width: 112px;
+    aspect-ratio: 16 / 9;
+    overflow: hidden;
+    border: 1px solid var(--creation-border);
+    border-radius: 8px;
+    background: var(--creation-surface-muted);
+}
+
+.creation-home .creation-video-result-attachment img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 160ms ease;
+}
+
+.creation-home .creation-video-result-attachment:hover img {
+    transform: scale(1.035);
+}
+
+.creation-home .creation-video-result-attachment em,
+.creation-home .creation-video-result-attachment > span {
+    position: absolute;
+    bottom: 5px;
+    display: inline-flex;
+    height: 21px;
+    align-items: center;
+    border-radius: 5px;
+    background: rgba(13, 14, 16, 0.68);
+    color: #fff;
+    backdrop-filter: blur(8px);
+}
+
+.creation-home .creation-video-result-attachment em {
+    left: 5px;
+    padding: 0 6px;
+    font-size: 9px;
+    font-style: normal;
+    font-weight: 650;
+}
+
+.creation-home .creation-video-result-attachment > span {
+    right: 5px;
+    width: 21px;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 160ms ease;
+}
+
+.creation-home .creation-video-result-attachment:hover > span {
+    opacity: 1;
+}
+
+.creation-home .creation-video-result-attachment svg {
+    width: 12px;
+    height: 12px;
 }
 
 .creation-home .creation-media-details {

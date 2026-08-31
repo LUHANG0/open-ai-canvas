@@ -130,10 +130,8 @@ func TestDefaultVolcengineArkVideoCapabilitySupportsFullModalReference(t *testin
 	if profile == nil || profile.Video == nil {
 		t.Fatal("Volcengine Ark video profile = nil")
 	}
-	for _, operation := range []string{"reference_to_video", "audio_to_video"} {
-		if !containsCapabilityString(profile.Video.Operations, operation) {
-			t.Fatalf("operations = %v, want %s", profile.Video.Operations, operation)
-		}
+	if !containsCapabilityString(profile.Video.Operations, "reference_to_video") || containsCapabilityString(profile.Video.Operations, "audio_to_video") {
+		t.Fatalf("operations = %v, want reachable multimodal reference operation only", profile.Video.Operations)
 	}
 	if profile.Video.References.MaxImages != 9 || profile.Video.References.MaxVideos != 3 || profile.Video.References.MaxAudios != 3 {
 		t.Fatalf("reference limits = %#v", profile.Video.References)
@@ -146,7 +144,7 @@ func TestValidateVolcengineArkFullModalReferenceRejectsTextAndAudioOnly(t *testi
 		Prompt:          "follow the soundtrack",
 		Config:          providerConfig{InterfaceType: "volcengine-ark-video", VideoSeconds: "6", Size: "16:9", VQuality: "720p"},
 		ReferenceAudios: []providerMedia{{URL: "https://example.com/music.mp3"}},
-		Metadata:        map[string]interface{}{"videoEditOperation": "audio_to_video"},
+		Metadata:        map[string]interface{}{"videoEditOperation": "reference_to_video"},
 	}
 	err := validateVideoTask(profile, input)
 	if err == nil || !strings.Contains(err.Error(), "文本+音频") {
@@ -156,6 +154,79 @@ func TestValidateVolcengineArkFullModalReferenceRejectsTextAndAudioOnly(t *testi
 	input.ReferenceImages = []providerMedia{{URL: "https://example.com/subject.png"}}
 	if err := validateVideoTask(profile, input); err != nil {
 		t.Fatalf("validateVideoTask(full modal) error = %v", err)
+	}
+}
+
+func TestDefaultVideoCapabilitiesMatchAdapterReferenceLimitsAndOperations(t *testing.T) {
+	tests := []struct {
+		name       string
+		protocol   string
+		modelName  string
+		minImages  int
+		maxImages  int
+		maxVideos  int
+		maxAudios  int
+		operations []string
+	}{
+		{name: "jimeng single start frame", protocol: "volcengine-jimeng-video", maxImages: 1, operations: []string{"text_to_video", "image_to_video"}},
+		{name: "gemini single start frame", protocol: "gemini-veo", maxImages: 1, operations: []string{"text_to_video", "image_to_video"}},
+		{name: "newapi media references", protocol: "newapi-channel-1", maxImages: 9, maxVideos: 3, maxAudios: 3, operations: []string{"text_to_video", "image_to_video", "reference_to_video"}},
+		{name: "newapi video generations references", protocol: "newapi-channel-2", modelName: "endpoint-video", maxImages: 9, maxVideos: 3, maxAudios: 3, operations: []string{"text_to_video", "image_to_video", "reference_to_video"}},
+		{name: "newapi grok requires one image", protocol: "newapi-channel-2", modelName: "grok-video-1.5", minImages: 1, maxImages: 1, operations: []string{"image_to_video"}},
+		{name: "xai exposes reference images", protocol: "xai-video", maxImages: 9, operations: []string{"text_to_video", "image_to_video", "reference_to_video"}},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			profile := DefaultModelCapabilityConfigForModel(test.protocol, test.modelName).Video
+			if profile.References.MinImages != test.minImages || profile.References.MaxImages != test.maxImages || profile.References.MaxVideos != test.maxVideos || profile.References.MaxAudios != test.maxAudios {
+				t.Fatalf("references = %#v", profile.References)
+			}
+			if fmt.Sprint(profile.Operations) != fmt.Sprint(test.operations) {
+				t.Fatalf("operations = %v, want %v", profile.Operations, test.operations)
+			}
+		})
+	}
+}
+
+func TestNormalizeVideoCapabilitiesRepairsHardAdapterConstraints(t *testing.T) {
+	legacy := DefaultModelCapabilityConfigForModel("newapi", "legacy-video")
+	legacy.Video.Operations = append(legacy.Video.Operations, "audio_to_video")
+
+	jimeng, err := NormalizeModelCapabilityConfigForModel("video", "volcengine-jimeng-video", "jimeng-video", legacy)
+	if err != nil {
+		t.Fatalf("normalize Jimeng: %v", err)
+	}
+	if jimeng.Video.References.MaxImages != 1 || jimeng.Video.References.MaxVideos != 0 || jimeng.Video.References.MaxAudios != 0 {
+		t.Fatalf("normalized Jimeng references = %#v", jimeng.Video.References)
+	}
+
+	ark, err := NormalizeModelCapabilityConfigForModel("video", "volcengine-ark-video", "seedance", legacy)
+	if err != nil {
+		t.Fatalf("normalize Ark: %v", err)
+	}
+	if containsCapabilityString(ark.Video.Operations, "audio_to_video") {
+		t.Fatalf("normalized Ark operations = %v", ark.Video.Operations)
+	}
+
+	grok, err := NormalizeModelCapabilityConfigForModel("video", "newapi-channel-2", "grok-video-1.5-1080p", legacy)
+	if err != nil {
+		t.Fatalf("normalize NewAPI Grok: %v", err)
+	}
+	if grok.Video.References.MinImages != 1 || grok.Video.References.MaxImages != 1 || fmt.Sprint(grok.Video.Operations) != fmt.Sprint([]string{"image_to_video"}) || grok.Video.DefaultOperation != "image_to_video" {
+		t.Fatalf("normalized NewAPI Grok = %#v", grok.Video)
+	}
+}
+
+func TestValidateNewAPIChannel2RejectsAudioWithoutReferenceVideo(t *testing.T) {
+	profile := DefaultModelCapabilityConfigForModel("newapi-channel-2", "endpoint-video").Video
+	err := validateVideoTask(profile, canvasGenerationInput{
+		Config:          providerConfig{InterfaceType: "newapi-channel-2", VideoSeconds: "6", Size: "16:9", VQuality: "720p"},
+		ReferenceImages: []providerMedia{{URL: "https://example.com/subject.png"}},
+		ReferenceAudios: []providerMedia{{URL: "https://example.com/music.mp3"}},
+		Metadata:        map[string]interface{}{"videoEditOperation": "reference_to_video"},
+	})
+	if err == nil || !strings.Contains(err.Error(), "至少 1 个参考视频") {
+		t.Fatalf("validateVideoTask() error = %v", err)
 	}
 }
 

@@ -231,7 +231,7 @@ func TestArkVideoAdapterMapsSafeOptionsAndWrappedResult(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if polled.TaskID != "task-platform-id" || polled.Status != StatusSucceeded || polled.Result == nil || len(polled.Result.Videos) != 1 || polled.Result.Videos[0].URL != "https://cdn.example/video.mp4" || polled.Result.Usage["total_tokens"] != float64(108900) {
+	if polled.TaskID != "task-platform-id" || polled.Status != StatusSucceeded || polled.Result == nil || len(polled.Result.Videos) != 1 || polled.Result.Videos[0].URL != "https://cdn.example/video.mp4" || len(polled.Result.Images) != 1 || polled.Result.Images[0].URL != "https://cdn.example/last.png" || polled.Result.Images[0].Role != "last_frame" || polled.Result.Usage["total_tokens"] != float64(108900) {
 		t.Fatalf("polled = %#v", polled)
 	}
 }

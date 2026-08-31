@@ -31,7 +31,7 @@ export type BackendGenerationMode = "text" | "image" | "video" | "audio";
 
 export type BackendGenerationResult = {
     mode?: BackendGenerationMode;
-    images?: Array<{ dataUrl: string; storageKey?: string; width?: number; height?: number; bytes?: number; mimeType?: string }>;
+    images?: Array<{ dataUrl: string; storageKey?: string; width?: number; height?: number; bytes?: number; mimeType?: string; role?: "first_frame" | "last_frame" | "reference_image" }>;
     video?: { dataUrl: string; storageKey?: string; width?: number; height?: number; durationMs?: number; bytes?: number; mimeType?: string };
     audio?: { dataUrl: string; storageKey?: string; durationMs?: number; bytes?: number; mimeType?: string; format?: string };
     text?: string;
@@ -306,7 +306,7 @@ function generationOperation(options: BackendGenerationTaskOptions) {
         videoCount: options.referenceVideos?.length ?? 0,
         audioCount: options.referenceAudios?.length ?? 0,
         characterCount: 0,
-    }, options.metadata?.videoEditOperation as string | undefined);
+    }, options.metadata?.videoEditOperation as string | undefined, options.metadata?.videoOperationExplicit === true);
 }
 
 export function isGenerationTaskCancelled(error: unknown, signal?: AbortSignal) {

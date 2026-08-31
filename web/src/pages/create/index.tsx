@@ -41,7 +41,7 @@ import { CanvasResourceMentionTextarea } from "@/components/canvas/canvas-resour
 import { CanvasPromptOptimizerDrawer } from "@/components/canvas/canvas-prompt-optimizer-drawer";
 import { ModelPicker } from "@/components/model-picker";
 import { CreditSymbol, requestCreditCost } from "@/constant/credits";
-import { creationCanvasHandoffPath, creationResultAssetIds } from "@/lib/canvas/canvas-asset-handoff";
+import { creationCanvasHandoffPath, creationResultAssetIds, creationResultMediaEntries, type CreationResultMediaEntry } from "@/lib/canvas/canvas-asset-handoff";
 import { createGenerationBatchRetryContexts, createGenerationRetryContext, runGenerationOperationOnce, type GenerationRetryContext } from "@/lib/canvas/canvas-project-generation";
 import { createClientId } from "@/lib/client-id";
 import { generationErrorCode, generationErrorMessage } from "@/lib/generation-error";
@@ -50,7 +50,7 @@ import { useExternalAssetSources } from "@/hooks/use-external-asset-sources";
 import { buildImageResolutionOptions, formatImageResolutionSize, imageRatioForSize, imageResolutionChoices, imageResolutionOption, imageSizeForResolution, supportsImageResolutionPresets, type ImageResolutionChoice } from "@/lib/image-resolution-tiers";
 import { formatVideoResolutionLabel as videoResolutionLabel, VIDEO_RESOLUTION_OPTIONS } from "@/lib/video-generation-options";
 import { modelCapabilityConfigFor, normalizeImageValue, normalizeVideoValue, videoDurationAllowed, videoDurationOptions, type ImageCapabilityConfig, type VideoCapabilityConfig } from "@/lib/model-capabilities";
-import { inferVideoOperation, resolveCompatibleModel, mergedImageCapabilityConfig, type ModelRequirements } from "@/lib/model-selection";
+import { inferVideoOperation, mergedImageCapabilityConfig, modelCompatibilityError, modelGroupReferenceLimits, modelGroupVideoOperations, resolveCompatibleModel, type ModelInputSummary, type ModelRequirements } from "@/lib/model-selection";
 import { backendModelRuntimeRequired, isGenerationTaskCancelled, runBackendGenerationTask, runBackendGenerationTaskBatch, type BackendGenerationResult } from "@/services/api/generation-task";
 import { requestImageQuestion, type AiTextContentPart } from "@/services/api/image";
 import { listAddedSkills, type Skill } from "@/services/api/skills";
@@ -75,7 +75,6 @@ import {
     buildCreationMentionReferences,
     displayCreationPrompt,
     expandCreationPrompt,
-    reconcileCreationAttachmentLimit,
     removeCreationReferenceTokens,
     replaceCreationAttachmentReference,
     selectedCreationReferences,
@@ -92,22 +91,43 @@ import {
     creationAttachmentFromVideo,
     creationAttachmentFromVideoAsset,
     creationAttachmentKind,
+    creationAttachmentLimit,
     creationAudioAsset,
+    creationVideoFrameAttachmentIds,
+    creationVideoImageRole,
     creationFileAccepted,
     creationImageAsset,
     creationMediaAspectRatio,
     creationUploadAccept,
     creationVideoAsset,
+    countCreationAttachments,
+    filterCreationUploadFiles,
+    normalizeCreationVideoImageRoles,
+    reconcileCreationAttachmentLimits,
     removeCreationAttachment,
+    setCreationVideoImageRole,
     splitCreationAttachments,
     type CreationAttachment,
+    type CreationAttachmentKind,
+    type CreationAttachmentLimits,
+    type CreationVideoImageRole,
 } from "./creation-assets";
 import { CreationEmptyIntro, CreationEmptySuggest, type CreationMode } from "./creation-empty-state";
 import "./creation-workspace.css";
 
 type CreationViewMode = "chat" | "storyboard";
 type CreationStatus = "streaming" | "pending" | "done" | "error" | "cancelled";
-type CreationSettings = { ratio: string; seconds: string; quality: string; videoQuality: string; count: string };
+type CreationVideoOperationChoice = "auto" | "text_to_video" | "image_to_video" | "reference_to_video" | "audio_to_video";
+type CreationSettings = {
+    ratio: string;
+    seconds: string;
+    quality: string;
+    videoQuality: string;
+    count: string;
+    videoOperation?: CreationVideoOperationChoice;
+    generateAudio?: string;
+    watermark?: string;
+};
 type CreationRetryContext = GenerationRetryContext & { retryContextsByBatchIndex?: GenerationRetryContext[] };
 type CreationMessage = {
     id: string;
@@ -156,6 +176,44 @@ const qualityOptions = [
 ];
 const resolutionOptions = VIDEO_RESOLUTION_OPTIONS.map((value) => ({ value: String(value), label: videoResolutionLabel(value) }));
 const countOptions = ["1", "2", "3", "4"];
+
+const creationVideoOperationOptions: Array<{ value: CreationVideoOperationChoice; label: string; description: string }> = [
+    { value: "auto", label: "自动判断", description: "根据参考素材自动选择生成方式" },
+    { value: "text_to_video", label: "文生视频", description: "只使用提示词生成视频" },
+    { value: "image_to_video", label: "首/尾帧", description: "指定首帧、尾帧或普通参考图" },
+    { value: "reference_to_video", label: "全模态参考", description: "组合图片、视频和音频参考" },
+    { value: "audio_to_video", label: "音频驱动", description: "以音频节奏或声音作为主要参考" },
+];
+const creationVideoImageRoleOptions: Array<{ value: CreationVideoImageRole; label: string; shortLabel: string }> = [
+    { value: "first_frame", label: "设为首帧", shortLabel: "首" },
+    { value: "last_frame", label: "设为尾帧", shortLabel: "尾" },
+    { value: "reference_image", label: "设为普通参考图", shortLabel: "参" },
+];
+
+function resolvedCreationVideoOperation(choice: CreationVideoOperationChoice, input: ModelInputSummary) {
+    return choice === "auto" ? inferVideoOperation(input) : choice;
+}
+
+function creationVideoOperationError(operation: string, input: ModelInputSummary, frames?: ReturnType<typeof creationVideoFrameAttachmentIds>) {
+    const mediaCount = input.imageCount + input.videoCount + input.audioCount;
+    if (operation === "text_to_video" && mediaCount > 0) return "文生视频模式不使用参考素材，请移除素材或切换生成方式";
+    if (operation === "image_to_video" && input.imageCount === 0) return "首/尾帧模式至少需要 1 张参考图片";
+    if (operation === "image_to_video" && !frames?.videoStartFrameNodeId) return "首/尾帧模式必须指定首帧，尾帧可以不填";
+    if (operation === "image_to_video" && input.videoCount > 0) return "首/尾帧模式不使用参考视频，请切换为全模态参考";
+    if (operation === "reference_to_video" && mediaCount === 0) return "全模态参考模式至少需要 1 个参考素材";
+    if (operation === "audio_to_video" && input.audioCount === 0) return "音频驱动模式至少需要 1 个参考音频";
+    if (operation === "audio_to_video" && input.imageCount + input.videoCount > 0) return "音频驱动模式只使用音频参考，图像或视频请改用全模态参考";
+    return "";
+}
+
+function creationInputSummary(attachments: readonly CreationAttachment[], hasText: boolean): ModelInputSummary {
+    const counts = countCreationAttachments(attachments);
+    return { textCount: hasText ? 1 : 0, imageCount: counts.image, videoCount: counts.video, audioCount: counts.audio, characterCount: 0 };
+}
+
+function normalizeCreationVideoAttachments(attachments: CreationAttachment[], choice: CreationVideoOperationChoice, hasText: boolean) {
+    return normalizeCreationVideoImageRoles(attachments, resolvedCreationVideoOperation(choice, creationInputSummary(attachments, hasText)));
+}
 
 function ratioDisplayLabel(value: string) {
     return ratioOptions.find((option) => option.value === value)?.label || "自定义画幅";
@@ -262,6 +320,7 @@ export default function CreatePage() {
     const [quality, setQuality] = useState("auto");
     const [videoQuality, setVideoQuality] = useState(config.vquality || "720");
     const [count, setCount] = useState(String(Math.max(1, Math.min(4, Number(config.count) || 1))));
+    const [videoOperationChoice, setVideoOperationChoice] = useState<CreationVideoOperationChoice>("auto");
     const [busy, setBusy] = useState(false);
     const [referenceReplacementBusy, setReferenceReplacementBusy] = useState(false);
     const [viewMode, setViewMode] = useState<CreationViewMode>("chat");
@@ -279,6 +338,8 @@ export default function CreatePage() {
     const retryPreparingRef = useRef(new Set<string>());
     const pendingRetryRef = useRef<{ context: CreationRetryContext; lockKey: string } | null>(null);
     const [retrySequence, setRetrySequence] = useState(0);
+    const draftSettingsRestoreRef = useRef<{ mode: CreationMode; settings: CreationSettings } | null>(null);
+    const [draftSettingsRestoreRevision, setDraftSettingsRestoreRevision] = useState(0);
     promptRef.current = prompt;
     attachmentsRef.current = attachments;
 
@@ -289,16 +350,14 @@ export default function CreatePage() {
     );
     const preferredModel = mode === "text" ? config.textModel : mode === "image" ? config.imageModel : config.videoModel;
     const hasPrompt = Boolean(prompt.trim());
+    const modelInput = useMemo<ModelInputSummary>(() => creationInputSummary(attachments, hasPrompt), [attachments, hasPrompt]);
+    const requestedVideoOperation = mode === "video" ? resolvedCreationVideoOperation(videoOperationChoice, modelInput) : undefined;
     const modelRequirements = useMemo<ModelRequirements>(
         () => ({
             capability: mode,
-            input: {
-                textCount: hasPrompt ? 1 : 0,
-                imageCount: attachments.filter(isImageAttachment).length,
-                videoCount: attachments.filter(isVideoAttachment).length,
-                audioCount: attachments.filter((attachment) => creationAttachmentKind(attachment) === "audio").length,
-                characterCount: 0,
-            },
+            input: modelInput,
+            videoOperation: requestedVideoOperation,
+            videoOperationExplicit: mode === "video" ? videoOperationChoice !== "auto" : undefined,
             videoSeconds: mode === "video" ? seconds : undefined,
             imageSize: mode === "image" ? ratio : undefined,
             options:
@@ -308,12 +367,28 @@ export default function CreatePage() {
                       ? { size: ratio, videoSeconds: Number(seconds), vquality: videoQuality, videoGenerateAudio: config.videoGenerateAudio === "true", videoWatermark: config.videoWatermark === "true" }
                       : {},
         }),
-        [attachments, config.transparentBackground, config.videoGenerateAudio, config.videoWatermark, count, hasPrompt, mode, quality, ratio, seconds, videoQuality],
+        [config.transparentBackground, config.videoGenerateAudio, config.videoWatermark, count, mode, modelInput, quality, ratio, requestedVideoOperation, seconds, videoOperationChoice, videoQuality],
     );
     const selectedModel = resolveCompatibleModel(config, preferredModel, modelRequirements) || preferredModel;
     const imageProfile = useMemo(() => modelCapabilityConfigFor(config, selectedModel).image!, [config, selectedModel]);
     const videoProfile = useMemo(() => modelCapabilityConfigFor(config, selectedModel).video!, [config, selectedModel]);
-    const maxReferences = mode === "video" ? (videoProfile.operations.includes("image_to_video") ? videoProfile.references.maxImages : 0) : mode === "image" ? imageProfile.references.maxImages : 6;
+    const groupReferenceLimits = useMemo(() => modelGroupReferenceLimits(config, preferredModel, mode), [config, mode, preferredModel]);
+    const videoOperations = useMemo(() => modelGroupVideoOperations(config, preferredModel), [config, preferredModel]);
+    const referenceLimits = useMemo<CreationAttachmentLimits>(
+        () =>
+            mode === "video"
+                ? {
+                      maxImages: videoOperationChoice === "text_to_video" || videoOperationChoice === "audio_to_video" ? 0 : groupReferenceLimits?.maxImages || 0,
+                      maxVideos: videoOperationChoice === "auto" || videoOperationChoice === "reference_to_video" ? groupReferenceLimits?.maxVideos || 0 : 0,
+                      maxAudios: videoOperationChoice === "text_to_video" ? 0 : groupReferenceLimits?.maxAudios || 0,
+                      maxFiles: 0,
+                  }
+                : mode === "image"
+                  ? { maxImages: groupReferenceLimits?.maxImages ?? imageProfile.references.maxImages, maxVideos: 0, maxAudios: 0, maxFiles: 0 }
+                  : { maxImages: 6, maxVideos: 6, maxAudios: 6, maxFiles: 6 },
+        [groupReferenceLimits, imageProfile.references.maxImages, mode, videoOperationChoice],
+    );
+    const maxReferences = mode === "text" ? 6 : referenceLimits.maxImages + referenceLimits.maxVideos + referenceLimits.maxAudios;
     const referenceImageSize = useMemo(() => {
         const imageAttachments = attachments.filter(isImageAttachment);
         if (imageAttachments.length !== 1) return undefined;
@@ -330,6 +405,15 @@ export default function CreatePage() {
 
     useEffect(() => {
         if (mode !== "image") return;
+        const pendingRestore = draftSettingsRestoreRef.current;
+        if (pendingRestore?.mode === "image") {
+            const restored = pendingRestore.settings;
+            setRatio(restored.ratio);
+            setQuality(restored.quality);
+            setCount(restored.count);
+            draftSettingsRestoreRef.current = null;
+            return;
+        }
         // 前台逻辑模型的默认参数优先于旧的全局创作参数；否则旧的合法值会一直覆盖后台刚配置的默认值。
         const normalized = normalizeImageValue(imageProfile, {
             size: imageProfile.size.default,
@@ -339,10 +423,19 @@ export default function CreatePage() {
         setRatio(normalized.size);
         setQuality(normalized.quality);
         setCount(normalized.count);
-    }, [mode, selectedModel, imageProfile]);
+    }, [draftSettingsRestoreRevision, mode, preferredModel]);
 
     useEffect(() => {
         if (mode !== "video") return;
+        const pendingRestore = draftSettingsRestoreRef.current;
+        if (pendingRestore?.mode === "video") {
+            const restored = pendingRestore.settings;
+            setRatio(restored.ratio);
+            setSeconds(restored.seconds);
+            setVideoQuality(restored.videoQuality);
+            draftSettingsRestoreRef.current = null;
+            return;
+        }
         // 前台逻辑模型的默认参数必须直接落到创作端状态，提交任务时才不会被旧状态覆盖。
         const normalized = normalizeVideoValue(videoProfile, {
             seconds: String(videoProfile.duration.default),
@@ -352,16 +445,13 @@ export default function CreatePage() {
         setSeconds(normalized.seconds);
         setRatio(normalized.ratio);
         setVideoQuality(normalized.resolution.replace(/p$/i, ""));
-        const maxReferences = videoProfile.operations.includes("image_to_video") ? videoProfile.references.maxImages : 0;
-        if (attachments.length > maxReferences) setAttachments((current) => current.slice(0, maxReferences));
-    }, [mode, selectedModel, videoProfile]);
+    }, [draftSettingsRestoreRevision, mode, preferredModel]);
 
     useEffect(() => {
-        const reconciled = reconcileCreationAttachmentLimit(attachments, mentionReferences, maxReferences);
-        if (reconciled.attachments === attachments) return;
-        setAttachments(reconciled.attachments);
-        if (reconciled.removedReferences.length) setPrompt((current) => removeCreationReferenceTokens(current, reconciled.removedReferences));
-    }, [attachments, maxReferences, mentionReferences]);
+        if (mode !== "video" || !requestedVideoOperation) return;
+        const normalized = normalizeCreationVideoImageRoles(attachments, requestedVideoOperation);
+        if (normalized !== attachments) setAttachments(normalized);
+    }, [attachments, mode, requestedVideoOperation]);
 
     useEffect(() => {
         let cancelled = false;
@@ -497,13 +587,33 @@ export default function CreatePage() {
         }
     };
 
+    const referenceCounts = useMemo(() => countCreationAttachments(attachments), [attachments]);
+    const attachmentDisabledReason = useCallback(
+        (kind: CreationAttachmentKind, alreadySelected = false) => {
+            if (alreadySelected) return undefined;
+            if (mode === "text" && attachments.length >= maxReferences) return `文本创作最多添加 ${maxReferences} 个参考内容`;
+            const limit = creationAttachmentLimit(mode, referenceLimits, kind);
+            const label = kind === "image" ? "图片" : kind === "video" ? "视频" : kind === "audio" ? "音频" : "文件";
+            if (limit <= 0) return mode === "image" ? "图片创作仅支持参考图" : `当前模型不支持参考${label}`;
+            if (referenceCounts[kind] >= limit) return `当前模型最多支持 ${limit} 个参考${label}`;
+            return undefined;
+        },
+        [attachments.length, maxReferences, mode, referenceCounts, referenceLimits],
+    );
+
     const externalLibraryItems = useMemo<AssetLibraryPickerItem[]>(
         () =>
             externalAssetSources.items.map((item) => ({
                 ...item,
-                disabledReason: mode === "image" && item.external?.item.kind !== "image" ? "图片创作仅支持参考图" : undefined,
+                disabledReason:
+                    item.external?.item.kind === "image" || item.external?.item.kind === "video" || item.external?.item.kind === "audio"
+                        ? attachmentDisabledReason(
+                              item.external.item.kind,
+                              attachments.some((attachment) => attachment.id === item.id),
+                          )
+                        : "当前素材类型不能作为创作参考",
             })),
-        [externalAssetSources.items, mode],
+        [attachmentDisabledReason, attachments, externalAssetSources.items],
     );
     const libraryItems = useMemo<AssetLibraryPickerItem[]>(
         () => [
@@ -516,11 +626,14 @@ export default function CreatePage() {
                     kindLabel: asset.kind === "video" ? "视频" : asset.kind === "audio" ? "音频" : "图片",
                     asset,
                     searchText: (asset.tags || []).join(" "),
-                    disabledReason: mode === "image" && asset.kind !== "image" ? "图片创作仅支持参考图" : undefined,
+                    disabledReason: attachmentDisabledReason(
+                        asset.kind,
+                        attachments.some((attachment) => attachment.id === `asset:${asset.id}`),
+                    ),
                 })),
             ...externalLibraryItems,
         ],
-        [assets, externalLibraryItems, mode],
+        [assets, attachmentDisabledReason, attachments, externalLibraryItems],
     );
     const uploadCreationAsset = async (file: File) => {
         if (file.type.startsWith("video/")) {
@@ -548,13 +661,11 @@ export default function CreatePage() {
         };
     };
     const addAttachments = (files: FileList | File[]) => {
-        if ((mode === "image" || mode === "video") && maxReferences === 0) {
-            toast.warning(mode === "image" ? "当前图片模型不支持参考图" : "当前模型不支持图生视频");
-            return;
-        }
-        const next = Array.from(files)
-            .filter((file) => creationFileAccepted(mode, file))
-            .slice(0, Math.max(0, maxReferences - attachments.length));
+        const filtered = filterCreationUploadFiles(Array.from(files), mode, referenceLimits, attachments);
+        const remainingTotal = mode === "text" ? Math.max(0, maxReferences - attachments.length) : filtered.acceptedFiles.length;
+        const next = filtered.acceptedFiles.slice(0, remainingTotal);
+        const rejectedCount = filtered.rejectedFiles.length + Math.max(0, filtered.acceptedFiles.length - next.length);
+        if (rejectedCount) toast.warning(`${rejectedCount} 个素材超出当前模型的类型或数量限制`);
         if (!next.length) return;
         void Promise.allSettled(
             next.map(async (file) => {
@@ -565,7 +676,14 @@ export default function CreatePage() {
         ).then((settled) => {
             const items = settled.flatMap((entry) => (entry.status === "fulfilled" ? [entry.value] : []));
             const failed = settled.filter((entry) => entry.status === "rejected");
-            if (items.length) setAttachments((current) => [...current, ...items].slice(0, maxReferences));
+            if (items.length) {
+                setAttachments((current) => {
+                    const merged = [...current, ...items.filter((item) => !current.some((currentItem) => currentItem.id === item.id))];
+                    const byKind = reconcileCreationAttachmentLimits(merged, mode, referenceLimits).attachments;
+                    const limited = mode === "text" ? byKind.slice(0, maxReferences) : byKind;
+                    return mode === "video" ? normalizeCreationVideoAttachments(limited, videoOperationChoice, Boolean(promptRef.current.trim())) : limited;
+                });
+            }
             if (failed.length) toast.error(`${failed.length} 个参考素材上传失败，请重试`);
         });
     };
@@ -601,7 +719,12 @@ export default function CreatePage() {
             return external ? [creationAttachmentFromExternalAsset(external)] : [];
         });
         if (!next.length) return;
-        setAttachments((current) => [...current.filter((item) => !next.some((candidate) => candidate.id === item.id)), ...next].slice(0, maxReferences));
+        setAttachments((current) => {
+            const merged = [...current.filter((item) => !next.some((candidate) => candidate.id === item.id)), ...next];
+            const byKind = reconcileCreationAttachmentLimits(merged, mode, referenceLimits).attachments;
+            const limited = mode === "text" ? byKind.slice(0, maxReferences) : byKind;
+            return mode === "video" ? normalizeCreationVideoAttachments(limited, videoOperationChoice, Boolean(promptRef.current.trim())) : limited;
+        });
         setLibraryOpen(false);
     };
 
@@ -630,7 +753,8 @@ export default function CreatePage() {
         if (creationAttachmentKind(target) !== "image" || creationAttachmentKind(replacement) !== "image") throw new Error("目前只支持替换提示词中的图片引用");
         if (target.id === replacement.id) return false;
 
-        const result = replaceCreationAttachmentReference(promptRef.current, currentAttachments, targetAttachmentId, replacement);
+        const replacementWithRole = target.videoImageRole ? { ...replacement, videoImageRole: target.videoImageRole } : replacement;
+        const result = replaceCreationAttachmentReference(promptRef.current, currentAttachments, targetAttachmentId, replacementWithRole);
         promptRef.current = result.prompt;
         attachmentsRef.current = result.attachments;
         setPrompt(result.prompt);
@@ -672,6 +796,16 @@ export default function CreatePage() {
         [addAsset, busy, referenceReplacementBusy, replaceAttachmentReference, toast],
     );
 
+    const changeVideoOperation = useCallback((choice: CreationVideoOperationChoice) => {
+        setVideoOperationChoice(choice);
+        setAttachments((current) => normalizeCreationVideoAttachments(current, choice, Boolean(promptRef.current.trim())));
+    }, []);
+
+    const changeVideoImageRole = useCallback((attachmentId: string, role: CreationVideoImageRole) => {
+        if (role === "first_frame" || role === "last_frame") setVideoOperationChoice("image_to_video");
+        setAttachments((current) => setCreationVideoImageRole(current, attachmentId, role));
+    }, []);
+
     const submit = async (retryContext?: CreationRetryContext, retryLockKey?: string) => {
         const releaseRetryLock = () => {
             if (retryLockKey) retryPreparingRef.current.delete(retryLockKey);
@@ -691,28 +825,65 @@ export default function CreatePage() {
             releaseRetryLock();
             return;
         }
-        if (attachments.length > maxReferences) {
-            toast.warning("参考内容正在按当前模型能力调整，请稍后重试");
+        const submissionAttachments = mode === "video" ? normalizeCreationVideoAttachments(attachments, videoOperationChoice, true) : attachments;
+        const submissionInput = creationInputSummary(submissionAttachments, true);
+        const videoOperation = mode === "video" ? resolvedCreationVideoOperation(videoOperationChoice, submissionInput) : undefined;
+        const videoFrames = creationVideoFrameAttachmentIds(submissionAttachments);
+        const reconciledSubmission = reconcileCreationAttachmentLimits(submissionAttachments, mode, referenceLimits);
+        if (reconciledSubmission.removedAttachments.length || (mode === "text" && submissionAttachments.length > maxReferences)) {
+            toast.warning("当前生成方式不支持部分参考内容，请移除超限素材或切换生成方式");
             releaseRetryLock();
             return;
         }
-        const settings = { ratio, seconds, quality, videoQuality, count };
+        if (mode === "video") {
+            const operationError = creationVideoOperationError(videoOperation || "", submissionInput, videoFrames);
+            if (operationError) {
+                toast.error(operationError);
+                releaseRetryLock();
+                return;
+            }
+            const interfaceType = resolveModelChannel(config, selectedModel).interfaceType;
+            if (interfaceType === "xai-video" && videoOperation === "image_to_video" && (submissionInput.imageCount > 1 || Boolean(videoFrames.videoEndFrameNodeId))) {
+                toast.error("xAI 首帧模式只支持 1 张起始图，不支持尾帧；多图请切换为全模态参考");
+                releaseRetryLock();
+                return;
+            }
+        }
+        const compatibilityError = modelCompatibilityError(config, selectedModel, {
+            ...modelRequirements,
+            input: submissionInput,
+            videoOperation,
+        });
+        if (compatibilityError) {
+            toast.error(`当前模型${compatibilityError}，请更换模型或调整参考素材`);
+            releaseRetryLock();
+            return;
+        }
+        const settings: CreationSettings = {
+            ratio,
+            seconds,
+            quality,
+            videoQuality,
+            count,
+            ...(mode === "video"
+                ? {
+                      videoOperation: videoOperationChoice,
+                      generateAudio: String(videoProfile.generateAudio.supported && config.videoGenerateAudio === "true"),
+                      watermark: String(videoProfile.watermark.supported && config.videoWatermark === "true"),
+                  }
+                : {}),
+        };
         const references = selectedCreationReferences(text, mentionReferences);
         // 后端对图片和视频使用不同的参考字段；这里先拆分，避免媒体类型在写入任务时被误判。
-        const { referenceImages, referenceVideos, referenceAudios } = splitCreationAttachments(attachments);
-        const videoOperation = inferVideoOperation({
-            textCount: text ? 1 : 0,
-            imageCount: referenceImages.length,
-            videoCount: referenceVideos.length,
-            audioCount: referenceAudios.length,
-            characterCount: 0,
-        });
+        const { referenceImages, referenceVideos, referenceAudios } = splitCreationAttachments(submissionAttachments);
+        const { videoStartFrameNodeId, videoEndFrameNodeId } = videoFrames;
+        const videoFrameMetadata = mode === "video" ? { videoStartFrameNodeId, videoEndFrameNodeId } : {};
         const skillReferences = references.flatMap((reference) => (reference.skill ? [reference.skill] : []));
         let skillExecution: Awaited<ReturnType<typeof skillRuntime.prepare<"creation">>>;
         try {
             skillExecution = await skillRuntime.prepare({
                 profile: "creation",
-                prompt: expandCreationPrompt(text, references, attachments),
+                prompt: expandCreationPrompt(text, references, submissionAttachments),
                 skills: skillReferences,
                 selectedSkillIds: skillReferences.map((skill) => skill.skill_id),
             });
@@ -724,7 +895,7 @@ export default function CreatePage() {
         const expandedPrompt = skillExecution.prompt;
         const referenceMetadata = skillExecution.metadata;
         followLatestMessageRef.current = true;
-        const userMessage = newMessage("user", text, { mode, model: selectedModel, attachments, references, settings });
+        const userMessage = newMessage("user", text, { mode, model: selectedModel, attachments: submissionAttachments, references, settings });
         const assistantMessage = newMessage("assistant", "", { mode, model: selectedModel, status: mode === "text" ? "streaming" : "pending", settings, ...retryContext });
         const originConversationId = activeConversation.id;
         const updateOriginAssistant = (updater: (item: CreationMessage) => CreationMessage) => updateConversationMessage(originConversationId, assistantMessage.id, updater);
@@ -776,7 +947,13 @@ export default function CreatePage() {
             ...(mode === "image"
                 ? { size: normalizedImage?.size || ratio, quality: normalizedImage?.quality || quality, count: normalizedImage?.count || count, videoSeconds: config.videoSeconds }
                 : mode === "video"
-                  ? { size: normalizedVideo?.ratio ?? ratio, videoSeconds: normalizedVideo?.seconds || seconds, vquality: (normalizedVideo?.resolution ?? videoQuality).replace(/p$/i, "") }
+                  ? {
+                        size: normalizedVideo?.ratio ?? ratio,
+                        videoSeconds: normalizedVideo?.seconds || seconds,
+                        vquality: (normalizedVideo?.resolution ?? videoQuality).replace(/p$/i, ""),
+                        videoGenerateAudio: String(videoProfile.generateAudio.supported && config.videoGenerateAudio === "true"),
+                        videoWatermark: String(videoProfile.watermark.supported && config.videoWatermark === "true"),
+                    }
                   : {}),
         };
         try {
@@ -901,7 +1078,15 @@ export default function CreatePage() {
                         referenceVideos,
                         referenceAudios,
                         signal: requestLifecycle.signal,
-                        metadata: { source: "create-page", conversationId: activeConversation.id, messageId: assistantMessage.id, videoEditOperation: videoOperation, ...referenceMetadata },
+                        metadata: {
+                            source: "create-page",
+                            conversationId: activeConversation.id,
+                            messageId: assistantMessage.id,
+                            videoEditOperation: videoOperation,
+                            videoOperationExplicit: videoOperationChoice !== "auto",
+                            ...videoFrameMetadata,
+                            ...referenceMetadata,
+                        },
                         onTaskUpdate: bindTask,
                         ...retryContext,
                     }),
@@ -962,6 +1147,7 @@ export default function CreatePage() {
         setActiveId(next.id);
         setPrompt("");
         setAttachments([]);
+        setVideoOperationChoice("auto");
         setDraftReferences([]);
         setSelectedShotIndex(-1);
         setComposingNextShot(false);
@@ -973,6 +1159,7 @@ export default function CreatePage() {
         setActiveId(conversation.id);
         setPrompt("");
         setAttachments([]);
+        setVideoOperationChoice("auto");
         setDraftReferences([]);
         setSelectedShotIndex(-1);
         setComposingNextShot(false);
@@ -1004,6 +1191,7 @@ export default function CreatePage() {
                         setActiveId(fallback.id);
                         setPrompt("");
                         setAttachments([]);
+                        setVideoOperationChoice("auto");
                         setDraftReferences([]);
                         setSelectedShotIndex(-1);
                         setComposingNextShot(false);
@@ -1020,17 +1208,26 @@ export default function CreatePage() {
     const restoreMessageDraft = (item: CreationMessage) => {
         const nextMode = item.mode || "text";
         const nextSettings = item.settings;
+        draftSettingsRestoreRef.current = nextSettings && nextMode !== "text" ? { mode: nextMode, settings: nextSettings } : null;
         setMode(nextMode);
         setPrompt(item.content);
         setAttachments(item.attachments ? [...item.attachments] : []);
         setDraftReferences(item.references ? [...item.references] : []);
         if (item.model) updateConfig(nextMode === "text" ? "textModel" : nextMode === "image" ? "imageModel" : "videoModel", item.model);
-        if (!nextSettings) return;
+        if (!nextSettings) {
+            setVideoOperationChoice("auto");
+            setDraftSettingsRestoreRevision((current) => current + 1);
+            return;
+        }
         setRatio(nextSettings.ratio);
         setSeconds(nextSettings.seconds);
         setQuality(nextSettings.quality);
         setVideoQuality(nextSettings.videoQuality);
         setCount(nextSettings.count);
+        setVideoOperationChoice(nextSettings.videoOperation || "auto");
+        if (nextMode === "video" && nextSettings.generateAudio !== undefined) updateConfig("videoGenerateAudio", nextSettings.generateAudio);
+        if (nextMode === "video" && nextSettings.watermark !== undefined) updateConfig("videoWatermark", nextSettings.watermark);
+        setDraftSettingsRestoreRevision((current) => current + 1);
     };
 
     const retryFailedMessage = async (item: CreationMessage, index: number) => {
@@ -1108,12 +1305,14 @@ export default function CreatePage() {
         attachments,
         referenceImageSize,
         maxReferences,
+        referenceLimits,
         references: mentionReferences,
         onRemoveAttachment: removeAttachment,
         onClearAttachments: clearAttachments,
         onReorderAttachments: reorderAttachments,
         onReplaceAttachment: replaceReferenceFromTrack,
         onReplaceReferenceFiles: replaceReferenceFromFiles,
+        onVideoImageRoleChange: changeVideoImageRole,
         onOpenLibrary: () => setLibraryOpen(true),
         fileInputRef,
         onFileChange: handleFileChange,
@@ -1123,6 +1322,9 @@ export default function CreatePage() {
         modelRequirements,
         imageProfile,
         videoProfile,
+        videoOperations,
+        videoOperationChoice,
+        onVideoOperationChange: changeVideoOperation,
         config,
         onModelChange: (value: string) => updateConfig(mode === "text" ? "textModel" : mode === "image" ? "imageModel" : "videoModel", value),
         onGenerateAudioChange: (enabled: boolean) => updateConfig("videoGenerateAudio", String(enabled)),
@@ -1413,7 +1615,7 @@ function CreationMessageView({ item, modelName, onRetryFailure, onCreateVariant 
                     <div className="creation-message-content">{item.content ? <AIMessageMarkdown isStreaming={item.status === "streaming"}>{item.content}</AIMessageMarkdown> : <span>正在生成…</span>}</div>
                 </>
             ) : (
-                <GenerationToolCard status={toolStatus} isBulk={(item.resultUrls?.length || Number(item.settings?.count) || 1) > 1} heading={heading}>
+                <GenerationToolCard status={toolStatus} isBulk={mode !== "video" && (item.resultUrls?.length || Number(item.settings?.count) || 1) > 1} heading={heading}>
                     <MediaResult item={item} onRetryFailure={onRetryFailure} onCreateVariant={onCreateVariant} />
                 </GenerationToolCard>
             )}
@@ -1549,7 +1751,8 @@ function MediaResult({ item, onRetryFailure, onCreateVariant }: { item: Creation
     const assets = useAssetStore((state) => state.assets);
     const resultUrls = item.resultUrls || [];
     const resultAssetIds = resultUrls.length ? creationResultAssetIds(assets, { messageId: item.id, taskIds: item.taskIds || [], resultUrls }) : [];
-    const canvasPath = creationCanvasHandoffPath(resultAssetIds) || "/canvas";
+    const resultMedia = creationResultMediaEntries(assets, { messageId: item.id, taskIds: item.taskIds || [], resultUrls, mode: item.mode === "video" ? "video" : "image" });
+    const canvasPath = creationCanvasHandoffPath(resultAssetIds, resultUrls.length) || "/canvas";
     if (item.status === "pending") return <CreationMediaPending mode={item.mode || "image"} ratio={item.settings?.ratio} />;
     if ((item.status === "error" || item.status === "cancelled") && !resultUrls.length)
         return (
@@ -1571,24 +1774,29 @@ function MediaResult({ item, onRetryFailure, onCreateVariant }: { item: Creation
             </div>
         );
     const isVideo = item.mode === "video";
+    const primaryResult = isVideo ? resultMedia.find((entry) => entry.kind === "video") || resultMedia[0] : resultMedia.find((entry) => entry.kind === "image") || resultMedia[0];
+    const primaryUrl = primaryResult?.url || resultUrls[0];
+    const supplementalImages = isVideo ? resultMedia.filter((entry) => entry.kind === "image") : [];
+    const imageResults = resultMedia.filter((entry) => entry.kind === "image");
     const resultAssets = resultAssetIds.flatMap((id) => {
         const asset = assets.find((candidate) => candidate.id === id);
         return asset ? [asset] : [];
     });
-    const firstAsset = resultAssets.find((asset) => asset.kind === (isVideo ? "video" : "image"));
+    const firstAsset = (primaryResult?.assetId ? assets.find((asset) => asset.id === primaryResult.assetId) : undefined) || resultAssets.find((asset) => asset.kind === (isVideo ? "video" : "image"));
     const storedMetadata: CreationMediaMetadata | undefined =
         firstAsset?.kind === "video"
             ? { width: firstAsset.data.width, height: firstAsset.data.height, durationMs: firstAsset.data.durationMs, mimeType: firstAsset.data.mimeType }
             : firstAsset?.kind === "image"
               ? { width: firstAsset.data.width, height: firstAsset.data.height, mimeType: firstAsset.data.mimeType }
               : undefined;
-    const primaryMetadata = mediaMetadata[resultUrls[0]] || storedMetadata;
+    const primaryMetadata = mediaMetadata[primaryUrl] || storedMetadata;
     const resolution = primaryMetadata?.width && primaryMetadata?.height ? `${primaryMetadata.width} × ${primaryMetadata.height}` : configuredMediaResolution(item, isVideo);
-    const format = creationMediaFormatLabel(resultUrls[0], primaryMetadata?.mimeType);
+    const format = creationMediaFormatLabel(primaryUrl, primaryMetadata?.mimeType);
     const completedAt = item.completedAt || firstAsset?.createdAt;
     const elapsed = creationGenerationElapsedLabel(item.createdAt, completedAt);
     const mediaDuration = isVideo ? creationMediaDurationLabel(primaryMetadata?.durationMs || Number(item.settings?.seconds || 0) * 1000) : "";
-    const resultType = isVideo ? `视频 · ${format}` : `图片 · ${resultUrls.length} 张`;
+    const supplementalLabel = supplementalImages.some((entry) => entry.role === "last_frame") ? " · 含尾帧" : supplementalImages.length ? ` · ${supplementalImages.length} 张附图` : "";
+    const resultType = isVideo ? `视频 · ${format}${supplementalLabel}` : `图片 · ${imageResults.length} 张`;
     const resultAspectRatio = primaryMetadata?.width && primaryMetadata?.height ? `${primaryMetadata.width} / ${primaryMetadata.height}` : creationMediaAspectRatio(item.settings?.ratio, item.mode || "image");
     return (
         <div className="creation-media-result">
@@ -1598,7 +1806,7 @@ function MediaResult({ item, onRetryFailure, onCreateVariant }: { item: Creation
                     className="creation-video-result"
                     onClick={() => {
                         setPreviewType("video");
-                        setPreviewUrl(resultUrls[0]);
+                        setPreviewUrl(primaryUrl);
                     }}
                     aria-label="预览生成视频"
                     style={{ aspectRatio: resultAspectRatio }}
@@ -1607,12 +1815,12 @@ function MediaResult({ item, onRetryFailure, onCreateVariant }: { item: Creation
                         muted
                         playsInline
                         preload="metadata"
-                        src={resultUrls[0]}
+                        src={primaryUrl}
                         onLoadedMetadata={(event) => {
                             const video = event.currentTarget;
                             setMediaMetadata((current) => ({
                                 ...current,
-                                [resultUrls[0]]: { width: video.videoWidth, height: video.videoHeight, durationMs: Number.isFinite(video.duration) ? video.duration * 1000 : undefined, mimeType: storedMetadata?.mimeType },
+                                [primaryUrl]: { width: video.videoWidth, height: video.videoHeight, durationMs: Number.isFinite(video.duration) ? video.duration * 1000 : undefined, mimeType: storedMetadata?.mimeType },
                             }));
                         }}
                     />
@@ -1623,23 +1831,24 @@ function MediaResult({ item, onRetryFailure, onCreateVariant }: { item: Creation
                 </button>
             ) : (
                 <div className="creation-image-result-grid">
-                    {resultUrls.map((url) => (
+                    {imageResults.map((entry) => (
                         <button
-                            key={url}
+                            key={entry.url}
                             type="button"
                             className="creation-image-result"
                             onClick={() => {
                                 setPreviewType("image");
-                                setPreviewUrl(url);
+                                setPreviewUrl(entry.url);
                             }}
                             aria-label="预览生成图片"
                         >
                             <img
-                                src={url}
+                                src={entry.url}
                                 alt="生成结果"
                                 onLoad={(event) => {
                                     const image = event.currentTarget;
-                                    setMediaMetadata((current) => ({ ...current, [url]: { width: image.naturalWidth, height: image.naturalHeight, mimeType: resultAssets.find((asset) => asset.kind === "image")?.data.mimeType } }));
+                                    const asset = entry.assetId ? assets.find((candidate) => candidate.id === entry.assetId) : undefined;
+                                    setMediaMetadata((current) => ({ ...current, [entry.url]: { width: image.naturalWidth, height: image.naturalHeight, mimeType: asset?.kind === "image" ? asset.data.mimeType : undefined } }));
                                 }}
                             />
                             <span>
@@ -1649,6 +1858,7 @@ function MediaResult({ item, onRetryFailure, onCreateVariant }: { item: Creation
                     ))}
                 </div>
             )}
+            {isVideo ? <CreationVideoSupplementalImages results={supplementalImages} onPreview={(url) => { setPreviewType("image"); setPreviewUrl(url); }} /> : null}
             <dl className="creation-media-details" aria-label="生成结果明细">
                 <div>
                     <dt>类型</dt>
@@ -1675,21 +1885,52 @@ function MediaResult({ item, onRetryFailure, onCreateVariant }: { item: Creation
                     生成同款
                 </button>
                 <Link to={canvasPath}>{resultAssetIds.length ? "添加到画布" : "打开画布"}</Link>
-                {resultUrls.map((url, index) => (
-                    <a key={`${url}-download`} href={url} download>
-                        {resultUrls.length > 1 ? (
-                            `下载 ${index + 1}`
-                        ) : (
+                <CreationResultDownloads results={resultMedia} />
+            </div>
+            <CreationMediaPreviewModal url={previewUrl} type={previewType} onClose={() => setPreviewUrl("")} />
+        </div>
+    );
+}
+
+function CreationVideoSupplementalImages({ results, onPreview }: { results: CreationResultMediaEntry[]; onPreview: (url: string) => void }) {
+    if (!results.length) return null;
+    return (
+        <div className="creation-video-result-attachments" aria-label="视频附加图片">
+            {results.map((entry) => {
+                const label = entry.role === "last_frame" ? "尾帧" : entry.role === "first_frame" ? "首帧" : "附图";
+                return (
+                    <button key={entry.url} type="button" className="creation-video-result-attachment" onClick={() => onPreview(entry.url)} aria-label={`预览视频${label}`}>
+                        <img src={entry.url} alt={`生成视频${label}`} />
+                        <em>{label}</em>
+                        <span aria-hidden="true">
+                            <Maximize2 />
+                        </span>
+                    </button>
+                );
+            })}
+        </div>
+    );
+}
+
+function CreationResultDownloads({ results }: { results: CreationResultMediaEntry[] }) {
+    return (
+        <>
+            {results.map((entry, index) => {
+                const label = entry.kind === "video" ? "下载视频" : entry.role === "last_frame" ? "下载尾帧" : `下载图片 ${index + 1}`;
+                return (
+                    <a key={`${entry.url}-download`} href={entry.url} download>
+                        {results.length === 1 ? (
                             <>
                                 <Download />
                                 下载
                             </>
+                        ) : (
+                            label
                         )}
                     </a>
-                ))}
-            </div>
-            <CreationMediaPreviewModal url={previewUrl} type={previewType} onClose={() => setPreviewUrl("")} />
-        </div>
+                );
+            })}
+        </>
     );
 }
 
@@ -1734,10 +1975,25 @@ function CreationMediaPreviewModal({ url, type, onClose }: { url: string; type: 
     );
 }
 
-function CreationAttachmentThumbnail({ item, onPreview, onRemove }: { item: CreationAttachment; onPreview: (type: "image" | "video", url: string) => void; onRemove: (id: string) => void }) {
+function CreationAttachmentThumbnail({
+    item,
+    mode,
+    onPreview,
+    onRemove,
+    onVideoImageRoleChange,
+}: {
+    item: CreationAttachment;
+    mode: CreationMode;
+    onPreview: (type: "image" | "video", url: string) => void;
+    onRemove: (id: string) => void;
+    onVideoImageRoleChange: (attachmentId: string, role: CreationVideoImageRole) => void;
+}) {
+    const [roleOpen, setRoleOpen] = useState(false);
     const kind = creationAttachmentKind(item);
     const previewable = kind === "image" || kind === "video";
     const url = (kind === "video" ? item.url : item.previewUrl) || "";
+    const videoImageRole = mode === "video" && kind === "image" ? creationVideoImageRole(item) : undefined;
+    const videoImageRoleOption = creationVideoImageRoleOptions.find((option) => option.value === videoImageRole);
     const content =
         kind === "video" ? (
             <video src={item.url} poster={item.previewUrl !== item.url ? item.previewUrl : undefined} muted playsInline preload="metadata" aria-label={item.name} />
@@ -1760,6 +2016,50 @@ function CreationAttachmentThumbnail({ item, onPreview, onRemove }: { item: Crea
                     {content}
                 </div>
             )}
+            {videoImageRole && videoImageRoleOption ? (
+                <Popover
+                    open={roleOpen}
+                    onOpenChange={setRoleOpen}
+                    trigger="click"
+                    placement="bottomLeft"
+                    arrow={false}
+                    classNames={{ root: "creation-control-popover", container: "creation-control-popover-surface", content: "creation-control-popover-content" }}
+                    content={
+                        <div className="creation-frame-role-menu" role="listbox" aria-label="设置参考图角色">
+                            {creationVideoImageRoleOptions.map((option) => (
+                                <button
+                                    key={option.value}
+                                    type="button"
+                                    role="option"
+                                    aria-selected={option.value === videoImageRole}
+                                    className={option.value === videoImageRole ? "is-selected" : undefined}
+                                    onClick={(event) => {
+                                        event.stopPropagation();
+                                        onVideoImageRoleChange(item.id, option.value);
+                                        window.setTimeout(() => setRoleOpen(false), 0);
+                                    }}
+                                >
+                                    <span>{option.label}</span>
+                                    {option.value === videoImageRole ? <Check /> : null}
+                                </button>
+                            ))}
+                        </div>
+                    }
+                >
+                    <button
+                        type="button"
+                        className={`creation-reference-frame-role is-${videoImageRole}`}
+                        onPointerDownCapture={(event) => event.stopPropagation()}
+                        onMouseDownCapture={(event) => event.stopPropagation()}
+                        onClick={(event) => event.stopPropagation()}
+                        aria-label={`图片角色：${videoImageRoleOption.label}`}
+                        aria-haspopup="listbox"
+                        aria-expanded={roleOpen}
+                    >
+                        {videoImageRoleOption.shortLabel}
+                    </button>
+                </Popover>
+            ) : null}
             <button
                 type="button"
                 className="creation-reference-card-remove"
@@ -1787,12 +2087,14 @@ type ComposerProps = {
     attachments: CreationAttachment[];
     referenceImageSize?: { width: number; height: number };
     maxReferences: number;
+    referenceLimits: CreationAttachmentLimits;
     references: CreationReference[];
     onRemoveAttachment: (id: string) => void;
     onClearAttachments: () => void;
     onReorderAttachments: (attachments: CreationAttachment[]) => void;
     onReplaceAttachment: (targetAttachmentId: string, replacement: CreationAttachment) => void;
     onReplaceReferenceFiles: (targetAttachmentId: string, files: File[]) => void;
+    onVideoImageRoleChange: (attachmentId: string, role: CreationVideoImageRole) => void;
     onOpenLibrary: () => void;
     fileInputRef: RefObject<HTMLInputElement | null>;
     onFileChange: (event: ChangeEvent<HTMLInputElement>) => void;
@@ -1801,6 +2103,9 @@ type ComposerProps = {
     model: string;
     modelRequirements: ModelRequirements;
     videoProfile: VideoCapabilityConfig;
+    videoOperations: string[];
+    videoOperationChoice: CreationVideoOperationChoice;
+    onVideoOperationChange: (choice: CreationVideoOperationChoice) => void;
     imageProfile: ImageCapabilityConfig;
     config: ReturnType<typeof useEffectiveConfig>;
     onModelChange: (value: string) => void;
@@ -1841,8 +2146,8 @@ function CreationComposer(props: ComposerProps) {
     const creditsEnabled = useUserStore((state) => state.features.creditsEnabled);
     const priceChannel = resolveModelChannel(props.config, props.model);
     const canOptimizePrompt = Boolean(props.promptOptimizerProvider) && (props.mode === "image" || props.mode === "video");
-    const generateAudio = props.config.videoGenerateAudio === "true";
     const generateAudioSupported = props.mode === "video" && props.videoProfile.generateAudio.supported;
+    const generateAudio = generateAudioSupported && props.config.videoGenerateAudio === "true";
     const optimizerReferences = props.references.filter((reference) => reference.active && reference.kind !== "skill");
     const credits = requestCreditCost({
         channelMode: priceChannel.scope === "system" ? "remote" : "local",
@@ -1861,23 +2166,29 @@ function CreationComposer(props: ComposerProps) {
             : props.mode === "image"
               ? "上传参考素材、输入文字或 @ 参考内容，描述人物、场景、构图与风格。"
               : "输入故事、角色或创意，也可以使用 @ 引用素材与技能。";
-    const imageReferencesSupported = props.imageProfile.references.maxImages > 0;
-    const referencesSupported = props.mode === "image" ? imageReferencesSupported : props.mode !== "video" || props.videoProfile.operations.includes("image_to_video");
-    const canAddMoreReferences = referencesSupported && props.attachments.length < props.maxReferences;
+    const referenceCounts = useMemo(() => countCreationAttachments(props.attachments), [props.attachments]);
+    const referenceKinds: CreationAttachmentKind[] = ["image", "video", "audio", "file"];
+    const supportedReferenceKinds = referenceKinds.filter((kind) => creationAttachmentLimit(props.mode, props.referenceLimits, kind) > 0);
+    const referencesSupported = supportedReferenceKinds.length > 0;
+    const totalReferenceCapacityAvailable = props.mode !== "text" || props.attachments.length < props.maxReferences;
+    const canAddMoreReferences =
+        referencesSupported &&
+        totalReferenceCapacityAvailable &&
+        supportedReferenceKinds.some((kind) => referenceCounts[kind] < creationAttachmentLimit(props.mode, props.referenceLimits, kind));
     const showReferenceEntry = referencesSupported && !props.attachments.length;
-    const addReferenceLabel = interactionBusy ? (props.referenceReplacementBusy ? "正在替换参考图" : "生成中暂不能添加参考内容") : canAddMoreReferences ? "添加更多参考内容" : `已达到当前模型的参考内容上限（${props.maxReferences} 个）`;
-    const referenceCounts = useMemo(
-        () =>
-            props.attachments.reduce(
-                (counts, attachment) => {
-                    const kind = creationAttachmentKind(attachment);
-                    counts[kind] += 1;
-                    return counts;
-                },
-                { image: 0, video: 0, audio: 0, file: 0 },
-            ),
-        [props.attachments],
-    );
+    const referenceLimitSummary = supportedReferenceKinds
+        .map((kind) => {
+            const label = kind === "image" ? "图" : kind === "video" ? "视频" : kind === "audio" ? "音频" : "文件";
+            return `${label} ${referenceCounts[kind]}/${creationAttachmentLimit(props.mode, props.referenceLimits, kind)}`;
+        })
+        .join("·");
+    const addReferenceLabel = interactionBusy
+        ? props.referenceReplacementBusy
+            ? "正在替换参考图"
+            : "生成中暂不能添加参考内容"
+        : canAddMoreReferences
+          ? `添加参考内容（${referenceLimitSummary}）`
+          : `已达到当前模式的参考内容上限（${referenceLimitSummary || "不支持参考素材"}）`;
     const visibleAttachments = useMemo(() => (referenceFilter === "all" ? props.attachments : props.attachments.filter((attachment) => creationAttachmentKind(attachment) === referenceFilter)), [props.attachments, referenceFilter]);
     const imageSettingsSupported = props.imageProfile.size.parameter !== "none" || props.imageProfile.quality.supported || props.imageProfile.maxOutputs > 1;
     const updateTrackScrollState = useCallback(() => {
@@ -1905,7 +2216,7 @@ function CreationComposer(props: ComposerProps) {
     }, [referenceFilter, updateTrackScrollState, visibleAttachments.length]);
     const beginCardDrag = (event: PointerEvent<HTMLElement>) => {
         if (event.button !== 0 || interactionBusy) return;
-        if ((event.target as HTMLElement).closest(".creation-reference-card-remove")) return;
+        if ((event.target as HTMLElement).closest(".creation-reference-card-remove, .creation-reference-frame-role")) return;
         cardDragRef.current = { startX: event.clientX, startY: event.clientY, moved: false };
     };
     const endCardDrag = (event: PointerEvent<HTMLElement>) => {
@@ -2110,7 +2421,7 @@ function CreationComposer(props: ComposerProps) {
                                                     if (target?.attachmentId && target.attachmentId !== item.id) props.onReplaceAttachment(target.attachmentId, item);
                                                 }}
                                             >
-                                                <CreationAttachmentThumbnail item={item} onPreview={previewAttachment} onRemove={props.onRemoveAttachment} />
+                                                <CreationAttachmentThumbnail item={item} mode={props.mode} onPreview={previewAttachment} onRemove={props.onRemoveAttachment} onVideoImageRoleChange={props.onVideoImageRoleChange} />
                                             </Reorder.Item>
                                         ))}
                                         {!visibleAttachments.length && props.attachments.length ? <li className="creation-reference-filter-empty">该类型暂无参考内容</li> : null}
@@ -2151,11 +2462,12 @@ function CreationComposer(props: ComposerProps) {
                             showSelectedPrice
                             variant="creation"
                         />
+                        {props.mode === "video" ? <VideoOperationPicker value={props.videoOperationChoice} operations={props.videoOperations} onChange={props.onVideoOperationChange} disabled={interactionBusy} /> : null}
                         {props.mode === "video" || (props.mode === "image" && imageSettingsSupported) ? <GenerationSettingsMenu {...props} /> : null}
                         {props.mode === "video" ? <DurationMenu profile={props.videoProfile} seconds={props.seconds} onChange={props.setSeconds} /> : null}
                         {props.mode === "video" ? (
-                            <Tooltip title={generateAudioSupported ? `点击切换为${generateAudio ? "无声音" : "有声音"}` : "设置声音偏好；当前模型可能不支持声音生成"}>
-                                <button type="button" className="creation-chat-control creation-entry-button creation-sound-toggle" aria-pressed={generateAudio} onClick={() => props.onGenerateAudioChange(!generateAudio)} disabled={interactionBusy}>
+                            <Tooltip title={generateAudioSupported ? `点击切换为${generateAudio ? "无声音" : "有声音"}` : "当前模型不支持同步生成声音"}>
+                                <button type="button" className="creation-chat-control creation-entry-button creation-sound-toggle" aria-pressed={generateAudio} onClick={() => props.onGenerateAudioChange(!generateAudio)} disabled={interactionBusy || !generateAudioSupported}>
                                     {generateAudio ? <Volume2 /> : <VolumeX />}
                                     <span>{generateAudio ? "有声音" : "无声音"}</span>
                                 </button>
@@ -2273,6 +2585,56 @@ function ModePicker({ mode, onModeChange }: { mode: CreationMode; onModeChange: 
         >
             <button type="button" className="creation-chat-control creation-entry-button is-mode" aria-label={`生成类型：${current.label}`} aria-haspopup="listbox" aria-expanded={open}>
                 {current.icon}
+                <span>{current.label}</span>
+                <ChevronDown className={open ? "is-open" : ""} />
+            </button>
+        </Popover>
+    );
+}
+
+function VideoOperationPicker({ value, operations, onChange, disabled }: { value: CreationVideoOperationChoice; operations: string[]; onChange: (choice: CreationVideoOperationChoice) => void; disabled?: boolean }) {
+    const [open, setOpen] = useState(false);
+    const current = creationVideoOperationOptions.find((option) => option.value === value) || creationVideoOperationOptions[0];
+    return (
+        <Popover
+            open={open}
+            onOpenChange={(next) => !disabled && setOpen(next)}
+            trigger="click"
+            placement="bottomLeft"
+            arrow={false}
+            classNames={{ root: "creation-control-popover", container: "creation-control-popover-surface", content: "creation-control-popover-content" }}
+            content={
+                <div className="creation-video-operation-menu" role="listbox" aria-label="选择视频生成方式">
+                    {creationVideoOperationOptions.map((option) => {
+                        const supported = option.value === "auto" || operations.includes(option.value);
+                        return (
+                            <button
+                                key={option.value}
+                                type="button"
+                                role="option"
+                                aria-selected={option.value === value}
+                                className={option.value === value ? "is-selected" : undefined}
+                                disabled={!supported}
+                                title={supported ? option.description : "当前模型不支持此生成方式"}
+                                onClick={(event) => {
+                                    event.stopPropagation();
+                                    onChange(option.value);
+                                    window.setTimeout(() => setOpen(false), 0);
+                                }}
+                            >
+                                <span className="creation-video-operation-copy">
+                                    <strong>{option.label}</strong>
+                                    <small>{supported ? option.description : "当前模型不支持"}</small>
+                                </span>
+                                {option.value === value ? <Check /> : null}
+                            </button>
+                        );
+                    })}
+                </div>
+            }
+        >
+            <button type="button" className="creation-chat-control creation-entry-button is-video-operation" aria-label={`视频生成方式：${current.label}`} aria-haspopup="listbox" aria-expanded={open} disabled={disabled}>
+                <Clapperboard />
                 <span>{current.label}</span>
                 <ChevronDown className={open ? "is-open" : ""} />
             </button>
@@ -2768,6 +3130,7 @@ function StoryboardShotCard({ shot, shotNumber, modelName, busy, onRetryFailure,
     const visiblePrompt = user ? displayCreationPrompt(user.content, user.references || []) : "";
     const resultUrls = result?.resultUrls || [];
     const resultAssetIds = result && resultUrls.length ? creationResultAssetIds(assets, { messageId: result.id, taskIds: result.taskIds || [], resultUrls }) : [];
+    const resultMedia = result ? creationResultMediaEntries(assets, { messageId: result.id, taskIds: result.taskIds || [], resultUrls, mode: result.mode === "video" ? "video" : "image" }) : [];
     const canvasHandoffPath = result ? creationCanvasHandoffPath(resultAssetIds, resultUrls.length) : "";
     const canvasPath = canvasHandoffPath || "/canvas";
     return (
@@ -2812,18 +3175,7 @@ function StoryboardShotCard({ shot, shotNumber, modelName, busy, onRetryFailure,
                         </button>
                     ) : null}
                     {status === "done" && resultUrls.length ? <Link to={canvasPath}>{canvasHandoffPath ? "添加到画布" : "打开画布"}</Link> : null}
-                    {resultUrls.map((url, index) => (
-                        <a key={`${url}-download`} href={url} download>
-                            {resultUrls.length > 1 ? (
-                                `下载 ${index + 1}`
-                            ) : (
-                                <>
-                                    <Download />
-                                    下载
-                                </>
-                            )}
-                        </a>
-                    ))}
+                    <CreationResultDownloads results={resultMedia} />
                 </div>
             </header>
             <div className="storyboard-workbench-card-body">
@@ -2880,7 +3232,7 @@ function StoryboardShotCard({ shot, shotNumber, modelName, busy, onRetryFailure,
                                 ) : null}
                             </div>
                             <div className="storyboard-workbench-turn-bubble">
-                                <StoryboardShotResult result={result} onRetryFailure={onRetryFailure} onCreateVariant={onCreateVariant} canvasPath={canvasPath} canvasHandoffAvailable={Boolean(canvasHandoffPath)} />
+                                <StoryboardShotResult result={result} resultMedia={resultMedia} onRetryFailure={onRetryFailure} onCreateVariant={onCreateVariant} canvasPath={canvasPath} canvasHandoffAvailable={Boolean(canvasHandoffPath)} />
                             </div>
                         </div>
                     </div>
@@ -2971,7 +3323,21 @@ function StoryboardBriefAttachments({ attachments }: { attachments: CreationAtta
     );
 }
 
-function StoryboardShotResult({ result, onRetryFailure, onCreateVariant, canvasPath, canvasHandoffAvailable }: { result?: CreationMessage; onRetryFailure: () => void; onCreateVariant: () => void; canvasPath: string; canvasHandoffAvailable: boolean }) {
+function StoryboardShotResult({
+    result,
+    resultMedia,
+    onRetryFailure,
+    onCreateVariant,
+    canvasPath,
+    canvasHandoffAvailable,
+}: {
+    result?: CreationMessage;
+    resultMedia: CreationResultMediaEntry[];
+    onRetryFailure: () => void;
+    onCreateVariant: () => void;
+    canvasPath: string;
+    canvasHandoffAvailable: boolean;
+}) {
     const [previewUrl, setPreviewUrl] = useState("");
     const [previewType, setPreviewType] = useState<"image" | "video">("image");
     const openPreview = (url: string, type: "image" | "video") => {
@@ -2988,6 +3354,9 @@ function StoryboardShotResult({ result, onRetryFailure, onCreateVariant, canvasP
     const mode = result.mode || "video";
     const status = result.status || "queued";
     const resultUrls = result.resultUrls || [];
+    const primaryVideo = resultMedia.find((entry) => entry.kind === "video") || resultMedia[0];
+    const primaryVideoUrl = primaryVideo?.url || resultUrls[0];
+    const imageResults = resultMedia.filter((entry) => entry.kind === "image");
     if (status === "pending" || status === "queued") {
         const thinking = thinkingFor(mode);
         return (
@@ -3044,18 +3413,21 @@ function StoryboardShotResult({ result, onRetryFailure, onCreateVariant, canvasP
     return (
         <>
             {mode === "video" ? (
-                <button type="button" className="creation-video-result" onClick={() => openPreview(resultUrls[0], "video")} aria-label="预览生成视频">
-                    <video muted preload="metadata" className="size-full object-cover" src={resultUrls[0]} />
-                    <span>
-                        <Maximize2 />
-                        预览视频
-                    </span>
-                </button>
+                <>
+                    <button type="button" className="creation-video-result" onClick={() => openPreview(primaryVideoUrl, "video")} aria-label="预览生成视频">
+                        <video muted preload="metadata" className="size-full object-cover" src={primaryVideoUrl} />
+                        <span>
+                            <Maximize2 />
+                            预览视频
+                        </span>
+                    </button>
+                    <CreationVideoSupplementalImages results={imageResults} onPreview={(url) => openPreview(url, "image")} />
+                </>
             ) : (
                 <div className="creation-image-result-grid">
-                    {resultUrls.map((url) => (
-                        <button key={url} type="button" className="creation-image-result" onClick={() => openPreview(url, "image")} aria-label="预览生成图片">
-                            <img src={url} alt="生成结果" />
+                    {imageResults.map((entry) => (
+                        <button key={entry.url} type="button" className="creation-image-result" onClick={() => openPreview(entry.url, "image")} aria-label="预览生成图片">
+                            <img src={entry.url} alt="生成结果" />
                             <span>
                                 <Maximize2 />
                             </span>
@@ -3070,24 +3442,13 @@ function StoryboardShotResult({ result, onRetryFailure, onCreateVariant, canvasP
                 </p>
             ) : null}
             <div className="storyboard-workbench-media-meta">
-                <span>{mode === "video" ? "视频结果" : `${resultUrls.length} 张图片`}</span>
+                <span>{mode === "video" ? (imageResults.some((entry) => entry.role === "last_frame") ? "视频结果 · 含尾帧" : "视频结果") : `${imageResults.length} 张图片`}</span>
                 <button type="button" onClick={onCreateVariant}>
                     <RefreshCw />
                     生成变体
                 </button>
                 <Link to={canvasPath}>{canvasHandoffAvailable ? "添加到画布" : "打开画布"}</Link>
-                {resultUrls.map((url, index) => (
-                    <a key={`${url}-download`} href={url} download>
-                        {resultUrls.length > 1 ? (
-                            `下载 ${index + 1}`
-                        ) : (
-                            <>
-                                <Download />
-                                下载
-                            </>
-                        )}
-                    </a>
-                ))}
+                <CreationResultDownloads results={resultMedia} />
             </div>
             <CreationMediaPreviewModal url={previewUrl} type={previewType} onClose={() => setPreviewUrl("")} />
         </>
@@ -3146,10 +3507,6 @@ function blobToDataUrl(blob: Blob) {
         reader.onerror = () => reject(reader.error || new Error("附件读取失败"));
         reader.readAsDataURL(blob);
     });
-}
-
-function isVideoAttachment(attachment: CreationAttachment): attachment is CreationAttachment & { url: string } {
-    return creationAttachmentKind(attachment) === "video";
 }
 
 function isImageAttachment(attachment: CreationAttachment): attachment is CreationAttachment & { dataUrl: string; width?: number; height?: number } {

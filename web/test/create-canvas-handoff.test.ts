@@ -206,6 +206,46 @@ test("creation result handoff recognizes unified generation-task materializer me
     ).toEqual(["materialized-image"]);
 });
 
+test("creation video results keep the primary video separate from a materialized last-frame image", async () => {
+    const module = await import("../src/lib/canvas/canvas-asset-handoff");
+    const assets = [
+        {
+            id: "materialized-video",
+            kind: "video" as const,
+            title: "video",
+            coverUrl: "/generated.mp4",
+            tags: [],
+            createdAt: "2026-08-31T00:00:00.000Z",
+            updatedAt: "2026-08-31T00:00:00.000Z",
+            metadata: { source: "generation-task", taskId: "task-mixed", messageId: "message-mixed", outputIndex: 0 },
+            data: { url: "/generated.mp4", width: 1280, height: 720, bytes: 5, mimeType: "video/mp4" },
+        },
+        {
+            id: "materialized-last-frame",
+            kind: "image" as const,
+            title: "last frame",
+            coverUrl: "/last-frame.png",
+            tags: [],
+            createdAt: "2026-08-31T00:00:00.000Z",
+            updatedAt: "2026-08-31T00:00:00.000Z",
+            metadata: { source: "generation-task", taskId: "task-mixed", messageId: "message-mixed", outputIndex: 1, generationOutputRole: "last_frame" },
+            data: { dataUrl: "/last-frame.png", width: 1280, height: 720, bytes: 5, mimeType: "image/png" },
+        },
+    ];
+    const input = { messageId: "message-mixed", taskIds: ["task-mixed"], resultUrls: ["/generated.mp4", "/last-frame.png"], mode: "video" as const };
+
+    expect(module.creationResultMediaEntries(assets, input)).toEqual([
+        { url: "/generated.mp4", kind: "video", assetId: "materialized-video" },
+        { url: "/last-frame.png", kind: "image", assetId: "materialized-last-frame", role: "last_frame" },
+    ]);
+    expect(module.creationResultAssetIds(assets, input)).toEqual(["materialized-video", "materialized-last-frame"]);
+    expect(module.canvasAssetHandoffPayloads(assets, module.creationResultAssetIds(assets, input)).payloads.map((payload) => payload.kind)).toEqual(["video", "image"]);
+    expect(module.creationResultMediaEntries([], input)).toEqual([
+        { url: "/generated.mp4", kind: "video" },
+        { url: "/last-frame.png", kind: "image" },
+    ]);
+});
+
 test("canvas handoff consumes its route only after merged nodes are durably persisted", async () => {
     const module = await import("../src/lib/canvas/canvas-asset-handoff");
     let releasePersistence = () => {};
@@ -315,8 +355,10 @@ test("Create forwards owned result assets through one new canvas and the project
     const canvasIndex = readFileSync(resolve(import.meta.dir, "../src/pages/canvas/index.tsx"), "utf8");
     const canvasProject = readFileSync(resolve(import.meta.dir, "../src/pages/canvas/project.tsx"), "utf8");
 
-    expect(create).toContain('import { creationCanvasHandoffPath, creationResultAssetIds } from "@/lib/canvas/canvas-asset-handoff"');
+    expect(create).toContain('import { creationCanvasHandoffPath, creationResultAssetIds, creationResultMediaEntries, type CreationResultMediaEntry } from "@/lib/canvas/canvas-asset-handoff"');
     expect(create).toContain("const resultAssetIds = result && resultUrls.length ? creationResultAssetIds(assets, { messageId: result.id, taskIds: result.taskIds || [], resultUrls }) : [];");
+    expect(create).toContain("<CreationVideoSupplementalImages results={imageResults}");
+    expect(create).toContain('entry.role === "last_frame" ? "尾帧"');
     expect(create).toContain('const canvasHandoffPath = result ? creationCanvasHandoffPath(resultAssetIds, resultUrls.length) : "";');
     expect(create).toContain('const canvasPath = canvasHandoffPath || "/canvas";');
     expect(create).toContain('<Link to={canvasPath}>{canvasHandoffPath ? "添加到画布" : "打开画布"}</Link>');

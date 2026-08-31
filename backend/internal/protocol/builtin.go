@@ -1182,10 +1182,14 @@ func parseAsyncMediaPoll(c PollContext, payload map[string]any, capability Capab
 	result := &Result{Usage: deepestResponseObject(layers, "usage")}
 	resultKind := string(capability)
 	references := make([]MediaReference, 0)
+	images := make([]MediaReference, 0, 1)
 	for _, layer := range layers {
 		references = append(references, mediaFromArray(layer[resultKind+"s"], capability)...)
 		if content := object(layer["content"]); content != nil {
 			references = append(references, mediaFromArray([]any{content}, capability)...)
+			if capability == CapabilityVideo {
+				images = appendLastFrameReference(images, content)
+			}
 		}
 		keys := []string{resultKind + "_url", resultKind + "Url", "result_url", "resultUrl", "url"}
 		if resultKind == "video" {
@@ -1194,8 +1198,12 @@ func parseAsyncMediaPoll(c PollContext, payload map[string]any, capability Capab
 		if value := firstString(layer, keys...); value != "" {
 			references = append(references, MediaReference{URL: value, Kind: resultKind})
 		}
+		if capability == CapabilityVideo {
+			images = appendLastFrameReference(images, layer)
+		}
 	}
 	references = uniqueMediaReferences(references)
+	images = uniqueMediaReferences(images)
 	switch capability {
 	case CapabilityImage:
 		result.Images = references
@@ -1203,11 +1211,19 @@ func parseAsyncMediaPoll(c PollContext, payload map[string]any, capability Capab
 		result.Audios = references
 	case CapabilityVideo:
 		result.Videos = references
+		result.Images = images
 	}
 	if status == StatusSucceeded && len(references) == 0 {
 		result = nil
 	}
 	return PollResult{TaskID: taskID, Status: status, Result: result, Message: message}, nil
+}
+
+func appendLastFrameReference(values []MediaReference, payload map[string]any) []MediaReference {
+	if value := firstString(payload, "last_frame_url", "lastFrameUrl", "lastFrameURL"); value != "" {
+		return append(values, MediaReference{URL: value, Kind: string(CapabilityImage), Role: "last_frame"})
+	}
+	return values
 }
 
 func responseObjectLayers(payload map[string]any) []map[string]any {

@@ -183,6 +183,39 @@ describe("creation library button", () => {
         expect(source).toContain('{generateAudio ? "有声音" : "无声音"}');
     });
 
+    test("生成同款恢复参数时不会被模型默认值覆盖或污染非视频配置", () => {
+        const source = compactSource(readFileSync(resolve(import.meta.dir, "../src/pages/create/index.tsx"), "utf8"));
+
+        expect(source).toContain("draftSettingsRestoreRef");
+        expect(source).toContain('pendingRestore?.mode === "video"');
+        expect(source).toContain('nextMode === "video" && nextSettings.generateAudio !== undefined');
+        expect(source).toContain('nextMode === "video" && nextSettings.watermark !== undefined');
+        expect(source).toContain('setVideoOperationChoice("auto")');
+    });
+
+    test("视频生成方式、首尾帧角色和分类限制会进入提交链路", () => {
+        const source = compactSource(readFileSync(resolve(import.meta.dir, "../src/pages/create/index.tsx"), "utf8"));
+        const workspaceStyles = readFileSync(resolve(import.meta.dir, "../src/pages/create/creation-workspace.css"), "utf8");
+
+        expect(source).toContain("<VideoOperationPicker value={props.videoOperationChoice}");
+        expect(source).toContain('aria-label="选择视频生成方式"');
+        expect(source).toContain("normalizeCreationVideoImageRoles");
+        expect(source).toContain("creationVideoFrameAttachmentIds(submissionAttachments)");
+        expect(source).toContain("videoStartFrameNodeId");
+        expect(source).toContain("videoEndFrameNodeId");
+        expect(source).toContain("videoEditOperation: videoOperation");
+        expect(source).toContain('videoOperationExplicit: videoOperationChoice !== "auto"');
+        expect(source).toContain("modelGroupReferenceLimits(config, preferredModel, mode)");
+        expect(source).toContain("modelGroupVideoOperations(config, preferredModel)");
+        expect(source).toContain("operations={props.videoOperations}");
+        expect(source).toContain("reconcileCreationAttachmentLimits");
+        expect(source).toContain("filterCreationUploadFiles");
+        expect(source).toContain('className={`creation-reference-frame-role is-${videoImageRole}`}');
+        expect(source).toContain("onVideoImageRoleChange(item.id, option.value)");
+        expect(workspaceStyles).toContain(".creation-video-operation-menu");
+        expect(workspaceStyles).toContain(".creation-home .creation-reference-frame-role");
+    });
+
     test("全部创作入口按配置与输入素材分组并共用按钮外壳", () => {
         const source = compactSource(readFileSync(resolve(import.meta.dir, "../src/pages/create/index.tsx"), "utf8"));
         const workspaceStyles = readFileSync(resolve(import.meta.dir, "../src/pages/create/creation-workspace.css"), "utf8");

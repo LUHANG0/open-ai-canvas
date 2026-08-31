@@ -118,29 +118,26 @@ function generationTaskResult(task: GenerationTask): BackendGenerationResult {
 
 export function projectGenerationTaskResult(task: GenerationTask, result?: BackendGenerationResult): GenerationTask {
     const projectedResult = result ?? generationTaskResult(task);
-    const outputs: GenerationTaskOutput[] = projectedResult.images?.length
-        ? projectedResult.images.map((image, outputIndex) => ({
-              outputIndex,
-              mediaType: "image" as const,
-              ...(image.storageKey ? { providerArtifactRef: image.storageKey } : {}),
-          }))
-        : projectedResult.video
-          ? [
-                {
-                    outputIndex: 0,
-                    mediaType: "video" as const,
-                    ...(projectedResult.video.storageKey ? { providerArtifactRef: projectedResult.video.storageKey } : {}),
-                },
-            ]
-          : projectedResult.audio
-            ? [
-                  {
-                      outputIndex: 0,
-                      mediaType: "audio" as const,
-                      ...(projectedResult.audio.storageKey ? { providerArtifactRef: projectedResult.audio.storageKey } : {}),
-                  },
-              ]
-            : (task.outputs?.map((output) => ({ ...output })) ?? []);
+    const existingOutputs = task.outputs ?? [];
+    const outputs: GenerationTaskOutput[] = [];
+    const appendOutput = (mediaType: GenerationTaskOutput["mediaType"], providerArtifactRef?: string) => {
+        const outputIndex = outputs.length;
+        const existing = existingOutputs.find((output) => output.outputIndex === outputIndex && output.mediaType === mediaType);
+        outputs.push({
+            ...existing,
+            outputIndex,
+            mediaType,
+            ...(providerArtifactRef ? { providerArtifactRef } : {}),
+        });
+    };
+
+    // Keep the primary time-based result first. Consumers historically use output 0
+    // as the generated video/audio, while supplemental images (for example Ark's
+    // returned last frame) need their own effect/storage keys after it.
+    if (projectedResult.video) appendOutput("video", projectedResult.video.storageKey);
+    if (projectedResult.audio) appendOutput("audio", projectedResult.audio.storageKey);
+    projectedResult.images?.forEach((image) => appendOutput("image", image.storageKey));
+    if (!outputs.length) outputs.push(...existingOutputs.map((output) => ({ ...output })));
 
     return {
         ...task,
@@ -148,6 +145,18 @@ export function projectGenerationTaskResult(task: GenerationTask, result?: Backe
         outputs,
         ...(task.status === "succeeded" && outputs.length && !outputs.every((output) => output.materializedAssetId) ? { resultState: "PENDING_MATERIALIZATION" as const } : {}),
     };
+}
+
+function generationResultImageIndex(task: GenerationTask, output: GenerationTaskOutput) {
+    return (task.outputs ?? [])
+        .filter((candidate) => candidate.mediaType === "image")
+        .sort((left, right) => left.outputIndex - right.outputIndex)
+        .findIndex((candidate) => candidate.outputIndex === output.outputIndex);
+}
+
+function generationResultImage(task: GenerationTask, result: BackendGenerationResult, output: GenerationTaskOutput) {
+    const imageIndex = generationResultImageIndex(task, output);
+    return imageIndex < 0 ? undefined : result.images?.[imageIndex];
 }
 
 async function storedGenerationImage(result: NonNullable<BackendGenerationResult["images"]>[number], effectKey: string, scope: string, signal?: AbortSignal) {
@@ -220,18 +229,20 @@ async function storedGenerationMedia(dataUrl: string, effectKey: string, mediaTy
 async function generationOutputAsset(input: Parameters<MaterializeGenerationTaskOutput>[0], scope: string): Promise<NewAsset> {
     throwIfAborted(input.signal);
     const result = generationTaskResult(input.task);
+    const resultImage = input.output.mediaType === "image" ? generationResultImage(input.task, result, input.output) : undefined;
     const metadata = {
         source: "generation-task",
         generationEffectKey: input.effectKey,
         taskId: input.task.id,
         outputIndex: input.output.outputIndex,
+        ...(resultImage?.role ? { generationOutputRole: resultImage.role } : {}),
         conversationId: input.task.clientContext?.conversationId,
         messageId: input.task.clientContext?.messageId,
         batchIndex: input.task.clientContext?.batchIndex,
     };
 
     if (input.output.mediaType === "image") {
-        const image = result.images?.[input.output.outputIndex];
+        const image = resultImage;
         if (!image) throw new Error("生成任务缺少图片输出");
         const stored = await storedGenerationImage(image, input.effectKey, scope, input.signal);
         return {
@@ -415,7 +426,7 @@ export async function materializeGenerationTaskAssets(task: GenerationTask, sign
     const sourceResult = generationTaskResult(materialized);
     const outputs: GenerationTaskOutput[] = [];
     for (const output of materialized.outputs) {
-        const canRepair = output.mediaType === "image" ? Boolean(sourceResult.images?.[output.outputIndex]) : output.mediaType === "video" ? Boolean(sourceResult.video) : Boolean(sourceResult.audio);
+        const canRepair = output.mediaType === "image" ? Boolean(generationResultImage(materialized, sourceResult, output)) : output.mediaType === "video" ? Boolean(sourceResult.video) : Boolean(sourceResult.audio);
         if (!output.materializedAssetId || knownAssetIds.has(output.materializedAssetId) || !canRepair) {
             outputs.push(output);
             continue;

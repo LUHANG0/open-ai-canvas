@@ -1892,10 +1892,13 @@ func TestVolcengineArkVideoProtocolUsesAdapterPathAndDownloadsResult(t *testing.
 			}
 			_, _ = w.Write([]byte(`{"id":"ark-task-1","status":"running"}`))
 		case "GET /doubao/api/v3/contents/generations/tasks/ark-task-1":
-			_, _ = w.Write([]byte(`{"id":"ark-task-1","status":"succeeded","content":{"video_url":"` + server.URL + `/result.mp4"}}`))
+			_, _ = w.Write([]byte(`{"id":"ark-task-1","status":"succeeded","content":{"video_url":"` + server.URL + `/result.mp4","last_frame_url":"` + server.URL + `/last.png"}}`))
 		case "GET /result.mp4":
 			w.Header().Set("Content-Type", "video/mp4")
 			_, _ = w.Write([]byte("video"))
+		case "GET /last.png":
+			w.Header().Set("Content-Type", "image/png")
+			_, _ = w.Write([]byte("image"))
 		default:
 			http.NotFound(w, r)
 		}
@@ -1918,7 +1921,11 @@ func TestVolcengineArkVideoProtocolUsesAdapterPathAndDownloadsResult(t *testing.
 	if video["dataUrl"] != "data:video/mp4;base64,dmlkZW8=" {
 		t.Fatalf("video = %#v", video)
 	}
-	want := "POST /doubao/api/v3/contents/generations/tasks,GET /doubao/api/v3/contents/generations/tasks/ark-task-1,GET /result.mp4"
+	images, _ := result["images"].([]interface{})
+	if len(images) != 1 || images[0].(map[string]interface{})["dataUrl"] != "data:image/png;base64,aW1hZ2U=" || images[0].(map[string]interface{})["role"] != "last_frame" {
+		t.Fatalf("images = %#v", result["images"])
+	}
+	want := "POST /doubao/api/v3/contents/generations/tasks,GET /doubao/api/v3/contents/generations/tasks/ark-task-1,GET /result.mp4,GET /last.png"
 	if got := strings.Join(paths, ","); got != want {
 		t.Fatalf("paths = %q, want %q", got, want)
 	}

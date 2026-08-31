@@ -275,10 +275,12 @@ export function defaultModelCapabilityConfig(protocol?: ModelProtocol, model = "
         defaultOperation: "text_to_video",
     };
     if (protocol === "volcengine-jimeng-video") {
+        video.references.maxImages = 1;
         video.duration = { selection: "enum", values: [5, 10], default: 5 };
         video.resolutions = ["720p"];
     }
     if (protocol === "gemini-veo") {
+        video.references.maxImages = 1;
         video.duration = { selection: "enum", values: [4, 6, 8], default: 6 };
         video.resolutions = ["720p", "1080p"];
     }
@@ -294,7 +296,19 @@ export function defaultModelCapabilityConfig(protocol?: ModelProtocol, model = "
     if (protocol === "volcengine-ark-video" || protocol === "newapi-channel-1") video.resolutions = ["480p", "720p", "1080p"];
     if (protocol === "volcengine-ark-video") {
         video.watermark = { supported: true, default: false };
-        video.operations.push("reference_to_video", "audio_to_video");
+        // Ark 的音频只能作为全模态参考的一部分，不能单独创建音频生视频任务。
+        video.operations.push("reference_to_video");
+    }
+    if (protocol === "newapi-channel-1" || protocol === "newapi-channel-2" || protocol === "xai-video") {
+        video.operations.push("reference_to_video");
+    }
+    if (protocol === "newapi-channel-2" && ["grok-video-1.5", "grok-video-1.5-1080p"].includes(model.trim().toLowerCase())) {
+        video.references.minImages = 1;
+        video.references.maxImages = 1;
+        video.references.maxVideos = 0;
+        video.references.maxAudios = 0;
+        video.operations = ["image_to_video"];
+        video.defaultOperation = "image_to_video";
     }
     if (protocol === "novita-video") {
         video.references.maxImages = 1;

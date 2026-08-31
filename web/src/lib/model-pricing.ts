@@ -60,7 +60,7 @@ export function modelQuoteRequest(config: AiConfig, value: string, capability?: 
     const input = requirements?.input;
     const intent: ModelRequestIntent = {
         capability,
-        operation: capability === "video" && input ? resolveVideoOperation(input, requirements?.videoOperation) : requirements?.videoOperation,
+        operation: capability === "video" && input ? resolveVideoOperation(input, requirements?.videoOperation, requirements?.videoOperationExplicit) : requirements?.videoOperation,
         inputs: {
             image: (input?.imageCount || 0) + (input?.characterCount || 0),
             video: input?.videoCount || 0,
@@ -87,7 +87,8 @@ function priceSelectorForRequest(capability: ModelCapability | undefined, config
         const input = requirements?.input;
         if (input) {
             const imageCount = (input.imageCount || 0) + (input.characterCount || 0);
-            requested.operation = input.videoCount > 0 ? "video_to_video" : imageCount > 0 ? "image_to_video" : resolveVideoOperation(input, requirements?.videoOperation);
+            const operation = resolveVideoOperation(input, requirements?.videoOperation, requirements?.videoOperationExplicit);
+            requested.operation = input.videoCount > 0 && !requirements?.videoOperationExplicit ? "video_to_video" : operation;
             if (imageCount > 0) requested.imageCount = String(imageCount);
         }
         const resolution = normalizeTierResolution(config.vquality);

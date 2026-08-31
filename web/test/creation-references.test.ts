@@ -1,7 +1,22 @@
 import { describe, expect, test } from "bun:test";
 
 import { canvasResourceMentionToken } from "../src/lib/canvas/canvas-resource-references";
-import { creationAttachmentKind, creationFileAccepted, creationMediaAspectRatio, creationUploadAccept, type CreationAttachment } from "../src/pages/create/creation-assets";
+import {
+    canAddCreationAttachment,
+    countCreationAttachments,
+    creationAttachmentKind,
+    creationFileAccepted,
+    creationMediaAspectRatio,
+    creationUploadAccept,
+    creationVideoFrameAttachmentIds,
+    creationVideoImageRole,
+    filterCreationUploadFiles,
+    normalizeCreationVideoImageRoles,
+    reconcileCreationAttachmentLimits,
+    setCreationVideoImageRole,
+    type CreationAttachment,
+    type CreationAttachmentLimits,
+} from "../src/pages/create/creation-assets";
 import { buildCreationMentionReferences, displayCreationPrompt, reconcileCreationAttachmentLimit, removeCreationReferenceTokens, replaceCreationAttachmentReference, selectedCreationReferences } from "../src/pages/create/creation-references";
 
 function imageAttachment(id: string): CreationAttachment {
@@ -13,6 +28,22 @@ function imageAttachment(id: string): CreationAttachment {
         previewUrl: `data:image/png;base64,${id}`,
     };
 }
+
+function mediaAttachment(id: string, kind: "video" | "audio" | "file"): CreationAttachment {
+    const extension = kind === "video" ? "mp4" : kind === "audio" ? "mp3" : "pdf";
+    const type = kind === "video" ? "video/mp4" : kind === "audio" ? "audio/mpeg" : "application/pdf";
+    return {
+        id,
+        name: `${id}.${extension}`,
+        type,
+        url: `https://example.com/${id}.${extension}`,
+        storageKey: `${kind}:${id}`,
+        bytes: 100,
+        previewUrl: "",
+    };
+}
+
+const mixedMediaLimits: CreationAttachmentLimits = { maxImages: 2, maxVideos: 1, maxAudios: 1, maxFiles: 1 };
 
 describe("creation references", () => {
     test("removes attachments and prompt tokens beyond the current model limit", () => {
@@ -115,5 +146,109 @@ describe("creation references", () => {
 
     test("目标附件不存在时拒绝替换", () => {
         expect(() => replaceCreationAttachmentReference("", [imageAttachment("first")], "missing", imageAttachment("next"))).toThrow("要替换的参考内容不存在");
+    });
+
+    test("混合媒体按图片、视频、音频和文件分别统计与判断剩余额度", () => {
+        const attachments = [imageAttachment("image-1"), mediaAttachment("video-1", "video"), mediaAttachment("audio-1", "audio"), mediaAttachment("document-1", "file")];
+
+        expect(countCreationAttachments(attachments)).toEqual({ image: 1, video: 1, audio: 1, file: 1 });
+        expect(canAddCreationAttachment(attachments, "video", mixedMediaLimits, "image")).toBe(true);
+        expect(canAddCreationAttachment(attachments, "video", mixedMediaLimits, "video")).toBe(false);
+        expect(canAddCreationAttachment(attachments, "video", mixedMediaLimits, "file")).toBe(false);
+        expect(canAddCreationAttachment([], "video", { ...mixedMediaLimits, maxAudios: 0 }, "audio")).toBe(false);
+        expect(canAddCreationAttachment([], "image", mixedMediaLimits, "video")).toBe(false);
+    });
+
+    test("分类上限调整会稳定保留每类最早的附件并返回被移除项", () => {
+        const attachments = [
+            imageAttachment("image-1"),
+            mediaAttachment("video-1", "video"),
+            imageAttachment("image-2"),
+            mediaAttachment("audio-1", "audio"),
+            mediaAttachment("video-2", "video"),
+            imageAttachment("image-3"),
+            mediaAttachment("document-1", "file"),
+        ];
+        const result = reconcileCreationAttachmentLimits(attachments, "video", mixedMediaLimits);
+
+        expect(result.attachments.map((attachment) => attachment.id)).toEqual(["image-1", "video-1", "image-2", "audio-1"]);
+        expect(result.removedAttachments.map((attachment) => attachment.id)).toEqual(["video-2", "image-3", "document-1"]);
+        expect(reconcileCreationAttachmentLimits(result.attachments, "video", mixedMediaLimits).attachments).toBe(result.attachments);
+    });
+
+    test("批量上传按当前剩余分类额度稳定过滤，且不向视频模式混入文件", () => {
+        const files = [
+            { name: "video.mp4", type: "video/mp4" },
+            { name: "image-2.png", type: "image/png" },
+            { name: "notes.pdf", type: "application/pdf" },
+            { name: "image-3.png", type: "image/png" },
+            { name: "audio.mp3", type: "audio/mpeg" },
+            { name: "video-2.mp4", type: "video/mp4" },
+        ];
+        const result = filterCreationUploadFiles(files, "video", mixedMediaLimits, [imageAttachment("image-1")]);
+
+        expect(result.acceptedFiles.map((file) => file.name)).toEqual(["video.mp4", "image-2.png", "audio.mp3"]);
+        expect(result.rejectedFiles.map((file) => file.name)).toEqual(["notes.pdf", "image-3.png", "video-2.mp4"]);
+        expect(result.rejections.map(({ file, kind, reason }) => [file.name, kind, reason])).toEqual([
+            ["notes.pdf", undefined, "unsupported_type"],
+            ["image-3.png", "image", "limit_reached"],
+            ["video-2.mp4", "video", "limit_reached"],
+        ]);
+    });
+
+    test("文本模式可按独立文件额度接收文档，图片模式不接收音视频", () => {
+        const files = [
+            { name: "notes.pdf", type: "application/pdf" },
+            { name: "extra.md", type: "text/markdown" },
+            { name: "clip.mp4", type: "video/mp4" },
+        ];
+
+        expect(filterCreationUploadFiles(files, "text", { ...mixedMediaLimits, maxFiles: 1 }).acceptedFiles.map((file) => file.name)).toEqual(["notes.pdf", "clip.mp4"]);
+        expect(filterCreationUploadFiles(files, "image", mixedMediaLimits).acceptedFiles).toEqual([]);
+    });
+
+    test("视频图片角色兼容旧附件，并保证首帧和尾帧各自唯一", () => {
+        const original = [imageAttachment("first"), imageAttachment("second"), mediaAttachment("video", "video"), imageAttachment("third")];
+        expect(creationVideoImageRole(original[0])).toBe("reference_image");
+        expect(creationVideoImageRole(original[2])).toBeUndefined();
+
+        const withFirst = setCreationVideoImageRole(original, "first", "first_frame");
+        const withLast = setCreationVideoImageRole(withFirst, "second", "last_frame");
+        const movedFirst = setCreationVideoImageRole(withLast, "third", "first_frame");
+
+        expect(movedFirst.map(creationVideoImageRole)).toEqual(["reference_image", "last_frame", undefined, "first_frame"]);
+        expect(creationVideoFrameAttachmentIds(movedFirst)).toEqual({ videoStartFrameNodeId: "third", videoEndFrameNodeId: "second" });
+        expect(setCreationVideoImageRole(movedFirst, "video", "first_frame")).toBe(movedFirst);
+        expect(creationVideoFrameAttachmentIds(movedFirst.filter((attachment) => attachment.id !== "second"))).toEqual({ videoStartFrameNodeId: "third", videoEndFrameNodeId: undefined });
+    });
+
+    test("只为未设置角色的图片自动初始化首尾帧", () => {
+        const original = [imageAttachment("first"), imageAttachment("second"), imageAttachment("third")];
+        const framed = normalizeCreationVideoImageRoles(original, "image_to_video");
+
+        expect(framed.map(creationVideoImageRole)).toEqual(["first_frame", "last_frame", "reference_image"]);
+        expect(creationVideoFrameAttachmentIds(framed)).toEqual({ videoStartFrameNodeId: "first", videoEndFrameNodeId: "second" });
+
+        const explicitReference = setCreationVideoImageRole(framed, "second", "reference_image");
+        expect(normalizeCreationVideoImageRoles(explicitReference, "image_to_video")).toBe(explicitReference);
+        expect(explicitReference.map(creationVideoImageRole)).toEqual(["first_frame", "reference_image", "reference_image"]);
+        expect(creationVideoFrameAttachmentIds(explicitReference)).toEqual({ videoStartFrameNodeId: "first", videoEndFrameNodeId: undefined });
+
+        const singleTail = setCreationVideoImageRole([imageAttachment("only")], "only", "last_frame");
+        expect(normalizeCreationVideoImageRoles(singleTail, "image_to_video")).toBe(singleTail);
+        expect(singleTail.map(creationVideoImageRole)).toEqual(["last_frame"]);
+        expect(creationVideoFrameAttachmentIds(singleTail)).toEqual({ videoStartFrameNodeId: undefined, videoEndFrameNodeId: "only" });
+    });
+
+    test("切换全模态时清除帧标记，再切回时可重新自动初始化", () => {
+        const framed = normalizeCreationVideoImageRoles([imageAttachment("first"), imageAttachment("second"), imageAttachment("third")], "image_to_video");
+
+        const referenced = normalizeCreationVideoImageRoles(framed, "reference_to_video");
+        expect(referenced.map(creationVideoImageRole)).toEqual(["reference_image", "reference_image", "reference_image"]);
+        expect(creationVideoFrameAttachmentIds(referenced)).toEqual({ videoStartFrameNodeId: undefined, videoEndFrameNodeId: undefined });
+
+        const reframed = normalizeCreationVideoImageRoles(referenced, "image_to_video");
+        expect(reframed.map(creationVideoImageRole)).toEqual(["first_frame", "last_frame", "reference_image"]);
+        expect(creationVideoFrameAttachmentIds(reframed)).toEqual({ videoStartFrameNodeId: "first", videoEndFrameNodeId: "second" });
     });
 });

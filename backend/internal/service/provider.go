@@ -2547,6 +2547,29 @@ func finishProtocolResult(ctx context.Context, config providerConfig, mode strin
 	if len(references) == 0 {
 		return nil, errors.New("声明式协议已完成但没有返回媒体地址")
 	}
+	items, err := finishProtocolMediaItems(ctx, config, references)
+	if err != nil {
+		return nil, err
+	}
+	switch mode {
+	case "image":
+		return map[string]interface{}{"mode": "image", "images": items}, nil
+	case "video":
+		output := map[string]interface{}{"mode": "video", "video": items[0]}
+		if len(result.Images) > 0 {
+			images, err := finishProtocolMediaItems(ctx, config, result.Images)
+			if err != nil {
+				return nil, err
+			}
+			output["images"] = images
+		}
+		return output, nil
+	default:
+		return map[string]interface{}{"mode": "audio", "audio": items[0]}, nil
+	}
+}
+
+func finishProtocolMediaItems(ctx context.Context, config providerConfig, references []protocol.MediaReference) ([]interface{}, error) {
 	items := make([]interface{}, 0, len(references))
 	for _, reference := range references {
 		data, mimeType, err := protocolMediaBytes(ctx, config, reference)
@@ -2554,16 +2577,12 @@ func finishProtocolResult(ctx context.Context, config providerConfig, mode strin
 			return nil, err
 		}
 		item := map[string]interface{}{"dataUrl": dataURL(mimeType, data), "mimeType": mimeType}
+		if strings.TrimSpace(reference.Role) != "" {
+			item["role"] = strings.TrimSpace(reference.Role)
+		}
 		items = append(items, item)
 	}
-	switch mode {
-	case "image":
-		return map[string]interface{}{"mode": "image", "images": items}, nil
-	case "video":
-		return map[string]interface{}{"mode": "video", "video": items[0]}, nil
-	default:
-		return map[string]interface{}{"mode": "audio", "audio": items[0]}, nil
-	}
+	return items, nil
 }
 
 func protocolMediaBytes(ctx context.Context, config providerConfig, reference protocol.MediaReference) ([]byte, string, error) {
@@ -3509,7 +3528,7 @@ func newAPIChannel2VideoRequestBody(input canvasGenerationInput) (newAPIVideoReq
 		return newAPIVideoRequest{}, errors.New("NewAPI Video Generations 的参考音频必须同时提供至少 1 个参考视频；纯音频生视频请切换到支持该模式的渠道")
 	}
 	modelName := strings.ToLower(strings.TrimSpace(input.Config.Model))
-	requiresSingleImage := modelName == "grok-video-1.5" || modelName == "grok-video-1.5-1080p"
+	requiresSingleImage := isNewAPIChannel2SingleImageVideoModel(modelName)
 	images := make([]string, 0, len(input.ReferenceImages))
 	// 单图模型以实际参考图为准，兼容旧画布中未随连接关系更新的 text_to_video 元数据。
 	if shouldSendNewAPIVideoImages(input) || requiresSingleImage {

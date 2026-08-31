@@ -67,6 +67,31 @@ export function uninsertedCanvasAssetHandoffPayloads(nodes: Iterable<{ metadata?
 }
 
 export function creationResultAssetIds(assets: Asset[], input: { messageId: string; taskIds: string[]; resultUrls: string[] }) {
+    return creationResultAssetMatches(assets, input).flatMap((asset) => (asset ? [asset.id] : []));
+}
+
+export type CreationResultMediaEntry = {
+    url: string;
+    kind: "image" | "video";
+    assetId?: string;
+    role?: "first_frame" | "last_frame" | "reference_image";
+};
+
+export function creationResultMediaEntries(assets: Asset[], input: { messageId: string; taskIds: string[]; resultUrls: string[]; mode: "image" | "video" }): CreationResultMediaEntry[] {
+    const matches = creationResultAssetMatches(assets, input);
+    return input.resultUrls.map((url, index) => {
+        const asset = matches[index];
+        const role = asset?.metadata?.generationOutputRole;
+        return {
+            url,
+            kind: asset?.kind === "video" || asset?.kind === "image" ? asset.kind : input.mode === "video" && index === 0 ? "video" : "image",
+            ...(asset ? { assetId: asset.id } : {}),
+            ...(role === "first_frame" || role === "last_frame" || role === "reference_image" ? { role } : {}),
+        };
+    });
+}
+
+function creationResultAssetMatches(assets: Asset[], input: { messageId: string; taskIds: string[]; resultUrls: string[] }) {
     const taskOrder = new Map(input.taskIds.map((taskId, index) => [taskId, index]));
     const candidates = assets
         .filter((asset) => asset.kind === "image" || asset.kind === "video")
@@ -82,12 +107,12 @@ export function creationResultAssetIds(assets: Asset[], input: { messageId: stri
         });
     const unused = new Set(candidates.map((asset) => asset.id));
     const allowOrderedFallback = candidates.length === input.resultUrls.length;
-    return input.resultUrls.flatMap((url) => {
+    return input.resultUrls.map((url) => {
         const exact = candidates.find((asset) => unused.has(asset.id) && (asset.coverUrl === url || (asset.kind === "image" ? asset.data.dataUrl === url : asset.data.url === url)));
         const fallback = exact || (allowOrderedFallback ? candidates.find((asset) => unused.has(asset.id)) : undefined);
-        if (!fallback) return [];
+        if (!fallback) return undefined;
         unused.delete(fallback.id);
-        return [fallback.id];
+        return fallback;
     });
 }
 

@@ -3,7 +3,7 @@ import { describe, expect, test } from "bun:test";
 import { canvasConnectionError } from "../src/lib/canvas/canvas-connection-policy";
 import { assertCanvasImageReferenceLimit, buildGenerationConfig, canvasImageReferenceLimitError, resolveCanvasGenerationModel } from "../src/lib/canvas/canvas-project-generation";
 import { defaultModelCapabilityConfig } from "../src/lib/model-capabilities";
-import { groupModelsByDisplayName, inferVideoOperation, modelCompatibilityError, modelGroupReferenceLimits, resolveCompatibleModel, resolveModelGenerationDefaults } from "../src/lib/model-selection";
+import { groupModelsByDisplayName, inferVideoOperation, modelCompatibilityError, modelGroupReferenceLimits, modelGroupVideoOperations, resolveCompatibleModel, resolveModelGenerationDefaults, resolveVideoOperation } from "../src/lib/model-selection";
 import { defaultConfig, normalizeModelOptionValue, type AiConfig, type ModelChannel } from "../src/stores/use-config-store";
 import { CanvasNodeType, type CanvasConnection, type CanvasNodeData } from "../src/types/canvas";
 
@@ -217,7 +217,46 @@ describe("逻辑模型选择", () => {
     test("音频仅在单独参考时归类为音频生视频", () => {
         expect(inferVideoOperation({ textCount: 1, imageCount: 0, videoCount: 0, audioCount: 1, characterCount: 0 })).toBe("audio_to_video");
         expect(inferVideoOperation({ textCount: 1, imageCount: 1, videoCount: 0, audioCount: 1, characterCount: 0 })).toBe("image_to_video");
+        expect(inferVideoOperation({ textCount: 1, imageCount: 2, videoCount: 0, audioCount: 0, characterCount: 0 })).toBe("reference_to_video");
         expect(inferVideoOperation({ textCount: 1, imageCount: 0, videoCount: 1, audioCount: 1, characterCount: 0 })).toBe("reference_to_video");
+    });
+
+    test("只有显式选择才保留已存储的标准视频 operation", () => {
+        const twoImages = { textCount: 1, imageCount: 2, videoCount: 0, audioCount: 0, characterCount: 0 };
+
+        expect(resolveVideoOperation(twoImages, "image_to_video")).toBe("reference_to_video");
+        expect(resolveVideoOperation(twoImages, "image_to_video", false)).toBe("reference_to_video");
+        expect(resolveVideoOperation(twoImages, "image_to_video", true)).toBe("image_to_video");
+        expect(resolveVideoOperation(twoImages, "provider_custom_mode")).toBe("provider_custom_mode");
+    });
+
+    test("同显示名视频模型聚合 operations，自动双图路由到全模态参考成员", () => {
+        const config = policyConfig();
+        const channel = config.channels[0]!;
+        const model = "cinema-reference";
+        const value = `relay::${model}`;
+        const capabilityConfig = defaultModelCapabilityConfig(undefined, model);
+        capabilityConfig.video!.operations = ["reference_to_video"];
+        capabilityConfig.video!.references.maxImages = 9;
+        capabilityConfig.video!.references.maxVideos = 3;
+        capabilityConfig.video!.references.maxAudios = 3;
+        channel.models.push(model);
+        channel.modelCosts!.push({ model, displayName: "Cinema Pro", capability: "video", billingMode: "per_second", unitPriceMicrocredits: 2, capabilityConfig });
+        config.models.push(value);
+        config.videoModels.push(value);
+
+        expect(modelGroupVideoOperations(config, "relay::cinema-text")).toEqual(["text_to_video", "image_to_video", "audio_to_video", "reference_to_video"]);
+
+        const autoRequirements = {
+            capability: "video" as const,
+            input: { textCount: 1, imageCount: 2, videoCount: 0, audioCount: 0, characterCount: 0 },
+            videoOperation: "image_to_video",
+            videoOperationExplicit: false,
+            videoSeconds: "6",
+        };
+        expect(resolveCompatibleModel(config, "relay::cinema-image", autoRequirements)).toBe(value);
+        expect(resolveCompatibleModel(config, "relay::cinema-image", { ...autoRequirements, videoOperationExplicit: true })).toBe("");
+        expect(resolveCompatibleModel(config, "relay::cinema-image", { ...autoRequirements, input: { ...autoRequirements.input, imageCount: 1 }, videoOperationExplicit: true })).toBe("relay::cinema-image");
     });
 
     test("图片加音频可匹配支持图生视频和参考音频的模型", () => {

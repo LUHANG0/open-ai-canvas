@@ -8,7 +8,7 @@ import { applyCanvasGenerationTaskNodeEffect, persistCanvasAgentGenerationContin
 import { canvasCinematicContinuationEntryAdapters } from "../src/components/canvas/canvas-assistant-panel";
 import { applyGenerationConsumerEffect, generationEffectApplied } from "../src/services/generation-consumer-dedupe";
 import { createProviderNeutralGenerationTaskEffectStore } from "../src/services/provider-neutral-generation-effects";
-import { consumeGenerationTaskAgent, consumeGenerationTaskMessage, consumeGenerationTaskNode, materializeGenerationTaskAssets } from "../src/services/project-asset-sync";
+import { consumeGenerationTaskAgent, consumeGenerationTaskMessage, consumeGenerationTaskNode, materializeGenerationTaskAssets, projectGenerationTaskResult } from "../src/services/project-asset-sync";
 import { flushCanvasStorePersistence, useCanvasStore, withCanvasStorePersistenceSuppressed, type CanvasProject } from "../src/stores/canvas/use-canvas-store";
 import { flushAssetStorePersistence, useAssetStore, type NewAsset } from "../src/stores/use-asset-store";
 import { CanvasNodeType, type CanvasAssistantSession, type CanvasNodeData } from "../src/types/canvas";
@@ -218,6 +218,119 @@ describe("readImageMeta", () => {
 });
 
 describe("generation task materializer", () => {
+    test("projects and materializes a video together with its returned last frame", async () => {
+        const previousAssets = useAssetStore.getState().assets;
+        const previousScope = getActiveUserScope();
+        const originalWindow = (globalThis as { window?: unknown }).window;
+        const originalLocks = Object.getOwnPropertyDescriptor(navigator, "locks");
+        const originalGetItem = localforage.getItem.bind(localforage);
+        const originalSetItem = localforage.setItem.bind(localforage);
+        const durableValues = new Map<string, unknown>();
+        const localStorageValues = new Map<string, string>();
+        Object.defineProperty(globalThis, "window", {
+            configurable: true,
+            value: {
+                localStorage: {
+                    getItem: (key: string) => localStorageValues.get(key) ?? null,
+                    setItem: (key: string, value: string) => localStorageValues.set(key, value),
+                    removeItem: (key: string) => localStorageValues.delete(key),
+                },
+            },
+        });
+        localforage.getItem = (async (key: string) => durableValues.get(key) ?? null) as typeof localforage.getItem;
+        localforage.setItem = (async (key: string, value: unknown) => {
+            durableValues.set(key, value);
+            return value;
+        }) as typeof localforage.setItem;
+        Object.defineProperty(navigator, "locks", {
+            configurable: true,
+            value: {
+                request<T>(_name: string, callback: () => Promise<T>) {
+                    return callback();
+                },
+            },
+        });
+        const task: GenerationTask = {
+            id: "backend-video-with-last-frame",
+            provider: "remote-video-provider",
+            type: "video",
+            status: "succeeded",
+            prompt: "redacted",
+            attempts: 1,
+            resultState: "READY",
+            outputs: [{ outputIndex: 0, mediaType: "video", materializedAssetId: "asset-existing-video" }],
+            createdAt: "2026-08-31T00:00:00.000Z",
+            updatedAt: "2026-08-31T00:00:00.000Z",
+        };
+        const result = {
+            mode: "video" as const,
+            video: {
+                dataUrl: "data:video/mp4;base64,dmlkZW8=",
+                storageKey: "resource:mixed-result-primary",
+                width: 1280,
+                height: 720,
+                bytes: 5,
+                mimeType: "video/mp4",
+            },
+            images: [
+                {
+                    dataUrl: "data:image/png;base64,aW1hZ2U=",
+                    storageKey: "resource:mixed-result-last-frame",
+                    width: 1280,
+                    height: 720,
+                    bytes: 5,
+                    mimeType: "image/png",
+                    role: "last_frame" as const,
+                },
+            ],
+        };
+
+        const projected = projectGenerationTaskResult(task, result);
+        expect(projected.outputs).toEqual([
+            {
+                outputIndex: 0,
+                mediaType: "video",
+                providerArtifactRef: "resource:mixed-result-primary",
+                materializedAssetId: "asset-existing-video",
+            },
+            {
+                outputIndex: 1,
+                mediaType: "image",
+                providerArtifactRef: "resource:mixed-result-last-frame",
+            },
+        ]);
+        expect(projected.resultState).toBe("PENDING_MATERIALIZATION");
+        expect(projectGenerationTaskResult(projected).outputs).toEqual(projected.outputs);
+
+        try {
+            setActiveUserScope("mixed-video-result");
+            useAssetStore.getState().replaceAssets([]);
+            await flushAssetStorePersistence();
+            const materialized = await materializeGenerationTaskAssets({ ...projected, outputs: projected.outputs?.map(({ materializedAssetId: _materializedAssetId, ...output }) => output) });
+            expect(materialized.outputs?.map(({ outputIndex, mediaType }) => ({ outputIndex, mediaType }))).toEqual([
+                { outputIndex: 0, mediaType: "video" },
+                { outputIndex: 1, mediaType: "image" },
+            ]);
+            const assets = materialized.outputs?.map((output) => useAssetStore.getState().assets.find((asset) => asset.id === output.materializedAssetId));
+            expect(assets?.map((asset) => asset?.kind)).toEqual(["video", "image"]);
+            expect(assets?.[0]?.metadata).toMatchObject({ taskId: task.id, outputIndex: 0, generationEffectKey: `materialize:${task.id}:0` });
+            expect(assets?.[1]?.metadata).toMatchObject({ taskId: task.id, outputIndex: 1, generationEffectKey: `materialize:${task.id}:1`, generationOutputRole: "last_frame" });
+            const durableKeys = [...durableValues.keys()];
+            expect(durableKeys.length).toBeGreaterThan(0);
+            expect(durableKeys.every((key) => key.includes(":user:mixed-video-result"))).toBe(true);
+        } finally {
+            useAssetStore.getState().replaceAssets(previousAssets);
+            await flushAssetStorePersistence();
+            setActiveUserScope(previousScope);
+            localforage.getItem = originalGetItem;
+            localforage.setItem = originalSetItem;
+            if (originalLocks) Object.defineProperty(navigator, "locks", originalLocks);
+            else delete (navigator as { locks?: unknown }).locks;
+            if (originalWindow === undefined) delete (globalThis as { window?: unknown }).window;
+            else Object.defineProperty(globalThis, "window", { configurable: true, value: originalWindow });
+        }
+    });
+
     test("remote Backend Create uses the default production materializer without Dreamina authority", async () => {
         const previousAssets = useAssetStore.getState().assets;
         useAssetStore.getState().replaceAssets([

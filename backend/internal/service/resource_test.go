@@ -860,6 +860,37 @@ func TestGeneratedMediaRejectsInvalidDataURL(t *testing.T) {
 	}
 }
 
+func TestPersistGeneratedMediaMaterializesVideoAndLastFrame(t *testing.T) {
+	svc := newResourceTestService(t)
+	result, err := svc.persistGeneratedMediaResult("user-1", map[string]interface{}{
+		"mode":  "video",
+		"video": map[string]interface{}{"dataUrl": "data:video/mp4;base64,dmlkZW8=", "mimeType": "video/mp4"},
+		"images": []interface{}{
+			map[string]interface{}{"dataUrl": "data:image/png;base64,aW1hZ2U=", "mimeType": "image/png", "role": "last_frame"},
+		},
+	})
+	if err != nil {
+		t.Fatalf("persistGeneratedMediaResult() error = %v", err)
+	}
+	video := result["video"].(map[string]interface{})
+	images := result["images"].([]interface{})
+	lastFrame := images[0].(map[string]interface{})
+	if video["resourceId"] == "" || lastFrame["resourceId"] == "" || video["resourceId"] == lastFrame["resourceId"] {
+		t.Fatalf("materialized result = %#v", result)
+	}
+	if video["mimeType"] != "video/mp4" || lastFrame["mimeType"] != "image/png" || lastFrame["role"] != "last_frame" {
+		t.Fatalf("materialized media = video %#v, last frame %#v", video, lastFrame)
+	}
+	videoResource, err := svc.repo.ResourceForUser("user-1", video["resourceId"].(string))
+	if err != nil || videoResource.Kind != "video" {
+		t.Fatalf("video resource = %#v, %v", videoResource, err)
+	}
+	imageResource, err := svc.repo.ResourceForUser("user-1", lastFrame["resourceId"].(string))
+	if err != nil || imageResource.Kind != "image" {
+		t.Fatalf("image resource = %#v, %v", imageResource, err)
+	}
+}
+
 func TestPersistGeneratedMediaAppliesStoredFileQuota(t *testing.T) {
 	svc := newResourceTestService(t)
 	if err := svc.repo.Create(&model.Resource{

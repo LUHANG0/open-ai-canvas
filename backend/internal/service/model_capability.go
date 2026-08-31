@@ -200,13 +200,18 @@ func DefaultModelCapabilityConfigForModel(protocol string, modelName string) *Mo
 	}
 	switch model.ChannelInterfaceType(protocol) {
 	case model.ChannelInterfaceVolcengineJiMengVideo:
+		video.References.MaxImages = 1
 		video.Duration = VideoDurationConfig{Selection: "enum", Values: []int{5, 10}, Default: 5}
 		video.Resolutions = []string{"720p"}
 	case model.ChannelInterfaceGeminiVeo:
+		video.References.MaxImages = 1
 		video.Duration = VideoDurationConfig{Selection: "enum", Values: []int{4, 6, 8}, Default: 6}
 		video.Resolutions = []string{"720p", "1080p"}
 	case model.ChannelInterfaceVolcengineArkVideo:
-		video.Operations = append(video.Operations, "reference_to_video", "audio_to_video")
+		// Ark accepts audio as one part of a multimodal reference request, but it
+		// rejects audio-only and text+audio requests. Do not advertise the
+		// unreachable audio_to_video operation.
+		video.Operations = append(video.Operations, "reference_to_video")
 		video.References.MaxVideos, video.References.MaxAudios = 3, 3
 		video.References.MaxVideoBytes, video.References.MaxAudioBytes = 200*1024*1024, 15*1024*1024
 		video.References.MaxVideoDuration, video.References.MaxAudioDuration = 15, 15
@@ -214,6 +219,7 @@ func DefaultModelCapabilityConfigForModel(protocol string, modelName string) *Mo
 		video.Watermark = VideoBooleanConfig{Supported: true, Default: false}
 		video.Resolutions = []string{"480p", "720p", "1080p"}
 	case model.ChannelInterfaceNewAPIChannel1, model.ChannelInterfaceNewAPIChannel2:
+		video.Operations = append(video.Operations, "reference_to_video")
 		video.References.MaxVideos, video.References.MaxAudios = 3, 3
 		video.References.MaxVideoBytes, video.References.MaxAudioBytes = 200*1024*1024, 15*1024*1024
 		video.References.MaxVideoDuration, video.References.MaxAudioDuration = 15, 15
@@ -221,8 +227,19 @@ func DefaultModelCapabilityConfigForModel(protocol string, modelName string) *Mo
 		if model.ChannelInterfaceType(protocol) == model.ChannelInterfaceNewAPIChannel1 {
 			video.Resolutions = []string{"480p", "720p", "1080p"}
 		}
+		if model.ChannelInterfaceType(protocol) == model.ChannelInterfaceNewAPIChannel2 && isNewAPIChannel2SingleImageVideoModel(modelName) {
+			video.References.MinImages = 1
+			video.References.MaxImages = 1
+			video.References.MaxVideos = 0
+			video.References.MaxAudios = 0
+			video.Operations = []string{"image_to_video"}
+			video.DefaultOperation = "image_to_video"
+		}
 	case model.ChannelInterfaceNewAPIVideo, model.ChannelInterfaceXAIVideo:
 		video.GenerateAudio = VideoBooleanConfig{Supported: false, Default: false}
+		if model.ChannelInterfaceType(protocol) == model.ChannelInterfaceXAIVideo {
+			video.Operations = append(video.Operations, "reference_to_video")
+		}
 	case model.ChannelInterfaceNovitaVideo:
 		video.References.MaxImages, video.References.MaxImageBytes = 1, 10*1024*1024
 		video.Duration = VideoDurationConfig{Selection: "enum", Values: []int{5, 10}, Default: 5}
@@ -301,7 +318,45 @@ func NormalizeModelCapabilityConfigForModel(capability string, protocol string, 
 }
 
 func applyModelSpecificVideoCapability(profile *VideoCapabilityConfig, protocol string, modelName string) *VideoCapabilityConfig {
-	if profile == nil || model.ChannelInterfaceType(strings.TrimSpace(protocol)) != model.ChannelInterfaceAgnesVideo {
+	if profile == nil {
+		return profile
+	}
+	interfaceType := model.ChannelInterfaceType(strings.TrimSpace(protocol))
+	if interfaceType == model.ChannelInterfaceVolcengineJiMengVideo || interfaceType == model.ChannelInterfaceGeminiVeo || interfaceType == model.ChannelInterfaceNovitaVideo {
+		value := *profile
+		value.References = profile.References
+		if value.References.MaxImages > 1 {
+			value.References.MaxImages = 1
+		}
+		value.References.MaxVideos = 0
+		value.References.MaxVideoBytes = 0
+		value.References.MaxVideoDuration = 0
+		value.References.MaxAudios = 0
+		value.References.MaxAudioBytes = 0
+		value.References.MaxAudioDuration = 0
+		return &value
+	}
+	if interfaceType == model.ChannelInterfaceVolcengineArkVideo {
+		value := *profile
+		value.Operations = removeCapabilityString(profile.Operations, "audio_to_video")
+		return &value
+	}
+	if interfaceType == model.ChannelInterfaceNewAPIChannel2 && isNewAPIChannel2SingleImageVideoModel(modelName) {
+		value := *profile
+		value.References = profile.References
+		value.References.MinImages = 1
+		value.References.MaxImages = 1
+		value.References.MaxVideos = 0
+		value.References.MaxVideoBytes = 0
+		value.References.MaxVideoDuration = 0
+		value.References.MaxAudios = 0
+		value.References.MaxAudioBytes = 0
+		value.References.MaxAudioDuration = 0
+		value.Operations = []string{"image_to_video"}
+		value.DefaultOperation = "image_to_video"
+		return &value
+	}
+	if interfaceType != model.ChannelInterfaceAgnesVideo {
 		return profile
 	}
 	normalizedModel := strings.ToLower(strings.TrimSpace(modelName))
@@ -337,6 +392,22 @@ func applyModelSpecificVideoCapability(profile *VideoCapabilityConfig, protocol 
 	value.Operations = []string{"text_to_video", "image_to_video", "reference_to_video", "audio_to_video"}
 	value.DefaultOperation = "text_to_video"
 	return &value
+}
+
+func isNewAPIChannel2SingleImageVideoModel(modelName string) bool {
+	normalized := strings.ToLower(strings.TrimSpace(modelName))
+	return normalized == "grok-video-1.5" || normalized == "grok-video-1.5-1080p"
+}
+
+func removeCapabilityString(values []string, unwanted string) []string {
+	result := make([]string, 0, len(values))
+	for _, value := range values {
+		if strings.EqualFold(strings.TrimSpace(value), strings.TrimSpace(unwanted)) {
+			continue
+		}
+		result = append(result, value)
+	}
+	return result
 }
 
 // CapabilitySpecFromModelCapabilityConfig 将渠道模型的真实供应能力投影为路由能力规格。
@@ -672,6 +743,9 @@ func validateVideoTask(profile *VideoCapabilityConfig, input canvasGenerationInp
 	}
 	if input.Config.InterfaceType == string(model.ChannelInterfaceVolcengineArkVideo) && len(input.ReferenceAudios) > 0 && len(input.ReferenceImages) == 0 && len(input.ReferenceVideos) == 0 {
 		return BadAuthRequest("火山方舟全模态参考不支持纯音频或文本+音频，请同时添加参考图片或参考视频")
+	}
+	if input.Config.InterfaceType == string(model.ChannelInterfaceNewAPIChannel2) && len(input.ReferenceAudios) > 0 && len(input.ReferenceVideos) == 0 {
+		return BadAuthRequest("NewAPI Video Generations 的参考音频必须同时提供至少 1 个参考视频")
 	}
 	if len(input.ReferenceImages) < profile.References.MinImages {
 		return BadAuthRequest(fmt.Sprintf("当前视频模型至少需要 %d 张参考图", profile.References.MinImages))
