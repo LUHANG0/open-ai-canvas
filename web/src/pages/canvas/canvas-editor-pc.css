@@ -1,0 +1,244 @@
+/*
+ * PC Canvas workspace skin.
+ *
+ * The editor keeps its existing canvas theme and interaction model. This file
+ * only provides a desktop presentation layer, scoped to Canvas-owned roots so
+ * the library page, Create, Admin, and the existing sub-1024 contract are not
+ * affected.
+ */
+
+@media (min-width: 1024px) {
+    .pc-canvas-workspace {
+        --canvas-topbar-h: 60px;
+        --canvas-topbar-offset: 68px;
+        --canvas-sidebar-width: 244px;
+        --canvas-inset-x: 16px;
+        --canvas-inset-y: 16px;
+        --pc-canvas-panel-border: color-mix(in srgb, var(--app-border-default) 86%, transparent);
+        --pc-canvas-panel-surface: color-mix(in srgb, var(--app-surface-overlay) 94%, transparent);
+        --pc-canvas-panel-muted: color-mix(in srgb, var(--app-surface-2) 92%, transparent);
+        --pc-canvas-command-hover: var(--app-action-secondary-hover);
+        --pc-canvas-command-active: var(--app-selection-bg);
+        position: relative;
+        isolation: isolate;
+        overscroll-behavior: none;
+        font-family: var(--app-font-sans);
+    }
+
+    .pc-canvas-workspace::after {
+        position: absolute;
+        z-index: 0;
+        inset: 0;
+        background: radial-gradient(circle at 50% -18%, color-mix(in srgb, var(--app-surface-1) 16%, transparent), transparent 38%);
+        content: "";
+        pointer-events: none;
+    }
+
+    .pc-canvas-workspace__stage,
+    .pc-canvas-workspace__body,
+    .pc-canvas-workspace__viewport {
+        position: relative;
+        z-index: 1;
+    }
+
+    .pc-canvas-workspace__viewport {
+        min-inline-size: 520px;
+    }
+
+    .pc-canvas-workspace__mode-switch,
+    .pc-canvas-workspace__bottom-dock,
+    .pc-canvas-toolbar,
+    .pc-canvas-zoom {
+        filter: saturate(0.96);
+    }
+
+    .pc-canvas-skip-link:focus-visible {
+        border-color: var(--app-border-strong);
+        background: var(--app-surface-overlay);
+        color: var(--app-text-primary);
+        box-shadow: var(--app-shadow-raised), var(--app-focus-shadow);
+    }
+
+    .pc-canvas-workspace .pc-canvas-topbar {
+        padding-inline: var(--app-space-4);
+    }
+
+    .pc-canvas-workspace .canvas-topbar-cluster {
+        min-height: 44px;
+        border: 1px solid var(--pc-canvas-panel-border);
+        border-radius: var(--app-surface-radius);
+        padding: var(--app-space-1);
+        backdrop-filter: blur(18px) saturate(112%);
+    }
+
+    .pc-canvas-workspace .pc-canvas-topbar__project {
+        max-width: min(420px, calc(50vw - 104px));
+        padding-inline-end: var(--app-space-2);
+    }
+
+    .pc-canvas-workspace .pc-canvas-topbar__actions {
+        max-width: calc(100% - 440px);
+        gap: var(--app-space-1);
+    }
+
+    .pc-canvas-workspace .canvas-topbar-action {
+        border-radius: var(--app-control-radius);
+        color: inherit;
+    }
+
+    .pc-canvas-workspace .canvas-topbar-action:focus-visible {
+        outline: none;
+        box-shadow: var(--app-focus-shadow);
+    }
+
+    .pc-canvas-workspace .canvas-topbar-title-row > button:first-child {
+        font-size: var(--app-font-size-body);
+        font-weight: 650;
+        letter-spacing: -0.01em;
+    }
+
+    .pc-canvas-workspace .canvas-topbar-project-context {
+        font-size: 11px;
+        line-height: 1.3;
+    }
+
+    .pc-canvas-workspace .pc-canvas-topbar__separator {
+        height: 20px;
+        opacity: 0.68;
+    }
+
+    .pc-canvas-workspace .pc-canvas-toolbar {
+        padding-inline: 132px;
+    }
+
+    .pc-canvas-workspace .pc-canvas-toolbar > .canvas-floating-dock,
+    .pc-canvas-workspace .pc-canvas-zoom > .canvas-floating-dock,
+    .pc-canvas-workspace .pc-canvas-workspace__mode-switch .canvas-mode-switch-trigger {
+        border-radius: var(--app-surface-radius);
+    }
+
+    .pc-canvas-workspace .pc-canvas-toolbar > .canvas-floating-dock {
+        max-width: min(760px, calc(100vw - 460px));
+    }
+
+    .pc-canvas-workspace .pc-canvas-toolbar__popover,
+    .pc-canvas-workspace .pc-canvas-zoom__popover {
+        transform-origin: bottom center;
+    }
+
+    .pc-canvas-workspace .pc-canvas-panel {
+        border-color: var(--pc-canvas-panel-border);
+        border-radius: var(--app-surface-radius);
+    }
+
+    .pc-canvas-workspace .aceternity-dock-command {
+        border-radius: var(--app-control-radius);
+    }
+
+    .pc-canvas-workspace .aceternity-dock-command:hover:not(:disabled) {
+        background: var(--pc-canvas-command-hover);
+    }
+
+    .pc-canvas-workspace .aceternity-dock-command.is-active {
+        background: var(--pc-canvas-command-active);
+    }
+
+    .pc-canvas-workspace .aceternity-dock-command:focus-visible,
+    .pc-canvas-workspace .canvas-mode-switch-trigger:focus-visible {
+        outline: none;
+        box-shadow: var(--app-focus-shadow);
+    }
+
+    .pc-canvas-workspace .pc-canvas-project-sidebar {
+        border-color: var(--pc-canvas-panel-border);
+        background: color-mix(in srgb, var(--app-surface-1) 94%, transparent);
+        color: var(--app-text-primary);
+        box-shadow: 12px 0 30px color-mix(in srgb, var(--app-text-primary) 5%, transparent);
+        backdrop-filter: blur(18px) saturate(108%);
+    }
+
+    .pc-canvas-workspace .pc-canvas-project-sidebar.is-collapsed {
+        width: 48px;
+    }
+
+    .pc-canvas-workspace .pc-canvas-project-sidebar__header {
+        height: var(--canvas-topbar-h);
+        border-color: var(--app-border-subtle);
+        padding-inline: var(--app-space-3);
+    }
+
+    .pc-canvas-workspace .pc-canvas-project-sidebar__section {
+        border-color: var(--app-border-subtle);
+        padding: var(--app-space-2);
+    }
+
+    .pc-canvas-workspace .pc-canvas-project-sidebar__footer {
+        border-color: var(--app-border-subtle);
+        background: color-mix(in srgb, var(--app-surface-2) 72%, transparent);
+        padding: var(--app-space-2);
+    }
+
+    .pc-canvas-workspace .pc-canvas-project-sidebar__preview {
+        border-color: var(--pc-canvas-panel-border);
+        border-radius: var(--app-surface-radius);
+        background: var(--app-surface-overlay);
+        box-shadow: var(--app-shadow-overlay);
+        backdrop-filter: blur(20px);
+    }
+
+    .pc-canvas-workspace .pc-canvas-project-sidebar button:focus-visible,
+    .pc-canvas-workspace .pc-canvas-project-sidebar a:focus-visible {
+        outline: none;
+        box-shadow: inset var(--app-focus-shadow);
+    }
+
+    .pc-canvas-workspace .pc-canvas-assistant-column {
+        border-inline-start: 1px solid var(--pc-canvas-panel-border);
+        background: color-mix(in srgb, var(--app-surface-1) 96%, transparent);
+    }
+
+    .pc-canvas-workspace .pc-canvas-assistant-column__resize::after {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 3px;
+        height: 44px;
+        border-radius: var(--app-radius-1);
+        background: var(--app-border-default);
+        content: "";
+        opacity: 0;
+        transform: translate(-50%, -50%);
+        transition: opacity var(--app-duration-fast) var(--app-ease-standard);
+    }
+
+    .pc-canvas-workspace .pc-canvas-assistant-column__resize:hover::after,
+    .pc-canvas-workspace .pc-canvas-assistant-column__resize:focus-visible::after {
+        opacity: 1;
+    }
+
+    .pc-canvas-workspace .pc-canvas-assistant-column__resize:focus-visible {
+        outline: none;
+    }
+
+    .pc-canvas-overlay.pc-canvas-menu-overlay .ant-dropdown-menu {
+        min-width: 212px;
+        border: 1px solid var(--app-border-default);
+        border-radius: var(--app-surface-radius);
+        background: var(--app-surface-overlay);
+        padding: var(--app-space-1);
+        box-shadow: var(--app-shadow-overlay);
+    }
+
+    .pc-canvas-overlay.pc-canvas-menu-overlay .ant-dropdown-menu-item,
+    .pc-canvas-overlay.pc-canvas-menu-overlay .ant-dropdown-menu-submenu-title {
+        min-height: var(--app-control-height);
+        border-radius: var(--app-control-radius);
+        font-size: var(--app-font-size-control);
+    }
+
+    .pc-canvas-overlay.pc-canvas-menu-overlay .ant-dropdown-menu-item:focus-visible,
+    .pc-canvas-overlay.pc-canvas-menu-overlay .ant-dropdown-menu-submenu-title:focus-visible {
+        outline: none;
+        box-shadow: inset var(--app-focus-shadow);
+    }
+}
