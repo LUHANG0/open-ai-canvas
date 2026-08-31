@@ -105,7 +105,7 @@ function WorkspaceSwitcher({ collapsed, onNavigate, onExpand }: { collapsed: boo
                 onClick={() => setIsOpen((open) => !open)}
                 aria-haspopup="listbox"
                 aria-expanded={isOpen}
-                className="group flex w-full items-center justify-between rounded-[var(--r-sm)] px-2 py-2 text-left transition-colors select-none hover:bg-surface-hover"
+                className="app-workspace-brand-switcher group flex w-full items-center justify-between rounded-[var(--r-sm)] px-2 py-2 text-left transition-colors select-none hover:bg-surface-hover"
             >
                 <span className="flex min-w-0 items-center gap-3">
                     <span className="app-workspace-brand-mark grid size-8 shrink-0 place-items-center rounded-[var(--r-sm)] shadow-sm">
@@ -113,7 +113,7 @@ function WorkspaceSwitcher({ collapsed, onNavigate, onExpand }: { collapsed: boo
                     </span>
                     <span className="flex min-w-0 flex-col">
                         <span className="app-workspace-brand-wordmark truncate text-[var(--fs-body)] leading-none font-medium">影策</span>
-                        <span className="mt-1 truncate text-[var(--fs-label)] leading-none text-foreground/42">创作工作台</span>
+                        <span className="app-workspace-brand-kicker mt-1 truncate text-[var(--fs-label)] leading-none text-foreground/42">创作工作台</span>
                     </span>
                 </span>
                 <ChevronDown className="size-4 shrink-0 text-foreground/40 transition-colors group-hover:text-foreground/70" strokeWidth={1.5} />
