@@ -10,9 +10,9 @@ export default function NotFound() {
         <div className="pc-system-page app-workspace-page flex h-dvh flex-col overflow-hidden text-foreground">
             <main className="pc-system-page-main app-workspace-page flex h-full min-h-0 items-center justify-center overflow-y-auto px-6 py-10 text-foreground">
                 <section className="pc-system-card w-full max-w-md text-center" aria-labelledby="pc-not-found-title">
-                    <div className="pc-system-code mb-2 text-xs font-semibold tabular-nums text-foreground/45">404</div>
                     <WorkspaceSignalIcon variant="empty" size="lg" className="pc-system-icon mx-auto mb-5" />
-                    <p className="pc-system-eyebrow">页面导航</p>
+                    <div className="pc-system-code mb-2 text-xs font-semibold tabular-nums text-foreground/45">404</div>
+                    <p className="pc-system-eyebrow pc-system-pc-only">页面导航</p>
                     <h1 id="pc-not-found-title" className="pc-system-title text-3xl font-semibold tracking-normal">
                         页面不存在
                     </h1>

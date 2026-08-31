@@ -23,6 +23,7 @@
 - 统一全屏背景、状态 Surface、错误编号、标题说明、焦点和恢复操作。
 - 404 继续返回根入口；路由异常继续提供原有“重新加载”和“返回主页”动作，并完整显示原始错误消息。
 - 状态页新视觉全部限定在 `@media (min-width: 1024px)`。
+- 交叉审查后恢复小屏 404 的原节点顺序，并将新增“页面导航”与 `ERR` 标识设为 PC-only，避免改变 `<1024px` 信息结构。
 
 ### 语音原型
 
@@ -47,7 +48,7 @@
 
 1. `3d67934` · `refactor(pc-ui): rebuild PC authentication scene`
 2. `eee0a91` · `refactor(pc-ui): unify system and voice prototype pages`
-3. 本记录提交 SHA 由最终 Git 历史回溯。
+3. PC-only 状态页保护提交与本记录最终 SHA 由 Git 历史回溯。
 
 ## 风险与依赖
 

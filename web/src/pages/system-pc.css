@@ -1,4 +1,13 @@
+/* 新增的 PC 辅助信息在小屏不进入既有信息结构。 */
+.pc-system-pc-only {
+    display: none;
+}
+
 @media (min-width: 1024px) {
+    .pc-system-pc-only {
+        display: block;
+    }
+
     .pc-system-page {
         position: relative;
         isolation: isolate;
