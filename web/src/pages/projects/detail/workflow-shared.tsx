@@ -1,8 +1,8 @@
 import type { ReactNode } from "react";
-import { Tag } from "antd";
 import { Check, CircleAlert } from "lucide-react";
 import { Link } from "react-router";
 
+import { SectionHeader, StatTile, StatusBadge } from "@/components/ui/pc";
 import type { ProjectDetail, ProjectShot, ShotArtifact, ShotRevision, WorkflowStep } from "@/services/api/projects";
 import type { TaskStatus } from "@/services/api/task-center";
 
@@ -32,24 +32,24 @@ export function WorkflowStageLink({ href, active, step, index, label, shortLabel
 }
 
 export function StageHeading({ eyebrow, title, description }: { eyebrow: string; title: string; description: string }) {
-    return <div><div className="text-[var(--fs-micro)] font-medium uppercase tracking-[.18em] text-[var(--workspace-accent)]">{eyebrow}</div><h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground sm:text-2xl">{title}</h2><p className="mt-2 max-w-2xl text-sm leading-6 text-foreground/50">{description}</p></div>;
+    return <SectionHeader className="workflow-stage-heading" eyebrow={eyebrow} title={title} description={description} />;
 }
 
 export function MetricCard({ icon, label, value }: { icon: ReactNode; label: string; value: string }) {
-    return <div className="rounded-xl border border-border/70 bg-surface p-5"><div className="text-foreground/35">{icon}</div><div className="mt-4 text-2xl font-semibold">{value}</div><div className="mt-1 text-xs text-foreground/45">{label}</div></div>;
+    return <StatTile className="workflow-metric-card" icon={icon} label={label} value={value} />;
 }
 
 export function ArtifactStatus({ artifact, taskStatus, compact = false }: { artifact?: ShotArtifact; taskStatus?: TaskStatus; compact?: boolean }) {
-    const className = `artifact-status-tag ${compact ? "!m-0" : ""}`;
+    const className = `artifact-status-tag ${compact ? "is-compact" : ""}`;
     if (taskStatus === "queued" || taskStatus === "running" || (taskStatus === "succeeded" && !artifact)) {
-        return <Tag className={`${className} is-running`} color="processing">生成中</Tag>;
+        return <StatusBadge className={`${className} is-running`} tone="running" live dot>生成中</StatusBadge>;
     }
-    if (taskStatus === "failed") return <Tag className={`${className} is-failed`} color="error">生成失败</Tag>;
-    if (!artifact) return <Tag className={`${className} is-pending`}>待生成</Tag>;
-    const color = artifact.status === "ready" ? "success" : artifact.status === "failed" ? "error" : artifact.status === "stale" ? "warning" : "processing";
+    if (taskStatus === "failed") return <StatusBadge className={`${className} is-failed`} tone="error">生成失败</StatusBadge>;
+    if (!artifact) return <StatusBadge className={`${className} is-pending`} tone="neutral">待生成</StatusBadge>;
     const label = artifact.status === "ready" ? "已生成" : artifact.status === "failed" ? "生成失败" : artifact.status === "stale" ? "已过期" : "生成中";
     const tone = artifact.status === "ready" ? "ready" : artifact.status === "failed" ? "failed" : artifact.status === "stale" ? "stale" : "running";
-    return <Tag className={`${className} is-${tone}`} color={color}>{label}</Tag>;
+    const statusTone: "success" | "error" | "warning" | "running" = artifact.status === "ready" ? "success" : artifact.status === "failed" ? "error" : artifact.status === "stale" ? "warning" : "running";
+    return <StatusBadge className={`${className} is-${tone}`} tone={statusTone} live={statusTone === "running"} dot={statusTone === "running"}>{label}</StatusBadge>;
 }
 
 export function currentRevision(detail: ProjectDetail, shot?: ProjectShot): ShotRevision | undefined {

@@ -5,6 +5,7 @@ import { Box, Check, ChevronDown, Download, FileText, FolderOpen, FolderPlus, Im
 
 import { WorkspaceState } from "@/components/layout/workspace-state";
 import { PaginationBar } from "@/components/layout/workspace-page";
+import { SectionHeader, StatusBadge } from "@/components/ui/pc";
 import { AssetMediaPreview } from "@/components/asset-media-preview";
 import { CachedResourceImage } from "@/components/cached-resource-image";
 import { AssetLibraryCard, AssetLibraryCardMedia } from "@/components/assets/asset-library-card";
@@ -356,29 +357,20 @@ export default function ProjectAssetsView({ detail, refreshProject }: ProjectDet
         }
     };
     return (
-        <div>
-            <header className="flex min-h-[72px] flex-col gap-4 pb-4 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex min-w-0 items-center gap-3">
-                    <div className="min-w-0">
-                        <div className="flex min-w-0 flex-wrap items-center gap-2.5">
-                            <h2 className="text-[var(--fs-heading-lg)] font-semibold leading-6">角色与资产</h2>
-                            <span className="rounded bg-foreground/[.055] px-1.5 py-1 text-[var(--fs-tiny)] font-medium tabular-nums text-foreground/45">{totalAssetCount} 项已确认</span>
-                        </div>
-                        <div className="mt-1.5 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-[var(--fs-label)] text-foreground/48">
-                            <span className="inline-flex items-center gap-1.5"><UserRound className="size-3.5" />{characterAssetCount} 个角色</span>
-                            <span className="inline-flex items-center gap-1.5"><Box className="size-3.5" />{mediaAssetCount} 项媒体</span>
-                            {(candidatesQuery.data?.total || 0) ? <span className="inline-flex items-center gap-1.5 text-foreground/55"><Sparkles className="size-3.5" />{candidatesQuery.data?.total || 0} 个待确认</span> : null}
-                        </div>
-                    </div>
-                </div>
-                <div className="flex shrink-0 items-center gap-1.5 sm:pl-4">
+        <div className="pc-project-assets">
+            <SectionHeader
+                className="pc-project-assets-header"
+                title="角色与资产"
+                description="统一维护角色设定、声音、参考媒体、目录与版本关系。"
+                meta={<><StatusBadge tone="neutral">{totalAssetCount} 项已确认</StatusBadge><StatusBadge tone="info">{characterAssetCount} 个角色</StatusBadge><StatusBadge tone="neutral">{mediaAssetCount} 项媒体</StatusBadge>{(candidatesQuery.data?.total || 0) ? <StatusBadge tone="warning" icon={<Sparkles className="size-3.5" />}>{candidatesQuery.data?.total || 0} 个待确认</StatusBadge> : null}</>}
+                actions={<div className="flex shrink-0 items-center gap-1.5">
                     <Button type="text" className="!h-9 !px-3" icon={<FolderPlus className="size-3.5" />} onClick={() => openFolderEditor()}>新建文件夹</Button>
                     <Button type="text" className="!h-9 !px-3" icon={<Link2 className="size-3.5" />} onClick={() => setAddOpen(true)}>引用素材</Button>
                     <Button type="primary" className="!h-9 !px-3.5" icon={<Plus className="size-3.5" />} onClick={() => openCharacterEditor("new")}>新建角色</Button>
-                </div>
-            </header>
+                </div>}
+            />
             <div className="project-assets-layout mt-3 grid gap-3">
-                <nav className="space-y-0.5 pr-2" aria-label="素材目录与资产分类">
+                <nav className="pc-project-assets-nav space-y-0.5" aria-label="素材目录与资产分类">
                     <div className="mb-1 flex h-8 items-center justify-between px-2 text-[var(--fs-tiny)] font-medium text-foreground/42"><span>素材目录</span><button type="button" className="rounded p-1 hover:bg-surface-hover" aria-label="新建根目录文件夹" onClick={() => openFolderEditor(undefined, "")}><FolderPlus className="size-3.5" /></button></div>
                     <button type="button" onClick={() => selectFolder("")} className={`flex h-11 w-full items-center gap-2 rounded-md px-2 text-left text-xs ${folderId === "" ? "bg-surface-active font-medium" : "text-foreground/55 hover:bg-surface-hover"}`}><FolderOpen className="size-4 shrink-0" /><span className="min-w-0 flex-1 truncate">素材库</span><span className="text-[var(--fs-tiny)] tabular-nums text-foreground/42">{folderCountMap[""] || 0}</span></button>
                     <ProjectAssetFolderTree folders={assetFolders} folderCounts={folderCountMap} selectedId={folderId} onSelect={selectFolder} />
@@ -386,7 +378,7 @@ export default function ProjectAssetsView({ detail, refreshProject }: ProjectDet
                     <div className="mb-1 h-8 px-2 text-[var(--fs-tiny)] font-medium leading-8 text-foreground/42">分类筛选</div>
                     {categoryCounts.map((item) => <button key={item.value} type="button" onClick={() => selectCategory(item.value)} className={`flex h-11 w-full items-center justify-between rounded-md px-2 text-left text-xs ${folderId === ALL_FOLDERS && category === item.value ? "bg-surface-active font-medium" : "text-foreground/55 hover:bg-surface-hover"}`}><span>{item.value === "all" ? "全部资产" : categoryLabels[item.value]}</span><span className="min-w-5 rounded bg-foreground/[.05] px-1 text-center text-[var(--fs-tiny)] tabular-nums">{item.count}</span></button>)}
                 </nav>
-                <div className="min-w-0">
+                <div className="pc-project-assets-content min-w-0">
                     <div className="mb-3 flex min-h-9 flex-wrap items-center justify-between gap-2">
                         <div className="flex min-w-0 items-center gap-1 text-xs text-foreground/48">
                             <button type="button" className="truncate rounded px-1.5 py-1 hover:bg-surface-hover" onClick={() => selectFolder("")}>素材库</button>

@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { App, Button, Form, Input, Modal, Select } from "antd";
+import { App, Button, Form, Input, Select } from "antd";
 import { ArrowRight, BookOpenText, FileText, FolderKanban, Images, LayoutGrid, Palette, Plus, Search, Sparkles, Trash2 } from "lucide-react";
 import { Link, useNavigate, useSearchParams } from "react-router";
 
 import { CollectionGrid, ListToolbar, PageHeader, WorkspacePage } from "@/components/layout/workspace-page";
 import { WorkspaceErrorState, WorkspaceLoadingState, WorkspaceState } from "@/components/layout/workspace-state";
+import { DialogFrame, SearchField, SectionHeader, StatusBadge, Surface } from "@/components/ui/pc";
 import { CanvasStylePickerModal, resolveCanvasStylePreset, resolveProjectCanvasStyle, type CanvasStylePreset } from "@/components/canvas/canvas-style-picker-modal";
 import { resourceFileUrl } from "@/services/api/resources";
 import { ModelPicker } from "@/components/model-picker";
@@ -17,6 +18,8 @@ import { createProject, deleteProject, importProjectUnits, listProjects, type Pr
 import { modelDisplayName, useEffectiveConfig } from "@/stores/use-config-store";
 
 import { sourceTypeLabel } from "./detail/shared";
+
+import "./projects.css";
 
 type ProjectForm = { name: string; aspectRatio: string; sourceType: string };
 
@@ -175,14 +178,22 @@ export default function ProjectsPage() {
     }, [query.fetchNextPage, query.hasNextPage, query.isError, query.isFetchingNextPage]);
     const hasInitialError = query.isError && !query.data;
     return (
-        <WorkspacePage className="library-page" grid>
-            <section className="app-story-create-panel mt-4" aria-label="开始一部新短剧">
+        <WorkspacePage className="library-page pc-projects-page" grid>
+            <PageHeader
+                className="pc-projects-page-header"
+                eyebrow="STORY PRODUCTION"
+                title="短剧项目"
+                description="集中管理故事、章节、角色资产、分镜画布与制作进度。"
+                meta={<StatusBadge tone="neutral" dot>{query.isLoading ? "正在读取" : `已加载 ${allProjects.length} / ${totalProjectCount}`}</StatusBadge>}
+                actions={<Button type="primary" icon={<Plus className="size-3.5" />} onClick={() => openCreate("blank")}>创建项目</Button>}
+            />
+            <Surface className="app-story-create-panel pc-projects-starter" padding="none" aria-label="开始一部新短剧">
                 <div className="app-story-create-head">
                     <div className="app-story-create-title">
                         <span className="app-story-create-mark"><Sparkles className="size-4" /></span>
                         <div>
-                            <h2>开始一部新短剧</h2>
-                            <p>写下一句话故事，或选择一个创建方式。</p>
+                            <h2>把一句灵感变成可制作的短剧</h2>
+                            <p>输入故事起点，由 AI 建立项目和章节；也可以从空白、小说或文本开始。</p>
                         </div>
                     </div>
                     <div className="app-story-create-actions">
@@ -199,7 +210,7 @@ export default function ProjectsPage() {
                             showSelectedPrice={false}
                         />
                         <Button type="default" icon={<Sparkles className="size-3.5" />} disabled={!storyDraft.trim() || generating} loading={generating} onClick={() => void generateStory()}>AI 生成章节</Button>
-                        <Button type="primary" icon={<Plus className="size-3.5" />} onClick={() => openCreate(createSource)}>开始创作</Button>
+                        <Button icon={<Plus className="size-3.5" />} onClick={() => openCreate(createSource)}>手动创建</Button>
                     </div>
                 </div>
                 <div className="app-story-create-main">
@@ -225,9 +236,17 @@ export default function ProjectsPage() {
                     <label><span>故事基调</span><Select size="small" className="min-w-32" value={generateTone} onChange={setGenerateTone} options={[{ label: "平稳叙事", value: "平稳叙事" }, { label: "轻松喜剧", value: "轻松喜剧" }, { label: "紧张悬疑", value: "紧张悬疑" }, { label: "热血成长", value: "热血成长" }, { label: "甜宠治愈", value: "甜宠治愈" }]} /></label>
                     <label><span>角色规模</span><Select size="small" className="min-w-28" value={generateCharacterScale} onChange={setGenerateCharacterScale} options={[{ label: "2 个", value: "2 个" }, { label: "3-4 个", value: "3-4 个" }, { label: "5-6 个", value: "5-6 个" }]} /></label>
                 </div>
-            </section>
-            <ListToolbar className="library-toolbar" active={Boolean(keyword || status !== "all" || sort !== "updated")} onReset={() => { setKeyword(""); setStatus("all"); setSort("updated"); }}>
-                <Input allowClear className="app-list-search" prefix={<Search className="size-4 text-foreground/40" />} value={keyword} placeholder="搜索项目、简介或画风" onChange={(event) => setKeyword(event.target.value)} />
+            </Surface>
+            <section className="pc-projects-library" aria-labelledby="pc-projects-library-title">
+                <SectionHeader
+                    titleId="pc-projects-library-title"
+                    title="我的项目"
+                    description="筛选只作用于当前已加载的项目；继续下滑会自动加载下一页。"
+                    meta={<span className="pc-projects-library-count">{rows.length} 个结果</span>}
+                />
+            <ListToolbar className="library-toolbar pc-projects-toolbar" active={Boolean(keyword || status !== "all" || sort !== "updated")} onReset={() => { setKeyword(""); setStatus("all"); setSort("updated"); }}>
+                <Input allowClear className="app-list-search pc-projects-search-legacy" prefix={<Search className="size-4 text-foreground/40" />} value={keyword} placeholder="搜索项目、简介或画风" onChange={(event) => setKeyword(event.target.value)} />
+                <SearchField containerClassName="pc-projects-search" value={keyword} placeholder="搜索项目、简介或画风" onChange={(event) => setKeyword(event.target.value)} onClear={() => setKeyword("")} />
                 <Select className="w-32" value={status} onChange={setStatus} options={[{ label: "全部状态", value: "all" }, { label: "进行中", value: "active" }, { label: "已归档", value: "archived" }]} />
                 <Select className="w-32" value={sort} onChange={setSort} options={[{ label: "最近更新", value: "updated" }, { label: "章节进度", value: "progress" }, { label: "项目名称", value: "name" }]} />
             </ListToolbar>
@@ -242,7 +261,7 @@ export default function ProjectsPage() {
             {!query.isLoading && !hasInitialError ? <div ref={loadMoreRef} className="library-load-more" aria-live="polite">
                 {query.isFetchingNextPage ? "正在加载更多项目…" : query.isError ? <button type="button" onClick={() => void query.fetchNextPage()}>加载更多失败，点击重试</button> : query.hasNextPage ? "继续下滑加载更多（每页 50 条）" : allProjects.length ? `已加载全部 ${totalProjectCount} 个项目` : null}
             </div> : null}
-            {!query.isLoading && !rows.length && !hasInitialError && (keyword || status !== "all") ? (
+            {!query.isLoading && !rows.length && !hasInitialError ? (
                 <WorkspaceState
                     icon="projects"
                     title={keyword || status !== "all" ? "没有匹配的项目" : "创建第一个故事项目"}
@@ -250,8 +269,9 @@ export default function ProjectsPage() {
                     action={!keyword && status === "all" ? <Button type="primary" icon={<Plus className="size-3.5" />} onClick={() => setCreateOpen(true)}>创建项目</Button> : undefined}
                 />
             ) : null}
+            </section>
 
-            <Modal className="library-modal" title="创建短剧项目" open={createOpen} footer={null} destroyOnHidden onCancel={() => setCreateOpen(false)} width={560} styles={{ body: { paddingTop: 12 } }}>
+            <DialogFrame className="library-modal pc-projects-dialog pc-project-dialog" title="创建短剧项目" subtitle="建立项目基础信息，章节和素材可以稍后继续补充。" open={createOpen} footer={null} destroyOnHidden onCancel={() => setCreateOpen(false)} frameSize="md">
                 <Form<ProjectForm> form={createForm} layout="vertical" initialValues={{ aspectRatio: "9:16", sourceType: "blank" }} onFinish={(values) => mutation.mutate({ ...values, type: "short-drama", ...(selectedStyle ? { stylePresetId: selectedStyle.id, styleProfileJson: serializeStyleProfile(selectedStyle.profile || createStyleProfileSnapshot(selectedStyle)) } : {}) })}>
                     <div className="mb-4 grid grid-cols-3 gap-2">
                         <button type="button" className={createSource === "blank" ? "app-story-source is-active" : "app-story-source"} onClick={() => { setCreateSource("blank"); createForm.setFieldValue("sourceType", "blank"); }}><FolderKanban className="size-4" /><span>空白开始</span></button>
@@ -267,14 +287,14 @@ export default function ProjectsPage() {
                     <p className="-mt-1 mb-5 text-xs leading-5 text-foreground/48">创建后先进入项目概览。章节、画风和参考资产可以逐步补充。</p>
                     <div className="flex justify-end gap-2"><Button onClick={() => setCreateOpen(false)}>取消</Button><Button type="primary" htmlType="submit" loading={mutation.isPending}>创建项目</Button></div>
                 </Form>
-            </Modal>
+            </DialogFrame>
             <CanvasStylePickerModal
                 open={stylePickerOpen}
                 value={selectedStyle?.id}
                 onClose={() => setStylePickerOpen(false)}
                 onSelect={(preset) => { setSelectedStyle(preset); setStylePickerOpen(false); }}
             />
-            <Modal className="library-modal" title="AI 生成章节" open={generating} footer={null} closable={false} maskClosable={false} keyboard={false} width={760}>
+            <DialogFrame className="library-modal pc-projects-dialog pc-project-dialog pc-projects-generating-dialog" title="AI 生成章节" subtitle="项目、故事大纲和章节会按顺序创建，请保持当前页面开启。" open={generating} footer={null} closable={false} maskClosable={false} keyboard={false} frameSize="lg">
                 <div className="app-story-generating">
                     <div className="app-story-generating-head">
                         <span className="app-story-generating-mark"><Sparkles className="size-4" /></span>
@@ -304,7 +324,7 @@ export default function ProjectsPage() {
                         <pre>{generationPreview}</pre>
                     </div>
                 </div>
-            </Modal>
+            </DialogFrame>
         </WorkspacePage>
     );
 }
@@ -399,7 +419,7 @@ function ProjectRow({ row, onDelete }: { row: ProjectSummary; onDelete: () => vo
             <span className="project-library-body">
                 <span className="project-library-heading"><strong title={row.project.name}>{row.project.name}</strong>{row.project.status === "archived" ? <em>已归档</em> : null}<ArrowRight className="project-library-arrow size-4" /></span>
                 <span className="project-library-subtitle">{styleTitle} · {sourceTypeLabel(row.project.sourceType)}</span>
-                <span className="project-library-progress"><span><span>{row.completedUnitCount}/{row.unitCount} 章</span><span>{completion}%</span></span><i><b style={{ width: `${completion}%` }} /></i></span>
+                <span className="project-library-progress"><span><span>{row.completedUnitCount}/{row.unitCount} 章</span><span>{completion}%</span></span><i className="pc-project-progress-legacy" aria-hidden="true"><b style={{ width: `${completion}%` }} /></i><progress className="pc-project-progress-pc" max={100} value={completion} aria-label={`${row.project.name}章节完成度 ${completion}%`} /></span>
                 <span className="project-library-stats"><ProjectCount icon={<BookOpenText className="size-3.5" />} label="章节" value={row.unitCount} /><ProjectCount icon={<LayoutGrid className="size-3.5" />} label="画布" value={row.canvasCount} /><ProjectCount icon={<Images className="size-3.5" />} label="资产" value={row.assetCount} /></span>
             </span>
         </Link>
