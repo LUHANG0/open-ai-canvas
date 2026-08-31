@@ -24,8 +24,9 @@
 - 将插件中心收敛到标准页头和 `SubnavLayout`，按文本、图片、视频、音频和应用插件呈现数量与过滤状态。
 - 搜索接入 `SearchField`，启停状态接入 `StatusBadge`；保留来源、状态、可信筛选、分类滚动、刷新、启停和管理员跳转。
 - 新增服务端插件列表的可见 error / retry 和 loading 状态；加载失败时仍可使用已注册内置插件，不改变原有降级数据来源。
-- 统一插件卡片、权限摘要、设置对话框、文档对话框和插件包上传对话框；三类浮层接入 `DialogFrame`。
-- 删除新 DOM 不再使用的旧插件侧栏、工具栏操作区和强制对话框宽度规则；本轮没有新增 `!important`。
+- 统一插件卡片、权限摘要、用户设置对话框和用户文档对话框；用户侧两类浮层接入 `DialogFrame`。
+- 删除用户页面新 DOM 不再使用的旧插件侧栏、工具栏操作区和详情对话框强制宽度；Admin 上传弹窗的既有强制宽度原样保留，本轮相对基线没有新增 `!important`。
+- 交叉审查确认 `UploadPluginModal` 仅由 Admin 调用后，将原共享模块恢复为基线 `Modal` 合同；用户侧详情另建 `PluginDetailsDialog`，避免通过共享组件和依赖图间接改变 Admin。
 
 ### Eagle
 
@@ -33,6 +34,7 @@
 - 用 `WorkspaceState`、`WorkspaceLoadingState` 和 `WorkspaceErrorState` 区分未启用、读取中、连接失败、空文件夹与搜索无结果。
 - 素材档案接入 `DrawerFrame`，并修正 Drawer Portal 下预览与下载样式原先无法命中页面后代选择器的问题。
 - 上传、新建文件夹、目录切换、搜索、分页、预览和原文件下载回调均保持原状。
+- 操作失败但已有缓存素材时保留网格，并在 PC 显示紧凑错误条；只有首次/重新读取失败且无素材时才进入完整错误态。
 
 ### PC 与非 PC 边界
 
@@ -40,6 +42,7 @@
 - Settings 在 `<768px` 保留横向分类导航，`768–1023px` 保留原有 200px 纵向导航合同。
 - Plugins 在 `<=900px` 保留横向导航和换行筛选，`901–1023px` 保留 208px 纵向导航；未隐藏或删除移动端控件。
 - 共用响应式 Dialog / Drawer 仅替换视觉外壳，原 `open`、`onCancel` / `onClose`、footer、焦点恢复和内容滚动合同保留。
+- Settings 与 Plugins 的 sticky 分类栏避开 52px 页面头部，插件分区同步设置滚动锚点偏移，避免滚动后被页头遮挡。
 
 ## 修改文件
 
@@ -61,6 +64,7 @@
 - `web/src/pages/plugins/index.tsx`
 - `web/src/pages/plugins/plugins.css`
 - `web/src/pages/plugins/plugin-documentation-modals.tsx`
+- `web/src/pages/plugins/plugin-details-dialog.tsx`
 - `web/src/pages/plugins/eagle.tsx`
 - `web/src/pages/plugins/eagle.css`
 - `docs/design/pc-user-ui-sessions/S07-settings-plugins.md`
@@ -70,7 +74,7 @@
 1. `88b982da5efab54c05f22b4f07f0fafcaa75afa2` `refactor(settings): unify PC settings workspace`
 2. `335536eb88cb82006e35a0ddd396001e061673fc` `refactor(plugins): rebuild PC plugin and Eagle workspaces`
 3. `b9f4c552b1f05e5cdd605c6246dc7146aa23f98a` `fix(pc-ui): preserve settings and plugin responsive contracts`
-4. 本记录的最终 SHA 以交付消息和 `git rev-parse HEAD` 为准。
+4. Admin 间接影响保护提交与本记录最终 SHA 以交付消息和 `git rev-parse HEAD` 为准。
 
 ## 风险与依赖
 
@@ -93,6 +97,8 @@
 - 逐文件静态自审：已完成；原 API / Store 调用与主要 handler 未改。
 - 文件所有权检查：通过；相对 `c949021` 仅修改 `pages/settings/**`、`pages/plugins/**` 和本记录。
 - `admin-*`、`--admin-*` 与新增 `!important` 检查：通过，无匹配。
+- Admin 间接依赖检查：通过；`UploadPluginModal` 的 JSX、强制宽度、Markdown、Dropzone 和响应规则与 `c949021` 保持一致。
+- 交叉审查修复：Eagle 缓存素材不再被操作错误遮挡；Settings / Plugins sticky rail 与插件滚动锚点已计入页面头部高度。
 - PC-only 与 `<1024px` 边界静态检查：通过；桌面视觉规则位于 `min-width: 1024px`，非 PC 保护规则显式保留旧导航方向和控件可达性。
 - `git diff --check`：通过。
 - 完整格式、类型、测试、构建、路由、权限、表单、上传、Eagle 实机和浏览器回归：未运行，按总计划在全部页面完成后集中执行。

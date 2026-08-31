@@ -17,7 +17,7 @@ import { PageHeader, WorkspacePage } from "@/components/layout/workspace-page";
 import { WorkspaceErrorState, WorkspaceLoadingState } from "@/components/layout/workspace-state";
 import { DialogFrame, SearchField, StatusBadge, SubnavLayout } from "@/components/ui/pc";
 
-import { PluginDetailsModal } from "./plugin-documentation-modals";
+import { PluginDetailsDialog } from "./plugin-details-dialog";
 import "./plugins.css";
 
 const categoryLabels: Record<string, string> = {
@@ -199,14 +199,17 @@ export default function PluginsPage() {
         }
         return counts;
     }, [features.systemPluginsVisibleToUsers, registeredPlugins, user?.role]);
-    const navigationItems = useMemo(() => [
-        { value: "all", label: "全部插件", description: "全部可见扩展", icon: <PlugZap className="size-4" />, badge: categoryCounts.all },
-        ...protocolSectionMeta.map((section) => {
-            const Icon = section.icon;
-            return { value: section.key, label: section.label, description: section.description, icon: <Icon className="size-4" />, badge: categoryCounts[section.key] || 0 };
-        }),
-        { value: "other", label: "应用插件", description: "工作流与素材扩展", icon: <PlugZap className="size-4" />, badge: categoryCounts.other },
-    ], [categoryCounts]);
+    const navigationItems = useMemo(
+        () => [
+            { value: "all", label: "全部插件", description: "全部可见扩展", icon: <PlugZap className="size-4" />, badge: categoryCounts.all },
+            ...protocolSectionMeta.map((section) => {
+                const Icon = section.icon;
+                return { value: section.key, label: section.label, description: section.description, icon: <Icon className="size-4" />, badge: categoryCounts[section.key] || 0 };
+            }),
+            { value: "other", label: "应用插件", description: "工作流与素材扩展", icon: <PlugZap className="size-4" />, badge: categoryCounts.other },
+        ],
+        [categoryCounts],
+    );
 
     const settingsPlugin = settingsPluginId ? registeredPlugins.find((plugin) => plugin.manifest.id === settingsPluginId) : undefined;
     const settingsInstallation = settingsPlugin ? installations.find((item) => item.manifest.id === settingsPlugin.manifest.id) : undefined;
@@ -216,8 +219,7 @@ export default function PluginsPage() {
     const hasPluginConfiguration = (plugin: RegisteredPlugin) => Boolean(plugin.manifest.configuration?.fields?.length);
     const canConfigurePlugin = (plugin: RegisteredPlugin) => Boolean(pluginStates[plugin.manifest.id]?.canConfigure) && (hasPluginConfiguration(plugin) || plugin.manifest.id === RUNNINGHUB_PLUGIN_ID || plugin.manifest.id === COMFYUI_PLUGIN_ID);
 
-    const isPluginEnabled = (plugin: RegisteredPlugin, installation = installations.find((item) => item.manifest.id === plugin.manifest.id)) =>
-        pluginStates[plugin.manifest.id]?.effectiveEnabled ?? Boolean(installation?.enabled);
+    const isPluginEnabled = (plugin: RegisteredPlugin, installation = installations.find((item) => item.manifest.id === plugin.manifest.id)) => pluginStates[plugin.manifest.id]?.effectiveEnabled ?? Boolean(installation?.enabled);
 
     const togglePlugin = async (plugin: RegisteredPlugin, enabled: boolean) => {
         try {
@@ -266,12 +268,18 @@ export default function PluginsPage() {
                 title="插件中心"
                 description="统一管理模型协议、工作流、画布节点与素材扩展能力。"
                 meta={<span className="plugins-page-count">{categoryCounts.all} 个可见插件</span>}
-                actions={(
+                actions={
                     <>
-                        <Button icon={<RefreshCw className="size-4" />} loading={backendPluginsLoading} onClick={() => void reloadBackendPlugins()}>刷新插件</Button>
-                        {user?.role === "admin" ? <Button type="primary" onClick={() => navigate("/admin/plugins")}>管理员插件管理</Button> : null}
+                        <Button icon={<RefreshCw className="size-4" />} loading={backendPluginsLoading} onClick={() => void reloadBackendPlugins()}>
+                            刷新插件
+                        </Button>
+                        {user?.role === "admin" ? (
+                            <Button type="primary" onClick={() => navigate("/admin/plugins")}>
+                                管理员插件管理
+                            </Button>
+                        ) : null}
                     </>
-                )}
+                }
             />
             <SubnavLayout
                 className="plugins-subnav"
@@ -279,303 +287,317 @@ export default function PluginsPage() {
                 activeValue={categoryFilter}
                 onChange={selectCategory}
                 ariaLabel="插件分类"
-                navigationHeader={<div className="plugins-subnav-heading"><span>能力分类</span><strong>{navigationItems.length}</strong></div>}
+                navigationHeader={
+                    <div className="plugins-subnav-heading">
+                        <span>能力分类</span>
+                        <strong>{navigationItems.length}</strong>
+                    </div>
+                }
             >
-                        <div className="plugins-toolbar" aria-label="插件筛选">
-                            <SearchField
-                                containerClassName="plugins-search"
-                                value={search}
-                                placeholder="搜索插件名称、描述或作者"
-                                onChange={(event) => setSearch(event.target.value)}
-                                onClear={() => setSearch("")}
-                            />
-                            <Select
-                                className="plugins-filter"
-                                value={statusFilter}
-                                options={[
-                                    { value: "all", label: "全部状态" },
-                                    { value: "enabled", label: "已启用" },
-                                    { value: "disabled", label: "已停用" },
-                                ]}
-                                onChange={(value) => setStatusFilter(value as "all" | "enabled" | "disabled")}
-                                aria-label="按状态筛选"
-                            />
-                            <Select
-                                className="plugins-filter"
-                                value={trustFilter}
-                                options={[
-                                    { value: "all", label: "全部来源" },
-                                    { value: "trusted", label: "可信插件" },
-                                ]}
-                                onChange={(value) => setTrustFilter(value as "all" | "trusted")}
-                                aria-label="按来源筛选"
-                            />
-                            <span className="plugins-filter-summary">{filteredPlugins.length} 个结果</span>
-                        </div>
+                <div className="plugins-toolbar" aria-label="插件筛选">
+                    <SearchField containerClassName="plugins-search" value={search} placeholder="搜索插件名称、描述或作者" onChange={(event) => setSearch(event.target.value)} onClear={() => setSearch("")} />
+                    <Select
+                        className="plugins-filter"
+                        value={statusFilter}
+                        options={[
+                            { value: "all", label: "全部状态" },
+                            { value: "enabled", label: "已启用" },
+                            { value: "disabled", label: "已停用" },
+                        ]}
+                        onChange={(value) => setStatusFilter(value as "all" | "enabled" | "disabled")}
+                        aria-label="按状态筛选"
+                    />
+                    <Select
+                        className="plugins-filter"
+                        value={trustFilter}
+                        options={[
+                            { value: "all", label: "全部来源" },
+                            { value: "trusted", label: "可信插件" },
+                        ]}
+                        onChange={(value) => setTrustFilter(value as "all" | "trusted")}
+                        aria-label="按来源筛选"
+                    />
+                    <span className="plugins-filter-summary">{filteredPlugins.length} 个结果</span>
+                </div>
 
-                        {backendPluginsError ? <WorkspaceErrorState compact title="部分插件信息加载失败" description={`${backendPluginsError}。内置插件仍可继续使用。`} onRetry={() => void reloadBackendPlugins()} /> : null}
-                        {backendPluginsError && registeredPlugins.length === 0 ? null : backendPluginsLoading && registeredPlugins.length === 0 ? (
-                            <WorkspaceLoadingState label="正在读取插件" detail="正在同步插件清单与当前账号状态。" rows={4} />
-                        ) : filteredPlugins.length ? (
-                            <div className="plugins-sections">
-                                {pluginSections.map((section) => {
-                                    if (!section.plugins.length) return null;
-                                    const SectionIcon = section.icon;
-                                    return (
-                                        <section
-                                            key={section.key}
-                                            id={`plugin-section-${section.key}`}
-                                            ref={(element) => {
-                                                sectionRefs.current[section.key] = element;
-                                            }}
-                                            className="plugin-section"
-                                        >
-                                            <header className="plugin-section-heading">
-                                                <span className="plugin-section-icon">
-                                                    <SectionIcon className="size-4" />
-                                                </span>
-                                                <div>
-                                                    <h2>{section.label}</h2>
-                                                    <p>{section.description}</p>
-                                                </div>
-                                                <span className="plugin-section-count">{section.plugins.length}</span>
-                                            </header>
-                                            <div className="plugins-grid">
-                                                {section.plugins.map((plugin) => {
-                                                    const installation = installations.find((item) => item.manifest.id === plugin.manifest.id);
-                                                    const remote = backendPluginById.get(plugin.manifest.id);
-                                                    const enabled = isPluginEnabled(plugin, installation);
-                                                    const trusted = Boolean(plugin.manifest.trusted);
-                                                    const state = pluginStates[plugin.manifest.id];
-                                                    const sourceLabel = pluginSourceLabel(plugin, state);
-                                                    const canConfigure = canConfigurePlugin(plugin);
-                                                    return (
-                                                        <section key={plugin.manifest.id} className={`plugin-card library-card-surface${trusted ? " is-trusted" : ""}`}>
-                                                            <button
-                                                                type="button"
-                                                                className="plugin-card-main"
-                                                                aria-label={`查看${plugin.manifest.name}文档`}
-                                                                onClick={(event) => {
-                                                                    const openedByKeyboard = event.detail === 0;
-                                                                    setDetailsRestoreFocus(openedByKeyboard);
-                                                                    setDetailsPluginId(plugin.manifest.id);
-                                                                    if (!openedByKeyboard) event.currentTarget.blur();
-                                                                }}
-                                                            >
-                                                                <div className="plugin-card-heading">
-                                                                    <span className={`plugin-icon-tile${trusted ? " is-trusted" : ""}`} aria-hidden="true">
-                                                                        <PlugZap className="size-5" />
-                                                                    </span>
-                                                                    <div className="min-w-0 flex-1">
-                                                                        <div className="plugin-card-title-row">
-                                                                            <h3>{plugin.manifest.name}</h3>
-                                                                            <span className="plugin-version">v{plugin.manifest.version}</span>
-                                                                        </div>
-                                                                        <div className="plugin-card-labels">
-                                                                            <span className={`plugin-source-label${sourceLabel === "系统插件" ? " is-system" : ""}`}>
-                                                                                {sourceLabel}
-                                                                            </span>
-                                                                            {trusted ? (
-                                                                                <span className="plugin-trust-label">
-                                                                                    <ShieldCheck className="size-3.5" />
-                                                                                    可信插件
-                                                                                </span>
-                                                                            ) : null}
-                                                                            <span className="plugin-category-label">{contributionKindsFor(plugin.manifest).map((kind) => categoryLabels[kind] ?? kind).join(" · ")}</span>
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-
-                                                                <p className="plugin-card-description">{plugin.manifest.description}</p>
-
-                                                                <div className="plugin-card-meta">
-                                                                    <span>
-                                                                        <CalendarDays className="size-3.5" />
-                                                                        发布 {formatPluginDate(plugin.manifest.publishedAt)}
-                                                                    </span>
-                                                                    <span>
-                                                                        <Clock3 className="size-3.5" />
-                                                                        更新 {formatPluginDate(plugin.manifest.updatedAt)}
-                                                                    </span>
-                                                                </div>
-
-                                                                <div className="plugin-card-tags">
-                                                                    {(plugin.manifest.surfaces || []).map((surface) => (
-                                                                        <span key={surface}>{surfaceLabels[surface] ?? surface}</span>
-                                                                    ))}
-                                                                    {providerCapabilitiesFor(plugin.manifest).map((capability) => (
-                                                                        <span key={capability}>{capabilityLabel(capability)}</span>
-                                                                    ))}
-                                                                    {plugin.manifest.contributes.providers?.some((provider) => provider.poll) ? <span>异步轮询</span> : null}
-                                                                    <span>{plugin.manifest.permissions.length} 项能力</span>
-                                                                </div>
-                                                            </button>
-
-                                                            <div className="plugin-card-actions">
-                                                                <StatusBadge dot tone={!state?.platformAvailable && state?.blockedReason ? "warning" : enabled ? "success" : "neutral"} live>
-                                                                    {!state?.platformAvailable && state?.blockedReason ? state.blockedReason : enabled ? "已启用" : "已停用"}
-                                                                </StatusBadge>
-                                                                <Switch className="plugin-state-switch" disabled={!state?.canToggle} checked={enabled} aria-label={`${plugin.manifest.name}，当前${enabled ? "已启用，点击停用" : "已停用，点击启用"}`} title={state?.blockedReason} onChange={(checked) => void togglePlugin(plugin, checked)} />
-                                                                {canConfigure ? (
-                                                                    <Button
-                                                                        className="plugin-settings-button"
-                                                                        icon={<Settings2 className="size-4" />}
-                                                                        aria-expanded={settingsPluginId === plugin.manifest.id}
-                                                                        aria-haspopup="dialog"
-                                                                        onClick={() => setSettingsPluginId(plugin.manifest.id)}
-                                                                    >
-                                                                        设置
-                                                                    </Button>
-                                                                ) : null}
-                                                            </div>
-
-                                                            {installation?.lastError || remote?.error ? (
-                                                                <Typography.Text type="danger" className="plugin-error" role="alert">
-                                                                    {installation?.lastError || remote?.error}
-                                                                </Typography.Text>
-                                                            ) : null}
-                                                        </section>
-                                                    );
-                                                })}
-                                            </div>
-                                        </section>
-                                    );
-                                })}
-                            </div>
-                        ) : (
-                            <div className="plugins-empty-state" role="status">
-                                <SlidersHorizontal className="size-7" aria-hidden="true" />
-                                <h3>{hasActiveFilters ? "没有匹配的插件" : "暂无可用插件"}</h3>
-                                <p>{hasActiveFilters ? "试试清空搜索词，或放宽筛选条件。" : "当前账号没有可见的插件或扩展能力。"}</p>
-                                {hasActiveFilters ? <Button
-                                    onClick={() => {
-                                        setSearch("");
-                                        setCategoryFilter("all");
-                                        setStatusFilter("all");
-                                        setTrustFilter("all");
+                {backendPluginsError ? <WorkspaceErrorState compact title="部分插件信息加载失败" description={`${backendPluginsError}。内置插件仍可继续使用。`} onRetry={() => void reloadBackendPlugins()} /> : null}
+                {backendPluginsError && registeredPlugins.length === 0 ? null : backendPluginsLoading && registeredPlugins.length === 0 ? (
+                    <WorkspaceLoadingState label="正在读取插件" detail="正在同步插件清单与当前账号状态。" rows={4} />
+                ) : filteredPlugins.length ? (
+                    <div className="plugins-sections">
+                        {pluginSections.map((section) => {
+                            if (!section.plugins.length) return null;
+                            const SectionIcon = section.icon;
+                            return (
+                                <section
+                                    key={section.key}
+                                    id={`plugin-section-${section.key}`}
+                                    ref={(element) => {
+                                        sectionRefs.current[section.key] = element;
                                     }}
+                                    className="plugin-section"
                                 >
-                                    清除筛选
-                                </Button> : null}
-                            </div>
-                        )}
-
-                        <DialogFrame
-                            rootClassName="plugin-settings-dialog-root"
-                            className="plugin-settings-modal"
-                            title={settingsPlugin ? `${settingsPlugin.manifest.name} 设置` : null}
-                            subtitle="配置项由插件清单与当前账号权限共同决定。"
-                            frameSize="md"
-                            open={Boolean(settingsPlugin)}
-                            centered
-                            footer={null}
-                            destroyOnHidden
-                            onCancel={() => setSettingsPluginId(null)}
-                            styles={{ body: { maxHeight: "min(72vh, 760px)", overflowY: "auto", overscrollBehavior: "contain" } }}
-                        >
-                            {settingsPlugin ? (
-                                <div className="plugin-settings-panel plugin-settings-modal-panel">
-                                    <div className="plugin-settings-heading">
+                                    <header className="plugin-section-heading">
+                                        <span className="plugin-section-icon">
+                                            <SectionIcon className="size-4" />
+                                        </span>
                                         <div>
-                                            <p>只展示这个插件实际支持的配置项。</p>
+                                            <h2>{section.label}</h2>
+                                            <p>{section.description}</p>
                                         </div>
-                                        {settingsPlugin.manifest.trusted ? (
-                                            <span className="plugin-trust-label">
-                                                <ShieldCheck className="size-3.5" />
-                                                可信插件
-                                            </span>
-                                        ) : (
-                                            <span className="plugin-category-label">第三方插件</span>
-                                        )}
-                                    </div>
+                                        <span className="plugin-section-count">{section.plugins.length}</span>
+                                    </header>
+                                    <div className="plugins-grid">
+                                        {section.plugins.map((plugin) => {
+                                            const installation = installations.find((item) => item.manifest.id === plugin.manifest.id);
+                                            const remote = backendPluginById.get(plugin.manifest.id);
+                                            const enabled = isPluginEnabled(plugin, installation);
+                                            const trusted = Boolean(plugin.manifest.trusted);
+                                            const state = pluginStates[plugin.manifest.id];
+                                            const sourceLabel = pluginSourceLabel(plugin, state);
+                                            const canConfigure = canConfigurePlugin(plugin);
+                                            return (
+                                                <section key={plugin.manifest.id} className={`plugin-card library-card-surface${trusted ? " is-trusted" : ""}`}>
+                                                    <button
+                                                        type="button"
+                                                        className="plugin-card-main"
+                                                        aria-label={`查看${plugin.manifest.name}文档`}
+                                                        onClick={(event) => {
+                                                            const openedByKeyboard = event.detail === 0;
+                                                            setDetailsRestoreFocus(openedByKeyboard);
+                                                            setDetailsPluginId(plugin.manifest.id);
+                                                            if (!openedByKeyboard) event.currentTarget.blur();
+                                                        }}
+                                                    >
+                                                        <div className="plugin-card-heading">
+                                                            <span className={`plugin-icon-tile${trusted ? " is-trusted" : ""}`} aria-hidden="true">
+                                                                <PlugZap className="size-5" />
+                                                            </span>
+                                                            <div className="min-w-0 flex-1">
+                                                                <div className="plugin-card-title-row">
+                                                                    <h3>{plugin.manifest.name}</h3>
+                                                                    <span className="plugin-version">v{plugin.manifest.version}</span>
+                                                                </div>
+                                                                <div className="plugin-card-labels">
+                                                                    <span className={`plugin-source-label${sourceLabel === "系统插件" ? " is-system" : ""}`}>{sourceLabel}</span>
+                                                                    {trusted ? (
+                                                                        <span className="plugin-trust-label">
+                                                                            <ShieldCheck className="size-3.5" />
+                                                                            可信插件
+                                                                        </span>
+                                                                    ) : null}
+                                                                    <span className="plugin-category-label">
+                                                                        {contributionKindsFor(plugin.manifest)
+                                                                            .map((kind) => categoryLabels[kind] ?? kind)
+                                                                            .join(" · ")}
+                                                                    </span>
+                                                                </div>
+                                                            </div>
+                                                        </div>
 
-                                    {settingsPlugin.manifest.id === EAGLE_PLUGIN_ID ? (
-                                        <>
-                                            <div className="plugin-settings-fields">
-                                                <div className="min-w-0">
-                                                    <label htmlFor="eagle-base-url">Eagle 本地 API 地址</label>
-                                                    <Input id="eagle-base-url" aria-label="Eagle 本地 API 地址" value={eagleBaseUrl} onChange={(event) => setEagleBaseUrl(event.target.value)} placeholder="http://localhost:41595" />
-                                                    <p>Eagle 必须在本机运行；影策通过插件直接读取和写入 Eagle 原始文件。</p>
-                                                </div>
-                                                <div className="min-w-0">
-                                                    <div className="plugin-setting-label-row">
-                                                        <label htmlFor="eagle-auto-upload-generated">自动归档生成结果</label>
-                                                        <Switch id="eagle-auto-upload-generated" checked={eagleAutoUploadGenerated} onChange={setEagleAutoUploadGenerated} aria-label="自动归档生成结果到 Eagle" />
+                                                        <p className="plugin-card-description">{plugin.manifest.description}</p>
+
+                                                        <div className="plugin-card-meta">
+                                                            <span>
+                                                                <CalendarDays className="size-3.5" />
+                                                                发布 {formatPluginDate(plugin.manifest.publishedAt)}
+                                                            </span>
+                                                            <span>
+                                                                <Clock3 className="size-3.5" />
+                                                                更新 {formatPluginDate(plugin.manifest.updatedAt)}
+                                                            </span>
+                                                        </div>
+
+                                                        <div className="plugin-card-tags">
+                                                            {(plugin.manifest.surfaces || []).map((surface) => (
+                                                                <span key={surface}>{surfaceLabels[surface] ?? surface}</span>
+                                                            ))}
+                                                            {providerCapabilitiesFor(plugin.manifest).map((capability) => (
+                                                                <span key={capability}>{capabilityLabel(capability)}</span>
+                                                            ))}
+                                                            {plugin.manifest.contributes.providers?.some((provider) => provider.poll) ? <span>异步轮询</span> : null}
+                                                            <span>{plugin.manifest.permissions.length} 项能力</span>
+                                                        </div>
+                                                    </button>
+
+                                                    <div className="plugin-card-actions">
+                                                        <StatusBadge dot tone={!state?.platformAvailable && state?.blockedReason ? "warning" : enabled ? "success" : "neutral"} live>
+                                                            {!state?.platformAvailable && state?.blockedReason ? state.blockedReason : enabled ? "已启用" : "已停用"}
+                                                        </StatusBadge>
+                                                        <Switch
+                                                            className="plugin-state-switch"
+                                                            disabled={!state?.canToggle}
+                                                            checked={enabled}
+                                                            aria-label={`${plugin.manifest.name}，当前${enabled ? "已启用，点击停用" : "已停用，点击启用"}`}
+                                                            title={state?.blockedReason}
+                                                            onChange={(checked) => void togglePlugin(plugin, checked)}
+                                                        />
+                                                        {canConfigure ? (
+                                                            <Button
+                                                                className="plugin-settings-button"
+                                                                icon={<Settings2 className="size-4" />}
+                                                                aria-expanded={settingsPluginId === plugin.manifest.id}
+                                                                aria-haspopup="dialog"
+                                                                onClick={() => setSettingsPluginId(plugin.manifest.id)}
+                                                            >
+                                                                设置
+                                                            </Button>
+                                                        ) : null}
                                                     </div>
-                                                    <p>图片、视频和音频生成成功后，自动写入 Eagle；影策本地素材仍会保留。</p>
-                                                </div>
-                                                <div className="min-w-0">
-                                                    <div className="plugin-setting-label-row">
-                                                        <label htmlFor="eagle-generated-folder">生成结果写入文件夹</label>
-                                                        <Button type="link" size="small" loading={eagleFoldersLoading} onClick={() => void loadEagleFolders()}>
-                                                            读取文件夹
-                                                        </Button>
-                                                    </div>
-                                                    <Select
-                                                        id="eagle-generated-folder"
-                                                        aria-label="生成结果写入文件夹"
-                                                        showSearch
-                                                        allowClear
-                                                        value={eagleGeneratedFolderId || undefined}
-                                                        placeholder="Eagle 根目录"
-                                                        optionFilterProp="label"
-                                                        options={[{ value: "__root__", label: "Eagle 根目录" }, ...eagleFolderOptions(eagleFolders)]}
-                                                        onChange={(value) => setEagleGeneratedFolderId(value === "__root__" || !value ? "" : value)}
-                                                    />
-                                                    <p>{eagleFoldersError || "默认写入 Eagle 根目录；选择文件夹后按 Eagle 原始目录归档。"}</p>
-                                                </div>
-                                            </div>
-                                            <div className="plugin-settings-actions">
-                                                <Button type="primary" icon={<CheckCircle2 className="size-4" />} onClick={saveEagleConfig}>
-                                                    保存配置
-                                                </Button>
-                                                <Button icon={<FolderOpen className="size-4" />} disabled={!settingsEnabled} onClick={() => navigate("/plugins/eagle")}>
-                                                    打开 Eagle 素材库
-                                                </Button>
-                                                <Button icon={<ExternalLink className="size-4" />} href="https://api.eagle.cool/" target="_blank">
-                                                    查看 API
-                                                </Button>
-                                            </div>
-                                        </>
-                                    ) : settingsPlugin.manifest.id === PROMPT_OPTIMIZER_PLUGIN_ID ? (
-                                        <div className="rounded-[var(--r-md)] border border-border/60 bg-muted/25 px-3 py-3 text-[var(--fs-body)] leading-6 text-foreground/70">
-                                            <p>在创作页或图片、视频节点的提示词编辑器中使用“优化”按钮，即可让当前文本模型整理提示词。</p>
-                                            <p className="mt-2 text-[var(--fs-micro)] text-foreground/50">插件不会自动覆盖原提示词，只有点击“采用”后才会回填到当前输入框。</p>
-                                        </div>
-                                    ) : settingsPlugin.manifest.id === RUNNINGHUB_PLUGIN_ID || settingsPlugin.manifest.id === COMFYUI_PLUGIN_ID ? (
-                                        <div className="plugin-settings-empty">
-                                            <p>{settingsPlugin.manifest.id === RUNNINGHUB_PLUGIN_ID ? "RunningHub 的 API Key、Workflow / App 和字段映射在宿主设置页维护。" : "ComfyUI Bridge 的设备、服务地址和工作流字段在宿主设置页维护。"}</p>
-                                            <Button
-                                                type="primary"
-                                                icon={<ExternalLink className="size-4" />}
-                                                onClick={() => {
-                                                    setSettingsPluginId(null);
-                                                    navigate(`/settings?section=${settingsPlugin.manifest.id === RUNNINGHUB_PLUGIN_ID ? "runninghub" : "comfyui"}`);
-                                                }}
-                                            >
-                                                打开工作流设置
-                                            </Button>
-                                        </div>
-                                    ) : (
-                                        <div className="plugin-settings-empty">
-                                            {`贡献能力：${contributionKindsFor(settingsPlugin.manifest).map((kind) => categoryLabels[kind] || kind).join("、") || "未声明"}。当前接入位置和权限会根据插件清单自动生效。`}
-                                        </div>
-                                    )}
 
-                                    <div className="plugin-permissions">
-                                        <div>
-                                            <span>接入位置</span>
-                                            {(settingsPlugin.manifest.surfaces || []).map((surface) => surfaceLabels[surface] ?? surface).join("、") || "由贡献点决定"}
-                                        </div>
-                                        <div>
-                                            <span>插件能力</span>
-                                            {settingsPlugin.manifest.permissions.map((permission) => permissionLabels[permission] ?? permission).join("、")}
-                                        </div>
+                                                    {installation?.lastError || remote?.error ? (
+                                                        <Typography.Text type="danger" className="plugin-error" role="alert">
+                                                            {installation?.lastError || remote?.error}
+                                                        </Typography.Text>
+                                                    ) : null}
+                                                </section>
+                                            );
+                                        })}
                                     </div>
+                                </section>
+                            );
+                        })}
+                    </div>
+                ) : (
+                    <div className="plugins-empty-state" role="status">
+                        <SlidersHorizontal className="size-7" aria-hidden="true" />
+                        <h3>{hasActiveFilters ? "没有匹配的插件" : "暂无可用插件"}</h3>
+                        <p>{hasActiveFilters ? "试试清空搜索词，或放宽筛选条件。" : "当前账号没有可见的插件或扩展能力。"}</p>
+                        {hasActiveFilters ? (
+                            <Button
+                                onClick={() => {
+                                    setSearch("");
+                                    setCategoryFilter("all");
+                                    setStatusFilter("all");
+                                    setTrustFilter("all");
+                                }}
+                            >
+                                清除筛选
+                            </Button>
+                        ) : null}
+                    </div>
+                )}
+
+                <DialogFrame
+                    rootClassName="plugin-settings-dialog-root"
+                    className="plugin-settings-modal"
+                    title={settingsPlugin ? `${settingsPlugin.manifest.name} 设置` : null}
+                    subtitle="配置项由插件清单与当前账号权限共同决定。"
+                    frameSize="md"
+                    open={Boolean(settingsPlugin)}
+                    centered
+                    footer={null}
+                    destroyOnHidden
+                    onCancel={() => setSettingsPluginId(null)}
+                    styles={{ body: { maxHeight: "min(72vh, 760px)", overflowY: "auto", overscrollBehavior: "contain" } }}
+                >
+                    {settingsPlugin ? (
+                        <div className="plugin-settings-panel plugin-settings-modal-panel">
+                            <div className="plugin-settings-heading">
+                                <div>
+                                    <p>只展示这个插件实际支持的配置项。</p>
                                 </div>
-                            ) : null}
-                        </DialogFrame>
-                        <PluginDetailsModal plugin={detailsPlugin} restoreFocus={detailsRestoreFocus} onClose={() => setDetailsPluginId(null)} />
+                                {settingsPlugin.manifest.trusted ? (
+                                    <span className="plugin-trust-label">
+                                        <ShieldCheck className="size-3.5" />
+                                        可信插件
+                                    </span>
+                                ) : (
+                                    <span className="plugin-category-label">第三方插件</span>
+                                )}
+                            </div>
+
+                            {settingsPlugin.manifest.id === EAGLE_PLUGIN_ID ? (
+                                <>
+                                    <div className="plugin-settings-fields">
+                                        <div className="min-w-0">
+                                            <label htmlFor="eagle-base-url">Eagle 本地 API 地址</label>
+                                            <Input id="eagle-base-url" aria-label="Eagle 本地 API 地址" value={eagleBaseUrl} onChange={(event) => setEagleBaseUrl(event.target.value)} placeholder="http://localhost:41595" />
+                                            <p>Eagle 必须在本机运行；影策通过插件直接读取和写入 Eagle 原始文件。</p>
+                                        </div>
+                                        <div className="min-w-0">
+                                            <div className="plugin-setting-label-row">
+                                                <label htmlFor="eagle-auto-upload-generated">自动归档生成结果</label>
+                                                <Switch id="eagle-auto-upload-generated" checked={eagleAutoUploadGenerated} onChange={setEagleAutoUploadGenerated} aria-label="自动归档生成结果到 Eagle" />
+                                            </div>
+                                            <p>图片、视频和音频生成成功后，自动写入 Eagle；影策本地素材仍会保留。</p>
+                                        </div>
+                                        <div className="min-w-0">
+                                            <div className="plugin-setting-label-row">
+                                                <label htmlFor="eagle-generated-folder">生成结果写入文件夹</label>
+                                                <Button type="link" size="small" loading={eagleFoldersLoading} onClick={() => void loadEagleFolders()}>
+                                                    读取文件夹
+                                                </Button>
+                                            </div>
+                                            <Select
+                                                id="eagle-generated-folder"
+                                                aria-label="生成结果写入文件夹"
+                                                showSearch
+                                                allowClear
+                                                value={eagleGeneratedFolderId || undefined}
+                                                placeholder="Eagle 根目录"
+                                                optionFilterProp="label"
+                                                options={[{ value: "__root__", label: "Eagle 根目录" }, ...eagleFolderOptions(eagleFolders)]}
+                                                onChange={(value) => setEagleGeneratedFolderId(value === "__root__" || !value ? "" : value)}
+                                            />
+                                            <p>{eagleFoldersError || "默认写入 Eagle 根目录；选择文件夹后按 Eagle 原始目录归档。"}</p>
+                                        </div>
+                                    </div>
+                                    <div className="plugin-settings-actions">
+                                        <Button type="primary" icon={<CheckCircle2 className="size-4" />} onClick={saveEagleConfig}>
+                                            保存配置
+                                        </Button>
+                                        <Button icon={<FolderOpen className="size-4" />} disabled={!settingsEnabled} onClick={() => navigate("/plugins/eagle")}>
+                                            打开 Eagle 素材库
+                                        </Button>
+                                        <Button icon={<ExternalLink className="size-4" />} href="https://api.eagle.cool/" target="_blank">
+                                            查看 API
+                                        </Button>
+                                    </div>
+                                </>
+                            ) : settingsPlugin.manifest.id === PROMPT_OPTIMIZER_PLUGIN_ID ? (
+                                <div className="rounded-[var(--r-md)] border border-border/60 bg-muted/25 px-3 py-3 text-[var(--fs-body)] leading-6 text-foreground/70">
+                                    <p>在创作页或图片、视频节点的提示词编辑器中使用“优化”按钮，即可让当前文本模型整理提示词。</p>
+                                    <p className="mt-2 text-[var(--fs-micro)] text-foreground/50">插件不会自动覆盖原提示词，只有点击“采用”后才会回填到当前输入框。</p>
+                                </div>
+                            ) : settingsPlugin.manifest.id === RUNNINGHUB_PLUGIN_ID || settingsPlugin.manifest.id === COMFYUI_PLUGIN_ID ? (
+                                <div className="plugin-settings-empty">
+                                    <p>{settingsPlugin.manifest.id === RUNNINGHUB_PLUGIN_ID ? "RunningHub 的 API Key、Workflow / App 和字段映射在宿主设置页维护。" : "ComfyUI Bridge 的设备、服务地址和工作流字段在宿主设置页维护。"}</p>
+                                    <Button
+                                        type="primary"
+                                        icon={<ExternalLink className="size-4" />}
+                                        onClick={() => {
+                                            setSettingsPluginId(null);
+                                            navigate(`/settings?section=${settingsPlugin.manifest.id === RUNNINGHUB_PLUGIN_ID ? "runninghub" : "comfyui"}`);
+                                        }}
+                                    >
+                                        打开工作流设置
+                                    </Button>
+                                </div>
+                            ) : (
+                                <div className="plugin-settings-empty">
+                                    {`贡献能力：${
+                                        contributionKindsFor(settingsPlugin.manifest)
+                                            .map((kind) => categoryLabels[kind] || kind)
+                                            .join("、") || "未声明"
+                                    }。当前接入位置和权限会根据插件清单自动生效。`}
+                                </div>
+                            )}
+
+                            <div className="plugin-permissions">
+                                <div>
+                                    <span>接入位置</span>
+                                    {(settingsPlugin.manifest.surfaces || []).map((surface) => surfaceLabels[surface] ?? surface).join("、") || "由贡献点决定"}
+                                </div>
+                                <div>
+                                    <span>插件能力</span>
+                                    {settingsPlugin.manifest.permissions.map((permission) => permissionLabels[permission] ?? permission).join("、")}
+                                </div>
+                            </div>
+                        </div>
+                    ) : null}
+                </DialogFrame>
+                <PluginDetailsDialog plugin={detailsPlugin} restoreFocus={detailsRestoreFocus} onClose={() => setDetailsPluginId(null)} />
             </SubnavLayout>
         </WorkspacePage>
     );

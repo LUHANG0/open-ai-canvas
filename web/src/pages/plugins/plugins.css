@@ -328,6 +328,10 @@
     white-space: nowrap;
 }
 
+.workspace-modal.plugin-upload-modal {
+    width: min(1480px, calc(100vw - var(--space-4))) !important;
+}
+
 .plugin-upload-layout {
     display: grid;
     min-width: 0;
@@ -778,7 +782,6 @@
     .plugin-settings-button {
         flex: 1 1 0;
     }
-
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -873,7 +876,7 @@
     }
 
     .plugins-subnav .pc-subnav-layout__rail {
-        top: var(--app-space-5, 20px);
+        top: calc(var(--page-topbar-h, var(--app-topbar-height, 52px)) + var(--app-space-3, 12px));
         border-color: var(--app-border-subtle, var(--border));
         border-radius: var(--app-radius-surface, 12px);
         box-shadow: var(--app-shadow-surface, 0 1px 2px rgba(0, 0, 0, 0.04));
@@ -993,7 +996,7 @@
     }
 
     .plugin-section {
-        scroll-margin-top: var(--app-space-6, 24px);
+        scroll-margin-top: calc(var(--page-topbar-h, var(--app-topbar-height, 52px)) + var(--app-space-4, 16px));
     }
 
     .plugin-section-heading {
@@ -1139,36 +1142,20 @@
         border-top: 1px solid var(--app-border-subtle, var(--border));
     }
 
-    .plugin-upload-layout {
-        grid-template-columns: minmax(0, 1.25fr) minmax(300px, .75fr);
-        gap: var(--app-space-6, 24px);
-    }
-
-    .plugin-upload-guide {
-        border-color: var(--app-border-subtle, var(--border));
-    }
-
-    .plugin-upload-panel {
-        padding: var(--app-space-5, 20px);
-        background: var(--app-surface-2, var(--surface-card));
-        border-color: var(--app-border-subtle, var(--border));
-        border-radius: var(--app-radius-surface, 12px);
-    }
-
-    .plugin-markdown {
+    .plugin-details-dialog-root .plugin-markdown {
         color: var(--app-text-secondary, var(--muted-foreground));
         font-size: 13px;
     }
 
-    .plugin-markdown h1,
-    .plugin-markdown h2,
-    .plugin-markdown h3,
-    .plugin-markdown strong {
+    .plugin-details-dialog-root .plugin-markdown h1,
+    .plugin-details-dialog-root .plugin-markdown h2,
+    .plugin-details-dialog-root .plugin-markdown h3,
+    .plugin-details-dialog-root .plugin-markdown strong {
         color: var(--app-text-primary, var(--foreground));
     }
 
-    .plugin-markdown pre,
-    .plugin-markdown-table-wrap {
+    .plugin-details-dialog-root .plugin-markdown pre,
+    .plugin-details-dialog-root .plugin-markdown-table-wrap {
         background: var(--app-surface-2, var(--surface-card));
         border-color: var(--app-border-subtle, var(--border));
         border-radius: var(--app-radius-control, 8px);
