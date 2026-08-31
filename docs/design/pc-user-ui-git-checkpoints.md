@@ -6,7 +6,7 @@
 | R1 | 规范、清单、计划与台账 | `pc-user-ui-r1-20260901` | 已建立 |
 | R2 | Token、主题、公共组件 | `pc-user-ui-r2-20260901` | 已建立 |
 | R3 | 用户壳层与公共框架 | `pc-user-ui-r3-20260901` | 已建立；与 R2 同一冻结点 |
-| Wave 1 | Core、Projects、Create 第一批页面 | `pc-user-ui-page-wave1-20260901` | 已建立；第二批共同基线 `86d10ad` |
+| Wave 1 | Core、Projects、Create 第一批页面 | `pc-user-ui-page-wave1-20260901` | 已建立于 `74c630c`；代码合并点 `86d10ad` |
 | R4 | 普通页面完成 | 待创建 | 进行中；Core 已完成，Settings/Plugins/Auth/状态页待完成 |
 | R5 | 复杂工作台完成 | 待创建 | 进行中；Projects/Create 已完成，Canvas 待完成 |
 | R6 | 全局清理完成、尚未集中测试 | 待创建 | 未开始 |
