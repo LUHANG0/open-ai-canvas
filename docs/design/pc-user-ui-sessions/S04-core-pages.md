@@ -45,6 +45,7 @@
 
 - 新增五个页面私有 CSS，全部限定在 `@media (min-width: 1024px)` 中。
 - 减少动画规则同时限定为 PC；未新增移动断点或修改移动数据/交互逻辑。
+- 交叉审查补回 Assets 筛选栏原有的移动端基础 utility：`<1024px` 继续横向排列并可滚动，`lg:block` 后仍由 PC scoped CSS 接管左侧栏，不改筛选状态与回调。
 
 ## 修改文件
 
@@ -71,7 +72,8 @@
 4. `0232cd1259e4dc38aeb6e5e67f7596e561edb8cc` `refactor(pc-ui): assets - unify library and asset workflows`
 5. `aa1757a88f5c79913dd9570791fa1350338f2cfa` `refactor(pc-ui): skills - unify catalog and skill workflows`
 6. `7e3f53995d18fcb0f6cf06bfb915c0d8c88fb890` `refactor(pc-ui): core pages - scope visual overrides to desktop`
-7. 本记录的最终 SHA 以交付消息和 `git rev-parse HEAD` 为准。
+7. Assets 移动筛选栏保护性修复 SHA 由 Git 历史和集成台账登记。
+8. 本记录的最终 SHA 以交付消息和 `git rev-parse HEAD` 为准。
 
 ## 行为保护
 
@@ -94,6 +96,7 @@
 - 分支相对 `b66da08` 的文件所有权检查：通过，只有五个允许的页面目录和本记录。
 - 新增 `admin-*`、`--admin-*` 与 `!important` 检查：通过，无新增匹配。
 - `git diff --check`：通过。
+- 交叉审查修复：恢复 Assets `<1024px` 筛选栏横向滚动，并确认 `>=1024px` 仍由 `.assets-filter-rail` PC 规则接管。
 - 完整格式检查、类型检查、测试、构建、路由、浏览器、接口与功能回归：未运行，按总计划留到 R7 集中执行。
 
 ## 回滚

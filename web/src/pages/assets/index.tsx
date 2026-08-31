@@ -383,7 +383,7 @@ export default function AssetsPage() {
 
                 <Surface className="canvas-library-frame assets-library-frame" padding="none">
                     <div className="assets-library-layout">
-                        <aside className="thin-scrollbar assets-filter-rail">
+                        <aside className="thin-scrollbar flex gap-2 overflow-x-auto py-3 lg:block assets-filter-rail">
                             <AssetFilterGroup
                                 title="素材类型"
                                 options={kindOptions}
