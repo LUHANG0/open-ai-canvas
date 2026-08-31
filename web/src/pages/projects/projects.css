@@ -70,9 +70,7 @@
         position: relative;
         overflow: hidden;
         border-color: var(--app-border-default);
-        background:
-            radial-gradient(circle at 86% -20%, color-mix(in srgb, var(--app-action-primary-bg) 8%, transparent), transparent 44%),
-            var(--app-surface-1);
+        background: radial-gradient(circle at 86% -20%, color-mix(in srgb, var(--app-action-primary-bg) 8%, transparent), transparent 44%), var(--app-surface-1);
         box-shadow: var(--app-shadow-surface);
     }
 
@@ -275,7 +273,9 @@
         font-size: 12px;
         font-weight: 520;
         border-radius: var(--app-control-radius, 8px);
-        transition: color var(--app-duration-fast, 120ms) ease, background-color var(--app-duration-fast, 120ms) ease;
+        transition:
+            color var(--app-duration-fast, 120ms) ease,
+            background-color var(--app-duration-fast, 120ms) ease;
     }
 
     .pc-project-topbar-link:hover {

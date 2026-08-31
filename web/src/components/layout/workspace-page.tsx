@@ -17,12 +17,7 @@ type WorkspacePageProps = {
 export function WorkspacePage({ children, className, contentClassName, grid = false, fluid = false, scroll = true }: WorkspacePageProps) {
     return (
         <main
-            className={cn(
-                "app-user-content app-workspace-page-frame h-full min-h-0 text-foreground",
-                scroll && "app-workspace-scroll is-scroll-owner overflow-y-auto overscroll-contain",
-                grid && "app-workspace-grid",
-                className,
-            )}
+            className={cn("app-user-content app-workspace-page-frame h-full min-h-0 text-foreground", scroll && "app-workspace-scroll is-scroll-owner overflow-y-auto overscroll-contain", grid && "app-workspace-grid", className)}
             data-scroll-owner={scroll ? "page" : undefined}
         >
             <div className={cn("app-workspace-page-content", fluid ? "is-fluid h-full w-full" : "w-full px-3 py-3 sm:px-4 sm:py-4 xl:px-5", contentClassName)}>{children}</div>
@@ -49,10 +44,16 @@ export function PageHeader({ title, description, meta, actions, eyebrow, classNa
                 <div className="min-w-0">
                     {eyebrow ? <div className="app-page-header-eyebrow">{eyebrow}</div> : null}
                     <div className="flex min-w-0 flex-wrap items-center gap-2.5">
-                        <h1 id={titleId} className="app-page-header-title truncate font-semibold leading-7">{title}</h1>
+                        <h1 id={titleId} className="app-page-header-title truncate font-semibold leading-7">
+                            {title}
+                        </h1>
                         {meta ? <div className="app-page-header-meta flex min-w-0 flex-wrap items-center gap-2">{meta}</div> : null}
                     </div>
-                    {description ? <p id={descriptionId} className="app-page-header-description mt-1 text-xs leading-5 text-foreground/58">{description}</p> : null}
+                    {description ? (
+                        <p id={descriptionId} className="app-page-header-description mt-1 text-xs leading-5 text-foreground/58">
+                            {description}
+                        </p>
+                    ) : null}
                 </div>
             </div>
             {actions ? <div className="app-page-header-actions flex shrink-0 flex-wrap items-center gap-2">{actions}</div> : null}
@@ -107,10 +108,16 @@ export function ListToolbar({
                                 筛选{active ? <span className="app-filter-active-dot" aria-hidden="true" /> : null}
                             </Button>
                         ) : null}
-                        <div id={filtersId} className={cn("app-list-toolbar-filters flex flex-wrap items-center gap-2", (filtersAlwaysVisible || filtersOpen) && "is-open")}>{filters}</div>
+                        <div id={filtersId} className={cn("app-list-toolbar-filters flex flex-wrap items-center gap-2", (filtersAlwaysVisible || filtersOpen) && "is-open")}>
+                            {filters}
+                        </div>
                     </>
                 ) : null}
-                {activeFilters ? <div className="app-list-toolbar-chips" aria-label="已应用的筛选条件">{activeFilters}</div> : null}
+                {activeFilters ? (
+                    <div className="app-list-toolbar-chips" aria-label="已应用的筛选条件">
+                        {activeFilters}
+                    </div>
+                ) : null}
             </div>
             <div className="app-list-toolbar-actions flex shrink-0 flex-wrap items-center gap-2">
                 {active && onReset ? (
@@ -125,11 +132,19 @@ export function ListToolbar({
 }
 
 export function TableSurface({ children, className, ariaLabel }: { children: ReactNode; className?: string; ariaLabel?: string }) {
-    return <div className={cn("app-table-surface mt-4 min-w-0 overflow-hidden rounded-lg bg-surface", className)} role={ariaLabel ? "region" : undefined} aria-label={ariaLabel}>{children}</div>;
+    return (
+        <div className={cn("app-table-surface mt-4 min-w-0 overflow-hidden rounded-lg bg-surface", className)} role={ariaLabel ? "region" : undefined} aria-label={ariaLabel}>
+            {children}
+        </div>
+    );
 }
 
 export function CollectionGrid({ children, className, ariaLabel }: { children: ReactNode; className?: string; ariaLabel?: string }) {
-    return <div className={cn("app-collection-grid mt-4 grid grid-cols-1 gap-4 sm:grid-cols-[repeat(auto-fill,minmax(248px,1fr))]", className)} role={ariaLabel ? "region" : undefined} aria-label={ariaLabel}>{children}</div>;
+    return (
+        <div className={cn("app-collection-grid mt-4 grid grid-cols-1 gap-4 sm:grid-cols-[repeat(auto-fill,minmax(248px,1fr))]", className)} role={ariaLabel ? "region" : undefined} aria-label={ariaLabel}>
+            {children}
+        </div>
+    );
 }
 
 /* 自研轻量分页：页码胶囊 + 省略号 + 每页条数 + 总数，替代 AntD Pagination（无 AntD 残留样式，与工具栏容器同语言）。 */
@@ -168,8 +183,17 @@ export function PaginationBar({
     const items = pageItems(current, pages);
     return (
         <nav className={cn("app-pagination-bar mt-4 flex min-h-10 min-w-0 items-center justify-end gap-2 px-2 py-1.5", className)} aria-label={ariaLabel}>
-            <span className="app-pagination-total" aria-live="polite">{total === 0 ? `共 0 ${itemLabel}` : `${start}-${end} / 共 ${total} ${itemLabel}`}</span>
-            <Select aria-label={`每页显示${itemLabel}数`} size="small" value={pageSize} className="app-pagination-size" options={pageSizeOptions.map((size) => ({ value: size, label: `${size} ${itemLabel}/页` }))} onChange={(value) => onChange(1, Number(value))} />
+            <span className="app-pagination-total" aria-live="polite">
+                {total === 0 ? `共 0 ${itemLabel}` : `${start}-${end} / 共 ${total} ${itemLabel}`}
+            </span>
+            <Select
+                aria-label={`每页显示${itemLabel}数`}
+                size="small"
+                value={pageSize}
+                className="app-pagination-size"
+                options={pageSizeOptions.map((size) => ({ value: size, label: `${size} ${itemLabel}/页` }))}
+                onChange={(value) => onChange(1, Number(value))}
+            />
             <div className="app-pagination-pages">
                 <button type="button" className="app-pagination-btn app-pagination-prev" disabled={current <= 1} aria-label="上一页" onClick={() => onChange(current - 1, pageSize)}>
                     <ChevronLeft className="size-4" aria-hidden="true" />

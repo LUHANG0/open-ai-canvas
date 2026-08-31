@@ -84,7 +84,9 @@ export function AppWorkspaceShell({ children }: { children: ReactNode }) {
 
                         <div className="app-workspace-stage relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden" data-workspace-stage={hideChrome ? "fullscreen" : "standard"}>
                             {showGlobalTopBar ? <WorkspaceTopBar sidebarOpen={isMobileViewport() ? mobileSidebarExpanded : !desktopSidebarCollapsed} onToggleSidebar={toggleSidebar} /> : null}
-                            <div className="app-workspace-route-stage relative min-h-0 min-w-0 flex-1 overflow-hidden" data-scroll-boundary="route">{children}</div>
+                            <div className="app-workspace-route-stage relative min-h-0 min-w-0 flex-1 overflow-hidden" data-scroll-boundary="route">
+                                {children}
+                            </div>
                         </div>
                     </div>
 

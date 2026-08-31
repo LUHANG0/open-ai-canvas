@@ -42,7 +42,9 @@ export function WorkspaceTopBar({ sidebarOpen, onToggleSidebar }: { sidebarOpen:
                         {pageContext.section}
                     </Link>
                     <span className="app-workspace-context-divider shrink-0" aria-hidden="true" />
-                    <span className="app-workspace-context-title" aria-current="page">{pageContext.title}</span>
+                    <span className="app-workspace-context-title" aria-current="page">
+                        {pageContext.title}
+                    </span>
                 </nav>
                 {extension ? <div className="min-w-0 flex-1">{extension}</div> : null}
             </div>

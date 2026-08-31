@@ -500,7 +500,18 @@ export function CanvasSubtitleDialog({ node, open, projectId, config, onClose, o
     );
 
     return (
-        <Modal rootClassName="pc-canvas-overlay pc-canvas-modal pc-canvas-subtitle-modal" className="canvas-subtitle-dialog" title={title} open={open} centered footer={null} width={1120} destroyOnHidden onCancel={onClose} styles={{ container: { padding: 0, overflow: "hidden" }, body: { padding: 0 } }}>
+        <Modal
+            rootClassName="pc-canvas-overlay pc-canvas-modal pc-canvas-subtitle-modal"
+            className="canvas-subtitle-dialog"
+            title={title}
+            open={open}
+            centered
+            footer={null}
+            width={1120}
+            destroyOnHidden
+            onCancel={onClose}
+            styles={{ container: { padding: 0, overflow: "hidden" }, body: { padding: 0 } }}
+        >
             <div className="flex h-[min(72vh,680px)] min-h-[420px] flex-col text-sm" style={{ color: theme.node.text }}>
                 <div className="flex flex-wrap items-center gap-2 border-b px-4 py-3" style={{ borderColor: theme.toolbar.border, background: theme.toolbar.panel }}>
                     <input

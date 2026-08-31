@@ -257,7 +257,9 @@
 
     .pc-canvas-workspace .pc-canvas-infinite:focus-visible {
         outline: none;
-        box-shadow: inset 0 0 0 1px var(--app-border-default), inset var(--app-focus-shadow);
+        box-shadow:
+            inset 0 0 0 1px var(--app-border-default),
+            inset var(--app-focus-shadow);
     }
 
     .pc-canvas-workspace .pc-canvas-node {

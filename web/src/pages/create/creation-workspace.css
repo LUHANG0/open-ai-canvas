@@ -2479,7 +2479,10 @@ html:not(.dark) .creation-media-preview-modal.is-video .ant-modal-container {
         border-radius: var(--app-radius-media, 16px);
         background: var(--app-surface-2, var(--creation-surface-muted));
         box-shadow: var(--app-shadow-surface, none);
-        transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+        transition:
+            border-color 160ms ease,
+            box-shadow 160ms ease,
+            transform 160ms ease;
     }
 
     .creation-home .creation-image-result:hover {

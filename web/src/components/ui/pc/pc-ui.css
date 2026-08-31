@@ -106,7 +106,10 @@
     background: var(--app-surface-1, var(--background, #ffffff));
     border: 1px solid var(--app-border-default, var(--border, rgba(17, 17, 17, 0.14)));
     border-radius: var(--app-control-radius, var(--r-md, 8px));
-    transition: border-color 120ms ease, box-shadow 120ms ease, background-color 120ms ease;
+    transition:
+        border-color 120ms ease,
+        box-shadow 120ms ease,
+        background-color 120ms ease;
 }
 
 .pc-search-field:focus-within {
@@ -266,7 +269,10 @@
     border: 0;
     border-radius: var(--app-control-radius-sm, var(--r-sm, 6px));
     cursor: pointer;
-    transition: color 120ms ease, background-color 120ms ease, box-shadow 120ms ease;
+    transition:
+        color 120ms ease,
+        background-color 120ms ease,
+        box-shadow 120ms ease;
 }
 
 .pc-view-toggle__item:hover:not(:disabled) {
@@ -671,7 +677,10 @@
     background: var(--app-surface-2, var(--surface-card, #f7f8fa));
     border: 1px dashed var(--app-border-default, var(--border, rgba(17, 17, 17, 0.16)));
     border-radius: var(--app-surface-radius, var(--r-lg, 12px));
-    transition: border-color 120ms ease, background-color 120ms ease, box-shadow 120ms ease;
+    transition:
+        border-color 120ms ease,
+        background-color 120ms ease,
+        box-shadow 120ms ease;
 }
 
 .pc-file-dropzone.is-dragging {
@@ -1027,7 +1036,10 @@
     border: 1px solid transparent;
     border-radius: var(--app-control-radius, var(--r-md, 8px));
     cursor: pointer;
-    transition: color 120ms ease, background-color 120ms ease, border-color 120ms ease;
+    transition:
+        color 120ms ease,
+        background-color 120ms ease,
+        border-color 120ms ease;
 }
 
 .pc-subnav-layout__item:hover:not(:disabled) {

@@ -22,7 +22,11 @@ export function UploadField({ label, description, error, required = false, class
             <div className="pc-upload-field__label-row">
                 <span id={labelId} className="pc-upload-field__label">
                     {label}
-                    {required ? <span className="pc-upload-field__required" aria-label="必填">*</span> : null}
+                    {required ? (
+                        <span className="pc-upload-field__required" aria-label="必填">
+                            *
+                        </span>
+                    ) : null}
                 </span>
                 {description ? <span className="pc-upload-field__hint">{description}</span> : null}
             </div>
@@ -143,7 +147,10 @@ export function UploadProgress({ name, progress = 0, status = "uploading", detai
             <div className="pc-upload-progress__content">
                 <div className="pc-upload-progress__topline">
                     <span className="pc-upload-progress__name">{name}</span>
-                    <span className="pc-upload-progress__status">{STATUS_LABELS[status]}{status === "uploading" ? ` ${Math.round(safeProgress)}%` : ""}</span>
+                    <span className="pc-upload-progress__status">
+                        {STATUS_LABELS[status]}
+                        {status === "uploading" ? ` ${Math.round(safeProgress)}%` : ""}
+                    </span>
                 </div>
                 {showProgress ? <progress className="pc-upload-progress__bar" max={100} value={status === "success" ? 100 : safeProgress} aria-label={`${STATUS_LABELS[status]} ${Math.round(status === "success" ? 100 : safeProgress)}%`} /> : null}
                 {detail ? <div className="pc-upload-progress__detail">{detail}</div> : null}

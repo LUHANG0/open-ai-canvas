@@ -333,7 +333,9 @@
 
     .pc-canvas-library-page .canvas-folder-card.is-selected {
         border-color: var(--app-selection-border);
-        box-shadow: 0 0 0 2px var(--app-selection-border), var(--app-shadow-surface);
+        box-shadow:
+            0 0 0 2px var(--app-selection-border),
+            var(--app-shadow-surface);
     }
 
     .pc-canvas-library-page .canvas-folder-card:hover .canvas-folder-open,

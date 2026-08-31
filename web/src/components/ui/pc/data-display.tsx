@@ -67,7 +67,9 @@ export function SelectionBar({ count, itemLabel = "项", summary, actions, onCle
     return (
         <div className={cn("pc-selection-bar", className)} {...props}>
             <div className="pc-selection-bar__summary" role="status" aria-live="polite">
-                <span className="pc-selection-bar__count">已选择 {count} {itemLabel}</span>
+                <span className="pc-selection-bar__count">
+                    已选择 {count} {itemLabel}
+                </span>
                 {summary ? <span className="pc-selection-bar__detail">{summary}</span> : null}
             </div>
             <div className="pc-selection-bar__actions">
