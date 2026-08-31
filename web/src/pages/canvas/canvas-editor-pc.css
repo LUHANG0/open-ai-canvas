@@ -45,6 +45,10 @@
         min-inline-size: 520px;
     }
 
+    .pc-canvas-workspace[data-assistant-open="true"] .pc-canvas-workspace__viewport {
+        min-inline-size: 0;
+    }
+
     .pc-canvas-workspace__mode-switch,
     .pc-canvas-workspace__bottom-dock,
     .pc-canvas-toolbar,
