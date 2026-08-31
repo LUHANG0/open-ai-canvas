@@ -1,6 +1,7 @@
-import { Modal, Upload } from "antd";
+import { Upload } from "antd";
 import { CloudUpload, FileText, ShieldCheck } from "lucide-react";
 
+import { DialogFrame } from "@/components/ui/pc";
 import type { RegisteredPlugin } from "@/lib/plugins/plugin-types";
 
 import pluginDevelopmentGuideMarkdown from "./plugin-development-guide.md?raw";
@@ -16,9 +17,12 @@ type UploadPluginModalProps = {
 
 export function UploadPluginModal({ open, onClose, onUpload }: UploadPluginModalProps) {
     return (
-        <Modal
-            className="workspace-modal workspace-modal-wide plugin-upload-modal"
+        <DialogFrame
+            rootClassName="plugin-upload-dialog-root"
+            className="plugin-upload-modal"
             title="上传插件"
+            subtitle="先核对开发规范，再安装来源可信的影策插件包。"
+            frameSize="lg"
             open={open}
             centered
             footer={null}
@@ -58,7 +62,7 @@ export function UploadPluginModal({ open, onClose, onUpload }: UploadPluginModal
                     </div>
                 </aside>
             </div>
-        </Modal>
+        </DialogFrame>
     );
 }
 
@@ -70,8 +74,9 @@ type PluginDetailsModalProps = {
 
 export function PluginDetailsModal({ plugin, restoreFocus, onClose }: PluginDetailsModalProps) {
     return (
-        <Modal
-            className="workspace-modal workspace-modal-wide plugin-details-modal"
+        <DialogFrame
+            rootClassName="plugin-details-dialog-root"
+            className="plugin-details-modal"
             title={plugin ? (
                 <div className="plugin-details-title">
                     <FileText className="size-4" />
@@ -79,6 +84,8 @@ export function PluginDetailsModal({ plugin, restoreFocus, onClose }: PluginDeta
                     <span className="plugin-version">v{plugin.manifest.version}</span>
                 </div>
             ) : null}
+            subtitle="插件作者提供的使用说明与权限声明。"
+            frameSize="lg"
             open={Boolean(plugin)}
             centered
             footer={null}
@@ -88,6 +95,6 @@ export function PluginDetailsModal({ plugin, restoreFocus, onClose }: PluginDeta
             styles={{ body: { maxHeight: "min(78vh, 820px)", overflowY: "auto", overscrollBehavior: "contain" } }}
         >
             {plugin ? <PluginMarkdown className="plugin-details-document" source={getPluginDocumentation(plugin.manifest)} /> : null}
-        </Modal>
+        </DialogFrame>
     );
 }

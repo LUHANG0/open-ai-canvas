@@ -156,7 +156,7 @@
     background: color-mix(in srgb, var(--foreground) 2%, transparent);
 }
 
-.eagle-library-page .eagle-drawer-preview {
+:is(.eagle-library-page, .eagle-asset-drawer) .eagle-drawer-preview {
     display: grid;
     min-height: 220px;
     max-height: 52vh;
@@ -166,7 +166,7 @@
     background: color-mix(in srgb, var(--foreground) 5%, transparent);
 }
 
-.eagle-library-page .eagle-drawer-preview img {
+:is(.eagle-library-page, .eagle-asset-drawer) .eagle-drawer-preview img {
     display: block;
     width: 100%;
     height: 100%;
@@ -174,14 +174,14 @@
     object-fit: contain;
 }
 
-.eagle-library-page .eagle-drawer-download {
+:is(.eagle-library-page, .eagle-asset-drawer) .eagle-drawer-download {
     width: 100%;
     background: var(--primary);
     color: var(--primary-foreground);
     transition: background-color var(--motion-state) ease-out;
 }
 
-.eagle-library-page .eagle-drawer-download:hover {
+:is(.eagle-library-page, .eagle-asset-drawer) .eagle-drawer-download:hover {
     background: color-mix(in srgb, var(--primary) 88%, var(--foreground));
     color: var(--primary-foreground);
 }
@@ -203,4 +203,102 @@
         transition: none;
     }
 
+}
+
+@media (min-width: 1024px) {
+    .eagle-library-page .studio-band {
+        padding-bottom: var(--app-space-4, 16px);
+        border-bottom: 1px solid var(--app-border-subtle, var(--border));
+    }
+
+    .eagle-library-page .eagle-library-frame {
+        padding: var(--app-space-4, 16px);
+        background: var(--app-surface-1, var(--background));
+        border: 1px solid var(--app-border-subtle, var(--border));
+        border-radius: var(--app-radius-surface, 12px);
+        box-shadow: var(--app-shadow-surface, 0 1px 2px rgba(0, 0, 0, 0.04));
+    }
+
+    .eagle-library-page .eagle-library-frame > .grid {
+        grid-template-columns: 208px minmax(0, 1fr);
+        gap: var(--app-space-5, 20px);
+    }
+
+    .eagle-library-page .eagle-folder-sidebar {
+        max-height: calc(100vh - 220px);
+        padding: var(--app-space-3, 12px);
+        background: var(--app-surface-2, var(--surface-card));
+        border: 1px solid var(--app-border-subtle, var(--border));
+        border-radius: var(--app-radius-control, 8px);
+    }
+
+    .eagle-library-page .eagle-folder-sidebar-header {
+        min-height: 36px;
+        padding: 0 var(--app-space-2, 8px) var(--app-space-2, 8px);
+        border-bottom: 1px solid var(--app-border-subtle, var(--border));
+    }
+
+    .eagle-library-page .assets-filter-item {
+        min-height: 36px;
+        border-radius: var(--app-radius-control-sm, 6px);
+    }
+
+    .eagle-library-page .assets-filter-item.is-active {
+        color: var(--app-selection-fg, var(--foreground));
+        background: var(--app-selection-bg, var(--control-selected-bg));
+    }
+
+    .eagle-library-page .eagle-folder-sidebar-label {
+        margin-top: var(--app-space-4, 16px);
+        padding-inline: var(--app-space-2, 8px);
+        color: var(--app-text-muted, var(--muted-foreground));
+        font-size: 11px;
+    }
+
+    .eagle-library-page .eagle-folder-tree .ant-tree-node-content-wrapper {
+        min-height: 32px;
+        color: var(--app-text-secondary, var(--muted-foreground));
+        border-radius: var(--app-radius-control-sm, 6px);
+    }
+
+    .eagle-library-page .eagle-folder-tree .ant-tree-node-content-wrapper:hover {
+        color: var(--app-text-primary, var(--foreground));
+        background: var(--app-action-secondary-hover-bg, var(--surface-card-hover));
+    }
+
+    .eagle-library-page .eagle-folder-tree .ant-tree-node-content-wrapper.ant-tree-node-selected {
+        color: var(--app-selection-fg, var(--foreground));
+        background: var(--app-selection-bg, var(--control-selected-bg));
+    }
+
+    .eagle-library-page .eagle-folder-create {
+        min-height: var(--app-control-height-md, 36px);
+        margin-top: var(--app-space-3, 12px);
+    }
+
+    .eagle-library-page .eagle-empty-state {
+        min-height: 320px;
+        background: var(--app-surface-2, var(--surface-card));
+        border: 1px dashed var(--app-border-default, var(--border));
+        border-radius: var(--app-radius-surface, 12px);
+    }
+
+    :is(.eagle-library-page, .eagle-asset-drawer) .eagle-drawer-preview {
+        min-height: 260px;
+        background: var(--app-surface-2, var(--surface-card));
+        border: 1px solid var(--app-border-subtle, var(--border));
+        border-radius: var(--app-radius-media, 12px);
+    }
+
+    .eagle-asset-drawer .asset-archive-header {
+        padding-bottom: var(--app-space-4, 16px);
+        border-bottom: 1px solid var(--app-border-subtle, var(--border));
+    }
+
+    .eagle-asset-drawer .eagle-drawer-download {
+        min-height: var(--app-control-height-lg, 42px);
+        color: var(--app-text-inverse, #fff);
+        background: var(--app-action-primary-bg, var(--primary));
+        border-radius: var(--app-radius-control, 8px);
+    }
 }

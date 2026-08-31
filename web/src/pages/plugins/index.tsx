@@ -1,5 +1,5 @@
-import { App, Button, Input, Modal, Select, Switch, Typography } from "antd";
-import { AudioLines, CalendarDays, CheckCircle2, Clock3, ExternalLink, Film, FolderOpen, Image as ImageIcon, MessageSquareText, PlugZap, RefreshCw, Search, Settings2, ShieldCheck, SlidersHorizontal } from "lucide-react";
+import { App, Button, Input, Select, Switch, Typography } from "antd";
+import { AudioLines, CalendarDays, CheckCircle2, Clock3, ExternalLink, Film, FolderOpen, Image as ImageIcon, MessageSquareText, PlugZap, RefreshCw, Settings2, ShieldCheck, SlidersHorizontal } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 
@@ -13,6 +13,9 @@ import { getEagleLibrary, type EagleFolder } from "@/services/api/eagle";
 import { fetchPlugins, setUserPluginEnabled, type BackendPlugin, type PluginState } from "@/services/api/plugins";
 import { usePluginStore } from "@/stores/use-plugin-store";
 import { useUserStore } from "@/stores/use-user-store";
+import { PageHeader, WorkspacePage } from "@/components/layout/workspace-page";
+import { WorkspaceErrorState, WorkspaceLoadingState } from "@/components/layout/workspace-state";
+import { DialogFrame, SearchField, StatusBadge, SubnavLayout } from "@/components/ui/pc";
 
 import { PluginDetailsModal } from "./plugin-documentation-modals";
 import "./plugins.css";
@@ -72,6 +75,7 @@ export default function PluginsPage() {
     const builtinPlugins = useMemo(() => listRegisteredPlugins(), []);
     const [backendPlugins, setBackendPlugins] = useState<BackendPlugin[]>([]);
     const [backendPluginsLoading, setBackendPluginsLoading] = useState(false);
+    const [backendPluginsError, setBackendPluginsError] = useState("");
     const [settingsPluginId, setSettingsPluginId] = useState<string | null>(null);
     const [detailsPluginId, setDetailsPluginId] = useState<string | null>(null);
     const [detailsRestoreFocus, setDetailsRestoreFocus] = useState(false);
@@ -94,12 +98,15 @@ export default function PluginsPage() {
 
     const reloadBackendPlugins = async () => {
         setBackendPluginsLoading(true);
+        setBackendPluginsError("");
         try {
             const result = await fetchPlugins();
             setBackendPlugins(result.plugins);
             setPluginStates(result.states);
         } catch (error) {
-            message.error(error instanceof Error ? error.message : "读取插件中心失败");
+            const detail = error instanceof Error ? error.message : "读取插件中心失败";
+            message.error(detail);
+            setBackendPluginsError(detail);
             setBackendPlugins([]);
         } finally {
             setBackendPluginsLoading(false);
@@ -192,6 +199,14 @@ export default function PluginsPage() {
         }
         return counts;
     }, [features.systemPluginsVisibleToUsers, registeredPlugins, user?.role]);
+    const navigationItems = useMemo(() => [
+        { value: "all", label: "全部插件", description: "全部可见扩展", icon: <PlugZap className="size-4" />, badge: categoryCounts.all },
+        ...protocolSectionMeta.map((section) => {
+            const Icon = section.icon;
+            return { value: section.key, label: section.label, description: section.description, icon: <Icon className="size-4" />, badge: categoryCounts[section.key] || 0 };
+        }),
+        { value: "other", label: "应用插件", description: "工作流与素材扩展", icon: <PlugZap className="size-4" />, badge: categoryCounts.other },
+    ], [categoryCounts]);
 
     const settingsPlugin = settingsPluginId ? registeredPlugins.find((plugin) => plugin.manifest.id === settingsPluginId) : undefined;
     const settingsInstallation = settingsPlugin ? installations.find((item) => item.manifest.id === settingsPlugin.manifest.id) : undefined;
@@ -242,60 +257,37 @@ export default function PluginsPage() {
         message.success("Eagle 插件配置已保存");
     };
 
+    const hasActiveFilters = Boolean(search.trim() || categoryFilter !== "all" || statusFilter !== "all" || trustFilter !== "all");
+
     return (
-        <main className="app-workspace-page plugins-page flex h-full min-h-0 flex-col text-foreground">
-            <div className="app-workspace-scroll min-h-0 flex-1 overflow-y-auto">
-                <div className="plugins-page-layout">
-                    <aside className="plugins-sidebar" aria-label="插件分类">
-                        <div className="plugins-sidebar-heading">
-                            <span className="plugins-sidebar-kicker">PLUGIN CENTER</span>
-                            <h1>插件中心</h1>
-                            <p>统一管理 provider、工作流、画布节点和其他扩展能力。</p>
-                        </div>
-                        <nav className="plugins-sidebar-nav">
-                            <button type="button" className={`plugins-sidebar-item${categoryFilter === "all" ? " is-active" : ""}`} aria-current={categoryFilter === "all" ? "page" : undefined} onClick={() => selectCategory("all")}>
-                                <span className="plugins-sidebar-item-label">
-                                    <PlugZap className="size-4" />
-                                    全部插件
-                                </span>
-                                <span>{categoryCounts.all}</span>
-                            </button>
-                            {protocolSectionMeta.map((section) => {
-                                const SectionIcon = section.icon;
-                                return (
-                                    <button
-                                        key={section.key}
-                                        type="button"
-                                        className={`plugins-sidebar-item${categoryFilter === section.key ? " is-active" : ""}`}
-                                        aria-current={categoryFilter === section.key ? "page" : undefined}
-                                        onClick={() => selectCategory(section.key)}
-                                    >
-                                        <span className="plugins-sidebar-item-label">
-                                            <SectionIcon className="size-4" />
-                                            {section.label}
-                                        </span>
-                                        <span>{categoryCounts[section.key] || 0}</span>
-                                    </button>
-                                );
-                            })}
-                            <button type="button" className={`plugins-sidebar-item${categoryFilter === "other" ? " is-active" : ""}`} aria-current={categoryFilter === "other" ? "page" : undefined} onClick={() => selectCategory("other")}>
-                                <span className="plugins-sidebar-item-label">
-                                    <PlugZap className="size-4" />
-                                    应用插件
-                                </span>
-                                <span>{categoryCounts.other}</span>
-                            </button>
-                        </nav>
-                    </aside>
-                    <div className="plugins-page-content">
+        <WorkspacePage className="plugins-page" contentClassName="plugins-page-content">
+            <PageHeader
+                eyebrow="PLUGIN CENTER"
+                title="插件中心"
+                description="统一管理模型协议、工作流、画布节点与素材扩展能力。"
+                meta={<span className="plugins-page-count">{categoryCounts.all} 个可见插件</span>}
+                actions={(
+                    <>
+                        <Button icon={<RefreshCw className="size-4" />} loading={backendPluginsLoading} onClick={() => void reloadBackendPlugins()}>刷新插件</Button>
+                        {user?.role === "admin" ? <Button type="primary" onClick={() => navigate("/admin/plugins")}>管理员插件管理</Button> : null}
+                    </>
+                )}
+            />
+            <SubnavLayout
+                className="plugins-subnav"
+                items={navigationItems}
+                activeValue={categoryFilter}
+                onChange={selectCategory}
+                ariaLabel="插件分类"
+                navigationHeader={<div className="plugins-subnav-heading"><span>能力分类</span><strong>{navigationItems.length}</strong></div>}
+            >
                         <div className="plugins-toolbar" aria-label="插件筛选">
-                            <Input
-                                className="plugins-search"
-                                prefix={<Search className="size-4 text-foreground/38" aria-hidden="true" />}
+                            <SearchField
+                                containerClassName="plugins-search"
                                 value={search}
-                                allowClear
                                 placeholder="搜索插件名称、描述或作者"
                                 onChange={(event) => setSearch(event.target.value)}
+                                onClear={() => setSearch("")}
                             />
                             <Select
                                 className="plugins-filter"
@@ -318,18 +310,13 @@ export default function PluginsPage() {
                                 onChange={(value) => setTrustFilter(value as "all" | "trusted")}
                                 aria-label="按来源筛选"
                             />
-                            <span className="plugins-filter-icon" aria-hidden="true">
-                                <SlidersHorizontal className="size-4" />
-                            </span>
-                            <div className="plugins-toolbar-actions">
-                                <Button icon={<RefreshCw className="size-4" />} loading={backendPluginsLoading} onClick={() => void reloadBackendPlugins()}>
-                                    刷新插件
-                                </Button>
-                                {user?.role === "admin" ? <Button type="primary" onClick={() => navigate("/admin/plugins")}>管理员插件管理</Button> : null}
-                            </div>
+                            <span className="plugins-filter-summary">{filteredPlugins.length} 个结果</span>
                         </div>
 
-                        {filteredPlugins.length ? (
+                        {backendPluginsError ? <WorkspaceErrorState compact title="部分插件信息加载失败" description={`${backendPluginsError}。内置插件仍可继续使用。`} onRetry={() => void reloadBackendPlugins()} /> : null}
+                        {backendPluginsError && registeredPlugins.length === 0 ? null : backendPluginsLoading && registeredPlugins.length === 0 ? (
+                            <WorkspaceLoadingState label="正在读取插件" detail="正在同步插件清单与当前账号状态。" rows={4} />
+                        ) : filteredPlugins.length ? (
                             <div className="plugins-sections">
                                 {pluginSections.map((section) => {
                                     if (!section.plugins.length) return null;
@@ -425,10 +412,9 @@ export default function PluginsPage() {
                                                             </button>
 
                                                             <div className="plugin-card-actions">
-                                                                <span role="status" className={`settings-channel-status ${enabled ? "is-ready" : ""}`}>
-                                                                    <i aria-hidden="true" />
+                                                                <StatusBadge dot tone={!state?.platformAvailable && state?.blockedReason ? "warning" : enabled ? "success" : "neutral"} live>
                                                                     {!state?.platformAvailable && state?.blockedReason ? state.blockedReason : enabled ? "已启用" : "已停用"}
-                                                                </span>
+                                                                </StatusBadge>
                                                                 <Switch className="plugin-state-switch" disabled={!state?.canToggle} checked={enabled} aria-label={`${plugin.manifest.name}，当前${enabled ? "已启用，点击停用" : "已停用，点击启用"}`} title={state?.blockedReason} onChange={(checked) => void togglePlugin(plugin, checked)} />
                                                                 {canConfigure ? (
                                                                     <Button
@@ -457,11 +443,11 @@ export default function PluginsPage() {
                                 })}
                             </div>
                         ) : (
-                            <div className="plugins-empty-state">
+                            <div className="plugins-empty-state" role="status">
                                 <SlidersHorizontal className="size-7" aria-hidden="true" />
-                                <h3>没有匹配的插件</h3>
-                                <p>试试清空搜索词，或放宽筛选条件。</p>
-                                <Button
+                                <h3>{hasActiveFilters ? "没有匹配的插件" : "暂无可用插件"}</h3>
+                                <p>{hasActiveFilters ? "试试清空搜索词，或放宽筛选条件。" : "当前账号没有可见的插件或扩展能力。"}</p>
+                                {hasActiveFilters ? <Button
                                     onClick={() => {
                                         setSearch("");
                                         setCategoryFilter("all");
@@ -470,13 +456,16 @@ export default function PluginsPage() {
                                     }}
                                 >
                                     清除筛选
-                                </Button>
+                                </Button> : null}
                             </div>
                         )}
 
-                        <Modal
-                            className="workspace-modal workspace-modal-wide plugin-settings-modal"
+                        <DialogFrame
+                            rootClassName="plugin-settings-dialog-root"
+                            className="plugin-settings-modal"
                             title={settingsPlugin ? `${settingsPlugin.manifest.name} 设置` : null}
+                            subtitle="配置项由插件清单与当前账号权限共同决定。"
+                            frameSize="md"
                             open={Boolean(settingsPlugin)}
                             centered
                             footer={null}
@@ -585,12 +574,10 @@ export default function PluginsPage() {
                                     </div>
                                 </div>
                             ) : null}
-                        </Modal>
+                        </DialogFrame>
                         <PluginDetailsModal plugin={detailsPlugin} restoreFocus={detailsRestoreFocus} onClose={() => setDetailsPluginId(null)} />
-                    </div>
-                </div>
-            </div>
-        </main>
+            </SubnavLayout>
+        </WorkspacePage>
     );
 }
 

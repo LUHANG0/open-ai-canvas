@@ -1,6 +1,6 @@
-import { ArrowLeft, ChevronDown, ChevronUp, Download, FileAudio, FileBox, FileImage, FileVideo, FolderOpen, FolderPlus, RefreshCw, Search, Settings2, Upload } from "lucide-react";
+import { ArrowLeft, ChevronDown, ChevronUp, Download, FileAudio, FileBox, FileImage, FileVideo, FolderPlus, RefreshCw, Search, Settings2, Upload } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
-import { App, Button, Drawer, Empty, Input, Spin, Tag, Tree, Typography } from "antd";
+import { App, Button, Input, Tag, Tree, Typography } from "antd";
 import type { DataNode } from "antd/es/tree";
 import { useNavigate } from "react-router";
 
@@ -10,6 +10,8 @@ import type { ExternalAssetFolder, ExternalAssetItem } from "@/lib/plugins/plugi
 import type { Asset } from "@/stores/use-asset-store";
 import { usePluginStore } from "@/stores/use-plugin-store";
 import { CollectionGrid, ListToolbar, PageHeader, PaginationBar, WorkspacePage } from "@/components/layout/workspace-page";
+import { WorkspaceErrorState, WorkspaceLoadingState, WorkspaceState } from "@/components/layout/workspace-state";
+import { DrawerFrame, StatusBadge, Surface } from "@/components/ui/pc";
 import { AssetLibraryCard, AssetLibraryCardMedia } from "@/components/assets/asset-library-card";
 import "./eagle.css";
 
@@ -136,12 +138,14 @@ export default function EagleLibraryPage() {
                     description="把 Eagle 作为影策的外部素材来源，直接浏览和管理 Eagle 原始文件。"
                     actions={<Button icon={<ArrowLeft className="size-3.5" />} onClick={() => navigate("/assets")}>返回影策素材库</Button>}
                 />
-                <section className="mt-4 library-card-surface flex min-h-72 flex-col items-center justify-center rounded-[var(--r-xl)] px-6 py-10 text-center">
-                    <span className="grid size-14 place-items-center rounded-[var(--r-lg)] bg-[var(--workspace-accent-soft)] text-[var(--workspace-accent)]"><FolderOpen className="size-7" aria-hidden="true" /></span>
-                    <h2 className="mt-4 text-base font-semibold">先启用 Eagle 素材来源</h2>
-                    <p className="mt-2 max-w-md text-sm leading-6 text-foreground/55">启用后，这里会直接显示 Eagle 原本的文件夹和文件，不会把素材复制成影策本地素材。</p>
-                    <Button type="primary" className="mt-5" icon={<Settings2 className="size-4" />} onClick={() => navigate("/plugins")}>去插件中心启用</Button>
-                </section>
+                <Surface className="mt-4" padding="none">
+                    <WorkspaceState
+                        icon="settings"
+                        title="先启用 Eagle 素材来源"
+                        description="启用后，这里会直接显示 Eagle 原本的文件夹和文件，不会把素材复制成影策本地素材。"
+                        action={<Button type="primary" icon={<Settings2 className="size-4" />} onClick={() => navigate("/plugins")}>去插件中心启用</Button>}
+                    />
+                </Surface>
             </WorkspacePage>
         );
     }
@@ -153,7 +157,7 @@ export default function EagleLibraryPage() {
                     <PageHeader
                         title="Eagle 素材库"
                         description="Eagle 是影策的外部素材来源；这里复用影策素材库的浏览方式，直接读取和写入 Eagle 原始文件。"
-                        meta={<span className="app-projects-header-meta assets-header-meta">{error ? "Eagle · 连接异常" : "Eagle · 已连接"}</span>}
+                        meta={<StatusBadge dot tone={error ? "error" : "success"} live>{error ? "Eagle · 连接异常" : "Eagle · 已连接"}</StatusBadge>}
                         actions={(
                             <div className="assets-header-actions">
                                 <div className="assets-header-action-buttons">
@@ -173,8 +177,6 @@ export default function EagleLibraryPage() {
                         <Input allowClear className="w-full sm:w-80" prefix={<Search className="size-4 text-foreground/40" />} value={keyword} placeholder="搜索 Eagle 素材标题、标签或文件夹" onChange={(event) => { setPage(1); setKeyword(event.target.value); }} onPressEnter={() => void load()} />
                     </ListToolbar>
                 </div>
-
-                {error ? <div className="mt-3 flex items-start justify-between gap-3 rounded-[var(--r-lg)] bg-danger/[.08] px-4 py-3 text-sm text-danger" role="alert"><span>{error}</span><Button size="small" icon={<RefreshCw className="size-3.5" />} onClick={() => void load()}>重试</Button></div> : null}
 
                 <div className="canvas-library-frame assets-library-frame eagle-library-frame mt-4">
                     <div className="grid min-h-0 gap-4 lg:grid-cols-[176px_minmax(0,1fr)]">
@@ -224,14 +226,14 @@ export default function EagleLibraryPage() {
                                 <Button onClick={() => setFolderName("")}>取消</Button>
                             </div> : null}
 
-                            {loading ? <div className="library-loading-grid grid min-h-64 place-items-center"><Spin tip="读取 Eagle 文件…"/></div> : items.length ? (
+                            {loading ? <WorkspaceLoadingState label="正在读取 Eagle 文件" detail="正在同步当前文件夹与素材信息。" rows={6} /> : error ? <WorkspaceErrorState compact title="无法读取 Eagle 素材库" description={error} onRetry={() => void load()} /> : items.length ? (
                                 <>
                                     <CollectionGrid className="library-grid assets-library-grid eagle-assets-grid">
                                         {visibleItems.map((item) => <EagleItemCard key={item.id} item={item} selected={previewItem?.id === item.id} onOpen={() => setPreviewItem(item)} />)}
                                     </CollectionGrid>
                                     <PaginationBar current={page} pageSize={pageSize} total={items.length} pageSizeOptions={[20, 40, 80]} onChange={(nextPage, nextPageSize) => { setPage(nextPageSize !== pageSize ? 1 : nextPage); setPageSize(nextPageSize); }} />
                                 </>
-                            ) : <div className="eagle-empty-state"><Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="当前 Eagle 文件夹没有文件" /></div>}
+                            ) : <div className="eagle-empty-state"><WorkspaceState compact icon="empty" title={keyword ? "没有匹配的 Eagle 素材" : "当前文件夹还没有文件"} description={keyword ? "试试更换搜索词，或清空搜索后重新读取。" : "可以写入图片、视频或音频，素材会保留在 Eagle 原目录中。"} /></div>}
                         </section>
                     </div>
                 </div>
@@ -272,7 +274,7 @@ function EagleItemCard({ item, selected, onOpen }: { item: ExternalAssetItem; se
 }
 
 function EagleAssetDrawer({ item, onClose, totalBytes }: { item: ExternalAssetItem | null; onClose: () => void; totalBytes: number }) {
-    return <Drawer className="library-drawer" title="素材档案" open={Boolean(item)} size="large" onClose={onClose}>
+    return <DrawerFrame className="library-drawer eagle-asset-drawer" title="素材档案" subtitle="Eagle 原文件的预览、属性与下载入口。" frameSize="md" open={Boolean(item)} onClose={onClose}>
         {item ? <div className="space-y-4">
             <div className="asset-archive-header">
                 <span className="asset-archive-header-icon"><AssetKindIcon kind={item.kind} size="size-5" /></span>
@@ -295,7 +297,7 @@ function EagleAssetDrawer({ item, onClose, totalBytes }: { item: ExternalAssetIt
             {item.description ? <div><Typography.Text strong className="text-xs">备注</Typography.Text><p className="mt-2 text-sm leading-6 text-foreground/65">{item.description}</p></div> : null}
             {item.fileUrl ? <a href={item.fileUrl} download={item.title} target="_blank" rel="noreferrer" className="eagle-drawer-download inline-flex min-h-10 items-center justify-center gap-2 rounded-md px-4 text-sm font-medium"><Download className="size-4" aria-hidden="true" />下载 Eagle 原文件</a> : null}
         </div> : null}
-    </Drawer>;
+    </DrawerFrame>;
 }
 
 function EagleFact({ label, value }: { label: string; value: string }) {
