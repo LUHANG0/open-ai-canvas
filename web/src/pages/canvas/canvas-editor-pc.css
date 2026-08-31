@@ -720,6 +720,10 @@
         max-width: calc(100% - 340px);
     }
 
+    .pc-canvas-workspace .pc-canvas-workspace__viewport {
+        min-inline-size: 0;
+    }
+
     .pc-canvas-workspace .pc-canvas-toolbar {
         padding-inline: 108px;
     }
