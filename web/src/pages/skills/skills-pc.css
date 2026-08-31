@@ -1,0 +1,203 @@
+.skills-library-page {
+    background: var(--app-bg-page);
+}
+
+.skills-library-page .studio-band {
+    border-bottom: 1px solid var(--app-border-subtle);
+}
+
+.skills-library-page .app-page-header {
+    min-height: 96px;
+    padding: var(--app-space-3) 0 var(--app-space-4);
+}
+
+.skills-library-page .skills-page-total {
+    color: var(--app-text-muted);
+    font-size: var(--app-font-size-label);
+    font-variant-numeric: tabular-nums;
+}
+
+.skills-library-page .skills-toolbar {
+    min-height: 0;
+    margin-top: 0;
+    padding: var(--app-space-3) 0 var(--app-space-4);
+    border-bottom: 0;
+}
+
+.skills-library-page .skills-scope-toggle {
+    max-width: 100%;
+    overflow-x: auto;
+}
+
+.skills-library-page .skills-scope-label {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--app-space-1);
+}
+
+.skills-library-page .skills-scope-label small {
+    min-width: 18px;
+    padding: 1px 5px;
+    color: var(--app-text-muted);
+    font-size: var(--app-font-size-label);
+    font-variant-numeric: tabular-nums;
+    background: var(--app-surface-3);
+    border-radius: 999px;
+}
+
+.skills-library-page .skills-search-field {
+    width: min(280px, 100%);
+}
+
+.skills-library-page .skills-catalog-surface {
+    background: var(--app-surface-1);
+    border-color: var(--app-border-subtle);
+    box-shadow: var(--app-shadow-surface);
+}
+
+.skills-library-page .skills-scope-panel {
+    display: grid;
+    gap: var(--app-space-8);
+}
+
+.skills-library-page .skills-category-header {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--app-space-3);
+    margin-bottom: var(--app-space-3);
+}
+
+.skills-library-page .skills-category-header .pc-section-header__meta {
+    color: var(--app-text-muted);
+    font-size: var(--app-font-size-label);
+    font-variant-numeric: tabular-nums;
+}
+
+.skills-library-page .skill-group-icon {
+    display: grid;
+    width: 34px;
+    height: 34px;
+    place-items: center;
+    color: var(--app-text-secondary);
+    background: var(--app-surface-2);
+    border: 1px solid var(--app-border-subtle);
+    border-radius: var(--app-control-radius);
+}
+
+.skills-library-page .skill-group-icon svg {
+    width: 16px;
+    height: 16px;
+}
+
+.skills-library-page .skill-library-grid {
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: var(--app-space-4);
+}
+
+.skills-library-page .skill-library-card,
+.skills-library-page .skill-library-grid .library-create-card {
+    min-height: 252px;
+    background: var(--app-surface-1);
+    border: 1px solid var(--app-border-subtle);
+    border-radius: var(--app-surface-radius-sm);
+    box-shadow: var(--app-shadow-surface);
+    animation-duration: var(--app-duration-slow);
+    transition:
+        border-color var(--app-duration-fast) var(--app-ease-standard),
+        box-shadow var(--app-duration-fast) var(--app-ease-standard),
+        transform var(--app-duration-fast) var(--app-ease-standard);
+}
+
+.skills-library-page .skill-library-card:hover,
+.skills-library-page .skill-library-grid .library-create-card:hover {
+    border-color: var(--app-border-default);
+    box-shadow: var(--app-shadow-raised);
+    transform: translateY(-1px);
+}
+
+.skills-library-page .skill-card-icon,
+.skills-library-page .library-create-cover {
+    color: var(--app-text-secondary);
+    background: var(--app-surface-2);
+    border-color: var(--app-border-subtle);
+}
+
+.skills-library-page .skill-card-footer,
+.skills-library-page .skill-card-author,
+.skills-library-page .skill-card-tag,
+.skills-library-page .skill-card-added-count {
+    color: var(--app-text-muted);
+}
+
+.skills-library-page .skill-card-join.is-added,
+.skills-library-page .skill-library-card.is-added {
+    border-color: var(--app-selection-border);
+    background: var(--app-selection-bg);
+}
+
+.skill-editor-drawer .skill-editor-intro,
+.skill-install-dialog .skill-install-intro {
+    color: var(--app-text-secondary);
+    background: var(--app-surface-2);
+    border: 1px solid var(--app-border-subtle);
+    border-radius: var(--app-surface-radius-sm);
+}
+
+.skill-install-dialog .ant-upload-wrapper .ant-upload-drag {
+    background: var(--app-surface-2);
+    border-color: var(--app-border-default);
+    border-radius: var(--app-surface-radius-sm);
+}
+
+.skill-package-modal .ant-modal-container {
+    background: var(--app-surface-overlay);
+    border-color: var(--app-border-default);
+    border-radius: var(--app-surface-radius);
+    box-shadow: var(--app-shadow-overlay);
+}
+
+.skill-package-modal .skill-package-header,
+.skill-package-modal .skill-package-preview-toolbar,
+.skill-package-modal .skill-package-sidebar,
+.skill-package-modal .skill-package-sidebar-footer {
+    border-color: var(--app-border-subtle);
+}
+
+.skill-package-modal .skill-package-sidebar {
+    background: var(--app-surface-2);
+}
+
+.skill-package-modal .skill-package-sidebar .pc-search-field {
+    width: 100%;
+    min-width: 0;
+    height: var(--app-control-height-sm);
+}
+
+.skill-package-modal .skill-package-preview {
+    background: var(--app-surface-1);
+}
+
+@media (min-width: 1024px) and (max-width: 1279px) {
+    .skills-library-page .skills-scope-toggle .pc-view-toggle__item {
+        padding-inline: var(--app-space-2);
+    }
+
+    .skills-library-page .skill-library-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .skills-library-page .skills-scope-panel,
+    .skills-library-page .skill-library-card,
+    .skills-library-page .skill-library-grid .library-create-card {
+        animation: none;
+        transition: none;
+    }
+
+    .skills-library-page .skill-library-card:hover,
+    .skills-library-page .skill-library-grid .library-create-card:hover {
+        transform: none;
+    }
+}
