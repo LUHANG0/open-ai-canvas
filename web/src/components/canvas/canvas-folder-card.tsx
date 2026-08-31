@@ -1,6 +1,6 @@
 import { Dropdown, Input } from "antd";
 import { Download, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
-import type { KeyboardEvent } from "react";
+import { useId, type KeyboardEvent } from "react";
 
 import { ProjectPreview } from "@/components/canvas/canvas-project-card";
 import { exportCanvasProjects } from "@/lib/canvas/canvas-export";
@@ -27,6 +27,8 @@ export function CanvasFolderCard({ project, projectName, onClick }: CanvasFolder
     const setDeleteIds = useCanvasUiStore((state) => state.setDeleteProjectIds);
     const editing = editingId === project.id;
     const selected = selectedIds.includes(project.id);
+    const titleId = useId();
+    const metadataId = useId();
 
     const saveTitle = () => {
         renameProject(project.id, editingTitle);
@@ -42,10 +44,25 @@ export function CanvasFolderCard({ project, projectName, onClick }: CanvasFolder
     };
 
     return (
-        <article className={cn("canvas-folder-card", selected && "is-selected", editing && "is-editing")}>
-            <div className="canvas-folder-open" role="button" tabIndex={0} aria-label={`打开画布 ${project.title}`} onClick={() => !editing && onClick()} onKeyDown={handleOpenKeyDown}>
+        <article
+            className={cn("canvas-folder-card", selected && "is-selected", editing && "is-editing")}
+            aria-label={editing ? `正在重命名画布 ${project.title}` : undefined}
+            aria-labelledby={editing ? undefined : titleId}
+            aria-describedby={metadataId}
+            data-selected={selected || undefined}
+        >
+            <div
+                className="canvas-folder-open"
+                role="button"
+                tabIndex={0}
+                aria-label={`打开画布 ${project.title}`}
+                aria-describedby={metadataId}
+                onClick={() => !editing && onClick()}
+                onKeyDown={handleOpenKeyDown}
+            >
                 <div className="canvas-folder-preview" aria-hidden="true">
                     <ProjectPreview project={project} preferLatestImage />
+                    <span className="pc-canvas-folder__preview-count">{project.nodes.length} 节点</span>
                 </div>
                 <div className="canvas-folder-body">
                     <div className="canvas-folder-heading-row">
@@ -53,6 +70,7 @@ export function CanvasFolderCard({ project, projectName, onClick }: CanvasFolder
                             <Input
                                 className="canvas-folder-title-input"
                                 value={editingTitle}
+                                aria-label={`重命名画布 ${project.title}`}
                                 onChange={(event) => setEditingTitle(event.target.value)}
                                 onClick={(event) => event.stopPropagation()}
                                 onBlur={saveTitle}
@@ -63,10 +81,10 @@ export function CanvasFolderCard({ project, projectName, onClick }: CanvasFolder
                                 autoFocus
                             />
                         ) : (
-                            <span className="canvas-folder-title">{project.title}</span>
+                            <span id={titleId} className="canvas-folder-title">{project.title}</span>
                         )}
                     </div>
-                    <div className="canvas-folder-meta">
+                    <div id={metadataId} className="canvas-folder-meta">
                         <span className="canvas-folder-meta-item">{projectName ? `所属项目：${projectName}` : "自由画布"}</span>
                         <span className="canvas-folder-meta-separator" aria-hidden="true">·</span>
                         <span className="canvas-folder-meta-item">{project.nodes.length} 节点</span>
@@ -87,7 +105,7 @@ export function CanvasFolderCard({ project, projectName, onClick }: CanvasFolder
                 />
             </span>
 
-            <div className="canvas-folder-actions" onClick={(event) => event.stopPropagation()}>
+            <div className="canvas-folder-actions" role="group" aria-label={`${project.title} 画布操作`} onClick={(event) => event.stopPropagation()}>
                 {!editing ? (
                     <button
                         type="button"
@@ -106,6 +124,7 @@ export function CanvasFolderCard({ project, projectName, onClick }: CanvasFolder
                 <Dropdown
                     trigger={["click"]}
                     placement="bottomRight"
+                    classNames={{ root: "pc-canvas-library-card-menu" }}
                     menu={{
                         onClick: ({ domEvent }) => domEvent.stopPropagation(),
                         items: [
