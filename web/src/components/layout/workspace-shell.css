@@ -2,40 +2,40 @@
    导航、页面舞台和顶栏的层级在这里统一，画布编辑器与后台继续使用各自的全屏合同。 */
 
 .app-user-workspace.app-spatial-workspace {
-    --workspace-canvas: #eae9e5;
-    --workspace-page: #eae9e5;
-    --workspace-navigation: #eeede9;
-    --workspace-content: #f7f6f3;
+    --workspace-canvas: var(--app-bg-canvas, #eae9e5);
+    --workspace-page: var(--app-bg-page, #eae9e5);
+    --workspace-navigation: var(--app-surface-2, #eeede9);
+    --workspace-content: var(--app-surface-1, #f7f6f3);
     --workspace-sidebar: var(--workspace-navigation);
     --workspace-nav: var(--workspace-navigation);
-    --workspace-surface: rgba(255, 255, 255, 0.78);
-    --workspace-surface-strong: #ffffff;
-    --workspace-border: rgba(24, 25, 28, 0.09);
-    --workspace-border-strong: rgba(24, 25, 28, 0.17);
-    --workspace-nav-active-bg: #18191c;
-    --workspace-nav-active-hover-bg: #26282c;
-    --workspace-nav-active-indicator: #ff6347;
-    --workspace-shell-gutter: 10px;
-    --workspace-card-gap: 10px;
-    --workspace-sidebar-width: 224px;
-    --workspace-sidebar-nav-width: 224px;
+    --workspace-surface: var(--app-surface-1, rgba(255, 255, 255, 0.78));
+    --workspace-surface-strong: var(--app-surface-overlay, #ffffff);
+    --workspace-border: var(--app-border-subtle, rgba(24, 25, 28, 0.09));
+    --workspace-border-strong: var(--app-border-strong, rgba(24, 25, 28, 0.17));
+    --workspace-nav-active-bg: var(--app-selection-bg, #18191c);
+    --workspace-nav-active-hover-bg: var(--app-selection-hover, #26282c);
+    --workspace-nav-active-indicator: var(--app-selection-active, var(--app-action-primary-bg, #18191c));
+    --workspace-shell-gutter: var(--app-shell-gutter, 10px);
+    --workspace-card-gap: var(--app-shell-gutter, 10px);
+    --workspace-sidebar-width: var(--app-sidebar-width, 224px);
+    --workspace-sidebar-nav-width: var(--app-sidebar-width, 224px);
     background: var(--workspace-canvas);
 }
 
 .dark .app-user-workspace.app-spatial-workspace {
-    --workspace-canvas: #090a0c;
-    --workspace-page: #090a0c;
-    --workspace-navigation: #0d0e10;
-    --workspace-content: #111214;
+    --workspace-canvas: var(--app-bg-canvas, #090a0c);
+    --workspace-page: var(--app-bg-page, #090a0c);
+    --workspace-navigation: var(--app-surface-2, #0d0e10);
+    --workspace-content: var(--app-surface-1, #111214);
     --workspace-sidebar: var(--workspace-navigation);
     --workspace-nav: var(--workspace-navigation);
-    --workspace-surface: rgba(30, 32, 36, 0.82);
-    --workspace-surface-strong: #1a1b1f;
-    --workspace-border: rgba(255, 255, 255, 0.08);
-    --workspace-border-strong: rgba(255, 255, 255, 0.16);
-    --workspace-nav-active-bg: #f2f0eb;
-    --workspace-nav-active-hover-bg: #ffffff;
-    --workspace-nav-active-indicator: #ff6347;
+    --workspace-surface: var(--app-surface-1, rgba(30, 32, 36, 0.82));
+    --workspace-surface-strong: var(--app-surface-overlay, #1a1b1f);
+    --workspace-border: var(--app-border-subtle, rgba(255, 255, 255, 0.08));
+    --workspace-border-strong: var(--app-border-strong, rgba(255, 255, 255, 0.16));
+    --workspace-nav-active-bg: var(--app-selection-bg, #f2f0eb);
+    --workspace-nav-active-hover-bg: var(--app-selection-hover, #ffffff);
+    --workspace-nav-active-indicator: var(--app-selection-active, var(--app-action-primary-bg, #f2f0eb));
 }
 
 .app-workspace-shell.is-spatial {
@@ -48,24 +48,24 @@
 
 .app-workspace-shell.is-spatial .app-workspace-sidebar {
     border: 1px solid color-mix(in srgb, var(--workspace-border) 70%, transparent);
-    border-radius: var(--r-2xl);
+    border-radius: var(--r-lg, 12px);
     background: var(--workspace-sidebar);
 }
 
 .app-workspace-shell.is-spatial .app-workspace-stage {
     overflow: hidden;
     border: 1px solid var(--workspace-border);
-    border-radius: var(--r-2xl);
+    border-radius: var(--r-lg, 12px);
     background: var(--workspace-content);
-    box-shadow: 0 20px 70px rgba(24, 25, 28, 0.065);
+    box-shadow: var(--elevation-card, 0 1px 2px rgba(0, 0, 0, 0.05));
 }
 
 .dark .app-workspace-shell.is-spatial .app-workspace-stage {
-    box-shadow: 0 26px 80px rgba(0, 0, 0, 0.28);
+    box-shadow: var(--elevation-card, 0 1px 2px rgba(0, 0, 0, 0.28));
 }
 
 .app-workspace-shell.is-spatial .app-workspace-topbar {
-    height: 52px;
+    height: var(--app-topbar-height, 52px);
     border-bottom: 1px solid var(--workspace-border);
     background: color-mix(in srgb, var(--workspace-content) 88%, transparent);
     padding-inline: 14px;
@@ -123,14 +123,14 @@
     position: relative;
     border: 0;
     border-radius: 10px;
-    background: #18191c;
-    color: #f8f7f3;
+    background: var(--app-action-primary-bg, #18191c);
+    color: var(--app-action-primary-fg, #f8f7f3);
     box-shadow: none;
 }
 
 .dark .app-workspace-shell.is-spatial .app-workspace-brand-mark {
-    background: #f2f0eb;
-    color: #18191c;
+    background: var(--app-action-primary-bg, #f2f0eb);
+    color: var(--app-action-primary-fg, #18191c);
 }
 
 .app-workspace-shell.is-spatial .app-workspace-brand-mark::after {
@@ -141,7 +141,7 @@
     height: 7px;
     border: 2px solid var(--workspace-sidebar);
     border-radius: var(--r-full);
-    background: #ff6347;
+    background: var(--app-status-running-fg, var(--app-action-primary-bg, #ff6347));
     content: "";
 }
 
@@ -171,13 +171,13 @@
 }
 
 .app-workspace-shell.is-spatial .app-workspace-nav-link.is-active {
-    color: #ffffff;
-    box-shadow: 0 8px 22px rgba(24, 25, 28, 0.12);
+    color: var(--app-selection-fg, #ffffff);
+    box-shadow: none;
 }
 
 .dark .app-workspace-shell.is-spatial .app-workspace-nav-link.is-active {
-    color: #18191c;
-    box-shadow: 0 8px 26px rgba(0, 0, 0, 0.24);
+    color: var(--app-selection-fg, #18191c);
+    box-shadow: none;
 }
 
 .app-workspace-shell.is-spatial .app-workspace-nav-link.is-active svg {
@@ -217,6 +217,251 @@
     letter-spacing: -0.025em;
 }
 
+/* Route stage is a clipping boundary. Standard pages own vertical scrolling through
+   WorkspacePage; immersive workbenches opt out and declare their nested scroller. */
+.app-workspace-route-stage {
+    min-width: 0;
+    min-height: 0;
+    isolation: isolate;
+}
+
+.app-workspace-route-stage > * {
+    min-width: 0;
+    min-height: 0;
+}
+
+.app-workspace-page-frame {
+    position: relative;
+    min-width: 0;
+    min-height: 0;
+    background: var(--app-surface-1, var(--workspace-content));
+}
+
+.app-workspace-page-frame[data-scroll-owner="page"] {
+    overscroll-behavior: contain;
+}
+
+.app-workspace-page-content {
+    min-width: 0;
+    margin-inline: auto;
+}
+
+.app-workspace-page-content.is-fluid {
+    max-width: none;
+    margin-inline: 0;
+    padding: 0;
+}
+
+.app-page-header-copy,
+.app-page-header-copy > div {
+    min-width: 0;
+}
+
+.app-page-header-eyebrow {
+    margin-bottom: var(--space-1, 4px);
+    color: var(--app-text-muted, color-mix(in srgb, var(--foreground) 48%, transparent));
+    font-size: var(--fs-label, 11px);
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    line-height: 1.4;
+}
+
+.app-page-header-description {
+    max-width: 68ch;
+    color: var(--app-text-secondary, color-mix(in srgb, var(--foreground) 58%, transparent));
+}
+
+.app-page-header-actions {
+    justify-content: flex-end;
+}
+
+/* Neutral user-list primitives. These deliberately do not inherit Admin classes or tokens. */
+.app-list-toolbar {
+    min-width: 0;
+    flex: 0 0 auto;
+}
+
+.app-list-toolbar-main,
+.app-list-toolbar-actions {
+    min-width: 0;
+}
+
+.app-list-toolbar-main .app-list-search {
+    min-width: 180px;
+    width: min(360px, 100%);
+    max-width: 360px;
+    flex: 0 1 360px;
+}
+
+.app-filter-toggle {
+    display: inline-flex;
+    flex: 0 0 auto;
+}
+
+.app-list-toolbar-filters {
+    display: none;
+    flex: 0 0 auto;
+}
+
+.app-list-toolbar-filters.is-open {
+    display: flex;
+}
+
+.app-list-toolbar-chips {
+    display: inline-flex;
+    min-width: 0;
+    flex: 0 1 auto;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-1-half, 6px);
+}
+
+.app-filter-active-dot {
+    width: 5px;
+    height: 5px;
+    margin-left: var(--space-half, 2px);
+    border-radius: var(--r-full, 9999px);
+    background: currentColor;
+}
+
+.app-table-surface {
+    min-width: 0;
+}
+
+.app-collection-grid {
+    min-width: 0;
+}
+
+.app-pagination-bar {
+    min-height: 44px;
+    color: var(--app-text-secondary, color-mix(in srgb, var(--foreground) 58%, transparent));
+}
+
+.app-pagination-total {
+    min-width: 0;
+    margin-right: auto;
+    color: var(--app-text-muted, color-mix(in srgb, var(--foreground) 52%, transparent));
+}
+
+.app-pagination-btn:focus-visible,
+.app-workspace-sidebar :where(button, a):focus-visible,
+.app-workspace-topbar :where(button, a):focus-visible {
+    outline: 2px solid var(--app-focus-ring, var(--control-focus-ring));
+    outline-offset: 2px;
+}
+
+.app-pagination-btn.is-active,
+.app-pagination-btn.is-active:hover {
+    background: var(--app-selection-bg, var(--control-selected-bg));
+    color: var(--app-selection-fg, var(--control-selected-fg));
+}
+
+.workspace-state,
+.workspace-loading-state {
+    color: var(--app-text-primary, var(--foreground));
+}
+
+.workspace-state-description,
+.workspace-loading-state-description {
+    color: var(--app-text-secondary, color-mix(in srgb, var(--foreground) 58%, transparent));
+}
+
+.workspace-loading-state-card {
+    border: 1px solid var(--app-border-subtle, var(--workspace-border));
+    background: var(--app-surface-2, var(--surface-active));
+}
+
+/* Existing task-page CSS targeted the former Admin class. Keep its wrapping contract
+   until the task-page owner migrates the page-specific stylesheet in R4. */
+.task-library-page .task-library-toolbar .app-list-toolbar-main {
+    flex-wrap: nowrap;
+}
+
+@media (min-width: 1024px) {
+    .app-user-workspace.app-spatial-workspace {
+        --workspace-sidebar-width: var(--app-sidebar-width, 224px);
+        --workspace-sidebar-nav-width: var(--app-sidebar-width, 224px);
+        --workspace-sidebar-collapsed-width: var(--app-sidebar-collapsed-width, 64px);
+        --workspace-shell-gutter: var(--app-shell-gutter, 10px);
+        --workspace-card-gap: var(--app-shell-gutter, 10px);
+    }
+
+    .app-workspace-shell.is-spatial {
+        padding: var(--app-shell-gutter, 10px);
+    }
+
+    .app-workspace-shell.is-spatial .app-workspace-topbar {
+        height: var(--app-topbar-height, 52px);
+        min-height: var(--app-topbar-height, 52px);
+        flex-basis: var(--app-topbar-height, 52px);
+        padding-inline: var(--space-4, 16px);
+    }
+
+    .app-workspace-page-context {
+        gap: var(--space-2, 8px);
+    }
+
+    .app-workspace-shell.is-spatial .app-workspace-topbar-icon-button {
+        width: 36px;
+        height: 36px;
+        border-radius: var(--r-md, 8px);
+    }
+
+    .app-workspace-shell.is-spatial .app-workspace-sidebar-search > button,
+    .app-workspace-shell.is-spatial .app-workspace-nav-link {
+        min-height: 36px;
+        height: 36px;
+    }
+
+    .app-workspace-page-content:not(.is-fluid) {
+        width: 100%;
+        max-width: var(--app-page-max-width, 1440px);
+        padding: var(--app-page-gutter, 24px);
+    }
+
+    .app-workspace-page-frame[data-scroll-owner="page"] {
+        overflow-x: hidden;
+        overflow-y: auto;
+        scrollbar-gutter: stable;
+    }
+
+    .app-page-header {
+        min-height: 72px;
+        border-bottom: 1px solid var(--app-border-subtle, var(--workspace-border));
+        background: color-mix(in srgb, var(--app-surface-1, var(--workspace-content)) 94%, transparent);
+        padding-block: var(--space-3, 12px);
+    }
+
+    .app-page-header-title {
+        color: var(--app-text-primary, var(--foreground));
+        font-size: 24px;
+        font-weight: 670;
+        letter-spacing: -0.025em;
+    }
+
+    .app-list-toolbar {
+        padding-block: var(--space-2, 8px) var(--space-3, 12px);
+    }
+
+    .app-table-surface {
+        border: 1px solid var(--app-border-subtle, var(--workspace-border));
+        border-radius: var(--r-lg, 12px);
+        background: var(--app-surface-1, var(--workspace-surface-strong));
+        box-shadow: var(--elevation-card, 0 1px 2px rgba(0, 0, 0, 0.05));
+    }
+
+    .app-pagination-bar {
+        flex-wrap: wrap;
+        border-top: 1px solid var(--app-border-subtle, var(--workspace-border));
+    }
+}
+
+@media (max-width: 1100px) {
+    .task-library-page .task-library-toolbar .app-list-toolbar-main {
+        flex-wrap: wrap;
+    }
+}
+
 @media (max-width: 1023px) {
     .app-user-workspace.app-spatial-workspace {
         --workspace-shell-gutter: 0px;
@@ -231,5 +476,47 @@
     .app-workspace-shell.is-spatial .app-workspace-sidebar.is-mobile-expanded {
         border-radius: var(--r-xl);
         background: var(--workspace-sidebar);
+    }
+}
+
+@media (max-width: 639px) {
+    .app-list-toolbar-filters,
+    .app-list-toolbar-chips,
+    .app-list-toolbar-actions {
+        width: 100%;
+    }
+
+    .app-list-toolbar-filters {
+        padding-top: var(--space-half, 2px);
+    }
+
+    .app-list-toolbar-main .app-list-search {
+        min-width: 0;
+        width: 100%;
+        max-width: none;
+        flex-basis: 100%;
+    }
+
+    .task-library-page .task-library-toolbar .app-list-toolbar-main {
+        width: 100%;
+    }
+
+    .app-pagination-bar {
+        align-items: flex-start;
+    }
+
+    .app-pagination-total {
+        width: 100%;
+        flex-basis: 100%;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .app-workspace-sidebar,
+    .app-workspace-sidebar-nav,
+    .app-workspace-nav-link,
+    .app-workspace-nav-group-toggle,
+    .app-pagination-btn {
+        transition-duration: 0.01ms;
     }
 }

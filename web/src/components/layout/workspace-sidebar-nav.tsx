@@ -165,6 +165,7 @@ function NavItem({
     level?: number;
     collapsed?: boolean;
 }) {
+    const isCurrent = activeId === item.id;
     const isActive = activeId === item.id || (item.id === "settings" && activeId.startsWith("settings:"));
     const hasChildren = Boolean(item.children?.length);
     const [isOpen, setIsOpen] = useState(false);
@@ -232,6 +233,8 @@ function NavItem({
                     className={rowClassName}
                     style={rowStyle}
                     aria-label={collapsed ? item.title : undefined}
+                    aria-current={isCurrent ? "page" : undefined}
+                    aria-expanded={hasChildren ? isOpen : undefined}
                     title={collapsed ? item.title : undefined}
                     onClick={handleClick}
                     onFocus={() => preloadWorkspaceRoute(linkTo)}
@@ -339,7 +342,7 @@ export function WorkspaceSidebarNav({ collapsed, onNavigate, onOpenSearch, onExp
     }, [groups]);
 
     return (
-        <div className={cn("app-workspace-sidebar-nav flex h-full shrink-0 flex-col", collapsed && "is-collapsed")}>
+        <div className={cn("app-workspace-sidebar-nav flex h-full shrink-0 flex-col", collapsed && "is-collapsed")} role="navigation" aria-label="主导航">
             <WorkspaceSwitcher collapsed={collapsed} onNavigate={onNavigate} onExpand={onExpand} />
 
             <div className="app-workspace-sidebar-search shrink-0 px-3 pb-1 pt-2">
