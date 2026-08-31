@@ -17,7 +17,7 @@
 - 统一 Agent/助手、本地 Agent、素材托盘、活动任务、生成配置、Composer、节点参数、时间线/导演相关表面的边框、圆角、密度和可见焦点。
 - 为 Canvas 自有搜索、上传、预览、分享、字幕、视频处理、裁剪/分割/标注/遮罩/超分、文本编辑、绘图、风格、角色、剧本、导演模板、版本对比、快捷键和任务详情 Modal 增加 Canvas 私域 Portal 根，不影响非 Canvas 浮层。
 - 重整 `/share/canvas/:token` 的 PC 只读头部、节点数摘要、登录入口、缩放、临时探索提示、右键菜单、节点表面以及加载/失效态；只读权限和访客临时节点行为不变。
-- 完成 PC 边界加固：1024–1279px 紧凑密度、1024px 模式开关定位复位、侧栏与 Agent 同开时允许画布安全收缩、`prefers-reduced-motion`、强制高对比焦点与公开画布层级。`<1024px` 继续由基线类名和样式负责。
+- 完成 PC 边界加固：1024–1279px 紧凑密度与顶部栏收口、1024px 模式开关定位复位、侧栏与 Agent 同开时允许画布安全收缩、`prefers-reduced-motion`、强制高对比焦点与公开画布层级。`<1024px` 继续由基线类名和样式负责。
 - 新增 ARIA 标签、菜单角色、加载 `aria-busy`和焦点样式；未改变可点击元素的回调、禁用条件或请求时序。
 
 ## 修改文件
@@ -98,6 +98,7 @@
 - `a9ecc9e` `fix(canvas): keep narrow workbench columns visible`
 - `abf0dd5` `fix(canvas): reset mode switch at PC boundary`
 - `d427763` `fix(canvas): let workspace shrink beside assistant`
+- `8fbf140` `fix(canvas): compact narrow PC topbar`
 - 本记录提交 SHA 由 Git 历史和集成台账登记。
 
 ## 风险与依赖
@@ -135,5 +136,5 @@
 ## 回滚
 
 - 集成前：丢弃 `refactor/pc-ui-r6-canvas-editor` 分支或删除本 worktree，共同基线 `c949021` 不受影响。
-- 集成后按阶段逆序回滚：`git revert d427763`（侧栏与 Agent 并开列宽保护）→ `git revert abf0dd5`（1024px 模式开关定位）→ `git revert a9ecc9e`（1024px 列宽保护）→ `git revert 2d7eabe`（PC/移动边界加固）→ `git revert 8660673`（公开分享）→ `git revert cbedd68`（面板与浮层）→ `git revert ede47f9`（编辑器外壳），最后回滚文档提交。
+- 集成后按阶段逆序回滚：`git revert 8fbf140`（窄 PC 顶部栏收口）→ `git revert d427763`（侧栏与 Agent 并开列宽保护）→ `git revert abf0dd5`（1024px 模式开关定位）→ `git revert a9ecc9e`（1024px 列宽保护）→ `git revert 2d7eabe`（PC/移动边界加固）→ `git revert 8660673`（公开分享）→ `git revert cbedd68`（面板与浮层）→ `git revert ede47f9`（编辑器外壳），最后回滚文档提交。
 - 不使用 `git reset --hard`，避免覆盖集成分支上的其他会话成果。
