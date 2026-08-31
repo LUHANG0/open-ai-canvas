@@ -250,6 +250,37 @@ func RegisterFinanceRoutes(r *gin.RouterGroup, svc *service.Service) {
 	r.PATCH("/admin/channels/:id/models/:modelId", func(c *gin.Context) {
 		saveChannelModel(c, svc, c.Param("modelId"))
 	})
+	r.GET("/admin/channels/:id/models/:modelId/revisions", func(c *gin.Context) {
+		user, err := currentUser(c, svc)
+		if err != nil {
+			failService(c, err)
+			return
+		}
+		revisions, err := svc.AdminChannelModelRevisions(user, c.Param("id"), c.Param("modelId"))
+		if err != nil {
+			failService(c, err)
+			return
+		}
+		ok(c, gin.H{"revisions": revisions})
+	})
+	r.POST("/admin/channels/:id/models/:modelId/revisions/:revisionId/restore", func(c *gin.Context) {
+		user, err := currentUser(c, svc)
+		if err != nil {
+			failService(c, err)
+			return
+		}
+		var req service.ChannelModelRestoreRequest
+		if err := c.ShouldBindJSON(&req); err != nil {
+			fail(c, http.StatusBadRequest, err)
+			return
+		}
+		item, err := svc.RestoreAdminChannelModelRevision(user, c.Param("id"), c.Param("modelId"), c.Param("revisionId"), req)
+		if err != nil {
+			failService(c, err)
+			return
+		}
+		ok(c, gin.H{"model": item})
+	})
 	r.DELETE("/admin/channels/:id/models/:modelId", func(c *gin.Context) {
 		user, err := currentUser(c, svc)
 		if err != nil {

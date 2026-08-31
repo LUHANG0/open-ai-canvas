@@ -15,13 +15,14 @@ import (
 )
 
 var (
-	ErrInsufficientCredits     = errors.New("insufficient credits")
-	ErrRedeemCodeInvalid       = errors.New("redeem code invalid")
-	ErrActiveTaskLimit         = errors.New("active task limit reached")
-	ErrTaskNotRetryable        = errors.New("task is not retryable")
-	ErrBillingStateConflict    = errors.New("billing state conflict")
-	ErrBillingUsageUnavailable = errors.New("billing usage unavailable")
-	ErrChannelModelInUse       = errors.New("channel model is in use")
+	ErrInsufficientCredits         = errors.New("insufficient credits")
+	ErrRedeemCodeInvalid           = errors.New("redeem code invalid")
+	ErrActiveTaskLimit             = errors.New("active task limit reached")
+	ErrTaskNotRetryable            = errors.New("task is not retryable")
+	ErrBillingStateConflict        = errors.New("billing state conflict")
+	ErrBillingUsageUnavailable     = errors.New("billing usage unavailable")
+	ErrChannelModelInUse           = errors.New("channel model is in use")
+	ErrChannelModelVersionConflict = errors.New("channel model version conflict")
 )
 
 // 先抢占唯一业务键再更新账户，确保注册和签到奖励在多实例并发下只入账一次。
@@ -124,43 +125,51 @@ func (r *Repository) SaveChannelModel(item *model.ChannelModel) error {
 // 让已结算订单的 PriceTierID 仍能回溯到原始配置版本。
 func (r *Repository) SaveChannelModelWithPriceTiers(item *model.ChannelModel, tiers []model.ChannelModelPriceTier) error {
 	return r.db.Transaction(func(tx *gorm.DB) error {
-		var existing []model.ChannelModelPriceTier
-		if err := tx.Where("channel_model_id = ?", item.ID).Find(&existing).Error; err != nil {
+		if err := saveChannelModelPriceTiers(tx, item.ID, tiers); err != nil {
 			return err
-		}
-		existingByKey := make(map[string]model.ChannelModelPriceTier, len(existing))
-		for _, tier := range existing {
-			existingByKey[channelModelPriceTierKey(tier)] = tier
-		}
-		selected := make(map[string]bool, len(tiers))
-		for index := range tiers {
-			tier := &tiers[index]
-			tier.ChannelModelID = item.ID
-			key := channelModelPriceTierKey(*tier)
-			if existingTier, exists := existingByKey[key]; exists {
-				tier.ID = existingTier.ID
-				tier.PriceVersion = existingTier.PriceVersion + 1
-				if err := tx.Save(tier).Error; err != nil {
-					return err
-				}
-			} else if err := tx.Create(tier).Error; err != nil {
-				return err
-			}
-			selected[tier.ID] = true
-		}
-		for _, tier := range existing {
-			if selected[tier.ID] {
-				continue
-			}
-			if err := tx.Delete(&tier).Error; err != nil {
-				return err
-			}
 		}
 		if err := tx.Save(item).Error; err != nil {
 			return err
 		}
 		return nil
 	})
+}
+
+func saveChannelModelPriceTiers(tx *gorm.DB, channelModelID string, tiers []model.ChannelModelPriceTier) error {
+	var existing []model.ChannelModelPriceTier
+	if err := tx.Where("channel_model_id = ?", channelModelID).Find(&existing).Error; err != nil {
+		return err
+	}
+	existingByKey := make(map[string]model.ChannelModelPriceTier, len(existing))
+	for _, tier := range existing {
+		existingByKey[channelModelPriceTierKey(tier)] = tier
+	}
+	selected := make(map[string]bool, len(tiers))
+	for index := range tiers {
+		tier := &tiers[index]
+		tier.ChannelModelID = channelModelID
+		key := channelModelPriceTierKey(*tier)
+		if existingTier, exists := existingByKey[key]; exists {
+			tier.ID = existingTier.ID
+			tier.CreatedAt = existingTier.CreatedAt
+			tier.PriceVersion = existingTier.PriceVersion + 1
+			if err := tx.Save(tier).Error; err != nil {
+				return err
+			}
+		} else if err := tx.Create(tier).Error; err != nil {
+			return err
+		}
+		selected[tier.ID] = true
+	}
+	for _, tier := range existing {
+		if selected[tier.ID] {
+			continue
+		}
+		if err := tx.Delete(&tier).Error; err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func channelModelPriceTierKey(tier model.ChannelModelPriceTier) string {

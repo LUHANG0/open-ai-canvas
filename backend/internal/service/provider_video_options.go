@@ -181,6 +181,9 @@ func videoResolutionNameRequest(profile *VideoCapabilityConfig, value string) st
 		return ""
 	}
 	candidates := []string{requested, strings.ToLower(normalizeVideoResolution(requested))}
+	if requested == "1440" || requested == "1440p" {
+		candidates = append(candidates, "2k")
+	}
 	if requested == "4k" {
 		candidates = append(candidates, "2160p")
 	}

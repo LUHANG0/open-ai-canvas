@@ -16,8 +16,8 @@ func TestKemeiPluginArtifactNormalizesResolution(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if pkg.Manifest.Metadata.Version != "1.1.0" {
-		t.Fatalf("version = %q, want 1.1.0", pkg.Manifest.Metadata.Version)
+	if pkg.Manifest.Metadata.Version != "1.2.0" {
+		t.Fatalf("version = %q, want 1.2.0", pkg.Manifest.Metadata.Version)
 	}
 	provider := pkg.Manifest.Contributes.Providers[0]
 	if provider.BaseURL != "" {
@@ -25,6 +25,10 @@ func TestKemeiPluginArtifactNormalizesResolution(t *testing.T) {
 	}
 	if provider.Create.Fields["resolution"] != "request.resolution|resolution_p" {
 		t.Fatalf("resolution mapping = %q", provider.Create.Fields["resolution"])
+	}
+	resolutionParameter := provider.Parameters[6]
+	if resolutionParameter.Name != "resolution" || len(resolutionParameter.Values) != 5 || resolutionParameter.Values[3] != "2K" || resolutionParameter.Values[4] != "4K" {
+		t.Fatalf("resolution parameter = %#v", resolutionParameter)
 	}
 	adapters, err := LoadInstalledProviders(pkg.ManifestRaw, nil)
 	if err != nil {

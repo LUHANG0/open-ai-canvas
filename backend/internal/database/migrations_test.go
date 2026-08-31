@@ -5,6 +5,8 @@ import (
 	"strings"
 	"testing"
 
+	"infinite-canvas/backend/internal/model"
+
 	"gorm.io/gorm"
 )
 
@@ -25,6 +27,19 @@ func TestMigrateSchemaRecordsAndValidatesVersion(t *testing.T) {
 	}
 	if !db.Migrator().HasIndex(&schemaMigration{}, "idx_schema_migrations_applied_at") {
 		t.Fatal("schema migration v2 did not create the applied_at index")
+	}
+	if !db.Migrator().HasTable(&model.ChannelModelRevision{}) {
+		t.Fatal("schema migration v3 did not create channel model revisions")
+	}
+	for _, column := range []string{"price_entry_mode", "upstream_discount_basis_points", "discount_increment_basis_points"} {
+		if !db.Migrator().HasColumn(&model.ChannelModel{}, column) {
+			t.Fatalf("schema migration v3 did not create channel_models.%s", column)
+		}
+	}
+	for _, column := range []string{"original_unit_price_microcredits", "original_input_token_price_microcredits", "original_output_token_price_microcredits", "original_cached_token_price_microcredits"} {
+		if !db.Migrator().HasColumn(&model.ChannelModelPriceTier{}, column) {
+			t.Fatalf("schema migration v3 did not create channel_model_price_tiers.%s", column)
+		}
 	}
 	if err := MigrateSchema(db); err != nil {
 		t.Fatalf("migration should be idempotent: %v", err)

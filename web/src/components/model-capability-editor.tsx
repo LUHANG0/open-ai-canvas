@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 
 import { defaultImageCapabilityConfig, defaultModelCapabilityConfig, normalizeModelCapabilityConfig, type ImageCapabilityConfig, type ModelCapabilityConfig, type TextCapabilityConfig, type VideoCapabilityConfig } from "@/lib/model-capabilities";
 import type { ModelProtocol } from "@/lib/model-protocols";
-import { VIDEO_RESOLUTION_CAPABILITY_OPTIONS } from "@/lib/video-generation-options";
+import { formatVideoResolutionLabel, VIDEO_RESOLUTION_CAPABILITY_OPTIONS } from "@/lib/video-generation-options";
 
 const ratioOptions = ["16:9", "9:16", "1:1", "4:3", "3:4", "21:9"];
 const operationOptions = [
@@ -163,7 +163,7 @@ export function ModelCapabilityEditor({ value, onChange, protocol, capability = 
                                     value={profile.resolutions}
                                     tokenSeparators={[","]}
                                     placeholder="选择或输入模型档位"
-                                    options={resolutionOptions.map((item) => ({ label: item.toUpperCase(), value: item }))}
+                                    options={resolutionOptions.map((item) => ({ label: formatVideoResolutionLabel(item), value: item }))}
                                     onChange={(resolutions) => update({ resolutions, defaultResolution: resolutions.includes(profile.defaultResolution) ? profile.defaultResolution : resolutions[0] || "" })}
                                 />
                             </Field>
@@ -172,7 +172,7 @@ export function ModelCapabilityEditor({ value, onChange, protocol, capability = 
                                     className="w-full"
                                     disabled={disabled}
                                     value={profile.defaultResolution}
-                                    options={profile.resolutions.map((item) => ({ label: item.toUpperCase(), value: item }))}
+                                    options={profile.resolutions.map((item) => ({ label: formatVideoResolutionLabel(item), value: item }))}
                                     onChange={(defaultResolution) => update({ defaultResolution })}
                                 />
                             </Field>
@@ -275,7 +275,7 @@ export function ModelCapabilityEditor({ value, onChange, protocol, capability = 
                                 value={profile.resolutions}
                                 tokenSeparators={[","]}
                                 placeholder="选择标准档位或输入 768p 等模型专属值"
-                                options={resolutionOptions.map((item) => ({ label: item.toUpperCase(), value: item }))}
+                                options={resolutionOptions.map((item) => ({ label: formatVideoResolutionLabel(item), value: item }))}
                                 onChange={(resolutions) => update({ resolutions, defaultResolution: resolutions.includes(profile.defaultResolution) ? profile.defaultResolution : resolutions[0] || "" })}
                             />
                         </Field>
@@ -284,7 +284,7 @@ export function ModelCapabilityEditor({ value, onChange, protocol, capability = 
                                 className="w-full"
                                 disabled={disabled}
                                 value={profile.defaultResolution}
-                                options={profile.resolutions.map((item) => ({ label: item.toUpperCase(), value: item }))}
+                                options={profile.resolutions.map((item) => ({ label: formatVideoResolutionLabel(item), value: item }))}
                                 onChange={(defaultResolution) => update({ defaultResolution })}
                             />
                         </Field>

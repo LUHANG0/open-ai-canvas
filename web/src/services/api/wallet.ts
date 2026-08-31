@@ -60,6 +60,9 @@ export type ChannelModel = {
     inputTokenPriceMicrocredits: number;
     outputTokenPriceMicrocredits: number;
     cachedTokenPriceMicrocredits: number;
+    priceEntryMode: "direct" | "discount";
+    upstreamDiscountBasisPoints: number;
+    discountIncrementBasisPoints: number;
     priceConfigured: boolean;
     enabled: boolean;
     priceVersion: number;
@@ -83,6 +86,10 @@ export type ChannelModelPriceTier = {
     inputTokenPriceMicrocredits: number;
     outputTokenPriceMicrocredits: number;
     cachedTokenPriceMicrocredits: number;
+    originalUnitPriceMicrocredits: number;
+    originalInputTokenPriceMicrocredits: number;
+    originalOutputTokenPriceMicrocredits: number;
+    originalCachedTokenPriceMicrocredits: number;
     priceConfigured: boolean;
     enabled: boolean;
     priceVersion: number;
@@ -101,12 +108,45 @@ export type ChannelModelMutation = {
     enabled?: boolean;
     capabilityConfig?: ChannelModel["capabilityConfig"];
 	priceTiers?: Array<Omit<ChannelModelPriceTier, "id" | "channelModelId" | "selectorKey" | "priceVersion" | "createdAt" | "updatedAt">>;
+    priceEntryMode?: ChannelModel["priceEntryMode"];
+    upstreamDiscountBasisPoints?: number;
+    discountIncrementBasisPoints?: number;
+    expectedPriceVersion?: number;
     billingMode?: ChannelModel["billingMode"];
     unitPriceMicrocredits?: number;
     inputTokenPriceMicrocredits?: number;
     outputTokenPriceMicrocredits?: number;
     cachedTokenPriceMicrocredits?: number;
     priceConfigured?: boolean;
+};
+
+export type ChannelModelRevisionSnapshot = {
+    modelKey: string;
+    providerModelKey: string;
+    displayName: string;
+    icon: string;
+    capability: ChannelModel["capability"];
+    protocol?: ChannelModel["protocol"];
+    billingMode: ChannelModel["billingMode"];
+    priceEntryMode: ChannelModel["priceEntryMode"];
+    upstreamDiscountBasisPoints: number;
+    discountIncrementBasisPoints: number;
+    priceConfigured: boolean;
+    enabled: boolean;
+    priceVersion: number;
+    capabilityVersion: number;
+    priceTiers: ChannelModelPriceTier[];
+};
+
+export type ChannelModelRevision = {
+    id: string;
+    channelModelId: string;
+    version: number;
+    action: "baseline" | "create" | "save" | "restore";
+    restoredFromRevisionId?: string;
+    snapshot?: ChannelModelRevisionSnapshot;
+    createdBy: string;
+    createdAt: string;
 };
 
 export type LinuxDOSetting = {
@@ -282,6 +322,16 @@ export function createAdminChannelModel(channelId: string, input: ChannelModelMu
 
 export function updateAdminChannelModel(channelId: string, id: string, input: ChannelModelMutation) {
     return request<{ model: ChannelModel }>(api.patch(`/admin/channels/${encodeURIComponent(channelId)}/models/${encodeURIComponent(id)}`, input));
+}
+
+export function listAdminChannelModelRevisions(channelId: string, id: string) {
+    return request<{ revisions: ChannelModelRevision[] }>(api.get(`/admin/channels/${encodeURIComponent(channelId)}/models/${encodeURIComponent(id)}/revisions`));
+}
+
+export function restoreAdminChannelModelRevision(channelId: string, id: string, revisionId: string, expectedPriceVersion: number) {
+    return request<{ model: ChannelModel }>(
+        api.post(`/admin/channels/${encodeURIComponent(channelId)}/models/${encodeURIComponent(id)}/revisions/${encodeURIComponent(revisionId)}/restore`, { expectedPriceVersion }),
+    );
 }
 
 export function deleteAdminChannelModel(channelId: string, id: string) {

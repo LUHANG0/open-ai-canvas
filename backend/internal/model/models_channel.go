@@ -40,12 +40,16 @@ type ChannelModel struct {
 	InputTokenPriceMicrocredits  int64                `json:"inputTokenPriceMicrocredits"`
 	OutputTokenPriceMicrocredits int64                `json:"outputTokenPriceMicrocredits"`
 	CachedTokenPriceMicrocredits int64                `json:"cachedTokenPriceMicrocredits"`
-	PriceConfigured              bool                 `json:"priceConfigured" gorm:"index"`
-	Enabled                      bool                 `json:"enabled" gorm:"index"`
-	PriceVersion                 int64                `json:"priceVersion"`
-	CapabilityConfigJSON         string               `json:"-" gorm:"type:text"`
-	CapabilityVersion            int64                `json:"capabilityVersion"`
-	CapabilityConfig             map[string]any       `json:"capabilityConfig,omitempty" gorm:"-"`
+	// PriceEntryMode 及折扣字段仅记录管理员的定价录入过程；结算仍只读取最终积分价格。
+	PriceEntryMode               string         `json:"priceEntryMode" gorm:"size:24;not null;default:direct"`
+	UpstreamDiscountBasisPoints  int            `json:"upstreamDiscountBasisPoints" gorm:"not null;default:0"`
+	DiscountIncrementBasisPoints int            `json:"discountIncrementBasisPoints" gorm:"not null;default:0"`
+	PriceConfigured              bool           `json:"priceConfigured" gorm:"index"`
+	Enabled                      bool           `json:"enabled" gorm:"index"`
+	PriceVersion                 int64          `json:"priceVersion"`
+	CapabilityConfigJSON         string         `json:"-" gorm:"type:text"`
+	CapabilityVersion            int64          `json:"capabilityVersion"`
+	CapabilityConfig             map[string]any `json:"capabilityConfig,omitempty" gorm:"-"`
 	// PriceTiers 是系统渠道模型的价格真相。标量价格仅为旧调用与历史数据兼容，
 	// 新的创作端报价必须按所选规格命中一个价格档。
 	PriceTiers []ChannelModelPriceTier `json:"priceTiers" gorm:"-"`
@@ -73,12 +77,55 @@ type ChannelModelPriceTier struct {
 	InputTokenPriceMicrocredits  int64             `json:"inputTokenPriceMicrocredits"`
 	OutputTokenPriceMicrocredits int64             `json:"outputTokenPriceMicrocredits"`
 	CachedTokenPriceMicrocredits int64             `json:"cachedTokenPriceMicrocredits"`
-	PriceConfigured              bool              `json:"priceConfigured" gorm:"index"`
-	Enabled                      bool              `json:"enabled" gorm:"index"`
-	PriceVersion                 int64             `json:"priceVersion"`
-	CreatedAt                    time.Time         `json:"createdAt"`
-	UpdatedAt                    time.Time         `json:"updatedAt"`
-	DeletedAt                    gorm.DeletedAt    `json:"-" gorm:"index"`
+	// Original* 保存折扣换算前的原价，便于再次编辑和审计；不得用于运行时结算。
+	OriginalUnitPriceMicrocredits        int64          `json:"originalUnitPriceMicrocredits"`
+	OriginalInputTokenPriceMicrocredits  int64          `json:"originalInputTokenPriceMicrocredits"`
+	OriginalOutputTokenPriceMicrocredits int64          `json:"originalOutputTokenPriceMicrocredits"`
+	OriginalCachedTokenPriceMicrocredits int64          `json:"originalCachedTokenPriceMicrocredits"`
+	PriceConfigured                      bool           `json:"priceConfigured" gorm:"index"`
+	Enabled                              bool           `json:"enabled" gorm:"index"`
+	PriceVersion                         int64          `json:"priceVersion"`
+	CreatedAt                            time.Time      `json:"createdAt"`
+	UpdatedAt                            time.Time      `json:"updatedAt"`
+	DeletedAt                            gorm.DeletedAt `json:"-" gorm:"index"`
+}
+
+// ChannelModelRevision 是渠道模型配置的不可变快照。恢复旧版本时会创建一个新版本，
+// 不修改历史记录，也不在快照中保存渠道密钥。
+type ChannelModelRevision struct {
+	ID                     string                        `json:"id" gorm:"primaryKey;size:36"`
+	ChannelModelID         string                        `json:"channelModelId" gorm:"size:36;index;uniqueIndex:idx_channel_model_revision_version,priority:1"`
+	Version                int64                         `json:"version" gorm:"uniqueIndex:idx_channel_model_revision_version,priority:2"`
+	Action                 string                        `json:"action" gorm:"size:24;index"`
+	RestoredFromRevisionID string                        `json:"restoredFromRevisionId,omitempty" gorm:"size:36;index"`
+	SnapshotJSON           string                        `json:"-" gorm:"type:text;not null"`
+	Snapshot               *ChannelModelRevisionSnapshot `json:"snapshot,omitempty" gorm:"-"`
+	CreatedBy              string                        `json:"createdBy" gorm:"size:36;index"`
+	CreatedAt              time.Time                     `json:"createdAt" gorm:"index"`
+}
+
+// ChannelModelRevisionSnapshot 仅包含可恢复的渠道模型合同与价格档，不包含渠道凭据。
+type ChannelModelRevisionSnapshot struct {
+	ModelKey                     string                  `json:"modelKey"`
+	ProviderModelKey             string                  `json:"providerModelKey"`
+	DisplayName                  string                  `json:"displayName"`
+	Icon                         string                  `json:"icon"`
+	Capability                   string                  `json:"capability"`
+	Protocol                     ChannelInterfaceType    `json:"protocol"`
+	BillingMode                  string                  `json:"billingMode"`
+	UnitPriceMicrocredits        int64                   `json:"unitPriceMicrocredits"`
+	InputTokenPriceMicrocredits  int64                   `json:"inputTokenPriceMicrocredits"`
+	OutputTokenPriceMicrocredits int64                   `json:"outputTokenPriceMicrocredits"`
+	CachedTokenPriceMicrocredits int64                   `json:"cachedTokenPriceMicrocredits"`
+	PriceEntryMode               string                  `json:"priceEntryMode"`
+	UpstreamDiscountBasisPoints  int                     `json:"upstreamDiscountBasisPoints"`
+	DiscountIncrementBasisPoints int                     `json:"discountIncrementBasisPoints"`
+	PriceConfigured              bool                    `json:"priceConfigured"`
+	Enabled                      bool                    `json:"enabled"`
+	PriceVersion                 int64                   `json:"priceVersion"`
+	CapabilityConfigJSON         string                  `json:"capabilityConfigJson"`
+	CapabilityVersion            int64                   `json:"capabilityVersion"`
+	PriceTiers                   []ChannelModelPriceTier `json:"priceTiers"`
 }
 
 type ApiCallLog struct {

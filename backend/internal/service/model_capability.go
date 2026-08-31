@@ -267,6 +267,8 @@ func DefaultModelCapabilityConfigForModel(protocol string, modelName string) *Mo
 	}
 	if strings.EqualFold(strings.TrimSpace(protocol), "kemei-video") {
 		video.GenerateAudio = VideoBooleanConfig{Supported: true, Default: true}
+		video.Resolutions = []string{"480p", "720p", "1080p", "2K", "4K"}
+		video.DefaultResolution = "720p"
 	}
 	return &ModelCapabilityConfig{Version: 1, Text: text, Image: DefaultImageCapabilityConfig(protocol, modelName), Video: video}
 }

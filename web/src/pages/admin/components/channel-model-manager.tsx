@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { App, Button, Drawer, Form, Input, InputNumber, Popconfirm, Segmented, Select, Space, Switch, type FormInstance } from "antd";
 import type { ColumnsType } from "antd/es/table";
-import { FlaskConical, Plus, RefreshCw, Search, Trash2 } from "lucide-react";
+import { FlaskConical, History, Plus, RefreshCw, Search, Trash2 } from "lucide-react";
 
 import { PaginationBar } from "@/components/layout/workspace-page";
 import { ModelIconPicker } from "@/components/model-logo";
@@ -10,12 +10,26 @@ import { ModelCapabilityEditor } from "@/components/model-capability-editor";
 import { CapabilityCardPicker, ProtocolCardPicker, type ModelCapabilityChoice } from "@/components/model-protocol-picker";
 import { defaultModelCapabilityConfig, normalizeModelCapabilityConfig, type ModelCapabilityConfig } from "@/lib/model-capabilities";
 import { modelProtocolCapability, modelProtocolDefinition, modelProtocolLabel, modelProtocolSupportsTokenBilling, type ModelProtocol } from "@/lib/model-protocols";
+import { formatVideoResolutionLabel } from "@/lib/video-generation-options";
 import { fetchPluginProviderCatalog } from "@/services/api/plugin-catalog";
-import { createAdminChannelModel, deleteAdminChannelModel, fetchAdminChannelModels, listAdminChannelModels, testAdminChannelModel, updateAdminChannelModel, type ChannelModel, type ChannelModelPriceTier } from "@/services/api/wallet";
+import {
+    createAdminChannelModel,
+    deleteAdminChannelModel,
+    fetchAdminChannelModels,
+    listAdminChannelModelRevisions,
+    listAdminChannelModels,
+    restoreAdminChannelModelRevision,
+    testAdminChannelModel,
+    updateAdminChannelModel,
+    type ChannelModel,
+    type ChannelModelPriceTier,
+    type ChannelModelRevision,
+} from "@/services/api/wallet";
 import type { ModelChannel } from "@/stores/use-config-store";
 import {
     defaultPriceTier,
     discountedPriceFromOriginal,
+    emptyVideoTokenPriceMatrix,
     expandSingleVideoTokenPriceTier,
     legacyPriceTierToForm,
     priceTiersWithDiscountedPrices,
@@ -66,6 +80,10 @@ export function ChannelModelManager({ channel, onClose, onChanged }: { channel: 
     const [fetching, setFetching] = useState(false);
     const [saving, setSaving] = useState(false);
     const [testing, setTesting] = useState(false);
+    const [historyOpen, setHistoryOpen] = useState(false);
+    const [historyLoading, setHistoryLoading] = useState(false);
+    const [restoringRevisionId, setRestoringRevisionId] = useState("");
+    const [revisions, setRevisions] = useState<ChannelModelRevision[]>([]);
     const [editorOpen, setEditorOpen] = useState(false);
     const [keyword, setKeyword] = useState("");
     const [capability, setCapability] = useState<ChannelModel["capability"] | "all">("all");
@@ -141,6 +159,8 @@ export function ChannelModelManager({ channel, onClose, onChanged }: { channel: 
             .catch(() => setAvailableProtocols([]));
         setEditing(null);
         setEditorOpen(false);
+        setHistoryOpen(false);
+        setRevisions([]);
         setKeyword("");
         setCapability("all");
         setStatus("all");
@@ -193,9 +213,9 @@ export function ChannelModelManager({ channel, onClose, onChanged }: { channel: 
             capability: item.capability || undefined,
             protocol: item.protocol,
             priceTiers: item.priceTiers?.length ? item.priceTiers.map(priceTierToForm) : [legacyPriceTierToForm(item)],
-            priceEntryMode: "direct",
-            upstreamDiscount: 7.5,
-            discountIncrement: 0.5,
+            priceEntryMode: item.priceEntryMode === "discount" ? "discount" : "direct",
+            upstreamDiscount: item.upstreamDiscountBasisPoints > 0 ? item.upstreamDiscountBasisPoints / 1_000 : 7.5,
+            discountIncrement: item.discountIncrementBasisPoints >= 0 ? item.discountIncrementBasisPoints / 1_000 : 0.5,
             enabled: item.enabled,
             capabilityConfig:
                 item.capability === "text" || item.capability === "image" || item.capability === "video"
@@ -229,9 +249,17 @@ export function ChannelModelManager({ channel, onClose, onChanged }: { channel: 
                     inputTokenPriceMicrocredits: Math.round((tier.inputTokenPrice || 0) * 1_000_000),
                     outputTokenPriceMicrocredits: Math.round((tier.outputTokenPrice || 0) * 1_000_000),
                     cachedTokenPriceMicrocredits: Math.round((tier.cachedTokenPrice || 0) * 1_000_000),
+                    originalUnitPriceMicrocredits: Math.round((tier.originalUnitPrice || 0) * 1_000_000),
+                    originalInputTokenPriceMicrocredits: Math.round((tier.originalInputTokenPrice || 0) * 1_000_000),
+                    originalOutputTokenPriceMicrocredits: Math.round((tier.originalOutputTokenPrice || 0) * 1_000_000),
+                    originalCachedTokenPriceMicrocredits: Math.round((tier.originalCachedTokenPrice || 0) * 1_000_000),
                     priceConfigured: tier.priceConfigured !== false,
                     enabled: tier.enabled !== false,
                 })),
+                priceEntryMode: values.priceEntryMode,
+                upstreamDiscountBasisPoints: Math.round(Number(values.upstreamDiscount || 0) * 1_000),
+                discountIncrementBasisPoints: Math.round(Number(values.discountIncrement || 0) * 1_000),
+                expectedPriceVersion: editing?.priceVersion,
                 enabled: values.enabled !== false,
                 capabilityConfig,
             };
@@ -246,6 +274,38 @@ export function ChannelModelManager({ channel, onClose, onChanged }: { channel: 
             message.error(error instanceof Error ? error.message : "保存模型失败");
         } finally {
             setSaving(false);
+        }
+    };
+
+    const openHistory = async () => {
+        if (!editing) return;
+        setHistoryOpen(true);
+        setHistoryLoading(true);
+        try {
+            setRevisions((await listAdminChannelModelRevisions(channel.id, editing.id)).revisions);
+        } catch (error) {
+            message.error(error instanceof Error ? error.message : "读取配置历史失败");
+        } finally {
+            setHistoryLoading(false);
+        }
+    };
+
+    const restoreRevision = async (revision: ChannelModelRevision) => {
+        if (!editing) return;
+        setRestoringRevisionId(revision.id);
+        try {
+            await restoreAdminChannelModelRevision(channel.id, editing.id, revision.id, editing.priceVersion);
+            const refreshed = await listAdminChannelModels(channel.id);
+            setItems(refreshed.models);
+            const restored = refreshed.models.find((item) => item.id === editing.id);
+            if (restored) startEdit(restored);
+            setHistoryOpen(false);
+            await onChanged();
+            message.success(`已恢复 v${revision.version}，并生成新的配置版本`);
+        } catch (error) {
+            message.error(error instanceof Error ? error.message : "恢复配置版本失败");
+        } finally {
+            setRestoringRevisionId("");
         }
     };
 
@@ -519,9 +579,14 @@ export function ChannelModelManager({ channel, onClose, onChanged }: { channel: 
                 }
                 extra={
                     editing ? (
-                        <Button size="small" icon={<Plus className="size-3.5" />} onClick={startCreate}>
-                            新增模型
-                        </Button>
+                        <Space size={8}>
+                            <Button size="small" icon={<History className="size-3.5" />} onClick={() => void openHistory()}>
+                                配置历史
+                            </Button>
+                            <Button size="small" icon={<Plus className="size-3.5" />} onClick={startCreate}>
+                                新增模型
+                            </Button>
+                        </Space>
                     ) : null
                 }
             >
@@ -650,8 +715,8 @@ export function ChannelModelManager({ channel, onClose, onChanged }: { channel: 
                                                 if (modelCapability === "video") {
                                                     const unsupported = unsupportedVideoPriceTierResolutions(value, capabilityConfig?.video?.resolutions || []);
                                                     if (unsupported.length) {
-                                                        const current = (capabilityConfig?.video?.resolutions || []).map((resolution) => resolution.toUpperCase()).join("、") || "未配置";
-                                                        throw new Error(`价格档 ${unsupported.map((resolution) => resolution.toUpperCase()).join("、")} 与模型能力不一致；当前支持：${current}。请修改上方“协议参数 > 输出分辨率”，或删除对应价格档`);
+                                                        const current = (capabilityConfig?.video?.resolutions || []).map(formatVideoResolutionLabel).join("、") || "未配置";
+                                                        throw new Error(`价格档 ${unsupported.map(formatVideoResolutionLabel).join("、")} 与模型能力不一致；当前支持：${current}。请修改上方“协议参数 > 输出分辨率”，或删除对应价格档`);
                                                     }
                                                 }
                                             },
@@ -687,8 +752,77 @@ export function ChannelModelManager({ channel, onClose, onChanged }: { channel: 
                     </section>
                 </Form>
             </Drawer>
+            <Drawer
+                title={`配置历史${editing ? ` / ${editing.displayName || editing.modelKey}` : ""}`}
+                open={historyOpen}
+                width="min(620px, 100vw)"
+                onClose={() => !restoringRevisionId && setHistoryOpen(false)}
+                rootClassName="admin-drawer"
+            >
+                <div className="mb-4 rounded-lg border border-border/70 bg-muted/20 px-4 py-3 text-xs leading-5 text-foreground/55">
+                    每次保存都会生成不可变快照。恢复旧版本不会覆盖历史，而是基于该快照创建一个新版本。
+                </div>
+                {historyLoading ? (
+                    <div className="py-10 text-center text-sm text-foreground/45">正在读取配置历史…</div>
+                ) : revisions.length ? (
+                    <div className="space-y-3">
+                        {revisions.map((revision) => {
+                            const current = revision.version === editing?.priceVersion;
+                            return (
+                                <article key={revision.id} className="rounded-lg border border-border/70 bg-background p-4">
+                                    <div className="flex items-start justify-between gap-3">
+                                        <div>
+                                            <div className="flex flex-wrap items-center gap-2">
+                                                <strong className="text-sm">v{revision.version}</strong>
+                                                <span className="rounded-full bg-muted px-2 py-0.5 text-[var(--fs-tiny)] text-foreground/55">{revisionActionLabel(revision.action)}</span>
+                                                {current ? <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[var(--fs-tiny)] text-primary">当前版本</span> : null}
+                                            </div>
+                                            <div className="mt-1 text-[var(--fs-tiny)] text-foreground/45">{new Date(revision.createdAt).toLocaleString("zh-CN", { hour12: false })}</div>
+                                        </div>
+                                        <Popconfirm
+                                            title={`恢复 v${revision.version}`}
+                                            description="将按此快照创建一个新版本，现有版本仍会保留。"
+                                            okText="确认恢复"
+                                            cancelText="取消"
+                                            disabled={current}
+                                            onConfirm={() => void restoreRevision(revision)}
+                                        >
+                                            <Button size="small" disabled={current || Boolean(restoringRevisionId)} loading={restoringRevisionId === revision.id}>
+                                                恢复此版本
+                                            </Button>
+                                        </Popconfirm>
+                                    </div>
+                                    <div className="mt-3 grid gap-2 rounded-md bg-muted/20 px-3 py-2 text-[var(--fs-tiny)] leading-5 text-foreground/55 sm:grid-cols-2">
+                                        <span>计费：{revision.snapshot?.billingMode === "token" ? "Token" : revision.snapshot?.billingMode === "per_second" ? "按秒" : "按次"}</span>
+                                        <span>录入：{revision.snapshot?.priceEntryMode === "discount" ? `${formatPriceValue((revision.snapshot.upstreamDiscountBasisPoints + revision.snapshot.discountIncrementBasisPoints) / 1_000)} 折换算` : "直接填写"}</span>
+                                        <span>价格档：{revision.snapshot?.priceTiers.length || 0} 个</span>
+                                        <span>{revisionPriceSummary(revision)}</span>
+                                    </div>
+                                </article>
+                            );
+                        })}
+                    </div>
+                ) : (
+                    <div className="py-10 text-center text-sm text-foreground/45">首次保存后会在这里生成基线和新版本记录。</div>
+                )}
+            </Drawer>
         </AdminPageFrame>
     );
+}
+
+function revisionActionLabel(action: ChannelModelRevision["action"]) {
+    return { baseline: "迁移基线", create: "创建", save: "保存", restore: "恢复" }[action] || action;
+}
+
+function revisionPriceSummary(revision: ChannelModelRevision) {
+    const prices = revision.snapshot?.priceTiers
+        .filter((tier) => tier.enabled && tier.priceConfigured)
+        .map((tier) => (tier.billingMode === "token" ? tier.outputTokenPriceMicrocredits : tier.unitPriceMicrocredits) / 1_000_000)
+        .filter((value) => Number.isFinite(value));
+    if (!prices?.length) return "尚未定价";
+    const minimum = Math.min(...prices);
+    const maximum = Math.max(...prices);
+    return minimum === maximum ? `${formatPriceValue(minimum)} 积分` : `${formatPriceValue(minimum)}–${formatPriceValue(maximum)} 积分`;
 }
 
 function SectionHeading({ title, description }: { title: string; description: string }) {
@@ -725,7 +859,7 @@ function PriceDiscountControls({
             <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                     <div className="text-xs font-medium">价格录入方式</div>
-                    <div className="mt-1 text-[var(--fs-tiny)] leading-5 text-foreground/45">原价换算模式会自动计算上游成本和用户积分售价，保存时只写入最终积分价格。</div>
+                    <div className="mt-1 text-[var(--fs-tiny)] leading-5 text-foreground/45">原价、折扣和最终积分售价都会保存，重新编辑时不会丢失。</div>
                 </div>
                 <Form.Item className="mb-0" name="priceEntryMode">
                     <Segmented
@@ -786,13 +920,19 @@ function VideoTokenPricingMatrix({
     entryMode: PriceEntryMode;
     discountSettings: PriceDiscountSettings;
 }) {
-    const matrix = videoTokenPriceMatrixFromTiers(value, resolutions) || { withoutVideoStandard: 0, withoutVideo1080: 0, withVideoStandard: 0, withVideo1080: 0 };
-    const originalMatrix = videoTokenOriginalPriceMatrixFromTiers(value, resolutions) || { withoutVideoStandard: 0, withoutVideo1080: 0, withVideoStandard: 0, withVideo1080: 0 };
+    const matrix = videoTokenPriceMatrixFromTiers(value, resolutions) || emptyVideoTokenPriceMatrix();
+    const originalMatrix = videoTokenOriginalPriceMatrixFromTiers(value, resolutions) || emptyVideoTokenPriceMatrix();
     const providerModelKey = value.find((tier) => tier.providerModelKey)?.providerModelKey || "";
     const providerLabel = protocol === "volcengine-ark-video" ? "火山方舟" : "可美视频";
     const standardResolutions = resolutions.filter((resolution) => resolution === "480p" || resolution === "720p");
-    const has1080 = resolutions.includes("1080p");
-    const priceGridClassName = standardResolutions.length && has1080 ? "grid grid-cols-2 gap-3" : "grid gap-3";
+    const resolutionPriceGroups: Array<{ label: string; withoutVideo: keyof VideoTokenPriceMatrix; withVideo: keyof VideoTokenPriceMatrix }> = [];
+    if (standardResolutions.length) {
+        resolutionPriceGroups.push({ label: standardResolutions.map(formatVideoResolutionLabel).join(" / "), withoutVideo: "withoutVideoStandard", withVideo: "withVideoStandard" });
+    }
+    if (resolutions.includes("1080p")) resolutionPriceGroups.push({ label: "1080P", withoutVideo: "withoutVideo1080", withVideo: "withVideo1080" });
+    if (resolutions.includes("1440p")) resolutionPriceGroups.push({ label: "2K", withoutVideo: "withoutVideo2K", withVideo: "withVideo2K" });
+    if (resolutions.includes("2160p")) resolutionPriceGroups.push({ label: "4K", withoutVideo: "withoutVideo4K", withVideo: "withVideo4K" });
+    const priceGridClassName = resolutionPriceGroups.length > 1 ? "grid grid-cols-2 gap-3" : "grid gap-3";
     const update = (key: keyof VideoTokenPriceMatrix, next: number | null) => {
         if (entryMode === "direct") {
             onChange?.(videoTokenPriceTiersFromMatrix({ ...matrix, [key]: Number(next || 0) }, providerModelKey, undefined, resolutions));
@@ -806,7 +946,7 @@ function VideoTokenPricingMatrix({
         const original = originalMatrix[key] || undefined;
         const displayed = entryMode === "discount" ? original : matrix[key] || undefined;
         return (
-            <label className="grid gap-1.5">
+            <label key={key} className="grid gap-1.5">
                 <span className="text-[var(--fs-tiny)] text-foreground/45">{entryMode === "discount" ? `${label}原价` : label}</span>
                 <InputNumber
                     aria-label={entryMode === "discount" ? `${label}原价` : label}
@@ -833,7 +973,7 @@ function VideoTokenPricingMatrix({
                 <div>
                     <div className="text-sm font-medium">{providerLabel} Token 批量定价</div>
                     <div className="mt-0.5 text-[var(--fs-tiny)] text-foreground/45">
-                        按模型支持的 {resolutions.map((resolution) => resolution.toUpperCase()).join(" / ")} 定价，保存时自动生成 {resolutions.length * 2} 个价格档。
+                        按模型支持的 {resolutions.map(formatVideoResolutionLabel).join(" / ")} 定价，保存时自动生成 {resolutions.length * 2} 个价格档。
                     </div>
                 </div>
                 <Segmented
@@ -856,8 +996,7 @@ function VideoTokenPricingMatrix({
                         <div className="mt-1 text-[var(--fs-tiny)] leading-5 text-foreground/45">文生视频和图生视频使用这组价格。</div>
                     </div>
                     <div className={priceGridClassName}>
-                        {standardResolutions.length ? priceInput("withoutVideoStandard", standardResolutions.map((resolution) => resolution.toUpperCase()).join(" / ")) : null}
-                        {has1080 ? priceInput("withoutVideo1080", "1080P") : null}
+                        {resolutionPriceGroups.map((group) => priceInput(group.withoutVideo, group.label))}
                     </div>
                 </div>
                 <div className="rounded-lg border border-border/70 bg-muted/20 p-3">
@@ -866,8 +1005,7 @@ function VideoTokenPricingMatrix({
                         <div className="mt-1 text-[var(--fs-tiny)] leading-5 text-foreground/45">请求携带参考视频时优先使用这组价格。</div>
                     </div>
                     <div className={priceGridClassName}>
-                        {standardResolutions.length ? priceInput("withVideoStandard", standardResolutions.map((resolution) => resolution.toUpperCase()).join(" / ")) : null}
-                        {has1080 ? priceInput("withVideo1080", "1080P") : null}
+                        {resolutionPriceGroups.map((group) => priceInput(group.withVideo, group.label))}
                     </div>
                 </div>
             </div>
@@ -949,7 +1087,7 @@ function PriceTierFields({
                             </Form.Item>
                             {isVideo ? (
                                 <Form.Item className="mb-0" name={[index, "resolution"]} label="分辨率" rules={[{ required: true, message: "请选择分辨率" }]}>
-                                    <Select options={[{ label: "任意分辨率", value: "*" }, ...resolutionOptions.map((value) => ({ label: value.toUpperCase(), value }))]} />
+                                    <Select options={[{ label: "任意分辨率", value: "*" }, ...resolutionOptions.map((value) => ({ label: formatVideoResolutionLabel(value), value }))]} />
                                 </Form.Item>
                             ) : null}
                             {isVideo ? (
@@ -1171,7 +1309,7 @@ function priceTierLabel(tier: ChannelModelPriceTier) {
         selector.operation && selector.operation !== "*" ? operationLabel(selector.operation) : "任意生成方式",
         selector.quality && selector.quality !== "*" ? selector.quality.toUpperCase() : "",
         selector.size && selector.size !== "*" ? selector.size : "",
-        tier.resolution === "*" ? "" : tier.resolution.toUpperCase(),
+        tier.resolution === "*" ? "" : formatVideoResolutionLabel(tier.resolution),
         tier.videoSeconds ? `${tier.videoSeconds} 秒` : "",
         selector.imageCount && selector.imageCount !== "*" ? `${selector.imageCount} 张参考图` : "",
     ].filter(Boolean);

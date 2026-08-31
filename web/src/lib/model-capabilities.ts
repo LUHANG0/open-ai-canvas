@@ -293,7 +293,11 @@ export function defaultModelCapabilityConfig(protocol?: ModelProtocol, model = "
         video.references.maxAudioDurationSeconds = 15;
         video.generateAudio = { supported: true, default: true };
     }
-    if (protocol === "kemei-video") video.generateAudio = { supported: true, default: true };
+    if (protocol === "kemei-video") {
+        video.generateAudio = { supported: true, default: true };
+        video.resolutions = ["480p", "720p", "1080p", "2K", "4K"];
+        video.defaultResolution = "720p";
+    }
     if (protocol === "volcengine-ark-video" || protocol === "newapi-channel-1") video.resolutions = ["480p", "720p", "1080p"];
     if (protocol === "volcengine-ark-video") {
         video.watermark = { supported: true, default: false };

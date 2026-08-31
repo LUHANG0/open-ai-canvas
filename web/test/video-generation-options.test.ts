@@ -10,6 +10,8 @@ describe("video generation resolution options", () => {
         expect(normalizeVideoResolution("2k")).toBe("1440");
         expect(normalizeVideoResolution("1440p")).toBe("1440");
         expect(normalizeVideoResolution("4K")).toBe("2160");
+        expect(formatVideoResolutionLabel("1440p")).toBe("2K");
+        expect(formatVideoResolutionLabel("2160p")).toBe("4K");
     });
 
     test("保留模型声明的非标准档位而不是静默降级", () => {
@@ -31,6 +33,7 @@ describe("video generation resolution options", () => {
 
     test("按协议限制实际可选档位", () => {
         expect(defaultModelCapabilityConfig("newapi-channel-2").video?.resolutions).toEqual(["480p", "720p", "1080p", "1440p", "2160p"]);
+        expect(defaultModelCapabilityConfig("kemei-video").video?.resolutions).toEqual(["480p", "720p", "1080p", "2K", "4K"]);
         expect(defaultModelCapabilityConfig("volcengine-ark-video").video?.resolutions).toEqual(["480p", "720p", "1080p"]);
         expect(defaultModelCapabilityConfig("volcengine-jimeng-video").video?.resolutions).toEqual(["720p"]);
         expect(defaultModelCapabilityConfig("gemini-veo").video?.resolutions).toEqual(["720p", "1080p"]);

@@ -69,6 +69,7 @@ func TestDefaultVideoCapabilityUsesProtocolSpecificResolutionTiers(t *testing.T)
 		"volcengine-ark-video":    {"480p", "720p", "1080p"},
 		"volcengine-jimeng-video": {"720p"},
 		"gemini-veo":              {"720p", "1080p"},
+		"kemei-video":             {"480p", "720p", "1080p", "2K", "4K"},
 	}
 	for protocol, want := range tests {
 		t.Run(protocol, func(t *testing.T) {
@@ -145,6 +146,38 @@ func TestDefaultKemeiVideoCapabilitySupportsSynchronousAudio(t *testing.T) {
 	}
 	if !profile.Video.GenerateAudio.Supported || !profile.Video.GenerateAudio.Default {
 		t.Fatalf("generateAudio = %#v, want supported and enabled by default", profile.Video.GenerateAudio)
+	}
+	if profile.Video.DefaultResolution != "720p" {
+		t.Fatalf("defaultResolution = %q, want 720p", profile.Video.DefaultResolution)
+	}
+}
+
+func TestValidateKemeiVideoSupportsDeclaredResolutionAliases(t *testing.T) {
+	profile := DefaultModelCapabilityConfigForModel("kemei-video", "artsdance-2-5-pro-260801").Video
+	for _, resolution := range []string{"480", "480P", "720", "720P", "1080", "1080P", "1440p", "2K", "2160p", "4K"} {
+		t.Run(resolution, func(t *testing.T) {
+			input := canvasGenerationInput{Config: providerConfig{
+				InterfaceType: "kemei-video",
+				Model:         "artsdance-2-5-pro-260801",
+				VideoSeconds:  "6",
+				Size:          "16:9",
+				VQuality:      resolution,
+			}}
+			if err := validateVideoTask(profile, input); err != nil {
+				t.Fatalf("validateVideoTask(%q) error = %v", resolution, err)
+			}
+		})
+	}
+
+	unsupported := canvasGenerationInput{Config: providerConfig{
+		InterfaceType: "kemei-video",
+		Model:         "artsdance-2-5-pro-260801",
+		VideoSeconds:  "6",
+		Size:          "16:9",
+		VQuality:      "8K",
+	}}
+	if err := validateVideoTask(profile, unsupported); err == nil || !strings.Contains(err.Error(), "输出分辨率") {
+		t.Fatalf("validateVideoTask(8K) error = %v, want unsupported resolution", err)
 	}
 }
 

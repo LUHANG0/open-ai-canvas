@@ -195,7 +195,7 @@ func TestKemeiPluginPackageInstallsThroughUploadRuntime(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if plugin.Status != "enabled" || plugin.Manifest.ID != "kemei-video" || plugin.Manifest.Version != "1.1.0" {
+	if plugin.Status != "enabled" || plugin.Manifest.ID != "kemei-video" || plugin.Manifest.Version != "1.2.0" {
 		t.Fatalf("installed Kemei plugin = %#v", plugin)
 	}
 	provider := plugin.Manifest.Contributes.Providers[0]

@@ -29,10 +29,14 @@ type ChannelModelRequest struct {
 	InputTokenPriceMicrocredits  int64                          `json:"inputTokenPriceMicrocredits"`
 	OutputTokenPriceMicrocredits int64                          `json:"outputTokenPriceMicrocredits"`
 	CachedTokenPriceMicrocredits int64                          `json:"cachedTokenPriceMicrocredits"`
+	PriceEntryMode               string                         `json:"priceEntryMode"`
+	UpstreamDiscountBasisPoints  int                            `json:"upstreamDiscountBasisPoints"`
+	DiscountIncrementBasisPoints int                            `json:"discountIncrementBasisPoints"`
 	PriceConfigured              bool                           `json:"priceConfigured"`
 	Enabled                      *bool                          `json:"enabled"`
 	CapabilityConfig             *ModelCapabilityConfig         `json:"capabilityConfig"`
 	PriceTiers                   []ChannelModelPriceTierRequest `json:"priceTiers"`
+	ExpectedPriceVersion         *int64                         `json:"expectedPriceVersion"`
 }
 
 // ChannelModelPriceTierRequest 是系统渠道内某个规格的上游 SKU 与结算价格。
@@ -40,17 +44,21 @@ type ChannelModelRequest struct {
 type ChannelModelPriceTierRequest struct {
 	// Selector 是 SKU 的规范匹配条件。支持 operation、quality、size、vquality、videoSeconds、imageCount；
 	// operation 可区分文生/图生/视频生，避免同一分辨率下错误复用价格。
-	Selector                     map[string]string `json:"selector"`
-	Resolution                   string            `json:"resolution"`
-	VideoSeconds                 int               `json:"videoSeconds"`
-	ProviderModelKey             string            `json:"providerModelKey"`
-	BillingMode                  string            `json:"billingMode"`
-	UnitPriceMicrocredits        int64             `json:"unitPriceMicrocredits"`
-	InputTokenPriceMicrocredits  int64             `json:"inputTokenPriceMicrocredits"`
-	OutputTokenPriceMicrocredits int64             `json:"outputTokenPriceMicrocredits"`
-	CachedTokenPriceMicrocredits int64             `json:"cachedTokenPriceMicrocredits"`
-	PriceConfigured              bool              `json:"priceConfigured"`
-	Enabled                      *bool             `json:"enabled"`
+	Selector                             map[string]string `json:"selector"`
+	Resolution                           string            `json:"resolution"`
+	VideoSeconds                         int               `json:"videoSeconds"`
+	ProviderModelKey                     string            `json:"providerModelKey"`
+	BillingMode                          string            `json:"billingMode"`
+	UnitPriceMicrocredits                int64             `json:"unitPriceMicrocredits"`
+	InputTokenPriceMicrocredits          int64             `json:"inputTokenPriceMicrocredits"`
+	OutputTokenPriceMicrocredits         int64             `json:"outputTokenPriceMicrocredits"`
+	CachedTokenPriceMicrocredits         int64             `json:"cachedTokenPriceMicrocredits"`
+	OriginalUnitPriceMicrocredits        int64             `json:"originalUnitPriceMicrocredits"`
+	OriginalInputTokenPriceMicrocredits  int64             `json:"originalInputTokenPriceMicrocredits"`
+	OriginalOutputTokenPriceMicrocredits int64             `json:"originalOutputTokenPriceMicrocredits"`
+	OriginalCachedTokenPriceMicrocredits int64             `json:"originalCachedTokenPriceMicrocredits"`
+	PriceConfigured                      bool              `json:"priceConfigured"`
+	Enabled                              *bool             `json:"enabled"`
 }
 
 // AdminChannelModelFetchResult 是管理员从上游拉目录后的汇总：models 为去重后的标识，added 为本次新建条数。
@@ -185,10 +193,22 @@ func (s *Service) FetchAdminChannelModels(ctx context.Context, actor *model.User
 }
 
 func (s *Service) SaveAdminChannelModel(actor *model.User, channelID string, id string, req ChannelModelRequest) (*model.ChannelModel, error) {
+	action := "save"
+	if strings.TrimSpace(id) == "" {
+		action = "create"
+	}
+	return s.saveAdminChannelModel(actor, channelID, id, req, action, "")
+}
+
+func (s *Service) saveAdminChannelModel(actor *model.User, channelID string, id string, req ChannelModelRequest, revisionAction string, restoredFromRevisionID string) (*model.ChannelModel, error) {
 	if err := s.RequireAdmin(actor); err != nil {
 		return nil, err
 	}
 	channel, err := s.repo.AdminSystemChannel(channelID)
+	if err != nil {
+		return nil, err
+	}
+	priceEntryMode, err := normalizeChannelModelPriceEntry(req)
 	if err != nil {
 		return nil, err
 	}
@@ -213,17 +233,33 @@ func (s *Service) SaveAdminChannelModel(actor *model.User, channelID string, id 
 	if err != nil {
 		return nil, err
 	}
-	modelID, err := s.repo.NextPrefixedID("MODEL")
-	if err != nil {
-		return nil, err
-	}
-	item := &model.ChannelModel{ID: modelID, ChannelID: channelID, Enabled: true, PriceVersion: 1}
-	if id != "" {
+	creating := strings.TrimSpace(id) == ""
+	var baseline *model.ChannelModelRevision
+	var expectedPriceVersion *int64
+	var item *model.ChannelModel
+	if creating {
+		modelID, idErr := s.repo.NextPrefixedID("MODEL")
+		if idErr != nil {
+			return nil, idErr
+		}
+		item = &model.ChannelModel{ID: modelID, ChannelID: channelID, Enabled: true, PriceVersion: 1}
+	} else {
 		item, err = s.repo.ChannelModelByID(channelID, id)
 		if err != nil {
 			return nil, err
 		}
-		item.PriceVersion++
+		if req.ExpectedPriceVersion == nil {
+			return nil, BadAuthRequest("缺少价格配置版本，请刷新页面后重试")
+		}
+		if *req.ExpectedPriceVersion != item.PriceVersion {
+			return nil, NewAppError(http.StatusConflict, "该模型配置已被其他页面更新，请刷新后再保存")
+		}
+		expectedPriceVersion = req.ExpectedPriceVersion
+		baseline, err = newChannelModelRevision(actor, item, item.PriceTiers, "baseline", "")
+		if err != nil {
+			return nil, err
+		}
+		item.PriceVersion = *expectedPriceVersion + 1
 	}
 	item.ModelKey = modelKey
 	item.ProviderModelKey = providerModelKey
@@ -234,6 +270,9 @@ func (s *Service) SaveAdminChannelModel(actor *model.User, channelID string, id 
 	item.Icon = strings.TrimSpace(req.Icon)
 	item.Capability = capability
 	item.Protocol = protocol
+	item.PriceEntryMode = priceEntryMode
+	item.UpstreamDiscountBasisPoints = req.UpstreamDiscountBasisPoints
+	item.DiscountIncrementBasisPoints = req.DiscountIncrementBasisPoints
 	s.applyChannelModelPriceTierSummary(item, tiers)
 	if capability == "text" || capability == "image" || capability == "video" {
 		capabilityConfig, normalizeErr := NormalizeModelCapabilityConfigForModel(capability, string(protocol), providerModelKey, req.CapabilityConfig)
@@ -258,11 +297,28 @@ func (s *Service) SaveAdminChannelModel(actor *model.User, channelID string, id 
 	if err := validateChannelModelTierCapabilities(tiers, item.CapabilityConfigJSON, capability); err != nil {
 		return nil, err
 	}
-	// 渠道模型及所有价格档必须同时落库，不能出现“能力已开放但规格价格尚未更新”的窗口。
-	if err := s.repo.SaveChannelModelWithPriceTiers(item, tiers); err != nil {
+	item.PriceTiers = tiers
+	revision, err := newChannelModelRevision(actor, item, tiers, revisionAction, restoredFromRevisionID)
+	if err != nil {
 		return nil, err
 	}
-	item.PriceTiers = tiers
+	auditAction := map[string]string{"create": "channel_model.create", "restore": "channel_model.restore"}[revisionAction]
+	if auditAction == "" {
+		auditAction = "channel_model.update"
+	}
+	audit, err := newAdminAuditEvent(actor, auditAction, "channel_model", item.ID, "保存系统渠道模型及价格配置", map[string]any{
+		"channelId": channelID, "priceVersion": item.PriceVersion, "revisionId": revision.ID, "restoredFromRevisionId": restoredFromRevisionID,
+	})
+	if err != nil {
+		return nil, err
+	}
+	// 渠道模型、所有价格档、不可变历史与审计必须同时落库。
+	if err := s.repo.SaveChannelModelConfiguration(item, tiers, expectedPriceVersion, baseline, revision, audit); err != nil {
+		if repository.IsChannelModelVersionConflict(err) {
+			return nil, NewAppError(http.StatusConflict, "该模型配置已被其他页面更新，请刷新后再保存")
+		}
+		return nil, err
+	}
 	s.invalidateRouteCatalog()
 	if err := s.syncChannelModelNames(channel); err != nil {
 		return nil, err
@@ -271,6 +327,152 @@ func (s *Service) SaveAdminChannelModel(actor *model.User, channelID string, id 
 		return nil, err
 	}
 	return item, nil
+}
+
+func normalizeChannelModelPriceEntry(req ChannelModelRequest) (string, error) {
+	mode := strings.ToLower(strings.TrimSpace(req.PriceEntryMode))
+	if mode == "" {
+		mode = "direct"
+	}
+	if mode != "direct" && mode != "discount" {
+		return "", BadAuthRequest("价格录入方式仅支持直接填写或原价换算")
+	}
+	if req.UpstreamDiscountBasisPoints < 0 || req.UpstreamDiscountBasisPoints > 10_000 || req.DiscountIncrementBasisPoints < 0 || req.DiscountIncrementBasisPoints > 10_000 {
+		return "", BadAuthRequest("折扣必须在 0 到 10 折之间")
+	}
+	if mode == "discount" {
+		if req.UpstreamDiscountBasisPoints <= 0 {
+			return "", BadAuthRequest("原价换算时上游折扣必须大于 0")
+		}
+		if req.UpstreamDiscountBasisPoints+req.DiscountIncrementBasisPoints > 10_000 {
+			return "", BadAuthRequest("最终售价折扣不能超过 10 折")
+		}
+	}
+	return mode, nil
+}
+
+func newChannelModelRevision(actor *model.User, item *model.ChannelModel, tiers []model.ChannelModelPriceTier, action string, restoredFromRevisionID string) (*model.ChannelModelRevision, error) {
+	if actor == nil {
+		return nil, Unauthorized("请先登录")
+	}
+	snapshotTiers := append([]model.ChannelModelPriceTier(nil), tiers...)
+	for index := range snapshotTiers {
+		// 快照记录的是可恢复配置，不固化会在保存时复用或重分配的持久化身份。
+		snapshotTiers[index].ID = ""
+		snapshotTiers[index].ChannelModelID = ""
+		snapshotTiers[index].PriceVersion = 0
+		snapshotTiers[index].CreatedAt = time.Time{}
+		snapshotTiers[index].UpdatedAt = time.Time{}
+		snapshotTiers[index].DeletedAt = gorm.DeletedAt{}
+	}
+	snapshot := model.ChannelModelRevisionSnapshot{
+		ModelKey: item.ModelKey, ProviderModelKey: item.ProviderModelKey, DisplayName: item.DisplayName, Icon: item.Icon,
+		Capability: item.Capability, Protocol: item.Protocol, BillingMode: item.BillingMode,
+		UnitPriceMicrocredits: item.UnitPriceMicrocredits, InputTokenPriceMicrocredits: item.InputTokenPriceMicrocredits,
+		OutputTokenPriceMicrocredits: item.OutputTokenPriceMicrocredits, CachedTokenPriceMicrocredits: item.CachedTokenPriceMicrocredits,
+		PriceEntryMode: item.PriceEntryMode, UpstreamDiscountBasisPoints: item.UpstreamDiscountBasisPoints,
+		DiscountIncrementBasisPoints: item.DiscountIncrementBasisPoints, PriceConfigured: item.PriceConfigured,
+		Enabled: item.Enabled, PriceVersion: item.PriceVersion, CapabilityConfigJSON: item.CapabilityConfigJSON,
+		CapabilityVersion: item.CapabilityVersion, PriceTiers: snapshotTiers,
+	}
+	encoded, err := json.Marshal(snapshot)
+	if err != nil {
+		return nil, err
+	}
+	return &model.ChannelModelRevision{
+		ID: newID(), ChannelModelID: item.ID, Version: item.PriceVersion, Action: strings.TrimSpace(action),
+		RestoredFromRevisionID: strings.TrimSpace(restoredFromRevisionID), SnapshotJSON: string(encoded), CreatedBy: actor.ID, CreatedAt: time.Now(),
+	}, nil
+}
+
+type ChannelModelRestoreRequest struct {
+	ExpectedPriceVersion int64 `json:"expectedPriceVersion"`
+}
+
+func (s *Service) AdminChannelModelRevisions(actor *model.User, channelID string, channelModelID string) ([]model.ChannelModelRevision, error) {
+	if err := s.RequireAdmin(actor); err != nil {
+		return nil, err
+	}
+	if _, err := s.adminSystemChannel(channelID); err != nil {
+		return nil, err
+	}
+	if _, err := s.repo.ChannelModelByID(channelID, channelModelID); err != nil {
+		return nil, err
+	}
+	revisions, err := s.repo.ChannelModelRevisions(channelModelID, 50)
+	if err != nil {
+		return nil, err
+	}
+	for index := range revisions {
+		var snapshot model.ChannelModelRevisionSnapshot
+		if err := json.Unmarshal([]byte(revisions[index].SnapshotJSON), &snapshot); err != nil {
+			return nil, fmt.Errorf("解析渠道模型历史版本 %s：%w", revisions[index].ID, err)
+		}
+		revisions[index].Snapshot = &snapshot
+	}
+	return revisions, nil
+}
+
+func (s *Service) RestoreAdminChannelModelRevision(actor *model.User, channelID string, channelModelID string, revisionID string, req ChannelModelRestoreRequest) (*model.ChannelModel, error) {
+	if err := s.RequireAdmin(actor); err != nil {
+		return nil, err
+	}
+	if req.ExpectedPriceVersion <= 0 {
+		return nil, BadAuthRequest("缺少当前价格配置版本，请刷新页面后重试")
+	}
+	current, err := s.repo.ChannelModelByID(channelID, channelModelID)
+	if err != nil {
+		return nil, err
+	}
+	if current.PriceVersion != req.ExpectedPriceVersion {
+		return nil, NewAppError(http.StatusConflict, "该模型配置已被其他页面更新，请刷新后再恢复")
+	}
+	revision, err := s.repo.ChannelModelRevision(channelModelID, revisionID)
+	if err != nil {
+		return nil, err
+	}
+	var snapshot model.ChannelModelRevisionSnapshot
+	if err := json.Unmarshal([]byte(revision.SnapshotJSON), &snapshot); err != nil {
+		return nil, fmt.Errorf("解析渠道模型历史版本：%w", err)
+	}
+	restoreRequest, err := channelModelRequestFromRevisionSnapshot(snapshot, req.ExpectedPriceVersion)
+	if err != nil {
+		return nil, err
+	}
+	return s.saveAdminChannelModel(actor, channelID, channelModelID, restoreRequest, "restore", revision.ID)
+}
+
+func channelModelRequestFromRevisionSnapshot(snapshot model.ChannelModelRevisionSnapshot, expectedPriceVersion int64) (ChannelModelRequest, error) {
+	var capabilityConfig *ModelCapabilityConfig
+	if strings.TrimSpace(snapshot.CapabilityConfigJSON) != "" {
+		var decoded ModelCapabilityConfig
+		if err := json.Unmarshal([]byte(snapshot.CapabilityConfigJSON), &decoded); err != nil {
+			return ChannelModelRequest{}, fmt.Errorf("解析历史能力配置：%w", err)
+		}
+		capabilityConfig = &decoded
+	}
+	tiers := make([]ChannelModelPriceTierRequest, 0, len(snapshot.PriceTiers))
+	for _, tier := range snapshot.PriceTiers {
+		enabled := tier.Enabled
+		tiers = append(tiers, ChannelModelPriceTierRequest{
+			Selector: tier.Selector, Resolution: tier.Resolution, VideoSeconds: tier.VideoSeconds, ProviderModelKey: tier.ProviderModelKey,
+			BillingMode: tier.BillingMode, UnitPriceMicrocredits: tier.UnitPriceMicrocredits,
+			InputTokenPriceMicrocredits: tier.InputTokenPriceMicrocredits, OutputTokenPriceMicrocredits: tier.OutputTokenPriceMicrocredits,
+			CachedTokenPriceMicrocredits:         tier.CachedTokenPriceMicrocredits,
+			OriginalUnitPriceMicrocredits:        tier.OriginalUnitPriceMicrocredits,
+			OriginalInputTokenPriceMicrocredits:  tier.OriginalInputTokenPriceMicrocredits,
+			OriginalOutputTokenPriceMicrocredits: tier.OriginalOutputTokenPriceMicrocredits,
+			OriginalCachedTokenPriceMicrocredits: tier.OriginalCachedTokenPriceMicrocredits,
+			PriceConfigured:                      tier.PriceConfigured, Enabled: &enabled,
+		})
+	}
+	enabled := snapshot.Enabled
+	return ChannelModelRequest{
+		ModelKey: snapshot.ModelKey, ProviderModelKey: snapshot.ProviderModelKey, DisplayName: snapshot.DisplayName, Icon: snapshot.Icon,
+		Capability: snapshot.Capability, Protocol: string(snapshot.Protocol), PriceEntryMode: snapshot.PriceEntryMode,
+		UpstreamDiscountBasisPoints: snapshot.UpstreamDiscountBasisPoints, DiscountIncrementBasisPoints: snapshot.DiscountIncrementBasisPoints,
+		Enabled: &enabled, CapabilityConfig: capabilityConfig, PriceTiers: tiers, ExpectedPriceVersion: &expectedPriceVersion,
+	}, nil
 }
 
 func validateChannelModelTierCapabilities(tiers []model.ChannelModelPriceTier, rawCapabilityConfig string, capability string) error {
@@ -349,7 +551,12 @@ func (s *Service) normalizeChannelModelPriceTiers(req ChannelModelRequest, capab
 			Resolution: "*", VideoSeconds: 0, ProviderModelKey: fallbackProviderModelKey,
 			BillingMode: req.BillingMode, UnitPriceMicrocredits: req.UnitPriceMicrocredits,
 			InputTokenPriceMicrocredits: req.InputTokenPriceMicrocredits, OutputTokenPriceMicrocredits: req.OutputTokenPriceMicrocredits,
-			CachedTokenPriceMicrocredits: req.CachedTokenPriceMicrocredits, PriceConfigured: req.PriceConfigured, Enabled: &enabled,
+			CachedTokenPriceMicrocredits:         req.CachedTokenPriceMicrocredits,
+			OriginalUnitPriceMicrocredits:        req.UnitPriceMicrocredits,
+			OriginalInputTokenPriceMicrocredits:  req.InputTokenPriceMicrocredits,
+			OriginalOutputTokenPriceMicrocredits: req.OutputTokenPriceMicrocredits,
+			OriginalCachedTokenPriceMicrocredits: req.CachedTokenPriceMicrocredits,
+			PriceConfigured:                      req.PriceConfigured, Enabled: &enabled,
 		}}
 	}
 	result := make([]model.ChannelModelPriceTier, 0, len(inputs))
@@ -374,27 +581,39 @@ func (s *Service) normalizeChannelModelPriceTiers(req ChannelModelRequest, capab
 		if err := s.validateChannelModelTierPricing(capability, protocol, billingMode, input); err != nil {
 			return nil, err
 		}
+		if strings.EqualFold(strings.TrimSpace(req.PriceEntryMode), "discount") {
+			if (input.UnitPriceMicrocredits > 0 && input.OriginalUnitPriceMicrocredits <= 0) ||
+				(input.InputTokenPriceMicrocredits > 0 && input.OriginalInputTokenPriceMicrocredits <= 0) ||
+				(input.OutputTokenPriceMicrocredits > 0 && input.OriginalOutputTokenPriceMicrocredits <= 0) ||
+				(input.CachedTokenPriceMicrocredits > 0 && input.OriginalCachedTokenPriceMicrocredits <= 0) {
+				return nil, BadAuthRequest("原价换算模式下，每个已填写的最终价格都必须保留对应原价")
+			}
+		}
 		id, idErr := s.repo.NextPrefixedID("PTIER")
 		if idErr != nil {
 			return nil, idErr
 		}
 		enabled := input.Enabled == nil || *input.Enabled
 		result = append(result, model.ChannelModelPriceTier{
-			ID:                           id,
-			SelectorKey:                  key,
-			SelectorJSON:                 key,
-			Selector:                     selector,
-			Resolution:                   resolution,
-			VideoSeconds:                 videoSeconds,
-			ProviderModelKey:             strings.TrimPrefix(strings.TrimSpace(firstNonEmpty(input.ProviderModelKey, fallbackProviderModelKey)), "models/"),
-			BillingMode:                  billingMode,
-			UnitPriceMicrocredits:        input.UnitPriceMicrocredits,
-			InputTokenPriceMicrocredits:  input.InputTokenPriceMicrocredits,
-			OutputTokenPriceMicrocredits: input.OutputTokenPriceMicrocredits,
-			CachedTokenPriceMicrocredits: input.CachedTokenPriceMicrocredits,
-			PriceConfigured:              input.PriceConfigured,
-			Enabled:                      enabled,
-			PriceVersion:                 1,
+			ID:                                   id,
+			SelectorKey:                          key,
+			SelectorJSON:                         key,
+			Selector:                             selector,
+			Resolution:                           resolution,
+			VideoSeconds:                         videoSeconds,
+			ProviderModelKey:                     strings.TrimPrefix(strings.TrimSpace(firstNonEmpty(input.ProviderModelKey, fallbackProviderModelKey)), "models/"),
+			BillingMode:                          billingMode,
+			UnitPriceMicrocredits:                input.UnitPriceMicrocredits,
+			InputTokenPriceMicrocredits:          input.InputTokenPriceMicrocredits,
+			OutputTokenPriceMicrocredits:         input.OutputTokenPriceMicrocredits,
+			CachedTokenPriceMicrocredits:         input.CachedTokenPriceMicrocredits,
+			OriginalUnitPriceMicrocredits:        input.OriginalUnitPriceMicrocredits,
+			OriginalInputTokenPriceMicrocredits:  input.OriginalInputTokenPriceMicrocredits,
+			OriginalOutputTokenPriceMicrocredits: input.OriginalOutputTokenPriceMicrocredits,
+			OriginalCachedTokenPriceMicrocredits: input.OriginalCachedTokenPriceMicrocredits,
+			PriceConfigured:                      input.PriceConfigured,
+			Enabled:                              enabled,
+			PriceVersion:                         1,
 		})
 	}
 	return result, nil
@@ -490,7 +709,8 @@ func (s *Service) validateChannelModelTierPricing(capability string, protocol mo
 	if billingMode == "token" && !s.supportsTokenBilling(capability, protocol) {
 		return BadAuthRequest("Token 计费仅支持文本模型，或能返回真实用量的视频协议")
 	}
-	if input.UnitPriceMicrocredits < 0 || input.InputTokenPriceMicrocredits < 0 || input.OutputTokenPriceMicrocredits < 0 || input.CachedTokenPriceMicrocredits < 0 {
+	if input.UnitPriceMicrocredits < 0 || input.InputTokenPriceMicrocredits < 0 || input.OutputTokenPriceMicrocredits < 0 || input.CachedTokenPriceMicrocredits < 0 ||
+		input.OriginalUnitPriceMicrocredits < 0 || input.OriginalInputTokenPriceMicrocredits < 0 || input.OriginalOutputTokenPriceMicrocredits < 0 || input.OriginalCachedTokenPriceMicrocredits < 0 {
 		return BadAuthRequest("模型积分价格不能小于 0")
 	}
 	if !input.PriceConfigured {
@@ -499,6 +719,9 @@ func (s *Service) validateChannelModelTierPricing(capability string, protocol mo
 	const maxTokenPriceMicrocredits = int64(1_000_000) * CreditScale
 	if input.InputTokenPriceMicrocredits > maxTokenPriceMicrocredits || input.OutputTokenPriceMicrocredits > maxTokenPriceMicrocredits || input.CachedTokenPriceMicrocredits > maxTokenPriceMicrocredits {
 		return BadAuthRequest("Token 每百万用量价格不能超过 1,000,000 积分")
+	}
+	if input.OriginalInputTokenPriceMicrocredits > maxTokenPriceMicrocredits || input.OriginalOutputTokenPriceMicrocredits > maxTokenPriceMicrocredits || input.OriginalCachedTokenPriceMicrocredits > maxTokenPriceMicrocredits {
+		return BadAuthRequest("Token 每百万用量原价不能超过 1,000,000 积分")
 	}
 	return nil
 }

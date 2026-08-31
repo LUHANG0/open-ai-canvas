@@ -24,6 +24,7 @@ func Models() []any {
 		&model.ModelChannel{},
 		&model.ChannelModel{},
 		&model.ChannelModelPriceTier{},
+		&model.ChannelModelRevision{},
 		&model.IDSequence{},
 		&model.LogicalModel{},
 		&model.LogicalModelRevision{},
