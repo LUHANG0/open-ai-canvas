@@ -515,7 +515,12 @@ export default function CanvasPage() {
                 )}
                 {hydrated && visibleProjects.length ? (
                     <div ref={loadMoreRef} className="library-load-more pc-canvas-library__load-more" role="status" aria-live="polite">
-                        {visibleProjects.length < filteredProjects.length ? "继续下滑加载更多（每批 50 个）" : `已加载全部 ${filteredProjects.length} 个画布`}
+                        <span className="pc-canvas-library-only">
+                            {visibleProjects.length < filteredProjects.length ? "继续下滑加载更多（每批 50 个）" : `已加载全部 ${filteredProjects.length} 个画布`}
+                        </span>
+                        <span className="pc-canvas-library-mobile-only">
+                            {visibleProjects.length < filteredProjects.length ? "继续下滑加载更多（每页 50 条）" : `已加载全部 ${filteredProjects.length} 个画布`}
+                        </span>
                     </div>
                 ) : null}
             </div>
@@ -533,7 +538,7 @@ export default function CanvasPage() {
             >
                 <p id="canvas-association-description" className="mb-3 text-sm text-foreground/60">选中的画布会保留原有节点和本地媒体，只增加项目关联。</p>
                 {projectQuery.isError ? (
-                    <div className="pc-canvas-library__dialog-warning" role="alert">
+                    <div className="pc-canvas-library__dialog-warning pc-canvas-library-dialog-pc-only" role="alert">
                         <span>项目列表加载失败，请重试后再保存关联。</span>
                         <Button size="small" onClick={() => void projectQuery.refetch()}>重试</Button>
                     </div>

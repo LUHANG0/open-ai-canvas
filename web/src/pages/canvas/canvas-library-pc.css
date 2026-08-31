@@ -1,6 +1,7 @@
 /* Canvas library PC contract. New visual rules are isolated to >= 1024px. */
 
 .pc-canvas-library-page .pc-canvas-library-only,
+.pc-canvas-library-dialog-pc-only,
 .pc-canvas-folder__preview-count {
     display: none;
 }
