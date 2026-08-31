@@ -14,6 +14,8 @@
 | S08 | Canvas 画布库 | `refactor/pc-ui-r6-canvas-library` | `c949021` | `14c0c16`…`2e102cb` | 保留模式 query、ZIP 导入、50 条无限加载、Store/API 与同步合同 | `673004e` | `git revert -m 1 673004e` |
 | S09 | Canvas 编辑器与公开分享 | `refactor/pc-ui-r6-canvas-editor` | `c949021` | `ede47f9`…`88619ef` | 保留持久化、历史、上传、生成、轮询、Director 与分享权限；交叉审查修复 1024px/多列/Portal 边界 | `a46c265` | `git revert -m 1 a46c265` |
 | S10 | Auth / 系统状态 / 语音原型 | `refactor/pc-user-ui-20260901` | `c949021` | `3d67934`、`eee0a91`、`a9e8657` | 保留 next/OAuth/验证码/倒计时/Session/语音回调；状态页新增信息限定 PC | 直接提交 | 按 `a9e8657` → `eee0a91` → `3d67934` 逆序 `git revert` |
+| S11 | 生产用户页面覆盖审计 | `refactor/pc-user-ui-20260901` | `a46c265` | `310890d` | 全生产用户路由覆盖，router/权限/services/stores/backend/Admin 相对原始基线零差异 | 直接提交 | `git revert 310890d` |
+| S12 | R6 全局清理 | `refactor/pc-user-ui-20260901` | `310890d` | `f286e7d`、`475982a`、`5fa61cd` | 修复 subnav sticky、钱包 PC 表格竞争和 8 个未定义 Token；高扰动历史债务延后 | 直接提交 | 按 `5fa61cd` → `475982a` → `f286e7d` 逆序 `git revert` |
 
 ## R2/R3 冻结结论
 
