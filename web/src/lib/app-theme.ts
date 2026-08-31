@@ -275,6 +275,266 @@ export const APP_THEME_COLORS = {
     },
 } as const;
 
+/**
+ * Brand V2 primitives are intentionally separate from the frozen neutral
+ * palette above. User-facing semantic colors may reference these values,
+ * while Admin continues to derive its theme exclusively from APP_THEME_COLORS.
+ */
+export const PC_USER_BRAND_COLORS = {
+    50: "#f5f3ff",
+    100: "#ece9ff",
+    200: "#dcd6ff",
+    300: "#c4baff",
+    400: "#a79bff",
+    500: "#8b7cf6",
+    600: "#6d5dfb",
+    700: "#5b4bdb",
+    800: "#4438a8",
+    900: "#302779",
+} as const;
+
+export const PC_USER_AI_COLORS = {
+    50: "#eafbfc",
+    100: "#d0f4f6",
+    400: "#5dd6df",
+    500: "#1aa8b4",
+    600: "#0e7f8c",
+} as const;
+
+/**
+ * PC user-facing semantic palette for the "Lightframe Director Console".
+ * Keep this object synchronized with the scoped variables in
+ * styles/pc-user-foundation.css.
+ */
+export const PC_USER_THEME_COLORS = {
+    light: {
+        background: {
+            canvas: "#eff1f7",
+            page: "#f7f8fb",
+        },
+        surface: {
+            one: "#ffffff",
+            two: "#f3f5fa",
+            three: "#e9ecf4",
+            overlay: "#ffffff",
+            subtle: "rgba(48, 55, 78, 0.04)",
+        },
+        text: {
+            primary: "#181a26",
+            secondary: "rgba(24, 26, 38, 0.72)",
+            muted: "rgba(24, 26, 38, 0.52)",
+            inverse: "#ffffff",
+        },
+        border: {
+            subtle: "rgba(48, 55, 78, 0.1)",
+            default: "rgba(48, 55, 78, 0.15)",
+            strong: "rgba(48, 55, 78, 0.22)",
+            interactive: "rgba(91, 75, 219, 0.38)",
+        },
+        action: {
+            primary: {
+                bg: PC_USER_BRAND_COLORS[700],
+                hover: "#4e3fc6",
+                active: PC_USER_BRAND_COLORS[800],
+                fg: "#ffffff",
+            },
+            secondary: {
+                bg: "transparent",
+                hover: "rgba(91, 75, 219, 0.07)",
+                active: "rgba(91, 75, 219, 0.12)",
+                fg: "#181a26",
+            },
+            check: {
+                bg: PC_USER_BRAND_COLORS[600],
+                hover: PC_USER_BRAND_COLORS[700],
+                active: PC_USER_BRAND_COLORS[800],
+                fg: "#ffffff",
+            },
+            switchChecked: {
+                bg: PC_USER_BRAND_COLORS[600],
+                hover: PC_USER_BRAND_COLORS[700],
+                handle: "#ffffff",
+            },
+        },
+        selection: {
+            bg: "rgba(91, 75, 219, 0.1)",
+            hover: "rgba(91, 75, 219, 0.14)",
+            active: "rgba(91, 75, 219, 0.18)",
+            fg: PC_USER_BRAND_COLORS[800],
+        },
+        control: {
+            bg: "#ffffff",
+            border: "rgba(48, 55, 78, 0.18)",
+            disabledBg: "rgba(48, 55, 78, 0.06)",
+            disabledFg: "rgba(24, 26, 38, 0.36)",
+            focus: "rgba(91, 75, 219, 0.26)",
+            switchOffBg: "rgba(48, 55, 78, 0.22)",
+            switchOffHover: "rgba(48, 55, 78, 0.3)",
+            switchOffHandle: "#ffffff",
+        },
+        status: {
+            info: {
+                bg: "rgba(68, 56, 168, 0.07)",
+                hover: "rgba(68, 56, 168, 0.11)",
+                border: "rgba(68, 56, 168, 0.2)",
+                fg: PC_USER_BRAND_COLORS[800],
+            },
+            success: {
+                bg: "rgba(21, 128, 61, 0.09)",
+                border: "rgba(21, 128, 61, 0.24)",
+                fg: "#15803d",
+            },
+            warning: {
+                bg: "rgba(180, 83, 9, 0.1)",
+                border: "rgba(180, 83, 9, 0.26)",
+                fg: "#b45309",
+            },
+            error: {
+                bg: "rgba(220, 38, 38, 0.09)",
+                border: "rgba(220, 38, 38, 0.24)",
+                fg: "#dc2626",
+            },
+            running: {
+                bg: "rgba(14, 127, 140, 0.1)",
+                border: "rgba(14, 127, 140, 0.26)",
+                fg: PC_USER_AI_COLORS[600],
+            },
+        },
+        menu: {
+            bg: "rgba(91, 75, 219, 0.1)",
+            text: PC_USER_BRAND_COLORS[800],
+            activeBg: "rgba(91, 75, 219, 0.1)",
+            selectedBg: "rgba(91, 75, 219, 0.14)",
+        },
+        table: {
+            headerText: "rgba(24, 26, 38, 0.58)",
+            rowHover: "rgba(91, 75, 219, 0.035)",
+            selectedBg: "rgba(91, 75, 219, 0.08)",
+            selectedHover: "rgba(91, 75, 219, 0.12)",
+        },
+        shadow: {
+            overlay: "0 24px 68px rgba(35, 38, 57, 0.16)",
+        },
+        skeleton: {
+            from: "rgba(48, 55, 78, 0.055)",
+            to: "rgba(48, 55, 78, 0.11)",
+        },
+    },
+    dark: {
+        background: {
+            canvas: "#0a0c13",
+            page: "#0e1018",
+        },
+        surface: {
+            one: "#151824",
+            two: "#1b1f2d",
+            three: "#232838",
+            overlay: "#1b1f2d",
+            subtle: "rgba(255, 255, 255, 0.055)",
+        },
+        text: {
+            primary: "#f5f5fb",
+            secondary: "rgba(245, 245, 251, 0.74)",
+            muted: "rgba(245, 245, 251, 0.54)",
+            inverse: "#11131d",
+        },
+        border: {
+            subtle: "rgba(226, 229, 255, 0.1)",
+            default: "rgba(226, 229, 255, 0.16)",
+            strong: "rgba(226, 229, 255, 0.24)",
+            interactive: "rgba(167, 155, 255, 0.46)",
+        },
+        action: {
+            primary: {
+                bg: PC_USER_BRAND_COLORS[500],
+                hover: "#9b8eff",
+                active: "#8172ef",
+                fg: "#11131d",
+            },
+            secondary: {
+                bg: "transparent",
+                hover: "rgba(139, 124, 246, 0.1)",
+                active: "rgba(139, 124, 246, 0.16)",
+                fg: "#f5f5fb",
+            },
+            check: {
+                bg: PC_USER_BRAND_COLORS[500],
+                hover: "#9b8eff",
+                active: "#8172ef",
+                fg: "#11131d",
+            },
+            switchChecked: {
+                bg: PC_USER_BRAND_COLORS[500],
+                hover: "#9b8eff",
+                handle: "#11131d",
+            },
+        },
+        selection: {
+            bg: "rgba(139, 124, 246, 0.16)",
+            hover: "rgba(139, 124, 246, 0.22)",
+            active: "rgba(139, 124, 246, 0.28)",
+            fg: "#c7c0ff",
+        },
+        control: {
+            bg: "rgba(255, 255, 255, 0.04)",
+            border: "rgba(226, 229, 255, 0.24)",
+            disabledBg: "rgba(255, 255, 255, 0.06)",
+            disabledFg: "rgba(245, 245, 251, 0.38)",
+            focus: "rgba(167, 155, 255, 0.34)",
+            switchOffBg: "rgba(226, 229, 255, 0.22)",
+            switchOffHover: "rgba(226, 229, 255, 0.3)",
+            switchOffHandle: "#f5f5fb",
+        },
+        status: {
+            info: {
+                bg: "rgba(199, 192, 255, 0.1)",
+                hover: "rgba(199, 192, 255, 0.14)",
+                border: "rgba(199, 192, 255, 0.22)",
+                fg: "#c7c0ff",
+            },
+            success: {
+                bg: "rgba(74, 222, 128, 0.1)",
+                border: "rgba(74, 222, 128, 0.26)",
+                fg: "#4ade80",
+            },
+            warning: {
+                bg: "rgba(251, 191, 36, 0.11)",
+                border: "rgba(251, 191, 36, 0.28)",
+                fg: "#fbbf24",
+            },
+            error: {
+                bg: "rgba(248, 113, 113, 0.1)",
+                border: "rgba(248, 113, 113, 0.26)",
+                fg: "#f87171",
+            },
+            running: {
+                bg: "rgba(93, 214, 223, 0.12)",
+                border: "rgba(93, 214, 223, 0.28)",
+                fg: PC_USER_AI_COLORS[400],
+            },
+        },
+        menu: {
+            bg: "rgba(139, 124, 246, 0.16)",
+            text: "#c7c0ff",
+            activeBg: "rgba(139, 124, 246, 0.16)",
+            selectedBg: "rgba(139, 124, 246, 0.22)",
+        },
+        table: {
+            headerText: "rgba(245, 245, 251, 0.62)",
+            rowHover: "rgba(139, 124, 246, 0.055)",
+            selectedBg: "rgba(139, 124, 246, 0.12)",
+            selectedHover: "rgba(139, 124, 246, 0.18)",
+        },
+        shadow: {
+            overlay: "0 26px 76px rgba(0, 0, 0, 0.56)",
+        },
+        skeleton: {
+            from: "rgba(226, 229, 255, 0.06)",
+            to: "rgba(226, 229, 255, 0.13)",
+        },
+    },
+} as const;
+
 type AppThemeMode = keyof typeof APP_THEME_COLORS;
 
 const LEGACY_INFO = {
@@ -304,7 +564,8 @@ const LEGACY_INFO = {
 
 function createAntThemeConfig(dark: boolean, pcUserSemantics: boolean): ThemeConfig {
     const mode: AppThemeMode = dark ? "dark" : "light";
-    const color = APP_THEME_COLORS[mode];
+    const color = pcUserSemantics ? PC_USER_THEME_COLORS[mode] : APP_THEME_COLORS[mode];
+    const darkColor = pcUserSemantics ? PC_USER_THEME_COLORS.dark : APP_THEME_COLORS.dark;
     const info = pcUserSemantics
         ? {
               ...color.status.info,
@@ -476,9 +737,9 @@ function createAntThemeConfig(dark: boolean, pcUserSemantics: boolean): ThemeCon
                 itemHoverBg: color.menu.bg,
                 itemSelectedBg: color.menu.bg,
                 itemSelectedColor: color.menu.text,
-                darkItemHoverBg: APP_THEME_COLORS.dark.menu.bg,
-                darkItemSelectedBg: APP_THEME_COLORS.dark.menu.bg,
-                darkItemSelectedColor: APP_THEME_COLORS.dark.menu.text,
+                darkItemHoverBg: darkColor.menu.bg,
+                darkItemSelectedBg: darkColor.menu.bg,
+                darkItemSelectedColor: darkColor.menu.text,
             },
             Select: {
                 selectorBg: color.surface.overlay,
@@ -497,7 +758,7 @@ function createAntThemeConfig(dark: boolean, pcUserSemantics: boolean): ThemeCon
                 headerColor: color.table.headerText,
                 headerBorderRadius: 0,
                 rowHoverBg: color.table.rowHover,
-                borderColor: dark ? "rgba(255, 255, 255, 0.08)" : "rgba(17, 17, 17, 0.075)",
+                borderColor: pcUserSemantics ? color.border.subtle : dark ? "rgba(255, 255, 255, 0.08)" : "rgba(17, 17, 17, 0.075)",
                 cellPaddingBlockMD: 13,
                 cellPaddingInlineMD: 14,
                 rowSelectedBg: color.table.selectedBg,
