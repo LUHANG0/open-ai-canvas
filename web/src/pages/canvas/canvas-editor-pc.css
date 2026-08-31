@@ -52,6 +52,10 @@
         filter: saturate(0.96);
     }
 
+    .pc-canvas-workspace .aceternity-mode-switch {
+        top: auto;
+    }
+
     .pc-canvas-skip-link:focus-visible {
         border-color: var(--app-border-strong);
         background: var(--app-surface-overlay);
