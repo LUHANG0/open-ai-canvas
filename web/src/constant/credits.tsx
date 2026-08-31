@@ -1,7 +1,7 @@
 import type { ComponentProps } from "react";
 import { Coins } from "lucide-react";
 
-export { requestCreditCost } from "@/lib/model-pricing";
+export { requestCreditCost, requestCreditPricing } from "@/lib/model-pricing";
 
 export function CreditSymbol({ className, ...props }: ComponentProps<"span">) {
     return (

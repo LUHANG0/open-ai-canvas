@@ -10,10 +10,34 @@ type ModelCreditCost = {
     pricePolicy?: "channel" | "unified";
     billingMode: "fixed_request" | "per_second" | "token";
     unitPriceMicrocredits: number;
+    inputTokenPriceMicrocredits?: number;
+    outputTokenPriceMicrocredits?: number;
+    cachedTokenPriceMicrocredits?: number;
     logicalPriceTiers?: ModelPriceTier[];
 };
 
-export function requestCreditCost(options: { channelMode: string; modelCosts?: ModelCreditCost[]; model: string; count?: string | number; seconds?: string | number; capability?: ModelCapability; config?: AiConfig; requirements?: ModelRequirements }) {
+export type RequestCreditPricing =
+    | { billingMode: "fixed_request" | "per_second"; estimatedCredits: number }
+    | {
+          billingMode: "token";
+          perMillionCredits: number;
+          inputPerMillionCredits: number;
+          outputPerMillionCredits: number;
+          cachedPerMillionCredits: number;
+      };
+
+type RequestCreditPricingOptions = {
+    channelMode: string;
+    modelCosts?: ModelCreditCost[];
+    model: string;
+    count?: string | number;
+    seconds?: string | number;
+    capability?: ModelCapability;
+    config?: AiConfig;
+    requirements?: ModelRequirements;
+};
+
+export function requestCreditPricing(options: RequestCreditPricingOptions): RequestCreditPricing | null {
     if (options.channelMode !== "remote") return null;
     const cost = options.modelCosts?.find((item) => item.model === options.model) || null;
     if (!cost) return null;
@@ -21,15 +45,19 @@ export function requestCreditCost(options: { channelMode: string; modelCosts?: M
         if (!options.config) return null;
         const tiers = priceTiersForCurrentSelection(cost.logicalPriceTiers || [], options.capability, options.config, options.requirements);
         if (!tiers.length) return null;
-        const first = tiers[0];
-        if (!first || first.billingMode === "token") return null;
+        const first = creditPricingForEntry(tiers[0], options);
+        if (!first) return null;
         // 同一精确规格可能来自多个逻辑路由；只有价格一致时才可在客户端安全展示。
-        if (tiers.some((tier) => tier.billingMode !== first.billingMode || tier.unitPriceMicrocredits !== first.unitPriceMicrocredits)) return null;
-        return creditAmount(first.billingMode, first.unitPriceMicrocredits, options.count, options.seconds);
+        if (tiers.slice(1).some((tier) => !sameCreditPricing(first, creditPricingForEntry(tier, options)))) return null;
+        return first;
     }
-    // Token 订单由服务端按请求体预授权并在 usage 返回后结算，前端不展示无依据的固定价格。
-    if (cost.billingMode === "token") return null;
-    return creditAmount(cost.billingMode, cost.unitPriceMicrocredits, options.count, options.seconds);
+    return creditPricingForEntry(cost, options);
+}
+
+export function requestCreditCost(options: RequestCreditPricingOptions) {
+    const pricing = requestCreditPricing(options);
+    // Token 订单由服务端按请求体预授权并在 usage 返回后结算，前端不伪造固定总价。
+    return pricing?.billingMode === "token" ? null : (pricing?.estimatedCredits ?? null);
 }
 
 export function priceTiersForCurrentSelection(tiers: ModelPriceTier[], capability: ModelCapability | undefined, config: AiConfig, requirements?: ModelRequirements) {
@@ -81,24 +109,67 @@ function creditAmount(billingMode: "fixed_request" | "per_second", unitPriceMicr
     return (unitPriceMicrocredits / 1_000_000) * quantity;
 }
 
+function creditPricingForEntry(
+    entry: Pick<ModelCreditCost, "billingMode" | "unitPriceMicrocredits" | "inputTokenPriceMicrocredits" | "outputTokenPriceMicrocredits" | "cachedTokenPriceMicrocredits">,
+    options: Pick<RequestCreditPricingOptions, "capability" | "count" | "seconds">,
+): RequestCreditPricing | null {
+    if (entry.billingMode !== "token") {
+        return { billingMode: entry.billingMode, estimatedCredits: creditAmount(entry.billingMode, entry.unitPriceMicrocredits, options.count, options.seconds) };
+    }
+    const input = validMicrocredits(entry.inputTokenPriceMicrocredits);
+    const output = validMicrocredits(entry.outputTokenPriceMicrocredits);
+    const cached = validMicrocredits(entry.cachedTokenPriceMicrocredits);
+    if (input === null || output === null || cached === null) return null;
+    const preferred = options.capability === "video" ? output : output > 0 ? output : input > 0 ? input : cached;
+    return {
+        billingMode: "token",
+        perMillionCredits: preferred / 1_000_000,
+        inputPerMillionCredits: input / 1_000_000,
+        outputPerMillionCredits: output / 1_000_000,
+        cachedPerMillionCredits: cached / 1_000_000,
+    };
+}
+
+function validMicrocredits(value: number | undefined) {
+    return typeof value === "number" && Number.isFinite(value) && value >= 0 ? value : null;
+}
+
+function sameCreditPricing(left: RequestCreditPricing, right: RequestCreditPricing | null) {
+    if (!right || left.billingMode !== right.billingMode) return false;
+    if (left.billingMode !== "token" && right.billingMode !== "token") return left.estimatedCredits === right.estimatedCredits;
+    if (left.billingMode === "token" && right.billingMode === "token") {
+        return (
+            left.perMillionCredits === right.perMillionCredits &&
+            left.inputPerMillionCredits === right.inputPerMillionCredits &&
+            left.outputPerMillionCredits === right.outputPerMillionCredits &&
+            left.cachedPerMillionCredits === right.cachedPerMillionCredits
+        );
+    }
+    return false;
+}
+
 function priceSelectorForRequest(capability: ModelCapability | undefined, config: AiConfig, requirements?: ModelRequirements) {
     const requested: Record<string, string> = {};
+    const requestOptions: Record<string, unknown> = { ...(capability ? modelRequestOptions(config, capability) : {}), ...(requirements?.options || {}) };
     if (capability === "video") {
         const input = requirements?.input;
         if (input) {
             const imageCount = (input.imageCount || 0) + (input.characterCount || 0);
             const operation = resolveVideoOperation(input, requirements?.videoOperation, requirements?.videoOperationExplicit);
-            requested.operation = input.videoCount > 0 && !requirements?.videoOperationExplicit ? "video_to_video" : operation;
+            // 与服务端 SKU 选择保持一致：计价按实际输入素材归类，不受供应商执行操作名影响。
+            requested.operation = input.videoCount > 0 ? "video_to_video" : imageCount > 0 ? "image_to_video" : operation;
             if (imageCount > 0) requested.imageCount = String(imageCount);
         }
-        const resolution = normalizeTierResolution(config.vquality);
+        const resolution = normalizeTierResolution(String(requestOptions.vquality ?? requestOptions.resolution ?? config.vquality));
         if (resolution !== "*") requested.vquality = resolution;
-        const seconds = Math.max(0, Math.floor(Number(config.videoSeconds) || 0));
+        const seconds = Math.max(0, Math.floor(Number(requirements?.videoSeconds ?? requestOptions.videoSeconds ?? config.videoSeconds) || 0));
         if (seconds > 0) requested.videoSeconds = String(seconds);
     }
     if (capability === "image") {
-        if (config.quality && config.quality !== "auto") requested.quality = config.quality.toLowerCase();
-        if (config.size && config.size !== "auto") requested.size = config.size.toLowerCase();
+        const quality = String(requestOptions.quality ?? config.quality ?? "");
+        const size = String(requirements?.imageSize ?? requestOptions.size ?? config.size ?? "");
+        if (quality && quality !== "auto") requested.quality = quality.toLowerCase();
+        if (size && size !== "auto") requested.size = size.toLowerCase();
     }
     return requested;
 }

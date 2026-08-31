@@ -42,7 +42,7 @@ import { AssetLibraryPickerModal, type AssetLibraryPickerItem } from "@/componen
 import { CanvasResourceMentionTextarea } from "@/components/canvas/canvas-resource-mention-textarea";
 import { CanvasPromptOptimizerDrawer } from "@/components/canvas/canvas-prompt-optimizer-drawer";
 import { ModelPicker } from "@/components/model-picker";
-import { CreditSymbol, requestCreditCost } from "@/constant/credits";
+import { CreditSymbol, requestCreditCost, requestCreditPricing } from "@/constant/credits";
 import { creationCanvasHandoffPath, creationResultAssetIds, creationResultMediaEntries, type CreationResultMediaEntry } from "@/lib/canvas/canvas-asset-handoff";
 import { createGenerationBatchRetryContexts, createGenerationRetryContext, runGenerationOperationOnce, type GenerationRetryContext } from "@/lib/canvas/canvas-project-generation";
 import { createClientId } from "@/lib/client-id";
@@ -307,6 +307,9 @@ export default function CreatePage() {
     const [videoOperationChoice, setVideoOperationChoice] = useState<CreationVideoOperationChoice>("auto");
     const [busy, setBusy] = useState(false);
     const [referenceReplacementBusy, setReferenceReplacementBusy] = useState(false);
+    const [pendingUploadCount, setPendingUploadCount] = useState(0);
+    const [uploadError, setUploadError] = useState("");
+    const pendingUploadCountRef = useRef(0);
     const [viewMode, setViewMode] = useState<CreationViewMode>("chat");
     const [selectedShotIndex, setSelectedShotIndex] = useState(-1);
     const [composingNextShot, setComposingNextShot] = useState(false);
@@ -567,6 +570,10 @@ export default function CreatePage() {
     }, []);
 
     const selectMode = (next: CreationMode) => {
+        if (pendingUploadCountRef.current > 0) {
+            toast.info("素材正在上传，请等待完成后再切换创作类型");
+            return;
+        }
         setMode(next);
         const nextModels = selectableModelsByCapability(config, next);
         const current = next === "text" ? config.textModel : next === "image" ? config.imageModel : config.videoModel;
@@ -651,6 +658,21 @@ export default function CreatePage() {
             attachment: creationAttachmentFromImage(file, uploaded),
         };
     };
+    const trackUploadBatch = useCallback(async <T,>(count: number, operation: () => Promise<T>) => {
+        if (count <= 0) return operation();
+        pendingUploadCountRef.current += count;
+        setPendingUploadCount(pendingUploadCountRef.current);
+        setUploadError("");
+        try {
+            return await operation();
+        } catch (error) {
+            setUploadError(error instanceof Error ? error.message : "素材上传失败，请重试");
+            throw error;
+        } finally {
+            pendingUploadCountRef.current = Math.max(0, pendingUploadCountRef.current - count);
+            setPendingUploadCount(pendingUploadCountRef.current);
+        }
+    }, []);
     const addAttachments = (files: FileList | File[]) => {
         const filtered = filterCreationUploadFiles(Array.from(files), mode, referenceLimits, attachments);
         const remainingTotal = mode === "text" ? Math.max(0, maxReferences - attachments.length) : filtered.acceptedFiles.length;
@@ -658,13 +680,14 @@ export default function CreatePage() {
         const rejectedCount = filtered.rejectedFiles.length + Math.max(0, filtered.acceptedFiles.length - next.length);
         if (rejectedCount) toast.warning(`${rejectedCount} 个素材超出当前模型的类型或数量限制`);
         if (!next.length) return;
-        void Promise.allSettled(
-            next.map(async (file) => {
-                const { asset, attachment } = await uploadCreationAsset(file);
-                if (asset) addAsset(asset);
-                return attachment;
-            }),
-        ).then((settled) => {
+        void trackUploadBatch(next.length, async () => {
+            const settled = await Promise.allSettled(
+                next.map(async (file) => {
+                    const { asset, attachment } = await uploadCreationAsset(file);
+                    if (asset) addAsset(asset);
+                    return attachment;
+                }),
+            );
             const items = settled.flatMap((entry) => (entry.status === "fulfilled" ? [entry.value] : []));
             const failed = settled.filter((entry) => entry.status === "rejected");
             if (items.length) {
@@ -675,7 +698,11 @@ export default function CreatePage() {
                     return mode === "video" ? normalizeCreationVideoAttachments(limited, videoOperationChoice, Boolean(promptRef.current.trim())) : limited;
                 });
             }
-            if (failed.length) toast.error(`${failed.length} 个参考素材上传失败，请重试`);
+            if (failed.length) {
+                const message = `${failed.length} 个参考素材上传失败，请重试`;
+                setUploadError(message);
+                toast.error(message);
+            }
         });
     };
 
@@ -685,17 +712,23 @@ export default function CreatePage() {
         const unsupportedCount = requested.length - next.length;
         if (unsupportedCount) toast.warning(`${unsupportedCount} 个文件暂不能保存到素材库；目前支持图片、视频和音频`);
         if (!next.length) return [];
-        const settled = await Promise.allSettled(
-            next.map(async (file) => {
-                const { asset } = await uploadCreationAsset(file);
-                return asset ? addAsset(asset) : "";
-            }),
-        );
-        const assetIds = settled.flatMap((entry) => (entry.status === "fulfilled" && entry.value ? [entry.value] : []));
-        const failed = settled.filter((entry) => entry.status === "rejected");
-        if (assetIds.length) toast.success(`${assetIds.length} 个素材已保存到素材库`);
-        if (failed.length) toast.error(`${failed.length} 个素材上传失败，请重试`);
-        return assetIds;
+        return trackUploadBatch(next.length, async () => {
+            const settled = await Promise.allSettled(
+                next.map(async (file) => {
+                    const { asset } = await uploadCreationAsset(file);
+                    return asset ? addAsset(asset) : "";
+                }),
+            );
+            const assetIds = settled.flatMap((entry) => (entry.status === "fulfilled" && entry.value ? [entry.value] : []));
+            const failed = settled.filter((entry) => entry.status === "rejected");
+            if (assetIds.length) toast.success(`${assetIds.length} 个素材已保存到素材库`);
+            if (failed.length) {
+                const message = `${failed.length} 个素材上传失败，请重试`;
+                setUploadError(message);
+                toast.error(message);
+            }
+            return assetIds;
+        });
     };
 
     const hasReferenceCapacity = () => {
@@ -707,6 +740,10 @@ export default function CreatePage() {
     const addOrStoreLocalFiles = (files: FileList | File[]) => {
         const requested = Array.from(files);
         if (!requested.length) return;
+        if (pendingUploadCountRef.current > 0) {
+            toast.info("已有素材正在上传，请等待完成后再继续添加");
+            return;
+        }
         if (!hasReferenceCapacity()) {
             void uploadLibraryAssets(requested);
             return;
@@ -800,7 +837,7 @@ export default function CreatePage() {
 
     const replaceReferenceFromFiles = useCallback(
         async (targetAttachmentId: string, files: File[]) => {
-            if (busy || referenceReplacementBusy) return;
+            if (busy || referenceReplacementBusy || pendingUploadCountRef.current > 0) return;
             const file = files.find((item) => item.type.startsWith("image/"));
             if (!file) {
                 toast.warning("请拖入图片文件进行替换");
@@ -808,17 +845,19 @@ export default function CreatePage() {
             }
             setReferenceReplacementBusy(true);
             try {
-                const { asset, attachment } = await uploadCreationAsset(file);
+                const { asset, attachment } = await trackUploadBatch(1, () => uploadCreationAsset(file));
                 if (creationAttachmentKind(attachment) !== "image") throw new Error("上传结果不是可用图片");
                 if (asset) addAsset(asset);
                 if (replaceAttachmentReference(targetAttachmentId, attachment)) toast.success("参考图已替换，槽位不变，提示词无需修改");
             } catch (error) {
-                toast.error(error instanceof Error ? error.message : "参考图上传或替换失败");
+                const message = error instanceof Error ? error.message : "参考图上传或替换失败";
+                setUploadError(message);
+                toast.error(message);
             } finally {
                 setReferenceReplacementBusy(false);
             }
         },
-        [addAsset, busy, referenceReplacementBusy, replaceAttachmentReference, toast],
+        [addAsset, busy, referenceReplacementBusy, replaceAttachmentReference, toast, trackUploadBatch],
     );
 
     const changeVideoOperation = useCallback((choice: CreationVideoOperationChoice) => {
@@ -836,6 +875,11 @@ export default function CreatePage() {
             if (retryLockKey) retryPreparingRef.current.delete(retryLockKey);
         };
         const text = prompt.trim();
+        if (pendingUploadCountRef.current > 0) {
+            toast.info("素材仍在上传，完成后才能提交生成");
+            releaseRetryLock();
+            return;
+        }
         if (!text || busy || !activeConversation) {
             releaseRetryLock();
             return;
@@ -1165,6 +1209,10 @@ export default function CreatePage() {
     }, [retrySequence]);
 
     const startNewConversation = () => {
+        if (pendingUploadCountRef.current > 0) {
+            toast.info("素材正在上传，请等待完成后再新建创作");
+            return;
+        }
         const next = newConversation();
         followLatestMessageRef.current = true;
         setConversations((current) => [next, ...current]);
@@ -1179,6 +1227,10 @@ export default function CreatePage() {
     };
 
     const selectConversation = (conversation: CreationConversation) => {
+        if (pendingUploadCountRef.current > 0) {
+            toast.info("素材正在上传，请等待完成后再切换对话");
+            return;
+        }
         followLatestMessageRef.current = true;
         setActiveId(conversation.id);
         setPrompt("");
@@ -1326,6 +1378,9 @@ export default function CreatePage() {
         setPrompt,
         busy,
         referenceReplacementBusy,
+        uploadPendingCount: pendingUploadCount,
+        uploadError,
+        onDismissUploadError: () => setUploadError(""),
         attachments,
         referenceImageSize,
         maxReferences,
@@ -1350,7 +1405,13 @@ export default function CreatePage() {
         videoOperationChoice,
         onVideoOperationChange: changeVideoOperation,
         config,
-        onModelChange: (value: string) => updateConfig(mode === "text" ? "textModel" : mode === "image" ? "imageModel" : "videoModel", value),
+        onModelChange: (value: string) => {
+            if (pendingUploadCountRef.current > 0) {
+                toast.info("素材正在上传，请等待完成后再切换模型");
+                return;
+            }
+            updateConfig(mode === "text" ? "textModel" : mode === "image" ? "imageModel" : "videoModel", value);
+        },
         onGenerateAudioChange: (enabled: boolean) => updateConfig("videoGenerateAudio", String(enabled)),
         ratio,
         setRatio,
@@ -1470,7 +1531,11 @@ export default function CreatePage() {
                     description: "支持图片、视频和音频；先保存到素材库，确认后再加入本次创作",
                     autoSelectUploaded: false,
                     onUpload: uploadLibraryAssets,
-                    external: { accept: "image/*", description: "写入当前 Eagle 文件夹；Eagle 当前支持图片文件", onUpload: (files, folderId) => externalAssetSources.uploadExternalFiles(files, folderId) },
+                    external: {
+                        accept: "image/*",
+                        description: "写入当前 Eagle 文件夹；Eagle 当前支持图片文件",
+                        onUpload: (files, folderId) => trackUploadBatch(files.length, () => externalAssetSources.uploadExternalFiles(files, folderId)),
+                    },
                 }}
                 onClose={() => setLibraryOpen(false)}
                 onConfirm={handleLibrarySelect}
@@ -2114,6 +2179,9 @@ type ComposerProps = {
     setPrompt: (value: string) => void;
     busy: boolean;
     referenceReplacementBusy: boolean;
+    uploadPendingCount: number;
+    uploadError: string;
+    onDismissUploadError: () => void;
     attachments: CreationAttachment[];
     referenceImageSize?: { width: number; height: number };
     maxReferences: number;
@@ -2171,22 +2239,30 @@ function CreationComposer(props: ComposerProps) {
     const cardDragRef = useRef<{ startX: number; startY: number; moved: boolean } | null>(null);
     const suppressAttachmentClickRef = useRef(false);
     const [trackState, setTrackState] = useState({ canScrollLeft: false, canScrollRight: false, isDragging: false });
-    const interactionBusy = props.busy || props.referenceReplacementBusy;
+    const interactionBusy = props.busy || props.referenceReplacementBusy || props.uploadPendingCount > 0;
     const creditsEnabled = useUserStore((state) => state.features.creditsEnabled);
     const priceChannel = resolveModelChannel(props.config, props.model);
     const canOptimizePrompt = Boolean(props.promptOptimizerProvider) && (props.mode === "image" || props.mode === "video");
     const generateAudioSupported = props.mode === "video" && props.videoProfile.generateAudio.supported;
     const generateAudio = generateAudioSupported && props.config.videoGenerateAudio === "true";
     const optimizerReferences = props.references.filter((reference) => reference.active && reference.kind !== "skill");
-    const credits = requestCreditCost({
+    const pricingRequest = {
         channelMode: priceChannel.scope === "system" ? "remote" : "local",
         modelCosts: priceChannel.modelCosts,
         model: modelOptionName(props.model),
         count: props.mode === "image" ? props.count : 1,
         seconds: props.mode === "video" ? props.seconds : 1,
-    });
+        capability: props.mode,
+        config: props.config,
+        requirements: props.modelRequirements,
+    } as const;
+    const pricing = requestCreditPricing(pricingRequest);
+    const credits = requestCreditCost(pricingRequest);
+    const tokenPricing = pricing?.billingMode === "token" ? pricing : null;
     const showCost = creditsEnabled && credits !== null;
+    const showTokenPrice = creditsEnabled && tokenPricing !== null;
     const formattedCredits = credits?.toLocaleString("zh-CN", { maximumFractionDigits: 6 });
+    const formattedTokenRate = tokenPricing?.perMillionCredits.toLocaleString("zh-CN", { maximumFractionDigits: 6 });
     const placeholder = props.mode === "text" ? "描述你的故事、角色或想继续讨论的创意" : props.mode === "image" ? "描述画面、人物、场景、构图与风格" : "描述镜头内容、运动、光线与节奏";
     const emptyPlaceholder =
         props.mode === "video" ? "上传参考素材、输入文字或 @ 参考内容，自由组合图、文、音、视频元素，描述你想生成的镜头。" : props.mode === "image" ? "上传参考素材、输入文字或 @ 参考内容，描述人物、场景、构图与风格。" : "输入故事、角色或创意，也可以使用 @ 引用素材与技能。";
@@ -2220,8 +2296,10 @@ function CreationComposer(props: ComposerProps) {
     }, [props.attachments, props.maxReferences, props.mode, props.model, props.referenceLimits]);
     const invalidReferenceCount = invalidReferenceReasons.size;
     const canSubmit = Boolean(props.model) && Boolean(props.prompt.trim()) && invalidReferenceCount === 0 && !interactionBusy;
-    const actionLabel = props.referenceReplacementBusy
-        ? "正在替换参考图"
+    const actionLabel = props.uploadPendingCount > 0
+        ? `正在上传 ${props.uploadPendingCount} 个素材`
+        : props.referenceReplacementBusy
+          ? "正在替换参考图"
         : props.busy
           ? "生成中"
           : !props.model
@@ -2232,6 +2310,8 @@ function CreationComposer(props: ComposerProps) {
                 ? "请先输入创作描述"
                 : showCost
                   ? `预计消耗 ${formattedCredits} 积分，发送`
+                  : showTokenPrice
+                    ? `按 ${formattedTokenRate} 积分/百万 Token 计费，完成后按实际用量结算`
                   : "发送";
     const referenceEntryHint = !props.model
         ? "可以先上传到素材库；选择模型后再添加为参考"
@@ -2243,7 +2323,15 @@ function CreationComposer(props: ComposerProps) {
     const directUploadLabel = canAddMoreReferences ? "从本机上传并添加参考素材" : "从本机上传并保存到素材库";
     const directUploadAccept = props.mode === "text" && canAddMoreReferences ? creationUploadAccept("text") : "image/*,video/*,audio/*";
     const fileDropLabel = canAddMoreReferences ? "松开即可上传并加入本次创作" : "松开即可保存到素材库";
-    const addReferenceLabel = interactionBusy ? (props.referenceReplacementBusy ? "正在替换参考图" : "生成中暂不能添加参考内容") : canAddMoreReferences ? `添加参考内容（${referenceLimitSummary}）` : `已达到当前模式的参考内容上限（${referenceLimitSummary || "不支持参考素材"}）`;
+    const addReferenceLabel = interactionBusy
+        ? props.uploadPendingCount > 0
+            ? "素材上传中，暂不能继续添加参考内容"
+            : props.referenceReplacementBusy
+              ? "正在替换参考图"
+              : "生成中暂不能添加参考内容"
+        : canAddMoreReferences
+          ? `添加参考内容（${referenceLimitSummary}）`
+          : `已达到当前模式的参考内容上限（${referenceLimitSummary || "不支持参考素材"}）`;
     const visibleAttachments = useMemo(() => (referenceFilter === "all" ? props.attachments : props.attachments.filter((attachment) => creationAttachmentKind(attachment) === referenceFilter)), [props.attachments, referenceFilter]);
     const imageSettingsSupported = props.imageProfile.size.parameter !== "none" || props.imageProfile.quality.supported || props.imageProfile.maxOutputs > 1;
     const updateTrackScrollState = useCallback(() => {
@@ -2540,10 +2628,34 @@ function CreationComposer(props: ComposerProps) {
                     ) : null}
                 </div>
             </div>
+            {props.uploadPendingCount > 0 || props.uploadError || showTokenPrice ? (
+                <div className="creation-composer-notices" aria-live="polite">
+                    {props.uploadPendingCount > 0 ? (
+                        <div className="creation-upload-status is-pending" role="status">
+                            <LoaderCircle className="animate-spin" aria-hidden="true" />
+                            <span>正在上传 {props.uploadPendingCount} 个素材，上传完成前不能生成或切换配置</span>
+                        </div>
+                    ) : props.uploadError ? (
+                        <div className="creation-upload-status is-error" role="alert">
+                            <span>{props.uploadError}</span>
+                            <button type="button" onClick={props.onDismissUploadError} aria-label="关闭上传错误提示">
+                                <X aria-hidden="true" />
+                            </button>
+                        </div>
+                    ) : null}
+                    {showTokenPrice ? (
+                        <div className="creation-token-billing-note" role="note">
+                            <CreditSymbol aria-hidden="true" />
+                            <strong>{formattedTokenRate} 积分/百万 Token</strong>
+                            <span>提交时预授权、完成按实际 usage 多退少补</span>
+                        </div>
+                    ) : null}
+                </div>
+            ) : null}
             <footer className="creation-chat-dock">
                 <div className="creation-chat-controls creation-entry-toolbar">
                     <div className="creation-entry-group is-config" role="group" aria-label="生成配置">
-                        <ModePicker mode={props.mode} onModeChange={props.onModeChange} />
+                        <ModePicker mode={props.mode} onModeChange={props.onModeChange} disabled={interactionBusy} />
                         <ModelPicker
                             config={props.config}
                             value={props.model}
@@ -2554,10 +2666,11 @@ function CreationComposer(props: ComposerProps) {
                             placeholder={`选择${modeLabels[props.mode]}模型`}
                             showSelectedPrice
                             variant="creation"
+                            disabled={interactionBusy}
                         />
                         {props.mode === "video" ? <VideoOperationPicker value={props.videoOperationChoice} operations={props.videoOperations} onChange={props.onVideoOperationChange} disabled={interactionBusy} /> : null}
                         {props.mode === "video" || (props.mode === "image" && imageSettingsSupported) ? <GenerationSettingsMenu {...props} /> : null}
-                        {props.mode === "video" ? <DurationMenu profile={props.videoProfile} seconds={props.seconds} onChange={props.setSeconds} /> : null}
+                        {props.mode === "video" ? <DurationMenu profile={props.videoProfile} seconds={props.seconds} onChange={props.setSeconds} disabled={interactionBusy} /> : null}
                         {props.mode === "video" ? (
                             <Tooltip title={generateAudioSupported ? `点击切换为${generateAudio ? "无声音" : "有声音"}` : "当前模型不支持同步生成声音"}>
                                 <button type="button" className="creation-chat-control creation-entry-button creation-sound-toggle" aria-pressed={generateAudio} onClick={() => props.onGenerateAudioChange(!generateAudio)} disabled={interactionBusy || !generateAudioSupported}>
@@ -2583,7 +2696,7 @@ function CreationComposer(props: ComposerProps) {
                 </div>
                 <Button
                     type="text"
-                    className={`canvas-node-composer-submit ${showCost ? "has-cost" : ""}`}
+                    className={`canvas-node-composer-submit ${showCost || showTokenPrice ? "has-cost" : ""}`}
                     disabled={interactionBusy || !canSubmit}
                     style={
                         {
@@ -2596,10 +2709,10 @@ function CreationComposer(props: ComposerProps) {
                     aria-label={actionLabel}
                     title={actionLabel}
                 >
-                    {showCost ? (
+                    {showCost || showTokenPrice ? (
                         <span className="canvas-node-composer-submit-cost">
                             <CreditSymbol />
-                            <span>{formattedCredits}</span>
+                            <span>{showCost ? formattedCredits : `${formattedTokenRate}/1M`}</span>
                         </span>
                     ) : null}
                     <span className="canvas-node-composer-submit-action" aria-hidden>
@@ -2630,7 +2743,7 @@ function CreationComposer(props: ComposerProps) {
     );
 }
 
-function ModePicker({ mode, onModeChange }: { mode: CreationMode; onModeChange: (mode: CreationMode) => void }) {
+function ModePicker({ mode, onModeChange, disabled = false }: { mode: CreationMode; onModeChange: (mode: CreationMode) => void; disabled?: boolean }) {
     const [open, setOpen] = useState(false);
     const items: { mode: CreationMode; icon: ReactNode; label: string }[] = [
         { mode: "video", icon: <Film />, label: "视频生成" },
@@ -2638,10 +2751,13 @@ function ModePicker({ mode, onModeChange }: { mode: CreationMode; onModeChange: 
         { mode: "text", icon: <MessageSquareText />, label: "文本创作" },
     ];
     const current = items.find((item) => item.mode === mode) || items[0];
+    useEffect(() => {
+        if (disabled) setOpen(false);
+    }, [disabled]);
     return (
         <Popover
             open={open}
-            onOpenChange={setOpen}
+            onOpenChange={(next) => !disabled && setOpen(next)}
             trigger="click"
             placement="bottomLeft"
             arrow={false}
@@ -2668,7 +2784,7 @@ function ModePicker({ mode, onModeChange }: { mode: CreationMode; onModeChange: 
                 </div>
             }
         >
-            <button type="button" className="creation-chat-control creation-entry-button is-mode" aria-label={`生成类型：${current.label}`} aria-haspopup="listbox" aria-expanded={open}>
+            <button type="button" className="creation-chat-control creation-entry-button is-mode" aria-label={`生成类型：${current.label}`} aria-haspopup="listbox" aria-expanded={open} disabled={disabled}>
                 {current.icon}
                 <span>{current.label}</span>
                 <ChevronDown className={open ? "is-open" : ""} />
@@ -2680,6 +2796,9 @@ function ModePicker({ mode, onModeChange }: { mode: CreationMode; onModeChange: 
 function VideoOperationPicker({ value, operations, onChange, disabled }: { value: CreationVideoOperationChoice; operations: string[]; onChange: (choice: CreationVideoOperationChoice) => void; disabled?: boolean }) {
     const [open, setOpen] = useState(false);
     const current = creationVideoOperationOptions.find((option) => option.value === value) || creationVideoOperationOptions[0];
+    useEffect(() => {
+        if (disabled) setOpen(false);
+    }, [disabled]);
     return (
         <Popover
             open={open}
@@ -2729,7 +2848,11 @@ function VideoOperationPicker({ value, operations, onChange, disabled }: { value
 
 function GenerationSettingsMenu(props: ComposerProps) {
     const [open, setOpen] = useState(false);
+    const interactionBusy = props.busy || props.referenceReplacementBusy || props.uploadPendingCount > 0;
     const [customRatioOpen, setCustomRatioOpen] = useState(!ratioOptions.some((option) => option.value === props.ratio));
+    useEffect(() => {
+        if (interactionBusy) setOpen(false);
+    }, [interactionBusy]);
     const activeQualityOptions = props.imageProfile.quality.values.map((value) => qualityOptions.find((item) => item.value === value) || { value, label: value.toUpperCase(), description: "模型支持的质量/分辨率" });
     const qualityLabel = activeQualityOptions.find((item) => item.value === props.quality)?.label || qualityOptions.find((item) => item.value === props.quality)?.label || props.quality || "自动";
     // 尺寸/比例/分辨率选项取同显示名分组内全部模型的并集，路由模型只决定发送参数。
@@ -2938,14 +3061,14 @@ function GenerationSettingsMenu(props: ComposerProps) {
     return (
         <Popover
             open={open}
-            onOpenChange={setOpen}
+            onOpenChange={(next) => !interactionBusy && setOpen(next)}
             trigger="click"
             placement="bottom"
             arrow={false}
             classNames={{ root: "creation-control-popover", container: "creation-control-popover-surface creation-generation-settings-surface", content: "creation-control-popover-content" }}
             content={panel}
         >
-            <button type="button" className="creation-chat-control creation-entry-button" aria-label={`生成设置：${summary}`} aria-haspopup="dialog" aria-expanded={open}>
+            <button type="button" className="creation-chat-control creation-entry-button" aria-label={`生成设置：${summary}`} aria-haspopup="dialog" aria-expanded={open} disabled={interactionBusy}>
                 <SlidersHorizontal />
                 <span>{summary}</span>
                 <ChevronDown className={open ? "is-open" : ""} />
@@ -2966,8 +3089,11 @@ function SettingSection({ title, value, children }: { title: string; value?: str
     );
 }
 
-function DurationMenu({ profile, seconds, onChange }: { profile: VideoCapabilityConfig; seconds: string; onChange: (value: string) => void }) {
+function DurationMenu({ profile, seconds, onChange, disabled = false }: { profile: VideoCapabilityConfig; seconds: string; onChange: (value: string) => void; disabled?: boolean }) {
     const [open, setOpen] = useState(false);
+    useEffect(() => {
+        if (disabled) setOpen(false);
+    }, [disabled]);
     const value = Number(normalizeVideoValue(profile, { seconds }).seconds);
     const presets = profile.duration.selection === "enum" ? videoDurationOptions(profile) : [];
     const fallbackPreset = presets.length ? presets : [profile.duration.default];
@@ -3013,7 +3139,7 @@ function DurationMenu({ profile, seconds, onChange }: { profile: VideoCapability
     return (
         <Popover
             open={open}
-            onOpenChange={setOpen}
+            onOpenChange={(next) => !disabled && setOpen(next)}
             trigger="click"
             placement="bottom"
             arrow={false}
@@ -3028,7 +3154,7 @@ function DurationMenu({ profile, seconds, onChange }: { profile: VideoCapability
                 </div>
             }
         >
-            <button type="button" className="creation-chat-control creation-entry-button is-duration" aria-label={`视频时长：${value}秒`} aria-haspopup="dialog" aria-expanded={open}>
+            <button type="button" className="creation-chat-control creation-entry-button is-duration" aria-label={`视频时长：${value}秒`} aria-haspopup="dialog" aria-expanded={open} disabled={disabled}>
                 <Clock3 />
                 <span>{value}s</span>
                 <ChevronDown className={open ? "is-open" : ""} />

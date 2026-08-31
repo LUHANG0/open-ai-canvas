@@ -27,9 +27,10 @@ type ModelPickerProps = {
     variant?: "default" | "creation";
     requirements?: ModelRequirements;
     showConfiguredModelName?: boolean;
+    disabled?: boolean;
 };
 
-export function ModelPicker({ config, value, onChange, capability, className, popoverClassName, fullWidth = false, placeholder = "选择模型", onMissingConfig, showSelectedPrice = true, variant = "default", requirements, showConfiguredModelName = false }: ModelPickerProps) {
+export function ModelPicker({ config, value, onChange, capability, className, popoverClassName, fullWidth = false, placeholder = "选择模型", onMissingConfig, showSelectedPrice = true, variant = "default", requirements, showConfiguredModelName = false, disabled = false }: ModelPickerProps) {
     const creditsEnabled = useUserStore((state) => state.features.creditsEnabled);
     const pickerId = useId();
     // 双保险：即使 store merge 写出非法 theme，这里也兜底到 dark，避免 "reading 'node'" 崩溃
@@ -75,7 +76,11 @@ export function ModelPicker({ config, value, onChange, capability, className, po
         const observer = new ResizeObserver(updateTriggerWidth);
         observer.observe(trigger);
         return () => observer.disconnect();
-    }, [className, fullWidth, showSelectedPrice, variant, value]);
+    }, [className, disabled, fullWidth, showSelectedPrice, variant, value]);
+
+    useEffect(() => {
+        if (disabled) setOpen(false);
+    }, [disabled]);
 
     useEffect(() => {
         if (!showSelectedPrice || !creditsEnabled || !quoteRequest) {
@@ -114,6 +119,7 @@ export function ModelPicker({ config, value, onChange, capability, className, po
     }, [open]);
 
     const setPickerOpen = (nextOpen: boolean) => {
+        if (disabled) return;
         if (nextOpen && !options.length && config.channelMode === "local") onMissingConfig?.();
         if (nextOpen) window.dispatchEvent(new CustomEvent("model-picker-open", { detail: pickerId }));
         setOpen(nextOpen);
@@ -126,6 +132,7 @@ export function ModelPicker({ config, value, onChange, capability, className, po
         });
     };
     const handleTriggerKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
+        if (disabled) return;
         if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
         event.preventDefault();
         setPickerOpen(true);
@@ -239,6 +246,7 @@ export function ModelPicker({ config, value, onChange, capability, className, po
                     aria-label={placeholder}
                     title={current ? pickerModelOptionLabel(config, current, showConfiguredModelName) : placeholder}
                     onKeyDown={handleTriggerKeyDown}
+                    disabled={disabled}
                 >
                     <span className="canvas-model-picker-label flex min-w-0 items-center gap-1.5">
                         <span className="canvas-model-picker-trigger-icon" style={{ background: theme.toolbar.itemHover }}>
@@ -460,7 +468,7 @@ function tierPriceLabel(tier: NonNullable<NonNullable<AiConfig["channels"][numbe
 }
 
 function ModelPrice({ price, quote, compact = false }: { price: ModelMenuPrice | null | undefined; quote?: LogicalModelQuote; compact?: boolean }) {
-    if (quote) {
+    if (quote && quote.billingMode !== "token") {
         const amount = (quote.amountMicrocredits / 1_000_000).toLocaleString("zh-CN", { maximumFractionDigits: 3 });
         const label = quote.estimated ? `预计 ${amount}` : `${amount}`;
         return (

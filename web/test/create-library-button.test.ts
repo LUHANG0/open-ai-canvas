@@ -50,6 +50,43 @@ describe("creation library button", () => {
         expect(source).toContain("个素材已保存到素材库");
     });
 
+    test("上传期间锁定提交与创作配置，并持久展示失败状态", () => {
+        const source = compactSource(readFileSync(resolve(import.meta.dir, "../src/pages/create/index.tsx"), "utf8"));
+        const pickerSource = compactSource(readFileSync(resolve(import.meta.dir, "../src/components/model-picker.tsx"), "utf8"));
+
+        expect(source).toContain("const pendingUploadCountRef = useRef(0)");
+        expect(source).toContain("const trackUploadBatch = useCallback(async <T,>(count: number, operation: () => Promise<T>)");
+        expect(source).toContain("pendingUploadCountRef.current += count");
+        expect(source).toContain("pendingUploadCountRef.current = Math.max(0, pendingUploadCountRef.current - count)");
+        expect(source).toContain("const interactionBusy = props.busy || props.referenceReplacementBusy || props.uploadPendingCount > 0");
+        expect(source).toContain("素材仍在上传，完成后才能提交生成");
+        expect(source).toContain("上传完成前不能生成或切换配置");
+        expect(source).toContain('className="creation-upload-status is-error" role="alert"');
+        expect(source).toContain("<ModePicker mode={props.mode} onModeChange={props.onModeChange} disabled={interactionBusy} />");
+        expect(source).toContain("<DurationMenu profile={props.videoProfile} seconds={props.seconds} onChange={props.setSeconds} disabled={interactionBusy} />");
+        expect(pickerSource).toContain("disabled?: boolean");
+        expect(pickerSource).toContain("disabled={disabled}");
+    });
+
+    test("Token 计费展示当前精确档位与 usage 结算说明，不展示伪固定总价", () => {
+        const source = compactSource(readFileSync(resolve(import.meta.dir, "../src/pages/create/index.tsx"), "utf8"));
+        const pickerSource = compactSource(readFileSync(resolve(import.meta.dir, "../src/components/model-picker.tsx"), "utf8"));
+        const pricingStart = source.indexOf("const pricingRequest = {");
+        const pricingEnd = source.indexOf("const pricing = requestCreditPricing(pricingRequest);", pricingStart);
+        const pricingSource = source.slice(pricingStart, pricingEnd);
+
+        expect(pricingStart).toBeGreaterThanOrEqual(0);
+        expect(pricingEnd).toBeGreaterThan(pricingStart);
+        expect(pricingSource).toContain("capability: props.mode");
+        expect(pricingSource).toContain("config: props.config");
+        expect(pricingSource).toContain("requirements: props.modelRequirements");
+        expect(source).toContain("const credits = requestCreditCost(pricingRequest)");
+        expect(source).toContain("积分/百万 Token");
+        expect(source).toContain("提交时预授权、完成按实际 usage 多退少补");
+        expect(source).toContain("showCost ? formattedCredits : `${formattedTokenRate}/1M`");
+        expect(pickerSource).toContain('quote && quote.billingMode !== "token"');
+    });
+
     test("previews prompt reference images without removing them", () => {
         const createSource = readFileSync(resolve(import.meta.dir, "../src/pages/create/index.tsx"), "utf8");
         const canvasSource = readFileSync(resolve(import.meta.dir, "../src/components/canvas/canvas-node-prompt-panel.tsx"), "utf8");

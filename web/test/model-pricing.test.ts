@@ -1,10 +1,21 @@
 import { describe, expect, test } from "bun:test";
 
-import { modelQuoteRequest, normalizeTierResolution, priceTiersForCurrentSelection, requestCreditCost } from "../src/lib/model-pricing";
+import { modelQuoteRequest, normalizeTierResolution, priceTiersForCurrentSelection, requestCreditCost, requestCreditPricing } from "../src/lib/model-pricing";
 import type { ModelRequirements } from "../src/lib/model-selection";
 import { createModelChannel, defaultConfig, normalizeConfigSnapshot, resolveModelChannel, type AiConfig } from "../src/stores/use-config-store";
 
-function systemConfig(input: { capability?: "image" | "video"; logicalModelId?: string; tiers: Array<{ selector: Record<string, string>; billingMode: "fixed_request" | "per_second" | "token"; unitPriceMicrocredits: number }> }) {
+function systemConfig(input: {
+    capability?: "image" | "video";
+    logicalModelId?: string;
+    tiers: Array<{
+        selector: Record<string, string>;
+        billingMode: "fixed_request" | "per_second" | "token";
+        unitPriceMicrocredits: number;
+        inputTokenPriceMicrocredits?: number;
+        outputTokenPriceMicrocredits?: number;
+        cachedTokenPriceMicrocredits?: number;
+    }>;
+}) {
     const capability = input.capability || "video";
     const model = capability === "video" ? "agnes-video-2.5" : "image-model";
     const channel = createModelChannel({
@@ -27,9 +38,9 @@ function systemConfig(input: { capability?: "image" | "video"; logicalModelId?: 
                     ...tier,
                     resolution: tier.selector.vquality || "*",
                     videoSeconds: Number(tier.selector.videoSeconds || 0),
-                    inputTokenPriceMicrocredits: 0,
-                    outputTokenPriceMicrocredits: 0,
-                    cachedTokenPriceMicrocredits: 0,
+                    inputTokenPriceMicrocredits: tier.inputTokenPriceMicrocredits ?? 0,
+                    outputTokenPriceMicrocredits: tier.outputTokenPriceMicrocredits ?? 0,
+                    cachedTokenPriceMicrocredits: tier.cachedTokenPriceMicrocredits ?? 0,
                 })),
             },
         ],
@@ -103,7 +114,7 @@ describe("model request pricing", () => {
         expect(matched[0]?.unitPriceMicrocredits).toBe(30_000);
     });
 
-    test("自动双图使用全模态参考价格，显式首尾帧保留 image_to_video", () => {
+    test("视频价格按实际输入素材归类，供应商执行操作仍保留", () => {
         const config = systemConfig({
             logicalModelId: "logical-video-operations",
             tiers: [
@@ -118,7 +129,7 @@ describe("model request pricing", () => {
         };
         const tiers = resolveModelChannel(config, config.model).modelCosts![0]!.logicalPriceTiers!;
 
-        expect(priceTiersForCurrentSelection(tiers, "video", config, requirements)[0]?.unitPriceMicrocredits).toBe(45_000);
+        expect(priceTiersForCurrentSelection(tiers, "video", config, requirements)[0]?.unitPriceMicrocredits).toBe(30_000);
         expect(priceTiersForCurrentSelection(tiers, "video", config, { ...requirements, videoOperationExplicit: true })[0]?.unitPriceMicrocredits).toBe(30_000);
         expect(modelQuoteRequest(config, config.model, "video", requirements)?.intent.operation).toBe("reference_to_video");
         expect(modelQuoteRequest(config, config.model, "video", { ...requirements, videoOperationExplicit: true })?.intent.operation).toBe("image_to_video");
@@ -142,6 +153,56 @@ describe("model request pricing", () => {
                 count: 3,
             }),
         ).toBe(0.03);
+    });
+
+    test("按当前分辨率与是否含视频精确选择 Token 单价，不伪造固定总价", () => {
+        const prices = {
+            "480p": { withoutVideo: 36.8, withVideo: 22.4 },
+            "720p": { withoutVideo: 37.6, withVideo: 23.2 },
+            "1080p": { withoutVideo: 40.8, withVideo: 24.8 },
+        } as const;
+        const tiers = Object.entries(prices).flatMap(([resolution, price]) => [
+            {
+                selector: { operation: "text_to_video", vquality: resolution },
+                billingMode: "token" as const,
+                unitPriceMicrocredits: 0,
+                outputTokenPriceMicrocredits: price.withoutVideo * 1_000_000,
+            },
+            {
+                selector: { operation: "video_to_video", vquality: resolution },
+                billingMode: "token" as const,
+                unitPriceMicrocredits: 0,
+                outputTokenPriceMicrocredits: price.withVideo * 1_000_000,
+            },
+        ]);
+        const config = systemConfig({ tiers });
+        const channel = resolveModelChannel(config, config.model);
+
+        for (const [resolution, price] of Object.entries(prices)) {
+            for (const scenario of [
+                { videoCount: 0, expected: price.withoutVideo },
+                { videoCount: 1, expected: price.withVideo },
+            ]) {
+                const requirements: ModelRequirements = {
+                    ...textVideoRequirements,
+                    input: { ...textVideoRequirements.input!, videoCount: scenario.videoCount },
+                    ...(scenario.videoCount ? { videoOperation: "reference_to_video", videoOperationExplicit: true } : {}),
+                    options: { ...textVideoRequirements.options, vquality: resolution },
+                };
+                const options = {
+                    channelMode: "remote" as const,
+                    modelCosts: channel.modelCosts,
+                    model: "agnes-video-2.5",
+                    capability: "video" as const,
+                    config,
+                    requirements,
+                    seconds: "5",
+                };
+
+                expect(requestCreditPricing(options)).toMatchObject({ billingMode: "token", perMillionCredits: scenario.expected });
+                expect(requestCreditCost(options)).toBeNull();
+            }
+        }
     });
 
     test("builds a logical-model quote using the normalized current request", () => {

@@ -525,6 +525,76 @@ html:not(.dark) .creation-media-preview-modal.is-image .ant-modal-container {
     position: relative;
 }
 
+.creation-home .creation-composer-notices {
+    display: grid;
+    gap: 5px;
+    border-top: 1px solid var(--creation-border);
+    padding: 7px 14px;
+    background: color-mix(in srgb, var(--creation-surface) 96%, var(--creation-bg));
+    font-size: var(--fs-tiny);
+    line-height: 1.35;
+}
+
+.creation-home .creation-upload-status,
+.creation-home .creation-token-billing-note {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    gap: 7px;
+    color: var(--creation-muted);
+}
+
+.creation-home .creation-upload-status svg,
+.creation-home .creation-token-billing-note svg {
+    width: 14px;
+    height: 14px;
+    flex: 0 0 auto;
+}
+
+.creation-home .creation-upload-status.is-pending {
+    color: var(--creation-text);
+}
+
+.creation-home .creation-upload-status.is-error {
+    color: var(--status-error);
+}
+
+.creation-home .creation-upload-status.is-error span {
+    min-width: 0;
+    flex: 1 1 auto;
+}
+
+.creation-home .creation-upload-status.is-error button {
+    display: grid;
+    width: 22px;
+    height: 22px;
+    flex: 0 0 auto;
+    place-items: center;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: inherit;
+}
+
+.creation-home .creation-upload-status.is-error button:hover {
+    background: color-mix(in srgb, var(--status-error) 10%, transparent);
+}
+
+.creation-home .creation-token-billing-note {
+    color: var(--creation-muted);
+}
+
+.creation-home .creation-token-billing-note strong {
+    flex: 0 0 auto;
+    color: #d97706;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
+.dark .creation-home .creation-token-billing-note strong {
+    color: #fcd34d;
+}
+
 .creation-home .creation-file-drop-overlay {
     position: absolute;
     z-index: 12;
