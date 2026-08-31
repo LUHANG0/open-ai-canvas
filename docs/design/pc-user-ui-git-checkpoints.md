@@ -7,9 +7,9 @@
 | R2 | Token、主题、公共组件 | `pc-user-ui-r2-20260901` | 已建立 |
 | R3 | 用户壳层与公共框架 | `pc-user-ui-r3-20260901` | 已建立；与 R2 同一冻结点 |
 | Wave 1 | Core、Projects、Create 第一批页面 | `pc-user-ui-page-wave1-20260901` | 已建立于 `74c630c`；代码合并点 `86d10ad` |
-| R4 | 普通页面完成 | 待创建 | 进行中；Core 已完成，Settings/Plugins/Auth/状态页待完成 |
-| R5 | 复杂工作台完成 | 待创建 | 进行中；Projects/Create 已完成，Canvas 待完成 |
-| R6 | 全局清理完成、尚未集中测试 | 待创建 | 未开始 |
+| R4 | 普通页面完成 | `pc-user-ui-r4-20260901` | 已建立于 `2487057`；Core、Settings/Plugins/Eagle、Canvas 库、Auth/状态/语音页覆盖完成 |
+| R5 | 复杂工作台完成 | `pc-user-ui-r5-20260901` | 已建立于 `a46c265`；Projects、Create、Canvas 编辑器与公开分享覆盖完成 |
+| R6 | 全局清理完成、尚未集中测试 | 待创建 | 进行中；页面覆盖审计通过，正在清理全局样式与重复代码 |
 | R7 | 集中修复完成 | 待创建 | 未开始 |
 | R8 | 最终交付候选 | 待创建 | 未开始 |
 
