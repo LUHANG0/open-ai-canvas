@@ -77,11 +77,13 @@ describe("channel model price tier defaults", () => {
 
     test("expands the full video Token matrix into ten routable price tiers", () => {
         const matrix = tokenMatrix({
-            withoutVideoStandard: 11.5,
+            withoutVideo480: 10.5,
+            withoutVideo720: 11.5,
             withoutVideo1080: 12.75,
             withoutVideo2K: 14,
             withoutVideo4K: 16,
-            withVideoStandard: 7,
+            withVideo480: 6,
+            withVideo720: 7,
             withVideo1080: 7.75,
             withVideo2K: 9,
             withVideo4K: 11,
@@ -90,12 +92,12 @@ describe("channel model price tier defaults", () => {
 
         expect(tiers).toHaveLength(10);
         expect(tiers.map((tier) => [tier.operation, tier.resolution, tier.outputTokenPrice])).toEqual([
-            ["*", "480p", 11.5],
+            ["*", "480p", 10.5],
             ["*", "720p", 11.5],
             ["*", "1080p", 12.75],
             ["*", "1440p", 14],
             ["*", "2160p", 16],
-            ["video_to_video", "480p", 7],
+            ["video_to_video", "480p", 6],
             ["video_to_video", "720p", 7],
             ["video_to_video", "1080p", 7.75],
             ["video_to_video", "1440p", 9],
@@ -107,12 +109,12 @@ describe("channel model price tier defaults", () => {
     });
 
     test("only generates Token price tiers for resolutions enabled by the model capability", () => {
-        const matrix = tokenMatrix({ withoutVideoStandard: 11.5, withoutVideo1080: 12.75, withVideoStandard: 7, withVideo1080: 7.75 });
+        const matrix = tokenMatrix({ withoutVideo720: 11.5, withoutVideo1080: 12.75, withVideo720: 7, withVideo1080: 7.75 });
         const resolutions = videoTokenPriceResolutions(["720P", "1080P"]);
         const tiers = videoTokenPriceTiersFromMatrix(matrix, "seedance", undefined, resolutions);
 
         expect(resolutions).toEqual(["720p", "1080p"]);
-        expect(videoTokenPriceKeys(resolutions)).toEqual(["withoutVideoStandard", "withVideoStandard", "withoutVideo1080", "withVideo1080"]);
+        expect(videoTokenPriceKeys(resolutions)).toEqual(["withoutVideo720", "withVideo720", "withoutVideo1080", "withVideo1080"]);
         expect(tiers.map((tier) => [tier.operation, tier.resolution])).toEqual([
             ["*", "720p"],
             ["*", "1080p"],
@@ -120,6 +122,18 @@ describe("channel model price tier defaults", () => {
             ["video_to_video", "1080p"],
         ]);
         expect(videoTokenPriceMatrixFromTiers(tiers, resolutions)).toEqual(matrix);
+    });
+
+    test("keeps a newly enabled 480P price empty instead of copying the existing 720P price", () => {
+        const currentResolutions = videoTokenPriceResolutions(["720p", "1080p"]);
+        const current = tokenMatrix({ withoutVideo720: 42, withoutVideo1080: 46.2, withVideo720: 25.2, withVideo1080: 27.6 });
+        const existing = videoTokenPriceTiersFromMatrix(current, "artsdance", undefined, currentResolutions);
+        const expandedResolutions = videoTokenPriceResolutions(["480p", "720p", "1080p"]);
+        const expanded = videoTokenPriceTiersFromMatrix(videoTokenPriceMatrixFromTiers(existing, currentResolutions)!, "artsdance", undefined, expandedResolutions);
+
+        expect(videoTokenPriceMatrixFromTiers(expanded, expandedResolutions)).toEqual(current);
+        expect(expanded.filter((tier) => tier.resolution === "480p").map((tier) => tier.outputTokenPrice)).toEqual([0, 0]);
+        expect(expanded.filter((tier) => tier.resolution === "720p").map((tier) => tier.outputTokenPrice)).toEqual([42, 25.2]);
     });
 
     test("supports a two-tier 1080P-only Token matrix", () => {
@@ -149,8 +163,8 @@ describe("channel model price tier defaults", () => {
     });
 
     test("removes stale 480P tiers after capability shrink while preserving prices and original drafts", () => {
-        const matrix = tokenMatrix({ withoutVideoStandard: 36.8, withoutVideo1080: 40.8, withVideoStandard: 22.4, withVideo1080: 24.8 });
-        const original = tokenMatrix({ withoutVideoStandard: 46, withoutVideo1080: 51, withVideoStandard: 28, withVideo1080: 31 });
+        const matrix = tokenMatrix({ withoutVideo480: 35.2, withoutVideo720: 36.8, withoutVideo1080: 40.8, withVideo480: 21.6, withVideo720: 22.4, withVideo1080: 24.8 });
+        const original = tokenMatrix({ withoutVideo480: 44, withoutVideo720: 46, withoutVideo1080: 51, withVideo480: 27, withVideo720: 28, withVideo1080: 31 });
         const existing = videoTokenPriceTiersFromMatrix(matrix, "seedance", original);
         const currentResolutions = videoTokenTierResolutions(existing);
         const nextResolutions = videoTokenPriceResolutions(["720p", "1080p"]);
@@ -158,8 +172,12 @@ describe("channel model price tier defaults", () => {
 
         expect(next).toHaveLength(4);
         expect(next.some((tier) => tier.resolution === "480p")).toBe(false);
-        expect(videoTokenPriceMatrixFromTiers(next, nextResolutions)).toEqual(matrix);
-        expect(videoTokenOriginalPriceMatrixFromTiers(next, nextResolutions)).toEqual(original);
+        expect(videoTokenPriceMatrixFromTiers(next, nextResolutions)).toEqual(
+            tokenMatrix({ withoutVideo720: matrix.withoutVideo720, withoutVideo1080: matrix.withoutVideo1080, withVideo720: matrix.withVideo720, withVideo1080: matrix.withVideo1080 }),
+        );
+        expect(videoTokenOriginalPriceMatrixFromTiers(next, nextResolutions)).toEqual(
+            tokenMatrix({ withoutVideo720: original.withoutVideo720, withoutVideo1080: original.withoutVideo1080, withVideo720: original.withVideo720, withVideo1080: original.withVideo1080 }),
+        );
     });
 
     test("reports stale manual price-tier resolutions with normalized aliases", () => {
@@ -178,7 +196,7 @@ describe("channel model price tier defaults", () => {
 
         expect(expanded).toHaveLength(10);
         expect(videoTokenPriceMatrixFromTiers(expanded)).toEqual(
-            tokenMatrix({ withoutVideoStandard: 9.5, withoutVideo1080: 9.5, withoutVideo2K: 9.5, withoutVideo4K: 9.5, withVideoStandard: 9.5, withVideo1080: 9.5, withVideo2K: 9.5, withVideo4K: 9.5 }),
+            tokenMatrix({ withoutVideo480: 9.5, withoutVideo720: 9.5, withoutVideo1080: 9.5, withoutVideo2K: 9.5, withoutVideo4K: 9.5, withVideo480: 9.5, withVideo720: 9.5, withVideo1080: 9.5, withVideo2K: 9.5, withVideo4K: 9.5 }),
         );
     });
 
@@ -193,7 +211,7 @@ describe("channel model price tier defaults", () => {
     });
 
     test("converts the official Seedance matrix at upstream 8 discount and selling 8.5 discount", () => {
-        const original = tokenMatrix({ withoutVideoStandard: 46, withoutVideo1080: 51, withVideoStandard: 28, withVideo1080: 31 });
+        const original = tokenMatrix({ withoutVideo480: 44, withoutVideo720: 46, withoutVideo1080: 51, withVideo480: 27, withVideo720: 28, withVideo1080: 31 });
         const resolutions = videoTokenPriceResolutions(["480p", "720p", "1080p"]);
         const tiers = videoTokenPriceTiersFromMatrix(original, "", undefined, resolutions);
         const converted = priceTiersWithDiscountedPrices(
@@ -201,7 +219,7 @@ describe("channel model price tier defaults", () => {
             { upstreamDiscount: 8, discountIncrement: 0.5 },
         );
 
-        expect(videoTokenPriceMatrixFromTiers(converted, resolutions)).toEqual(tokenMatrix({ withoutVideoStandard: 39.1, withoutVideo1080: 43.35, withVideoStandard: 23.8, withVideo1080: 26.35 }));
+        expect(videoTokenPriceMatrixFromTiers(converted, resolutions)).toEqual(tokenMatrix({ withoutVideo480: 37.4, withoutVideo720: 39.1, withoutVideo1080: 43.35, withVideo480: 22.95, withVideo720: 23.8, withVideo1080: 26.35 }));
     });
 
     test("updates only price fields that have an original-price draft", () => {
@@ -222,8 +240,8 @@ describe("channel model price tier defaults", () => {
     });
 
     test("keeps original prices alongside the converted matrix", () => {
-        const original = tokenMatrix({ withoutVideoStandard: 42, withoutVideo1080: 46, withVideoStandard: 70, withVideo1080: 77 });
-        const converted = tokenMatrix({ withoutVideoStandard: 33.6, withoutVideo1080: 36.8, withVideoStandard: 56, withVideo1080: 61.6 });
+        const original = tokenMatrix({ withoutVideo480: 40, withoutVideo720: 42, withoutVideo1080: 46, withVideo480: 68, withVideo720: 70, withVideo1080: 77 });
+        const converted = tokenMatrix({ withoutVideo480: 32, withoutVideo720: 33.6, withoutVideo1080: 36.8, withVideo480: 54.4, withVideo720: 56, withVideo1080: 61.6 });
         const resolutions = videoTokenPriceResolutions(["480p", "720p", "1080p"]);
         const tiers = videoTokenPriceTiersFromMatrix(converted, "artsdance-2-5-pro-260801", original, resolutions);
 
@@ -232,7 +250,7 @@ describe("channel model price tier defaults", () => {
     });
 
     test("does not overwrite untouched matrix prices while original prices are entered cell by cell", () => {
-        const current = tokenMatrix({ withoutVideoStandard: 11.5, withoutVideo1080: 12.75, withVideoStandard: 7, withVideo1080: 7.75 });
+        const current = tokenMatrix({ withoutVideo480: 10.5, withoutVideo720: 11.5, withoutVideo1080: 12.75, withVideo480: 6, withVideo720: 7, withVideo1080: 7.75 });
         const sparseOriginal = tokenMatrix({ withoutVideo1080: 46 });
         const resolutions = videoTokenPriceResolutions(["480p", "720p", "1080p"]);
         const tiers = videoTokenPriceTiersFromMatrix({ ...current, withoutVideo1080: 36.8 }, "artsdance", sparseOriginal, resolutions);

@@ -27,11 +27,13 @@ export type PriceTierFormValues = {
 };
 
 export type VideoTokenPriceMatrix = {
-    withoutVideoStandard: number;
+    withoutVideo480: number;
+    withoutVideo720: number;
     withoutVideo1080: number;
     withoutVideo2K: number;
     withoutVideo4K: number;
-    withVideoStandard: number;
+    withVideo480: number;
+    withVideo720: number;
     withVideo1080: number;
     withVideo2K: number;
     withVideo4K: number;
@@ -44,7 +46,6 @@ export type PriceDiscountSettings = {
 
 const PRICE_PRECISION = 1_000_000;
 const DEFAULT_VIDEO_TOKEN_PRICE_RESOLUTIONS = ["480p", "720p", "1080p", "1440p", "2160p"] as const;
-const VIDEO_TOKEN_STANDARD_RESOLUTIONS = new Set(["480p", "720p"]);
 
 type VideoTokenPriceMatrixKey = keyof VideoTokenPriceMatrix;
 
@@ -53,7 +54,8 @@ const VIDEO_TOKEN_PRICE_GROUPS: Array<{
     withoutVideo: VideoTokenPriceMatrixKey;
     withVideo: VideoTokenPriceMatrixKey;
 }> = [
-    { resolutions: VIDEO_TOKEN_STANDARD_RESOLUTIONS, withoutVideo: "withoutVideoStandard", withVideo: "withVideoStandard" },
+    { resolutions: new Set(["480p"]), withoutVideo: "withoutVideo480", withVideo: "withVideo480" },
+    { resolutions: new Set(["720p"]), withoutVideo: "withoutVideo720", withVideo: "withVideo720" },
     { resolutions: new Set(["1080p"]), withoutVideo: "withoutVideo1080", withVideo: "withVideo1080" },
     { resolutions: new Set(["1440p"]), withoutVideo: "withoutVideo2K", withVideo: "withVideo2K" },
     { resolutions: new Set(["2160p"]), withoutVideo: "withoutVideo4K", withVideo: "withVideo4K" },
@@ -61,11 +63,13 @@ const VIDEO_TOKEN_PRICE_GROUPS: Array<{
 
 export function emptyVideoTokenPriceMatrix(): VideoTokenPriceMatrix {
     return {
-        withoutVideoStandard: 0,
+        withoutVideo480: 0,
+        withoutVideo720: 0,
         withoutVideo1080: 0,
         withoutVideo2K: 0,
         withoutVideo4K: 0,
-        withVideoStandard: 0,
+        withVideo480: 0,
+        withVideo720: 0,
         withVideo1080: 0,
         withVideo2K: 0,
         withVideo4K: 0,
@@ -213,11 +217,13 @@ export function expandSingleVideoTokenPriceTier(tiers: PriceTierFormValues[], re
     const price = Number(tiers[0].outputTokenPrice || 0);
     return videoTokenPriceTiersFromMatrix(
         {
-            withoutVideoStandard: price,
+            withoutVideo480: price,
+            withoutVideo720: price,
             withoutVideo1080: price,
             withoutVideo2K: price,
             withoutVideo4K: price,
-            withVideoStandard: price,
+            withVideo480: price,
+            withVideo720: price,
             withVideo1080: price,
             withVideo2K: price,
             withVideo4K: price,

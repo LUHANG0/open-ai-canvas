@@ -924,11 +924,9 @@ function VideoTokenPricingMatrix({
     const originalMatrix = videoTokenOriginalPriceMatrixFromTiers(value, resolutions) || emptyVideoTokenPriceMatrix();
     const providerModelKey = value.find((tier) => tier.providerModelKey)?.providerModelKey || "";
     const providerLabel = protocol === "volcengine-ark-video" ? "火山方舟" : "可美视频";
-    const standardResolutions = resolutions.filter((resolution) => resolution === "480p" || resolution === "720p");
     const resolutionPriceGroups: Array<{ label: string; withoutVideo: keyof VideoTokenPriceMatrix; withVideo: keyof VideoTokenPriceMatrix }> = [];
-    if (standardResolutions.length) {
-        resolutionPriceGroups.push({ label: standardResolutions.map(formatVideoResolutionLabel).join(" / "), withoutVideo: "withoutVideoStandard", withVideo: "withVideoStandard" });
-    }
+    if (resolutions.includes("480p")) resolutionPriceGroups.push({ label: "480P", withoutVideo: "withoutVideo480", withVideo: "withVideo480" });
+    if (resolutions.includes("720p")) resolutionPriceGroups.push({ label: "720P", withoutVideo: "withoutVideo720", withVideo: "withVideo720" });
     if (resolutions.includes("1080p")) resolutionPriceGroups.push({ label: "1080P", withoutVideo: "withoutVideo1080", withVideo: "withVideo1080" });
     if (resolutions.includes("1440p")) resolutionPriceGroups.push({ label: "2K", withoutVideo: "withoutVideo2K", withVideo: "withVideo2K" });
     if (resolutions.includes("2160p")) resolutionPriceGroups.push({ label: "4K", withoutVideo: "withoutVideo4K", withVideo: "withVideo4K" });
