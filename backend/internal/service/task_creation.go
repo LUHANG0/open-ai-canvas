@@ -1,31 +1,51 @@
 package service
 
 import (
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
+	"regexp"
 	"strings"
 
 	"infinite-canvas/backend/internal/model"
 	"infinite-canvas/backend/internal/repository"
 )
 
+var taskIdempotencyKeyPattern = regexp.MustCompile(`^[A-Za-z0-9._:-]{16,120}$`)
+
 // CreateTask 收敛任务进入系统前的 admission 流程：输入标准化、逻辑模型路由、
 // 能力/额度校验和持久化。执行阶段由 worker 与 provider 相关模块负责。
 func (s *Service) CreateTask(userID string, req CreateTaskRequest) (*model.Task, error) {
+	idempotencyKey, err := normalizeTaskIdempotencyKey(req.IdempotencyKey)
+	if err != nil {
+		return nil, err
+	}
+	prompt := strings.TrimSpace(req.Prompt)
+	taskType := strings.TrimSpace(req.Type)
+	normalizedInput, err := normalizeTaskInput(req.Input)
+	if err != nil {
+		return nil, err
+	}
+	fingerprint, err := taskCreateRequestFingerprint(req, normalizedInput)
+	if err != nil {
+		return nil, err
+	}
+	if idempotencyKey != "" {
+		if replay, found, err := s.idempotentTaskReplay(userID, idempotencyKey, fingerprint); err != nil || found {
+			return replay, err
+		}
+	}
+	// 已成功入库的合法重放已在上方返回；它不受维护模式、当前
+	// active limit 或模型后续停用影响。只有真正的新建才继续 admission。
 	if s.IsDraining() {
 		return nil, &AppError{Status: 503, Code: 503, Message: "服务正在维护，暂不接受新的生成任务", Retryable: true}
 	}
-	prompt := strings.TrimSpace(req.Prompt)
 	if prompt == "" {
-		return nil, errors.New("prompt is required")
+		return nil, BadAuthRequest("prompt is required")
 	}
-	taskType := strings.TrimSpace(req.Type)
 	if err := validateTaskType(taskType); err != nil {
-		return nil, err
-	}
-	normalizedInput, err := normalizeTaskInput(req.Input)
-	if err != nil {
 		return nil, err
 	}
 
@@ -55,9 +75,9 @@ func (s *Service) CreateTask(userID string, req CreateTaskRequest) (*model.Task,
 
 	if strings.HasPrefix(taskType, "video_") && !hasExecutableProviderVideoConfig(normalizedInput) {
 		if mode, _ := normalizedInput["mode"].(string); mode != "video" {
-			return nil, errors.New("视频任务必须使用 video 模式")
+			return nil, BadAuthRequest("视频任务必须使用 video 模式")
 		}
-		return nil, errors.New("视频任务缺少可执行的模型配置")
+		return nil, BadAuthRequest("视频任务缺少可执行的模型配置")
 	}
 	// 前端自管的文本持久化任务：直连模型生成、增量上报 text-deltas，不排入 worker 队列生成。
 	if isTextReplayTaskRequest(normalizedInput) {
@@ -76,14 +96,11 @@ func (s *Service) CreateTask(userID string, req CreateTaskRequest) (*model.Task,
 	if err != nil {
 		return nil, err
 	}
-	activeTasks, err := s.repo.ActiveTaskCountForUser(userID)
-	if err != nil {
-		return nil, err
-	}
-	if activeTasks >= int64(policy.Task.ActiveTaskLimit) {
-		return nil, BadAuthRequest(fmt.Sprintf("同时排队或运行的任务最多 %d 个，请等待已有任务完成", policy.Task.ActiveTaskLimit))
-	}
 	task := model.Task{ID: newID(), UserID: userID, TraceID: req.TraceID, RequestID: req.RequestID, SessionID: req.SessionID, ProjectID: req.ProjectID, Type: taskType, Status: model.TaskStatusQueued, Stage: "等待队列调度", Progress: 5, Prompt: prompt, Operation: req.Operation, Provider: req.Provider, Model: req.Model}
+	if idempotencyKey != "" {
+		task.IdempotencyKey = &idempotencyKey
+		task.IdempotencyFingerprint = fingerprint
+	}
 	if routed != nil {
 		task.LogicalModelID = routed.LogicalModel.ID
 		task.LogicalModelRevisionID = routed.Revision.ID
@@ -109,9 +126,22 @@ func (s *Service) CreateTask(userID string, req CreateTaskRequest) (*model.Task,
 	}
 	task.InputJSON = string(inputJSON)
 	if billingOrder != nil {
+		if idempotencyKey != "" {
+			billingOrder.IdempotencyKey = "task-request:" + idempotencyKey
+		}
 		task.BillingOrderID = billingOrder.ID
 	}
 	err = s.createTaskWithinStorageQuota(&task, billingOrder, policy)
+	if errors.Is(err, repository.ErrTaskIdempotencyConflict) {
+		replay, found, replayErr := s.idempotentTaskReplay(userID, idempotencyKey, fingerprint)
+		if replayErr != nil {
+			return nil, replayErr
+		}
+		if found {
+			return replay, nil
+		}
+		return nil, fmt.Errorf("幂等任务已被并发请求占用，但无法读取原任务")
+	}
 	if errors.Is(err, repository.ErrActiveTaskLimit) {
 		return nil, BadAuthRequest(fmt.Sprintf("同时排队或运行的任务最多 %d 个，请等待已有任务完成", policy.Task.ActiveTaskLimit))
 	}
@@ -234,7 +264,7 @@ func (s *Service) createTextReplayTask(userID string, req CreateTaskRequest, nor
 		prompt = strings.TrimSpace(fmt.Sprint(normalizedInput["prompt"]))
 	}
 	if prompt == "" {
-		return nil, errors.New("prompt is required")
+		return nil, BadAuthRequest("prompt is required")
 	}
 	taskType := strings.TrimSpace(req.Type)
 	if err := validateTaskType(taskType); err != nil {
@@ -244,6 +274,16 @@ func (s *Service) createTextReplayTask(userID string, req CreateTaskRequest, nor
 		ID: newID(), UserID: userID, TraceID: req.TraceID, RequestID: req.RequestID, SessionID: req.SessionID, ProjectID: req.ProjectID,
 		Type: taskType, Status: model.TaskStatusTextReplay, Stage: "文本持久化（前端自管）", Progress: 5,
 		Prompt: prompt, Operation: req.Operation, Provider: req.Provider, Model: strings.TrimSpace(req.Model),
+	}
+	if idempotencyKey, err := normalizeTaskIdempotencyKey(req.IdempotencyKey); err != nil {
+		return nil, err
+	} else if idempotencyKey != "" {
+		fingerprint, err := taskCreateRequestFingerprint(req, normalizedInput)
+		if err != nil {
+			return nil, err
+		}
+		task.IdempotencyKey = &idempotencyKey
+		task.IdempotencyFingerprint = fingerprint
 	}
 	if err := s.protectTaskSecrets(normalizedInput); err != nil {
 		return nil, err
@@ -255,10 +295,68 @@ func (s *Service) createTextReplayTask(userID string, req CreateTaskRequest, nor
 		return nil, err
 	}
 	if err := s.createTaskWithinStorageQuota(&task, nil, policy); err != nil {
+		if errors.Is(err, repository.ErrTaskIdempotencyConflict) && task.IdempotencyKey != nil {
+			replay, found, replayErr := s.idempotentTaskReplay(userID, *task.IdempotencyKey, task.IdempotencyFingerprint)
+			if replayErr != nil {
+				return nil, replayErr
+			}
+			if found {
+				return replay, nil
+			}
+		}
 		return nil, err
 	}
 	_ = s.log(userID, task.ID, "info", "文本持久化任务已创建（前端自管）", "")
 	return taskForOutput(task), nil
+}
+
+func normalizeTaskIdempotencyKey(raw string) (string, error) {
+	key := strings.TrimSpace(raw)
+	if key == "" {
+		return "", nil
+	}
+	if !taskIdempotencyKeyPattern.MatchString(key) {
+		return "", BadAuthRequest("幂等键必须为 16-120 位，且只能包含字母、数字、点、下划线、冒号或短横线")
+	}
+	return key, nil
+}
+
+// taskCreateRequestFingerprint 只覆盖用户请求语义，不包含 trace/request ID
+// 或路由后的实时模型配置，因此合法重放不会因模型后续停用而失效。
+func taskCreateRequestFingerprint(req CreateTaskRequest, normalizedInput map[string]any) (string, error) {
+	payload := struct {
+		SessionID      string         `json:"sessionId,omitempty"`
+		ProjectID      string         `json:"projectId,omitempty"`
+		Type           string         `json:"type,omitempty"`
+		Operation      string         `json:"operation,omitempty"`
+		Prompt         string         `json:"prompt"`
+		Provider       string         `json:"provider,omitempty"`
+		Model          string         `json:"model,omitempty"`
+		LogicalModelID string         `json:"logicalModelId,omitempty"`
+		Input          map[string]any `json:"input,omitempty"`
+	}{
+		SessionID: strings.TrimSpace(req.SessionID), ProjectID: strings.TrimSpace(req.ProjectID),
+		Type: strings.TrimSpace(req.Type), Operation: strings.TrimSpace(req.Operation), Prompt: strings.TrimSpace(req.Prompt),
+		Provider: strings.TrimSpace(req.Provider), Model: strings.TrimSpace(req.Model), LogicalModelID: strings.TrimSpace(req.LogicalModelID),
+		Input: normalizedInput,
+	}
+	encoded, err := json.Marshal(payload)
+	if err != nil {
+		return "", BadAuthRequest("任务请求格式无效")
+	}
+	digest := sha256.Sum256(encoded)
+	return fmt.Sprintf("%x", digest[:]), nil
+}
+
+func (s *Service) idempotentTaskReplay(userID string, idempotencyKey string, fingerprint string) (*model.Task, bool, error) {
+	task, found, err := s.repo.TaskByIdempotencyKey(userID, idempotencyKey)
+	if err != nil || !found {
+		return nil, found, err
+	}
+	if task.IdempotencyFingerprint == "" || task.IdempotencyFingerprint != fingerprint {
+		return nil, true, NewAppError(http.StatusConflict, "该幂等键已用于不同的任务请求，请使用新的幂等键")
+	}
+	return taskForOutput(*task), true, nil
 }
 
 // validateTaskType 是任务进入队列前的边界校验。视频任务允许携带具体操作后缀，
@@ -272,9 +370,9 @@ func validateTaskType(taskType string) error {
 		return nil
 	}
 	if taskType == "" {
-		return errors.New("task type is required")
+		return BadAuthRequest("task type is required")
 	}
-	return fmt.Errorf("不支持的任务类型：%s", taskType)
+	return BadAuthRequest(fmt.Sprintf("不支持的任务类型：%s", taskType))
 }
 
 func (s *Service) requireCustomChannelsForTaskInput(input map[string]any) error {

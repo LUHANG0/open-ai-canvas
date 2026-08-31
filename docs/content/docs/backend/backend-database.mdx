@@ -15,7 +15,13 @@ description: 影策后端核心持久化表与状态边界
 
 容器内命令 `migrate-schema up` 应用缺失迁移，`migrate-schema status` 输出当前和期望版本，`migrate-schema verify` 只检查兼容性。`CANVAS_AUTO_MIGRATE=true` 仅用于开发和旧部署兼容；受管生产部署设置为 `false`，并由 Compose 的一次性 `migrate` 服务先完成迁移。后续迁移必须新增版本，不得修改已经发布迁移的实现或校验和。
 
-当前结构版本为 3。版本 2 为 `schema_migrations.applied_at` 增加 `idx_schema_migrations_applied_at` 索引，用于验证在线更新中的顺序迁移、事务提交和版本健康检查。版本 3 增加渠道模型的定价录入元数据、价格档原价元数据和不可变配置版本。
+当前结构版本为 4。版本 2 为 `schema_migrations.applied_at` 增加 `idx_schema_migrations_applied_at` 索引，用于验证在线更新中的顺序迁移、事务提交和版本健康检查。版本 3 增加渠道模型的定价录入元数据、价格档原价元数据和不可变配置版本。版本 4 为生成任务增加用户级幂等键与请求指纹，防止提交超时、前端重试或双击造成重复任务和重复冻结积分。
+
+## 任务创建幂等
+
+`POST /api/tasks` 接受标准 `Idempotency-Key` 请求头，并兼容请求体中的 `idempotencyKey`。幂等范围为当前用户，后端以 `(user_id, idempotency_key)` 唯一约束和 SHA-256 请求指纹共同判断重放：同一用户、同一键、相同请求返回第一次创建的任务；同一键对应不同请求时返回 `409 Conflict`。不同用户可以使用相同键，未携带键的历史任务继续使用 `NULL`，不会相互冲突。
+
+任务占位、活动任务上限校验、账单预授权和积分冻结位于同一数据库事务中。并发请求只有一个能取得幂等占位；其余请求在资金写入前返回原任务，因此不会创建第二笔账单或冻结流水。前端只对网络中断和 `5xx` 使用同一键重试一次，`429` 不会立即重试。
 
 ## 技能包与版本
 
@@ -90,6 +96,17 @@ description: 影策后端核心持久化表与状态边界
 - `discount_increment_basis_points`：用户售价在上游折扣基础上增加的万分比，例如 `500` 表示增加 0.5 折。
 
 `channel_model_price_tiers` 为固定请求、输入 Token、输出 Token 和缓存 Token 分别保存 `original_unit_price_microcredits`、`original_input_token_price_microcredits`、`original_output_token_price_microcredits` 和 `original_cached_token_price_microcredits`。这些字段与最终价格使用相同的 microcredits 单位，但只保留折扣换算前的输入；计费、预授权和结算不得读取这些原价字段。
+
+## Token 结算风控与自动收口
+
+Token 订单以上游返回的真实 usage 计算 `actual_amount_microcredits`，不会为迁就用户余额而截断或改写实际用量。当实际费用高于预授权时，只有同时满足下列条件才会自动补扣：
+
+- 用户可用积分足以支付全部差额，结算后不会产生负余额。
+- 差额不超过 `CANVAS_BILLING_TOKEN_SUPPLEMENT_MAX_BPS` 指定的安全上限。该值是相对预授权金额的基点，默认 `10000` 表示“最多再补扣一倍预授权”；`0` 可完全禁止自动补扣。
+
+任一条件不满足时，订单保留真实 usage 和实际费用，状态转为 `uncertain`，原预授权继续冻结，交由管理员核对；系统不会静默生成负余额。
+
+后台每 5 分钟扫描超过 15 分钟的 `reserved` / `running` / `uncertain` 订单，每页 200 条、单轮最多 1000 条。起始页按时间片轮换，避免长期人工单永久挡住后续可自动收口的订单。只有证据完整时才自动动资金：任务成功且 Token usage 可用时幂等结算；任务失败/取消且有“请求未发上游”正向证据时幂等退款。仅仅缺少 `provider_request_id` 或调用日志不构成退款证据；HTML/非 JSON 响应、超时、连接中断等费用不明的失败仍保留人工核对。巡检日志输出 `auto_settled`、`auto_refunded`、`manual_review` 和 `failed` 计数，可直接用于运维告警。只有任务当前 `billing_order_id` 与候选订单完全一致时才允许引用任务终态；任务在重试后指向新订单或账单归属为空时，旧订单不得自动结算或退款。
 
 ### 渠道模型版本快照
 

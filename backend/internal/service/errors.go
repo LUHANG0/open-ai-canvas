@@ -67,6 +67,15 @@ func (e *ModelError) Error() string {
 	return string(e.ErrorCode)
 }
 
+// Unwrap 先暴露嵌入的 AppError，使 handler 能保留模型错误的
+// HTTP 状态和安全文案；AppError 自身仍会继续解包内部 Cause。
+func (e *ModelError) Unwrap() error {
+	if e == nil {
+		return nil
+	}
+	return e.AppError
+}
+
 // NewModelError 创建模型错误
 func NewModelError(code ModelErrorCode, message string) *ModelError {
 	return &ModelError{

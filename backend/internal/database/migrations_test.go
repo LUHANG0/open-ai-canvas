@@ -41,6 +41,30 @@ func TestMigrateSchemaRecordsAndValidatesVersion(t *testing.T) {
 			t.Fatalf("schema migration v3 did not create channel_model_price_tiers.%s", column)
 		}
 	}
+	for _, column := range []string{"idempotency_key", "idempotency_fingerprint"} {
+		if !db.Migrator().HasColumn(&model.Task{}, column) {
+			t.Fatalf("schema migration v4 did not create tasks.%s", column)
+		}
+	}
+	if !db.Migrator().HasIndex(&model.Task{}, "idx_tasks_user_idempotency") {
+		t.Fatal("schema migration v4 did not create the task idempotency index")
+	}
+	// 旧任务不回填伪键；可空列必须允许同一用户有多条历史数据。
+	for _, task := range []model.Task{{ID: "legacy-task-1", UserID: "legacy-user"}, {ID: "legacy-task-2", UserID: "legacy-user"}} {
+		if err := db.Create(&task).Error; err != nil {
+			t.Fatalf("nullable idempotency key rejected legacy task: %v", err)
+		}
+	}
+	key := "migration-idempotency-key-0001"
+	if err := db.Create(&model.Task{ID: "keyed-task-1", UserID: "keyed-user", IdempotencyKey: &key}).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Create(&model.Task{ID: "keyed-task-2", UserID: "keyed-user", IdempotencyKey: &key}).Error; err == nil {
+		t.Fatal("task idempotency unique index accepted a duplicate user/key pair")
+	}
+	if err := db.Create(&model.Task{ID: "keyed-task-other-user", UserID: "other-user", IdempotencyKey: &key}).Error; err != nil {
+		t.Fatalf("task idempotency key leaked across users: %v", err)
+	}
 	if err := MigrateSchema(db); err != nil {
 		t.Fatalf("migration should be idempotent: %v", err)
 	}

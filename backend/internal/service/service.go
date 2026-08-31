@@ -74,6 +74,7 @@ type CreateSessionRequest struct {
 }
 
 type CreateTaskRequest struct {
+	IdempotencyKey string         `json:"idempotencyKey,omitempty"`
 	SessionID      string         `json:"sessionId"`
 	ProjectID      string         `json:"projectId"`
 	Type           string         `json:"type"`

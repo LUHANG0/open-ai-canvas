@@ -3,8 +3,12 @@ package model
 import "time"
 
 type Task struct {
-	ID                     string     `json:"id" gorm:"primaryKey;size:36"`
-	UserID                 string     `json:"userId" gorm:"index;size:36;index:idx_tasks_user_created,priority:1;index:idx_tasks_user_project_created,priority:1"`
+	ID     string `json:"id" gorm:"primaryKey;size:36"`
+	UserID string `json:"userId" gorm:"index;size:36;index:idx_tasks_user_created,priority:1;index:idx_tasks_user_project_created,priority:1;uniqueIndex:idx_tasks_user_idempotency,priority:1"`
+	// IdempotencyKey 为 nil 表示迁移前任务或非幂等的内部写入。SQLite 和
+	// PostgreSQL 的唯一索引都允许多个 NULL，不会让历史任务相互冲突。
+	IdempotencyKey         *string    `json:"-" gorm:"size:120;uniqueIndex:idx_tasks_user_idempotency,priority:2"`
+	IdempotencyFingerprint string     `json:"-" gorm:"size:64"`
 	TraceID                string     `json:"-" gorm:"index;size:96"`
 	RequestID              string     `json:"-" gorm:"index;size:96"`
 	SessionID              string     `json:"sessionId" gorm:"index;size:36"`

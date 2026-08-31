@@ -2,11 +2,22 @@ package main
 
 import (
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/gin-gonic/gin"
 )
+
+func TestCORSAllowsStandardTaskIdempotencyHeader(t *testing.T) {
+	headers := strings.Split(corsAllowedHeaders, ", ")
+	for _, header := range headers {
+		if header == "Idempotency-Key" {
+			return
+		}
+	}
+	t.Fatal("CORS allow-list is missing Idempotency-Key")
+}
 
 func TestAllowedOriginWildcard(t *testing.T) {
 	t.Setenv("CANVAS_CORS_ORIGINS", "*")

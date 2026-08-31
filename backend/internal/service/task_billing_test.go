@@ -81,10 +81,16 @@ func TestTaskBillingCoordinatorRetryEligibility(t *testing.T) {
 		wantReview bool
 	}{
 		{name: "empty order", wantErr: false},
-		{name: "running order", orderID: "order-1", order: &model.BillingOrder{Status: model.BillingStatusRunning}, wantErr: false},
-		{name: "settled order", orderID: "order-1", order: &model.BillingOrder{Status: model.BillingStatusSettled}, wantErr: false},
-		{name: "refunded order", orderID: "order-1", order: &model.BillingOrder{Status: model.BillingStatusRefunded}, wantErr: false},
-		{name: "uncertain order", orderID: "order-1", order: &model.BillingOrder{Status: model.BillingStatusUncertain}, wantErr: true, wantReview: true},
+		{name: "paid reserved order", orderID: "order-1", order: &model.BillingOrder{Status: model.BillingStatusReserved, AmountMicrocredits: 1}, wantErr: true, wantReview: true},
+		{name: "paid running order", orderID: "order-1", order: &model.BillingOrder{Status: model.BillingStatusRunning, AmountMicrocredits: 1}, wantErr: true, wantReview: true},
+		{name: "paid settled order", orderID: "order-1", order: &model.BillingOrder{Status: model.BillingStatusSettled, ActualAmountMicrocredits: 1}, wantErr: true, wantReview: true},
+		{name: "paid uncertain order", orderID: "order-1", order: &model.BillingOrder{Status: model.BillingStatusUncertain, ReservedAmountMicrocredits: 1}, wantErr: true, wantReview: true},
+		{name: "paid refunded order", orderID: "order-1", order: &model.BillingOrder{Status: model.BillingStatusRefunded, RefundedAmountMicrocredits: 1, AmountMicrocredits: 1}, wantErr: false},
+		{name: "free reserved order preserves old behavior", orderID: "order-1", order: &model.BillingOrder{Status: model.BillingStatusReserved}, wantErr: false},
+		{name: "free running order preserves old behavior", orderID: "order-1", order: &model.BillingOrder{Status: model.BillingStatusRunning}, wantErr: false},
+		{name: "free settled order preserves old behavior", orderID: "order-1", order: &model.BillingOrder{Status: model.BillingStatusSettled}, wantErr: false},
+		{name: "free uncertain order preserves old review block", orderID: "order-1", order: &model.BillingOrder{Status: model.BillingStatusUncertain}, wantErr: true, wantReview: true},
+		{name: "free refunded order", orderID: "order-1", order: &model.BillingOrder{Status: model.BillingStatusRefunded}, wantErr: false},
 		{name: "missing order", orderID: "order-1", wantErr: true, wantReview: false},
 		{name: "lookup failure", orderID: "order-1", orderErr: errors.New("database unavailable"), wantErr: true, wantReview: false},
 	}

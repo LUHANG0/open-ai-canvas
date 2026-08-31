@@ -31,6 +31,18 @@ func TestFailServiceProjectsAppError(t *testing.T) {
 	}
 }
 
+func TestFailServiceProjectsModelErrorAsBadRequest(t *testing.T) {
+	recorder, context := responseTestContext()
+	err := service.NewModelError(service.ErrCodeModelPriceNotConfigured, "当前模型未配置该规格价格")
+
+	failService(context, err)
+
+	response := decodeFailureEnvelope(t, recorder)
+	if recorder.Code != http.StatusBadRequest || response.Code != http.StatusBadRequest || response.Msg != err.Message {
+		t.Fatalf("response = status %d, body %#v", recorder.Code, response)
+	}
+}
+
 func TestFailServiceHidesUnclassifiedInternalError(t *testing.T) {
 	recorder, context := responseTestContext()
 	failService(context, errors.New("database password=secret"))

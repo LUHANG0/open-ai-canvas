@@ -1,5 +1,5 @@
 import { DREAMINA_SUBMIT_ERROR_MESSAGES, generationErrorMessage } from "@/lib/generation-error";
-import { apiBaseURL, apiClient, request, type BackendEnvelope } from "@/services/api/request";
+import { ApiError, apiBaseURL, apiClient, request, type BackendEnvelope } from "@/services/api/request";
 import { consumeTaskTextStream, createTaskTextStreamParser, type TaskTextStreamEvent } from "@/services/api/task-text-stream";
 import { recordDiagnosticEvent } from "@/services/diagnostics/client-diagnostics";
 import {
@@ -182,6 +182,7 @@ export type CreateSessionInput = {
 };
 
 export type CreateTaskInput = {
+	idempotencyKey?: string;
     sessionId?: string;
     projectId?: string;
     type?: string;
@@ -229,14 +230,26 @@ export function uploadAgentFile(sessionId: string, file: File) {
     return request<SessionFile>(api.post("/files", formData));
 }
 
-export function createGenerationTask(input: CreateTaskInput) {
-    return request<GenerationTask>(api.post("/tasks", input)).then((task) => {
-        recordDiagnosticEvent({ level: "info", category: "task", message: "任务已创建", taskId: task.id, projectId: task.projectId });
-        notifyCanvasTaskCreated(task);
-        // 创建任务时积分已被预占，不能等任务结束后才刷新可用余额。
-        window.dispatchEvent(new CustomEvent("wallet:updated"));
-        return task;
-    });
+export async function createGenerationTask(input: CreateTaskInput) {
+    const { idempotencyKey: requestedIdempotencyKey, ...payload } = input;
+    // 键在一次逻辑提交内只生成一次：即使首次请求已入库但响应丢失，
+    // 同一调用的传输层重试仍会携带相同 Idempotency-Key。
+    const idempotencyKey = requestedIdempotencyKey?.trim() || crypto.randomUUID();
+    const submit = () => request<GenerationTask>(api.post("/tasks", payload, { headers: { "Idempotency-Key": idempotencyKey } }));
+    let task: GenerationTask;
+    try {
+        task = await submit();
+    } catch (error) {
+        // 只对可能出现“后端已提交、客户端未收到响应”的传输/5xx 失败重试一次。
+        // 429 不立即重放，避免在限流窗口内加重请求。
+        if (!(error instanceof ApiError) || error.status === 429 || (!error.retryable && error.status !== undefined)) throw error;
+        task = await submit();
+    }
+    recordDiagnosticEvent({ level: "info", category: "task", message: "任务已创建", taskId: task.id, projectId: task.projectId });
+    notifyCanvasTaskCreated(task);
+    // 创建任务时积分已被预占，不能等任务结束后才刷新可用余额。
+    window.dispatchEvent(new CustomEvent("wallet:updated"));
+    return task;
 }
 
 export type GenerationTaskPageRequest = {

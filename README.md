@@ -216,6 +216,7 @@ sudo docker compose --env-file .env -f docker-compose.deploy.yml up -d --force-r
 
 - 画布、项目、任务和素材登录后同步到后端；浏览器 `localForage` 仍承担缓存和后端不可用时的降级存储。
 - 本地默认使用 SQLite；部署 Compose 使用 PostgreSQL 和 Redis。多实例 PostgreSQL 模式需要 `REDIS_URL` 用于限流、并发和熔断协调。
+- 生产环境用 `CANVAS_BILLING_TOKEN_SUPPLEMENT_MAX_BPS` 限制 Token 实际费用超出预授权时的自动补扣，默认 `10000`（差额最多等于原预授权）；余额不足或越过上限会保留真实 usage 并转人工核对，不会自动产生负余额。
 - 媒体资源可使用后端数据目录、阿里云 OSS 或腾讯云 COS。资源长期引用使用 `resource:<id>`，删除素材前会检查业务引用。
 - 用户 API Key 不应出现在 URL、日志、错误上报或服务端长期明文存储中；使用真实 Key 前确认部署可信且链路为 HTTPS。
 - 自定义渠道经后端 `/api/ai/custom` 中转；默认 SSRF 防护拒绝本机和私网目标，可信开发主机必须显式白名单。

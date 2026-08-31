@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"infinite-canvas/backend/internal/service"
@@ -43,11 +44,20 @@ func RegisterTaskRoutes(r *gin.RouterGroup, svc *service.Service) {
 			fail(c, http.StatusBadRequest, err)
 			return
 		}
+		headerIdempotencyKey := strings.TrimSpace(c.GetHeader("Idempotency-Key"))
+		bodyIdempotencyKey := strings.TrimSpace(req.IdempotencyKey)
+		if headerIdempotencyKey != "" && bodyIdempotencyKey != "" && headerIdempotencyKey != bodyIdempotencyKey {
+			fail(c, http.StatusBadRequest, errors.New("请求头与请求体的幂等键不一致"))
+			return
+		}
+		if headerIdempotencyKey != "" {
+			req.IdempotencyKey = headerIdempotencyKey
+		}
 		req.TraceID = TraceID(c)
 		req.RequestID = RequestID(c)
 		task, err := svc.CreateTask(user.ID, req)
 		if err != nil {
-			fail(c, http.StatusBadRequest, err)
+			failService(c, err)
 			return
 		}
 		ok(c, task)

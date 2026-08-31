@@ -4,6 +4,8 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
+	"fmt"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -19,8 +21,11 @@ var (
 	ErrRedeemCodeInvalid           = errors.New("redeem code invalid")
 	ErrActiveTaskLimit             = errors.New("active task limit reached")
 	ErrTaskNotRetryable            = errors.New("task is not retryable")
+	ErrTaskIdempotencyConflict     = errors.New("task idempotency key already exists")
 	ErrBillingStateConflict        = errors.New("billing state conflict")
 	ErrBillingUsageUnavailable     = errors.New("billing usage unavailable")
+	ErrBillingSupplementLimit      = errors.New("billing token supplement exceeds safety limit")
+	ErrBillingSupplementBalance    = errors.New("insufficient available credits for token supplement")
 	ErrChannelModelInUse           = errors.New("channel model is in use")
 	ErrChannelModelVersionConflict = errors.New("channel model version conflict")
 )
@@ -346,29 +351,54 @@ func (r *Repository) CreditLedgerReferenceExists(referenceKey string) (bool, err
 
 func (r *Repository) CreateTaskWithCreditReservation(task *model.Task, order *model.BillingOrder, activeTaskLimit int) error {
 	return r.db.Transaction(func(tx *gorm.DB) error {
+		// 先用任务唯一键抢占本次提交。并发重放在任何当前模型/队列
+		// admission 之前就返回幂等冲突，且尚未冻结积分。
+		if err := createTaskIdempotencyClaim(tx, task); err != nil {
+			return err
+		}
 		if err := r.requireActiveLogicalModelForTask(tx, task); err != nil {
 			return err
 		}
-		if err := enforceActiveTaskLimit(tx, task.UserID, activeTaskLimit); err != nil {
+		if err := enforceActiveTaskLimitExcluding(tx, task.UserID, task.ID, activeTaskLimit); err != nil {
 			return err
 		}
 		if err := reserveBillingOrder(tx, order); err != nil {
 			return err
 		}
-		return tx.Create(task).Error
+		return nil
 	})
 }
 
 func (r *Repository) CreateTaskWithActiveLimit(task *model.Task, activeTaskLimit int) error {
 	return r.db.Transaction(func(tx *gorm.DB) error {
+		if err := createTaskIdempotencyClaim(tx, task); err != nil {
+			return err
+		}
 		if err := r.requireActiveLogicalModelForTask(tx, task); err != nil {
 			return err
 		}
-		if err := enforceActiveTaskLimit(tx, task.UserID, activeTaskLimit); err != nil {
+		if err := enforceActiveTaskLimitExcluding(tx, task.UserID, task.ID, activeTaskLimit); err != nil {
 			return err
 		}
-		return tx.Create(task).Error
+		return nil
 	})
+}
+
+func createTaskIdempotencyClaim(tx *gorm.DB, task *model.Task) error {
+	if task.IdempotencyKey == nil {
+		return tx.Create(task).Error
+	}
+	created := tx.Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "user_id"}, {Name: "idempotency_key"}},
+		DoNothing: true,
+	}).Create(task)
+	if created.Error != nil {
+		return created.Error
+	}
+	if created.RowsAffected != 1 {
+		return ErrTaskIdempotencyConflict
+	}
+	return nil
 }
 
 func (r *Repository) RetryTaskWithBilling(userID string, prepared *model.Task, order *model.BillingOrder, activeTaskLimit int) (*model.Task, error) {
@@ -419,8 +449,18 @@ func (r *Repository) RetryTaskWithBilling(userID string, prepared *model.Task, o
 }
 
 func enforceActiveTaskLimit(tx *gorm.DB, userID string, activeTaskLimit int) error {
+	return enforceActiveTaskLimitExcluding(tx, userID, "", activeTaskLimit)
+}
+
+// 任务在本事务中已用幂等键占位，队列核算必须排除它自身。
+// 如果后续 admission 失败，整个事务（包括占位任务）都会回滚。
+func enforceActiveTaskLimitExcluding(tx *gorm.DB, userID string, excludedTaskID string, activeTaskLimit int) error {
 	var count int64
-	if err := tx.Model(&model.Task{}).Where("user_id = ? AND status IN ?", userID, []model.TaskStatus{model.TaskStatusQueued, model.TaskStatusRunning}).Count(&count).Error; err != nil {
+	query := tx.Model(&model.Task{}).Where("user_id = ? AND status IN ?", userID, []model.TaskStatus{model.TaskStatusQueued, model.TaskStatusRunning})
+	if excludedTaskID != "" {
+		query = query.Where("id <> ?", excludedTaskID)
+	}
+	if err := query.Count(&count).Error; err != nil {
 		return err
 	}
 	if count >= int64(activeTaskLimit) {
@@ -620,9 +660,10 @@ func (r *Repository) MarkBillingRunning(id string) error {
 }
 
 func (r *Repository) MarkBillingUncertain(id string, errorText string) error {
-	// uncertain 保留冻结积分，直到人工核对；这里故意不自动结算或退款。
+	// uncertain 保留冻结积分，直到人工核对；已经处于 uncertain 时允许
+	// 更新最新的风控/自动恢复失败原因，但不释放冻结或修改实际 usage。
 	return r.db.Model(&model.BillingOrder{}).
-		Where("id = ? AND status IN ?", id, []model.BillingStatus{model.BillingStatusReserved, model.BillingStatusRunning}).
+		Where("id = ? AND status IN ?", id, []model.BillingStatus{model.BillingStatusReserved, model.BillingStatusRunning, model.BillingStatusUncertain}).
 		Updates(map[string]any{"status": model.BillingStatusUncertain, "error": errorText, "updated_at": time.Now()}).Error
 }
 
@@ -632,7 +673,7 @@ func (r *Repository) SettleBillingOrder(id string, providerRequestID string) err
 	observedActualAvailable := false
 	err := r.db.Transaction(func(tx *gorm.DB) error {
 		var order model.BillingOrder
-		if err := tx.First(&order, "id = ?", id).Error; err != nil {
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&order, "id = ?", id).Error; err != nil {
 			return err
 		}
 		if order.Status == model.BillingStatusSettled {
@@ -659,8 +700,13 @@ func (r *Repository) SettleBillingOrder(id string, providerRequestID string) err
 			observedActualAvailable = true
 			refund := max(reserved-actual, int64(0))
 			supplement := max(actual-reserved, int64(0))
+			maxSupplement := tokenSupplementLimit(reserved)
+			if supplement > maxSupplement {
+				return fmt.Errorf("%w: actual=%d reserved=%d supplement=%d limit=%d",
+					ErrBillingSupplementLimit, actual, reserved, supplement, maxSupplement)
+			}
 			updated := tx.Model(&model.CreditAccount{}).
-				Where("user_id = ? AND reserved_microcredits >= ?", order.UserID, reserved).
+				Where("user_id = ? AND reserved_microcredits >= ? AND available_microcredits >= ?", order.UserID, reserved, supplement).
 				Updates(map[string]any{
 					"available_microcredits": gorm.Expr("available_microcredits + ?", refund-supplement),
 					"reserved_microcredits":  gorm.Expr("reserved_microcredits - ?", reserved),
@@ -670,6 +716,13 @@ func (r *Repository) SettleBillingOrder(id string, providerRequestID string) err
 				return updated.Error
 			}
 			if updated.RowsAffected != 1 {
+				var account model.CreditAccount
+				if accountErr := tx.First(&account, "user_id = ?", order.UserID).Error; accountErr != nil {
+					return accountErr
+				}
+				if account.ReservedMicrocredits >= reserved && account.AvailableMicrocredits < supplement {
+					return fmt.Errorf("%w: available=%d supplement=%d", ErrBillingSupplementBalance, account.AvailableMicrocredits, supplement)
+				}
 				return errors.New("reserved credit balance is inconsistent")
 			}
 			var account model.CreditAccount
@@ -759,6 +812,12 @@ func (r *Repository) SettleBillingOrder(id string, providerRequestID string) err
 		if providerRequestID != "" {
 			updates["provider_request_id"] = providerRequestID
 		}
+		if errors.Is(err, ErrBillingSupplementLimit) || errors.Is(err, ErrBillingSupplementBalance) {
+			// 不将 actual 截断成预授权或余额；保留完整用量和实际费用，
+			// 订单转待核对并继续冻结原预授权，防止静默产生负余额。
+			updates["status"] = model.BillingStatusUncertain
+			updates["error"] = err.Error()
+		}
 		usageErr := r.db.Model(&model.BillingOrder{}).
 			Where("id = ? AND status NOT IN ?", id, []model.BillingStatus{model.BillingStatusSettled, model.BillingStatusRefunded}).
 			Updates(updates).Error
@@ -779,7 +838,7 @@ func zeroPricedTokenOrder(order model.BillingOrder) bool {
 func (r *Repository) RefundBillingOrder(id string, errorText string) error {
 	return r.db.Transaction(func(tx *gorm.DB) error {
 		var order model.BillingOrder
-		if err := tx.First(&order, "id = ?", id).Error; err != nil {
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&order, "id = ?", id).Error; err != nil {
 			return err
 		}
 		if order.Status == model.BillingStatusRefunded {
@@ -827,6 +886,30 @@ func (r *Repository) RefundBillingOrder(id string, errorText string) error {
 			Note:                       errorText,
 		}).Error
 	})
+}
+
+const (
+	defaultTokenSupplementLimitBasisPoints int64 = 10_000 // 最多再补扣一倍预授权
+	maxTokenSupplementLimitBasisPoints     int64 = 100_000
+)
+
+// tokenSupplementLimit 是“补扣金额”上限，而不是对上游 actual usage 的修改。
+// 环境变量使运维可根据业务预授权精度调整，值为相对预授权的基点：
+// CANVAS_BILLING_TOKEN_SUPPLEMENT_MAX_BPS=10000 表示补扣最多等于原预授权。
+func tokenSupplementLimit(reserved int64) int64 {
+	if reserved <= 0 {
+		return 0
+	}
+	basisPoints := defaultTokenSupplementLimitBasisPoints
+	if raw := strings.TrimSpace(os.Getenv("CANVAS_BILLING_TOKEN_SUPPLEMENT_MAX_BPS")); raw != "" {
+		if parsed, err := strconv.ParseInt(raw, 10, 64); err == nil {
+			basisPoints = min(max(parsed, int64(0)), maxTokenSupplementLimitBasisPoints)
+		}
+	}
+	if basisPoints > 0 && reserved > (1<<63-1)/basisPoints {
+		return 1<<63 - 1
+	}
+	return reserved * basisPoints / 10_000
 }
 
 func tokenUsageAmount(order model.BillingOrder, usage *BillingUsage) (int64, error) {

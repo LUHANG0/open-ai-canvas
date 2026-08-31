@@ -36,8 +36,8 @@ test("task-center forwards explicit task/session provider config without inferri
 
     const bodies = [];
     const originalPost = requestModule.apiClient.post;
-    requestModule.apiClient.post = async (url, body) => {
-        bodies.push({ url, body });
+    requestModule.apiClient.post = async (url, body, config) => {
+        bodies.push({ url, body, config });
         if (url === "/sessions") {
             return { data: { code: 0, data: { session: { id: "session", status: "active", prompt: "p", createdAt: "now", updatedAt: "now" }, messages: [], tasks: [], results: [] }, msg: "ok" } };
         }
@@ -68,4 +68,29 @@ test("task-center forwards explicit task/session provider config without inferri
     assert.equal(bodies[0]?.body?.config?.allowLocalChannel, false);
     assert.equal(bodies[1]?.url, "/tasks");
     assert.equal(bodies[1]?.body?.input?.config?.allowLocalChannel, false);
+    assert.match(bodies[1]?.config?.headers?.["Idempotency-Key"], /^[0-9a-f-]{36}$/i);
+    assert.equal(bodies[1]?.body?.idempotencyKey, undefined);
+});
+
+test("task-center reuses one explicit idempotency key when a transport failure is retried", async () => {
+    const taskCenter = await import("../src/services/api/task-center");
+    const requestModule = await import("../src/services/api/request");
+    const previousWindow = globalThis.window;
+    globalThis.window = { location: { pathname: "/create" }, dispatchEvent() {} };
+    const calls = [];
+    const originalPost = requestModule.apiClient.post;
+    requestModule.apiClient.post = async (url, body, config) => {
+        calls.push({ url, body, config });
+        if (calls.length === 1) throw new requestModule.ApiError("response lost", { retryable: true });
+        return { data: { code: 0, data: { id: "task-idempotent", type: "canvas_video", status: "queued", prompt: "p", attempts: 0, createdAt: "now", updatedAt: "now" }, msg: "ok" } };
+    };
+    try {
+        await taskCenter.createGenerationTask({ idempotencyKey: "client-operation-key-0001", prompt: "p", type: "canvas_video" });
+    } finally {
+        requestModule.apiClient.post = originalPost;
+        globalThis.window = previousWindow;
+    }
+    assert.equal(calls.length, 2);
+    assert.deepEqual(calls.map((call) => call.config?.headers?.["Idempotency-Key"]), ["client-operation-key-0001", "client-operation-key-0001"]);
+    assert.equal(calls[0]?.body?.idempotencyKey, undefined);
 });

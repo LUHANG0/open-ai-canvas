@@ -121,7 +121,7 @@ export async function runBackendGenerationTask(
     }
     const prepared = await prepareGenerationReferences({ referenceImages, referenceVideos, referenceAudios, mask });
     throwIfAborted(signal);
-    return createAndWaitGenerationTask({ projectId, mode, prompt, config, referenceImages, referenceVideos, referenceAudios, textHistory, signal, metadata, onTaskUpdate }, prepared, dependencies);
+    return createAndWaitGenerationTask({ projectId, mode, prompt, config, referenceImages, referenceVideos, referenceAudios, textHistory, signal, metadata, onTaskUpdate, clientOperationId, retryOf, attemptGroupId }, prepared, dependencies);
 }
 
 // 分镜等后台生产流程只需要可靠提交任务；任务状态与产物由项目工作区轮询和
@@ -203,16 +203,20 @@ export async function runBackendGenerationTaskBatch(options: BackendGenerationTa
     const prepared = await prepareGenerationReferences(options);
     throwIfAborted(options.signal);
     return Promise.allSettled(
-        Array.from({ length: count }, (_, batchIndex) =>
-            createAndWaitGenerationTask(
+        Array.from({ length: count }, (_, batchIndex) => {
+            const retryContext = options.retryContextsByBatchIndex?.[batchIndex];
+            return createAndWaitGenerationTask(
                 {
                     ...options,
                     metadata: { ...options.metadata, batchIndex, batchCount: count },
+                    clientOperationId: retryContext?.clientOperationId ?? (options.clientOperationId ? `${options.clientOperationId}:${batchIndex + 1}` : undefined),
+                    retryOf: retryContext?.retryOf ?? options.retryOf,
+                    attemptGroupId: retryContext?.attemptGroupId ?? options.attemptGroupId,
                 },
                 prepared,
                 dependencies,
-            ),
-        ),
+            );
+        }),
     );
 }
 
@@ -426,7 +430,11 @@ async function createBackendGenerationTask(options: BackendGenerationTaskOptions
     const videoOperation = generationOperation(options);
     const workflow = resolveGenerationWorkflowExecution(config, mode);
     const logicalModelId = workflow ? "" : logicalModelIDForConfig(config);
+    // clientOperationId 是用户可见操作的稳定身份；失败任务的主动重试会生成新的
+    // operation ID，而同一操作的网络重放会复用它。没有上层 ID 时每次新建一个。
+    const idempotencyKey = options.clientOperationId?.trim() || dependencies.createId();
     const task = await dependencies.createTask({
+		idempotencyKey,
         ...(projectId ? { projectId } : {}),
         type: `canvas_${mode}`,
         operation: mode === "video" ? videoOperation : mode,

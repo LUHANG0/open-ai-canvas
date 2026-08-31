@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
 
 import { defaultConfig } from "../src/stores/use-config-store";
-import { runBackendGenerationTask, runBackendGenerationTaskBatch } from "../src/services/api/generation-task";
+import { runBackendGenerationTask, runBackendGenerationTaskBatch, submitBackendGenerationTask, type GenerationTaskDependencies } from "../src/services/api/generation-task";
 import { deleteGenerationTask, formatTaskLog, listGenerationTasks, projectBackendSafeTaskLog, splitGenerationTaskObservationIds, type GenerationTask } from "../src/services/api/task-center";
 import { isLocalDreaminaBackgroundTask, localDreaminaCancellationCopy, localDreaminaDetachOutcome, projectLocalDreaminaTask } from "../src/services/local-dreamina-task-projection";
 import { LocalDreaminaGenerationClientError, runLocalDreaminaGenerationTask, type LocalDreaminaGenerationInput } from "../src/services/local-dreamina-generation";
@@ -23,6 +23,41 @@ function sourceSection(source: string, startMarker: string, endMarker: string) {
     expect(end).toBeGreaterThan(start);
     return compactSource(source.slice(start, end));
 }
+
+test("backend generation submission reuses client operation id as its task idempotency key", async () => {
+    const submittedInputs: Array<{ idempotencyKey?: string }> = [];
+    const task = {
+        id: "backend-idempotency-task",
+        type: "canvas_video",
+        status: "queued",
+        prompt: "fixture",
+        attempts: 0,
+        createdAt: "2026-09-01T00:00:00.000Z",
+        updatedAt: "2026-09-01T00:00:00.000Z",
+    } satisfies GenerationTask;
+    const dependencies: GenerationTaskDependencies = {
+        createTask: async (input) => {
+            submittedInputs.push(input);
+            return task;
+        },
+        waitTask: async () => {
+            throw new Error("background submission must not wait");
+        },
+        runLocal: async () => ({ mode: "video" }),
+        createId: () => "generated-task-key-0001",
+        now: () => "2026-09-01T00:00:00.000Z",
+    };
+    const options = {
+        mode: "video" as const,
+        prompt: "fixture",
+        config: { ...defaultConfig, model: "MiniMax-H3", videoModel: "MiniMax-H3" },
+        metadata: { videoEditOperation: "text_to_video" },
+        clientOperationId: "client-operation-key-0001",
+    };
+    await submitBackendGenerationTask(options, dependencies);
+    await submitBackendGenerationTask(options, dependencies);
+    expect(submittedInputs.map((input) => input.idempotencyKey)).toEqual(["client-operation-key-0001", "client-operation-key-0001"]);
+});
 
 test("Dreamina submit failure categories have bounded user-facing messages", () => {
     const cases = [
@@ -1407,7 +1442,8 @@ test("remote image video and audio references keep Backend parity without Dreami
     expect(backendInputs.map((input) => input.operation)).toEqual(cases.map((item) => item.operation));
     for (const input of backendInputs) {
         const serialized = JSON.stringify(input);
-        expect(serialized).not.toMatch(/dreamina|frames2video|multimodal2video|clientOperationId|idempotencyKey|contentBase64/);
+        expect(serialized).not.toMatch(/dreamina|frames2video|multimodal2video|clientOperationId|contentBase64/);
+		expect(input.idempotencyKey).toBe("unused-remote-parity-id");
     }
 });
 

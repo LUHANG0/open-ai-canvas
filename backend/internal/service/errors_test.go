@@ -29,3 +29,11 @@ func TestAuthErrorAliasRemainsCompatible(t *testing.T) {
 		t.Fatalf("AuthError compatibility = %#v", err)
 	}
 }
+
+func TestModelErrorExposesAppErrorProjection(t *testing.T) {
+	err := NewModelError(ErrCodeModelPriceNotConfigured, "当前模型未配置该规格价格")
+	var appErr *AppError
+	if !errors.As(err, &appErr) || appErr.Status != 400 || appErr.Message != err.Message {
+		t.Fatalf("ModelError AppError projection = %#v", err)
+	}
+}

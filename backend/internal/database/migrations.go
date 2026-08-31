@@ -10,11 +10,12 @@ import (
 	"gorm.io/gorm"
 )
 
-const CurrentSchemaVersion int64 = 3
+const CurrentSchemaVersion int64 = 4
 
 const baselineSchemaChecksum = "sha256:open-ai-canvas-schema-v1-20260830"
 const schemaMigrationAppliedAtIndexChecksum = "sha256:schema-migrations-applied-at-index-v2-20260830"
 const channelModelPricingHistoryChecksum = "sha256:channel-model-pricing-history-v3-20260901"
+const taskCreationIdempotencyChecksum = "sha256:task-creation-idempotency-v4-20260901"
 
 const postgresSchemaMigrationLockID int64 = 73123910420260830
 
@@ -44,6 +45,7 @@ var schemaMigrations = []migration{
 	{version: 1, name: "baseline_gorm_schema", checksum: baselineSchemaChecksum, apply: migrateSchemaV1},
 	{version: 2, name: "schema_migrations_applied_at_index", checksum: schemaMigrationAppliedAtIndexChecksum, apply: migrateSchemaV2},
 	{version: 3, name: "channel_model_pricing_history", checksum: channelModelPricingHistoryChecksum, apply: migrateSchemaV3},
+	{version: 4, name: "task_creation_idempotency", checksum: taskCreationIdempotencyChecksum, apply: migrateSchemaV4},
 }
 
 func migrateSchemaV2(tx *gorm.DB) error {
@@ -52,6 +54,12 @@ func migrateSchemaV2(tx *gorm.DB) error {
 
 func migrateSchemaV3(tx *gorm.DB) error {
 	return tx.AutoMigrate(&model.ChannelModel{}, &model.ChannelModelPriceTier{}, &model.ChannelModelRevision{})
+}
+
+func migrateSchemaV4(tx *gorm.DB) error {
+	// IdempotencyKey 使用可空列：两种数据库均允许组合唯一索引中出现
+	// 多个 NULL，因此升级前没有幂等键的历史任务不需要伪造回填值。
+	return tx.AutoMigrate(&model.Task{})
 }
 
 func MigrateSchema(db *gorm.DB) error {

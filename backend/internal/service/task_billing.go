@@ -66,7 +66,8 @@ func (c *taskBillingCoordinator) MarkBillingUncertain(orderID string, errorText 
 // CheckRetryEligibility 收敛失败/取消任务重试前的计费状态校验。
 //
 // 计费订单读取失败不能被当作“没有待核对订单”继续放行，否则重试可能重复扣费。
-// 只有明确读到订单且订单不是 uncertain 时，才允许进入后续的重新计费流程。
+// 有价订单只有明确 refunded 才能再次计费；reserved/running/uncertain/settled
+// 都可能已占用或消费资金，必须先核对。零价订单保持旧规则，只阻止 uncertain。
 func (c *taskBillingCoordinator) CheckRetryEligibility(orderID string) error {
 	if strings.TrimSpace(orderID) == "" {
 		return nil
@@ -78,10 +79,23 @@ func (c *taskBillingCoordinator) CheckRetryEligibility(orderID string) error {
 	if order == nil {
 		return fmt.Errorf("任务计费订单不存在：%s", orderID)
 	}
+	if paidBillingOrder(*order) && order.Status != model.BillingStatusRefunded {
+		return errTaskBillingReview
+	}
 	if order.Status == model.BillingStatusUncertain {
 		return errTaskBillingReview
 	}
 	return nil
+}
+
+func paidBillingOrder(order model.BillingOrder) bool {
+	return order.AmountMicrocredits > 0 ||
+		order.ReservedAmountMicrocredits > 0 ||
+		order.ActualAmountMicrocredits > 0 ||
+		order.UnitPriceMicrocredits > 0 ||
+		order.InputTokenPriceMicrocredits > 0 ||
+		order.OutputTokenPriceMicrocredits > 0 ||
+		order.CachedTokenPriceMicrocredits > 0
 }
 
 func (c *taskBillingCoordinator) BillingFailureRequiresReview(orderID string, taskID string, err error) bool {
