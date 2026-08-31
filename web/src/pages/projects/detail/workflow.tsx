@@ -6,7 +6,7 @@ import { Link } from "react-router";
 import { saveProjectShot, type ProjectDetail } from "@/services/api/projects";
 
 import { AssetsStage, DeliveryStage, StoryStage } from "./workflow-stage-views";
-import { type ShortDramaWorkflowStage, workflowStages } from "./workflow-shared";
+import { type ShortDramaWorkflowStage, WorkflowStageLink, workflowStages } from "./workflow-shared";
 import "./workflow.css";
 
 const WorkflowProductionWorkbench = lazy(() => import("./workflow-production-workbench"));
@@ -70,6 +70,22 @@ export default function ProjectWorkflowView({ detail, projectId, unitId, stage }
 
     return (
         <div className="workflow-page-root">
+            <header className="workflow-stage-rail">
+                <div className="workflow-stage-rail-copy"><span>制作流程</span><strong>{unit.title}</strong></div>
+                <nav className="workflow-stage-nav thin-scrollbar" aria-label="短剧制作阶段">
+                    {workflowStages.map((item, index) => (
+                        <WorkflowStageLink
+                            key={item.key}
+                            href={`/projects/${projectId}/workflow/${unit.id}/${item.key}`}
+                            active={item.key === activeStage}
+                            step={workflow?.steps?.find((workflowStep) => workflowStep.stepKey === item.key)}
+                            index={index}
+                            label={item.label}
+                            shortLabel={item.shortLabel}
+                        />
+                    ))}
+                </nav>
+            </header>
             <main className={`workflow-stage-content ${productionStage ? "is-production" : ""}`}>
                 {activeStage === "story" ? <div className="workflow-overview-scroll thin-scrollbar"><StoryStage detail={detail} projectId={projectId} unitId={unit.id} /></div> : null}
                 {activeStage === "assets" ? <div className="workflow-overview-scroll thin-scrollbar"><AssetsStage detail={detail} projectId={projectId} unitId={unit.id} /></div> : null}
