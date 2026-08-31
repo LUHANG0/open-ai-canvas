@@ -106,7 +106,7 @@ export function CanvasTopBar({
                     <CanvasTopBarTooltip label="打开画布菜单">
                         <Dropdown
                             trigger={["click"]}
-                            overlayClassName="pc-canvas-overlay pc-canvas-menu-overlay"
+                            classNames={{ root: "pc-canvas-overlay pc-canvas-menu-overlay" }}
                             menu={{
                                 items: [
                                     { key: "home", icon: <Home className="size-4" />, label: <Link to="/">主页</Link> },
@@ -192,7 +192,7 @@ export function CanvasTopBar({
                         <Dropdown
                             trigger={["click"]}
                             placement="bottomRight"
-                            overlayClassName="pc-canvas-overlay pc-canvas-menu-overlay"
+                            classNames={{ root: "pc-canvas-overlay pc-canvas-menu-overlay" }}
                             menu={{
                                 items: [
                                     { key: "libtv", icon: <CopyPlus className="size-4" />, label: "导入 LibTV 画布", onClick: onImportLibTV },
@@ -208,7 +208,7 @@ export function CanvasTopBar({
                     <CanvasTopBarTooltip label="媒体性能模式">
                         <Dropdown
                             trigger={["click"]}
-                            overlayClassName="pc-canvas-overlay pc-canvas-menu-overlay"
+                            classNames={{ root: "pc-canvas-overlay pc-canvas-menu-overlay" }}
                             menu={{
                                 selectable: true,
                                 selectedKeys: [mediaPerformanceMode],
