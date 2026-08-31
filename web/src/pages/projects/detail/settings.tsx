@@ -164,7 +164,7 @@ export default function ProjectSettingsView({ detail, refreshProject }: ProjectD
                 </div>
             </FormSection>
 
-            <DialogFrame frameSize="sm" title={project.status === "archived" ? "恢复项目" : "归档项目"} subtitle="此操作只改变项目状态，不会删除已有内容。" open={archiveOpen} okText={project.status === "archived" ? "确认恢复" : "确认归档"} cancelText="取消" okButtonProps={{ danger: project.status !== "archived", loading: archiveMutation.isPending }} onCancel={() => setArchiveOpen(false)} onOk={() => archiveMutation.mutate()}><p className="m-0 text-sm leading-6 text-foreground/65">{project.status === "archived" ? "恢复后项目会重新进入可编辑状态。" : "归档不会删除章节、画布或资产，画布文档仍可在创作画布中打开。"}</p></DialogFrame>
+            <DialogFrame className="workspace-modal workspace-modal-compact pc-project-dialog" frameSize="sm" title={project.status === "archived" ? "恢复项目" : "归档项目"} subtitle="此操作只改变项目状态，不会删除已有内容。" open={archiveOpen} okText={project.status === "archived" ? "确认恢复" : "确认归档"} cancelText="取消" okButtonProps={{ danger: project.status !== "archived", loading: archiveMutation.isPending }} onCancel={() => setArchiveOpen(false)} onOk={() => archiveMutation.mutate()}><p className="m-0 text-sm leading-6 text-foreground/65">{project.status === "archived" ? "恢复后项目会重新进入可编辑状态。" : "归档不会删除章节、画布或资产，画布文档仍可在创作画布中打开。"}</p></DialogFrame>
             <AssetLibraryPickerModal
                 open={coverPickerOpen}
                 items={coverPickerItems}

@@ -1,40 +1,44 @@
 /* Projects PC UI. Rules are scoped so the existing mobile layout and other libraries keep their contracts. */
 
-.pc-projects-library-count {
-    color: var(--app-text-muted, var(--muted-foreground));
-    font-size: var(--fs-caption, 12px);
-    font-variant-numeric: tabular-nums;
-}
-
-.pc-projects-page .project-library-progress progress {
-    display: block;
-    width: 100%;
-    height: 4px;
-    margin-top: 7px;
-    overflow: hidden;
-    appearance: none;
-    background: var(--app-surface-3, rgba(17, 17, 17, 0.09));
-    border: 0;
-    border-radius: 999px;
-}
-
-.pc-projects-page .project-library-progress progress::-webkit-progress-bar {
-    background: var(--app-surface-3, rgba(17, 17, 17, 0.09));
-    border-radius: inherit;
-}
-
-.pc-projects-page .project-library-progress progress::-webkit-progress-value {
-    background: var(--app-action-primary-bg, var(--workspace-accent));
-    border-radius: inherit;
-    transition: width var(--app-duration-slow, 240ms) ease;
-}
-
-.pc-projects-page .project-library-progress progress::-moz-progress-bar {
-    background: var(--app-action-primary-bg, var(--workspace-accent));
-    border-radius: inherit;
-}
-
 @media (min-width: 1024px) {
+    .pc-projects-library-count {
+        color: var(--app-text-muted, var(--muted-foreground));
+        font-size: var(--fs-caption, 12px);
+        font-variant-numeric: tabular-nums;
+    }
+
+    .pc-projects-page .project-library-progress .pc-project-progress-legacy {
+        display: none;
+    }
+
+    .pc-projects-page .project-library-progress progress {
+        display: block;
+        width: 100%;
+        height: 4px;
+        margin-top: 7px;
+        overflow: hidden;
+        appearance: none;
+        background: var(--app-surface-3, rgba(17, 17, 17, 0.09));
+        border: 0;
+        border-radius: 999px;
+    }
+
+    .pc-projects-page .project-library-progress progress::-webkit-progress-bar {
+        background: var(--app-surface-3, rgba(17, 17, 17, 0.09));
+        border-radius: inherit;
+    }
+
+    .pc-projects-page .project-library-progress progress::-webkit-progress-value {
+        background: var(--app-action-primary-bg, var(--workspace-accent));
+        border-radius: inherit;
+        transition: width var(--app-duration-slow, 240ms) ease;
+    }
+
+    .pc-projects-page .project-library-progress progress::-moz-progress-bar {
+        background: var(--app-action-primary-bg, var(--workspace-accent));
+        border-radius: inherit;
+    }
+
     .pc-projects-page .app-workspace-page-content {
         display: grid;
         align-content: start;
@@ -113,6 +117,10 @@
 
     .pc-projects-library > .pc-section-header {
         padding-inline: 2px;
+    }
+
+    .pc-projects-search-legacy {
+        display: none;
     }
 
     .pc-projects-toolbar {
@@ -300,6 +308,16 @@
         height: 32px;
         flex: 0 0 auto;
         padding-inline: 10px;
+        color: var(--app-action-primary-fg);
+        background: var(--app-action-primary-bg);
+        border-color: var(--app-action-primary-bg);
+    }
+
+    .pc-project-topbar-create:hover,
+    .pc-project-topbar-create:focus-visible {
+        color: var(--app-action-primary-fg);
+        background: var(--app-action-primary-hover, var(--app-action-primary-bg));
+        border-color: var(--app-action-primary-hover, var(--app-action-primary-bg));
     }
 
     .pc-project-overview {
@@ -325,7 +343,11 @@
         background: var(--app-surface-2);
     }
 
-    .pc-project-overview .project-overview-progress-track {
+    .pc-project-overview .pc-project-overview-progress-legacy {
+        display: none;
+    }
+
+    .pc-project-overview progress.project-overview-progress-track {
         display: block;
         width: 100%;
         height: 5px;
@@ -337,17 +359,17 @@
         border-radius: 999px;
     }
 
-    .pc-project-overview .project-overview-progress-track::-webkit-progress-bar {
+    .pc-project-overview progress.project-overview-progress-track::-webkit-progress-bar {
         background: var(--app-surface-3);
         border-radius: inherit;
     }
 
-    .pc-project-overview .project-overview-progress-track::-webkit-progress-value {
+    .pc-project-overview progress.project-overview-progress-track::-webkit-progress-value {
         background: var(--app-action-primary-bg);
         border-radius: inherit;
     }
 
-    .pc-project-overview .project-overview-progress-track::-moz-progress-bar {
+    .pc-project-overview progress.project-overview-progress-track::-moz-progress-bar {
         background: var(--app-action-primary-bg);
         border-radius: inherit;
     }
@@ -462,12 +484,197 @@
 }
 
 @media (max-width: 1023px) {
-    .pc-projects-page-header {
+    .pc-projects-page-header,
+    .pc-projects-library > .pc-section-header,
+    .pc-project-canvases > .pc-section-header {
         display: none;
+    }
+
+    .pc-projects-page .pc-projects-starter {
+        color: inherit;
+        background: var(--card-surface);
+        border: 0;
+        border-radius: var(--r-lg);
+        box-shadow: none;
+    }
+
+    .pc-projects-search {
+        display: none;
+    }
+
+    .pc-projects-search-legacy {
+        display: inline-flex;
+    }
+
+    .pc-projects-page .project-library-progress .pc-project-progress-pc,
+    .pc-project-overview-progress-pc {
+        display: none;
+    }
+
+    .pc-project-assets-header {
+        min-height: 72px;
+        gap: 16px;
+        padding-bottom: 16px;
+    }
+
+    .pc-project-assets-header .pc-section-header__title {
+        font-size: var(--fs-heading-lg);
+        font-weight: 600;
+        line-height: 24px;
+    }
+
+    .pc-project-assets-header .pc-section-header__description {
+        display: none;
+    }
+
+    .pc-project-assets-header .pc-section-header__meta {
+        margin-top: 6px;
+        gap: 4px 12px;
+    }
+
+    .pc-project-assets-header .pc-status-badge {
+        min-height: 0;
+        padding: 0;
+        color: color-mix(in srgb, var(--foreground) 48%, transparent);
+        background: transparent;
+        border: 0;
+        border-radius: 0;
+        font-size: var(--fs-label);
+        font-weight: 400;
+    }
+
+    .pc-project-assets-nav {
+        padding-right: 8px;
+    }
+
+    .pc-project-settings {
+        display: block;
+        padding-bottom: 0;
+    }
+
+    .pc-project-settings-header {
+        flex-direction: row;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 12px;
+        padding-bottom: 12px;
+    }
+
+    .pc-project-settings-header .pc-section-header__title {
+        font-size: var(--fs-heading-lg);
+        font-weight: 600;
+    }
+
+    .pc-project-settings-header .pc-section-header__description {
+        margin-top: 4px;
+        color: color-mix(in srgb, var(--foreground) 48%, transparent);
+        font-size: var(--fs-caption);
+        line-height: 1.5;
+    }
+
+    .pc-project-settings-header .pc-section-header__meta {
+        display: none;
+    }
+
+    .pc-project-settings-header .pc-section-header__actions {
+        flex: 0 0 auto;
+    }
+
+    .pc-project-settings-section {
+        padding: 20px 0;
+        color: inherit;
+        background: transparent;
+        border: 0;
+        border-top: 1px solid color-mix(in srgb, var(--foreground) 9%, transparent);
+        border-radius: 0;
+        box-shadow: none;
+    }
+
+    .pc-project-settings-header + .pc-project-settings-section,
+    .pc-project-settings-danger {
+        border-top: 0;
+    }
+
+    .pc-project-settings-danger {
+        padding-block: 16px;
+    }
+
+    .pc-project-settings-section .pc-form-section__header {
+        padding: 0;
+        background: transparent;
+        border: 0;
+    }
+
+    .pc-project-settings-section .pc-form-section__title {
+        font-size: var(--fs-body);
+        font-weight: 600;
+    }
+
+    .pc-project-settings-section .pc-form-section__description,
+    .pc-project-settings-section .pc-form-section__required-hint {
+        margin-top: 2px;
+        color: color-mix(in srgb, var(--foreground) 45%, transparent);
+        font-size: var(--fs-label);
+        line-height: 1.5;
+    }
+
+    .pc-project-settings-section .pc-form-section__body {
+        padding: 0;
+        margin-top: 12px;
+    }
+
+    .pc-dialog-root .pc-project-dialog .pc-dialog__subtitle {
+        display: none;
+    }
+
+    .pc-dialog-root .pc-project-dialog .ant-modal-container {
+        display: block;
+        max-height: none;
+        overflow: visible;
+    }
+
+    .pc-dialog-root .pc-project-dialog .ant-modal-header {
+        padding: 0;
+        margin-bottom: 8px;
+        border-bottom: 0;
+    }
+
+    .pc-dialog-root .pc-project-dialog .ant-modal-body {
+        padding: 0;
+        overflow: visible;
+    }
+
+    .pc-dialog-root .pc-project-dialog .ant-modal-footer {
+        padding: 0;
+        margin-top: 12px;
+        background: transparent;
+        border-top: 0;
+    }
+
+    .pc-dialog-root .ant-modal-wrap.ant-modal-centered {
+        display: block;
+    }
+
+    .pc-dialog-root .ant-modal-centered .pc-project-dialog {
+        top: 100px;
+        padding-bottom: 24px;
     }
 }
 
-@media (prefers-reduced-motion: reduce) {
+@media (min-width: 640px) and (max-width: 1023px) {
+    .pc-project-assets-header {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .pc-project-assets-header .pc-section-header__actions {
+        flex: 0 0 auto;
+        padding-left: 16px;
+    }
+}
+
+@media (min-width: 1024px) and (prefers-reduced-motion: reduce) {
     .pc-projects-page .project-library-progress progress::-webkit-progress-value {
         transition: none;
     }

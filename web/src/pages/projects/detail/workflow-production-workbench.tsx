@@ -453,7 +453,7 @@ export default function WorkflowProductionWorkbench(props: Props) {
                         <div className="workflow-shot-heading">
                             <span className="workflow-shot-number">SC.{String(shotIndex + 1).padStart(2, "0")}</span>
                             <h2>{watchedTitle || selectedShot.title || "未命名镜头"}</h2>
-                            <StatusBadge tone={saveShot.isPending ? "running" : editorDirty ? "warning" : revision ? "success" : "neutral"} live={saveShot.isPending}>{saveShot.isPending ? "保存中" : editorDirty ? "有未保存修改" : revision ? "已保存" : "草稿"}</StatusBadge>
+                            <StatusBadge className="workflow-save-status" tone={saveShot.isPending ? "running" : editorDirty ? "warning" : revision ? "success" : "neutral"} live={saveShot.isPending}>{saveShot.isPending ? "保存中" : editorDirty ? "有未保存修改" : revision ? "已保存" : "草稿"}</StatusBadge>
                         </div>
                         <div className="flex items-center gap-1"><span className="mr-1 text-[var(--fs-micro)] text-foreground/45">{shotIndex + 1} / {shots.length}</span><Button type="text" size="small" icon={<ChevronLeft className="size-4" />} disabled={shotIndex <= 0} onClick={() => selectRelativeShot(-1)} aria-label="上一个镜头" /><Button type="text" size="small" icon={<ChevronRight className="size-4" />} disabled={shotIndex >= shots.length - 1} onClick={() => selectRelativeShot(1)} aria-label="下一个镜头" /></div>
                     </header>

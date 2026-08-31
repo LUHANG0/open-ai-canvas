@@ -70,7 +70,8 @@ export default function ProjectOverviewView({ detail, overview }: ProjectDetailV
                                 <span className="project-overview-progress-percent">{completion}%</span>
                             </div>
                             <div className="project-overview-progress-count">{completedUnits}<span>/ {metrics.unitCount}</span></div>
-                            <progress className="project-overview-progress-track" max={100} value={completion} aria-label={`章节完成度 ${completion}%`} />
+                            <div className="project-overview-progress-track pc-project-overview-progress-legacy" aria-hidden="true"><div style={{ width: `${completion}%` }} /></div>
+                            <progress className="project-overview-progress-track pc-project-overview-progress-pc" max={100} value={completion} aria-label={`章节完成度 ${completion}%`} />
                         </div>
                         <dl className="project-overview-facts">
                             <ProjectFact label="当前阶段" value={stage.label} />

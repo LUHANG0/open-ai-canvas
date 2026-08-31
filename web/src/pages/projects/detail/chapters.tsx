@@ -611,7 +611,7 @@ export default function ProjectChaptersView({ detail, refreshProject }: ProjectD
             </section>
             <CreateChapterModal open={createOpen} onClose={() => setCreateOpen(false)} loading={createMutation.isPending} onSubmit={(values) => createMutation.mutate(values)} />
             <ImportNovelModal open={importOpen} loading={importMutation.isPending} onClose={() => setImportOpen(false)} onImport={(chapters) => importMutation.mutate(chapters)} />
-            <DialogFrame title="提取章节角色" subtitle="正文会交给本次选择的文本模型分析，结果进入待确认资产。" open={characterExtractOpen} frameSize="sm" okText="开始提取" cancelText="取消" okButtonProps={{ disabled: !selectedTextModel }} onCancel={() => setCharacterExtractOpen(false)} onOk={() => void extractCharacters()}>
+            <DialogFrame className="pc-project-dialog" title="提取章节角色" subtitle="正文会交给本次选择的文本模型分析，结果进入待确认资产。" open={characterExtractOpen} frameSize="sm" okText="开始提取" cancelText="取消" okButtonProps={{ disabled: !selectedTextModel }} onCancel={() => setCharacterExtractOpen(false)} onOk={() => void extractCharacters()}>
                 <div className="grid gap-4">
                     <div className="rounded-lg border border-border/70 bg-foreground/[.018] px-3 py-2.5">
                         <div className="text-[var(--fs-tiny)] text-foreground/42">当前章节</div>
@@ -624,7 +624,7 @@ export default function ProjectChaptersView({ detail, refreshProject }: ProjectD
                     </label>
                 </div>
             </DialogFrame>
-            <DialogFrame title="生成章节分镜" subtitle="生成成功后会写入分镜制作；已有镜头仅在确认后整体替换。" open={storyboardOpen} frameSize="md" okText={storyboardImpact.shotCount ? "重新生成分镜" : "生成分镜"} cancelText="取消" okButtonProps={{ disabled: !selectedTextModel }} onCancel={() => setStoryboardOpen(false)} onOk={() => void createStoryboard()}>
+            <DialogFrame className="pc-project-dialog" title="生成章节分镜" subtitle="生成成功后会写入分镜制作；已有镜头仅在确认后整体替换。" open={storyboardOpen} frameSize="md" okText={storyboardImpact.shotCount ? "重新生成分镜" : "生成分镜"} cancelText="取消" okButtonProps={{ disabled: !selectedTextModel }} onCancel={() => setStoryboardOpen(false)} onOk={() => void createStoryboard()}>
                 <div className="grid gap-4">
                     <div className="rounded-lg border border-border/70 bg-foreground/[.018] px-3 py-2.5">
                         <div className="text-[var(--fs-tiny)] text-foreground/42">当前章节</div>
@@ -645,7 +645,7 @@ export default function ProjectChaptersView({ detail, refreshProject }: ProjectD
                     </div>
                 </div>
             </DialogFrame>
-            <DialogFrame title="移动章节" subtitle="其他章节会按目标位置自动顺延。" open={Boolean(moveTargetId)} frameSize="sm" okText="移动" cancelText="取消" okButtonProps={{ disabled: !movePosition || movePosition < 1 || movePosition > orderedUnits.length, loading: reorderMutation.isPending }} onCancel={() => { setMoveTargetId(""); setMovePosition(null); }} onOk={moveChapterToPosition}>
+            <DialogFrame className="pc-project-dialog" title="移动章节" subtitle="其他章节会按目标位置自动顺延。" open={Boolean(moveTargetId)} frameSize="sm" okText="移动" cancelText="取消" okButtonProps={{ disabled: !movePosition || movePosition < 1 || movePosition > orderedUnits.length, loading: reorderMutation.isPending }} onCancel={() => { setMoveTargetId(""); setMovePosition(null); }} onOk={moveChapterToPosition}>
                 <div className="text-xs leading-5 text-foreground/50">输入目标章节位置。适合上千章项目的长距离调整，移动后其他章节会自动顺延。</div>
                 <label className="mt-3 flex items-center gap-2 text-sm"><span className="shrink-0">移动到第</span><InputNumber min={1} max={orderedUnits.length} precision={0} value={movePosition} onChange={setMovePosition} className="min-w-0 flex-1" /><span className="shrink-0">章</span></label>
             </DialogFrame>
@@ -734,7 +734,7 @@ function ToolbarDivider() {
 }
 
 function CreateChapterModal({ open, onClose, loading, onSubmit }: { open: boolean; onClose: () => void; loading: boolean; onSubmit: (values: { title: string; sourceText?: string }) => void }) {
-    return <DialogFrame title="添加章节" subtitle="创建后可继续编辑正文、角色和分镜。" open={open} footer={null} destroyOnHidden onCancel={onClose} frameSize="sm"><Form layout="vertical" onFinish={onSubmit}><Form.Item name="title" label="章节标题" rules={[{ required: true, whitespace: true, message: "请输入章节标题" }]}><Input autoFocus placeholder="例如：雨夜归城" /></Form.Item><Form.Item name="sourceText" label="正文（可选）"><Input.TextArea rows={4} placeholder="创建后仍可继续编辑和排版" /></Form.Item><div className="flex justify-end gap-2"><Button onClick={onClose}>取消</Button><Button type="primary" htmlType="submit" loading={loading}>创建章节</Button></div></Form></DialogFrame>;
+    return <DialogFrame className="pc-project-dialog" title="添加章节" subtitle="创建后可继续编辑正文、角色和分镜。" open={open} footer={null} destroyOnHidden onCancel={onClose} frameSize="sm"><Form layout="vertical" onFinish={onSubmit}><Form.Item name="title" label="章节标题" rules={[{ required: true, whitespace: true, message: "请输入章节标题" }]}><Input autoFocus placeholder="例如：雨夜归城" /></Form.Item><Form.Item name="sourceText" label="正文（可选）"><Input.TextArea rows={4} placeholder="创建后仍可继续编辑和排版" /></Form.Item><div className="flex justify-end gap-2"><Button onClick={onClose}>取消</Button><Button type="primary" htmlType="submit" loading={loading}>创建章节</Button></div></Form></DialogFrame>;
 }
 
 function ImportNovelModal({ open, loading, onClose, onImport }: { open: boolean; loading: boolean; onClose: () => void; onImport: (chapters: Array<{ title: string; plainText: string }>) => void }) {
