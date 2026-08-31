@@ -1,10 +1,12 @@
-import { useState } from "react";
+import { useState, type CSSProperties } from "react";
 import { Button, Card, message } from "antd";
 import { Mic, Send } from "lucide-react";
 
 import { VoiceRecordingButton } from "@/components/conversation/voice-recording-button";
 import { canvasThemes } from "@/lib/canvas-theme";
 import { useThemeStore } from "@/stores/use-theme-store";
+
+import "./voice-recording-pc.css";
 
 /**
  * 语音录制功能测试页面
@@ -34,61 +36,71 @@ export default function TestVoiceRecording() {
         }
     };
 
-
     return (
-        <div className="min-h-screen p-8" style={{ background: theme.spatial.surface }}>
-            <div className="mx-auto max-w-2xl">
+        <div
+            className="pc-voice-page min-h-screen p-8"
+            style={
+                {
+                    "--voice-page-bg": theme.spatial.surface,
+                    "--voice-card-bg": theme.spatial.elevated,
+                    "--voice-control-bg": theme.node.fill,
+                    "--voice-panel-bg": theme.toolbar.panel,
+                    "--voice-border": theme.toolbar.border,
+                    "--voice-text": theme.node.text,
+                    "--voice-muted": theme.node.muted,
+                    "--voice-accent": theme.accent.primary,
+                    "--voice-accent-fg": theme.accent.onPrimary,
+                } as CSSProperties
+            }
+        >
+            <div className="pc-voice-page-content mx-auto max-w-2xl">
+                <header className="pc-voice-page-header">
+                    <div>
+                        <p>内部原型</p>
+                        <h1>实时语音转写</h1>
+                        <span>验证录音、波形、上传和 STT 回填闭环，不发送真实对话。</span>
+                    </div>
+                    <span className="pc-voice-prototype-badge">MVP · 本地验证</span>
+                </header>
                 <Card
+                    className="pc-voice-card"
                     title={
                         <div className="flex items-center gap-2">
-                            <Mic className="size-5" style={{ color: theme.accent.primary }} />
+                            <Mic className="pc-voice-title-icon size-5" />
                             <span>实时对话功能测试（MVP）</span>
                         </div>
                     }
-                    style={{ background: theme.spatial.elevated, borderColor: theme.toolbar.border }}
                 >
-                    <div className="space-y-4">
+                    <div className="pc-voice-card-content space-y-4">
                         {/* 文本输入 */}
-                        <div>
-                            <label className="mb-2 block text-sm font-medium" style={{ color: theme.node.text }}>
+                        <div className="pc-voice-composer">
+                            <label htmlFor="pc-voice-input" className="pc-voice-label mb-2 block text-sm font-medium">
                                 文本输入（语音转写结果会自动填入）
                             </label>
                             <textarea
+                                id="pc-voice-input"
                                 value={prompt}
                                 onChange={(e) => setPrompt(e.target.value)}
                                 placeholder="输入消息，或点击实时对话按钮用语音输入..."
-                                className="w-full rounded-lg border px-3 py-2 text-sm outline-none transition focus:border-current"
-                                style={{
-                                    background: theme.node.fill,
-                                    borderColor: theme.toolbar.border,
-                                    color: theme.node.text,
-                                    minHeight: 80,
-                                }}
+                                className="pc-voice-textarea w-full rounded-lg border px-3 py-2 text-sm outline-none transition focus:border-current"
                             />
                         </div>
 
                         {/* 音频预览 */}
 
                         {/* 控制栏：实时对话按钮（点击后在输入行展开波形录制条） */}
-                        <div className="flex items-center justify-between gap-2">
+                        <div className="pc-voice-controls flex items-center justify-between gap-2">
                             <div className="flex flex-1 items-center gap-2">
                                 <VoiceRecordingButton onTranscribed={handleTranscribed} />
                             </div>
-                            <Button
-                                type="primary"
-                                icon={<Send className="size-4" />}
-                                disabled={!prompt.trim()}
-                                loading={sending}
-                                onClick={handleSubmit}
-                                style={{ background: theme.accent.primary, borderColor: theme.accent.primary, color: theme.accent.onPrimary }}
-                            >
+                            <Button type="primary" icon={<Send className="size-4" />} disabled={!prompt.trim()} loading={sending} onClick={handleSubmit} className="pc-voice-send">
                                 发送
                             </Button>
                         </div>
 
                         {/* 说明 */}
-                        <div className="rounded-lg border p-3 text-xs" style={{ background: theme.toolbar.panel, borderColor: theme.toolbar.border, color: theme.node.muted }}>
-                            <div className="font-semibold" style={{ color: theme.node.text }}>
+                        <section className="pc-voice-guide rounded-lg border p-3 text-xs" aria-labelledby="pc-voice-guide-title">
+                            <div id="pc-voice-guide-title" className="pc-voice-guide-title font-semibold">
                                 使用说明：
                             </div>
                             <ul className="mt-1 list-inside list-disc space-y-1">
@@ -98,7 +110,7 @@ export default function TestVoiceRecording() {
                                 <li>转写结果自动填入输入框，可编辑后发送</li>
                                 <li>转写失败时在录制条内提示，可点击麦克风重试</li>
                             </ul>
-                        </div>
+                        </section>
                     </div>
                 </Card>
             </div>

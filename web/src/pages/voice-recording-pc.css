@@ -1,0 +1,210 @@
+.pc-voice-page {
+    background: var(--voice-page-bg);
+}
+
+.pc-voice-card.ant-card {
+    border-color: var(--voice-border);
+    background: var(--voice-card-bg);
+}
+
+.pc-voice-title-icon {
+    color: var(--voice-accent);
+}
+
+.pc-voice-label,
+.pc-voice-guide-title {
+    color: var(--voice-text);
+}
+
+.pc-voice-textarea {
+    min-height: 80px;
+    border-color: var(--voice-border);
+    background: var(--voice-control-bg);
+    color: var(--voice-text);
+}
+
+.pc-voice-send.ant-btn-primary {
+    border-color: var(--voice-accent);
+    background: var(--voice-accent);
+    color: var(--voice-accent-fg);
+}
+
+.pc-voice-guide {
+    border-color: var(--voice-border);
+    background: var(--voice-panel-bg);
+    color: var(--voice-muted);
+}
+
+.pc-voice-page-header {
+    display: none;
+}
+
+@media (min-width: 1024px) {
+    .pc-voice-page {
+        min-height: 100%;
+        padding: var(--app-page-gutter);
+        overflow-y: auto;
+        background: var(--app-bg-page);
+        color: var(--app-text-primary);
+        font-family: var(--app-font-sans);
+    }
+
+    .pc-voice-page-content {
+        display: grid;
+        width: 100%;
+        max-width: 980px;
+        align-content: start;
+        gap: 20px;
+    }
+
+    .pc-voice-page-header {
+        display: flex;
+        min-height: 72px;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 24px;
+        padding: 0 2px;
+    }
+
+    .pc-voice-page-header p {
+        margin: 0 0 6px;
+        color: var(--app-text-muted);
+        font-size: 11px;
+        font-weight: 650;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+    }
+
+    .pc-voice-page-header h1 {
+        margin: 0;
+        color: var(--app-text-primary);
+        font-size: var(--app-font-size-page-title);
+        font-weight: 670;
+        letter-spacing: -0.025em;
+        line-height: 1.3;
+    }
+
+    .pc-voice-page-header div > span {
+        display: block;
+        max-width: 600px;
+        margin-top: 6px;
+        color: var(--app-text-secondary);
+        font-size: 13px;
+        line-height: 1.6;
+    }
+
+    .pc-voice-prototype-badge {
+        display: inline-flex;
+        min-height: 26px;
+        align-items: center;
+        border: 1px solid var(--app-status-warning-border);
+        border-radius: var(--app-control-radius);
+        padding: 3px 8px;
+        background: var(--app-status-warning-bg);
+        color: var(--app-status-warning-fg);
+        font-size: 11px;
+        font-weight: 600;
+    }
+
+    .pc-voice-card.ant-card {
+        overflow: hidden;
+        border: 1px solid var(--app-border-subtle);
+        border-radius: var(--app-surface-radius);
+        background: var(--app-surface-1);
+        box-shadow: var(--app-shadow-surface);
+    }
+
+    .pc-voice-card > .ant-card-head {
+        display: none;
+    }
+
+    .pc-voice-card > .ant-card-body {
+        padding: 0;
+    }
+
+    .pc-voice-card-content {
+        display: grid;
+        gap: 0;
+    }
+
+    .pc-voice-composer {
+        padding: 24px 24px 20px;
+    }
+
+    .pc-voice-label {
+        margin-bottom: 10px;
+        color: var(--app-text-primary);
+        font-size: 13px;
+        font-weight: 600;
+    }
+
+    .pc-voice-textarea {
+        min-height: 150px;
+        resize: vertical;
+        border: 1px solid var(--app-control-border);
+        border-radius: var(--app-control-radius);
+        padding: 12px 14px;
+        background: var(--app-control-bg);
+        color: var(--app-text-primary);
+        font-size: 14px;
+        line-height: 1.65;
+        transition:
+            border-color var(--app-duration-fast) var(--app-ease-standard),
+            box-shadow var(--app-duration-fast) var(--app-ease-standard);
+    }
+
+    .pc-voice-textarea::placeholder {
+        color: var(--app-text-muted);
+    }
+
+    .pc-voice-textarea:focus {
+        border-color: var(--app-border-strong);
+        box-shadow: var(--app-focus-shadow);
+    }
+
+    .pc-voice-controls {
+        min-height: 64px;
+        padding: 12px 24px;
+        border-top: 1px solid var(--app-border-subtle);
+        border-bottom: 1px solid var(--app-border-subtle);
+        background: var(--app-surface-2);
+    }
+
+    .pc-voice-send.ant-btn-primary {
+        min-width: 92px;
+        min-height: var(--app-control-height);
+        border-color: var(--app-action-primary-bg);
+        border-radius: var(--app-control-radius);
+        background: var(--app-action-primary-bg);
+        color: var(--app-action-primary-fg);
+    }
+
+    .pc-voice-send.ant-btn-primary:hover {
+        border-color: var(--app-action-primary-hover);
+        background: var(--app-action-primary-hover);
+    }
+
+    .pc-voice-guide {
+        margin: 20px 24px 24px;
+        border-color: var(--app-border-subtle);
+        border-radius: var(--app-surface-radius-sm);
+        padding: 16px 18px;
+        background: var(--app-surface-2);
+        color: var(--app-text-secondary);
+        font-size: 12px;
+        line-height: 1.6;
+    }
+
+    .pc-voice-guide-title {
+        color: var(--app-text-primary);
+        font-size: 13px;
+        font-weight: 620;
+    }
+}
+
+@media (min-width: 1024px) and (prefers-reduced-motion: reduce) {
+    .pc-voice-textarea,
+    .pc-voice-send {
+        transition: none;
+    }
+}

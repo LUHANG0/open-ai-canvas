@@ -1,0 +1,127 @@
+@media (min-width: 1024px) {
+    .pc-system-page {
+        position: relative;
+        isolation: isolate;
+        background: radial-gradient(circle at 50% 18%, color-mix(in srgb, var(--app-text-primary) 4%, transparent), transparent 34%), var(--app-bg-page);
+        color: var(--app-text-primary);
+        font-family: var(--app-font-sans);
+    }
+
+    .pc-system-page::before {
+        position: absolute;
+        z-index: -1;
+        inset: 0;
+        opacity: 0.38;
+        background-image: linear-gradient(var(--app-border-subtle) 1px, transparent 1px), linear-gradient(90deg, var(--app-border-subtle) 1px, transparent 1px);
+        background-size: 32px 32px;
+        content: "";
+        mask-image: radial-gradient(circle at center, black, transparent 72%);
+    }
+
+    .pc-system-page-main {
+        padding: 48px;
+    }
+
+    .pc-system-card {
+        position: relative;
+        max-width: 600px;
+        overflow: hidden;
+        border: 1px solid var(--app-border-subtle);
+        border-radius: var(--app-surface-radius);
+        padding: 44px 48px 40px;
+        background: color-mix(in srgb, var(--app-surface-1) 96%, transparent);
+        box-shadow: var(--app-shadow-overlay);
+    }
+
+    .pc-system-card::after {
+        position: absolute;
+        top: 0;
+        right: 0;
+        left: 0;
+        height: 2px;
+        background: var(--app-border-strong);
+        content: "";
+    }
+
+    .pc-system-card.is-error::after {
+        background: var(--app-status-error-fg);
+    }
+
+    .pc-system-code {
+        position: absolute;
+        top: 18px;
+        right: 20px;
+        margin: 0;
+        color: var(--app-text-muted);
+        font-family: var(--app-font-mono);
+        font-size: 11px;
+        font-weight: 650;
+        letter-spacing: 0.08em;
+    }
+
+    .pc-system-icon {
+        margin-bottom: 20px;
+    }
+
+    .pc-system-eyebrow {
+        margin: 0 0 8px;
+        color: var(--app-text-muted);
+        font-size: 11px;
+        font-weight: 650;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+    }
+
+    .pc-system-title {
+        margin-top: 0;
+        color: var(--app-text-primary);
+        font-size: 26px;
+        font-weight: 670;
+        letter-spacing: -0.025em;
+        line-height: 1.3;
+    }
+
+    .pc-system-description {
+        max-width: 46ch;
+        margin-inline: auto;
+        color: var(--app-text-secondary);
+        font-size: 13px;
+        line-height: 1.7;
+    }
+
+    .pc-system-actions {
+        margin-top: 28px;
+    }
+
+    .pc-system-primary-action,
+    .pc-system-primary-button,
+    .pc-system-secondary-action {
+        min-height: var(--app-control-height);
+        border-radius: var(--app-control-radius);
+        font-size: 13px;
+        font-weight: 600;
+    }
+
+    .pc-system-primary-action {
+        background: var(--app-action-primary-bg);
+        color: var(--app-action-primary-fg);
+    }
+
+    .pc-system-primary-action:hover {
+        background: var(--app-action-primary-hover);
+        color: var(--app-action-primary-fg);
+    }
+
+    .pc-system-primary-action:focus-visible {
+        outline: none;
+        box-shadow: var(--app-focus-shadow);
+    }
+}
+
+@media (min-width: 1024px) and (prefers-reduced-motion: reduce) {
+    .pc-system-primary-action,
+    .pc-system-primary-button,
+    .pc-system-secondary-action {
+        transition: none;
+    }
+}
