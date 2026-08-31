@@ -695,4 +695,93 @@
     .pc-canvas-share__script-node {
         border-radius: var(--app-surface-radius);
     }
+
+    .pc-canvas-share > .pc-canvas-infinite {
+        z-index: 1;
+    }
+}
+
+@media (min-width: 1024px) and (max-width: 1279px) {
+    .pc-canvas-workspace {
+        --canvas-sidebar-width: 224px;
+        --canvas-inset-x: 12px;
+        --canvas-inset-y: 12px;
+    }
+
+    .pc-canvas-workspace .pc-canvas-topbar {
+        padding-inline: var(--app-space-3);
+    }
+
+    .pc-canvas-workspace .pc-canvas-topbar__project {
+        max-width: min(320px, calc(50vw - 84px));
+    }
+
+    .pc-canvas-workspace .pc-canvas-topbar__actions {
+        max-width: calc(100% - 340px);
+    }
+
+    .pc-canvas-workspace .pc-canvas-toolbar {
+        padding-inline: 108px;
+    }
+
+    .pc-canvas-workspace .pc-canvas-toolbar > .canvas-floating-dock {
+        max-width: min(620px, calc(100vw - 380px));
+    }
+
+    .pc-canvas-workspace .pc-canvas-active-tasks {
+        width: min(320px, calc(100% - 24px));
+        right: var(--app-space-3);
+    }
+
+    .pc-canvas-share {
+        --canvas-inset-x: 16px;
+        --canvas-inset-y: 16px;
+    }
+
+    .pc-canvas-share__header {
+        padding-inline: var(--app-space-4);
+    }
+
+    .pc-canvas-share .pc-canvas-share__identity > span:nth-child(2) > span:last-child {
+        display: none;
+    }
+}
+
+@media (min-width: 1024px) and (prefers-reduced-motion: reduce) {
+    .pc-canvas-workspace,
+    .pc-canvas-workspace *,
+    .pc-canvas-workspace *::before,
+    .pc-canvas-workspace *::after,
+    .pc-canvas-overlay,
+    .pc-canvas-overlay *,
+    .pc-canvas-overlay *::before,
+    .pc-canvas-overlay *::after {
+        scroll-behavior: auto;
+        animation-delay: 0ms;
+        animation-duration: 1ms;
+        animation-iteration-count: 1;
+        transition-delay: 0ms;
+        transition-duration: 1ms;
+    }
+}
+
+@media (min-width: 1024px) and (forced-colors: active) {
+    .pc-canvas-workspace .pc-canvas-panel,
+    .pc-canvas-workspace .canvas-topbar-cluster,
+    .pc-canvas-workspace .canvas-floating-dock,
+    .pc-canvas-workspace .pc-canvas-context-menu,
+    .pc-canvas-share__identity,
+    .pc-canvas-share__login,
+    .pc-canvas-share__notice,
+    .pc-canvas-overlay.pc-canvas-menu-overlay .ant-dropdown-menu,
+    .pc-canvas-modal .ant-modal-container {
+        border-color: CanvasText;
+    }
+
+    .pc-canvas-workspace :where(button, a, input, textarea, [role="button"], [role="menuitem"]):focus-visible,
+    .pc-canvas-overlay :where(button, a, input, textarea, [role="button"], [role="menuitem"]):focus-visible {
+        outline: 2px solid Highlight;
+        outline-offset: 2px;
+        box-shadow: none;
+    }
 }
