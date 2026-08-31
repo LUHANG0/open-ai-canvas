@@ -17,6 +17,7 @@ import {
     History,
     Image as ImageIcon,
     LoaderCircle,
+    Library,
     Maximize2,
     MessageSquareText,
     Music2,
@@ -26,6 +27,7 @@ import {
     SlidersHorizontal,
     Sparkles,
     Trash2,
+    Upload,
     Volume2,
     VolumeX,
     WandSparkles,
@@ -69,17 +71,10 @@ import { useAssetStore, type Asset } from "@/stores/use-asset-store";
 import { useUserStore } from "@/stores/use-user-store";
 import type { PromptOptimizerProvider } from "@/lib/plugins/plugin-types";
 import { promptOptimizerPlugin, PROMPT_OPTIMIZER_PLUGIN_ID } from "@/lib/plugins/builtin/prompt-optimizer";
+import { settingsPath } from "@/lib/settings-navigation";
 import { createPluginHostContext } from "@/services/plugin-host";
 import { usePluginStore } from "@/stores/use-plugin-store";
-import {
-    buildCreationMentionReferences,
-    displayCreationPrompt,
-    expandCreationPrompt,
-    removeCreationReferenceTokens,
-    replaceCreationAttachmentReference,
-    selectedCreationReferences,
-    type CreationReference,
-} from "./creation-references";
+import { buildCreationMentionReferences, displayCreationPrompt, expandCreationPrompt, removeCreationReferenceTokens, replaceCreationAttachmentReference, selectedCreationReferences, type CreationReference } from "./creation-references";
 import { skillRuntime } from "@/services/skill-runtime";
 import {
     creationAttachmentFromAsset,
@@ -95,7 +90,6 @@ import {
     creationAudioAsset,
     creationVideoFrameAttachmentIds,
     creationVideoImageRole,
-    creationFileAccepted,
     creationImageAsset,
     creationMediaAspectRatio,
     creationUploadAccept,
@@ -261,17 +255,7 @@ function shotsFromMessages(messages: CreationMessage[]): CreationShot[] {
     return shots;
 }
 
-function completedCreationGenerationTask(input: {
-    taskId: string;
-    task?: GenerationTask;
-    mode: "image" | "video";
-    prompt: string;
-    result: BackendGenerationResult;
-    conversationId: string;
-    messageId: string;
-    batchIndex?: number;
-    batchCount?: number;
-}): GenerationTask {
+function completedCreationGenerationTask(input: { taskId: string; task?: GenerationTask; mode: "image" | "video"; prompt: string; result: BackendGenerationResult; conversationId: string; messageId: string; batchIndex?: number; batchCount?: number }): GenerationTask {
     const now = new Date().toISOString();
     const task = input.task ?? { id: input.taskId, type: input.mode, status: "succeeded" as const, prompt: input.prompt, attempts: 1, createdAt: now, updatedAt: now };
     return projectGenerationTaskResult(
@@ -369,24 +353,28 @@ export default function CreatePage() {
         }),
         [config.transparentBackground, config.videoGenerateAudio, config.videoWatermark, count, mode, modelInput, quality, ratio, requestedVideoOperation, seconds, videoOperationChoice, videoQuality],
     );
-    const selectedModel = resolveCompatibleModel(config, preferredModel, modelRequirements) || preferredModel;
+    const selectableModels = useMemo(() => selectableModelsByCapability(config, mode), [config, mode]);
+    const preferredAvailableModel = selectableModels.includes(preferredModel) ? preferredModel : selectableModels[0] || "";
+    const selectedModel = resolveCompatibleModel(config, preferredAvailableModel, modelRequirements) || preferredAvailableModel;
     const imageProfile = useMemo(() => modelCapabilityConfigFor(config, selectedModel).image!, [config, selectedModel]);
     const videoProfile = useMemo(() => modelCapabilityConfigFor(config, selectedModel).video!, [config, selectedModel]);
-    const groupReferenceLimits = useMemo(() => modelGroupReferenceLimits(config, preferredModel, mode), [config, mode, preferredModel]);
-    const videoOperations = useMemo(() => modelGroupVideoOperations(config, preferredModel), [config, preferredModel]);
+    const groupReferenceLimits = useMemo(() => (selectedModel ? modelGroupReferenceLimits(config, selectedModel, mode) : undefined), [config, mode, selectedModel]);
+    const videoOperations = useMemo(() => (selectedModel ? modelGroupVideoOperations(config, selectedModel) : []), [config, selectedModel]);
     const referenceLimits = useMemo<CreationAttachmentLimits>(
         () =>
-            mode === "video"
-                ? {
-                      maxImages: videoOperationChoice === "text_to_video" || videoOperationChoice === "audio_to_video" ? 0 : groupReferenceLimits?.maxImages || 0,
-                      maxVideos: videoOperationChoice === "auto" || videoOperationChoice === "reference_to_video" ? groupReferenceLimits?.maxVideos || 0 : 0,
-                      maxAudios: videoOperationChoice === "text_to_video" ? 0 : groupReferenceLimits?.maxAudios || 0,
-                      maxFiles: 0,
-                  }
-                : mode === "image"
-                  ? { maxImages: groupReferenceLimits?.maxImages ?? imageProfile.references.maxImages, maxVideos: 0, maxAudios: 0, maxFiles: 0 }
-                  : { maxImages: 6, maxVideos: 6, maxAudios: 6, maxFiles: 6 },
-        [groupReferenceLimits, imageProfile.references.maxImages, mode, videoOperationChoice],
+            !selectedModel
+                ? { maxImages: 0, maxVideos: 0, maxAudios: 0, maxFiles: 0 }
+                : mode === "video"
+                  ? {
+                        maxImages: videoOperationChoice === "text_to_video" || videoOperationChoice === "audio_to_video" ? 0 : (groupReferenceLimits?.maxImages ?? videoProfile.references.maxImages),
+                        maxVideos: videoOperationChoice === "auto" || videoOperationChoice === "reference_to_video" ? (groupReferenceLimits?.maxVideos ?? videoProfile.references.maxVideos) : 0,
+                        maxAudios: videoOperationChoice === "text_to_video" ? 0 : (groupReferenceLimits?.maxAudios ?? videoProfile.references.maxAudios),
+                        maxFiles: 0,
+                    }
+                  : mode === "image"
+                    ? { maxImages: groupReferenceLimits?.maxImages ?? imageProfile.references.maxImages, maxVideos: 0, maxAudios: 0, maxFiles: 0 }
+                    : { maxImages: 6, maxVideos: 6, maxAudios: 0, maxFiles: 6 },
+        [groupReferenceLimits, imageProfile.references.maxImages, mode, selectedModel, videoOperationChoice, videoProfile.references.maxAudios, videoProfile.references.maxImages, videoProfile.references.maxVideos],
     );
     const maxReferences = mode === "text" ? 6 : referenceLimits.maxImages + referenceLimits.maxVideos + referenceLimits.maxAudios;
     const referenceImageSize = useMemo(() => {
@@ -589,16 +577,17 @@ export default function CreatePage() {
 
     const referenceCounts = useMemo(() => countCreationAttachments(attachments), [attachments]);
     const attachmentDisabledReason = useCallback(
-        (kind: CreationAttachmentKind, alreadySelected = false) => {
+        (kind: CreationAttachmentKind, alreadySelected = false, ignoreCapacity = false) => {
+            if (!selectedModel) return `请先选择可用${modeLabels[mode]}模型`;
             if (alreadySelected) return undefined;
-            if (mode === "text" && attachments.length >= maxReferences) return `文本创作最多添加 ${maxReferences} 个参考内容`;
+            if (!ignoreCapacity && mode === "text" && attachments.length >= maxReferences) return `文本创作最多添加 ${maxReferences} 个参考内容`;
             const limit = creationAttachmentLimit(mode, referenceLimits, kind);
             const label = kind === "image" ? "图片" : kind === "video" ? "视频" : kind === "audio" ? "音频" : "文件";
             if (limit <= 0) return mode === "image" ? "图片创作仅支持参考图" : `当前模型不支持参考${label}`;
-            if (referenceCounts[kind] >= limit) return `当前模型最多支持 ${limit} 个参考${label}`;
+            if (!ignoreCapacity && referenceCounts[kind] >= limit) return `当前模型最多支持 ${limit} 个参考${label}`;
             return undefined;
         },
-        [attachments.length, maxReferences, mode, referenceCounts, referenceLimits],
+        [attachments.length, maxReferences, mode, referenceCounts, referenceLimits, selectedModel],
     );
 
     const externalLibraryItems = useMemo<AssetLibraryPickerItem[]>(
@@ -610,6 +599,7 @@ export default function CreatePage() {
                         ? attachmentDisabledReason(
                               item.external.item.kind,
                               attachments.some((attachment) => attachment.id === item.id),
+                              true,
                           )
                         : "当前素材类型不能作为创作参考",
             })),
@@ -629,6 +619,7 @@ export default function CreatePage() {
                     disabledReason: attachmentDisabledReason(
                         asset.kind,
                         attachments.some((attachment) => attachment.id === `asset:${asset.id}`),
+                        true,
                     ),
                 })),
             ...externalLibraryItems,
@@ -689,7 +680,10 @@ export default function CreatePage() {
     };
 
     const uploadLibraryAssets = async (files: FileList | File[]) => {
-        const next = Array.from(files).filter((file) => creationFileAccepted(mode, file));
+        const requested = Array.from(files);
+        const next = requested.filter((file) => file.type.startsWith("image/") || file.type.startsWith("video/") || file.type.startsWith("audio/"));
+        const unsupportedCount = requested.length - next.length;
+        if (unsupportedCount) toast.warning(`${unsupportedCount} 个文件暂不能保存到素材库；目前支持图片、视频和音频`);
         if (!next.length) return [];
         const settled = await Promise.allSettled(
             next.map(async (file) => {
@@ -699,17 +693,43 @@ export default function CreatePage() {
         );
         const assetIds = settled.flatMap((entry) => (entry.status === "fulfilled" && entry.value ? [entry.value] : []));
         const failed = settled.filter((entry) => entry.status === "rejected");
-        if (assetIds.length) toast.success(`${assetIds.length} 个素材已上传到素材库并自动选中`);
+        if (assetIds.length) toast.success(`${assetIds.length} 个素材已保存到素材库`);
         if (failed.length) toast.error(`${failed.length} 个素材上传失败，请重试`);
         return assetIds;
     };
 
+    const hasReferenceCapacity = () => {
+        if (!selectedModel) return false;
+        if (mode === "text" && attachments.length >= maxReferences) return false;
+        return (["image", "video", "audio", "file"] as const).some((kind) => referenceCounts[kind] < creationAttachmentLimit(mode, referenceLimits, kind));
+    };
+
+    const addOrStoreLocalFiles = (files: FileList | File[]) => {
+        const requested = Array.from(files);
+        if (!requested.length) return;
+        if (!hasReferenceCapacity()) {
+            void uploadLibraryAssets(requested);
+            return;
+        }
+
+        const filtered = filterCreationUploadFiles(requested, mode, referenceLimits, attachments);
+        const remainingTotal = mode === "text" ? Math.max(0, maxReferences - attachments.length) : filtered.acceptedFiles.length;
+        const attachable = filtered.acceptedFiles.slice(0, remainingTotal);
+        const libraryOnly = [...filtered.acceptedFiles.slice(remainingTotal), ...filtered.rejectedFiles];
+        if (attachable.length) addAttachments(attachable);
+        if (libraryOnly.length) {
+            toast.info(`${libraryOnly.length} 个素材不适合当前生成配置，已改为保存到素材库`);
+            void uploadLibraryAssets(libraryOnly);
+        }
+    };
+
     const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
-        if (event.target.files) addAttachments(event.target.files);
+        if (event.target.files) addOrStoreLocalFiles(event.target.files);
         event.target.value = "";
     };
 
     const handleLibrarySelect = (selectedIds: string[]) => {
+        const selectedIdSet = new Set(selectedIds);
         const next = selectedIds.flatMap((id): CreationAttachment[] => {
             const asset = assets.find((item) => item.id === id);
             if (asset?.kind === "image") return [creationAttachmentFromAsset(asset)];
@@ -718,13 +738,18 @@ export default function CreatePage() {
             const external = libraryItems.find((item) => item.id === id)?.external;
             return external ? [creationAttachmentFromExternalAsset(external)] : [];
         });
-        if (!next.length) return;
-        setAttachments((current) => {
-            const merged = [...current.filter((item) => !next.some((candidate) => candidate.id === item.id)), ...next];
-            const byKind = reconcileCreationAttachmentLimits(merged, mode, referenceLimits).attachments;
-            const limited = mode === "text" ? byKind.slice(0, maxReferences) : byKind;
-            return mode === "video" ? normalizeCreationVideoAttachments(limited, videoOperationChoice, Boolean(promptRef.current.trim())) : limited;
+        if (selectedIds.length && !next.length) throw new Error("所选素材不能用于当前生成配置，请更换模型或素材类型");
+        const retainedAttachments = attachments.filter((item) => {
+            const libraryId = item.id.startsWith("asset:") ? item.id.slice(6) : item.id.startsWith("external:") ? item.id : "";
+            return !libraryId || selectedIdSet.has(libraryId);
         });
+        const merged = [...retainedAttachments.filter((item) => !next.some((candidate) => candidate.id === item.id)), ...next];
+        const reconciled = reconcileCreationAttachmentLimits(merged, mode, referenceLimits);
+        if (reconciled.removedAttachments.length || (mode === "text" && merged.length > maxReferences)) {
+            throw new Error("所选素材超过当前模型的类型或数量上限，请减少选择后再试");
+        }
+        const normalized = mode === "video" ? normalizeCreationVideoAttachments(merged, videoOperationChoice, Boolean(promptRef.current.trim())) : merged;
+        setAttachments(normalized);
         setLibraryOpen(false);
     };
 
@@ -1048,8 +1073,7 @@ export default function CreatePage() {
                             assistantMessage.id,
                             async ({ resultUrls, effectKey }) => {
                                 await updateOriginAssistant(
-                                    (item) =>
-                                        applyGenerationConsumerEffect(item, effectKey, (current) => ({ ...current, status: "done" as const, content: "图片已生成", resultUrls: Array.from(new Set([...(current.resultUrls || []), ...resultUrls])) })).value,
+                                    (item) => applyGenerationConsumerEffect(item, effectKey, (current) => ({ ...current, status: "done" as const, content: "图片已生成", resultUrls: Array.from(new Set([...(current.resultUrls || []), ...resultUrls])) })).value,
                                 );
                             },
                             { signal: requestLifecycle.signal },
@@ -1316,7 +1340,7 @@ export default function CreatePage() {
         onOpenLibrary: () => setLibraryOpen(true),
         fileInputRef,
         onFileChange: handleFileChange,
-        onFilesDrop: addAttachments,
+        onFilesDrop: addOrStoreLocalFiles,
         onModeChange: selectMode,
         model: selectedModel,
         modelRequirements,
@@ -1381,13 +1405,7 @@ export default function CreatePage() {
                             <section className="creation-thread-stage">
                                 <div className="creation-results">
                                     {activeConversation.messages.map((item, index) => (
-                                        <CreationMessageView
-                                            key={item.id}
-                                            item={item}
-                                            modelName={item.model ? modelDisplayName(config, item.model) : ""}
-                                            onRetryFailure={() => retryFailedMessage(item, index)}
-                                            onCreateVariant={() => createVariant(item, index)}
-                                        />
+                                        <CreationMessageView key={item.id} item={item} modelName={item.model ? modelDisplayName(config, item.model) : ""} onRetryFailure={() => retryFailedMessage(item, index)} onCreateVariant={() => createVariant(item, index)} />
                                     ))}
                                 </div>
                             </section>
@@ -1446,9 +1464,11 @@ export default function CreatePage() {
                 categoryLabels={{ ...creationAssetCategoryLabels, ...externalAssetSources.categoryLabels }}
                 folders={externalAssetSources.folders}
                 initialSelectedIds={attachments.flatMap((item) => (item.id.startsWith("asset:") ? [item.id.slice(6)] : item.id.startsWith("external:") ? [item.id] : []))}
+                allowEmptySelection
                 upload={{
-                    accept: creationUploadAccept(mode),
-                    description: mode === "text" ? "支持图片、视频、音频和常用文档；媒体会保存到素材库" : `支持图片${mode === "video" ? "、视频和音频" : ""}，上传后保存到素材库`,
+                    accept: "image/*,video/*,audio/*",
+                    description: "支持图片、视频和音频；先保存到素材库，确认后再加入本次创作",
+                    autoSelectUploaded: false,
                     onUpload: uploadLibraryAssets,
                     external: { accept: "image/*", description: "写入当前 Eagle 文件夹；Eagle 当前支持图片文件", onUpload: (files, folderId) => externalAssetSources.uploadExternalFiles(files, folderId) },
                 }}
@@ -1487,12 +1507,7 @@ function CreationHistoryDrawer({
         if (!query) return conversations;
         return conversations.filter((conversation) => {
             const latest = conversationPreviewMessage(conversation);
-            const searchable = [
-                conversation.title,
-                ...conversation.messages.flatMap((message) => [message.content, displayCreationPrompt(message.content, message.references || [])]),
-                latest?.mode ? modeLabels[latest.mode] : "创作",
-                formatConversationTime(conversation.updatedAt),
-            ]
+            const searchable = [conversation.title, ...conversation.messages.flatMap((message) => [message.content, displayCreationPrompt(message.content, message.references || [])]), latest?.mode ? modeLabels[latest.mode] : "创作", formatConversationTime(conversation.updatedAt)]
                 .filter(Boolean)
                 .join(" ")
                 .toLowerCase();
@@ -1858,7 +1873,15 @@ function MediaResult({ item, onRetryFailure, onCreateVariant }: { item: Creation
                     ))}
                 </div>
             )}
-            {isVideo ? <CreationVideoSupplementalImages results={supplementalImages} onPreview={(url) => { setPreviewType("image"); setPreviewUrl(url); }} /> : null}
+            {isVideo ? (
+                <CreationVideoSupplementalImages
+                    results={supplementalImages}
+                    onPreview={(url) => {
+                        setPreviewType("image");
+                        setPreviewUrl(url);
+                    }}
+                />
+            ) : null}
             <dl className="creation-media-details" aria-label="生成结果明细">
                 <div>
                     <dt>类型</dt>
@@ -1978,12 +2001,14 @@ function CreationMediaPreviewModal({ url, type, onClose }: { url: string; type: 
 function CreationAttachmentThumbnail({
     item,
     mode,
+    invalidReason,
     onPreview,
     onRemove,
     onVideoImageRoleChange,
 }: {
     item: CreationAttachment;
     mode: CreationMode;
+    invalidReason?: string;
     onPreview: (type: "image" | "video", url: string) => void;
     onRemove: (id: string) => void;
     onVideoImageRoleChange: (attachmentId: string, role: CreationVideoImageRole) => void;
@@ -2006,7 +2031,7 @@ function CreationAttachmentThumbnail({
             </span>
         );
     return (
-        <div className="creation-reference-card-content">
+        <div className={`creation-reference-card-content${invalidReason ? " is-invalid" : ""}`} role="group" aria-label={invalidReason ? `${item.name}：${invalidReason}` : item.name}>
             {previewable ? (
                 <button type="button" className="creation-reference-card-preview" onClick={() => onPreview(kind === "video" ? "video" : "image", url)} aria-label={`放大预览 ${item.name}`} disabled={!url}>
                     {content}
@@ -2059,6 +2084,11 @@ function CreationAttachmentThumbnail({
                         {videoImageRoleOption.shortLabel}
                     </button>
                 </Popover>
+            ) : null}
+            {invalidReason ? (
+                <span className="creation-reference-invalid-badge" title={invalidReason} aria-label={invalidReason}>
+                    !
+                </span>
             ) : null}
             <button
                 type="button"
@@ -2142,7 +2172,6 @@ function CreationComposer(props: ComposerProps) {
     const suppressAttachmentClickRef = useRef(false);
     const [trackState, setTrackState] = useState({ canScrollLeft: false, canScrollRight: false, isDragging: false });
     const interactionBusy = props.busy || props.referenceReplacementBusy;
-    const canSubmit = Boolean(props.prompt.trim()) && !interactionBusy;
     const creditsEnabled = useUserStore((state) => state.features.creditsEnabled);
     const priceChannel = resolveModelChannel(props.config, props.model);
     const canOptimizePrompt = Boolean(props.promptOptimizerProvider) && (props.mode === "image" || props.mode === "video");
@@ -2158,37 +2187,63 @@ function CreationComposer(props: ComposerProps) {
     });
     const showCost = creditsEnabled && credits !== null;
     const formattedCredits = credits?.toLocaleString("zh-CN", { maximumFractionDigits: 6 });
-    const actionLabel = props.referenceReplacementBusy ? "正在替换参考图" : props.busy ? "生成中" : showCost ? `预计消耗 ${formattedCredits} 积分，发送` : "发送";
     const placeholder = props.mode === "text" ? "描述你的故事、角色或想继续讨论的创意" : props.mode === "image" ? "描述画面、人物、场景、构图与风格" : "描述镜头内容、运动、光线与节奏";
     const emptyPlaceholder =
-        props.mode === "video"
-            ? "上传参考素材、输入文字或 @ 参考内容，自由组合图、文、音、视频元素，描述你想生成的镜头。"
-            : props.mode === "image"
-              ? "上传参考素材、输入文字或 @ 参考内容，描述人物、场景、构图与风格。"
-              : "输入故事、角色或创意，也可以使用 @ 引用素材与技能。";
+        props.mode === "video" ? "上传参考素材、输入文字或 @ 参考内容，自由组合图、文、音、视频元素，描述你想生成的镜头。" : props.mode === "image" ? "上传参考素材、输入文字或 @ 参考内容，描述人物、场景、构图与风格。" : "输入故事、角色或创意，也可以使用 @ 引用素材与技能。";
     const referenceCounts = useMemo(() => countCreationAttachments(props.attachments), [props.attachments]);
     const referenceKinds: CreationAttachmentKind[] = ["image", "video", "audio", "file"];
     const supportedReferenceKinds = referenceKinds.filter((kind) => creationAttachmentLimit(props.mode, props.referenceLimits, kind) > 0);
     const referencesSupported = supportedReferenceKinds.length > 0;
     const totalReferenceCapacityAvailable = props.mode !== "text" || props.attachments.length < props.maxReferences;
-    const canAddMoreReferences =
-        referencesSupported &&
-        totalReferenceCapacityAvailable &&
-        supportedReferenceKinds.some((kind) => referenceCounts[kind] < creationAttachmentLimit(props.mode, props.referenceLimits, kind));
-    const showReferenceEntry = referencesSupported && !props.attachments.length;
+    const canAddMoreReferences = referencesSupported && totalReferenceCapacityAvailable && supportedReferenceKinds.some((kind) => referenceCounts[kind] < creationAttachmentLimit(props.mode, props.referenceLimits, kind));
+    const showReferenceEntry = !props.attachments.length;
     const referenceLimitSummary = supportedReferenceKinds
         .map((kind) => {
             const label = kind === "image" ? "图" : kind === "video" ? "视频" : kind === "audio" ? "音频" : "文件";
             return `${label} ${referenceCounts[kind]}/${creationAttachmentLimit(props.mode, props.referenceLimits, kind)}`;
         })
-        .join("·");
-    const addReferenceLabel = interactionBusy
-        ? props.referenceReplacementBusy
-            ? "正在替换参考图"
-            : "生成中暂不能添加参考内容"
-        : canAddMoreReferences
-          ? `添加参考内容（${referenceLimitSummary}）`
-          : `已达到当前模式的参考内容上限（${referenceLimitSummary || "不支持参考素材"}）`;
+        .join(" · ");
+    const invalidReferenceReasons = useMemo(() => {
+        const counts = { image: 0, video: 0, audio: 0, file: 0 } satisfies Record<CreationAttachmentKind, number>;
+        const reasons = new Map<string, string>();
+        props.attachments.forEach((attachment, index) => {
+            const kind = creationAttachmentKind(attachment);
+            const label = kind === "image" ? "图片" : kind === "video" ? "视频" : kind === "audio" ? "音频" : "文件";
+            const limit = creationAttachmentLimit(props.mode, props.referenceLimits, kind);
+            if (!props.model) reasons.set(attachment.id, "请先选择可用模型，再确认该素材能否引用");
+            else if (props.mode === "text" && index >= props.maxReferences) reasons.set(attachment.id, `文本创作最多引用 ${props.maxReferences} 个素材`);
+            else if (limit <= 0) reasons.set(attachment.id, `当前生成配置不支持${label}参考`);
+            else if (counts[kind] >= limit) reasons.set(attachment.id, `当前模型最多支持 ${limit} 个${label}参考`);
+            else counts[kind] += 1;
+        });
+        return reasons;
+    }, [props.attachments, props.maxReferences, props.mode, props.model, props.referenceLimits]);
+    const invalidReferenceCount = invalidReferenceReasons.size;
+    const canSubmit = Boolean(props.model) && Boolean(props.prompt.trim()) && invalidReferenceCount === 0 && !interactionBusy;
+    const actionLabel = props.referenceReplacementBusy
+        ? "正在替换参考图"
+        : props.busy
+          ? "生成中"
+          : !props.model
+            ? `请先选择${modeLabels[props.mode]}模型`
+            : invalidReferenceCount
+              ? "请先移除或调整不支持的参考素材"
+              : !props.prompt.trim()
+                ? "请先输入创作描述"
+                : showCost
+                  ? `预计消耗 ${formattedCredits} 积分，发送`
+                  : "发送";
+    const referenceEntryHint = !props.model
+        ? "可以先上传到素材库；选择模型后再添加为参考"
+        : !referencesSupported
+          ? "当前生成方式不使用参考素材；上传内容仍会保存到素材库"
+          : !canAddMoreReferences
+            ? `已达到引用上限${referenceLimitSummary ? ` · ${referenceLimitSummary}` : ""}；仍可继续入库`
+            : `上传后保存并加入本次创作${referenceLimitSummary ? ` · ${referenceLimitSummary}` : ""}`;
+    const directUploadLabel = canAddMoreReferences ? "从本机上传并添加参考素材" : "从本机上传并保存到素材库";
+    const directUploadAccept = props.mode === "text" && canAddMoreReferences ? creationUploadAccept("text") : "image/*,video/*,audio/*";
+    const fileDropLabel = canAddMoreReferences ? "松开即可上传并加入本次创作" : "松开即可保存到素材库";
+    const addReferenceLabel = interactionBusy ? (props.referenceReplacementBusy ? "正在替换参考图" : "生成中暂不能添加参考内容") : canAddMoreReferences ? `添加参考内容（${referenceLimitSummary}）` : `已达到当前模式的参考内容上限（${referenceLimitSummary || "不支持参考素材"}）`;
     const visibleAttachments = useMemo(() => (referenceFilter === "all" ? props.attachments : props.attachments.filter((attachment) => creationAttachmentKind(attachment) === referenceFilter)), [props.attachments, referenceFilter]);
     const imageSettingsSupported = props.imageProfile.size.parameter !== "none" || props.imageProfile.quality.supported || props.imageProfile.maxOutputs > 1;
     const updateTrackScrollState = useCallback(() => {
@@ -2279,13 +2334,14 @@ function CreationComposer(props: ComposerProps) {
     const handleComposerDragEnter = (event: ReactDragEvent<HTMLElement>) => {
         if (!hasDraggedFiles(event)) return;
         event.preventDefault();
+        if (interactionBusy) return;
         fileDragDepthRef.current += 1;
         setIsFileDraggingOver(true);
     };
     const handleComposerDragOver = (event: ReactDragEvent<HTMLElement>) => {
         if (!hasDraggedFiles(event)) return;
         event.preventDefault();
-        event.dataTransfer.dropEffect = "copy";
+        event.dataTransfer.dropEffect = interactionBusy ? "none" : "copy";
     };
     const handleComposerDragLeave = (event: ReactDragEvent<HTMLElement>) => {
         if (!hasDraggedFiles(event)) return;
@@ -2298,6 +2354,7 @@ function CreationComposer(props: ComposerProps) {
         event.preventDefault();
         fileDragDepthRef.current = 0;
         setIsFileDraggingOver(false);
+        if (interactionBusy) return;
         if ((event.target as HTMLElement).closest("[data-mention-reference-id]")) return;
         if (event.dataTransfer.files.length) props.onFilesDrop(event.dataTransfer.files);
     };
@@ -2310,24 +2367,41 @@ function CreationComposer(props: ComposerProps) {
             onDrop={handleComposerDrop}
         >
             {isFileDraggingOver ? (
-                <div className="creation-file-drop-overlay" aria-hidden="true">
+                <div className="creation-file-drop-overlay" role="status" aria-live="polite">
                     <Plus />
-                    <span>松开即可上传参考素材</span>
+                    <span>{fileDropLabel}</span>
                 </div>
             ) : null}
             {showReferenceEntry ? (
                 <div className="creation-reference-entry-bar" aria-label="参考素材工具栏">
-                    <Tooltip title="添加参考素材">
-                        <button type="button" className="creation-entry-button creation-reference-entry" onClick={props.onOpenLibrary} disabled={interactionBusy || !canAddMoreReferences} aria-label="添加参考内容">
-                            <Plus aria-hidden="true" />
-                            <span>参考素材</span>
+                    <div className="creation-reference-entry-copy">
+                        <span className="creation-reference-entry-icon" aria-hidden="true">
+                            <Library />
+                        </span>
+                        <span>
+                            <strong>参考素材</strong>
+                            <small className="creation-reference-entry-hint">{referenceEntryHint}</small>
+                        </span>
+                    </div>
+                    <div className="creation-reference-entry-actions">
+                        <button type="button" className="creation-entry-button creation-reference-action is-upload" onClick={() => props.fileInputRef.current?.click()} disabled={interactionBusy} aria-label={directUploadLabel} title={directUploadLabel}>
+                            <Upload aria-hidden="true" />
+                            <span>本机上传</span>
                         </button>
-                    </Tooltip>
-                    <span className="creation-reference-entry-hint">添加图片、视频、音频或文件，也可直接拖入</span>
+                        <button type="button" className="creation-entry-button creation-reference-action is-library" onClick={props.onOpenLibrary} disabled={interactionBusy} aria-label="打开素材库上传或选择素材">
+                            <Library aria-hidden="true" />
+                            <span>素材库</span>
+                        </button>
+                        {!props.model ? (
+                            <Link className="creation-reference-config-link" to={settingsPath("models", true)}>
+                                配置模型
+                            </Link>
+                        ) : null}
+                    </div>
                 </div>
             ) : null}
             <div className="creation-chat-writing-surface">
-                <input ref={props.fileInputRef} type="file" hidden accept={creationUploadAccept(props.mode)} multiple onChange={props.onFileChange} />
+                <input ref={props.fileInputRef} type="file" hidden accept={directUploadAccept} multiple onChange={props.onFileChange} />
                 <div className="creation-chat-editor">
                     <CanvasResourceMentionTextarea
                         ref={props.composerFocusRef}
@@ -2370,8 +2444,22 @@ function CreationComposer(props: ComposerProps) {
                                     ))}
                                 </div>
                                 <div className="creation-reference-panel-actions">
-                                    <button type="button" onClick={props.onClearAttachments} disabled={interactionBusy}>
-                                        清空全部素材
+                                    {invalidReferenceCount ? (
+                                        <span className="creation-reference-panel-warning" role="status" title="请移除或调整与当前模型不兼容的素材">
+                                            {invalidReferenceCount} 个不兼容
+                                        </span>
+                                    ) : null}
+                                    <button type="button" onClick={() => props.fileInputRef.current?.click()} disabled={interactionBusy} aria-label={directUploadLabel} title={directUploadLabel}>
+                                        <Upload aria-hidden="true" />
+                                        <span>上传</span>
+                                    </button>
+                                    <button type="button" onClick={props.onOpenLibrary} disabled={interactionBusy} aria-label="打开素材库上传或选择素材">
+                                        <Library aria-hidden="true" />
+                                        <span>素材库</span>
+                                    </button>
+                                    <button type="button" onClick={props.onClearAttachments} disabled={interactionBusy} aria-label="清空全部素材">
+                                        <Trash2 aria-hidden="true" />
+                                        <span>清空</span>
                                     </button>
                                 </div>
                             </div>
@@ -2421,20 +2509,25 @@ function CreationComposer(props: ComposerProps) {
                                                     if (target?.attachmentId && target.attachmentId !== item.id) props.onReplaceAttachment(target.attachmentId, item);
                                                 }}
                                             >
-                                                <CreationAttachmentThumbnail item={item} mode={props.mode} onPreview={previewAttachment} onRemove={props.onRemoveAttachment} onVideoImageRoleChange={props.onVideoImageRoleChange} />
+                                                <CreationAttachmentThumbnail
+                                                    item={item}
+                                                    mode={props.mode}
+                                                    invalidReason={invalidReferenceReasons.get(item.id)}
+                                                    onPreview={previewAttachment}
+                                                    onRemove={props.onRemoveAttachment}
+                                                    onVideoImageRoleChange={props.onVideoImageRoleChange}
+                                                />
                                             </Reorder.Item>
                                         ))}
                                         {!visibleAttachments.length && props.attachments.length ? <li className="creation-reference-filter-empty">该类型暂无参考内容</li> : null}
-                                        {referencesSupported ? (
-                                            <li className="creation-reference-add-slot">
-                                                <Tooltip title={addReferenceLabel}>
-                                                    <button type="button" className="creation-reference-add-button" onClick={props.onOpenLibrary} disabled={interactionBusy || !canAddMoreReferences} aria-label={addReferenceLabel}>
-                                                        <Plus aria-hidden="true" />
-                                                        <span>参考内容</span>
-                                                    </button>
-                                                </Tooltip>
-                                            </li>
-                                        ) : null}
+                                        <li className="creation-reference-add-slot">
+                                            <Tooltip title={addReferenceLabel}>
+                                                <button type="button" className="creation-reference-add-button" onClick={props.onOpenLibrary} disabled={interactionBusy} aria-label={addReferenceLabel}>
+                                                    <Plus aria-hidden="true" />
+                                                    <span>参考内容</span>
+                                                </button>
+                                            </Tooltip>
+                                        </li>
                                     </Reorder.Group>
                                     {trackState.canScrollRight ? (
                                         <button type="button" className="creation-reference-track-button is-right" onClick={() => scrollAttachmentTrack(1)} aria-label="向右浏览参考内容" title="向右浏览参考内容">
@@ -2479,15 +2572,7 @@ function CreationComposer(props: ComposerProps) {
                             <span className="creation-entry-divider" aria-hidden="true" />
                             <div className="creation-entry-group is-input" role="group" aria-label="提示词辅助">
                                 <Tooltip title="用 AI 优化提示词">
-                                    <button
-                                        type="button"
-                                        className="creation-chat-control creation-entry-button"
-                                        onClick={() => setPromptOptimizerOpen(true)}
-                                        aria-label="优化提示词"
-                                        aria-expanded={promptOptimizerOpen}
-                                        aria-haspopup="dialog"
-                                        disabled={interactionBusy}
-                                    >
+                                    <button type="button" className="creation-chat-control creation-entry-button" onClick={() => setPromptOptimizerOpen(true)} aria-label="优化提示词" aria-expanded={promptOptimizerOpen} aria-haspopup="dialog" disabled={interactionBusy}>
                                         <WandSparkles />
                                         <span>优化</span>
                                     </button>

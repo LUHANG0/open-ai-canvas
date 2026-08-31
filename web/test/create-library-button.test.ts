@@ -9,7 +9,7 @@ function compactSource(source: string) {
 }
 
 describe("creation library button", () => {
-    test("素材入口只保留在上方参考素材区域，底栏不重复展示", () => {
+    test("本机上传和素材库入口长期显示在参考素材区域，底栏不重复", () => {
         const source = readFileSync(resolve(import.meta.dir, "../src/pages/create/index.tsx"), "utf8");
         const dockStart = source.indexOf('<footer className="creation-chat-dock">');
         const dockEnd = source.indexOf("</footer>", dockStart);
@@ -22,13 +22,16 @@ describe("creation library button", () => {
         expect(dockSource).not.toContain('aria-label="从本机上传附件"');
         expect(dockSource).not.toContain('aria-label="打开素材库选择参考内容"');
         expect(dockSource).not.toContain("VoiceRecordingButton");
-        expect(source).toContain('className="creation-entry-button creation-reference-entry"');
-        expect(source).toContain('aria-label="添加参考内容"');
+        expect(source).toContain('className="creation-entry-button creation-reference-action is-upload"');
+        expect(source).toContain('className="creation-entry-button creation-reference-action is-library"');
+        expect(source).toContain('aria-label="打开素材库上传或选择素材"');
+        expect(source).toContain("const showReferenceEntry = !props.attachments.length");
+        expect(source).not.toContain("referencesSupported && !props.attachments.length");
         expect(source).toContain('className="creation-reference-add-button"');
         expect(source).toContain("onClick={props.onOpenLibrary}");
     });
 
-    test("uploads from the library without adding a reference before confirmation", () => {
+    test("素材库上传只入库，不静默勾选或加入当前创作", () => {
         const source = readFileSync(resolve(import.meta.dir, "../src/pages/create/index.tsx"), "utf8");
         const pickerSource = readFileSync(resolve(import.meta.dir, "../src/components/assets/asset-library-picker-modal.tsx"), "utf8");
         const uploadStart = source.indexOf("const uploadLibraryAssets = async");
@@ -39,9 +42,12 @@ describe("creation library button", () => {
         expect(source.slice(uploadStart, uploadEnd)).not.toContain("setAttachments");
         expect(source).toContain("onUpload: uploadLibraryAssets");
         expect(source).not.toContain("onUpload={() => fileInputRef.current?.click()}");
-        expect(source).toContain("上传后保存到素材库");
-        expect(pickerSource).toContain("保存完成后会自动选中");
-        expect(source).toContain("个素材已上传到素材库并自动选中");
+        expect(source).toContain("先保存到素材库，确认后再加入本次创作");
+        expect(source).toContain("autoSelectUploaded: false");
+        expect(pickerSource).toContain("upload?.autoSelectUploaded !== false");
+        expect(pickerSource).toContain("保存完成后请手动选择");
+        expect(source).not.toContain("并自动选中");
+        expect(source).toContain("个素材已保存到素材库");
     });
 
     test("previews prompt reference images without removing them", () => {
@@ -101,7 +107,7 @@ describe("creation library button", () => {
         expect(source).toContain("creation-reference-add-button");
         expect(source).toContain("addReferenceLabel");
         expect(source).toContain("aria-busy={interactionBusy}");
-        expect(source).toContain("disabled={interactionBusy || !canAddMoreReferences}");
+        expect(source).toContain('className="creation-reference-add-button" onClick={props.onOpenLibrary} disabled={interactionBusy}');
         expect(source).toContain("creation-reference-track-button");
         expect(source).toContain("imageReferenceAtPoint");
         expect(source).toContain("setDropTargetReferenceId");
@@ -123,8 +129,8 @@ describe("creation library button", () => {
         expect(workspaceStyles).toContain("width: 44px;");
         expect(workspaceStyles).toContain("height: 44px;");
         expect(workspaceStyles).toContain("creation-reference-entry");
-        expect(source).toContain("onFilesDrop: addAttachments");
-        expect(source).toContain('event.dataTransfer.dropEffect = "copy"');
+        expect(source).toContain("onFilesDrop: addOrStoreLocalFiles");
+        expect(source).toContain('event.dataTransfer.dropEffect = interactionBusy ? "none" : "copy"');
         expect(source).toContain("props.onFilesDrop(event.dataTransfer.files)");
         expect(source).toContain('className="creation-file-drop-overlay"');
     });
@@ -146,7 +152,7 @@ describe("creation library button", () => {
         const editorSource = compactSource(readFileSync(resolve(import.meta.dir, "../src/components/canvas/canvas-resource-mention-textarea.tsx"), "utf8"));
         const workspaceStyles = readFileSync(resolve(import.meta.dir, "../src/pages/create/creation-workspace.css"), "utf8");
 
-        expect(source).toContain("const showReferenceEntry = referencesSupported && !props.attachments.length");
+        expect(source).toContain("const showReferenceEntry = !props.attachments.length");
         expect(source).toContain('showReferenceEntry ? " has-reference-entry" : ""');
         expect(source).toContain('className="creation-reference-entry-bar" aria-label="参考素材工具栏"');
         expect(source).not.toContain("forceRichEditor={showReferenceEntry}");
@@ -155,21 +161,22 @@ describe("creation library button", () => {
         expect(workspaceStyles).toContain(".creation-home .creation-reference-entry-bar {");
         expect(workspaceStyles).toContain("border-bottom: 1px solid var(--creation-border);");
         expect(workspaceStyles).toContain("--creation-composer-writing-height: 126px;");
-        expect(source).toContain('className="creation-entry-button creation-reference-entry"');
+        expect(source).toContain('className="creation-entry-button creation-reference-action is-upload"');
+        expect(source).toContain('className="creation-entry-button creation-reference-action is-library"');
         expect(source).toContain("参考素材");
-        expect(source).toContain("添加图片、视频、音频或文件，也可直接拖入");
+        expect(source).toContain("可以先上传到素材库；选择模型后再添加为参考");
         expect(workspaceStyles).toContain("position: relative;");
         expect(workspaceStyles).toContain("pointer-events: auto;");
         expect(workspaceStyles).not.toContain('.creation-chat-mention-editor[role="textbox"]::before');
         expect(workspaceStyles).not.toContain("float: left;");
     });
 
-    test("删除按钮隔离拖拽，素材库入口由上方参考素材区域负责", () => {
+    test("删除按钮隔离拖拽，顶部与已有素材面板都可继续上传", () => {
         const source = compactSource(readFileSync(resolve(import.meta.dir, "../src/pages/create/index.tsx"), "utf8"));
 
         expect(source).toContain("onPointerDownCapture={(event) => event.stopPropagation()}");
         expect(source).toContain("onRemove(item.id)");
-        expect(source).not.toContain("onClick={() => props.fileInputRef.current?.click()}");
+        expect(source).toContain("onClick={() => props.fileInputRef.current?.click()}");
         expect(source).toContain("onClick={props.onOpenLibrary}");
     });
 
@@ -205,15 +212,67 @@ describe("creation library button", () => {
         expect(source).toContain("videoEndFrameNodeId");
         expect(source).toContain("videoEditOperation: videoOperation");
         expect(source).toContain('videoOperationExplicit: videoOperationChoice !== "auto"');
-        expect(source).toContain("modelGroupReferenceLimits(config, preferredModel, mode)");
-        expect(source).toContain("modelGroupVideoOperations(config, preferredModel)");
+        expect(source).toContain("modelGroupReferenceLimits(config, selectedModel, mode)");
+        expect(source).toContain("modelGroupVideoOperations(config, selectedModel)");
         expect(source).toContain("operations={props.videoOperations}");
         expect(source).toContain("reconcileCreationAttachmentLimits");
         expect(source).toContain("filterCreationUploadFiles");
-        expect(source).toContain('className={`creation-reference-frame-role is-${videoImageRole}`}');
+        expect(source).toContain("className={`creation-reference-frame-role is-${videoImageRole}`}");
         expect(source).toContain("onVideoImageRoleChange(item.id, option.value)");
         expect(workspaceStyles).toContain(".creation-video-operation-menu");
         expect(workspaceStyles).toContain(".creation-home .creation-reference-frame-role");
+    });
+
+    test("无可用模型时发送按钮硬禁用并提供明确恢复入口", () => {
+        const source = compactSource(readFileSync(resolve(import.meta.dir, "../src/pages/create/index.tsx"), "utf8"));
+
+        expect(source).toContain("const canSubmit = Boolean(props.model) && Boolean(props.prompt.trim()) && invalidReferenceCount === 0 && !interactionBusy");
+        expect(source).toContain("disabled={interactionBusy || !canSubmit}");
+        expect(source).toContain("请先选择${modeLabels[props.mode]}模型");
+        expect(source).toContain('to={settingsPath("models", true)}');
+        expect(source).toContain("if (!selectedModel) {");
+    });
+
+    test("素材库批量选择超限时原子拒绝，不静默裁剪或关闭弹窗", () => {
+        const source = readFileSync(resolve(import.meta.dir, "../src/pages/create/index.tsx"), "utf8");
+        const start = source.indexOf("const handleLibrarySelect");
+        const end = source.indexOf("const removeAttachment", start);
+        const selection = source.slice(start, end);
+
+        expect(start).toBeGreaterThanOrEqual(0);
+        expect(end).toBeGreaterThan(start);
+        expect(selection).toContain("reconcileCreationAttachmentLimits(merged, mode, referenceLimits)");
+        expect(selection).toContain("throw new Error");
+        expect(selection).not.toContain(".attachments;");
+        expect(selection.indexOf("throw new Error")).toBeLessThan(selection.indexOf("setAttachments"));
+        expect(selection.indexOf("throw new Error")).toBeLessThan(selection.indexOf("setLibraryOpen(false)"));
+        expect(selection).toContain("const selectedIdSet = new Set(selectedIds)");
+        expect(selection).toContain("return !libraryId || selectedIdSet.has(libraryId)");
+        expect(selection).toContain("if (selectedIds.length && !next.length)");
+    });
+
+    test("素材库满额时仍可替换已有素材，无模型时文件选择器只展示可入库媒体", () => {
+        const source = compactSource(readFileSync(resolve(import.meta.dir, "../src/pages/create/index.tsx"), "utf8"));
+
+        expect(source).toContain("ignoreCapacity = false");
+        expect(source).toContain("!ignoreCapacity && referenceCounts[kind] >= limit");
+        expect(source).toContain("allowEmptySelection");
+        expect(source).toContain('const directUploadAccept = props.mode === "text" && canAddMoreReferences ? creationUploadAccept("text") : "image/*,video/*,audio/*"');
+        expect(source).toContain("accept={directUploadAccept}");
+    });
+
+    test("不兼容素材会保留并标记，手机端生成配置完整换行展示", () => {
+        const source = compactSource(readFileSync(resolve(import.meta.dir, "../src/pages/create/index.tsx"), "utf8"));
+        const workspaceStyles = readFileSync(resolve(import.meta.dir, "../src/pages/create/creation-workspace.css"), "utf8");
+
+        expect(source).toContain("const invalidReferenceReasons = useMemo");
+        expect(source).toContain("invalidReason={invalidReferenceReasons.get(item.id)}");
+        expect(source).toContain('className="creation-reference-invalid-badge"');
+        expect(source).toContain("个不兼容");
+        expect(workspaceStyles).toContain(".creation-home .creation-reference-card-content.is-invalid");
+        expect(workspaceStyles).toContain("grid-template-columns: minmax(0, 1fr) max-content;");
+        expect(workspaceStyles).toContain("flex-wrap: wrap;");
+        expect(workspaceStyles).toContain("height: 38px !important;");
     });
 
     test("全部创作入口按配置与输入素材分组并共用按钮外壳", () => {
