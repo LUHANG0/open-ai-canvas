@@ -788,6 +788,58 @@
     }
 }
 
+@media (max-width: 900px) {
+    .plugins-subnav {
+        gap: var(--app-space-3, 12px);
+        margin-top: var(--app-space-3, 12px);
+    }
+
+    .plugins-subnav .pc-subnav-layout__rail,
+    .plugins-subnav .pc-subnav-layout__content {
+        background: transparent;
+        border: 0;
+        border-radius: 0;
+    }
+
+    .plugins-subnav .pc-subnav-layout__rail-header {
+        display: none;
+    }
+
+    .plugins-subnav .pc-subnav-layout__item-description {
+        display: none;
+    }
+
+    .plugins-subnav .pc-subnav-layout__content-body {
+        padding: 0;
+    }
+}
+
+@media (min-width: 901px) and (max-width: 1023px) {
+    .plugins-subnav {
+        display: grid;
+        grid-template-columns: 208px minmax(0, 1fr);
+        align-items: start;
+        gap: var(--app-space-4, 16px);
+        margin-top: var(--app-space-4, 16px);
+    }
+
+    .plugins-subnav .pc-subnav-layout__rail {
+        position: sticky;
+        top: var(--app-space-4, 16px);
+        width: 100%;
+    }
+
+    .plugins-subnav .pc-subnav-layout__nav {
+        flex-direction: column;
+        overflow: visible;
+    }
+
+    .plugins-subnav .pc-subnav-layout__item {
+        width: 100%;
+        min-width: 0;
+    }
+}
+
 /* R6 desktop contract: public plugin pages consume the shared --app-* system. */
 @media (min-width: 1024px) {
     .plugins-page-content {

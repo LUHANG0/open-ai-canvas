@@ -34,6 +34,63 @@
     min-width: 0;
 }
 
+@media (max-width: 1023px) {
+    .settings-page .settings-subnav {
+        gap: 0;
+        margin-top: var(--app-space-2, 8px);
+    }
+
+    .settings-page .pc-subnav-layout__rail,
+    .settings-page .pc-subnav-layout__content {
+        background: transparent;
+        border: 0;
+        border-radius: 0;
+    }
+
+    .settings-page .pc-subnav-layout__rail-header {
+        display: none;
+    }
+
+    .settings-page .pc-subnav-layout__content-body {
+        padding: var(--app-space-4, 16px) 0 0;
+    }
+
+    .settings-page .pc-subnav-layout__item-description {
+        display: none;
+    }
+}
+
+@media (min-width: 768px) and (max-width: 1023px) {
+    .settings-page .settings-subnav {
+        display: grid;
+        grid-template-columns: 200px minmax(0, 1fr);
+        align-items: start;
+    }
+
+    .settings-page .pc-subnav-layout__rail {
+        align-self: stretch;
+        border-right: 1px solid var(--app-border-subtle, var(--border));
+    }
+
+    .settings-page .pc-subnav-layout__nav {
+        flex-direction: column;
+        overflow: visible;
+    }
+
+    .settings-page .pc-subnav-layout__item {
+        width: 100%;
+        min-width: 0;
+    }
+
+    .settings-page .pc-subnav-layout__item-description {
+        display: block;
+    }
+
+    .settings-page .pc-subnav-layout__content-body {
+        padding: var(--app-space-4, 16px) var(--app-space-6, 24px);
+    }
+}
+
 @media (min-width: 1024px) {
     .settings-page .app-page-header {
         padding-bottom: var(--app-space-4, 16px);
