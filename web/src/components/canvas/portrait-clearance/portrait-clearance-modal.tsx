@@ -247,6 +247,7 @@ export function PortraitClearanceModal({ projectId, node, upstreamNodes, open, o
 
     return (
         <Modal
+            rootClassName="pc-canvas-overlay pc-canvas-modal pc-canvas-portrait-modal"
             open={open}
             onCancel={onClose}
             footer={null}

@@ -19,6 +19,7 @@ import { ensureMediaNodeMinimumSize } from "@/lib/canvas/canvas-node-size";
 import { getPublicCanvasShare } from "@/services/api/canvas-share";
 import { useThemeStore } from "@/stores/use-theme-store";
 import { CanvasNodeType, type CanvasNodeData, type Position, type ViewportTransform } from "@/types/canvas";
+import "./canvas-editor-pc.css";
 
 type ContextMenu = { x: number; y: number; world: Position; nodeId?: string };
 type DragState = { primaryId: string; nodeIds: string[]; startX: number; startY: number; origins: Map<string, Position>; moved: boolean };
@@ -218,18 +219,46 @@ export default function SharedCanvasPage() {
     const toolbarNodeKey = selectedNodeId;
     const toolbarNode = toolbarNodeKey ? nodeById.get(toolbarNodeKey) || null : null;
 
-    if (loading) return <FullScreenLoader label="正在打开共享画布" detail="读取节点、连线和视图状态" />;
-    if (loadError) return <div className="grid h-screen place-items-center px-5" style={{ background: theme.canvas.background }}><WorkspaceState icon="error" title="分享链接不可用" description={loadError} action={<Link to="/"><Button>返回首页</Button></Link>} /></div>;
+    if (loading) {
+        return (
+            <main className="pc-canvas-share pc-canvas-share--state h-screen" style={{ background: theme.canvas.background, color: theme.node.text }} aria-busy="true" aria-label="正在打开共享画布">
+                <FullScreenLoader label="正在打开共享画布" detail="读取节点、连线和视图状态" />
+            </main>
+        );
+    }
+    if (loadError) {
+        return (
+            <main className="pc-canvas-share pc-canvas-share--state grid h-screen place-items-center px-5" style={{ background: theme.canvas.background, color: theme.node.text }}>
+                <section className="pc-canvas-share__state-card" aria-label="分享画布加载失败">
+                    <div className="pc-canvas-share__state-brand hidden"><Share2 className="size-4" />影策共享画布</div>
+                    <WorkspaceState
+                        icon="error"
+                        title="分享链接不可用"
+                        description={loadError}
+                        action={
+                            <>
+                                <Link to="/"><Button>返回首页</Button></Link>
+                                <Link className="pc-canvas-share__state-login hidden" to="/login"><Button type="primary" icon={<LogIn className="size-4" />}>登录影策</Button></Link>
+                            </>
+                        }
+                    />
+                </section>
+            </main>
+        );
+    }
 
     return (
-        <main className="relative h-screen overflow-hidden" style={{ background: theme.canvas.background, color: theme.node.text }}>
-            <header className="pointer-events-none absolute inset-x-0 top-0 z-[var(--z-panel-floating)] flex h-16 items-center justify-between px-5">
-                <div className="pointer-events-auto flex min-w-0 items-center gap-3">
-                    <Share2 className="size-4" style={{ color: theme.node.muted }} />
-                    <span className="max-w-[45vw] truncate text-base font-semibold">{title}</span>
-                    <span className="inline-flex items-center gap-1 text-xs" style={{ color: theme.node.muted }}><Eye className="size-3.5" />只读分享</span>
+        <main className="pc-canvas-workspace pc-canvas-share relative h-screen overflow-hidden" style={{ background: theme.canvas.background, color: theme.node.text }} aria-label={`共享画布：${title}`}>
+            <header className="pc-canvas-share__header pointer-events-none absolute inset-x-0 top-0 z-[var(--z-panel-floating)] flex h-16 items-center justify-between px-5" aria-label="共享画布信息">
+                <div className="pc-canvas-share__identity pointer-events-auto flex min-w-0 items-center gap-3">
+                    <span className="pc-canvas-share__mark" style={{ color: theme.node.muted }} aria-hidden><Share2 className="size-4" /></span>
+                    <span className="min-w-0">
+                        <span className="block max-w-[45vw] truncate text-base font-semibold">{title}</span>
+                        <span className="mt-0.5 hidden text-[11px] tabular-nums" style={{ color: theme.node.muted }}>{nodes.length.toLocaleString("zh-CN")} 个节点 · 访客可以自由浏览</span>
+                    </span>
+                    <span className="pc-canvas-share__badge inline-flex items-center gap-1 text-xs" style={{ color: theme.node.muted }}><Eye className="size-3.5" />只读分享</span>
                 </div>
-                <Link className="pointer-events-auto" to="/login"><Button type="text" icon={<LogIn className="size-4" />}>登录</Button></Link>
+                <Link className="pc-canvas-share__login pointer-events-auto" to="/login"><Button type="text" icon={<LogIn className="size-4" />}>登录<span className="hidden">并开始创作</span></Button></Link>
             </header>
 
             <InfiniteCanvas containerRef={containerRef} viewport={viewport} backgroundMode={backgroundMode} onViewportChange={onViewportChange} onViewportPreviewChange={(next) => { viewportRef.current = next; }} onCanvasDeselect={() => { setSelectedNodeId(null); setContextMenu(null); }} onContextMenu={(event) => openContextMenu(event)} onDrop={(event) => { event.preventDefault(); unauthorized(); }}>
@@ -258,8 +287,12 @@ export default function SharedCanvasPage() {
 
             <CanvasNodeToolbar node={dragRef.current ? null : toolbarNode} viewport={viewport} containerRef={containerRef} onKeep={keepToolbar} onLeave={hideToolbar} onInfo={(node) => setInfoNodeId(node.id)} onEditText={unauthorized} onDecreaseFont={unauthorized} onIncreaseFont={unauthorized} onToggleDialog={unauthorized} onAnnotate={unauthorized} onGenerateImage={unauthorized} onUpload={unauthorized} onDownload={unauthorized} onSaveAsset={unauthorized} onMaskEdit={unauthorized} onEmotion={unauthorized} onPortraitTexture={unauthorized} onCrop={unauthorized} onSplit={unauthorized} onUpscale={unauthorized} onSuperResolve={unauthorized} onAngle={unauthorized} onViewImage={unauthorized} onExtractVideoFrames={unauthorized} onExtractAudioFromVideo={unauthorized} onTrimVideoSegments={unauthorized} extractingVideoFrames={false} extractingAudio={false} trimmingVideo={false} onSubtitles={unauthorized} onTimeline={unauthorized} onReversePrompt={unauthorized} onRetry={unauthorized} onToggleFreeResize={unauthorized} onToggleLocked={unauthorized} onDelete={unauthorized} />
 
-            <div className="absolute bottom-5 left-5 z-[var(--z-panel-floating)]"><CanvasZoomControls scale={viewport.k} containerRef={containerRef} onScaleChange={setZoom} onFitContent={resetViewport} isMiniMapOpen={false} onToggleMiniMap={unauthorized} onOpenShortcuts={unauthorized} /></div>
-            <div className="pointer-events-none absolute bottom-5 right-5 z-[var(--z-panel-floating)] max-w-[340px] text-right text-xs leading-5" style={{ color: theme.node.muted }}>访客操作仅在当前页面临时生效</div>
+            <div className="pc-canvas-share__zoom absolute bottom-5 left-5 z-[var(--z-panel-floating)]"><CanvasZoomControls scale={viewport.k} containerRef={containerRef} onScaleChange={setZoom} onFitContent={resetViewport} isMiniMapOpen={false} onToggleMiniMap={unauthorized} onOpenShortcuts={unauthorized} /></div>
+            <aside className="pc-canvas-share__notice pointer-events-none absolute bottom-5 right-5 z-[var(--z-panel-floating)] max-w-[360px] text-right" aria-live="polite">
+                <span className="pc-canvas-share__notice-title hidden text-xs font-medium">临时探索模式</span>
+                <span className="pc-canvas-share__notice-mobile text-xs leading-5" style={{ color: theme.node.muted }}>访客操作仅在当前页面临时生效</span>
+                <span className="pc-canvas-share__notice-detail mt-0.5 hidden text-[11px] leading-5" style={{ color: theme.node.muted }}>拖动与新增节点只在当前页面生效，刷新后会恢复原画布</span>
+            </aside>
 
             {contextMenu ? <SharedContextMenu menu={contextMenu} onAdd={addNode} onInfo={() => { if (contextMenu.nodeId) setInfoNodeId(contextMenu.nodeId); setContextMenu(null); }} onUnauthorized={() => { setContextMenu(null); unauthorized(); }} /> : null}
             <CanvasNodeInfoModal node={infoNode} open={Boolean(infoNode)} onClose={() => setInfoNodeId(null)} readOnly onUnauthorized={unauthorized} />
@@ -269,7 +302,7 @@ export default function SharedCanvasPage() {
 
 function SharedContextMenu({ menu, onAdd, onInfo, onUnauthorized }: { menu: ContextMenu; onAdd: (type: CanvasNodeType) => void; onInfo: () => void; onUnauthorized: () => void }) {
     const theme = canvasThemes[useThemeStore((state) => state.theme)];
-    return <div data-canvas-no-zoom className="absolute z-[var(--z-modal)] min-w-48 rounded-lg border p-1.5 shadow-xl" style={{ left: menu.x, top: menu.y, background: theme.toolbar.panel, borderColor: theme.toolbar.border, color: theme.node.text }} onMouseDown={(event) => event.stopPropagation()}>
+    return <div data-canvas-no-zoom className="pc-canvas-share__context-menu absolute z-[var(--z-modal)] min-w-48 rounded-lg border p-1.5 shadow-xl" style={{ left: menu.x, top: menu.y, background: theme.toolbar.panel, borderColor: theme.toolbar.border, color: theme.node.text }} onMouseDown={(event) => event.stopPropagation()} role="menu" aria-label="共享画布操作">
         {menu.nodeId ? <><MenuButton icon={<Eye />} label="查看节点信息" onClick={onInfo} /><MenuButton icon={<LockKeyhole />} label="编辑或生成" onClick={onUnauthorized} /></> : <>
             <div className="px-2 py-1.5 text-[var(--fs-label)]" style={{ color: theme.node.muted }}>添加临时节点</div>
             <MenuButton icon={<FileText />} label="文本节点" onClick={() => onAdd(CanvasNodeType.Text)} />
@@ -281,12 +314,12 @@ function SharedContextMenu({ menu, onAdd, onInfo, onUnauthorized }: { menu: Cont
 }
 
 function MenuButton({ icon, label, onClick }: { icon: ReactNode; label: string; onClick: () => void }) {
-    return <button type="button" className="flex h-9 w-full items-center gap-2 rounded-md px-2 text-left text-sm transition hover:bg-black/5 dark:hover:bg-white/10" onClick={onClick}><span className="grid size-4 place-items-center [&>svg]:size-4">{icon}</span>{label}</button>;
+    return <button type="button" role="menuitem" className="pc-canvas-share__menu-item flex h-9 w-full items-center gap-2 rounded-md px-2 text-left text-sm transition hover:bg-black/5 dark:hover:bg-white/10" onClick={onClick}><span className="grid size-4 place-items-center [&>svg]:size-4">{icon}</span>{label}</button>;
 }
 
 function SharedConfigNode({ node, onUnauthorized }: { node: CanvasNodeData; onUnauthorized: () => void }) {
     const theme = canvasThemes[useThemeStore((state) => state.theme)];
-    return <div className="flex h-full w-full flex-col overflow-hidden rounded-[var(--panel-radius)]">
+    return <div className="pc-canvas-share__config-node flex h-full w-full flex-col overflow-hidden rounded-[var(--panel-radius)]">
         <div className="flex h-10 shrink-0 items-center gap-2 border-b px-4" style={{ background: theme.node.panel, borderColor: theme.node.stroke }}><ImageIcon className="size-4" /><span className="min-w-0 flex-1 truncate text-sm font-semibold">{node.title}</span></div>
         <div className="min-h-0 flex-1 whitespace-pre-wrap break-words p-4 text-sm leading-6" style={{ color: theme.node.muted }}>{node.metadata?.composerContent || node.metadata?.prompt || "未填写提示词"}</div>
         <div className="flex h-12 shrink-0 items-center justify-end border-t px-3" style={{ borderColor: theme.node.stroke }}><Button size="small" icon={<Send className="size-3.5" />} onMouseDown={(event) => event.stopPropagation()} onClick={(event) => { event.stopPropagation(); onUnauthorized(); }}>生成</Button></div>
@@ -296,7 +329,7 @@ function SharedConfigNode({ node, onUnauthorized }: { node: CanvasNodeData; onUn
 function SharedScriptNode({ node, onUnauthorized }: { node: CanvasNodeData; onUnauthorized: () => void }) {
     const theme = canvasThemes[useThemeStore((state) => state.theme)];
     const rows = node.metadata?.storyboard?.rows || [];
-    return <div className="flex h-full w-full flex-col overflow-hidden rounded-[var(--panel-radius)]">
+    return <div className="pc-canvas-share__script-node flex h-full w-full flex-col overflow-hidden rounded-[var(--panel-radius)]">
         <div className="flex h-10 shrink-0 items-center gap-2 border-b px-4" style={{ background: theme.node.panel, borderColor: theme.node.stroke }}><Clapperboard className="size-4" /><span className="min-w-0 flex-1 truncate text-sm font-semibold">{node.title}</span><span className="text-xs" style={{ color: theme.node.muted }}>{rows.length} 镜</span><button type="button" className="grid size-7 place-items-center rounded hover:bg-black/5 dark:hover:bg-white/10" onMouseDown={(event) => event.stopPropagation()} onClick={(event) => { event.stopPropagation(); onUnauthorized(); }} aria-label="一键创建视频节点"><Video className="size-3.5" /></button></div>
         <div data-canvas-wheel-scroll className="min-h-0 flex-1 overflow-y-auto" onWheel={(event) => event.stopPropagation()}>{rows.length ? rows.map((row) => <div key={row.id} className="grid grid-cols-[52px_72px_minmax(180px,1fr)_minmax(150px,.8fr)] border-b text-xs leading-5" style={{ minHeight: 48, borderColor: theme.node.stroke }}><span className="grid place-items-center border-r" style={{ borderColor: theme.node.stroke, color: theme.node.muted }}>#{row.shotNumber}</span><span className="grid place-items-center border-r" style={{ borderColor: theme.node.stroke }}>{row.durationSeconds}s</span><span className="border-r px-3 py-2" style={{ borderColor: theme.node.stroke }}>{row.plotDescription || "-"}</span><span className="px-3 py-2" style={{ color: theme.node.muted }}>{row.dialogue || "-"}</span></div>) : <div className="grid h-full place-items-center text-sm" style={{ color: theme.node.muted }}>暂无分镜</div>}</div>
         {node.metadata?.composerContent ? <div className="max-h-24 shrink-0 overflow-y-auto border-t px-3 py-2 text-xs leading-5" style={{ borderColor: theme.node.stroke, color: theme.node.muted }}>{node.metadata.composerContent}</div> : null}

@@ -102,7 +102,7 @@ export function CanvasProjectSidebar({ projectId, detail, onAddChapter, onLocate
 
     if (collapsed) {
         return (
-            <aside className="relative z-[var(--z-panel)] hidden w-11 shrink-0 flex-col items-center border-r border-border bg-background/94 py-2 backdrop-blur-xl lg:flex">
+            <aside className="pc-canvas-project-sidebar is-collapsed relative z-[var(--z-panel)] hidden w-11 shrink-0 flex-col items-center border-r border-border bg-background/94 py-2 backdrop-blur-xl lg:flex" aria-label="项目导航">
                 <button type="button" className="grid size-7 place-items-center rounded-md text-foreground/55 hover:bg-surface-hover" title="展开项目侧栏" aria-label="展开项目侧栏" onClick={() => setCollapsed(false)}>
                     <ChevronRight className="size-4" />
                 </button>
@@ -114,8 +114,8 @@ export function CanvasProjectSidebar({ projectId, detail, onAddChapter, onLocate
     }
 
     return (
-        <aside className="relative z-[var(--z-panel)] hidden w-[var(--canvas-sidebar-width)] shrink-0 flex-col border-r border-border bg-background/94 backdrop-blur-xl lg:flex">
-            <header className="flex h-12 shrink-0 items-center justify-between gap-2 border-b border-border px-2.5">
+        <aside className="pc-canvas-project-sidebar relative z-[var(--z-panel)] hidden w-[var(--canvas-sidebar-width)] shrink-0 flex-col border-r border-border bg-background/94 backdrop-blur-xl lg:flex" aria-label="项目章节与素材">
+            <header className="pc-canvas-project-sidebar__header flex h-12 shrink-0 items-center justify-between gap-2 border-b border-border px-2.5">
                 <Link to={`/projects/${projectId}/canvases`} className="flex min-w-0 items-center gap-2 text-xs font-semibold" title="返回项目画布列表">
                     <FolderKanban className="size-3.5 shrink-0" />
                     <span className="truncate">{projectDetail?.project.name || "项目空间"}</span>
@@ -125,7 +125,7 @@ export function CanvasProjectSidebar({ projectId, detail, onAddChapter, onLocate
                 </button>
             </header>
 
-            <section className="shrink-0 border-b border-border/70 p-2">
+            <section className="pc-canvas-project-sidebar__section shrink-0 border-b border-border/70 p-2">
                 <div className="mb-1.5 flex h-5 items-center justify-between px-1 text-[var(--fs-label)] font-medium text-foreground/48">
                     <span className="flex items-center gap-1.5">
                         <Palette className="size-3.5" />
@@ -157,7 +157,7 @@ export function CanvasProjectSidebar({ projectId, detail, onAddChapter, onLocate
                 </button>
             </section>
 
-            <section className="flex min-h-0 flex-1 flex-col">
+            <section className="pc-canvas-project-sidebar__section flex min-h-0 flex-1 flex-col">
                 <div className="flex h-9 shrink-0 items-center justify-between px-3">
                     <span className="flex items-center gap-1.5 text-[var(--fs-label)] font-medium text-foreground/48">
                         <BookOpenText className="size-3.5" />
@@ -241,7 +241,7 @@ export function CanvasProjectSidebar({ projectId, detail, onAddChapter, onLocate
                 </div>
             </section>
 
-            <section className="shrink-0 border-t border-border/70 p-2">
+            <section className="pc-canvas-project-sidebar__footer shrink-0 border-t border-border/70 p-2">
                 <button type="button" onClick={onOpenAssets} className="flex h-9 w-full items-center gap-2 rounded-md border border-border/45 px-2 text-xs text-foreground/65 hover:border-[var(--workspace-accent)] hover:bg-[var(--workspace-accent-soft)]">
                     <Images className="size-3.5 text-foreground/42" />
                     <span className="flex-1 text-left">引用项目资产</span>
@@ -287,7 +287,7 @@ function ChapterPreview({
     const text = htmlToPlainText(unit.sourceText);
     return (
         <section
-            className="absolute bottom-20 left-[calc(100%+8px)] top-14 z-[var(--z-panel-floating)] flex w-[var(--panel-width-compact)] flex-col overflow-hidden rounded-lg border border-border/85 bg-background/[.96] shadow-[0_18px_48px_rgba(0,0,0,.22)] backdrop-blur-xl"
+            className="pc-canvas-project-sidebar__preview absolute bottom-20 left-[calc(100%+8px)] top-14 z-[var(--z-panel-floating)] flex w-[var(--panel-width-compact)] flex-col overflow-hidden rounded-lg border border-border/85 bg-background/[.96] shadow-[0_18px_48px_rgba(0,0,0,.22)] backdrop-blur-xl"
             aria-label={`第 ${chapterNumber} 章预览`}
         >
             <header className="flex items-start gap-2 border-b border-border/70 px-3 py-2.5">

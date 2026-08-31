@@ -1142,6 +1142,7 @@ export function CanvasAssistantPanel({
             ) : null}
 
             <Modal
+                rootClassName="pc-canvas-overlay pc-canvas-modal pc-canvas-confirm-modal"
                 title="删除对话记录？"
                 open={deleteChatIds.length > 0}
                 centered
@@ -1169,7 +1170,7 @@ export function CanvasAssistantPanel({
 
     return (
         <motion.aside
-            className="pointer-events-auto relative flex h-full w-full flex-col overflow-hidden rounded-[var(--panel-radius)]"
+            className="pc-canvas-assistant-panel pointer-events-auto relative flex h-full w-full flex-col overflow-hidden rounded-[var(--panel-radius)]"
             initial={{ x: 48, opacity: 0 }}
             animate={{ x: closing ? 28 : 0, opacity: closing ? 0 : 1 }}
             exit={{ opacity: 0 }}

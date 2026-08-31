@@ -80,7 +80,7 @@ export function CanvasDrawingEditorModal({ open, projectId, node, onClose, onSav
 
     const unavailable = !isDrawingEngineAvailable(engine, tldrawLicenseKey);
     return (
-        <Modal open={open} onCancel={() => void handleClose()} footer={null} closable={false} destroyOnHidden width="100vw" centered styles={{ body: { padding: 0 }, container: { padding: 0, overflow: "hidden" } }} className="canvas-drawing-editor-modal">
+        <Modal rootClassName="pc-canvas-overlay pc-canvas-modal pc-canvas-drawing-modal" open={open} onCancel={() => void handleClose()} footer={null} closable={false} destroyOnHidden width="100vw" centered styles={{ body: { padding: 0 }, container: { padding: 0, overflow: "hidden" } }} className="canvas-drawing-editor-modal">
             <div className="flex h-[min(92dvh,980px)] flex-col">
                 <div className="flex h-12 shrink-0 items-center justify-between border-b px-4" style={{ background: "var(--background)", borderColor: "var(--border)" }}>
                     <div className="flex min-w-0 items-center gap-2"><Maximize2 className="size-4 opacity-55" /><span className="truncate text-sm font-semibold">{node?.title || "绘图"}</span><span className="text-[var(--fs-label)] opacity-45">{drawingEngineLabel(engine)} · {ready ? "已加载" : "正在加载"}</span></div>

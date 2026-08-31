@@ -42,13 +42,13 @@ export function CanvasActiveTaskPanel({ tasks, align = "right", topInset = "var(
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: -8, scale: 0.98 }}
                 transition={motionTransition}
-                className={`pointer-events-none absolute z-[var(--z-panel-floating)] w-[var(--canvas-panel-width)] ${align === "left" ? "left-3" : "right-3"}`}
+                className={`pc-canvas-active-tasks pointer-events-none absolute z-[var(--z-panel-floating)] w-[var(--canvas-panel-width)] ${align === "left" ? "left-3" : "right-3"}`}
                 style={{ top: topInset }}
             >
                 <LayoutGroup id="canvas-active-tasks">
                     <motion.section
                         layout
-                        className="pointer-events-auto overflow-hidden rounded-[var(--panel-radius)] border backdrop-blur-2xl"
+                        className="pc-canvas-panel pointer-events-auto overflow-hidden rounded-[var(--panel-radius)] border backdrop-blur-2xl"
                         style={{ background: theme.toolbar.panel, borderColor: theme.toolbar.border, color: theme.node.text, boxShadow: `0 24px 72px ${theme.spatial.shadow}` }}
                         aria-label="当前画布生成任务"
                     >
@@ -140,7 +140,7 @@ function ActiveTaskCard({
     const transition = reducedMotion ? { duration: 0 } : aceternityMotion.spring.panel;
 
     return (
-        <motion.article layout layoutId={`canvas-active-task-${task.id}`} className="overflow-hidden rounded-xl border" style={{ background: theme.spatial.surface, borderColor: theme.toolbar.border }}>
+        <motion.article layout layoutId={`canvas-active-task-${task.id}`} className="pc-canvas-active-task-card overflow-hidden rounded-xl border" style={{ background: theme.spatial.surface, borderColor: theme.toolbar.border }}>
             <button type="button" className="block w-full p-3 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px]" onClick={onToggle} aria-expanded={expanded}>
                 <div className="flex min-w-0 items-start gap-2">
                     <motion.span layout="position" className="mt-0.5 grid size-7 shrink-0 place-items-center rounded-md" style={{ background: `${statusTone}18`, color: statusTone }}>

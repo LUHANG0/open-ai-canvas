@@ -101,7 +101,7 @@ export function CanvasNodeAnnotationDialog({ image, open, onClose, onConfirm }: 
     };
 
     return (
-        <Modal title={null} open={open} onCancel={onClose} footer={null} width="min(1120px, calc(100vw - 32px))" centered destroyOnHidden>
+        <Modal rootClassName="pc-canvas-overlay pc-canvas-modal pc-canvas-media-modal" title={null} open={open} onCancel={onClose} footer={null} width="min(1120px, calc(100vw - 32px))" centered destroyOnHidden>
             <div className="flex flex-col gap-3">
                 <div className="flex flex-wrap items-center gap-2 rounded-lg border p-2" style={{ borderColor: "rgba(127,127,127,.22)" }}>
                     <span className="px-1 text-sm font-semibold">标注</span>

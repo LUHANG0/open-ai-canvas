@@ -396,6 +396,7 @@ export function CanvasNodeInfoModal({ node, open, onClose, onMetadataChange, rea
 
     return (
         <Modal
+            rootClassName="pc-canvas-overlay pc-canvas-modal pc-canvas-node-info-modal"
             className="workspace-modal canvas-node-info-modal"
             title={title}
             open={open && Boolean(node)}

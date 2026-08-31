@@ -283,7 +283,7 @@ export function CanvasScriptNodeContent({
                 </Dropdown>
             </div>
             {batch ? (
-                <Modal title="批次详情" open={batchDetailsOpen} onCancel={() => setBatchDetailsOpen(false)} footer={null} width={560} centered destroyOnHidden>
+                <Modal rootClassName="pc-canvas-overlay pc-canvas-modal pc-canvas-task-modal" title="批次详情" open={batchDetailsOpen} onCancel={() => setBatchDetailsOpen(false)} footer={null} width={560} centered destroyOnHidden>
                     <GenerationBatchDetails batch={batch} rows={rows} onRetryItem={(itemId) => onRetryBatchItem(batch.id, itemId)} />
                 </Modal>
             ) : null}
@@ -715,7 +715,7 @@ export function CanvasScriptEditor({
     });
 
     return (
-        <Modal title={node?.title || "分镜脚本"} open={open} onCancel={onClose} footer={null} width="min(1480px, calc(100vw - 40px))" centered destroyOnHidden>
+        <Modal rootClassName="pc-canvas-overlay pc-canvas-modal pc-canvas-script-modal" title={node?.title || "分镜脚本"} open={open} onCancel={onClose} footer={null} width="min(1480px, calc(100vw - 40px))" centered destroyOnHidden>
             <div className="mb-3 flex flex-wrap items-center gap-2">
                 <Input.Search className="w-72" allowClear placeholder="筛选画面、台词或提示词" value={query} onChange={(event) => setQuery(event.target.value)} />
                 <Checkbox.Group className="script-column-picker" options={columnOptions} value={visibleColumns} onChange={(values) => onVisibleColumnsChange(values as StoryboardColumn[])} />

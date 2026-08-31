@@ -53,7 +53,7 @@ export function AssistantPanelColumn({
     return (
         <div
             ref={columnRef}
-            className="relative flex shrink-0 overflow-hidden"
+            className="pc-canvas-assistant-column relative flex shrink-0 overflow-hidden"
             style={{
                 width,
                 paddingTop: topInset,
@@ -64,7 +64,7 @@ export function AssistantPanelColumn({
                 {!closing ? (
                     <button
                         type="button"
-                        className="absolute inset-y-0 left-0 z-[var(--node-z-overlay)] w-4 -translate-x-1/2 cursor-col-resize"
+                        className="pc-canvas-assistant-column__resize absolute inset-y-0 left-0 z-[var(--node-z-overlay)] w-4 -translate-x-1/2 cursor-col-resize"
                         onMouseDown={startResize}
                         aria-label="调整右侧面板宽度"
                     />

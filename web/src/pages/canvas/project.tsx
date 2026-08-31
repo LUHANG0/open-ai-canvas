@@ -120,6 +120,7 @@ import { useCanvasStoryboard } from "./use-canvas-storyboard";
 import { useCanvasUpload } from "./use-canvas-upload";
 import { useCanvasViewportController } from "./use-canvas-viewport-controller";
 import { usePortraitClearanceCoordinator } from "./use-portrait-clearance-coordinator";
+import "./canvas-editor-pc.css";
 import {
     CanvasNodeType,
     type CanvasAssistantSession,
@@ -1976,16 +1977,25 @@ function InfiniteCanvasPage() {
         <>
             <a
                 href="#canvas-main"
-                className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[var(--z-toast)] focus:rounded-md focus:border focus:bg-background focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:shadow-lg"
+                className="pc-canvas-skip-link sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[var(--z-toast)] focus:rounded-md focus:border focus:bg-background focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:shadow-lg"
             >
                 跳转到画布主内容
             </a>
-            <main id="canvas-main" tabIndex={-1} className="flex h-full min-h-0 overflow-hidden outline-none" style={{ background: theme.canvas.background, color: theme.node.text }}>
+            <main
+                id="canvas-main"
+                tabIndex={-1}
+                className="pc-canvas-workspace flex h-full min-h-0 overflow-hidden outline-none"
+                data-assistant-open={assistantMounted ? "true" : "false"}
+                data-focus-mode={focusMode ? "true" : "false"}
+                data-workspace-mode={workspaceMode}
+                style={{ background: theme.canvas.background, color: theme.node.text }}
+                aria-label="画布编辑工作台"
+            >
                 {!focusMode && shortDramaEnabled && currentProject?.projectId ? (
                     <CanvasProjectSidebar projectId={currentProject.projectId} detail={linkedProjectQuery.data} onAddChapter={handleProjectChapterInsert} onLocateStyle={locateProjectStyleNode} onOpenAssets={() => openProjectAssets()} />
                 ) : null}
                 <CanvasOverlayLayerProvider>
-                    <section className="relative min-w-0 flex-1 flex flex-col min-h-0 overflow-hidden">
+                    <section className="pc-canvas-workspace__stage relative min-w-0 flex-1 flex flex-col min-h-0 overflow-hidden">
                     {!focusMode ? (
                         <CanvasTopBar
                             title={currentProject?.title || "未命名画布"}
@@ -2029,7 +2039,7 @@ function InfiniteCanvasPage() {
                     {!focusMode ? (
                         <div
                             data-canvas-no-zoom
-                            className="pointer-events-none absolute bottom-[calc(var(--canvas-inset-y)+var(--space-16))] z-[var(--z-toolbar)] transition-[right,bottom] duration-300 lg:bottom-[var(--canvas-inset-y)]"
+                            className="pc-canvas-workspace__mode-switch pointer-events-none absolute bottom-[calc(var(--canvas-inset-y)+var(--space-16))] z-[var(--z-toolbar)] transition-[right,bottom] duration-300 lg:bottom-[var(--canvas-inset-y)]"
                             style={{ right: assistantMounted ? `calc(var(--canvas-inset-x) + ${assistantWidth}px + var(--space-3))` : "var(--canvas-inset-x)" }}
                             onMouseDown={(event) => event.stopPropagation()}
                             onPointerDown={(event) => event.stopPropagation()}
@@ -2073,8 +2083,8 @@ function InfiniteCanvasPage() {
                         onSelect={(templateId) => createDirectorShot(templateId, directorTemplateRequest?.position)}
                     />
 
-                    <div className="relative flex min-h-0 min-w-0 flex-1">
-                        <div className="relative min-w-0 flex-1 overflow-hidden">
+                    <div className="pc-canvas-workspace__body relative flex min-h-0 min-w-0 flex-1">
+                        <div className="pc-canvas-workspace__viewport relative min-w-0 flex-1 overflow-hidden">
                             <InfiniteCanvas
                                 containerRef={containerRef}
                                 viewport={viewport}
@@ -2420,7 +2430,7 @@ function InfiniteCanvasPage() {
                         <CanvasOverlayLayerContainer
                             overlayId="asset-tray"
                             fallbackZIndex="var(--z-panel)"
-                            className="absolute bottom-[calc(var(--canvas-inset-y)+var(--space-16))] left-[var(--canvas-inset-x)] flex items-end gap-2 lg:bottom-[var(--canvas-inset-y)]"
+                            className="pc-canvas-workspace__bottom-dock absolute bottom-[calc(var(--canvas-inset-y)+var(--space-16))] left-[var(--canvas-inset-x)] flex items-end gap-2 lg:bottom-[var(--canvas-inset-y)]"
                             onMouseDown={(event) => event.stopPropagation()}
                             onPointerDown={(event) => event.stopPropagation()}
                             onWheel={(event) => event.stopPropagation()}

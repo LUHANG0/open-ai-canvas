@@ -475,6 +475,7 @@ export function CanvasNodePromptPanel({ node, isRunning, onPromptChange, onConfi
             {renderComposerControls(false)}
 
             <Modal
+                rootClassName="pc-canvas-overlay pc-canvas-modal pc-canvas-prompt-modal"
                 className="canvas-prompt-editor-modal"
                 open={expandedPromptOpen}
                 title={null}

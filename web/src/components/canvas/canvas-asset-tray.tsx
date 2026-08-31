@@ -176,7 +176,7 @@ export function CanvasAssetTray({ assetImages, canvasImages, showLibrary = true,
     ];
 
     return (
-        <div ref={rootRef} data-canvas-no-zoom className="relative" style={{ zIndex }} onPointerDownCapture={bringToFront} onFocusCapture={bringToFront} onPointerDown={(event) => event.stopPropagation()} onMouseDown={(event) => event.stopPropagation()} onWheel={(event) => event.stopPropagation()}>
+        <div ref={rootRef} data-canvas-no-zoom className="pc-canvas-asset-tray relative" style={{ zIndex }} onPointerDownCapture={bringToFront} onFocusCapture={bringToFront} onPointerDown={(event) => event.stopPropagation()} onMouseDown={(event) => event.stopPropagation()} onWheel={(event) => event.stopPropagation()}>
             <AnimatePresence>
                 {open ? (
                     <motion.aside
@@ -185,7 +185,7 @@ export function CanvasAssetTray({ assetImages, canvasImages, showLibrary = true,
                         exit={{ opacity: 0, y: 14, scale: 0.95, rotateX: 3 }}
                         transition={aceternityMotion.spring.panel}
                         ref={panelRef}
-                        className="canvas-asset-tray-panel aceternity-floating-panel absolute bottom-[var(--canvas-dock-popover-offset)] left-0 flex w-[min(88vw,312px)] origin-bottom-left flex-col overflow-hidden rounded-[var(--r-2xl)] p-2.5 backdrop-blur-2xl"
+                        className="pc-canvas-panel canvas-asset-tray-panel aceternity-floating-panel absolute bottom-[var(--canvas-dock-popover-offset)] left-0 flex w-[min(88vw,312px)] origin-bottom-left flex-col overflow-hidden rounded-[var(--r-2xl)] p-2.5 backdrop-blur-2xl"
                         style={{ background: theme.spatial.elevated, color: theme.node.text, height: safeTrayHeight, minHeight: Math.min(TRAY_MIN_HEIGHT, getMaxTrayHeight()), maxHeight: "calc(100vh - 6rem)", boxShadow: `0 32px 100px ${theme.spatial.shadow}` }}
                     >
                         <button type="button" className="canvas-asset-tray-resize-handle absolute left-1/2 top-1 z-10 flex h-5 w-28 -translate-x-1/2 items-center justify-center rounded-full opacity-35 transition-opacity hover:opacity-75" onPointerDown={startResize} aria-label="从顶部调整素材托盘高度" title="拖动调整高度">

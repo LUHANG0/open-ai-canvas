@@ -38,6 +38,7 @@ export function CanvasNodeSearchModal({ open, nodes, onClose, onFocus }: { open:
 
     return (
         <Modal
+            rootClassName="pc-canvas-overlay pc-canvas-modal pc-canvas-search-modal"
             title="搜索画布节点"
             open={open}
             footer={null}

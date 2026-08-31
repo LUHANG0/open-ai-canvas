@@ -108,6 +108,7 @@ export function CanvasTextEditorModal({ node, open, onClose, onSave }: CanvasTex
 
     return (
         <Modal
+            rootClassName="pc-canvas-overlay pc-canvas-modal pc-canvas-text-editor-modal"
             className="canvas-text-editor-modal"
             open={open && Boolean(node)}
             title={null}

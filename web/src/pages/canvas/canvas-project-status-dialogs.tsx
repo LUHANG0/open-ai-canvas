@@ -28,7 +28,7 @@ export function CanvasProjectStatusDialogs({ theme, task, taskLogs, taskLoading,
     const config = useEffectiveConfig();
     return (
         <>
-            <Modal title="任务详情" open={Boolean(task)} footer={null} width="min(920px, calc(100vw - 32px))" onCancel={onCloseTask}>
+            <Modal rootClassName="pc-canvas-overlay pc-canvas-modal pc-canvas-task-modal" title="任务详情" open={Boolean(task)} footer={null} width="min(920px, calc(100vw - 32px))" onCancel={onCloseTask}>
                 {task ? (
                     <div className="space-y-4 text-sm">
                         <div className="grid grid-cols-2 gap-3 rounded-lg border p-3" style={{ borderColor: theme.node.stroke, background: theme.node.panel }}>
@@ -69,11 +69,12 @@ export function CanvasProjectStatusDialogs({ theme, task, taskLogs, taskLoading,
                 ) : null}
             </Modal>
 
-            <Modal title="AI 超分" open={Boolean(superResolveNode?.metadata?.content)} centered footer={null} onCancel={onCloseSuperResolve}>
+            <Modal rootClassName="pc-canvas-overlay pc-canvas-modal pc-canvas-media-modal" title="AI 超分" open={Boolean(superResolveNode?.metadata?.content)} centered footer={null} onCancel={onCloseSuperResolve}>
                 <div className="py-8 text-center text-base font-medium">暂未实现</div>
             </Modal>
 
             <Modal
+                rootClassName="pc-canvas-overlay pc-canvas-modal pc-canvas-preview-modal"
                 title="视频预览"
                 open={Boolean(previewNode?.metadata?.content && previewNode.type === CanvasNodeType.Video)}
                 centered
@@ -104,6 +105,7 @@ export function CanvasProjectStatusDialogs({ theme, task, taskLogs, taskLoading,
             ) : null}
 
             <Modal
+                rootClassName="pc-canvas-overlay pc-canvas-modal pc-canvas-confirm-modal"
                 title="清空画布？"
                 open={clearConfirmOpen}
                 centered

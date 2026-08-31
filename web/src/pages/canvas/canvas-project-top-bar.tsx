@@ -101,11 +101,12 @@ export function CanvasTopBar({
 
     return (
         <>
-            <div className="canvas-topbar pointer-events-none absolute left-0 right-0 top-0 z-[var(--z-toolbar)] flex h-[var(--canvas-topbar-h)] items-center justify-between px-4 sm:px-5">
-                <div className="canvas-topbar-cluster canvas-topbar-project-cluster pointer-events-auto flex min-w-0 items-center gap-2" style={dockStyle}>
+            <div className="canvas-topbar pc-canvas-topbar pointer-events-none absolute left-0 right-0 top-0 z-[var(--z-toolbar)] flex h-[var(--canvas-topbar-h)] items-center justify-between px-4 sm:px-5" role="toolbar" aria-label="画布项目操作">
+                <div className="canvas-topbar-cluster canvas-topbar-project-cluster pc-canvas-topbar__project pointer-events-auto flex min-w-0 items-center gap-2" style={dockStyle} role="group" aria-label="画布与项目">
                     <CanvasTopBarTooltip label="打开画布菜单">
                         <Dropdown
                             trigger={["click"]}
+                            classNames={{ root: "pc-canvas-overlay pc-canvas-menu-overlay" }}
                             menu={{
                                 items: [
                                     { key: "home", icon: <Home className="size-4" />, label: <Link to="/">主页</Link> },
@@ -183,14 +184,15 @@ export function CanvasTopBar({
                     </div>
                 </div>
 
-                <div className="canvas-topbar-cluster pointer-events-auto flex items-center gap-1.5" style={dockStyle}>
+                <div className="canvas-topbar-cluster pc-canvas-topbar__actions pointer-events-auto flex items-center gap-1.5" style={dockStyle} role="group" aria-label="画布工具与状态">
                     <CanvasTopBarTooltip label="搜索画布节点">
-                        <Button type="text" className="canvas-topbar-action !hidden !h-10 !w-10 !min-w-10 !rounded-xl !p-0 lg:!inline-flex" style={{ color: theme.node.text }} icon={<Search className="size-4" />} onClick={onOpenSearch} aria-label="搜索画布节点" />
+                        <Button type="text" className="canvas-topbar-action !hidden !h-10 !w-10 !min-w-10 !rounded-xl !p-0 xl:!inline-flex" style={{ color: theme.node.text }} icon={<Search className="size-4" />} onClick={onOpenSearch} aria-label="搜索画布节点" />
                     </CanvasTopBarTooltip>
                     <CanvasTopBarTooltip label="导入第三方画布">
                         <Dropdown
                             trigger={["click"]}
                             placement="bottomRight"
+                            classNames={{ root: "pc-canvas-overlay pc-canvas-menu-overlay" }}
                             menu={{
                                 items: [
                                     { key: "libtv", icon: <CopyPlus className="size-4" />, label: "导入 LibTV 画布", onClick: onImportLibTV },
@@ -199,13 +201,14 @@ export function CanvasTopBar({
                             }}
                         >
                             <Button type="text" className="canvas-topbar-action canvas-topbar-import-button !h-10 !rounded-xl !px-2.5 !font-medium" style={{ color: theme.node.text }} icon={<CloudDownload className="size-4" />} aria-label="导入第三方画布">
-                                <span className="hidden lg:inline">导入第三方画布</span>
+                                <span className="hidden xl:inline">导入第三方画布</span>
                             </Button>
                         </Dropdown>
                     </CanvasTopBarTooltip>
                     <CanvasTopBarTooltip label="媒体性能模式">
                         <Dropdown
                             trigger={["click"]}
+                            classNames={{ root: "pc-canvas-overlay pc-canvas-menu-overlay" }}
                             menu={{
                                 selectable: true,
                                 selectedKeys: [mediaPerformanceMode],
@@ -217,7 +220,7 @@ export function CanvasTopBar({
                                 ],
                             }}
                         >
-                            <Button type="text" className="canvas-topbar-action !hidden !h-10 !w-10 !min-w-10 !rounded-xl !p-0 lg:!inline-flex" style={{ color: theme.node.text }} icon={<Gauge className="size-4" />} aria-label="媒体性能模式" />
+                            <Button type="text" className="canvas-topbar-action !hidden !h-10 !w-10 !min-w-10 !rounded-xl !p-0 xl:!inline-flex" style={{ color: theme.node.text }} icon={<Gauge className="size-4" />} aria-label="媒体性能模式" />
                         </Dropdown>
                     </CanvasTopBarTooltip>
                     {compactAgentStatus ? <CompactAgentStatus status={compactAgentStatus} onClick={onToggleAgent} /> : null}
@@ -262,7 +265,7 @@ export function CanvasTopBar({
                     <CanvasTopBarTooltip label="分享画布">
                         <Button type="text" className="canvas-topbar-action !h-10 !w-10 !min-w-10 !rounded-xl !p-0" style={{ color: theme.node.text }} icon={<Share2 className="size-4" />} onClick={onShare} aria-label="分享画布" />
                     </CanvasTopBarTooltip>
-                    <span className="h-6 w-px" style={{ background: theme.toolbar.border }} />
+                    <span className="pc-canvas-topbar__separator h-6 w-px" style={{ background: theme.toolbar.border }} role="separator" aria-orientation="vertical" />
                     <Button
                         type="text"
                         className="canvas-topbar-action !h-10 !rounded-xl !px-3 !font-medium"

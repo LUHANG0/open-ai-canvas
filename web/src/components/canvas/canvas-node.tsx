@@ -293,7 +293,7 @@ export const CanvasNode = React.memo(function CanvasNode({
                 onCancel={() => { setTitleDraft(data.title); setIsEditingTitle(false); }}
             />
             <div
-                className="canvas-node-shell relative h-full w-full overflow-visible rounded-[var(--node-radius)]"
+                className="pc-canvas-node canvas-node-shell relative h-full w-full overflow-visible rounded-[var(--node-radius)]"
                 data-node-state={nodeState}
                 data-state={data.metadata?.status || (isActive ? "active" : isRelated ? "related" : "idle")}
                 style={{

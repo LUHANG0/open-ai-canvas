@@ -372,7 +372,7 @@ export function InfiniteCanvas({ containerRef, viewport, backgroundMode = "lines
     return (
         <div
             ref={containerRef}
-            className={`relative h-full w-full select-none overflow-hidden touch-none ${isPanning ? "cursor-grabbing" : boxSelectEnabled ? "cursor-crosshair" : "cursor-grab"}`}
+            className={`pc-canvas-infinite relative h-full w-full select-none overflow-hidden touch-none ${isPanning ? "cursor-grabbing" : boxSelectEnabled ? "cursor-crosshair" : "cursor-grab"}`}
             style={{
                 background: canvasBackground,
                 overscrollBehavior: "none",

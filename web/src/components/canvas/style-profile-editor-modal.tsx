@@ -53,7 +53,7 @@ export function StyleProfileEditorModal({ open, initialProfile, saving = false, 
     return (
         <>
             <Modal
-                rootClassName="style-profile-editor-modal"
+                rootClassName="pc-canvas-overlay pc-canvas-modal pc-canvas-style-modal style-profile-editor-modal"
                 open={open}
                 title={null}
                 footer={null}

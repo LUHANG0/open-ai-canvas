@@ -28,6 +28,7 @@ export function CanvasDeleteProjectsDialog() {
 
     return (
         <Modal
+            rootClassName="pc-canvas-overlay pc-canvas-modal pc-canvas-confirm-modal"
             title="删除画布？"
             open={ids.length > 0}
             centered

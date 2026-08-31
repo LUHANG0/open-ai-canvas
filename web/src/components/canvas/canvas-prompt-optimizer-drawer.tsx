@@ -623,7 +623,7 @@ export function CanvasPromptOptimizerDrawer({ open, children, prompt, generation
     } as CSSProperties;
 
     const content = (
-        <div ref={contentRef} className={`canvas-prompt-optimizer-panel${panelInteracting ? " is-interacting" : ""}`} data-canvas-no-zoom>
+        <div ref={contentRef} className={`pc-canvas-prompt-optimizer canvas-prompt-optimizer-panel${panelInteracting ? " is-interacting" : ""}`} data-canvas-no-zoom>
             <div
                 className="canvas-prompt-optimizer-header"
                 onPointerDown={(event) => {
@@ -754,7 +754,7 @@ export function CanvasPromptOptimizerDrawer({ open, children, prompt, generation
             motion={{ motionName: "" }}
             styles={{ root: popoverRootStyle }}
             content={content}
-            classNames={{ root: "canvas-prompt-optimizer-popover", container: "canvas-prompt-optimizer-popover-surface", content: "canvas-prompt-optimizer-popover-content" }}
+            classNames={{ root: "pc-canvas-overlay pc-canvas-prompt-optimizer-popover canvas-prompt-optimizer-popover", container: "canvas-prompt-optimizer-popover-surface", content: "canvas-prompt-optimizer-popover-content" }}
         >
             {children}
         </Popover>
