@@ -69,6 +69,37 @@ func HasValidPrice(channelModel *model.ChannelModel) bool {
 	return channelModel.PriceConfigured && ValidateChannelModelPrice(channelModel.BillingMode, channelModel.Capability, channelModel.Protocol, channelModel.UnitPriceMicrocredits, channelModel.InputTokenPriceMicrocredits, channelModel.OutputTokenPriceMicrocredits, channelModel.CachedTokenPriceMicrocredits)
 }
 
+func (s *Service) validatePriceTierPrice(tier *model.ChannelModelPriceTier, capability string, protocolID model.ChannelInterfaceType) bool {
+	if tier == nil {
+		return false
+	}
+	if tier.BillingMode == "token" && capability == "video" {
+		return s.supportsTokenBilling(capability, protocolID) &&
+			tier.InputTokenPriceMicrocredits >= 0 && tier.OutputTokenPriceMicrocredits >= 0 && tier.CachedTokenPriceMicrocredits >= 0
+	}
+	return ValidatePriceTierPrice(tier, capability, protocolID)
+}
+
+func (s *Service) hasValidPrice(channelModel *model.ChannelModel) bool {
+	if channelModel == nil {
+		return false
+	}
+	if len(channelModel.PriceTiers) > 0 {
+		for index := range channelModel.PriceTiers {
+			tier := &channelModel.PriceTiers[index]
+			if tier.Enabled && tier.PriceConfigured && s.validatePriceTierPrice(tier, channelModel.Capability, channelModel.Protocol) {
+				return true
+			}
+		}
+		return false
+	}
+	if channelModel.BillingMode == "token" && channelModel.Capability == "video" {
+		return channelModel.PriceConfigured && s.supportsTokenBilling(channelModel.Capability, channelModel.Protocol) &&
+			channelModel.InputTokenPriceMicrocredits >= 0 && channelModel.OutputTokenPriceMicrocredits >= 0 && channelModel.CachedTokenPriceMicrocredits >= 0
+	}
+	return HasValidPrice(channelModel)
+}
+
 // ValidateLogicalModelPrice 校验前台模型的价格配置
 func ValidateLogicalModelPrice(pricePolicy string, billingMode string, unitPrice, inputPrice, outputPrice, cachedPrice int64) bool {
 	if pricePolicy == "channel" {

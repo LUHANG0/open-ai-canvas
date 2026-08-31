@@ -315,8 +315,19 @@ func (s *Service) syncLogicalModelsFromChannelModel(actor *model.User, channelMo
 	return nil
 }
 
-func supportsTokenBilling(capability string, protocol model.ChannelInterfaceType) bool {
+func supportsBuiltinTokenBilling(capability string, protocol model.ChannelInterfaceType) bool {
 	return capability == "text" || (capability == "video" && protocol == model.ChannelInterfaceVolcengineArkVideo)
+}
+
+func (s *Service) supportsTokenBilling(capability string, protocolID model.ChannelInterfaceType) bool {
+	if supportsBuiltinTokenBilling(capability, protocolID) {
+		return true
+	}
+	if capability != "video" {
+		return false
+	}
+	metadata, ok := s.channelProtocolMetadata(string(protocolID))
+	return ok && metadata.Enabled && metadata.UnavailableReason == "" && metadata.TokenUsage
 }
 
 func (s *Service) normalizeChannelModelPriceTiers(req ChannelModelRequest, capability string, protocol model.ChannelInterfaceType, fallbackProviderModelKey string) ([]model.ChannelModelPriceTier, error) {
@@ -350,7 +361,7 @@ func (s *Service) normalizeChannelModelPriceTiers(req ChannelModelRequest, capab
 		if billingMode == "" {
 			billingMode = "fixed_request"
 		}
-		if err := validateChannelModelTierPricing(capability, protocol, billingMode, input); err != nil {
+		if err := s.validateChannelModelTierPricing(capability, protocol, billingMode, input); err != nil {
 			return nil, err
 		}
 		id, idErr := s.repo.NextPrefixedID("PTIER")
@@ -459,15 +470,15 @@ func normalizeChannelModelTierSelector(capability string, input ChannelModelPric
 	return selector, resolution, videoSeconds, nil
 }
 
-func validateChannelModelTierPricing(capability string, protocol model.ChannelInterfaceType, billingMode string, input ChannelModelPriceTierRequest) error {
+func (s *Service) validateChannelModelTierPricing(capability string, protocol model.ChannelInterfaceType, billingMode string, input ChannelModelPriceTierRequest) error {
 	if billingMode != "fixed_request" && billingMode != "per_second" && billingMode != "token" {
 		return BadAuthRequest("模型计费方式仅支持按次、按秒或 Token")
 	}
 	if billingMode == "per_second" && capability != "video" {
 		return BadAuthRequest("只有视频模型可以按秒计费")
 	}
-	if billingMode == "token" && !supportsTokenBilling(capability, protocol) {
-		return BadAuthRequest("Token 计费仅支持文本模型和火山方舟视频协议")
+	if billingMode == "token" && !s.supportsTokenBilling(capability, protocol) {
+		return BadAuthRequest("Token 计费仅支持文本模型，或能返回真实用量的视频协议")
 	}
 	if input.UnitPriceMicrocredits < 0 || input.InputTokenPriceMicrocredits < 0 || input.OutputTokenPriceMicrocredits < 0 || input.CachedTokenPriceMicrocredits < 0 {
 		return BadAuthRequest("模型积分价格不能小于 0")

@@ -369,7 +369,7 @@ func (s *Service) buildAdminLogicalModel(item model.LogicalModel, graph *reposit
 		}
 		_, channelOK = systemChannelByID[channelModel.ChannelID]
 		structurallyAvailable := route.Enabled && route.Weight > 0 && channelModel.Enabled && channelOK
-		billingAvailable := item.PricePolicy != "unified" || item.BillingMode != "token" || supportsTokenBilling(item.Capability, channelModel.Protocol)
+		billingAvailable := item.PricePolicy != "unified" || item.BillingMode != "token" || s.supportsTokenBilling(item.Capability, channelModel.Protocol)
 		available := structurallyAvailable && billingAvailable && (item.PricePolicy != "channel" || channelModel.PriceConfigured)
 		admin.Routes = append(admin.Routes, AdminLogicalRoute{ID: route.ID, ChannelModelID: channelModel.ID, ChannelID: channelModel.ChannelID, ChannelModelKey: channelModel.ModelKey, ChannelModelName: channelModel.DisplayName, Enabled: route.Enabled, Priority: route.Priority, Weight: route.Weight, Available: available, structurallyAvailable: structurallyAvailable, CapabilitySpec: capabilitySpec})
 	}
@@ -690,8 +690,8 @@ func (s *Service) logicalModelBundle(actor *model.User, id string, req LogicalMo
 		routes = append(routes, model.LogicalModelRoute{ID: routeID, ChannelModelID: channelModel.ID, Enabled: input.Enabled, Priority: input.Priority, Weight: input.Weight, CreatedAt: time.Now(), UpdatedAt: time.Now()})
 	}
 	if pricePolicy == "unified" && billingMode == "token" {
-		if !supportsLogicalModelTokenBilling(capability, enabledRouteProtocols) {
-			return nil, nil, nil, false, BadAuthRequest("Token 计费仅支持文本前台模型，或全部启用供应线路均为火山方舟视频协议的视频前台模型")
+		if !s.supportsLogicalModelTokenBilling(capability, enabledRouteProtocols) {
+			return nil, nil, nil, false, BadAuthRequest("Token 计费仅支持文本前台模型，或全部启用供应线路均能返回真实用量的视频前台模型")
 		}
 	}
 	// 停用必须始终可执行，便于管理员立即阻止失效线路继续对外服务；重新启用时再强校验结构能力和计费可用性。
@@ -709,7 +709,7 @@ func (s *Service) logicalModelBundle(actor *model.User, id string, req LogicalMo
 	return item, revision, routes, creating, nil
 }
 
-func supportsLogicalModelTokenBilling(capability string, enabledRouteProtocols []model.ChannelInterfaceType) bool {
+func (s *Service) supportsLogicalModelTokenBilling(capability string, enabledRouteProtocols []model.ChannelInterfaceType) bool {
 	if capability == "text" {
 		return true
 	}
@@ -717,7 +717,7 @@ func supportsLogicalModelTokenBilling(capability string, enabledRouteProtocols [
 		return false
 	}
 	for _, protocol := range enabledRouteProtocols {
-		if !supportsTokenBilling(capability, protocol) {
+		if !s.supportsTokenBilling(capability, protocol) {
 			return false
 		}
 	}

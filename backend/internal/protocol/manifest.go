@@ -27,6 +27,7 @@ type ManifestResponse struct {
 	ReasoningPaths  []string `json:"reasoningPaths,omitempty"`
 	ResultURLPaths  []string `json:"resultUrlPaths,omitempty"`
 	ResultPaths     []string `json:"resultPaths,omitempty"`
+	UsagePaths      []string `json:"usagePaths,omitempty"`
 	ResultKind      string   `json:"resultKind,omitempty"`
 	ResultEphemeral bool     `json:"resultEphemeral,omitempty"`
 }
@@ -260,6 +261,9 @@ func ValidateManifest(manifest Manifest) error {
 			return fmt.Errorf("cancel operation: %w", err)
 		}
 	}
+	if provider.Billing.TokenUsage && len(provider.Response.UsagePaths) == 0 {
+		return fmt.Errorf("provider Token usage billing requires response usagePaths")
+	}
 	return nil
 }
 
@@ -288,6 +292,7 @@ func normalizeManifestForProvider(manifest *Manifest, index int) error {
 	manifest.Metadata.Cancel = operationSummaryPtr(provider.Cancel)
 	manifest.Metadata.ContentType = provider.Create.ContentType
 	manifest.Metadata.RequiresPublicMediaURLs = provider.RequiresPublicMediaURLs
+	manifest.Metadata.TokenUsage = provider.Billing.TokenUsage
 	manifest.Metadata.Execution = manifest.Runtime.Backend
 	manifest.Create = provider.Create
 	manifest.Agent = provider.Agent
@@ -401,26 +406,28 @@ func (a manifestAdapter) BuildCancel(_ context.Context, c PollContext) (RequestS
 }
 
 func (a manifestAdapter) parse(payload map[string]any, c PollContext) CreateResult {
-	id := firstPathValue(payload, a.manifest.Response.TaskIDPaths...)
+	layers := manifestResponseLayers(payload)
+	id := firstLayerPathValue(layers, a.manifest.Response.TaskIDPaths...)
 	if id == "" {
 		id = c.TaskID
 	}
-	status := normalizeStatus(firstPathValue(payload, a.manifest.Response.StatusPaths...))
+	status := normalizeStatus(firstLayerPathValue(layers, a.manifest.Response.StatusPaths...))
 	if status == "" {
 		status = StatusPending
 	}
-	message := firstPathValue(payload, a.manifest.Response.MessagePaths...)
-	if manifestError(payload, a.manifest.Response.ErrorPaths...) {
+	message := firstLayerPathValue(layers, a.manifest.Response.MessagePaths...)
+	if manifestLayerError(layers, a.manifest.Response.ErrorPaths...) {
 		status = StatusFailed
 	}
 	result := &Result{
-		Text:      firstPathValue(payload, a.manifest.Response.TextPaths...),
-		Reasoning: firstPathValue(payload, a.manifest.Response.ReasoningPaths...),
+		Text:      firstLayerPathValue(layers, a.manifest.Response.TextPaths...),
+		Reasoning: firstLayerPathValue(layers, a.manifest.Response.ReasoningPaths...),
+		Usage:     firstLayerPathObject(layers, a.manifest.Response.UsagePaths...),
 	}
 	paths := append([]string{}, a.manifest.Response.ResultURLPaths...)
 	paths = append(paths, a.manifest.Response.ResultPaths...)
 	for _, path := range paths {
-		for _, value := range mediaPathValues(payload, path) {
+		for _, value := range mediaLayerPathValues(layers, path) {
 			item := MediaReference{URL: value, Kind: a.manifest.Response.ResultKind, Ephemeral: a.manifest.Response.ResultEphemeral}
 			switch a.manifest.Response.ResultKind {
 			case "image":
@@ -432,13 +439,79 @@ func (a manifestAdapter) parse(payload map[string]any, c PollContext) CreateResu
 			}
 		}
 	}
+	result.Images = uniqueMediaReferences(result.Images)
+	result.Videos = uniqueMediaReferences(result.Videos)
+	result.Audios = uniqueMediaReferences(result.Audios)
 	if status == StatusPending && (result.Text != "" || len(result.Images) > 0 || len(result.Videos) > 0 || len(result.Audios) > 0) {
 		status = StatusSucceeded
 	}
-	if result.Text == "" && result.Reasoning == "" && len(result.Images) == 0 && len(result.Videos) == 0 && len(result.Audios) == 0 {
+	if result.Text == "" && result.Reasoning == "" && len(result.Images) == 0 && len(result.Videos) == 0 && len(result.Audios) == 0 && len(result.Usage) == 0 {
 		result = nil
 	}
 	return CreateResult{TaskID: id, Status: status, Result: result, Message: message}
+}
+
+func manifestResponseLayers(payload map[string]any) []map[string]any {
+	layers := make([]map[string]any, 0, 4)
+	current := payload
+	for depth := 0; current != nil && depth < 4; depth++ {
+		layers = append(layers, current)
+		current = object(current["data"])
+	}
+	return layers
+}
+
+func firstLayerPathValue(layers []map[string]any, paths ...string) string {
+	value := ""
+	for _, layer := range layers {
+		if candidate := firstPathValue(layer, paths...); candidate != "" {
+			value = candidate
+		}
+	}
+	return value
+}
+
+func firstLayerPathObject(layers []map[string]any, paths ...string) map[string]any {
+	var result map[string]any
+	for _, layer := range layers {
+		if candidate := firstPathObject(layer, paths...); len(candidate) > 0 {
+			result = candidate
+		}
+	}
+	return result
+}
+
+func manifestLayerError(layers []map[string]any, paths ...string) bool {
+	for _, layer := range layers {
+		if manifestError(layer, paths...) {
+			return true
+		}
+	}
+	return false
+}
+
+func mediaLayerPathValues(layers []map[string]any, path string) []string {
+	result := make([]string, 0)
+	seen := make(map[string]struct{})
+	for _, layer := range layers {
+		for _, value := range mediaPathValues(layer, path) {
+			if _, exists := seen[value]; exists {
+				continue
+			}
+			seen[value] = struct{}{}
+			result = append(result, value)
+		}
+	}
+	return result
+}
+
+func firstPathObject(payload map[string]any, paths ...string) map[string]any {
+	for _, path := range paths {
+		if value, ok := pathValue(payload, path).(map[string]any); ok && len(value) > 0 {
+			return value
+		}
+	}
+	return nil
 }
 
 var (
@@ -474,6 +547,9 @@ func mediaPathValues(payload map[string]any, path string) []string {
 		}
 		return []string{trimmed}
 	}
+	if item, ok := value.(map[string]any); ok {
+		return mediaObjectValues(item, 0)
+	}
 	items, ok := value.([]any)
 	if !ok {
 		return nil
@@ -492,6 +568,31 @@ func mediaPathValues(payload map[string]any, path string) []string {
 		}
 	}
 	return values
+}
+
+func mediaObjectValues(value map[string]any, depth int) []string {
+	if value == nil || depth > 4 {
+		return nil
+	}
+	result := make([]string, 0)
+	for _, key := range []string{"url", "file_url", "fileUrl", "video_url", "videoUrl", "image_url", "imageUrl", "audio_url", "audioUrl", "result_url", "resultUrl"} {
+		if candidate, ok := value[key].(string); ok && strings.TrimSpace(candidate) != "" {
+			result = append(result, strings.TrimSpace(candidate))
+		}
+	}
+	for _, key := range []string{"data", "result", "results", "content", "output", "metadata", "video", "image", "audio"} {
+		switch nested := value[key].(type) {
+		case map[string]any:
+			result = append(result, mediaObjectValues(nested, depth+1)...)
+		case []any:
+			for _, item := range nested {
+				if object, ok := item.(map[string]any); ok {
+					result = append(result, mediaObjectValues(object, depth+1)...)
+				}
+			}
+		}
+	}
+	return result
 }
 
 func buildManifestOperation(operation ManifestOperation, request GenerationRequest, taskID string) RequestSpec {

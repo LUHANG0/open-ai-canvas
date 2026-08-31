@@ -30,14 +30,16 @@ export type ResolvedAiConfig = ReturnType<typeof resolveModelRequestConfig>;
 export type SeedanceTask = {
     id: string;
     task_id?: string;
-    status?: "queued" | "running" | "succeeded" | "completed" | "failed" | "cancelled" | "expired";
+    original_task_id?: string;
+    status?: "queued" | "running" | "succeeded" | "completed" | "failed" | "cancelled" | "expired" | "SUCCESS";
     error?: { code?: string; message?: string } | null;
     error_code?: string | null;
     video_url?: string | null;
     content?: { video_url?: string; last_frame_url?: string } | null;
+    usage?: { completion_tokens?: number; total_tokens?: number } | null;
 };
 
-export type ApiEnvelope<T> = T | { code?: number; data?: T | null; msg?: string };
+export type ApiEnvelope<T> = T | { code?: number | string; data?: T | null; msg?: string; message?: string };
 export type RequestOptions = {
     signal?: AbortSignal;
     videoEditOperation?: string;

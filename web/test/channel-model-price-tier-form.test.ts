@@ -1,6 +1,20 @@
 import { describe, expect, test } from "bun:test";
 
-import { defaultPriceTier, priceTierResolutionFromForm, priceTierToForm, priceTierVideoSecondsFromForm, skuSelectorFromForm } from "../src/pages/admin/components/channel-model-price-tier-form";
+import {
+    defaultPriceTier,
+    discountedPriceFromOriginal,
+    expandSingleVideoTokenPriceTier,
+    priceTiersWithDiscountedPrices,
+    priceTierResolutionFromForm,
+    priceTierToForm,
+    priceTierVideoSecondsFromForm,
+    sellingDiscount,
+    skuSelectorFromForm,
+    upstreamCostFromOriginal,
+    videoTokenOriginalPriceMatrixFromTiers,
+    videoTokenPriceMatrixFromTiers,
+    videoTokenPriceTiersFromMatrix,
+} from "../src/pages/admin/components/channel-model-price-tier-form";
 import type { ChannelModelPriceTier } from "../src/services/api/wallet";
 
 describe("channel model price tier defaults", () => {
@@ -51,5 +65,92 @@ describe("channel model price tier defaults", () => {
 
         expect(priceTierToForm(base).matchMode).toBe("default");
         expect(priceTierToForm({ ...base, selector: { quality: "2k" } }).matchMode).toBe("advanced");
+    });
+
+    test("expands the four-cell video Token matrix into six routable price tiers", () => {
+        const tiers = videoTokenPriceTiersFromMatrix({ withoutVideoStandard: 11.5, withoutVideo1080: 12.75, withVideoStandard: 7, withVideo1080: 7.75 });
+
+        expect(tiers).toHaveLength(6);
+        expect(tiers.map((tier) => [tier.operation, tier.resolution, tier.outputTokenPrice])).toEqual([
+            ["*", "480p", 11.5],
+            ["*", "720p", 11.5],
+            ["*", "1080p", 12.75],
+            ["video_to_video", "480p", 7],
+            ["video_to_video", "720p", 7],
+            ["video_to_video", "1080p", 7.75],
+        ]);
+        expect(skuSelectorFromForm("video", tiers[0])).toEqual({ vquality: "480p" });
+        expect(skuSelectorFromForm("video", tiers[3])).toEqual({ operation: "video_to_video", vquality: "480p" });
+        expect(videoTokenPriceMatrixFromTiers(tiers)).toEqual({ withoutVideoStandard: 11.5, withoutVideo1080: 12.75, withVideoStandard: 7, withVideo1080: 7.75 });
+    });
+
+    test("upgrades a single video Token price into an editable matrix without changing its price", () => {
+        const tier = { ...defaultPriceTier(), billingMode: "token" as const, outputTokenPrice: 9.5 };
+        const expanded = expandSingleVideoTokenPriceTier([tier]);
+
+        expect(expanded).toHaveLength(6);
+        expect(videoTokenPriceMatrixFromTiers(expanded)).toEqual({ withoutVideoStandard: 9.5, withoutVideo1080: 9.5, withVideoStandard: 9.5, withVideo1080: 9.5 });
+    });
+
+    test("converts original RMB prices with the upstream discount plus the configured increment", () => {
+        const settings = { upstreamDiscount: 7.5, discountIncrement: 0.5 };
+
+        expect(sellingDiscount(settings)).toBe(8);
+        expect(upstreamCostFromOriginal(46, settings.upstreamDiscount)).toBe(34.5);
+        expect(discountedPriceFromOriginal(46, settings)).toBe(36.8);
+        expect(discountedPriceFromOriginal(77, settings)).toBe(61.6);
+        expect(sellingDiscount({ upstreamDiscount: 9.8, discountIncrement: 0.5 })).toBeUndefined();
+    });
+
+    test("converts the official Seedance matrix at upstream 8 discount and selling 8.5 discount", () => {
+        const original = { withoutVideoStandard: 46, withoutVideo1080: 51, withVideoStandard: 28, withVideo1080: 31 };
+        const tiers = videoTokenPriceTiersFromMatrix(original);
+        const converted = priceTiersWithDiscountedPrices(
+            tiers.map((tier) => ({ ...tier, originalOutputTokenPrice: tier.outputTokenPrice })),
+            { upstreamDiscount: 8, discountIncrement: 0.5 },
+        );
+
+        expect(videoTokenPriceMatrixFromTiers(converted)).toEqual({
+            withoutVideoStandard: 39.1,
+            withoutVideo1080: 43.35,
+            withVideoStandard: 23.8,
+            withVideo1080: 26.35,
+        });
+    });
+
+    test("updates only price fields that have an original-price draft", () => {
+        const tier = {
+            ...defaultPriceTier(),
+            billingMode: "token" as const,
+            inputTokenPrice: 1.25,
+            outputTokenPrice: 2.5,
+            cachedTokenPrice: 0.75,
+            originalInputTokenPrice: 10,
+            originalOutputTokenPrice: 46,
+        };
+        const [converted] = priceTiersWithDiscountedPrices([tier], { upstreamDiscount: 7.5, discountIncrement: 0.5 });
+
+        expect(converted.inputTokenPrice).toBe(8);
+        expect(converted.outputTokenPrice).toBe(36.8);
+        expect(converted.cachedTokenPrice).toBe(0.75);
+    });
+
+    test("keeps original prices alongside the converted six-tier matrix", () => {
+        const original = { withoutVideoStandard: 42, withoutVideo1080: 46, withVideoStandard: 70, withVideo1080: 77 };
+        const converted = { withoutVideoStandard: 33.6, withoutVideo1080: 36.8, withVideoStandard: 56, withVideo1080: 61.6 };
+        const tiers = videoTokenPriceTiersFromMatrix(converted, "artsdance-2-5-pro-260801", original);
+
+        expect(videoTokenPriceMatrixFromTiers(tiers)).toEqual(converted);
+        expect(videoTokenOriginalPriceMatrixFromTiers(tiers)).toEqual(original);
+    });
+
+    test("does not overwrite untouched matrix prices while original prices are entered cell by cell", () => {
+        const current = { withoutVideoStandard: 11.5, withoutVideo1080: 12.75, withVideoStandard: 7, withVideo1080: 7.75 };
+        const sparseOriginal = { withoutVideoStandard: 0, withoutVideo1080: 46, withVideoStandard: 0, withVideo1080: 0 };
+        const tiers = videoTokenPriceTiersFromMatrix({ ...current, withoutVideo1080: 36.8 }, "artsdance", sparseOriginal);
+        const converted = priceTiersWithDiscountedPrices(tiers, { upstreamDiscount: 7.5, discountIncrement: 0.5 });
+
+        expect(videoTokenPriceMatrixFromTiers(converted)).toEqual({ ...current, withoutVideo1080: 36.8 });
+        expect(converted.filter((tier) => tier.originalOutputTokenPrice !== undefined)).toHaveLength(1);
     });
 });

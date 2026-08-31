@@ -62,7 +62,7 @@ func (s *Service) QuoteLogicalModel(logicalModelID string, intent ModelRequestIn
 		}
 		amount, err = creditAmount(routed.LogicalModel.UnitPriceMicrocredits, quantity, 10_000)
 	case "token":
-		if routed.ChannelModel.Capability != capability || !supportsTokenBilling(capability, routed.ChannelModel.Protocol) {
+		if routed.ChannelModel.Capability != capability || !s.supportsTokenBilling(capability, routed.ChannelModel.Protocol) {
 			return nil, BadAuthRequest("当前供应线路不支持前台模型的 Token 计费方式")
 		}
 		pricing := &model.ChannelModel{

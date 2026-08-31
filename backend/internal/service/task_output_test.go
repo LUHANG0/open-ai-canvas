@@ -78,3 +78,65 @@ func TestTaskOutputResourceReadsPersistedMedia(t *testing.T) {
 		t.Fatalf("unexpected task output resource: id=%q mediaType=%q", id, mediaType)
 	}
 }
+
+func TestTaskSummariesForOutputUsesBillingAmountForCurrentStatus(t *testing.T) {
+	tests := []struct {
+		name   string
+		order  model.BillingOrder
+		amount int64
+	}{
+		{
+			name: "settled uses actual amount",
+			order: model.BillingOrder{
+				Status:                     model.BillingStatusSettled,
+				AmountMicrocredits:         640_585,
+				ReservedAmountMicrocredits: 640_585,
+				ActualAmountMicrocredits:   757_034,
+			},
+			amount: 757_034,
+		},
+		{
+			name: "running uses reserved amount",
+			order: model.BillingOrder{
+				Status:                     model.BillingStatusRunning,
+				AmountMicrocredits:         500_000,
+				ReservedAmountMicrocredits: 640_585,
+			},
+			amount: 640_585,
+		},
+		{
+			name: "refunded uses refunded amount",
+			order: model.BillingOrder{
+				Status:                     model.BillingStatusRefunded,
+				AmountMicrocredits:         500_000,
+				ReservedAmountMicrocredits: 640_585,
+				RefundedAmountMicrocredits: 640_585,
+			},
+			amount: 640_585,
+		},
+		{
+			name: "legacy reservation falls back to quoted amount",
+			order: model.BillingOrder{
+				Status:             model.BillingStatusReserved,
+				AmountMicrocredits: 500_000,
+			},
+			amount: 500_000,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			task := model.Task{ID: "task-1", BillingOrderID: "order-1"}
+			summaries := taskSummariesForOutputWithBilling([]model.Task{task}, map[string]model.BillingOrder{"task-1": tt.order})
+			if len(summaries) != 1 || summaries[0].Billing == nil {
+				t.Fatalf("billing summary missing: %#v", summaries)
+			}
+			if got := summaries[0].Billing.AmountMicrocredits; got != tt.amount {
+				t.Fatalf("billing amount = %d, want %d", got, tt.amount)
+			}
+			if got := summaries[0].Billing.Status; got != tt.order.Status {
+				t.Fatalf("billing status = %q, want %q", got, tt.order.Status)
+			}
+		})
+	}
+}

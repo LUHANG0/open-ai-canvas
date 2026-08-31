@@ -145,7 +145,7 @@ func (s *Service) sanitizeChannelModel(cm *model.ChannelModel) PublicChannelMode
 	// 转换为公开的价格档
 	publicTiers := make([]PublicChannelModelPriceTier, 0, len(priceTiers))
 	for _, tier := range priceTiers {
-		if !tier.Enabled || !tier.PriceConfigured || !ValidatePriceTierPrice(&tier, cm.Capability, cm.Protocol) {
+		if !tier.Enabled || !tier.PriceConfigured || !s.validatePriceTierPrice(&tier, cm.Capability, cm.Protocol) {
 			continue
 		}
 		publicTiers = append(publicTiers, PublicChannelModelPriceTier{
@@ -189,7 +189,7 @@ func (s *Service) sanitizeChannelModel(cm *model.ChannelModel) PublicChannelMode
 		PricingMode:      pricingMode,
 		DisplayPrice:     displayPrice,
 		PriceLabel:       priceLabel,
-		Available:        len(publicTiers) > 0 || (len(priceTiers) == 0 && HasValidPrice(cm)),
+		Available:        len(publicTiers) > 0 || (len(priceTiers) == 0 && s.hasValidPrice(cm)),
 	}
 }
 

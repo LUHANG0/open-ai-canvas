@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"infinite-canvas/backend/internal/model"
+	"infinite-canvas/backend/internal/protocol"
 	"infinite-canvas/backend/internal/repository"
 )
 
@@ -100,12 +101,9 @@ func (s *Service) queryFailedVideoTask(ctx context.Context, task *model.Task, cl
 	if err := json.Unmarshal([]byte(decryptedInput), &input); err != nil {
 		return nil, fmt.Errorf("任务输入解析失败：%w", err)
 	}
-	config, err := s.resolveProviderConfig(input.Config)
+	config, err := s.resolveProviderConfigForRecovery(input.Config)
 	if err != nil {
 		return nil, err
-	}
-	if config.InterfaceType != string(model.ChannelInterfaceNewAPIChannel2) {
-		return nil, BadAuthRequest("该任务不使用 NewAPI Video Generations 协议")
 	}
 	input.Config = config
 	task.InputJSON = decryptedInput
@@ -130,7 +128,17 @@ func (s *Service) queryFailedVideoTask(ctx context.Context, task *model.Task, cl
 
 	queryCtx := withProviderAnalytics(ctx, s, *task)
 	queryCtx = withProviderOutboundPolicy(queryCtx, input.Config)
-	result, providerStatus, err := queryNewAPIChannel2VideoTask(queryCtx, input, providerRequestID)
+	queryCtx = withProtocolRegistry(queryCtx, s.protocolRegistry())
+	var result map[string]interface{}
+	var providerStatus string
+	switch {
+	case config.InterfaceType == string(model.ChannelInterfaceNewAPIChannel2):
+		result, providerStatus, err = queryNewAPIChannel2VideoTask(queryCtx, input, providerRequestID)
+	case isVideoProtocolAdapter(s.protocolRegistry(), config.InterfaceType):
+		result, providerStatus, err = queryProtocolVideoTask(queryCtx, input, providerRequestID)
+	default:
+		return nil, BadAuthRequest("当前视频协议不支持人工查询上游任务")
+	}
 	if err != nil {
 		_ = s.log(task.UserID, task.ID, "error", "人工查询上游视频任务失败", err.Error())
 		return nil, err
@@ -175,4 +183,48 @@ func (s *Service) queryFailedVideoTask(ctx context.Context, task *model.Task, cl
 		_ = s.log(task.UserID, task.ID, "info", "人工查询确认生成成功，任务已恢复并完成结算", providerStatus)
 	}
 	return &ProviderTaskQueryResult{Task: taskForOutput(*task), ProviderStatus: providerStatus, Recovered: true, BillingSettled: billingSettled}, nil
+}
+
+func isVideoProtocolAdapter(registry *protocol.Registry, interfaceType string) bool {
+	adapter, ok := registry.Resolve(strings.TrimSpace(interfaceType))
+	if !ok {
+		return false
+	}
+	for _, capability := range adapter.Metadata().Categories {
+		if capability == protocol.CapabilityVideo {
+			return true
+		}
+	}
+	return false
+}
+
+func queryProtocolVideoTask(ctx context.Context, input canvasGenerationInput, providerRequestID string) (map[string]interface{}, string, error) {
+	adapter, ok := protocolAdapterForContext(ctx, input.Config.InterfaceType)
+	if !ok {
+		return nil, "", fmt.Errorf("接口类型 %s 未安装协议适配器", input.Config.InterfaceType)
+	}
+	request := protocolRequestFromInput(input)
+	pollContext := protocol.PollContext{BaseURL: input.Config.BaseURL, Model: request.Model, Request: request, TaskID: providerRequestID}
+	spec, err := adapter.BuildPoll(ctx, pollContext)
+	if err != nil {
+		return nil, "", err
+	}
+	body, err := executeProtocolRequest(ctx, input.Config, spec)
+	if err != nil {
+		return nil, "", err
+	}
+	state, err := adapter.ParsePoll(ctx, pollContext, body)
+	if err != nil {
+		return nil, "", err
+	}
+	status := string(state.Status)
+	switch state.Status {
+	case protocol.StatusSucceeded:
+		result, err := finishProtocolResult(ctx, input.Config, "video", state.Result)
+		return result, status, err
+	case protocol.StatusFailed, protocol.StatusCancelled:
+		return nil, status, protocolResultError(state.Message, providerRequestID)
+	default:
+		return nil, status, nil
+	}
 }

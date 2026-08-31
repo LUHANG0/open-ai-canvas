@@ -588,7 +588,8 @@ function isAiConfigReady(config: AiConfig, model: string) {
         return Boolean(config.comfyBridge.enabled && config.comfyBridge.bridgeId.trim() && config.comfyBridge.workflowId.trim());
     }
     const channel = resolveModelChannel(config, model);
-    if (channel.transport === "local-runtime") return channel.enabled !== false && Boolean(channel.localModels?.some((item) => item.id === modelOptionName(model)));
+    if (channel.enabled === false) return false;
+    if (channel.transport === "local-runtime") return Boolean(channel.localModels?.some((item) => item.id === modelOptionName(model)));
     return Boolean(model.trim() && channel.baseUrl.trim() && channel.apiKey.trim());
 }
 
@@ -850,13 +851,15 @@ export function modelOptionLabel(config: AiConfig, value: string) {
 
 export function modelOptionsFromChannels(channels: ModelChannel[]) {
     return uniqueModelOptions(
-        channels.flatMap((channel) =>
-            channel.models
-                .map(normalizeRawModelName)
-                .filter(Boolean)
-                .filter((model) => channel.scope !== "system" || hasSystemModelPrice(channel, model))
-                .map((model) => (channel.transport === "local-runtime" ? `local:dreamina-cli:${model}` : encodeChannelModel(channel.id, model))),
-        ),
+        channels
+            .filter((channel) => channel.enabled !== false)
+            .flatMap((channel) =>
+                channel.models
+                    .map(normalizeRawModelName)
+                    .filter(Boolean)
+                    .filter((model) => channel.scope !== "system" || hasSystemModelPrice(channel, model))
+                    .map((model) => (channel.transport === "local-runtime" ? `local:dreamina-cli:${model}` : encodeChannelModel(channel.id, model))),
+            ),
     );
 }
 
@@ -885,10 +888,13 @@ export function normalizeModelOptionValue(value: unknown, channels: ModelChannel
     const decoded = decodeChannelModel(model);
     if (decoded) {
         const channel = channels.find((item) => item.id === decoded.channelId);
+        if (channel?.enabled === false) return "";
         const resolved = channel?.modelAliases?.[decoded.model] || decoded.model;
         return channel && channel.models.includes(resolved) ? encodeChannelModel(channel.id, resolved) : "";
     }
-    const channel = channels.find((item) => item.models.includes(model) || Boolean(item.modelAliases?.[model])) || channels[0];
+    const activeChannels = channels.filter((item) => item.enabled !== false);
+    const channel =
+        activeChannels.find((item) => item.models.includes(model) || Boolean(item.modelAliases?.[model])) || activeChannels[0];
     const resolved = channel?.modelAliases?.[model] || model;
     return channel && channel.models.includes(resolved) ? encodeChannelModel(channel.id, resolved) : "";
 }

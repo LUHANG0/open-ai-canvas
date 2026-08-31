@@ -1862,14 +1862,14 @@ func TestArkPlanConfigStaysSeparateFromSeedanceVideosEndpoint(t *testing.T) {
 	}
 }
 
-func TestVolcengineArkVideoProtocolUsesContentTaskAndDownloadsResult(t *testing.T) {
+func TestVolcengineArkVideoProtocolUsesAdapterPathAndDownloadsResult(t *testing.T) {
 	t.Setenv("CANVAS_ALLOW_PRIVATE_UPSTREAMS", "true")
 	paths := make([]string, 0, 3)
 	var server *httptest.Server
 	server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		paths = append(paths, r.Method+" "+r.URL.Path)
 		switch r.Method + " " + r.URL.Path {
-		case "POST /api/v3/contents/generations/tasks":
+		case "POST /doubao/api/v3/contents/generations/tasks":
 			var body map[string]interface{}
 			if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 				t.Fatalf("decode request: %v", err)
@@ -1880,18 +1880,18 @@ func TestVolcengineArkVideoProtocolUsesContentTaskAndDownloadsResult(t *testing.
 				return
 			}
 			wantTypes := []string{"text", "image_url", "video_url", "audio_url"}
-			wantRoles := []string{"", "reference_image", "reference_video", "reference_audio"}
+			wantRoles := []string{"", "first_frame", "reference_video", "reference_audio"}
 			for index, item := range content {
 				entry, _ := item.(map[string]interface{})
 				if entry["type"] != wantTypes[index] || (wantRoles[index] != "" && entry["role"] != wantRoles[index]) {
 					t.Errorf("content[%d] = %#v", index, entry)
 				}
 			}
-			if body["model"] != "doubao-seedance-test" {
+			if body["model"] != "doubao-seedance-test" || body["resolution"] != "480p" {
 				t.Errorf("body = %#v", body)
 			}
 			_, _ = w.Write([]byte(`{"id":"ark-task-1","status":"running"}`))
-		case "GET /api/v3/contents/generations/tasks/ark-task-1":
+		case "GET /doubao/api/v3/contents/generations/tasks/ark-task-1":
 			_, _ = w.Write([]byte(`{"id":"ark-task-1","status":"succeeded","content":{"video_url":"` + server.URL + `/result.mp4"}}`))
 		case "GET /result.mp4":
 			w.Header().Set("Content-Type", "video/mp4")
@@ -1903,8 +1903,9 @@ func TestVolcengineArkVideoProtocolUsesContentTaskAndDownloadsResult(t *testing.
 	defer server.Close()
 
 	result, err := runVideoTask(context.Background(), canvasGenerationInput{
+		Mode:            "video",
 		Prompt:          "make it move",
-		Config:          providerConfig{BaseURL: server.URL + "/api/v3", APIKey: "test-key", Model: "doubao-seedance-test", InterfaceType: "volcengine-ark-video"},
+		Config:          providerConfig{BaseURL: server.URL, APIKey: "test-key", Model: "doubao-seedance-test", InterfaceType: "volcengine-ark-video", VQuality: "480"},
 		ReferenceImages: []providerMedia{{ID: "start", URL: server.URL + "/reference.png"}},
 		ReferenceVideos: []providerMedia{{ID: "motion", URL: server.URL + "/reference.mp4"}},
 		ReferenceAudios: []providerMedia{{ID: "music", URL: server.URL + "/reference.mp3"}},
@@ -1917,7 +1918,7 @@ func TestVolcengineArkVideoProtocolUsesContentTaskAndDownloadsResult(t *testing.
 	if video["dataUrl"] != "data:video/mp4;base64,dmlkZW8=" {
 		t.Fatalf("video = %#v", video)
 	}
-	want := "POST /api/v3/contents/generations/tasks,GET /api/v3/contents/generations/tasks/ark-task-1,GET /result.mp4"
+	want := "POST /doubao/api/v3/contents/generations/tasks,GET /doubao/api/v3/contents/generations/tasks/ark-task-1,GET /result.mp4"
 	if got := strings.Join(paths, ","); got != want {
 		t.Fatalf("paths = %q, want %q", got, want)
 	}

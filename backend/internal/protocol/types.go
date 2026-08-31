@@ -137,6 +137,7 @@ type Metadata struct {
 	Installable             bool         `json:"installable"`
 	Execution               string       `json:"-"`
 	RequiresPublicMediaURLs bool         `json:"-"`
+	TokenUsage              bool         `json:"tokenUsage,omitempty"`
 	UnavailableReason       string       `json:"-"`
 }
 
@@ -257,6 +258,7 @@ type ManifestProvider struct {
 	Scopes                  []Surface              `json:"scopes"`
 	BaseURL                 string                 `json:"baseUrl,omitempty"`
 	RequiresPublicMediaURLs bool                   `json:"requiresPublicMediaUrls,omitempty"`
+	Billing                 ManifestBilling        `json:"billing,omitempty"`
 	Auth                    ManifestAuth           `json:"auth,omitempty"`
 	Parameters              []Parameter            `json:"parameters,omitempty"`
 	Create                  ManifestOperation      `json:"create"`
@@ -265,6 +267,14 @@ type ManifestProvider struct {
 	Cancel                  *ManifestOperation     `json:"cancel,omitempty"`
 	Response                ManifestResponse       `json:"response"`
 	AgentResponse           *ManifestAgentResponse `json:"agentResponse,omitempty"`
+}
+
+// ManifestBilling declares settlement facts that the provider response can
+// prove. TokenUsage is deliberately narrower than a generic list of billing
+// modes: the host only enables Token settlement when a successful response can
+// expose real usage through response.usagePaths.
+type ManifestBilling struct {
+	TokenUsage bool `json:"tokenUsage,omitempty"`
 }
 
 type ManifestAuth struct {

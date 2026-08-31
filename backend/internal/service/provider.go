@@ -1355,6 +1355,16 @@ func normalizedMediaMimeType(declared string, data []byte) string {
 }
 
 func (s *Service) resolveProviderConfig(config providerConfig) (providerConfig, error) {
+	return s.resolveProviderConfigWithModelState(config, false)
+}
+
+// 已提交任务的结果回收必须继续使用任务快照中的协议和模型。管理员后来停用
+// 模型只应阻止新任务，不应阻止查询已经产生费用的上游任务。
+func (s *Service) resolveProviderConfigForRecovery(config providerConfig) (providerConfig, error) {
+	return s.resolveProviderConfigWithModelState(config, true)
+}
+
+func (s *Service) resolveProviderConfigWithModelState(config providerConfig, includeDisabledModel bool) (providerConfig, error) {
 	headers, err := NormalizeOutboundHeaders(config.Headers)
 	if err != nil {
 		return providerConfig{}, err
@@ -1408,7 +1418,35 @@ func (s *Service) resolveProviderConfig(config providerConfig) (providerConfig, 
 	}
 	config.ChannelID = channel.ID
 	config.APIFormat = channel.APIFormat
-	channelModel, modelErr := s.repo.ChannelModelByKey(channel.ID, modelKey)
+	if includeDisabledModel && strings.TrimSpace(config.InterfaceType) != "" {
+		// 查询旧任务时以加密任务快照中的协议与模型为准；渠道只提供最新凭证。
+		// 这样即使管理员已经替换、停用或删除该模型，已付费的上游结果仍可回收。
+		config.BaseURL = channel.BaseURL
+		config.AllowLocalChannel = s.effectiveAllowLocalChannel(channel.AllowLocalChannel)
+		config.APIKey = channel.APIKey
+		config.SecretKey = channel.SecretKey
+		config.Headers, err = ParseOutboundHeadersJSON(channel.HeadersJSON)
+		if err != nil {
+			return providerConfig{}, err
+		}
+		config.ChannelModelKey = modelKey
+		config.Model = firstNonEmpty(strings.TrimPrefix(strings.TrimSpace(config.ProviderModelKey), "models/"), requestedModel, modelKey)
+		if config.InterfaceType == string(model.ChannelInterfaceGeminiVeo) || config.InterfaceType == string(model.ChannelInterfaceGeminiImage) {
+			config.APIFormat = "gemini"
+		} else if config.InterfaceType == string(model.ChannelInterfaceClaudeAPI) {
+			config.APIFormat = "claude"
+		} else {
+			config.APIFormat = "openai"
+		}
+		return config, nil
+	}
+	var channelModel *model.ChannelModel
+	var modelErr error
+	if includeDisabledModel {
+		channelModel, modelErr = s.repo.ChannelModelByKeyIncludingDisabled(channel.ID, modelKey)
+	} else {
+		channelModel, modelErr = s.repo.ChannelModelByKey(channel.ID, modelKey)
+	}
 	if modelErr != nil {
 		// ModelsJSON 只是旧渠道表上的目录缓存。SKU 合并后它不能代表可执行模型，
 		// 唯一授权来源必须是已启用的 channel_models 记录。
@@ -2367,7 +2405,33 @@ func protocolRequestFromInput(input canvasGenerationInput) protocol.GenerationRe
 	if count, err := strconv.Atoi(strings.TrimSpace(input.Config.Count)); err == nil && count > 0 {
 		request.ImageCount = count
 	}
+	copyProtocolVideoOptions(request.Extra, input.Metadata)
 	return request
+}
+
+func copyProtocolVideoOptions(extra map[string]any, metadata map[string]interface{}) {
+	if extra == nil || metadata == nil {
+		return
+	}
+	aliases := map[string][]string{
+		"frames":                  {"frames", "videoFrames"},
+		"seed":                    {"seed", "videoSeed"},
+		"camera_fixed":            {"camera_fixed", "cameraFixed"},
+		"return_last_frame":       {"return_last_frame", "returnLastFrame"},
+		"service_tier":            {"service_tier", "serviceTier"},
+		"execution_expires_after": {"execution_expires_after", "executionExpiresAfter"},
+		"draft":                   {"draft", "videoDraft"},
+		"priority":                {"priority", "videoPriority"},
+		"safety_identifier":       {"safety_identifier", "safetyIdentifier"},
+	}
+	for target, keys := range aliases {
+		for _, key := range keys {
+			if value, exists := metadata[key]; exists && value != nil {
+				extra[target] = value
+				break
+			}
+		}
+	}
 }
 
 func protocolVideoImageReferences(input canvasGenerationInput) []protocol.MediaReference {
@@ -2733,10 +2797,10 @@ func runVideoTask(ctx context.Context, input canvasGenerationInput) (map[string]
 	if _, ok := declarativeProtocolAdapterForContext(ctx, input.Config.InterfaceType); ok {
 		return runDeclarativeProtocolTask(ctx, input)
 	}
-	if input.Config.InterfaceType == string(model.ChannelInterfaceAgnesVideo) {
+	if input.Config.InterfaceType == string(model.ChannelInterfaceAgnesVideo) || input.Config.InterfaceType == string(model.ChannelInterfaceVolcengineArkVideo) {
 		adapter, ok := protocolAdapterForContext(ctx, input.Config.InterfaceType)
 		if !ok {
-			return nil, errors.New("Agnes 视频插件未安装")
+			return nil, fmt.Errorf("视频接口 %s 未安装", input.Config.InterfaceType)
 		}
 		return runProtocolAdapterTask(ctx, input, adapter)
 	}
@@ -2757,9 +2821,6 @@ func runVideoTask(ctx context.Context, input canvasGenerationInput) (map[string]
 	}
 	if input.Config.InterfaceType == "newapi-channel-1" {
 		return runNewAPIChannel1VideoTask(ctx, input)
-	}
-	if input.Config.InterfaceType == string(model.ChannelInterfaceVolcengineArkVideo) {
-		return runSeedanceAgentPlanVideoTask(ctx, input)
 	}
 	if isArkPlanVideoConfig(input.Config) {
 		return runSeedanceAgentPlanVideoTask(ctx, input)
@@ -3920,13 +3981,6 @@ func runSeedanceAgentPlanVideoTask(ctx context.Context, input canvasGenerationIn
 		content, err := seedanceContent(input)
 		if err != nil {
 			return nil, err
-		}
-		if input.Config.InterfaceType == string(model.ChannelInterfaceVolcengineArkVideo) {
-			for _, item := range content {
-				if item["type"] == "image_url" {
-					item["role"] = "reference_image"
-				}
-			}
 		}
 		body := seedanceAgentPlanRequest{
 			Model:      input.Config.Model,

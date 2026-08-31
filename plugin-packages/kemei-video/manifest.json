@@ -2,10 +2,10 @@
   "apiVersion": "yingce.plugin/v1",
   "id": "kemei-video",
   "name": "可美视频 AI",
-  "version": "1.0.2",
+  "version": "1.1.0",
   "author": "KM 可美视频 AI",
   "description": "可美 OpenAI 兼容异步视频生成协议。",
-  "documentation": "# 可美视频 AI\n\n插件不预填 Base URL，请在渠道中手动填写服务地址和 API Key。\n\n创建任务：`POST /v1/video/generations`\n\n查询任务：`GET /v1/video/generations/{task_id}`\n\n1.0.2 修复了影策界面内部分辨率 `480/720/1080` 到可美接口 `480p/720p/1080p` 的转换。\n\n接口文档：https://token.xinhankr.com/docs/openai/doc0018",
+  "documentation": "# 可美视频 AI\n\n插件不预填 Base URL，请在渠道中手动填写服务地址和 API Key。\n\n创建任务：`POST /v1/video/generations`\n\n查询任务：`GET /v1/video/generations/{task_id}`\n\n1.1.0 声明视频响应中的真实 Token usage，可供影策按每百万 Token 预授权并在生成后按实际用量结算积分。1.0.2 修复了影策界面内部分辨率 `480/720/1080` 到可美接口 `480p/720p/1080p` 的转换。\n\n接口文档：https://token.xinhankr.com/docs/openai/doc0018",
   "enabled": true,
   "installable": true,
   "permissions": ["generation.run", "media.read"],
@@ -28,6 +28,9 @@
         "capabilities": ["video"],
         "scopes": ["admin.system-channel", "user.custom-channel", "canvas", "creation"],
         "requiresPublicMediaUrls": true,
+        "billing": {
+          "tokenUsage": true
+        },
         "auth": {
           "type": "bearer",
           "field": "apiKey",
@@ -73,11 +76,12 @@
           "path": "/v1/video/generations/{{taskId}}"
         },
         "response": {
-          "taskIdPaths": ["task_id", "id", "data.task_id", "data.id"],
-          "statusPaths": ["status", "data.status"],
+          "taskIdPaths": ["task_id", "id", "data.task_id", "data.id", "data.data.task_id", "data.data.id"],
+          "statusPaths": ["status", "data.status", "data.data.status"],
           "errorPaths": ["error", "data.error"],
           "messagePaths": ["message", "detail", "error.message", "data.message", "data.error.message"],
-          "resultPaths": ["data", "result.data", "data.results"],
+          "usagePaths": ["usage", "data.usage", "data.data.usage"],
+          "resultPaths": ["data", "result.data", "data.results", "data.result_url", "data.data.content.video_url", "data.data.result_url"],
           "resultKind": "video"
         }
       }

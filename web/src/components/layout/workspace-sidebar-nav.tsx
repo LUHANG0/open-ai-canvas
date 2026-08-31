@@ -22,6 +22,7 @@ export type WorkspaceNavItem = {
 
 type WorkspaceNavGroup = {
     heading?: string;
+    collapsible?: boolean;
     items: WorkspaceNavItem[];
 };
 
@@ -43,6 +44,8 @@ function toolItem(slug: NavigationToolSlug, to: string): WorkspaceNavItem {
 function buildNav(features: FeatureAvailability, balance: string, isAdmin: boolean): { groups: WorkspaceNavGroup[]; footer: WorkspaceNavItem[] } {
     const groups: WorkspaceNavGroup[] = [
         {
+            heading: "创作空间",
+            collapsible: false,
             items: [
                 { id: "home", title: "首页", icon: Home, to: "/home" },
                 toolItem("create", "/create"),
@@ -54,11 +57,7 @@ function buildNav(features: FeatureAvailability, balance: string, isAdmin: boole
         },
         {
             heading: "工作台管理",
-            items: [
-                toolItem("skills", "/skills"),
-                ...(features.pluginCenterEnabled || isAdmin ? [toolItem("plugins", "/plugins")] : []),
-                ...(features.creditsEnabled ? [{ ...toolItem("wallet", "/wallet"), badge: balance }] : []),
-            ],
+            items: [toolItem("skills", "/skills"), ...(features.pluginCenterEnabled || isAdmin ? [toolItem("plugins", "/plugins")] : []), ...(features.creditsEnabled ? [{ ...toolItem("wallet", "/wallet"), badge: balance }] : [])],
         },
     ];
 
@@ -92,13 +91,7 @@ function WorkspaceSwitcher({ collapsed, onNavigate, onExpand }: { collapsed: boo
     if (collapsed) {
         return (
             <div className="app-workspace-sidebar-rail-header shrink-0">
-                <button
-                    type="button"
-                    className="app-workspace-sidebar-rail-button"
-                    aria-label="展开侧栏菜单"
-                    title="展开侧栏菜单"
-                    onClick={onExpand}
-                >
+                <button type="button" className="app-workspace-sidebar-rail-button" aria-label="展开侧栏菜单" title="展开侧栏菜单" onClick={onExpand}>
                     <PanelLeftOpen className="size-4" strokeWidth={1.7} />
                 </button>
             </div>
@@ -140,21 +133,12 @@ function WorkspaceSwitcher({ collapsed, onNavigate, onExpand }: { collapsed: boo
                             { label: "画布", to: "/canvas" },
                             { label: "设置", to: "/settings" },
                         ].map((entry) => (
-                            <button
-                                key={entry.to}
-                                type="button"
-                                onClick={() => go(entry.to)}
-                                className="flex w-full items-center gap-2 px-3 py-2 text-[var(--fs-body)] text-foreground/80 transition-colors hover:bg-surface-hover hover:text-foreground"
-                            >
+                            <button key={entry.to} type="button" onClick={() => go(entry.to)} className="flex w-full items-center gap-2 px-3 py-2 text-[var(--fs-body)] text-foreground/80 transition-colors hover:bg-surface-hover hover:text-foreground">
                                 {entry.label}
                             </button>
                         ))}
                         <div className="mx-2 my-1 h-px bg-[var(--workspace-border)]" />
-                        <button
-                            type="button"
-                            onClick={() => go("/canvas?mode=new")}
-                            className="flex w-full items-center gap-2 px-3 py-2 text-[var(--fs-body)] text-foreground/45 transition-colors hover:bg-surface-hover hover:text-foreground"
-                        >
+                        <button type="button" onClick={() => go("/canvas?mode=new")} className="flex w-full items-center gap-2 px-3 py-2 text-[var(--fs-body)] text-foreground/45 transition-colors hover:bg-surface-hover hover:text-foreground">
                             <Plus className="size-3.5" /> 新建画布
                         </button>
                     </div>
@@ -164,7 +148,15 @@ function WorkspaceSwitcher({ collapsed, onNavigate, onExpand }: { collapsed: boo
     );
 }
 
-function NavItem({ item, activeId, onSelect, onOpenSearch, onLogout, level = 0, collapsed = false }: {
+function NavItem({
+    item,
+    activeId,
+    onSelect,
+    onOpenSearch,
+    onLogout,
+    level = 0,
+    collapsed = false,
+}: {
     item: WorkspaceNavItem;
     activeId: string;
     onSelect: (id: string) => void;
@@ -201,14 +193,8 @@ function NavItem({ item, activeId, onSelect, onOpenSearch, onLogout, level = 0, 
                         {item.shortcut}
                     </kbd>
                 ) : null}
-                {item.badge !== undefined ? (
-                    <span className="flex min-w-5 items-center justify-center rounded-full bg-primary/10 px-1.5 py-0.5 text-[var(--fs-tiny)] font-medium tabular-nums text-primary">
-                        {item.badge}
-                    </span>
-                ) : null}
-                {hasChildren ? (
-                    <ChevronRight className={cn("size-3.5 shrink-0 text-foreground/40 transition-transform duration-200", isOpen && "rotate-90")} strokeWidth={2} />
-                ) : null}
+                {item.badge !== undefined ? <span className="flex min-w-5 items-center justify-center rounded-full bg-primary/10 px-1.5 py-0.5 text-[var(--fs-tiny)] font-medium tabular-nums text-primary">{item.badge}</span> : null}
+                {hasChildren ? <ChevronRight className={cn("size-3.5 shrink-0 text-foreground/40 transition-transform duration-200", isOpen && "rotate-90")} strokeWidth={2} /> : null}
             </span>
         </>
     );
@@ -255,15 +241,7 @@ function NavItem({ item, activeId, onSelect, onOpenSearch, onLogout, level = 0, 
                     {rowContent}
                 </Link>
             ) : (
-                <button
-                    type="button"
-                    className={rowClassName}
-                    style={rowStyle}
-                    aria-label={collapsed ? item.title : undefined}
-                    title={collapsed ? item.title : undefined}
-                    onClick={handleClick}
-                    aria-expanded={hasChildren ? isOpen : undefined}
-                >
+                <button type="button" className={rowClassName} style={rowStyle} aria-label={collapsed ? item.title : undefined} title={collapsed ? item.title : undefined} onClick={handleClick} aria-expanded={hasChildren ? isOpen : undefined}>
                     {rowContent}
                 </button>
             )}
@@ -273,16 +251,7 @@ function NavItem({ item, activeId, onSelect, onOpenSearch, onLogout, level = 0, 
                     <div className="relative flex min-h-0 flex-col gap-0.5 overflow-hidden pt-0.5">
                         <span className="app-workspace-nav-guide-line" style={{ left: `${(level + 1) * 12 + 12.5}px` }} />
                         {item.children!.map((child) => (
-                            <NavItem
-                                key={child.id}
-                                item={child}
-                                activeId={activeId}
-                                onSelect={onSelect}
-                                onOpenSearch={onOpenSearch}
-                                onLogout={onLogout}
-                                level={level + 1}
-                                collapsed={false}
-                            />
+                            <NavItem key={child.id} item={child} activeId={activeId} onSelect={onSelect} onOpenSearch={onOpenSearch} onLogout={onLogout} level={level + 1} collapsed={false} />
                         ))}
                     </div>
                 </div>
@@ -291,14 +260,7 @@ function NavItem({ item, activeId, onSelect, onOpenSearch, onLogout, level = 0, 
     );
 }
 
-function NavGroup({ group, activeId, onNavigate, onOpenSearch, onLogout, collapsed }: {
-    group: WorkspaceNavGroup;
-    activeId: string;
-    onNavigate: () => void;
-    onOpenSearch: () => void;
-    onLogout: () => void;
-    collapsed: boolean;
-}) {
+function NavGroup({ group, activeId, onNavigate, onOpenSearch, onLogout, collapsed }: { group: WorkspaceNavGroup; activeId: string; onNavigate: () => void; onOpenSearch: () => void; onLogout: () => void; collapsed: boolean }) {
     const [isOpen, setIsOpen] = useState(true);
     const hasActive = group.items.some((item) => item.id === activeId || (item.id === "settings" && activeId.startsWith("settings:")));
 
@@ -310,15 +272,7 @@ function NavGroup({ group, activeId, onNavigate, onOpenSearch, onLogout, collaps
     const content = (
         <div className="flex flex-col gap-0.5">
             {group.items.map((item) => (
-                <NavItem
-                    key={item.id}
-                    item={item}
-                    activeId={activeId}
-                    onSelect={onNavigate}
-                    onOpenSearch={onOpenSearch}
-                    onLogout={onLogout}
-                    collapsed={collapsed}
-                />
+                <NavItem key={item.id} item={item} activeId={activeId} onSelect={onNavigate} onOpenSearch={onOpenSearch} onLogout={onLogout} collapsed={collapsed} />
             ))}
         </div>
     );
@@ -328,19 +282,22 @@ function NavGroup({ group, activeId, onNavigate, onOpenSearch, onLogout, collaps
         return <div className="flex shrink-0 flex-col">{content}</div>;
     }
 
+    if (group.collapsible === false) {
+        return (
+            <div className="flex shrink-0 flex-col">
+                <div className="app-workspace-nav-group-heading">
+                    <span className="app-workspace-nav-group-label">{group.heading}</span>
+                </div>
+                {content}
+            </div>
+        );
+    }
+
     return (
         <div className="flex shrink-0 flex-col">
-            <button
-                type="button"
-                onClick={() => setIsOpen((open) => !open)}
-                aria-expanded={isOpen}
-                className="app-workspace-nav-group-toggle select-none"
-            >
+            <button type="button" onClick={() => setIsOpen((open) => !open)} aria-expanded={isOpen} className="app-workspace-nav-group-toggle select-none">
                 <span className="app-workspace-nav-group-label">{group.heading}</span>
-                <ChevronRight
-                    className={cn("size-3.5 shrink-0 text-foreground/35 transition-transform duration-200", isOpen && "rotate-90")}
-                    strokeWidth={2}
-                />
+                <ChevronRight className={cn("size-3.5 shrink-0 text-foreground/35 transition-transform duration-200", isOpen && "rotate-90")} strokeWidth={2} />
             </button>
             <div className={cn("grid transition-[grid-template-rows,opacity] duration-300 ease-in-out", isOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0")}>
                 <div className="min-h-0 overflow-hidden pt-0.5">{content}</div>
@@ -358,9 +315,7 @@ export function WorkspaceSidebarNav({ collapsed, onNavigate, onOpenSearch, onExp
     const { availableMicrocredits } = useWalletBalance(user?.id, creditsEnabled);
     const { handleLogout } = useWorkspaceLogout();
 
-    const balance = availableMicrocredits === null
-        ? "--"
-        : (availableMicrocredits / 1_000_000).toLocaleString("zh-CN", { maximumFractionDigits: 2 });
+    const balance = availableMicrocredits === null ? "--" : (availableMicrocredits / 1_000_000).toLocaleString("zh-CN", { maximumFractionDigits: 2 });
 
     const { groups, footer } = useMemo(() => buildNav(features, balance, user?.role === "admin"), [features, balance, user?.role]);
 
@@ -406,38 +361,17 @@ export function WorkspaceSidebarNav({ collapsed, onNavigate, onOpenSearch, onExp
             <div
                 ref={scrollRef}
                 onScroll={handleScroll}
-                className={cn(
-                    "app-workspace-sidebar-scroll-area flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-3 pb-3 pt-2",
-                    collapsed && "is-collapsed",
-                    scrollState.hasTopFade && "has-top-fade",
-                    scrollState.hasBottomFade && "has-bottom-fade",
-                )}
+                className={cn("app-workspace-sidebar-scroll-area flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-3 pb-3 pt-2", collapsed && "is-collapsed", scrollState.hasTopFade && "has-top-fade", scrollState.hasBottomFade && "has-bottom-fade")}
             >
                 {groups.map((group, index) => (
-                    <NavGroup
-                        key={index}
-                        group={group}
-                        activeId={activeId}
-                        onNavigate={onNavigate}
-                        onOpenSearch={onOpenSearch}
-                        onLogout={() => void handleLogout()}
-                        collapsed={collapsed}
-                    />
+                    <NavGroup key={index} group={group} activeId={activeId} onNavigate={onNavigate} onOpenSearch={onOpenSearch} onLogout={() => void handleLogout()} collapsed={collapsed} />
                 ))}
             </div>
 
             <div className="app-workspace-sidebar-footer shrink-0 px-3 py-3">
                 <div className="flex flex-col gap-0.5">
                     {footer.map((item) => (
-                        <NavItem
-                            key={item.id}
-                            item={item}
-                            activeId={activeId}
-                            onSelect={onNavigate}
-                            onOpenSearch={onOpenSearch}
-                            onLogout={() => void handleLogout()}
-                            collapsed={collapsed}
-                        />
+                        <NavItem key={item.id} item={item} activeId={activeId} onSelect={onNavigate} onOpenSearch={onOpenSearch} onLogout={() => void handleLogout()} collapsed={collapsed} />
                     ))}
                 </div>
             </div>

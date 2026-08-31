@@ -39,7 +39,8 @@ export async function pollSeedanceTask(deps: VideoProviderDeps, config: Resolved
     try {
         const raw = await deps.transport.get<ApiEnvelope<SeedanceTask>>(seedanceApiUrl(config, task.id), options);
         const state = deps.response.unwrapSeedanceTask(raw);
-        if (state.status === "succeeded" || state.status === "completed") {
+        const status = String(state.status || "").toLowerCase();
+        if (status === "succeeded" || status === "completed" || status === "success") {
             const url = state.video_url || state.content?.video_url;
             if (url) return { status: "completed", result: await deps.response.videoResultFromUrl(url, options) };
             if (isArkPlanBaseUrl(config.baseUrl)) return { status: "failed", error: "Seedance 任务成功但没有返回视频 URL" };
@@ -47,7 +48,7 @@ export async function pollSeedanceTask(deps: VideoProviderDeps, config: Resolved
             await deps.response.assertVideoBlob(content);
             return { status: "completed", result: { blob: content } };
         }
-        if (state.status === "failed" || state.status === "cancelled" || state.status === "expired") return { status: "failed", error: seedanceErrorMessage(state) || `Seedance 视频生成${state.status === "expired" ? "超时" : "失败"}` };
+        if (status === "failed" || status === "cancelled" || status === "expired") return { status: "failed", error: seedanceErrorMessage(state) || `Seedance 视频生成${status === "expired" ? "超时" : "失败"}` };
         return { status: "pending" };
     } catch (error) {
         throw new Error(deps.response.readAxiosError(error, "Seedance 任务查询失败"));

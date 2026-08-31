@@ -55,6 +55,25 @@ func TestSKUSelectorTreatsAnyVideoReferenceAsVideoToVideo(t *testing.T) {
 	}
 }
 
+func TestVideoTokenPriceMatrixSelectsResolutionAndVideoInputTier(t *testing.T) {
+	modelWithTiers := model.ChannelModel{PriceTiers: []model.ChannelModelPriceTier{
+		{ID: "without-720", SelectorJSON: `{"vquality":"720p"}`, Enabled: true, PriceConfigured: true},
+		{ID: "without-1080", SelectorJSON: `{"vquality":"1080p"}`, Enabled: true, PriceConfigured: true},
+		{ID: "with-720", SelectorJSON: `{"operation":"video_to_video","vquality":"720p"}`, Enabled: true, PriceConfigured: true},
+		{ID: "with-1080", SelectorJSON: `{"operation":"video_to_video","vquality":"1080p"}`, Enabled: true, PriceConfigured: true},
+	}}
+
+	withoutVideo := ModelRequestIntent{Capability: "video", Options: map[string]any{"vquality": "1080p"}}
+	if matched := channelModelPriceTierForIntent(modelWithTiers, withoutVideo); matched == nil || matched.ID != "without-1080" {
+		t.Fatalf("without-video tier = %#v", matched)
+	}
+
+	withVideo := ModelRequestIntent{Capability: "video", Inputs: map[string]int{"video": 1}, Options: map[string]any{"vquality": "720p"}}
+	if matched := channelModelPriceTierForIntent(modelWithTiers, withVideo); matched == nil || matched.ID != "with-720" {
+		t.Fatalf("with-video tier = %#v", matched)
+	}
+}
+
 func TestSKUSelectorTreatsAnyImageReferenceCountAsImageToVideo(t *testing.T) {
 	intent := ModelRequestIntentFromTaskInput(map[string]any{
 		"mode": "video",

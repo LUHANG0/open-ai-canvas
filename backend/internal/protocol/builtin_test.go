@@ -196,6 +196,66 @@ func TestArkVideoAdapterMapsFullModalReferences(t *testing.T) {
 	}
 }
 
+func TestArkVideoAdapterMapsSafeOptionsAndWrappedResult(t *testing.T) {
+	adapter, ok := Builtins().Get("volcengine-ark-video")
+	if !ok {
+		t.Fatal("adapter missing")
+	}
+	spec, err := adapter.BuildCreate(context.Background(), RequestContext{BaseURL: "https://gateway.example.com", Request: GenerationRequest{
+		Model: "doubao-seedance-2.0", Prompt: "test", Duration: 5, GenerateAudio: false,
+		Extra: map[string]any{
+			"frames": 121, "seed": -1, "camera_fixed": true, "return_last_frame": true,
+			"service_tier": "flex", "execution_expires_after": 172800, "draft": false,
+			"priority": 9, "safety_identifier": "user-hash",
+		},
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if spec.Path != "/doubao/api/v3/contents/generations/tasks" || !spec.OriginPath {
+		t.Fatalf("create spec = %#v", spec)
+	}
+	body := spec.Body.(map[string]any)
+	if body["duration"] != nil || body["frames"] != 121 || body["generate_audio"] != false || body["priority"] != 9 {
+		t.Fatalf("request body = %#v", body)
+	}
+
+	created, err := adapter.ParseCreate(context.Background(), []byte(`{"code":"success","data":{"id":251938,"task_id":"gateway-task","status":"SUCCESS","data":{"id":"task-platform-id","original_task_id":"cgt-upstream-id","status":"running"}}}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if created.TaskID != "task-platform-id" || created.Status != StatusProcessing {
+		t.Fatalf("created = %#v", created)
+	}
+	polled, err := adapter.ParsePoll(context.Background(), PollContext{TaskID: created.TaskID}, []byte(`{"code":"success","data":{"status":"SUCCESS","data":{"id":"task-platform-id","original_task_id":"cgt-upstream-id","status":"succeeded","content":{"video_url":"https://cdn.example/video.mp4","last_frame_url":"https://cdn.example/last.png"},"usage":{"completion_tokens":108900,"total_tokens":108900}}}}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if polled.TaskID != "task-platform-id" || polled.Status != StatusSucceeded || polled.Result == nil || len(polled.Result.Videos) != 1 || polled.Result.Videos[0].URL != "https://cdn.example/video.mp4" || polled.Result.Usage["total_tokens"] != float64(108900) {
+		t.Fatalf("polled = %#v", polled)
+	}
+}
+
+func TestArkVideoAdapterNormalizesResolutionSuffix(t *testing.T) {
+	adapter, ok := Builtins().Get("volcengine-ark-video")
+	if !ok {
+		t.Fatal("adapter missing")
+	}
+	for input, want := range map[string]string{"480": "480p", "720p": "720p", "1080P": "1080p", "2K": "2K"} {
+		t.Run(input, func(t *testing.T) {
+			spec, err := adapter.BuildCreate(context.Background(), RequestContext{Request: GenerationRequest{
+				Model: "doubao-seedance-2.0", Prompt: "test", Resolution: input,
+			}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got := spec.Body.(map[string]any)["resolution"]; got != want {
+				t.Fatalf("resolution = %#v, want %q", got, want)
+			}
+		})
+	}
+}
+
 func TestVideoAdaptersTranslateImageRolesWithoutGuessingFromCount(t *testing.T) {
 	tests := []struct {
 		name string
@@ -390,6 +450,25 @@ func TestDeclarativeManifestMapsFieldsAndResponses(t *testing.T) {
 		t.Fatal(err)
 	}
 	if result.Status != StatusSucceeded || result.Result == nil || len(result.Result.Videos) != 1 || result.Result.Videos[0].URL != "https://cdn.example/clip.mp4" {
+		t.Fatalf("result = %#v", result)
+	}
+}
+
+func TestDeclarativeManifestUnwrapsNestedGatewayVideoResponse(t *testing.T) {
+	manifest := []byte(`{
+		"apiVersion":"yingce.plugin/v1",
+		"id":"nested-video","version":"1.0.0","name":"Nested Video","author":"Test","documentation":"# Nested Video",
+		"contributes":{"providers":[{"id":"nested-video","label":"Nested Video","capabilities":["video"],"scopes":["canvas"],"create":{"method":"POST","path":"/tasks"},"poll":{"method":"GET","path":"/tasks/{{taskId}}"},"response":{"taskIdPaths":["task_id","data.task_id","data.id"],"statusPaths":["status","data.status"],"usagePaths":["usage","data.usage"],"resultPaths":["data"],"resultKind":"video"}}]}
+	}`)
+	adapter, err := LoadManifest(manifest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	result, err := adapter.ParsePoll(context.Background(), PollContext{TaskID: "task-platform-id"}, []byte(`{"code":"success","data":{"id":251938,"task_id":"task-platform-id","status":"SUCCESS","data":{"id":"task-platform-id","status":"succeeded","content":{"video_url":"https://cdn.example/video.mp4"},"usage":{"completion_tokens":108900,"total_tokens":108900}}}}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Status != StatusSucceeded || result.Result == nil || len(result.Result.Videos) != 1 || result.Result.Videos[0].URL != "https://cdn.example/video.mp4" || result.Result.Usage["completion_tokens"] != float64(108900) {
 		t.Fatalf("result = %#v", result)
 	}
 }

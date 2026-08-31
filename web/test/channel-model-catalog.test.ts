@@ -9,10 +9,11 @@ import { VideoSettingsPanel } from "../src/components/video-settings-panel";
 import { canvasThemes } from "../src/lib/canvas-theme";
 import { mergeFetchedChannelModelCosts, type ChannelModelCatalogItem } from "../src/lib/channel-model-catalog";
 import { defaultModelCapabilityConfig, pluginWorkflowCapabilityConfig } from "../src/lib/model-capabilities";
+import { refreshSystemChannels } from "../src/lib/user-session";
 import { ChannelModelSettings } from "../src/pages/settings/channel-video-pricing";
 import { fetchChannelModels } from "../src/services/api/image";
 import { createVideoGenerationTask } from "../src/services/api/video";
-import { createModelChannel, defaultConfig, modelDisplayName, normalizeConfigSnapshot, resolveModelRequestConfig, selectableModelsByCapability, type AiConfig } from "../src/stores/use-config-store";
+import { createModelChannel, defaultConfig, modelDisplayName, normalizeConfigSnapshot, resolveModelRequestConfig, selectableModelsByCapability, useConfigStore, type AiConfig } from "../src/stores/use-config-store";
 
 const originalAxiosPost = axios.post;
 
@@ -332,6 +333,36 @@ describe("public channel model catalog", () => {
         expect(staleSnapshot.channels.some((channel) => channel.id === "default")).toBe(false);
         expect(selectableModelsByCapability(staleSnapshot, "image")).not.toContain("default::gpt-image-2");
         expect(selectableModelsByCapability(staleSnapshot, "image")).not.toContain("ghost-image");
+    });
+
+    test("an omitted empty catalog clears stale system models and keeps user channels", async () => {
+        const previousConfig = useConfigStore.getState().config;
+        const staleSystem = createModelChannel({
+            id: "stale-system",
+            name: "已停用系统渠道",
+            scope: "system",
+            apiKey: "system",
+            models: ["stale-video"],
+            modelCosts: [{ model: "stale-video", capability: "video", billingMode: "fixed_request", unitPriceMicrocredits: 1 }],
+        });
+        const userChannel = createModelChannel({ id: "custom-channel", name: "我的渠道", baseUrl: "https://custom.example.com", apiKey: "test-key", models: ["custom-video"] });
+        useConfigStore.getState().replaceConfig(normalizeConfigSnapshot({ config: { ...defaultConfig, channels: [staleSystem, userChannel], videoModel: "stale-system::stale-video" } }).config);
+        try {
+            await refreshSystemChannels(async () => ({ source: "system" }));
+            const refreshed = useConfigStore.getState().config;
+            expect(refreshed.channels.map((channel) => channel.id)).toEqual(["custom-channel"]);
+            expect(selectableModelsByCapability(refreshed, "video")).toEqual(["custom-channel::custom-video"]);
+            expect(refreshed.videoModel).toBe("custom-channel::custom-video");
+        } finally {
+            useConfigStore.getState().replaceConfig(previousConfig);
+        }
+    });
+
+    test("disabled channels never contribute selectable models", () => {
+        const disabled = createModelChannel({ id: "disabled", name: "已停用渠道", enabled: false, baseUrl: "https://disabled.example.com", apiKey: "test-key", models: ["disabled-video"] });
+        const config = normalizeConfigSnapshot({ config: { ...defaultConfig, channels: [disabled], videoModel: "disabled::disabled-video" } }).config;
+        expect(selectableModelsByCapability(config, "video")).toEqual([]);
+        expect(config.videoModel).toBe("");
     });
 
     test("omits resolution_name for Omni and for auto instead of inventing 720p", async () => {

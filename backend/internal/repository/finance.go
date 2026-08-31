@@ -671,7 +671,7 @@ func (r *Repository) SettleBillingOrder(id string, providerRequestID string) err
 			updates := map[string]any{"status": model.BillingStatusSettled, "settled_at": &now, "updated_at": now,
 				"actual_amount_microcredits": actual, "refunded_amount_microcredits": refund,
 				"input_tokens": usage.InputTokens, "output_tokens": usage.OutputTokens, "cached_tokens": usage.CachedTokens,
-				"usage_available": true}
+				"usage_available": true, "error": "", "resolved_by": "", "resolution_note": ""}
 			if providerRequestID != "" {
 				updates["provider_request_id"] = providerRequestID
 			}
@@ -716,7 +716,8 @@ func (r *Repository) SettleBillingOrder(id string, providerRequestID string) err
 			return err
 		}
 		now := time.Now()
-		orderUpdates := map[string]any{"status": model.BillingStatusSettled, "actual_amount_microcredits": order.AmountMicrocredits, "settled_at": &now, "updated_at": now}
+		orderUpdates := map[string]any{"status": model.BillingStatusSettled, "actual_amount_microcredits": order.AmountMicrocredits, "settled_at": &now, "updated_at": now,
+			"error": "", "resolved_by": "", "resolution_note": ""}
 		if providerRequestID != "" {
 			orderUpdates["provider_request_id"] = providerRequestID
 		}

@@ -1,0 +1,235 @@
+/* 用户工作区外壳。
+   导航、页面舞台和顶栏的层级在这里统一，画布编辑器与后台继续使用各自的全屏合同。 */
+
+.app-user-workspace.app-spatial-workspace {
+    --workspace-canvas: #eae9e5;
+    --workspace-page: #eae9e5;
+    --workspace-navigation: #eeede9;
+    --workspace-content: #f7f6f3;
+    --workspace-sidebar: var(--workspace-navigation);
+    --workspace-nav: var(--workspace-navigation);
+    --workspace-surface: rgba(255, 255, 255, 0.78);
+    --workspace-surface-strong: #ffffff;
+    --workspace-border: rgba(24, 25, 28, 0.09);
+    --workspace-border-strong: rgba(24, 25, 28, 0.17);
+    --workspace-nav-active-bg: #18191c;
+    --workspace-nav-active-hover-bg: #26282c;
+    --workspace-nav-active-indicator: #ff6347;
+    --workspace-shell-gutter: 10px;
+    --workspace-card-gap: 10px;
+    --workspace-sidebar-width: 224px;
+    --workspace-sidebar-nav-width: 224px;
+    background: var(--workspace-canvas);
+}
+
+.dark .app-user-workspace.app-spatial-workspace {
+    --workspace-canvas: #090a0c;
+    --workspace-page: #090a0c;
+    --workspace-navigation: #0d0e10;
+    --workspace-content: #111214;
+    --workspace-sidebar: var(--workspace-navigation);
+    --workspace-nav: var(--workspace-navigation);
+    --workspace-surface: rgba(30, 32, 36, 0.82);
+    --workspace-surface-strong: #1a1b1f;
+    --workspace-border: rgba(255, 255, 255, 0.08);
+    --workspace-border-strong: rgba(255, 255, 255, 0.16);
+    --workspace-nav-active-bg: #f2f0eb;
+    --workspace-nav-active-hover-bg: #ffffff;
+    --workspace-nav-active-indicator: #ff6347;
+}
+
+.app-workspace-shell.is-spatial {
+    background: var(--workspace-canvas);
+}
+
+.app-workspace-shell.is-spatial .app-workspace-main-row {
+    gap: var(--workspace-card-gap);
+}
+
+.app-workspace-shell.is-spatial .app-workspace-sidebar {
+    border: 1px solid color-mix(in srgb, var(--workspace-border) 70%, transparent);
+    border-radius: var(--r-2xl);
+    background: var(--workspace-sidebar);
+}
+
+.app-workspace-shell.is-spatial .app-workspace-stage {
+    overflow: hidden;
+    border: 1px solid var(--workspace-border);
+    border-radius: var(--r-2xl);
+    background: var(--workspace-content);
+    box-shadow: 0 20px 70px rgba(24, 25, 28, 0.065);
+}
+
+.dark .app-workspace-shell.is-spatial .app-workspace-stage {
+    box-shadow: 0 26px 80px rgba(0, 0, 0, 0.28);
+}
+
+.app-workspace-shell.is-spatial .app-workspace-topbar {
+    height: 52px;
+    border-bottom: 1px solid var(--workspace-border);
+    background: color-mix(in srgb, var(--workspace-content) 88%, transparent);
+    padding-inline: 14px;
+    backdrop-filter: blur(20px) saturate(115%);
+    -webkit-backdrop-filter: blur(20px) saturate(115%);
+}
+
+.app-workspace-shell.is-spatial .app-workspace-topbar.has-extension {
+    background: color-mix(in srgb, var(--workspace-content) 90%, transparent);
+}
+
+.app-workspace-page-context {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    gap: 9px;
+}
+
+.app-workspace-page-context .app-workspace-context-section {
+    color: color-mix(in srgb, var(--foreground) 44%, transparent);
+    font-size: var(--fs-label);
+    font-weight: 650;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.app-workspace-page-context .app-workspace-context-divider {
+    width: 1px;
+    height: 12px;
+    background: var(--workspace-border-strong);
+}
+
+.app-workspace-page-context .app-workspace-context-title {
+    overflow: hidden;
+    color: color-mix(in srgb, var(--foreground) 86%, transparent);
+    font-size: var(--fs-caption);
+    font-weight: 650;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.app-workspace-shell.is-spatial .app-workspace-topbar-icon-button {
+    width: 34px;
+    height: 34px;
+    border: 1px solid transparent;
+    border-radius: var(--r-full);
+}
+
+.app-workspace-shell.is-spatial .app-workspace-topbar-icon-button:hover {
+    border-color: var(--workspace-border);
+    background: color-mix(in srgb, var(--foreground) 5%, transparent);
+}
+
+.app-workspace-shell.is-spatial .app-workspace-brand-mark {
+    position: relative;
+    border: 0;
+    border-radius: 10px;
+    background: #18191c;
+    color: #f8f7f3;
+    box-shadow: none;
+}
+
+.dark .app-workspace-shell.is-spatial .app-workspace-brand-mark {
+    background: #f2f0eb;
+    color: #18191c;
+}
+
+.app-workspace-shell.is-spatial .app-workspace-brand-mark::after {
+    position: absolute;
+    right: -2px;
+    bottom: -2px;
+    width: 7px;
+    height: 7px;
+    border: 2px solid var(--workspace-sidebar);
+    border-radius: var(--r-full);
+    background: #ff6347;
+    content: "";
+}
+
+.app-workspace-shell.is-spatial .app-workspace-sidebar-search > button {
+    height: 38px;
+    border: 1px solid var(--workspace-border);
+    border-radius: var(--r-md);
+    background: color-mix(in srgb, var(--workspace-surface) 72%, transparent);
+}
+
+.app-workspace-shell.is-spatial .app-workspace-sidebar-search > button:hover {
+    border-color: var(--workspace-border-strong);
+    background: var(--workspace-surface);
+}
+
+.app-workspace-nav-group-heading {
+    display: flex;
+    min-height: 28px;
+    align-items: center;
+    padding: 0 9px;
+}
+
+.app-workspace-shell.is-spatial .app-workspace-nav-link {
+    min-height: 38px;
+    border-radius: var(--r-md);
+    padding-inline: 10px;
+}
+
+.app-workspace-shell.is-spatial .app-workspace-nav-link.is-active {
+    color: #ffffff;
+    box-shadow: 0 8px 22px rgba(24, 25, 28, 0.12);
+}
+
+.dark .app-workspace-shell.is-spatial .app-workspace-nav-link.is-active {
+    color: #18191c;
+    box-shadow: 0 8px 26px rgba(0, 0, 0, 0.24);
+}
+
+.app-workspace-shell.is-spatial .app-workspace-nav-link.is-active svg {
+    color: currentColor;
+}
+
+.app-workspace-shell.is-spatial .app-workspace-nav-link.is-active::before {
+    top: 10px;
+    bottom: 10px;
+    left: 4px;
+    width: 3px;
+}
+
+.app-workspace-shell.is-spatial .app-workspace-sidebar-footer {
+    position: relative;
+    padding-top: 12px;
+}
+
+.app-workspace-shell.is-spatial .app-workspace-sidebar-footer::before {
+    position: absolute;
+    top: 0;
+    right: 14px;
+    left: 14px;
+    height: 1px;
+    background: var(--workspace-border);
+    content: "";
+}
+
+.app-workspace-shell.is-spatial .app-page-header {
+    min-height: 72px;
+    padding-block: 14px;
+}
+
+.app-workspace-shell.is-spatial .app-page-header-title {
+    font-size: 24px;
+    font-weight: 670;
+    letter-spacing: -0.025em;
+}
+
+@media (max-width: 1023px) {
+    .app-user-workspace.app-spatial-workspace {
+        --workspace-shell-gutter: 0px;
+        --workspace-card-gap: 0px;
+    }
+
+    .app-workspace-shell.is-spatial .app-workspace-stage {
+        border: 0;
+        border-radius: 0;
+    }
+
+    .app-workspace-shell.is-spatial .app-workspace-sidebar.is-mobile-expanded {
+        border-radius: var(--r-xl);
+        background: var(--workspace-sidebar);
+    }
+}

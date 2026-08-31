@@ -9,13 +9,13 @@ import (
 )
 
 func TestSupportsTokenBillingForVolcengineArkVideo(t *testing.T) {
-	if !supportsTokenBilling("text", model.ChannelInterfaceChatCompletion) {
+	if !supportsBuiltinTokenBilling("text", model.ChannelInterfaceChatCompletion) {
 		t.Fatal("text protocol should support Token billing")
 	}
-	if !supportsTokenBilling("video", model.ChannelInterfaceVolcengineArkVideo) {
+	if !supportsBuiltinTokenBilling("video", model.ChannelInterfaceVolcengineArkVideo) {
 		t.Fatal("Volcengine Ark video should support Token billing")
 	}
-	if supportsTokenBilling("video", model.ChannelInterfaceNewAPIVideo) {
+	if supportsBuiltinTokenBilling("video", model.ChannelInterfaceNewAPIVideo) {
 		t.Fatal("video protocols without a final usage contract must not support Token billing")
 	}
 }
@@ -77,6 +77,12 @@ func TestEnrichAPICallLogReadsArkVideoUsage(t *testing.T) {
 	(&Service{}).EnrichAPICallLog(fallback, []byte(`{"usage":{"total_tokens":35800}}`))
 	if !fallback.UsageAvailable || fallback.OutputTokens != 35800 {
 		t.Fatalf("EnrichAPICallLog() total_tokens fallback = %#v", fallback)
+	}
+
+	wrapped := &model.ApiCallLog{Capability: "video", Path: "/v1/video/generations/cgt-test"}
+	(&Service{}).EnrichAPICallLog(wrapped, []byte(`{"code":"success","data":{"task_id":"task-platform-id","status":"SUCCESS","data":{"id":"task-platform-id","status":"succeeded","usage":{"completion_tokens":108900,"total_tokens":108900}}}}`))
+	if !wrapped.UsageAvailable || wrapped.OutputTokens != 108900 || wrapped.ProviderRequestID != "task-platform-id" {
+		t.Fatalf("EnrichAPICallLog() nested gateway response = %#v", wrapped)
 	}
 
 	missing := &model.ApiCallLog{Capability: "video", Path: "/api/v3/contents/generations/tasks/cgt-test"}

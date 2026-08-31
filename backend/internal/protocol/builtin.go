@@ -14,6 +14,7 @@ import (
 type builtinAdapter struct {
 	info        Metadata
 	create      func(GenerationRequest) (RequestSpec, error)
+	createCtx   func(RequestContext) (RequestSpec, error)
 	parseCreate func(map[string]any) (CreateResult, error)
 	poll        func(PollContext) (RequestSpec, error)
 	parsePoll   func(PollContext, map[string]any) (PollResult, error)
@@ -22,6 +23,9 @@ type builtinAdapter struct {
 
 func (a builtinAdapter) Metadata() Metadata { return a.info }
 func (a builtinAdapter) BuildCreate(_ context.Context, c RequestContext) (RequestSpec, error) {
+	if a.createCtx != nil {
+		return a.createCtx(c)
+	}
 	if a.create == nil {
 		return RequestSpec{}, unavailable(a.info)
 	}
@@ -394,9 +398,21 @@ func xAIVideosAdapter() Adapter {
 }
 
 func arkVideosAdapter() Adapter {
-	info := metadata("volcengine-ark-video", "火山方舟视频", "Volcengine Ark", CapabilityVideo, "POST /api/v3/contents/generations/tasks", "GET /api/v3/contents/generations/tasks/{task_id}", "application/json")
+	info := metadata("volcengine-ark-video", "火山方舟视频", "Volcengine Ark", CapabilityVideo, "POST /doubao/api/v3/contents/generations/tasks", "GET /doubao/api/v3/contents/generations/tasks/{task_id}", "application/json")
 	info.Parameters = videoParams()
-	return videoAdapter(info, func(r GenerationRequest) (RequestSpec, error) {
+	info.Parameters = append(info.Parameters,
+		Parameter{Name: "frames", Type: "integer", Description: "视频帧数；设置后优先于 duration。", Mapping: "frames"},
+		Parameter{Name: "seed", Type: "integer", Description: "随机种子。", Mapping: "seed"},
+		Parameter{Name: "cameraFixed", Type: "boolean", Description: "是否固定镜头。", Mapping: "camera_fixed"},
+		Parameter{Name: "returnLastFrame", Type: "boolean", Description: "是否返回生成视频尾帧。", Mapping: "return_last_frame"},
+		Parameter{Name: "serviceTier", Type: "string", Values: []string{"default", "flex"}, Description: "服务等级。", Mapping: "service_tier"},
+		Parameter{Name: "executionExpiresAfter", Type: "integer", Description: "任务过期时间，单位秒。", Mapping: "execution_expires_after"},
+		Parameter{Name: "draft", Type: "boolean", Description: "是否启用样片模式。", Mapping: "draft"},
+		Parameter{Name: "priority", Type: "integer", Description: "队列优先级，范围 0 到 9。", Mapping: "priority"},
+		Parameter{Name: "safetyIdentifier", Type: "string", Description: "终端用户稳定匿名标识。", Mapping: "safety_identifier"},
+	)
+	create := func(c RequestContext) (RequestSpec, error) {
+		r := c.Request
 		if len(r.Images) > 9 || len(r.Videos) > 3 || len(r.Audios) > 3 {
 			return RequestSpec{}, fmt.Errorf("火山方舟全模态参考最多支持 9 张图片、3 个视频和 3 个音频")
 		}
@@ -413,15 +429,125 @@ func arkVideosAdapter() Adapter {
 		for _, audio := range r.Audios {
 			content = append(content, map[string]any{"type": "audio_url", "audio_url": map[string]any{"url": mediaValue(audio)}, "role": "reference_audio"})
 		}
-		body := map[string]any{"model": r.Model, "content": content, "ratio": defaultValue(r.AspectRatio, "16:9"), "resolution": defaultValue(r.Resolution, "720p"), "duration": defaultInt(r.Duration, 5)}
-		if r.GenerateAudio {
-			body["generate_audio"] = true
+		body := map[string]any{
+			"model": r.Model, "content": content,
+			"ratio": defaultValue(r.AspectRatio, "16:9"), "resolution": defaultValue(normalizeArkVideoResolution(r.Resolution), "720p"),
+			"duration": defaultInt(r.Duration, 5), "generate_audio": r.GenerateAudio, "watermark": r.Watermark,
 		}
-		if r.Watermark {
-			body["watermark"] = true
+		if err := mergeArkVideoOptions(body, r.Extra); err != nil {
+			return RequestSpec{}, err
 		}
-		return jsonSpec(http.MethodPost, "/api/v3/contents/generations/tasks", body), nil
-	})
+		return RequestSpec{Method: http.MethodPost, Path: arkVideoPath(c.BaseURL, ""), OriginPath: true, ContentType: "application/json", Body: body}, nil
+	}
+	poll := func(c PollContext) (RequestSpec, error) {
+		return RequestSpec{Method: http.MethodGet, Path: arkVideoPath(c.BaseURL, "/"+url.PathEscape(c.TaskID)), OriginPath: true}, nil
+	}
+	return builtinAdapter{
+		info: info, createCtx: create, parseCreate: parseAsyncCreate, poll: poll,
+		parsePoll: func(c PollContext, payload map[string]any) (PollResult, error) {
+			return parseAsyncMediaPoll(c, payload, CapabilityVideo)
+		},
+	}
+}
+
+// normalizeArkVideoResolution keeps the UI's compact numeric values compatible
+// with Ark's contents/generations contract, whose enum values include the p suffix.
+func normalizeArkVideoResolution(value string) string {
+	trimmed := strings.TrimSpace(value)
+	normalized := strings.ToLower(trimmed)
+	numeric := strings.TrimSuffix(normalized, "p")
+	switch numeric {
+	case "480", "720", "1080":
+		return numeric + "p"
+	default:
+		return trimmed
+	}
+}
+
+func arkVideoPath(baseURL, suffix string) string {
+	basePath := ""
+	hostname := ""
+	if parsed, err := url.Parse(strings.TrimSpace(baseURL)); err == nil {
+		basePath = strings.TrimRight(parsed.Path, "/")
+		hostname = strings.ToLower(parsed.Hostname())
+	}
+	lowerPath := strings.ToLower(basePath)
+	root := "/api/v3"
+	switch {
+	case strings.Contains(lowerPath, "/doubao"):
+		index := strings.Index(lowerPath, "/doubao")
+		root = basePath[:index] + "/doubao/api/v3"
+	case strings.HasSuffix(lowerPath, "/api/v3"):
+		root = basePath
+	case hostname != "" && !strings.Contains(hostname, "volces.com"):
+		root = "/doubao/api/v3"
+	}
+	return strings.TrimRight(root, "/") + "/contents/generations/tasks" + suffix
+}
+
+func mergeArkVideoOptions(body map[string]any, extra map[string]any) error {
+	for _, key := range []string{"return_last_frame", "camera_fixed", "draft"} {
+		if value, exists := extra[key]; exists {
+			if _, ok := value.(bool); !ok {
+				return fmt.Errorf("火山方舟参数 %s 必须是布尔值", key)
+			}
+			body[key] = value
+		}
+	}
+	for _, key := range []string{"seed", "frames", "priority", "execution_expires_after"} {
+		value, exists := extra[key]
+		if !exists {
+			continue
+		}
+		integer, ok := integerValue(value)
+		if !ok {
+			return fmt.Errorf("火山方舟参数 %s 必须是整数", key)
+		}
+		if key == "frames" && integer <= 0 {
+			return fmt.Errorf("火山方舟参数 frames 必须大于 0")
+		}
+		if key == "priority" && (integer < 0 || integer > 9) {
+			return fmt.Errorf("火山方舟参数 priority 必须在 0 到 9 之间")
+		}
+		if key == "execution_expires_after" && integer <= 0 {
+			return fmt.Errorf("火山方舟参数 execution_expires_after 必须大于 0")
+		}
+		body[key] = integer
+		if key == "frames" {
+			delete(body, "duration")
+		}
+	}
+	if value, exists := extra["service_tier"]; exists {
+		tier, ok := value.(string)
+		tier = strings.ToLower(strings.TrimSpace(tier))
+		if !ok || (tier != "default" && tier != "flex") {
+			return fmt.Errorf("火山方舟参数 service_tier 仅支持 default 或 flex")
+		}
+		body["service_tier"] = tier
+	}
+	if value, exists := extra["safety_identifier"]; exists {
+		identifier, ok := value.(string)
+		identifier = strings.TrimSpace(identifier)
+		if !ok || identifier == "" {
+			return fmt.Errorf("火山方舟参数 safety_identifier 必须是非空字符串")
+		}
+		body["safety_identifier"] = identifier
+	}
+	return nil
+}
+
+func integerValue(value any) (int, bool) {
+	switch typed := value.(type) {
+	case int:
+		return typed, true
+	case int64:
+		return int(typed), int64(int(typed)) == typed
+	case float64:
+		integer := int(typed)
+		return integer, float64(integer) == typed
+	default:
+		return 0, false
+	}
 }
 
 func jimengVideosAdapter() Adapter {
@@ -1008,15 +1134,19 @@ func geminiVeoVideos(response map[string]any) []MediaReference {
 }
 
 func parseAsyncCreate(payload map[string]any) (CreateResult, error) {
-	id := firstString(payload, "id", "task_id", "taskId", "request_id")
-	status := normalizeStatus(firstString(payload, "status", "state"))
-	if task := object(payload["task"]); task != nil {
-		id = defaultValue(firstString(task, "id", "task_id", "taskId", "request_id"), id)
-		status = normalizeStatus(defaultValue(firstString(task, "status", "state"), string(status)))
-	}
-	if data := object(payload["data"]); data != nil {
-		id = defaultValue(firstString(data, "id", "task_id", "taskId", "request_id"), id)
-		status = normalizeStatus(defaultValue(firstString(data, "status", "state"), string(status)))
+	id := ""
+	status := Status("")
+	message := ""
+	for _, layer := range responseObjectLayers(payload) {
+		if value := firstString(layer, "id", "task_id", "taskId", "request_id"); value != "" {
+			id = value
+		}
+		if value := normalizeStatus(firstString(layer, "status", "state", "task_status")); value != "" {
+			status = value
+		}
+		if value := responseLayerMessage(layer); value != "" {
+			message = value
+		}
 	}
 	if id == "" {
 		return CreateResult{}, fmt.Errorf("async response has no task id")
@@ -1024,39 +1154,48 @@ func parseAsyncCreate(payload map[string]any) (CreateResult, error) {
 	if status == "" {
 		status = StatusPending
 	}
-	return CreateResult{TaskID: id, Status: status, Message: firstString(payload, "message", "error")}, nil
+	return CreateResult{TaskID: id, Status: status, Message: message}, nil
 }
 
 func parseAsyncMediaPoll(c PollContext, payload map[string]any, capability Capability) (PollResult, error) {
 	if capability != CapabilityImage && capability != CapabilityVideo && capability != CapabilityAudio {
 		return PollResult{}, fmt.Errorf("unsupported async media capability %q", capability)
 	}
-	status := normalizeStatus(firstString(payload, "status", "state", "task_status"))
-	if task := object(payload["task"]); task != nil {
-		status = normalizeStatus(defaultValue(firstString(task, "status", "state"), string(status)))
-		payload = mergeMaps(task, payload)
-	}
-	if data := object(payload["data"]); data != nil {
-		payload = mergeMaps(data, payload)
-		status = normalizeStatus(defaultValue(firstString(data, "status", "state"), string(status)))
+	layers := responseObjectLayers(payload)
+	status := Status("")
+	taskID := c.TaskID
+	message := ""
+	for _, layer := range layers {
+		if value := normalizeStatus(firstString(layer, "status", "state", "task_status")); value != "" {
+			status = value
+		}
+		if value := firstString(layer, "id", "task_id", "taskId"); value != "" {
+			taskID = value
+		}
+		if value := responseLayerMessage(layer); value != "" {
+			message = value
+		}
 	}
 	if status == "" {
 		status = StatusProcessing
 	}
-	result := &Result{}
+	result := &Result{Usage: deepestResponseObject(layers, "usage")}
 	resultKind := string(capability)
-	references := mediaFromArray(payload[resultKind+"s"], capability)
-	references = append(references, mediaFromArray(payload["data"], capability)...)
-	if content := object(payload["content"]); content != nil {
-		references = append(references, mediaFromArray([]any{content}, capability)...)
+	references := make([]MediaReference, 0)
+	for _, layer := range layers {
+		references = append(references, mediaFromArray(layer[resultKind+"s"], capability)...)
+		if content := object(layer["content"]); content != nil {
+			references = append(references, mediaFromArray([]any{content}, capability)...)
+		}
+		keys := []string{resultKind + "_url", resultKind + "Url", "result_url", "resultUrl", "url"}
+		if resultKind == "video" {
+			keys = append(keys, "object")
+		}
+		if value := firstString(layer, keys...); value != "" {
+			references = append(references, MediaReference{URL: value, Kind: resultKind})
+		}
 	}
-	keys := []string{resultKind + "_url", resultKind + "Url", "result_url", "url"}
-	if resultKind == "video" {
-		keys = append(keys, "object")
-	}
-	if value := firstString(payload, keys...); value != "" {
-		references = append(references, MediaReference{URL: value, Kind: resultKind})
-	}
+	references = uniqueMediaReferences(references)
 	switch capability {
 	case CapabilityImage:
 		result.Images = references
@@ -1068,7 +1207,66 @@ func parseAsyncMediaPoll(c PollContext, payload map[string]any, capability Capab
 	if status == StatusSucceeded && len(references) == 0 {
 		result = nil
 	}
-	return PollResult{TaskID: defaultValue(firstString(payload, "id", "task_id", "taskId"), c.TaskID), Status: status, Result: result, Message: firstString(payload, "message", "error", "fail_reason")}, nil
+	return PollResult{TaskID: taskID, Status: status, Result: result, Message: message}, nil
+}
+
+func responseObjectLayers(payload map[string]any) []map[string]any {
+	layers := make([]map[string]any, 0, 5)
+	var visit func(map[string]any, int)
+	visit = func(current map[string]any, depth int) {
+		if current == nil || depth > 4 {
+			return
+		}
+		layers = append(layers, current)
+		if task := object(current["task"]); task != nil {
+			visit(task, depth+1)
+		}
+		if data := object(current["data"]); data != nil {
+			visit(data, depth+1)
+		}
+	}
+	visit(payload, 0)
+	return layers
+}
+
+func responseLayerMessage(payload map[string]any) string {
+	if message := firstString(payload, "message", "detail", "fail_reason"); message != "" {
+		return message
+	}
+	if failure := object(payload["error"]); failure != nil {
+		return firstString(failure, "message", "detail", "code")
+	}
+	if message, ok := payload["error"].(string); ok {
+		return strings.TrimSpace(message)
+	}
+	return ""
+}
+
+func deepestResponseObject(layers []map[string]any, key string) map[string]any {
+	var result map[string]any
+	for _, layer := range layers {
+		if value := object(layer[key]); len(value) > 0 {
+			result = value
+		}
+	}
+	return result
+}
+
+func uniqueMediaReferences(values []MediaReference) []MediaReference {
+	seen := make(map[string]struct{}, len(values))
+	result := make([]MediaReference, 0, len(values))
+	for _, value := range values {
+		key := strings.TrimSpace(defaultValue(value.URL, value.DataURL))
+		if key == "" {
+			continue
+		}
+		if _, exists := seen[key]; exists {
+			continue
+		}
+		seen[key] = struct{}{}
+		result = append(result, value)
+	}
+	return result
 }
 
 func parseAudioResponse(payload map[string]any) (CreateResult, error) {

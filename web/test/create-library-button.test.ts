@@ -9,7 +9,7 @@ function compactSource(source: string) {
 }
 
 describe("creation library button", () => {
-    test("places a library control beside the generation mode picker", () => {
+    test("素材入口只保留在上方参考素材区域，底栏不重复展示", () => {
         const source = readFileSync(resolve(import.meta.dir, "../src/pages/create/index.tsx"), "utf8");
         const dockStart = source.indexOf('<footer className="creation-chat-dock">');
         const dockEnd = source.indexOf("</footer>", dockStart);
@@ -17,15 +17,15 @@ describe("creation library button", () => {
         expect(dockStart).toBeGreaterThanOrEqual(0);
         expect(dockEnd).toBeGreaterThan(dockStart);
         const dockSource = compactSource(source.slice(dockStart, dockEnd));
-        const modePickerIndex = dockSource.indexOf("<ModePicker mode={props.mode}");
-        const attachmentIndex = dockSource.indexOf('aria-label="从本机上传附件"');
-        const libraryIndex = dockSource.indexOf('aria-label="打开素材库选择参考内容"');
 
-        expect(modePickerIndex).toBeGreaterThanOrEqual(0);
-        expect(attachmentIndex).toBeGreaterThan(modePickerIndex);
-        expect(libraryIndex).toBeGreaterThan(attachmentIndex);
-        expect(dockSource).toContain("onClick={props.onOpenLibrary}");
-        expect(dockSource).toContain("disabled={interactionBusy || !referencesSupported}");
+        expect(dockSource).toContain("<ModePicker mode={props.mode}");
+        expect(dockSource).not.toContain('aria-label="从本机上传附件"');
+        expect(dockSource).not.toContain('aria-label="打开素材库选择参考内容"');
+        expect(dockSource).not.toContain("VoiceRecordingButton");
+        expect(source).toContain('className="creation-entry-button creation-reference-entry"');
+        expect(source).toContain('aria-label="添加参考内容"');
+        expect(source).toContain('className="creation-reference-add-button"');
+        expect(source).toContain("onClick={props.onOpenLibrary}");
     });
 
     test("uploads from the library without adding a reference before confirmation", () => {
@@ -56,9 +56,10 @@ describe("creation library button", () => {
         expect(canvasSource).toContain("onClick={() => onInsert(reference)}");
     });
 
-    test("参考内容层叠轨道支持折叠、展开和 Reorder 排序", () => {
-        const source = readFileSync(resolve(import.meta.dir, "../src/pages/create/index.tsx"), "utf8");
+    test("参考内容轨道始终展开并支持 Reorder 排序", () => {
+        const source = compactSource(readFileSync(resolve(import.meta.dir, "../src/pages/create/index.tsx"), "utf8"));
         const styles = readFileSync(resolve(import.meta.dir, "../src/styles/globals.css"), "utf8");
+        const workspaceStyles = readFileSync(resolve(import.meta.dir, "../src/pages/create/creation-workspace.css"), "utf8");
 
         expect(source).toContain('import { Reorder } from "motion/react"');
         expect(source).toContain("<Reorder.Group");
@@ -68,10 +69,28 @@ describe("creation library button", () => {
         expect(source).toContain('className="creation-reference-card-remove" onPointerDownCapture={(event) => event.stopPropagation()}');
         expect(source).toContain("<Reorder.Item");
         expect(source).toContain('layout="position"');
-        expect(source).toContain("isExpanded");
-        expect(source).toContain("setReferencePanelExpanded");
-        expect(source).toContain("aria-label={`查看全部 ${props.attachments.length} 个参考内容`}");
-        expect(source).toContain('aria-label="收起素材面板"');
+        expect(source).not.toContain("setReferencePanelExpanded");
+        expect(source).toContain('props.attachments.length ? " has-references" : ""');
+        expect(source).toContain('className="creation-reference-panel is-expanded"');
+        expect(source).toContain("className={`creation-reference-track is-expanded");
+        expect(source).not.toContain("creation-reference-collapsed");
+        expect(source).not.toContain('aria-label="收起素材面板"');
+        expect(workspaceStyles).toContain("width: 44px");
+        expect(workspaceStyles).toContain("height: 44px");
+        expect(workspaceStyles).toContain("grid-template-columns: minmax(0, 1fr) max-content");
+        expect(workspaceStyles).toContain("grid-column: 1 / -1");
+        expect(workspaceStyles).toContain("min-height: 119px");
+        expect(workspaceStyles).toContain("--creation-composer-writing-height: 176px");
+        expect(workspaceStyles).toContain("min-height: var(--creation-composer-writing-height)");
+        expect(workspaceStyles).toContain("max-height: var(--creation-composer-writing-height)");
+        expect(workspaceStyles).toContain("height: 56px");
+        expect(workspaceStyles).toContain("background-color: var(--creation-surface)");
+        expect(workspaceStyles).not.toContain("0 0 0 3px var(--creation-accent-soft)");
+        expect(workspaceStyles).toContain("display: flow-root");
+        expect(workspaceStyles).not.toContain("float: left");
+        expect(workspaceStyles).toContain("overflow: visible !important");
+        expect(workspaceStyles).toContain("min-height: 150px");
+        expect(workspaceStyles).toContain("max-height: 66px");
         expect(source).toContain("清空全部素材");
         expect(source).toContain('role="group"');
         expect(source).toContain("aria-pressed={referenceFilter === filter.id}");
@@ -99,6 +118,15 @@ describe("creation library button", () => {
         expect(styles).toContain("@media (hover: none)");
         expect(styles).toContain(".creation-reference-card-remove { opacity: 1; }");
         expect(styles).not.toContain(".creation-reference-track:not(.is-expanded) .creation-reference-stack-card:nth-child(n+5) { display: block; }");
+
+        expect(workspaceStyles).toContain(".creation-chat-composer:is(.is-empty, .is-thread).has-references .creation-reference-track");
+        expect(workspaceStyles).toContain("width: 44px;");
+        expect(workspaceStyles).toContain("height: 44px;");
+        expect(workspaceStyles).toContain("creation-reference-entry");
+        expect(source).toContain("onFilesDrop: addAttachments");
+        expect(source).toContain('event.dataTransfer.dropEffect = "copy"');
+        expect(source).toContain("props.onFilesDrop(event.dataTransfer.files)");
+        expect(source).toContain('className="creation-file-drop-overlay"');
     });
 
     test("首个、中间和末尾参考内容都按稳定 id 独立删除并保留顺序", () => {
@@ -113,12 +141,115 @@ describe("creation library button", () => {
         expect(removeCreationAttachment(attachments, "last").map((item) => item.id)).toEqual(["first", "middle"]);
     });
 
-    test("删除按钮在指针按下阶段隔离拖拽，附件与素材库入口职责独立", () => {
+    test("无素材时参考卡片作为编辑器外的独立顶部工具栏", () => {
+        const source = compactSource(readFileSync(resolve(import.meta.dir, "../src/pages/create/index.tsx"), "utf8"));
+        const editorSource = compactSource(readFileSync(resolve(import.meta.dir, "../src/components/canvas/canvas-resource-mention-textarea.tsx"), "utf8"));
+        const workspaceStyles = readFileSync(resolve(import.meta.dir, "../src/pages/create/creation-workspace.css"), "utf8");
+
+        expect(source).toContain("const showReferenceEntry = referencesSupported && !props.attachments.length");
+        expect(source).toContain('showReferenceEntry ? " has-reference-entry" : ""');
+        expect(source).toContain('className="creation-reference-entry-bar" aria-label="参考素材工具栏"');
+        expect(source).not.toContain("forceRichEditor={showReferenceEntry}");
+        expect(editorSource).not.toContain("forceRichEditor");
+        expect(editorSource).not.toContain("--creation-reference-scroll-offset");
+        expect(workspaceStyles).toContain(".creation-home .creation-reference-entry-bar {");
+        expect(workspaceStyles).toContain("border-bottom: 1px solid var(--creation-border);");
+        expect(workspaceStyles).toContain("--creation-composer-writing-height: 126px;");
+        expect(source).toContain('className="creation-entry-button creation-reference-entry"');
+        expect(source).toContain("参考素材");
+        expect(source).toContain("添加图片、视频、音频或文件，也可直接拖入");
+        expect(workspaceStyles).toContain("position: relative;");
+        expect(workspaceStyles).toContain("pointer-events: auto;");
+        expect(workspaceStyles).not.toContain('.creation-chat-mention-editor[role="textbox"]::before');
+        expect(workspaceStyles).not.toContain("float: left;");
+    });
+
+    test("删除按钮隔离拖拽，素材库入口由上方参考素材区域负责", () => {
         const source = compactSource(readFileSync(resolve(import.meta.dir, "../src/pages/create/index.tsx"), "utf8"));
 
         expect(source).toContain("onPointerDownCapture={(event) => event.stopPropagation()}");
         expect(source).toContain("onRemove(item.id)");
-        expect(source).toContain("onClick={() => props.fileInputRef.current?.click()}");
+        expect(source).not.toContain("onClick={() => props.fileInputRef.current?.click()}");
         expect(source).toContain("onClick={props.onOpenLibrary}");
+    });
+
+    test("视频创作的声音开关会更新生成配置并反馈当前状态", () => {
+        const source = compactSource(readFileSync(resolve(import.meta.dir, "../src/pages/create/index.tsx"), "utf8"));
+
+        expect(source).toContain('onGenerateAudioChange: (enabled: boolean) => updateConfig("videoGenerateAudio", String(enabled))');
+        expect(source).toContain('className="creation-chat-control creation-entry-button creation-sound-toggle"');
+        expect(source).toContain("aria-pressed={generateAudio}");
+        expect(source).toContain("onClick={() => props.onGenerateAudioChange(!generateAudio)}");
+        expect(source).toContain('{generateAudio ? "有声音" : "无声音"}');
+    });
+
+    test("全部创作入口按配置与输入素材分组并共用按钮外壳", () => {
+        const source = compactSource(readFileSync(resolve(import.meta.dir, "../src/pages/create/index.tsx"), "utf8"));
+        const workspaceStyles = readFileSync(resolve(import.meta.dir, "../src/pages/create/creation-workspace.css"), "utf8");
+
+        expect(source).toContain('className="creation-entry-group is-config" role="group" aria-label="生成配置"');
+        expect(source).toContain('className="creation-entry-group is-input" role="group" aria-label="提示词辅助"');
+        expect(source).toContain('className="creation-entry-divider"');
+        expect(source).toContain('className="creation-model-picker creation-entry-button is-model"');
+        expect(source).not.toContain("VoiceRecordingButton");
+        expect(source).not.toContain('aria-label="从本机上传附件"');
+        expect(source).not.toContain('aria-label="打开素材库选择参考内容"');
+        expect(source).toContain("creation-reference-entry");
+        expect(workspaceStyles).toContain(".creation-chat-composer:is(.is-empty, .is-thread) {");
+        expect(workspaceStyles).toContain("--creation-toolbar-button-bg: #f1f3f5;");
+        expect(workspaceStyles).toContain("--creation-toolbar-button-bg: #272b32;");
+        expect(workspaceStyles).toContain("background: var(--creation-toolbar-button-bg) !important;");
+        expect(workspaceStyles).toContain(".creation-home .creation-entry-button,");
+        expect(workspaceStyles).toContain(".creation-home .creation-entry-group.is-input");
+        expect(workspaceStyles).toContain(".creation-home .creation-entry-divider");
+        expect(workspaceStyles).toContain("@layer utilities {");
+        expect(workspaceStyles).toContain(".creation-chat-composer:is(.is-empty, .is-thread):focus-within {");
+        expect(workspaceStyles).toContain("box-shadow: none !important;");
+        expect(workspaceStyles).toContain("filter: none !important;");
+    });
+
+    test("画幅与清晰度使用带说明和选中反馈的参数卡片", () => {
+        const source = compactSource(readFileSync(resolve(import.meta.dir, "../src/pages/create/index.tsx"), "utf8"));
+        const workspaceStyles = readFileSync(resolve(import.meta.dir, "../src/pages/create/creation-workspace.css"), "utf8");
+
+        expect(source).toContain('className="creation-choice-copy"');
+        expect(source).toContain('className="creation-option-check"');
+        expect(source).toContain("ratioDisplayLabel(value)");
+        expect(source).toContain("resolutionDisplayDescription(option.value)");
+        expect(source).toContain("resolutionDisplayDescription(choice)");
+        expect(source).toContain("creation-generation-settings-surface");
+        expect(workspaceStyles).toContain("width: min(372px, calc(100vw - 24px))");
+        expect(workspaceStyles).toContain("grid-template-columns: repeat(3, minmax(0, 1fr))");
+        expect(workspaceStyles).toContain("grid-template-columns: repeat(2, minmax(0, 1fr))");
+        expect(workspaceStyles).toContain(".creation-choice-copy small");
+        expect(workspaceStyles).toContain("button.is-selected .creation-option-check");
+    });
+
+    test("对话消息、生成明细与媒体预览采用统一结果卡设计", () => {
+        const source = compactSource(readFileSync(resolve(import.meta.dir, "../src/pages/create/index.tsx"), "utf8"));
+        const workspaceStyles = readFileSync(resolve(import.meta.dir, "../src/pages/create/creation-workspace.css"), "utf8");
+
+        expect(source).toContain("completedAt?: string");
+        expect(source).toContain('className="creation-media-details"');
+        expect(source).toContain("生成耗时");
+        expect(source).toContain("视频时长");
+        expect(source).toContain("video.videoWidth");
+        expect(source).toContain("image.naturalWidth");
+        expect(source).toContain('width="fit-content"');
+        expect(source).toContain('playsInline preload="metadata"');
+        expect(workspaceStyles).toContain(".creation-home .creation-user-message {");
+        expect(workspaceStyles).toContain(".creation-home .creation-assistant-message {");
+        expect(workspaceStyles).toContain(".creation-home .creation-media-details {");
+        expect(workspaceStyles).toContain("max-width: 640px;");
+        expect(workspaceStyles).toContain("display: flex;");
+        expect(workspaceStyles).toContain(".creation-chat-composer:is(.is-empty, .is-thread) .creation-chat-writing-surface");
+        expect(workspaceStyles).toContain(".creation-chat-composer:is(.is-empty, .is-thread) {");
+        expect(workspaceStyles).toContain("--creation-composer-writing-height: 176px;");
+        expect(workspaceStyles).toContain("height: var(--creation-composer-writing-height);");
+        expect(workspaceStyles).toContain(".creation-chat-composer:is(.is-empty, .is-thread) .creation-chat-dock");
+        expect(workspaceStyles).toContain("max-height: 56px;");
+        expect(workspaceStyles).toContain(".creation-media-preview-modal.is-video .creation-media-preview-video");
+        expect(workspaceStyles).toContain("background: transparent !important;");
+        expect(workspaceStyles).toContain("max-height: 84vh");
     });
 });

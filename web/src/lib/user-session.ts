@@ -46,12 +46,7 @@ export async function applyUserSession(payload: AuthSessionPayload) {
             // 只有首次配置缺失时才生成能力推荐；已有配置中的空数组代表用户明确清空。
             // 使用统一模型目录接口
             const catalog = await getModelCatalog();
-            let channels: ModelChannel[] = [];
-            if (catalog.source === "frontend" && catalog.models) {
-                channels = managedModelChannels(catalog.models);
-            } else if (catalog.source === "system" && catalog.channels) {
-                channels = systemChannelModelChannels(catalog.channels);
-            }
+            const channels = modelChannelsFromCatalog(catalog);
             const initialSystemConfig = {
                 ...defaultConfig,
                 channels,
@@ -64,11 +59,7 @@ export async function applyUserSession(payload: AuthSessionPayload) {
         } else {
             // 已有配置时也需要合并最新的系统渠道
             const catalog = await getModelCatalog();
-            if (catalog.source === "frontend" && catalog.models) {
-                useConfigStore.getState().mergeSystemChannels(managedModelChannels(catalog.models));
-            } else if (catalog.source === "system" && catalog.channels) {
-                useConfigStore.getState().mergeSystemChannels(systemChannelModelChannels(catalog.channels));
-            }
+            useConfigStore.getState().mergeSystemChannels(modelChannelsFromCatalog(catalog));
         }
         installRemoteUserDataAutoSync();
         if (payload.user?.id) {
@@ -81,17 +72,21 @@ export async function applyUserSession(payload: AuthSessionPayload) {
     }
 }
 
-export async function refreshSystemChannels() {
+export async function refreshSystemChannels(
+    loadCatalog: () => Promise<ModelCatalogResponse> = getModelCatalog,
+) {
     // 使用统一模型目录接口，根据 frontendModelsEnabled 自动返回前台模型或系统渠道模型
-    const catalog = await getModelCatalog();
+    const catalog = await loadCatalog();
 
-    if (catalog.source === "frontend" && catalog.models) {
-        // 前台模型模式
-        useConfigStore.getState().mergeSystemChannels(managedModelChannels(catalog.models));
-    } else if (catalog.source === "system" && catalog.channels) {
-        // 系统渠道模式
-        useConfigStore.getState().mergeSystemChannels(systemChannelModelChannels(catalog.channels));
-    }
+    useConfigStore.getState().mergeSystemChannels(modelChannelsFromCatalog(catalog));
+}
+
+export function modelChannelsFromCatalog(catalog: ModelCatalogResponse): ModelChannel[] {
+    // 空目录也是有效的服务端状态。后端的 omitempty 可能省略空数组，
+    // 此时必须用 [] 清理旧 system channel，不能把这次同步当成 no-op。
+    return catalog.source === "frontend"
+        ? managedModelChannels(catalog.models ?? [])
+        : systemChannelModelChannels(catalog.channels ?? []);
 }
 
 function managedModelChannels(models: PublicLogicalModel[]) {

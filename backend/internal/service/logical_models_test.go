@@ -151,16 +151,17 @@ func TestLogicalModelAvailabilityErrorRequiresSettlementReadyCoverage(t *testing
 }
 
 func TestSupportsLogicalModelTokenBillingForArkVideoRoutes(t *testing.T) {
-	if !supportsLogicalModelTokenBilling("text", nil) {
+	svc := &Service{}
+	if !svc.supportsLogicalModelTokenBilling("text", nil) {
 		t.Fatal("text logical models should support Token billing")
 	}
-	if !supportsLogicalModelTokenBilling("video", []model.ChannelInterfaceType{model.ChannelInterfaceVolcengineArkVideo}) {
+	if !svc.supportsLogicalModelTokenBilling("video", []model.ChannelInterfaceType{model.ChannelInterfaceVolcengineArkVideo}) {
 		t.Fatal("Ark video-only routes should support Token billing")
 	}
-	if supportsLogicalModelTokenBilling("video", nil) {
+	if svc.supportsLogicalModelTokenBilling("video", nil) {
 		t.Fatal("video logical models without an enabled route must not support Token billing")
 	}
-	if supportsLogicalModelTokenBilling("video", []model.ChannelInterfaceType{model.ChannelInterfaceVolcengineArkVideo, model.ChannelInterfaceNewAPIVideo}) {
+	if svc.supportsLogicalModelTokenBilling("video", []model.ChannelInterfaceType{model.ChannelInterfaceVolcengineArkVideo, model.ChannelInterfaceNewAPIVideo}) {
 		t.Fatal("mixed video protocols must not support Token billing")
 	}
 }

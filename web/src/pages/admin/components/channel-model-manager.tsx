@@ -13,11 +13,30 @@ import { modelProtocolCapability, modelProtocolDefinition, modelProtocolLabel, m
 import { fetchPluginProviderCatalog } from "@/services/api/plugin-catalog";
 import { createAdminChannelModel, deleteAdminChannelModel, fetchAdminChannelModels, listAdminChannelModels, testAdminChannelModel, updateAdminChannelModel, type ChannelModel, type ChannelModelPriceTier } from "@/services/api/wallet";
 import type { ModelChannel } from "@/stores/use-config-store";
-import { defaultPriceTier, legacyPriceTierToForm, priceTierResolutionFromForm, priceTierToForm, priceTierVideoSecondsFromForm, skuSelectorFromForm, type PriceTierFormValues } from "./channel-model-price-tier-form";
+import {
+    defaultPriceTier,
+    discountedPriceFromOriginal,
+    expandSingleVideoTokenPriceTier,
+    legacyPriceTierToForm,
+    priceTiersWithDiscountedPrices,
+    priceTierResolutionFromForm,
+    priceTierToForm,
+    priceTierVideoSecondsFromForm,
+    sellingDiscount,
+    skuSelectorFromForm,
+    upstreamCostFromOriginal,
+    videoTokenOriginalPriceMatrixFromTiers,
+    videoTokenPriceMatrixFromTiers,
+    videoTokenPriceTiersFromMatrix,
+    type PriceDiscountSettings,
+    type PriceTierFormValues,
+    type VideoTokenPriceMatrix,
+} from "./channel-model-price-tier-form";
 import { AdminPageFrame } from "./admin-shell";
 import { AdminDataTable, AdminFilterChip, AdminStatusBadge } from "./admin-ui";
 
 type EditableCapability = ModelCapabilityChoice;
+type PriceEntryMode = "direct" | "discount";
 
 type FormValues = {
     modelKey: string;
@@ -27,6 +46,9 @@ type FormValues = {
     capability: EditableCapability;
     protocol?: ModelProtocol;
     priceTiers: PriceTierFormValues[];
+    priceEntryMode: PriceEntryMode;
+    upstreamDiscount: number;
+    discountIncrement: number;
     enabled: boolean;
     capabilityConfig?: ModelCapabilityConfig;
 };
@@ -54,7 +76,35 @@ export function ChannelModelManager({ channel, onClose, onChanged }: { channel: 
     const capabilityConfig = Form.useWatch("capabilityConfig", form);
     const modelEnabled = Form.useWatch("enabled", form) !== false;
     const priceTiers = Form.useWatch("priceTiers", form) || [];
+    const priceEntryMode = Form.useWatch("priceEntryMode", form) || "direct";
+    const upstreamDiscount = Number(Form.useWatch("upstreamDiscount", form) ?? 7.5);
+    const discountIncrement = Number(Form.useWatch("discountIncrement", form) ?? 0.5);
+    const discountSettings = { upstreamDiscount, discountIncrement };
     const hasDefaultPriceTier = priceTiers.some((tier) => tier.matchMode === "default");
+    const tokenMatrixProtocol = modelCapability === "video" && (modelProtocol === "kemei-video" || modelProtocol === "volcengine-ark-video");
+    const videoTokenMatrix = tokenMatrixProtocol ? videoTokenPriceMatrixFromTiers(priceTiers) : undefined;
+
+    useEffect(() => {
+        if (!tokenMatrixProtocol || priceTiers.length !== 1 || priceTiers[0].billingMode !== "token") return;
+        form.setFieldValue("priceTiers", expandSingleVideoTokenPriceTier(priceTiers));
+    }, [form, priceTiers, tokenMatrixProtocol]);
+
+    useEffect(() => {
+        if (priceEntryMode !== "discount" || sellingDiscount(discountSettings) === undefined) return;
+        const next = priceTiersWithDiscountedPrices(priceTiers, discountSettings);
+        const changed = next.some(
+            (tier, index) =>
+                tier.unitPrice !== priceTiers[index]?.unitPrice ||
+                tier.inputTokenPrice !== priceTiers[index]?.inputTokenPrice ||
+                tier.outputTokenPrice !== priceTiers[index]?.outputTokenPrice ||
+                tier.cachedTokenPrice !== priceTiers[index]?.cachedTokenPrice,
+        );
+        if (changed) form.setFieldValue("priceTiers", next);
+    }, [discountIncrement, form, priceEntryMode, priceTiers, upstreamDiscount]);
+
+    useEffect(() => {
+        if (priceEntryMode === "direct") form.setFields([{ name: ["priceTiers"], errors: [] }]);
+    }, [form, priceEntryMode]);
 
     const reload = async () => {
         if (!channel) return;
@@ -108,6 +158,9 @@ export function ChannelModelManager({ channel, onClose, onChanged }: { channel: 
             capability: "text",
             protocol: availableProtocols.find((item) => item.capability === "text")?.value,
             priceTiers: [defaultPriceTier()],
+            priceEntryMode: "direct",
+            upstreamDiscount: 7.5,
+            discountIncrement: 0.5,
             enabled: true,
             capabilityConfig: defaultModelCapabilityConfig(availableProtocols.find((item) => item.capability === "text")?.value, ""),
         });
@@ -124,6 +177,9 @@ export function ChannelModelManager({ channel, onClose, onChanged }: { channel: 
             capability: item.capability || undefined,
             protocol: item.protocol,
             priceTiers: item.priceTiers?.length ? item.priceTiers.map(priceTierToForm) : [legacyPriceTierToForm(item)],
+            priceEntryMode: "direct",
+            upstreamDiscount: 7.5,
+            discountIncrement: 0.5,
             enabled: item.enabled,
             capabilityConfig:
                 item.capability === "text" || item.capability === "image" || item.capability === "video"
@@ -540,38 +596,68 @@ export function ChannelModelManager({ channel, onClose, onChanged }: { channel: 
                     <section className="admin-form-section admin-model-editor-section">
                         <SectionHeading title="用户积分价格" description="默认只需填写一个统一价格；需要区分生成方式、质量或尺寸时，再添加规格价格。" />
                         <div className="admin-model-editor-section-content">
-                            <Form.List
-                                name="priceTiers"
-                                rules={[
-                                    {
-                                        validator: async (_, value) => {
-                                            if (!value?.length) throw new Error("请至少配置一个价格档");
-                                            if (value.filter((tier: PriceTierFormValues) => tier.matchMode === "default").length > 1) throw new Error("只能配置一个所有规格统一价格");
+                            <PriceDiscountControls form={form} entryMode={priceEntryMode} upstreamDiscount={upstreamDiscount} discountIncrement={discountIncrement} />
+                            {videoTokenMatrix ? (
+                                <Form.Item
+                                    className="mb-0 mt-3"
+                                    name="priceTiers"
+                                    rules={[
+                                        {
+                                            validator: async (_, value: PriceTierFormValues[]) => {
+                                                if (priceEntryMode === "discount") {
+                                                    const originalMatrix = videoTokenOriginalPriceMatrixFromTiers(value || []);
+                                                    if (!originalMatrix || Object.values(originalMatrix).some((price) => !Number.isFinite(price) || price <= 0)) throw new Error("请完整填写四个视频 Token 原价");
+                                                }
+                                                const matrix = videoTokenPriceMatrixFromTiers(value || []);
+                                                if (!matrix || Object.values(matrix).some((price) => !Number.isFinite(price) || price <= 0)) throw new Error("请完整填写四个视频 Token 价格");
+                                            },
                                         },
-                                    },
-                                ]}
-                            >
-                                {(fields, { add, remove }, { errors }) => (
-                                    <div className="space-y-3">
-                                        {fields.map((field, index) => (
-                                            <PriceTierFields
-                                                key={field.key}
-                                                index={field.name}
-                                                ordinal={index + 1}
-                                                form={form}
-                                                capability={modelCapability}
-                                                protocol={modelProtocol}
-                                                capabilityConfig={capabilityConfig}
-                                                onRemove={() => remove(field.name)}
-                                            />
-                                        ))}
-                                        <Button className="admin-model-editor-add-tier" type="dashed" block icon={<Plus className="size-4" />} onClick={() => add(defaultPriceTier(hasDefaultPriceTier ? "advanced" : "default"))}>
-                                            {hasDefaultPriceTier ? "新增规格价格" : "新增统一默认价格"}
-                                        </Button>
-                                        <Form.ErrorList errors={errors} />
-                                    </div>
-                                )}
-                            </Form.List>
+                                    ]}
+                                >
+                                    <VideoTokenPricingMatrix
+                                        protocol={modelProtocol}
+                                        entryMode={priceEntryMode}
+                                        discountSettings={discountSettings}
+                                        onBillingModeChange={(billingMode) => form.setFieldValue("priceTiers", [{ ...defaultPriceTier(), billingMode }])}
+                                    />
+                                </Form.Item>
+                            ) : (
+                                <Form.List
+                                    name="priceTiers"
+                                    rules={[
+                                        {
+                                            validator: async (_, value) => {
+                                                if (!value?.length) throw new Error("请至少配置一个价格档");
+                                                if (value.filter((tier: PriceTierFormValues) => tier.matchMode === "default").length > 1) throw new Error("只能配置一个所有规格统一价格");
+                                            },
+                                        },
+                                    ]}
+                                >
+                                    {(fields, { add, remove }, { errors }) => (
+                                        <div className="mt-3 space-y-3">
+                                            {fields.map((field, index) => (
+                                                <PriceTierFields
+                                                    key={field.key}
+                                                    index={field.name}
+                                                    ordinal={index + 1}
+                                                    form={form}
+                                                    capability={modelCapability}
+                                                    protocol={modelProtocol}
+                                                    tokenBillingSupported={modelProtocolSupportsTokenBilling(modelCapability, modelProtocol, availableProtocols)}
+                                                    capabilityConfig={capabilityConfig}
+                                                    priceEntryMode={priceEntryMode}
+                                                    discountSettings={discountSettings}
+                                                    onRemove={() => remove(field.name)}
+                                                />
+                                            ))}
+                                            <Button className="admin-model-editor-add-tier" type="dashed" block icon={<Plus className="size-4" />} onClick={() => add(defaultPriceTier(hasDefaultPriceTier ? "advanced" : "default"))}>
+                                                {hasDefaultPriceTier ? "新增规格价格" : "新增统一默认价格"}
+                                            </Button>
+                                            <Form.ErrorList errors={errors} />
+                                        </div>
+                                    )}
+                                </Form.List>
+                            )}
                         </div>
                     </section>
                 </Form>
@@ -597,6 +683,169 @@ function EnabledConfigField(_: { value?: boolean; onChange?: (value: boolean) =>
     return null;
 }
 
+function PriceDiscountControls({
+    form,
+    entryMode,
+    upstreamDiscount,
+    discountIncrement,
+}: {
+    form: FormInstance<FormValues>;
+    entryMode: PriceEntryMode;
+    upstreamDiscount: number;
+    discountIncrement: number;
+}) {
+    const discount = sellingDiscount({ upstreamDiscount, discountIncrement });
+    return (
+        <div className="rounded-lg border border-border/70 bg-muted/20 p-3">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                    <div className="text-xs font-medium">价格录入方式</div>
+                    <div className="mt-1 text-[var(--fs-tiny)] leading-5 text-foreground/45">原价换算模式会自动计算上游成本和用户积分售价，保存时只写入最终积分价格。</div>
+                </div>
+                <Form.Item className="mb-0" name="priceEntryMode">
+                    <Segmented
+                        size="small"
+                        options={[
+                            { label: "直接填写", value: "direct" },
+                            { label: "原价换算", value: "discount" },
+                        ]}
+                    />
+                </Form.Item>
+            </div>
+            {entryMode === "discount" ? (
+                <div className="mt-3 grid gap-3 border-t border-border/60 pt-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(150px,0.8fr)]">
+                    <Form.Item className="mb-0" name="upstreamDiscount" label="上游当前折扣" rules={[{ required: true, message: "请输入上游折扣" }]}>
+                        <InputNumber className="w-full" min={0.1} max={10} precision={2} step={0.5} addonAfter="折" />
+                    </Form.Item>
+                    <Form.Item
+                        className="mb-0"
+                        name="discountIncrement"
+                        label="售价增加"
+                        dependencies={["upstreamDiscount"]}
+                        rules={[
+                            { required: true, message: "请输入售价增加折扣" },
+                            {
+                                validator: async (_, value) => {
+                                    const total = Number(form.getFieldValue("upstreamDiscount")) + Number(value);
+                                    if (!Number.isFinite(total) || total > 10) throw new Error("最终售价折扣不能超过 10 折");
+                                },
+                            },
+                        ]}
+                    >
+                        <InputNumber className="w-full" min={0} max={10} precision={2} step={0.1} addonBefore="+" addonAfter="折" />
+                    </Form.Item>
+                    <div className="grid min-h-[62px] content-center rounded-md border border-border/70 bg-background/55 px-3 py-2">
+                        <span className="text-[var(--fs-tiny)] text-foreground/45">用户售价折扣</span>
+                        <strong className="mt-1 text-lg tabular-nums text-foreground">{discount === undefined ? "--" : `${formatPriceValue(discount)} 折`}</strong>
+                    </div>
+                </div>
+            ) : null}
+        </div>
+    );
+}
+
+function VideoTokenPricingMatrix({
+    value = [],
+    onChange,
+    onBillingModeChange,
+    protocol,
+    entryMode,
+    discountSettings,
+}: {
+    value?: PriceTierFormValues[];
+    onChange?: (value: PriceTierFormValues[]) => void;
+    onBillingModeChange: (value: "fixed_request" | "per_second") => void;
+    protocol?: ModelProtocol;
+    entryMode: PriceEntryMode;
+    discountSettings: PriceDiscountSettings;
+}) {
+    const matrix = videoTokenPriceMatrixFromTiers(value) || { withoutVideoStandard: 0, withoutVideo1080: 0, withVideoStandard: 0, withVideo1080: 0 };
+    const originalMatrix = videoTokenOriginalPriceMatrixFromTiers(value) || { withoutVideoStandard: 0, withoutVideo1080: 0, withVideoStandard: 0, withVideo1080: 0 };
+    const providerModelKey = value.find((tier) => tier.providerModelKey)?.providerModelKey || "";
+    const providerLabel = protocol === "volcengine-ark-video" ? "火山方舟" : "可美视频";
+    const update = (key: keyof VideoTokenPriceMatrix, next: number | null) => {
+        if (entryMode === "direct") {
+            onChange?.(videoTokenPriceTiersFromMatrix({ ...matrix, [key]: Number(next || 0) }, providerModelKey));
+            return;
+        }
+        const nextOriginalMatrix = { ...originalMatrix, [key]: Number(next || 0) };
+        const nextMatrix = { ...matrix, [key]: discountedPriceFromOriginal(next ?? undefined, discountSettings) };
+        onChange?.(videoTokenPriceTiersFromMatrix(nextMatrix, providerModelKey, nextOriginalMatrix));
+    };
+    const priceInput = (key: keyof VideoTokenPriceMatrix, label: string) => {
+        const original = originalMatrix[key] || undefined;
+        const displayed = entryMode === "discount" ? original : matrix[key] || undefined;
+        return (
+            <label className="grid gap-1.5">
+                <span className="text-[var(--fs-tiny)] text-foreground/45">{entryMode === "discount" ? `${label}原价` : label}</span>
+                <InputNumber
+                    aria-label={entryMode === "discount" ? `${label}原价` : label}
+                    className="w-full"
+                    min={0.000001}
+                    max={1_000_000}
+                    precision={6}
+                    step={0.1}
+                    value={displayed}
+                    placeholder={entryMode === "discount" ? "人民币原价" : "积分 / 百万 Token"}
+                    onChange={(next) => update(key, next)}
+                />
+                {entryMode === "discount" ? (
+                    <span className="text-[var(--fs-tiny)] tabular-nums text-foreground/45">
+                        上游 ¥{original === undefined ? "--" : formatPriceValue(upstreamCostFromOriginal(original, discountSettings.upstreamDiscount))} · 售价 {original === undefined ? "--" : formatPriceValue(matrix[key])} 积分
+                    </span>
+                ) : null}
+            </label>
+        );
+    };
+    return (
+        <div className="admin-price-tier-card overflow-hidden">
+            <div className="admin-price-tier-card-header">
+                <div>
+                    <div className="text-sm font-medium">{providerLabel} Token 批量定价</div>
+                    <div className="mt-0.5 text-[var(--fs-tiny)] text-foreground/45">输入 4 个{entryMode === "discount" ? "人民币原价，系统换算售价并" : "价格，"}保存时自动生成 6 个分辨率价格档。</div>
+                </div>
+                <Segmented
+                    size="small"
+                    value="token"
+                    options={[
+                        { label: "按次", value: "fixed_request" },
+                        { label: "按秒", value: "per_second" },
+                        { label: "Token", value: "token" },
+                    ]}
+                    onChange={(next) => {
+                        if (next === "fixed_request" || next === "per_second") onBillingModeChange(next);
+                    }}
+                />
+            </div>
+            <div className="grid gap-3 p-4 md:grid-cols-2">
+                <div className="rounded-lg border border-border/70 bg-muted/20 p-3">
+                    <div className="mb-3">
+                        <div className="text-xs font-medium">无视频输入</div>
+                        <div className="mt-1 text-[var(--fs-tiny)] leading-5 text-foreground/45">文生视频和图生视频使用这组价格。</div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                        {priceInput("withoutVideoStandard", "480p / 720p")}
+                        {priceInput("withoutVideo1080", "1080p")}
+                    </div>
+                </div>
+                <div className="rounded-lg border border-border/70 bg-muted/20 p-3">
+                    <div className="mb-3">
+                        <div className="text-xs font-medium">含视频输入</div>
+                        <div className="mt-1 text-[var(--fs-tiny)] leading-5 text-foreground/45">请求携带参考视频时优先使用这组价格。</div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                        {priceInput("withVideoStandard", "480p / 720p")}
+                        {priceInput("withVideo1080", "1080p")}
+                    </div>
+                </div>
+            </div>
+            <div className="border-t border-border/60 px-4 py-3 text-[var(--fs-tiny)] leading-5 text-foreground/50">
+                {entryMode === "discount" ? "原价按人民币填写；换算后的售价单位为积分 / 百万 Token。" : "单位均为积分 / 百万 Token；"}单次任务按上游返回的实际 completion_tokens 比例结算。
+            </div>
+        </div>
+    );
+}
+
 function capabilityLabel(value: ChannelModel["capability"]) {
     return { text: "文本", image: "图片", video: "视频", audio: "音频", "": "待配置" }[value];
 }
@@ -607,7 +856,10 @@ function PriceTierFields({
     form,
     capability,
     protocol,
+    tokenBillingSupported,
     capabilityConfig,
+    priceEntryMode,
+    discountSettings,
     onRemove,
 }: {
     index: number;
@@ -615,7 +867,10 @@ function PriceTierFields({
     form: FormInstance<FormValues>;
     capability: EditableCapability | undefined;
     protocol: ModelProtocol | undefined;
+    tokenBillingSupported: boolean;
     capabilityConfig?: ModelCapabilityConfig;
+    priceEntryMode: PriceEntryMode;
+    discountSettings: PriceDiscountSettings;
     onRemove: () => void;
 }) {
     const billingMode = Form.useWatch(["priceTiers", index, "billingMode"], form) || "fixed_request";
@@ -625,7 +880,7 @@ function PriceTierFields({
     const video = capabilityConfig?.video;
     const resolutionOptions = video?.resolutions || [];
     const durationOptions = video?.duration.selection === "enum" ? video.duration.values || [] : [];
-    const tokenEnabled = Boolean(capability && protocol && modelProtocolSupportsTokenBilling(capability, protocol));
+    const tokenEnabled = Boolean(capability && protocol && tokenBillingSupported);
     const isVideo = capability === "video";
     const isImage = capability === "image";
     return (
@@ -715,26 +970,68 @@ function PriceTierFields({
                         </Form.Item>
                         {billingMode === "token" ? (
                             isVideo ? (
-                                <Form.Item className="admin-price-tier-unit-price mb-0" name={[index, "outputTokenPrice"]} label="视频 / 百万 Token" rules={[{ required: true, message: "请输入视频 Token 价格" }]}>
-                                    <InputNumber className="w-full" min={0.000001} max={1_000_000} precision={6} step={0.1} />
-                                </Form.Item>
+                                <DiscountAwarePriceField
+                                    className="admin-price-tier-unit-price"
+                                    form={form}
+                                    index={index}
+                                    entryMode={priceEntryMode}
+                                    discountSettings={discountSettings}
+                                    priceField="outputTokenPrice"
+                                    originalPriceField="originalOutputTokenPrice"
+                                    label="视频 / 百万 Token"
+                                    requiredMessage="请输入视频 Token 价格"
+                                    min={0.000001}
+                                />
                             ) : (
                                 <div className="admin-price-tier-token-grid">
-                                    <Form.Item className="mb-0" name={[index, "inputTokenPrice"]} label="输入 / 百万 Token" rules={[{ required: true, message: "请输入输入价格" }]}>
-                                        <InputNumber className="w-full" min={0} max={1_000_000} precision={6} step={0.1} />
-                                    </Form.Item>
-                                    <Form.Item className="mb-0" name={[index, "outputTokenPrice"]} label="输出 / 百万 Token" rules={[{ required: true, message: "请输入输出价格" }]}>
-                                        <InputNumber className="w-full" min={0} max={1_000_000} precision={6} step={0.1} />
-                                    </Form.Item>
-                                    <Form.Item className="mb-0" name={[index, "cachedTokenPrice"]} label="缓存 / 百万 Token" rules={[{ required: true, message: "请输入缓存价格" }]}>
-                                        <InputNumber className="w-full" min={0} max={1_000_000} precision={6} step={0.1} />
-                                    </Form.Item>
+                                    <DiscountAwarePriceField
+                                        form={form}
+                                        index={index}
+                                        entryMode={priceEntryMode}
+                                        discountSettings={discountSettings}
+                                        priceField="inputTokenPrice"
+                                        originalPriceField="originalInputTokenPrice"
+                                        label="输入 / 百万 Token"
+                                        requiredMessage="请输入输入价格"
+                                        min={0}
+                                    />
+                                    <DiscountAwarePriceField
+                                        form={form}
+                                        index={index}
+                                        entryMode={priceEntryMode}
+                                        discountSettings={discountSettings}
+                                        priceField="outputTokenPrice"
+                                        originalPriceField="originalOutputTokenPrice"
+                                        label="输出 / 百万 Token"
+                                        requiredMessage="请输入输出价格"
+                                        min={0}
+                                    />
+                                    <DiscountAwarePriceField
+                                        form={form}
+                                        index={index}
+                                        entryMode={priceEntryMode}
+                                        discountSettings={discountSettings}
+                                        priceField="cachedTokenPrice"
+                                        originalPriceField="originalCachedTokenPrice"
+                                        label="缓存 / 百万 Token"
+                                        requiredMessage="请输入缓存价格"
+                                        min={0}
+                                    />
                                 </div>
                             )
                         ) : (
-                            <Form.Item className="admin-price-tier-unit-price mb-0" name={[index, "unitPrice"]} label={billingMode === "per_second" ? "每秒消耗积分" : "每次消耗积分"} rules={[{ required: true, message: "请输入积分价格" }]}>
-                                <InputNumber className="w-full" min={0} max={1_000_000} precision={6} step={0.1} />
-                            </Form.Item>
+                            <DiscountAwarePriceField
+                                className="admin-price-tier-unit-price"
+                                form={form}
+                                index={index}
+                                entryMode={priceEntryMode}
+                                discountSettings={discountSettings}
+                                priceField="unitPrice"
+                                originalPriceField="originalUnitPrice"
+                                label={billingMode === "per_second" ? "每秒消耗积分" : "每次消耗积分"}
+                                requiredMessage="请输入积分价格"
+                                min={0}
+                            />
                         )}
                         <div className="admin-price-tier-controls">
                             <Form.Item name={[index, "priceConfigured"]} hidden valuePropName="checked">
@@ -760,6 +1057,64 @@ function PriceTierFields({
                         </div>
                     </div>
                 </div>
+            </div>
+        </div>
+    );
+}
+
+type PriceFieldName = "unitPrice" | "inputTokenPrice" | "outputTokenPrice" | "cachedTokenPrice";
+type OriginalPriceFieldName = "originalUnitPrice" | "originalInputTokenPrice" | "originalOutputTokenPrice" | "originalCachedTokenPrice";
+
+function DiscountAwarePriceField({
+    className,
+    form,
+    index,
+    entryMode,
+    discountSettings,
+    priceField,
+    originalPriceField,
+    label,
+    requiredMessage,
+    min,
+}: {
+    className?: string;
+    form: FormInstance<FormValues>;
+    index: number;
+    entryMode: PriceEntryMode;
+    discountSettings: PriceDiscountSettings;
+    priceField: PriceFieldName;
+    originalPriceField: OriginalPriceFieldName;
+    label: string;
+    requiredMessage: string;
+    min: number;
+}) {
+    const originalPrice = Form.useWatch(["priceTiers", index, originalPriceField], form) as number | undefined;
+    const finalPrice = Number(Form.useWatch(["priceTiers", index, priceField], form) || 0);
+    if (entryMode === "direct") {
+        return (
+            <Form.Item className={`${className || ""} mb-0`} name={[index, priceField]} label={label} rules={[{ required: true, message: requiredMessage }]}>
+                <InputNumber className="w-full" min={min} max={1_000_000} precision={6} step={0.1} />
+            </Form.Item>
+        );
+    }
+    const hasOriginal = typeof originalPrice === "number" && Number.isFinite(originalPrice);
+    return (
+        <div className={className}>
+            <Form.Item name={[index, priceField]} hidden>
+                <InputNumber />
+            </Form.Item>
+            <Form.Item className="mb-0" name={[index, originalPriceField]} label={`${label}（人民币原价）`} rules={[{ required: true, message: requiredMessage.replace("价格", "原价") }]}>
+                <InputNumber
+                    className="w-full"
+                    min={min}
+                    max={1_000_000}
+                    precision={6}
+                    step={0.1}
+                    onChange={(next) => form.setFieldValue(["priceTiers", index, priceField], discountedPriceFromOriginal(next ?? undefined, discountSettings))}
+                />
+            </Form.Item>
+            <div className="mt-1 text-[var(--fs-tiny)] tabular-nums leading-5 text-foreground/45">
+                上游 ¥{hasOriginal ? formatPriceValue(upstreamCostFromOriginal(originalPrice, discountSettings.upstreamDiscount)) : "--"} · 用户售价 {hasOriginal ? formatPriceValue(finalPrice) : "--"} 积分
             </div>
         </div>
     );
@@ -803,6 +1158,10 @@ function operationOptions(capability: EditableCapability | undefined) {
 
 function operationLabel(operation: string) {
     return ({ text_to_image: "文生图", image_to_image: "图生图", text_to_video: "文生视频", image_to_video: "图生视频", video_to_video: "视频生视频", text_generation: "文本生成" } as Record<string, string>)[operation] || operation;
+}
+
+function formatPriceValue(value: number) {
+    return Number(value || 0).toLocaleString("zh-CN", { maximumFractionDigits: 6 });
 }
 
 function formatCredits(value: number) {

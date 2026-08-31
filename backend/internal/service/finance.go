@@ -502,7 +502,7 @@ func (s *Service) newLogicalModelBillingOrder(userID string, task *model.Task, i
 		}
 		amount, err = creditAmount(logicalModel.UnitPriceMicrocredits, quantity, 10_000)
 	case "token":
-		if channelModel.Capability != capability || !supportsTokenBilling(capability, channelModel.Protocol) {
+		if channelModel.Capability != capability || !s.supportsTokenBilling(capability, channelModel.Protocol) {
 			return nil, BadAuthRequest("当前供应线路不支持前台模型的 Token 计费方式")
 		}
 		pricing := &model.ChannelModel{InputTokenPriceMicrocredits: logicalModel.InputPriceMicrocredits, OutputTokenPriceMicrocredits: logicalModel.OutputPriceMicrocredits, CachedTokenPriceMicrocredits: logicalModel.CachedPriceMicrocredits}
@@ -589,14 +589,14 @@ func (s *Service) newBillingOrderWithPriceTier(userID string, taskID string, ide
 		}
 		quantity = requestedQuantity
 	case "token":
-		if !supportsTokenBilling(item.Capability, item.Protocol) || item.Capability != capability {
-			return nil, BadAuthRequest("Token 计费仅支持文本生成和火山方舟视频生成")
+		if !s.supportsTokenBilling(item.Capability, item.Protocol) || item.Capability != capability {
+			return nil, BadAuthRequest("Token 计费仅支持文本生成，或能返回真实用量的视频生成协议")
 		}
 		if capability == "text" && (tokenEstimate.InputTokens <= 0 || tokenEstimate.OutputTokens <= 0) {
 			return nil, BadAuthRequest("无法估算文本 Token 用量")
 		}
 		if capability == "video" && tokenEstimate.OutputTokens <= 0 {
-			return nil, BadAuthRequest("无法估算火山方舟视频 Token 用量")
+			return nil, BadAuthRequest("无法估算视频 Token 用量")
 		}
 		quantity = tokenEstimate.InputTokens + tokenEstimate.OutputTokens
 	default:

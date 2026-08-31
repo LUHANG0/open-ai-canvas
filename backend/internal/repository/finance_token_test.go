@@ -69,7 +69,7 @@ func TestSettleArkVideoTokenOrderFromPollUsage(t *testing.T) {
 	if err := db.Create(&model.BillingOrder{
 		ID: "order-1", UserID: "user-1", IdempotencyKey: "task:task-1", Capability: "video", BillingMode: "token",
 		AmountMicrocredits: reserved, ReservedAmountMicrocredits: reserved, OutputTokenPriceMicrocredits: 16_000_000,
-		MultiplierBasisPoints: 10_000, Status: model.BillingStatusRunning,
+		MultiplierBasisPoints: 10_000, Status: model.BillingStatusUncertain, Error: "旧的结果解析失败",
 	}).Error; err != nil {
 		t.Fatal(err)
 	}
@@ -88,7 +88,7 @@ func TestSettleArkVideoTokenOrderFromPollUsage(t *testing.T) {
 	if err := db.First(&order, "id = ?", "order-1").Error; err != nil {
 		t.Fatal(err)
 	}
-	if order.Status != model.BillingStatusSettled || order.ActualAmountMicrocredits != 1_742_400 || order.RefundedAmountMicrocredits != 174_240 {
+	if order.Status != model.BillingStatusSettled || order.ActualAmountMicrocredits != 1_742_400 || order.RefundedAmountMicrocredits != 174_240 || order.Error != "" {
 		t.Fatalf("settled order = %#v", order)
 	}
 	var account model.CreditAccount

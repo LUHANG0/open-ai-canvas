@@ -320,7 +320,7 @@ func (s *Service) validateSystemChannelModelSelection(input map[string]any) erro
 	}
 
 	// 验证价格配置
-	if !HasValidPrice(channelModel) {
+	if !s.hasValidPrice(channelModel) {
 		return ModelPriceNotConfigured("指定的模型未配置有效价格")
 	}
 

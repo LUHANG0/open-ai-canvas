@@ -998,12 +998,20 @@ func (s *Service) enrichAPICallLogFailureSummary(log *model.ApiCallLog, response
 }
 
 func (s *Service) enrichAPICallLogPayload(log *model.ApiCallLog, payload map[string]any) {
-	if data, ok := payload["data"].(map[string]any); ok {
+	// 视频网关常把真实方舟响应包在 data.data 中。逐层补平只填充缺失键，
+	// 既保留网关自己的状态和任务号，也能取得内层 usage/content。
+	current := payload
+	for depth := 0; depth < 4; depth++ {
+		data, ok := current["data"].(map[string]any)
+		if !ok {
+			break
+		}
 		for key, value := range data {
 			if _, exists := payload[key]; !exists {
 				payload[key] = value
 			}
 		}
+		current = data
 	}
 	// Responses API 的终态 SSE 把实际响应（包括 usage）放在 response 字段中。
 	if response, ok := payload["response"].(map[string]any); ok {

@@ -51,7 +51,7 @@ export function ChannelModelSettings({ channel, onChange }: { channel: ModelChan
     const activeProtocol = activeModel ? activeModelCost?.protocol || defaultProtocolForModel(channel, activeModel) : undefined;
     const activeCapability = activeModel ? activeModelCost?.capability || modelProtocolCapability(activeProtocol, availableProtocols) || "text" : undefined;
     const activeBillingMode = activeModelCost?.billingMode || "fixed_request";
-    const activeTokenBillingSupported = modelProtocolSupportsTokenBilling(activeCapability, activeProtocol);
+    const activeTokenBillingSupported = modelProtocolSupportsTokenBilling(activeCapability, activeProtocol, availableProtocols);
 
     return (
         <div className="mt-4">
@@ -131,7 +131,7 @@ export function ChannelModelSettings({ channel, onChange }: { channel: ModelChan
                                     updateCost(activeModel, {
                                         protocol: nextProtocol,
                                         capability: nextCapability,
-                                        billingMode: activeBillingMode === "per_second" && nextCapability === "video" ? "per_second" : activeBillingMode === "token" && modelProtocolSupportsTokenBilling(nextCapability, nextProtocol) ? "token" : "fixed_request",
+                                        billingMode: activeBillingMode === "per_second" && nextCapability === "video" ? "per_second" : activeBillingMode === "token" && modelProtocolSupportsTokenBilling(nextCapability, nextProtocol, availableProtocols) ? "token" : "fixed_request",
                                         capabilityConfig: nextCapability === "image" || nextCapability === "video" ? defaultModelCapabilityConfig(nextProtocol, activeModel) : undefined,
                                     });
                                 }}
@@ -143,7 +143,7 @@ export function ChannelModelSettings({ channel, onChange }: { channel: ModelChan
                                 capability={activeCapability}
                                 value={activeProtocol}
                                 protocols={availableProtocols}
-                                onChange={(nextProtocol) => updateCost(activeModel, { protocol: nextProtocol, billingMode: activeBillingMode === "token" && !modelProtocolSupportsTokenBilling(activeCapability, nextProtocol) ? "fixed_request" : activeBillingMode, capabilityConfig: activeCapability === "image" || activeCapability === "video" ? defaultModelCapabilityConfig(nextProtocol, activeModel) : undefined })}
+                                onChange={(nextProtocol) => updateCost(activeModel, { protocol: nextProtocol, billingMode: activeBillingMode === "token" && !modelProtocolSupportsTokenBilling(activeCapability, nextProtocol, availableProtocols) ? "fixed_request" : activeBillingMode, capabilityConfig: activeCapability === "image" || activeCapability === "video" ? defaultModelCapabilityConfig(nextProtocol, activeModel) : undefined })}
                             />
                         </section> : null}
                         {activeCapability === "video" ? (

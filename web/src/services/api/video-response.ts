@@ -11,7 +11,20 @@ export function unwrapVideoResponse(payload: ApiVideoResponse) {
 }
 
 export function unwrapSeedanceTask(payload: ApiEnvelope<SeedanceTask>) {
-    return unwrapEnvelope(payload, "Seedance 接口没有返回任务");
+    if (!payload || typeof payload !== "object") throw new Error("Seedance 接口没有返回任务");
+    const envelope = payload as { code?: number | string; msg?: string; message?: string };
+    if (typeof envelope.code === "number" && envelope.code !== 0) throw new Error(envelope.msg || envelope.message || "请求失败");
+    if (typeof envelope.code === "string" && !["success", "ok", "0"].includes(envelope.code.toLowerCase())) throw new Error(envelope.msg || envelope.message || "请求失败");
+
+    let current: unknown = payload;
+    let task: SeedanceTask | null = null;
+    for (let depth = 0; depth < 4 && current && typeof current === "object"; depth += 1) {
+        const record = current as Record<string, unknown>;
+        if (record.id || record.task_id || record.status || record.content || record.video_url) task = record as SeedanceTask;
+        current = record.data;
+    }
+    if (!task) throw new Error("Seedance 接口没有返回任务");
+    return task;
 }
 
 export function unwrapEnvelope<T>(payload: ApiEnvelope<T>, emptyMessage: string): T {

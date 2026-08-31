@@ -12,6 +12,7 @@ import (
 	"strings"
 	"testing"
 
+	"infinite-canvas/backend/internal/model"
 	"infinite-canvas/backend/internal/protocol"
 )
 
@@ -194,12 +195,27 @@ func TestKemeiPluginPackageInstallsThroughUploadRuntime(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if plugin.Status != "enabled" || plugin.Manifest.ID != "kemei-video" || plugin.Manifest.Version != "1.0.2" {
+	if plugin.Status != "enabled" || plugin.Manifest.ID != "kemei-video" || plugin.Manifest.Version != "1.1.0" {
 		t.Fatalf("installed Kemei plugin = %#v", plugin)
 	}
 	provider := plugin.Manifest.Contributes.Providers[0]
 	if provider.BaseURL != "" || provider.Create.Fields["resolution"] != "request.resolution|resolution_p" {
 		t.Fatalf("installed Kemei provider = %#v", provider)
+	}
+	svc := &Service{pluginRuntime: center}
+	if !svc.supportsTokenBilling("video", model.ChannelInterfaceType("kemei-video")) {
+		t.Fatal("installed Kemei provider should support Token billing")
+	}
+	catalog := svc.PluginProviderCatalog(string(protocol.SurfaceAdminSystemChannel), string(protocol.CapabilityVideo), false)
+	var kemei *PluginProviderCatalogItem
+	for index := range catalog {
+		if catalog[index].ID == "kemei-video" {
+			kemei = &catalog[index]
+			break
+		}
+	}
+	if kemei == nil || !kemei.TokenUsage {
+		t.Fatalf("Kemei administrator catalog = %#v", catalog)
 	}
 }
 

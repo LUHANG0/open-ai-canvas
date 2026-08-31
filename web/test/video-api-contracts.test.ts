@@ -4,7 +4,7 @@ import { defaultConfig } from "../src/stores/use-config-store";
 import { createSeedanceTask } from "../src/services/api/video-provider-seedance";
 import { createMiniMaxVideoTask } from "../src/services/api/video-provider-minimax";
 import type { VideoProviderDeps } from "../src/services/api/video-provider-deps";
-import { unwrapEnvelope, videoResponseTools, videoTaskId } from "../src/services/api/video-response";
+import { unwrapEnvelope, unwrapSeedanceTask, videoResponseTools, videoTaskId } from "../src/services/api/video-response";
 import { isPublicMediaUrl, normalizeVideoResolution, normalizeVideoSeconds, normalizeVideoSize } from "../src/services/api/video-validation";
 
 describe("video API response contracts", () => {
@@ -17,6 +17,24 @@ describe("video API response contracts", () => {
     test("业务失败和空数据不会被静默转换为成功", () => {
         expect(() => unwrapEnvelope({ code: 401, data: null, msg: "未授权" }, "缺少任务")).toThrow("未授权");
         expect(() => unwrapEnvelope({ code: 0, data: null, msg: "ok" }, "缺少任务")).toThrow("缺少任务");
+    });
+
+    test("展开 Seedance 网关的双层 data 响应", () => {
+        expect(unwrapSeedanceTask({
+            code: "success",
+            data: {
+                id: "gateway-row",
+                task_id: "task-platform-id",
+                status: "SUCCESS",
+                data: {
+                    id: "task-platform-id",
+                    original_task_id: "cgt-upstream-id",
+                    status: "succeeded",
+                    content: { video_url: "https://cdn.example/video.mp4" },
+                    usage: { completion_tokens: 108900, total_tokens: 108900 },
+                },
+            },
+        } as never)).toMatchObject({ id: "task-platform-id", original_task_id: "cgt-upstream-id", status: "succeeded", content: { video_url: "https://cdn.example/video.mp4" } });
     });
 });
 

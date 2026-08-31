@@ -58,6 +58,7 @@ type PluginProviderCatalogItem struct {
 	Poll              string                      `json:"poll,omitempty"`
 	ContentType       string                      `json:"contentType,omitempty"`
 	BaseURL           string                      `json:"baseUrl,omitempty"`
+	TokenUsage        bool                        `json:"tokenUsage,omitempty"`
 	Enabled           bool                        `json:"enabled"`
 	UnavailableReason string                      `json:"unavailableReason,omitempty"`
 	Workflows         []protocol.ManifestWorkflow `json:"workflows,omitempty"`
@@ -74,13 +75,14 @@ func (s *Service) PluginProviderCatalog(scope, capability string, includeUnavail
 			if !containsPluginSurface(provider.Scopes, wantScope) || (wantCapability != "" && !containsPluginCapability(provider.Capabilities, wantCapability)) {
 				continue
 			}
-			item := PluginProviderCatalogItem{ID: provider.ID, Version: plugin.Manifest.Version, Name: provider.Label, Vendor: plugin.Manifest.Author, Categories: provider.Capabilities, Scopes: provider.Scopes, BaseURL: provider.BaseURL, Enabled: plugin.Status == "enabled", UnavailableReason: plugin.Error, Workflows: workflowsForProvider(plugin.Manifest.Contributes.Workflows, provider.ID)}
+			item := PluginProviderCatalogItem{ID: provider.ID, Version: plugin.Manifest.Version, Name: provider.Label, Vendor: plugin.Manifest.Author, Categories: provider.Capabilities, Scopes: provider.Scopes, BaseURL: provider.BaseURL, TokenUsage: provider.Billing.TokenUsage, Enabled: plugin.Status == "enabled", UnavailableReason: plugin.Error, Workflows: workflowsForProvider(plugin.Manifest.Contributes.Workflows, provider.ID)}
 			item.Create, item.Poll, item.ContentType = operationSummary(provider.Create), operationSummaryPtr(provider.Poll), provider.Create.ContentType
 			// The registry metadata is the canonical provider projection. This keeps
 			// host-backed dispatch paths out of every user-facing catalog consumer.
 			if adapter, ok := canonicalProviderAdapter(s.protocolRegistry(), provider.ID); ok {
 				metadata := adapter.Metadata()
 				item.Create, item.Poll, item.ContentType = metadata.Create, metadata.Poll, metadata.ContentType
+				item.TokenUsage = metadata.TokenUsage
 			}
 			if includeUnavailable || item.Enabled {
 				items = append(items, item)
