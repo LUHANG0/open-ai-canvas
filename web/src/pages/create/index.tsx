@@ -1672,7 +1672,7 @@ function CreationWorkspaceToolbar({ viewMode, onViewModeChange, onNewConversatio
 function CreationMessageView({ item, modelName, onRetryFailure, onCreateVariant }: { item: CreationMessage; modelName: string; onRetryFailure: () => void; onCreateVariant: () => void }) {
     if (item.role === "user") return <CreationUserMessage item={item} />;
     const mode = item.mode || "text";
-    const stateLabel = item.status === "pending" ? "生成中" : item.status === "cancelled" ? "已停止" : item.status === "error" ? "生成失败" : "";
+    const stateLabel = item.status === "pending" || item.status === "streaming" ? "生成中" : item.status === "cancelled" ? "已停止" : item.status === "error" ? "生成失败" : "";
     const heading = (
         <>
             <span className="creation-message-mark">
@@ -1687,7 +1687,7 @@ function CreationMessageView({ item, modelName, onRetryFailure, onCreateVariant 
     );
     const toolStatus: GenerationToolStatus = item.status === "pending" ? "running" : item.status === "error" ? "error" : item.status === "cancelled" ? "cancelled" : "completed";
     return (
-        <article className={`creation-assistant-message is-${mode}`}>
+        <article className={`creation-assistant-message is-${mode}`} aria-busy={item.status === "pending" || item.status === "streaming" ? true : undefined}>
             {mode === "text" ? (
                 <>
                     <div className="creation-message-heading">{heading}</div>
@@ -1700,7 +1700,7 @@ function CreationMessageView({ item, modelName, onRetryFailure, onCreateVariant 
                 </GenerationToolCard>
             )}
             {item.error && mode === "text" ? (
-                <div className="creation-message-error">
+                <div className="creation-message-error" role="alert">
                     <span>{generationErrorMessage(item.error)}</span>
                     <button type="button" onClick={onRetryFailure}>
                         <RefreshCw />
@@ -1836,7 +1836,7 @@ function MediaResult({ item, onRetryFailure, onCreateVariant }: { item: Creation
     if (item.status === "pending") return <CreationMediaPending mode={item.mode || "image"} ratio={item.settings?.ratio} />;
     if ((item.status === "error" || item.status === "cancelled") && !resultUrls.length)
         return (
-            <div className="creation-media-error">
+            <div className={`creation-media-error${item.status === "cancelled" ? " is-cancelled" : ""}`} role="alert">
                 <span>{item.status === "cancelled" ? item.content || "已停止" : generationErrorMessage(item.error || "生成失败")}</span>
                 <button type="button" onClick={onRetryFailure}>
                     <RefreshCw />
@@ -1846,7 +1846,7 @@ function MediaResult({ item, onRetryFailure, onCreateVariant }: { item: Creation
         );
     if (!resultUrls.length)
         return (
-            <div className="creation-media-empty">
+            <div className="creation-media-empty" role="status">
                 没有返回可预览结果{" "}
                 <button type="button" onClick={onRetryFailure}>
                     重试
@@ -2024,7 +2024,7 @@ function CreationResultDownloads({ results }: { results: CreationResultMediaEntr
 
 function CreationMediaPending({ mode, ratio }: { mode: CreationMode; ratio?: string }) {
     return (
-        <div className={`creation-media-pending is-${mode}`} style={{ aspectRatio: creationMediaAspectRatio(ratio, mode) }} aria-live="polite">
+        <div className={`creation-media-pending is-${mode}`} style={{ aspectRatio: creationMediaAspectRatio(ratio, mode) }} role="status" aria-live="polite" aria-busy="true">
             <span className="creation-media-pending-icon">
                 <Sparkles />
             </span>
@@ -2449,6 +2449,7 @@ function CreationComposer(props: ComposerProps) {
     const composer = (
         <section
             className={`creation-chat-composer is-${props.variant}${props.attachments.length ? " has-references" : ""}${showReferenceEntry ? " has-reference-entry" : ""}${isFileDraggingOver ? " is-file-dragging-over" : ""}`}
+            aria-busy={interactionBusy}
             onDragEnter={handleComposerDragEnter}
             onDragOver={handleComposerDragOver}
             onDragLeave={handleComposerDragLeave}
@@ -2645,9 +2646,13 @@ function CreationComposer(props: ComposerProps) {
                     ) : null}
                     {showTokenPrice ? (
                         <div className="creation-token-billing-note" role="note">
-                            <CreditSymbol aria-hidden="true" />
-                            <strong>{formattedTokenRate} 积分/百万 Token</strong>
-                            <span>提交时预授权、完成按实际 usage 多退少补</span>
+                            <span className="creation-token-billing-icon" aria-hidden="true">
+                                <CreditSymbol />
+                            </span>
+                            <span className="creation-token-billing-copy">
+                                <strong>{formattedTokenRate} 积分/百万 Token</strong>
+                                <span>按实际 Token 用量结算 · 提交时仅预授权，多退少补</span>
+                            </span>
                         </div>
                     ) : null}
                 </div>
@@ -2655,29 +2660,59 @@ function CreationComposer(props: ComposerProps) {
             <footer className="creation-chat-dock">
                 <div className="creation-chat-controls creation-entry-toolbar">
                     <div className="creation-entry-group is-config" role="group" aria-label="生成配置">
-                        <ModePicker mode={props.mode} onModeChange={props.onModeChange} disabled={interactionBusy} />
-                        <ModelPicker
-                            config={props.config}
-                            value={props.model}
-                            onChange={props.onModelChange}
-                            capability={props.mode}
-                            requirements={props.modelRequirements}
-                            className="creation-model-picker creation-entry-button is-model"
-                            placeholder={`选择${modeLabels[props.mode]}模型`}
-                            showSelectedPrice
-                            variant="creation"
-                            disabled={interactionBusy}
-                        />
-                        {props.mode === "video" ? <VideoOperationPicker value={props.videoOperationChoice} operations={props.videoOperations} onChange={props.onVideoOperationChange} disabled={interactionBusy} /> : null}
-                        {props.mode === "video" || (props.mode === "image" && imageSettingsSupported) ? <GenerationSettingsMenu {...props} /> : null}
-                        {props.mode === "video" ? <DurationMenu profile={props.videoProfile} seconds={props.seconds} onChange={props.setSeconds} disabled={interactionBusy} /> : null}
+                        <div className="creation-config-field is-mode">
+                            <span className="creation-config-label">类型</span>
+                            <ModePicker mode={props.mode} onModeChange={props.onModeChange} disabled={interactionBusy} />
+                        </div>
+                        <div className="creation-config-field is-model">
+                            <span className="creation-config-label">模型</span>
+                            <ModelPicker
+                                config={props.config}
+                                value={props.model}
+                                onChange={props.onModelChange}
+                                capability={props.mode}
+                                requirements={props.modelRequirements}
+                                className="creation-model-picker creation-entry-button is-model"
+                                placeholder={`选择${modeLabels[props.mode]}模型`}
+                                showSelectedPrice
+                                variant="creation"
+                                disabled={interactionBusy}
+                            />
+                        </div>
                         {props.mode === "video" ? (
-                            <Tooltip title={generateAudioSupported ? `点击切换为${generateAudio ? "无声音" : "有声音"}` : "当前模型不支持同步生成声音"}>
-                                <button type="button" className="creation-chat-control creation-entry-button creation-sound-toggle" aria-pressed={generateAudio} onClick={() => props.onGenerateAudioChange(!generateAudio)} disabled={interactionBusy || !generateAudioSupported}>
-                                    {generateAudio ? <Volume2 /> : <VolumeX />}
-                                    <span>{generateAudio ? "有声音" : "无声音"}</span>
-                                </button>
-                            </Tooltip>
+                            <div className="creation-config-field is-operation">
+                                <span className="creation-config-label">方式</span>
+                                <VideoOperationPicker value={props.videoOperationChoice} operations={props.videoOperations} onChange={props.onVideoOperationChange} disabled={interactionBusy} />
+                            </div>
+                        ) : null}
+                        {props.mode === "video" || (props.mode === "image" && imageSettingsSupported) ? (
+                            <div className="creation-config-field is-settings">
+                                <span className="creation-config-label">规格</span>
+                                <GenerationSettingsMenu {...props} />
+                            </div>
+                        ) : null}
+                        {props.mode === "video" ? (
+                            <div className="creation-config-field is-duration">
+                                <span className="creation-config-label">时长</span>
+                                <DurationMenu profile={props.videoProfile} seconds={props.seconds} onChange={props.setSeconds} disabled={interactionBusy} />
+                            </div>
+                        ) : null}
+                        {props.mode === "video" ? (
+                            <div className="creation-config-field is-sound">
+                                <span className="creation-config-label">声音</span>
+                                <Tooltip title={generateAudioSupported ? `点击切换为${generateAudio ? "无声音" : "有声音"}` : "当前模型不支持同步生成声音"}>
+                                    <button
+                                        type="button"
+                                        className="creation-chat-control creation-entry-button creation-sound-toggle"
+                                        aria-pressed={generateAudio}
+                                        onClick={() => props.onGenerateAudioChange(!generateAudio)}
+                                        disabled={interactionBusy || !generateAudioSupported}
+                                    >
+                                        {generateAudio ? <Volume2 /> : <VolumeX />}
+                                        <span>{generateAudio ? "有声音" : "无声音"}</span>
+                                    </button>
+                                </Tooltip>
+                            </div>
                         ) : null}
                     </div>
                     {canOptimizePrompt ? (
@@ -2696,7 +2731,7 @@ function CreationComposer(props: ComposerProps) {
                 </div>
                 <Button
                     type="text"
-                    className={`canvas-node-composer-submit ${showCost || showTokenPrice ? "has-cost" : ""}`}
+                    className={`canvas-node-composer-submit ${showCost ? "has-cost" : ""}`}
                     disabled={interactionBusy || !canSubmit}
                     style={
                         {
@@ -2709,10 +2744,10 @@ function CreationComposer(props: ComposerProps) {
                     aria-label={actionLabel}
                     title={actionLabel}
                 >
-                    {showCost || showTokenPrice ? (
+                    {showCost ? (
                         <span className="canvas-node-composer-submit-cost">
                             <CreditSymbol />
-                            <span>{showCost ? formattedCredits : `${formattedTokenRate}/1M`}</span>
+                            <span>{formattedCredits}</span>
                         </span>
                     ) : null}
                     <span className="canvas-node-composer-submit-action" aria-hidden>
@@ -3345,7 +3380,7 @@ function StoryboardShotCard({ shot, shotNumber, modelName, busy, onRetryFailure,
     const canvasHandoffPath = result ? creationCanvasHandoffPath(resultAssetIds, resultUrls.length) : "";
     const canvasPath = canvasHandoffPath || "/canvas";
     return (
-        <article className={`storyboard-workbench-card is-${status}`}>
+        <article className={`storyboard-workbench-card is-${status}`} aria-busy={status === "pending" || status === "streaming" ? true : undefined}>
             <header className="storyboard-workbench-card-head">
                 <div className="storyboard-workbench-card-heading">
                     <span className="storyboard-workbench-card-shot">
@@ -3571,7 +3606,7 @@ function StoryboardShotResult({
     if (status === "pending" || status === "queued") {
         const thinking = thinkingFor(mode);
         return (
-            <div className="storyboard-workbench-pending">
+            <div className="storyboard-workbench-pending" role="status" aria-live="polite" aria-busy="true">
                 <div className="storyboard-workbench-thinking">
                     <span className="storyboard-workbench-thinking-copy">
                         <strong>{thinking.title}</strong>
@@ -3591,7 +3626,7 @@ function StoryboardShotResult({
     }
     if (status === "error")
         return (
-            <div className="storyboard-workbench-error">
+            <div className="storyboard-workbench-error" role="alert">
                 <span>{generationErrorMessage(result.error || "")}</span>
                 <button type="button" onClick={onRetryFailure}>
                     <RefreshCw />
@@ -3601,7 +3636,7 @@ function StoryboardShotResult({
         );
     if (status === "cancelled")
         return (
-            <div className="storyboard-workbench-error">
+            <div className="storyboard-workbench-error is-cancelled" role="alert">
                 <span>{result.content || "已停止"}</span>
                 <button type="button" onClick={onRetryFailure}>
                     <RefreshCw />
@@ -3612,7 +3647,7 @@ function StoryboardShotResult({
     if (mode === "text") return <div className="creation-message-content storyboard-workbench-text">{result.content ? <AIMessageMarkdown isStreaming={status === "streaming"}>{result.content}</AIMessageMarkdown> : <span>正在生成…</span>}</div>;
     if (!resultUrls.length)
         return (
-            <div className="storyboard-workbench-empty">
+            <div className="storyboard-workbench-empty" role="status">
                 <Film />
                 没有返回可预览结果{" "}
                 <button type="button" onClick={onRetryFailure}>

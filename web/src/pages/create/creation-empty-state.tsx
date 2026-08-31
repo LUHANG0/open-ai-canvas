@@ -58,6 +58,10 @@ export function CreationEmptyIntro({ mode }: { mode: CreationMode }) {
 export function CreationEmptySuggest({ onStartPrompt }: { onStartPrompt: (mode: CreationMode, prompt: string) => void }) {
     return (
         <section className="creation-empty-starters" aria-label="创作技能推荐">
+            <header className="creation-empty-starters-heading">
+                <span>灵感起点</span>
+                <small>选择一个方向，自动填入可继续编辑的提示词</small>
+            </header>
             <nav className="creation-empty-suggest" aria-label="创作起点">
                 {emptyStateActions.map((item) => {
                     const Icon = item.icon;
