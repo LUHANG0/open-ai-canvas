@@ -1,4 +1,5 @@
 import type { ModelCapabilityChoice } from "@/components/model-protocol-picker";
+import { videoResolutionComparisonKey } from "@/lib/video-generation-options";
 import type { ChannelModel, ChannelModelPriceTier } from "@/services/api/wallet";
 
 export type PriceTierMatchMode = "default" | "advanced";
@@ -38,6 +39,44 @@ export type PriceDiscountSettings = {
 };
 
 const PRICE_PRECISION = 1_000_000;
+const DEFAULT_VIDEO_TOKEN_PRICE_RESOLUTIONS = ["480p", "720p", "1080p"] as const;
+const VIDEO_TOKEN_STANDARD_RESOLUTIONS = new Set(["480p", "720p"]);
+
+export function videoTokenPriceResolutions(values?: string[]) {
+    const requested = values === undefined ? [...DEFAULT_VIDEO_TOKEN_PRICE_RESOLUTIONS] : values;
+    const supported = new Set(requested.map((value) => videoResolutionComparisonKey(value)));
+    return DEFAULT_VIDEO_TOKEN_PRICE_RESOLUTIONS.filter((value) => supported.has(value));
+}
+
+export function supportsVideoTokenPriceMatrixResolutions(values: string[]) {
+    const normalized = Array.from(new Set(values.map((value) => videoResolutionComparisonKey(value)).filter(Boolean)));
+    const supported = new Set(DEFAULT_VIDEO_TOKEN_PRICE_RESOLUTIONS);
+    return normalized.length > 0 && normalized.every((value) => supported.has(value as (typeof DEFAULT_VIDEO_TOKEN_PRICE_RESOLUTIONS)[number]));
+}
+
+export function videoTokenPriceKeys(resolutions?: string[]): Array<keyof VideoTokenPriceMatrix> {
+    const supported = videoTokenPriceResolutions(resolutions);
+    return [
+        ...(supported.some((value) => VIDEO_TOKEN_STANDARD_RESOLUTIONS.has(value)) ? (["withoutVideoStandard", "withVideoStandard"] as const) : []),
+        ...(supported.includes("1080p") ? (["withoutVideo1080", "withVideo1080"] as const) : []),
+    ];
+}
+
+export function videoTokenTierResolutions(tiers: PriceTierFormValues[]) {
+    return videoTokenPriceResolutions(Array.from(new Set(tiers.map((tier) => tier.resolution))));
+}
+
+export function unsupportedVideoPriceTierResolutions(tiers: PriceTierFormValues[], supportedResolutions: string[]) {
+    const supported = new Set(supportedResolutions.map((value) => videoResolutionComparisonKey(value)));
+    return Array.from(
+        new Set(
+            tiers
+                .filter((tier) => tier.matchMode === "advanced" && tier.resolution && tier.resolution !== "*")
+                .map((tier) => videoResolutionComparisonKey(tier.resolution))
+                .filter((resolution) => resolution && !supported.has(resolution)),
+        ),
+    );
+}
 
 export function sellingDiscount(settings: PriceDiscountSettings) {
     const upstream = Number(settings.upstreamDiscount);
@@ -87,7 +126,7 @@ export function defaultPriceTier(matchMode: PriceTierMatchMode = "default"): Pri
     };
 }
 
-export function videoTokenPriceTiersFromMatrix(matrix: VideoTokenPriceMatrix, providerModelKey = "", originalMatrix?: VideoTokenPriceMatrix): PriceTierFormValues[] {
+export function videoTokenPriceTiersFromMatrix(matrix: VideoTokenPriceMatrix, providerModelKey = "", originalMatrix?: VideoTokenPriceMatrix, resolutions?: string[]): PriceTierFormValues[] {
     const tier = (resolution: string, operation: string, outputTokenPrice: number, originalOutputTokenPrice?: number): PriceTierFormValues => ({
         ...defaultPriceTier("advanced"),
         operation,
@@ -97,55 +136,54 @@ export function videoTokenPriceTiersFromMatrix(matrix: VideoTokenPriceMatrix, pr
         outputTokenPrice,
         originalOutputTokenPrice: originalOutputTokenPrice !== undefined && originalOutputTokenPrice > 0 ? originalOutputTokenPrice : undefined,
     });
-    return [
-        tier("480p", "*", matrix.withoutVideoStandard, originalMatrix?.withoutVideoStandard),
-        tier("720p", "*", matrix.withoutVideoStandard, originalMatrix?.withoutVideoStandard),
-        tier("1080p", "*", matrix.withoutVideo1080, originalMatrix?.withoutVideo1080),
-        tier("480p", "video_to_video", matrix.withVideoStandard, originalMatrix?.withVideoStandard),
-        tier("720p", "video_to_video", matrix.withVideoStandard, originalMatrix?.withVideoStandard),
-        tier("1080p", "video_to_video", matrix.withVideo1080, originalMatrix?.withVideo1080),
-    ];
+    return ["*", "video_to_video"].flatMap((operation) =>
+        videoTokenPriceResolutions(resolutions).map((resolution) => {
+            const standard = VIDEO_TOKEN_STANDARD_RESOLUTIONS.has(resolution);
+            const price = operation === "*" ? (standard ? matrix.withoutVideoStandard : matrix.withoutVideo1080) : standard ? matrix.withVideoStandard : matrix.withVideo1080;
+            const originalPrice = operation === "*" ? (standard ? originalMatrix?.withoutVideoStandard : originalMatrix?.withoutVideo1080) : standard ? originalMatrix?.withVideoStandard : originalMatrix?.withVideo1080;
+            return tier(resolution, operation, price, originalPrice);
+        }),
+    );
 }
 
-export function videoTokenPriceMatrixFromTiers(tiers: PriceTierFormValues[]): VideoTokenPriceMatrix | undefined {
-    return videoTokenPriceMatrixFromTiersBy(tiers, (tier) => Number(tier.outputTokenPrice || 0));
+export function videoTokenPriceMatrixFromTiers(tiers: PriceTierFormValues[], resolutions?: string[]): VideoTokenPriceMatrix | undefined {
+    return videoTokenPriceMatrixFromTiersBy(tiers, (tier) => Number(tier.outputTokenPrice || 0), resolutions);
 }
 
-export function videoTokenOriginalPriceMatrixFromTiers(tiers: PriceTierFormValues[]): VideoTokenPriceMatrix | undefined {
-    return videoTokenPriceMatrixFromTiersBy(tiers, (tier) => Number(tier.originalOutputTokenPrice || 0));
+export function videoTokenOriginalPriceMatrixFromTiers(tiers: PriceTierFormValues[], resolutions?: string[]): VideoTokenPriceMatrix | undefined {
+    return videoTokenPriceMatrixFromTiersBy(tiers, (tier) => Number(tier.originalOutputTokenPrice || 0), resolutions);
 }
 
-function videoTokenPriceMatrixFromTiersBy(tiers: PriceTierFormValues[], price: (tier: PriceTierFormValues) => number): VideoTokenPriceMatrix | undefined {
-    if (tiers.length !== 6) return undefined;
+function videoTokenPriceMatrixFromTiersBy(tiers: PriceTierFormValues[], price: (tier: PriceTierFormValues) => number, resolutions?: string[]): VideoTokenPriceMatrix | undefined {
+    const supportedResolutions = videoTokenPriceResolutions(resolutions);
+    if (!supportedResolutions.length || tiers.length !== supportedResolutions.length * 2) return undefined;
     const prices = new Map<string, number>();
     for (const tier of tiers) {
         if (tier.matchMode !== "advanced" || tier.billingMode !== "token" || tier.videoSeconds > 0 || tier.imageCount > 0) return undefined;
         const operation = tier.operation || "*";
         if (operation !== "*" && operation !== "video_to_video") return undefined;
-        if (!["480p", "720p", "1080p"].includes(tier.resolution)) return undefined;
+        if (!supportedResolutions.includes(tier.resolution as (typeof DEFAULT_VIDEO_TOKEN_PRICE_RESOLUTIONS)[number])) return undefined;
         const key = `${operation}:${tier.resolution}`;
         if (prices.has(key)) return undefined;
         prices.set(key, price(tier));
     }
-    const without480 = prices.get("*:480p");
-    const without720 = prices.get("*:720p");
-    const without1080 = prices.get("*:1080p");
-    const with480 = prices.get("video_to_video:480p");
-    const with720 = prices.get("video_to_video:720p");
-    const with1080 = prices.get("video_to_video:1080p");
-    if (without480 === undefined || without720 === undefined || without1080 === undefined || with480 === undefined || with720 === undefined || with1080 === undefined || without480 !== without720 || with480 !== with720) return undefined;
+    if (["*", "video_to_video"].some((operation) => supportedResolutions.some((resolution) => !prices.has(`${operation}:${resolution}`)))) return undefined;
+    const standardResolutions = supportedResolutions.filter((resolution) => VIDEO_TOKEN_STANDARD_RESOLUTIONS.has(resolution));
+    const withoutStandard = standardResolutions.map((resolution) => prices.get(`*:${resolution}`)!);
+    const withStandard = standardResolutions.map((resolution) => prices.get(`video_to_video:${resolution}`)!);
+    if (new Set(withoutStandard).size > 1 || new Set(withStandard).size > 1) return undefined;
     return {
-        withoutVideoStandard: without480,
-        withoutVideo1080: without1080,
-        withVideoStandard: with480,
-        withVideo1080: with1080,
+        withoutVideoStandard: withoutStandard[0] || 0,
+        withoutVideo1080: prices.get("*:1080p") || 0,
+        withVideoStandard: withStandard[0] || 0,
+        withVideo1080: prices.get("video_to_video:1080p") || 0,
     };
 }
 
-export function expandSingleVideoTokenPriceTier(tiers: PriceTierFormValues[]): PriceTierFormValues[] {
+export function expandSingleVideoTokenPriceTier(tiers: PriceTierFormValues[], resolutions?: string[]): PriceTierFormValues[] {
     if (tiers.length !== 1 || tiers[0].billingMode !== "token") return tiers;
     const price = Number(tiers[0].outputTokenPrice || 0);
-    return videoTokenPriceTiersFromMatrix({ withoutVideoStandard: price, withoutVideo1080: price, withVideoStandard: price, withVideo1080: price }, tiers[0].providerModelKey);
+    return videoTokenPriceTiersFromMatrix({ withoutVideoStandard: price, withoutVideo1080: price, withVideoStandard: price, withVideo1080: price }, tiers[0].providerModelKey, undefined, resolutions);
 }
 
 export function priceTierToForm(tier: ChannelModelPriceTier): PriceTierFormValues {

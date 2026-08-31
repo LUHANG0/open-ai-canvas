@@ -1,10 +1,34 @@
 package service
 
 import (
+	"strings"
 	"testing"
 
 	"infinite-canvas/backend/internal/model"
 )
+
+func TestValidateChannelModelTierCapabilitiesExplainsResolutionMismatch(t *testing.T) {
+	raw := `{"version":1,"video":{"duration":{"selection":"enum","values":[5],"default":5},"resolutions":["720p","1080p"]}}`
+	err := validateChannelModelTierCapabilities([]model.ChannelModelPriceTier{{Resolution: "480p"}}, raw, "video")
+	if err == nil {
+		t.Fatal("validateChannelModelTierCapabilities() should reject an unsupported price-tier resolution")
+	}
+	message := err.Error()
+	for _, expected := range []string{"480P", "当前支持：720P、1080P", "协议参数 > 输出分辨率"} {
+		if !strings.Contains(message, expected) {
+			t.Fatalf("error %q should contain %q", message, expected)
+		}
+	}
+}
+
+func TestValidateChannelModelTierCapabilitiesNormalizesResolutionAliases(t *testing.T) {
+	raw := `{"version":1,"video":{"duration":{"selection":"enum","values":[5],"default":5},"resolutions":["480P","720P","1080P"]}}`
+	for _, resolution := range []string{"480", "480p", "480P", "low"} {
+		if err := validateChannelModelTierCapabilities([]model.ChannelModelPriceTier{{Resolution: resolution}}, raw, "video"); err != nil {
+			t.Fatalf("resolution alias %q should be supported: %v", resolution, err)
+		}
+	}
+}
 
 func TestNormalizeChannelModelContract(t *testing.T) {
 	channel := &model.ModelChannel{APIKey: "test-key"}

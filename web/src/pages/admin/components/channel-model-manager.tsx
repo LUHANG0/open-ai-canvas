@@ -24,10 +24,15 @@ import {
     priceTierVideoSecondsFromForm,
     sellingDiscount,
     skuSelectorFromForm,
+    supportsVideoTokenPriceMatrixResolutions,
+    unsupportedVideoPriceTierResolutions,
     upstreamCostFromOriginal,
     videoTokenOriginalPriceMatrixFromTiers,
+    videoTokenPriceKeys,
     videoTokenPriceMatrixFromTiers,
+    videoTokenPriceResolutions,
     videoTokenPriceTiersFromMatrix,
+    videoTokenTierResolutions,
     type PriceDiscountSettings,
     type PriceTierFormValues,
     type VideoTokenPriceMatrix,
@@ -81,13 +86,24 @@ export function ChannelModelManager({ channel, onClose, onChanged }: { channel: 
     const discountIncrement = Number(Form.useWatch("discountIncrement", form) ?? 0.5);
     const discountSettings = { upstreamDiscount, discountIncrement };
     const hasDefaultPriceTier = priceTiers.some((tier) => tier.matchMode === "default");
-    const tokenMatrixProtocol = modelCapability === "video" && (modelProtocol === "kemei-video" || modelProtocol === "volcengine-ark-video");
-    const videoTokenMatrix = tokenMatrixProtocol ? videoTokenPriceMatrixFromTiers(priceTiers) : undefined;
+    const tokenPriceResolutions = videoTokenPriceResolutions(capabilityConfig?.video?.resolutions || []);
+    const tokenPriceResolutionKey = tokenPriceResolutions.join(",");
+    const tokenMatrixProtocol = modelCapability === "video" && supportsVideoTokenPriceMatrixResolutions(capabilityConfig?.video?.resolutions || []) && (modelProtocol === "kemei-video" || modelProtocol === "volcengine-ark-video");
+    const videoTokenMatrix = tokenMatrixProtocol ? videoTokenPriceMatrixFromTiers(priceTiers, tokenPriceResolutions) : undefined;
 
     useEffect(() => {
-        if (!tokenMatrixProtocol || priceTiers.length !== 1 || priceTiers[0].billingMode !== "token") return;
-        form.setFieldValue("priceTiers", expandSingleVideoTokenPriceTier(priceTiers));
-    }, [form, priceTiers, tokenMatrixProtocol]);
+        if (!tokenMatrixProtocol) return;
+        if (priceTiers.length === 1 && priceTiers[0].billingMode === "token") {
+            form.setFieldValue("priceTiers", expandSingleVideoTokenPriceTier(priceTiers, tokenPriceResolutions));
+            return;
+        }
+        const currentResolutions = videoTokenTierResolutions(priceTiers);
+        const currentMatrix = videoTokenPriceMatrixFromTiers(priceTiers, currentResolutions);
+        if (!currentMatrix || currentResolutions.join(",") === tokenPriceResolutionKey) return;
+        const originalMatrix = videoTokenOriginalPriceMatrixFromTiers(priceTiers, currentResolutions);
+        const tierProviderModelKey = priceTiers.find((tier) => tier.providerModelKey)?.providerModelKey || "";
+        form.setFieldValue("priceTiers", videoTokenPriceTiersFromMatrix(currentMatrix, tierProviderModelKey, originalMatrix, tokenPriceResolutions));
+    }, [form, priceTiers, tokenMatrixProtocol, tokenPriceResolutionKey]);
 
     useEffect(() => {
         if (priceEntryMode !== "discount" || sellingDiscount(discountSettings) === undefined) return;
@@ -604,18 +620,20 @@ export function ChannelModelManager({ channel, onClose, onChanged }: { channel: 
                                     rules={[
                                         {
                                             validator: async (_, value: PriceTierFormValues[]) => {
+                                                const requiredPriceKeys = videoTokenPriceKeys(tokenPriceResolutions);
                                                 if (priceEntryMode === "discount") {
-                                                    const originalMatrix = videoTokenOriginalPriceMatrixFromTiers(value || []);
-                                                    if (!originalMatrix || Object.values(originalMatrix).some((price) => !Number.isFinite(price) || price <= 0)) throw new Error("请完整填写四个视频 Token 原价");
+                                                    const originalMatrix = videoTokenOriginalPriceMatrixFromTiers(value || [], tokenPriceResolutions);
+                                                    if (!originalMatrix || requiredPriceKeys.some((key) => !Number.isFinite(originalMatrix[key]) || originalMatrix[key] <= 0)) throw new Error("请完整填写当前分辨率对应的视频 Token 原价");
                                                 }
-                                                const matrix = videoTokenPriceMatrixFromTiers(value || []);
-                                                if (!matrix || Object.values(matrix).some((price) => !Number.isFinite(price) || price <= 0)) throw new Error("请完整填写四个视频 Token 价格");
+                                                const matrix = videoTokenPriceMatrixFromTiers(value || [], tokenPriceResolutions);
+                                                if (!matrix || requiredPriceKeys.some((key) => !Number.isFinite(matrix[key]) || matrix[key] <= 0)) throw new Error("请完整填写当前分辨率对应的视频 Token 价格");
                                             },
                                         },
                                     ]}
                                 >
                                     <VideoTokenPricingMatrix
                                         protocol={modelProtocol}
+                                        resolutions={tokenPriceResolutions}
                                         entryMode={priceEntryMode}
                                         discountSettings={discountSettings}
                                         onBillingModeChange={(billingMode) => form.setFieldValue("priceTiers", [{ ...defaultPriceTier(), billingMode }])}
@@ -629,6 +647,13 @@ export function ChannelModelManager({ channel, onClose, onChanged }: { channel: 
                                             validator: async (_, value) => {
                                                 if (!value?.length) throw new Error("请至少配置一个价格档");
                                                 if (value.filter((tier: PriceTierFormValues) => tier.matchMode === "default").length > 1) throw new Error("只能配置一个所有规格统一价格");
+                                                if (modelCapability === "video") {
+                                                    const unsupported = unsupportedVideoPriceTierResolutions(value, capabilityConfig?.video?.resolutions || []);
+                                                    if (unsupported.length) {
+                                                        const current = (capabilityConfig?.video?.resolutions || []).map((resolution) => resolution.toUpperCase()).join("、") || "未配置";
+                                                        throw new Error(`价格档 ${unsupported.map((resolution) => resolution.toUpperCase()).join("、")} 与模型能力不一致；当前支持：${current}。请修改上方“协议参数 > 输出分辨率”，或删除对应价格档`);
+                                                    }
+                                                }
                                             },
                                         },
                                     ]}
@@ -749,6 +774,7 @@ function VideoTokenPricingMatrix({
     onChange,
     onBillingModeChange,
     protocol,
+    resolutions,
     entryMode,
     discountSettings,
 }: {
@@ -756,21 +782,25 @@ function VideoTokenPricingMatrix({
     onChange?: (value: PriceTierFormValues[]) => void;
     onBillingModeChange: (value: "fixed_request" | "per_second") => void;
     protocol?: ModelProtocol;
+    resolutions: string[];
     entryMode: PriceEntryMode;
     discountSettings: PriceDiscountSettings;
 }) {
-    const matrix = videoTokenPriceMatrixFromTiers(value) || { withoutVideoStandard: 0, withoutVideo1080: 0, withVideoStandard: 0, withVideo1080: 0 };
-    const originalMatrix = videoTokenOriginalPriceMatrixFromTiers(value) || { withoutVideoStandard: 0, withoutVideo1080: 0, withVideoStandard: 0, withVideo1080: 0 };
+    const matrix = videoTokenPriceMatrixFromTiers(value, resolutions) || { withoutVideoStandard: 0, withoutVideo1080: 0, withVideoStandard: 0, withVideo1080: 0 };
+    const originalMatrix = videoTokenOriginalPriceMatrixFromTiers(value, resolutions) || { withoutVideoStandard: 0, withoutVideo1080: 0, withVideoStandard: 0, withVideo1080: 0 };
     const providerModelKey = value.find((tier) => tier.providerModelKey)?.providerModelKey || "";
     const providerLabel = protocol === "volcengine-ark-video" ? "火山方舟" : "可美视频";
+    const standardResolutions = resolutions.filter((resolution) => resolution === "480p" || resolution === "720p");
+    const has1080 = resolutions.includes("1080p");
+    const priceGridClassName = standardResolutions.length && has1080 ? "grid grid-cols-2 gap-3" : "grid gap-3";
     const update = (key: keyof VideoTokenPriceMatrix, next: number | null) => {
         if (entryMode === "direct") {
-            onChange?.(videoTokenPriceTiersFromMatrix({ ...matrix, [key]: Number(next || 0) }, providerModelKey));
+            onChange?.(videoTokenPriceTiersFromMatrix({ ...matrix, [key]: Number(next || 0) }, providerModelKey, undefined, resolutions));
             return;
         }
         const nextOriginalMatrix = { ...originalMatrix, [key]: Number(next || 0) };
         const nextMatrix = { ...matrix, [key]: discountedPriceFromOriginal(next ?? undefined, discountSettings) };
-        onChange?.(videoTokenPriceTiersFromMatrix(nextMatrix, providerModelKey, nextOriginalMatrix));
+        onChange?.(videoTokenPriceTiersFromMatrix(nextMatrix, providerModelKey, nextOriginalMatrix, resolutions));
     };
     const priceInput = (key: keyof VideoTokenPriceMatrix, label: string) => {
         const original = originalMatrix[key] || undefined;
@@ -802,7 +832,9 @@ function VideoTokenPricingMatrix({
             <div className="admin-price-tier-card-header">
                 <div>
                     <div className="text-sm font-medium">{providerLabel} Token 批量定价</div>
-                    <div className="mt-0.5 text-[var(--fs-tiny)] text-foreground/45">输入 4 个{entryMode === "discount" ? "人民币原价，系统换算售价并" : "价格，"}保存时自动生成 6 个分辨率价格档。</div>
+                    <div className="mt-0.5 text-[var(--fs-tiny)] text-foreground/45">
+                        按模型支持的 {resolutions.map((resolution) => resolution.toUpperCase()).join(" / ")} 定价，保存时自动生成 {resolutions.length * 2} 个价格档。
+                    </div>
                 </div>
                 <Segmented
                     size="small"
@@ -823,9 +855,9 @@ function VideoTokenPricingMatrix({
                         <div className="text-xs font-medium">无视频输入</div>
                         <div className="mt-1 text-[var(--fs-tiny)] leading-5 text-foreground/45">文生视频和图生视频使用这组价格。</div>
                     </div>
-                    <div className="grid grid-cols-2 gap-3">
-                        {priceInput("withoutVideoStandard", "480p / 720p")}
-                        {priceInput("withoutVideo1080", "1080p")}
+                    <div className={priceGridClassName}>
+                        {standardResolutions.length ? priceInput("withoutVideoStandard", standardResolutions.map((resolution) => resolution.toUpperCase()).join(" / ")) : null}
+                        {has1080 ? priceInput("withoutVideo1080", "1080P") : null}
                     </div>
                 </div>
                 <div className="rounded-lg border border-border/70 bg-muted/20 p-3">
@@ -833,9 +865,9 @@ function VideoTokenPricingMatrix({
                         <div className="text-xs font-medium">含视频输入</div>
                         <div className="mt-1 text-[var(--fs-tiny)] leading-5 text-foreground/45">请求携带参考视频时优先使用这组价格。</div>
                     </div>
-                    <div className="grid grid-cols-2 gap-3">
-                        {priceInput("withVideoStandard", "480p / 720p")}
-                        {priceInput("withVideo1080", "1080p")}
+                    <div className={priceGridClassName}>
+                        {standardResolutions.length ? priceInput("withVideoStandard", standardResolutions.map((resolution) => resolution.toUpperCase()).join(" / ")) : null}
+                        {has1080 ? priceInput("withVideo1080", "1080P") : null}
                     </div>
                 </div>
             </div>

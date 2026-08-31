@@ -10,10 +10,15 @@ import {
     priceTierVideoSecondsFromForm,
     sellingDiscount,
     skuSelectorFromForm,
+    supportsVideoTokenPriceMatrixResolutions,
+    unsupportedVideoPriceTierResolutions,
     upstreamCostFromOriginal,
     videoTokenOriginalPriceMatrixFromTiers,
+    videoTokenPriceKeys,
     videoTokenPriceMatrixFromTiers,
+    videoTokenPriceResolutions,
     videoTokenPriceTiersFromMatrix,
+    videoTokenTierResolutions,
 } from "../src/pages/admin/components/channel-model-price-tier-form";
 import type { ChannelModelPriceTier } from "../src/services/api/wallet";
 
@@ -82,6 +87,55 @@ describe("channel model price tier defaults", () => {
         expect(skuSelectorFromForm("video", tiers[0])).toEqual({ vquality: "480p" });
         expect(skuSelectorFromForm("video", tiers[3])).toEqual({ operation: "video_to_video", vquality: "480p" });
         expect(videoTokenPriceMatrixFromTiers(tiers)).toEqual({ withoutVideoStandard: 11.5, withoutVideo1080: 12.75, withVideoStandard: 7, withVideo1080: 7.75 });
+    });
+
+    test("only generates Token price tiers for resolutions enabled by the model capability", () => {
+        const matrix = { withoutVideoStandard: 11.5, withoutVideo1080: 12.75, withVideoStandard: 7, withVideo1080: 7.75 };
+        const resolutions = videoTokenPriceResolutions(["720P", "1080P"]);
+        const tiers = videoTokenPriceTiersFromMatrix(matrix, "seedance", undefined, resolutions);
+
+        expect(resolutions).toEqual(["720p", "1080p"]);
+        expect(videoTokenPriceKeys(resolutions)).toEqual(["withoutVideoStandard", "withVideoStandard", "withoutVideo1080", "withVideo1080"]);
+        expect(tiers.map((tier) => [tier.operation, tier.resolution])).toEqual([
+            ["*", "720p"],
+            ["*", "1080p"],
+            ["video_to_video", "720p"],
+            ["video_to_video", "1080p"],
+        ]);
+        expect(videoTokenPriceMatrixFromTiers(tiers, resolutions)).toEqual(matrix);
+    });
+
+    test("supports a two-tier 1080P-only Token matrix", () => {
+        const matrix = { withoutVideoStandard: 0, withoutVideo1080: 51, withVideoStandard: 0, withVideo1080: 31 };
+        const resolutions = videoTokenPriceResolutions(["1080"]);
+        const tiers = videoTokenPriceTiersFromMatrix(matrix, "seedance", undefined, resolutions);
+
+        expect(tiers).toHaveLength(2);
+        expect(videoTokenPriceKeys(resolutions)).toEqual(["withoutVideo1080", "withVideo1080"]);
+        expect(videoTokenPriceMatrixFromTiers(tiers, resolutions)).toEqual(matrix);
+    });
+
+    test("removes stale 480P tiers after capability shrink while preserving prices and original drafts", () => {
+        const matrix = { withoutVideoStandard: 36.8, withoutVideo1080: 40.8, withVideoStandard: 22.4, withVideo1080: 24.8 };
+        const original = { withoutVideoStandard: 46, withoutVideo1080: 51, withVideoStandard: 28, withVideo1080: 31 };
+        const existing = videoTokenPriceTiersFromMatrix(matrix, "seedance", original);
+        const currentResolutions = videoTokenTierResolutions(existing);
+        const nextResolutions = videoTokenPriceResolutions(["720p", "1080p"]);
+        const next = videoTokenPriceTiersFromMatrix(videoTokenPriceMatrixFromTiers(existing, currentResolutions)!, "seedance", videoTokenOriginalPriceMatrixFromTiers(existing, currentResolutions), nextResolutions);
+
+        expect(next).toHaveLength(4);
+        expect(next.some((tier) => tier.resolution === "480p")).toBe(false);
+        expect(videoTokenPriceMatrixFromTiers(next, nextResolutions)).toEqual(matrix);
+        expect(videoTokenOriginalPriceMatrixFromTiers(next, nextResolutions)).toEqual(original);
+    });
+
+    test("reports stale manual price-tier resolutions with normalized aliases", () => {
+        const tiers = [{ ...defaultPriceTier("advanced"), resolution: "480P" }];
+
+        expect(unsupportedVideoPriceTierResolutions(tiers, ["720p", "1080p"])).toEqual(["480p"]);
+        expect(unsupportedVideoPriceTierResolutions(tiers, ["480"])).toEqual([]);
+        expect(supportsVideoTokenPriceMatrixResolutions(["480P", "720", "1080p"])).toBe(true);
+        expect(supportsVideoTokenPriceMatrixResolutions(["720p", "2K"])).toBe(false);
     });
 
     test("upgrades a single video Token price into an editable matrix without changing its price", () => {

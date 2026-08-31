@@ -282,8 +282,13 @@ func validateChannelModelTierCapabilities(tiers []model.ChannelModelPriceTier, r
 		return BadAuthRequest("视频模型能力配置无效，无法校验价格档规格")
 	}
 	resolutionSupported := make(map[string]bool, len(config.Video.Resolutions))
+	supportedResolutionLabels := make([]string, 0, len(config.Video.Resolutions))
 	for _, resolution := range config.Video.Resolutions {
 		resolutionSupported[normalizeChannelModelTierResolution(resolution)] = true
+		label := strings.ToUpper(strings.TrimSpace(resolution))
+		if label != "" {
+			supportedResolutionLabels = append(supportedResolutionLabels, label)
+		}
 	}
 	durationSupported := make(map[int]bool, len(config.Video.Duration.Values))
 	for _, seconds := range config.Video.Duration.Values {
@@ -291,7 +296,12 @@ func validateChannelModelTierCapabilities(tiers []model.ChannelModelPriceTier, r
 	}
 	for _, tier := range tiers {
 		if tier.Resolution != "*" && !resolutionSupported[normalizeChannelModelTierResolution(tier.Resolution)] {
-			return BadAuthRequest("价格档分辨率不在该视频模型支持范围内：" + tier.Resolution)
+			supported := strings.Join(supportedResolutionLabels, "、")
+			if supported == "" {
+				supported = "未配置"
+			}
+			requested := strings.ToUpper(strings.TrimSpace(tier.Resolution))
+			return BadAuthRequest(fmt.Sprintf("价格档分辨率 %s 与模型能力配置不一致；当前支持：%s。请在“协议参数 > 输出分辨率”中启用 %s，或删除该价格档", requested, supported, requested))
 		}
 		if tier.VideoSeconds == 0 {
 			continue
