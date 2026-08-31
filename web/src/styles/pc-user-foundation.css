@@ -1,11 +1,28 @@
 /*
  * PC 用户端 Foundation Token
  *
- * 只提供 Primitive 、Semantic 和 Component 变量，不声明页面选择器，
+ * 只提供 Primitive、Semantic 和 Component 变量；用户端语义覆盖仅挂载到白名单容器，
  * 不覆盖 Admin 私有 Token。TypeScript 镜像值维护在 lib/app-theme.ts。
  */
 
 :root {
+    /* Primitive: Brand V2 Electric Iris and AI runtime colors */
+    --app-brand-50: #f5f3ff;
+    --app-brand-100: #ece9ff;
+    --app-brand-200: #dcd6ff;
+    --app-brand-300: #c4baff;
+    --app-brand-400: #a79bff;
+    --app-brand-500: #8b7cf6;
+    --app-brand-600: #6d5dfb;
+    --app-brand-700: #5b4bdb;
+    --app-brand-800: #4438a8;
+    --app-brand-900: #302779;
+    --app-ai-50: #eafbfc;
+    --app-ai-100: #d0f4f6;
+    --app-ai-400: #5dd6df;
+    --app-ai-500: #1aa8b4;
+    --app-ai-600: #0e7f8c;
+
     /* Primitive: typography */
     --app-font-sans: "SF Pro Display", "SF Pro Text", -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", "Helvetica Neue", Arial, sans-serif;
     --app-font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
@@ -180,6 +197,181 @@
     --app-shadow-overlay: 0 24px 72px rgba(0, 0, 0, 0.48);
     --app-skeleton-from: rgba(255, 255, 255, 0.055);
     --app-skeleton-to: rgba(255, 255, 255, 0.11);
+}
+
+/*
+ * Brand V2 semantic overrides are deliberately scoped to PC user surfaces.
+ * The root and .dark values above remain frozen for Admin and legacy callers.
+ */
+@media (min-width: 1024px) {
+    :where(.app-spatial-workspace, body.app-spatial-overlays, .pc-canvas-workspace, .pc-auth-scene, .pc-system-page) {
+        --app-bg-canvas: #eff1f7;
+        --app-bg-page: #f7f8fb;
+        --app-surface-1: #ffffff;
+        --app-surface-2: #f3f5fa;
+        --app-surface-3: #e9ecf4;
+        --app-surface-overlay: #ffffff;
+        --app-surface-subtle: rgba(48, 55, 78, 0.04);
+        --app-text-primary: #181a26;
+        --app-text-secondary: rgba(24, 26, 38, 0.72);
+        --app-text-muted: rgba(24, 26, 38, 0.52);
+        --app-text-inverse: #ffffff;
+        --app-border-subtle: rgba(48, 55, 78, 0.1);
+        --app-border-default: rgba(48, 55, 78, 0.15);
+        --app-border-strong: rgba(48, 55, 78, 0.22);
+        --app-border-interactive: rgba(91, 75, 219, 0.38);
+
+        --app-action-primary-bg: var(--app-brand-700);
+        --app-action-primary-hover: #4e3fc6;
+        --app-action-primary-active: var(--app-brand-800);
+        --app-action-primary-fg: #ffffff;
+        --app-action-secondary-bg: transparent;
+        --app-action-secondary-hover: rgba(91, 75, 219, 0.07);
+        --app-action-secondary-active: rgba(91, 75, 219, 0.12);
+        --app-action-secondary-fg: #181a26;
+        --app-action-secondary-border: rgba(48, 55, 78, 0.18);
+        --app-action-check-bg: var(--app-brand-600);
+        --app-action-check-hover: var(--app-brand-700);
+        --app-action-check-active: var(--app-brand-800);
+        --app-action-check-fg: #ffffff;
+        --app-switch-checked-bg: var(--app-brand-600);
+        --app-switch-checked-hover: var(--app-brand-700);
+        --app-switch-checked-handle: #ffffff;
+        --app-selection-bg: rgba(91, 75, 219, 0.1);
+        --app-selection-hover: rgba(91, 75, 219, 0.14);
+        --app-selection-active: rgba(91, 75, 219, 0.18);
+        --app-selection-fg: var(--app-brand-800);
+        --app-selection-border: rgba(91, 75, 219, 0.38);
+        --app-focus-ring: rgba(91, 75, 219, 0.26);
+
+        --app-status-info-bg: rgba(68, 56, 168, 0.07);
+        --app-status-info-hover: rgba(68, 56, 168, 0.11);
+        --app-status-info-border: rgba(68, 56, 168, 0.2);
+        --app-status-info-fg: var(--app-brand-800);
+        --app-status-success-bg: rgba(21, 128, 61, 0.09);
+        --app-status-success-border: rgba(21, 128, 61, 0.24);
+        --app-status-success-fg: #15803d;
+        --app-status-warning-bg: rgba(180, 83, 9, 0.1);
+        --app-status-warning-border: rgba(180, 83, 9, 0.26);
+        --app-status-warning-fg: #b45309;
+        --app-status-error-bg: rgba(220, 38, 38, 0.09);
+        --app-status-error-border: rgba(220, 38, 38, 0.24);
+        --app-status-error-fg: #dc2626;
+        --app-status-running-bg: rgba(14, 127, 140, 0.1);
+        --app-status-running-border: rgba(14, 127, 140, 0.26);
+        --app-status-running-fg: var(--app-ai-600);
+
+        --app-control-bg: #ffffff;
+        --app-control-border: rgba(48, 55, 78, 0.18);
+        --app-control-disabled-bg: rgba(48, 55, 78, 0.06);
+        --app-control-disabled-fg: rgba(24, 26, 38, 0.36);
+        --app-control-focus: rgba(91, 75, 219, 0.26);
+        --app-switch-off-bg: rgba(48, 55, 78, 0.22);
+        --app-switch-off-hover: rgba(48, 55, 78, 0.3);
+        --app-switch-off-handle: #ffffff;
+        --app-menu-bg: rgba(91, 75, 219, 0.1);
+        --app-menu-text: var(--app-brand-800);
+        --app-menu-active-bg: rgba(91, 75, 219, 0.1);
+        --app-menu-selected-bg: rgba(91, 75, 219, 0.14);
+        --app-table-header-text: rgba(24, 26, 38, 0.58);
+        --app-table-row-hover: rgba(91, 75, 219, 0.035);
+        --app-table-selected-bg: rgba(91, 75, 219, 0.08);
+        --app-table-selected-hover: rgba(91, 75, 219, 0.12);
+        --app-shadow-surface: 0 1px 2px rgba(35, 38, 57, 0.045);
+        --app-shadow-raised: 0 12px 30px rgba(35, 38, 57, 0.1);
+        --app-shadow-overlay: 0 24px 68px rgba(35, 38, 57, 0.16);
+        --app-skeleton-from: rgba(48, 55, 78, 0.055);
+        --app-skeleton-to: rgba(48, 55, 78, 0.11);
+
+        --app-brand-gradient: linear-gradient(135deg, var(--app-brand-600), var(--app-brand-400));
+        --app-brand-glow: 0 18px 52px rgba(91, 75, 219, 0.2);
+        --app-ai-running-bg: var(--app-status-running-bg);
+        --app-ai-running-border: var(--app-status-running-border);
+        --app-ai-running-fg: var(--app-status-running-fg);
+    }
+
+    .dark :where(.app-spatial-workspace, body.app-spatial-overlays, .pc-canvas-workspace, .pc-auth-scene, .pc-system-page) {
+        --app-bg-canvas: #0a0c13;
+        --app-bg-page: #0e1018;
+        --app-surface-1: #151824;
+        --app-surface-2: #1b1f2d;
+        --app-surface-3: #232838;
+        --app-surface-overlay: #1b1f2d;
+        --app-surface-subtle: rgba(255, 255, 255, 0.055);
+        --app-text-primary: #f5f5fb;
+        --app-text-secondary: rgba(245, 245, 251, 0.74);
+        --app-text-muted: rgba(245, 245, 251, 0.54);
+        --app-text-inverse: #11131d;
+        --app-border-subtle: rgba(226, 229, 255, 0.1);
+        --app-border-default: rgba(226, 229, 255, 0.16);
+        --app-border-strong: rgba(226, 229, 255, 0.24);
+        --app-border-interactive: rgba(167, 155, 255, 0.46);
+
+        --app-action-primary-bg: var(--app-brand-500);
+        --app-action-primary-hover: #9b8eff;
+        --app-action-primary-active: #8172ef;
+        --app-action-primary-fg: #11131d;
+        --app-action-secondary-bg: transparent;
+        --app-action-secondary-hover: rgba(139, 124, 246, 0.1);
+        --app-action-secondary-active: rgba(139, 124, 246, 0.16);
+        --app-action-secondary-fg: #f5f5fb;
+        --app-action-secondary-border: rgba(226, 229, 255, 0.24);
+        --app-action-check-bg: var(--app-brand-500);
+        --app-action-check-hover: #9b8eff;
+        --app-action-check-active: #8172ef;
+        --app-action-check-fg: #11131d;
+        --app-switch-checked-bg: var(--app-brand-500);
+        --app-switch-checked-hover: #9b8eff;
+        --app-switch-checked-handle: #11131d;
+        --app-selection-bg: rgba(139, 124, 246, 0.16);
+        --app-selection-hover: rgba(139, 124, 246, 0.22);
+        --app-selection-active: rgba(139, 124, 246, 0.28);
+        --app-selection-fg: #c7c0ff;
+        --app-selection-border: rgba(167, 155, 255, 0.46);
+        --app-focus-ring: rgba(167, 155, 255, 0.34);
+
+        --app-status-info-bg: rgba(199, 192, 255, 0.1);
+        --app-status-info-hover: rgba(199, 192, 255, 0.14);
+        --app-status-info-border: rgba(199, 192, 255, 0.22);
+        --app-status-info-fg: #c7c0ff;
+        --app-status-success-bg: rgba(74, 222, 128, 0.1);
+        --app-status-success-border: rgba(74, 222, 128, 0.26);
+        --app-status-success-fg: #4ade80;
+        --app-status-warning-bg: rgba(251, 191, 36, 0.11);
+        --app-status-warning-border: rgba(251, 191, 36, 0.28);
+        --app-status-warning-fg: #fbbf24;
+        --app-status-error-bg: rgba(248, 113, 113, 0.1);
+        --app-status-error-border: rgba(248, 113, 113, 0.26);
+        --app-status-error-fg: #f87171;
+        --app-status-running-bg: rgba(93, 214, 223, 0.12);
+        --app-status-running-border: rgba(93, 214, 223, 0.28);
+        --app-status-running-fg: var(--app-ai-400);
+
+        --app-control-bg: rgba(255, 255, 255, 0.04);
+        --app-control-border: rgba(226, 229, 255, 0.24);
+        --app-control-disabled-bg: rgba(255, 255, 255, 0.06);
+        --app-control-disabled-fg: rgba(245, 245, 251, 0.38);
+        --app-control-focus: rgba(167, 155, 255, 0.34);
+        --app-switch-off-bg: rgba(226, 229, 255, 0.22);
+        --app-switch-off-hover: rgba(226, 229, 255, 0.3);
+        --app-switch-off-handle: #f5f5fb;
+        --app-menu-bg: rgba(139, 124, 246, 0.16);
+        --app-menu-text: #c7c0ff;
+        --app-menu-active-bg: rgba(139, 124, 246, 0.16);
+        --app-menu-selected-bg: rgba(139, 124, 246, 0.22);
+        --app-table-header-text: rgba(245, 245, 251, 0.62);
+        --app-table-row-hover: rgba(139, 124, 246, 0.055);
+        --app-table-selected-bg: rgba(139, 124, 246, 0.12);
+        --app-table-selected-hover: rgba(139, 124, 246, 0.18);
+        --app-shadow-surface: 0 1px 2px rgba(0, 0, 0, 0.36);
+        --app-shadow-raised: 0 14px 36px rgba(0, 0, 0, 0.48);
+        --app-shadow-overlay: 0 26px 76px rgba(0, 0, 0, 0.56);
+        --app-skeleton-from: rgba(226, 229, 255, 0.06);
+        --app-skeleton-to: rgba(226, 229, 255, 0.13);
+
+        --app-brand-gradient: linear-gradient(135deg, var(--app-brand-500), var(--app-brand-300));
+        --app-brand-glow: 0 20px 58px rgba(139, 124, 246, 0.26);
+    }
 }
 
 @media (prefers-reduced-motion: reduce) {
