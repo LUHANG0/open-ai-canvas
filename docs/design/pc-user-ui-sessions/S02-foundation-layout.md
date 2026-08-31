@@ -51,6 +51,12 @@
 - 导航数据、功能开关、登出、公告与命令面板：保持原行为
 - `<1024px` 信息架构与侧栏展开方式：未重构
 
+## 集成审查澄清
+
+- `isSpatialWorkbenchPath(pathname)` 对普通用户空间返回 `true`，仅对 `/canvas/:id` 画布编辑器和 `/admin/**` 全屏例外返回 `false`。
+- 因此 `data-workspace-layout={spatialWorkbench ? "standard" : "fullscreen"}` 语义正确：普通工作区是 `standard`，Canvas/Admin 例外是 `fullscreen`。
+- 全库搜索确认该 `data-workspace-layout` 当前没有 CSS 或 JavaScript 消费者，仅作为 DOM 诊断标记，不影响现有布局与业务行为。
+
 ## 验证
 
 - 文件所有权检查：仅修改允许的布局目录、`user-layout.tsx` 和本会话记录
