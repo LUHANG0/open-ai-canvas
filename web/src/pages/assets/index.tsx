@@ -790,6 +790,7 @@ function AssetsBatchBar({ count, allSelected, onSelectAll, onClear, onExport, on
             count={count}
             itemLabel="个素材"
             onClear={onClear}
+            clearLabel="取消选择"
             actions={
                 <div className="assets-batch-actions">
                     <Button size="small" icon={<CheckCheck className="size-3.5" />} disabled={allSelected} onClick={onSelectAll}>

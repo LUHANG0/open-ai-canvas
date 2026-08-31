@@ -71,6 +71,7 @@ describe("creation library button", () => {
     test("Token 计费展示当前精确档位与 usage 结算说明，不展示伪固定总价", () => {
         const source = compactSource(readFileSync(resolve(import.meta.dir, "../src/pages/create/index.tsx"), "utf8"));
         const pickerSource = compactSource(readFileSync(resolve(import.meta.dir, "../src/components/model-picker.tsx"), "utf8"));
+        const workspaceStyles = compactSource(readFileSync(resolve(import.meta.dir, "../src/pages/create/creation-workspace.css"), "utf8"));
         const pricingStart = source.indexOf("const pricingRequest = {");
         const pricingEnd = source.indexOf("const pricing = requestCreditPricing(pricingRequest);", pricingStart);
         const pricingSource = source.slice(pricingStart, pricingEnd);
@@ -84,6 +85,11 @@ describe("creation library button", () => {
         expect(source).toContain("积分/百万 Token");
         expect(source).toContain("提交时预授权、完成按实际 usage 多退少补");
         expect(source).toContain("showCost ? formattedCredits : `${formattedTokenRate}/1M`");
+        expect(source).toContain('className="creation-token-billing-icon"');
+        expect(source).toContain('className="creation-token-billing-description"');
+        expect(workspaceStyles).toContain(".creation-home .creation-token-billing-note > .creation-token-billing-icon { grid-column: 1;");
+        expect(workspaceStyles).toContain(".creation-home .creation-token-billing-note > strong { grid-column: 2; grid-row: 1;");
+        expect(workspaceStyles).toContain(".creation-home .creation-token-billing-note > .creation-token-billing-description { grid-column: 2; grid-row: 2;");
         expect(pickerSource).toContain('quote && quote.billingMode !== "token"');
     });
 

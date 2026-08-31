@@ -4,12 +4,15 @@ import { resolve } from "node:path";
 
 describe("assets page batch toolbar", () => {
     test("places select all before cancel selection", () => {
-        const source = readFileSync(resolve(import.meta.dir, "../src/pages/assets/index.tsx"), "utf8");
-        const selectAllIndex = source.indexOf(">全选</Button>");
-        const clearSelectionIndex = source.indexOf(">取消选择</Button>");
+        const source = readFileSync(resolve(import.meta.dir, "../src/pages/assets/index.tsx"), "utf8").replace(/\s+/g, " ");
+        const selectionBarSource = readFileSync(resolve(import.meta.dir, "../src/components/ui/pc/data-display.tsx"), "utf8").replace(/\s+/g, " ");
+        const actionsIndex = selectionBarSource.indexOf("{actions}");
+        const clearSelectionIndex = selectionBarSource.indexOf("{clearLabel}");
 
-        expect(selectAllIndex).toBeGreaterThanOrEqual(0);
+        expect(source).toContain("全选 </Button>");
+        expect(source).toContain('clearLabel="取消选择"');
+        expect(actionsIndex).toBeGreaterThanOrEqual(0);
         expect(clearSelectionIndex).toBeGreaterThanOrEqual(0);
-        expect(selectAllIndex).toBeLessThan(clearSelectionIndex);
+        expect(actionsIndex).toBeLessThan(clearSelectionIndex);
     });
 });

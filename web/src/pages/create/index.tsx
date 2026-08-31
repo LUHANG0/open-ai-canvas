@@ -255,7 +255,17 @@ function shotsFromMessages(messages: CreationMessage[]): CreationShot[] {
     return shots;
 }
 
-function completedCreationGenerationTask(input: { taskId: string; task?: GenerationTask; mode: "image" | "video"; prompt: string; result: BackendGenerationResult; conversationId: string; messageId: string; batchIndex?: number; batchCount?: number }): GenerationTask {
+function completedCreationGenerationTask(input: {
+    taskId: string;
+    task?: GenerationTask;
+    mode: "image" | "video";
+    prompt: string;
+    result: BackendGenerationResult;
+    conversationId: string;
+    messageId: string;
+    batchIndex?: number;
+    batchCount?: number;
+}): GenerationTask {
     const now = new Date().toISOString();
     const task = input.task ?? { id: input.taskId, type: input.mode, status: "succeeded" as const, prompt: input.prompt, attempts: 1, createdAt: now, updatedAt: now };
     return projectGenerationTaskResult(
@@ -1117,7 +1127,8 @@ export default function CreatePage() {
                             assistantMessage.id,
                             async ({ resultUrls, effectKey }) => {
                                 await updateOriginAssistant(
-                                    (item) => applyGenerationConsumerEffect(item, effectKey, (current) => ({ ...current, status: "done" as const, content: "图片已生成", resultUrls: Array.from(new Set([...(current.resultUrls || []), ...resultUrls])) })).value,
+                                    (item) =>
+                                        applyGenerationConsumerEffect(item, effectKey, (current) => ({ ...current, status: "done" as const, content: "图片已生成", resultUrls: Array.from(new Set([...(current.resultUrls || []), ...resultUrls])) })).value,
                                 );
                             },
                             { signal: requestLifecycle.signal },
@@ -1466,7 +1477,13 @@ export default function CreatePage() {
                             <section className="creation-thread-stage">
                                 <div className="creation-results">
                                     {activeConversation.messages.map((item, index) => (
-                                        <CreationMessageView key={item.id} item={item} modelName={item.model ? modelDisplayName(config, item.model) : ""} onRetryFailure={() => retryFailedMessage(item, index)} onCreateVariant={() => createVariant(item, index)} />
+                                        <CreationMessageView
+                                            key={item.id}
+                                            item={item}
+                                            modelName={item.model ? modelDisplayName(config, item.model) : ""}
+                                            onRetryFailure={() => retryFailedMessage(item, index)}
+                                            onCreateVariant={() => createVariant(item, index)}
+                                        />
                                     ))}
                                 </div>
                             </section>
@@ -1572,7 +1589,12 @@ function CreationHistoryDrawer({
         if (!query) return conversations;
         return conversations.filter((conversation) => {
             const latest = conversationPreviewMessage(conversation);
-            const searchable = [conversation.title, ...conversation.messages.flatMap((message) => [message.content, displayCreationPrompt(message.content, message.references || [])]), latest?.mode ? modeLabels[latest.mode] : "创作", formatConversationTime(conversation.updatedAt)]
+            const searchable = [
+                conversation.title,
+                ...conversation.messages.flatMap((message) => [message.content, displayCreationPrompt(message.content, message.references || [])]),
+                latest?.mode ? modeLabels[latest.mode] : "创作",
+                formatConversationTime(conversation.updatedAt),
+            ]
                 .filter(Boolean)
                 .join(" ")
                 .toLowerCase();
@@ -2265,7 +2287,11 @@ function CreationComposer(props: ComposerProps) {
     const formattedTokenRate = tokenPricing?.perMillionCredits.toLocaleString("zh-CN", { maximumFractionDigits: 6 });
     const placeholder = props.mode === "text" ? "描述你的故事、角色或想继续讨论的创意" : props.mode === "image" ? "描述画面、人物、场景、构图与风格" : "描述镜头内容、运动、光线与节奏";
     const emptyPlaceholder =
-        props.mode === "video" ? "上传参考素材、输入文字或 @ 参考内容，自由组合图、文、音、视频元素，描述你想生成的镜头。" : props.mode === "image" ? "上传参考素材、输入文字或 @ 参考内容，描述人物、场景、构图与风格。" : "输入故事、角色或创意，也可以使用 @ 引用素材与技能。";
+        props.mode === "video"
+            ? "上传参考素材、输入文字或 @ 参考内容，自由组合图、文、音、视频元素，描述你想生成的镜头。"
+            : props.mode === "image"
+              ? "上传参考素材、输入文字或 @ 参考内容，描述人物、场景、构图与风格。"
+              : "输入故事、角色或创意，也可以使用 @ 引用素材与技能。";
     const referenceCounts = useMemo(() => countCreationAttachments(props.attachments), [props.attachments]);
     const referenceKinds: CreationAttachmentKind[] = ["image", "video", "audio", "file"];
     const supportedReferenceKinds = referenceKinds.filter((kind) => creationAttachmentLimit(props.mode, props.referenceLimits, kind) > 0);
@@ -2296,23 +2322,24 @@ function CreationComposer(props: ComposerProps) {
     }, [props.attachments, props.maxReferences, props.mode, props.model, props.referenceLimits]);
     const invalidReferenceCount = invalidReferenceReasons.size;
     const canSubmit = Boolean(props.model) && Boolean(props.prompt.trim()) && invalidReferenceCount === 0 && !interactionBusy;
-    const actionLabel = props.uploadPendingCount > 0
-        ? `正在上传 ${props.uploadPendingCount} 个素材`
-        : props.referenceReplacementBusy
-          ? "正在替换参考图"
-        : props.busy
-          ? "生成中"
-          : !props.model
-            ? `请先选择${modeLabels[props.mode]}模型`
-            : invalidReferenceCount
-              ? "请先移除或调整不支持的参考素材"
-              : !props.prompt.trim()
-                ? "请先输入创作描述"
-                : showCost
-                  ? `预计消耗 ${formattedCredits} 积分，发送`
-                  : showTokenPrice
-                    ? `按 ${formattedTokenRate} 积分/百万 Token 计费，完成后按实际用量结算`
-                  : "发送";
+    const actionLabel =
+        props.uploadPendingCount > 0
+            ? `正在上传 ${props.uploadPendingCount} 个素材`
+            : props.referenceReplacementBusy
+              ? "正在替换参考图"
+              : props.busy
+                ? "生成中"
+                : !props.model
+                  ? `请先选择${modeLabels[props.mode]}模型`
+                  : invalidReferenceCount
+                    ? "请先移除或调整不支持的参考素材"
+                    : !props.prompt.trim()
+                      ? "请先输入创作描述"
+                      : showCost
+                        ? `预计消耗 ${formattedCredits} 积分，发送`
+                        : showTokenPrice
+                          ? `按 ${formattedTokenRate} 积分/百万 Token 计费，完成后按实际用量结算`
+                          : "发送";
     const referenceEntryHint = !props.model
         ? "可以先上传到素材库；选择模型后再添加为参考"
         : !referencesSupported
@@ -2646,9 +2673,9 @@ function CreationComposer(props: ComposerProps) {
                     ) : null}
                     {showTokenPrice ? (
                         <div className="creation-token-billing-note" role="note">
-                            <CreditSymbol aria-hidden="true" />
+                            <CreditSymbol className="creation-token-billing-icon" aria-hidden="true" />
                             <strong>{formattedTokenRate} 积分/百万 Token</strong>
-                            <span>提交时预授权、完成按实际 usage 多退少补</span>
+                            <span className="creation-token-billing-description">提交时预授权、完成按实际 usage 多退少补</span>
                         </div>
                     ) : null}
                 </div>
@@ -2716,7 +2743,15 @@ function CreationComposer(props: ComposerProps) {
                             <span className="creation-entry-divider" aria-hidden="true" />
                             <div className="creation-entry-group is-input" role="group" aria-label="提示词辅助">
                                 <Tooltip title="用 AI 优化提示词">
-                                    <button type="button" className="creation-chat-control creation-entry-button" onClick={() => setPromptOptimizerOpen(true)} aria-label="优化提示词" aria-expanded={promptOptimizerOpen} aria-haspopup="dialog" disabled={interactionBusy}>
+                                    <button
+                                        type="button"
+                                        className="creation-chat-control creation-entry-button"
+                                        onClick={() => setPromptOptimizerOpen(true)}
+                                        aria-label="优化提示词"
+                                        aria-expanded={promptOptimizerOpen}
+                                        aria-haspopup="dialog"
+                                        disabled={interactionBusy}
+                                    >
                                         <WandSparkles />
                                         <span>优化</span>
                                     </button>
