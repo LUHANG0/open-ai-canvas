@@ -95,6 +95,7 @@
 - `cbedd68` `refactor(canvas): PC panels and overlays - unify editor surfaces`
 - `8660673` `refactor(canvas): public share - refine readonly workspace`
 - `2d7eabe` `refactor(canvas): harden PC density and accessibility`
+- `a9ecc9e` `fix(canvas): keep narrow workbench columns visible`
 - 本记录提交 SHA 由 Git 历史和集成台账登记。
 
 ## 风险与依赖
@@ -132,5 +133,5 @@
 ## 回滚
 
 - 集成前：丢弃 `refactor/pc-ui-r6-canvas-editor` 分支或删除本 worktree，共同基线 `c949021` 不受影响。
-- 集成后按阶段逆序回滚：`git revert 2d7eabe`（PC/移动边界加固）→ `git revert 8660673`（公开分享）→ `git revert cbedd68`（面板与浮层）→ `git revert ede47f9`（编辑器外壳），最后回滚本记录提交。
+- 集成后按阶段逆序回滚：`git revert a9ecc9e`（1024px 列宽保护）→ `git revert 2d7eabe`（PC/移动边界加固）→ `git revert 8660673`（公开分享）→ `git revert cbedd68`（面板与浮层）→ `git revert ede47f9`（编辑器外壳），最后回滚文档提交。
 - 不使用 `git reset --hard`，避免覆盖集成分支上的其他会话成果。
