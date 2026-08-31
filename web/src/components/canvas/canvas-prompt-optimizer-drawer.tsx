@@ -623,7 +623,7 @@ export function CanvasPromptOptimizerDrawer({ open, children, prompt, generation
     } as CSSProperties;
 
     const content = (
-        <div ref={contentRef} className={`pc-canvas-prompt-optimizer canvas-prompt-optimizer-panel${panelInteracting ? " is-interacting" : ""}`} data-canvas-no-zoom>
+        <div ref={contentRef} className={`canvas-prompt-optimizer-panel pc-canvas-prompt-optimizer${panelInteracting ? " is-interacting" : ""}`} data-canvas-no-zoom>
             <div
                 className="canvas-prompt-optimizer-header"
                 onPointerDown={(event) => {

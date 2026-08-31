@@ -2727,7 +2727,7 @@ function CreationComposer(props: ComposerProps) {
                 </div>
                 <Button
                     type="text"
-                    className={`canvas-node-composer-submit ${showCost ? "has-cost" : ""}`}
+                    className={`canvas-node-composer-submit ${showCost || showTokenPrice ? "has-cost" : ""}`}
                     disabled={interactionBusy || !canSubmit}
                     style={
                         {
@@ -2740,10 +2740,10 @@ function CreationComposer(props: ComposerProps) {
                     aria-label={actionLabel}
                     title={actionLabel}
                 >
-                    {showCost ? (
+                    {showCost || showTokenPrice ? (
                         <span className="canvas-node-composer-submit-cost">
                             <CreditSymbol />
-                            <span>{formattedCredits}</span>
+                            <span>{showCost ? formattedCredits : `${formattedTokenRate}/1M`}</span>
                         </span>
                     ) : null}
                     <span className="canvas-node-composer-submit-action" aria-hidden>
