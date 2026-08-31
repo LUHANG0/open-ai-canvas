@@ -1,0 +1,233 @@
+.task-library-page {
+    --task-border: var(--app-border-default);
+    --task-border-soft: var(--app-border-subtle);
+    --task-surface: var(--app-surface-2);
+    --task-surface-strong: var(--app-surface-1);
+    --task-text-secondary: var(--app-text-secondary);
+    --task-text-tertiary: var(--app-text-muted);
+    background: var(--app-bg-page);
+}
+
+.task-library-page .studio-band {
+    padding-bottom: var(--app-space-4);
+    border-bottom: 1px solid var(--app-border-subtle);
+}
+
+.task-library-page .app-page-header {
+    min-height: 88px;
+    padding: var(--app-space-3) 0 var(--app-space-4);
+}
+
+.task-library-page .task-page-total {
+    color: var(--app-text-muted);
+    font-size: var(--app-font-size-label);
+    font-variant-numeric: tabular-nums;
+}
+
+.task-library-page .task-status-filter {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--app-space-3);
+    padding: var(--app-space-3) 0;
+}
+
+.task-library-page .task-status-tabs {
+    display: inline-flex;
+    min-width: 0;
+    align-items: center;
+    gap: 2px;
+    padding: 3px;
+    overflow-x: auto;
+    background: var(--app-surface-2);
+    border: 1px solid var(--app-border-subtle);
+    border-radius: var(--app-control-radius);
+}
+
+.task-library-page .task-status-tab {
+    display: inline-flex;
+    min-height: var(--app-control-height-sm);
+    flex: 0 0 auto;
+    align-items: center;
+    gap: var(--app-space-2);
+    padding: 0 var(--app-space-3);
+    color: var(--app-text-secondary);
+    font-size: var(--app-font-size-control);
+    font-weight: 550;
+    background: transparent;
+    border: 0;
+    border-radius: var(--app-control-radius-sm);
+    cursor: pointer;
+}
+
+.task-library-page .task-status-tab:hover {
+    color: var(--app-text-primary);
+    background: var(--app-action-secondary-hover);
+}
+
+.task-library-page .task-status-tab.is-active {
+    color: var(--app-selection-fg);
+    background: var(--app-surface-1);
+    box-shadow: var(--app-shadow-surface);
+}
+
+.task-library-page .task-status-tab b {
+    min-width: 20px;
+    padding: 1px 5px;
+    color: var(--app-text-muted);
+    font-size: var(--app-font-size-label);
+    font-variant-numeric: tabular-nums;
+    background: var(--app-surface-3);
+    border-radius: 999px;
+}
+
+.task-library-page .task-status-today {
+    flex: 0 0 auto;
+    color: var(--app-text-muted);
+    font-size: var(--app-font-size-label);
+}
+
+.task-library-page .task-library-toolbar {
+    min-height: 0;
+    margin-top: 0;
+    padding: var(--app-space-3) 0 0;
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+}
+
+.task-library-page .task-search-input {
+    width: min(340px, 100%);
+    min-width: 240px;
+}
+
+.task-library-page .task-group-toggle.is-active {
+    color: var(--app-selection-fg);
+    background: var(--app-selection-bg);
+    border-color: var(--app-selection-border);
+}
+
+.task-library-page .task-library-frame {
+    margin-top: var(--app-space-4);
+    padding: var(--app-space-4);
+    background: var(--app-surface-1);
+    border-color: var(--app-border-subtle);
+    box-shadow: var(--app-shadow-surface);
+}
+
+.task-library-page .task-record-table {
+    overflow-x: auto;
+    background: var(--app-surface-1);
+    border-color: var(--app-border-subtle);
+    border-radius: var(--app-surface-radius-sm);
+    box-shadow: none;
+}
+
+.task-library-page .task-record-table-head {
+    min-height: var(--app-table-header-height);
+    padding-inline: var(--app-space-4);
+    color: var(--app-text-muted);
+    background: var(--app-surface-2);
+    border-color: var(--app-border-subtle);
+}
+
+.task-library-page .task-record-list {
+    gap: 0;
+    padding: 0;
+}
+
+.task-library-page .task-record-row {
+    min-height: var(--app-table-row-height);
+    padding: var(--app-space-3) var(--app-space-4);
+    background: var(--app-surface-1);
+    border: 0;
+    border-bottom: 1px solid var(--app-border-subtle);
+    border-radius: 0;
+    box-shadow: none;
+}
+
+.task-library-page .task-record-row:last-child {
+    border-bottom: 0;
+}
+
+.task-library-page .task-record-row:hover,
+.task-library-page .task-record-row:focus-within {
+    background: var(--app-action-secondary-hover);
+    box-shadow: none;
+}
+
+.task-library-page .task-record-thumb,
+.task-library-page .task-record-billing,
+.task-library-page .task-record-billing-empty {
+    border-color: var(--app-border-subtle);
+    background: var(--app-surface-2);
+}
+
+.task-library-page .task-grid-view {
+    gap: var(--app-space-3);
+}
+
+.task-library-page .task-grid-card,
+.task-library-page .task-group {
+    background: var(--app-surface-1);
+    border-color: var(--app-border-subtle);
+    border-radius: var(--app-surface-radius-sm);
+    box-shadow: none;
+}
+
+.task-library-page .task-group-head {
+    background: var(--app-surface-2);
+    border-color: var(--app-border-subtle);
+}
+
+.task-create-dialog .ant-form-item:last-child {
+    margin-bottom: 0;
+}
+
+.task-detail-drawer {
+    --task-detail-border: var(--app-border-subtle);
+    --task-detail-surface: var(--app-surface-2);
+    --task-detail-surface-strong: var(--app-surface-3);
+    --task-detail-muted: var(--app-text-muted);
+}
+
+.task-detail-drawer .task-detail-content {
+    gap: var(--app-space-5);
+}
+
+.task-detail-drawer .task-detail-summary,
+.task-detail-drawer .task-detail-facts,
+.task-detail-drawer .task-detail-prompt,
+.task-detail-drawer .task-detail-disclosure {
+    border-color: var(--app-border-subtle);
+    background: var(--app-surface-1);
+    border-radius: var(--app-surface-radius-sm);
+}
+
+.task-detail-drawer .task-detail-summary-metrics,
+.task-detail-drawer .task-detail-section-icon {
+    background: var(--app-surface-2);
+}
+
+.task-media-preview-modal .ant-modal-body {
+    background: var(--app-surface-2);
+}
+
+@media (min-width: 1024px) and (max-width: 1279px) {
+    .task-library-page .task-record-table-head,
+    .task-library-page .task-record-row {
+        min-width: 1120px;
+    }
+
+    .task-library-page .task-grid-view {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .task-library-page .task-record-dot.is-pulsing::after {
+        animation: none;
+    }
+}
