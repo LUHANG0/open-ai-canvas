@@ -186,7 +186,7 @@ export function CanvasTopBar({
 
                 <div className="canvas-topbar-cluster pc-canvas-topbar__actions pointer-events-auto flex items-center gap-1.5" style={dockStyle} role="group" aria-label="画布工具与状态">
                     <CanvasTopBarTooltip label="搜索画布节点">
-                        <Button type="text" className="canvas-topbar-action !hidden !h-10 !w-10 !min-w-10 !rounded-xl !p-0 lg:!inline-flex" style={{ color: theme.node.text }} icon={<Search className="size-4" />} onClick={onOpenSearch} aria-label="搜索画布节点" />
+                        <Button type="text" className="canvas-topbar-action !hidden !h-10 !w-10 !min-w-10 !rounded-xl !p-0 xl:!inline-flex" style={{ color: theme.node.text }} icon={<Search className="size-4" />} onClick={onOpenSearch} aria-label="搜索画布节点" />
                     </CanvasTopBarTooltip>
                     <CanvasTopBarTooltip label="导入第三方画布">
                         <Dropdown
@@ -201,7 +201,7 @@ export function CanvasTopBar({
                             }}
                         >
                             <Button type="text" className="canvas-topbar-action canvas-topbar-import-button !h-10 !rounded-xl !px-2.5 !font-medium" style={{ color: theme.node.text }} icon={<CloudDownload className="size-4" />} aria-label="导入第三方画布">
-                                <span className="hidden lg:inline">导入第三方画布</span>
+                                <span className="hidden xl:inline">导入第三方画布</span>
                             </Button>
                         </Dropdown>
                     </CanvasTopBarTooltip>
@@ -220,7 +220,7 @@ export function CanvasTopBar({
                                 ],
                             }}
                         >
-                            <Button type="text" className="canvas-topbar-action !hidden !h-10 !w-10 !min-w-10 !rounded-xl !p-0 lg:!inline-flex" style={{ color: theme.node.text }} icon={<Gauge className="size-4" />} aria-label="媒体性能模式" />
+                            <Button type="text" className="canvas-topbar-action !hidden !h-10 !w-10 !min-w-10 !rounded-xl !p-0 xl:!inline-flex" style={{ color: theme.node.text }} icon={<Gauge className="size-4" />} aria-label="媒体性能模式" />
                         </Dropdown>
                     </CanvasTopBarTooltip>
                     {compactAgentStatus ? <CompactAgentStatus status={compactAgentStatus} onClick={onToggleAgent} /> : null}

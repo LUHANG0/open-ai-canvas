@@ -725,7 +725,7 @@
     }
 
     .pc-canvas-workspace .pc-canvas-topbar__actions {
-        max-width: calc(100% - 340px);
+        max-width: none;
     }
 
     .pc-canvas-workspace .pc-canvas-workspace__viewport {
