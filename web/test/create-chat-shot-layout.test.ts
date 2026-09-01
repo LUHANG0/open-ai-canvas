@@ -139,6 +139,7 @@ describe("PC creation chat and storyboard director workbench regression gates", 
         expectRuleWith(desktopStyles, ".creation-home .storyboard-editor-rail-list", [/overflow-x:\s*hidden/, /overflow-y:\s*auto/]);
         expectRuleWith(desktopStyles, ".creation-home .storyboard-editor-preview-pane", [/grid-template-rows:\s*38px\s+minmax\(0,\s*1fr\)/, /overflow:\s*hidden/]);
         expectRuleWith(desktopStyles, ".creation-home .storyboard-editor-preview-canvas", [/overflow:\s*auto/]);
+        expectRuleWith(desktopStyles, ".creation-home .storyboard-editor-preview-content .creation-video-result", [/width:\s*auto/, /max-width:\s*100%/, /background:\s*transparent/]);
         expectRuleWith(desktopStyles, ".creation-home .storyboard-editor-inspector", [/overflow-y:\s*auto/]);
         expectRuleWith(desktopStyles, ".creation-home .storyboard-workbench-composer", [/grid-template-rows:\s*38px\s+auto/, /overflow:\s*hidden/]);
         expectRuleWith(desktopStyles, ".creation-home .storyboard-editor-composer-context", [/display:\s*grid/, /grid-template-columns:\s*24px\s+minmax\(0,\s*1fr\)\s+auto/]);
@@ -282,6 +283,7 @@ describe("PC creation chat and storyboard director workbench regression gates", 
         expect(shotCard).toContain('<Link className="storyboard-workbench-card-action" to={canvasPath}>');
         expect(shotCard).toContain("<CreationResultDownloads results={resultMedia} />");
         expect(result).toContain('aria-label="预览生成视频"');
+        expect(result).toContain('style={{ aspectRatio: creationMediaAspectRatio(result.settings?.ratio, "video") }}');
         expect(result).toContain('aria-label="预览生成图片"');
         expect(result).toContain("{!compactLayout ? (");
         expect(result).not.toContain('className="storyboard-workbench-result-details"');

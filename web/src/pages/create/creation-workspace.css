@@ -4099,18 +4099,19 @@ html:not(.dark) .creation-media-preview-modal.is-video .ant-modal-container {
     }
 
     .creation-home .storyboard-editor-preview-content .creation-video-result {
-        width: min(720px, 100%);
+        width: auto;
+        max-width: 100%;
         height: clamp(160px, calc(100vh - 522px), 480px);
         max-height: clamp(160px, calc(100vh - 522px), 480px);
         border-radius: var(--app-radius-media, 12px);
-        background: #0b0c0f;
+        background: transparent;
         box-shadow: var(--app-shadow-raised, 0 16px 36px rgba(15, 23, 42, 0.14));
     }
 
     .creation-home .storyboard-editor-preview-content .creation-video-result video {
         height: 100%;
         max-height: 100%;
-        background: #0b0c0f;
+        background: transparent;
         object-fit: contain;
     }
 

@@ -4276,7 +4276,13 @@ function StoryboardShotResult({
         <>
             {mode === "video" ? (
                 <>
-                    <button type="button" className="creation-video-result" onClick={() => openPreview(primaryVideoUrl, "video")} aria-label="预览生成视频">
+                    <button
+                        type="button"
+                        className="creation-video-result"
+                        style={{ aspectRatio: creationMediaAspectRatio(result.settings?.ratio, "video") }}
+                        onClick={() => openPreview(primaryVideoUrl, "video")}
+                        aria-label="预览生成视频"
+                    >
                         <video muted preload="metadata" className="size-full object-cover" src={primaryVideoUrl} />
                         <span>
                             <Maximize2 />
