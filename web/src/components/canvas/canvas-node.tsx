@@ -295,7 +295,7 @@ export const CanvasNode = React.memo(function CanvasNode({
                 onDragStart={(event) => onMouseDown(event, data.id)}
             />
             <div
-                className="pc-canvas-node canvas-node-shell relative h-full w-full overflow-visible rounded-[var(--node-radius)]"
+                className="pc-canvas-node canvas-node-shell relative h-full w-full cursor-grab overflow-visible rounded-[var(--node-radius)] active:cursor-grabbing"
                 data-node-state={nodeState}
                 data-state={data.metadata?.status || (isActive ? "active" : isRelated ? "related" : "idle")}
                 style={{
@@ -648,7 +648,13 @@ function NodeExternalHeader({ node, scale, dimensionLabel, active, editable, edi
                 transform: `scale(var(--canvas-live-inverse-scale, ${inverseScale}))`,
                 transformOrigin: "left bottom",
             }}
-            onMouseDown={(event) => event.stopPropagation()}
+            onMouseDown={(event) => {
+                if (event.target instanceof Element && event.target.closest("button,input,textarea,select,a,[contenteditable='true']")) {
+                    event.stopPropagation();
+                    return;
+                }
+                onDragStart(event);
+            }}
             onPointerDown={(event) => event.stopPropagation()}
         >
             {draggable ? (

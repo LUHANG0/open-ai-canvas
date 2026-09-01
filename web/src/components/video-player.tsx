@@ -73,7 +73,7 @@ const supportedVideoMimeTypes = new Set<VideoMimeType>(["video/mp4", "video/webm
 export function VideoPlayer({ src, mimeType, title = "视频", className, brandColor = "#f5f5f5", preload = "metadata", autoPlay = false, dataCanvasNoZoom = false, compactControls = false, onCanPlay }: VideoPlayerProps) {
     const stopCanvasControlInteraction = (event: { target: EventTarget | null; stopPropagation: () => void }) => {
         if (!dataCanvasNoZoom || !(event.target instanceof Element)) return;
-        if (event.target.closest(".vds-controls,.vds-menu-items")) event.stopPropagation();
+        if (event.target.closest(".vds-controls,.vds-menu-items,.vds-button,.vds-slider")) event.stopPropagation();
     };
     const type = mimeType && supportedVideoMimeTypes.has(mimeType as VideoMimeType) ? (mimeType as VideoMimeType) : "video/mp4";
     const mediaSource = useMemo(() => ({ src, type }), [src, type]);

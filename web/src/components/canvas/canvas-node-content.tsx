@@ -317,14 +317,16 @@ function TextContent({ node, theme, isEditingContent, textareaRef, mentionRefere
                 />
             ) : richTextHTML ? (
                 <div
-                    className="thin-scrollbar block h-full w-full select-text overflow-y-auto break-words bg-transparent px-4 pb-4 font-mono [&_a]:underline [&_blockquote]:my-2 [&_blockquote]:border-l-2 [&_blockquote]:pl-3 [&_blockquote]:opacity-70 [&_code]:rounded [&_code]:bg-black/6 [&_code]:px-1 dark:[&_code]:bg-white/8 [&_h1]:my-2 [&_h1]:text-[1.55em] [&_h1]:font-semibold [&_h2]:my-2 [&_h2]:text-[1.3em] [&_h2]:font-semibold [&_h3]:my-1.5 [&_h3]:text-[1.12em] [&_h3]:font-semibold [&_hr]:my-3 [&_li]:my-0.5 [&_ol]:my-2 [&_ol]:list-decimal [&_ol]:pl-5 [&_p]:my-1 [&_pre]:my-2 [&_pre]:overflow-x-auto [&_pre]:rounded-md [&_pre]:bg-black/90 [&_pre]:p-2 [&_pre]:text-white [&_ul]:my-2 [&_ul]:list-disc [&_ul]:pl-5"
+                    className="thin-scrollbar block h-full w-full cursor-grab select-none overflow-y-auto break-words bg-transparent px-4 pb-4 font-mono active:cursor-grabbing [&_a]:underline [&_blockquote]:my-2 [&_blockquote]:border-l-2 [&_blockquote]:pl-3 [&_blockquote]:opacity-70 [&_code]:rounded [&_code]:bg-black/6 [&_code]:px-1 dark:[&_code]:bg-white/8 [&_h1]:my-2 [&_h1]:text-[1.55em] [&_h1]:font-semibold [&_h2]:my-2 [&_h2]:text-[1.3em] [&_h2]:font-semibold [&_h3]:my-1.5 [&_h3]:text-[1.12em] [&_h3]:font-semibold [&_hr]:my-3 [&_li]:my-0.5 [&_ol]:my-2 [&_ol]:list-decimal [&_ol]:pl-5 [&_p]:my-1 [&_pre]:my-2 [&_pre]:overflow-x-auto [&_pre]:rounded-md [&_pre]:bg-black/90 [&_pre]:p-2 [&_pre]:text-white [&_ul]:my-2 [&_ul]:list-disc [&_ul]:pl-5"
                     style={textStyle}
-                    onMouseDown={(event) => event.stopPropagation()}
+                    onMouseDown={(event) => {
+                        if (event.target instanceof Element && event.target.closest("a,button")) event.stopPropagation();
+                    }}
                     onWheel={(event) => event.stopPropagation()}
                     dangerouslySetInnerHTML={{ __html: richTextHTML }}
                 />
             ) : (
-                <div className="thin-scrollbar block h-full w-full select-text overflow-y-auto whitespace-pre-wrap break-words bg-transparent px-4 pb-4 pt-0 font-mono" style={textStyle} onMouseDown={(event) => event.stopPropagation()} onWheel={(event) => event.stopPropagation()}>
+                <div className="thin-scrollbar block h-full w-full cursor-grab select-none overflow-y-auto whitespace-pre-wrap break-words bg-transparent px-4 pb-4 pt-0 font-mono active:cursor-grabbing" style={textStyle} onWheel={(event) => event.stopPropagation()}>
                     {node.metadata?.content || <span style={{ color: theme.node.placeholder }}>双击编辑文字</span>}
                 </div>
             )}
@@ -414,7 +416,6 @@ function EmptyImageContent({ node, theme, isBatchRoot, batchCount, batchExpanded
 
 function VideoNodeContent({ node, theme, reduceMediaEffects }: CanvasNodeContentProps) {
     const playerBoxRef = useRef<HTMLDivElement>(null);
-    const mediaGestureRef = useRef({ startX: 0, startY: 0, moved: false, suppressClick: false });
     const { updateMetadata } = useCanvasNodeActions();
     const { url, loading, load } = useNodeResourceUrl(node, false);
     const subtitleEntries = node.metadata?.subtitleEntries || [];
@@ -457,25 +458,9 @@ function VideoNodeContent({ node, theme, reduceMediaEffects }: CanvasNodeContent
         <div
             ref={playerBoxRef}
             data-canvas-media-surface
-            className="relative flex h-full w-full items-center justify-center overflow-hidden rounded-[var(--node-radius)] bg-black"
-            onMouseDown={(event) => event.stopPropagation()}
-            onPointerDown={(event) => event.stopPropagation()}
-            onPointerDownCapture={(event) => {
-                mediaGestureRef.current = { startX: event.clientX, startY: event.clientY, moved: false, suppressClick: false };
-            }}
-            onPointerMoveCapture={(event) => {
-                const gesture = mediaGestureRef.current;
-                if (Math.hypot(event.clientX - gesture.startX, event.clientY - gesture.startY) > 4) gesture.moved = true;
-            }}
-            onPointerUpCapture={(event) => {
-                if (!mediaGestureRef.current.moved) return;
-                mediaGestureRef.current.suppressClick = true;
-                event.preventDefault();
-                event.stopPropagation();
-            }}
+            className="relative flex h-full w-full cursor-grab items-center justify-center overflow-hidden rounded-[var(--node-radius)] bg-black active:cursor-grabbing"
             onClickCapture={(event) => {
-                if (!mediaGestureRef.current.suppressClick) return;
-                mediaGestureRef.current.suppressClick = false;
+                if (event.target instanceof Element && event.target.closest(".vds-controls,.vds-menu-items,.vds-button,.vds-slider")) return;
                 event.preventDefault();
                 event.stopPropagation();
             }}
@@ -494,9 +479,9 @@ function AudioNodeContent({ node, theme }: CanvasNodeContentProps) {
     if (!node.metadata?.content) return <EmptyMediaContent icon={<Music2 className="size-7 opacity-35" />} label="空音频节点" color={theme.node.placeholder} />;
     if (!url) return <DeferredMediaLoad icon={loading ? <LoaderCircle className="size-5 animate-spin" /> : <Play className="size-5 fill-current" />} label={loading ? "正在缓存音频" : "加载音频（保持暂停）"} disabled={loading} onClick={() => { void load(); }} />;
     return (
-        <div className="flex h-full w-full flex-col justify-center gap-3 px-4" data-canvas-media-surface style={{ background: theme.node.fill, color: theme.node.text }} onMouseDown={(event) => event.stopPropagation()} onPointerDown={(event) => event.stopPropagation()}>
+        <div className="flex h-full w-full cursor-grab flex-col justify-center gap-3 px-4 active:cursor-grabbing" data-canvas-media-surface style={{ background: theme.node.fill, color: theme.node.text }}>
             <div className="flex min-w-0 items-center gap-2 text-sm opacity-70"><Music2 className="size-4 shrink-0" /><span className="min-w-0 truncate" title={node.title || "音频"}>{node.title || "音频"}</span></div>
-            <audio ref={audioRef} src={url} controls preload="metadata" className="w-full" data-canvas-no-zoom />
+            <audio ref={audioRef} src={url} controls preload="metadata" className="w-full cursor-default" data-canvas-no-zoom onMouseDown={(event) => event.stopPropagation()} onPointerDown={(event) => event.stopPropagation()} />
         </div>
     );
 }
@@ -546,7 +531,7 @@ function ImageContent({ node, theme, isBatchRoot, batchCount, batchExpanded, bat
 }
 
 function DeferredMediaLoad({ icon, label, disabled, onClick }: { icon: ReactNode; label: string; disabled: boolean; onClick: () => void }) {
-    return <button type="button" data-canvas-no-zoom className="flex size-full flex-col items-center justify-center gap-2 rounded-[var(--node-radius)] bg-black text-white/75 transition-colors hover:text-white disabled:cursor-wait" disabled={disabled} onClick={(event) => { event.stopPropagation(); onClick(); }} onMouseDown={(event) => event.stopPropagation()} onPointerDown={(event) => event.stopPropagation()}><span className="grid size-10 place-items-center rounded-full bg-white/10">{icon}</span><span className="text-xs font-medium">{label}</span></button>;
+    return <div className="flex size-full cursor-grab items-center justify-center rounded-[var(--node-radius)] bg-black text-white/75 active:cursor-grabbing"><button type="button" data-canvas-no-zoom className="flex flex-col items-center justify-center gap-2 rounded-[var(--r-lg)] px-4 py-3 transition-colors hover:bg-white/5 hover:text-white disabled:cursor-wait" disabled={disabled} onClick={(event) => { event.stopPropagation(); onClick(); }} onMouseDown={(event) => event.stopPropagation()} onPointerDown={(event) => event.stopPropagation()}><span className="grid size-10 place-items-center rounded-full bg-white/10">{icon}</span><span className="text-xs font-medium">{label}</span></button></div>;
 }
 
 function useNodeResourceUrl(node: CanvasNodeData, eager: boolean) {

@@ -325,7 +325,7 @@ async function shellScenario(cdp, url) {
 
 async function interactionScenario(cdp) {
     console.log("\n=== B. drag, history, copy, search and viewport controls ===");
-    const nodeSelector = '[data-node-id="canvas-p0-text-story"] [data-canvas-node-drag-handle]';
+    const nodeSelector = '[data-node-id="canvas-p0-text-story"] .canvas-node-shell';
     const wrapperSelector = '[data-node-id="canvas-p0-text-story"]';
     const initialTransform = await cdp.evaluate(`document.querySelector(${JSON.stringify(wrapperSelector)})?.style.transform || ''`);
     if (!(await cdp.drag(nodeSelector, 90, 54))) throw new Error("Story node was not draggable");

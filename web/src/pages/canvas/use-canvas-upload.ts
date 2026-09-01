@@ -11,7 +11,7 @@ import { audioMetadata, imageMetadata, videoMetadata } from "@/lib/canvas/canvas
 import { createCanvasNode } from "@/lib/canvas/canvas-project-domain";
 import { isAudioFile } from "@/lib/canvas/canvas-project-generation";
 import { fitNodeSize, VIDEO_NODE_MAX_SIZE } from "@/lib/canvas/canvas-node-size";
-import { placeCanvasNode } from "@/lib/canvas/canvas-node-placement";
+import { layoutCompactNodeGroup, placeCanvasNode } from "@/lib/canvas/canvas-node-placement";
 import { uploadMediaFile } from "@/services/file-storage";
 import { resolveImageUrl, uploadImage } from "@/services/image-storage";
 import { getProjectUnit } from "@/services/api/projects";
@@ -43,8 +43,6 @@ export type StartCanvasUploadStatus = (title: string, detail: string, total?: nu
 
 const NODE_STATUS_SUCCESS = "success" as const;
 const BATCH_UPLOAD_COLUMNS = 3;
-const BATCH_UPLOAD_COLUMN_GAP = 380;
-const BATCH_UPLOAD_ROW_GAP = 300;
 
 export function useCanvasUpload({
     canvasId,
@@ -311,23 +309,25 @@ export function useCanvasUpload({
             return false;
         }
         const center = uploadTargetRef.current?.position || getCanvasCenter();
-        const columns = Math.min(BATCH_UPLOAD_COLUMNS, supportedFiles.length);
-        const originX = center.x - ((columns - 1) * BATCH_UPLOAD_COLUMN_GAP) / 2;
         const createdIds: string[] = [];
         for (let index = 0; index < supportedFiles.length; index += 1) {
             const file = supportedFiles[index];
-            const position = {
-                x: originX + (index % columns) * BATCH_UPLOAD_COLUMN_GAP,
-                y: center.y + Math.floor(index / columns) * BATCH_UPLOAD_ROW_GAP,
-            };
             const createdId = await (isAudioFile(file)
-                ? createAudioFileNode(file, position)
+                ? createAudioFileNode(file, center)
                 : file.type.startsWith("video/")
-                  ? createVideoFileNode(file, position)
-                  : createImageFileNode(file, position));
+                  ? createVideoFileNode(file, center)
+                  : createImageFileNode(file, center));
             if (createdId) createdIds.push(createdId);
         }
         if (!createdIds.length) return false;
+        const createdIdSet = new Set(createdIds);
+        const createdNodes = nodesRef.current.filter((node) => createdIdSet.has(node.id));
+        const untouchedNodes = nodesRef.current.filter((node) => !createdIdSet.has(node.id));
+        const compactNodes = layoutCompactNodeGroup(createdNodes, untouchedNodes, center, BATCH_UPLOAD_COLUMNS);
+        const compactById = new Map(compactNodes.map((node) => [node.id, node]));
+        const nextNodes = nodesRef.current.map((node) => compactById.get(node.id) || node);
+        nodesRef.current = nextNodes;
+        setNodes(nextNodes);
         setSelectedNodeIds(new Set(createdIds));
         setSelectedConnectionId(null);
         setDialogNodeId(null);
@@ -335,7 +335,7 @@ export function useCanvasUpload({
         if (failedCount) message.warning(`已添加 ${createdIds.length} 个文件，${failedCount} 个上传失败`);
         else message.success(`已添加 ${createdIds.length} 个文件到画布`);
         return true;
-    }, [createAudioFileNode, createImageFileNode, createVideoFileNode, getCanvasCenter, message, setDialogNodeId, setSelectedConnectionId, setSelectedNodeIds]);
+    }, [createAudioFileNode, createImageFileNode, createVideoFileNode, getCanvasCenter, message, nodesRef, setDialogNodeId, setNodes, setSelectedConnectionId, setSelectedNodeIds]);
 
     // 时间线专用：把本地音视频文件上传为直连媒体（仅时间线作用域，不创建画布节点），返回媒体描述数组。
     const uploadTimelineMedia = useCallback(async (files: File[]): Promise<TimelineDirectMedia[]> => {
@@ -733,22 +733,11 @@ export function useCanvasUpload({
 
     const insertAssetPayloads = useCallback(async (payloads: InsertAssetPayload[], origin: Position, successMessage: string, failureMessage: string): Promise<CanvasNodeData[]> => {
         try {
-            const created = await Promise.all(payloads.map((payload, index) => createAssetPayloadNode(payload, {
-                x: origin.x + (index % BATCH_UPLOAD_COLUMNS) * BATCH_UPLOAD_COLUMN_GAP,
-                y: origin.y + Math.floor(index / BATCH_UPLOAD_COLUMNS) * BATCH_UPLOAD_ROW_GAP,
-            })));
-            const occupied = [...nodesRef.current];
-            const placed = created.map((node, index) => {
-                const center = {
-                    x: origin.x + (index % BATCH_UPLOAD_COLUMNS) * BATCH_UPLOAD_COLUMN_GAP,
-                    y: origin.y + Math.floor(index / BATCH_UPLOAD_COLUMNS) * BATCH_UPLOAD_ROW_GAP,
-                };
-                const next = placeCanvasNode(node, occupied, center);
-                occupied.push(next);
-                return next;
-            });
-            nodesRef.current = occupied;
-            setNodes(occupied);
+            const created = await Promise.all(payloads.map((payload) => createAssetPayloadNode(payload, origin)));
+            const placed = layoutCompactNodeGroup(created, nodesRef.current, origin, BATCH_UPLOAD_COLUMNS);
+            const nextNodes = [...nodesRef.current, ...placed];
+            nodesRef.current = nextNodes;
+            setNodes(nextNodes);
             setSelectedNodeIds(new Set(placed.map((node) => node.id)));
             setSelectedConnectionId(null);
             setDialogNodeId(null);

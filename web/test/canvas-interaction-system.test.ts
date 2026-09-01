@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 
-import { findAvailableNodePosition } from "../src/lib/canvas/canvas-node-placement";
+import { findAvailableNodePosition, layoutCompactNodeGroup } from "../src/lib/canvas/canvas-node-placement";
+import { CanvasNodeType, type CanvasNodeData } from "../src/types/canvas";
 import { fitNodeSize } from "../src/lib/canvas/canvas-node-size";
 import { canvasBackgroundModes, normalizeCanvasBackgroundMode } from "../src/lib/canvas-theme";
 
@@ -44,6 +45,37 @@ describe("画布插入避让", () => {
         const thirdPosition = findAvailableNodePosition([first, { position: secondPosition, ...size }], size, center);
         expect(thirdPosition).not.toEqual(first.position);
         expect(thirdPosition).not.toEqual(secondPosition);
+    });
+});
+
+describe("批量素材紧凑布局", () => {
+    const createNode = (id: string, width: number, height: number): CanvasNodeData => ({
+        id,
+        type: CanvasNodeType.Image,
+        title: id,
+        position: { x: 0, y: 0 },
+        width,
+        height,
+        metadata: {},
+    });
+
+    test("按实际尺寸保留固定 24px 间距", () => {
+        const placed = layoutCompactNodeGroup([
+            createNode("wide", 720, 405),
+            createNode("small", 340, 240),
+            createNode("portrait", 292, 520),
+        ], [], { x: 1000, y: 600 });
+        expect(placed[1].position.x - (placed[0].position.x + placed[0].width)).toBe(24);
+        expect(placed[2].position.x - (placed[1].position.x + placed[1].width)).toBe(24);
+    });
+
+    test("已有节点只平移整个批次，不改变批次内部间距", () => {
+        const nodes = [createNode("a", 400, 240), createNode("b", 400, 240)];
+        const free = layoutCompactNodeGroup(nodes, [], { x: 500, y: 400 });
+        const shifted = layoutCompactNodeGroup(nodes, [{ position: { x: 76, y: 280 }, width: 848, height: 240 }], { x: 500, y: 400 });
+        expect(free[1].position.x - free[0].position.x).toBe(424);
+        expect(shifted[1].position.x - shifted[0].position.x).toBe(424);
+        expect(shifted[0].position).not.toEqual(free[0].position);
     });
 });
 
