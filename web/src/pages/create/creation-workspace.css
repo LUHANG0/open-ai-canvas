@@ -3486,6 +3486,1008 @@ html:not(.dark) .creation-media-preview-modal.is-video .ant-modal-container {
         width: 14px;
         height: 14px;
     }
+
+    /* PC 镜头创作：导演工作台采用镜头轨、结果舞台、信息面板和固定输入区。 */
+    .creation-home > .creation-workspace-toolbar + .creation-empty-workspace {
+        min-height: 0;
+        flex: 1 1 auto;
+    }
+
+    .creation-home .storyboard-workbench {
+        grid-template-rows: 52px minmax(0, 1fr);
+    }
+
+    .creation-home .storyboard-editor-body {
+        display: grid;
+        min-width: 0;
+        min-height: 0;
+        grid-template-columns: 80px minmax(0, 1fr);
+        overflow: hidden;
+        background: var(--app-bg-page, var(--creation-bg));
+    }
+
+    .creation-home .storyboard-editor-body.is-rail-collapsed {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .creation-home .storyboard-editor-main {
+        display: grid;
+        min-width: 0;
+        min-height: 0;
+        grid-template-rows: minmax(0, 1fr) auto;
+        overflow: hidden;
+    }
+
+    .creation-home .storyboard-editor-rail {
+        display: grid;
+        min-width: 0;
+        min-height: 0;
+        grid-template-rows: 50px minmax(0, 1fr) 52px;
+        overflow: hidden;
+        border-right: 1px solid var(--app-border-subtle, var(--creation-border));
+        background: var(--app-surface-1, var(--creation-surface));
+    }
+
+    .creation-home .storyboard-editor-rail-head {
+        display: flex;
+        min-width: 0;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        border-bottom: 1px solid var(--app-border-subtle, var(--creation-border));
+        padding: 7px;
+    }
+
+    .creation-home .storyboard-editor-rail-head > div {
+        display: none;
+        min-width: 0;
+        align-items: center;
+        gap: 9px;
+    }
+
+    .creation-home .storyboard-editor-rail-head > div > svg {
+        width: 18px;
+        height: 18px;
+        color: var(--app-text-secondary, var(--creation-muted));
+    }
+
+    .creation-home .storyboard-editor-rail-head > div > span {
+        display: flex;
+        min-width: 0;
+        flex-direction: column;
+        gap: 1px;
+    }
+
+    .creation-home .storyboard-editor-rail-head strong {
+        color: var(--app-text-primary, var(--creation-text));
+        font-size: 12px;
+        font-weight: 680;
+    }
+
+    .creation-home .storyboard-editor-rail-head small {
+        color: var(--app-text-muted, var(--creation-faint));
+        font-size: 10px;
+    }
+
+    .creation-home .storyboard-editor-rail-head > button,
+    .creation-home .storyboard-editor-draft-collapse {
+        display: grid;
+        width: 30px;
+        height: 30px;
+        flex: 0 0 auto;
+        place-items: center;
+        border: 0;
+        border-radius: var(--app-control-radius-sm, 6px);
+        background: transparent;
+        color: var(--app-text-muted, var(--creation-muted));
+        cursor: pointer;
+    }
+
+    .creation-home .storyboard-editor-rail-head > button:hover,
+    .creation-home .storyboard-editor-draft-collapse:hover {
+        background: var(--app-action-secondary-hover, var(--creation-surface-hover));
+        color: var(--app-text-primary, var(--creation-text));
+    }
+
+    .creation-home .storyboard-editor-rail-head button svg,
+    .creation-home .storyboard-editor-draft-collapse svg {
+        width: 15px;
+        height: 15px;
+    }
+
+    .creation-home .storyboard-editor-rail-list {
+        min-width: 0;
+        min-height: 0;
+        overflow-x: hidden;
+        overflow-y: auto;
+        margin: 0;
+        padding: 7px;
+        list-style: none;
+    }
+
+    .creation-home .storyboard-editor-rail-list > li + li {
+        margin-top: 7px;
+    }
+
+    .creation-home .storyboard-editor-shot {
+        position: relative;
+        display: grid;
+        width: 100%;
+        min-width: 0;
+        grid-template-columns: minmax(0, 1fr);
+        gap: 0;
+        overflow: hidden;
+        border: 1px solid transparent;
+        border-radius: var(--app-control-radius, 8px);
+        background: transparent;
+        padding: 4px;
+        color: var(--app-text-secondary, var(--creation-muted));
+        text-align: left;
+        cursor: pointer;
+    }
+
+    .creation-home .storyboard-editor-shot::before {
+        position: absolute;
+        z-index: 2;
+        top: 8px;
+        bottom: 8px;
+        left: 0;
+        width: 2px;
+        border-radius: 0 2px 2px 0;
+        content: "";
+        background: transparent;
+    }
+
+    .creation-home .storyboard-editor-shot:hover {
+        border-color: var(--app-border-subtle, var(--creation-border));
+        background: var(--app-action-secondary-hover, var(--creation-surface-hover));
+    }
+
+    .creation-home .storyboard-editor-shot.is-active {
+        border-color: var(--app-selection-border, var(--creation-border-strong));
+        background: var(--app-selection-bg, var(--creation-surface-selected));
+        color: var(--app-selection-fg, var(--creation-text));
+    }
+
+    .creation-home .storyboard-editor-shot.is-active::before {
+        background: var(--app-action-primary-bg, var(--creation-text));
+    }
+
+    .creation-home .storyboard-editor-shot.is-draft {
+        border-style: dashed;
+    }
+
+    .creation-home .storyboard-editor-shot-thumb {
+        position: relative;
+        display: block;
+        width: 100%;
+        overflow: hidden;
+        border-radius: 6px;
+        background: var(--app-surface-3, var(--creation-surface-muted));
+        aspect-ratio: 16 / 9;
+    }
+
+    .creation-home .storyboard-editor-shot-thumb > img,
+    .creation-home .storyboard-editor-shot-thumb > video,
+    .creation-home .storyboard-editor-shot-thumb-placeholder {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .creation-home .storyboard-editor-shot-thumb-placeholder {
+        display: grid;
+        place-items: center;
+        color: var(--app-text-muted, var(--creation-faint));
+    }
+
+    .creation-home .storyboard-editor-shot-thumb-placeholder svg {
+        width: 18px;
+        height: 18px;
+    }
+
+    .creation-home .storyboard-editor-shot-thumb > em {
+        position: absolute;
+        bottom: 3px;
+        left: 3px;
+        border-radius: 4px;
+        background: color-mix(in srgb, var(--app-overlay-scrim, #111827) 72%, transparent);
+        color: #fff;
+        padding: 2px 4px;
+        font-family: var(--app-font-mono, ui-monospace);
+        font-size: 8px;
+        font-style: normal;
+        line-height: 1;
+    }
+
+    .creation-home .storyboard-editor-shot-info {
+        display: none;
+        min-width: 0;
+        flex-direction: column;
+        gap: 3px;
+    }
+
+    .creation-home .storyboard-editor-shot-info strong,
+    .creation-home .storyboard-editor-shot-info small {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .creation-home .storyboard-editor-shot-info strong {
+        color: var(--app-text-primary, var(--creation-text));
+        font-size: 11px;
+        font-weight: 620;
+    }
+
+    .creation-home .storyboard-editor-shot-info small {
+        color: var(--app-text-muted, var(--creation-faint));
+        font-size: 9px;
+    }
+
+    .creation-home .storyboard-editor-shot-meta {
+        display: flex;
+        min-width: 0;
+        align-items: center;
+        justify-content: space-between;
+        gap: 5px;
+        color: var(--app-text-secondary, var(--creation-muted));
+        font-family: var(--app-font-mono, ui-monospace);
+        font-size: 9px;
+    }
+
+    .creation-home .storyboard-editor-shot-state {
+        display: inline-flex;
+        max-width: 72px;
+        align-items: center;
+        gap: 4px;
+        overflow: hidden;
+        border-radius: 999px;
+        padding: 2px 5px;
+        font-family: var(--app-font-sans, inherit);
+        font-size: 9px;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .creation-home .storyboard-editor-shot-state::before {
+        width: 5px;
+        height: 5px;
+        flex: 0 0 auto;
+        border-radius: 50%;
+        content: "";
+        background: currentColor;
+    }
+
+    .creation-home .storyboard-editor-shot-state.is-pending {
+        background: var(--app-status-running-bg, var(--creation-surface-muted));
+        color: var(--app-status-running-fg, var(--creation-muted));
+    }
+
+    .creation-home .storyboard-editor-shot-state.is-done {
+        background: var(--app-status-success-bg, var(--creation-surface-muted));
+        color: var(--app-status-success-fg, var(--creation-muted));
+    }
+
+    .creation-home .storyboard-editor-shot-state.is-error {
+        background: var(--app-status-error-bg, var(--creation-surface-muted));
+        color: var(--app-status-error-fg, var(--status-error));
+    }
+
+    .creation-home .storyboard-editor-shot-state.is-cancelled,
+    .creation-home .storyboard-editor-shot-state.is-draft {
+        background: var(--app-status-info-bg, var(--creation-surface-muted));
+        color: var(--app-status-info-fg, var(--creation-muted));
+    }
+
+    .creation-home .storyboard-editor-draft-item {
+        position: relative;
+    }
+
+    .creation-home .storyboard-editor-draft-collapse {
+        position: absolute;
+        z-index: 3;
+        top: 7px;
+        right: 7px;
+        width: 24px;
+        height: 24px;
+        background: color-mix(in srgb, var(--app-surface-overlay, var(--creation-surface)) 88%, transparent);
+    }
+
+    .creation-home .storyboard-editor-rail-footer {
+        display: grid;
+        border-top: 1px solid var(--app-border-subtle, var(--creation-border));
+        padding: 8px;
+    }
+
+    .creation-home .storyboard-editor-rail-footer > button {
+        display: flex;
+        min-width: 0;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        border: 1px dashed var(--app-border-default, var(--creation-border));
+        border-radius: var(--app-control-radius, 8px);
+        background: var(--app-surface-2, var(--creation-surface-muted));
+        color: var(--app-text-secondary, var(--creation-muted));
+        font-size: 0;
+        cursor: pointer;
+    }
+
+    .creation-home .storyboard-editor-rail-footer > button:hover {
+        border-color: var(--app-border-strong, var(--creation-border-strong));
+        background: var(--app-action-secondary-hover, var(--creation-surface-hover));
+        color: var(--app-text-primary, var(--creation-text));
+    }
+
+    .creation-home .storyboard-editor-rail-footer svg {
+        width: 15px;
+        height: 15px;
+    }
+
+    .creation-home .storyboard-workbench-stage {
+        min-width: 0;
+        min-height: 0;
+        overflow: hidden;
+        padding: 10px 12px;
+    }
+
+    .creation-home .storyboard-workbench-stage-inner {
+        width: 100%;
+        max-width: none;
+        height: 100%;
+    }
+
+    .creation-home .storyboard-editor-shot-card {
+        overflow: visible;
+        border-color: var(--app-border-subtle, var(--creation-border));
+        border-radius: var(--app-surface-radius, 12px);
+        background: var(--app-surface-1, var(--creation-surface));
+    }
+
+    .creation-home .storyboard-editor-shot-card.is-error {
+        border-color: var(--app-border-subtle, var(--creation-border));
+        background: var(--app-surface-1, var(--creation-surface));
+        color: var(--app-text-primary, var(--creation-text));
+    }
+
+    .creation-home .storyboard-editor-shot-card .storyboard-workbench-card-head {
+        position: relative;
+        z-index: 4;
+        min-height: 52px;
+        flex-wrap: nowrap;
+        gap: 10px;
+        border-radius: var(--app-surface-radius, 12px) var(--app-surface-radius, 12px) 0 0;
+        background: var(--app-surface-1, var(--creation-surface));
+        padding: 8px 12px;
+    }
+
+    .creation-home .storyboard-editor-shot-card .storyboard-workbench-card-heading,
+    .creation-home .storyboard-editor-shot-card .storyboard-workbench-card-actions {
+        min-width: 0;
+        flex-wrap: nowrap;
+    }
+
+    .creation-home .storyboard-editor-shot-card .storyboard-workbench-card-model {
+        max-width: 180px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .creation-home .storyboard-editor-shot-card .storyboard-workbench-card-actions {
+        overflow: visible;
+    }
+
+    .creation-home .storyboard-editor-shot-card .storyboard-workbench-card-actions > button,
+    .creation-home .storyboard-editor-shot-card .storyboard-workbench-card-actions > a {
+        flex: 0 0 auto;
+        white-space: nowrap;
+    }
+
+    .creation-home .storyboard-editor-shot-card .storyboard-workbench-card-body {
+        min-width: 0;
+        min-height: 0;
+        overflow: hidden;
+        border-radius: 0 0 var(--app-surface-radius, 12px) var(--app-surface-radius, 12px);
+    }
+
+    .creation-home .storyboard-editor-shot-layout {
+        display: grid;
+        height: 100%;
+        min-width: 0;
+        min-height: 0;
+        grid-template-columns: minmax(0, 1fr);
+        overflow: hidden;
+    }
+
+    .creation-home .storyboard-editor-preview-pane {
+        display: grid;
+        min-width: 0;
+        min-height: 0;
+        grid-template-rows: 38px minmax(0, 1fr);
+        overflow: hidden;
+        background: var(--app-surface-2, var(--creation-surface-muted));
+    }
+
+    .creation-home .storyboard-editor-preview-head,
+    .creation-home .storyboard-editor-inspector-head {
+        display: flex;
+        min-width: 0;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        border-bottom: 1px solid var(--app-border-subtle, var(--creation-border));
+        color: var(--app-text-primary, var(--creation-text));
+        padding: 0 12px;
+    }
+
+    .creation-home .storyboard-editor-preview-head > span,
+    .creation-home .storyboard-editor-inspector-head > span {
+        display: inline-flex;
+        min-width: 0;
+        align-items: center;
+        gap: 6px;
+        font-size: 11px;
+        font-weight: 660;
+    }
+
+    .creation-home .storyboard-editor-preview-head svg,
+    .creation-home .storyboard-editor-inspector-head svg {
+        width: 14px;
+        height: 14px;
+    }
+
+    .creation-home .storyboard-editor-preview-head time,
+    .creation-home .storyboard-editor-preview-head small,
+    .creation-home .storyboard-editor-inspector-head small {
+        overflow: hidden;
+        color: var(--app-text-muted, var(--creation-faint));
+        font-size: 10px;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .creation-home .storyboard-editor-preview-canvas {
+        display: grid;
+        min-width: 0;
+        min-height: 0;
+        place-items: center;
+        overflow: auto;
+        padding: 12px;
+        background:
+            linear-gradient(45deg, color-mix(in srgb, var(--app-border-subtle, var(--creation-border)) 34%, transparent) 25%, transparent 25%) 0 0 / 20px 20px,
+            linear-gradient(-45deg, color-mix(in srgb, var(--app-border-subtle, var(--creation-border)) 34%, transparent) 25%, transparent 25%) 0 10px / 20px 20px,
+            var(--app-surface-2, var(--creation-surface-muted));
+    }
+
+    .creation-home .storyboard-editor-preview-content {
+        display: grid;
+        width: min(100%, 760px);
+        min-width: 0;
+        place-items: center;
+    }
+
+    .creation-home .storyboard-editor-preview-content > * {
+        min-width: 0;
+    }
+
+    .creation-home .storyboard-editor-preview-content .creation-video-result {
+        width: min(720px, 100%);
+        height: clamp(160px, calc(100vh - 522px), 480px);
+        max-height: clamp(160px, calc(100vh - 522px), 480px);
+        border-radius: var(--app-radius-media, 12px);
+        background: #0b0c0f;
+    }
+
+    .creation-home .storyboard-editor-preview-content .creation-video-result video {
+        height: 100%;
+        max-height: 100%;
+        background: #0b0c0f;
+        object-fit: contain;
+    }
+
+    .creation-home .storyboard-editor-preview-content .creation-image-result-grid {
+        width: min(720px, 100%);
+        max-width: none;
+        grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
+    }
+
+    .creation-home .storyboard-editor-preview-content .creation-image-result {
+        max-height: 220px;
+    }
+
+    .creation-home .storyboard-editor-image-gallery {
+        display: grid;
+        width: min(720px, 100%);
+        min-width: 0;
+        gap: 8px;
+    }
+
+    .creation-home .storyboard-editor-image-primary {
+        position: relative;
+        display: block;
+        width: 100%;
+        height: clamp(156px, calc(100vh - 612px), 400px);
+        min-height: 0;
+        max-height: clamp(156px, calc(100vh - 612px), 400px);
+        overflow: hidden;
+        border: 1px solid var(--app-border-subtle, var(--creation-border));
+        border-radius: var(--app-radius-media, 12px);
+        background: #0b0c0f;
+        padding: 0;
+        cursor: zoom-in;
+    }
+
+    .creation-home .storyboard-editor-image-primary > img {
+        width: 100%;
+        height: 100%;
+        max-height: 100%;
+        object-fit: contain;
+    }
+
+    .creation-home .storyboard-editor-image-primary > span {
+        position: absolute;
+        right: 8px;
+        bottom: 8px;
+        display: inline-flex;
+        height: 28px;
+        align-items: center;
+        gap: 5px;
+        border-radius: 7px;
+        background: color-mix(in srgb, #0b0c0f 76%, transparent);
+        color: #fff;
+        padding: 0 8px;
+        font-size: 10px;
+    }
+
+    .creation-home .storyboard-editor-image-primary > span svg {
+        width: 13px;
+        height: 13px;
+    }
+
+    .creation-home .storyboard-editor-image-strip {
+        display: flex;
+        min-width: 0;
+        gap: 7px;
+        overflow-x: auto;
+        padding: 1px 0 3px;
+        scrollbar-width: thin;
+    }
+
+    .creation-home .storyboard-editor-image-strip > button {
+        position: relative;
+        width: 92px;
+        min-width: 92px;
+        overflow: hidden;
+        border: 1px solid var(--app-border-subtle, var(--creation-border));
+        border-radius: 7px;
+        background: var(--app-surface-3, var(--creation-surface-muted));
+        padding: 0;
+        aspect-ratio: 16 / 9;
+        cursor: zoom-in;
+    }
+
+    .creation-home .storyboard-editor-image-strip img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .creation-home .storyboard-editor-image-strip span {
+        position: absolute;
+        right: 3px;
+        bottom: 3px;
+        border-radius: 4px;
+        background: color-mix(in srgb, #0b0c0f 72%, transparent);
+        color: #fff;
+        padding: 2px 4px;
+        font-family: var(--app-font-mono, ui-monospace);
+        font-size: 8px;
+    }
+
+    .creation-home .storyboard-editor-preview-content .storyboard-workbench-pending,
+    .creation-home .storyboard-editor-preview-content .storyboard-workbench-error,
+    .creation-home .storyboard-editor-preview-content .storyboard-workbench-empty {
+        width: min(520px, 100%);
+        min-height: 180px;
+        align-content: center;
+        justify-content: center;
+        box-sizing: border-box;
+    }
+
+    .creation-home .storyboard-editor-preview-content .storyboard-workbench-result-details {
+        width: min(720px, 100%);
+        background: color-mix(in srgb, var(--app-surface-1, var(--creation-surface)) 88%, transparent);
+        padding: 0 10px;
+    }
+
+    .creation-home .storyboard-editor-inspector {
+        display: none;
+        min-width: 0;
+        min-height: 0;
+        overflow-y: auto;
+        border-left: 1px solid var(--app-border-subtle, var(--creation-border));
+        background: var(--app-surface-1, var(--creation-surface));
+    }
+
+    .creation-home .storyboard-editor-shot-card.is-inspector-open .storyboard-editor-preview-pane {
+        display: none;
+    }
+
+    .creation-home .storyboard-editor-shot-card.is-inspector-open .storyboard-editor-inspector {
+        display: block;
+    }
+
+    .creation-home .storyboard-editor-inspector-head {
+        position: sticky;
+        z-index: 2;
+        top: 0;
+        height: 38px;
+        background: var(--app-surface-1, var(--creation-surface));
+    }
+
+    .creation-home .storyboard-editor-inspector-section {
+        padding: 14px;
+    }
+
+    .creation-home .storyboard-editor-inspector-section + .storyboard-editor-inspector-section {
+        border-top: 1px solid var(--app-border-subtle, var(--creation-border));
+    }
+
+    .creation-home .storyboard-editor-inspector-section > header {
+        display: flex;
+        min-width: 0;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 9px;
+        color: var(--app-text-secondary, var(--creation-muted));
+        font-size: 10px;
+        font-weight: 660;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+    }
+
+    .creation-home .storyboard-editor-inspector-section > header > span {
+        margin-right: auto;
+    }
+
+    .creation-home .storyboard-editor-inspector-section > header time {
+        color: var(--app-text-muted, var(--creation-faint));
+        font-weight: 500;
+        letter-spacing: 0;
+    }
+
+    .creation-home .storyboard-editor-inspector-section > header button {
+        display: grid;
+        width: 26px;
+        height: 26px;
+        place-items: center;
+        border: 0;
+        border-radius: var(--app-control-radius-sm, 6px);
+        background: transparent;
+        color: var(--app-text-muted, var(--creation-muted));
+        cursor: pointer;
+    }
+
+    .creation-home .storyboard-editor-inspector-section > header button:hover {
+        background: var(--app-action-secondary-hover, var(--creation-surface-hover));
+        color: var(--app-text-primary, var(--creation-text));
+    }
+
+    .creation-home .storyboard-editor-inspector-section > header button svg {
+        width: 13px;
+        height: 13px;
+    }
+
+    .creation-home .storyboard-editor-inspector-section.is-script > p {
+        margin: 0;
+        color: var(--app-text-primary, var(--creation-text));
+        font-size: 12px;
+        line-height: 1.7;
+        white-space: pre-wrap;
+        word-break: break-word;
+    }
+
+    .creation-home .storyboard-editor-inspector-section .creation-user-message-references {
+        justify-content: flex-start;
+        margin-top: 10px;
+    }
+
+    .creation-home .storyboard-editor-inspector-section .storyboard-workbench-brief-attachments {
+        justify-content: flex-start;
+        margin-top: 10px;
+    }
+
+    .creation-home .storyboard-editor-inspector-empty {
+        display: block;
+        color: var(--app-text-muted, var(--creation-faint));
+        font-size: 12px;
+        line-height: 1.6;
+    }
+
+    .creation-home .storyboard-editor-inspector-section dl {
+        display: grid;
+        min-width: 0;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+        margin: 0;
+    }
+
+    .creation-home .storyboard-editor-inspector-section dl > div {
+        display: flex;
+        min-width: 0;
+        flex-direction: column;
+        gap: 3px;
+        border-radius: var(--app-control-radius, 8px);
+        background: var(--app-surface-2, var(--creation-surface-muted));
+        padding: 8px 9px;
+    }
+
+    .creation-home .storyboard-editor-inspector-section dt {
+        color: var(--app-text-muted, var(--creation-faint));
+        font-size: 9px;
+    }
+
+    .creation-home .storyboard-editor-inspector-section dd {
+        overflow: hidden;
+        margin: 0;
+        color: var(--app-text-primary, var(--creation-text));
+        font-size: 11px;
+        font-weight: 620;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .creation-home .storyboard-editor-inspector-toggle {
+        display: inline-flex;
+    }
+
+    .creation-home .storyboard-editor-download-menu {
+        position: relative;
+        z-index: 5;
+        flex: 0 0 auto;
+    }
+
+    .creation-home .storyboard-editor-download-menu > summary {
+        display: inline-flex;
+        min-height: var(--app-control-height-sm, 30px);
+        align-items: center;
+        gap: 5px;
+        border: 1px solid var(--app-border-subtle, var(--creation-border));
+        border-radius: var(--app-control-radius-sm, 6px);
+        background: var(--app-action-secondary-bg, transparent);
+        color: var(--app-action-secondary-fg, var(--creation-text));
+        padding: 0 9px;
+        font-size: 11px;
+        cursor: pointer;
+        list-style: none;
+    }
+
+    .creation-home .storyboard-editor-download-menu > summary::-webkit-details-marker {
+        display: none;
+    }
+
+    .creation-home .storyboard-editor-download-menu > summary svg {
+        width: 13px;
+        height: 13px;
+    }
+
+    .creation-home .storyboard-editor-download-menu > summary span {
+        display: grid;
+        min-width: 16px;
+        height: 16px;
+        place-items: center;
+        border-radius: 999px;
+        background: var(--app-surface-2, var(--creation-surface-muted));
+        color: var(--app-text-muted, var(--creation-muted));
+        font-size: 8px;
+    }
+
+    .creation-home .storyboard-editor-download-menu > div {
+        position: absolute;
+        z-index: 20;
+        top: calc(100% + 6px);
+        right: 0;
+        display: grid;
+        width: 148px;
+        max-height: 220px;
+        gap: 2px;
+        overflow-y: auto;
+        border: 1px solid var(--app-border-default, var(--creation-border));
+        border-radius: var(--app-surface-radius, 10px);
+        background: var(--app-surface-overlay, var(--creation-surface));
+        padding: 5px;
+        box-shadow: var(--app-shadow-overlay, 0 18px 42px rgba(15, 23, 42, 0.16));
+    }
+
+    .creation-home .storyboard-editor-download-menu > div > a {
+        display: flex;
+        min-height: 30px;
+        align-items: center;
+        border: 0;
+        border-radius: var(--app-control-radius-sm, 6px);
+        background: transparent;
+        color: var(--app-text-secondary, var(--creation-muted));
+        padding: 0 8px;
+        font-size: 10px;
+    }
+
+    .creation-home .storyboard-editor-download-menu > div > a:hover {
+        background: var(--app-action-secondary-hover, var(--creation-surface-hover));
+        color: var(--app-text-primary, var(--creation-text));
+    }
+
+    .creation-home .storyboard-workbench-card.is-next {
+        background: var(--app-surface-1, var(--creation-surface));
+    }
+
+    .creation-home .storyboard-workbench-card.is-next .storyboard-workbench-card-body {
+        display: grid;
+        min-height: 0;
+        place-items: center;
+        overflow-y: auto;
+        background: var(--app-surface-2, var(--creation-surface-muted));
+        padding: 18px;
+    }
+
+    .creation-home .storyboard-workbench-next-panel {
+        width: min(560px, 100%);
+        border: 0;
+        background: var(--app-surface-1, var(--creation-surface));
+        box-shadow: none;
+    }
+
+    .creation-home .storyboard-workbench-composer {
+        display: grid;
+        width: 100%;
+        min-width: 0;
+        grid-template-rows: 38px auto;
+        justify-content: stretch;
+        border-top: 1px solid var(--app-border-subtle, var(--creation-border));
+        background: var(--app-surface-1, var(--creation-surface));
+        padding: 0 12px 10px;
+        overflow: hidden;
+    }
+
+    .creation-home .storyboard-workbench-composer .creation-chat-composer {
+        width: 100%;
+        max-width: none;
+    }
+
+    .creation-home .storyboard-workbench-composer .creation-token-billing-note {
+        display: grid;
+        grid-template-columns: 20px auto minmax(0, 1fr);
+        grid-template-rows: auto;
+        align-items: center;
+        column-gap: 7px;
+        row-gap: 0;
+        padding: 6px 8px;
+    }
+
+    .creation-home .storyboard-workbench-composer .creation-token-billing-note > .creation-token-billing-icon {
+        grid-column: 1;
+        grid-row: 1;
+        width: 20px;
+        height: 20px;
+        padding: 4px;
+    }
+
+    .creation-home .storyboard-workbench-composer .creation-token-billing-note > strong {
+        grid-column: 2;
+        grid-row: 1;
+        align-self: center;
+        white-space: nowrap;
+    }
+
+    .creation-home .storyboard-workbench-composer .creation-token-billing-note > .creation-token-billing-description {
+        grid-column: 3;
+        grid-row: 1;
+        align-self: center;
+        line-height: 1.3;
+    }
+
+    .creation-home .storyboard-editor-composer-context {
+        display: grid;
+        min-width: 0;
+        grid-template-columns: 24px minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 7px;
+        color: var(--app-text-secondary, var(--creation-muted));
+    }
+
+    .creation-home .storyboard-editor-composer-icon {
+        display: grid;
+        width: 22px;
+        height: 22px;
+        place-items: center;
+        border-radius: 6px;
+        background: var(--app-surface-2, var(--creation-surface-muted));
+        color: var(--app-text-muted, var(--creation-muted));
+    }
+
+    .creation-home .storyboard-editor-composer-context.is-composing .storyboard-editor-composer-icon {
+        background: var(--app-selection-bg, var(--creation-surface-selected));
+        color: var(--app-selection-fg, var(--creation-text));
+    }
+
+    .creation-home .storyboard-editor-composer-icon svg {
+        width: 13px;
+        height: 13px;
+    }
+
+    .creation-home .storyboard-editor-composer-copy {
+        display: flex;
+        min-width: 0;
+        align-items: baseline;
+        gap: 8px;
+    }
+
+    .creation-home .storyboard-editor-composer-copy strong,
+    .creation-home .storyboard-editor-composer-copy small {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .creation-home .storyboard-editor-composer-copy strong {
+        flex: 0 0 auto;
+        color: var(--app-text-primary, var(--creation-text));
+        font-size: 11px;
+        font-weight: 660;
+    }
+
+    .creation-home .storyboard-editor-composer-copy small {
+        color: var(--app-text-muted, var(--creation-faint));
+        font-size: 10px;
+    }
+
+    .creation-home .storyboard-editor-composer-context > button {
+        display: inline-flex;
+        height: 28px;
+        align-items: center;
+        gap: 5px;
+        border: 0;
+        border-radius: var(--app-control-radius-sm, 6px);
+        background: transparent;
+        color: var(--app-text-secondary, var(--creation-muted));
+        padding: 0 7px;
+        font-size: 10px;
+        cursor: pointer;
+    }
+
+    .creation-home .storyboard-editor-composer-context > button:hover {
+        background: var(--app-action-secondary-hover, var(--creation-surface-hover));
+        color: var(--app-text-primary, var(--creation-text));
+    }
+
+    .creation-home .storyboard-editor-composer-context > button svg {
+        width: 12px;
+        height: 12px;
+    }
+
+    .creation-home .storyboard-workbench-bar-action.is-primary {
+        border-color: var(--app-action-primary-bg, var(--creation-text));
+        background: var(--app-action-primary-bg, var(--creation-text));
+        color: var(--app-action-primary-fg, var(--creation-bg));
+    }
+
+    .creation-home .storyboard-workbench-bar-action.is-primary:hover {
+        border-color: var(--app-action-primary-hover, var(--creation-text));
+        background: var(--app-action-primary-hover, var(--creation-text));
+        color: var(--app-action-primary-fg, var(--creation-bg));
+    }
+
+    .creation-home .storyboard-editor-toolbar-draft {
+        position: absolute;
+        top: 3px;
+        right: 3px;
+        width: 6px;
+        height: 6px;
+        border: 1px solid var(--app-surface-1, var(--creation-surface));
+        border-radius: 50%;
+        background: var(--app-status-info-fg, var(--creation-muted));
+    }
 }
 
 @media (min-width: 1024px) and (max-width: 1279px) {
@@ -3523,36 +4525,57 @@ html:not(.dark) .creation-media-preview-modal.is-video .ant-modal-container {
     }
 
     .creation-home .creation-chat-composer.is-thread .creation-config-field.is-model .creation-model-picker {
-        width: 180px !important;
-        min-width: 180px;
-        max-width: 180px !important;
-        flex-basis: 180px;
+        width: 150px !important;
+        min-width: 150px;
+        max-width: 150px !important;
+        flex-basis: 150px;
     }
 
     .creation-home .creation-chat-composer.is-thread .creation-config-field.is-mode .creation-entry-button,
     .creation-home .creation-chat-composer.is-thread .creation-config-field.is-operation .creation-entry-button {
-        width: 96px;
-        min-width: 96px;
+        width: 86px;
+        min-width: 86px;
         padding-right: 8px;
         padding-left: 8px;
     }
 
     .creation-home .creation-chat-composer.is-thread .creation-config-field.is-settings .creation-entry-button {
-        width: 112px;
-        min-width: 112px;
+        width: 102px;
+        min-width: 102px;
         padding-right: 8px;
         padding-left: 8px;
     }
 
+    .creation-home .creation-chat-composer.is-thread .creation-config-field.is-duration .creation-entry-button {
+        width: 62px;
+        min-width: 62px;
+        padding-right: 7px;
+        padding-left: 7px;
+    }
+
     .creation-home .creation-chat-composer.is-thread .creation-config-field.is-sound .creation-entry-button {
-        width: 42px;
-        min-width: 42px;
+        width: 38px;
+        min-width: 38px;
         justify-content: center;
         padding: 0;
     }
 
     .creation-home .creation-chat-composer.is-thread .creation-config-field.is-sound .creation-entry-button > span {
         display: none;
+    }
+
+    .creation-home .storyboard-editor-composer-copy small,
+    .creation-home .storyboard-editor-shot-card .storyboard-workbench-card-model,
+    .creation-home .storyboard-editor-shot-card .storyboard-workbench-card-mode {
+        display: none;
+    }
+
+    .creation-home .storyboard-editor-shot-card .storyboard-workbench-card-actions > button,
+    .creation-home .storyboard-editor-shot-card .storyboard-workbench-card-actions > a {
+        min-height: 28px;
+        padding-right: 7px;
+        padding-left: 7px;
+        font-size: 10px;
     }
 }
 
@@ -3605,6 +4628,185 @@ html:not(.dark) .creation-media-preview-modal.is-video .ant-modal-container {
 
     .creation-home .creation-chat-composer.is-empty.has-reference-entry {
         --creation-composer-writing-height: 122px;
+    }
+}
+
+@media (min-width: 1280px) {
+    .creation-home .storyboard-editor-body {
+        grid-template-columns: 216px minmax(0, 1fr);
+    }
+
+    .creation-home .storyboard-editor-rail-head {
+        justify-content: space-between;
+        padding: 7px 9px 7px 11px;
+    }
+
+    .creation-home .storyboard-editor-rail-head > div {
+        display: flex;
+    }
+
+    .creation-home .storyboard-editor-rail-list {
+        padding: 9px;
+    }
+
+    .creation-home .storyboard-editor-shot {
+        grid-template-columns: 86px minmax(0, 1fr);
+        align-items: center;
+        gap: 8px;
+        padding: 5px;
+    }
+
+    .creation-home .storyboard-editor-shot-info {
+        display: flex;
+    }
+
+    .creation-home .storyboard-editor-rail-footer > button {
+        font-size: 11px;
+    }
+
+    .creation-home .storyboard-editor-shot-layout {
+        grid-template-columns: minmax(0, 1fr) 280px;
+    }
+
+    .creation-home .storyboard-editor-inspector,
+    .creation-home .storyboard-editor-shot-card.is-inspector-open .storyboard-editor-inspector {
+        display: block;
+    }
+
+    .creation-home .storyboard-editor-shot-card.is-inspector-open .storyboard-editor-preview-pane {
+        display: grid;
+    }
+
+    .creation-home .storyboard-editor-inspector-toggle {
+        display: none !important;
+    }
+}
+
+@media (min-width: 1280px) and (max-width: 1359px) {
+    .creation-home .storyboard-workbench-composer .creation-chat-composer.is-thread .canvas-node-composer-submit-cost {
+        display: none;
+    }
+
+    .creation-home .storyboard-workbench-composer .creation-chat-composer.is-thread .canvas-node-composer-submit.has-cost {
+        min-width: 42px !important;
+        padding-left: 2px !important;
+    }
+
+    .creation-home .storyboard-workbench-composer .creation-config-field.is-mode .creation-entry-button,
+    .creation-home .storyboard-workbench-composer .creation-config-field.is-operation .creation-entry-button {
+        width: 88px;
+        min-width: 88px;
+        padding-right: 7px;
+        padding-left: 7px;
+    }
+
+    .creation-home .storyboard-workbench-composer .creation-config-field.is-model .creation-model-picker {
+        width: 156px !important;
+        min-width: 156px;
+        max-width: 156px !important;
+        flex-basis: 156px;
+    }
+
+    .creation-home .storyboard-workbench-composer .creation-config-field.is-settings .creation-entry-button {
+        width: 104px;
+        min-width: 104px;
+        padding-right: 7px;
+        padding-left: 7px;
+    }
+
+    .creation-home .storyboard-workbench-composer .creation-config-field.is-duration .creation-entry-button {
+        width: 66px;
+        min-width: 66px;
+        padding-right: 7px;
+        padding-left: 7px;
+    }
+
+    .creation-home .storyboard-workbench-composer .creation-config-field.is-sound .creation-entry-button {
+        width: 42px;
+        min-width: 42px;
+        justify-content: center;
+        padding: 0;
+    }
+
+    .creation-home .storyboard-workbench-composer .creation-config-field.is-sound .creation-entry-button > span {
+        display: none;
+    }
+}
+
+@media (min-width: 1024px) and (max-height: 700px) {
+    .creation-home .storyboard-workbench-composer {
+        grid-template-rows: 34px auto;
+        padding-bottom: 6px;
+    }
+
+    .creation-home .storyboard-workbench-composer .creation-reference-entry-bar {
+        min-height: 44px;
+        padding: 4px 8px;
+    }
+
+    .creation-home .storyboard-workbench-composer .creation-chat-writing-surface {
+        min-height: 56px;
+        max-height: 72px;
+        padding: 8px 12px 4px;
+    }
+
+    .creation-home .storyboard-workbench-composer .creation-chat-mention-container,
+    .creation-home .storyboard-workbench-composer .creation-chat-mention-editor,
+    .creation-home .storyboard-workbench-composer .creation-chat-composer.is-thread.has-reference-entry .creation-chat-mention-container,
+    .creation-home .storyboard-workbench-composer .creation-chat-composer.is-thread.has-reference-entry .creation-chat-mention-editor,
+    .creation-home .storyboard-workbench-composer .creation-chat-composer.is-thread:not(.has-references):not(.has-reference-entry) .creation-chat-mention-container,
+    .creation-home .storyboard-workbench-composer .creation-chat-composer.is-thread:not(.has-references):not(.has-reference-entry) .creation-chat-mention-editor {
+        min-height: 40px;
+        max-height: 64px;
+    }
+
+    .creation-home .storyboard-workbench-composer .creation-composer-notices {
+        gap: 4px;
+        padding: 4px 10px;
+    }
+
+    .creation-home .storyboard-workbench-composer .creation-chat-dock {
+        min-height: 58px;
+        max-height: 62px;
+        padding: 4px 8px 6px 10px;
+    }
+
+    .creation-home .storyboard-editor-preview-canvas {
+        padding: 8px 12px;
+    }
+
+    .creation-home .storyboard-editor-image-gallery {
+        grid-template-rows: minmax(0, 1fr);
+    }
+
+    .creation-home .storyboard-editor-image-primary,
+    .creation-home .storyboard-editor-image-primary > img {
+        height: max(96px, calc(100vh - 522px));
+        max-height: max(96px, calc(100vh - 522px));
+    }
+
+    .creation-home .storyboard-editor-image-strip {
+        display: none;
+    }
+
+    .creation-home .storyboard-editor-preview-content .creation-video-result,
+    .creation-home .storyboard-editor-preview-content .creation-video-result video {
+        height: max(96px, calc(100vh - 522px));
+        max-height: max(96px, calc(100vh - 522px));
+    }
+}
+
+@media (min-width: 1360px) {
+    .creation-home .storyboard-editor-body {
+        grid-template-columns: 240px minmax(0, 1fr);
+    }
+
+    .creation-home .storyboard-editor-shot {
+        grid-template-columns: 96px minmax(0, 1fr);
+    }
+
+    .creation-home .storyboard-editor-shot-layout {
+        grid-template-columns: minmax(0, 1fr) 320px;
     }
 }
 
