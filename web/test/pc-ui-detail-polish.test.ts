@@ -10,9 +10,11 @@ function compact(source: string) {
 
 describe("PC detail polish regression gates", () => {
     test("keeps creative-chain helper content inert below the PC breakpoint", async () => {
-        const [home, projects, canvas] = await Promise.all([read("../src/pages/home/home-pc.css"), read("../src/pages/projects/projects.css"), read("../src/pages/canvas/canvas-library-pc.css")]);
+        const [home, create, projects, canvas] = await Promise.all([read("../src/pages/home/home-pc.css"), read("../src/pages/create/creation-workspace.css"), read("../src/pages/projects/projects.css"), read("../src/pages/canvas/canvas-library-pc.css")]);
 
         expect(compact(home.slice(0, home.indexOf("@media (min-width: 1024px)")))).toContain(".pc-home-page .home-primary-link-pc, .pc-home-page .home-secondary-link, .pc-home-page .home-chart-legend { display: none; }");
+        expect(compact(create.slice(0, create.indexOf("@media (min-width: 1024px)")))).toContain(".creation-home .creation-empty-suggest .suggest-copy > .creation-starter-action { display: none; }");
+        expect(compact(create.slice(create.indexOf("@media (min-width: 1024px)")))).toContain(".creation-home .creation-empty-suggest .suggest-copy > .creation-starter-action { display: inline-flex;");
         expect(compact(projects.slice(0, projects.indexOf("@media (min-width: 1024px)")))).toContain(".pc-project-detail-state .workspace-state-action { display: none; } .pc-project-detail-empty-action { display: none; }");
         expect(compact(canvas.slice(0, canvas.indexOf("@media (min-width: 1024px)")))).toContain(
             ".pc-canvas-library-page .pc-canvas-library-only, .pc-canvas-library-dialog-pc-only, .pc-canvas-folder__preview-count, .pc-canvas-opening__pulse, .pc-canvas-opening small, .pc-canvas-library__empty-guide { display: none; }",

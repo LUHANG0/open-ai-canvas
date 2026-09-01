@@ -84,7 +84,7 @@
 .creation-home .creation-empty-description-pc,
 .creation-home .creation-empty-composer-heading,
 .creation-home .suggest-index,
-.creation-home .creation-starter-action {
+.creation-home .creation-empty-suggest .suggest-copy > .creation-starter-action {
     display: none;
 }
 
@@ -2163,7 +2163,7 @@ html:not(.dark) .creation-media-preview-modal.is-video .ant-modal-container {
         font-size: var(--app-font-size-label, 12px);
     }
 
-    .creation-home .suggest-copy > .creation-starter-action {
+    .creation-home .creation-empty-suggest .suggest-copy > .creation-starter-action {
         display: inline-flex;
         width: fit-content;
         align-items: center;

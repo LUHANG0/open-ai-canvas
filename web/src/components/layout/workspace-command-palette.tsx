@@ -105,6 +105,11 @@ export function WorkspaceCommandPalette({ open, onClose }: { open: boolean; onCl
                             className="min-w-0 flex-1 bg-transparent text-[var(--fs-body)] outline-none placeholder:text-foreground/45"
                             placeholder="搜索页面或操作…"
                             aria-label="搜索工作区页面"
+                            role="combobox"
+                            aria-autocomplete="list"
+                            aria-expanded="true"
+                            aria-controls="workspace-command-results"
+                            aria-activedescendant={filtered[highlight] ? `workspace-command-option-${filtered[highlight].id}` : undefined}
                         />
                         <kbd
                             onClick={onClose}
@@ -112,12 +117,7 @@ export function WorkspaceCommandPalette({ open, onClose }: { open: boolean; onCl
                         >
                             ⌘K
                         </kbd>
-                        <button
-                            type="button"
-                            onClick={onClose}
-                            className="ml-0.5 shrink-0 rounded-md p-1 text-foreground/50 transition-colors hover:bg-surface-hover hover:text-foreground"
-                            aria-label="关闭搜索"
-                        >
+                        <button type="button" onClick={onClose} className="ml-0.5 shrink-0 rounded-md p-1 text-foreground/50 transition-colors hover:bg-surface-hover hover:text-foreground" aria-label="关闭搜索">
                             <X className="size-4" strokeWidth={1.6} />
                         </button>
                     </div>
@@ -125,13 +125,15 @@ export function WorkspaceCommandPalette({ open, onClose }: { open: boolean; onCl
 
                 <div className="max-h-80 overflow-y-auto p-2">
                     {filtered.length ? (
-                        <ul className="flex flex-col gap-0.5">
+                        <ul id="workspace-command-results" className="flex flex-col gap-0.5" role="listbox" aria-label="工作区页面">
                             {filtered.map((entry, index) => {
                                 const Icon = entry.icon;
                                 return (
-                                    <li key={entry.id}>
+                                    <li key={entry.id} role="none">
                                         <button
+                                            id={`workspace-command-option-${entry.id}`}
                                             type="button"
+                                            role="option"
                                             onMouseEnter={() => setHighlight(index)}
                                             onClick={() => {
                                                 onClose();
@@ -141,7 +143,7 @@ export function WorkspaceCommandPalette({ open, onClose }: { open: boolean; onCl
                                                 "flex w-full items-center gap-2.5 rounded-[var(--r-sm)] px-3 py-2.5 text-left text-[var(--fs-body)] transition-colors",
                                                 index === highlight ? "bg-surface-hover text-foreground" : "text-foreground/65",
                                             )}
-                                            aria-current={index === highlight ? "true" : undefined}
+                                            aria-selected={index === highlight}
                                         >
                                             <Icon className={cn("size-4 shrink-0", index === highlight ? "text-foreground" : "text-foreground/55")} strokeWidth={1.6} />
                                             <span className="truncate">{entry.title}</span>
