@@ -78,6 +78,7 @@ export function useCanvasHistory({
     const applyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const applyingHistoryRef = useRef(false);
     const historyPausedRef = useRef(false);
+    const externalSnapshotPendingRef = useRef(false);
     const [historyState, setHistoryState] = useState({ canUndo: false, canRedo: false });
     const latestSnapshotRef = useRef<CanvasHistorySnapshot>({ nodes, connections, chatSessions, activeChatId, backgroundMode, showImageInfo });
     // 事件可能发生在 180ms 合并窗口内；渲染期同步最新引用，撤销时即可先落盘再回退。
@@ -100,6 +101,7 @@ export function useCanvasHistory({
         latestSnapshotRef.current = snapshot;
         applyingHistoryRef.current = false;
         historyPausedRef.current = false;
+        externalSnapshotPendingRef.current = false;
         setHistoryState({ canUndo: false, canRedo: false });
     }, [clearCommitTimer]);
 
@@ -141,6 +143,15 @@ export function useCanvasHistory({
         return true;
     }, [clearCommitTimer, projectLoaded]);
 
+    /**
+     * 媒体 URL 恢复等非用户写入会改变节点引用，但不应该生成“撤销”步骤。
+     * 先提交真实用户的待合并编辑，再让下一批外部恢复状态只更新历史基线。
+     */
+    const prepareExternalHistoryUpdate = useCallback(() => {
+        commitPendingHistory();
+        externalSnapshotPendingRef.current = true;
+    }, [commitPendingHistory]);
+
     const undoCanvas = useCallback(() => {
         commitPendingHistory();
         const patch = historyRef.current.past.pop();
@@ -166,6 +177,21 @@ export function useCanvasHistory({
         const previous = lastHistoryRef.current;
         if (!previous || snapshotsShareReferences(previous, next)) return;
 
+        if (externalSnapshotPendingRef.current) {
+            externalSnapshotPendingRef.current = false;
+            clearCommitTimer();
+            lastHistoryRef.current = next;
+            setHistoryState({ canUndo: historyRef.current.past.length > 0, canRedo: historyRef.current.future.length > 0 });
+            return;
+        }
+
+        // 新数组但内容引用和顺序均未变化时直接更新基线，避免出现点亮后无法撤销的假步骤。
+        if (!createCanvasHistoryPatch(previous, next)) {
+            lastHistoryRef.current = next;
+            setHistoryState({ canUndo: historyRef.current.past.length > 0, canRedo: historyRef.current.future.length > 0 });
+            return;
+        }
+
         clearCommitTimer();
         // 立即让按钮可用；实际补丁仍在短窗口内合并，连续拖动只占一个历史步骤。
         setHistoryState({ canUndo: true, canRedo: false });
@@ -179,7 +205,7 @@ export function useCanvasHistory({
         if (applyTimerRef.current) clearTimeout(applyTimerRef.current);
     }, [clearCommitTimer]);
 
-    return { getHistoryCleanupContext, historyPausedRef, historyState, redoCanvas, resetHistory, undoCanvas };
+    return { getHistoryCleanupContext, historyPausedRef, historyState, prepareExternalHistoryUpdate, redoCanvas, resetHistory, undoCanvas };
 }
 
 function snapshotsShareReferences(before: CanvasHistorySnapshot, after: CanvasHistorySnapshot) {

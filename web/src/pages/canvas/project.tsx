@@ -337,7 +337,7 @@ function InfiniteCanvasPage() {
         });
     }, [canvasStorageScope, projectId]);
 
-    const { getHistoryCleanupContext, historyPausedRef, historyState, redoCanvas, resetHistory, undoCanvas } = useCanvasHistory({
+    const { getHistoryCleanupContext, historyPausedRef, historyState, prepareExternalHistoryUpdate, redoCanvas, resetHistory, undoCanvas } = useCanvasHistory({
         projectLoaded,
         nodes,
         connections,
@@ -378,6 +378,7 @@ function InfiniteCanvasPage() {
         connectionsRef,
         viewportRef,
         historyPausedRef,
+        prepareExternalHistoryUpdate,
         setNodes,
         setConnections,
         setChatSessions,

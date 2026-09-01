@@ -330,7 +330,18 @@ function NodeDockToolButton({ tool }: { tool: ToolbarTool }) {
             aria-pressed={tool.active || undefined}
             disabled={tool.disabled}
             title={tool.disabledReason}
-            onClick={tool.onClick}
+            // 节点工具栏会跟随悬浮节点定位；鼠标移动到工具栏时节点悬浮态可能先变化。
+            // 指针操作在按下阶段提交，避免按钮在 pointerup 前被重排/隐藏而吞掉点击；
+            // 键盘 Enter/Space 仍通过 detail=0 的 click 触发同一动作。
+            onMouseDown={(event) => {
+                if (event.button !== 0 || tool.disabled) return;
+                event.preventDefault();
+                event.stopPropagation();
+                tool.onClick();
+            }}
+            onClick={(event) => {
+                if (event.detail === 0 && !tool.disabled) tool.onClick();
+            }}
         >
             <span className="grid size-3.5 shrink-0 place-items-center">{tool.icon}</span>
             <span className="inline-flex h-4 items-center whitespace-nowrap text-[var(--fs-label)] font-medium leading-none">{tool.label}</span>

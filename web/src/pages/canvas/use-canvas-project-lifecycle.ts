@@ -27,6 +27,7 @@ type UseCanvasProjectLifecycleOptions = {
     connectionsRef: MutableRefObject<CanvasConnection[]>;
     viewportRef: MutableRefObject<ViewportTransform>;
     historyPausedRef: MutableRefObject<boolean>;
+    prepareExternalHistoryUpdate: () => void;
     setNodes: Dispatch<SetStateAction<CanvasNodeData[]>>;
     setConnections: Dispatch<SetStateAction<CanvasConnection[]>>;
     setChatSessions: Dispatch<SetStateAction<CanvasAssistantSession[]>>;
@@ -54,6 +55,7 @@ export function useCanvasProjectLifecycle({
     connectionsRef,
     viewportRef,
     historyPausedRef,
+    prepareExternalHistoryUpdate,
     setNodes,
     setConnections,
     setChatSessions,
@@ -174,6 +176,7 @@ export function useCanvasProjectLifecycle({
             applyRestoredProject(initialNodes, initialSessions);
             const [nodesResult, sessionsResult] = await Promise.allSettled([hydrateCanvasImages(initialNodes), hydrateAssistantImages(initialSessions)]);
             if (cancelled) return;
+            if ((nodesResult.status === "fulfilled" && initialNodes.length) || (sessionsResult.status === "fulfilled" && initialSessions.length)) prepareExternalHistoryUpdate();
             if (nodesResult.status === "fulfilled") setNodes((current) => mergeHydratedNodeMedia(current, initialNodes, nodesResult.value));
             if (sessionsResult.status === "fulfilled") setChatSessions((current) => mergeHydratedSessions(current, sessionsResult.value));
             if (nodesResult.status === "rejected" || sessionsResult.status === "rejected") message.warning("部分本地媒体恢复失败，已使用项目记录继续打开");
@@ -182,7 +185,7 @@ export function useCanvasProjectLifecycle({
         return () => {
             cancelled = true;
         };
-    }, [hydrated, message, navigate, openProject, projectId, resetHistory, setActiveChatId, setBackgroundMode, setChatSessions, setConnections, setNodes, setShowImageInfo, setViewport]);
+    }, [hydrated, message, navigate, openProject, prepareExternalHistoryUpdate, projectId, resetHistory, setActiveChatId, setBackgroundMode, setChatSessions, setConnections, setNodes, setShowImageInfo, setViewport]);
 
     useEffect(() => {
         if (!projectLoaded) return;

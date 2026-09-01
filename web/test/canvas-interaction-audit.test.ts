@@ -51,6 +51,14 @@ test("history patches restore deleted node content and exact ordering", () => {
     expect(applyCanvasHistoryPatch(before, patch!, "after").nodes).toEqual([second]);
 });
 
+test("history ignores external media hydration and reference-only no-op arrays", async () => {
+    const history = await Bun.file(new URL("../src/pages/canvas/use-canvas-history.ts", import.meta.url)).text();
+    const lifecycle = await Bun.file(new URL("../src/pages/canvas/use-canvas-project-lifecycle.ts", import.meta.url)).text();
+    expect(history).toContain("prepareExternalHistoryUpdate");
+    expect(history).toContain("if (!createCanvasHistoryPatch(previous, next))");
+    expect(lifecycle).toContain("prepareExternalHistoryUpdate();");
+});
+
 test("undoable drawing deletion retains local drawing documents", async () => {
     const projectSource = await Bun.file(new URL("../src/pages/canvas/project.tsx", import.meta.url)).text();
     const lifecycleSource = await Bun.file(new URL("../src/pages/canvas/use-canvas-project-lifecycle.ts", import.meta.url)).text();
@@ -111,6 +119,12 @@ test("canvas owns one assistant transition and disables dock magnification in de
     expect(assistant).not.toContain("<motion.aside");
     expect(assistantColumn).toContain("translate3d");
     expect(toolbar).toContain("magnify={false}");
+});
+
+test("node toolbar commits immediate pointer actions before hover relocation can swallow the click", async () => {
+    const toolbar = await Bun.file(new URL("../src/components/canvas/canvas-node-toolbar.tsx", import.meta.url)).text();
+    expect(toolbar).toContain("onMouseDown={(event) =>");
+    expect(toolbar).toContain("if (event.detail === 0 && !tool.disabled) tool.onClick()");
 });
 
 test("batch uploads report unsupported files and retain failed items without stealing focus", async () => {
