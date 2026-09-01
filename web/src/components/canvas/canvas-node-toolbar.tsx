@@ -249,14 +249,18 @@ export function CanvasNodeToolbar({
     const imageEditTools = takeTools(["maskEdit", "crop", "split"]);
     const imagePortraitTools = takeTools(["emotion", "portraitTexture"]).map((tool) => tool.id === "emotion" ? { ...tool, label: "人物情绪" } : tool);
     const imageAngleTool = toolById.get("angle");
-    const videoTools = takeTools(["delete", "download", "subtitles", "timeline", "extractFrames", "extractAudio", "trimRegenerate", "uploadVideo"]).map((tool) => {
+    const videoTools = takeTools(["download", "timeline", "subtitles", "extractFrames", "extractAudio", "trimRegenerate", "uploadVideo"]).map((tool) => {
         if (tool.id === "extractFrames") return { ...tool, label: "提取画面" };
         if (tool.id === "trimRegenerate") return { ...tool, label: "截取片段" };
+        if (tool.id === "uploadVideo") return { ...tool, label: "替换视频" };
         return tool;
     });
+    const videoPrimaryTools = videoTools.filter((tool) => ["download", "timeline"].includes(tool.id));
+    const videoProcessTools = videoTools.filter((tool) => ["subtitles", "extractFrames", "extractAudio", "trimRegenerate"].includes(tool.id));
+    const videoReplaceTool = videoTools.find((tool) => tool.id === "uploadVideo");
     const genericTools = takeTools(isAudio ? ["delete", "download", "timeline", "uploadAudio"] : isEditableText ? ["delete", "edit", "editText", "generateImage", "saveAsset"] : ["delete", "info", "config"]);
     const visibleToolIds = new Set([
-        ...(isImage ? [...imageBaseTools, ...imageEditTools, ...imagePortraitTools, ...(imageAngleTool ? [imageAngleTool] : [])] : isVideo ? videoTools : genericTools).map((tool) => tool.id),
+        ...(isImage ? [...imageBaseTools, ...imageEditTools, ...imagePortraitTools, ...(imageAngleTool ? [imageAngleTool] : [])] : isVideo ? [...videoPrimaryTools, ...videoProcessTools, ...(videoReplaceTool ? [videoReplaceTool] : [])] : genericTools).map((tool) => tool.id),
     ]);
     const overflowTools = allTools
         .filter((tool) => !visibleToolIds.has(tool.id))
@@ -298,7 +302,13 @@ export function CanvasNodeToolbar({
                         {imagePortraitTools.length ? <NodeDockMenuButton menuId="image-portrait" label="人物调整" icon={imagePortraitTools[0].icon} tools={imagePortraitTools} openMenuId={openMenuId} onOpenChange={handleMenuOpenChange} /> : null}
                         {imageAngleTool ? <NodeDockToolButton tool={imageAngleTool} /> : null}
                     </>
-                ) : isVideo ? videoTools.map((tool) => <NodeDockToolButton key={tool.id} tool={tool} />) : genericTools.map((tool) => <NodeDockToolButton key={tool.id} tool={tool} />)}
+                ) : isVideo ? (
+                    <>
+                        {videoPrimaryTools.map((tool) => <NodeDockToolButton key={tool.id} tool={tool} />)}
+                        {videoProcessTools.length ? <NodeDockMenuButton menuId="video-process" label="视频处理" icon={videoProcessTools[0].icon} tools={videoProcessTools} openMenuId={openMenuId} onOpenChange={handleMenuOpenChange} /> : null}
+                        {videoReplaceTool ? <NodeDockToolButton tool={videoReplaceTool} /> : null}
+                    </>
+                ) : genericTools.map((tool) => <NodeDockToolButton key={tool.id} tool={tool} />)}
                 <span aria-hidden className="aceternity-dock-separator mx-1.5 h-6 w-px shrink-0" />
                 <NodeDockToolButton tool={lockTool} />
                 {overflowTools.length ? (

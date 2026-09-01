@@ -68,6 +68,7 @@ export function VideoSettingsPanel({ config, onConfigChange, theme, showTitle = 
                             <button
                                 key={value}
                                 type="button"
+                                aria-pressed={ratio === value}
                                 className="flex h-8 cursor-pointer items-center justify-center gap-1.5 rounded-md px-1 text-[var(--fs-label)] font-medium transition-colors hover:brightness-110 focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-1"
                                 style={{ background: ratio === value ? theme.toolbar.activeBg : "transparent", color: theme.node.text, outlineColor: theme.node.muted }}
                                 onMouseDown={(event) => event.stopPropagation()}
@@ -143,6 +144,7 @@ function SeedanceVideoSettingsPanel({ config, profile, priceTiers, onConfigChang
                             <button
                                 key={item.value}
                                 type="button"
+                                aria-pressed={ratio === item.value}
                                 className="flex h-11 min-w-0 cursor-pointer flex-col items-center justify-center gap-0.5 rounded-md px-1 text-[var(--fs-tiny)] font-medium leading-none transition-colors hover:brightness-110 focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-1"
                                 style={{ background: ratio === item.value ? theme.toolbar.activeBg : "transparent", color: theme.node.text, outlineColor: theme.node.muted }}
                                 onMouseDown={(event) => event.stopPropagation()}
@@ -213,7 +215,7 @@ function OptionPill({ selected, disabled = false, theme, onClick, children }: { 
 function SettingGroup({ title, color, children }: { title: string; color: string; children: ReactNode }) {
     return (
         <div className="space-y-1.5">
-            <div className="text-[var(--fs-tiny)] font-semibold" style={{ color }}>
+            <div className="text-[var(--fs-label)] font-semibold" style={{ color }}>
                 {title}
             </div>
             {children}

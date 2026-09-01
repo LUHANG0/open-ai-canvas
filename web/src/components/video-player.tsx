@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import type { ComponentProps } from "react";
 import { MediaPlayer, MediaProvider, PlayButton, type VideoMimeType } from "@vidstack/react";
 import { DefaultVideoLayout, defaultLayoutIcons, type DefaultLayoutTranslations } from "@vidstack/react/player/layouts/default";
-import { Play } from "lucide-react";
+import { Pause, Play } from "lucide-react";
 import "@vidstack/react/player/styles/base.css";
 import "@vidstack/react/player/styles/default/theme.css";
 import "@vidstack/react/player/styles/default/layouts/video.css";
@@ -98,9 +98,14 @@ export function VideoPlayer({ src, mimeType, title = "视频", className, brandC
         >
             <MediaProvider />
             {dataCanvasNoZoom ? (
-                <PlayButton className="canvas-video-center-play vds-button" aria-label="播放视频">
-                    <Play className="vds-icon fill-current" />
-                </PlayButton>
+                <>
+                    <PlayButton className="canvas-video-center-play vds-button" aria-label="播放视频">
+                        <Play className="vds-icon fill-current" />
+                    </PlayButton>
+                    <span className="canvas-video-center-pause-hint" aria-hidden>
+                        <Pause className="vds-icon fill-current" />
+                    </span>
+                </>
             ) : null}
             <DefaultVideoLayout icons={defaultLayoutIcons} translations={zhCNTranslations} noGestures={dataCanvasNoZoom} />
         </MediaPlayer>

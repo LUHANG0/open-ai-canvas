@@ -16,6 +16,7 @@
 | 验证提交 | 本文档提交 / `canvas-interaction-system-r2-20260901` | 浏览器回归、待验收项与交付记录 |
 | 交互修正 | `24aff8e` / `canvas-interaction-system-r3-20260901` | 恢复节点主体拖拽、隔离真实媒体控件并压紧批量素材布局 |
 | 体验修正 | `d789473` / `canvas-interaction-system-r5-20260901` | 中央播放按钮、关闭画面播放手势、增强点阵、紧凑工具栏设置与首页直达入口 |
+| 播放与设置修正 | 本轮提交 / `canvas-interaction-system-r7-20260901` | 播放中单击暂停、拖动阈值隔离、图片/视频设置统一排版与视频工具分组 |
 
 ## 统一规则
 
@@ -38,6 +39,7 @@
 - 文本在普通状态下直接拖动，双击进入编辑后恢复输入与选择；按钮、链接、输入框、播放器按钮、进度条和音频原生控件保持独立操作，不触发节点拖动。
 - 视频和音频资源加载后保持暂停，只有明确点击播放器控件才播放。
 - 视频画面手势与节点拖拽分层：画布节点关闭播放器自带的画面播放手势，中央播放按钮和底部控制区负责播放，其余画面负责拖动节点，拖动不会误触播放。
+- 视频播放中轻点非控件画面会暂停；移动达到 6px 后视为拖动，不触发暂停。暂停状态仍只由中央播放按钮或底部播放按钮启动，避免节点拖移误播放。
 
 ### 工具栏与外观
 
@@ -47,11 +49,14 @@
 - 画布底纹从点阵、方格、纯色扩展为点阵、方格、细网格、稿纸、蓝图、纯色，并兼容旧 `solid` 值。
 - 点阵使用 24px 基准间距和更清晰的明暗主题对比度，在常用缩放及远景下均保持可见。
 - 工具栏设置采用双列紧凑行，拖拽柄、图标、名称、顺序状态和开关保持同一阅读行；顶栏左侧提供直接返回首页入口。
+- 图片与视频生成设置统一为 420px PC 浮层：固定标题和当前规格摘要、独立滚动参数区、关闭入口与“修改后立即应用”状态提示；原模型能力、价格档禁用规则和参数写入保持不变。
+- 视频节点工具栏只平铺下载、时间线和替换视频；字幕、提取画面、提取音频与截取片段归入“视频处理”，删除及低频能力保留在“更多”。
 
 ## 修改文件
 
 - 算法与主题：`web/src/lib/canvas/canvas-node-size.ts`、`canvas-node-placement.ts`、`canvas-theme.ts`
 - 节点与媒体：`web/src/components/canvas/canvas-node.tsx`、`canvas-node-content.tsx`
+- 播放与生成设置：`web/src/components/video-player.tsx`、`video-player.css`、`image-settings-panel.tsx`、`video-settings-panel.tsx`、`canvas-generation-settings-shell.tsx`、`canvas-image-settings-popover.tsx`、`canvas-video-settings-popover.tsx`、`canvas-node-toolbar.tsx`
 - 工具与外观：`web/src/components/canvas/canvas-toolbar.tsx`、`canvas-asset-tray.tsx`、`infinite-canvas.tsx`
 - 页面协调：`web/src/pages/canvas/project.tsx`、`shared.tsx`、`use-canvas-node-operations.ts`、`use-canvas-upload.ts`、`use-canvas-project-lifecycle.ts`
 - 工具注册：`web/src/lib/canvas/tool-registry/definitions/main-toolbar-tools.tsx`、`tool-definition.ts`
@@ -65,6 +70,8 @@
 - 1440 × 900 浏览器回归：文字正文拖拽后位置变化；三种不同尺寸素材批量插入后相邻间距为 24px。
 - 本地视频加载后保持暂停；非控件画面拖动后节点位置变化且仍暂停；中央播放控件点击可播放且节点位置不变。
 - 浏览器控制台：无 warning/error。
+- 本轮 `bun run typecheck` 通过；4 个画布相关测试文件 27 项通过；`bun run build` 通过，仅保留项目既有大 chunk 提示。
+- 本轮 1440 × 900 浏览器回归：中央按钮开始播放后，轻点非控件画面立即暂停；新版视频设置的标题、规格摘要、参数分组、关闭按钮与即时应用提示完整显示；视频工具栏正确收敛为“下载 / 时间线 / 视频处理 / 替换视频 / 更多”。
 
 ## 风险与后续确认
 

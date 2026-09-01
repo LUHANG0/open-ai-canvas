@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type RefObject } from "react";
 import { createPortal } from "react-dom";
-import { Settings2 } from "lucide-react";
+import { Image as ImageIcon, Settings2 } from "lucide-react";
 import { Button } from "antd";
 
 import { ImageSettingsPanel, imageQualityLabel, imageSizeLabel } from "@/components/image-settings-panel";
@@ -8,6 +8,7 @@ import { canvasThemes } from "@/lib/canvas-theme";
 import { modelCapabilityConfigFor, normalizeImageValue } from "@/lib/model-capabilities";
 import { useThemeStore } from "@/stores/use-theme-store";
 import type { AiConfig } from "@/stores/use-config-store";
+import { CanvasGenerationSettingsShell } from "./canvas-generation-settings-shell";
 
 type CanvasImageSettingsPopoverProps = {
     config: AiConfig;
@@ -65,7 +66,7 @@ export function CanvasImageSettingsPopover({ config, onConfigChange, onOpenChang
         };
     }, [onOpenChange, open]);
 
-    const panel = open && buttonRect ? <ImageSettingsPortal buttonRect={buttonRect} panelRef={panelRef} placement={placement} theme={theme} config={config} showCount={showCount} onConfigChange={onConfigChange} /> : null;
+    const panel = open && buttonRect ? <ImageSettingsPortal buttonRect={buttonRect} panelRef={panelRef} placement={placement} theme={theme} config={config} summary={summary} showCount={showCount} onConfigChange={onConfigChange} onClose={() => updateOpen(false)} /> : null;
 
     if (!hasSettings) return null;
 
@@ -87,16 +88,20 @@ function ImageSettingsPortal({
     placement,
     theme,
     config,
+    summary,
     showCount,
     onConfigChange,
+    onClose,
 }: {
     buttonRect: DOMRect;
     panelRef: RefObject<HTMLDivElement | null>;
     placement: CanvasImageSettingsPopoverProps["placement"];
     theme: (typeof canvasThemes)[keyof typeof canvasThemes];
     config: AiConfig;
+    summary: string;
     showCount: boolean;
     onConfigChange: (key: keyof AiConfig, value: string) => void;
+    onClose: () => void;
 }) {
     const gap = 8;
     const margin = 12;
@@ -111,25 +116,27 @@ function ImageSettingsPortal({
         width,
         left: Math.max(margin, Math.min(window.innerWidth - width - margin, left)),
         ...(topPlacement ? { bottom: window.innerHeight - buttonRect.top + gap, maxHeight: Math.max(260, buttonRect.top - margin * 2) } : { top: buttonRect.bottom + gap, maxHeight: Math.max(260, window.innerHeight - buttonRect.bottom - margin * 2) }),
-        background: theme.canvas.background,
+        background: theme.spatial.elevated,
         border: `1px solid ${theme.toolbar.border}`,
-        borderRadius: 10,
+        borderRadius: 16,
         boxShadow: `0 24px 72px ${theme.spatial.shadow}`,
-        padding: 12,
-        overflowY: "auto",
+        padding: 0,
+        overflow: "hidden",
         color: theme.node.text,
     } as const;
 
     return createPortal(
         <div
             ref={panelRef}
-            className="canvas-image-settings-popover aceternity-floating-panel backdrop-blur-2xl"
+            className="canvas-generation-settings-popover aceternity-floating-panel backdrop-blur-2xl"
             style={style}
             onPointerDown={(event) => event.stopPropagation()}
             onMouseDown={(event) => event.stopPropagation()}
             onClick={(event) => event.stopPropagation()}
         >
-            <ImageSettingsPanel config={config} onConfigChange={(key, value) => onConfigChange(key, value)} theme={theme} showCount={showCount} quickCount={3} className="space-y-3" />
+            <CanvasGenerationSettingsShell title="图片设置" summary={summary} icon={<ImageIcon className="size-4" />} theme={theme} onClose={onClose}>
+                <ImageSettingsPanel config={config} onConfigChange={(key, value) => onConfigChange(key, value)} theme={theme} showTitle={false} showCount={showCount} quickCount={3} className="canvas-generation-settings-body" />
+            </CanvasGenerationSettingsShell>
         </div>,
         document.body,
     );

@@ -168,7 +168,8 @@ export function ImageSettingsPanel({ config, onConfigChange, theme, showTitle = 
                             <button
                                 key={item.value}
                                 type="button"
-                                className="flex h-[52px] cursor-pointer flex-col items-center justify-center gap-0.5 rounded-lg bg-transparent text-[var(--fs-label)] transition-colors hover:brightness-110 focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-1"
+                                aria-pressed={selectedAspect?.value === item.value}
+                                className="flex h-[54px] cursor-pointer flex-col items-center justify-center gap-0.5 rounded-lg bg-transparent text-[var(--fs-label)] transition-colors hover:brightness-110 focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-1"
                                 style={{ background: selectedAspect?.value === item.value ? theme.toolbar.activeBg : "transparent", color: theme.node.text, outlineColor: theme.node.muted }}
                                 onMouseDown={(event) => event.stopPropagation()}
                                 onClick={() => selectAspect(item.value)}
@@ -281,9 +282,10 @@ function OptionPill({ selected, disabled = false, theme, onClick, children }: { 
     return (
         <button
             type="button"
-			className="h-8 cursor-pointer rounded-full px-2 text-xs transition-colors hover:brightness-110 focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-1 disabled:cursor-not-allowed disabled:opacity-40"
+			className="h-8 cursor-pointer rounded-lg px-2 text-xs font-medium transition-colors hover:brightness-110 focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-1 disabled:cursor-not-allowed disabled:opacity-40"
 			style={{ background: selected ? theme.toolbar.activeBg : "transparent", color: theme.node.text, outlineColor: theme.node.muted }}
 			disabled={disabled}
+            aria-pressed={selected}
             onMouseDown={(event) => event.stopPropagation()}
             onClick={onClick}
         >
@@ -328,7 +330,7 @@ function CountInput({ value, quickCount, max, theme, onChange }: { value: number
         onChange(next);
     };
     return (
-        <label className="flex h-8 overflow-hidden rounded-full text-xs" style={{ background: theme.toolbar.itemHover, color: theme.node.text }}>
+        <label className="flex h-8 overflow-hidden rounded-lg text-xs" style={{ background: theme.toolbar.itemHover, color: theme.node.text }}>
             <input
                 key={value > quickCount ? `custom-${value}` : "quick"}
                 type="number"
@@ -363,7 +365,7 @@ function AspectIcon({ type, width, height, color }: { type: string; width: numbe
 
 function SettingTitle({ children, color }: { children: string; color: string }) {
     return (
-        <div className="text-xs font-medium" style={{ color }}>
+        <div className="text-[var(--fs-label)] font-semibold" style={{ color }}>
             {children}
         </div>
     );

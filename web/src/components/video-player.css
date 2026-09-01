@@ -51,6 +51,42 @@
     transform: translate(-50%, -50%) scale(0.88);
 }
 
+/* 播放中点击画面可暂停；提示层不接管指针，因此仍可从画面任意位置拖动节点。 */
+.canvas-video-center-pause-hint {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    z-index: 19;
+    display: grid;
+    width: 52px;
+    height: 52px;
+    place-items: center;
+    border: 1px solid rgb(255 255 255 / 26%);
+    border-radius: 999px;
+    background: rgb(8 10 14 / 62%);
+    color: white;
+    opacity: 0;
+    pointer-events: none;
+    transform: translate(-50%, -50%) scale(0.9);
+    transition: opacity 140ms ease, transform 140ms ease;
+    backdrop-filter: blur(8px);
+}
+
+.canvas-video-center-pause-hint .vds-icon {
+    width: 23px;
+    height: 23px;
+}
+
+.canvas-video-player:not([data-paused]):hover .canvas-video-center-pause-hint {
+    opacity: 0.9;
+    transform: translate(-50%, -50%) scale(1);
+}
+
+.canvas-video-player[data-paused] .canvas-video-center-pause-hint,
+.canvas-video-player[data-ended] .canvas-video-center-pause-hint {
+    opacity: 0;
+}
+
 .canvas-video-player:is([data-fullscreen], :fullscreen, :-webkit-full-screen) .canvas-video-center-play {
     width: 76px;
     height: 76px;

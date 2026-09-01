@@ -416,6 +416,8 @@ function EmptyImageContent({ node, theme, isBatchRoot, batchCount, batchExpanded
 
 function VideoNodeContent({ node, theme, reduceMediaEffects }: CanvasNodeContentProps) {
     const playerBoxRef = useRef<HTMLDivElement>(null);
+    const pointerGestureRef = useRef<{ pointerId: number; startX: number; startY: number; moved: boolean } | null>(null);
+    const suppressSurfaceClickRef = useRef(false);
     const { updateMetadata } = useCanvasNodeActions();
     const { url, loading, load } = useNodeResourceUrl(node, false);
     const subtitleEntries = node.metadata?.subtitleEntries || [];
@@ -459,10 +461,35 @@ function VideoNodeContent({ node, theme, reduceMediaEffects }: CanvasNodeContent
             ref={playerBoxRef}
             data-canvas-media-surface
             className="relative flex h-full w-full cursor-grab items-center justify-center overflow-hidden rounded-[var(--node-radius)] bg-black active:cursor-grabbing"
+            onPointerDownCapture={(event) => {
+                if (event.target instanceof Element && event.target.closest(".vds-controls,.vds-menu-items,.vds-button,.vds-slider")) return;
+                pointerGestureRef.current = { pointerId: event.pointerId, startX: event.clientX, startY: event.clientY, moved: false };
+                suppressSurfaceClickRef.current = false;
+            }}
+            onPointerMoveCapture={(event) => {
+                const gesture = pointerGestureRef.current;
+                if (!gesture || gesture.pointerId !== event.pointerId || gesture.moved) return;
+                if (Math.hypot(event.clientX - gesture.startX, event.clientY - gesture.startY) >= 6) gesture.moved = true;
+            }}
+            onPointerUpCapture={(event) => {
+                const gesture = pointerGestureRef.current;
+                if (!gesture || gesture.pointerId !== event.pointerId) return;
+                suppressSurfaceClickRef.current = gesture.moved;
+                pointerGestureRef.current = null;
+            }}
+            onPointerCancelCapture={() => {
+                suppressSurfaceClickRef.current = true;
+                pointerGestureRef.current = null;
+            }}
             onClickCapture={(event) => {
                 if (event.target instanceof Element && event.target.closest(".vds-controls,.vds-menu-items,.vds-button,.vds-slider")) return;
                 event.preventDefault();
                 event.stopPropagation();
+                const wasDrag = suppressSurfaceClickRef.current;
+                suppressSurfaceClickRef.current = false;
+                if (wasDrag) return;
+                const video = playerBoxRef.current?.querySelector("video");
+                if (video && !video.paused && !video.ended) video.pause();
             }}
         >
             <div className="relative" style={{ width: fitWidth, height: Math.round(fitHeight) }}>

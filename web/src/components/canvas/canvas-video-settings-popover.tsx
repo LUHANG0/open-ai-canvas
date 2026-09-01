@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type RefObject } from "react";
 import { createPortal } from "react-dom";
-import { Settings2 } from "lucide-react";
+import { Settings2, Video } from "lucide-react";
 import { Button } from "antd";
 
 import { VideoSettingsPanel, videoResolutionLabel, videoSecondsLabel, videoSizeLabel } from "@/components/video-settings-panel";
@@ -8,6 +8,7 @@ import { canvasThemes } from "@/lib/canvas-theme";
 import { modelCapabilityConfigFor, resolveVideoRatioValue, resolveVideoResolutionValue } from "@/lib/model-capabilities";
 import { useThemeStore } from "@/stores/use-theme-store";
 import type { AiConfig } from "@/stores/use-config-store";
+import { CanvasGenerationSettingsShell } from "./canvas-generation-settings-shell";
 
 type CanvasVideoSettingsPopoverProps = {
     config: AiConfig;
@@ -54,7 +55,7 @@ export function CanvasVideoSettingsPopover({ config, onConfigChange, buttonClass
         };
     }, [open]);
 
-    const panel = open && buttonRect ? <VideoSettingsPortal buttonRect={buttonRect} panelRef={panelRef} placement={placement} theme={theme} config={config} onConfigChange={onConfigChange} /> : null;
+    const panel = open && buttonRect ? <VideoSettingsPortal buttonRect={buttonRect} panelRef={panelRef} placement={placement} theme={theme} config={config} summary={summary} onConfigChange={onConfigChange} onClose={() => setOpen(false)} /> : null;
 
     return (
         <>
@@ -74,18 +75,22 @@ function VideoSettingsPortal({
     placement,
     theme,
     config,
+    summary,
     onConfigChange,
+    onClose,
 }: {
     buttonRect: DOMRect;
     panelRef: RefObject<HTMLDivElement | null>;
     placement: CanvasVideoSettingsPopoverProps["placement"];
     theme: (typeof canvasThemes)[keyof typeof canvasThemes];
     config: AiConfig;
+    summary: string;
     onConfigChange: (key: keyof AiConfig, value: string) => void;
+    onClose: () => void;
 }) {
     const gap = 8;
     const margin = 12;
-    const width = Math.min(356, window.innerWidth - margin * 2);
+    const width = Math.min(420, window.innerWidth - margin * 2);
     const alignRight = placement?.endsWith("Right");
     const alignCenter = placement === "top" || placement === "bottom";
     const left = alignCenter ? buttonRect.left + buttonRect.width / 2 - width / 2 : alignRight ? buttonRect.right - width : buttonRect.left;
@@ -100,25 +105,27 @@ function VideoSettingsPortal({
         width,
         left: Math.max(margin, Math.min(window.innerWidth - width - margin, left)),
         ...(placeAbove ? { bottom: window.innerHeight - buttonRect.top + gap, maxHeight: Math.max(260, topSpace) } : { top: buttonRect.bottom + gap, maxHeight: Math.max(260, bottomSpace) }),
-        background: theme.canvas.background,
+        background: theme.spatial.elevated,
         border: `1px solid ${theme.toolbar.border}`,
-        borderRadius: 10,
+        borderRadius: 16,
         boxShadow: `0 24px 72px ${theme.spatial.shadow}`,
-        padding: 12,
-        overflowY: "auto",
+        padding: 0,
+        overflow: "hidden",
         color: theme.node.text,
     } as const;
 
     return createPortal(
         <div
             ref={panelRef}
-            className="canvas-image-settings-popover aceternity-floating-panel backdrop-blur-2xl"
+            className="canvas-generation-settings-popover aceternity-floating-panel backdrop-blur-2xl"
             style={style}
             onPointerDown={(event) => event.stopPropagation()}
             onMouseDown={(event) => event.stopPropagation()}
             onClick={(event) => event.stopPropagation()}
         >
-            <VideoSettingsPanel config={config} onConfigChange={(key, value) => onConfigChange(key, value)} theme={theme} className="space-y-3" />
+            <CanvasGenerationSettingsShell title="视频设置" summary={summary} icon={<Video className="size-4" />} theme={theme} onClose={onClose}>
+                <VideoSettingsPanel config={config} onConfigChange={(key, value) => onConfigChange(key, value)} theme={theme} showTitle={false} className="canvas-generation-settings-body" />
+            </CanvasGenerationSettingsShell>
         </div>,
         document.body,
     );
