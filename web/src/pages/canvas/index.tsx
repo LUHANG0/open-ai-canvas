@@ -7,6 +7,7 @@ import { ArrowDownAZ, ChevronDown, Clock3, Download, FileUp, ListFilter, MoreHor
 import { CollectionGrid, PageHeader, WorkspacePage } from "@/components/layout/workspace-page";
 import { WorkspaceLoadingState, WorkspaceState } from "@/components/layout/workspace-state";
 import { FilterBar, FilterChip, SearchField, SelectionBar, StatusBadge, Surface } from "@/components/ui/pc";
+import { usePcBrandViewport } from "@/hooks/use-pc-brand-viewport";
 
 import { readZip } from "@/lib/zip";
 import { setMediaBlob } from "@/services/file-storage";
@@ -26,6 +27,7 @@ import "./canvas-library-pc.css";
 export default function CanvasPage() {
     const { message } = App.useApp();
     const navigate = useNavigate();
+    const pcBrandV2 = usePcBrandViewport();
     const [searchParams] = useSearchParams();
     const inputRef = useRef<HTMLInputElement>(null);
     const autoOpenRef = useRef(false);
@@ -212,7 +214,7 @@ export default function CanvasPage() {
         <WorkspacePage grid className="canvas-library-page pc-canvas-library-page">
             <div className="studio-band pc-canvas-library__header">
                 <PageHeader
-                    eyebrow={<span className="hidden lg:inline">VISUAL CANVAS</span>}
+                    eyebrow={pcBrandV2 ? "VISUAL CANVAS" : undefined}
                     title="画布"
                     description="把镜头、素材和想法留在同一张画布里。"
                     meta={

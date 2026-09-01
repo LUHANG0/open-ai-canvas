@@ -13,11 +13,13 @@ import { CollectionGrid, ListToolbar, PageHeader, PaginationBar, WorkspacePage }
 import { WorkspaceErrorState, WorkspaceLoadingState, WorkspaceState } from "@/components/layout/workspace-state";
 import { DrawerFrame, StatusBadge, Surface } from "@/components/ui/pc";
 import { AssetLibraryCard, AssetLibraryCardMedia } from "@/components/assets/asset-library-card";
+import { usePcBrandViewport } from "@/hooks/use-pc-brand-viewport";
 import "./eagle.css";
 
 export default function EagleLibraryPage() {
     const navigate = useNavigate();
     const { message } = App.useApp();
+    const pcBrandV2 = usePcBrandViewport();
     const installations = usePluginStore((state) => state.installations);
     const hydrated = usePluginStore((state) => state.hydrated);
     const ensurePlugin = usePluginStore((state) => state.ensurePlugin);
@@ -131,7 +133,7 @@ export default function EagleLibraryPage() {
         return (
             <WorkspacePage grid className="library-page eagle-library-page">
                 <PageHeader
-                    eyebrow={<span className="hidden lg:inline">EXTERNAL ASSET SOURCE</span>}
+                    eyebrow={pcBrandV2 ? "EXTERNAL ASSET SOURCE" : undefined}
                     title="Eagle 素材库"
                     description="把 Eagle 作为影策的外部素材来源，直接浏览和管理 Eagle 原始文件。"
                     actions={
@@ -161,7 +163,7 @@ export default function EagleLibraryPage() {
             <WorkspacePage grid className="library-page assets-library-page canvas-library-page eagle-library-page">
                 <div className="studio-band">
                     <PageHeader
-                        eyebrow={<span className="hidden lg:inline">EXTERNAL ASSET SOURCE</span>}
+                        eyebrow={pcBrandV2 ? "EXTERNAL ASSET SOURCE" : undefined}
                         title="Eagle 素材库"
                         description="Eagle 是影策的外部素材来源；这里复用影策素材库的浏览方式，直接读取和写入 Eagle 原始文件。"
                         meta={
