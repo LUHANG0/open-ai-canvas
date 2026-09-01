@@ -2,6 +2,7 @@ import type { CanvasProject } from "@/stores/canvas/use-canvas-store";
 import { CanvasNodeType, type CanvasConnection, type CanvasNodeData } from "@/types/canvas";
 
 export const CANVAS_REPRO_PROJECT_ID = "canvas-p0-fixture";
+export const CANVAS_LARGE_REPRO_PROJECT_ID = "canvas-large-fixture";
 
 const FIXTURE_TIME = "2026-09-01T00:00:00.000Z";
 
@@ -98,6 +99,45 @@ export function createCanvasReproProject(): CanvasProject {
         backgroundMode: "lines",
         showImageInfo: true,
         viewport: { x: 120, y: 70, k: 0.9 },
+        directorScenes: [],
+    };
+}
+
+export function createLargeCanvasReproProject(): CanvasProject {
+    const columns = 18;
+    const rows = 18;
+    const nodes = Array.from({ length: columns * rows }, (_, index) => {
+        const column = index % columns;
+        const row = Math.floor(index / columns);
+        return fixtureNode({
+            id: `canvas-large-node-${index + 1}`,
+            type: CanvasNodeType.Text,
+            title: `大型画布节点 ${index + 1}`,
+            position: { x: column * 300, y: row * 210 },
+            width: 220,
+            height: 130,
+            metadata: { content: `第 ${index + 1} 个性能验收节点`, prompt: `第 ${index + 1} 个性能验收节点`, status: "success" },
+        });
+    });
+    const connections: CanvasConnection[] = [];
+    nodes.forEach((node, index) => {
+        const column = index % columns;
+        const row = Math.floor(index / columns);
+        if (column > 0) connections.push({ id: `canvas-large-horizontal-${index}`, fromNodeId: nodes[index - 1].id, toNodeId: node.id });
+        if (row > 0) connections.push({ id: `canvas-large-vertical-${index}`, fromNodeId: nodes[index - columns].id, toNodeId: node.id });
+    });
+    return {
+        id: CANVAS_LARGE_REPRO_PROJECT_ID,
+        title: "大型画布性能验收夹具",
+        createdAt: FIXTURE_TIME,
+        updatedAt: FIXTURE_TIME,
+        nodes,
+        connections,
+        chatSessions: [],
+        activeChatId: null,
+        backgroundMode: "lines",
+        showImageInfo: false,
+        viewport: { x: 90, y: 70, k: 0.8 },
         directorScenes: [],
     };
 }

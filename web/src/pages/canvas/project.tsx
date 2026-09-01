@@ -66,7 +66,7 @@ import { CanvasVersionCompareModal } from "@/components/canvas/canvas-version-co
 import { CanvasLocalAgentPanel } from "@/components/canvas/canvas-local-agent-panel";
 import { useFocusMode } from "@/hooks/use-focus-mode";
 import { useCanvasAgentStore } from "@/stores/canvas/use-canvas-agent-store";
-import { getContextResourceNodes, normalizeCanvasNodeMentionTokens, type CanvasResourceReference } from "@/lib/canvas/canvas-resource-references";
+import { getContextResourceNodesFromIndex, normalizeCanvasNodeMentionTokens, type CanvasResourceReference } from "@/lib/canvas/canvas-resource-references";
 import { CanvasConnectionCreateMenu, CanvasNodePanelOverlay } from "@/components/canvas/canvas-workspace-overlays";
 import { CanvasOverlayLayerContainer, CanvasOverlayLayerProvider } from "@/components/canvas/canvas-overlay-layer";
 import { CanvasLeaferGraphicsLayer } from "@/components/canvas/canvas-leafer-graphics-layer";
@@ -89,7 +89,7 @@ import { CanvasProjectMediaDialogs } from "./canvas-project-media-dialogs";
 import { CanvasProjectSelectionToolbar } from "./canvas-project-selection-toolbar";
 import { CanvasProjectStatusDialogs } from "./canvas-project-status-dialogs";
 import { CanvasProjectWorldLayers } from "./canvas-project-world-layers";
-import { CanvasNodeActionContext } from "@/components/canvas/canvas-node-action-context";
+import { CanvasNodeActionContext, type CanvasNodeActionContextValue } from "@/components/canvas/canvas-node-action-context";
 import { PortraitClearanceModal } from "@/components/canvas/portrait-clearance/portrait-clearance-modal";
 import { CanvasNodeGraphContext, type CanvasNodeGraphContextValue } from "@/components/canvas/canvas-node-graph-context";
 import { CanvasRefreshShell } from "./canvas-refresh-shell";
@@ -128,6 +128,7 @@ import {
     type CanvasFolderStyle,
     type CanvasFolderTheme,
     type CanvasNodeData,
+    type CanvasNodeMetadata,
     type CanvasMediaPerformanceMode,
     type StoryboardColumn,
     type StoryboardShotCount,
@@ -461,11 +462,6 @@ function InfiniteCanvasPage() {
         setNodes((current) => refreshCanvasCharacterReferenceNodes(current, linkedProjectQuery.data.assets));
     }, [linkedProjectQuery.data, projectLoaded, setNodes]);
     const canvasContext = useMemo(() => summarizeCanvasContext(nodes, selectedNodeIds, linkedProjectQuery.data?.units), [linkedProjectQuery.data?.units, nodes, selectedNodeIds]);
-    // 扩展节点（对比/图表/调色）要读自己的上游才能渲染，经 Context 下发；
-    // 取上游复用 canvas-resource-references 的实现，别在这里另写一份。必须 memo——
-    // 每帧新对象会让所有节点跟着重渲染，错题本里多条崩溃都出在画布高频更新。
-    const nodeGraphContext = useMemo<CanvasNodeGraphContextValue>(() => ({ getUpstreamNodes: (nodeId: string) => getContextResourceNodes(nodeId, nodes, connections) }), [connections, nodes]);
-
     const { applyGenerationTaskResult, bindGenerationTask, finishGenerationRequest, openNodeTaskDetails, runningNodeId, setRunningNodeId, setTaskDetail, startGenerationRequest, taskDetail, taskDetailLoading, taskDetailLogs } = useCanvasGeneration({
         projectId,
         domainProjectId: linkedProjectId,
@@ -1220,6 +1216,7 @@ function InfiniteCanvasPage() {
         reduceMediaEffects,
         relatedHighlight,
         resourceReferenceByNodeId,
+        resourceGraphIndex,
         selectedNodeBounds,
         selectedVideoNodes,
         skillMentionReferences,
@@ -1258,6 +1255,9 @@ function InfiniteCanvasPage() {
         scriptEditorNodeId,
         dialogNodeId,
     });
+    // 扩展节点只关心语义数据。使用共享图索引后，每个节点取上游不再重复扫描整张画布，
+    // 且纯位置变化不会刷新 Context，避免所有可见节点绕过 memo 重渲染。
+    const nodeGraphContext = useMemo<CanvasNodeGraphContextValue>(() => ({ getUpstreamNodes: (nodeId: string) => getContextResourceNodesFromIndex(nodeId, resourceGraphIndex) }), [resourceGraphIndex]);
     useEffect(() => {
         setNodes((current) => {
             let changed = false;
@@ -1975,6 +1975,32 @@ function InfiniteCanvasPage() {
     const openCanvasNodeVersions = useCallback((node: CanvasNodeData) => setVersionCompareRootId(node.metadata?.versionOfNodeId || node.id), []);
     const viewCanvasNodeImage = useCallback((node: CanvasNodeData) => setPreviewNodeId(node.id), []);
     const editCanvasDirector = useCallback((node: CanvasNodeData) => openDirectorWorkbench(node.id), [openDirectorWorkbench]);
+    const updateCanvasNodeMetadata = useCallback((nodeId: string, patch: CanvasNodeMetadata) => {
+        setNodes((current) => current.map((node) => (node.id === nodeId ? { ...node, metadata: { ...node.metadata, ...patch } } : node)));
+    }, []);
+    const resizeCanvasNodeFromContent = useCallback((nodeId: string, size: { width: number; height: number }) => {
+        setNodes((current) => current.map((node) => (node.id === nodeId ? { ...node, width: size.width, height: size.height } : node)));
+    }, []);
+    const duplicateCanvasNodeFromContext = useCallback((node: CanvasNodeData) => duplicateNode(node.id), [duplicateNode]);
+    const deleteCanvasNodeFromContext = useCallback((node: CanvasNodeData) => deleteNodes(new Set([node.id])), [deleteNodes]);
+    const canvasNodeActions = useMemo<CanvasNodeActionContextValue>(
+        () => ({ download: downloadNodeImage, duplicate: duplicateCanvasNodeFromContext, deleteNode: deleteCanvasNodeFromContext, updateMetadata: updateCanvasNodeMetadata, resizeNode: resizeCanvasNodeFromContent, openPortraitClearance }),
+        [deleteCanvasNodeFromContext, downloadNodeImage, duplicateCanvasNodeFromContext, openPortraitClearance, resizeCanvasNodeFromContent, updateCanvasNodeMetadata],
+    );
+    const handleConnectionSelect = useCallback((connectionId: string) => {
+        setSelectedConnectionId(connectionId);
+        setSelectedNodeIds(new Set());
+        setContextMenu(null);
+    }, []);
+    const handleConnectionContextMenu = useCallback(
+        (event: ReactMouseEvent<SVGPathElement>, connectionId: string) => {
+            setSelectedConnectionId(connectionId);
+            setSelectedNodeIds(new Set());
+            closeConnectionCreateMenu();
+            setContextMenu({ type: "connection", x: event.clientX, y: event.clientY, connectionId });
+        },
+        [closeConnectionCreateMenu],
+    );
     const locateProjectStyleNode = useCallback(() => {
         const styleNode = nodesRef.current.find((node) => node.type === CanvasNodeType.Text && node.metadata?.workflowKind === "styleboard");
         if (!styleNode) {
@@ -2157,16 +2183,7 @@ function InfiniteCanvasPage() {
                                     onFileDragLeave={handleFileDragLeave}
                                     onFileDragOver={handleFileDragOver}
                                 >
-                                    <CanvasNodeActionContext.Provider
-                                        value={{
-                                            download: downloadNodeImage,
-                                            duplicate: (node) => duplicateNode(node.id),
-                                            deleteNode: (node) => deleteNodes(new Set([node.id])),
-                                            updateMetadata: (nodeId, patch) => setNodes((current) => current.map((node) => (node.id === nodeId ? { ...node, metadata: { ...node.metadata, ...patch } } : node))),
-                                            resizeNode: (nodeId, size) => setNodes((current) => current.map((node) => (node.id === nodeId ? { ...node, width: size.width, height: size.height } : node))),
-                                            openPortraitClearance,
-                                        }}
-                                    >
+                                    <CanvasNodeActionContext.Provider value={canvasNodeActions}>
                                         <CanvasNodeGraphContext.Provider value={nodeGraphContext}>
                                             <CanvasProjectWorldLayers
                                                 projectId={projectId}
@@ -2204,17 +2221,8 @@ function InfiniteCanvasPage() {
                                                 isNodeDragging={isNodeDragging}
                                                 selectionBoundsElementRef={selectionBoundsElementRef}
                                                 renderCanvasNodeContent={renderCanvasNodeContent}
-                                                onConnectionSelect={(connectionId) => {
-                                                    setSelectedConnectionId(connectionId);
-                                                    setSelectedNodeIds(new Set());
-                                                    setContextMenu(null);
-                                                }}
-                                                onConnectionContextMenu={(event, connectionId) => {
-                                                    setSelectedConnectionId(connectionId);
-                                                    setSelectedNodeIds(new Set());
-                                                    closeConnectionCreateMenu();
-                                                    setContextMenu({ type: "connection", x: event.clientX, y: event.clientY, connectionId });
-                                                }}
+                                                onConnectionSelect={handleConnectionSelect}
+                                                onConnectionContextMenu={handleConnectionContextMenu}
                                                 onNodeMouseDown={handleNodeMouseDown}
                                                 onNodeHoverStart={handleCanvasNodeHoverStart}
                                                 onNodeHoverEnd={handleCanvasNodeHoverEnd}

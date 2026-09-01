@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { CANVAS_REPRO_PROJECT_ID, createCanvasReproProject } from "../src/lib/canvas/canvas-repro-fixture";
+import { CANVAS_LARGE_REPRO_PROJECT_ID, CANVAS_REPRO_PROJECT_ID, createCanvasReproProject, createLargeCanvasReproProject } from "../src/lib/canvas/canvas-repro-fixture";
 
 async function read(relativePath: string) {
     return Bun.file(new URL(relativePath, import.meta.url)).text();
@@ -24,5 +24,15 @@ describe("canvas P0 reproduction fixture", () => {
         expect(router).toContain('{ path: "/dev/canvas-repro/:id"');
         expect(router.indexOf("CanvasReproLab")).toBeGreaterThan(router.indexOf("function devRoutes()"));
         expect(providers).toContain('window.location.pathname.startsWith("/dev/canvas-repro/")');
+    });
+
+    test("provides a deterministic large graph without remote media", () => {
+        const project = createLargeCanvasReproProject();
+
+        expect(project.id).toBe(CANVAS_LARGE_REPRO_PROJECT_ID);
+        expect(project.nodes).toHaveLength(324);
+        expect(project.connections).toHaveLength(612);
+        expect(project.nodes.every((node) => !node.metadata?.content?.startsWith("http"))).toBe(true);
+        expect(new Set(project.nodes.map((node) => node.id)).size).toBe(project.nodes.length);
     });
 });

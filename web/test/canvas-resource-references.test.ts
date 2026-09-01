@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { buildNodeMentionReferences, canvasResourceMentionToken, collectUpstreamVideoNodes } from "../src/lib/canvas/canvas-resource-references";
+import { buildNodeMentionReferences, canvasResourceMentionToken, collectUpstreamVideoNodes, createCanvasResourceGraphIndex, getContextResourceNodesFromIndex } from "../src/lib/canvas/canvas-resource-references";
 import { CanvasNodeType, type CanvasConnection, type CanvasNodeData } from "../src/types/canvas";
 
 function videoNode(id: string): CanvasNodeData {
@@ -76,6 +76,17 @@ describe("collectUpstreamVideoNodes", () => {
 });
 
 describe("canvas resource mention slots", () => {
+    test("共享图索引在节点查询时不再重新扫描原始数组", () => {
+        const target = videoNode("target");
+        const image = imageNode("image-a");
+        const nodes = [image, target];
+        const connections = [connection(image.id, target.id)];
+        const graphIndex = createCanvasResourceGraphIndex(nodes, connections);
+
+        expect(getContextResourceNodesFromIndex(target.id, graphIndex)).toEqual([image]);
+        expect(buildNodeMentionReferences(target, [] as CanvasNodeData[], [] as CanvasConnection[], graphIndex).map((reference) => reference.nodeId)).toEqual([image.id]);
+    });
+
     test("画布节点引用只保存类型位置，不保存节点 ID", () => {
         const target = videoNode("target");
         const image = imageNode("image-a");
@@ -95,14 +106,16 @@ describe("canvas resource mention slots", () => {
     });
 
     test("素材库身份 token 保持稳定", () => {
-        expect(canvasResourceMentionToken({
-            id: "asset:asset-a",
-            nodeId: "",
-            assetId: "asset-a",
-            kind: "image",
-            label: "场景图",
-            title: "场景图",
-            active: false,
-        })).toBe("@[asset:asset-a]");
+        expect(
+            canvasResourceMentionToken({
+                id: "asset:asset-a",
+                nodeId: "",
+                assetId: "asset-a",
+                kind: "image",
+                label: "场景图",
+                title: "场景图",
+                active: false,
+            }),
+        ).toBe("@[asset:asset-a]");
     });
 });

@@ -11,6 +11,7 @@ import { join } from "node:path";
 import { createServer } from "node:net";
 
 const FIXTURE_ID = "canvas-p0-fixture";
+const LARGE_FIXTURE_ID = "canvas-large-fixture";
 const CHROME_CANDIDATES = [
     process.env.CHROME_BIN,
     "/usr/bin/google-chrome",
@@ -441,6 +442,29 @@ async function compactViewportScenario(cdp) {
     assert(cdp.problems.length === 0, "D4 no browser/network problems at compact viewport", JSON.stringify(cdp.problems));
 }
 
+async function largeWorkspaceScenario(cdp, url) {
+    console.log("\n=== E. large workspace culling and responsiveness ===");
+    if (!(await cdp.poll(`document.querySelector('.pc-canvas-save-status')?.getAttribute('aria-label')?.startsWith('已保存到本机')`, "current fixture save settled"))) {
+        throw new Error("Current fixture did not finish its local save before route transition");
+    }
+    const startedAt = Date.now();
+    await cdp.navigate(url);
+    const mountMs = Date.now() - startedAt;
+    const state = await cdp.evaluate(`(() => ({
+        title: document.querySelector('.canvas-topbar-title-row button')?.textContent?.trim() || '',
+        renderedNodes: document.querySelectorAll('[data-node-id]').length,
+        renderedConnections: document.querySelectorAll('[data-connection-id]').length,
+        saveStatus: document.querySelector('.pc-canvas-save-status')?.getAttribute('aria-label') || '',
+        overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    }))()`);
+    assert(state.title === "大型画布性能验收夹具", "E1 large fixture route mounted", JSON.stringify(state));
+    assert(state.renderedNodes >= 4 && state.renderedNodes < 80, "E2 viewport culling limits mounted node DOM", `rendered=${state.renderedNodes} of 324`);
+    assert(state.renderedConnections < 120, "E3 viewport culling limits mounted connection DOM", `rendered=${state.renderedConnections} of 612`);
+    assert(mountMs < 10000, "E4 large workspace becomes interactive within budget", `${mountMs}ms`);
+    assert(Boolean(state.saveStatus) && state.overflow <= 1, "E5 large workspace keeps save feedback and layout integrity", JSON.stringify(state));
+    assert(cdp.problems.length === 0, "E6 no browser/network problems on large workspace", JSON.stringify(cdp.problems));
+}
+
 async function stopExact(child, name) {
     if (!child) return;
     const stopped = () => child.exitCode !== null || child.signalCode !== null;
@@ -471,6 +495,7 @@ async function main() {
     const cdpPort = await freePort();
     const baseUrl = `http://127.0.0.1:${vitePort}`;
     const url = `${baseUrl}/dev/canvas-repro/${FIXTURE_ID}`;
+    const largeUrl = `${baseUrl}/dev/canvas-repro/${LARGE_FIXTURE_ID}`;
     const profileDir = mkdtempSync(join(tmpdir(), "canvas-p0-e2e-"));
     let vite;
     let chrome;
@@ -485,6 +510,7 @@ async function main() {
         const movedTransform = await interactionScenario(cdp);
         await persistenceScenario(cdp, url, movedTransform);
         await compactViewportScenario(cdp);
+        await largeWorkspaceScenario(cdp, largeUrl);
     } catch (error) {
         fail("runner threw", String(error?.stack || error));
     } finally {
