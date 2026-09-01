@@ -74,7 +74,7 @@ Brand V2 定位为“光帧导演台”：面向 AI 影视与短剧创作的专�
 
 ## 5. 主题隔离
 
-`web/src/lib/app-theme.ts` 必须保留当前中性色对象供 Admin 使用，并新增独立的 PC 用户 palette：
+`web/src/lib/app-theme.ts` 必须保留当前中性色对象供 Admin 与移动端使用，并新增独立的 PC 用户 palette：
 
 ```ts
 const color = pcUserSemantics
@@ -82,8 +82,9 @@ const color = pcUserSemantics
   : APP_THEME_COLORS[mode];
 ```
 
-- `getAntThemeConfig()` 读取 Brand V2 用户 palette。
-- `getAdminAntThemeConfig()` 继续读取冻结的原 palette。
+- `getAntThemeConfig()` 只在 `usePcBrandViewport()` 命中 `>= 1024px` 时读取 Brand V2 用户 palette；移动端继续使用冻结的原 palette。
+- `getAdminAntThemeConfig()` 继续读取冻结的 Admin palette。
+- 根级 `AppProviders` 订阅同一个 Data Router 的 pathname；`/admin` 与 `/admin/**` 必须切换到 Admin theme，确保 `App.useApp()` 创建的 message、modal、notification holder 也不继承用户端品牌色。
 - 不把品牌色写入全局 `--workspace-accent`，避免 `admin-ui.css` 间接继承。
 - 品牌 Token 只在 `.app-spatial-workspace`、`body.app-spatial-overlays`、`.pc-canvas-workspace`、`.pc-auth-scene` 和 `.pc-system-page` 消费。
 
