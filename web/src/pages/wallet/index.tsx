@@ -7,6 +7,7 @@ import { formatCredits } from "@/constant/credits";
 import { PageHeader, PaginationBar, TableSurface, WorkspacePage } from "@/components/layout/workspace-page";
 import { WorkspaceState } from "@/components/layout/workspace-state";
 import { SectionHeader, StatusBadge, Surface } from "@/components/ui/pc";
+import { usePcBrandViewport } from "@/hooks/use-pc-brand-viewport";
 import { checkinCredits, getWallet, redeemCredits, type CreditLedgerEntry, type WalletSummary } from "@/services/api/wallet";
 import { modelDisplayName, useEffectiveConfig, type AiConfig } from "@/stores/use-config-store";
 
@@ -24,6 +25,7 @@ const ledgerFilterOptions = [
 export default function WalletPage() {
     const { message } = App.useApp();
     const screens = Grid.useBreakpoint();
+    const isPcBrandViewport = usePcBrandViewport();
     const config = useEffectiveConfig();
     const [wallet, setWallet] = useState<WalletSummary | null>(null);
     const [code, setCode] = useState("");
@@ -99,8 +101,10 @@ export default function WalletPage() {
     const account = wallet?.account;
     const totalMicrocredits = (account?.availableMicrocredits || 0) + (account?.reservedMicrocredits || 0);
     const availableCredits = formatCredits(account?.availableMicrocredits || 0, 6);
-    const availableDisplay = !account && screens.lg && (loading || loadError) ? "—" : availableCredits;
+    const availableDisplay = !account && isPcBrandViewport && (loading || loadError) ? "—" : availableCredits;
     const balanceLengthClass = availableCredits.length > 16 ? " is-very-long" : availableCredits.length > 11 ? " is-long" : "";
+    const accountStatusUnavailable = isPcBrandViewport && (!account || Boolean(loadError));
+    const accountStatusLabel = !isPcBrandViewport || (account && !loadError) ? "账户正常" : loadError ? "数据待刷新" : "数据同步中";
 
     const columns: ColumnsType<CreditLedgerEntry> = [
         { title: "发生时间", dataIndex: "createdAt", width: 180, render: formatTime },
@@ -126,10 +130,11 @@ export default function WalletPage() {
         {
             title: "变更后余额",
             dataIndex: "availableAfterMicrocredits",
-            width: 155,
+            width: isPcBrandViewport ? 155 : 145,
             align: "right",
             render: (value) => {
                 const formatted = formatCredits(value);
+                if (!isPcBrandViewport) return <span className="tabular-nums">{formatted}</span>;
                 return (
                     <span className="wallet-ledger-balance tabular-nums" title={`${formatted} 积分`}>
                         {formatted}
@@ -159,7 +164,7 @@ export default function WalletPage() {
                                 icon={<CalendarCheck className="size-4" />}
                                 type={wallet?.policy.checkedInToday ? "default" : "primary"}
                                 loading={checkingIn}
-                                disabled={(screens.lg && !wallet) || wallet?.policy.checkedInToday}
+                                disabled={(isPcBrandViewport && !wallet) || wallet?.policy.checkedInToday}
                                 onClick={() => void checkin()}
                             >
                                 {wallet?.policy.checkedInToday ? "今日已签到" : `签到 +${formatCredits(wallet?.policy.checkinBonusMicrocredits || 0)}`}
@@ -204,8 +209,8 @@ export default function WalletPage() {
                             </div>
                         </div>
                         <div className="wallet-balance-details">
-                            <StatusBadge className="wallet-account-status" tone="success" icon={<ShieldCheck />}>
-                                账户正常
+                            <StatusBadge className="wallet-account-status" tone={accountStatusUnavailable ? "warning" : "success"} icon={accountStatusUnavailable ? <RefreshCw /> : <ShieldCheck />} live={accountStatusUnavailable}>
+                                {accountStatusLabel}
                             </StatusBadge>
                             <BalanceMetric label="冻结积分" description="调用中或待核对" value={account?.reservedMicrocredits || 0} icon={<TicketCheck className="size-4" />} />
                             <BalanceMetric label="账户总额" description="可用与冻结合计" value={totalMicrocredits} icon={<Coins className="size-4" />} />
@@ -253,7 +258,7 @@ export default function WalletPage() {
                     description={`当前展示最近 ${wallet?.entries.length || 0} 条记录。`}
                     actions={
                         <Segmented
-                            aria-label="筛选积分流水"
+                            aria-label={isPcBrandViewport ? "筛选积分流水" : undefined}
                             block={!screens.sm}
                             value={filter}
                             options={ledgerFilterOptions}
@@ -268,20 +273,24 @@ export default function WalletPage() {
                 {screens.md ? (
                     <TableSurface className="wallet-ledger-table-surface mt-0 rounded-xl border-border/70 bg-transparent">
                         <Table
-                            aria-label="积分流水明细"
+                            aria-label={isPcBrandViewport ? "积分流水明细" : undefined}
                             className="app-data-table wallet-ledger-table"
                             rowKey="id"
-                            rowClassName={(entry) => `wallet-ledger-row is-${entry.type}`}
+                            rowClassName={isPcBrandViewport ? (entry) => `wallet-ledger-row is-${entry.type}` : undefined}
                             size="middle"
                             loading={loading}
                             columns={columns}
                             dataSource={entries}
                             pagination={false}
                             tableLayout="fixed"
-                            scroll={{ x: 1000 }}
-                            locale={{
-                                emptyText: <WorkspaceState compact icon="wallet" title={screens.lg && loadError ? "积分流水加载失败" : "没有匹配的积分记录"} description={(screens.lg && loadError) || "切换流水类型，或完成一次生成后再回来查看。"} />,
-                            }}
+                            scroll={{ x: isPcBrandViewport ? 1000 : 990 }}
+                            locale={
+                                isPcBrandViewport
+                                    ? {
+                                          emptyText: <WorkspaceState compact icon="wallet" title={loadError ? "积分流水加载失败" : "没有匹配的积分记录"} description={loadError || "切换流水类型，或完成一次生成后再回来查看。"} />,
+                                      }
+                                    : undefined
+                            }
                         />
                     </TableSurface>
                 ) : (

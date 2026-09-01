@@ -29,7 +29,10 @@ describe("PC detail polish regression gates", () => {
         expect(assets).toContain("isPcBrandViewport && !assetsHydrated");
         expect(tasks).toContain("isPcBrandViewport && !loading && loadError && !tasks.length");
         expect(tasks).toContain("(!isPcBrandViewport || !loadError || tasks.length)");
-        expect(wallet).toContain("!account && screens.lg && (loading || loadError)");
+        expect(wallet).toContain("!account && isPcBrandViewport && (loading || loadError)");
+        expect(wallet).toContain("scroll={{ x: isPcBrandViewport ? 1000 : 990 }}");
+        expect(wallet).toContain("locale={");
+        expect(wallet).not.toContain("screens.lg &&");
     });
 
     test("keeps ecosystem helper content hidden until the PC breakpoint", async () => {
