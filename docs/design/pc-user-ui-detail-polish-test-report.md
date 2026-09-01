@@ -18,14 +18,15 @@
 
 ## 3. 浏览器矩阵
 
-| 维度           | 覆盖                                                                                    | 结果                                             |
-| -------------- | --------------------------------------------------------------------------------------- | ------------------------------------------------ |
-| 1024 × 900     | Home、Create、Projects、Canvas、Tasks、Assets、Skills、Plugins、Wallet、Settings、Voice | 11 个入口均加载完成，无全局横向溢出              |
-| 1280 × 900     | 关键创作、内容与生态入口                                                                | 无全局横向溢出                                   |
-| 1440 × 900     | 上述 11 个入口                                                                          | 全部通过，无全局横向溢出                         |
-| `<1024px` 保护 | 793px 宽度下 Home、Create、Projects、Canvas、Plugins、Settings、Voice                   | PC 辅助节点均隐藏；Create 的灵感卡辅助入口未泄漏 |
-| 明暗主题       | Home、Create、Tasks、Assets、Skills、Plugins、Wallet、Settings、Voice                   | 均可读，无横向溢出                               |
-| 异常路由       | 404                                                                                     | 页面可达并保持统一视觉                           |
+| 维度             | 覆盖                                                                                    | 结果                                                               |
+| ---------------- | --------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| 1024 × 900       | Home、Create、Projects、Canvas、Tasks、Assets、Skills、Plugins、Wallet、Settings、Voice | 11 个入口均加载完成，无全局横向溢出                                |
+| 1023 ↔ 1024 边界 | Wallet 表格语义、行状态、空态与滚动宽度                                                 | 1023px 保持旧版输出；1024px 精确启用 PC 增强，两侧均无全局横向溢出 |
+| 1280 × 900       | 关键创作、内容与生态入口                                                                | 无全局横向溢出                                                     |
+| 1440 × 900       | 上述 11 个入口                                                                          | 全部通过，无全局横向溢出                                           |
+| `<1024px` 保护   | 793px 宽度下 Home、Create、Projects、Canvas、Plugins、Settings、Voice                   | PC 辅助节点均隐藏；Create 的灵感卡辅助入口未泄漏                   |
+| 明暗主题         | Home、Create、Tasks、Assets、Skills、Plugins、Wallet、Settings、Voice                   | 均可读，无横向溢出                                                 |
+| 异常路由         | 404                                                                                     | 页面可达并保持统一视觉                                             |
 
 任务表格在窄 PC 下使用自身横向滚动区域：`clientWidth=719`、`scrollWidth=1320`，不会带动整个页面横移。
 
