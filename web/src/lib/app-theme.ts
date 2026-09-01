@@ -562,10 +562,10 @@ const LEGACY_INFO = {
     },
 } as const;
 
-function createAntThemeConfig(dark: boolean, pcUserSemantics: boolean): ThemeConfig {
+function createAntThemeConfig(dark: boolean, pcUserSemantics: boolean, pcBrandV2: boolean = pcUserSemantics): ThemeConfig {
     const mode: AppThemeMode = dark ? "dark" : "light";
-    const color = pcUserSemantics ? PC_USER_THEME_COLORS[mode] : APP_THEME_COLORS[mode];
-    const darkColor = pcUserSemantics ? PC_USER_THEME_COLORS.dark : APP_THEME_COLORS.dark;
+    const color = pcUserSemantics && pcBrandV2 ? PC_USER_THEME_COLORS[mode] : APP_THEME_COLORS[mode];
+    const darkColor = pcUserSemantics && pcBrandV2 ? PC_USER_THEME_COLORS.dark : APP_THEME_COLORS.dark;
     const info = pcUserSemantics
         ? {
               ...color.status.info,
@@ -808,8 +808,8 @@ function createAntThemeConfig(dark: boolean, pcUserSemantics: boolean): ThemeCon
     };
 }
 
-export function getAntThemeConfig(dark: boolean): ThemeConfig {
-    return createAntThemeConfig(dark, true);
+export function getAntThemeConfig(dark: boolean, pcBrandV2 = true): ThemeConfig {
+    return createAntThemeConfig(dark, true, pcBrandV2);
 }
 
 /**
