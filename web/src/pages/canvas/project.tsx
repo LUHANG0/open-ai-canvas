@@ -2387,7 +2387,7 @@ function InfiniteCanvasPage() {
 
                             {assistantMounted ? (
                                 <AssistantPanelColumn width={assistantWidth} closing={assistantClosing} topInset={focusMode ? "0px" : "var(--canvas-topbar-offset)"} onWidthChange={setAssistantWidth}>
-                                    {(resizing) => (
+                                    {() => (
                                         <CanvasAssistantPanel
                                             nodes={nodes}
                                             selectedNodeIds={selectedNodeIds}
@@ -2409,7 +2409,6 @@ function InfiniteCanvasPage() {
                                             onCollapse={closeAgent}
                                             cinematicEntry={cinematicAgentEntry}
                                             onCinematicEntryConsumed={consumeCinematicAgentEntry}
-                                            resizing={resizing}
                                         />
                                     )}
                                 </AssistantPanelColumn>

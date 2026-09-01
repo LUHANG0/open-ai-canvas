@@ -1,6 +1,7 @@
 import { expect, test } from "bun:test";
 
 import { getCanvasSelectionCapabilities } from "../src/lib/canvas/canvas-selection-capabilities";
+import { canvasNodeIntersectsRenderBounds } from "../src/lib/canvas/canvas-render-culling";
 import { normalizeToolbarPrefs } from "../src/lib/canvas/tool-registry";
 import { applyCanvasHistoryPatch, createCanvasHistoryPatch, type CanvasHistorySnapshot } from "../src/pages/canvas/use-canvas-history";
 import { CanvasNodeType, type CanvasNodeData } from "../src/types/canvas";
@@ -79,4 +80,34 @@ test("audio load button carries the original play intent", async () => {
     expect(content).toContain('label={loading ? "正在加载音频" : "播放音频"}');
     expect(content).toContain("audio.play().catch(() => undefined)");
     expect(content).not.toContain("加载音频（保持暂停）");
+});
+
+test("viewport culling follows dragged geometry and does not pin ordinary selected nodes", async () => {
+    const offscreen = { ...node("offscreen", CanvasNodeType.Image, { content: "image" }), position: { x: 1_000, y: 40 } };
+    const bounds = { left: 0, top: 0, right: 500, bottom: 500 };
+    expect(canvasNodeIntersectsRenderBounds(offscreen, bounds)).toBe(false);
+    expect(canvasNodeIntersectsRenderBounds(offscreen, bounds, { x: -700, y: 0 })).toBe(true);
+
+    const renderModel = await Bun.file(new URL("../src/pages/canvas/use-canvas-render-model.ts", import.meta.url)).text();
+    expect(renderModel).toContain("canvasNodeIntersectsRenderBounds(node, renderBounds, dragOffset)");
+    expect(renderModel).not.toContain("selectedNodeIds.has(node.id) || canvasNodeIntersectsRenderBounds");
+});
+
+test("poster work is shared, abortable, and performance mode removes duplicate cover effects", async () => {
+    const posterCache = await Bun.file(new URL("../src/services/canvas-video-poster-cache.ts", import.meta.url)).text();
+    const content = await Bun.file(new URL("../src/components/canvas/canvas-node-content.tsx", import.meta.url)).text();
+    expect(posterCache).toContain("consumers: Set<symbol>");
+    expect(posterCache).toContain("task.controller.abort()");
+    expect(posterCache).toContain('signal?.addEventListener("abort", onAbort, { once: true })');
+    expect(content).toContain("!policy?.reduceEffects ? <img");
+    expect(content).toContain('policy?.reduceEffects ? "object-cover" : "object-contain"');
+});
+
+test("canvas owns one assistant transition and disables dock magnification in dense controls", async () => {
+    const assistant = await Bun.file(new URL("../src/components/canvas/canvas-assistant-panel.tsx", import.meta.url)).text();
+    const assistantColumn = await Bun.file(new URL("../src/pages/canvas/canvas-assistant-panel-column.tsx", import.meta.url)).text();
+    const toolbar = await Bun.file(new URL("../src/components/canvas/canvas-toolbar.tsx", import.meta.url)).text();
+    expect(assistant).not.toContain("<motion.aside");
+    expect(assistantColumn).toContain("translate3d");
+    expect(toolbar).toContain("magnify={false}");
 });

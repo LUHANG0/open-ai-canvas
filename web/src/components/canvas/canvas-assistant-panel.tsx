@@ -2,7 +2,6 @@ import { memo, useEffect, useMemo, useRef, useState } from "react";
 import copyToClipboard from "copy-to-clipboard";
 import { Copy, Cpu, Settings2, Trash2, X } from "lucide-react";
 import { Button, Modal, Segmented, Select, Tooltip } from "antd";
-import { motion } from "motion/react";
 
 import { modelDisplayName, modelIcon, normalizeModelOptionValue, resolveModelChannel, resolveModelRequestConfig, selectableModelsByCapability, useConfigStore, useEffectiveConfig, type AiConfig } from "@/stores/use-config-store";
 import { canvasThemes } from "@/lib/canvas-theme";
@@ -39,7 +38,6 @@ import { listAddedSkills, type Skill } from "@/services/api/skills";
 import { buildSkillMentionReferences, SKILL_RUNTIME_AGENT_GUIDANCE, skillRuntime } from "@/services/skill-runtime";
 
 export const CANVAS_AGENT_PANEL_MOTION_MS = 200;
-const PANEL_MOTION_SECONDS = CANVAS_AGENT_PANEL_MOTION_MS / 1000;
 const ONLINE_AGENT_MAX_STEPS = 8;
 const ONLINE_AGENT_PROMPT =
     `你是影策网页内置在线画布助手。首轮必须先调用 canvas_get_context；涉及已有节点时用 canvas_find_nodes 获取真实 id，涉及媒体参考时用 canvas_get_resources。流水线、工作流、管线、节点图或用户要求连线时，必须使用 canvas_create_workflow：把需求拆成有语义的节点类型、真实内容/提示词、边和布局，禁止把业务阶段退化成几个空文本卡片；工具会自动分配 id、布局并建立连线。复杂写操作先 canvas_validate_ops，再执行 canvas_apply_ops。任何写入后都必须检查工具返回的真实节点类型、connectionCount、overlapWarnings 和 verification；没有真实连线时绝不能说已连线，没有生成资源时绝不能说已完成。不要输出 JSON ops、不要猜 id、不要把未就绪资源当作可用素材、不要编造执行结果。需要用户选择时，给出可点击的短选项，不要只让用户输入 1、2、3。${SKILL_RUNTIME_AGENT_GUIDANCE}`;
@@ -265,7 +263,6 @@ type CanvasAssistantPanelProps = {
     onCollapse: () => void;
     cinematicEntry?: boolean;
     onCinematicEntryConsumed?: () => void;
-    resizing?: boolean;
 };
 
 export type CinematicContinuationFailureDisposition = "abort" | "durable-ack" | "provider-failed";
@@ -356,7 +353,6 @@ function CanvasAssistantPanelImpl({
     onCollapse,
     cinematicEntry = false,
     onCinematicEntryConsumed,
-    resizing = false,
 }: CanvasAssistantPanelProps) {
     const theme = canvasThemes[useThemeStore((state) => state.theme)];
     const user = useUserStore((state) => state.user);
@@ -1175,13 +1171,9 @@ function CanvasAssistantPanelImpl({
     );
 
     return (
-        <motion.aside
+        <aside
             className="pc-canvas-assistant-panel pointer-events-auto relative flex h-full w-full flex-col overflow-hidden rounded-[var(--panel-radius)]"
             aria-hidden={closing}
-            initial={{ x: 32, opacity: 0 }}
-            animate={{ x: closing ? 18 : 0, opacity: closing ? 0 : 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: resizing ? 0 : PANEL_MOTION_SECONDS, ease: [0.22, 1, 0.36, 1] }}
             style={{
                 // 覆盖式抽屉必须使用不透明表面，避免画布素材透出干扰消息阅读；
                 // 同时不启用 backdrop-filter，防止大面积实时模糊拖慢呼出和缩放。
@@ -1191,7 +1183,6 @@ function CanvasAssistantPanelImpl({
                 boxShadow: `-10px 0 30px ${theme.spatial.shadow}`,
                 contain: "layout paint",
                 pointerEvents: closing ? "none" : "auto",
-                willChange: closing ? "transform, opacity" : "auto",
             }}
         >
             <AgentPanelChrome
@@ -1227,7 +1218,7 @@ function CanvasAssistantPanelImpl({
                     正在准备本机 Agent…
                 </div>
             ) : null}
-        </motion.aside>
+        </aside>
     );
 }
 

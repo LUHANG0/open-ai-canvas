@@ -5,6 +5,7 @@ import { isFrameNode } from "@/lib/canvas/canvas-frame";
 import { sameNodeSemanticData } from "@/lib/canvas/canvas-project-domain";
 import { resolveCanvasMediaRenderPolicy } from "@/lib/canvas/canvas-performance-mode";
 import { getCanvasSelectionCapabilities } from "@/lib/canvas/canvas-selection-capabilities";
+import { canvasNodeIntersectsRenderBounds } from "@/lib/canvas/canvas-render-culling";
 import { buildCanvasResourceReferences, buildNodeMentionReferences, createCanvasResourceGraphIndex } from "@/lib/canvas/canvas-resource-references";
 import { buildSkillMentionReferences } from "@/lib/canvas/canvas-skill-mentions";
 import type { Skill } from "@/services/api/skills";
@@ -140,14 +141,15 @@ export function useCanvasRenderModel({
     const visibleNodes = useMemo(() => {
         const frames: CanvasNodeData[] = [];
         const regular: CanvasNodeData[] = [];
+        const editorNodeIds = new Set([dialogNodeId, directorNodeId, scriptEditorNodeId, infoNodeId, cropNodeId, maskEditNodeId, annotationNodeId, splitNodeId, upscaleNodeId, superResolveNodeId, angleNodeId, emotionNodeId, previewNodeId].filter((id): id is string => Boolean(id)));
         nodes.forEach((node) => {
             if (renderHiddenNodeIds.has(node.id)) return;
-            const retained = selectedNodeIds.has(node.id) || Boolean(dragPreview?.nodeIds.has(node.id));
-            if (!retained && (node.position.x + node.width <= renderBounds.left || node.position.x >= renderBounds.right || node.position.y + node.height <= renderBounds.top || node.position.y >= renderBounds.bottom)) return;
+            const dragOffset = dragPreview?.nodeIds.has(node.id) ? dragPreview : null;
+            if (!editorNodeIds.has(node.id) && !canvasNodeIntersectsRenderBounds(node, renderBounds, dragOffset)) return;
             (isFrameNode(node) ? frames : regular).push(node);
         });
         return [...frames, ...regular];
-    }, [dragPreview, nodes, renderBounds, renderHiddenNodeIds, selectedNodeIds]);
+    }, [angleNodeId, annotationNodeId, cropNodeId, dialogNodeId, directorNodeId, dragPreview, emotionNodeId, infoNodeId, maskEditNodeId, nodes, previewNodeId, renderBounds, renderHiddenNodeIds, scriptEditorNodeId, splitNodeId, superResolveNodeId, upscaleNodeId]);
 
     const imageAssets = useMemo(() => assets.filter((asset): asset is ImageAsset => asset.kind === "image"), [assets]);
     const canvasImageNodes = useMemo(

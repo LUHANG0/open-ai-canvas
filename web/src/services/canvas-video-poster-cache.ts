@@ -18,12 +18,21 @@ export type CanvasVideoPosterRequest = {
     maxWidth: number;
     quality: number;
     concurrency: number;
+    signal?: AbortSignal;
 };
 
 type PosterJob = {
     concurrency: number;
+    signal: AbortSignal;
+    started: boolean;
     run: () => Promise<string>;
     resolve: (value: string) => void;
+};
+
+type SharedPosterTask = {
+    controller: AbortController;
+    consumers: Set<symbol>;
+    promise: Promise<string>;
 };
 
 const POSTER_VERSION = "v2";
@@ -31,7 +40,7 @@ const MAX_POSTER_ENTRIES = 240;
 const posterStore = localforage.createInstance({ name: "infinite-canvas", storeName: "canvas_video_posters" });
 const memoryRecords = new Map<string, CanvasVideoPosterRecord>();
 const objectUrls = new Map<string, string>();
-const inFlight = new Map<string, Promise<string>>();
+const inFlight = new Map<string, SharedPosterTask>();
 const queue: PosterJob[] = [];
 let activeJobs = 0;
 
@@ -45,34 +54,69 @@ export function loadCanvasVideoPoster(request: CanvasVideoPosterRequest) {
     const cacheKey = canvasVideoPosterCacheKey(request.cacheIdentity);
     const targetWidth = Math.max(240, Math.round(request.maxWidth));
     const requestKey = `${cacheKey}:${targetWidth}`;
-    const pending = inFlight.get(requestKey);
-    if (pending) return pending;
+    let task = inFlight.get(requestKey);
+    if (!task) {
+        const controller = new AbortController();
+        const promise = readOrCreatePoster(cacheKey, { ...request, maxWidth: targetWidth, signal: controller.signal });
+        task = { controller, consumers: new Set(), promise };
+        inFlight.set(requestKey, task);
+        void promise.then(
+            () => inFlight.delete(requestKey),
+            () => inFlight.delete(requestKey),
+        );
+    }
+    return subscribePosterTask(task, request.signal);
+}
 
-    const task = readOrCreatePoster(cacheKey, { ...request, maxWidth: targetWidth });
-    inFlight.set(requestKey, task);
-    void task.finally(() => inFlight.delete(requestKey));
-    return task;
+function subscribePosterTask(task: SharedPosterTask, signal?: AbortSignal) {
+    const consumer = Symbol("poster-consumer");
+    task.consumers.add(consumer);
+    return new Promise<string>((resolve) => {
+        let settled = false;
+        const finish = (value: string) => {
+            if (settled) return;
+            settled = true;
+            signal?.removeEventListener("abort", onAbort);
+            task.consumers.delete(consumer);
+            resolve(value);
+        };
+        const onAbort = () => {
+            finish("");
+            if (!task.consumers.size) task.controller.abort();
+        };
+        if (signal?.aborted) {
+            onAbort();
+            return;
+        }
+        signal?.addEventListener("abort", onAbort, { once: true });
+        void task.promise.then(finish).catch(() => finish(""));
+    });
 }
 
 async function readOrCreatePoster(cacheKey: string, request: CanvasVideoPosterRequest) {
+    if (request.signal?.aborted) return "";
     const memory = memoryRecords.get(cacheKey);
     if (memory && posterMeetsRequest(memory, request.maxWidth)) return posterObjectUrl(cacheKey, memory);
 
     const cached = await posterStore.getItem<CanvasVideoPosterRecord>(cacheKey).catch(() => null);
+    if (request.signal?.aborted) return "";
     if (cached?.blob && posterMeetsRequest(cached, request.maxWidth)) {
         memoryRecords.set(cacheKey, cached);
         return posterObjectUrl(cacheKey, cached);
     }
 
-    return enqueuePosterJob(Math.max(1, Math.min(2, request.concurrency)), async () => {
+    return enqueuePosterJob(Math.max(1, Math.min(2, request.concurrency)), request.signal || new AbortController().signal, async () => {
+        if (request.signal?.aborted) return "";
         let record: CanvasVideoPosterRecord | null = null;
         // 优先使用可流式读取的现有地址，浏览器通常只请求元数据和首帧附近的数据，避免为了封面下载完整视频。
-        if (request.sourceUrl) record = await captureVideoPoster(request.sourceUrl, request.maxWidth, request.quality).catch(() => null);
+        if (request.sourceUrl) record = await captureVideoPoster(request.sourceUrl, request.maxWidth, request.quality, request.signal).catch(() => null);
+        if (request.signal?.aborted) return "";
         if (!record && request.storageKey) {
             const cachedResourceUrl = await cacheResourceObjectUrl(request.storageKey).catch(() => "");
-            if (cachedResourceUrl && cachedResourceUrl !== request.sourceUrl) record = await captureVideoPoster(cachedResourceUrl, request.maxWidth, request.quality).catch(() => null);
+            if (request.signal?.aborted) return "";
+            if (cachedResourceUrl && cachedResourceUrl !== request.sourceUrl) record = await captureVideoPoster(cachedResourceUrl, request.maxWidth, request.quality, request.signal).catch(() => null);
         }
-        if (!record) return "";
+        if (!record || request.signal?.aborted) return "";
         memoryRecords.set(cacheKey, record);
         await posterStore.setItem(cacheKey, record).catch(() => undefined);
         void trimPosterStore().catch(() => undefined);
@@ -80,9 +124,24 @@ async function readOrCreatePoster(cacheKey: string, request: CanvasVideoPosterRe
     });
 }
 
-function enqueuePosterJob(concurrency: number, run: () => Promise<string>) {
+function enqueuePosterJob(concurrency: number, signal: AbortSignal, run: () => Promise<string>) {
     return new Promise<string>((resolve) => {
-        queue.push({ concurrency, run, resolve });
+        const job: PosterJob = { concurrency, signal, started: false, run, resolve: (value) => {
+            signal.removeEventListener("abort", cancelQueuedJob);
+            resolve(value);
+        } };
+        const cancelQueuedJob = () => {
+            if (job.started) return;
+            const index = queue.indexOf(job);
+            if (index >= 0) queue.splice(index, 1);
+            job.resolve("");
+        };
+        if (signal.aborted) {
+            resolve("");
+            return;
+        }
+        signal.addEventListener("abort", cancelQueuedJob, { once: true });
+        queue.push(job);
         runPosterQueue();
     });
 }
@@ -91,6 +150,12 @@ function runPosterQueue() {
     const nextIndex = queue.findIndex((job) => activeJobs < job.concurrency);
     if (nextIndex < 0) return;
     const [job] = queue.splice(nextIndex, 1);
+    if (job.signal.aborted) {
+        job.resolve("");
+        runPosterQueue();
+        return;
+    }
+    job.started = true;
     activeJobs += 1;
     void job
         .run()
@@ -103,7 +168,7 @@ function runPosterQueue() {
     runPosterQueue();
 }
 
-async function captureVideoPoster(sourceUrl: string, maxWidth: number, quality: number): Promise<CanvasVideoPosterRecord> {
+async function captureVideoPoster(sourceUrl: string, maxWidth: number, quality: number, signal?: AbortSignal): Promise<CanvasVideoPosterRecord> {
     const video = document.createElement("video");
     video.muted = true;
     video.playsInline = true;
@@ -112,10 +177,10 @@ async function captureVideoPoster(sourceUrl: string, maxWidth: number, quality: 
     video.src = sourceUrl;
 
     try {
-        await waitForVideo(video, ["loadedmetadata"], () => video.videoWidth > 0 && video.videoHeight > 0, true);
+        await waitForVideo(video, ["loadedmetadata"], () => video.videoWidth > 0 && video.videoHeight > 0, true, signal);
         const duration = Number.isFinite(video.duration) ? video.duration : 0;
-        const captureTime = await selectRepresentativeFrameTime(video, duration);
-        await seekVideo(video, captureTime);
+        const captureTime = await selectRepresentativeFrameTime(video, duration, signal);
+        await seekVideo(video, captureTime, signal);
 
         const sourceWidth = Math.max(1, video.videoWidth);
         const sourceHeight = Math.max(1, video.videoHeight);
@@ -135,13 +200,14 @@ async function captureVideoPoster(sourceUrl: string, maxWidth: number, quality: 
     }
 }
 
-async function selectRepresentativeFrameTime(video: HTMLVideoElement, duration: number) {
+async function selectRepresentativeFrameTime(video: HTMLVideoElement, duration: number, signal?: AbortSignal) {
     const lastSafeTime = duration > 0.1 ? Math.max(0, duration - 0.08) : 0;
     const candidates = duration > 0.2 ? [Math.min(Math.max(duration * 0.18, 0.45), 1.2, lastSafeTime), Math.min(Math.max(duration * 0.45, 1.1), 2.8, lastSafeTime), Math.min(Math.max(duration * 0.75, 1.8), 5, lastSafeTime)] : [0];
     const uniqueCandidates = [...new Set(candidates.map((value) => Math.max(0, Math.round(value * 1000) / 1000)))];
     let best = { time: uniqueCandidates[0] || 0, score: -1 };
     for (const time of uniqueCandidates) {
-        await seekVideo(video, time);
+        if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
+        await seekVideo(video, time, signal);
         const score = representativeFrameScore(video);
         if (score > best.score) best = { time, score };
         if (score >= 82) break;
@@ -150,14 +216,14 @@ async function selectRepresentativeFrameTime(video: HTMLVideoElement, duration: 
     return best.time;
 }
 
-async function seekVideo(video: HTMLVideoElement, time: number) {
+async function seekVideo(video: HTMLVideoElement, time: number, signal?: AbortSignal) {
     if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA && Math.abs(video.currentTime - time) < 0.04) return;
     if (time <= 0.01) {
-        await waitForVideo(video, ["loadeddata"], () => video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA);
+        await waitForVideo(video, ["loadeddata"], () => video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA, false, signal);
         return;
     }
     video.currentTime = time;
-    await waitForVideo(video, ["seeked", "loadeddata"], () => video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA && Math.abs(video.currentTime - time) < 0.35);
+    await waitForVideo(video, ["seeked", "loadeddata"], () => video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA && Math.abs(video.currentTime - time) < 0.35, false, signal);
 }
 
 function representativeFrameScore(video: HTMLVideoElement) {
@@ -185,23 +251,30 @@ function representativeFrameScore(video: HTMLVideoElement) {
     return mean * 0.5 + deviation * 1.15 + visibleRatio * 34;
 }
 
-function waitForVideo(video: HTMLVideoElement, events: string[], ready: () => boolean, load = false) {
+function waitForVideo(video: HTMLVideoElement, events: string[], ready: () => boolean, load = false, signal?: AbortSignal) {
     if (ready()) return Promise.resolve();
     return new Promise<void>((resolve, reject) => {
+        if (signal?.aborted) {
+            reject(new DOMException("Aborted", "AbortError"));
+            return;
+        }
         const timeout = window.setTimeout(() => finish(new Error("视频封面读取超时")), 15_000);
         const onReady = () => {
             if (ready()) finish();
         };
         const onError = () => finish(new Error("视频封面读取失败"));
+        const onAbort = () => finish(new DOMException("Aborted", "AbortError"));
         const finish = (error?: Error) => {
             window.clearTimeout(timeout);
             events.forEach((event) => video.removeEventListener(event, onReady));
             video.removeEventListener("error", onError);
+            signal?.removeEventListener("abort", onAbort);
             if (error) reject(error);
             else resolve();
         };
         events.forEach((event) => video.addEventListener(event, onReady));
         video.addEventListener("error", onError, { once: true });
+        signal?.addEventListener("abort", onAbort, { once: true });
         if (load) video.load();
     });
 }

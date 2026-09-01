@@ -248,7 +248,7 @@ export function CanvasAssetTray({ assetImages, canvasImages, showLibrary = true,
                 ) : null}
             </AnimatePresence>
 
-            <FloatingDock items={dockItems} className="canvas-floating-dock" style={canvasDockStyle(theme)} ariaLabel="图片素材" />
+            <FloatingDock items={dockItems} magnify={false} className="canvas-floating-dock" style={canvasDockStyle(theme)} ariaLabel="图片素材" />
         </div>
     );
 }

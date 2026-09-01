@@ -135,4 +135,37 @@ describe("canvas media performance mode", () => {
         expect(canvasVideoPosterCacheKey("resource:a")).toBe(canvasVideoPosterCacheKey("resource:a"));
         expect(canvasVideoPosterCacheKey("resource:a")).not.toBe(canvasVideoPosterCacheKey("resource:b"));
     });
+
+    test("性能优先只渲染一层静态封面，画质优先保留景深层", () => {
+        const video = node("video", CanvasNodeType.Video);
+        video.metadata = { ...video.metadata, previewContent: "data:image/png;base64,poster" };
+        const commonProps = {
+            node: video,
+            theme: canvasThemes.dark,
+            isEditingContent: false,
+            textareaRef: createRef<HTMLTextAreaElement>(),
+            isBatchRoot: false,
+            batchCount: 0,
+            batchExpanded: false,
+            batchOpening: false,
+            batchRecovering: false,
+            mentionReferences: [],
+            onContentChange: () => undefined,
+            onStopEditing: () => undefined,
+            videoPreviewOnly: true,
+        };
+        const performance = renderToStaticMarkup(createElement(CanvasNodeContent, {
+            ...commonProps,
+            mediaRenderPolicy: resolveCanvasMediaRenderPolicy("performance", [video], { viewportScale: 1, visibleNodes: [video] }),
+        }));
+        const quality = renderToStaticMarkup(createElement(CanvasNodeContent, {
+            ...commonProps,
+            mediaRenderPolicy: resolveCanvasMediaRenderPolicy("quality", [video], { viewportScale: 1, visibleNodes: [video] }),
+        }));
+
+        expect((performance.match(/<img/g) || []).length).toBe(1);
+        expect((quality.match(/<img/g) || []).length).toBe(2);
+        expect(performance).not.toContain("blur-xl");
+        expect(quality).toContain("blur-xl");
+    });
 });

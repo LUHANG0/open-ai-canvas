@@ -538,8 +538,8 @@ function VideoPosterPreview({ node, theme, policy, loadingPlayback, onPlay }: Pi
             aria-label={`${node.title || "视频"}，点击中央按钮播放`}
         >
             {posterUrl ? <>
-                <img src={posterUrl} alt="" aria-hidden loading="lazy" decoding="async" draggable={false} className="pointer-events-none absolute inset-[-8%] size-[116%] object-cover opacity-35 blur-xl" />
-                <img src={posterUrl} alt="" loading="lazy" decoding="async" draggable={false} onError={() => { if (posterUrl === staticPosterUrl) setStaticPosterFailed(true); }} className="pointer-events-none absolute inset-0 size-full object-contain" />
+                {!policy?.reduceEffects ? <img src={posterUrl} alt="" aria-hidden loading="lazy" decoding="async" draggable={false} className="pointer-events-none absolute inset-[-8%] size-[116%] object-cover opacity-35 blur-xl" /> : null}
+                <img src={posterUrl} alt="" loading="lazy" decoding="async" draggable={false} onError={() => { if (posterUrl === staticPosterUrl) setStaticPosterFailed(true); }} className={`pointer-events-none absolute inset-0 size-full ${policy?.reduceEffects ? "object-cover" : "object-contain"}`} />
             </> : (
                 <div className="pointer-events-none absolute inset-0 opacity-70" style={{ backgroundImage: `radial-gradient(circle at 25% 20%, ${theme.accent.primarySoft}, transparent 36%), linear-gradient(135deg, transparent, ${theme.node.stroke})` }} />
             )}
@@ -550,7 +550,7 @@ function VideoPosterPreview({ node, theme, policy, loadingPlayback, onPlay }: Pi
                 data-canvas-video-poster-play
                 aria-label={loadingPlayback ? "正在加载视频" : "播放视频"}
                 disabled={loadingPlayback}
-                className="relative grid size-11 cursor-pointer place-items-center rounded-full border border-white/25 bg-black/45 text-white shadow-sm backdrop-blur-sm transition-colors hover:bg-black/65 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-wait"
+                className={`relative grid size-11 cursor-pointer place-items-center rounded-full border border-white/25 bg-black/45 text-white shadow-sm transition-colors hover:bg-black/65 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-wait ${policy?.reduceEffects ? "" : "backdrop-blur-sm"}`}
                 style={{ transform: "scale(clamp(1, calc(var(--canvas-live-inverse-scale, 1) * 0.55), 10))" }}
                 onMouseDown={(event) => event.stopPropagation()}
                 onPointerDown={(event) => {
@@ -578,8 +578,8 @@ function VideoPosterPreview({ node, theme, policy, loadingPlayback, onPlay }: Pi
                 {loadingPlayback ? <LoaderCircle className="size-5 animate-spin" /> : <Play className="ml-0.5 size-5 fill-current" />}
             </button>
             <div className="pointer-events-none absolute inset-x-3 bottom-3 flex min-w-0 items-end justify-between gap-2 text-white">
-                <span className="min-w-0 truncate rounded-md bg-black/48 px-2 py-1 text-[var(--fs-tiny)] font-medium backdrop-blur-sm">{node.title || "视频素材"}</span>
-                <span className="shrink-0 rounded-md bg-black/48 px-2 py-1 text-[10px] backdrop-blur-sm">{loadingPlayback ? "正在加载视频" : isLoading ? "生成预览中 · 可播放" : "点击播放"}</span>
+                <span className={`min-w-0 truncate rounded-md bg-black/48 px-2 py-1 text-[var(--fs-tiny)] font-medium ${policy?.reduceEffects ? "" : "backdrop-blur-sm"}`}>{node.title || "视频素材"}</span>
+                <span className={`shrink-0 rounded-md bg-black/48 px-2 py-1 text-[10px] ${policy?.reduceEffects ? "" : "backdrop-blur-sm"}`}>{loadingPlayback ? "正在加载视频" : isLoading ? "生成预览中 · 可播放" : "点击播放"}</span>
             </div>
         </div>
     );
@@ -596,18 +596,22 @@ function useCanvasVideoPoster(node: CanvasNodeData, policy: CanvasMediaRenderPol
 
     useEffect(() => {
         let active = true;
+        const controller = new AbortController();
         if (!enabled || !cacheIdentity) {
             setState({ url: "", status: "idle" });
             return () => { active = false; };
         }
         setState((current) => current.url ? current : { url: "", status: "loading" });
-        void loadCanvasVideoPoster({ cacheIdentity, storageKey, sourceUrl, maxWidth, quality, concurrency }).then((url) => {
+        void loadCanvasVideoPoster({ cacheIdentity, storageKey, sourceUrl, maxWidth, quality, concurrency, signal: controller.signal }).then((url) => {
             if (!active) return;
             setState(url ? { url, status: "ready" } : { url: "", status: "error" });
         }).catch(() => {
             if (active) setState({ url: "", status: "error" });
         });
-        return () => { active = false; };
+        return () => {
+            active = false;
+            controller.abort();
+        };
     }, [cacheIdentity, concurrency, enabled, maxWidth, quality, sourceUrl, storageKey]);
 
     return state;
