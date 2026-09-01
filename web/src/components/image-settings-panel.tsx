@@ -73,6 +73,10 @@ export function ImageSettingsPanel({ config, onConfigChange, theme, showTitle = 
         ? resolutionOptions.filter((item) => item.tier === activeResolution.tier).map((item) => ({ value: item.ratio, label: item.ratio, size: item.size, width: item.width, height: item.height, icon: item.width === item.height ? "square" : item.width > item.height ? "landscape" : "portrait" }))
         : imageAspectOptions(profile);
     const selectedAspect = availableAspects.find((item) => imageOptionValue(profile, item) === activeSize || item.value === activeSize) || availableAspects.find((item) => item.label === activeRatio);
+    const visualAspects = compactAspectOptions(availableAspects, profile, activeSize);
+    const selectedVisualAspect = visualAspects.find((item) => imageOptionValue(profile, item) === activeSize || compactAspectLabel(item) === activeRatio);
+    const exactSizeOptions = Array.from(new Set(pixelSizeValues.filter((value) => /^\d+x\d+$/i.test(value))));
+    const selectedExactSize = exactSizeOptions.includes(activeSize) ? activeSize : "";
     const dimensions = readSizeDimensions(activeSize, selectedAspect || aspectOptions[0]);
 	const activeQualityOptions = profile.quality.values.map((value) => qualityOptions.find((item) => item.value === value) || { value, label: value });
 	const priceTiers = imageModelPriceTiers(config);
@@ -161,24 +165,41 @@ export function ImageSettingsPanel({ config, onConfigChange, theme, showTitle = 
                         <DimensionInput prefix="H" value={dimensions.height} disabled={activeSize === "auto"} theme={theme} alignToStep={snapDimensionToStep} onChange={(value) => updateDimension("height", value)} />
                     </div>
                 </div> : null}
-                {availableAspects.length ? <div className="space-y-2">
-                    <SettingTitle color={theme.node.muted}>尺寸或比例</SettingTitle>
+                {visualAspects.length ? <div className="space-y-2">
+                    <SettingTitle color={theme.node.muted}>画面比例</SettingTitle>
                     <div className="grid grid-cols-4 gap-1.5 min-[380px]:grid-cols-5">
-                        {availableAspects.map((item) => (
+                        {visualAspects.map((item) => (
                             <button
-                                key={item.value}
+                                key={`${compactAspectLabel(item)}-${item.value}`}
                                 type="button"
-                                aria-pressed={selectedAspect?.value === item.value}
+                                aria-pressed={selectedVisualAspect?.value === item.value}
                                 className="flex h-[54px] cursor-pointer flex-col items-center justify-center gap-0.5 rounded-lg bg-transparent text-[var(--fs-label)] transition-colors hover:brightness-110 focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-1"
-                                style={{ background: selectedAspect?.value === item.value ? theme.toolbar.activeBg : "transparent", color: theme.node.text, outlineColor: theme.node.muted }}
+                                style={{ background: selectedVisualAspect?.value === item.value ? theme.toolbar.activeBg : "transparent", color: theme.node.text, outlineColor: theme.node.muted }}
                                 onMouseDown={(event) => event.stopPropagation()}
                                 onClick={() => selectAspect(item.value)}
                             >
                                 <AspectIcon type={item.icon} width={item.width} height={item.height} color={theme.node.text} />
-                                <span className="whitespace-nowrap">{item.label}</span>
+                                <span className="whitespace-nowrap">{compactAspectLabel(item)}</span>
                             </button>
                         ))}
                     </div>
+                </div> : null}
+                {exactSizeOptions.length > 1 ? <div className="space-y-2">
+                    <div className="flex items-end justify-between gap-3">
+                        <SettingTitle color={theme.node.muted}>精确尺寸</SettingTitle>
+                        <span className="text-[var(--fs-tiny)]" style={{ color: theme.node.muted }}>保留模型全部规格</span>
+                    </div>
+                    <select
+                        value={selectedExactSize}
+                        aria-label="精确图片尺寸"
+                        className="h-9 w-full cursor-pointer rounded-lg border bg-transparent px-3 text-[var(--fs-label)] font-medium outline-none focus-visible:ring-1"
+                        style={{ background: theme.toolbar.itemHover, borderColor: theme.toolbar.border, color: theme.node.text }}
+                        onMouseDown={(event) => event.stopPropagation()}
+                        onChange={(event) => onConfigChange("size", event.target.value)}
+                    >
+                        <option value="" disabled>按比例自动匹配</option>
+                        {exactSizeOptions.map((size) => <option key={size} value={size}>{formatExactImageSize(size)}</option>)}
+                    </select>
                 </div> : null}
                 {showCount && effectiveMaxCount > 1 ? (
                     <div className="space-y-2">
@@ -215,6 +236,30 @@ function imageAspectOptions(profile: ImageCapabilityConfig): AspectOption[] {
         const parts = ratioParts(value);
         return { value, label: value, size: value, width: parts?.width || 0, height: parts?.height || 0, icon: "custom" };
     });
+}
+
+function compactAspectOptions(options: AspectOption[], profile: ImageCapabilityConfig, activeSize: string) {
+    const groups = new Map<string, AspectOption>();
+    for (const option of options) {
+        const label = compactAspectLabel(option);
+        const current = groups.get(label);
+        const optionValue = imageOptionValue(profile, option);
+        const isActive = optionValue === activeSize || option.value === activeSize;
+        const isSemanticRatio = /^\d+:\d+$/.test(option.value);
+        const currentIsSemanticRatio = current ? /^\d+:\d+$/.test(current.value) : false;
+        if (!current || isActive || (isSemanticRatio && !currentIsSemanticRatio)) groups.set(label, option);
+    }
+    return Array.from(groups.values());
+}
+
+function compactAspectLabel(option: AspectOption) {
+    const parts = ratioParts(option.size || option.value);
+    return parts ? `${parts.width}:${parts.height}` : option.label.replace(/\s*\([^)]*\)\s*$/, "");
+}
+
+function formatExactImageSize(value: string) {
+    const match = value.match(/^(\d+)x(\d+)$/i);
+    return match ? `${match[1]} × ${match[2]}` : value;
 }
 
 function ratioParts(value: string) {
