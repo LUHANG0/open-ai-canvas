@@ -17,6 +17,7 @@ export type FloatingDockCommand = {
     onMouseLeave?: (event: MouseEvent<HTMLButtonElement>) => void;
     active?: boolean;
     disabled?: boolean;
+    disabledReason?: string;
     danger?: boolean;
     /** 面板展开型工具——使用 aria-expanded 而非 aria-pressed */
     expands?: boolean;
@@ -189,9 +190,9 @@ function DockCommandButton({ command, mouseX, metrics, motionEnabled, compact, s
     const itemSize = useSpring(itemTarget, aceternityMotion.spring.dock);
     const iconSize = useSpring(iconTarget, aceternityMotion.spring.dock);
     // 鼠标点击产生的 focus 不能阻塞提示收起，只有键盘可见焦点才持续显示提示。
-    const showTooltip = !showLabel && (hovered || focused) && !command.disabled;
+    const showTooltip = !showLabel && (hovered || focused);
     // scrollable 场景自定义 tooltip 会被 overflow 裁剪，用原生 title 兜底
-    const nativeTitle = !motionEnabled ? command.label : undefined;
+    const nativeTitle = !motionEnabled || command.disabled ? command.disabledReason || command.label : undefined;
 
     if (showLabel) {
         return (
@@ -202,6 +203,7 @@ function DockCommandButton({ command, mouseX, metrics, motionEnabled, compact, s
                     aria-expanded={command.expands ? command.active || undefined : undefined}
                     aria-pressed={command.expands ? undefined : command.active || undefined}
                     disabled={command.disabled}
+                    title={command.disabledReason}
                     className={cn(
                         "aceternity-dock-command is-labeled group inline-flex h-8 items-center justify-center gap-1.5 whitespace-nowrap rounded-[var(--dock-item-radius)] border-0 px-2.5 outline-none",
                         command.active && "is-active",
@@ -257,7 +259,7 @@ function DockCommandButton({ command, mouseX, metrics, motionEnabled, compact, s
                                 compact ? "-top-7 rounded-md px-1.5 py-0.5 text-[var(--fs-micro)]" : "-top-8 rounded-md px-2 py-1 text-[var(--fs-tiny)]",
                             )}
                         >
-                            {command.label}
+                            {command.disabledReason || command.label}
                         </motion.span>
                     ) : null}
                 </AnimatePresence>

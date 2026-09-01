@@ -4,6 +4,7 @@ import { buildNodeGenerationInputs, type NodeGenerationInput } from "@/component
 import { isFrameNode } from "@/lib/canvas/canvas-frame";
 import { sameNodeSemanticData } from "@/lib/canvas/canvas-project-domain";
 import { resolveCanvasMediaRenderPolicy } from "@/lib/canvas/canvas-performance-mode";
+import { getCanvasSelectionCapabilities } from "@/lib/canvas/canvas-selection-capabilities";
 import { buildCanvasResourceReferences, buildNodeMentionReferences, createCanvasResourceGraphIndex } from "@/lib/canvas/canvas-resource-references";
 import { buildSkillMentionReferences } from "@/lib/canvas/canvas-skill-mentions";
 import type { Skill } from "@/services/api/skills";
@@ -195,6 +196,7 @@ export function useCanvasRenderModel({
                 }),
         [nodes, renderHiddenNodeIds, selectedNodeIds],
     );
+    const selectionCapabilities = useMemo(() => getCanvasSelectionCapabilities(nodes, selectedNodeIds), [nodes, selectedNodeIds]);
     const batchChildCountById = useMemo(() => {
         const map = new Map<string, number>();
         nodes.forEach((node) => {
@@ -315,6 +317,7 @@ export function useCanvasRenderModel({
         resourceGraphIndex,
         selectedNodeBounds,
         selectedVideoNodes,
+        selectionCapabilities,
         semanticNodes,
         skillMentionReferences,
         splitNode,

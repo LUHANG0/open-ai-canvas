@@ -96,7 +96,6 @@ import { CanvasRefreshShell } from "./canvas-refresh-shell";
 import { queryGenerationTask } from "@/services/api/task-center";
 import type { CanvasImageEmotionPayload } from "@/components/canvas/canvas-node-emotion-panel";
 import { CanvasEmotionWorkspace } from "@/components/canvas/canvas-emotion-workspace";
-import { removeCanvasDrawing } from "@/lib/canvas/canvas-drawing-storage";
 import { useCanvasConnectionController } from "./use-canvas-connection-controller";
 import { useCanvasAgentOperations } from "./use-canvas-agent-operations";
 import { useCanvasAssistantVisibility } from "./use-canvas-assistant-visibility";
@@ -327,6 +326,7 @@ function InfiniteCanvasPage() {
     const selectedNodeIdsRef = useRef(selectedNodeIds);
     const viewportRef = useRef(viewport);
     const generateNodeRef = useRef<((nodeId: string, mode: CanvasNodeGenerationMode, prompt: string, options?: CanvasNodeGenerationOptions) => Promise<void>) | null>(null);
+    const historyRestoreUiRef = useRef<() => void>(() => undefined);
 
     useEffect(() => {
         if (!projectId) return;
@@ -354,6 +354,7 @@ function InfiniteCanvasPage() {
         setSelectedNodeIds,
         setSelectedConnectionId,
         setContextMenu,
+        onApplySnapshot: () => historyRestoreUiRef.current(),
     });
 
     const cleanupCanvasFiles = useCallback(
@@ -853,8 +854,41 @@ function InfiniteCanvasPage() {
         bindGenerationTask,
     });
 
+    useEffect(() => {
+        historyRestoreUiRef.current = () => {
+            setHoveredNodeId(null);
+            setToolbarNodeId(null);
+            setNodeImageSettingsOpen(false);
+            setDialogNodeId(null);
+            setTextEditorNodeId(null);
+            setCharacterReferenceNodeId(null);
+            setDrawingNodeId(null);
+            setInfoNodeId(null);
+            setSubtitleNodeId(null);
+            setTimelineNodeId(null);
+            setSuperResolveNodeId(null);
+            setPreviewNodeId(null);
+            setScriptEditorNodeId(null);
+            setPortraitClearanceNodeId(null);
+            setDirectorNodeId(null);
+            setVersionCompareRootId(null);
+            setFrameDialogNodeId(null);
+            setSegmentDialogNodeId(null);
+            setCropNodeId(null);
+            setMaskEditNodeId(null);
+            setAnnotationNodeId(null);
+            setSplitNodeId(null);
+            setUpscaleNodeId(null);
+            setAngleNodeId(null);
+            setEmotionNodeId(null);
+        };
+        return () => {
+            historyRestoreUiRef.current = () => undefined;
+        };
+    }, [setAngleNodeId, setAnnotationNodeId, setCropNodeId, setEmotionNodeId, setFrameDialogNodeId, setMaskEditNodeId, setSegmentDialogNodeId, setSplitNodeId, setUpscaleNodeId]);
+
     const handleNodesDeleted = useCallback(
-        (removedIds: Set<string>, nextNodes: CanvasNodeData[], removedNodes: CanvasNodeData[]) => {
+        (removedIds: Set<string>, nextNodes: CanvasNodeData[], _removedNodes: CanvasNodeData[]) => {
             const clearDeletedId = (current: string | null) => (current && removedIds.has(current) ? null : current);
             setHoveredNodeId(clearDeletedId);
             setToolbarNodeId(clearDeletedId);
@@ -882,10 +916,7 @@ function InfiniteCanvasPage() {
             setVersionCompareRootId(clearDeletedId);
             setScriptScrollTopById((current) => Object.fromEntries(Object.entries(current).filter(([id]) => !removedIds.has(id))));
             setContextMenu((current) => (current?.type === "node" && removedIds.has(current.nodeId) ? null : current));
-            const removedDrawingIds = removedNodes.flatMap((node) => (node.type === CanvasNodeType.Drawing && node.metadata?.drawingId ? [node.metadata.drawingId] : []));
-            if (removedDrawingIds.length) {
-                void Promise.all(removedDrawingIds.map((drawingId) => removeCanvasDrawing(projectId, drawingId))).catch(() => message.warning("绘图节点已删除，但本地绘图缓存清理失败"));
-            }
+            // 绘图文档随项目保留：节点删除可撤销，恢复后仍能读取原内容。
             cleanupCanvasFiles({ projectId, nodes: nextNodes, chatSessions });
         },
         [chatSessions, cleanupCanvasFiles, message, projectId, setAngleNodeId, setAnnotationNodeId, setCropNodeId, setEmotionNodeId, setFrameDialogNodeId, setMaskEditNodeId, setSegmentDialogNodeId, setSplitNodeId, setUpscaleNodeId, setRunningNodeId],
@@ -1220,6 +1251,7 @@ function InfiniteCanvasPage() {
         resourceGraphIndex,
         selectedNodeBounds,
         selectedVideoNodes,
+        selectionCapabilities,
         skillMentionReferences,
         splitNode,
         superResolveNode,
@@ -1450,10 +1482,7 @@ function InfiniteCanvasPage() {
     const shortDramaGuide = shortDramaEnabled && !currentProject?.projectId && shortDramaProgress.active ? { progress: shortDramaProgress, collapsed: shortDramaGuideCollapsed, onToggle: () => setShortDramaGuideCollapsed((value) => !value) } : undefined;
 
     const clearCanvas = useCallback(() => {
-        const drawingIds = nodesRef.current.flatMap((node) => (node.type === CanvasNodeType.Drawing && node.metadata?.drawingId ? [node.metadata.drawingId] : []));
-        if (drawingIds.length) {
-            void Promise.all(drawingIds.map((drawingId) => removeCanvasDrawing(projectId, drawingId))).catch(() => message.warning("画布已清空，但部分本地绘图缓存清理失败"));
-        }
+        // 清空操作仍可撤销，因此绘图文档在项目永久删除前继续保留。
         setNodes([]);
         setConnections([]);
         setTextEditorNodeId(null);
@@ -1470,7 +1499,7 @@ function InfiniteCanvasPage() {
         deselectCanvas();
         setClearConfirmOpen(false);
         clearCanvasFiles();
-    }, [clearCanvasFiles, deselectCanvas, message, nodesRef, projectId, setEmotionNodeId]);
+    }, [clearCanvasFiles, deselectCanvas, setEmotionNodeId]);
 
     useCanvasKeyboard({
         nodesRef,
@@ -2452,6 +2481,10 @@ function InfiniteCanvasPage() {
                                 containerRef={containerRef}
                                 count={selectedNodeBounds.count}
                                 selectedVideoCount={selectedVideoNodes.length}
+                                layoutEligibleCount={selectionCapabilities.layoutEligibleCount}
+                                storyboardEligibleCount={selectionCapabilities.storyboardEligibleCount}
+                                referenceGroupEligibleCount={selectionCapabilities.referenceGroupEligibleCount}
+                                batchConnectEligibleCount={selectionCapabilities.batchConnectEligibleCount}
                                 mergingVideos={Boolean(mergeVideoProgress)}
                                 onAlign={alignSelectedNodes}
                                 onArrange={arrangeSelectedNodes}

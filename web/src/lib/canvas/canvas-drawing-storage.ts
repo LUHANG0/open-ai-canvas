@@ -137,6 +137,19 @@ export async function removeCanvasDrawing(projectId: string, drawingId: string) 
     ]);
 }
 
+/**
+ * 仅在项目被永久删除后清理该项目的全部绘图记录。
+ * 普通节点删除和“清空画布”必须保留记录，才能支持撤销恢复。
+ */
+export async function removeCanvasProjectDrawings(projectId: string) {
+    if (!projectId) return;
+    const prefix = `${getActiveUserScope()}:${projectId}:`;
+    await Promise.all([drawingStore, drawingPreviewStore, drawingRenderStore].map(async (store) => {
+        const keys = await store.keys();
+        await Promise.all(keys.filter((key) => key.startsWith(prefix)).map((key) => store.removeItem(key)));
+    }));
+}
+
 export async function cloneCanvasDrawing(projectId: string, sourceDrawingId: string, targetDrawingId: string) {
     const [source, preview, render] = await Promise.all([
         loadCanvasDrawing(projectId, sourceDrawingId),

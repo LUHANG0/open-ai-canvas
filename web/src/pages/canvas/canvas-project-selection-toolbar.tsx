@@ -13,6 +13,10 @@ type CanvasProjectSelectionToolbarProps = {
     containerRef: RefObject<HTMLDivElement | null>;
     count: number;
     selectedVideoCount: number;
+    layoutEligibleCount: number;
+    storyboardEligibleCount: number;
+    referenceGroupEligibleCount: number;
+    batchConnectEligibleCount: number;
     mergingVideos: boolean;
     onAlign: (mode: CanvasAlignmentMode) => void;
     onArrange: (mode: "row" | "column" | "grid" | "flow") => void;
@@ -22,7 +26,7 @@ type CanvasProjectSelectionToolbarProps = {
     onMergeVideos: () => void;
 };
 
-export function CanvasProjectSelectionToolbar({ anchorRef, containerRef, count, selectedVideoCount, mergingVideos, onAlign, onArrange, onCreateStoryboard, onCreateReferenceGroup, onBatchConnect, onMergeVideos }: CanvasProjectSelectionToolbarProps) {
+export function CanvasProjectSelectionToolbar({ anchorRef, containerRef, count, selectedVideoCount, layoutEligibleCount, storyboardEligibleCount, referenceGroupEligibleCount, batchConnectEligibleCount, mergingVideos, onAlign, onArrange, onCreateStoryboard, onCreateReferenceGroup, onBatchConnect, onMergeVideos }: CanvasProjectSelectionToolbarProps) {
     const theme = canvasThemes[useThemeStore((state) => state.theme)];
 
     const handlers = {
@@ -33,6 +37,10 @@ export function CanvasProjectSelectionToolbar({ anchorRef, containerRef, count, 
         selectedCount: count,
         selectedNodeTypes: new Set(),
         selectedVideoCount,
+        layoutEligibleCount,
+        storyboardEligibleCount,
+        referenceGroupEligibleCount,
+        batchConnectEligibleCount,
         canvasTool: "move",
         workspaceMode: "professional",
         isProjectLinked: false,

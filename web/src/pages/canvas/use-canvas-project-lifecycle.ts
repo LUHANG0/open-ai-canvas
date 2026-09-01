@@ -3,7 +3,7 @@ import { App } from "antd";
 import { useNavigate } from "react-router";
 
 import { normalizeCanvasBackgroundMode, type CanvasBackgroundMode } from "@/lib/canvas-theme";
-import { removeCanvasDrawing } from "@/lib/canvas/canvas-drawing-storage";
+import { removeCanvasProjectDrawings } from "@/lib/canvas/canvas-drawing-storage";
 import { normalizeCanvasNodeTimestamps } from "@/lib/canvas/canvas-node-timestamps";
 import { hydrateAssistantImages, hydrateCanvasImages, resetInterruptedGeneration } from "@/lib/canvas/canvas-project-generation";
 import { shouldBlockCanvasUnload, type CanvasLocalSaveStatus, type CanvasSaveStatus } from "@/lib/canvas/canvas-save-status";
@@ -265,16 +265,13 @@ export function useCanvasProjectLifecycle({
     }, [message, navigate]);
 
     const deleteCurrentProject = useCallback(async () => {
-        const drawingIds = nodesRef.current.flatMap((node) => (node.type === "drawing" && node.metadata?.drawingId ? [node.metadata.drawingId] : []));
         try {
             await deleteCanvasProjectsWithRemoteSync([projectId]);
         } catch (error) {
             message.error(error instanceof Error ? `删除画布失败：${error.message}` : "删除画布失败，请稍后重试");
             return;
         }
-        if (drawingIds.length) {
-            void Promise.all(drawingIds.map((drawingId) => removeCanvasDrawing(projectId, drawingId))).catch(() => message.warning("项目已删除，但部分本地绘图缓存清理失败"));
-        }
+        await removeCanvasProjectDrawings(projectId).catch(() => message.warning("项目已删除，但部分本地绘图缓存清理失败"));
         cleanupAssetImages();
         navigate("/canvas");
     }, [cleanupAssetImages, message, navigate, nodesRef, projectId]);

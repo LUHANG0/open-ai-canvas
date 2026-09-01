@@ -92,6 +92,7 @@ export const mainToolbarTools: ToolDefinition[] = [
         label: "更多画布操作",
         icon: <MoreHorizontal />,
         defaultVisible: true,
+        hideable: false,
         defaultOrder: 80,
         expands: true,
         active: (ctx) => ctx.settingsPanelOpen,

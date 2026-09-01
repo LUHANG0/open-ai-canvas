@@ -48,6 +48,38 @@ export function hasCanvasTextSelection(selection: TextSelectionLike | null | und
     return Boolean(selection && !selection.isCollapsed && selection.rangeCount > 0 && selection.toString());
 }
 
+const CANVAS_KEYBOARD_UI_SELECTOR = [
+    "[data-canvas-no-zoom]",
+    "[data-canvas-overlay]",
+    ".pc-canvas-overlay",
+    ".ant-dropdown",
+    ".ant-popover",
+    ".ant-select-dropdown",
+    "[data-canvas-context-menu]",
+].join(", ");
+
+const CANVAS_BLOCKING_OVERLAY_SELECTOR = [
+    ".ant-modal-wrap",
+    ".ant-drawer",
+    "[role='dialog'][aria-modal='true']",
+].join(", ");
+
+export function isCanvasKeyboardUiTarget(target: Pick<Element, "closest"> | null | undefined) {
+    return Boolean(target?.closest(CANVAS_KEYBOARD_UI_SELECTOR));
+}
+
+export function hasVisibleCanvasBlockingOverlay(root: Pick<Document, "querySelectorAll"> = document) {
+    return Array.from(root.querySelectorAll(CANVAS_BLOCKING_OVERLAY_SELECTOR)).some((element) => isVisibleOverlayElement(element));
+}
+
+function isVisibleOverlayElement(element: Element) {
+    if (!(element instanceof HTMLElement)) return true;
+    if (element.hidden || element.closest("[inert]")) return false;
+    const view = element.ownerDocument.defaultView;
+    const style = view?.getComputedStyle(element);
+    return style?.display !== "none" && style?.visibility !== "hidden" && element.getClientRects().length > 0;
+}
+
 export function useCanvasKeyboard({
     nodesRef,
     selectedNodeIdsRef,
@@ -90,19 +122,22 @@ export function useCanvasKeyboard({
             const isModifierShortcut = event.metaKey || event.ctrlKey;
             const isTextEditingTarget = event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement || event.target instanceof HTMLSelectElement || Boolean(target?.closest("[contenteditable='true']"));
 
+            // 输入法组合、文本编辑、弹窗和面板各自拥有键盘；画布不能在捕获阶段抢走快捷键。
+            if (event.isComposing || isTextEditingTarget || hasVisibleCanvasBlockingOverlay() || isCanvasKeyboardUiTarget(target)) return;
+
             if (isModifierShortcut && !event.altKey && (key === "+" || key === "=" || event.code === "NumpadAdd")) {
                 event.preventDefault();
-                if (!isTextEditingTarget) zoomCanvasIn();
+                zoomCanvasIn();
                 return;
             }
             if (isModifierShortcut && !event.altKey && (key === "-" || key === "_" || event.code === "NumpadSubtract")) {
                 event.preventDefault();
-                if (!isTextEditingTarget) zoomCanvasOut();
+                zoomCanvasOut();
                 return;
             }
             if (isModifierShortcut && !event.altKey && (key === "0" || event.code === "Numpad0")) {
                 event.preventDefault();
-                if (!isTextEditingTarget) zoomToActualSize();
+                zoomToActualSize();
                 return;
             }
 
@@ -113,7 +148,6 @@ export function useCanvasKeyboard({
                 return;
             }
             if (isModifierShortcut && !event.altKey && key === "f") {
-                if (target?.closest(".ant-modal-wrap, .ant-dropdown, .ant-popover")) return;
                 event.preventDefault();
                 event.stopPropagation();
                 if (!event.repeat) {
@@ -122,9 +156,6 @@ export function useCanvasKeyboard({
                 }
                 return;
             }
-            if (isTextEditingTarget) return;
-            const isCanvasControlTarget = Boolean(target?.closest("[data-canvas-no-zoom]"));
-            if (isCanvasControlTarget && !(isModifierShortcut && !event.altKey && (key === "c" || key === "v"))) return;
             if (event.altKey && !isModifierShortcut && key === "l") {
                 event.preventDefault();
                 if (!event.repeat && selectedNodeIdsRef.current.size > 1) beginBatchConnection();
@@ -184,8 +215,7 @@ export function useCanvasKeyboard({
             }
             if (event.key === "Escape") {
                 // 沉浸专注：无选中且无弹窗/下拉/右键菜单时，Esc 退出专注；否则保留原有取消选择行为。
-                const hasFocusOverlay = Boolean(document.querySelector(".ant-modal-wrap, .ant-dropdown, .ant-select-dropdown, .ant-popover, [data-canvas-context-menu]"));
-                if (focusMode && !selectedNodeIdsRef.current.size && !hasFocusOverlay) {
+                if (focusMode && !selectedNodeIdsRef.current.size) {
                     event.stopPropagation();
                     exitFocusMode();
                     return;
@@ -200,7 +230,7 @@ export function useCanvasKeyboard({
 
         const handlePaste = (event: ClipboardEvent) => {
             const target = event.target instanceof Element ? event.target : null;
-            if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement || event.target instanceof HTMLSelectElement || target?.closest("[contenteditable='true']")) return;
+            if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement || event.target instanceof HTMLSelectElement || target?.closest("[contenteditable='true']") || hasVisibleCanvasBlockingOverlay() || isCanvasKeyboardUiTarget(target)) return;
             // 节点标记写入失败或仍在写入时避开旧系统图片，其余情况保持系统内容优先。
             event.preventDefault();
             const text = event.clipboardData?.getData("text/plain") || "";

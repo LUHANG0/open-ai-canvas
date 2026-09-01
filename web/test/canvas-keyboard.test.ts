@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 
-import { hasCanvasTextSelection } from "../src/pages/canvas/use-canvas-keyboard";
+import { hasCanvasTextSelection, isCanvasKeyboardUiTarget } from "../src/pages/canvas/use-canvas-keyboard";
 
 test("Canvas copy shortcut yields to a real browser text selection", () => {
     expect(hasCanvasTextSelection(null)).toBe(false);
@@ -8,6 +8,13 @@ test("Canvas copy shortcut yields to a real browser text selection", () => {
     expect(hasCanvasTextSelection({ isCollapsed: false, rangeCount: 0, toString: () => "Agent 文本" })).toBe(false);
     expect(hasCanvasTextSelection({ isCollapsed: false, rangeCount: 1, toString: () => "" })).toBe(false);
     expect(hasCanvasTextSelection({ isCollapsed: false, rangeCount: 1, toString: () => "Agent 文本" })).toBe(true);
+});
+
+test("Canvas shortcuts yield to canvas panels and overlays", () => {
+    const target = (matches: boolean) => ({ closest: () => matches }) as unknown as Element;
+    expect(isCanvasKeyboardUiTarget(null)).toBe(false);
+    expect(isCanvasKeyboardUiTarget(target(false))).toBe(false);
+    expect(isCanvasKeyboardUiTarget(target(true))).toBe(true);
 });
 
 test("Canvas keyboard keeps node copy as the fallback when no text is selected", async () => {

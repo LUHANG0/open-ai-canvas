@@ -4,7 +4,7 @@ import { motion, useReducedMotion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 
 import { canvasThemes } from "@/lib/canvas-theme";
-import { defaultToolbarPrefs, getToolbarTools, persistToolbarPrefs, readToolbarPrefs, type ToolbarId, type ToolbarPrefs, type ToolContext, type ToolDefinition } from "@/lib/canvas/tool-registry";
+import { defaultToolbarPrefs, getToolbarTools, normalizeToolbarPrefs, persistToolbarPrefs, readToolbarPrefs, type ToolbarId, type ToolbarPrefs, type ToolContext, type ToolDefinition } from "@/lib/canvas/tool-registry";
 import { useThemeStore } from "@/stores/use-theme-store";
 
 type ToolbarSettingsModalProps = {
@@ -38,6 +38,7 @@ type SettingsItem = {
     label: string;
     icon: React.ReactNode;
     visible: boolean;
+    hideable: boolean;
 };
 
 export function ToolbarSettingsModal({ open, onClose, toolbar }: ToolbarSettingsModalProps) {
@@ -47,6 +48,8 @@ export function ToolbarSettingsModal({ open, onClose, toolbar }: ToolbarSettings
     const [toolbarId, setToolbarId] = useState<ToolbarId>(toolbar);
     const draggedItemIdRef = useRef<string | null>(null);
     const dragTargetIdRef = useRef<string | null>(null);
+    const dragStartItemsRef = useRef<SettingsItem[] | null>(null);
+    const dragCommittedRef = useRef(false);
     const [draggedItemId, setDraggedItemId] = useState<string | null>(null);
     const visibleCount = items.filter((item) => item.visible).length;
 
@@ -55,7 +58,7 @@ export function ToolbarSettingsModal({ open, onClose, toolbar }: ToolbarSettings
         if (!open) return;
         setToolbarId(toolbar);
         const tools = getToolbarTools(toolbar);
-        const prefs = readToolbarPrefs(toolbar) ?? defaultToolbarPrefs(toolbar);
+        const prefs = normalizeToolbarPrefs(toolbar, readToolbarPrefs(toolbar));
         const hiddenSet = new Set(prefs.hidden);
         const orderIndex = new Map(prefs.order.map((id, index) => [id, index]));
         const sorted = [...tools].sort((a, b) => {
@@ -68,13 +71,16 @@ export function ToolbarSettingsModal({ open, onClose, toolbar }: ToolbarSettings
             id: tool.id,
             label: resolveLabel(tool, settingsMockContext),
             icon: resolveIcon(tool, settingsMockContext),
-            visible: !hiddenSet.has(tool.id),
+            visible: tool.hideable === false || !hiddenSet.has(tool.id),
+            hideable: tool.hideable !== false,
         })));
     }, [open, toolbar]);
 
     const handleDragStart = (id: string) => {
         draggedItemIdRef.current = id;
         dragTargetIdRef.current = id;
+        dragStartItemsRef.current = items;
+        dragCommittedRef.current = false;
         setDraggedItemId(id);
     };
 
@@ -91,20 +97,43 @@ export function ToolbarSettingsModal({ open, onClose, toolbar }: ToolbarSettings
             const next = [...current];
             const [movedItem] = next.splice(sourceIndex, 1);
             next.splice(targetIndex, 0, movedItem);
-            persistCurrent(next);
             return next;
         });
     };
 
+    const handleDrop = () => {
+        dragCommittedRef.current = true;
+        setItems((current) => {
+            persistCurrent(current);
+            return current;
+        });
+    };
+
     const handleDragEnd = () => {
+        if (!dragCommittedRef.current && dragStartItemsRef.current) setItems(dragStartItemsRef.current);
         draggedItemIdRef.current = null;
         dragTargetIdRef.current = null;
+        dragStartItemsRef.current = null;
+        dragCommittedRef.current = false;
         setDraggedItemId(null);
     };
 
     const handleToggleVisible = (id: string, visible: boolean) => {
         setItems((prev) => {
-            const next = prev.map((item) => item.id === id ? { ...item, visible } : item);
+            const next = prev.map((item) => item.id === id && item.hideable ? { ...item, visible } : item);
+            persistCurrent(next);
+            return next;
+        });
+    };
+
+    const handleMove = (id: string, direction: -1 | 1) => {
+        setItems((current) => {
+            const index = current.findIndex((item) => item.id === id);
+            const targetIndex = index + direction;
+            if (index < 0 || targetIndex < 0 || targetIndex >= current.length) return current;
+            const next = [...current];
+            const [moved] = next.splice(index, 1);
+            next.splice(targetIndex, 0, moved);
             persistCurrent(next);
             return next;
         });
@@ -118,7 +147,8 @@ export function ToolbarSettingsModal({ open, onClose, toolbar }: ToolbarSettings
             id: tool.id,
             label: resolveLabel(tool, settingsMockContext),
             icon: resolveIcon(tool, settingsMockContext),
-            visible: !hiddenSet.has(tool.id),
+            visible: tool.hideable === false || !hiddenSet.has(tool.id),
+            hideable: tool.hideable !== false,
         })));
         persistToolbarPrefs(toolbarId, defaults);
     };
@@ -126,7 +156,7 @@ export function ToolbarSettingsModal({ open, onClose, toolbar }: ToolbarSettings
     const persistCurrent = (currentItems: SettingsItem[]) => {
         const prefs: ToolbarPrefs = {
             order: currentItems.map((item) => item.id),
-            hidden: currentItems.filter((item) => !item.visible).map((item) => item.id),
+            hidden: currentItems.filter((item) => item.hideable && !item.visible).map((item) => item.id),
         };
         persistToolbarPrefs(toolbarId, prefs);
     };
@@ -187,7 +217,9 @@ export function ToolbarSettingsModal({ open, onClose, toolbar }: ToolbarSettings
                         onToggleVisible={handleToggleVisible}
                         onDragStart={handleDragStart}
                         onDragEnter={handleDragEnter}
+                        onDrop={handleDrop}
                         onDragEnd={handleDragEnd}
+                        onMove={handleMove}
                     />
                 ))}
             </div>
@@ -195,7 +227,7 @@ export function ToolbarSettingsModal({ open, onClose, toolbar }: ToolbarSettings
     );
 }
 
-function ToolbarSettingsItem({ item, index, reducedMotion, theme, dragging, onToggleVisible, onDragStart, onDragEnter, onDragEnd }: { item: SettingsItem; index: number; reducedMotion: boolean; theme: (typeof canvasThemes)[keyof typeof canvasThemes]; dragging: boolean; onToggleVisible: (id: string, visible: boolean) => void; onDragStart: (id: string) => void; onDragEnter: (id: string) => void; onDragEnd: () => void }) {
+function ToolbarSettingsItem({ item, index, reducedMotion, theme, dragging, onToggleVisible, onDragStart, onDragEnter, onDrop, onDragEnd, onMove }: { item: SettingsItem; index: number; reducedMotion: boolean; theme: (typeof canvasThemes)[keyof typeof canvasThemes]; dragging: boolean; onToggleVisible: (id: string, visible: boolean) => void; onDragStart: (id: string) => void; onDragEnter: (id: string) => void; onDrop: () => void; onDragEnd: () => void; onMove: (id: string, direction: -1 | 1) => void }) {
     return (
         <motion.div
             layout={!reducedMotion}
@@ -204,6 +236,10 @@ function ToolbarSettingsItem({ item, index, reducedMotion, theme, dragging, onTo
             style={{ color: theme.node.text }}
             onDragEnter={() => onDragEnter(item.id)}
             onDragOver={(event) => event.preventDefault()}
+            onDrop={(event) => {
+                event.preventDefault();
+                onDrop();
+            }}
         >
             <button
                 type="button"
@@ -215,7 +251,13 @@ function ToolbarSettingsItem({ item, index, reducedMotion, theme, dragging, onTo
                     onDragStart(item.id);
                 }}
                 onDragEnd={onDragEnd}
+                onKeyDown={(event) => {
+                    if (!event.altKey || (event.key !== "ArrowUp" && event.key !== "ArrowDown")) return;
+                    event.preventDefault();
+                    onMove(item.id, event.key === "ArrowUp" ? -1 : 1);
+                }}
                 aria-label={`拖动调整${item.label}顺序`}
+                title="拖动排序；键盘可用 Alt + 上/下方向键"
             >
                 <GripVertical className="size-4" />
             </button>
@@ -224,9 +266,9 @@ function ToolbarSettingsItem({ item, index, reducedMotion, theme, dragging, onTo
             </span>
             <div className="canvas-toolbar-settings-card-content min-w-0">
                 <div className="truncate text-[var(--fs-caption)] font-semibold leading-5" title={item.label}>{item.label}</div>
-                <div className="text-[var(--fs-micro)] leading-4" style={{ color: theme.node.muted }}>第 {index + 1} 位 · {item.visible ? "已显示" : "已隐藏"}</div>
+                <div className="text-[var(--fs-micro)] leading-4" style={{ color: theme.node.muted }}>第 {index + 1} 位 · {item.hideable ? (item.visible ? "已显示" : "已隐藏") : "固定保留"}</div>
             </div>
-            <Switch size="small" checked={item.visible} onChange={(checked) => onToggleVisible(item.id, checked)} aria-label={`${item.visible ? "隐藏" : "显示"}${item.label}`} />
+            <Switch size="small" checked={item.visible} disabled={!item.hideable} title={item.hideable ? undefined : "用于恢复其他工具，始终保留"} onChange={(checked) => onToggleVisible(item.id, checked)} aria-label={item.hideable ? `${item.visible ? "隐藏" : "显示"}${item.label}` : `${item.label}始终显示`} />
         </motion.div>
     );
 }
