@@ -325,6 +325,7 @@ export default function CreatePage() {
     const [viewMode, setViewMode] = useState<CreationViewMode>("chat");
     const [selectedShotIndex, setSelectedShotIndex] = useState(-1);
     const [composingNextShot, setComposingNextShot] = useState(false);
+    const [storyboardTimelineOpen, setStoryboardTimelineOpen] = useState(true);
     const [historyOpen, setHistoryOpen] = useState(false);
     const [libraryOpen, setLibraryOpen] = useState(false);
     const externalAssetSources = useExternalAssetSources(libraryOpen);
@@ -1486,14 +1487,15 @@ export default function CreatePage() {
                 ) : viewMode === "chat" ? (
                     <div className="creation-thread-workbench">
                         <CreationWorkspaceToolbar viewMode={viewMode} onViewModeChange={setViewMode} onNewConversation={startNewConversation} onOpenHistory={() => setHistoryOpen(true)} />
-                        <main ref={threadScrollRef} onScroll={handleThreadScroll} className="creation-thread-scroll creation-scrollbar">
+                        <main ref={threadScrollRef} onScroll={handleThreadScroll} className="creation-thread-scroll creation-scrollbar" aria-label="连续对话" tabIndex={0}>
                             <section className="creation-thread-stage">
-                                <div className="creation-results">
+                                <div className="creation-results" role="log" aria-live="polite" aria-relevant="additions text">
                                     {activeConversation.messages.map((item, index) => (
                                         <CreationMessageView
                                             key={item.id}
                                             item={item}
                                             modelName={item.model ? modelDisplayName(config, item.model) : ""}
+                                            compactLayout={pcBrandV2}
                                             onRetryFailure={() => retryFailedMessage(item, index)}
                                             onCreateVariant={() => createVariant(item, index)}
                                         />
@@ -1507,22 +1509,39 @@ export default function CreatePage() {
                     </div>
                 ) : (
                     <div className="storyboard-workbench">
-                        <StoryboardToolbar
-                            shots={shots}
-                            activeIndex={visibleShotIndex}
-                            composing={composingNextShot}
-                            onSelect={(index) => {
-                                setSelectedShotIndex(index);
-                                setComposingNextShot(false);
-                            }}
-                            onBeginCompose={beginComposeNextShot}
-                            onCancelCompose={cancelComposeNextShot}
-                            onNewConversation={startNewConversation}
-                            onOpenHistory={() => setHistoryOpen(true)}
-                            viewMode={viewMode}
-                            onViewModeChange={setViewMode}
-                        />
-                        <main ref={threadScrollRef} onScroll={handleThreadScroll} className="storyboard-workbench-stage creation-scrollbar">
+                        {pcBrandV2 ? (
+                            <CreationWorkspaceToolbar
+                                viewMode={viewMode}
+                                onViewModeChange={setViewMode}
+                                onNewConversation={startNewConversation}
+                                onOpenHistory={() => setHistoryOpen(true)}
+                                storyboard={{
+                                    timelineOpen: storyboardTimelineOpen,
+                                    count: composingNextShot ? nextShotNumber : shots.length,
+                                    composing: composingNextShot,
+                                    onToggleTimeline: () => setStoryboardTimelineOpen((value) => !value),
+                                    onBeginCompose: beginComposeNextShot,
+                                    onCancelCompose: cancelComposeNextShot,
+                                }}
+                            />
+                        ) : (
+                            <StoryboardToolbar
+                                shots={shots}
+                                activeIndex={visibleShotIndex}
+                                composing={composingNextShot}
+                                onSelect={(index) => {
+                                    setSelectedShotIndex(index);
+                                    setComposingNextShot(false);
+                                }}
+                                onBeginCompose={beginComposeNextShot}
+                                onCancelCompose={cancelComposeNextShot}
+                                onNewConversation={startNewConversation}
+                                onOpenHistory={() => setHistoryOpen(true)}
+                                viewMode={viewMode}
+                                onViewModeChange={setViewMode}
+                            />
+                        )}
+                        <main ref={threadScrollRef} onScroll={handleThreadScroll} className="storyboard-workbench-stage creation-scrollbar" aria-label="镜头工作区" tabIndex={0}>
                             <div className="storyboard-workbench-stage-inner">
                                 {composingNextShot ? (
                                     <StoryboardNextShotCard shotNumber={nextShotNumber} onCancel={cancelComposeNextShot} />
@@ -1532,6 +1551,7 @@ export default function CreatePage() {
                                         shotNumber={visibleShotIndex + 1}
                                         modelName={visibleShot.result?.model ? modelDisplayName(config, visibleShot.result.model) : ""}
                                         busy={busy}
+                                        compactLayout={pcBrandV2}
                                         onRetryFailure={() => {
                                             if (visibleShotResultIndex >= 0 && visibleShot.result) retryFailedMessage(visibleShot.result, visibleShotResultIndex);
                                         }}
@@ -1542,6 +1562,20 @@ export default function CreatePage() {
                                 ) : null}
                             </div>
                         </main>
+                        {pcBrandV2 && storyboardTimelineOpen ? (
+                            <StoryboardTimeline
+                                shots={shots}
+                                activeIndex={visibleShotIndex}
+                                composing={composingNextShot}
+                                onSelect={(index) => {
+                                    setSelectedShotIndex(index);
+                                    setComposingNextShot(false);
+                                }}
+                                onBeginCompose={beginComposeNextShot}
+                                onCancelCompose={cancelComposeNextShot}
+                                onClose={() => setStoryboardTimelineOpen(false)}
+                            />
+                        ) : null}
                         <section className="storyboard-workbench-composer">
                             <CreationComposer {...composerProps} variant="thread" />
                         </section>
@@ -1684,11 +1718,59 @@ function CreationViewSwitch({ viewMode, onChange }: { viewMode: CreationViewMode
     );
 }
 
-function CreationWorkspaceToolbar({ viewMode, onViewModeChange, onNewConversation, onOpenHistory }: { viewMode: CreationViewMode; onViewModeChange: (mode: CreationViewMode) => void; onNewConversation: () => void; onOpenHistory: () => void }) {
+type CreationWorkspaceStoryboardControls = {
+    timelineOpen: boolean;
+    count: number;
+    composing: boolean;
+    onToggleTimeline: () => void;
+    onBeginCompose: () => void;
+    onCancelCompose: () => void;
+};
+
+function CreationWorkspaceToolbar({
+    viewMode,
+    onViewModeChange,
+    onNewConversation,
+    onOpenHistory,
+    storyboard,
+}: {
+    viewMode: CreationViewMode;
+    onViewModeChange: (mode: CreationViewMode) => void;
+    onNewConversation: () => void;
+    onOpenHistory: () => void;
+    storyboard?: CreationWorkspaceStoryboardControls;
+}) {
     return (
-        <header className="creation-thread-toolbar">
-            <CreationViewSwitch viewMode={viewMode} onChange={onViewModeChange} />
+        <header className="creation-thread-toolbar creation-workspace-toolbar" aria-label={storyboard ? "镜头工具条" : "对话工具条"}>
+            <div className="creation-workspace-toolbar-leading">
+                {storyboard ? (
+                    <Tooltip title={storyboard.timelineOpen ? "收起镜头时间线" : "展开镜头时间线"}>
+                        <button
+                            type="button"
+                            className={`storyboard-workbench-rail-button${storyboard.timelineOpen ? " is-open" : ""}${storyboard.composing ? " is-draft" : ""}`}
+                            aria-expanded={storyboard.timelineOpen}
+                            aria-controls="storyboard-timeline"
+                            aria-haspopup="listbox"
+                            aria-label="镜头时间线"
+                            onClick={storyboard.onToggleTimeline}
+                        >
+                            <Film />
+                            <span className="storyboard-workbench-rail-badge">{storyboard.count}</span>
+                        </button>
+                    </Tooltip>
+                ) : null}
+            </div>
+            <div className="creation-workspace-toolbar-switch">
+                <CreationViewSwitch viewMode={viewMode} onChange={onViewModeChange} />
+            </div>
             <div className="storyboard-workbench-bar-actions">
+                {storyboard ? (
+                    <Tooltip title={storyboard.composing ? "收起下一镜" : "新增镜头"}>
+                        <button type="button" aria-label={storyboard.composing ? "收起下一镜" : "新增镜头"} className="storyboard-workbench-bar-action" onClick={storyboard.composing ? storyboard.onCancelCompose : storyboard.onBeginCompose}>
+                            {storyboard.composing ? <X /> : <Clapperboard />}
+                        </button>
+                    </Tooltip>
+                ) : null}
                 <Tooltip title="新建创作">
                     <button type="button" aria-label="新建创作" className="storyboard-workbench-bar-action" onClick={onNewConversation}>
                         <Plus />
@@ -1704,7 +1786,7 @@ function CreationWorkspaceToolbar({ viewMode, onViewModeChange, onNewConversatio
     );
 }
 
-function CreationMessageView({ item, modelName, onRetryFailure, onCreateVariant }: { item: CreationMessage; modelName: string; onRetryFailure: () => void; onCreateVariant: () => void }) {
+function CreationMessageView({ item, modelName, compactLayout, onRetryFailure, onCreateVariant }: { item: CreationMessage; modelName: string; compactLayout: boolean; onRetryFailure: () => void; onCreateVariant: () => void }) {
     if (item.role === "user") return <CreationUserMessage item={item} />;
     const mode = item.mode || "text";
     const stateLabel = item.status === "pending" || item.status === "streaming" ? "生成中" : item.status === "cancelled" ? "已停止" : item.status === "error" ? "生成失败" : "";
@@ -1730,8 +1812,8 @@ function CreationMessageView({ item, modelName, onRetryFailure, onCreateVariant 
                     <div className="creation-message-content">{item.content ? <AIMessageMarkdown isStreaming={item.status === "streaming"}>{item.content}</AIMessageMarkdown> : <span>正在生成…</span>}</div>
                 </>
             ) : (
-                <GenerationToolCard status={toolStatus} isBulk={mode !== "video" && (item.resultUrls?.length || Number(item.settings?.count) || 1) > 1} heading={heading}>
-                    <MediaResult item={item} onRetryFailure={onRetryFailure} onCreateVariant={onCreateVariant} />
+                <GenerationToolCard status={toolStatus} isBulk={mode !== "video" && (item.resultUrls?.length || Number(item.settings?.count) || 1) > 1} defaultExpanded={compactLayout ? true : undefined} heading={heading}>
+                    <MediaResult item={item} compactLayout={compactLayout} onRetryFailure={onRetryFailure} onCreateVariant={onCreateVariant} />
                 </GenerationToolCard>
             )}
             {item.error && mode === "text" ? (
@@ -1859,7 +1941,7 @@ function configuredMediaResolution(item: CreationMessage, isVideo: boolean) {
     return ratio ? `${ratio} 画幅` : "自动";
 }
 
-function MediaResult({ item, onRetryFailure, onCreateVariant }: { item: CreationMessage; onRetryFailure: () => void; onCreateVariant: () => void }) {
+function MediaResult({ item, compactLayout, onRetryFailure, onCreateVariant }: { item: CreationMessage; compactLayout: boolean; onRetryFailure: () => void; onCreateVariant: () => void }) {
     const [previewUrl, setPreviewUrl] = useState("");
     const [previewType, setPreviewType] = useState<"image" | "video">("image");
     const [mediaMetadata, setMediaMetadata] = useState<Record<string, CreationMediaMetadata>>({});
@@ -1912,7 +1994,28 @@ function MediaResult({ item, onRetryFailure, onCreateVariant }: { item: Creation
     const mediaDuration = isVideo ? creationMediaDurationLabel(primaryMetadata?.durationMs || Number(item.settings?.seconds || 0) * 1000) : "";
     const supplementalLabel = supplementalImages.some((entry) => entry.role === "last_frame") ? " · 含尾帧" : supplementalImages.length ? ` · ${supplementalImages.length} 张附图` : "";
     const resultType = isVideo ? `视频 · ${format}${supplementalLabel}` : `图片 · ${imageResults.length} 张`;
-    const resultAspectRatio = primaryMetadata?.width && primaryMetadata?.height ? `${primaryMetadata.width} / ${primaryMetadata.height}` : creationMediaAspectRatio(item.settings?.ratio, item.mode || "image");
+    const resultDetails = (
+        <dl className="creation-media-details" aria-label="生成结果明细">
+            <div>
+                <dt>类型</dt>
+                <dd>{resultType}</dd>
+            </div>
+            <div>
+                <dt>分辨率</dt>
+                <dd>{resolution}</dd>
+            </div>
+            <div>
+                <dt>生成耗时</dt>
+                <dd>{elapsed}</dd>
+            </div>
+            {mediaDuration ? (
+                <div>
+                    <dt>视频时长</dt>
+                    <dd>{mediaDuration}</dd>
+                </div>
+            ) : null}
+        </dl>
+    );
     return (
         <div className="creation-media-result">
             {isVideo ? (
@@ -1924,7 +2027,6 @@ function MediaResult({ item, onRetryFailure, onCreateVariant }: { item: Creation
                         setPreviewUrl(primaryUrl);
                     }}
                     aria-label="预览生成视频"
-                    style={{ aspectRatio: resultAspectRatio }}
                 >
                     <video
                         muted
@@ -1982,26 +2084,20 @@ function MediaResult({ item, onRetryFailure, onCreateVariant }: { item: Creation
                     }}
                 />
             ) : null}
-            <dl className="creation-media-details" aria-label="生成结果明细">
-                <div>
-                    <dt>类型</dt>
-                    <dd>{resultType}</dd>
-                </div>
-                <div>
-                    <dt>分辨率</dt>
-                    <dd>{resolution}</dd>
-                </div>
-                <div>
-                    <dt>生成耗时</dt>
-                    <dd>{elapsed}</dd>
-                </div>
-                {mediaDuration ? (
-                    <div>
-                        <dt>视频时长</dt>
-                        <dd>{mediaDuration}</dd>
-                    </div>
-                ) : null}
-            </dl>
+            {compactLayout ? (
+                <details className="creation-media-disclosure">
+                    <summary>
+                        <span>结果详情</span>
+                        <small>
+                            {resultType} · {resolution}
+                        </small>
+                        <ChevronDown aria-hidden="true" />
+                    </summary>
+                    {resultDetails}
+                </details>
+            ) : (
+                resultDetails
+            )}
             <div className="creation-media-actions">
                 <button type="button" onClick={onCreateVariant}>
                     <RefreshCw />
@@ -3256,6 +3352,103 @@ function directorNoteFor(mode: CreationMode, settings: CreationSettings): string
     return "";
 }
 
+function StoryboardTimeline({
+    shots,
+    activeIndex,
+    composing,
+    onSelect,
+    onBeginCompose,
+    onCancelCompose,
+    onClose,
+}: {
+    shots: CreationShot[];
+    activeIndex: number;
+    composing: boolean;
+    onSelect: (index: number) => void;
+    onBeginCompose: () => void;
+    onCancelCompose: () => void;
+    onClose: () => void;
+}) {
+    const nextShotNumber = shots.length + 1;
+    const statusOf = (shot: CreationShot) => shot.result?.status || "queued";
+    const shotTitle = (shot: CreationShot) => (shot.user ? displayCreationPrompt(shot.user.content, shot.user.references || []).trim() || "未命名镜头" : "镜头");
+    return (
+        <section id="storyboard-timeline" className="storyboard-workbench-timeline" aria-label="镜头时间线">
+            <header className="storyboard-workbench-timeline-head">
+                <span>
+                    <Clapperboard />
+                    <strong>镜头时间线</strong>
+                    <small>{composing ? `下一镜 SC.${String(nextShotNumber).padStart(2, "0")}` : `${shots.length} 个镜头`}</small>
+                </span>
+                <button type="button" aria-label="收起镜头时间线" onClick={onClose}>
+                    <ChevronDown />
+                </button>
+            </header>
+            <div className="storyboard-workbench-timeline-body">
+                <ul className="storyboard-workbench-timeline-track creation-scrollbar" role="listbox" aria-label="镜头列表" tabIndex={0}>
+                    {shots.map((shot, index) => {
+                        const status = statusOf(shot);
+                        const title = shotTitle(shot);
+                        const thumbUrl = shot.result?.resultUrls?.[0];
+                        const thumbIsVideo = shot.result?.mode === "video";
+                        const active = index === activeIndex && !composing;
+                        return (
+                            <li key={shot.user?.id || shot.result?.id || index} role="none">
+                                <button type="button" role="option" aria-selected={active} className={`storyboard-workbench-rail-row${active ? " is-active" : ""}`} onClick={() => onSelect(index)}>
+                                    <span className="storyboard-workbench-rail-thumb">
+                                        {thumbUrl ? (
+                                            thumbIsVideo ? (
+                                                <video muted preload="metadata" src={thumbUrl} />
+                                            ) : (
+                                                <img src={thumbUrl} alt="" />
+                                            )
+                                        ) : (
+                                            <span className="storyboard-workbench-rail-thumb-ph">
+                                                <Clapperboard />
+                                                <em>SC.{String(index + 1).padStart(2, "0")}</em>
+                                            </span>
+                                        )}
+                                    </span>
+                                    <span className="storyboard-workbench-rail-info">
+                                        <span className="storyboard-workbench-rail-head">
+                                            <span className="storyboard-workbench-rail-row-shot">SC.{String(index + 1).padStart(2, "0")}</span>
+                                            <span className={`storyboard-workbench-rail-row-state is-${status}`}>{status === "pending" ? "生成中" : status === "error" ? "失败" : status === "done" ? "完成" : "待生成"}</span>
+                                        </span>
+                                        <span className="storyboard-workbench-rail-row-title">{title}</span>
+                                    </span>
+                                </button>
+                            </li>
+                        );
+                    })}
+                    {composing ? (
+                        <li role="none">
+                            <button type="button" role="option" aria-selected="true" className="storyboard-workbench-rail-row is-draft is-active" onClick={onCancelCompose}>
+                                <span className="storyboard-workbench-rail-thumb">
+                                    <span className="storyboard-workbench-rail-thumb-ph">
+                                        <Clapperboard />
+                                        <em>SC.{String(nextShotNumber).padStart(2, "0")}</em>
+                                    </span>
+                                </span>
+                                <span className="storyboard-workbench-rail-info">
+                                    <span className="storyboard-workbench-rail-head">
+                                        <span className="storyboard-workbench-rail-row-shot">SC.{String(nextShotNumber).padStart(2, "0")}</span>
+                                        <span className="storyboard-workbench-rail-row-state">待撰写</span>
+                                    </span>
+                                    <span className="storyboard-workbench-rail-row-title">等待你的脚本</span>
+                                </span>
+                            </button>
+                        </li>
+                    ) : null}
+                </ul>
+                <button type="button" className="storyboard-workbench-timeline-add" onClick={onBeginCompose}>
+                    <Plus />
+                    新增镜头
+                </button>
+            </div>
+        </section>
+    );
+}
+
 function StoryboardToolbar({
     shots,
     activeIndex,
@@ -3409,7 +3602,23 @@ function StoryboardToolbar({
     );
 }
 
-function StoryboardShotCard({ shot, shotNumber, modelName, busy, onRetryFailure, onCreateVariant }: { shot: CreationShot; shotNumber: number; modelName: string; busy: boolean; onRetryFailure: () => void; onCreateVariant: () => void }) {
+function StoryboardShotCard({
+    shot,
+    shotNumber,
+    modelName,
+    busy,
+    compactLayout,
+    onRetryFailure,
+    onCreateVariant,
+}: {
+    shot: CreationShot;
+    shotNumber: number;
+    modelName: string;
+    busy: boolean;
+    compactLayout: boolean;
+    onRetryFailure: () => void;
+    onCreateVariant: () => void;
+}) {
     const user = shot.user;
     const result = shot.result;
     const status = result?.status || "queued";
@@ -3469,64 +3678,128 @@ function StoryboardShotCard({ shot, shotNumber, modelName, busy, onRetryFailure,
                 </div>
             </header>
             <div className="storyboard-workbench-card-body">
-                <div className="storyboard-workbench-thread" aria-label={`镜头 ${shotNumber} 的对话过程`}>
-                    {briefVisible && user ? (
-                        <div className="storyboard-workbench-turn is-user">
+                {compactLayout ? (
+                    <div className="storyboard-workbench-thread">
+                        <section className="storyboard-workbench-dialogue-pane creation-scrollbar" aria-label={`镜头 ${shotNumber} 的创作上下文`} tabIndex={0}>
+                            <header className="storyboard-workbench-pane-heading">
+                                <span>创作上下文</span>
+                                <small>{shotScriptLabels[mode]}</small>
+                            </header>
+                            {briefVisible && user ? (
+                                <div className="storyboard-workbench-turn is-user">
+                                    <div className="storyboard-workbench-turn-copy">
+                                        <div className="storyboard-workbench-turn-meta">
+                                            <span className="storyboard-workbench-turn-role">你</span>
+                                            {user.createdAt ? (
+                                                <time className="storyboard-workbench-turn-time" dateTime={user.createdAt}>
+                                                    {formatMessageTime(user.createdAt)}
+                                                </time>
+                                            ) : null}
+                                            <Tooltip title="复制消息">
+                                                <button type="button" className="creation-user-message-copy" aria-label="复制提示词" onClick={() => copyText(visiblePrompt, "提示词已复制")}>
+                                                    <Copy />
+                                                </button>
+                                            </Tooltip>
+                                        </div>
+                                        <div className="storyboard-workbench-turn-bubble">
+                                            <p className="storyboard-workbench-turn-text">{visiblePrompt}</p>
+                                            {user.references?.length ? <CreationMessageReferences references={user.references} /> : null}
+                                            {user.attachments?.length ? <StoryboardBriefAttachments attachments={user.attachments} /> : null}
+                                        </div>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="storyboard-workbench-empty">这一镜还没有创作描述</div>
+                            )}
+                        </section>
+                        <section className="storyboard-workbench-result-pane creation-scrollbar" aria-label={`镜头 ${shotNumber} 的生成结果`} tabIndex={0}>
+                            <header className="storyboard-workbench-pane-heading">
+                                <span>生成结果</span>
+                                {modelName ? <small>{modelName}</small> : null}
+                            </header>
+                            <div className="storyboard-workbench-turn is-ai">
+                                <span className="storyboard-workbench-ai-avatar">
+                                    <Clapperboard />
+                                </span>
+                                <div className="storyboard-workbench-turn-copy">
+                                    <div className="storyboard-workbench-turn-meta">
+                                        <span className="storyboard-workbench-turn-role is-ai">
+                                            <Sparkles />
+                                            影策 AI
+                                        </span>
+                                        {result?.createdAt ? (
+                                            <time className="storyboard-workbench-turn-time" dateTime={result.createdAt}>
+                                                {formatMessageTime(result.createdAt)}
+                                            </time>
+                                        ) : null}
+                                    </div>
+                                    <div className="storyboard-workbench-turn-bubble">
+                                        <StoryboardShotResult result={result} resultMedia={resultMedia} onRetryFailure={onRetryFailure} compactLayout />
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
+                    </div>
+                ) : (
+                    <div className="storyboard-workbench-thread" aria-label={`镜头 ${shotNumber} 的对话过程`}>
+                        {briefVisible && user ? (
+                            <div className="storyboard-workbench-turn is-user">
+                                <div className="storyboard-workbench-turn-copy">
+                                    <div className="storyboard-workbench-turn-meta">
+                                        <span className="storyboard-workbench-turn-role">{shotScriptLabels[mode]}</span>
+                                        {user.createdAt ? (
+                                            <time className="storyboard-workbench-turn-time" dateTime={user.createdAt}>
+                                                {formatMessageTime(user.createdAt)}
+                                            </time>
+                                        ) : null}
+                                        <Tooltip title="复制消息">
+                                            <button type="button" className="creation-user-message-copy" aria-label="复制提示词" onClick={() => copyText(visiblePrompt, "提示词已复制")}>
+                                                <Copy />
+                                            </button>
+                                        </Tooltip>
+                                    </div>
+                                    <div className="storyboard-workbench-turn-bubble">
+                                        <p className="storyboard-workbench-turn-text">{visiblePrompt}</p>
+                                        {user.references?.length ? <CreationMessageReferences references={user.references} /> : null}
+                                        {user.attachments?.length ? <StoryboardBriefAttachments attachments={user.attachments} /> : null}
+                                    </div>
+                                </div>
+                            </div>
+                        ) : null}
+                        {briefVisible && user ? (
+                            <div className="storyboard-workbench-handoff" aria-hidden="true">
+                                <span className="storyboard-workbench-handoff-rail" />
+                                <span className="storyboard-workbench-handoff-badge">
+                                    <ArrowDown />
+                                    交给影策 AI
+                                </span>
+                                <span className="storyboard-workbench-handoff-rail" />
+                            </div>
+                        ) : null}
+                        <div className="storyboard-workbench-turn is-ai">
+                            <span className="storyboard-workbench-ai-avatar">
+                                <Clapperboard />
+                            </span>
                             <div className="storyboard-workbench-turn-copy">
                                 <div className="storyboard-workbench-turn-meta">
-                                    <span className="storyboard-workbench-turn-role">{shotScriptLabels[mode]}</span>
-                                    {user.createdAt ? (
-                                        <time className="storyboard-workbench-turn-time" dateTime={user.createdAt}>
-                                            {formatMessageTime(user.createdAt)}
+                                    <span className="storyboard-workbench-turn-role is-ai">
+                                        <Sparkles />
+                                        影策 AI
+                                    </span>
+                                    {modelName ? <span className="storyboard-workbench-turn-model">{modelName}</span> : null}
+                                    {result?.createdAt ? (
+                                        <time className="storyboard-workbench-turn-time" dateTime={result.createdAt}>
+                                            {formatMessageTime(result.createdAt)}
                                         </time>
                                     ) : null}
-                                    <Tooltip title="复制消息">
-                                        <button type="button" className="creation-user-message-copy" aria-label="复制提示词" onClick={() => copyText(visiblePrompt, "提示词已复制")}>
-                                            <Copy />
-                                        </button>
-                                    </Tooltip>
                                 </div>
                                 <div className="storyboard-workbench-turn-bubble">
-                                    <p className="storyboard-workbench-turn-text">{visiblePrompt}</p>
-                                    {user.references?.length ? <CreationMessageReferences references={user.references} /> : null}
-                                    {user.attachments?.length ? <StoryboardBriefAttachments attachments={user.attachments} /> : null}
+                                    <StoryboardShotResult result={result} resultMedia={resultMedia} onRetryFailure={onRetryFailure} onCreateVariant={onCreateVariant} canvasPath={canvasPath} canvasHandoffAvailable={Boolean(canvasHandoffPath)} />
                                 </div>
-                            </div>
-                        </div>
-                    ) : null}
-                    {briefVisible && user ? (
-                        <div className="storyboard-workbench-handoff" aria-hidden="true">
-                            <span className="storyboard-workbench-handoff-rail" />
-                            <span className="storyboard-workbench-handoff-badge">
-                                <ArrowDown />
-                                交给影策 AI
-                            </span>
-                            <span className="storyboard-workbench-handoff-rail" />
-                        </div>
-                    ) : null}
-                    <div className="storyboard-workbench-turn is-ai">
-                        <span className="storyboard-workbench-ai-avatar">
-                            <Clapperboard />
-                        </span>
-                        <div className="storyboard-workbench-turn-copy">
-                            <div className="storyboard-workbench-turn-meta">
-                                <span className="storyboard-workbench-turn-role is-ai">
-                                    <Sparkles />
-                                    影策 AI
-                                </span>
-                                {modelName ? <span className="storyboard-workbench-turn-model">{modelName}</span> : null}
-                                {result?.createdAt ? (
-                                    <time className="storyboard-workbench-turn-time" dateTime={result.createdAt}>
-                                        {formatMessageTime(result.createdAt)}
-                                    </time>
-                                ) : null}
-                            </div>
-                            <div className="storyboard-workbench-turn-bubble">
-                                <StoryboardShotResult result={result} resultMedia={resultMedia} onRetryFailure={onRetryFailure} onCreateVariant={onCreateVariant} canvasPath={canvasPath} canvasHandoffAvailable={Boolean(canvasHandoffPath)} />
                             </div>
                         </div>
                     </div>
-                </div>
+                )}
             </div>
         </article>
     );
@@ -3617,6 +3890,7 @@ function StoryboardShotResult({
     result,
     resultMedia,
     onRetryFailure,
+    compactLayout = false,
     onCreateVariant,
     canvasPath,
     canvasHandoffAvailable,
@@ -3624,9 +3898,10 @@ function StoryboardShotResult({
     result?: CreationMessage;
     resultMedia: CreationResultMediaEntry[];
     onRetryFailure: () => void;
-    onCreateVariant: () => void;
-    canvasPath: string;
-    canvasHandoffAvailable: boolean;
+    compactLayout?: boolean;
+    onCreateVariant?: () => void;
+    canvasPath?: string;
+    canvasHandoffAvailable?: boolean;
 }) {
     const [previewUrl, setPreviewUrl] = useState("");
     const [previewType, setPreviewType] = useState<"image" | "video">("image");
@@ -3725,21 +4000,40 @@ function StoryboardShotResult({
                     ))}
                 </div>
             )}
-            {note ? (
-                <p className="storyboard-workbench-director-note">
-                    <span>导演手记</span>
-                    {note}
-                </p>
-            ) : null}
-            <div className="storyboard-workbench-media-meta">
-                <span>{mode === "video" ? (imageResults.some((entry) => entry.role === "last_frame") ? "视频结果 · 含尾帧" : "视频结果") : `${imageResults.length} 张图片`}</span>
-                <button type="button" onClick={onCreateVariant}>
-                    <RefreshCw />
-                    生成变体
-                </button>
-                <Link to={canvasPath}>{canvasHandoffAvailable ? "添加到画布" : "打开画布"}</Link>
-                <CreationResultDownloads results={resultMedia} />
-            </div>
+            {compactLayout ? (
+                <details className="storyboard-workbench-result-details">
+                    <summary>
+                        <span>{mode === "video" ? (imageResults.some((entry) => entry.role === "last_frame") ? "视频结果 · 含尾帧" : "视频结果") : `${imageResults.length} 张图片`}</span>
+                        <ChevronDown aria-hidden="true" />
+                    </summary>
+                    {note ? (
+                        <p className="storyboard-workbench-director-note">
+                            <span>导演手记</span>
+                            {note}
+                        </p>
+                    ) : (
+                        <p className="storyboard-workbench-director-note">结果已生成，详细操作可在镜头标题栏中完成。</p>
+                    )}
+                </details>
+            ) : (
+                <>
+                    {note ? (
+                        <p className="storyboard-workbench-director-note">
+                            <span>导演手记</span>
+                            {note}
+                        </p>
+                    ) : null}
+                    <div className="storyboard-workbench-media-meta">
+                        <span>{mode === "video" ? (imageResults.some((entry) => entry.role === "last_frame") ? "视频结果 · 含尾帧" : "视频结果") : `${imageResults.length} 张图片`}</span>
+                        <button type="button" onClick={onCreateVariant}>
+                            <RefreshCw />
+                            生成变体
+                        </button>
+                        <Link to={canvasPath || "/canvas"}>{canvasHandoffAvailable ? "添加到画布" : "打开画布"}</Link>
+                        <CreationResultDownloads results={resultMedia} />
+                    </div>
+                </>
+            )}
             <CreationMediaPreviewModal url={previewUrl} type={previewType} onClose={() => setPreviewUrl("")} />
         </>
     );
