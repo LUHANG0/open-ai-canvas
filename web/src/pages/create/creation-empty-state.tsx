@@ -47,10 +47,19 @@ const modeHeadline: Record<CreationMode, string> = {
 export function CreationEmptyIntro({ mode }: { mode: CreationMode }) {
     return (
         <header className="creation-empty-intro">
+            <span className="creation-empty-kicker">
+                <i aria-hidden="true" /> LIGHTFRAME CREATIVE STAGE
+            </span>
             <h1>
-                你好，想创作什么<span aria-hidden="true">？</span>
+                <span className="creation-empty-title-mobile">
+                    你好，想创作什么<span aria-hidden="true">？</span>
+                </span>
+                <span className="creation-empty-title-pc">
+                    把灵感推进到可制作的<strong>{modeHeadline[mode]}</strong>
+                </span>
             </h1>
-            <p>从一个想法开始，和影策一起完成你的{modeHeadline[mode]}。</p>
+            <p className="creation-empty-description-mobile">从一个想法开始，和影策一起完成你的{modeHeadline[mode]}。</p>
+            <p className="creation-empty-description-pc">组合提示词、参考素材与模型配置，在同一导演台里完成你的{modeHeadline[mode]}。</p>
         </header>
     );
 }
@@ -63,11 +72,12 @@ export function CreationEmptySuggest({ onStartPrompt }: { onStartPrompt: (mode: 
                 <small>选择一个方向，自动填入可继续编辑的提示词</small>
             </header>
             <nav className="creation-empty-suggest" aria-label="创作起点">
-                {emptyStateActions.map((item) => {
+                {emptyStateActions.map((item, index) => {
                     const Icon = item.icon;
                     return (
                         <button key={item.title} type="button" className={`suggest-card is-${item.mode}`} onClick={() => onStartPrompt(item.mode, item.prompt)}>
                             <span className="suggest-visual" aria-hidden="true">
+                                <span className="suggest-index">0{index + 1}</span>
                                 <span className="suggest-icon">
                                     <Icon />
                                 </span>
