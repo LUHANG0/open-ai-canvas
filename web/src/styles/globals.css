@@ -7329,6 +7329,34 @@
         padding: 11px;
     }
 
+    .canvas-generation-settings-body.video-settings-panel {
+        gap: 8px;
+        padding: 10px;
+    }
+
+    .canvas-generation-settings-body.video-settings-panel > .video-settings-section {
+        padding: 10px 11px;
+    }
+
+    .video-settings-option-grid > button {
+        min-height: 36px;
+        border: 1px solid transparent;
+    }
+
+    .video-settings-ratio-option {
+        min-height: 48px;
+        border: 1px solid transparent;
+    }
+
+    .video-settings-option-grid > button[aria-pressed="true"],
+    .video-settings-ratio-option[aria-pressed="true"] {
+        border-color: color-mix(in srgb, var(--workspace-accent) 24%, transparent);
+    }
+
+    .video-settings-dimension-summary {
+        min-height: 34px;
+    }
+
     .canvas-generation-settings-guide-target {
         transition: border-color 180ms ease, box-shadow 180ms ease, background-color 180ms ease;
     }

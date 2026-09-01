@@ -2,7 +2,7 @@ import { type ReactNode, useEffect, useRef, useState } from "react";
 import { ConfigProvider, Switch } from "antd";
 
 import { type CanvasTheme } from "@/lib/canvas-theme";
-import { buildImageResolutionOptions, formatImageResolutionSize, imageRatioForSize, imageResolutionChoices, imageResolutionOption, imageSizeForResolution, supportsImageResolutionPresets, type ImageResolutionChoice } from "@/lib/image-resolution-tiers";
+import { buildImageResolutionOptions, formatImageAspectRatio, formatImageResolutionSize, imageRatioForSize, imageResolutionChoices, imageResolutionOption, imageSizeForResolution, supportsImageResolutionPresets, type ImageResolutionChoice } from "@/lib/image-resolution-tiers";
 import { modelCapabilityConfigFor, normalizeImageValue, type ImageCapabilityConfig } from "@/lib/model-capabilities";
 import { mergedImageCapabilityConfig } from "@/lib/model-selection";
 import { modelOptionName, resolveModelChannel, type AiConfig } from "@/stores/use-config-store";
@@ -142,7 +142,7 @@ export function ImageSettingsPanel({ config, onConfigChange, theme, showTitle = 
     return (
         <ImageSettingsTheme theme={theme}>
             <div
-                className={className}
+                className={`${className} image-settings-panel`}
                 style={{ color: theme.node.text }}
                 onMouseDown={(event) => {
                     event.stopPropagation();
@@ -292,8 +292,9 @@ function compactAspectOptions(options: AspectOption[], profile: ImageCapabilityC
 }
 
 function compactAspectLabel(option: AspectOption) {
-    const parts = ratioParts(option.size || option.value);
-    return parts ? `${parts.width}:${parts.height}` : option.label.replace(/\s*\([^)]*\)\s*$/, "");
+    const value = option.size || option.value;
+    const label = formatImageAspectRatio(value);
+    return label !== value || /^\d+(?:x|:)\d+$/i.test(value) ? label : option.label.replace(/\s*\([^)]*\)\s*$/, "");
 }
 
 function formatExactImageSize(value: string) {
