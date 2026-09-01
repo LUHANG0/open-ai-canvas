@@ -122,7 +122,10 @@ describe("PC creation chat and storyboard director workbench regression gates", 
         expect(shotCard).toContain('className="storyboard-editor-inspector creation-scrollbar"');
         expect(shotCard).toContain('className="storyboard-editor-inspector-section is-script"');
         expect(shotCard).toContain('className="storyboard-editor-inspector-section is-settings"');
+        expect(shotCard).toContain('className="storyboard-workbench-card-summary"');
+        expect(shotCard).toContain('className="storyboard-workbench-card-meta"');
         expect(shotCard).toContain('className="storyboard-workbench-card-title"');
+        expect(shotCard).toContain("创作内容");
         expect(rail).toContain('storyboard-editor-shot-thumb-state is-${status}');
         expect(nextCard).toContain('className="storyboard-workbench-next-kicker"');
         expect(nextCard).toContain('aria-label="镜头描述建议"');
@@ -280,6 +283,8 @@ describe("PC creation chat and storyboard director workbench regression gates", 
         expect(shotCard).toContain("<CreationResultDownloads results={resultMedia} />");
         expect(result).toContain('aria-label="预览生成视频"');
         expect(result).toContain('aria-label="预览生成图片"');
+        expect(result).toContain("{!compactLayout ? (");
+        expect(result).not.toContain('className="storyboard-workbench-result-details"');
         expect(result).toContain('<CreationMediaPreviewModal url={previewUrl} type={previewType} onClose={() => setPreviewUrl("")} />');
         expect(downloads).toContain("href={entry.url} download");
         expect(composer).toContain('type="file" hidden');

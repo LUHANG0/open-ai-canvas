@@ -3863,15 +3863,19 @@ function StoryboardShotCard({
                 <div className="storyboard-workbench-card-heading">
                     <span className="storyboard-workbench-card-shot">
                         <span className="storyboard-workbench-card-shot-index">SC.{String(shotNumber).padStart(2, "0")}</span>
-                        <span className="storyboard-workbench-card-title" title={shotTitle}>
-                            {shotTitle}
+                        <span className="storyboard-workbench-card-summary">
+                            <span className="storyboard-workbench-card-title" title={shotTitle}>
+                                {shotTitle}
+                            </span>
+                            <span className="storyboard-workbench-card-meta">
+                                <span className="storyboard-workbench-card-mode">
+                                    {mode === "video" ? <Film /> : mode === "image" ? <ImageIcon /> : <MessageSquareText />}
+                                    {modeLabels[mode]}
+                                </span>
+                                {modelName ? <span className="storyboard-workbench-card-model">{modelName}</span> : null}
+                            </span>
                         </span>
                     </span>
-                    <span className="storyboard-workbench-card-mode">
-                        {mode === "video" ? <Film /> : mode === "image" ? <ImageIcon /> : <MessageSquareText />}
-                        {modeLabels[mode]}
-                    </span>
-                    {modelName ? <span className="storyboard-workbench-card-model">{modelName}</span> : null}
                     {status === "pending" ? (
                         <span className="storyboard-workbench-card-state is-pending">
                             <LoaderCircle className="animate-spin" />
@@ -3940,11 +3944,11 @@ function StoryboardShotCard({
                                     <SlidersHorizontal />
                                     镜头信息
                                 </span>
-                                <small>{shotScriptLabels[mode]}</small>
+                                <small>SC.{String(shotNumber).padStart(2, "0")}</small>
                             </header>
                             <section className="storyboard-editor-inspector-section is-script">
                                 <header>
-                                    <span>镜头脚本</span>
+                                    <span>创作内容</span>
                                     {user?.createdAt ? <time dateTime={user.createdAt}>{formatMessageTime(user.createdAt)}</time> : null}
                                     {visiblePrompt ? (
                                         <Tooltip title="复制镜头脚本">
@@ -4321,22 +4325,7 @@ function StoryboardShotResult({
                     ))}
                 </div>
             )}
-            {compactLayout ? (
-                <details className="storyboard-workbench-result-details">
-                    <summary>
-                        <span>{mode === "video" ? (imageResults.some((entry) => entry.role === "last_frame") ? "视频结果 · 含尾帧" : "视频结果") : `${imageResults.length} 张图片`}</span>
-                        <ChevronDown aria-hidden="true" />
-                    </summary>
-                    {note ? (
-                        <p className="storyboard-workbench-director-note">
-                            <span>导演手记</span>
-                            {note}
-                        </p>
-                    ) : (
-                        <p className="storyboard-workbench-director-note">结果已生成，详细操作可在镜头标题栏中完成。</p>
-                    )}
-                </details>
-            ) : (
+            {!compactLayout ? (
                 <>
                     {note ? (
                         <p className="storyboard-workbench-director-note">
@@ -4354,7 +4343,7 @@ function StoryboardShotResult({
                         <CreationResultDownloads results={resultMedia} />
                     </div>
                 </>
-            )}
+            ) : null}
             <CreationMediaPreviewModal url={previewUrl} type={previewType} onClose={() => setPreviewUrl("")} />
         </>
     );
