@@ -307,6 +307,7 @@ async function shellScenario(cdp, url) {
             nodes: document.querySelectorAll('[data-node-id]').length,
             connections: document.querySelectorAll('[data-connection-id]').length,
             topbar: !!document.querySelector('.pc-canvas-topbar'),
+            homeHref: document.querySelector('a[aria-label="返回首页"]')?.getAttribute('href') || '',
             saveStatus: document.querySelector('.pc-canvas-save-status')?.getAttribute('aria-label') || '',
             dock: !!document.querySelector('[aria-label="画布创作工具"]'),
             workspaceHeight: workspace?.getBoundingClientRect().height || 0,
@@ -320,11 +321,18 @@ async function shellScenario(cdp, url) {
     assert(state.horizontalOverflow <= 1, "A4 no document-level horizontal overflow", `overflow=${state.horizontalOverflow}`);
     assert(state.imageReady, "A5 same-origin fixture image decoded");
     assert(Boolean(state.saveStatus), "A6 save status is exposed in the project toolbar", state.saveStatus);
-    assert(cdp.problems.length === 0, "A7 no browser/network problems", JSON.stringify(cdp.problems));
+    assert(state.homeHref === "/", "A7 top bar provides a direct home entry", state.homeHref);
+    assert(cdp.problems.length === 0, "A8 no browser/network problems", JSON.stringify(cdp.problems));
 }
 
 async function interactionScenario(cdp) {
     console.log("\n=== B. drag, history, copy, search and viewport controls ===");
+    const activate = (selector) => cdp.evaluate(`(() => {
+        const element = document.querySelector(${JSON.stringify(selector)});
+        if (!(element instanceof HTMLElement)) return false;
+        element.click();
+        return true;
+    })()`);
     const nodeSelector = '[data-node-id="canvas-p0-text-story"] .canvas-node-shell';
     const wrapperSelector = '[data-node-id="canvas-p0-text-story"]';
     const initialTransform = await cdp.evaluate(`document.querySelector(${JSON.stringify(wrapperSelector)})?.style.transform || ''`);
@@ -398,7 +406,31 @@ async function interactionScenario(cdp) {
     await sleep(200);
     await cdp.shortcut("v");
     assert(await cdp.poll(`document.querySelectorAll('[data-node-id]').length === 5`, "copied node appears"), "B11 Ctrl+C/Ctrl+V duplicates the selected node");
-    assert(cdp.problems.length === 0, "B12 no browser/network problems", JSON.stringify(cdp.problems));
+    assert(await activate('[aria-label="画布外观"]') && await cdp.poll(`!!document.querySelector('[aria-label="画布底纹：点阵"]')`, "appearance panel"), "B12 appearance panel opens");
+    assert(await activate('[aria-label="画布底纹：点阵"]'), "B13 dot background can be selected");
+    const dotGrid = await cdp.evaluate(`(() => {
+        const layer = document.querySelector('[data-canvas-grid-layer]');
+        if (!(layer instanceof HTMLElement)) return null;
+        const style = getComputedStyle(layer);
+        return { backgroundImage: style.backgroundImage, opacity: Number(style.opacity) };
+    })()`);
+    assert(Boolean(dotGrid?.backgroundImage?.includes("radial-gradient")) && dotGrid.opacity >= 0.6, "B14 dot background is visibly rendered", JSON.stringify(dotGrid));
+    assert(await activate('[aria-label="画布外观"]') && await cdp.poll(`!document.querySelector('[aria-label="画布底纹：点阵"]')`, "appearance panel closes"), "B15 appearance panel closes");
+    assert(await activate('[aria-label="更多画布操作"]') && await cdp.poll(`!!document.querySelector('[aria-label="自定义工具栏"]')`, "more panel"), "B16 more panel opens");
+    assert(await activate('[aria-label="自定义工具栏"]') && await cdp.poll(`!!document.querySelector('.canvas-toolbar-settings-modal')`, "toolbar settings"), "B17 toolbar settings opens");
+    const settingsLayout = await cdp.evaluate(`(() => {
+        const cards = [...document.querySelectorAll('.canvas-toolbar-settings-card')];
+        const rects = cards.map((card) => card.getBoundingClientRect());
+        return {
+            count: cards.length,
+            columns: new Set(rects.map((rect) => Math.round(rect.left))).size,
+            rows: new Set(rects.map((rect) => Math.round(rect.top))).size,
+            maxHeight: Math.max(0, ...rects.map((rect) => rect.height)),
+        };
+    })()`);
+    assert(settingsLayout.count === 9 && settingsLayout.columns === 2 && settingsLayout.rows === 5 && settingsLayout.maxHeight <= 64, "B18 toolbar settings uses compact two-column rows", JSON.stringify(settingsLayout));
+    assert(await activate('[aria-label="关闭工具栏设置"]') && await cdp.poll(`!document.querySelector('.canvas-toolbar-settings-modal')`, "toolbar settings closes"), "B19 toolbar settings closes");
+    assert(cdp.problems.length === 0, "B20 no browser/network problems", JSON.stringify(cdp.problems));
     return movedTransform;
 }
 

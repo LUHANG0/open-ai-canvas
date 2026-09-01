@@ -243,7 +243,7 @@ export function CanvasToolbar({
                         <SpotlightSurface spotlightColor={theme.toolbar.itemHover} initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.97, transition: { duration: 0 } }} transition={{ duration: aceternityMotion.duration.instant, ease: aceternityMotion.easing.enter }} className="pc-canvas-panel aceternity-floating-panel overflow-hidden rounded-[var(--panel-radius)] border p-2 backdrop-blur-2xl" style={{ background: theme.spatial.elevated, borderColor: theme.toolbar.border, color: theme.toolbar.item }}>
                             <PanelHeading icon={<Settings2 className="size-4" />} title="更多画布操作" subtitle="低频设置与危险操作" theme={theme} />
                             <div className="mt-2.5 grid gap-1">
-                                <button type="button" className="flex items-center gap-2 rounded-[var(--dock-item-radius-labeled)] px-2.5 py-2 text-left text-xs font-medium transition-colors hover:bg-[var(--surface-hover)] focus-visible:outline focus-visible:outline-2" onClick={() => { setMoreOpen(false); setSettingsOpen(true); }}>
+                                <button type="button" className="flex items-center gap-2 rounded-[var(--dock-item-radius-labeled)] px-2.5 py-2 text-left text-xs font-medium transition-colors hover:bg-[var(--surface-hover)] focus-visible:outline focus-visible:outline-2" onClick={() => { setMoreOpen(false); setSettingsOpen(true); }} aria-label="自定义工具栏">
                                     <Settings2 className="size-3.5" />自定义工具栏
                                 </button>
                                 <div className="my-0.5 h-px" style={{ background: theme.toolbar.border }} />

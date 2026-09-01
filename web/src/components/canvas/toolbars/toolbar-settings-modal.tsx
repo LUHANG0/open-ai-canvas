@@ -139,7 +139,7 @@ export function ToolbarSettingsModal({ open, onClose, toolbar }: ToolbarSettings
             onCancel={onClose}
             footer={null}
             closable={false}
-            width={720}
+            width={680}
             centered
             destroyOnHidden
             styles={{
@@ -175,11 +175,12 @@ export function ToolbarSettingsModal({ open, onClose, toolbar }: ToolbarSettings
                     恢复默认
                 </button>
             </div>
-            <div className="grid grid-cols-2 gap-2 px-5 pb-5 pt-2 md:grid-cols-5" aria-label="主工具栏顺序">
-                {items.map((item) => (
+            <div className="grid grid-cols-1 gap-2 px-5 pb-5 pt-2 sm:grid-cols-2" aria-label="主工具栏顺序">
+                {items.map((item, index) => (
                     <ToolbarSettingsItem
                         key={item.id}
                         item={item}
+                        index={index}
                         reducedMotion={Boolean(reducedMotion)}
                         theme={theme}
                         dragging={draggedItemId === item.id}
@@ -194,39 +195,38 @@ export function ToolbarSettingsModal({ open, onClose, toolbar }: ToolbarSettings
     );
 }
 
-function ToolbarSettingsItem({ item, reducedMotion, theme, dragging, onToggleVisible, onDragStart, onDragEnter, onDragEnd }: { item: SettingsItem; reducedMotion: boolean; theme: (typeof canvasThemes)[keyof typeof canvasThemes]; dragging: boolean; onToggleVisible: (id: string, visible: boolean) => void; onDragStart: (id: string) => void; onDragEnter: (id: string) => void; onDragEnd: () => void }) {
+function ToolbarSettingsItem({ item, index, reducedMotion, theme, dragging, onToggleVisible, onDragStart, onDragEnter, onDragEnd }: { item: SettingsItem; index: number; reducedMotion: boolean; theme: (typeof canvasThemes)[keyof typeof canvasThemes]; dragging: boolean; onToggleVisible: (id: string, visible: boolean) => void; onDragStart: (id: string) => void; onDragEnter: (id: string) => void; onDragEnd: () => void }) {
     return (
         <motion.div
             layout={!reducedMotion}
             transition={reducedMotion ? { duration: 0 } : undefined}
-            className={`canvas-toolbar-settings-card flex h-24 min-w-0 flex-col rounded-[var(--r-md)] p-3 ${item.visible ? "" : "is-hidden"} ${dragging ? "is-dragging" : ""}`}
+            className={`canvas-toolbar-settings-card grid min-h-14 min-w-0 grid-cols-[28px_36px_minmax(0,1fr)_auto] items-center gap-2 rounded-[var(--r-md)] px-3 py-2.5 ${item.visible ? "" : "is-hidden"} ${dragging ? "is-dragging" : ""}`}
             style={{ color: theme.node.text }}
             onDragEnter={() => onDragEnter(item.id)}
             onDragOver={(event) => event.preventDefault()}
         >
-            <div className="flex items-center justify-between gap-2">
-                <button
-                    type="button"
-                    draggable
-                    className="grid size-6 touch-none cursor-grab place-items-center rounded-[var(--r-sm)] outline-none opacity-35 transition-opacity hover:opacity-70 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 active:cursor-grabbing"
-                    style={{ color: theme.node.muted, outlineColor: theme.accent.primary }}
-                    onDragStart={(event) => {
-                        event.dataTransfer.effectAllowed = "move";
-                        onDragStart(item.id);
-                    }}
-                    onDragEnd={onDragEnd}
-                    aria-label={`拖动调整${item.label}顺序`}
-                >
-                    <GripVertical className="size-4" />
-                </button>
-                <Switch size="small" checked={item.visible} onChange={(checked) => onToggleVisible(item.id, checked)} aria-label={`${item.visible ? "隐藏" : "显示"}${item.label}`} />
+            <button
+                type="button"
+                draggable
+                className="grid size-7 touch-none cursor-grab place-items-center rounded-[var(--r-sm)] outline-none opacity-40 transition-opacity hover:opacity-80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 active:cursor-grabbing"
+                style={{ color: theme.node.muted, outlineColor: theme.accent.primary }}
+                onDragStart={(event) => {
+                    event.dataTransfer.effectAllowed = "move";
+                    onDragStart(item.id);
+                }}
+                onDragEnd={onDragEnd}
+                aria-label={`拖动调整${item.label}顺序`}
+            >
+                <GripVertical className="size-4" />
+            </button>
+            <span className="grid size-9 shrink-0 place-items-center rounded-[var(--r-md)]" style={{ background: theme.toolbar.itemHover, color: theme.node.muted }}>
+                <span className="grid size-4 place-items-center [&_svg]:size-4">{item.icon}</span>
+            </span>
+            <div className="canvas-toolbar-settings-card-content min-w-0">
+                <div className="truncate text-[var(--fs-caption)] font-semibold leading-5" title={item.label}>{item.label}</div>
+                <div className="text-[var(--fs-micro)] leading-4" style={{ color: theme.node.muted }}>第 {index + 1} 位 · {item.visible ? "已显示" : "已隐藏"}</div>
             </div>
-            <div className="canvas-toolbar-settings-card-content mt-auto flex min-w-0 flex-col items-center gap-1">
-                <span className="grid size-8 shrink-0 place-items-center rounded-[var(--r-md)]" style={{ background: theme.toolbar.itemHover, color: theme.node.muted }}>
-                    <span className="grid size-4 place-items-center [&_svg]:size-4">{item.icon}</span>
-                </span>
-                <span className="max-w-full whitespace-nowrap text-[var(--fs-caption)] font-medium leading-5" title={item.label}>{item.label}</span>
-            </div>
+            <Switch size="small" checked={item.visible} onChange={(checked) => onToggleVisible(item.id, checked)} aria-label={`${item.visible ? "隐藏" : "显示"}${item.label}`} />
         </motion.div>
     );
 }

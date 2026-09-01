@@ -4,6 +4,7 @@ import { findAvailableNodePosition, layoutCompactNodeGroup } from "../src/lib/ca
 import { CanvasNodeType, type CanvasNodeData } from "../src/types/canvas";
 import { fitNodeSize } from "../src/lib/canvas/canvas-node-size";
 import { canvasBackgroundModes, normalizeCanvasBackgroundMode } from "../src/lib/canvas-theme";
+import { canvasDotGridPx, canvasDotPx } from "../src/lib/canvas/canvas-live-viewport";
 
 describe("画布媒体尺寸", () => {
     test("极端竖图保留比例且不突破最大边界", () => {
@@ -87,5 +88,13 @@ describe("画布外观兼容", () => {
     test("旧 pure-color 值与未知值有稳定回退", () => {
         expect(normalizeCanvasBackgroundMode("solid")).toBe("blank");
         expect(normalizeCanvasBackgroundMode("legacy-grid")).toBe("dots");
+    });
+
+    test("点阵在常用缩放下保持清晰且不过度稀疏", () => {
+        expect(canvasDotGridPx(1)).toBe(24);
+        expect(canvasDotGridPx(1.25)).toBe(30);
+        expect(canvasDotGridPx(0.1)).toBe(20);
+        expect(canvasDotPx(1)).toBe("1px");
+        expect(canvasDotPx(1.25)).toBe("1.2px");
     });
 });

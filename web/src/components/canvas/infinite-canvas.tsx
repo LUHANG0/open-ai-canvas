@@ -451,7 +451,7 @@ function CanvasGrid({ mode }: { mode: CanvasBackgroundMode }) {
                 backgroundImage,
                 backgroundSize: gridSize,
                 transform: isDots ? "translate3d(var(--canvas-dot-grid-x), var(--canvas-dot-grid-y), 0)" : "translate3d(var(--canvas-grid-x), var(--canvas-grid-y), 0)",
-                opacity: isDots ? 0.34 : isFineGrid ? 0.52 : 0.46,
+                opacity: isDots ? 0.62 : isFineGrid ? 0.52 : 0.46,
                 willChange: "transform",
             }}
         />
