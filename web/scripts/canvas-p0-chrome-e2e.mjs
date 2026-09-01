@@ -357,18 +357,55 @@ async function interactionScenario(cdp) {
     })()`);
     assert(headerMaterial.titleOpaque && headerMaterial.dimensionOpaque, "B0a node title and dimension use persistent readable surfaces", JSON.stringify(headerMaterial));
 
-    assert(await cdp.hover('[aria-label="添加节点"]') && await cdp.poll(`!!document.querySelector('.canvas-create-menu-dock')`, "hover add-node menu"), "B0b add-node menu opens from Dock hover");
-    assert(await cdp.hover('.canvas-create-menu-dock') && (await sleep(340), await cdp.evaluate(`!!document.querySelector('.canvas-create-menu-dock')`)), "B0c moving from Dock into add-node menu keeps it open");
+    assert(await activate('[aria-label="编辑节点名称：主视觉参考"]') && await cdp.poll(`!!document.querySelector('input[aria-label="节点名称"]')`, "node title editor"), "B0b node title enters edit mode");
+    await cdp.send("Input.dispatchMouseEvent", { type: "mouseMoved", x: 720, y: 150, buttons: 0 });
+    await cdp.send("Input.dispatchMouseEvent", { type: "mousePressed", x: 720, y: 150, button: "left", buttons: 1, clickCount: 1 });
+    await cdp.send("Input.dispatchMouseEvent", { type: "mouseReleased", x: 720, y: 150, button: "left", buttons: 0, clickCount: 1 });
+    assert(await cdp.poll(`!document.querySelector('input[aria-label="节点名称"]')`, "outside click commits node title"), "B0c clicking blank canvas completes node rename");
+
+    const shellScale = (selector) => cdp.evaluate(`(() => {
+        const element = document.querySelector(${JSON.stringify(selector)});
+        if (!(element instanceof HTMLElement)) return 0;
+        const transform = getComputedStyle(element).transform;
+        return transform === 'none' ? 1 : new DOMMatrixReadOnly(transform).a;
+    })()`);
+    assert(await cdp.hover('[data-node-id="canvas-p0-image-reference"] .canvas-node-shell'), "B0d media node can receive hover");
+    await cdp.poll(`(() => {
+        const element = document.querySelector('[data-node-id="canvas-p0-image-reference"] .canvas-node-shell');
+        if (!(element instanceof HTMLElement)) return false;
+        const transform = getComputedStyle(element).transform;
+        return transform !== 'none' && new DOMMatrixReadOnly(transform).a > 1.006;
+    })()`, "node hover scale settles", 3000, 80);
+    const hoverScale = await shellScale('[data-node-id="canvas-p0-image-reference"] .canvas-node-shell');
+    assert(hoverScale > 1.006 && hoverScale < 1.03, "B0e node hover uses a restrained visual scale", `scale=${hoverScale}`);
+    const blankHoverPoint = await cdp.evaluate(`(() => {
+        const nodes = [...document.querySelectorAll('.node-element')];
+        const candidates = [[4, 4], [innerWidth - 4, 4], [4, innerHeight - 4], [innerWidth - 4, innerHeight - 4], [innerWidth / 2, 4]];
+        return candidates.find(([x, y]) => !nodes.some((node) => node instanceof HTMLElement && node.contains(document.elementFromPoint(x, y)))) || [innerWidth - 4, innerHeight - 4];
+    })()`);
+    await cdp.movePointer(blankHoverPoint[0], blankHoverPoint[1]);
+    await sleep(240);
+    const hoverMotion = await cdp.evaluate(`(() => {
+        const element = document.querySelector('[data-node-id="canvas-p0-image-reference"] .canvas-node-shell');
+        if (!(element instanceof HTMLElement)) return null;
+        const style = getComputedStyle(element);
+        return { transitionProperty: style.transitionProperty, transformOrigin: style.transformOrigin };
+    })()`);
+    assert(hoverMotion?.transitionProperty?.includes("transform") && Boolean(hoverMotion.transformOrigin), "B0f node hover feedback uses a bounded transform transition", JSON.stringify(hoverMotion));
+
+    assert(await cdp.hover('[aria-label="添加节点"]') && await cdp.poll(`!!document.querySelector('.canvas-create-menu-dock')`, "hover add-node menu"), "B0g add-node menu opens from Dock hover");
     await cdp.movePointer(24, 420);
-    assert(await cdp.poll(`!document.querySelector('.canvas-create-menu-dock')`, "hover add-node menu closes"), "B0d leaving Dock and menu closes after a safe delay");
+    await sleep(340);
+    assert(await cdp.evaluate(`!!document.querySelector('.canvas-create-menu-dock')`), "B0h add-node menu keeps a safe traversal window after leaving the Dock");
+    assert(await cdp.poll(`!document.querySelector('.canvas-create-menu-dock')`, "hover add-node menu closes"), "B0i leaving Dock and menu closes after a safe delay");
 
     await cdp.evaluate(`(() => {
         const canvas = document.querySelector('.pc-canvas-infinite');
         if (!(canvas instanceof HTMLElement)) return false;
         return canvas.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: 720, clientY: 160, button: 2, buttons: 2 }));
     })()`);
-    assert(await cdp.poll(`document.querySelector('[data-canvas-context-menu]')?.textContent?.includes('画布命令')`, "canvas context menu"), "B0e blank canvas context menu opens");
-    assert(await cdp.hover('[data-canvas-context-menu] [aria-label="添加节点"]') && await cdp.poll(`!!document.querySelector('.canvas-create-menu-context')`, "context add-node hover"), "B0f context add-node entry opens on hover");
+    assert(await cdp.poll(`document.querySelector('[data-canvas-context-menu]')?.textContent?.includes('画布命令')`, "canvas context menu"), "B0j blank canvas context menu opens");
+    assert(await cdp.hover('[data-canvas-context-menu] [aria-label="添加节点"]') && await cdp.poll(`!!document.querySelector('.canvas-create-menu-context')`, "context add-node hover"), "B0k context add-node entry opens on hover");
     await cdp.send("Input.dispatchKeyEvent", { type: "keyDown", key: "Escape", code: "Escape", windowsVirtualKeyCode: 27 });
     await cdp.send("Input.dispatchKeyEvent", { type: "keyUp", key: "Escape", code: "Escape", windowsVirtualKeyCode: 27 });
     await cdp.poll(`!document.querySelector('.canvas-create-menu-context')`, "context add-node closes");
@@ -442,6 +479,7 @@ async function interactionScenario(cdp) {
     assert(await cdp.poll(`!!document.querySelector('.pc-canvas-mini-map[aria-label="画布小地图"]')`, "minimap opens"), "B10 minimap opens from the dock");
 
     // 搜索已经明确选中图片节点；用真实键盘事件覆盖跨组件复制/粘贴链路。
+    await cdp.click('[data-node-id="canvas-p0-image-reference"] .canvas-node-shell');
     await cdp.shortcut("c");
     await sleep(200);
     await cdp.shortcut("v");
@@ -470,7 +508,24 @@ async function interactionScenario(cdp) {
     })()`);
     assert(settingsLayout.count === 9 && settingsLayout.columns === 2 && settingsLayout.rows === 5 && settingsLayout.maxHeight <= 64, "B18 toolbar settings uses compact two-column rows", JSON.stringify(settingsLayout));
     assert(await activate('[aria-label="关闭工具栏设置"]') && await cdp.poll(`!document.querySelector('.canvas-toolbar-settings-modal')`, "toolbar settings closes"), "B19 toolbar settings closes");
-    assert(cdp.problems.length === 0, "B20 no browser/network problems", JSON.stringify(cdp.problems));
+    assert(await activate('.pc-canvas-agent-button') && await cdp.poll(`!!document.querySelector('.pc-canvas-assistant-panel')`, "Agent panel opens"), "B20 Agent panel opens from the project bar");
+    await cdp.evaluate(`document.querySelector('.pc-canvas-assistant-panel')?.setAttribute('data-e2e-panel-instance', 'stable')`);
+    assert(await activate('[aria-label="Agent 运行位置"] button:nth-of-type(2)') && await cdp.poll(`!!document.querySelector('[data-canvas-agent-mode="local"]')`, "local Agent mounts", 20000), "B21 local Agent loads after mode feedback");
+    assert(await activate('[aria-label="Agent 运行位置"] button:nth-of-type(1)'), "B22 Agent can switch back to website mode");
+    const preservedLocalAgent = await cdp.evaluate(`(() => {
+        const panel = document.querySelector('.pc-canvas-assistant-panel');
+        const localLayer = document.querySelector('[data-canvas-agent-mode="local"]');
+        return {
+            stablePanel: panel?.getAttribute('data-e2e-panel-instance') === 'stable',
+            localStillMounted: Boolean(localLayer),
+            localHidden: localLayer instanceof HTMLElement && getComputedStyle(localLayer).display === 'none',
+        };
+    })()`);
+    assert(preservedLocalAgent.stablePanel && preservedLocalAgent.localStillMounted && preservedLocalAgent.localHidden, "B23 Agent mode switch preserves the panel and local session tree", JSON.stringify(preservedLocalAgent));
+    assert(await activate('[aria-label="Agent 运行位置"] button:nth-of-type(2)') && await cdp.poll(`document.querySelector('[aria-label="Agent 运行位置"] button:nth-of-type(2)')?.getAttribute('aria-pressed') === 'true'`, "local Agent returns"), "B24 returning to local Agent is immediate");
+    assert(!(await cdp.evaluate(`document.querySelector('.pc-canvas-assistant-panel')?.textContent?.includes('正在准备本机 Agent') || false`)), "B25 returning to local Agent does not rebuild the runtime");
+    assert(await activate('[aria-label="收起 Agent"]') && await cdp.poll(`!document.querySelector('.pc-canvas-assistant-panel')`, "Agent panel closes"), "B26 Agent panel closes on the shortened motion budget");
+    assert(cdp.problems.length === 0, "B27 no browser/network problems", JSON.stringify(cdp.problems));
     return movedTransform;
 }
 

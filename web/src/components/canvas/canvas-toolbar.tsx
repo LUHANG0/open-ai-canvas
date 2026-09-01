@@ -127,10 +127,11 @@ export function CanvasToolbar({
     const closeAddPanelAfterHover = () => {
         clearAddHoverTimer();
         clearAddCloseTimer();
+        // 给 Dock 到浮层之间留出足够的安全移动时间，避免指针经过窄间隙时菜单闪退。
         addCloseTimerRef.current = window.setTimeout(() => {
             setAddOpen(false);
             addCloseTimerRef.current = null;
-        }, 260);
+        }, 480);
     };
 
     // 设置面板关闭后重新读取偏好（用户可能调整了排序/显隐）

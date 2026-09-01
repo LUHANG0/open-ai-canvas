@@ -20,6 +20,7 @@
 | 图片设置修正 | `41cfffd` / `canvas-interaction-system-r8-20260901` | 比例与精确像素尺寸分层，修复大量模型尺寸平铺导致的文本拥挤 |
 | 设置引导与添加节点重排 | `ddcbcd3` / `canvas-interaction-system-r9-20260901` | 分辨率选择后定位尺寸、添加节点分组重排、右键原位钻取与浮层边缘避让 |
 | 悬浮创建与标题可读性 | 本轮提交 / `canvas-interaction-system-r10-20260901` | 添加节点悬浮打开、安全延迟关闭、点击兜底与节点双胶囊标题 |
+| 重命名、节点反馈与 Agent 切换 | 本轮提交 / `canvas-interaction-system-r11-20260902` | 空白点击完成改名、节点轻量悬浮反馈、Agent 双模式保活与面板动效减负 |
 
 ## 统一规则
 
@@ -44,6 +45,8 @@
 - 视频画面手势与节点拖拽分层：画布节点关闭播放器自带的画面播放手势，中央播放按钮和底部控制区负责播放，其余画面负责拖动节点，拖动不会误触播放。
 - 视频播放中轻点非控件画面会暂停；移动达到 6px 后视为拖动，不触发暂停。暂停状态仍只由中央播放按钮或底部播放按钮启动，避免节点拖移误播放。
 - 图片、视频、文本、音频及扩展节点的外部标题使用常驻浮层胶囊；标题与尺寸拆分显示，浅色、深色及不同画布底纹下均保持稳定对比度，标题编辑和拖拽入口不改变原行为。
+- 普通节点、背板和文件夹重命名继续支持 Enter 确认、Esc 取消；点击画布空白或其他区域也会先结束编辑并提交，不再被背景平移的指针捕获阻断。
+- 普通素材与文本悬浮时只对视觉外壳做 `1.012` 倍轻量放大，节点坐标层和连线端点保持不变；拖动、缩放、内容编辑、标题编辑及系统减少动态效果时自动停用该反馈。
 
 ### 工具栏与外观
 
@@ -57,15 +60,21 @@
 - 图片设置只在比例区显示去重后的短比例；模型提供的大量精确像素规格收纳到单独选择器，仍可完整选择，不再把长尺寸文本铺进比例网格。
 - 选择 1K、2K、4K 等分辨率档后，仅在设置浮层内部自动定位到画面比例或精确尺寸，并短暂高亮下一步；系统减少动态效果时改为无动画定位，不抢夺键盘焦点。
 - 添加节点按“常用创作、剧情与布局、高级工具、扩展节点、导入资源、项目配置”组织；Dock 使用紧凑四列创作卡，右键菜单使用两列横向卡并在原菜单内钻取，避免双层浮窗互相遮挡。
-- Dock 的“添加节点”悬浮 150ms 自动打开；按钮与菜单之间保留 260ms 安全移动时间，进入菜单取消关闭，离开两者后延迟收起。右键画布菜单的“添加节点”同样支持悬浮打开；点击、键盘、触屏、`Esc` 与外部点击继续作为兜底。
+- Dock 的“添加节点”悬浮 150ms 自动打开；按钮与菜单之间保留 480ms 安全移动时间，进入菜单取消关闭，离开两者后延迟收起。右键画布菜单的“添加节点”同样支持悬浮打开；点击、键盘、触屏、`Esc` 与外部点击继续作为兜底。
 - 视频节点工具栏只平铺下载、时间线和替换视频；字幕、提取画面、提取音频与截取片段归入“视频处理”，删除及低频能力保留在“更多”。
+
+### Agent 面板
+
+- 面板进出场时长从 500ms 收敛到 200ms，仅动画位移与透明度，并缩小大面积动态阴影，减少开关面板时的合成与重绘压力。
+- 网站 Agent 与本机 Agent 共享稳定的面板框架；本机视图在入场后预热，首次进入后保持挂载，来回切换不再反复销毁运行时、会话树和界面状态。
+- 非当前模式使用隐藏层隔离交互；本机快照采用延迟值，降低画布连续更新对 Agent 面板切换的阻塞。自动连接仍只在本机模式生效，不改变原连接规则。
 
 ## 修改文件
 
 - 算法与主题：`web/src/lib/canvas/canvas-node-size.ts`、`canvas-node-placement.ts`、`canvas-theme.ts`
-- 节点与媒体：`web/src/components/canvas/canvas-node.tsx`、`canvas-node-content.tsx`
+- 节点与媒体：`web/src/components/canvas/canvas-node.tsx`、`canvas-frame-node.tsx`、`canvas-node-content.tsx`
 - 播放与生成设置：`web/src/components/video-player.tsx`、`video-player.css`、`image-settings-panel.tsx`、`video-settings-panel.tsx`、`canvas-generation-settings-shell.tsx`、`canvas-image-settings-popover.tsx`、`canvas-video-settings-popover.tsx`、`canvas-node-toolbar.tsx`
-- 工具与外观：`web/src/components/canvas/canvas-toolbar.tsx`、`canvas-create-menu.tsx`、`canvas-context-menu.tsx`、`canvas-asset-tray.tsx`、`infinite-canvas.tsx`、`web/src/components/ui/aceternity/floating-dock.tsx`
+- 工具、外观与 Agent：`web/src/components/canvas/canvas-toolbar.tsx`、`canvas-create-menu.tsx`、`canvas-context-menu.tsx`、`canvas-asset-tray.tsx`、`infinite-canvas.tsx`、`canvas-assistant-panel.tsx`、`web/src/components/ui/aceternity/floating-dock.tsx`
 - 页面协调：`web/src/pages/canvas/project.tsx`、`shared.tsx`、`use-canvas-node-operations.ts`、`use-canvas-upload.ts`、`use-canvas-project-lifecycle.ts`
 - 工具注册：`web/src/lib/canvas/tool-registry/definitions/main-toolbar-tools.tsx`、`tool-definition.ts`
 - 验证：`web/test/canvas-interaction-system.test.ts`、`web/scripts/canvas-p0-chrome-e2e.mjs`
@@ -85,6 +94,8 @@
 - 1440 × 900 与 1024 × 768 浏览器回归：添加节点各分组与完整名称可见且浮层不越界；点击 2K 后设置滚动区从顶部自动定位到“画面比例”，目标短暂高亮，精确尺寸紧随其后；靠近视口顶部打开图片设置时会自动选择下方空间，标题与底部状态均完整可见。
 - 悬浮创建与标题可读性：4 个专项测试文件 28 项通过；生产构建通过；完整画布 Chrome E2E 扩展至 47 项并全部通过，新增覆盖 Dock 悬浮打开、菜单安全移动、离开延迟关闭、右键菜单悬浮钻取和标题/尺寸非透明背景。
 - 1440 × 900 浏览器视觉回归：浅色点阵与深色蓝图下，视频、图片标题和尺寸胶囊均保持清晰；添加菜单点击兜底与原有节点拖拽、撤销重做、保存恢复、搜索和缩放链路保持正常。
+- R11：`bun run typecheck`、15 项画布夹具/本机 Runtime 专项测试和 `bun run build` 全部通过；生产构建仅保留项目既有的大 chunk 提示。
+- R11 完整 Chrome E2E 扩展至 59 项并全部通过，新增覆盖空白点击完成节点改名、`1.012` 悬浮反馈、Dock 480ms 安全移动窗口、Agent 面板开关、网站/本机切换、双模式 DOM 保活和返回本机不重建；控制台与网络无异常。
 
 ## 风险与后续确认
 

@@ -195,6 +195,11 @@ export function InfiniteCanvas({ containerRef, viewport, backgroundMode = "lines
 
     const handlePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
         const target = event.target instanceof Element ? event.target : null;
+        const activeElement = document.activeElement;
+        if (activeElement instanceof HTMLInputElement && activeElement.matches("[data-canvas-node-title-input]") && activeElement !== target) {
+            // 背景平移会 preventDefault 并捕获指针，浏览器不会自然转移焦点；先显式提交标题编辑。
+            activeElement.blur();
+        }
         // AntD 浮层通过 Portal 渲染到节点 DOM 之外；若不统一排除，会被误判为画布空白并捕获指针。
         if (target?.closest(CANVAS_POINTER_IGNORE_SELECTOR)) return;
         const isBackgroundClick = !target?.closest("[data-node-id],[data-connection-id]");

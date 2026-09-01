@@ -108,6 +108,7 @@ export const CanvasNode = React.memo(function CanvasNode({
     const [hovered, setHovered] = useState(false);
     const [isEditingContent, setIsEditingContent] = useState(false);
     const [isEditingTitle, setIsEditingTitle] = useState(false);
+    const [isResizing, setIsResizing] = useState(false);
     const [titleDraft, setTitleDraft] = useState(data.title);
     const { download: downloadNode, duplicate: duplicateNode, deleteNode } = useCanvasNodeActions();
     const hasImageContent = data.type === CanvasNodeType.Image && Boolean(data.metadata?.content);
@@ -218,6 +219,7 @@ export const CanvasNode = React.memo(function CanvasNode({
 
     const handleResizeUp = useCallback(() => {
         resizeRef.current.isResizing = false;
+        setIsResizing(false);
         window.removeEventListener("mousemove", handleResizeMove);
         window.removeEventListener("mouseup", handleResizeUp);
     }, [handleResizeMove]);
@@ -225,6 +227,7 @@ export const CanvasNode = React.memo(function CanvasNode({
     const handleResizeMouseDown = (event: React.MouseEvent, corner: ResizeCorner) => {
         event.stopPropagation();
         event.preventDefault();
+        setIsResizing(true);
         resizeRef.current = {
             isResizing: true,
             corner,
@@ -261,6 +264,7 @@ export const CanvasNode = React.memo(function CanvasNode({
     return (
         <div
             data-node-id={data.id}
+            data-canvas-node-interacting={dragOffset || isEditingContent || isEditingTitle || isResizing ? "true" : undefined}
             className={`node-element absolute flex select-none flex-col ${dragOffset ? "cursor-grabbing" : data.type === CanvasNodeType.Drawing ? "cursor-pointer" : "cursor-default"} ${isSelected ? "z-[var(--z-node-active)]" : "z-[var(--z-node)]"}`}
             style={{
                 transform: `translate(${data.position.x + (dragOffset?.x || 0)}px, ${data.position.y + (dragOffset?.y || 0)}px)`,
@@ -628,6 +632,23 @@ function NodeExternalHeader({ node, scale, dimensionLabel, active, editable, edi
     onCancel: () => void;
     onDragStart: (event: React.MouseEvent) => void;
 }) {
+    const titleInputRef = useRef<HTMLInputElement>(null);
+
+    useEffect(() => {
+        if (!editing) return;
+
+        // 画布空白区会在 pointerdown 阶段 preventDefault 以启动平移，浏览器因此不会
+        // 自动转移焦点。用捕获阶段主动 blur，确保“点击任意空白处完成改名”稳定生效。
+        const handleOutsidePointerDown = (event: PointerEvent) => {
+            const target = event.target;
+            if (!(target instanceof Node) || titleInputRef.current?.contains(target)) return;
+            titleInputRef.current?.blur();
+        };
+
+        window.addEventListener("pointerdown", handleOutsidePointerDown, true);
+        return () => window.removeEventListener("pointerdown", handleOutsidePointerDown, true);
+    }, [editing]);
+
     // 标题保持屏幕尺寸只适用于近景；远景继续反向缩放会遮住节点和连线。
     if (scale < NODE_EXTERNAL_HEADER_MIN_SCALE && !editing) return null;
     const inverseScale = 1 / Math.max(scale, 0.05);
@@ -683,6 +704,8 @@ function NodeExternalHeader({ node, scale, dimensionLabel, active, editable, edi
                     <Icon className="size-3 shrink-0" strokeWidth={1.8} />
                     {editing ? (
                         <input
+                            ref={titleInputRef}
+                            data-canvas-node-title-input
                             autoFocus
                             value={draft}
                             className="h-5 min-w-20 max-w-[190px] flex-1 truncate rounded px-1.5 text-xs font-medium outline-none"

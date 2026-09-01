@@ -373,6 +373,15 @@
         background-clip: padding-box;
     }
 
+    /* 节点坐标层保持不动，只轻微放大视觉外壳；连线、拖动和媒体控件的命中逻辑不受影响。 */
+    .pc-canvas-workspace .node-element:not([data-canvas-node-interacting="true"]):hover > .canvas-node-shell {
+        transform: scale(1.012);
+    }
+
+    .pc-canvas-workspace .node-element[data-canvas-node-interacting="true"] > .canvas-node-shell {
+        transform: none;
+    }
+
     .pc-canvas-workspace .pc-canvas-node:hover,
     .pc-canvas-workspace .pc-canvas-node:focus-within {
         filter: saturate(1.02);

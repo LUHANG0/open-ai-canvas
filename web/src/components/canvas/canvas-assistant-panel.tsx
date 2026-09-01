@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import copyToClipboard from "copy-to-clipboard";
 import { Copy, Cpu, Settings2, Trash2, X } from "lucide-react";
 import { Button, Modal, Segmented, Select, Tooltip } from "antd";
@@ -38,7 +38,7 @@ import { buildCanvasWorkflowOps, looksLikeWorkflowRequest, type CanvasWorkflowIn
 import { listAddedSkills, type Skill } from "@/services/api/skills";
 import { buildSkillMentionReferences, SKILL_RUNTIME_AGENT_GUIDANCE, skillRuntime } from "@/services/skill-runtime";
 
-export const CANVAS_AGENT_PANEL_MOTION_MS = 500;
+export const CANVAS_AGENT_PANEL_MOTION_MS = 200;
 const PANEL_MOTION_SECONDS = CANVAS_AGENT_PANEL_MOTION_MS / 1000;
 const ONLINE_AGENT_MAX_STEPS = 8;
 const ONLINE_AGENT_PROMPT =
@@ -374,6 +374,7 @@ export function CanvasAssistantPanel({
     const [onlineLogs, setOnlineLogs] = useState<OnlineAgentLog[]>([]);
     const [composerSkills, setComposerSkills] = useState<Skill[]>([]);
     const [removedReferenceIds, setRemovedReferenceIds] = useState<Set<string>>(new Set());
+    const [localAgentMounted, setLocalAgentMounted] = useState(agentMode === "local");
     const [localSessions, setLocalSessions] = useState<CanvasAssistantSession[]>(() => (sessions.length ? sessions : [createSession()]));
     const localSessionsRef = useRef(localSessions);
     const [localActiveSessionId, setLocalActiveSessionIdState] = useState<string | null>(activeSessionId);
@@ -388,6 +389,14 @@ export function CanvasAssistantPanel({
     const pendingToolContextRef = useRef(new Map<string, PendingOnlineToolContext>());
     const cinematicSessionControllersRef = useRef(new Map<string, AbortController>());
     const generationConsumerControllerRef = useRef(new AbortController());
+    const deferredSnapshot = useDeferredValue(snapshot);
+
+    useEffect(() => {
+        if (localAgentMounted) return;
+        // 面板入场结束后预热本机视图；首次点击本机时也会同步兜底，之后切换不再重建。
+        const timer = window.setTimeout(() => setLocalAgentMounted(true), CANVAS_AGENT_PANEL_MOTION_MS + 40);
+        return () => window.clearTimeout(timer);
+    }, [localAgentMounted]);
 
     useEffect(() => {
         let cancelled = false;
@@ -1171,14 +1180,16 @@ export function CanvasAssistantPanel({
     return (
         <motion.aside
             className="pc-canvas-assistant-panel pointer-events-auto relative flex h-full w-full flex-col overflow-hidden rounded-[var(--panel-radius)]"
-            initial={{ x: 48, opacity: 0 }}
-            animate={{ x: closing ? 28 : 0, opacity: closing ? 0 : 1 }}
+            initial={{ x: 32, opacity: 0 }}
+            animate={{ x: closing ? 18 : 0, opacity: closing ? 0 : 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: resizing ? 0 : PANEL_MOTION_SECONDS, ease: [0.22, 1, 0.36, 1] }}
             style={{
                 background: theme.spatial.elevated,
                 color: theme.node.text,
-                boxShadow: `-18px 0 48px ${theme.spatial.shadow}, 0 24px 72px ${theme.spatial.shadow}`,
+                boxShadow: `-10px 0 30px ${theme.spatial.shadow}`,
+                contain: "layout paint",
+                willChange: closing ? "transform, opacity" : "auto",
             }}
         >
             <AgentPanelChrome
@@ -1189,7 +1200,10 @@ export function CanvasAssistantPanel({
                 confirmTools={confirmTools}
                 canUndo={agentMode === "online" ? canUndoOps : false}
                 undoCount={agentMode === "online" ? undoOpsCount : 0}
-                onModeChange={onAgentModeChange}
+                onModeChange={(mode) => {
+                    if (mode === "local") setLocalAgentMounted(true);
+                    onAgentModeChange(mode);
+                }}
                 onConfirmToolsChange={(confirmTools) => setAgentState({ confirmTools })}
                 onUndo={undoLastOnlineBatch}
                 onCollapse={collapse}
@@ -1199,7 +1213,18 @@ export function CanvasAssistantPanel({
                 onNewChat={agentMode === "online" ? () => { startChatSession(); setView("chat"); } : undefined}
                 newChatDisabled={false}
             />
-            {agentMode === "local" ? <CanvasLocalAgentPanel embedded snapshot={snapshot} canUndoOps={canUndoOps} undoOpsCount={undoOpsCount} onApplyOps={onApplyOps} onUndoOps={onUndoOps} autoConnect={autoConnectLocal} /> : onlineContent}
+            <div data-canvas-agent-mode="online" className={agentMode === "online" ? "flex min-h-0 flex-1 flex-col" : "hidden"} aria-hidden={agentMode !== "online"}>
+                {onlineContent}
+            </div>
+            {localAgentMounted ? (
+                <div data-canvas-agent-mode="local" className={agentMode === "local" ? "flex min-h-0 flex-1 flex-col" : "hidden"} aria-hidden={agentMode !== "local"}>
+                    <CanvasLocalAgentPanel embedded snapshot={deferredSnapshot} canUndoOps={canUndoOps} undoOpsCount={undoOpsCount} onApplyOps={onApplyOps} onUndoOps={onUndoOps} autoConnect={autoConnectLocal && agentMode === "local"} />
+                </div>
+            ) : agentMode === "local" ? (
+                <div className="flex min-h-0 flex-1 items-center justify-center px-6 text-sm" style={{ color: theme.node.muted }} role="status" aria-live="polite">
+                    正在准备本机 Agent…
+                </div>
+            ) : null}
         </motion.aside>
     );
 }
