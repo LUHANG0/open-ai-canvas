@@ -34,6 +34,14 @@
     min-width: 0;
 }
 
+.settings-section-context {
+    display: none;
+}
+
+.settings-diagnostics-preview-error {
+    display: none;
+}
+
 @media (max-width: 1023px) {
     .settings-page .settings-subnav {
         gap: 0;
@@ -109,6 +117,8 @@
     }
 
     .settings-page .pc-subnav-layout__rail {
+        position: sticky;
+        top: var(--app-space-4, 16px);
         overflow: hidden;
         background: var(--app-surface-1, var(--background));
         border-color: var(--app-border-subtle, var(--border));
@@ -144,7 +154,7 @@
 
     .settings-page .pc-subnav-layout__item {
         position: relative;
-        min-height: 58px;
+        min-height: 54px;
         padding: var(--app-space-2, 8px) var(--app-space-3, 12px);
     }
 
@@ -197,6 +207,79 @@
         padding: var(--app-space-6, 24px);
     }
 
+    .settings-page .settings-section-context {
+        display: flex;
+        min-width: 0;
+        align-items: center;
+        gap: var(--app-space-3, 12px);
+        margin: calc(var(--app-space-2, 8px) * -1) calc(var(--app-space-2, 8px) * -1) var(--app-space-5, 20px);
+        padding: var(--app-space-3, 12px);
+        background: linear-gradient(100deg, color-mix(in srgb, var(--app-selection-bg) 76%, transparent), transparent 60%), var(--app-surface-2);
+        border: 1px solid var(--app-border-subtle);
+        border-radius: var(--app-control-radius, 8px);
+    }
+
+    .settings-page .settings-section-context-icon {
+        display: grid;
+        width: 38px;
+        height: 38px;
+        flex: 0 0 auto;
+        place-items: center;
+        color: var(--app-brand-700);
+        background: color-mix(in srgb, var(--app-surface-1) 82%, var(--app-selection-bg));
+        border: 1px solid var(--app-selection-border);
+        border-radius: var(--app-control-radius, 8px);
+    }
+
+    .dark .settings-page .settings-section-context-icon {
+        color: var(--app-brand-300);
+    }
+
+    .settings-page .settings-section-context-copy {
+        display: grid;
+        min-width: 0;
+        gap: 1px;
+    }
+
+    .settings-page .settings-section-context-copy > span {
+        color: var(--app-text-muted);
+        font-family: var(--app-font-mono);
+        font-size: 9px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+    }
+
+    .settings-page .settings-section-context-copy strong {
+        color: var(--app-text-primary);
+        font-size: 14px;
+        font-weight: 650;
+    }
+
+    .settings-page .settings-section-context-copy small {
+        overflow: hidden;
+        color: var(--app-text-muted);
+        font-size: 11px;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .settings-page .settings-section-save-note {
+        display: inline-flex;
+        min-height: 28px;
+        align-items: center;
+        gap: var(--app-space-1, 4px);
+        margin-left: auto;
+        padding: 3px var(--app-space-2, 8px);
+        color: var(--app-status-success-fg);
+        background: var(--app-status-success-bg);
+        border: 1px solid var(--app-status-success-border);
+        border-radius: var(--app-control-radius-sm, 6px);
+        font-size: 10px;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+
     .settings-page .settings-pane-root.is-editor {
         min-height: 650px;
     }
@@ -241,6 +324,10 @@
         border: 1px solid var(--app-border-subtle, var(--border));
         border-radius: var(--app-surface-radius, 12px);
         box-shadow: inset 0 1px 0 color-mix(in srgb, var(--app-text-primary) 3%, transparent);
+    }
+
+    .settings-page .settings-section:hover {
+        border-color: var(--app-border-default, var(--border));
     }
 
     .settings-page .settings-section + .settings-section {
@@ -305,6 +392,16 @@
         max-width: none;
     }
 
+    .settings-page .settings-diagnostics-preview-error {
+        display: block;
+        margin-top: var(--app-space-3);
+        padding-top: var(--app-space-2);
+        color: var(--app-status-warning-fg);
+        border-top: 1px solid var(--app-status-warning-border);
+        font-size: 11px;
+        line-height: 1.5;
+    }
+
     .settings-page .settings-diagnostics > header {
         padding-top: 0;
     }
@@ -319,6 +416,10 @@
         background: var(--app-surface-1, var(--background));
         border: 1px solid var(--app-border-subtle, var(--border));
         border-radius: var(--app-control-radius, 8px);
+    }
+
+    .settings-page .settings-channel[hidden] {
+        display: none;
     }
 
     .settings-page .settings-channel:hover,
@@ -345,6 +446,38 @@
     .settings-page .settings-model-capability-row:focus-within {
         background: var(--app-action-secondary-hover, var(--surface-card-hover));
         border-color: var(--settings-accent-line);
+    }
+
+    .settings-page .settings-channel-status {
+        display: inline-flex;
+        min-height: 22px;
+        align-items: center;
+        gap: 5px;
+        padding: 2px 7px;
+        background: var(--app-surface-2);
+        border: 1px solid var(--app-border-subtle);
+        border-radius: var(--app-control-radius-sm, 6px);
+        line-height: 1.3;
+    }
+
+    .settings-page .settings-channel-status i {
+        width: 6px;
+        height: 6px;
+        flex: 0 0 auto;
+        border-radius: 50%;
+        background: currentColor;
+    }
+
+    .settings-page .settings-channel-status.is-ready {
+        color: var(--app-status-success-fg);
+        background: var(--app-status-success-bg);
+        border-color: var(--app-status-success-border);
+    }
+
+    .settings-page .settings-channel-status.is-warning {
+        color: var(--app-status-warning-fg);
+        background: var(--app-status-warning-bg);
+        border-color: var(--app-status-warning-border);
     }
 
     .settings-page .model-default-option {
@@ -409,6 +542,44 @@
         color: var(--app-text-muted, var(--muted-foreground));
         font-size: 12px;
         line-height: 1.55;
+    }
+
+    .settings-page :where(.ant-input[disabled], .ant-input-affix-wrapper-disabled, .ant-input-number-disabled, .ant-select-disabled .ant-select-selector) {
+        color: var(--app-text-muted);
+        background: color-mix(in srgb, var(--app-surface-2) 78%, transparent);
+        cursor: not-allowed;
+    }
+
+    .settings-page .settings-channel-pane > .workspace-state {
+        min-height: 300px;
+        padding: var(--app-space-8, 32px);
+        background: linear-gradient(var(--app-border-subtle) 1px, transparent 1px), linear-gradient(90deg, var(--app-border-subtle) 1px, transparent 1px), var(--app-surface-2);
+        background-size: 28px 28px;
+        border: 1px dashed var(--settings-accent-line);
+        border-radius: var(--app-surface-radius, 12px);
+    }
+
+    .settings-page .settings-channel-pane > .workspace-state .workspace-state-title,
+    .settings-page .settings-channel-pane > .workspace-state .workspace-state-description,
+    .settings-page .settings-channel-pane > .workspace-state .workspace-state-action {
+        position: relative;
+        z-index: 1;
+    }
+}
+
+@media (min-width: 1024px) and (max-width: 1180px) {
+    .settings-page .settings-section-save-note {
+        width: 28px;
+        overflow: hidden;
+        gap: 0;
+        justify-content: center;
+        padding: 0;
+        color: var(--app-status-success-fg);
+        font-size: 0;
+    }
+
+    .settings-page .settings-section-save-note svg {
+        flex: 0 0 auto;
     }
 }
 

@@ -142,7 +142,7 @@ export default function EagleLibraryPage() {
                         </Button>
                     }
                 />
-                <Surface className="mt-4" padding="none">
+                <Surface className="eagle-enable-surface mt-4" padding="none">
                     <WorkspaceState
                         icon="settings"
                         title="先启用 Eagle 素材来源"
@@ -196,9 +196,16 @@ export default function EagleLibraryPage() {
                             void load(selectedFolder, "");
                         }}
                         trailing={
-                            <Button icon={<RefreshCw className="size-3.5" />} loading={loading} onClick={() => void load()}>
-                                刷新
-                            </Button>
+                            <>
+                                {progress ? (
+                                    <span className="eagle-upload-progress" role="status" aria-live="polite">
+                                        {progress}
+                                    </span>
+                                ) : null}
+                                <Button icon={<RefreshCw className="size-3.5" />} loading={loading} onClick={() => void load()}>
+                                    刷新
+                                </Button>
+                            </>
                         }
                     >
                         <Input
@@ -249,7 +256,7 @@ export default function EagleLibraryPage() {
                         </aside>
 
                         <section className="min-w-0">
-                            <nav aria-label="Eagle 文件夹路径" className="mb-3 flex min-w-0 items-center gap-1 text-xs text-foreground/48">
+                            <nav aria-label="Eagle 文件夹路径" className="eagle-breadcrumb mb-3 flex min-w-0 items-center gap-1 text-xs text-foreground/48">
                                 <button type="button" className="truncate rounded px-1.5 py-1 hover:bg-surface-hover" onClick={() => handleFolderSelect("root")}>
                                     Eagle 素材库
                                 </button>
@@ -263,7 +270,7 @@ export default function EagleLibraryPage() {
                                 ))}
                             </nav>
 
-                            <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+                            <div className="eagle-content-header mb-4 flex flex-wrap items-start justify-between gap-3">
                                 <div className="min-w-0">
                                     <div className="flex flex-wrap items-center gap-2">
                                         <h2 className="text-base font-semibold">{currentFolder?.name || "全部素材"}</h2>
@@ -288,7 +295,7 @@ export default function EagleLibraryPage() {
                             </div>
 
                             {folderName ? (
-                                <div className="mb-4 flex flex-wrap items-center gap-2 rounded-[var(--r-lg)] bg-surface-secondary p-3">
+                                <div className="eagle-create-folder-panel mb-4 flex flex-wrap items-center gap-2 rounded-[var(--r-lg)] bg-surface-secondary p-3">
                                     <Input
                                         autoFocus
                                         value={folderName}
@@ -462,9 +469,9 @@ function EagleAssetDrawer({ item, onClose, totalBytes }: { item: ExternalAssetIt
 
 function EagleFact({ label, value }: { label: string; value: string }) {
     return (
-        <div className="flex items-center justify-between gap-3 rounded-md bg-surface-secondary px-3 py-2 text-sm">
-            <span className="text-foreground/48">{label}</span>
-            <span className="max-w-[65%] truncate text-right font-medium" title={value}>
+        <div className="eagle-fact flex items-center justify-between gap-3 rounded-md bg-surface-secondary px-3 py-2 text-sm">
+            <span className="eagle-fact-label text-foreground/48">{label}</span>
+            <span className="eagle-fact-value max-w-[65%] truncate text-right font-medium" title={value}>
                 {value}
             </span>
         </div>

@@ -25,18 +25,23 @@ export default function DiagnosticsPanel({ taskId, projectId }: DiagnosticsPanel
     const [description, setDescription] = useState("");
     const [preview, setPreview] = useState<DiagnosticPreview | null>(null);
     const [loadingPreview, setLoadingPreview] = useState(false);
+    const [previewError, setPreviewError] = useState(false);
     const [exporting, setExporting] = useState(false);
     const [bundleId, setBundleId] = useState("");
 
     useEffect(() => {
         let cancelled = false;
         setLoadingPreview(true);
+        setPreviewError(false);
         void previewDiagnosticBundle(buildInput(range, undefined, taskId, projectId))
             .then((result) => {
                 if (!cancelled) setPreview(result);
             })
             .catch(() => {
-                if (!cancelled) setPreview(null);
+                if (!cancelled) {
+                    setPreview(null);
+                    setPreviewError(true);
+                }
             })
             .finally(() => {
                 if (!cancelled) setLoadingPreview(false);
@@ -112,6 +117,11 @@ export default function DiagnosticsPanel({ taskId, projectId }: DiagnosticsPanel
                                     <DiagnosticMetric label="任务" value={loadingPreview ? "读取中" : preview ? String(preview.taskCount) : "待统计"} />
                                     <DiagnosticMetric label="上游调用" value={loadingPreview ? "读取中" : preview ? String(preview.apiCallCount) : "待统计"} />
                                 </div>
+                                {previewError ? (
+                                    <p className="settings-diagnostics-preview-error" role="alert">
+                                        暂时无法读取数量预览，不影响导出本机诊断信息。
+                                    </p>
+                                ) : null}
                             </div>
                         </div>
                     </section>

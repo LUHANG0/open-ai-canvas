@@ -1,5 +1,5 @@
 import { Button, Image, Modal } from "antd";
-import { XCircle } from "lucide-react";
+import { Sparkles, XCircle } from "lucide-react";
 
 import { TaskDetailItem } from "./canvas-project-feedback";
 import { generationTaskShowsProgress, generationTaskStageLabel } from "@/lib/generation-task-display";
@@ -24,14 +24,28 @@ type CanvasProjectStatusDialogsProps = {
     onConfirmClear: () => void;
 };
 
-export function CanvasProjectStatusDialogs({ theme, task, taskLogs, taskLoading, superResolveNode, previewNode, clearConfirmOpen, onCloseTask, onCancelTask, onCloseSuperResolve, onClosePreview, onCancelClear, onConfirmClear }: CanvasProjectStatusDialogsProps) {
+export function CanvasProjectStatusDialogs({
+    theme,
+    task,
+    taskLogs,
+    taskLoading,
+    superResolveNode,
+    previewNode,
+    clearConfirmOpen,
+    onCloseTask,
+    onCancelTask,
+    onCloseSuperResolve,
+    onClosePreview,
+    onCancelClear,
+    onConfirmClear,
+}: CanvasProjectStatusDialogsProps) {
     const config = useEffectiveConfig();
     return (
         <>
             <Modal rootClassName="pc-canvas-overlay pc-canvas-modal pc-canvas-task-modal" title="任务详情" open={Boolean(task)} footer={null} width="min(920px, calc(100vw - 32px))" onCancel={onCloseTask}>
                 {task ? (
-                    <div className="space-y-4 text-sm">
-                        <div className="grid grid-cols-2 gap-3 rounded-lg border p-3" style={{ borderColor: theme.node.stroke, background: theme.node.panel }}>
+                    <div className="pc-canvas-task-detail space-y-4 text-sm" aria-busy={taskLoading}>
+                        <div className="pc-canvas-task-detail__summary grid grid-cols-2 gap-3 rounded-lg border p-3" style={{ borderColor: theme.node.stroke, background: theme.node.panel }}>
                             <TaskDetailItem label="当前阶段" value={generationTaskStageLabel(task)} />
                             {generationTaskShowsProgress(task) ? <TaskDetailItem label="进度" value={`${task.progress ?? 0}%`} /> : null}
                             <TaskDetailItem label="模型" value={task.model ? modelDisplayName(config, task.model) : "默认模型"} />
@@ -45,7 +59,7 @@ export function CanvasProjectStatusDialogs({ theme, task, taskLogs, taskLoading,
                             <div className="mb-2 text-xs font-semibold" style={{ color: theme.node.muted }}>
                                 提示词
                             </div>
-                            <div className="h-32 overflow-y-auto whitespace-pre-wrap rounded-lg p-3 text-xs leading-5" style={{ background: theme.node.fill }}>
+                            <div className="pc-canvas-task-detail__prompt h-32 overflow-y-auto whitespace-pre-wrap rounded-lg p-3 text-xs leading-5" style={{ background: theme.node.fill }}>
                                 {task.prompt || "未记录"}
                             </div>
                         </div>
@@ -61,7 +75,7 @@ export function CanvasProjectStatusDialogs({ theme, task, taskLogs, taskLoading,
                             <div className="mb-2 text-xs font-semibold" style={{ color: theme.node.muted }}>
                                 任务日志
                             </div>
-                            <pre className="max-h-64 overflow-auto rounded-lg bg-neutral-950 p-3 text-[var(--fs-label)] leading-5 text-neutral-100">
+                            <pre className="pc-canvas-task-detail__logs max-h-64 overflow-auto rounded-lg bg-neutral-950 p-3 text-[var(--fs-label)] leading-5 text-neutral-100">
                                 {taskLoading ? "加载中..." : taskLogs.length ? taskLogs.map((log) => `[${new Date(log.createdAt).toLocaleString()}] ${log.level.toUpperCase()} ${formatTaskLog(log)}`).join("\n") : "暂无日志"}
                             </pre>
                         </div>
@@ -70,7 +84,14 @@ export function CanvasProjectStatusDialogs({ theme, task, taskLogs, taskLoading,
             </Modal>
 
             <Modal rootClassName="pc-canvas-overlay pc-canvas-modal pc-canvas-media-modal" title="AI 超分" open={Boolean(superResolveNode?.metadata?.content)} centered footer={null} onCancel={onCloseSuperResolve}>
-                <div className="py-8 text-center text-base font-medium">暂未实现</div>
+                <div className="pc-canvas-unavailable-state-mobile py-8 text-center text-base font-medium">暂未实现</div>
+                <div className="pc-canvas-unavailable-state" role="status">
+                    <span className="pc-canvas-unavailable-state__icon" aria-hidden>
+                        <Sparkles />
+                    </span>
+                    <strong>AI 超分暂未开放</strong>
+                    <span>当前图片不会被修改，关闭后可继续使用其他编辑工具。</span>
+                </div>
             </Modal>
 
             <Modal
@@ -95,6 +116,7 @@ export function CanvasProjectStatusDialogs({ theme, task, taskLogs, taskLoading,
                     style={{ display: "none" }}
                     preview={{
                         open: true,
+                        rootClassName: "pc-canvas-overlay pc-canvas-image-preview",
                         movable: true,
                         minScale: 0.5,
                         maxScale: 12,
@@ -119,7 +141,7 @@ export function CanvasProjectStatusDialogs({ theme, task, taskLogs, taskLoading,
                     </>
                 }
             >
-                <p className="text-sm opacity-60">这会删除当前画布上的所有节点和连线。</p>
+                <p className="pc-canvas-confirm-copy text-sm opacity-60">这会删除当前画布上的所有节点和连线。</p>
             </Modal>
         </>
     );
@@ -129,13 +151,19 @@ function TaskGenerationParameters({ inputJson, theme }: { inputJson?: string; th
     const fields = taskParameterRows(inputJson);
     return (
         <div>
-            <div className="mb-2 text-xs font-semibold" style={{ color: theme.node.muted }}>生成参数</div>
+            <div className="mb-2 text-xs font-semibold" style={{ color: theme.node.muted }}>
+                生成参数
+            </div>
             {fields.length ? (
-                <div className="grid grid-cols-2 gap-x-5 gap-y-1 rounded-lg border p-3 sm:grid-cols-3" style={{ borderColor: theme.node.stroke, background: theme.node.panel }}>
-                    {fields.map((field) => <TaskDetailItem key={field.label} label={field.label} value={field.value} />)}
+                <div className="pc-canvas-task-detail__parameters grid grid-cols-2 gap-x-5 gap-y-1 rounded-lg border p-3 sm:grid-cols-3" style={{ borderColor: theme.node.stroke, background: theme.node.panel }}>
+                    {fields.map((field) => (
+                        <TaskDetailItem key={field.label} label={field.label} value={field.value} />
+                    ))}
                 </div>
             ) : (
-                <div className="rounded-lg p-3 text-xs" style={{ background: theme.node.fill, color: theme.node.muted }}>暂无参数记录</div>
+                <div className="pc-canvas-task-detail__parameters-empty rounded-lg p-3 text-xs" style={{ background: theme.node.fill, color: theme.node.muted }}>
+                    暂无参数记录
+                </div>
             )}
         </div>
     );
@@ -172,16 +200,14 @@ function taskParameterRows(inputJson?: string) {
 
     function addReference(label: string, value: unknown, kind: string) {
         if (!Array.isArray(value) || !value.length) return;
-        const names = value
-            .map((item) => (typeof item === "object" && item !== null && "name" in item ? String((item as { name?: unknown }).name || "") : ""))
-            .filter(Boolean);
+        const names = value.map((item) => (typeof item === "object" && item !== null && "name" in item ? String((item as { name?: unknown }).name || "") : "")).filter(Boolean);
         const suffix = names.length ? `（${names.slice(0, 3).join("、")}${names.length > 3 ? "…" : ""}）` : "";
         rows.push({ label, value: `${value.length} 个${kind}${suffix}` });
     }
 }
 
 function asRecord(value: unknown): Record<string, unknown> {
-    return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
+    return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
 }
 
 function booleanLabel(value: unknown) {

@@ -180,6 +180,11 @@ export default function RegisterPage() {
                 </AuthField>
             </div>
 
+            <div className={`pc-auth-password-status${confirmPassword && password !== confirmPassword ? " is-mismatch" : confirmPassword && password === confirmPassword ? " is-match" : ""}`} aria-live="polite">
+                <ShieldCheck className="size-3.5" aria-hidden="true" />
+                <span>{confirmPassword ? (password === confirmPassword ? "两次密码已一致" : "两次输入的密码不一致") : "密码建议使用 8 位以上字母、数字或符号"}</span>
+            </div>
+
             <Button className="pc-auth-submit" type="primary" htmlType="submit" size="large" block loading={submitting} disabled={disabled} icon={<ArrowRight className="size-4" />} iconPlacement="end">
                 创建账号
             </Button>

@@ -2,6 +2,10 @@
     min-width: 0;
 }
 
+.eagle-upload-progress {
+    display: none;
+}
+
 .eagle-library-page .eagle-folder-sidebar-header {
     display: flex;
     align-items: center;
@@ -249,6 +253,30 @@
         border-bottom: 1px solid var(--app-border-subtle, var(--border));
     }
 
+    .eagle-library-page .eagle-enable-surface {
+        overflow: hidden;
+        background: linear-gradient(var(--app-border-subtle) 1px, transparent 1px), linear-gradient(90deg, var(--app-border-subtle) 1px, transparent 1px), var(--app-surface-1);
+        background-size: 28px 28px;
+        border: 1px dashed var(--eagle-accent-line);
+        border-radius: var(--app-surface-radius);
+    }
+
+    .eagle-library-page .eagle-upload-progress {
+        display: inline-flex;
+        max-width: 280px;
+        min-height: var(--app-control-height-sm);
+        align-items: center;
+        overflow: hidden;
+        padding: 2px var(--app-space-2);
+        color: var(--app-ai-running-fg);
+        background: var(--app-ai-running-bg);
+        border: 1px solid var(--app-ai-running-border);
+        border-radius: var(--app-control-radius-sm);
+        font-size: 11px;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
     .eagle-library-page .eagle-library-frame {
         padding: var(--app-space-4, 16px);
         background: var(--app-surface-1, var(--background));
@@ -336,6 +364,53 @@
         margin-top: var(--app-space-3, 12px);
     }
 
+    .eagle-library-page .eagle-breadcrumb {
+        min-height: 34px;
+        margin-bottom: var(--app-space-3);
+        padding: 4px var(--app-space-2);
+        overflow-x: auto;
+        background: var(--app-surface-2);
+        border: 1px solid var(--app-border-subtle);
+        border-radius: var(--app-control-radius-sm);
+        scrollbar-width: none;
+    }
+
+    .eagle-library-page .eagle-breadcrumb::-webkit-scrollbar {
+        display: none;
+    }
+
+    .eagle-library-page .eagle-breadcrumb button {
+        min-height: 26px;
+        color: var(--app-text-secondary);
+        border-radius: var(--app-control-radius-sm);
+    }
+
+    .eagle-library-page .eagle-breadcrumb button:hover {
+        color: var(--app-selection-fg);
+        background: var(--app-selection-bg);
+    }
+
+    .eagle-library-page .eagle-breadcrumb button:focus-visible {
+        outline: none;
+        box-shadow: var(--app-focus-shadow);
+    }
+
+    .eagle-library-page .eagle-content-header {
+        min-height: 58px;
+        align-items: center;
+        padding-bottom: var(--app-space-3);
+        border-bottom: 1px solid var(--app-border-subtle);
+    }
+
+    .eagle-library-page .eagle-create-folder-panel {
+        position: relative;
+        padding: var(--app-space-3);
+        background: var(--app-selection-bg);
+        border: 1px solid var(--app-selection-border);
+        border-radius: var(--app-control-radius);
+        box-shadow: inset 3px 0 0 var(--app-brand-600);
+    }
+
     .eagle-library-page .eagle-empty-state {
         min-height: 320px;
         background: linear-gradient(var(--app-border-subtle) 1px, transparent 1px), linear-gradient(90deg, var(--app-border-subtle) 1px, transparent 1px), var(--app-surface-2, var(--surface-card));
@@ -380,6 +455,25 @@
         color: var(--app-text-inverse, #fff);
         background: var(--app-action-primary-bg, var(--primary));
         border-radius: var(--app-control-radius, 8px);
+    }
+
+    .eagle-asset-drawer .eagle-fact {
+        min-height: 40px;
+        padding: var(--app-space-2) var(--app-space-3);
+        background: var(--app-surface-2);
+        border: 1px solid var(--app-border-subtle);
+        border-radius: var(--app-control-radius-sm);
+    }
+
+    .eagle-asset-drawer .eagle-fact-label {
+        color: var(--app-text-muted);
+        font-size: 12px;
+    }
+
+    .eagle-asset-drawer .eagle-fact-value {
+        color: var(--app-text-primary);
+        font-family: var(--app-font-mono);
+        font-size: 11px;
     }
 }
 

@@ -6,6 +6,16 @@
     display: none;
 }
 
+.pc-home-page .home-primary-link-pc,
+.pc-home-page .home-secondary-link,
+.pc-home-page .home-chart-legend {
+    display: none;
+}
+
+.pc-home-page .home-activity-controls {
+    display: contents;
+}
+
 .pc-home-page .home-welcome .app-page-header-meta {
     display: none;
 }
@@ -25,7 +35,7 @@
 
     .pc-home-page__content {
         display: grid;
-        gap: 18px;
+        gap: 14px;
         padding-bottom: var(--app-space-8);
         animation: home-brand-enter var(--app-duration-base) var(--app-ease-enter) both;
     }
@@ -82,10 +92,10 @@
     .pc-home-page .home-welcome {
         position: relative;
         z-index: 1;
-        min-height: 142px;
+        min-height: 128px;
         flex-wrap: wrap;
         gap: var(--app-space-5);
-        padding: 26px 30px 22px;
+        padding: 22px 26px 18px;
         border-bottom: 0;
     }
 
@@ -97,7 +107,7 @@
         max-width: 760px;
         overflow: visible;
         color: var(--app-text-primary);
-        font-size: clamp(32px, 3vw, 40px);
+        font-size: clamp(30px, 2.7vw, 38px);
         font-weight: 720;
         letter-spacing: -0.045em;
         line-height: 1.12;
@@ -216,12 +226,45 @@
         transition: background-color var(--app-duration-fast) var(--app-ease-standard);
     }
 
+    .pc-home-page .home-primary-link-mobile {
+        display: none;
+    }
+
+    .pc-home-page .home-primary-link-pc,
+    .pc-home-page .home-secondary-link {
+        display: inline-flex;
+    }
+
+    .pc-home-page .home-secondary-link {
+        height: var(--app-control-height-lg);
+        align-items: center;
+        gap: var(--app-space-2);
+        padding: 0 var(--app-space-3);
+        color: var(--app-action-secondary-fg);
+        font-size: var(--app-font-size-body);
+        font-weight: 580;
+        background: var(--app-action-secondary-bg);
+        border: 1px solid var(--app-border-default);
+        border-radius: var(--app-control-radius);
+        transition:
+            color var(--app-duration-fast) var(--app-ease-standard),
+            background-color var(--app-duration-fast) var(--app-ease-standard),
+            border-color var(--app-duration-fast) var(--app-ease-standard);
+    }
+
+    .pc-home-page .home-secondary-link:hover {
+        color: var(--app-text-primary);
+        background: var(--app-action-secondary-hover);
+        border-color: var(--app-border-strong);
+    }
+
     .pc-home-page .home-primary-link:hover {
         color: var(--app-action-primary-fg);
         background: var(--app-action-primary-hover);
     }
 
     .pc-home-page .home-primary-link:focus-visible,
+    .pc-home-page .home-secondary-link:focus-visible,
     .pc-home-page .home-stat-card:focus-visible,
     .pc-home-page .home-quick-item:focus-visible {
         outline: 2px solid var(--app-focus-ring);
@@ -242,7 +285,7 @@
 
     .pc-home-page .home-stat-card .pc-stat-tile {
         position: relative;
-        min-height: 132px;
+        min-height: 116px;
         overflow: hidden;
         background: var(--app-surface-1);
         border: 1px solid var(--app-border-subtle);
@@ -277,8 +320,8 @@
     }
 
     .pc-home-page .home-panel-head {
-        min-height: 68px;
-        padding: var(--app-space-4) var(--app-space-5) var(--app-space-3);
+        min-height: 62px;
+        padding: var(--app-space-3) var(--app-space-5);
         border-bottom: 1px solid var(--app-border-subtle);
     }
 
@@ -295,7 +338,35 @@
     }
 
     .pc-home-page .home-panel-body {
-        padding: var(--app-space-4) var(--app-space-5) var(--app-space-5);
+        padding: var(--app-space-3) var(--app-space-5) var(--app-space-4);
+    }
+
+    .pc-home-page .home-activity-controls {
+        display: flex;
+        align-items: center;
+        gap: var(--app-space-3);
+    }
+
+    .pc-home-page .home-chart-legend {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        color: var(--app-text-muted);
+        font-size: 10px;
+        white-space: nowrap;
+    }
+
+    .pc-home-page .home-chart-legend i {
+        width: 7px;
+        height: 7px;
+        margin-left: 3px;
+        background: var(--home-chart-ai);
+        border-radius: 2px;
+    }
+
+    .pc-home-page .home-chart-legend i.is-canvas {
+        background: var(--home-chart-brand);
+        opacity: 0.34;
     }
 
     .pc-home-page .home-panel-foot {
@@ -308,6 +379,26 @@
     .pc-home-page .home-lower-grid {
         gap: var(--app-space-3);
         margin-top: 0;
+    }
+
+    .pc-home-page .home-chart-empty {
+        min-height: 196px;
+        border: 1px dashed var(--app-border-subtle);
+        border-radius: var(--app-control-radius);
+        background: var(--app-surface-2);
+    }
+
+    .pc-home-page .home-activity-chart {
+        height: 196px !important;
+    }
+
+    .pc-home-page .home-donut-layout {
+        min-height: 196px;
+        padding-block: 4px;
+    }
+
+    .pc-home-page .home-donut-layout > div:first-child {
+        height: 176px;
     }
 
     .pc-home-page .home-recent-toolbar {
@@ -358,6 +449,11 @@
     .pc-home-page .home-workflow-step {
         border-radius: var(--app-control-radius);
         transition: background-color var(--app-duration-fast) var(--app-ease-standard);
+    }
+
+    .pc-home-page .home-quick-item:disabled {
+        cursor: not-allowed;
+        opacity: 0.52;
     }
 
     .pc-home-page .home-quick-icon {

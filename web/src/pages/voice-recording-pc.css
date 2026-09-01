@@ -39,6 +39,11 @@
     display: none;
 }
 
+.pc-voice-count,
+.pc-voice-status-strip {
+    display: none;
+}
+
 @media (min-width: 1024px) {
     .pc-voice-page {
         min-height: 100%;
@@ -61,7 +66,7 @@
         --voice-accent-fg: var(--app-action-primary-fg);
         display: grid;
         width: 100%;
-        max-width: 980px;
+        max-width: 1080px;
         align-content: start;
         gap: 20px;
     }
@@ -133,11 +138,36 @@
 
     .pc-voice-card-content {
         display: grid;
+        grid-template-columns: minmax(0, 1fr) 292px;
+        grid-template-rows: auto auto auto;
         gap: 0;
     }
 
+    .pc-voice-card-content > :not([hidden]) ~ :not([hidden]) {
+        margin-top: 0;
+    }
+
     .pc-voice-composer {
+        grid-column: 1;
         padding: 24px 24px 20px;
+    }
+
+    .pc-voice-composer-heading {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: var(--app-space-3);
+    }
+
+    .pc-voice-count {
+        display: inline-flex;
+        min-width: 48px;
+        justify-content: flex-end;
+        margin-bottom: 10px;
+        color: var(--app-text-muted);
+        font-family: var(--app-font-mono);
+        font-size: 10px;
+        font-variant-numeric: tabular-nums;
     }
 
     .pc-voice-label {
@@ -172,10 +202,11 @@
     }
 
     .pc-voice-controls {
+        grid-column: 1;
         min-height: 64px;
         padding: 12px 24px;
         border-top: 1px solid var(--app-border-subtle);
-        border-bottom: 1px solid var(--app-border-subtle);
+        border-bottom: 0;
         background: var(--app-surface-2);
     }
 
@@ -193,8 +224,63 @@
         background: var(--app-action-primary-hover);
     }
 
+    .pc-voice-send.ant-btn-primary:focus-visible,
+    .pc-voice-card :where(button, textarea):focus-visible {
+        outline: none;
+        box-shadow: var(--app-focus-shadow);
+    }
+
+    .pc-voice-send.ant-btn-primary:disabled {
+        color: var(--app-text-muted);
+        background: var(--app-surface-3);
+        border-color: var(--app-border-subtle);
+        cursor: not-allowed;
+    }
+
+    .pc-voice-status-strip {
+        display: grid;
+        grid-column: 1;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 1px;
+        overflow: hidden;
+        border-top: 1px solid var(--app-border-subtle);
+        background: var(--app-border-subtle);
+    }
+
+    .pc-voice-status-strip span {
+        display: flex;
+        min-width: 0;
+        min-height: 44px;
+        align-items: center;
+        gap: var(--app-space-2);
+        padding: var(--app-space-2) var(--app-space-3);
+        color: var(--app-text-muted);
+        background: var(--app-surface-1);
+        font-size: 11px;
+        white-space: nowrap;
+    }
+
+    .pc-voice-status-strip i {
+        display: grid;
+        width: 20px;
+        height: 20px;
+        flex: 0 0 auto;
+        place-items: center;
+        color: var(--app-selection-fg);
+        background: var(--app-selection-bg);
+        border: 1px solid var(--app-selection-border);
+        border-radius: 50%;
+        font-family: var(--app-font-mono);
+        font-size: 9px;
+        font-style: normal;
+        font-weight: 700;
+    }
+
     .pc-voice-guide {
-        margin: 20px 24px 24px;
+        grid-column: 2;
+        grid-row: 1 / 4;
+        align-self: stretch;
+        margin: 20px 20px 20px 0;
         border-color: var(--app-border-subtle);
         border-radius: var(--app-surface-radius-sm);
         padding: 16px 18px;
@@ -208,6 +294,40 @@
         color: var(--app-text-primary);
         font-size: 13px;
         font-weight: 620;
+    }
+
+    .pc-voice-guide ul {
+        display: grid;
+        gap: var(--app-space-2);
+        margin-top: var(--app-space-3);
+        list-style: none;
+    }
+
+    .pc-voice-guide li {
+        position: relative;
+        padding-left: 14px;
+    }
+
+    .pc-voice-guide li::before {
+        position: absolute;
+        top: 0.65em;
+        left: 0;
+        width: 4px;
+        height: 4px;
+        border-radius: 50%;
+        background: var(--app-brand-600);
+        content: "";
+    }
+}
+
+@media (min-width: 1024px) and (max-width: 1180px) {
+    .pc-voice-card-content {
+        grid-template-columns: minmax(0, 1fr) 260px;
+    }
+
+    .pc-voice-status-strip span {
+        gap: var(--app-space-1);
+        padding-inline: var(--app-space-2);
     }
 }
 

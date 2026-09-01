@@ -216,9 +216,26 @@ function HomeDashboard({
                     actions={
                         <>
                             {shortDramaEnabled ? (
-                                <Link className="home-primary-link" to={projectHref}>
+                                <Link className="home-primary-link home-primary-link-mobile" to={projectHref}>
                                     <Plus className="size-4" />
                                     开始创作
+                                </Link>
+                            ) : null}
+                            {activeProject ? (
+                                <Link className="home-primary-link home-primary-link-pc" to={`/projects/${activeProject.project.id}/overview`}>
+                                    <ArrowRight className="size-4" />
+                                    继续制作
+                                </Link>
+                            ) : shortDramaEnabled ? (
+                                <Link className="home-primary-link home-primary-link-pc" to={projectHref}>
+                                    <Plus className="size-4" />
+                                    开始第一个项目
+                                </Link>
+                            ) : null}
+                            {activeProject && shortDramaEnabled ? (
+                                <Link className="home-secondary-link" to={projectHref}>
+                                    <Plus className="size-4" />
+                                    新建项目
                                 </Link>
                             ) : null}
                             <Button size="large" disabled={!canvasHydrated} icon={<LayoutGrid className="size-4" />} onClick={onCreateIndependentCanvas}>
@@ -253,20 +270,28 @@ function HomeDashboard({
                             <h2 className="home-panel-title">创作活跃度</h2>
                             <p className="home-panel-sub">按天统计生成任务与画布更新</p>
                         </div>
-                        <Segmented
-                            size="small"
-                            options={[
-                                { label: "近 7 天", value: 7 },
-                                { label: "近 14 天", value: 14 },
-                                { label: "近 30 天", value: 30 },
-                            ]}
-                            value={rangeDays}
-                            onChange={(value) => setRangeDays(value as number)}
-                        />
+                        <div className="home-activity-controls">
+                            <span className="home-chart-legend" aria-label="图表图例">
+                                <i className="is-task" />
+                                生成任务
+                                <i className="is-canvas" />
+                                画布更新
+                            </span>
+                            <Segmented
+                                size="small"
+                                options={[
+                                    { label: "近 7 天", value: 7 },
+                                    { label: "近 14 天", value: 14 },
+                                    { label: "近 30 天", value: 30 },
+                                ]}
+                                value={rangeDays}
+                                onChange={(value) => setRangeDays(value as number)}
+                            />
+                        </div>
                     </div>
                     <div className="home-panel-body">
                         {activityData.some((item) => item.tasks > 0 || item.canvases > 0) ? (
-                            <ResponsiveContainer width="100%" height={232}>
+                            <ResponsiveContainer className="home-activity-chart" width="100%" height={232}>
                                 <BarChart data={activityData} margin={{ top: 12, right: 8, left: -18, bottom: 0 }}>
                                     <CartesianGrid vertical={false} stroke="var(--workspace-border)" strokeOpacity={0.6} />
                                     <XAxis
@@ -303,7 +328,7 @@ function HomeDashboard({
                     </div>
                     <div className="home-panel-body">
                         {assetTotal ? (
-                            <div className="flex min-h-[232px] items-center gap-2 py-2">
+                            <div className="home-donut-layout flex min-h-[232px] items-center gap-2 py-2">
                                 <div className="relative h-[200px] w-[56%] shrink-0">
                                     <ResponsiveContainer width="100%" height="100%">
                                         <PieChart>

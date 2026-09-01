@@ -1,5 +1,5 @@
 import { App, Button, Form, Input, InputNumber, Select } from "antd";
-import { ArrowLeft, Boxes, Bug, Cloud, MessageSquareText, MonitorUp, RadioTower, SlidersHorizontal, SquareTerminal, Workflow } from "lucide-react";
+import { ArrowLeft, Boxes, Bug, CheckCircle2, Cloud, MessageSquareText, MonitorUp, RadioTower, SlidersHorizontal, SquareTerminal, Workflow } from "lucide-react";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 
@@ -49,9 +49,7 @@ export default function SettingsPage() {
     const runtimeStatuses = usePluginStore((state) => state.runtimeStatuses);
     const runningHubPluginEnabled = runtimeStatuses[RUNNINGHUB_PLUGIN_ID] === "enabled";
     const comfyUIPluginEnabled = runtimeStatuses[COMFYUI_PLUGIN_ID] === "enabled";
-    const requestedSectionEnabled = requestedSection !== "runninghub" && requestedSection !== "comfyui"
-        || requestedSection === "runninghub" && runningHubPluginEnabled
-        || requestedSection === "comfyui" && comfyUIPluginEnabled;
+    const requestedSectionEnabled = (requestedSection !== "runninghub" && requestedSection !== "comfyui") || (requestedSection === "runninghub" && runningHubPluginEnabled) || (requestedSection === "comfyui" && comfyUIPluginEnabled);
     const initialSection = isConfigSection(requestedSection) && requestedSectionEnabled ? requestedSection : customChannelsEnabled ? "channels" : "models";
     const [activeTab, setActiveTab] = useState<ConfigSectionKey>(initialSection === "channels" && !customChannelsEnabled ? "models" : initialSection);
     const config = useConfigStore((state) => state.config);
@@ -60,9 +58,14 @@ export default function SettingsPage() {
     const shouldPromptContinue = searchParams.get("continue") === "1";
     const userId = useUserStore((state) => state.user?.id);
     const userChannels = config.channels.filter((channel) => channel.scope !== "system");
-    const visibleConfigSections = useMemo(() => (customChannelsEnabled ? configSections : configSections.filter((section) => section.key !== "channels"))
-        .filter((section) => section.key !== "runninghub" || runningHubPluginEnabled)
-        .filter((section) => section.key !== "comfyui" || comfyUIPluginEnabled), [comfyUIPluginEnabled, customChannelsEnabled, runningHubPluginEnabled]);
+    const visibleConfigSections = useMemo(
+        () =>
+            (customChannelsEnabled ? configSections : configSections.filter((section) => section.key !== "channels"))
+                .filter((section) => section.key !== "runninghub" || runningHubPluginEnabled)
+                .filter((section) => section.key !== "comfyui" || comfyUIPluginEnabled),
+        [comfyUIPluginEnabled, customChannelsEnabled, runningHubPluginEnabled],
+    );
+    const activeSectionMeta = visibleConfigSections.find((section) => section.key === activeTab) || visibleConfigSections[0];
 
     const isVisibleConfigSection = (value: string | null): value is ConfigSectionKey => isConfigSection(value) && visibleConfigSections.some((section) => section.key === value);
 
@@ -71,7 +74,7 @@ export default function SettingsPage() {
             setActiveTab(requestedSection);
             return;
         }
-        setActiveTab((current) => visibleConfigSections.some((section) => section.key === current) ? current : customChannelsEnabled ? "channels" : "models");
+        setActiveTab((current) => (visibleConfigSections.some((section) => section.key === current) ? current : customChannelsEnabled ? "channels" : "models"));
     }, [customChannelsEnabled, requestedSection, visibleConfigSections]);
 
     useEffect(() => {
@@ -103,8 +106,8 @@ export default function SettingsPage() {
         }
         const hasReadyLocalRuntime = effectiveConfig.channels.some((channel) => channel.transport === "local-runtime" && channel.enabled !== false && Boolean(channel.localModels?.length));
         const workflowReady = Boolean(
-            (runningHubPluginEnabled && config.runningHub.enabled && config.runningHub.workflowId.trim() && config.runningHub.baseUrl.trim() && config.runningHub.apiKey.trim())
-            || (comfyUIPluginEnabled && config.comfyBridge.enabled && config.comfyBridge.bridgeId.trim() && config.comfyBridge.workflowId.trim()),
+            (runningHubPluginEnabled && config.runningHub.enabled && config.runningHub.workflowId.trim() && config.runningHub.baseUrl.trim() && config.runningHub.apiKey.trim()) ||
+            (comfyUIPluginEnabled && config.comfyBridge.enabled && config.comfyBridge.bridgeId.trim() && config.comfyBridge.workflowId.trim()),
         );
         if (!effectiveConfig.channels.some(isChannelReady) && !hasReadyLocalRuntime && !workflowReady) {
             selectSection(customChannelsEnabled ? "channels" : "models");
@@ -116,8 +119,20 @@ export default function SettingsPage() {
     };
 
     const panes: Record<ConfigSectionKey, ReactNode> = {
-        "local-cli": <SettingsPane><LocalCliSettings /></SettingsPane>,
-        channels: <SettingsPane><ChannelSettingsPane onOpenModels={() => selectSection("models")} onOpenRunningHub={runningHubPluginEnabled ? () => selectSection("runninghub") : undefined} onOpenComfyUI={comfyUIPluginEnabled ? () => selectSection("comfyui") : undefined} /></SettingsPane>,
+        "local-cli": (
+            <SettingsPane>
+                <LocalCliSettings />
+            </SettingsPane>
+        ),
+        channels: (
+            <SettingsPane>
+                <ChannelSettingsPane
+                    onOpenModels={() => selectSection("models")}
+                    onOpenRunningHub={runningHubPluginEnabled ? () => selectSection("runninghub") : undefined}
+                    onOpenComfyUI={comfyUIPluginEnabled ? () => selectSection("comfyui") : undefined}
+                />
+            </SettingsPane>
+        ),
         models: (
             <SettingsPane>
                 <div className="settings-pane-header">
@@ -131,8 +146,16 @@ export default function SettingsPage() {
                 </div>
             </SettingsPane>
         ),
-        runninghub: <SettingsPane><RunningHubSettingsPane /></SettingsPane>,
-        comfyui: <SettingsPane><ComfyUIBridgeSettingsPane /></SettingsPane>,
+        runninghub: (
+            <SettingsPane>
+                <RunningHubSettingsPane />
+            </SettingsPane>
+        ),
+        comfyui: (
+            <SettingsPane>
+                <ComfyUIBridgeSettingsPane />
+            </SettingsPane>
+        ),
         preferences: (
             <SettingsPane>
                 <div className="settings-pane-header">
@@ -199,8 +222,16 @@ export default function SettingsPage() {
                 </div>
             </SettingsPane>
         ),
-        prompts: <SettingsPane fill><PromptPreferencesPane /></SettingsPane>,
-        diagnostics: <SettingsPane><DiagnosticsPanel taskId={searchParams.get("taskId") || undefined} projectId={searchParams.get("projectId") || undefined} /></SettingsPane>,
+        prompts: (
+            <SettingsPane fill>
+                <PromptPreferencesPane />
+            </SettingsPane>
+        ),
+        diagnostics: (
+            <SettingsPane>
+                <DiagnosticsPanel taskId={searchParams.get("taskId") || undefined} projectId={searchParams.get("projectId") || undefined} />
+            </SettingsPane>
+        ),
         storage: (
             <SettingsPane>
                 <div className="settings-section">
@@ -216,12 +247,18 @@ export default function SettingsPage() {
                 eyebrow="PERSONAL SETTINGS"
                 title="设置"
                 description="管理本机工具、模型渠道、工作流、生成偏好与个人存储。"
-                actions={shouldPromptContinue ? (
-                    <>
-                        <Button icon={<ArrowLeft className="size-4" />} onClick={() => navigate(-1)}>返回创作</Button>
-                        <Button type="primary" onClick={finishConfig}>保存并返回</Button>
-                    </>
-                ) : undefined}
+                actions={
+                    shouldPromptContinue ? (
+                        <>
+                            <Button icon={<ArrowLeft className="size-4" />} onClick={() => navigate(-1)}>
+                                返回创作
+                            </Button>
+                            <Button type="primary" onClick={finishConfig}>
+                                保存并返回
+                            </Button>
+                        </>
+                    ) : undefined
+                }
             />
             <SubnavLayout
                 className="settings-subnav"
@@ -234,14 +271,30 @@ export default function SettingsPage() {
                 }))}
                 activeValue={activeTab}
                 onChange={selectSection}
-                navigationHeader={(
+                navigationHeader={
                     <div className="settings-subnav-heading">
                         <span>设置分类</span>
                         <strong>{visibleConfigSections.length}</strong>
                     </div>
-                )}
+                }
             >
                 <div className={`settings-pane-root ${activeTab === "prompts" ? "is-editor" : ""}`}>
+                    {activeSectionMeta ? (
+                        <header className="settings-section-context" aria-label={`当前设置：${activeSectionMeta.label}`}>
+                            <span className="settings-section-context-icon" aria-hidden="true">
+                                {activeSectionMeta.icon}
+                            </span>
+                            <div className="settings-section-context-copy">
+                                <span>当前设置</span>
+                                <strong>{activeSectionMeta.label}</strong>
+                                <small>{activeSectionMeta.description}</small>
+                            </div>
+                            <span className="settings-section-save-note">
+                                <CheckCircle2 className="size-3.5" aria-hidden="true" />
+                                修改保存到当前账号的本机配置
+                            </span>
+                        </header>
+                    ) : null}
                     {panes[activeTab]}
                 </div>
             </SubnavLayout>

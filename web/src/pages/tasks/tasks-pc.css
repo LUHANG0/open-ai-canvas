@@ -128,9 +128,54 @@
         box-shadow: var(--app-shadow-surface);
     }
 
+    .task-library-page .task-load-warning {
+        display: flex;
+        min-height: 42px;
+        align-items: center;
+        justify-content: space-between;
+        gap: var(--app-space-3);
+        margin-bottom: var(--app-space-3);
+        padding: var(--app-space-2) var(--app-space-3);
+        color: var(--app-status-warning-fg);
+        font-size: var(--app-font-size-label);
+        background: var(--app-status-warning-bg);
+        border: 1px solid var(--app-status-warning-border);
+        border-radius: var(--app-control-radius);
+    }
+
+    .task-library-page .task-load-warning span {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .task-library-page .library-loading-grid {
+        display: grid;
+        gap: 1px;
+        margin: 0;
+        overflow: hidden;
+        background: var(--app-border-subtle);
+        border: 1px solid var(--app-border-subtle);
+        border-radius: var(--app-surface-radius-sm);
+    }
+
+    .task-library-page .library-loading-grid .library-skeleton {
+        height: 82px;
+        aspect-ratio: auto;
+        border-radius: 0;
+    }
+
     .task-library-page .task-record-scroll-shell,
     .task-library-page .task-group-records-scroll {
+        position: relative;
         min-width: 0;
+        outline: none;
+    }
+
+    .task-library-page .task-record-table:focus-visible,
+    .task-library-page .task-group-records-scroll:focus-visible {
+        box-shadow: var(--app-focus-shadow);
     }
 
     .task-library-page .task-record-scroll-hint {
@@ -160,6 +205,13 @@
         scrollbar-width: thin;
     }
 
+    .task-library-page .task-record-table-head,
+    .task-library-page .task-record-row {
+        min-width: 1320px;
+        grid-template-columns: minmax(380px, 2.5fr) 112px minmax(184px, 1fr) minmax(164px, 0.9fr) 138px 132px 80px;
+        gap: 12px;
+    }
+
     .task-library-page .task-record-table-head {
         min-height: var(--app-table-header-height);
         padding-inline: var(--app-space-4);
@@ -174,7 +226,7 @@
     }
 
     .task-library-page .task-record-row {
-        min-height: 86px;
+        min-height: 82px;
         padding: var(--app-space-3) var(--app-space-4);
         background: var(--app-surface-1);
         border: 0;
@@ -194,11 +246,11 @@
     }
 
     .task-library-page .task-record-row.is-active {
-        background: color-mix(in srgb, var(--app-ai-running-bg) 42%, var(--app-surface-1));
+        background: color-mix(in srgb, var(--app-ai-running-bg) 18%, var(--app-surface-1));
     }
 
     .task-library-page .task-record-row.is-failed {
-        background: color-mix(in srgb, var(--app-status-error-bg) 48%, var(--app-surface-1));
+        background: color-mix(in srgb, var(--app-status-error-bg) 16%, var(--app-surface-1));
     }
 
     .task-library-page .task-record-thumb {
@@ -226,6 +278,17 @@
     .task-library-page .task-record-date,
     .task-library-page .task-record-actions {
         border-color: var(--app-border-subtle);
+    }
+
+    .task-library-page .task-record-kind {
+        width: fit-content;
+        min-height: 28px;
+        align-self: center;
+        padding: 0 var(--app-space-2);
+        color: var(--app-text-secondary);
+        background: var(--app-surface-2);
+        border: 1px solid var(--app-border-subtle);
+        border-radius: var(--app-control-radius-sm);
     }
 
     .task-library-page .task-record-model {
@@ -286,13 +349,29 @@
 
     .task-library-page .task-record-billing {
         min-height: 58px;
+        overflow: hidden;
         border-radius: var(--app-control-radius);
     }
 
+    .task-library-page .task-record-billing-value {
+        width: 100%;
+        min-width: 0;
+        white-space: nowrap;
+    }
+
     .task-library-page .task-record-billing strong {
+        min-width: 0;
+        overflow: hidden;
         color: var(--app-text-primary);
-        font-size: var(--app-font-size-section);
+        font-size: var(--app-font-size-body);
         font-weight: 720;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .task-library-page .task-record-billing-unit {
+        flex: 0 0 auto;
+        font-size: 10px;
     }
 
     .task-library-page .task-record-billing-value svg {
@@ -353,6 +432,27 @@
         border-bottom: 1px solid var(--app-border-subtle);
     }
 
+    .task-library-page .task-grid-kind-badge {
+        position: absolute;
+        top: var(--app-space-2);
+        left: var(--app-space-2);
+        z-index: 1;
+        display: block;
+        max-width: calc(100% - 56px);
+        overflow: hidden;
+        padding: 3px 7px;
+        color: var(--app-text-inverse);
+        font-size: 10px;
+        font-weight: 650;
+        line-height: 1.35;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        background: color-mix(in srgb, var(--app-text-primary) 62%, transparent);
+        border: 1px solid color-mix(in srgb, var(--app-text-inverse) 16%, transparent);
+        border-radius: var(--app-control-radius-sm);
+        backdrop-filter: blur(8px);
+    }
+
     .task-library-page .task-grid-body {
         padding: var(--app-space-3);
     }
@@ -362,6 +462,17 @@
         font-weight: 650;
     }
 
+    .task-library-page .task-grid-error {
+        display: block;
+        margin: var(--app-space-2) 0 0;
+        overflow: hidden;
+        color: var(--app-status-error-fg);
+        font-size: var(--app-font-size-label);
+        line-height: 1.45;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
     .task-library-page .task-grid-status {
         min-height: 22px;
         padding: 2px 7px;
@@ -369,10 +480,43 @@
         border-radius: var(--app-control-radius-sm);
     }
 
-    .task-library-page .task-grid-billing {
-        display: block;
+    .task-library-page .task-grid-context {
+        display: grid;
+        gap: 6px;
         margin-top: var(--app-space-3);
         padding-top: var(--app-space-3);
+        border-top: 1px solid var(--app-border-subtle);
+    }
+
+    .task-library-page .task-grid-context > span {
+        display: flex;
+        min-width: 0;
+        align-items: center;
+        gap: var(--app-space-2);
+        color: var(--app-text-muted);
+        font-size: var(--app-font-size-label);
+    }
+
+    .task-library-page .task-grid-context svg {
+        width: 13px;
+        height: 13px;
+        flex: 0 0 auto;
+        color: var(--app-selection-fg);
+    }
+
+    .task-library-page .task-grid-context b {
+        min-width: 0;
+        overflow: hidden;
+        color: var(--app-text-secondary);
+        font-weight: 560;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .task-library-page .task-grid-billing {
+        display: block;
+        margin-top: var(--app-space-2);
+        padding-top: var(--app-space-2);
         border-top: 1px solid var(--app-border-subtle);
     }
 
@@ -435,20 +579,48 @@
         background: var(--app-surface-2);
     }
 
+    .task-detail-drawer .task-detail-load-error {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: var(--app-space-3);
+        padding: var(--app-space-3) var(--app-space-4);
+        color: var(--app-status-warning-fg);
+        background: var(--app-status-warning-bg);
+        border: 1px solid var(--app-status-warning-border);
+        border-radius: var(--app-control-radius);
+    }
+
+    .task-detail-drawer .task-detail-load-error div {
+        min-width: 0;
+    }
+
+    .task-detail-drawer .task-detail-load-error strong {
+        display: block;
+        font-size: var(--app-font-size-control);
+    }
+
+    .task-detail-drawer .task-detail-load-error p {
+        margin: var(--app-space-1) 0 0;
+        overflow-wrap: anywhere;
+        font-size: var(--app-font-size-label);
+        line-height: 1.55;
+    }
+
     .task-media-preview-modal .ant-modal-body {
         background: var(--app-surface-2);
     }
 }
 
-@media (min-width: 1024px) and (max-width: 1440px) {
+@media (min-width: 1024px) and (max-width: 1599px) {
     .task-library-page .task-record-scroll-hint {
         display: flex;
     }
 
     .task-library-page .task-record-table-head,
     .task-library-page .task-record-row {
-        min-width: 1220px;
-        grid-template-columns: minmax(360px, 2.4fr) minmax(96px, 0.7fr) minmax(150px, 1fr) minmax(130px, 0.8fr) 126px 112px 76px;
+        min-width: 1320px;
+        grid-template-columns: minmax(380px, 2.5fr) 112px minmax(184px, 1fr) minmax(164px, 0.9fr) 138px 132px 80px;
     }
 
     .task-library-page .task-record-table-head > span:nth-child(2),
@@ -465,6 +637,16 @@
 
     .task-library-page .task-record-mobile-meta {
         display: none;
+    }
+}
+
+@media (min-width: 1024px) {
+    .task-library-page .task-status-tab:focus-visible,
+    .task-library-page .task-group-toggle:focus-visible,
+    .task-library-page .task-grid-title:focus-visible,
+    .task-library-page .task-record-title:focus-visible {
+        outline: 2px solid var(--app-focus-ring);
+        outline-offset: 2px;
     }
 }
 

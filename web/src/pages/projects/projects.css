@@ -1,5 +1,23 @@
 /* Projects PC UI. Rules are scoped so the existing mobile layout and other libraries keep their contracts. */
 
+.pc-projects-page .app-story-create-source-actions,
+.pc-projects-page .app-story-create-execution-actions {
+    display: contents;
+}
+
+.pc-projects-page .pc-projects-story-status,
+.pc-projects-page .pc-projects-empty-actions {
+    display: none;
+}
+
+.pc-project-detail-state .workspace-state-action {
+    display: none;
+}
+
+.pc-project-detail-empty-action {
+    display: none;
+}
+
 @media (min-width: 1024px) {
     .pc-projects-library-count {
         color: var(--app-text-muted, var(--muted-foreground));
@@ -107,7 +125,7 @@
     }
 
     .pc-projects-page .app-story-create-head {
-        min-height: 88px;
+        min-height: 112px;
         align-items: flex-start;
         padding: 20px 22px 18px;
         border-bottom-color: var(--app-border-subtle);
@@ -154,8 +172,47 @@
     }
 
     .pc-projects-page .app-story-create-actions {
-        max-width: 720px;
+        display: grid;
+        max-width: 620px;
+        flex: 0 1 620px;
+        justify-items: end;
+        gap: 8px;
+    }
+
+    .pc-projects-page .app-story-create-source-actions,
+    .pc-projects-page .app-story-create-execution-actions {
+        display: flex;
+        min-width: 0;
+        flex-wrap: wrap;
+        align-items: center;
         justify-content: flex-end;
+        gap: 7px;
+    }
+
+    .pc-projects-page .app-story-create-source-actions {
+        padding-bottom: 1px;
+    }
+
+    .pc-projects-page .app-story-create-shortcut {
+        border: 1px solid transparent;
+        background: var(--app-surface-2);
+    }
+
+    .pc-projects-page .app-story-create-shortcut:hover,
+    .pc-projects-page .app-story-create-shortcut:focus-visible {
+        color: var(--app-text-primary);
+        background: var(--app-action-secondary-hover);
+        border-color: var(--app-border-default);
+    }
+
+    .pc-projects-page .app-story-create-shortcut:focus-visible {
+        outline: 0;
+        box-shadow: var(--app-focus-shadow);
+    }
+
+    .pc-projects-page .app-story-create-execution-actions .canvas-composer-model-picker {
+        width: min(210px, 22vw);
+        min-width: 172px;
     }
 
     .pc-projects-page .app-story-create-actions .app-story-generate-action {
@@ -179,12 +236,24 @@
         box-shadow: none;
     }
 
+    .pc-projects-page .app-story-create-actions .app-story-manual-action {
+        color: var(--app-text-secondary);
+        background: transparent;
+        border: 1px solid var(--app-border-default);
+    }
+
+    .pc-projects-page .app-story-create-actions .app-story-manual-action:hover {
+        color: var(--app-text-primary);
+        background: var(--app-action-secondary-hover);
+        border-color: var(--app-border-strong);
+    }
+
     .pc-projects-page .app-story-create-main {
         position: relative;
-        min-height: 108px;
+        min-height: 96px;
         margin: 16px 22px 0;
         align-items: center;
-        padding: 38px 18px 16px;
+        padding: 36px 18px 30px;
         background: color-mix(in srgb, var(--app-surface-2) 84%, var(--app-surface-1));
         border-color: var(--app-border-default);
         border-radius: var(--app-surface-radius);
@@ -210,10 +279,39 @@
         box-shadow: 0 0 0 3px var(--app-focus-ring);
     }
 
+    .pc-projects-page .pc-projects-story-status {
+        position: absolute;
+        right: 18px;
+        bottom: 9px;
+        left: 18px;
+        display: block;
+        overflow: hidden;
+        color: var(--app-text-muted);
+        font-size: 10px;
+        line-height: 1.4;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .pc-projects-page .pc-projects-story-status.is-ready {
+        color: var(--app-status-success-fg);
+    }
+
     .pc-projects-page .app-story-create-controls {
+        display: grid;
+        grid-template-columns: repeat(7, minmax(96px, 1fr));
+        gap: 10px;
         margin-top: 0;
         padding: 14px 22px 18px;
+        background: color-mix(in srgb, var(--app-surface-2) 70%, transparent);
         border-top: 1px solid color-mix(in srgb, var(--app-border-subtle) 70%, transparent);
+    }
+
+    .pc-projects-page .app-story-create-controls label {
+        display: grid;
+        min-width: 0;
+        align-items: stretch;
+        gap: 5px;
     }
 
     .pc-projects-page .app-story-create-controls label > span:first-child {
@@ -222,6 +320,11 @@
         font-size: 9px;
         font-weight: 620;
         letter-spacing: 0.04em;
+    }
+
+    .pc-projects-page .app-story-create-controls .ant-select {
+        width: 100%;
+        min-width: 0;
     }
 
     .pc-projects-library {
@@ -322,6 +425,35 @@
         min-height: 44px;
         margin-top: 12px;
         color: var(--app-text-muted);
+    }
+
+    .pc-projects-page .pc-projects-empty {
+        min-height: 248px;
+        margin-top: 16px;
+        border: 1px dashed var(--app-border-default);
+        border-radius: var(--app-surface-radius);
+        background: color-mix(in srgb, var(--app-surface-2) 76%, transparent);
+        padding: 34px 24px;
+    }
+
+    .pc-projects-page .pc-projects-empty .workspace-state-title {
+        color: var(--app-text-primary);
+        font-size: var(--app-font-size-section);
+    }
+
+    .pc-projects-page .pc-projects-empty .workspace-state-description {
+        color: var(--app-text-secondary);
+    }
+
+    .pc-projects-page .pc-projects-empty-mobile-action {
+        display: none;
+    }
+
+    .pc-projects-page .pc-projects-empty-actions {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 8px;
     }
 
     .pc-project-workbench {
@@ -544,6 +676,42 @@
         margin-top: 18px;
     }
 
+    .pc-project-detail-state {
+        min-height: 264px;
+        margin-top: 18px;
+        border: 1px dashed var(--app-border-default);
+        border-radius: var(--app-surface-radius, 12px);
+        background: color-mix(in srgb, var(--app-surface-2) 76%, transparent);
+        padding: 32px 24px;
+    }
+
+    .pc-project-detail-state .workspace-state-title {
+        color: var(--app-text-primary);
+        font-size: var(--app-font-size-section);
+    }
+
+    .pc-project-detail-state .workspace-state-description {
+        color: var(--app-text-secondary);
+    }
+
+    .pc-project-detail-state .workspace-state-action .ant-btn {
+        min-width: 132px;
+        border-radius: var(--app-control-radius);
+    }
+
+    .pc-project-detail-state .workspace-state-action {
+        display: block;
+    }
+
+    .pc-project-detail-empty-action {
+        display: inline-flex;
+    }
+
+    .pc-project-detail-state .workspace-state-action .ant-btn:focus-visible {
+        outline: none;
+        box-shadow: var(--app-focus-shadow);
+    }
+
     .pc-project-assets .project-assets-layout {
         grid-template-columns: 216px minmax(0, 1fr);
         gap: 20px;
@@ -636,6 +804,33 @@
         border: 1px solid var(--app-border-default);
         border-radius: var(--app-surface-radius, 12px);
         box-shadow: var(--app-shadow-overlay);
+    }
+}
+
+@media (min-width: 1024px) and (max-width: 1199px) {
+    .pc-projects-page .app-story-create-head {
+        flex-direction: column;
+        gap: 14px;
+    }
+
+    .pc-projects-page .app-story-create-actions {
+        width: 100%;
+        max-width: none;
+        flex-basis: auto;
+        justify-items: stretch;
+    }
+
+    .pc-projects-page .app-story-create-source-actions,
+    .pc-projects-page .app-story-create-execution-actions {
+        justify-content: flex-start;
+    }
+
+    .pc-projects-page .app-story-create-execution-actions .canvas-composer-model-picker {
+        width: min(240px, 32vw);
+    }
+
+    .pc-projects-page .app-story-create-controls {
+        grid-template-columns: repeat(4, minmax(112px, 1fr));
     }
 }
 

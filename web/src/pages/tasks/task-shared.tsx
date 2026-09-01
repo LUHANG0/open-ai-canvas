@@ -67,11 +67,11 @@ export function TaskBilling({ billing }: { billing?: GenerationTask["billing"] }
     const amount = formatCredits(billing.amountMicrocredits);
     const note = billing.status === "settled" ? "已结算" : billing.status === "refunded" ? "已退回" : billing.status === "uncertain" ? "待核对" : "预计";
     return (
-        <div className={`task-record-billing is-${billing.status}`} title={`${amount} 积分，${note}`}>
+        <div className={`task-record-billing is-${billing.status}`} title={`${amount} 积分，${note}`} aria-label={`${amount} 积分，${note}`}>
             <span className="task-record-billing-value">
                 <Coins aria-hidden="true" />
                 <strong>{amount}</strong>
-                <em>积分</em>
+                <em className="task-record-billing-unit">积分</em>
             </span>
             <small>{note}</small>
         </div>

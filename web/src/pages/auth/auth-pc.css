@@ -1,5 +1,7 @@
 .pc-auth-brand-summary,
-.pc-auth-brand-capabilities {
+.pc-auth-brand-capabilities,
+.pc-auth-form-assurance,
+.pc-auth-password-status {
     display: none;
 }
 
@@ -164,12 +166,22 @@
     }
 
     .pc-auth-card {
+        position: relative;
         border: 1px solid color-mix(in srgb, var(--auth-brand) 16%, var(--auth-border));
         border-radius: var(--app-surface-radius);
         background: color-mix(in srgb, var(--auth-surface) 96%, rgba(139, 124, 246, 0.08));
         box-shadow:
             inset 0 1px 0 rgba(196, 186, 255, 0.08),
             0 28px 72px rgba(0, 0, 0, 0.36);
+    }
+
+    .pc-auth-card::after {
+        position: absolute;
+        inset: 0 0 auto;
+        height: 2px;
+        background: linear-gradient(90deg, var(--auth-brand-strong), var(--auth-brand), transparent 76%);
+        content: "";
+        pointer-events: none;
     }
 
     .pc-auth-card-content.is-login {
@@ -218,6 +230,11 @@
         background: linear-gradient(90deg, var(--auth-brand-strong), var(--auth-brand));
     }
 
+    .pc-auth-tabs .ant-tabs-tab:focus-visible {
+        outline: none;
+        box-shadow: 0 0 0 3px var(--auth-brand-soft);
+    }
+
     .pc-auth-form-slot {
         padding: 24px 30px 30px;
     }
@@ -254,6 +271,19 @@
     .pc-auth-card :where(.pc-auth-field .ant-input, .pc-auth-field .ant-input-affix-wrapper):focus-within {
         border-color: rgba(167, 155, 255, 0.72);
         box-shadow: 0 0 0 3px var(--auth-brand-soft);
+    }
+
+    .pc-auth-card :where(.ant-input-disabled, .ant-input-affix-wrapper-disabled) {
+        color: var(--auth-text-muted);
+        background: color-mix(in srgb, var(--auth-surface-raised) 62%, transparent);
+        border-color: var(--auth-border);
+        cursor: not-allowed;
+    }
+
+    .pc-auth-card :where(input:-webkit-autofill, input:-webkit-autofill:hover, input:-webkit-autofill:focus) {
+        -webkit-text-fill-color: var(--auth-text);
+        caret-color: var(--auth-text);
+        box-shadow: 0 0 0 1000px var(--auth-surface) inset;
     }
 
     .pc-auth-submit,
@@ -294,6 +324,41 @@
         margin-block: 0;
         color: var(--auth-text-muted);
         font-size: 11px;
+    }
+
+    .pc-auth-form-assurance,
+    .pc-auth-password-status {
+        display: flex;
+        min-height: 30px;
+        align-items: flex-start;
+        gap: 7px;
+        margin-top: -4px;
+        color: var(--auth-text-muted);
+        font-size: 11px;
+        line-height: 1.5;
+    }
+
+    .pc-auth-form-assurance svg,
+    .pc-auth-password-status svg {
+        flex: 0 0 auto;
+        margin-top: 1px;
+        color: var(--auth-brand);
+    }
+
+    .pc-auth-password-status.is-match {
+        color: var(--app-status-success-fg, var(--auth-ai));
+    }
+
+    .pc-auth-password-status.is-match svg {
+        color: var(--app-status-success-fg, var(--auth-ai));
+    }
+
+    .pc-auth-password-status.is-mismatch {
+        color: var(--app-status-warning-fg, var(--auth-text-secondary));
+    }
+
+    .pc-auth-password-status.is-mismatch svg {
+        color: var(--app-status-warning-fg, var(--auth-text-secondary));
     }
 
     .pc-auth-notice {

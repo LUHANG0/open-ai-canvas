@@ -47,6 +47,12 @@
     margin-top: var(--space-8);
 }
 
+.plugins-overview,
+.plugin-card-open-hint,
+.plugin-section-card-icon {
+    display: none;
+}
+
 .plugin-section {
     min-width: 0;
     scroll-margin-top: var(--space-5);
@@ -988,12 +994,101 @@
         padding: var(--app-space-5, 20px);
     }
 
+    .plugins-overview {
+        display: grid;
+        grid-template-columns: minmax(220px, 0.8fr) minmax(420px, 1.2fr);
+        align-items: stretch;
+        gap: var(--app-space-4, 16px);
+        margin: calc(var(--app-space-1, 4px) * -1) calc(var(--app-space-1, 4px) * -1) var(--app-space-4, 16px);
+        padding: var(--app-space-3, 12px);
+        background: linear-gradient(100deg, color-mix(in srgb, var(--app-selection-bg) 74%, transparent), transparent 58%), var(--app-surface-2);
+        border: 1px solid var(--app-border-subtle);
+        border-radius: var(--app-control-radius, 8px);
+    }
+
+    .plugins-overview-copy {
+        display: flex;
+        min-width: 0;
+        flex-direction: column;
+        justify-content: center;
+        padding: var(--app-space-1, 4px) var(--app-space-2, 8px);
+    }
+
+    .plugins-overview-copy > span {
+        color: var(--app-brand-700);
+        font-family: var(--app-font-mono);
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+    }
+
+    .dark .plugins-overview-copy > span {
+        color: var(--app-brand-300);
+    }
+
+    .plugins-overview-copy strong {
+        margin-top: 3px;
+        color: var(--app-text-primary);
+        font-size: 15px;
+        font-weight: 650;
+    }
+
+    .plugins-overview-copy small {
+        margin-top: 3px;
+        overflow: hidden;
+        color: var(--app-text-muted);
+        font-size: 11px;
+        line-height: 1.45;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .plugins-overview-metrics {
+        display: grid;
+        min-width: 0;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        overflow: hidden;
+        background: color-mix(in srgb, var(--app-surface-1) 86%, transparent);
+        border: 1px solid var(--app-border-subtle);
+        border-radius: var(--app-control-radius-sm, 6px);
+    }
+
+    .plugins-overview-metrics > div {
+        display: grid;
+        min-width: 0;
+        align-content: center;
+        gap: 2px;
+        padding: var(--app-space-2, 8px) var(--app-space-3, 12px);
+    }
+
+    .plugins-overview-metrics > div + div {
+        border-left: 1px solid var(--app-border-subtle);
+    }
+
+    .plugins-overview-metrics dt {
+        overflow: hidden;
+        color: var(--app-text-muted);
+        font-size: 10px;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .plugins-overview-metrics dd {
+        margin: 0;
+        color: var(--app-text-primary);
+        font-family: var(--app-font-mono);
+        font-size: 16px;
+        font-weight: 650;
+        font-variant-numeric: tabular-nums;
+    }
+
     .plugins-toolbar {
         display: grid;
         grid-template-columns: minmax(260px, 1fr) 152px 152px auto;
         min-height: 52px;
         gap: var(--app-space-2, 8px);
-        margin: calc(var(--app-space-1, 4px) * -1) calc(var(--app-space-1, 4px) * -1) 0;
+        margin: 0 calc(var(--app-space-1, 4px) * -1);
         padding: var(--app-space-3, 12px);
         padding-bottom: var(--app-space-4, 16px);
         background: color-mix(in srgb, var(--app-surface-2) 72%, transparent);
@@ -1082,7 +1177,7 @@
 
     .plugin-card {
         position: relative;
-        min-height: 248px;
+        min-height: 236px;
         overflow: hidden;
         padding: var(--app-space-4, 16px);
         background: var(--app-surface-1, var(--background));
@@ -1098,6 +1193,21 @@
         background: linear-gradient(90deg, var(--app-brand-600), color-mix(in srgb, var(--app-brand-400) 22%, transparent) 72%, transparent);
         content: "";
         pointer-events: none;
+    }
+
+    .plugin-card.is-enabled::after {
+        position: absolute;
+        inset: 14px auto 14px 0;
+        width: 2px;
+        background: var(--app-status-success-fg);
+        border-radius: 0 2px 2px 0;
+        content: "";
+        opacity: 0.72;
+        pointer-events: none;
+    }
+
+    .plugin-card.is-blocked::after {
+        background: var(--app-status-warning-fg);
     }
 
     .plugin-card:hover,
@@ -1121,6 +1231,14 @@
         background: var(--app-selection-bg);
         border: 1px solid var(--app-selection-border);
         border-radius: var(--app-control-radius, 8px);
+    }
+
+    .plugin-default-card-icon {
+        display: none;
+    }
+
+    .plugin-section-card-icon {
+        display: block;
     }
 
     .dark .plugin-icon-tile {
@@ -1158,6 +1276,42 @@
         margin-top: var(--app-space-4, 16px);
         padding-top: var(--app-space-3, 12px);
         border-color: var(--app-border-subtle, var(--border));
+    }
+
+    .plugin-card-open-hint {
+        display: inline-flex;
+        min-height: 24px;
+        align-items: center;
+        gap: 2px;
+        margin-top: var(--app-space-3, 12px);
+        color: var(--app-text-muted);
+        font-size: 11px;
+        font-weight: 600;
+        transition:
+            color var(--app-duration-fast) var(--app-ease-standard),
+            gap var(--app-duration-fast) var(--app-ease-standard);
+    }
+
+    .plugin-card:hover .plugin-card-open-hint,
+    .plugin-card:focus-within .plugin-card-open-hint {
+        gap: var(--app-space-1, 4px);
+        color: var(--app-selection-fg);
+    }
+
+    .plugin-card .plugin-error {
+        display: block;
+        margin-top: var(--app-space-2, 8px);
+        padding: var(--app-space-2, 8px);
+        color: var(--app-status-error-fg);
+        background: var(--app-status-error-bg);
+        border: 1px solid var(--app-status-error-border);
+        border-radius: var(--app-control-radius-sm, 6px);
+        font-size: 11px;
+        line-height: 1.45;
+    }
+
+    .plugin-card :where(.ant-switch-disabled, .ant-btn:disabled) {
+        cursor: not-allowed;
     }
 
     .plugin-card-actions .pc-status-badge {
@@ -1235,6 +1389,29 @@
         font-size: 13px;
     }
 
+    .plugin-details-dialog-root .plugin-details-title > svg {
+        box-sizing: content-box;
+        padding: 7px;
+        color: var(--app-brand-700);
+        background: var(--app-selection-bg);
+        border: 1px solid var(--app-selection-border);
+        border-radius: var(--app-control-radius-sm);
+    }
+
+    .dark .plugin-details-dialog-root .plugin-details-title > svg {
+        color: var(--app-brand-300);
+    }
+
+    .plugin-details-dialog-root .plugin-details-document {
+        padding: var(--app-space-3) var(--app-space-2) var(--app-space-8);
+    }
+
+    .plugin-details-dialog-root .plugin-markdown a:focus-visible,
+    .plugin-details-dialog-root .plugin-markdown-table-wrap:focus-within {
+        outline: none;
+        box-shadow: var(--app-focus-shadow);
+    }
+
     .plugin-details-dialog-root .plugin-markdown h1,
     .plugin-details-dialog-root .plugin-markdown h2,
     .plugin-details-dialog-root .plugin-markdown h3,
@@ -1248,9 +1425,37 @@
         border-color: var(--app-border-subtle, var(--border));
         border-radius: var(--app-control-radius, 8px);
     }
+
+    .plugin-details-dialog-root .plugin-markdown th {
+        color: var(--app-text-primary);
+        background: color-mix(in srgb, var(--app-selection-bg) 62%, var(--app-surface-2));
+    }
+
+    .plugin-settings-dialog-root .plugin-settings-empty {
+        display: grid;
+        min-height: 132px;
+        place-items: center;
+        gap: var(--app-space-3);
+        padding: var(--app-space-5);
+        color: var(--app-text-secondary);
+        background: var(--app-surface-2);
+        border: 1px dashed var(--app-border-default);
+        border-radius: var(--app-control-radius);
+        text-align: center;
+    }
+
+    .plugin-settings-dialog-root :where(.ant-input, .ant-input-affix-wrapper, .ant-select-selector):focus-within,
+    .plugin-settings-dialog-root .ant-select-focused .ant-select-selector {
+        border-color: var(--app-border-interactive);
+        box-shadow: var(--app-focus-shadow);
+    }
 }
 
 @media (min-width: 1024px) and (max-width: 1279px) {
+    .plugins-overview {
+        grid-template-columns: 1fr;
+    }
+
     .plugins-toolbar {
         grid-template-columns: minmax(220px, 1fr) repeat(2, 136px);
     }
@@ -1265,6 +1470,7 @@
 @media (prefers-reduced-motion: reduce) {
     .plugin-card,
     .plugin-icon-tile,
+    .plugin-card-open-hint,
     .plugins-subnav .pc-subnav-layout__item {
         transition: none;
     }

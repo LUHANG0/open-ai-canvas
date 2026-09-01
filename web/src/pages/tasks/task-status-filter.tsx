@@ -14,20 +14,15 @@ export function TaskStatusFilterBar({ stats, value, onChange }: { stats: TaskSta
         <div className="task-status-filter">
             <div className="task-status-tabs" role="tablist" aria-label="任务状态">
                 {options.map((option) => (
-                    <button
-                        key={option.value}
-                        type="button"
-                        role="tab"
-                        aria-selected={value === option.value}
-                        className={`task-status-tab${value === option.value ? " is-active" : ""}`}
-                        onClick={() => onChange(option.value)}
-                    >
+                    <button key={option.value} type="button" role="tab" aria-selected={value === option.value} aria-controls="task-results" className={`task-status-tab${value === option.value ? " is-active" : ""}`} onClick={() => onChange(option.value)}>
                         <span>{option.label}</span>
                         <b>{option.count}</b>
                     </button>
                 ))}
             </div>
-            <span className="task-status-today">今日生成 <strong>{stats.today}</strong></span>
+            <span className="task-status-today">
+                今日生成 <strong>{stats.today}</strong>
+            </span>
         </div>
     );
 }
