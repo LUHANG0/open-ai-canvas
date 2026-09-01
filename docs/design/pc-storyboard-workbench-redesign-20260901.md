@@ -147,3 +147,40 @@ PC 镜头创作改为导演工作台结构：
 | 跨运行时测试 | 1 pass，0 fail，8 assertions |
 | TypeScript 与生产构建 | 通过，13,510 modules transformed |
 | 差异检查 | `git diff --check` 通过；禁改目录无差异 |
+
+## R3 内容显示细化记录（2026-09-01）
+
+### 调整内容
+
+- 回滚基线继续使用 `pc-storyboard-polish-r1-20260901`；本轮仅修改 PC 创作页前端与对应回归门禁。
+- R3 实现提交：`b4fed5c`（`refactor(create): 优化镜头内容显示层级`）。
+- R3 完成候选 Tag：`pc-storyboard-polish-r2-20260901`。
+- 镜头标题栏改为两级信息：第一行显示真实镜头内容，第二行显示类型与模型，状态和主要操作保持独立，避免标题、模型、状态挤在同一行。
+- 右侧信息栏去除“镜头信息 / 镜头脚本”的重复命名，统一为“镜头信息 / 创作内容”，并使用 `SC.xx` 标记当前镜头。
+- 创作内容改为带轻量引导线的正文段落；生成参数从重复卡片改为紧凑键值行，减少边框噪声。
+- PC 镜头模式不再在视频或图片下方显示内容重复的“视频结果 / 导演说明”折叠条；生成结果、时间和操作分别由舞台标题与镜头标题栏承载。
+
+### 浏览器复核
+
+| 场景 | 结果 |
+| ---- | ---- |
+| 默认 1680 × 818 | 标题两级显示，视频下方无多余折叠条，右侧 7 项参数完整且无需内部滚动 |
+| 1024 × 768 结果态 | 长标题按可用空间截断，全部操作保留；页面无横向溢出，舞台与输入器边界一致 |
+| 1024 × 768 信息态 | 创作内容和 7 项参数完整显示，信息区 `clientHeight = scrollHeight = 335px` |
+
+### R3 修改文件
+
+- `web/src/pages/create/index.tsx`
+- `web/src/pages/create/creation-workspace.css`
+- `web/test/create-chat-shot-layout.test.ts`
+- `docs/design/pc-storyboard-workbench-redesign-20260901.md`
+
+### R3 集中验证
+
+| 项目 | 结果 |
+| ---- | ---- |
+| 前置门禁 | 25 pass，0 fail，366 assertions |
+| 主测试 | 1113 pass，0 fail |
+| 跨运行时测试 | 1 pass，0 fail |
+| TypeScript 与生产构建 | 通过，13,510 modules transformed |
+| 差异检查 | `git diff --check` 通过；禁改目录无差异 |
