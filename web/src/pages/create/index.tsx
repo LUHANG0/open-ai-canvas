@@ -551,6 +551,13 @@ export default function CreatePage() {
     }, []);
 
     useEffect(() => {
+        if (!activeConversation?.messages.length) {
+            const frame = window.requestAnimationFrame(() => {
+                const container = threadScrollRef.current;
+                if (container) container.scrollTop = 0;
+            });
+            return () => window.cancelAnimationFrame(frame);
+        }
         if (!followLatestMessageRef.current) return;
         const frame = window.requestAnimationFrame(() => {
             const container = threadScrollRef.current;
