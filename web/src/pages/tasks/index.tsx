@@ -1,5 +1,5 @@
 import { App, Button, Form, Input, Modal, Select } from "antd";
-import { Braces, Bug, ChevronDown, Clock3, FileText, FolderKanban, LayoutGrid, List, Plus, RefreshCw, ScrollText, Settings2, Trash2 } from "lucide-react";
+import { Braces, Bug, ChevronDown, Clock3, FileText, FolderKanban, LayoutGrid, List, MoveHorizontal, Plus, RefreshCw, ScrollText, Settings2, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 
@@ -197,7 +197,7 @@ export default function TasksPage() {
         />
     );
 
-    const renderTaskGridCard = (task: GenerationTask) => <TaskGridCard key={task.id} task={task} actingId={actingId} onOpen={() => void openTaskDetail(task)} onRetry={() => void runAction(task.id)} />;
+    const renderTaskGridCard = (task: GenerationTask) => <TaskGridCard key={task.id} task={task} creditsEnabled={creditsEnabled} actingId={actingId} onOpen={() => void openTaskDetail(task)} onRetry={() => void runAction(task.id)} />;
 
     useEffect(() => {
         if (!shortDramaEnabled) {
@@ -576,17 +576,23 @@ export default function TasksPage() {
                                 <div className="task-grid-view">{visibleTasks.map(renderTaskGridCard)}</div>
                             ) : groupingActive ? (
                                 <div className="task-group-list">
+                                    <TaskScrollHint />
                                     {visibleTaskGroups.map((group) => (
                                         <section key={group.key} className="task-group">
                                             <TaskGroupHeader group={group} retrying={retryingGroup === group.key} onRetryFailed={() => void retryGroupTasks(group.key, group.tasks)} />
-                                            <div className="task-record-list">{group.tasks.map(renderTaskRow)}</div>
+                                            <div className="task-group-records-scroll">
+                                                <div className="task-record-list">{group.tasks.map(renderTaskRow)}</div>
+                                            </div>
                                         </section>
                                     ))}
                                 </div>
                             ) : (
-                                <div className="task-record-table">
-                                    <TaskTableHeader creditsEnabled={creditsEnabled} />
-                                    <div className="task-record-list">{visibleTasks.map(renderTaskRow)}</div>
+                                <div className="task-record-scroll-shell">
+                                    <TaskScrollHint />
+                                    <div className="task-record-table">
+                                        <TaskTableHeader creditsEnabled={creditsEnabled} />
+                                        <div className="task-record-list">{visibleTasks.map(renderTaskRow)}</div>
+                                    </div>
                                 </div>
                             )
                         ) : (
@@ -776,6 +782,15 @@ function TaskTableHeader({ creditsEnabled }: { creditsEnabled: boolean }) {
             <span>创建时间</span>
             <span>{creditsEnabled ? "积分状态" : "计费"}</span>
             <span>操作</span>
+        </div>
+    );
+}
+
+function TaskScrollHint() {
+    return (
+        <div className="task-record-scroll-hint hidden" role="note">
+            <MoveHorizontal aria-hidden="true" />
+            <span>横向滚动可查看模型、画布、时间与积分明细</span>
         </div>
     );
 }

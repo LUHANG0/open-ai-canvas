@@ -338,17 +338,21 @@ export default function AssetsPage() {
                                     <Button icon={<FolderOpen className="size-3.5" />} onClick={() => navigate("/plugins/eagle")}>
                                         Eagle 素材库
                                     </Button>
-                                    <Button title="导出全部素材" aria-label="导出全部素材" icon={<Download className="size-4" />} onClick={() => void exportAllAssets()} />
+                                    <Button className="assets-header-secondary-action" title="导出全部素材" aria-label="导出全部素材" icon={<Download className="size-4" />} onClick={() => void exportAllAssets()}>
+                                        <span className="hidden lg:inline">导出全部</span>
+                                    </Button>
                                     <Dropdown
                                         trigger={["click"]}
                                         menu={{
                                             items: [
-                                                { key: "package", icon: <FileUp className="size-4" />, label: "导入素材包", onClick: () => assetInputRef.current?.click() },
+                                                { key: "package", icon: <FileUp className="size-4" />, label: "批量导入素材包", onClick: () => assetInputRef.current?.click() },
                                                 { key: "model", icon: <Upload className="size-4" />, label: "上传 3D 模型", onClick: () => modelInputRef.current?.click() },
                                             ],
                                         }}
                                     >
-                                        <Button title="导入素材" aria-label="导入素材" icon={<FileUp className="size-4" />} />
+                                        <Button className="assets-header-secondary-action" title="导入或上传素材" aria-label="导入或上传素材" icon={<FileUp className="size-4" />}>
+                                            <span className="hidden lg:inline">导入 / 上传</span>
+                                        </Button>
                                     </Dropdown>
                                 </div>
                                 <AssetStorageUsage />
@@ -364,6 +368,12 @@ export default function AssetsPage() {
                             setCategoryFilter("all");
                             setPage(1);
                         }}
+                        trailing={
+                            <span className="assets-selection-guide hidden">
+                                <CheckCheck aria-hidden="true" />
+                                勾选卡片可批量导出或删除
+                            </span>
+                        }
                     >
                         <SearchField
                             containerClassName="assets-search-field"
@@ -406,7 +416,16 @@ export default function AssetsPage() {
                                 className="lg:mt-5"
                             />
                         </aside>
-                        <section className="min-w-0">
+                        <section className="min-w-0" aria-labelledby={validAssets.length ? "assets-collection-title" : undefined} aria-label={validAssets.length ? undefined : "素材列表"}>
+                            {validAssets.length ? (
+                                <div className="assets-collection-heading hidden">
+                                    <div>
+                                        <h2 id="assets-collection-title">{kindFilter === "all" && categoryFilter === "all" ? "全部媒体资产" : "筛选结果"}</h2>
+                                        <span>{filteredAssets.length} 项</span>
+                                    </div>
+                                    <span>点击媒体查看档案，勾选后进入批量处理</span>
+                                </div>
+                            ) : null}
                             {selectedAssets.length ? (
                                 <AssetsBatchBar
                                     count={selectedAssets.length}
@@ -683,17 +702,17 @@ function AssetCard({
     return (
         <AssetLibraryCard selected={selected}>
             <AssetCover asset={asset} selected={selected} onSelect={onSelect} onOpen={onOpen} menuItems={menuItems} />
-            <button type="button" className="block w-full px-2.5 py-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--workspace-accent)]" onClick={onOpen}>
-                <div className="flex min-w-0 items-center justify-between gap-2">
-                    <h2 className="truncate text-[var(--fs-body)] font-semibold text-foreground" title={asset.title}>
+            <button type="button" className="assets-card-copy block w-full px-2.5 py-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--workspace-accent)]" onClick={onOpen}>
+                <div className="assets-card-title-row flex min-w-0 items-center justify-between gap-2">
+                    <h2 className="assets-card-title truncate text-[var(--fs-body)] font-semibold text-foreground" title={asset.title}>
                         {asset.title}
                     </h2>
-                    <span className="shrink-0 text-[var(--fs-tiny)] tabular-nums text-foreground/38">{formatAssetTime(asset.updatedAt)}</span>
+                    <span className="assets-card-time shrink-0 text-[var(--fs-tiny)] tabular-nums text-foreground/38">{formatAssetTime(asset.updatedAt)}</span>
                 </div>
-                <div className="mt-1 truncate text-[var(--fs-label)] text-foreground/52" title={summary}>
+                <div className="assets-card-summary mt-1 truncate text-[var(--fs-label)] text-foreground/52" title={summary}>
                     {summary}
                 </div>
-                <div className="mt-1 flex min-w-0 items-center gap-1.5 text-[var(--fs-tiny)] text-foreground/38">
+                <div className="assets-card-context mt-1 flex min-w-0 items-center gap-1.5 text-[var(--fs-tiny)] text-foreground/38">
                     <span className="truncate">{asset.source || "未标注来源"}</span>
                     <span aria-hidden="true">·</span>
                     <span className="truncate">{assetProjectLabel(asset)}</span>

@@ -14,9 +14,11 @@
         --canvas-sidebar-width: 244px;
         --canvas-inset-x: 16px;
         --canvas-inset-y: 16px;
-        --pc-canvas-panel-border: color-mix(in srgb, var(--app-border-default) 86%, transparent);
-        --pc-canvas-panel-surface: color-mix(in srgb, var(--app-surface-overlay) 94%, transparent);
-        --pc-canvas-panel-muted: color-mix(in srgb, var(--app-surface-2) 92%, transparent);
+        --pc-canvas-panel-border: color-mix(in srgb, var(--app-border-default) 88%, var(--app-brand-600) 12%);
+        --pc-canvas-panel-surface: color-mix(in srgb, var(--app-surface-overlay) 96%, var(--app-selection-bg));
+        --pc-canvas-panel-muted: color-mix(in srgb, var(--app-surface-2) 94%, var(--app-selection-bg));
+        --pc-canvas-accent-soft: color-mix(in srgb, var(--app-brand-600) 9%, transparent);
+        --pc-canvas-accent-line: color-mix(in srgb, var(--app-brand-600) 38%, var(--app-border-default));
         --pc-canvas-command-hover: var(--app-action-secondary-hover);
         --pc-canvas-command-active: var(--app-selection-bg);
         position: relative;
@@ -29,7 +31,7 @@
         position: absolute;
         z-index: 0;
         inset: 0;
-        background: radial-gradient(circle at 50% -18%, color-mix(in srgb, var(--app-surface-1) 16%, transparent), transparent 38%);
+        background: linear-gradient(color-mix(in srgb, var(--app-brand-600) 2.5%, transparent), transparent 26%), radial-gradient(circle at 50% -18%, color-mix(in srgb, var(--app-surface-1) 16%, transparent), transparent 38%);
         content: "";
         pointer-events: none;
     }
@@ -76,6 +78,9 @@
         border: 1px solid var(--pc-canvas-panel-border);
         border-radius: var(--app-surface-radius);
         padding: var(--app-space-1);
+        box-shadow:
+            inset 0 1px 0 color-mix(in srgb, var(--app-brand-400) 12%, transparent),
+            var(--app-shadow-raised);
         backdrop-filter: blur(18px) saturate(112%);
     }
 
@@ -149,6 +154,8 @@
 
     .pc-canvas-workspace .aceternity-dock-command.is-active {
         background: var(--pc-canvas-command-active);
+        color: var(--app-selection-fg);
+        box-shadow: inset 0 0 0 1px var(--app-selection-border);
     }
 
     .pc-canvas-workspace .aceternity-dock-command:focus-visible,
@@ -159,7 +166,7 @@
 
     .pc-canvas-workspace .pc-canvas-project-sidebar {
         border-color: var(--pc-canvas-panel-border);
-        background: color-mix(in srgb, var(--app-surface-1) 94%, transparent);
+        background: var(--pc-canvas-panel-surface);
         color: var(--app-text-primary);
         box-shadow: 12px 0 30px color-mix(in srgb, var(--app-text-primary) 5%, transparent);
         backdrop-filter: blur(18px) saturate(108%);
@@ -182,7 +189,7 @@
 
     .pc-canvas-workspace .pc-canvas-project-sidebar__footer {
         border-color: var(--app-border-subtle);
-        background: color-mix(in srgb, var(--app-surface-2) 72%, transparent);
+        background: var(--pc-canvas-panel-muted);
         padding: var(--app-space-2);
     }
 
@@ -202,7 +209,7 @@
 
     .pc-canvas-workspace .pc-canvas-assistant-column {
         border-inline-start: 1px solid var(--pc-canvas-panel-border);
-        background: color-mix(in srgb, var(--app-surface-1) 96%, transparent);
+        background: var(--pc-canvas-panel-surface);
     }
 
     .pc-canvas-workspace .pc-canvas-assistant-column__resize::after {
@@ -271,6 +278,10 @@
         filter: saturate(1.02);
     }
 
+    .pc-canvas-workspace .pc-canvas-node:focus-within {
+        box-shadow: 0 0 0 2px var(--pc-canvas-accent-soft);
+    }
+
     .pc-canvas-workspace .pc-canvas-frame:not(.canvas-folder-shell) {
         border-radius: var(--app-surface-radius);
     }
@@ -278,7 +289,9 @@
     .pc-canvas-workspace .canvas-node-toolbar,
     .pc-canvas-workspace .canvas-floating-panel,
     .pc-canvas-workspace .pc-canvas-context-menu {
+        border-color: var(--pc-canvas-panel-border);
         border-radius: var(--app-surface-radius);
+        box-shadow: var(--app-shadow-raised);
     }
 
     .pc-canvas-workspace .canvas-node-toolbar {
@@ -378,6 +391,7 @@
         border: 1px solid var(--pc-canvas-panel-border);
         border-radius: var(--app-surface-radius);
         padding: var(--app-space-4);
+        background: var(--pc-canvas-panel-surface);
     }
 
     .pc-canvas-workspace .canvas-config-composer-editor:focus-within,
@@ -479,7 +493,10 @@
     }
 
     .pc-canvas-workspace .pc-canvas-node-panel {
+        border: 1px solid var(--pc-canvas-panel-border);
         border-radius: var(--app-surface-radius);
+        background: var(--pc-canvas-panel-surface);
+        box-shadow: var(--app-shadow-raised);
         scrollbar-gutter: stable;
     }
 
@@ -505,7 +522,9 @@
 
     .pc-canvas-workspace .pc-canvas-file-drop {
         inset: var(--app-space-4);
+        border-color: var(--app-border-interactive);
         border-radius: var(--app-surface-radius);
+        background: color-mix(in srgb, var(--app-selection-bg) 82%, transparent);
     }
 
     .pc-canvas-prompt-optimizer-popover .ant-popover-container {
@@ -613,7 +632,12 @@
         place-items: center;
         border-radius: var(--app-control-radius);
         background: var(--app-selection-bg);
-        color: var(--app-text-secondary);
+        color: var(--app-brand-700, var(--app-selection-fg));
+        box-shadow: inset 0 0 0 1px var(--app-selection-border);
+    }
+
+    .dark .pc-canvas-share__mark {
+        color: var(--app-brand-300);
     }
 
     .pc-canvas-share__badge {

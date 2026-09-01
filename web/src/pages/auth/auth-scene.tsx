@@ -3,6 +3,7 @@ import { ConfigProvider, Tabs } from "antd";
 import { ArrowLeft, Play } from "lucide-react";
 import { Link, Outlet, useLocation, useNavigate } from "react-router";
 
+import { usePcBrandViewport } from "@/hooks/use-pc-brand-viewport";
 import { aceternityMotion } from "@/lib/aceternity-motion";
 import { getAntThemeConfig } from "@/lib/app-theme";
 
@@ -45,6 +46,7 @@ export function AuthScene() {
     const location = useLocation();
     const navigate = useNavigate();
     const reducedMotion = useReducedMotion();
+    const pcBrandV2 = usePcBrandViewport();
     const activeTab = location.pathname === "/register" ? "register" : "login";
     const copy = activeTab === "register" ? authCopy.register : authCopy.login;
 
@@ -102,7 +104,7 @@ export function AuthScene() {
                         transition={{ duration: aceternityMotion.duration.panel, ease: aceternityMotion.easing.enter }}
                         className="pc-auth-card-wrap my-auto w-full max-w-[460px]"
                     >
-                        <ConfigProvider theme={getAntThemeConfig(true)}>
+                        <ConfigProvider theme={getAntThemeConfig(true, pcBrandV2)}>
                             <div className="auth-card-dark pc-auth-card h-auto overflow-hidden rounded-lg bg-[#121318]/94 shadow-[0_28px_80px_rgba(0,0,0,.34)] backdrop-blur-2xl">
                                 <section aria-label={copy.title} className={`pc-auth-card-content flex flex-col ${activeTab === "login" ? "min-h-[500px]" : "min-h-[620px] sm:min-h-[640px]"}`}>
                                     <header className="pc-auth-card-header px-6 pb-5 pt-6 sm:px-8 sm:pt-7">

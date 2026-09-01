@@ -99,9 +99,9 @@ export default function WalletPage() {
             width: 400,
             ellipsis: true,
             render: (_, entry) => (
-                <div className="min-w-0 max-w-full overflow-hidden" title={[ledgerModelName(config, entry), [sceneLabel(entry.scene), entry.note].filter(Boolean).join(" · ")].filter(Boolean).join("\n")}>
-                    <div className="truncate font-medium">{ledgerModelName(config, entry)}</div>
-                    <div className="mt-1 truncate text-xs text-foreground/50">{[sceneLabel(entry.scene), entry.note].filter(Boolean).join(" · ") || "无补充说明"}</div>
+                <div className="wallet-ledger-entry min-w-0 max-w-full overflow-hidden" title={[ledgerModelName(config, entry), [sceneLabel(entry.scene), entry.note].filter(Boolean).join(" · ")].filter(Boolean).join("\n")}>
+                    <div className="wallet-ledger-entry-title truncate font-medium">{ledgerModelName(config, entry)}</div>
+                    <div className="wallet-ledger-entry-note mt-1 truncate text-xs text-foreground/50">{[sceneLabel(entry.scene), entry.note].filter(Boolean).join(" · ") || "无补充说明"}</div>
                 </div>
             ),
         },
@@ -152,6 +152,7 @@ export default function WalletPage() {
                 <Surface className="credit-balance-card" padding="none">
                     <div className="wallet-balance-inner">
                         <div className="wallet-balance-primary">
+                            <span className="wallet-balance-eyebrow hidden">ACCOUNT BALANCE</span>
                             <div className="wallet-balance-heading">
                                 <span className="library-icon-tile wallet-balance-icon">
                                     <Coins />
@@ -161,9 +162,12 @@ export default function WalletPage() {
                                     <span>最近更新 {formatTime(account?.updatedAt)}</span>
                                 </div>
                             </div>
-                            <div className="wallet-balance-number">
-                                <strong>{formatCredits(account?.availableMicrocredits || 0, 6)}</strong>
-                                <span>积分</span>
+                            <div>
+                                <div className="wallet-balance-number" title={`${formatCredits(account?.availableMicrocredits || 0, 6)} 积分`}>
+                                    <strong>{formatCredits(account?.availableMicrocredits || 0, 6)}</strong>
+                                    <span>积分</span>
+                                </div>
+                                <span className="wallet-balance-precision hidden">账务精度保留至百万分之一积分</span>
                             </div>
                         </div>
                         <div className="wallet-balance-details">
@@ -177,11 +181,11 @@ export default function WalletPage() {
                 </Surface>
 
                 <Surface className="wallet-redeem-panel" padding="lg">
-                    <div className="flex items-start gap-3">
+                    <div className="wallet-redeem-heading flex items-start gap-3">
                         <span className="wallet-redeem-icon grid size-9 shrink-0 place-items-center rounded-lg">
                             <TicketCheck className="size-4" />
                         </span>
-                        <div>
+                        <div className="wallet-redeem-copy">
                             <h2 className="text-base font-semibold">兑换积分</h2>
                             <p className="mt-1 text-xs leading-5 text-foreground/55">输入管理员发放的 32 位兑换码。</p>
                         </div>
@@ -228,7 +232,7 @@ export default function WalletPage() {
                 />
 
                 {screens.md ? (
-                    <TableSurface className="mt-0 rounded-xl border-border/70 bg-transparent">
+                    <TableSurface className="wallet-ledger-table-surface mt-0 rounded-xl border-border/70 bg-transparent">
                         <Table className="app-data-table wallet-ledger-table" rowKey="id" size="middle" loading={loading} columns={columns} dataSource={entries} pagination={false} tableLayout="fixed" scroll={{ x: 990 }} />
                     </TableSurface>
                 ) : (
@@ -261,7 +265,7 @@ function BalanceMetric({ label, description, value, icon }: { label: string; des
             <span className="wallet-balance-metric-icon">{icon}</span>
             <div>
                 <span>{label}</span>
-                <strong>{formatCredits(value, 6)}</strong>
+                <strong title={`${formatCredits(value, 6)} 积分`}>{formatCredits(value, 6)}</strong>
                 <small>{description}</small>
             </div>
         </div>
@@ -288,9 +292,10 @@ function LedgerMobileRow({ config, entry }: { config: AiConfig; entry: CreditLed
 }
 
 function CreditDelta({ value }: { value: number }) {
+    const tone = value > 0 ? "is-positive" : value < 0 ? "is-negative" : "is-neutral";
     const colorClass = value > 0 ? "text-emerald-600 dark:text-emerald-400" : value < 0 ? "text-rose-600 dark:text-rose-400" : "text-foreground/60";
     return (
-        <span className={`shrink-0 font-medium tabular-nums ${colorClass}`}>
+        <span className={`wallet-credit-delta shrink-0 font-medium tabular-nums ${tone} ${colorClass}`} title={`${value > 0 ? "+" : ""}${formatCredits(value, 6)} 积分`}>
             {value > 0 ? "+" : ""}
             {formatCredits(value, 6)}
         </span>
@@ -300,7 +305,7 @@ function CreditDelta({ value }: { value: number }) {
 function LedgerTypeTag({ type }: { type: CreditLedgerEntry["type"] }) {
     const meta = ledgerTypeMeta(type);
     return (
-        <Tag variant="filled" color={meta.tagColor}>
+        <Tag className="wallet-ledger-type" variant="filled" color={meta.tagColor}>
             {meta.label}
         </Tag>
     );
@@ -339,5 +344,7 @@ function sceneLabel(scene?: string) {
 }
 
 function formatTime(value?: string) {
-    return value ? new Date(value).toLocaleString("zh-CN", { hour12: false }) : "--";
+    if (!value) return "--";
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? "--" : date.toLocaleString("zh-CN", { hour12: false });
 }

@@ -1,7 +1,7 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { App, Button, Pagination, Segmented, Select } from "antd";
-import { ArrowRight, FolderKanban, Images, LayoutGrid, ListTodo, Plus, Search, Sparkles } from "lucide-react";
+import { ArrowRight, Clapperboard, FolderKanban, Images, LayoutGrid, ListTodo, Plus, Search, Sparkles } from "lucide-react";
 import { Link, useNavigate } from "react-router";
 import { Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip as ChartTooltip, XAxis, YAxis } from "recharts";
 
@@ -42,8 +42,9 @@ const ASSET_KINDS: Array<{ key: AssetKind; label: string }> = [
     { key: "model", label: "模型" },
 ];
 
-const CHART_ACCENT = "var(--workspace-accent)";
-const CHART_MUTED = "color-mix(in srgb, var(--workspace-accent) 30%, transparent)";
+const CHART_BRAND = "var(--home-chart-brand, var(--workspace-accent))";
+const CHART_BRAND_MUTED = "color-mix(in srgb, var(--home-chart-brand, var(--workspace-accent)) 30%, transparent)";
+const CHART_AI = "var(--home-chart-ai, var(--workspace-accent))";
 
 export default function IndexPage() {
     const { message } = App.useApp();
@@ -184,25 +185,57 @@ function HomeDashboard({
 
     return (
         <>
-            <PageHeader
-                className="home-welcome"
-                eyebrow="创作工作台"
-                title={hasProjects ? `欢迎回来，${displayName}` : `欢迎使用影策，${displayName}`}
-                description={hasProjects ? "回到最近制作，或从一句话故事开始一部新的短剧。" : "从一个故事开始：整理章节、确认设定、制作镜头，直到可交付的结果。"}
-                actions={
-                    <>
-                        {shortDramaEnabled ? (
-                            <Link className="home-primary-link" to={projectHref}>
-                                <Plus className="size-4" />
-                                开始创作
-                            </Link>
-                        ) : null}
-                        <Button size="large" disabled={!canvasHydrated} icon={<LayoutGrid className="size-4" />} onClick={onCreateIndependentCanvas}>
-                            打开画布
-                        </Button>
-                    </>
-                }
-            />
+            <section className="home-brand-hero" aria-label="导演台概览">
+                <span className="home-brand-hero__aperture" aria-hidden="true" />
+                <PageHeader
+                    className="home-welcome"
+                    eyebrow={
+                        <>
+                            <span className="home-brand-kicker">
+                                <Clapperboard className="size-3.5" aria-hidden="true" />
+                                LIGHTFRAME DIRECTOR DESK
+                            </span>
+                            <span className="home-brand-kicker-mobile">创作工作台</span>
+                        </>
+                    }
+                    title={hasProjects ? `欢迎回来，${displayName}` : `欢迎使用影策，${displayName}`}
+                    description={hasProjects ? "回到最近制作，或从一句话故事开始一部新的短剧。" : "从一个故事开始：整理章节、确认设定、制作镜头，直到可交付的结果。"}
+                    meta={
+                        activeProject ? (
+                            <span className="home-hero-status">
+                                <i aria-hidden="true" />
+                                {projectSummaryStage(activeProject).label} · {projectSummaryCompletion(activeProject)}%
+                            </span>
+                        ) : (
+                            <span className="home-hero-status is-ready">
+                                <i aria-hidden="true" />
+                                导演台已就绪
+                            </span>
+                        )
+                    }
+                    actions={
+                        <>
+                            {shortDramaEnabled ? (
+                                <Link className="home-primary-link" to={projectHref}>
+                                    <Plus className="size-4" />
+                                    开始创作
+                                </Link>
+                            ) : null}
+                            <Button size="large" disabled={!canvasHydrated} icon={<LayoutGrid className="size-4" />} onClick={onCreateIndependentCanvas}>
+                                打开画布
+                            </Button>
+                        </>
+                    }
+                />
+                <div className="home-brand-hero__sequence" aria-label="标准制作阶段">
+                    {workflow.map((item, index) => (
+                        <span key={item.title}>
+                            <b>0{index + 1}</b>
+                            {item.title}
+                        </span>
+                    ))}
+                </div>
+            </section>
 
             <section className="home-stats-grid" aria-label="工作台统计">
                 {shortDramaEnabled ? (
@@ -251,8 +284,8 @@ function HomeDashboard({
                                         itemStyle={{ color: "var(--foreground)", fontSize: 12 }}
                                         labelStyle={{ color: "var(--foreground)", fontWeight: 600, fontSize: 12 }}
                                     />
-                                    <Bar dataKey="tasks" name="生成任务" fill={CHART_ACCENT} radius={[4, 4, 0, 0]} maxBarSize={14} />
-                                    <Bar dataKey="canvases" name="画布更新" fill={CHART_MUTED} radius={[4, 4, 0, 0]} maxBarSize={14} />
+                                    <Bar dataKey="tasks" name="生成任务" fill={CHART_AI} radius={[4, 4, 0, 0]} maxBarSize={14} />
+                                    <Bar dataKey="canvases" name="画布更新" fill={CHART_BRAND_MUTED} radius={[4, 4, 0, 0]} maxBarSize={14} />
                                 </BarChart>
                             </ResponsiveContainer>
                         ) : (
@@ -540,11 +573,11 @@ function assetSummaryHint(counts: Partial<Record<AssetKind, number>>) {
 
 function assetChartData(assets: ReturnType<typeof useAssetStore.getState>["assets"]) {
     const colors = [
-        CHART_ACCENT,
-        "color-mix(in srgb, var(--workspace-accent) 66%, transparent)",
-        "color-mix(in srgb, var(--workspace-accent) 44%, transparent)",
-        "color-mix(in srgb, var(--workspace-accent) 28%, transparent)",
-        "color-mix(in srgb, var(--workspace-accent) 16%, transparent)",
+        CHART_BRAND,
+        "color-mix(in srgb, var(--home-chart-brand, var(--workspace-accent)) 66%, transparent)",
+        "color-mix(in srgb, var(--home-chart-brand, var(--workspace-accent)) 44%, transparent)",
+        "color-mix(in srgb, var(--home-chart-brand, var(--workspace-accent)) 28%, transparent)",
+        "color-mix(in srgb, var(--home-chart-brand, var(--workspace-accent)) 16%, transparent)",
     ];
     const counts = new Map<string, number>();
     for (const asset of assets) counts.set(asset.kind, (counts.get(asset.kind) || 0) + 1);

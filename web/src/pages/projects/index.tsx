@@ -192,6 +192,7 @@ export default function ProjectsPage() {
                     <div className="app-story-create-title">
                         <span className="app-story-create-mark"><Sparkles className="size-4" /></span>
                         <div>
+                            <span className="app-story-create-kicker hidden lg:inline-flex">LIGHTFRAME STORY LAB</span>
                             <h2>把一句灵感变成可制作的短剧</h2>
                             <p>输入故事起点，由 AI 建立项目和章节；也可以从空白、小说或文本开始。</p>
                         </div>
@@ -209,7 +210,7 @@ export default function ProjectsPage() {
                             placeholder="选择文本模型"
                             showSelectedPrice={false}
                         />
-                        <Button type="default" icon={<Sparkles className="size-3.5" />} disabled={!storyDraft.trim() || generating} loading={generating} onClick={() => void generateStory()}>AI 生成章节</Button>
+                        <Button type="default" className="app-story-generate-action" icon={<Sparkles className="size-3.5" />} disabled={!storyDraft.trim() || generating} loading={generating} onClick={() => void generateStory()}>AI 生成章节</Button>
                         <Button icon={<Plus className="size-3.5" />} onClick={() => openCreate(createSource)}>手动创建</Button>
                     </div>
                 </div>

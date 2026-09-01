@@ -92,6 +92,11 @@
 }
 
 @media (min-width: 1024px) {
+    .settings-page {
+        --settings-accent-soft: color-mix(in srgb, var(--app-brand-600) 9%, transparent);
+        --settings-accent-line: color-mix(in srgb, var(--app-brand-600) 42%, var(--app-border-default));
+    }
+
     .settings-page .app-page-header {
         padding-bottom: var(--app-space-4, 16px);
         border-bottom: 1px solid var(--app-border-subtle, var(--border));
@@ -104,14 +109,32 @@
     }
 
     .settings-page .pc-subnav-layout__rail {
+        overflow: hidden;
+        background: var(--app-surface-1, var(--background));
         border-color: var(--app-border-subtle, var(--border));
         border-radius: var(--app-surface-radius, 12px);
-        box-shadow: var(--app-shadow-surface, 0 1px 2px rgba(0, 0, 0, 0.04));
+        box-shadow:
+            inset 0 1px 0 color-mix(in srgb, var(--app-brand-400) 18%, transparent),
+            var(--app-shadow-surface, 0 1px 2px rgba(0, 0, 0, 0.04));
     }
 
     .settings-page .pc-subnav-layout__rail-header {
+        position: relative;
         padding: var(--app-space-3, 12px) var(--app-space-4, 16px);
-        background: var(--app-surface-2, var(--surface-card));
+        background: color-mix(in srgb, var(--app-surface-2, var(--surface-card)) 82%, var(--app-selection-bg));
+    }
+
+    .settings-page .settings-subnav-heading::before {
+        width: 3px;
+        height: 16px;
+        flex: 0 0 auto;
+        background: var(--app-brand-gradient);
+        border-radius: var(--app-radius-1, 6px);
+        content: "";
+    }
+
+    .settings-page .settings-subnav-heading > span {
+        margin-right: auto;
     }
 
     .settings-page .pc-subnav-layout__nav {
@@ -130,8 +153,12 @@
         inset: 9px auto 9px 0;
         width: 3px;
         content: "";
-        background: var(--app-action-primary-bg, var(--primary));
+        background: var(--app-brand-gradient, var(--app-action-primary-bg, var(--primary)));
         border-radius: 0 4px 4px 0;
+    }
+
+    .settings-page .pc-subnav-layout__item.is-active {
+        background: var(--app-selection-bg);
     }
 
     .settings-page .pc-subnav-layout__item-icon {
@@ -146,15 +173,24 @@
     }
 
     .settings-page .pc-subnav-layout__item.is-active .pc-subnav-layout__item-icon {
-        color: var(--app-selection-fg, var(--foreground));
-        background: var(--app-surface-1, var(--background));
+        color: var(--app-brand-700, var(--app-selection-fg, var(--foreground)));
+        background: color-mix(in srgb, var(--app-surface-1, var(--background)) 78%, var(--app-brand-100));
+        box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--app-brand-600) 18%, transparent);
+    }
+
+    .dark .settings-page .pc-subnav-layout__item.is-active .pc-subnav-layout__item-icon {
+        color: var(--app-brand-300);
+        background: color-mix(in srgb, var(--app-surface-2) 78%, var(--app-brand-900));
     }
 
     .settings-page .pc-subnav-layout__content {
         min-height: 560px;
+        background: var(--app-surface-1, var(--background));
         border-color: var(--app-border-subtle, var(--border));
         border-radius: var(--app-surface-radius, 12px);
-        box-shadow: var(--app-shadow-surface, 0 1px 2px rgba(0, 0, 0, 0.04));
+        box-shadow:
+            inset 0 1px 0 color-mix(in srgb, var(--app-text-primary) 3%, transparent),
+            var(--app-shadow-surface, 0 1px 2px rgba(0, 0, 0, 0.04));
     }
 
     .settings-page .pc-subnav-layout__content-body {
@@ -166,10 +202,22 @@
     }
 
     .settings-page .settings-pane-header {
+        position: relative;
         align-items: flex-start;
         margin-bottom: var(--app-space-5, 20px);
-        padding-bottom: var(--app-space-4, 16px);
+        padding: 0 0 var(--app-space-4, 16px) var(--app-space-4, 16px);
         border-bottom: 1px solid var(--app-border-subtle, var(--border));
+    }
+
+    .settings-page .settings-pane-header::before {
+        position: absolute;
+        top: 3px;
+        bottom: calc(var(--app-space-4, 16px) + 3px);
+        left: 0;
+        width: 3px;
+        background: var(--app-brand-gradient);
+        border-radius: var(--app-radius-1, 6px);
+        content: "";
     }
 
     .settings-page .settings-pane-header h2 {
@@ -189,9 +237,10 @@
 
     .settings-page .settings-section {
         padding: var(--app-space-5, 20px);
-        background: var(--app-surface-2, var(--surface-card));
+        background: color-mix(in srgb, var(--app-surface-2, var(--surface-card)) 88%, var(--app-surface-1));
         border: 1px solid var(--app-border-subtle, var(--border));
         border-radius: var(--app-surface-radius, 12px);
+        box-shadow: inset 0 1px 0 color-mix(in srgb, var(--app-text-primary) 3%, transparent);
     }
 
     .settings-page .settings-section + .settings-section {
@@ -206,6 +255,19 @@
         padding: var(--app-space-4, 16px);
         background: var(--app-status-info-bg, var(--app-surface-2, var(--surface-card)));
         border-color: var(--app-status-info-border, var(--app-border-subtle, var(--border)));
+    }
+
+    .settings-page .settings-field-group-label {
+        color: var(--app-brand-700, var(--app-text-secondary));
+        font-family: var(--app-font-mono);
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.055em;
+        text-transform: uppercase;
+    }
+
+    .dark .settings-page .settings-field-group-label {
+        color: var(--app-brand-300);
     }
 
     .settings-page .settings-cli-card {
@@ -262,8 +324,10 @@
     .settings-page .settings-channel:hover,
     .settings-page .settings-channel:focus-within {
         background: var(--app-surface-1, var(--background));
-        border-color: var(--app-border-default, var(--border));
-        box-shadow: var(--app-shadow-surface, 0 1px 2px rgba(0, 0, 0, 0.04));
+        border-color: var(--settings-accent-line);
+        box-shadow:
+            0 0 0 2px var(--settings-accent-soft),
+            var(--app-shadow-surface, 0 1px 2px rgba(0, 0, 0, 0.04));
     }
 
     .settings-page .settings-model-capabilities {
@@ -280,7 +344,7 @@
     .settings-page .settings-model-capability-row:hover,
     .settings-page .settings-model-capability-row:focus-within {
         background: var(--app-action-secondary-hover, var(--surface-card-hover));
-        border-color: var(--app-border-subtle, var(--border));
+        border-color: var(--settings-accent-line);
     }
 
     .settings-page .model-default-option {
@@ -298,6 +362,13 @@
     .settings-page .model-default-option.is-selected {
         background: var(--app-selection-bg, var(--control-selected-bg));
         border-color: var(--app-selection-border, var(--control-selected-border));
+        box-shadow: inset 3px 0 0 var(--app-brand-600);
+    }
+
+    .settings-page .model-default-option.is-selected .model-default-option-icon,
+    .settings-page .model-default-option.is-selected .model-default-option-check {
+        color: var(--app-selection-fg);
+        background: color-mix(in srgb, var(--app-selection-bg) 72%, var(--app-surface-1));
     }
 
     .settings-page .workflow-json-details {
@@ -319,6 +390,12 @@
         background: var(--app-surface-1, var(--background));
         border: 1px solid var(--app-border-subtle, var(--border));
         border-radius: var(--app-control-radius, 8px);
+    }
+
+    .settings-page :where(.ant-input, .ant-input-affix-wrapper, .ant-input-number, .ant-select-selector, .ant-input-textarea-affix-wrapper):focus-within,
+    .settings-page :where(.ant-select-focused .ant-select-selector) {
+        border-color: var(--app-border-interactive);
+        box-shadow: var(--app-focus-shadow);
     }
 
     .settings-page :where(.ant-form-item-label > label) {
