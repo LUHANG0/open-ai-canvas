@@ -184,3 +184,15 @@ PC 镜头创作改为导演工作台结构：
 | 跨运行时测试 | 1 pass，0 fail |
 | TypeScript 与生产构建 | 通过，13,510 modules transformed |
 | 差异检查 | `git diff --check` 通过；禁改目录无差异 |
+
+## R4 主预览无黑边记录（2026-09-01）
+
+- 回滚基线：`pc-storyboard-polish-r2-20260901`。
+- R4 实现提交：`d1afbb3`（`fix(create): 移除视频主预览黑边`）。
+- R4 完成候选 Tag：`pc-storyboard-polish-r3-20260901`。
+- 视频主预览容器改为读取当前生成设置的真实画幅，不再以横向满宽容器强行包裹视频。
+- 保留 `object-fit: contain`，不通过裁切画面消除黑边；容器背景改为透明。
+- 默认 `1680 × 818` 下，16:9 视频容器为 `526 × 296px`，视频内容为 `524 × 294px`，无额外黑边。
+- `1024 × 768` 下视频容器为 `437 × 246px`；页面无横向溢出，舞台与输入器边界仍为 `524px`。
+- 修改范围：`web/src/pages/create/index.tsx`、`web/src/pages/create/creation-workspace.css`、`web/test/create-chat-shot-layout.test.ts` 与本记录。
+- 集中验证：前置门禁 25 pass，主测试 1113 pass，跨运行时测试 1 pass，生产构建通过。
