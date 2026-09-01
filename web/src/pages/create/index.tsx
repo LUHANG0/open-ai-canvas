@@ -1466,6 +1466,10 @@ export default function CreatePage() {
                                 }}
                             />
                             <div className="creation-empty-composer">
+                                <header className="creation-empty-composer-heading">
+                                    <span>创作指令</span>
+                                    <small>素材 · 提示词 · 模型 · 规格 · 计费</small>
+                                </header>
                                 <CreationComposer {...composerProps} variant="empty" />
                             </div>
                         </main>
@@ -2767,8 +2771,8 @@ function CreationComposer(props: ComposerProps) {
                     style={
                         {
                             color: !interactionBusy && !canSubmit ? "var(--creation-faint)" : "var(--creation-text)",
-                            "--canvas-composer-submit-action": !interactionBusy && !canSubmit ? "var(--creation-surface-hover)" : "var(--creation-text)",
-                            "--canvas-composer-submit-action-fg": !interactionBusy && !canSubmit ? "var(--creation-faint)" : "var(--creation-bg)",
+                            "--canvas-composer-submit-action": !interactionBusy && !canSubmit ? "var(--creation-surface-hover)" : "var(--creation-submit-action, var(--creation-text))",
+                            "--canvas-composer-submit-action-fg": !interactionBusy && !canSubmit ? "var(--creation-faint)" : "var(--creation-submit-action-fg, var(--creation-bg))",
                         } as CSSProperties
                     }
                     onClick={interactionBusy ? undefined : props.onSubmit}
