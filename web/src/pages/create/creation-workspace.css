@@ -3624,6 +3624,10 @@ html:not(.dark) .creation-media-preview-modal.is-video .ant-modal-container {
         color: var(--app-text-secondary, var(--creation-muted));
         text-align: left;
         cursor: pointer;
+        transition:
+            border-color 140ms ease,
+            background-color 140ms ease,
+            transform 140ms ease;
     }
 
     .creation-home .storyboard-editor-shot::before {
@@ -3641,6 +3645,7 @@ html:not(.dark) .creation-media-preview-modal.is-video .ant-modal-container {
     .creation-home .storyboard-editor-shot:hover {
         border-color: var(--app-border-subtle, var(--creation-border));
         background: var(--app-action-secondary-hover, var(--creation-surface-hover));
+        transform: translateY(-1px);
     }
 
     .creation-home .storyboard-editor-shot.is-active {
@@ -3700,6 +3705,51 @@ html:not(.dark) .creation-media-preview-modal.is-video .ant-modal-container {
         line-height: 1;
     }
 
+    .creation-home .storyboard-editor-shot-thumb-state {
+        position: absolute;
+        top: 4px;
+        right: 4px;
+        display: inline-flex;
+        min-width: 18px;
+        height: 18px;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+        border: 1px solid color-mix(in srgb, #fff 28%, transparent);
+        border-radius: 999px;
+        background: color-mix(in srgb, var(--app-overlay-scrim, #111827) 76%, transparent);
+        color: #fff;
+        padding: 0 5px;
+        font-size: 8px;
+        line-height: 1;
+        backdrop-filter: blur(8px);
+    }
+
+    .creation-home .storyboard-editor-shot-thumb-state > i {
+        width: 5px;
+        height: 5px;
+        flex: 0 0 auto;
+        border-radius: 50%;
+        background: currentColor;
+    }
+
+    .creation-home .storyboard-editor-shot-thumb-state > span {
+        display: none;
+        white-space: nowrap;
+    }
+
+    .creation-home .storyboard-editor-shot-thumb-state.is-done {
+        color: var(--app-status-success-fg, #d1fae5);
+    }
+
+    .creation-home .storyboard-editor-shot-thumb-state.is-error {
+        color: var(--app-status-error-fg, #fecaca);
+    }
+
+    .creation-home .storyboard-editor-shot-thumb-state.is-pending {
+        color: var(--app-status-running-fg, #dbeafe);
+    }
+
     .creation-home .storyboard-editor-shot-info {
         display: none;
         min-width: 0;
@@ -3711,18 +3761,23 @@ html:not(.dark) .creation-media-preview-modal.is-video .ant-modal-container {
     .creation-home .storyboard-editor-shot-info small {
         overflow: hidden;
         text-overflow: ellipsis;
-        white-space: nowrap;
     }
 
     .creation-home .storyboard-editor-shot-info strong {
+        display: -webkit-box;
+        min-height: 2.8em;
         color: var(--app-text-primary, var(--creation-text));
         font-size: 11px;
         font-weight: 620;
+        line-height: 1.4;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 2;
     }
 
     .creation-home .storyboard-editor-shot-info small {
         color: var(--app-text-muted, var(--creation-faint));
         font-size: 9px;
+        white-space: nowrap;
     }
 
     .creation-home .storyboard-editor-shot-meta {
@@ -3868,6 +3923,30 @@ html:not(.dark) .creation-media-preview-modal.is-video .ant-modal-container {
         flex-wrap: nowrap;
     }
 
+    .creation-home .storyboard-editor-shot-card .storyboard-workbench-card-heading {
+        flex: 1 1 auto;
+        overflow: hidden;
+    }
+
+    .creation-home .storyboard-editor-shot-card .storyboard-workbench-card-shot {
+        min-width: 0;
+        max-width: min(38vw, 420px);
+    }
+
+    .creation-home .storyboard-editor-shot-card .storyboard-workbench-card-shot-index {
+        flex: 0 0 auto;
+    }
+
+    .creation-home .storyboard-workbench-card-title {
+        min-width: 0;
+        overflow: hidden;
+        color: var(--app-text-primary, var(--creation-text));
+        font-size: 12px;
+        font-weight: 650;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
     .creation-home .storyboard-editor-shot-card .storyboard-workbench-card-model {
         max-width: 180px;
         overflow: hidden;
@@ -3876,6 +3955,7 @@ html:not(.dark) .creation-media-preview-modal.is-video .ant-modal-container {
     }
 
     .creation-home .storyboard-editor-shot-card .storyboard-workbench-card-actions {
+        margin-left: auto;
         overflow: visible;
     }
 
@@ -3883,6 +3963,18 @@ html:not(.dark) .creation-media-preview-modal.is-video .ant-modal-container {
     .creation-home .storyboard-editor-shot-card .storyboard-workbench-card-actions > a {
         flex: 0 0 auto;
         white-space: nowrap;
+    }
+
+    .creation-home .storyboard-editor-shot-card .storyboard-workbench-card-action.is-emphasis {
+        border: 1px solid var(--app-selection-border, var(--creation-border-strong));
+        background: var(--app-selection-bg, var(--creation-surface-selected));
+        color: var(--app-selection-fg, var(--creation-text));
+        font-weight: 620;
+    }
+
+    .creation-home .storyboard-editor-shot-card .storyboard-workbench-card-action.is-emphasis:hover {
+        border-color: var(--app-border-strong, var(--creation-border-strong));
+        background: var(--app-action-secondary-hover, var(--creation-surface-hover));
     }
 
     .creation-home .storyboard-editor-shot-card .storyboard-workbench-card-body {
@@ -3956,8 +4048,7 @@ html:not(.dark) .creation-media-preview-modal.is-video .ant-modal-container {
         overflow: auto;
         padding: 12px;
         background:
-            linear-gradient(45deg, color-mix(in srgb, var(--app-border-subtle, var(--creation-border)) 34%, transparent) 25%, transparent 25%) 0 0 / 20px 20px,
-            linear-gradient(-45deg, color-mix(in srgb, var(--app-border-subtle, var(--creation-border)) 34%, transparent) 25%, transparent 25%) 0 10px / 20px 20px,
+            radial-gradient(circle at 50% 42%, color-mix(in srgb, var(--app-selection-bg, var(--creation-surface-selected)) 72%, transparent), transparent 68%),
             var(--app-surface-2, var(--creation-surface-muted));
     }
 
@@ -3978,6 +4069,7 @@ html:not(.dark) .creation-media-preview-modal.is-video .ant-modal-container {
         max-height: clamp(160px, calc(100vh - 522px), 480px);
         border-radius: var(--app-radius-media, 12px);
         background: #0b0c0f;
+        box-shadow: var(--app-shadow-raised, 0 16px 36px rgba(15, 23, 42, 0.14));
     }
 
     .creation-home .storyboard-editor-preview-content .creation-video-result video {
@@ -4219,6 +4311,7 @@ html:not(.dark) .creation-media-preview-modal.is-video .ant-modal-container {
         min-width: 0;
         flex-direction: column;
         gap: 3px;
+        border: 1px solid var(--app-border-subtle, var(--creation-border));
         border-radius: var(--app-control-radius, 8px);
         background: var(--app-surface-2, var(--creation-surface-muted));
         padding: 8px 9px;
@@ -4332,10 +4425,67 @@ html:not(.dark) .creation-media-preview-modal.is-video .ant-modal-container {
     }
 
     .creation-home .storyboard-workbench-next-panel {
-        width: min(560px, 100%);
-        border: 0;
-        background: var(--app-surface-1, var(--creation-surface));
-        box-shadow: none;
+        position: relative;
+        width: min(600px, 100%);
+        align-items: center;
+        border: 1px solid var(--app-border-subtle, var(--creation-border));
+        background:
+            radial-gradient(circle at 0 0, color-mix(in srgb, var(--app-selection-bg, var(--creation-surface-selected)) 72%, transparent), transparent 48%),
+            var(--app-surface-1, var(--creation-surface));
+        padding: 22px 24px;
+        box-shadow: var(--app-shadow-surface, 0 12px 32px rgba(15, 23, 42, 0.06));
+    }
+
+    .creation-home .storyboard-workbench-next-panel-icon {
+        width: 48px;
+        height: 48px;
+        border: 1px solid var(--app-border-subtle, var(--creation-border));
+        background: var(--app-surface-2, var(--creation-surface-muted));
+        color: var(--app-text-secondary, var(--creation-muted));
+    }
+
+    .creation-home .storyboard-workbench-next-panel-copy {
+        min-width: 0;
+    }
+
+    .creation-home .storyboard-workbench-next-panel-copy .storyboard-workbench-next-kicker {
+        margin: 0 0 3px;
+        color: var(--app-text-muted, var(--creation-faint));
+        font-family: var(--app-font-mono, ui-monospace);
+        font-size: 9px;
+        font-weight: 650;
+        letter-spacing: 0.08em;
+        line-height: 1.4;
+        text-transform: uppercase;
+    }
+
+    .creation-home .storyboard-workbench-next-panel-copy > strong {
+        font-size: 14px;
+        line-height: 1.5;
+    }
+
+    .creation-home .storyboard-workbench-next-panel-copy > span:not(.storyboard-workbench-next-kicker) {
+        margin-top: 5px;
+        line-height: 1.65;
+    }
+
+    .creation-home .storyboard-workbench-next-guide {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-top: 13px;
+    }
+
+    .creation-home .storyboard-workbench-next-guide > span {
+        display: inline-flex;
+        min-height: 26px;
+        align-items: center;
+        border: 1px solid var(--app-border-subtle, var(--creation-border));
+        border-radius: 999px;
+        background: var(--app-surface-2, var(--creation-surface-muted));
+        color: var(--app-text-secondary, var(--creation-muted));
+        padding: 0 9px;
+        font-size: 10px;
     }
 
     .creation-home .storyboard-workbench-composer {
@@ -4389,6 +4539,7 @@ html:not(.dark) .creation-media-preview-modal.is-video .ant-modal-container {
 
     .creation-home .storyboard-editor-composer-context {
         display: grid;
+        min-height: 38px;
         min-width: 0;
         grid-template-columns: 24px minmax(0, 1fr) auto;
         align-items: center;
@@ -4815,6 +4966,7 @@ html:not(.dark) .creation-media-preview-modal.is-video .ant-modal-container {
     .creation-home .creation-empty-suggest .suggest-card,
     .creation-home .creation-entry-button,
     .creation-home .creation-reference-action,
+    .creation-home .storyboard-editor-shot,
     .creation-home .suggest-card-arrow {
         transition: none;
     }

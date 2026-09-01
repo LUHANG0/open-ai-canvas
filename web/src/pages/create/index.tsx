@@ -3554,9 +3554,20 @@ function StoryboardShotRail({
                     const primary = media.find((entry) => entry.kind === "video") || media.find((entry) => entry.kind === "image");
                     const active = shot.id === activeShotId && !composing;
                     const settings = shot.result?.settings || shot.user?.settings;
+                    const shotMode = shot.result?.mode || shot.user?.mode || "video";
+                    const shotMeta = [modeLabels[shotMode], shotMode === "video" && settings?.seconds ? `${settings.seconds}s` : ""].filter(Boolean).join(" · ");
+                    const shotCode = `SC.${String(index + 1).padStart(2, "0")}`;
                     return (
                         <li key={shot.id}>
-                            <button ref={active ? activeItemRef : undefined} type="button" aria-current={active ? "true" : undefined} className={`storyboard-editor-shot${active ? " is-active" : ""}`} onClick={() => onSelect(shot.id)}>
+                            <button
+                                ref={active ? activeItemRef : undefined}
+                                type="button"
+                                aria-current={active ? "true" : undefined}
+                                aria-label={`${shotCode}，${storyboardShotStateLabels[status]}，${title}，${shotMeta}`}
+                                title={title}
+                                className={`storyboard-editor-shot${active ? " is-active" : ""}`}
+                                onClick={() => onSelect(shot.id)}
+                            >
                                 <span className="storyboard-editor-shot-thumb">
                                     {primary?.url ? (
                                         primary.kind === "video" ? (
@@ -3569,15 +3580,19 @@ function StoryboardShotRail({
                                             <Clapperboard />
                                         </span>
                                     )}
-                                    <em>SC.{String(index + 1).padStart(2, "0")}</em>
+                                    <em>{shotCode}</em>
+                                    <span className={`storyboard-editor-shot-thumb-state is-${status}`} aria-hidden="true">
+                                        <i />
+                                        <span>{storyboardShotStateLabels[status]}</span>
+                                    </span>
                                 </span>
                                 <span className="storyboard-editor-shot-info">
                                     <span className="storyboard-editor-shot-meta">
-                                        <span>SC.{String(index + 1).padStart(2, "0")}</span>
+                                        <span>{shotCode}</span>
                                         <span className={`storyboard-editor-shot-state is-${status}`}>{storyboardShotStateLabels[status]}</span>
                                     </span>
                                     <strong>{title}</strong>
-                                    <small>{shot.result?.mode === "video" && settings?.seconds ? `${settings.seconds}s` : modeLabels[shot.result?.mode || shot.user?.mode || "video"]}</small>
+                                    <small>{shotMeta}</small>
                                 </span>
                             </button>
                         </li>
@@ -3634,7 +3649,7 @@ function StoryboardComposerContext({
 }) {
     const shotCode = `SC.${String(shotNumber).padStart(2, "0")}`;
     return (
-        <header className={`storyboard-editor-composer-context${composing ? " is-composing" : ""}`}>
+        <header className={`storyboard-editor-composer-context${composing ? " is-composing" : ""}`} aria-live="polite">
             <span className="storyboard-editor-composer-icon">
                 <Clapperboard />
             </span>
@@ -3830,12 +3845,14 @@ function StoryboardShotCard({
     const copyText = useCopyText();
     const assets = useAssetStore((state) => state.assets);
     const visiblePrompt = user ? displayCreationPrompt(user.content, user.references || []) : "";
+    const shotTitle = visiblePrompt.trim() || `镜头 ${shotNumber}`;
     const resultUrls = result?.resultUrls || [];
     const resultAssetIds = result && resultUrls.length ? creationResultAssetIds(assets, { messageId: result.id, taskIds: result.taskIds || [], resultUrls }) : [];
     const resultMedia = result ? creationResultMediaEntries(assets, { messageId: result.id, taskIds: result.taskIds || [], resultUrls, mode: result.mode === "video" ? "video" : "image" }) : [];
     const canvasHandoffPath = result ? creationCanvasHandoffPath(resultAssetIds, resultUrls.length) : "";
     const canvasPath = canvasHandoffPath || "/canvas";
     const settings = result?.settings || user?.settings;
+    const videoOperationLabel = mode === "video" && settings?.videoOperation ? creationVideoOperationOptions.find((option) => option.value === settings.videoOperation)?.label : "";
     useEffect(() => setInspectorOpen(false), [shot.id]);
     return (
         <article
@@ -3845,7 +3862,10 @@ function StoryboardShotCard({
             <header className="storyboard-workbench-card-head">
                 <div className="storyboard-workbench-card-heading">
                     <span className="storyboard-workbench-card-shot">
-                        <span className="storyboard-workbench-card-shot-index">SC.{String(shotNumber).padStart(2, "0")}</span>镜头 {shotNumber}
+                        <span className="storyboard-workbench-card-shot-index">SC.{String(shotNumber).padStart(2, "0")}</span>
+                        <span className="storyboard-workbench-card-title" title={shotTitle}>
+                            {shotTitle}
+                        </span>
                     </span>
                     <span className="storyboard-workbench-card-mode">
                         {mode === "video" ? <Film /> : mode === "image" ? <ImageIcon /> : <MessageSquareText />}
@@ -3884,12 +3904,16 @@ function StoryboardShotCard({
                         </button>
                     ) : null}
                     {status === "done" && result?.resultUrls?.length ? (
-                        <button type="button" onClick={onCreateVariant} disabled={busy}>
+                        <button type="button" className="storyboard-workbench-card-action is-emphasis" onClick={onCreateVariant} disabled={busy}>
                             <RefreshCw />
                             {compactLayout ? "复用为新镜头" : "生成变体"}
                         </button>
                     ) : null}
-                    {status === "done" && resultUrls.length ? <Link to={canvasPath}>{canvasHandoffPath ? "添加到画布" : "打开画布"}</Link> : null}
+                    {status === "done" && resultUrls.length ? (
+                        <Link className="storyboard-workbench-card-action" to={canvasPath}>
+                            {canvasHandoffPath ? "添加到画布" : "打开画布"}
+                        </Link>
+                    ) : null}
                     {compactLayout ? <StoryboardResultDownloads results={resultMedia} /> : <CreationResultDownloads results={resultMedia} />}
                 </div>
             </header>
@@ -3965,6 +3989,12 @@ function StoryboardShotCard({
                                         <div>
                                             <dt>清晰度</dt>
                                             <dd>{videoResolutionLabel(settings.videoQuality)}</dd>
+                                        </div>
+                                    ) : null}
+                                    {videoOperationLabel ? (
+                                        <div>
+                                            <dt>生成方式</dt>
+                                            <dd>{videoOperationLabel}</dd>
                                         </div>
                                     ) : null}
                                     {mode === "video" && settings?.seconds ? (
@@ -4080,6 +4110,7 @@ function StoryboardNextShotCard({ shotNumber, sourceShotNumber, hasDraft, compac
                         <Clapperboard />
                     </span>
                     <div className="storyboard-workbench-next-panel-copy">
+                        <span className="storyboard-workbench-next-kicker">下一镜脚本</span>
                         <strong>{compactLayout ? `SC.${String(shotNumber).padStart(2, "0")} ${hasDraft ? "草稿准备中" : "等待你的脚本"}` : `SC.${String(shotNumber).padStart(2, "0")} 等待你的脚本`}</strong>
                         <span>
                             {compactLayout
@@ -4088,6 +4119,13 @@ function StoryboardNextShotCard({ shotNumber, sourceShotNumber, hasDraft, compac
                                     : `在下方写下这一镜的画面、运镜或故事。提交后会作为 SC.${String(shotNumber).padStart(2, "0")} 加入镜头轨道。`
                                 : `在下方写下这一镜的镜头、画面或故事。影策会拆解脚本、设计运镜并渲染成片，这一镜会作为 SC.${String(shotNumber).padStart(2, "0")} 自动加入镜头轨道。`}
                         </span>
+                        {compactLayout ? (
+                            <div className="storyboard-workbench-next-guide" aria-label="镜头描述建议">
+                                <span>主体与动作</span>
+                                <span>景别与运镜</span>
+                                <span>场景与氛围</span>
+                            </div>
+                        ) : null}
                     </div>
                 </div>
             </div>

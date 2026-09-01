@@ -361,7 +361,8 @@ test("Create forwards owned result assets through one new canvas and the project
     expect(create).toContain('entry.role === "last_frame" ? "尾帧"');
     expect(create).toContain('const canvasHandoffPath = result ? creationCanvasHandoffPath(resultAssetIds, resultUrls.length) : "";');
     expect(create).toContain('const canvasPath = canvasHandoffPath || "/canvas";');
-    expect(create).toContain('<Link to={canvasPath}>{canvasHandoffPath ? "添加到画布" : "打开画布"}</Link>');
+    expect(create).toContain('<Link className="storyboard-workbench-card-action" to={canvasPath}>');
+    expect(create).toContain('{canvasHandoffPath ? "添加到画布" : "打开画布"}');
     expect(canvasIndex).toContain('const handoffMode = mode === "handoff"');
     expect(canvasIndex).toContain('mode !== "new" && mode !== "recent" && mode !== "handoff"');
     expect(canvasProject).toContain('import { canvasAssetHandoffAttempt, finalizeCanvasAssetHandoff, uninsertedCanvasAssetHandoffPayloads } from "@/lib/canvas/canvas-asset-handoff"');

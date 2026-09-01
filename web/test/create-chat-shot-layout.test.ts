@@ -101,7 +101,9 @@ describe("PC creation chat and storyboard director workbench regression gates", 
         const [source, styles] = await Promise.all([read("../src/pages/create/index.tsx"), read("../src/pages/create/creation-workspace.css")]);
         const desktopStyles = styles.slice(styles.indexOf("@media (min-width: 1024px)"));
         const storyboardRender = sourceSection(source, '<div className="storyboard-workbench">', "<CreationHistoryDrawer");
+        const rail = sourceSection(source, "function StoryboardShotRail", "function StoryboardComposerContext");
         const shotCard = sourceSection(source, "function StoryboardShotCard", "function StoryboardNextShotCard");
+        const nextCard = sourceSection(source, "function StoryboardNextShotCard", "function StoryboardBriefAttachments");
 
         const railPosition = storyboardRender.indexOf("<StoryboardShotRail");
         const stagePosition = storyboardRender.indexOf('className="storyboard-workbench-stage"');
@@ -120,6 +122,13 @@ describe("PC creation chat and storyboard director workbench regression gates", 
         expect(shotCard).toContain('className="storyboard-editor-inspector creation-scrollbar"');
         expect(shotCard).toContain('className="storyboard-editor-inspector-section is-script"');
         expect(shotCard).toContain('className="storyboard-editor-inspector-section is-settings"');
+        expect(shotCard).toContain('className="storyboard-workbench-card-title"');
+        expect(rail).toContain('storyboard-editor-shot-thumb-state is-${status}');
+        expect(nextCard).toContain('className="storyboard-workbench-next-kicker"');
+        expect(nextCard).toContain('aria-label="镜头描述建议"');
+        expect(nextCard).toContain("主体与动作");
+        expect(nextCard).toContain("景别与运镜");
+        expect(nextCard).toContain("场景与氛围");
 
         expectRuleWith(desktopStyles, ".creation-home .storyboard-editor-body", [/display:\s*grid/, /min-height:\s*0/, /overflow:\s*hidden/]);
         expectRuleWith(desktopStyles, ".creation-home .storyboard-editor-main", [/display:\s*grid/, /grid-template-rows:\s*minmax\(0,\s*1fr\)\s+auto/, /overflow:\s*hidden/]);
@@ -130,6 +139,7 @@ describe("PC creation chat and storyboard director workbench regression gates", 
         expectRuleWith(desktopStyles, ".creation-home .storyboard-editor-inspector", [/overflow-y:\s*auto/]);
         expectRuleWith(desktopStyles, ".creation-home .storyboard-workbench-composer", [/grid-template-rows:\s*38px\s+auto/, /overflow:\s*hidden/]);
         expectRuleWith(desktopStyles, ".creation-home .storyboard-editor-composer-context", [/display:\s*grid/, /grid-template-columns:\s*24px\s+minmax\(0,\s*1fr\)\s+auto/]);
+        expectRuleWith(desktopStyles, ".creation-home .storyboard-workbench-next-guide", [/display:\s*flex/, /flex-wrap:\s*wrap/]);
     });
 
     test("locks the compact 1024 rail and the 1280 and 1360 director column widths", async () => {
@@ -168,7 +178,7 @@ describe("PC creation chat and storyboard director workbench regression gates", 
         const toolbar = sourceSection(source, "function CreationWorkspaceToolbar", "function CreationMessageView");
 
         expect(rail).toContain('<ol className="storyboard-editor-rail-list creation-scrollbar" aria-label="镜头列表">');
-        expect(rail).toContain('type="button" aria-current={active ? "true" : undefined}');
+        expect(rail).toContain('aria-current={active ? "true" : undefined}');
         expect(rail).toContain('type="button" aria-current="true" className="storyboard-editor-shot is-draft is-active"');
         expect(rail).not.toContain('role="listbox"');
         expect(rail).not.toContain('role="option"');
@@ -266,7 +276,7 @@ describe("PC creation chat and storyboard director workbench regression gates", 
         expect(source).toContain("runBackendGenerationTaskBatch(");
         expect(source).toContain("onSubmit: () => void submit()");
         expect(shotCard).toContain("onRetryFailure");
-        expect(shotCard).toContain("<Link to={canvasPath}>");
+        expect(shotCard).toContain('<Link className="storyboard-workbench-card-action" to={canvasPath}>');
         expect(shotCard).toContain("<CreationResultDownloads results={resultMedia} />");
         expect(result).toContain('aria-label="预览生成视频"');
         expect(result).toContain('aria-label="预览生成图片"');
