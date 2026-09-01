@@ -296,4 +296,16 @@ describe("PC creation chat and storyboard director workbench regression gates", 
         expect(composer).toContain("props.onOpenLibrary");
         expect(composer).toContain('aria-label="打开素材库上传或选择素材"');
     });
+
+    test("treats expected materialization cancellation as lifecycle cleanup instead of a generation failure", async () => {
+        const source = await read("../src/pages/create/index.tsx");
+        const materialization = sourceSection(source, "async function materializeCreationTaskResults", "function reconcileCreationTaskMessages");
+        const cancellationPosition = materialization.indexOf("if (isGenerationTaskCancelled(error, signal)) return task");
+        const warningPosition = materialization.indexOf("创作生成结果资源化失败");
+        const failurePosition = materialization.indexOf("creationError:");
+
+        expect(cancellationPosition).toBeGreaterThanOrEqual(0);
+        expect(warningPosition).toBeGreaterThan(cancellationPosition);
+        expect(failurePosition).toBeGreaterThan(cancellationPosition);
+    });
 });

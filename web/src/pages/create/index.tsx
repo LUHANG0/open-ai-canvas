@@ -4440,6 +4440,9 @@ async function materializeCreationTaskResults(tasks: GenerationTask[], signal?: 
                 const creationResultUrls = generationTaskMaterializedUrls(materialized);
                 return creationResultUrls.length ? { ...materialized, creationResultUrls } : materialized;
             } catch (error) {
+                // 订阅依赖变化或页面卸载会主动取消旧的资源化观察；这是正常生命周期，
+                // 不能记录为资源化失败，也不能给已成功的任务写入 creationError。
+                if (isGenerationTaskCancelled(error, signal)) return task;
                 console.warn(`创作生成结果资源化失败 [${task.id}]: ${error instanceof Error ? `${error.name}: ${error.message}` : String(error)}`);
                 return { ...task, creationError: error instanceof Error ? error.message : "生成结果资源化失败" };
             }

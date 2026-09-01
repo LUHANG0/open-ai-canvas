@@ -283,3 +283,32 @@ Ant Design 新版会将已废弃属性记录为控制台错误。本轮保持原
 - 任务成功瞬间出现两条相同的 `AbortError: The operation was aborted` 资源化警告。
 - 实际资源化成功：任务输出包含资源 ID，创作页预览和下载正常，素材库新增记录，刷新恢复正常。
 - 结论：当前属于并发观察生命周期取消产生的非阻断控制台噪声，不影响本次链路；后续可在前端对预期 `AbortError` 静默处理，避免生产控制台误报。
+
+## MiniMax 资源化取消误报修复（2026-09-01）
+
+### 问题与修复
+
+- 付费冒烟任务已经成功生成、资源化并恢复，但任务完成瞬间出现两条相同的 `AbortError` 警告。
+- 原因是创作页订阅依赖变化或页面卸载时会主动取消旧的结果资源化观察；另一次有效观察已经成功完成，旧观察的取消不属于生成或资源化失败。
+- `materializeCreationTaskResults` 现在先识别预期的取消信号，直接保留原任务状态，不再输出失败警告，也不再给已成功任务写入 `creationError`。
+- 真实的网络、接口或资源化错误仍按原逻辑输出警告并记录错误，本次没有放宽真实失败处理。
+- 修改范围仅包含 PC 创作页前端、对应回归门禁与本记录；后端、Admin、数据库、API 合同、权限、计费和业务规则均未修改。
+
+### 修改文件
+
+- `web/src/pages/create/index.tsx`
+- `web/test/create-chat-shot-layout.test.ts`
+- `docs/design/pc-storyboard-workbench-redesign-20260901.md`
+
+### 集中验证
+
+| 项目 | 结果 |
+| ---- | ---- |
+| 资源化取消专项门禁 | 10 pass，0 fail，239 assertions |
+| 前置门禁 | 26 pass，0 fail，374 assertions |
+| 主测试 | 1113 pass，0 fail |
+| 跨运行时测试 | 1 pass，0 fail |
+| 测试合计 | 1140 pass，0 fail |
+| TypeScript 与生产构建 | 通过，13,510 modules transformed |
+| 浏览器快速切页复验 | `/create` 加载后切换 `/tasks`，0 error / 0 warning |
+| 差异检查 | `git diff --check` 通过；禁改目录无差异 |
