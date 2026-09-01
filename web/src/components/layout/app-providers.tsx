@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { useEffect } from "react";
+import { useEffect, useMemo, useSyncExternalStore } from "react";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { App, ConfigProvider } from "antd";
 import zhCN from "antd/locale/zh_CN";
@@ -7,7 +7,7 @@ import zhCN from "antd/locale/zh_CN";
 import { AuthSessionHydrator } from "@/components/auth/auth-session-hydrator";
 import { ClientRootInit } from "@/components/layout/client-root-init";
 import { usePcBrandViewport } from "@/hooks/use-pc-brand-viewport";
-import { getAntThemeConfig } from "@/lib/app-theme";
+import { createAppThemePathnameStore, getAntThemeConfigForPathname, type AppThemeRouter } from "@/lib/app-theme-route";
 import { appQueryClient } from "@/lib/query-client";
 import { useThemeStore } from "@/stores/use-theme-store";
 import { listRegisteredPlugins } from "@/lib/plugins/plugin-registry";
@@ -15,10 +15,13 @@ import { usePluginStore } from "@/stores/use-plugin-store";
 import { fetchPluginRuntimeState, setUserPluginEnabled } from "@/services/api/plugins";
 import { useUserStore } from "@/stores/use-user-store";
 
-export function AppProviders({ children }: { children: ReactNode }) {
+export function AppProviders({ children, router }: { children: ReactNode; router: AppThemeRouter }) {
     const theme = useThemeStore((state) => state.theme);
     const dark = theme === "dark";
     const pcBrandV2 = usePcBrandViewport();
+    const pathnameStore = useMemo(() => createAppThemePathnameStore(router), [router]);
+    const pathname = useSyncExternalStore(pathnameStore.subscribe, pathnameStore.getSnapshot, pathnameStore.getSnapshot);
+    const antTheme = useMemo(() => getAntThemeConfigForPathname(dark, pcBrandV2, pathname), [dark, pathname, pcBrandV2]);
     const ensurePlugin = usePluginStore((state) => state.ensurePlugin);
     const setRuntimeStatuses = usePluginStore((state) => state.setRuntimeStatuses);
     const setPluginStates = usePluginStore((state) => state.setPluginStates);
@@ -40,8 +43,9 @@ export function AppProviders({ children }: { children: ReactNode }) {
         let cancelled = false;
         void fetchPluginRuntimeState()
             .then(async ({ statuses, states }) => {
-                const legacyEnabledIds = usePluginStore.getState().installations
-                    .filter((installation) => installation.enabled && states[installation.manifest.id]?.canToggle && !states[installation.manifest.id]?.userConfigured)
+                const legacyEnabledIds = usePluginStore
+                    .getState()
+                    .installations.filter((installation) => installation.enabled && states[installation.manifest.id]?.canToggle && !states[installation.manifest.id]?.userConfigured)
                     .map((installation) => installation.manifest.id);
                 if (legacyEnabledIds.length) {
                     try {
@@ -79,7 +83,7 @@ export function AppProviders({ children }: { children: ReactNode }) {
     const isolateDevRepro = import.meta.env.DEV && typeof window !== "undefined" && window.location.pathname === "/dev/director-repro";
 
     return (
-        <ConfigProvider locale={zhCN} theme={getAntThemeConfig(dark, pcBrandV2)}>
+        <ConfigProvider locale={zhCN} theme={antTheme}>
             <App message={{ duration: 3, maxCount: 3 }} notification={{ duration: 4.5, maxCount: 3, placement: "topRight" }}>
                 <QueryClientProvider client={appQueryClient}>
                     {isolateDevRepro ? (
