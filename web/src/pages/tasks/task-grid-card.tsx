@@ -5,9 +5,9 @@ import { MediaPreview } from "@/components/media-preview";
 import { CONTENT_MODERATION_ERROR_CODE, isContentModerationError } from "@/lib/generation-error";
 import { statusLabel } from "@/lib/generation-task-display";
 import type { GenerationTask } from "@/services/api/task-center";
-import { isTaskFailed, statusDotClassName, TaskDate } from "./task-shared";
+import { isTaskFailed, statusDotClassName, TaskBilling, TaskDate } from "./task-shared";
 
-export function TaskGridCard({ task, actingId, onOpen, onRetry }: { task: GenerationTask; actingId: string; onOpen: () => void; onRetry: () => void }) {
+export function TaskGridCard({ task, creditsEnabled, actingId, onOpen, onRetry }: { task: GenerationTask; creditsEnabled: boolean; actingId: string; onOpen: () => void; onRetry: () => void }) {
     const isActive = task.status === "queued" || task.status === "running";
     const isFailed = isTaskFailed(task);
     const isVideo = task.previewKind === "video";
@@ -16,11 +16,7 @@ export function TaskGridCard({ task, actingId, onOpen, onRetry }: { task: Genera
     return (
         <article className={`task-grid-card${isFailed ? " is-attention" : ""}`}>
             <div className="task-grid-thumb">
-                {task.previewUrl ? (
-                    <MediaPreview src={task.previewUrl} kind={isVideo ? "video" : "image"} loading="lazy" className="h-full w-full object-cover" />
-                ) : (
-                    <Icon />
-                )}
+                {task.previewUrl ? <MediaPreview src={task.previewUrl} kind={isVideo ? "video" : "image"} loading="lazy" className="h-full w-full object-cover" /> : <Icon />}
                 <div className="task-grid-overlay">
                     <Tooltip title="查看详情">
                         <Button type="text" size="small" icon={<Eye className="size-3.5" />} aria-label="查看详情" onClick={onOpen} />
@@ -53,6 +49,11 @@ export function TaskGridCard({ task, actingId, onOpen, onRetry }: { task: Genera
                         <TaskDate value={task.createdAt} />
                     </span>
                 </div>
+                {creditsEnabled ? (
+                    <div className="task-grid-billing hidden">
+                        <TaskBilling billing={task.billing} />
+                    </div>
+                ) : null}
             </div>
         </article>
     );

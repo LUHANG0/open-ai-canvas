@@ -428,59 +428,68 @@ function SkillCard({
     const CategoryIcon = categoryIconOf(skill.tag);
     return (
         <article style={style} className={`library-card library-card-surface skill-library-card group${skill.is_added ? " is-selected is-added" : ""}`}>
-            <span className="library-icon-tile skill-card-icon" aria-hidden="true">
+            <span className="library-icon-tile skill-card-icon lg:hidden" aria-hidden="true">
                 <CategoryIcon />
             </span>
-            <div className="skill-card-top">
-                <button type="button" className="skill-card-title-button" onClick={onOpen}>
-                    <h3>{skill.skill_name}</h3>
-                </button>
-                {skill.is_owner ? (
-                    <Dropdown
-                        trigger={["click"]}
-                        menu={{
-                            items: [
-                                { key: "edit", label: "编辑技能" },
-                                { key: "delete", label: "删除技能", danger: true },
-                            ],
-                            onClick: ({ key }) => (key === "edit" ? onEdit() : onDelete()),
-                        }}
-                    >
-                        <button type="button" aria-label="技能操作" className="skill-card-more">
-                            <MoreHorizontal className="size-4" />
-                        </button>
-                    </Dropdown>
-                ) : null}
-            </div>
-            <button type="button" className="skill-card-description" onClick={onOpen}>
-                <p>{skill.description || "暂无技能简介"}</p>
+            <button type="button" className="skill-card-cover hidden" onClick={onOpen} aria-label={`查看技能：${skill.skill_name}`}>
+                <span className="skill-card-cover-kicker">YINGCE · CREATIVE SKILL</span>
+                <span className="library-icon-tile skill-card-icon" aria-hidden="true">
+                    <CategoryIcon />
+                </span>
+                <span className="skill-card-cover-category">{skillCategoryLabel(skill.tag, categories)}</span>
             </button>
-            <div className="skill-card-footer">
-                <button type="button" disabled={loading} className="skill-card-like" aria-label={skill.is_like ? "取消收藏" : "收藏"} onClick={onLike}>
-                    <Heart className={`size-3.5 ${skill.is_like ? "fill-current text-rose-500" : ""}`} />
-                    <span>{formatSkillCount(skill.like_count)}</span>
-                </button>
-                <span className="skill-card-author">{skill.effective_user.name || "未知用户"}</span>
-                <span className="skill-card-tag">{skillCategoryLabel(skill.tag, categories)}</span>
-                {skill.is_private ? <span className="skill-card-flag">仅自己</span> : null}
-            </div>
-            {/* 加入是这个页面的主行为，给它完整的按钮 + 文案 + 已加入人数，不再藏在角落的加号里。 */}
-            {skill.is_owner ? (
-                <div className="skill-card-action">
-                    <span className="skill-card-owner-flag">我创建的</span>
-                    <span className="skill-card-added-count">{formatSkillCount(skill.added_count)} 人已加入</span>
-                </div>
-            ) : (
-                <div className="skill-card-action">
-                    <button type="button" disabled={loading} aria-pressed={skill.is_added} className={`skill-card-join${skill.is_added ? " is-added" : ""}`} onClick={onAdd}>
-                        {loading ? <LoaderCircle className="size-3.5 animate-spin" /> : skill.is_added ? <Check className="size-3.5" /> : <Plus className="size-3.5" />}
-                        <span>{skill.is_added ? "已加入" : "加入我的技能库"}</span>
+            <div className="skill-card-content contents">
+                <div className="skill-card-top">
+                    <button type="button" className="skill-card-title-button" onClick={onOpen}>
+                        <h3>{skill.skill_name}</h3>
                     </button>
-                    <Tooltip title={`${formatSkillCount(skill.added_count)} 人已加入`}>
-                        <span className="skill-card-added-count">{formatSkillCount(skill.added_count)}</span>
-                    </Tooltip>
+                    {skill.is_owner ? (
+                        <Dropdown
+                            trigger={["click"]}
+                            menu={{
+                                items: [
+                                    { key: "edit", label: "编辑技能" },
+                                    { key: "delete", label: "删除技能", danger: true },
+                                ],
+                                onClick: ({ key }) => (key === "edit" ? onEdit() : onDelete()),
+                            }}
+                        >
+                            <button type="button" aria-label="技能操作" className="skill-card-more">
+                                <MoreHorizontal className="size-4" />
+                            </button>
+                        </Dropdown>
+                    ) : null}
                 </div>
-            )}
+                <button type="button" className="skill-card-description" onClick={onOpen}>
+                    <p>{skill.description || "暂无技能简介"}</p>
+                </button>
+                <div className="skill-card-footer">
+                    <button type="button" disabled={loading} className="skill-card-like" aria-label={skill.is_like ? "取消收藏" : "收藏"} onClick={onLike}>
+                        <Heart className={`size-3.5 ${skill.is_like ? "fill-current text-rose-500" : ""}`} />
+                        <span>{formatSkillCount(skill.like_count)}</span>
+                    </button>
+                    <span className="skill-card-author">{skill.effective_user.name || "未知用户"}</span>
+                    <span className="skill-card-tag">{skillCategoryLabel(skill.tag, categories)}</span>
+                    {skill.is_private ? <span className="skill-card-flag">仅自己</span> : null}
+                </div>
+                {/* 加入是这个页面的主行为，给它完整的按钮 + 文案 + 已加入人数，不再藏在角落的加号里。 */}
+                {skill.is_owner ? (
+                    <div className="skill-card-action">
+                        <span className="skill-card-owner-flag">我创建的</span>
+                        <span className="skill-card-added-count">{formatSkillCount(skill.added_count)} 人已加入</span>
+                    </div>
+                ) : (
+                    <div className="skill-card-action">
+                        <button type="button" disabled={loading} aria-pressed={skill.is_added} className={`skill-card-join${skill.is_added ? " is-added" : ""}`} onClick={onAdd}>
+                            {loading ? <LoaderCircle className="size-3.5 animate-spin" /> : skill.is_added ? <Check className="size-3.5" /> : <Plus className="size-3.5" />}
+                            <span>{skill.is_added ? "已加入" : "加入我的技能库"}</span>
+                        </button>
+                        <Tooltip title={`${formatSkillCount(skill.added_count)} 人已加入`}>
+                            <span className="skill-card-added-count">{formatSkillCount(skill.added_count)}</span>
+                        </Tooltip>
+                    </div>
+                )}
+            </div>
         </article>
     );
 }
