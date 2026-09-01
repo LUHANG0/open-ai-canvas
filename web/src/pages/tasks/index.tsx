@@ -7,6 +7,7 @@ import { MediaPreview } from "@/components/media-preview";
 import { ListToolbar, PageHeader, PaginationBar, WorkspacePage } from "@/components/layout/workspace-page";
 import { WorkspaceState } from "@/components/layout/workspace-state";
 import { DialogFrame, DrawerFrame, SearchField, Surface, ViewToggle } from "@/components/ui/pc";
+import { usePcBrandViewport } from "@/hooks/use-pc-brand-viewport";
 import { CONTENT_MODERATION_ERROR_CODE, generationErrorMessage, isContentModerationError } from "@/lib/generation-error";
 import { formatTaskKind, isGenerationTaskSubmissionUncertain, operationOptions, statusLabel } from "@/lib/generation-task-display";
 import { backendProviderConfig, logicalModelIDForConfig } from "@/services/api/generation-task";
@@ -71,6 +72,7 @@ function taskStatusFilter(value: string | null): TaskStatusFilter {
 export default function TasksPage() {
     const { message } = App.useApp();
     const navigate = useNavigate();
+    const isPcBrandViewport = usePcBrandViewport();
     const [searchParams, setSearchParams] = useSearchParams();
     const effectiveConfig = useEffectiveConfig();
     const isAiConfigReady = useConfigStore((state) => state.isAiConfigReady);
@@ -101,10 +103,12 @@ export default function TasksPage() {
     const [retryingGroup, setRetryingGroup] = useState("");
     const [detailTask, setDetailTask] = useState<GenerationTask | null>(null);
     const [detailLoading, setDetailLoading] = useState(false);
+    const [detailError, setDetailError] = useState("");
     const [taskLogs, setTaskLogs] = useState<TaskLog[]>([]);
     const [logsLoading, setLogsLoading] = useState(false);
     const [mediaPreview, setMediaPreview] = useState<{ url: string; kind: "image" | "video"; title: string } | null>(null);
     const [tasks, setTasks] = useState<GenerationTask[]>([]);
+    const [loadError, setLoadError] = useState("");
     const syncedCanvasTaskIdsRef = useRef(new Set<string>());
     const tasksRef = useRef<GenerationTask[]>([]);
     const canvasById = useMemo(() => new Map(projects.map((project) => [project.id, project])), [projects]);
@@ -197,7 +201,22 @@ export default function TasksPage() {
         />
     );
 
-    const renderTaskGridCard = (task: GenerationTask) => <TaskGridCard key={task.id} task={task} creditsEnabled={creditsEnabled} actingId={actingId} onOpen={() => void openTaskDetail(task)} onRetry={() => void runAction(task.id)} />;
+    const renderTaskGridCard = (task: GenerationTask) => {
+        const context = getTaskCanvasContext(task, canvasById, domainProjectNameById);
+        return (
+            <TaskGridCard
+                key={task.id}
+                task={task}
+                kind={formatTaskKind(task)}
+                model={formatModelName(effectiveConfig, task)}
+                canvasLabel={context.projectName ? `${context.canvasName} · ${context.projectName}` : context.canvasName}
+                creditsEnabled={creditsEnabled}
+                actingId={actingId}
+                onOpen={() => void openTaskDetail(task)}
+                onRetry={() => void runAction(task.id)}
+            />
+        );
+    };
 
     useEffect(() => {
         if (!shortDramaEnabled) {
@@ -247,11 +266,16 @@ export default function TasksPage() {
             if (showLoading) setLoading(true);
             try {
                 const next = await listGenerationTasks();
+                setLoadError("");
                 setTasks((current) => reconcileTaskSummaries(current, next));
                 void syncCompletedCanvasTasks(next);
                 return next;
             } catch (error) {
-                if (showLoading) message.error(error instanceof Error ? error.message : "任务加载失败");
+                if (showLoading) {
+                    const nextError = error instanceof Error ? error.message : "任务加载失败";
+                    setLoadError(nextError);
+                    message.error(nextError);
+                }
                 return undefined;
             } finally {
                 if (showLoading) setLoading(false);
@@ -264,6 +288,7 @@ export default function TasksPage() {
         async (task: GenerationTask) => {
             setDetailTask(task);
             setTaskLogs([]);
+            setDetailError("");
             setDetailLoading(true);
             setLogsLoading(true);
             try {
@@ -273,7 +298,9 @@ export default function TasksPage() {
                 setTaskLogs(logs);
                 if (await syncGenerationTaskToCanvasStore(mergedDetail)) message.success("已同步到画布");
             } catch (error) {
-                message.error(error instanceof Error ? error.message : "任务详情加载失败");
+                const nextError = error instanceof Error ? error.message : "任务详情加载失败";
+                setDetailError(nextError);
+                message.error(nextError);
             } finally {
                 setDetailLoading(false);
                 setLogsLoading(false);
@@ -529,6 +556,7 @@ export default function TasksPage() {
                         />
                         <Select
                             className="w-full sm:w-48"
+                            aria-label="按画布筛选任务"
                             value={projectFilter}
                             onChange={(value) => {
                                 setProjectFilter(value);
@@ -538,6 +566,7 @@ export default function TasksPage() {
                         />
                         <Select
                             className="w-full sm:w-32"
+                            aria-label="按类型筛选任务"
                             value={kindFilter}
                             onChange={(value) => {
                                 setKindFilter(value as TaskKindFilter);
@@ -552,6 +581,7 @@ export default function TasksPage() {
                         />
                         <Select
                             className="w-full sm:w-44"
+                            aria-label="按模型筛选任务"
                             value={modelFilter}
                             onChange={(value) => {
                                 setModelFilter(value);
@@ -562,7 +592,15 @@ export default function TasksPage() {
                     </ListToolbar>
                 </div>
 
-                <Surface className="canvas-library-frame task-library-frame" padding="none">
+                <Surface id="task-results" className="canvas-library-frame task-library-frame" padding="none">
+                    {loadError && tasks.length ? (
+                        <div className="task-load-warning hidden" role="alert">
+                            <span>任务记录暂时未能更新：{loadError}</span>
+                            <Button size="small" icon={<RefreshCw className="size-3.5" />} loading={loading} onClick={() => void loadTasks(true)}>
+                                重试
+                            </Button>
+                        </div>
+                    ) : null}
                     {loading && !tasks.length ? (
                         <div className="library-loading-grid" aria-label="正在加载任务">
                             {Array.from({ length: 8 }, (_, index) => (
@@ -570,7 +608,19 @@ export default function TasksPage() {
                             ))}
                         </div>
                     ) : null}
-                    {!loading || tasks.length ? (
+                    {isPcBrandViewport && !loading && loadError && !tasks.length ? (
+                        <WorkspaceState
+                            compact
+                            title="任务记录加载失败"
+                            description={loadError}
+                            action={
+                                <Button icon={<RefreshCw className="size-3.5" />} onClick={() => void loadTasks(true)}>
+                                    重新加载
+                                </Button>
+                            }
+                        />
+                    ) : null}
+                    {(!loading || tasks.length) && (!isPcBrandViewport || !loadError || tasks.length) ? (
                         visibleTasks.length ? (
                             viewMode === "grid" ? (
                                 <div className="task-grid-view">{visibleTasks.map(renderTaskGridCard)}</div>
@@ -580,7 +630,7 @@ export default function TasksPage() {
                                     {visibleTaskGroups.map((group) => (
                                         <section key={group.key} className="task-group">
                                             <TaskGroupHeader group={group} retrying={retryingGroup === group.key} onRetryFailed={() => void retryGroupTasks(group.key, group.tasks)} />
-                                            <div className="task-group-records-scroll">
+                                            <div className="task-group-records-scroll" tabIndex={0} aria-label={`${group.title}任务列表，可横向滚动`}>
                                                 <div className="task-record-list">{group.tasks.map(renderTaskRow)}</div>
                                             </div>
                                         </section>
@@ -589,7 +639,7 @@ export default function TasksPage() {
                             ) : (
                                 <div className="task-record-scroll-shell">
                                     <TaskScrollHint />
-                                    <div className="task-record-table">
+                                    <div className="task-record-table" tabIndex={0} aria-label="任务明细表，可横向滚动查看全部七列">
                                         <TaskTableHeader creditsEnabled={creditsEnabled} />
                                         <div className="task-record-list">{visibleTasks.map(renderTaskRow)}</div>
                                     </div>
@@ -710,6 +760,17 @@ export default function TasksPage() {
                             ) : null}
                         </div>
                         {detailTask.provider === "dreamina-cli" ? <p className="task-detail-provider-note">官方状态采用最终一致轮询；转入后台后仍会继续等待并同步官方状态。官方即梦 CLI 当前不支持可靠的官方取消。</p> : null}
+                        {detailError ? (
+                            <section className="task-detail-load-error hidden" role="alert">
+                                <div>
+                                    <strong>任务详情未能完整加载</strong>
+                                    <p>{detailError}</p>
+                                </div>
+                                <Button size="small" icon={<RefreshCw className="size-3.5" />} loading={detailLoading} onClick={() => void openTaskDetail(detailTask)}>
+                                    重试
+                                </Button>
+                            </section>
+                        ) : null}
                         {detailTask.error ? (
                             <section className="task-detail-error" aria-label="失败原因">
                                 <strong>失败原因</strong>
@@ -790,7 +851,7 @@ function TaskScrollHint() {
     return (
         <div className="task-record-scroll-hint hidden" role="note">
             <MoveHorizontal aria-hidden="true" />
-            <span>横向滚动可查看模型、画布、时间与积分明细</span>
+            <span>表格内横向滚动，可查看模型、画布、时间与积分明细</span>
         </div>
     );
 }

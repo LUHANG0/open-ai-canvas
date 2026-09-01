@@ -37,8 +37,9 @@ export function TaskListRow({
     const model = formatModelName(effectiveConfig, task);
     const canvasLabel = context.projectName ? `${context.canvasName} · ${context.projectName}` : context.canvasName;
     const rowTone = isFailed ? "is-failed" : isActive ? "is-active" : "is-success";
+    const retryDisabled = task.errorCode === CONTENT_MODERATION_ERROR_CODE || isContentModerationError(task.error);
     return (
-        <article className={`task-record-row group ${rowTone}`}>
+        <article className={`task-record-row group ${rowTone}`} aria-busy={isActive}>
             <div className="task-record-identity">
                 <TaskPreviewThumbnail task={task} onOpen={onPreview} />
                 <div className="task-record-main">
@@ -72,8 +73,12 @@ export function TaskListRow({
                     ) : null}
                 </div>
             </div>
-            <div className="task-record-kind" title={kind}>{kind}</div>
-            <div className="task-record-model" title={model}>{model}</div>
+            <div className="task-record-kind" title={kind}>
+                {kind}
+            </div>
+            <div className="task-record-model" title={model}>
+                {model}
+            </div>
             <div className="task-record-canvas" title={canvasLabel}>
                 <FolderKanban className="size-3" />
                 <span>{canvasLabel}</span>
@@ -87,16 +92,8 @@ export function TaskListRow({
                     <Button type="text" size="small" icon={<Eye className="size-3.5" />} aria-label="查看详情" onClick={onOpen} />
                 </Tooltip>
                 {isFailed ? (
-                    <Tooltip title="重试任务">
-                        <Button
-                            type="text"
-                            size="small"
-                            icon={<RotateCcw className="size-3.5" />}
-                            aria-label="重试任务"
-                            loading={actingId === task.id}
-                            disabled={task.errorCode === CONTENT_MODERATION_ERROR_CODE || isContentModerationError(task.error)}
-                            onClick={onRetry}
-                        />
+                    <Tooltip title={retryDisabled ? "内容审核未通过，请修改输入后新建任务" : "按原参数重试任务"}>
+                        <Button type="text" size="small" icon={<RotateCcw className="size-3.5" />} aria-label="重试任务" loading={actingId === task.id} disabled={retryDisabled} onClick={onRetry} />
                     </Tooltip>
                 ) : null}
             </div>

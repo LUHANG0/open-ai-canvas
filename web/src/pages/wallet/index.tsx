@@ -29,6 +29,7 @@ export default function WalletPage() {
     const [code, setCode] = useState("");
     const [filter, setFilter] = useState<LedgerFilter>("all");
     const [loading, setLoading] = useState(false);
+    const [loadError, setLoadError] = useState("");
     const [redeeming, setRedeeming] = useState(false);
     const [checkingIn, setCheckingIn] = useState(false);
     const [page, setPage] = useState(1);
@@ -40,9 +41,16 @@ export default function WalletPage() {
         setLoading(true);
         try {
             const nextWallet = await getWallet(targetPage, targetPageSize, filter);
-            if (sequence === requestSequence.current) setWallet(nextWallet);
+            if (sequence === requestSequence.current) {
+                setWallet(nextWallet);
+                setLoadError("");
+            }
         } catch (error) {
-            if (sequence === requestSequence.current) message.error(error instanceof Error ? error.message : "读取积分记录失败");
+            if (sequence === requestSequence.current) {
+                const nextError = error instanceof Error ? error.message : "读取积分记录失败";
+                setLoadError(nextError);
+                message.error(nextError);
+            }
         } finally {
             if (sequence === requestSequence.current) setLoading(false);
         }
@@ -90,6 +98,9 @@ export default function WalletPage() {
     const entries = wallet?.entries || [];
     const account = wallet?.account;
     const totalMicrocredits = (account?.availableMicrocredits || 0) + (account?.reservedMicrocredits || 0);
+    const availableCredits = formatCredits(account?.availableMicrocredits || 0, 6);
+    const availableDisplay = !account && screens.lg && (loading || loadError) ? "—" : availableCredits;
+    const balanceLengthClass = availableCredits.length > 16 ? " is-very-long" : availableCredits.length > 11 ? " is-long" : "";
 
     const columns: ColumnsType<CreditLedgerEntry> = [
         { title: "发生时间", dataIndex: "createdAt", width: 180, render: formatTime },
@@ -112,7 +123,20 @@ export default function WalletPage() {
             align: "right",
             render: (value: number) => <CreditDelta value={value} />,
         },
-        { title: "变更后余额", dataIndex: "availableAfterMicrocredits", width: 145, align: "right", render: (value) => <span className="tabular-nums">{formatCredits(value)}</span> },
+        {
+            title: "变更后余额",
+            dataIndex: "availableAfterMicrocredits",
+            width: 155,
+            align: "right",
+            render: (value) => {
+                const formatted = formatCredits(value);
+                return (
+                    <span className="wallet-ledger-balance tabular-nums" title={`${formatted} 积分`}>
+                        {formatted}
+                    </span>
+                );
+            },
+        },
     ];
 
     return (
@@ -125,7 +149,7 @@ export default function WalletPage() {
                     meta={
                         <span className="app-projects-header-meta wallet-credit-meta">
                             <Coins className="size-3" />
-                            可用 {formatCredits(account?.availableMicrocredits || 0, 6)}
+                            可用 {availableDisplay}
                         </span>
                     }
                     actions={
@@ -135,7 +159,7 @@ export default function WalletPage() {
                                 icon={<CalendarCheck className="size-4" />}
                                 type={wallet?.policy.checkedInToday ? "default" : "primary"}
                                 loading={checkingIn}
-                                disabled={wallet?.policy.checkedInToday}
+                                disabled={(screens.lg && !wallet) || wallet?.policy.checkedInToday}
                                 onClick={() => void checkin()}
                             >
                                 {wallet?.policy.checkedInToday ? "今日已签到" : `签到 +${formatCredits(wallet?.policy.checkinBonusMicrocredits || 0)}`}
@@ -148,8 +172,17 @@ export default function WalletPage() {
                 />
             </div>
 
+            {loadError ? (
+                <div className="wallet-load-warning hidden" role="alert">
+                    <span>积分数据暂时未能更新：{loadError}</span>
+                    <Button size="small" icon={<RefreshCw className="size-3.5" />} loading={loading} onClick={() => void reload()}>
+                        重试
+                    </Button>
+                </div>
+            ) : null}
+
             <section className="library-feature-grid wallet-summary-grid">
-                <Surface className="credit-balance-card" padding="none">
+                <Surface className="credit-balance-card" padding="none" aria-busy={loading && !account}>
                     <div className="wallet-balance-inner">
                         <div className="wallet-balance-primary">
                             <span className="wallet-balance-eyebrow hidden">ACCOUNT BALANCE</span>
@@ -163,8 +196,8 @@ export default function WalletPage() {
                                 </div>
                             </div>
                             <div>
-                                <div className="wallet-balance-number" title={`${formatCredits(account?.availableMicrocredits || 0, 6)} 积分`}>
-                                    <strong>{formatCredits(account?.availableMicrocredits || 0, 6)}</strong>
+                                <div className={`wallet-balance-number${balanceLengthClass}`} title={account ? `${availableCredits} 积分` : "积分数据同步中"}>
+                                    <strong>{availableDisplay}</strong>
                                     <span>积分</span>
                                 </div>
                                 <span className="wallet-balance-precision hidden">账务精度保留至百万分之一积分</span>
@@ -204,7 +237,7 @@ export default function WalletPage() {
                             onPressEnter={() => void redeem()}
                         />
                     </label>
-                    <div className="mt-2 flex items-center justify-between text-xs text-foreground/45">
+                    <div className={`wallet-redeem-code-meta mt-2 flex items-center justify-between text-xs text-foreground/45${code.length === 32 ? " is-ready" : ""}`}>
                         <span>兑换成功后立即到账</span>
                         <span className="tabular-nums">{code.length} / 32</span>
                     </div>
@@ -220,6 +253,7 @@ export default function WalletPage() {
                     description={`当前展示最近 ${wallet?.entries.length || 0} 条记录。`}
                     actions={
                         <Segmented
+                            aria-label="筛选积分流水"
                             block={!screens.sm}
                             value={filter}
                             options={ledgerFilterOptions}
@@ -233,7 +267,22 @@ export default function WalletPage() {
 
                 {screens.md ? (
                     <TableSurface className="wallet-ledger-table-surface mt-0 rounded-xl border-border/70 bg-transparent">
-                        <Table className="app-data-table wallet-ledger-table" rowKey="id" size="middle" loading={loading} columns={columns} dataSource={entries} pagination={false} tableLayout="fixed" scroll={{ x: 990 }} />
+                        <Table
+                            aria-label="积分流水明细"
+                            className="app-data-table wallet-ledger-table"
+                            rowKey="id"
+                            rowClassName={(entry) => `wallet-ledger-row is-${entry.type}`}
+                            size="middle"
+                            loading={loading}
+                            columns={columns}
+                            dataSource={entries}
+                            pagination={false}
+                            tableLayout="fixed"
+                            scroll={{ x: 1000 }}
+                            locale={{
+                                emptyText: <WorkspaceState compact icon="wallet" title={screens.lg && loadError ? "积分流水加载失败" : "没有匹配的积分记录"} description={(screens.lg && loadError) || "切换流水类型，或完成一次生成后再回来查看。"} />,
+                            }}
+                        />
                     </TableSurface>
                 ) : (
                     <div className="grid gap-1 overflow-hidden rounded-md bg-transparent">
@@ -260,12 +309,15 @@ export default function WalletPage() {
 }
 
 function BalanceMetric({ label, description, value, icon }: { label: string; description: string; value: number; icon: ReactNode }) {
+    const formatted = formatCredits(value, 6);
     return (
         <div className="wallet-balance-metric">
             <span className="wallet-balance-metric-icon">{icon}</span>
             <div>
                 <span>{label}</span>
-                <strong title={`${formatCredits(value, 6)} 积分`}>{formatCredits(value, 6)}</strong>
+                <strong className={`wallet-balance-metric-value${formatted.length > 14 ? " is-long" : ""}`} title={`${formatted} 积分`}>
+                    {formatted}
+                </strong>
                 <small>{description}</small>
             </div>
         </div>
