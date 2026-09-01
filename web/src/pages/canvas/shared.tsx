@@ -13,7 +13,7 @@ import { InfiniteCanvas } from "@/components/canvas/infinite-canvas";
 import { FullScreenLoader } from "@/components/ui/aceternity/full-screen-loader";
 import { WorkspaceState } from "@/components/layout/workspace-state";
 import { NODE_DEFAULT_SIZE } from "@/constant/canvas";
-import { canvasThemes } from "@/lib/canvas-theme";
+import { canvasThemes, normalizeCanvasBackgroundMode, type CanvasBackgroundMode } from "@/lib/canvas-theme";
 import { FOLDER_COLLAPSED_HEIGHT, FOLDER_COLLAPSED_WIDTH, isCanvasFolderNode, isFrameNode, isNodeHiddenByCollapsedFrame, resolveFrameConnection } from "@/lib/canvas/canvas-frame";
 import { ensureMediaNodeMinimumSize } from "@/lib/canvas/canvas-node-size";
 import { getPublicCanvasShare } from "@/services/api/canvas-share";
@@ -35,7 +35,7 @@ export default function SharedCanvasPage() {
     const [title, setTitle] = useState("共享画布");
     const [nodes, setNodes] = useState<CanvasNodeData[]>([]);
     const [connections, setConnections] = useState<Awaited<ReturnType<typeof getPublicCanvasShare>>["project"]["connections"]>([]);
-    const [backgroundMode, setBackgroundMode] = useState<"lines" | "dots" | "blank">("lines");
+    const [backgroundMode, setBackgroundMode] = useState<CanvasBackgroundMode>("lines");
     const [viewport, setViewport] = useState<ViewportTransform>({ x: 0, y: 0, k: 1 });
     const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
     const [infoNodeId, setInfoNodeId] = useState<string | null>(null);
@@ -81,7 +81,7 @@ export default function SharedCanvasPage() {
             setTitle(project.title || "共享画布");
             setNodes((project.nodes || []).map(ensureMediaNodeMinimumSize));
             setConnections(project.connections || []);
-            setBackgroundMode(project.backgroundMode || "lines");
+            setBackgroundMode(normalizeCanvasBackgroundMode(project.backgroundMode));
             const initial = project.viewport || { x: 0, y: 0, k: 1 };
             viewportRef.current = initial;
             setViewport(initial);

@@ -2493,10 +2493,14 @@ function InfiniteCanvasPage() {
                                     containerRef={containerRef}
                                     onScaleChange={setZoomScale}
                                     onFitContent={fitCanvasContent}
-                                    onAutoArrange={autoArrangeCanvasNodes}
+                                    onAutoArrange={() => {
+                                        setContextMenu(null);
+                                        autoArrangeCanvasNodes();
+                                        window.requestAnimationFrame(() => fitCanvasContent());
+                                    }}
                                     isMiniMapOpen={isMiniMapOpen}
-                                    onToggleMiniMap={() => setIsMiniMapOpen((value) => !value)}
-                                    onOpenShortcuts={() => setShortcutRequestNonce((value) => value + 1)}
+                                    onToggleMiniMap={() => { setContextMenu(null); setIsMiniMapOpen((value) => !value); }}
+                                    onOpenShortcuts={() => { setContextMenu(null); setShortcutRequestNonce((value) => value + 1); }}
                                 />
                                 <CanvasAssetTray
                                     assetImages={imageAssets}

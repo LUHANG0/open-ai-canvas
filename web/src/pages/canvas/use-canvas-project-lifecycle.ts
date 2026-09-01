@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type Di
 import { App } from "antd";
 import { useNavigate } from "react-router";
 
-import type { CanvasBackgroundMode } from "@/lib/canvas-theme";
+import { normalizeCanvasBackgroundMode, type CanvasBackgroundMode } from "@/lib/canvas-theme";
 import { removeCanvasDrawing } from "@/lib/canvas/canvas-drawing-storage";
 import { normalizeCanvasNodeTimestamps } from "@/lib/canvas/canvas-node-timestamps";
 import { hydrateAssistantImages, hydrateCanvasImages, resetInterruptedGeneration } from "@/lib/canvas/canvas-project-generation";
@@ -146,7 +146,7 @@ export function useCanvasProjectLifecycle({
                 connections: project.connections,
                 chatSessions: restoredSessions,
                 activeChatId: project.activeChatId || null,
-                backgroundMode: project.backgroundMode || "dots",
+                backgroundMode: normalizeCanvasBackgroundMode(project.backgroundMode),
                 showImageInfo: project.showImageInfo || false,
             };
             nodesRef.current = snapshot.nodes;

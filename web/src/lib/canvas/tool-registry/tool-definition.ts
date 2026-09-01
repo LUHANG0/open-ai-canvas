@@ -57,7 +57,7 @@ export type ToolbarHandlers = {
     // 主工具栏——面板开关（组件内部状态，由组件实现）
     onToggleAddPanel: (event: MouseEvent<HTMLElement>) => void;
     onToggleAppearancePanel: (event: MouseEvent<HTMLElement>) => void;
-    onToggleSettingsPanel: () => void;
+    onToggleSettingsPanel: (event: MouseEvent<HTMLElement>) => void;
     // 主工具栏——删除选中
     onDeleteSelected: () => void;
     // 多选工具栏

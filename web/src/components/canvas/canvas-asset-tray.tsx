@@ -165,7 +165,7 @@ export function CanvasAssetTray({ assetImages, canvasImages, showLibrary = true,
     const dockItems: FloatingDockEntry[] = [
         {
             id: "asset-tray-toggle",
-            label: open ? "收起素材空间" : `打开素材空间，共 ${(showLibrary ? assetImages.length : 0) + canvasImages.length} 项`,
+            label: open ? "收起图片素材" : `打开图片素材，共 ${(showLibrary ? assetImages.length : 0) + canvasImages.length} 张`,
             icon: <span className="relative"><Images /><span className="absolute -right-1.5 -top-1.5 min-w-3 rounded-full px-0.5 text-center text-[var(--fs-nano)] font-bold leading-3" style={{ background: theme.accent.primary, color: theme.accent.onPrimary }}>{(showLibrary ? assetImages.length : 0) + canvasImages.length}</span></span>,
             active: open,
             onClick: () => {
@@ -198,8 +198,8 @@ export function CanvasAssetTray({ assetImages, canvasImages, showLibrary = true,
                                     <FolderOpen className="size-3.5" />
                                 </span>
                                 <span className="min-w-0">
-                                    <span className="block text-xs font-semibold">素材空间</span>
-                                    <span className="mt-0.5 block truncate text-[var(--fs-micro)]" style={{ color: theme.node.muted }}>拖入画布，或定位已经使用的图片</span>
+                                    <span className="block text-xs font-semibold">图片素材</span>
+                                    <span className="mt-0.5 block truncate text-[var(--fs-micro)]" style={{ color: theme.node.muted }}>快速插入图片，或定位画布中的图片</span>
                                 </span>
                             </div>
                             <motion.button type="button" whileHover={motionEnabled ? { rotate: -5, scale: 1.05 } : undefined} whileTap={motionEnabled ? { scale: 0.92 } : undefined} className="grid size-7 shrink-0 place-items-center rounded-full outline-none focus-visible:ring-2" style={{ background: theme.spatial.surface, color: theme.node.muted }} onClick={() => setOpen(false)} aria-label="收起素材空间">
@@ -208,8 +208,8 @@ export function CanvasAssetTray({ assetImages, canvasImages, showLibrary = true,
                         </div>
 
                         <div className={cn("relative grid gap-1 rounded-[var(--r-lg)] p-0.5", showLibrary ? "grid-cols-2" : "grid-cols-1")} style={{ background: theme.spatial.surface }}>
-                            {showLibrary ? <TrayTabButton active={tab === "library"} label={`素材库 ${assetImages.length}`} theme={theme} onClick={() => setTab("library")} /> : null}
-                            <TrayTabButton active={tab === "canvas"} label={`当前画布 ${canvasImages.length}`} theme={theme} onClick={() => setTab("canvas")} />
+                            {showLibrary ? <TrayTabButton active={tab === "library"} label={`我的图片 ${assetImages.length}`} theme={theme} onClick={() => setTab("library")} /> : null}
+                            <TrayTabButton active={tab === "canvas"} label={`画布图片 ${canvasImages.length}`} theme={theme} onClick={() => setTab("canvas")} />
                         </div>
 
                         <label className="mt-2 flex h-8 items-center gap-1.5 rounded-[11px] px-2.5 focus-within:ring-2" style={{ background: theme.spatial.surface }}>
@@ -248,7 +248,7 @@ export function CanvasAssetTray({ assetImages, canvasImages, showLibrary = true,
                 ) : null}
             </AnimatePresence>
 
-            <FloatingDock items={dockItems} className="canvas-floating-dock" style={canvasDockStyle(theme)} ariaLabel="素材空间" />
+            <FloatingDock items={dockItems} className="canvas-floating-dock" style={canvasDockStyle(theme)} ariaLabel="图片素材" />
         </div>
     );
 }

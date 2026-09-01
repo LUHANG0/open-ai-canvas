@@ -268,8 +268,7 @@ async function connectCdp(cdpPort) {
     const drag = async (selector, dx, dy) => {
         const box = await readBox(selector);
         if (!box) return false;
-        // 普通节点正文可选择文字并会阻止 mousedown；顶部 40px 是稳定的拖拽热区。
-        const start = { x: box.x, y: box.y - box.height / 2 + Math.min(20, box.height / 4) };
+        const start = { x: box.x, y: box.y };
         await send("Input.dispatchMouseEvent", { type: "mouseMoved", ...start, buttons: 0 });
         await send("Input.dispatchMouseEvent", { type: "mousePressed", ...start, button: "left", buttons: 1, clickCount: 1 });
         for (let step = 1; step <= 5; step += 1) {
@@ -326,7 +325,7 @@ async function shellScenario(cdp, url) {
 
 async function interactionScenario(cdp) {
     console.log("\n=== B. drag, history, copy, search and viewport controls ===");
-    const nodeSelector = '[data-node-id="canvas-p0-text-story"] .canvas-node-shell';
+    const nodeSelector = '[data-node-id="canvas-p0-text-story"] [data-canvas-node-drag-handle]';
     const wrapperSelector = '[data-node-id="canvas-p0-text-story"]';
     const initialTransform = await cdp.evaluate(`document.querySelector(${JSON.stringify(wrapperSelector)})?.style.transform || ''`);
     if (!(await cdp.drag(nodeSelector, 90, 54))) throw new Error("Story node was not draggable");

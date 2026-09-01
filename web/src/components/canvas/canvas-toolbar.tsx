@@ -1,7 +1,7 @@
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef, useState, type MouseEvent as ReactMouseEvent, type ReactNode } from "react";
-import { Segmented, Switch } from "antd";
-import { CircleDot, Grid2x2, Moon, Palette, Sun, Square, Info } from "lucide-react";
+import { Switch } from "antd";
+import { Check, Eraser, Info, Moon, Palette, Settings2, Sun } from "lucide-react";
 
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 import { FloatingDock } from "@/components/ui/aceternity/floating-dock";
@@ -10,7 +10,7 @@ import { CanvasCreateMenu, type CanvasCreateCommand } from "@/components/canvas/
 import { ToolbarSettingsModal } from "@/components/canvas/toolbars/toolbar-settings-modal";
 import { aceternityMotion } from "@/lib/aceternity-motion";
 import { canvasDockStyle } from "@/lib/canvas/canvas-aceternity-style";
-import { canvasThemes, type CanvasBackgroundMode, type CanvasColorTheme, type CanvasTheme } from "@/lib/canvas-theme";
+import { canvasBackgroundModes, canvasBackgroundPresets, canvasThemes, type CanvasBackgroundMode, type CanvasColorTheme, type CanvasTheme } from "@/lib/canvas-theme";
 import { defaultToolbarPrefs, readToolbarPrefs, resolveAddNodeMenuCommands, resolveToolbarEntries, type AddNodeMenuCommand, type ToolContext, type ToolbarHandlers, type ToolbarPrefs } from "@/lib/canvas/tool-registry";
 import { useThemeStore } from "@/stores/use-theme-store";
 import { usePluginStore } from "@/stores/use-plugin-store";
@@ -90,6 +90,7 @@ export function CanvasToolbar({
     const theme = canvasThemes[colorTheme];
     const [addOpen, setAddOpen] = useState(false);
     const [appearanceOpen, setAppearanceOpen] = useState(false);
+    const [moreOpen, setMoreOpen] = useState(false);
     const [settingsOpen, setSettingsOpen] = useState(false);
     const [panelX, setPanelX] = useState(0);
     const [prefs, setPrefs] = useState<ToolbarPrefs | null>(() => readToolbarPrefs("main"));
@@ -107,16 +108,17 @@ export function CanvasToolbar({
 
     // 点击外部关闭浮层面板
     useEffect(() => {
-        if (!addOpen && !appearanceOpen) return;
+        if (!addOpen && !appearanceOpen && !moreOpen) return;
         const closeFloatingPanels = (event: PointerEvent) => {
             const target = event.target instanceof Node ? event.target : null;
             if (target && rootRef.current?.contains(target)) return;
             setAddOpen(false);
             setAppearanceOpen(false);
+            setMoreOpen(false);
         };
         document.addEventListener("pointerdown", closeFloatingPanels, true);
         return () => document.removeEventListener("pointerdown", closeFloatingPanels, true);
-    }, [addOpen, appearanceOpen]);
+    }, [addOpen, appearanceOpen, moreOpen]);
 
     // 构建 handlers（主工具栏只需要部分回调，其余用 no-op 占位满足类型）
     const handlers: ToolbarHandlers = {
@@ -142,9 +144,9 @@ export function CanvasToolbar({
         onOpenProjectCharacters,
         onBackgroundModeChange,
         onShowImageInfoChange,
-        onToggleAddPanel: (event: ReactMouseEvent<HTMLElement>) => { placePanel(event); setAppearanceOpen(false); setSettingsOpen(false); setAddOpen((value) => !value); },
-        onToggleAppearancePanel: (event: ReactMouseEvent<HTMLElement>) => { placePanel(event); setAddOpen(false); setSettingsOpen(false); setAppearanceOpen((value) => !value); },
-        onToggleSettingsPanel: () => { setAddOpen(false); setAppearanceOpen(false); setSettingsOpen((value) => !value); },
+        onToggleAddPanel: (event: ReactMouseEvent<HTMLElement>) => { placePanel(event); setAppearanceOpen(false); setMoreOpen(false); setAddOpen((value) => !value); },
+        onToggleAppearancePanel: (event: ReactMouseEvent<HTMLElement>) => { placePanel(event); setAddOpen(false); setMoreOpen(false); setAppearanceOpen((value) => !value); },
+        onToggleSettingsPanel: (event: ReactMouseEvent<HTMLElement>) => { placePanel(event); setAddOpen(false); setAppearanceOpen(false); setMoreOpen((value) => !value); },
         onDeleteSelected: onDelete,
         // 以下为多选/节点悬停工具栏回调，主工具栏不使用，用 no-op 占位
         onAlign: () => {}, onArrange: () => {}, onCreateStoryboard: () => {}, onCreateReferenceGroup: () => {}, onBatchConnect: () => {}, onMergeVideos: () => {},
@@ -170,7 +172,7 @@ export function CanvasToolbar({
         mergingVideos: false,
         addPanelOpen: addOpen,
         appearancePanelOpen: appearanceOpen,
-        settingsPanelOpen: settingsOpen,
+        settingsPanelOpen: moreOpen,
         handlers,
     };
 
@@ -206,7 +208,7 @@ export function CanvasToolbar({
 
             <AnimatePresence>
                 {appearanceOpen ? (
-                    <motion.div initial={{ opacity: 0, scaleY: 0.9, y: 8 }} animate={{ opacity: 1, scaleY: 1, y: 0 }} exit={{ opacity: 0, scaleY: 0.92, y: 6 }} transition={{ duration: aceternityMotion.duration.panel, ease: aceternityMotion.easing.enter }} className="pc-canvas-toolbar__popover pointer-events-auto absolute bottom-[var(--canvas-dock-popover-offset)] z-[var(--dock-z-popover)] w-[224px] max-w-[calc(100vw-24px)]" style={{ left: panelX || "50%", transformOrigin: "bottom center", x: "-50%" }}>
+                    <motion.div initial={{ opacity: 0, scaleY: 0.9, y: 8 }} animate={{ opacity: 1, scaleY: 1, y: 0 }} exit={{ opacity: 0, scaleY: 0.92, y: 6 }} transition={{ duration: aceternityMotion.duration.panel, ease: aceternityMotion.easing.enter }} className="pc-canvas-toolbar__popover pointer-events-auto absolute bottom-[var(--canvas-dock-popover-offset)] z-[var(--dock-z-popover)] w-[292px] max-w-[calc(100vw-24px)]" style={{ left: panelX || "50%", transformOrigin: "bottom center", x: "-50%" }}>
                         <SpotlightSurface spotlightColor={theme.toolbar.itemHover} initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.97, transition: { duration: 0 } }} transition={{ duration: aceternityMotion.duration.instant, ease: aceternityMotion.easing.enter }} className="pc-canvas-panel aceternity-floating-panel overflow-hidden rounded-[var(--panel-radius)] border p-2.5 backdrop-blur-2xl" style={{ background: theme.spatial.elevated, borderColor: theme.toolbar.border, color: theme.toolbar.item }} onWheel={(event) => event.stopPropagation()}>
                             <PanelHeading icon={<Palette className="size-4" />} title="画布外观" subtitle="调整整个创作空间" theme={theme} />
                             <div className="mt-3 text-[var(--fs-micro)] font-semibold uppercase opacity-45">主题模式</div>
@@ -214,17 +216,18 @@ export function CanvasToolbar({
                                 <CanvasThemeButton colorTheme={colorTheme} targetTheme="light" onThemeChange={setTheme}><Sun className="size-3.5" />浅色</CanvasThemeButton>
                                 <CanvasThemeButton colorTheme={colorTheme} targetTheme="dark" onThemeChange={setTheme}><Moon className="size-3.5" />深色</CanvasThemeButton>
                             </div>
-                            <div className="mt-3 text-[var(--fs-micro)] font-semibold uppercase opacity-45">空间网格</div>
-                            <Segmented
-                                className="mt-1 w-full !rounded-[var(--dock-item-radius-labeled)] !p-0.5 [&_.ant-segmented-group]:!flex [&_.ant-segmented-item]:!min-h-7 [&_.ant-segmented-item]:!flex-1 [&_.ant-segmented-item-label]:!min-h-7 [&_.ant-segmented-item-label]:!text-[var(--fs-tiny)] [&_.ant-segmented-item-label]:!leading-7"
-                                value={backgroundMode}
-                                onChange={(value) => onBackgroundModeChange(value as CanvasBackgroundMode)}
-                                options={[
-                                    { value: "dots", label: <span className="inline-flex items-center gap-1.5"><CircleDot className="size-3.5" />点</span> },
-                                    { value: "lines", label: <span className="inline-flex items-center gap-1.5"><Grid2x2 className="size-3.5" />线</span> },
-                                    { value: "blank", label: <span className="inline-flex items-center gap-1.5"><Square className="size-3.5" />空白</span> },
-                                ]}
-                            />
+                            <div className="mt-3 text-[var(--fs-micro)] font-semibold uppercase opacity-45">画布底纹</div>
+                            <div className="mt-1.5 grid grid-cols-2 gap-1.5">
+                                {canvasBackgroundModes.map((mode) => (
+                                    <CanvasBackgroundPresetButton
+                                        key={mode}
+                                        mode={mode}
+                                        colorTheme={colorTheme}
+                                        active={backgroundMode === mode}
+                                        onSelect={onBackgroundModeChange}
+                                    />
+                                ))}
+                            </div>
                             <div className="mt-2.5 flex items-center justify-between gap-2 rounded-[var(--dock-item-radius-labeled)] border px-2.5 py-2" style={{ background: theme.spatial.surface, borderColor: theme.toolbar.border }}>
                                 <span className="inline-flex min-w-0 items-center gap-1.5 text-[var(--fs-tiny)] font-semibold"><Info className="size-3" />图片信息</span>
                                 <Switch size="small" checked={showImageInfo} onChange={onShowImageInfoChange} />
@@ -234,8 +237,57 @@ export function CanvasToolbar({
                 ) : null}
             </AnimatePresence>
 
+            <AnimatePresence>
+                {moreOpen ? (
+                    <motion.div initial={{ opacity: 0, scaleY: 0.9, y: 8 }} animate={{ opacity: 1, scaleY: 1, y: 0 }} exit={{ opacity: 0, scaleY: 0.92, y: 6 }} transition={{ duration: aceternityMotion.duration.panel, ease: aceternityMotion.easing.enter }} className="pc-canvas-toolbar__popover pointer-events-auto absolute bottom-[var(--canvas-dock-popover-offset)] z-[var(--dock-z-popover)] w-[244px] max-w-[calc(100vw-24px)]" style={{ left: panelX || "50%", transformOrigin: "bottom center", x: "-50%" }}>
+                        <SpotlightSurface spotlightColor={theme.toolbar.itemHover} initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.97, transition: { duration: 0 } }} transition={{ duration: aceternityMotion.duration.instant, ease: aceternityMotion.easing.enter }} className="pc-canvas-panel aceternity-floating-panel overflow-hidden rounded-[var(--panel-radius)] border p-2 backdrop-blur-2xl" style={{ background: theme.spatial.elevated, borderColor: theme.toolbar.border, color: theme.toolbar.item }}>
+                            <PanelHeading icon={<Settings2 className="size-4" />} title="更多画布操作" subtitle="低频设置与危险操作" theme={theme} />
+                            <div className="mt-2.5 grid gap-1">
+                                <button type="button" className="flex items-center gap-2 rounded-[var(--dock-item-radius-labeled)] px-2.5 py-2 text-left text-xs font-medium transition-colors hover:bg-[var(--surface-hover)] focus-visible:outline focus-visible:outline-2" onClick={() => { setMoreOpen(false); setSettingsOpen(true); }}>
+                                    <Settings2 className="size-3.5" />自定义工具栏
+                                </button>
+                                <div className="my-0.5 h-px" style={{ background: theme.toolbar.border }} />
+                                <button type="button" className="flex items-center gap-2 rounded-[var(--dock-item-radius-labeled)] px-2.5 py-2 text-left text-xs font-medium transition-colors focus-visible:outline focus-visible:outline-2" style={{ color: theme.accent.danger }} onClick={() => { setMoreOpen(false); onClear(); }}>
+                                    <Eraser className="size-3.5" />清空画布
+                                </button>
+                            </div>
+                        </SpotlightSurface>
+                    </motion.div>
+                ) : null}
+            </AnimatePresence>
+
             <ToolbarSettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} toolbar="main" />
         </div>
+    );
+}
+
+function CanvasBackgroundPresetButton({ mode, colorTheme, active, onSelect }: { mode: CanvasBackgroundMode; colorTheme: CanvasColorTheme; active: boolean; onSelect: (mode: CanvasBackgroundMode) => void }) {
+    const preset = canvasBackgroundPresets[mode];
+    const line = preset.line[colorTheme];
+    const backgroundImage = mode === "dots"
+        ? `radial-gradient(circle, ${line} 1px, transparent 1.2px)`
+        : mode === "paper"
+            ? `linear-gradient(${line} 1px, transparent 1px)`
+            : mode === "blank"
+                ? undefined
+                : `linear-gradient(${line} 1px, transparent 1px), linear-gradient(90deg, ${line} 1px, transparent 1px)`;
+    const backgroundSize = mode === "dots" ? "8px 8px" : mode === "paper" ? "12px 12px" : mode === "fine-grid" || mode === "blueprint" ? "8px 8px" : "14px 14px";
+    return (
+        <button
+            type="button"
+            className="group relative overflow-hidden rounded-[var(--dock-item-radius-labeled)] border p-1.5 text-left transition-[border-color,transform] hover:-translate-y-px focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1"
+            style={{ borderColor: active ? canvasThemes[colorTheme].node.text : canvasThemes[colorTheme].toolbar.border }}
+            aria-pressed={active}
+            aria-label={`画布底纹：${preset.label}`}
+            onClick={() => onSelect(mode)}
+        >
+            <span className="block h-8 rounded-[var(--r-sm)] border" style={{ backgroundColor: preset.surface[colorTheme], backgroundImage, backgroundSize, borderColor: canvasThemes[colorTheme].toolbar.border }} />
+            <span className="mt-1.5 flex items-center justify-between gap-1 text-[var(--fs-tiny)] font-semibold">
+                <span>{preset.label}</span>
+                {active ? <Check className="size-3" /> : null}
+            </span>
+            <span className="mt-0.5 block truncate text-[var(--fs-micro)]" style={{ color: canvasThemes[colorTheme].node.muted }}>{preset.description}</span>
+        </button>
     );
 }
 

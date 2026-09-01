@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
-import { AlertCircle, BookOpenCheck, CheckCircle2, ChevronRight, Clapperboard, Copy, Download, Image as ImageIcon, Lock, Maximize2, Music2, Pencil, Plus, RefreshCw, Settings2, Star, Trash2, Type, Video } from "lucide-react";
+import { AlertCircle, BookOpenCheck, CheckCircle2, ChevronRight, Clapperboard, Copy, Download, GripVertical, Image as ImageIcon, Lock, Maximize2, Music2, Pencil, Plus, RefreshCw, Settings2, Star, Trash2, Type, Video } from "lucide-react";
 
 import { useCanvasNodeActions } from "./canvas-node-action-context";
 
@@ -291,6 +291,8 @@ export const CanvasNode = React.memo(function CanvasNode({
                 onEdit={() => setIsEditingTitle(true)}
                 onCommit={commitTitle}
                 onCancel={() => { setTitleDraft(data.title); setIsEditingTitle(false); }}
+                draggable={!readOnly && !data.metadata?.locked}
+                onDragStart={(event) => onMouseDown(event, data.id)}
             />
             <div
                 className="pc-canvas-node canvas-node-shell relative h-full w-full overflow-visible rounded-[var(--node-radius)]"
@@ -610,7 +612,7 @@ function formatMediaDimensionLabel(node: CanvasNodeData, hasVisualMediaContent: 
     return `${Math.round(width)}*${Math.round(height)}`;
 }
 
-function NodeExternalHeader({ node, scale, dimensionLabel, active, editable, editing, draft, theme, onDraftChange, onEdit, onCommit, onCancel }: {
+function NodeExternalHeader({ node, scale, dimensionLabel, active, editable, editing, draft, theme, draggable, onDraftChange, onEdit, onCommit, onCancel, onDragStart }: {
     node: CanvasNodeData;
     scale: number;
     dimensionLabel: string | null;
@@ -619,10 +621,12 @@ function NodeExternalHeader({ node, scale, dimensionLabel, active, editable, edi
     editing: boolean;
     draft: string;
     theme: CanvasTheme;
+    draggable: boolean;
     onDraftChange: (value: string) => void;
     onEdit: () => void;
     onCommit: () => void;
     onCancel: () => void;
+    onDragStart: (event: React.MouseEvent) => void;
 }) {
     // 标题保持屏幕尺寸只适用于近景；远景继续反向缩放会遮住节点和连线。
     if (scale < NODE_EXTERNAL_HEADER_MIN_SCALE && !editing) return null;
@@ -647,6 +651,22 @@ function NodeExternalHeader({ node, scale, dimensionLabel, active, editable, edi
             onMouseDown={(event) => event.stopPropagation()}
             onPointerDown={(event) => event.stopPropagation()}
         >
+            {draggable ? (
+                <button
+                    type="button"
+                    data-canvas-node-drag-handle
+                    className="grid size-5 shrink-0 cursor-grab place-items-center rounded-[var(--r-xs)] opacity-55 transition-[background,opacity] hover:opacity-100 active:cursor-grabbing focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-1"
+                    style={{ outlineColor: theme.node.muted }}
+                    aria-label={`拖动节点：${node.title}`}
+                    title="拖动节点"
+                    onMouseDown={(event) => {
+                        event.preventDefault();
+                        onDragStart(event);
+                    }}
+                >
+                    <GripVertical className="size-3" strokeWidth={1.8} />
+                </button>
+            ) : null}
             <div className="flex min-w-0 items-center gap-1" style={{ maxWidth: maxHeaderWidth }}>
                 <Icon className="size-3 shrink-0" strokeWidth={1.8} />
                 {editing ? (

@@ -413,8 +413,8 @@ function EmptyImageContent({ node, theme, isBatchRoot, batchCount, batchExpanded
 }
 
 function VideoNodeContent({ node, theme, reduceMediaEffects }: CanvasNodeContentProps) {
-    const playWhenReadyRef = useRef(false);
     const playerBoxRef = useRef<HTMLDivElement>(null);
+    const mediaGestureRef = useRef({ startX: 0, startY: 0, moved: false, suppressClick: false });
     const { updateMetadata } = useCanvasNodeActions();
     const { url, loading, load } = useNodeResourceUrl(node, false);
     const subtitleEntries = node.metadata?.subtitleEntries || [];
@@ -445,7 +445,7 @@ function VideoNodeContent({ node, theme, reduceMediaEffects }: CanvasNodeContent
     }, [node.id, node.metadata?.naturalHeight, node.metadata?.naturalWidth, subtitleEntries.length, updateMetadata, url]);
 
     if (!node.metadata?.content) return <EmptyMediaContent icon={<Video className="size-7 opacity-35" />} label="空视频节点" color={theme.node.placeholder} />;
-    if (!url) return <DeferredMediaLoad icon={loading ? <LoaderCircle className="size-5 animate-spin" /> : <Play className="size-5 fill-current" />} label={loading ? "正在缓存视频" : "加载并缓存视频"} disabled={loading} onClick={() => { playWhenReadyRef.current = true; void load(); }} />;
+    if (!url) return <DeferredMediaLoad icon={loading ? <LoaderCircle className="size-5 animate-spin" /> : <Play className="size-5 fill-current" />} label={loading ? "正在缓存视频" : "加载视频（保持暂停）"} disabled={loading} onClick={() => { void load(); }} />;
 
     const sourceRatio = (videoSize?.width || node.metadata?.naturalWidth || node.width) / Math.max(1, videoSize?.height || node.metadata?.naturalHeight || node.height);
     const fitHeight = Math.min(node.height, node.width / Math.max(0.01, sourceRatio));
@@ -454,9 +454,34 @@ function VideoNodeContent({ node, theme, reduceMediaEffects }: CanvasNodeContent
     const activeHighlight = activeEntry ? (node.metadata?.subtitleHighlights || []).find((item) => item.entryIndex === activeEntry.index) : undefined;
 
     return (
-        <div ref={playerBoxRef} className="relative flex h-full w-full items-center justify-center overflow-hidden rounded-[var(--node-radius)] bg-black">
+        <div
+            ref={playerBoxRef}
+            data-canvas-media-surface
+            className="relative flex h-full w-full items-center justify-center overflow-hidden rounded-[var(--node-radius)] bg-black"
+            onMouseDown={(event) => event.stopPropagation()}
+            onPointerDown={(event) => event.stopPropagation()}
+            onPointerDownCapture={(event) => {
+                mediaGestureRef.current = { startX: event.clientX, startY: event.clientY, moved: false, suppressClick: false };
+            }}
+            onPointerMoveCapture={(event) => {
+                const gesture = mediaGestureRef.current;
+                if (Math.hypot(event.clientX - gesture.startX, event.clientY - gesture.startY) > 4) gesture.moved = true;
+            }}
+            onPointerUpCapture={(event) => {
+                if (!mediaGestureRef.current.moved) return;
+                mediaGestureRef.current.suppressClick = true;
+                event.preventDefault();
+                event.stopPropagation();
+            }}
+            onClickCapture={(event) => {
+                if (!mediaGestureRef.current.suppressClick) return;
+                mediaGestureRef.current.suppressClick = false;
+                event.preventDefault();
+                event.stopPropagation();
+            }}
+        >
             <div className="relative" style={{ width: fitWidth, height: Math.round(fitHeight) }}>
-                <VideoPlayer src={url} mimeType={node.metadata?.mimeType} title={node.title || "视频"} preload={reduceMediaEffects ? "none" : "metadata"} autoPlay={playWhenReadyRef.current} onCanPlay={() => { playWhenReadyRef.current = false; }} brandColor={theme.accent.primary} className="h-full w-full rounded-[var(--node-radius)] bg-black" dataCanvasNoZoom compactControls />
+                <VideoPlayer src={url} mimeType={node.metadata?.mimeType} title={node.title || "视频"} preload={reduceMediaEffects ? "none" : "metadata"} brandColor={theme.accent.primary} className="h-full w-full rounded-[var(--node-radius)] bg-black" dataCanvasNoZoom compactControls />
                 {activeEntry && activeEntry.text.trim() ? <CanvasSubtitleOverlay text={activeEntry.text} highlight={activeHighlight} style={subtitleStyle} /> : null}
             </div>
         </div>
@@ -465,17 +490,11 @@ function VideoNodeContent({ node, theme, reduceMediaEffects }: CanvasNodeContent
 
 function AudioNodeContent({ node, theme }: CanvasNodeContentProps) {
     const audioRef = useRef<HTMLAudioElement>(null);
-    const playWhenReadyRef = useRef(false);
     const { url, loading, load } = useNodeResourceUrl(node, false);
-    useEffect(() => {
-        if (!url || !playWhenReadyRef.current) return;
-        playWhenReadyRef.current = false;
-        void audioRef.current?.play().catch(() => undefined);
-    }, [url]);
     if (!node.metadata?.content) return <EmptyMediaContent icon={<Music2 className="size-7 opacity-35" />} label="空音频节点" color={theme.node.placeholder} />;
-    if (!url) return <DeferredMediaLoad icon={loading ? <LoaderCircle className="size-5 animate-spin" /> : <Play className="size-5 fill-current" />} label={loading ? "正在缓存音频" : "加载并缓存音频"} disabled={loading} onClick={() => { playWhenReadyRef.current = true; void load(); }} />;
+    if (!url) return <DeferredMediaLoad icon={loading ? <LoaderCircle className="size-5 animate-spin" /> : <Play className="size-5 fill-current" />} label={loading ? "正在缓存音频" : "加载音频（保持暂停）"} disabled={loading} onClick={() => { void load(); }} />;
     return (
-        <div className="flex h-full w-full flex-col justify-center gap-3 px-4" style={{ background: theme.node.fill, color: theme.node.text }}>
+        <div className="flex h-full w-full flex-col justify-center gap-3 px-4" data-canvas-media-surface style={{ background: theme.node.fill, color: theme.node.text }} onMouseDown={(event) => event.stopPropagation()} onPointerDown={(event) => event.stopPropagation()}>
             <div className="flex min-w-0 items-center gap-2 text-sm opacity-70"><Music2 className="size-4 shrink-0" /><span className="min-w-0 truncate" title={node.title || "音频"}>{node.title || "音频"}</span></div>
             <audio ref={audioRef} src={url} controls preload="metadata" className="w-full" data-canvas-no-zoom />
         </div>

@@ -1,4 +1,4 @@
-import { Eraser, FolderOpen, Hand, Palette, Plus, Redo2, Settings2, SquareDashedMousePointer, Trash2, Undo2, X } from "lucide-react";
+import { FolderOpen, Hand, MoreHorizontal, Palette, Plus, Redo2, SquareDashedMousePointer, Trash2, Undo2, X } from "lucide-react";
 
 import { registerToolbarTools, type ToolDefinition } from "@/lib/canvas/tool-registry";
 
@@ -66,7 +66,7 @@ export const mainToolbarTools: ToolDefinition[] = [
         id: "tool-assets",
         toolbar: "main",
         category: "resource",
-        label: "素材库",
+        label: "素材",
         icon: <FolderOpen />,
         defaultVisible: true,
         defaultOrder: 60,
@@ -89,13 +89,13 @@ export const mainToolbarTools: ToolDefinition[] = [
         id: "tool-settings",
         toolbar: "main",
         category: "appearance",
-        label: "工具栏设置",
-        icon: <Settings2 />,
+        label: "更多画布操作",
+        icon: <MoreHorizontal />,
         defaultVisible: true,
         defaultOrder: 80,
         expands: true,
         active: (ctx) => ctx.settingsPanelOpen,
-        run: (ctx) => ctx.handlers.onToggleSettingsPanel(),
+        run: (ctx, event) => ctx.handlers.onToggleSettingsPanel(event!),
     },
     {
         id: "tool-delete",
@@ -108,17 +108,6 @@ export const mainToolbarTools: ToolDefinition[] = [
         danger: true,
         applicable: (ctx) => ctx.selectedCount > 0,
         run: (ctx) => ctx.handlers.onDeleteSelected(),
-    },
-    {
-        id: "tool-clear",
-        toolbar: "main",
-        category: "danger",
-        label: "清空画布",
-        icon: <Eraser />,
-        defaultVisible: true,
-        defaultOrder: 100,
-        danger: true,
-        run: (ctx) => ctx.handlers.onClear(),
     },
 ];
 
