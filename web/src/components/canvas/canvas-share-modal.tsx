@@ -31,10 +31,16 @@ export function CanvasShareModal({ projectId, open, onClose, beforeCreate }: { p
         if (open) void load();
     }, [load, open]);
 
-    const copy = async (value = shareUrl) => {
-        if (!value) return;
-        await navigator.clipboard.writeText(value);
-        message.success("分享链接已复制");
+    const copy = async (value = shareUrl, created = false) => {
+        if (!value) return false;
+        try {
+            await navigator.clipboard.writeText(value);
+            message.success(created ? "分享链接已创建并复制" : "分享链接已复制");
+            return true;
+        } catch {
+            message.warning(created ? "分享链接已创建，但浏览器未能自动复制，请点击复制按钮" : "浏览器未能复制链接，请选中链接后手动复制");
+            return false;
+        }
     };
 
     const create = async (rotate = false) => {
@@ -45,7 +51,7 @@ export function CanvasShareModal({ projectId, open, onClose, beforeCreate }: { p
             const result = await createCanvasShare(projectId, { expiresDays, rotate });
             setShare(result.share);
             const url = result.share.token ? `${window.location.origin}/share/canvas/${result.share.token}` : "";
-            await copy(url);
+            await copy(url, true);
         } catch (error) {
             message.error(error instanceof Error ? error.message : "创建分享链接失败");
         } finally {

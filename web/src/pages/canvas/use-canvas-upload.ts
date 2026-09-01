@@ -12,6 +12,7 @@ import { createCanvasNode } from "@/lib/canvas/canvas-project-domain";
 import { isAudioFile } from "@/lib/canvas/canvas-project-generation";
 import { fitNodeSize, VIDEO_NODE_MAX_SIZE } from "@/lib/canvas/canvas-node-size";
 import { layoutCompactNodeGroup, placeCanvasNode } from "@/lib/canvas/canvas-node-placement";
+import { partitionCanvasUploadFiles, type CanvasUploadBatchResult } from "@/lib/canvas/canvas-upload-batch";
 import { uploadMediaFile } from "@/services/file-storage";
 import { resolveImageUrl, uploadImage } from "@/services/image-storage";
 import { getProjectUnit } from "@/services/api/projects";
@@ -43,6 +44,7 @@ export type StartCanvasUploadStatus = (title: string, detail: string, total?: nu
 
 const NODE_STATUS_SUCCESS = "success" as const;
 const BATCH_UPLOAD_COLUMNS = 3;
+type CreateMediaNodeOptions = { select?: boolean };
 
 export function useCanvasUpload({
     canvasId,
@@ -123,7 +125,7 @@ export function useCanvasUpload({
         }
     }, [canvasId, domainProjectId, message, queryClient, setNodes]);
 
-    const createImageFileNode = useCallback(async (file: File, position: Position) => {
+    const createImageFileNode = useCallback(async (file: File, position: Position, options: CreateMediaNodeOptions = {}) => {
         const progress = startUploadStatus("上传图片", "读取图片文件", domainProjectId ? 4 : 3);
         try {
             progress.update("上传到服务器并同步资源", 2);
@@ -140,7 +142,7 @@ export function useCanvasUpload({
                 height: size.height,
                 metadata: imageMetadata(image),
             }, position);
-            selectInsertedNode(id, "open");
+            if (options.select !== false) selectInsertedNode(id, "open");
             if (domainProjectId) progress.update("写入项目资产", 4);
             const persisted = await persistMediaNode(node);
             progress.done(persisted ? "图片已添加到画布" : "图片已添加，项目资产待重试");
@@ -189,7 +191,7 @@ export function useCanvasUpload({
         }
     }, [appendPlacedNode, getCanvasCenter, message, selectInsertedNode]);
 
-    const createVideoFileNode = useCallback(async (file: File, position: Position) => {
+    const createVideoFileNode = useCallback(async (file: File, position: Position, options: CreateMediaNodeOptions = {}) => {
         const progress = startUploadStatus("上传视频", "读取视频文件", domainProjectId ? 4 : 3);
         try {
             progress.update("上传到服务器并同步资源", 2);
@@ -198,7 +200,7 @@ export function useCanvasUpload({
             const size = fitNodeSize(video.width || 1280, video.height || 720, VIDEO_NODE_MAX_SIZE.width, VIDEO_NODE_MAX_SIZE.height);
             const id = `video-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
             const node = appendPlacedNode({ id, type: CanvasNodeType.Video, title: file.name, position: { x: position.x - size.width / 2, y: position.y - size.height / 2 }, width: size.width, height: size.height, metadata: videoMetadata(video) }, position);
-            selectInsertedNode(id, "open");
+            if (options.select !== false) selectInsertedNode(id, "open");
             if (domainProjectId) progress.update("写入项目资产", 4);
             const persisted = await persistMediaNode(node);
             progress.done(persisted ? "视频已添加到画布" : "视频已添加，项目资产待重试");
@@ -211,7 +213,7 @@ export function useCanvasUpload({
         }
     }, [appendPlacedNode, domainProjectId, message, persistMediaNode, selectInsertedNode, startUploadStatus]);
 
-    const createAudioFileNode = useCallback(async (file: File, position: Position) => {
+    const createAudioFileNode = useCallback(async (file: File, position: Position, options: CreateMediaNodeOptions = {}) => {
         const progress = startUploadStatus("上传音频", "读取音频文件", domainProjectId ? 4 : 3);
         try {
             progress.update("上传到服务器并同步资源", 2);
@@ -220,7 +222,7 @@ export function useCanvasUpload({
             const size = NODE_DEFAULT_SIZE[CanvasNodeType.Audio];
             const id = `audio-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
             const node = appendPlacedNode({ id, type: CanvasNodeType.Audio, title: file.name, position: { x: position.x - size.width / 2, y: position.y - size.height / 2 }, width: size.width, height: size.height, metadata: audioMetadata(audio) }, position);
-            selectInsertedNode(id, "preserve");
+            if (options.select !== false) selectInsertedNode(id, "preserve");
             if (domainProjectId) progress.update("写入项目资产", 4);
             const persisted = await persistMediaNode(node);
             progress.done(persisted ? "音频已添加到画布" : "音频已添加，项目资产待重试");
@@ -302,24 +304,26 @@ export function useCanvasUpload({
         setUploadModalOpen(false);
     }, []);
 
-    const handleUploadFiles = useCallback(async (files: File[]) => {
-        const supportedFiles = files.filter((file) => file.type.startsWith("image/") || file.type.startsWith("video/") || isAudioFile(file));
+    const handleUploadFiles = useCallback(async (files: File[]): Promise<CanvasUploadBatchResult> => {
+        const { supportedFiles, rejectedFiles } = partitionCanvasUploadFiles(files);
         if (!supportedFiles.length) {
             message.warning("请选择图片、视频、MP3 或 WAV 文件");
-            return false;
+            return { createdIds: [], failedFiles: [], rejectedFiles };
         }
         const center = uploadTargetRef.current?.position || getCanvasCenter();
         const createdIds: string[] = [];
+        const failedFiles: File[] = [];
         for (let index = 0; index < supportedFiles.length; index += 1) {
             const file = supportedFiles[index];
             const createdId = await (isAudioFile(file)
-                ? createAudioFileNode(file, center)
+                ? createAudioFileNode(file, center, { select: false })
                 : file.type.startsWith("video/")
-                  ? createVideoFileNode(file, center)
-                  : createImageFileNode(file, center));
+                  ? createVideoFileNode(file, center, { select: false })
+                  : createImageFileNode(file, center, { select: false }));
             if (createdId) createdIds.push(createdId);
+            else failedFiles.push(file);
         }
-        if (!createdIds.length) return false;
+        if (!createdIds.length) return { createdIds, failedFiles, rejectedFiles };
         const createdIdSet = new Set(createdIds);
         const createdNodes = nodesRef.current.filter((node) => createdIdSet.has(node.id));
         const untouchedNodes = nodesRef.current.filter((node) => !createdIdSet.has(node.id));
@@ -331,10 +335,9 @@ export function useCanvasUpload({
         setSelectedNodeIds(new Set(createdIds));
         setSelectedConnectionId(null);
         setDialogNodeId(null);
-        const failedCount = supportedFiles.length - createdIds.length;
-        if (failedCount) message.warning(`已添加 ${createdIds.length} 个文件，${failedCount} 个上传失败`);
+        if (failedFiles.length || rejectedFiles.length) message.warning(`已添加 ${createdIds.length} 个文件；${failedFiles.length} 个上传失败，${rejectedFiles.length} 个格式不支持，可保留失败项重试`);
         else message.success(`已添加 ${createdIds.length} 个文件到画布`);
-        return true;
+        return { createdIds, failedFiles, rejectedFiles };
     }, [createAudioFileNode, createImageFileNode, createVideoFileNode, getCanvasCenter, message, nodesRef, setDialogNodeId, setNodes, setSelectedConnectionId, setSelectedNodeIds]);
 
     // 时间线专用：把本地音视频文件上传为直连媒体（仅时间线作用域，不创建画布节点），返回媒体描述数组。
@@ -393,7 +396,7 @@ export function useCanvasUpload({
             const size = fitNodeSize(video.width || 1280, video.height || 720, VIDEO_NODE_MAX_SIZE.width, VIDEO_NODE_MAX_SIZE.height);
             const center = getCanvasCenter();
             const id = `video-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-            const node = {
+            const node = appendPlacedNode({
                 id,
                 type: CanvasNodeType.Video,
                 title,
@@ -401,8 +404,7 @@ export function useCanvasUpload({
                 width: size.width,
                 height: size.height,
                 metadata: { ...videoMetadata(video), status: NODE_STATUS_SUCCESS },
-            } satisfies CanvasNodeData;
-            setNodes((current) => [...current, node]);
+            } satisfies CanvasNodeData, center);
             selectInsertedNode(id, "preserve");
             if (domainProjectId) progress.update("写入项目资产", 4);
             const persisted = await persistMediaNode(node);
@@ -414,7 +416,7 @@ export function useCanvasUpload({
             message.error(details);
             return null;
         }
-    }, [domainProjectId, getCanvasCenter, message, persistMediaNode, selectInsertedNode, setNodes, startUploadStatus]);
+    }, [appendPlacedNode, domainProjectId, getCanvasCenter, message, persistMediaNode, selectInsertedNode, startUploadStatus]);
 
     const replaceNodeMedia = useCallback(async (nodeId: string, file: File) => {
         const currentNode = nodesRef.current.find((node) => node.id === nodeId);
@@ -612,13 +614,17 @@ export function useCanvasUpload({
             void createImageAssetNode(asset, screenToCanvas(event.clientX, event.clientY));
             return;
         }
-        const files = Array.from(event.dataTransfer.files).filter((item) => item.type.startsWith("image/") || item.type.startsWith("video/") || isAudioFile(item));
-        if (!files.length) return;
+        const files = Array.from(event.dataTransfer.files);
+        const { supportedFiles } = partitionCanvasUploadFiles(files);
+        if (!supportedFiles.length) {
+            if (files.length) message.warning("请选择图片、视频、MP3 或 WAV 文件");
+            return;
+        }
         if (files.length > 1) {
             void handleUploadFiles(files);
             return;
         }
-        const file = files[0];
+        const file = supportedFiles[0];
         const position = screenToCanvas(event.clientX, event.clientY);
         const target = [...nodesRef.current].reverse().find((node) => {
             const compatible = (node.type === CanvasNodeType.Image && file.type.startsWith("image/"))

@@ -2,6 +2,7 @@ import { expect, test } from "bun:test";
 
 import { getCanvasSelectionCapabilities } from "../src/lib/canvas/canvas-selection-capabilities";
 import { canvasNodeIntersectsRenderBounds } from "../src/lib/canvas/canvas-render-culling";
+import { partitionCanvasUploadFiles } from "../src/lib/canvas/canvas-upload-batch";
 import { normalizeToolbarPrefs } from "../src/lib/canvas/tool-registry";
 import { applyCanvasHistoryPatch, createCanvasHistoryPatch, type CanvasHistorySnapshot } from "../src/pages/canvas/use-canvas-history";
 import { CanvasNodeType, type CanvasNodeData } from "../src/types/canvas";
@@ -110,4 +111,34 @@ test("canvas owns one assistant transition and disables dock magnification in de
     expect(assistant).not.toContain("<motion.aside");
     expect(assistantColumn).toContain("translate3d");
     expect(toolbar).toContain("magnify={false}");
+});
+
+test("batch uploads report unsupported files and retain failed items without stealing focus", async () => {
+    const image = new File(["image"], "frame.png", { type: "image/png" });
+    const audio = new File(["audio"], "voice.mp3", { type: "audio/mpeg" });
+    const unsupported = new File(["text"], "notes.txt", { type: "text/plain" });
+    const partition = partitionCanvasUploadFiles([image, unsupported, audio]);
+    expect(partition.supportedFiles.map((file) => file.name)).toEqual(["frame.png", "voice.mp3"]);
+    expect(partition.rejectedFiles.map((file) => file.name)).toEqual(["notes.txt"]);
+
+    const upload = await Bun.file(new URL("../src/pages/canvas/use-canvas-upload.ts", import.meta.url)).text();
+    const modal = await Bun.file(new URL("../src/components/canvas/canvas-upload-modal.tsx", import.meta.url)).text();
+    expect(upload).toContain("{ select: false }");
+    expect(upload).toContain("failedFiles.push(file)");
+    expect(modal).toContain("setFileList((current) => current.filter");
+});
+
+test("timeline output shares collision-safe placement and share copy failures keep the created link", async () => {
+    const upload = await Bun.file(new URL("../src/pages/canvas/use-canvas-upload.ts", import.meta.url)).text();
+    const share = await Bun.file(new URL("../src/components/canvas/canvas-share-modal.tsx", import.meta.url)).text();
+    expect(upload).not.toContain("setNodes((current) => [...current, node])");
+    expect(upload).toContain("} satisfies CanvasNodeData, center);");
+    expect(share).toContain("分享链接已创建，但浏览器未能自动复制");
+    expect(share.indexOf("setShare(result.share)")).toBeLessThan(share.indexOf("await copy(url, true)"));
+});
+
+test("reduced motion stops spotlight pointer calculations instead of only hiding the result", async () => {
+    const spotlight = await Bun.file(new URL("../src/components/ui/aceternity/spotlight-surface.tsx", import.meta.url)).text();
+    expect(spotlight).toContain("if (!enabled || reducedMotion) return");
+    expect(spotlight).toContain("{enabled && !reducedMotion ? <motion.span");
 });
