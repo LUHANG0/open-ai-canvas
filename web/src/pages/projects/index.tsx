@@ -578,7 +578,7 @@ export default function ProjectsPage() {
                 open={generating}
                 footer={null}
                 closable={false}
-                maskClosable={false}
+                mask={{ closable: false }}
                 keyboard={false}
                 frameSize="lg"
             >

@@ -271,7 +271,7 @@ export function AssetLibraryPickerModal({
             title={<span>{title}</span>}
             destroyOnHidden
             closable={!working}
-            maskClosable={!working}
+            mask={{ closable: !working }}
             keyboard={!working}
             onCancel={() => {
                 if (!working) onClose();

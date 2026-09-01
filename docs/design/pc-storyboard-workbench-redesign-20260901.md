@@ -196,3 +196,71 @@ PC 镜头创作改为导演工作台结构：
 - `1024 × 768` 下视频容器为 `437 × 246px`；页面无横向溢出，舞台与输入器边界仍为 `524px`。
 - 修改范围：`web/src/pages/create/index.tsx`、`web/src/pages/create/creation-workspace.css`、`web/test/create-chat-shot-layout.test.ts` 与本记录。
 - 集中验证：前置门禁 25 pass，主测试 1113 pass，跨运行时测试 1 pass，生产构建通过。
+
+## 上线前 P0 回归与前端告警清理（2026-09-01）
+
+### 范围与回滚
+
+- 工作分支：`refactor/storyboard-workbench-polish-20260901`。
+- P0 开始前 Tag：`pc-launch-p0-r0-20260901`（`9df4ae4`）。
+- 仅修改 PC 前端兼容代码与本记录；后端、Admin、数据库、API 合同、权限、计费和业务规则均未修改。
+- 没有发起新的付费生成请求，没有重试失败任务，没有新增、删除或覆盖用户项目和素材。
+
+### 创作主链路回归
+
+| 场景 | 结果 |
+| ---- | ---- |
+| 真实历史恢复 | 2026-09-01 的 2 镜头会话可恢复；SC.01 失败状态和 SC.02 完成状态完整 |
+| 模式切换 | 连续对话与镜头创作按钮在两种模式下均为 `118.5 × 28px`，坐标保持不变 |
+| 结果操作 | 视频预览、下载、添加到画布、复用新镜头和失败重试入口均存在；未触发写操作 |
+| 镜头轨与草稿 | 轨道可收起和恢复；下一镜草稿可展开和收起，不覆盖舞台或输入区 |
+| 素材入口 | 本机上传、素材库入口均存在；素材库展示 17 个账号素材并按模型能力禁用不支持的类型 |
+| 生成方式 | 自动判断、文生视频、首/尾帧入口完整；不支持的全模态和音频驱动明确禁用 |
+| 可美 Token 模型 | `artsdance-2-5-pro-260801` 显示 `42 积分/百万 Token`，说明完成后按实际 usage 结算 |
+| 可美规格 | 720P/1080P、首尾帧、声音、4–30 秒能力可见；提交前按量计费提示正确 |
+| 固定价格模型 | `MiniMax-H3-open` 显示 480P/720P 分档及 `0.105–0.175 积分/秒`，5 秒 720P 预估 `0.875` |
+| 提交门禁 | 空提示词禁用提交；输入占位内容后按钮启用并显示价格；随后已清空，未提交 |
+
+### PC 页面与交互回归
+
+- 已覆盖 `/home`、`/projects`、`/canvas`、`/tasks`、`/assets`、`/skills`、`/plugins`、`/wallet`、`/settings`。
+- 设置页进一步覆盖个人渠道、模型选择、生成偏好、提示词偏好、对象存储和问题诊断 6 个分区。
+- 任务详情、素材详情、插件文档和项目创建表单均可正常打开与关闭；全部页面文档级横向溢出为 `0px`。
+- 浏览器复验未发现页面级错误、警告或可见 `alert`；本轮不测试 Admin 页面，也未修改 Admin 代码。
+
+### 前端兼容清理
+
+Ant Design 新版会将已废弃属性记录为控制台错误。本轮保持原交互语义不变，统一替换为新版写法：
+
+- Modal：`maskClosable` → `mask.closable`。
+- Modal：`focusTriggerAfterClose` → `focusable.focusTriggerAfterClose`。
+- Drawer：`width` → `size`。
+
+修改文件：
+
+- `web/src/components/assets/asset-library-picker-modal.tsx`
+- `web/src/components/canvas/canvas-upload-modal.tsx`
+- `web/src/components/ui/pc/forms.tsx`
+- `web/src/pages/plugins/plugin-details-dialog.tsx`
+- `web/src/pages/plugins/plugin-documentation-modals.tsx`
+- `web/src/pages/projects/index.tsx`
+- `web/src/pages/skills/skill-install-modal.tsx`
+- `docs/design/pc-storyboard-workbench-redesign-20260901.md`
+
+### 集中验证
+
+| 项目 | 结果 |
+| ---- | ---- |
+| 前置门禁 | 25 pass，0 fail，369 assertions |
+| TypeScript | `tsc --noEmit` 通过 |
+| 主测试 | 1113 pass，0 fail，7012 assertions |
+| 跨运行时测试 | 1 pass，0 fail，8 assertions |
+| 测试合计 | 1139 pass，0 fail |
+| 生产构建 | 通过，13,510 modules transformed，约 7.3 秒 |
+| 浏览器控制台 | 新开标签页复验创作素材弹窗、任务抽屉、插件文档和项目表单，0 error / 0 warning |
+| 差异检查 | `git diff --check` 通过；禁改目录无差异 |
+
+### 遗留项
+
+- Vite 仍提示部分产物压缩后超过 500 kB，属于既有的非阻断性能项；建议上线稳定后单独进行路由级拆包和动态加载优化。
+- 本轮未触发真实付费生成，因此“新建任务 → 上游完成 → 本地回填 → 实际 Token 结算”继续以既有真实历史、自动化测试和此前人工生成记录为依据。

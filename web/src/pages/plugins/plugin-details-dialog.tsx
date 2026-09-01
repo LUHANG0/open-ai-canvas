@@ -32,7 +32,7 @@ export function PluginDetailsDialog({ plugin, restoreFocus, onClose }: PluginDet
             centered
             footer={null}
             destroyOnHidden
-            focusTriggerAfterClose={restoreFocus}
+            focusable={{ focusTriggerAfterClose: restoreFocus }}
             onCancel={onClose}
             styles={{ body: { maxHeight: "min(78vh, 820px)", overflowY: "auto", overscrollBehavior: "contain" } }}
         >
