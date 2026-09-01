@@ -7,6 +7,7 @@ import { CanvasNode } from "@/components/canvas/canvas-node";
 import type { CanvasBatchConnectionPreview } from "@/lib/canvas/canvas-batch-connection";
 import type { CanvasResourceReference } from "@/lib/canvas/canvas-resource-references";
 import { isFrameNode } from "@/lib/canvas/canvas-frame";
+import { shouldReduceCanvasNodeMediaEffects } from "@/lib/canvas/canvas-performance-mode";
 import type { CanvasDisplayConnection, CanvasFolderStyle, CanvasFolderTheme, CanvasNodeData, ConnectionHandle, Position, SelectionBox } from "@/types/canvas";
 
 type DragPreview = { x: number; y: number; nodeIds: Set<string> } | null;
@@ -147,7 +148,11 @@ export const CanvasProjectWorldLayers = memo(function CanvasProjectWorldLayers(p
                         batchPrimary={Boolean(node.metadata?.batchRootId && props.nodeById.get(node.metadata.batchRootId)?.metadata?.primaryImageId === node.id)}
                         batchMotion={props.batchMotionById.get(node.id)}
                         showImageInfo={props.showImageInfo}
-                        reduceMediaEffects={props.reduceMediaEffects || props.mediaEffectsDisabledNodeId === node.id}
+                        reduceMediaEffects={shouldReduceCanvasNodeMediaEffects(props.reduceMediaEffects, {
+                            selected: props.selectedNodeIds.has(node.id),
+                            selectionSize: props.selectedNodeIds.size,
+                            forced: props.mediaEffectsDisabledNodeId === node.id,
+                        })}
                         resourceLabel={props.resourceReferenceByNodeId.get(node.id)}
                         mentionReferences={props.mentionReferencesByNodeId.get(node.id) || EMPTY_RESOURCE_REFERENCES}
                         renderNodeContent={props.renderCanvasNodeContent}

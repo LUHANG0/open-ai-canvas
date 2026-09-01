@@ -72,7 +72,6 @@ export function useCanvasRenderModel({
     scriptEditorNodeId,
     dialogNodeId,
 }: UseCanvasRenderModelOptions) {
-    const reduceMediaEffects = useMemo(() => shouldReduceCanvasMediaEffects(mediaPerformanceMode, nodes), [mediaPerformanceMode, nodes]);
     const nodeById = useMemo(() => new Map(nodes.map((node) => [node.id, node])), [nodes]);
     const semanticNodesRef = useRef(nodes);
     const semanticNodes = useMemo(() => {
@@ -102,6 +101,24 @@ export function useCanvasRenderModel({
         });
         return hidden;
     }, [collapsedBatchChildIds, collapsingBatchIds, nodeById, nodes]);
+    const visibleNodesForPerformance = useMemo(() => {
+        const scale = Math.max(viewport.k, 0.05);
+        const left = -viewport.x / scale;
+        const top = -viewport.y / scale;
+        const right = left + viewportSize.width / scale;
+        const bottom = top + viewportSize.height / scale;
+        return nodes.filter((node) => {
+            if (renderHiddenNodeIds.has(node.id)) return false;
+            return node.position.x + node.width > left
+                && node.position.x < right
+                && node.position.y + node.height > top
+                && node.position.y < bottom;
+        });
+    }, [nodes, renderHiddenNodeIds, viewport.k, viewport.x, viewport.y, viewportSize.height, viewportSize.width]);
+    const reduceMediaEffects = useMemo(
+        () => shouldReduceCanvasMediaEffects(mediaPerformanceMode, nodes, { viewportScale: viewport.k, visibleNodes: visibleNodesForPerformance }),
+        [mediaPerformanceMode, nodes, viewport.k, visibleNodesForPerformance],
+    );
     const connectionLayerBounds = useMemo(() => {
         const padding = (reduceMediaEffects ? 96 : 144) / Math.max(viewport.k, 0.05);
         const left = -viewport.x / viewport.k - padding;

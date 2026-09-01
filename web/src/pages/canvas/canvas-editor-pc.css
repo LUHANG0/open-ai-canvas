@@ -234,8 +234,9 @@
     }
 
     .pc-canvas-workspace .pc-canvas-assistant-column {
-        border-inline-start: 1px solid var(--pc-canvas-panel-border);
-        background: var(--pc-canvas-panel-surface);
+        /* 覆盖式抽屉外层包含顶栏避让区，必须保持透明；面板表面与边线由内层负责。 */
+        border-inline-start: 0;
+        background: transparent;
     }
 
     .pc-canvas-workspace .pc-canvas-assistant-column__resize::after {

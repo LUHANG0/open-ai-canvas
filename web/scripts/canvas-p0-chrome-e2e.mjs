@@ -508,10 +508,58 @@ async function interactionScenario(cdp) {
     })()`);
     assert(settingsLayout.count === 9 && settingsLayout.columns === 2 && settingsLayout.rows === 5 && settingsLayout.maxHeight <= 64, "B18 toolbar settings uses compact two-column rows", JSON.stringify(settingsLayout));
     assert(await activate('[aria-label="关闭工具栏设置"]') && await cdp.poll(`!document.querySelector('.canvas-toolbar-settings-modal')`, "toolbar settings closes"), "B19 toolbar settings closes");
-    assert(await activate('.pc-canvas-agent-button') && await cdp.poll(`!!document.querySelector('.pc-canvas-assistant-panel')`, "Agent panel opens"), "B20 Agent panel opens from the project bar");
+    const agentClosedBaseline = await cdp.evaluate(`(() => {
+        const viewport = document.querySelector('.pc-canvas-workspace__viewport');
+        if (!(viewport instanceof HTMLElement)) return null;
+        const rect = viewport.getBoundingClientRect();
+        return {
+            viewportWidth: rect.width,
+            mountedNodes: document.querySelectorAll('[data-node-id]').length,
+            mountedVideos: document.querySelectorAll('.pc-canvas-workspace__viewport video').length,
+            localMounted: Boolean(document.querySelector('[data-canvas-agent-mode="local"]')),
+        };
+    })()`);
+    assert(Boolean(agentClosedBaseline) && !agentClosedBaseline.localMounted, "B20 website Agent does not pre-mount the local runtime", JSON.stringify(agentClosedBaseline));
+    assert(
+        await activate('.pc-canvas-agent-button')
+            && await cdp.poll(`document.querySelector('.pc-canvas-assistant-column')?.getAttribute('data-state') === 'open' && document.querySelector('.pc-canvas-assistant-panel')?.getAttribute('aria-hidden') !== 'true'`, "Agent panel opens"),
+        "B21 Agent panel opens from the project bar",
+    );
+    const agentOpenLayout = await cdp.evaluate(`(() => {
+        const viewport = document.querySelector('.pc-canvas-workspace__viewport');
+        if (!(viewport instanceof HTMLElement)) return null;
+        const rect = viewport.getBoundingClientRect();
+        const panel = document.querySelector('.pc-canvas-assistant-column')?.getBoundingClientRect();
+        const panelColumn = document.querySelector('.pc-canvas-assistant-column');
+        const dock = document.querySelector('.canvas-floating-dock')?.getBoundingClientRect();
+        const trigger = document.querySelector('.pc-canvas-agent-button');
+        const triggerRect = trigger instanceof HTMLElement ? trigger.getBoundingClientRect() : null;
+        const triggerHit = triggerRect ? document.elementFromPoint(triggerRect.left + triggerRect.width / 2, triggerRect.top + triggerRect.height / 2) : null;
+        return {
+            viewportWidth: rect.width,
+            mountedNodes: document.querySelectorAll('[data-node-id]').length,
+            mountedVideos: document.querySelectorAll('.pc-canvas-workspace__viewport video').length,
+            localMounted: Boolean(document.querySelector('[data-canvas-agent-mode="local"]')),
+            columnBackgroundTransparent: panelColumn instanceof HTMLElement && ['transparent', 'rgba(0, 0, 0, 0)'].includes(getComputedStyle(panelColumn).backgroundColor),
+            dockPanelOverlap: panel && dock ? Math.max(0, Math.min(panel.right, dock.right) - Math.max(panel.left, dock.left)) : 0,
+            topbarTriggerReachable: trigger instanceof HTMLElement && triggerHit instanceof Node && (trigger === triggerHit || trigger.contains(triggerHit)),
+        };
+    })()`);
+    assert(
+        Boolean(agentOpenLayout)
+            && Math.abs(agentOpenLayout.viewportWidth - agentClosedBaseline.viewportWidth) < 1
+            && agentOpenLayout.mountedNodes === agentClosedBaseline.mountedNodes
+            && agentOpenLayout.mountedVideos === agentClosedBaseline.mountedVideos
+            && agentOpenLayout.columnBackgroundTransparent
+            && agentOpenLayout.dockPanelOverlap < 1
+            && agentOpenLayout.topbarTriggerReachable,
+        "B22 Agent overlays without resizing, reculling or covering primary canvas controls",
+        JSON.stringify({ closed: agentClosedBaseline, open: agentOpenLayout }),
+    );
+    assert(!agentOpenLayout.localMounted, "B23 website mode keeps the local Agent runtime lazy", JSON.stringify(agentOpenLayout));
     await cdp.evaluate(`document.querySelector('.pc-canvas-assistant-panel')?.setAttribute('data-e2e-panel-instance', 'stable')`);
-    assert(await activate('[aria-label="Agent 运行位置"] button:nth-of-type(2)') && await cdp.poll(`!!document.querySelector('[data-canvas-agent-mode="local"]')`, "local Agent mounts", 20000), "B21 local Agent loads after mode feedback");
-    assert(await activate('[aria-label="Agent 运行位置"] button:nth-of-type(1)'), "B22 Agent can switch back to website mode");
+    assert(await activate('[aria-label="Agent 运行位置"] button:nth-of-type(2)') && await cdp.poll(`!!document.querySelector('[data-canvas-agent-mode="local"]')`, "local Agent mounts", 20000), "B24 local Agent loads only after explicit mode selection");
+    assert(await activate('[aria-label="Agent 运行位置"] button:nth-of-type(1)'), "B25 Agent can switch back to website mode");
     const preservedLocalAgent = await cdp.evaluate(`(() => {
         const panel = document.querySelector('.pc-canvas-assistant-panel');
         const localLayer = document.querySelector('[data-canvas-agent-mode="local"]');
@@ -521,11 +569,37 @@ async function interactionScenario(cdp) {
             localHidden: localLayer instanceof HTMLElement && getComputedStyle(localLayer).display === 'none',
         };
     })()`);
-    assert(preservedLocalAgent.stablePanel && preservedLocalAgent.localStillMounted && preservedLocalAgent.localHidden, "B23 Agent mode switch preserves the panel and local session tree", JSON.stringify(preservedLocalAgent));
-    assert(await activate('[aria-label="Agent 运行位置"] button:nth-of-type(2)') && await cdp.poll(`document.querySelector('[aria-label="Agent 运行位置"] button:nth-of-type(2)')?.getAttribute('aria-pressed') === 'true'`, "local Agent returns"), "B24 returning to local Agent is immediate");
-    assert(!(await cdp.evaluate(`document.querySelector('.pc-canvas-assistant-panel')?.textContent?.includes('正在准备本机 Agent') || false`)), "B25 returning to local Agent does not rebuild the runtime");
-    assert(await activate('[aria-label="收起 Agent"]') && await cdp.poll(`!document.querySelector('.pc-canvas-assistant-panel')`, "Agent panel closes"), "B26 Agent panel closes on the shortened motion budget");
-    assert(cdp.problems.length === 0, "B27 no browser/network problems", JSON.stringify(cdp.problems));
+    assert(preservedLocalAgent.stablePanel && preservedLocalAgent.localStillMounted && preservedLocalAgent.localHidden, "B26 Agent mode switch preserves the panel and local session tree", JSON.stringify(preservedLocalAgent));
+    assert(await activate('[aria-label="Agent 运行位置"] button:nth-of-type(2)') && await cdp.poll(`document.querySelector('[aria-label="Agent 运行位置"] button:nth-of-type(2)')?.getAttribute('aria-pressed') === 'true'`, "local Agent returns"), "B27 returning to local Agent is immediate");
+    assert(!(await cdp.evaluate(`document.querySelector('.pc-canvas-assistant-panel')?.textContent?.includes('正在准备本机 Agent') || false`)), "B28 returning to local Agent does not rebuild the runtime");
+    assert(
+        await activate('[aria-label="收起 Agent"]')
+            && await cdp.poll(`(() => {
+                const column = document.querySelector('.pc-canvas-assistant-column');
+                const active = document.activeElement;
+                return column?.getAttribute('data-state') === 'closed'
+                    && column?.hasAttribute('inert')
+                    && document.querySelector('.pc-canvas-assistant-panel')?.getAttribute('aria-hidden') === 'true'
+                    && active instanceof HTMLElement
+                    && active.matches('.pc-canvas-agent-button, [aria-label="智能体"]');
+            })()`, "Agent panel closes"),
+        "B29 Agent panel closes inertly, restores focus and preserves its session tree",
+    );
+    assert(
+        await activate('.pc-canvas-agent-button')
+            && await cdp.poll(`document.querySelector('.pc-canvas-assistant-column')?.getAttribute('data-state') === 'open' && document.querySelector('.pc-canvas-assistant-panel')?.getAttribute('data-e2e-panel-instance') === 'stable'`, "Agent panel reopens"),
+        "B30 reopening Agent reuses the mounted panel instance",
+    );
+    const reopenedLocalAgent = await cdp.evaluate(`(() => {
+        const layer = document.querySelector('[data-canvas-agent-mode="local"]');
+        return {
+            exists: Boolean(layer),
+            visible: layer instanceof HTMLElement && getComputedStyle(layer).display !== 'none',
+        };
+    })()`);
+    assert(reopenedLocalAgent.exists && reopenedLocalAgent.visible, "B31 reopening Agent preserves the selected local mode and runtime", JSON.stringify(reopenedLocalAgent));
+    assert(await activate('[aria-label="收起 Agent"]') && await cdp.poll(`document.querySelector('.pc-canvas-assistant-column')?.getAttribute('data-state') === 'closed'`, "Agent panel closes after reopen"), "B32 Agent can be left safely collapsed");
+    assert(cdp.problems.length === 0, "B33 no browser/network problems", JSON.stringify(cdp.problems));
     return movedTransform;
 }
 
@@ -542,6 +616,12 @@ async function persistenceScenario(cdp, url, movedTransform) {
 
 async function compactViewportScenario(cdp) {
     console.log("\n=== D. 1024x768 PC viewport ===");
+    const activate = (selector) => cdp.evaluate(`(() => {
+        const element = document.querySelector(${JSON.stringify(selector)});
+        if (!(element instanceof HTMLElement)) return false;
+        element.click();
+        return true;
+    })()`);
     cdp.problems.length = 0;
     await cdp.send("Emulation.setDeviceMetricsOverride", { width: 1024, height: 768, deviceScaleFactor: 1, mobile: false });
     await cdp.poll(`document.querySelectorAll('[data-node-id]').length === 5 && !!document.querySelector('.pc-canvas-workspace')`, "compact layout settled", 20000);
@@ -565,7 +645,23 @@ async function compactViewportScenario(cdp) {
     assert(layout.width === 1024 && layout.height === 768, "D1 compact PC viewport applied", JSON.stringify(layout));
     assert(layout.nodes === 5 && layout.topbar && layout.dock && layout.zoom, "D2 canvas content and primary controls remain available", JSON.stringify(layout));
     assert(layout.overflow <= 1, "D3 no horizontal overflow at 1024x768", `overflow=${layout.overflow}`);
-    assert(cdp.problems.length === 0, "D4 no browser/network problems at compact viewport", JSON.stringify(cdp.problems));
+    assert(await activate('.pc-canvas-agent-button') && await cdp.poll(`document.querySelector('.pc-canvas-assistant-column')?.getAttribute('data-state') === 'open'`, "compact Agent opens"), "D4 compact PC can open Agent");
+    // Dock 与模式切换使用 200–300ms 的位置过渡，等待其进入最终可交互位置再测遮挡。
+    await sleep(380);
+    const compactOverlay = await cdp.evaluate(`(() => {
+        const panel = document.querySelector('.pc-canvas-assistant-column')?.getBoundingClientRect();
+        const dock = document.querySelector('.canvas-floating-dock')?.getBoundingClientRect();
+        const modeSwitch = document.querySelector('.pc-canvas-workspace__mode-switch')?.getBoundingClientRect();
+        return {
+            panel: panel ? { left: panel.left, right: panel.right, width: panel.width } : null,
+            dock: dock ? { left: dock.left, right: dock.right, width: dock.width } : null,
+            dockOverlap: panel && dock ? Math.max(0, Math.min(panel.right, dock.right) - Math.max(panel.left, dock.left)) : null,
+            modeSwitchOverlap: panel && modeSwitch ? Math.max(0, Math.min(panel.right, modeSwitch.right) - Math.max(panel.left, modeSwitch.left)) : 0,
+        };
+    })()`);
+    assert(compactOverlay.panel && compactOverlay.dock && compactOverlay.dockOverlap < 1 && compactOverlay.modeSwitchOverlap < 1, "D5 compact toolbar and mode switch remain outside the Agent drawer", JSON.stringify(compactOverlay));
+    assert(await activate('[aria-label="收起 Agent"]') && await cdp.poll(`document.querySelector('.pc-canvas-assistant-column')?.getAttribute('data-state') === 'closed'`, "compact Agent closes"), "D6 compact Agent can close");
+    assert(cdp.problems.length === 0, "D7 no browser/network problems at compact viewport", JSON.stringify(cdp.problems));
 }
 
 async function largeWorkspaceScenario(cdp, url) {

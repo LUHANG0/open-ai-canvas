@@ -1,7 +1,7 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { App, Button, Segmented, Tooltip } from "antd";
 import copyToClipboard from "copy-to-clipboard";
-import { CheckCircle2, Copy, ExternalLink, FolderOpen, History, LoaderCircle, PlugZap, Plus, RefreshCw, Terminal, Trash2 } from "lucide-react";
+import { CheckCircle2, ChevronDown, Copy, ExternalLink, FolderOpen, History, LoaderCircle, PlugZap, Plus, RefreshCw, Terminal, Trash2 } from "lucide-react";
 import { motion } from "motion/react";
 
 import { canvasThemes } from "@/lib/canvas-theme";
@@ -150,7 +150,7 @@ export const CanvasLocalAgentPanel = memo(function CanvasLocalAgentPanel({
         (clientId: string, nextSnapshot: CanvasAgentSnapshot) => {
             const stateHash = hashCanvasAgentSnapshot(nextSnapshot);
             if (runtimeStateHashRef.current !== stateHash) {
-                runtimeRevisionRef.current = runtimeStateHashRef.current ? runtimeRevisionRef.current + 1 : nextSnapshot.revision ?? 0;
+                runtimeRevisionRef.current = runtimeStateHashRef.current ? runtimeRevisionRef.current + 1 : (nextSnapshot.revision ?? 0);
                 runtimeStateHashRef.current = stateHash;
             }
             // Canvas Agent 的 canonical hash 是服务端 SHA-256；浏览器本地校验使用轻量 FNV hash。
@@ -405,14 +405,17 @@ export const CanvasLocalAgentPanel = memo(function CanvasLocalAgentPanel({
             addMessage({ role: "error", title: "本轮内容过大", text: "图片与技能包合计超过本地 Agent 单轮限制，请减少附件或只选择一个技能。" });
             return;
         }
-        await submitTurn({
-            text,
-            prompt: requestPrompt,
-            canvasId: snapshotRef.current.projectId,
-            threadId: useCanvasAgentStore.getState().activeThreadId || undefined,
-            attachments: files.map(({ name, type, dataUrl }) => ({ name, type, dataUrl })),
-            skills: skillBundles,
-        }, true);
+        await submitTurn(
+            {
+                text,
+                prompt: requestPrompt,
+                canvasId: snapshotRef.current.projectId,
+                threadId: useCanvasAgentStore.getState().activeThreadId || undefined,
+                attachments: files.map(({ name, type, dataUrl }) => ({ name, type, dataUrl })),
+                skills: skillBundles,
+            },
+            true,
+        );
     };
 
     const addAttachments = async (files: FileList | File[] | null) => {
@@ -475,7 +478,8 @@ export const CanvasLocalAgentPanel = memo(function CanvasLocalAgentPanel({
             addEventLog(toolName(payload.name), payload, payload);
             if (payload.name === "canvas_apply_ops") {
                 const currentSnapshot = snapshotRef.current;
-                if (typeof input.expectedRevision === "number" && input.expectedRevision !== runtimeRevisionRef.current) throw new Error(`画布 revision 已从 ${input.expectedRevision} 变为 ${runtimeRevisionRef.current}，请重新读取 canvas_get_context 后再执行写操作`);
+                if (typeof input.expectedRevision === "number" && input.expectedRevision !== runtimeRevisionRef.current)
+                    throw new Error(`画布 revision 已从 ${input.expectedRevision} 变为 ${runtimeRevisionRef.current}，请重新读取 canvas_get_context 后再执行写操作`);
                 // expectedStateHash is the Canvas Agent Runtime's canonical
                 // SHA-256 hash. The browser intentionally uses a different,
                 // synchronous fingerprint for local bookkeeping, so the
@@ -483,7 +487,13 @@ export const CanvasLocalAgentPanel = memo(function CanvasLocalAgentPanel({
                 // emitting this tool call. Comparing the two algorithms here
                 // would reject every valid local write.
                 const validation = validateCanvasAgentOps(currentSnapshot, (input.ops || []) as CanvasAgentOp[]);
-                if (!validation.ok) throw new Error(`画布操作校验失败：${validation.issues.filter((item) => item.severity === "error").map((item) => item.message).join("；")}`);
+                if (!validation.ok)
+                    throw new Error(
+                        `画布操作校验失败：${validation.issues
+                            .filter((item) => item.severity === "error")
+                            .map((item) => item.message)
+                            .join("；")}`,
+                    );
             }
             const result =
                 payload.name === "canvas_apply_ops"
@@ -500,28 +510,28 @@ export const CanvasLocalAgentPanel = memo(function CanvasLocalAgentPanel({
                       })()
                     : payload.name === "canvas_get_state" || payload.name === "canvas_export_snapshot"
                       ? snapshotRef.current
-                    : payload.name === "canvas_get_context"
-                      ? await readLocalCanvasContext()
-                      : payload.name === "canvas_find_nodes"
-                        ? findCanvasAgentNodes(snapshotRef.current, input as Parameters<typeof findCanvasAgentNodes>[1])
-                        : payload.name === "canvas_get_node"
-                          ? getCanvasAgentNode(snapshotRef.current, { id: requireString(input.id, "id") })
-                        : payload.name === "canvas_get_connection"
-                            ? getCanvasAgentConnection(snapshotRef.current, { id: requireString(input.id, "id") })
-                        : payload.name === "canvas_get_generation_tasks"
-                          ? getCanvasAgentGenerationTasks(snapshotRef.current, input as Parameters<typeof getCanvasAgentGenerationTasks>[1])
-                        : payload.name === "canvas_get_resources"
-                          ? getCanvasAgentResources(snapshotRef.current, input as Parameters<typeof getCanvasAgentResources>[1])
-                        : payload.name === "canvas_validate_ops"
-                            ? validateCanvasAgentOps(snapshotRef.current, (input.ops || []) as CanvasAgentOp[])
-                            : payload.name === "canvas_get_selection"
-                              ? (() => {
-                                    const ids = new Set(snapshotRef.current.selectedNodeIds || []);
-                                    return { nodes: snapshotRef.current.nodes.filter((node) => ids.has(node.id)) };
-                                })()
-                            : projectToolName
-                              ? await runProjectAgentTool(projectToolName, input, snapshotRef.current.domainProjectId)
-                              : snapshotRef.current;
+                      : payload.name === "canvas_get_context"
+                        ? await readLocalCanvasContext()
+                        : payload.name === "canvas_find_nodes"
+                          ? findCanvasAgentNodes(snapshotRef.current, input as Parameters<typeof findCanvasAgentNodes>[1])
+                          : payload.name === "canvas_get_node"
+                            ? getCanvasAgentNode(snapshotRef.current, { id: requireString(input.id, "id") })
+                            : payload.name === "canvas_get_connection"
+                              ? getCanvasAgentConnection(snapshotRef.current, { id: requireString(input.id, "id") })
+                              : payload.name === "canvas_get_generation_tasks"
+                                ? getCanvasAgentGenerationTasks(snapshotRef.current, input as Parameters<typeof getCanvasAgentGenerationTasks>[1])
+                                : payload.name === "canvas_get_resources"
+                                  ? getCanvasAgentResources(snapshotRef.current, input as Parameters<typeof getCanvasAgentResources>[1])
+                                  : payload.name === "canvas_validate_ops"
+                                    ? validateCanvasAgentOps(snapshotRef.current, (input.ops || []) as CanvasAgentOp[])
+                                    : payload.name === "canvas_get_selection"
+                                      ? (() => {
+                                            const ids = new Set(snapshotRef.current.selectedNodeIds || []);
+                                            return { nodes: snapshotRef.current.nodes.filter((node) => ids.has(node.id)) };
+                                        })()
+                                      : projectToolName
+                                        ? await runProjectAgentTool(projectToolName, input, snapshotRef.current.domainProjectId)
+                                        : snapshotRef.current;
             await postToolResult(clientIdRef.current, { requestId: payload.requestId, result });
             if (payload.name === "canvas_apply_ops") syncState(clientIdRef.current, (result as { snapshot?: CanvasAgentSnapshot }).snapshot || snapshotRef.current);
             setAgentState({ activity: "工具完成", waiting: true });
@@ -743,33 +753,35 @@ export const CanvasLocalAgentPanel = memo(function CanvasLocalAgentPanel({
 
     const content = (
         <>
-            <div className="flex min-h-8 shrink-0 items-center justify-end gap-1 px-3 pb-1">
-                <div className="mr-auto min-w-0 truncate px-1 text-[var(--fs-tiny)]" style={{ color: connected ? "#16a34a" : theme.node.muted }}>
-                    {connected ? "本机 Agent 已连接" : canvasAgentConnectionStatusText({ enabled, connected, activity, connectError })}
+            {connected ? (
+                <div className="flex min-h-9 shrink-0 items-center gap-2 px-3 pb-1">
+                    <div className="mr-auto inline-flex min-w-0 items-center gap-1.5 text-[var(--fs-label)]" style={{ color: theme.node.muted }}>
+                        <span className="size-1.5 shrink-0 rounded-full bg-green-500" />
+                        <span className="shrink-0 font-medium" style={{ color: theme.node.text }}>
+                            本机运行
+                        </span>
+                        <span className="truncate">{activity || "已连接"}</span>
+                    </div>
+                    <Tooltip title={threads.length ? `历史会话 · ${threads.length}` : "历史会话"}>
+                        <Button
+                            type="text"
+                            className={`!h-7 !min-w-7 !px-1.5 ${activeTab === "history" ? "font-medium" : ""}`}
+                            style={{ color: activeTab === "history" ? theme.node.text : theme.node.muted, background: activeTab === "history" ? theme.spatial.surface : "transparent" }}
+                            icon={<History className="size-3.5" />}
+                            onClick={() => setAgentState({ activeTab: activeTab === "history" ? "chat" : "history" })}
+                            aria-label="打开历史会话"
+                        >
+                            {threads.length ? <span className="text-[var(--fs-tiny)] tabular-nums">{threads.length}</span> : null}
+                        </Button>
+                    </Tooltip>
+                    <Tooltip title="新对话">
+                        <Button type="text" shape="circle" className="!h-7 !w-7 !min-w-7" disabled={loadingThreads} style={{ color: theme.node.muted }} icon={<Plus className="size-3.5" />} onClick={() => void startNewThread()} aria-label="新建对话" />
+                    </Tooltip>
                 </div>
-                {!connected ? (
-                    <Button size="small" type={enabled ? "default" : "primary"} className="!h-7 !px-2.5" icon={<PlugZap className="size-3.5" />} onClick={toggleAgentConnection}>
-                        {enabled ? "连接中" : "连接"}
-                    </Button>
-                ) : null}
-                <Tooltip title={threads.length ? `历史会话 · ${threads.length}` : "历史会话"}>
-                    <Button type="text" className={`!h-7 !min-w-7 !px-1.5 ${activeTab === "history" ? "font-medium" : ""}`} style={{ color: activeTab === "history" ? theme.node.text : theme.node.muted, background: activeTab === "history" ? theme.spatial.surface : "transparent" }} icon={<History className="size-3.5" />} onClick={() => setAgentState({ activeTab: activeTab === "history" ? "chat" : "history" })} aria-label="打开历史会话">
-                        {threads.length ? <span className="text-[var(--fs-tiny)] tabular-nums">{threads.length}</span> : null}
-                    </Button>
-                </Tooltip>
-                <Tooltip title="新对话">
-                    <Button type="text" shape="circle" className="!h-7 !w-7 !min-w-7" disabled={!connected || loadingThreads} style={{ color: theme.node.muted }} icon={<Plus className="size-3.5" />} onClick={() => void startNewThread()} aria-label="新建对话" />
-                </Tooltip>
-            </div>
+            ) : null}
 
             {!connected ? (
-                <AgentConnectView
-                    theme={theme}
-                    enabled={enabled}
-                    activity={activity}
-                    connectError={connectError}
-                    onToggleEnabled={toggleAgentConnection}
-                />
+                <AgentConnectView theme={theme} enabled={enabled} activity={activity} connectError={connectError} onToggleEnabled={toggleAgentConnection} />
             ) : activeTab === "history" ? (
                 <AgentHistoryView
                     theme={theme}
@@ -797,7 +809,16 @@ export const CanvasLocalAgentPanel = memo(function CanvasLocalAgentPanel({
                             />
                         ) : null}
                         {messages.map((item) => (
-                            <AgentChatMessage key={item.id} item={agentMessageToChatMessage(item)} theme={theme} user={user} isStreaming={(sending || waiting) && item.id === messages.at(-1)?.id && item.role === "assistant"} retrying={sending && item.id === retryMessageId} onRetry={item.id === retryMessageId && retryTurn ? () => void submitTurn(retryTurn, false) : undefined} onQuickAction={(text) => void sendPrompt(text)} />
+                            <AgentChatMessage
+                                key={item.id}
+                                item={agentMessageToChatMessage(item)}
+                                theme={theme}
+                                user={user}
+                                isStreaming={(sending || waiting) && item.id === messages.at(-1)?.id && item.role === "assistant"}
+                                retrying={sending && item.id === retryMessageId}
+                                onRetry={item.id === retryMessageId && retryTurn ? () => void submitTurn(retryTurn, false) : undefined}
+                                onQuickAction={(text) => void sendPrompt(text)}
+                            />
                         ))}
                         {pendingTool ? (
                             <AgentPendingToolCard
@@ -810,31 +831,33 @@ export const CanvasLocalAgentPanel = memo(function CanvasLocalAgentPanel({
                         ) : null}
                         {waiting && !pendingTool ? <AgentWorkingMessage theme={theme} /> : null}
                     </div>
-                    <AgentChatComposer
-                        prompt={prompt}
-                        attachments={attachments.map(agentAttachmentToChatAttachment)}
-                        disabled={!connected}
-                        sending={sending || waiting}
-                        placeholder="询问 Codex，或让它操作画布"
-                        theme={theme}
-                        references={composerReferences}
-                        slashSkills={composerSkills}
-                        includeAssetLibrary
-                        onPromptChange={(prompt) => setAgentState({ prompt })}
-                        onSubmit={sendPrompt}
-                        onAddFiles={addAttachments}
-                        onRemoveAttachment={removeAttachment}
-                        left={
-                            <>
-                                <VoiceRecordingButton disabled={!connected || sending || waiting} onTranscribed={(text) => setAgentState({ prompt: prompt.trim() ? `${prompt} ${text}` : text })} />
-                                {attachments.length ? (
-                                    <span className="text-[var(--fs-label)]" style={{ color: theme.node.muted }}>
-                                        {formatBytes(attachmentPayloadBytes(attachments))} / 30MB
-                                    </span>
-                                ) : null}
-                            </>
-                        }
-                    />
+                    <div className="shrink-0">
+                        <AgentChatComposer
+                            prompt={prompt}
+                            attachments={attachments.map(agentAttachmentToChatAttachment)}
+                            disabled={!connected}
+                            sending={sending || waiting}
+                            placeholder="询问 Codex，或让它操作画布"
+                            theme={theme}
+                            references={composerReferences}
+                            slashSkills={composerSkills}
+                            includeAssetLibrary
+                            onPromptChange={(prompt) => setAgentState({ prompt })}
+                            onSubmit={sendPrompt}
+                            onAddFiles={addAttachments}
+                            onRemoveAttachment={removeAttachment}
+                            left={
+                                <>
+                                    <VoiceRecordingButton disabled={!connected || sending || waiting} onTranscribed={(text) => setAgentState({ prompt: prompt.trim() ? `${prompt} ${text}` : text })} />
+                                    {attachments.length ? (
+                                        <span className="text-[var(--fs-label)]" style={{ color: theme.node.muted }}>
+                                            {formatBytes(attachmentPayloadBytes(attachments))} / 30MB
+                                        </span>
+                                    ) : null}
+                                </>
+                            }
+                        />
+                    </div>
                 </>
             )}
         </>
@@ -937,21 +960,10 @@ function AgentLogView({
     );
 }
 
-function AgentConnectView({
-    theme,
-    enabled,
-    activity,
-    connectError,
-    onToggleEnabled,
-}: {
-    theme: (typeof canvasThemes)[keyof typeof canvasThemes];
-    enabled: boolean;
-    activity: string;
-    connectError: string;
-    onToggleEnabled: () => void;
-}) {
+function AgentConnectView({ theme, enabled, activity, connectError, onToggleEnabled }: { theme: (typeof canvasThemes)[keyof typeof canvasThemes]; enabled: boolean; activity: string; connectError: string; onToggleEnabled: () => void }) {
     const { message } = App.useApp();
     const [platform, setPlatform] = useState<LocalAgentSetupPlatform>(() => detectLocalAgentSetupPlatform());
+    const [setupOpen, setSetupOpen] = useState(false);
     const origin = typeof window === "undefined" ? "http://localhost:3000" : window.location.origin;
     const commands = buildLocalAgentSetupCommands(origin, platform);
     const statusText = canvasAgentConnectionStatusText({ enabled, connected: false, activity, connectError });
@@ -964,118 +976,160 @@ function AgentConnectView({
         message.warning("复制失败，请手动复制");
     };
     return (
-        <div className="thin-scrollbar min-h-0 flex-1 overflow-y-auto p-4">
-            <div className="mx-auto w-full max-w-[620px] space-y-5 pb-4">
+        <div className="thin-scrollbar min-h-0 flex-1 overflow-y-auto px-3 pb-4 pt-2">
+            <div className="mx-auto w-full max-w-[520px] space-y-3 pb-3">
                 <div>
-                    <div className="text-base font-semibold leading-6">连接本地 Agent</div>
-                    <div className="mt-1 text-xs leading-5" style={{ color: theme.node.muted }}>
-                        在这台电脑启动 Canvas Agent 后，网页会通过 127.0.0.1 建立本机安全连接。连接成功后，这里会自动恢复原对话。
-                    </div>
+                    <div className="text-[15px] font-semibold leading-6">连接本机 Agent</div>
+                    <p className="mt-0.5 text-xs leading-5" style={{ color: theme.node.muted }}>
+                        运行在这台电脑上。连接成功后，这里会自动恢复原对话。
+                    </p>
                 </div>
-                <div className="rounded-md p-3" style={{ background: theme.spatial.surface }}>
-                    <div className="flex flex-wrap items-start justify-between gap-3">
+                <section className="rounded-lg p-3" style={{ background: theme.spatial.surface, boxShadow: `inset 0 0 0 1px ${theme.node.stroke}` }} aria-label="本机 Agent 连接状态">
+                    <div className="flex items-center justify-between gap-3">
                         <div className="min-w-0 flex-1">
                             <div className="flex min-w-0 items-center gap-2">
-                                <span className="shrink-0 text-sm font-medium leading-5">网页连接</span>
-                                <span className="inline-flex min-w-0 items-center gap-1.5 rounded-full px-2 py-0.5 text-[var(--fs-label)] leading-4" style={{ background: theme.node.fill, color: statusColor }}>
+                                <span className="shrink-0 text-sm font-medium leading-5">本机 Runtime</span>
+                                <span className="inline-flex min-w-0 items-center gap-1.5 rounded-full px-2 py-0.5 text-[var(--fs-label)] leading-4" style={{ background: theme.node.fill, color: statusColor }} aria-live="polite">
                                     {enabled ? <LoaderCircle className="size-3 shrink-0 animate-spin" /> : <span className="size-1.5 shrink-0 rounded-full" style={{ background: statusColor }} />}
                                     <span className="truncate">{statusText}</span>
                                 </span>
                             </div>
-                            <div className="mt-1 text-xs leading-5" style={{ color: theme.node.muted }}>
-                                {enabled ? "正在检测本机 127.0.0.1:17371；服务启动后会自动连接。" : "先完成下面两步，再点击连接。"}
+                            <div className="mt-1 truncate text-[var(--fs-label)] leading-4" style={{ color: theme.node.muted }} title={enabled ? "正在检测本机 127.0.0.1:17371" : "可直接检测，未安装时再展开下方指引"}>
+                                {enabled ? "正在检测 127.0.0.1:17371" : "已启动可直接检测，未安装请看下方指引"}
                             </div>
                         </div>
-                        <Button className="!h-8 !px-3" type={enabled ? "default" : "primary"} icon={<PlugZap className="size-4" />} onClick={onToggleEnabled}>
-                            {enabled ? "停止重试" : connectError ? "重新连接" : "开始连接"}
+                        <Button className="!h-8 shrink-0 !px-3" type={enabled ? "default" : "primary"} icon={<PlugZap className="size-4" />} onClick={onToggleEnabled} aria-label={enabled ? "停止检测本机 Agent" : "检测并连接本机 Agent"}>
+                            {enabled ? "停止检测" : connectError ? "重新检测" : "检测连接"}
                         </Button>
                     </div>
-                    <div className="mt-3 grid gap-2.5">
-                        {connectError ? (
-                            <div className="rounded-md px-2.5 py-2 text-xs leading-5" style={{ background: "rgba(220,38,38,.08)", color: "#dc2626" }}>
-                                {connectError}
-                            </div>
-                        ) : null}
-                    </div>
-                </div>
+                    {connectError ? (
+                        <div className="mt-2 rounded-md px-2.5 py-2 text-xs leading-5" style={{ background: "rgba(220,38,38,.08)", color: "#dc2626" }}>
+                            {connectError}
+                        </div>
+                    ) : null}
+                </section>
 
-                <div>
-                    <section className="border-b pb-4" style={{ borderColor: theme.node.stroke }}>
-                        <div className="flex items-start gap-3">
-                            <span className="grid size-6 shrink-0 place-items-center rounded-full text-xs font-semibold" style={{ background: theme.node.fill, color: theme.node.text }}>1</span>
-                            <div className="min-w-0 flex-1">
-                                <div className="flex flex-wrap items-center justify-between gap-2">
-                                    <div>
+                <section className="overflow-hidden rounded-lg" style={{ boxShadow: `inset 0 0 0 1px ${theme.node.stroke}` }}>
+                    <button
+                        type="button"
+                        className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left"
+                        onClick={() => setSetupOpen((value) => !value)}
+                        aria-expanded={setupOpen}
+                        aria-controls="canvas-local-agent-setup"
+                        aria-label={setupOpen ? "收起本机 Agent 安装与启动指引" : "展开本机 Agent 安装与启动指引"}
+                    >
+                        <span className="grid size-8 shrink-0 place-items-center rounded-lg" style={{ background: theme.spatial.surface, color: theme.node.muted }}>
+                            <Terminal className="size-4" />
+                        </span>
+                        <span className="min-w-0 flex-1">
+                            <span className="block text-sm font-medium leading-5">安装与启动</span>
+                            <span className="block truncate text-[var(--fs-label)] leading-4" style={{ color: theme.node.muted }}>
+                                未安装 Runtime？按 2 步完成设置
+                            </span>
+                        </span>
+                        <span className="shrink-0 text-[var(--fs-label)]" style={{ color: theme.node.muted }}>
+                            2 步
+                        </span>
+                        <ChevronDown className={`size-4 shrink-0 transition-transform duration-200 ${setupOpen ? "rotate-180" : ""}`} style={{ color: theme.node.muted }} />
+                    </button>
+
+                    {setupOpen ? (
+                        <div id="canvas-local-agent-setup" className="border-t px-3 pb-3 pt-2.5" style={{ borderColor: theme.node.stroke }}>
+                            <Segmented
+                                block
+                                size="small"
+                                value={platform}
+                                options={[
+                                    { label: "macOS / Linux", value: "unix" },
+                                    { label: "Windows", value: "windows" },
+                                ]}
+                                onChange={(value) => setPlatform(value as LocalAgentSetupPlatform)}
+                                aria-label="本机 Agent 安装平台"
+                            />
+
+                            <div className="mt-3 space-y-3">
+                                <div className="flex items-start gap-2.5">
+                                    <span className="grid size-6 shrink-0 place-items-center rounded-full text-xs font-semibold" style={{ background: theme.node.fill, color: theme.node.text }}>
+                                        1
+                                    </span>
+                                    <div className="min-w-0 flex-1">
                                         <div className="text-sm font-medium leading-5">安装本机 Runtime</div>
-                                        <div className="mt-1 text-xs leading-5" style={{ color: theme.node.muted }}>需要 Git、Node.js 18+。当前版本从 GitHub 源码安装。</div>
+                                        <div className="text-[var(--fs-label)] leading-4" style={{ color: theme.node.muted }}>
+                                            需要 Git 与 Node.js 18+
+                                        </div>
+                                        <CommandBlock label="安装命令" value={commands.install} theme={theme} onCopy={() => copyCommand(commands.install, "安装命令")} />
                                     </div>
-                                    <Segmented
-                                        size="small"
-                                        value={platform}
-                                        options={[
-                                            { label: "macOS / Linux", value: "unix" },
-                                            { label: "Windows", value: "windows" },
-                                        ]}
-                                        onChange={(value) => setPlatform(value as LocalAgentSetupPlatform)}
-                                    />
                                 </div>
-                                <CommandBlock value={commands.install} theme={theme} onCopy={() => copyCommand(commands.install, "安装命令")} />
-                            </div>
-                        </div>
-                    </section>
 
-                    <section className="border-b py-4" style={{ borderColor: theme.node.stroke }}>
-                        <div className="flex items-start gap-3">
-                            <span className="grid size-6 shrink-0 place-items-center rounded-full text-xs font-semibold" style={{ background: theme.node.fill, color: theme.node.text }}>2</span>
-                            <div className="min-w-0 flex-1">
-                                <div className="text-sm font-medium leading-5">启动并授权当前站点</div>
-                                <div className="mt-1 text-xs leading-5" style={{ color: theme.node.muted }}>
-                                    命令已绑定 <span className="font-mono">{origin}</span>。保持终端运行，再回到上方开始连接。
+                                <div className="flex items-start gap-2.5">
+                                    <span className="grid size-6 shrink-0 place-items-center rounded-full text-xs font-semibold" style={{ background: theme.node.fill, color: theme.node.text }}>
+                                        2
+                                    </span>
+                                    <div className="min-w-0 flex-1">
+                                        <div className="text-sm font-medium leading-5">启动并授权当前站点</div>
+                                        <div className="truncate text-[var(--fs-label)] leading-4" style={{ color: theme.node.muted }} title={origin}>
+                                            已绑定 {origin}
+                                        </div>
+                                        <CommandBlock label="启动命令" value={commands.start} theme={theme} onCopy={() => copyCommand(commands.start, "启动命令")} />
+                                    </div>
                                 </div>
-                                <CommandBlock value={commands.start} theme={theme} onCopy={() => copyCommand(commands.start, "启动命令")} />
                             </div>
                         </div>
-                    </section>
+                    ) : null}
+                </section>
 
-                    <section className="pt-4">
-                        <div className="flex items-start gap-3">
-                            <span className="grid size-6 shrink-0 place-items-center rounded-full" style={{ background: theme.node.fill, color: theme.node.text }}><CheckCircle2 className="size-3.5" /></span>
-                            <div className="min-w-0 flex-1 text-xs leading-5" style={{ color: theme.node.muted }}>
-                                <div className="text-sm font-medium" style={{ color: theme.node.text }}>当前支持范围</div>
-                                <div className="mt-1">网页侧边栏使用 Codex；外部 MCP 已提供 Codex 与 Claude Code 接入。Hermes、WorkBuddy 尚未验证。Codex 需要已登录或配置可用凭据。</div>
-                                <Button type="link" size="small" className="mt-1 !h-7 !px-0" href="https://github.com/ddcat-ai/open-ai-canvas/tree/main/canvas-agent" target="_blank" rel="noreferrer" icon={<ExternalLink className="size-3.5" />}>
-                                    查看完整说明
-                                </Button>
-                            </div>
+                <div className="flex items-start gap-2.5 rounded-lg px-3 py-2.5" style={{ background: theme.spatial.surface }}>
+                    <CheckCircle2 className="mt-0.5 size-4 shrink-0" style={{ color: theme.node.muted }} />
+                    <div className="min-w-0 flex-1 text-[var(--fs-label)] leading-4" style={{ color: theme.node.muted }}>
+                        <div className="font-medium" style={{ color: theme.node.text }}>
+                            当前支持范围
                         </div>
-                    </section>
+                        <div className="mt-0.5">网页 Codex，以及通过 MCP 接入 Codex 与 Claude Code。</div>
+                    </div>
+                    <Button
+                        type="link"
+                        size="small"
+                        className="!-mt-1 !h-6 shrink-0 !px-0"
+                        href="https://github.com/ddcat-ai/open-ai-canvas/tree/main/canvas-agent"
+                        target="_blank"
+                        rel="noreferrer"
+                        icon={<ExternalLink className="size-3.5" />}
+                        aria-label="查看本机 Agent 完整说明"
+                    >
+                        说明
+                    </Button>
                 </div>
             </div>
         </div>
     );
 }
 
-function CommandBlock({
-    value,
-    theme,
-    onCopy,
-}: {
-    value: string;
-    theme: (typeof canvasThemes)[keyof typeof canvasThemes];
-    onCopy: () => void | Promise<void>;
-}) {
+function CommandBlock({ label, value, theme, onCopy }: { label: string; value: string; theme: (typeof canvasThemes)[keyof typeof canvasThemes]; onCopy: () => void | Promise<void> }) {
+    const [expanded, setExpanded] = useState(false);
     return (
-        <div className="mt-3 overflow-hidden rounded-md" style={{ background: "rgba(0,0,0,.22)" }}>
-            <div className="flex items-center justify-between gap-2 border-b px-3 py-1.5" style={{ borderColor: theme.node.stroke }}>
-                <span className="inline-flex items-center gap-1.5 text-[var(--fs-label)]" style={{ color: theme.node.muted }}>
-                    <Terminal className="size-3.5" />
-                    终端命令
-                </span>
+        <div className="mt-1.5 overflow-hidden rounded-md" style={{ background: "rgba(0,0,0,.16)" }}>
+            <div className="flex min-h-8 items-center gap-1 px-1.5">
+                <button
+                    type="button"
+                    className="flex min-w-0 flex-1 items-center gap-1.5 px-1.5 text-left text-[var(--fs-label)]"
+                    style={{ color: theme.node.muted }}
+                    onClick={() => setExpanded((value) => !value)}
+                    aria-expanded={expanded}
+                    aria-label={expanded ? `收起${label}` : `展开${label}`}
+                >
+                    <Terminal className="size-3.5 shrink-0" />
+                    <span className="truncate">{label}</span>
+                    <ChevronDown className={`ml-auto size-3.5 shrink-0 transition-transform duration-200 ${expanded ? "rotate-180" : ""}`} />
+                </button>
                 <Button type="text" size="small" className="!h-6 !px-1.5" icon={<Copy className="size-3.5" />} onClick={() => void onCopy()} aria-label="复制终端命令">
                     复制
                 </Button>
             </div>
-            <pre className="thin-scrollbar overflow-x-auto whitespace-pre p-3 font-mono text-[11px] leading-5" style={{ color: theme.node.text }}>{value}</pre>
+            {expanded ? (
+                <pre className="thin-scrollbar overflow-x-auto whitespace-pre border-t p-2.5 font-mono text-[11px] leading-5" style={{ borderColor: theme.node.stroke, color: theme.node.text }}>
+                    {value}
+                </pre>
+            ) : null}
         </div>
     );
 }
@@ -1315,7 +1369,19 @@ function toolName(name: string) {
 }
 
 function isReadTool(name: string) {
-    return name === "canvas_get_state" || name === "canvas_get_context" || name === "canvas_find_nodes" || name === "canvas_get_node" || name === "canvas_get_connection" || name === "canvas_get_generation_tasks" || name === "canvas_get_resources" || name === "canvas_validate_ops" || name === "canvas_get_selection" || name === "canvas_export_snapshot" || isProjectAgentReadTool(name);
+    return (
+        name === "canvas_get_state" ||
+        name === "canvas_get_context" ||
+        name === "canvas_find_nodes" ||
+        name === "canvas_get_node" ||
+        name === "canvas_get_connection" ||
+        name === "canvas_get_generation_tasks" ||
+        name === "canvas_get_resources" ||
+        name === "canvas_validate_ops" ||
+        name === "canvas_get_selection" ||
+        name === "canvas_export_snapshot" ||
+        isProjectAgentReadTool(name)
+    );
 }
 
 function isMcpToolItem(item?: AgentEventItem) {

@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 
 // 根据视口宽度动态计算面板宽度约束，避免小屏幕上面板挤压画布
 export function getPanelWidthBounds(): { min: number; max: number } {
@@ -9,9 +9,9 @@ export function getPanelWidthBounds(): { min: number; max: number } {
     return { min: 360, max: 760 };
 }
 
-// 智能体面板列包裹器：承载面板宽度管理、resize 拖拽和顶部停靠偏移。
-// 面板始终作为 flex 子元素避让画布；topInset 用于避让绝对定位的顶部栏（沉浸专注时顶部栏隐藏，传 0）。
-// closing 期间保持宽度和渲染，让面板播放滑出动画；动画结束后由父组件卸载列。
+// 智能体面板包裹器：承载宽度管理、resize 拖拽和顶部停靠偏移。
+// 列使用绝对定位覆盖在画布上，不再作为 flex 子元素参与 viewport 宽度计算。
+// 首次打开后列保持挂载；closing 代表已收起，通过 transform 移出视口并禁止交互。
 export function AssistantPanelColumn({
     width,
     closing,
@@ -27,6 +27,15 @@ export function AssistantPanelColumn({
 }) {
     const columnRef = useRef<HTMLDivElement>(null);
     const [resizing, setResizing] = useState(false);
+
+    useEffect(() => {
+        if (!closing) return;
+        const frame = window.requestAnimationFrame(() => {
+            const trigger = document.querySelector<HTMLElement>(".pc-canvas-agent-button, [aria-label='智能体']");
+            trigger?.focus({ preventScroll: true });
+        });
+        return () => window.cancelAnimationFrame(frame);
+    }, [closing]);
 
     // 拖拽时列右边缘固定（flex 末位），左边缘随鼠标移动。
     const startResize = useCallback((event: React.MouseEvent) => {
@@ -53,14 +62,26 @@ export function AssistantPanelColumn({
     return (
         <div
             ref={columnRef}
-            className="pc-canvas-assistant-column relative flex shrink-0 overflow-hidden"
+            className="pc-canvas-assistant-column absolute inset-y-0 right-0 z-[var(--z-panel-floating)] flex max-w-[calc(100%_-_24px)] overflow-hidden"
+            data-canvas-no-zoom
+            data-overlay="true"
+            data-state={closing ? "closed" : "open"}
+            aria-hidden={closing}
+            inert={closing}
             style={{
                 width,
                 paddingTop: topInset,
-                transition: resizing ? "none" : "width var(--motion-dur-base-calc) var(--motion-ease-out), padding-top var(--motion-dur-base-calc) var(--motion-ease-out)",
+                opacity: closing ? 0 : 1,
+                // 顶部 padding 只用于避让顶栏，外层不拦截该区域的点击。
+                pointerEvents: "none",
+                transform: closing ? "translate3d(100%, 0, 0)" : "translate3d(0, 0, 0)",
+                transition: resizing
+                    ? "none"
+                    : "width var(--motion-dur-base-calc) var(--motion-ease-out), padding-top var(--motion-dur-base-calc) var(--motion-ease-out), transform var(--motion-dur-base-calc) var(--motion-ease-out), opacity var(--motion-dur-fast-calc) var(--motion-ease-out)",
+                willChange: closing ? "transform, opacity" : "auto",
             }}
         >
-            <div className="h-full w-full">
+            <div className={`h-full w-full ${closing ? "pointer-events-none" : "pointer-events-auto"}`}>
                 {!closing ? (
                     <button
                         type="button"

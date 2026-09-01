@@ -9,6 +9,7 @@ import { useThemeStore } from "@/stores/use-theme-store";
 type CanvasFocusModeBarProps = {
     dockRevealed: boolean;
     agentOpen: boolean;
+    rightInset?: number;
     zoomPercent: number;
     onToggleDock: () => void;
     onToggleAgent: () => void;
@@ -18,7 +19,7 @@ type CanvasFocusModeBarProps = {
     onFit: () => void;
 };
 
-export function CanvasFocusModeBar({ dockRevealed, agentOpen, zoomPercent, onToggleDock, onToggleAgent, onExit, onZoomIn, onZoomOut, onFit }: CanvasFocusModeBarProps) {
+export function CanvasFocusModeBar({ dockRevealed, agentOpen, rightInset = 0, zoomPercent, onToggleDock, onToggleAgent, onExit, onZoomIn, onZoomOut, onFit }: CanvasFocusModeBarProps) {
     const theme = canvasThemes[useThemeStore((state) => state.theme)];
     const reducedMotion = useReducedMotion();
 
@@ -27,7 +28,8 @@ export function CanvasFocusModeBar({ dockRevealed, agentOpen, zoomPercent, onTog
             initial={reducedMotion ? { opacity: 0 } : { opacity: 0, y: -12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={reducedMotion ? { duration: 0 } : aceternityMotion.spring.panel}
-            className="pc-canvas-focus-bar pointer-events-auto absolute left-1/2 top-2 z-[var(--z-toolbar)] -translate-x-1/2"
+            className="pc-canvas-focus-bar pointer-events-auto absolute top-2 z-[var(--z-toolbar)] -translate-x-1/2 transition-[left] duration-200"
+            style={{ left: `calc(50% - ${rightInset / 2}px)` }}
             role="toolbar"
             aria-label="专注模式工具栏"
         >

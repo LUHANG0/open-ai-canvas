@@ -1,4 +1,4 @@
-import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 import copyToClipboard from "copy-to-clipboard";
 import { Copy, Cpu, Settings2, Trash2, X } from "lucide-react";
 import { Button, Modal, Segmented, Select, Tooltip } from "antd";
@@ -335,7 +335,7 @@ export const canvasCinematicContinuationEntryAdapters = {
     "resume-cinematic": runCanvasCinematicContinuationBoundary,
 } as const;
 
-export function CanvasAssistantPanel({
+function CanvasAssistantPanelImpl({
     nodes,
     selectedNodeIds,
     snapshot,
@@ -389,14 +389,15 @@ export function CanvasAssistantPanel({
     const pendingToolContextRef = useRef(new Map<string, PendingOnlineToolContext>());
     const cinematicSessionControllersRef = useRef(new Map<string, AbortController>());
     const generationConsumerControllerRef = useRef(new AbortController());
-    const deferredSnapshot = useDeferredValue(snapshot);
+    // 父级传入的快照在 viewport-only 变化时保持身份，getter 仍会返回最新 viewport。
+    // 同步更新 ref，避免用户立即发送指令时读到 effect 之前的快照。
+    snapshotRef.current = snapshot;
 
     useEffect(() => {
-        if (localAgentMounted) return;
-        // 面板入场结束后预热本机视图；首次点击本机时也会同步兜底，之后切换不再重建。
-        const timer = window.setTimeout(() => setLocalAgentMounted(true), CANVAS_AGENT_PANEL_MOTION_MS + 40);
-        return () => window.clearTimeout(timer);
-    }, [localAgentMounted]);
+        // 除面板内切换外，URL/项目入口也可能直接以本机模式重开已挂载面板。
+        // 只在真正进入本机模式时挂载，网站模式首开仍保持懒加载。
+        if (agentMode === "local") setLocalAgentMounted(true);
+    }, [agentMode]);
 
     useEffect(() => {
         let cancelled = false;
@@ -420,10 +421,6 @@ export function CanvasAssistantPanel({
         setLocalSessions(sessions);
         setLocalActiveSessionId(activeSessionId);
     }, [activeSessionId, sessions]);
-
-    useEffect(() => {
-        snapshotRef.current = snapshot;
-    }, [snapshot]);
 
     useEffect(() => {
         generationConsumerControllerRef.current = activeGenerationConsumerController(generationConsumerControllerRef.current);
@@ -1180,15 +1177,20 @@ export function CanvasAssistantPanel({
     return (
         <motion.aside
             className="pc-canvas-assistant-panel pointer-events-auto relative flex h-full w-full flex-col overflow-hidden rounded-[var(--panel-radius)]"
+            aria-hidden={closing}
             initial={{ x: 32, opacity: 0 }}
             animate={{ x: closing ? 18 : 0, opacity: closing ? 0 : 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: resizing ? 0 : PANEL_MOTION_SECONDS, ease: [0.22, 1, 0.36, 1] }}
             style={{
-                background: theme.spatial.elevated,
+                // 覆盖式抽屉必须使用不透明表面，避免画布素材透出干扰消息阅读；
+                // 同时不启用 backdrop-filter，防止大面积实时模糊拖慢呼出和缩放。
+                background: theme.node.panel,
                 color: theme.node.text,
+                borderLeft: `1px solid ${theme.node.stroke}`,
                 boxShadow: `-10px 0 30px ${theme.spatial.shadow}`,
                 contain: "layout paint",
+                pointerEvents: closing ? "none" : "auto",
                 willChange: closing ? "transform, opacity" : "auto",
             }}
         >
@@ -1218,7 +1220,7 @@ export function CanvasAssistantPanel({
             </div>
             {localAgentMounted ? (
                 <div data-canvas-agent-mode="local" className={agentMode === "local" ? "flex min-h-0 flex-1 flex-col" : "hidden"} aria-hidden={agentMode !== "local"}>
-                    <CanvasLocalAgentPanel embedded snapshot={deferredSnapshot} canUndoOps={canUndoOps} undoOpsCount={undoOpsCount} onApplyOps={onApplyOps} onUndoOps={onUndoOps} autoConnect={autoConnectLocal && agentMode === "local"} />
+                    <CanvasLocalAgentPanel embedded snapshot={snapshot} canUndoOps={canUndoOps} undoOpsCount={undoOpsCount} onApplyOps={onApplyOps} onUndoOps={onUndoOps} autoConnect={autoConnectLocal && agentMode === "local"} />
                 </div>
             ) : agentMode === "local" ? (
                 <div className="flex min-h-0 flex-1 items-center justify-center px-6 text-sm" style={{ color: theme.node.muted }} role="status" aria-live="polite">
@@ -1228,6 +1230,11 @@ export function CanvasAssistantPanel({
         </motion.aside>
     );
 }
+
+// 画布拖动与缩放会让 Project 高频重渲染。面板 props 没有语义变化时保持整棵 Agent UI，
+// 避免消息列表、技能和本机 Runtime 视图被无关 viewport 更新反复计算。
+export const CanvasAssistantPanel = memo(CanvasAssistantPanelImpl);
+CanvasAssistantPanel.displayName = "CanvasAssistantPanel";
 
 function AgentTextModelPicker({ config, value, onChange }: { config: AiConfig; value: string; onChange: (model: string) => void }) {
     const options = useMemo(() => Array.from(new Set([value, ...selectableModelsByCapability(config, "text")].filter(Boolean))), [config, value]);

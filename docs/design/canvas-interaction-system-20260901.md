@@ -22,6 +22,7 @@
 | 悬浮创建与标题可读性 | 本轮提交 / `canvas-interaction-system-r10-20260901` | 添加节点悬浮打开、安全延迟关闭、点击兜底与节点双胶囊标题 |
 | 重命名、节点反馈与 Agent 切换 | 本轮提交 / `canvas-interaction-system-r11-20260902` | 空白点击完成改名、节点轻量悬浮反馈、Agent 双模式保活与面板动效减负 |
 | 生成设置视觉与画幅修正 | 本轮提交 / `canvas-interaction-system-r12-20260902` | 视频设置分层重排、动态选项分列、通用比例预览与图片精确像素标准画幅映射 |
+| Agent 呼出与媒体性能 | 本轮提交 / `canvas-interaction-system-r13-20260902` | 覆盖式 Agent 抽屉、本机 Runtime 懒挂载与保活、稳定快照、低缩放媒体 LOD、PC 排版及紧凑视口避让 |
 
 ## 统一规则
 
@@ -69,18 +70,29 @@
 ### Agent 面板
 
 - 面板进出场时长从 500ms 收敛到 200ms，仅动画位移与透明度，并缩小大面积动态阴影，减少开关面板时的合成与重绘压力。
-- 网站 Agent 与本机 Agent 共享稳定的面板框架；本机视图在入场后预热，首次进入后保持挂载，来回切换不再反复销毁运行时、会话树和界面状态。
-- 非当前模式使用隐藏层隔离交互；本机快照采用延迟值，降低画布连续更新对 Agent 面板切换的阻塞。自动连接仍只在本机模式生效，不改变原连接规则。
+- 网站 Agent 与本机 Agent 共享稳定的面板框架；网站模式首开不挂载本机视图，用户首次明确进入本机模式后才创建 Runtime，之后保持挂载，来回切换不再反复销毁运行时、会话树和界面状态。
+- 非当前模式使用隐藏层隔离交互；Agent 使用对象身份稳定的快照，并在工具实际读取时从 `viewportRef` 获取最新视口，降低画布连续更新对面板切换的阻塞。自动连接仍只在本机模式生效，不改变原连接规则。
+- R13 将 Agent 改为右侧覆盖式抽屉，打开时不再改变画布 viewport 宽度，不触发节点和播放器重新裁剪。底部 Dock、模式切换、专注工具栏和活动任务面板按抽屉宽度在剩余可见区避让。
+- 网站模式首开不挂载本机 Runtime；用户明确切到“本机”后才挂载，之后切模式、收起和重开都保留会话树。收起态使用 `inert` + `aria-hidden` 隔离键盘和辅助技术，焦点返回 Agent 触发器。
+- Agent 快照只在节点、连线或选区改变时更换对象身份；viewport 由工具真正读取时通过 `viewportRef` 取最新值，画布拖动和缩放不再驱动整棵 Agent UI 重算。
+- Agent 顶部统一为标题操作、运行位置、画布上下文三层；工具确认收入设置、网站空态改为 2×2 快捷入口，本机连接页只保留一个检测入口，安装与命令按层折叠。
+
+### 媒体性能分级
+
+- 自动性能模式综合当前缩放、可见节点、可见媒体和可见视频数；原有“画质优先 / 性能优先”手动选择仍优先于自动策略。
+- 超远景且存在视频时，非唯一选中视频不挂载完整 `VideoPlayer`，改显示封面或黑底轻量预览；单选时立即恢复播放器，多选或全选不会批量挂载视频元素。
+- 低细节模式同时关闭非选中节点阴影，简化批次图片堆叠层数和动画；图片优先用 `previewContent`，无预览时仍按视区懒加载原图。
 
 ## 修改文件
 
 - 算法与主题：`web/src/lib/canvas/canvas-node-size.ts`、`canvas-node-placement.ts`、`canvas-theme.ts`
 - 节点与媒体：`web/src/components/canvas/canvas-node.tsx`、`canvas-frame-node.tsx`、`canvas-node-content.tsx`
 - 播放与生成设置：`web/src/components/video-player.tsx`、`video-player.css`、`image-settings-panel.tsx`、`video-settings-panel.tsx`、`canvas-generation-settings-shell.tsx`、`canvas-image-settings-popover.tsx`、`canvas-video-settings-popover.tsx`、`canvas-node-toolbar.tsx`
-- 工具、外观与 Agent：`web/src/components/canvas/canvas-toolbar.tsx`、`canvas-create-menu.tsx`、`canvas-context-menu.tsx`、`canvas-asset-tray.tsx`、`infinite-canvas.tsx`、`canvas-assistant-panel.tsx`、`web/src/components/ui/aceternity/floating-dock.tsx`
-- 页面协调：`web/src/pages/canvas/project.tsx`、`shared.tsx`、`use-canvas-node-operations.ts`、`use-canvas-upload.ts`、`use-canvas-project-lifecycle.ts`
+- 工具、外观与 Agent：`web/src/components/canvas/canvas-toolbar.tsx`、`canvas-create-menu.tsx`、`canvas-context-menu.tsx`、`canvas-asset-tray.tsx`、`infinite-canvas.tsx`、`canvas-assistant-panel.tsx`、`canvas-agent-panel-chrome.tsx`、`canvas-local-agent-panel.tsx`、`canvas-focus-mode-bar.tsx`、`canvas-active-task-panel.tsx`、`web/src/components/ui/aceternity/floating-dock.tsx`
+- 页面协调：`web/src/pages/canvas/project.tsx`、`canvas-assistant-panel-column.tsx`、`use-canvas-assistant-visibility.ts`、`use-canvas-render-model.ts`、`canvas-project-world-layers.tsx`、`shared.tsx`、`use-canvas-node-operations.ts`、`use-canvas-upload.ts`、`use-canvas-project-lifecycle.ts`
+- 性能策略：`web/src/lib/canvas/canvas-performance-mode.ts`、`web/src/components/canvas/canvas-node-content.tsx`、`canvas-node.tsx`
 - 工具注册：`web/src/lib/canvas/tool-registry/definitions/main-toolbar-tools.tsx`、`tool-definition.ts`
-- 验证：`web/test/canvas-interaction-system.test.ts`、`web/scripts/canvas-p0-chrome-e2e.mjs`
+- 验证：`web/test/canvas-interaction-system.test.ts`、`web/test/canvas-performance-mode.test.ts`、`web/scripts/canvas-p0-chrome-e2e.mjs`
 
 ## 验证记录
 
@@ -100,9 +112,13 @@
 - R11：`bun run typecheck`、15 项画布夹具/本机 Runtime 专项测试和 `bun run build` 全部通过；生产构建仅保留项目既有的大 chunk 提示。
 - R11 完整 Chrome E2E 扩展至 59 项并全部通过，新增覆盖空白点击完成节点改名、`1.012` 悬浮反馈、Dock 480ms 安全移动窗口、Agent 面板开关、网站/本机切换、双模式 DOM 保活和返回本机不重建；控制台与网络无异常。
 - R12：TypeScript、生产构建、27 项模型/画幅专项测试和完整 Chrome E2E 59 项全部通过；浏览器实测 1360×1024 会选中 4:3，视频 480P/720P 双列无空位，输出尺寸、比例、时长和声音分组均正常显示。
+- R13：TypeScript、生产构建、28 项 Agent/本机 Runtime/媒体性能专项测试通过；完整 Chrome E2E 扩展至 68 项，覆盖 Agent 打开不改变 viewport 宽度和节点挂载数、本机 Runtime 懒加载/保活、收起焦点、顶栏命中、Dock 避让与 1024×768 紧凑 PC 布局。
+- R13 真实 39 节点画布回归：16% 缩放下打开 Agent 前后 viewport 均为 1021px、可见节点均为 29；22 个可见视频使用 LOD 且完整 `<video>` 为 0，单选后恢复 1 个播放器，39 节点全选后仍为 0。网站模式首开本机 Agent DOM 为 0，用户切到本机后收起重开仍保留原模式和 Runtime 树。
 
 ## 风险与后续确认
 
 - 已存在的极端比例媒体会在其既有尺寸校正流程触发时收敛到新边界，位置保持以原中心点为基准。
 - 主素材入口支持混合媒体；左下快捷托盘仍专注图片，这是明确的功能分工，不是两个同义入口。
 - 上线前建议用一个包含 30 个以上节点、横竖图、视频、音频、文字和文件夹的真实副本做一次用户验收。
+- 本机 Agent 首次启用后在收起态继续保持 Runtime 连接，这是避免重连卡顿的明确取舍；上线后应继续观察长时会话的内存和连接占用。
+- 无封面视频在超远景 LOD 下使用黑底播放占位，选中后才加载完整播放器；这是当前性能优先策略，不影响原视频资源。

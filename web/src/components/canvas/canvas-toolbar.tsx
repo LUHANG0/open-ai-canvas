@@ -19,6 +19,7 @@ import type { CanvasNodeTypeId, CanvasToolMode, CanvasWorkspaceMode } from "@/ty
 export function CanvasToolbar({
     selectedCount,
     workspaceMode,
+    rightInset = "var(--canvas-inset-x)",
     canvasTool,
     onToolChange,
     isProjectLinked,
@@ -51,6 +52,7 @@ export function CanvasToolbar({
 }: {
     selectedCount: number;
     workspaceMode: CanvasWorkspaceMode;
+    rightInset?: string | number;
     canvasTool: CanvasToolMode;
     onToolChange: (tool: CanvasToolMode) => void;
     isProjectLinked: boolean;
@@ -241,7 +243,14 @@ export function CanvasToolbar({
     const createCommands = addNodeCommands.map(toCommand);
 
     return (
-        <div ref={rootRef} data-canvas-no-zoom className="pc-canvas-toolbar pointer-events-none absolute inset-x-[var(--canvas-inset-x)] bottom-[var(--canvas-inset-y)] z-[var(--z-toolbar)] flex justify-center" role="toolbar" aria-label="画布创作工具">
+        <div
+            ref={rootRef}
+            data-canvas-no-zoom
+            className="pc-canvas-toolbar pointer-events-none absolute bottom-[var(--canvas-inset-y)] left-[var(--canvas-inset-x)] z-[var(--z-toolbar)] flex justify-center transition-[right] duration-200"
+            style={{ right: rightInset }}
+            role="toolbar"
+            aria-label="画布创作工具"
+        >
             <AnimatePresence>
                 {addOpen ? (
                     <AddNodeMenu

@@ -391,13 +391,13 @@ function ImageNodeContent(props: CanvasNodeContentProps) {
             : props.node.metadata?.status === "error"
                 ? <ErrorContent node={props.node} theme={props.theme} onRetry={props.onRetry} onReloadResource={props.onReloadResource} />
                 : <EmptyImageContent {...props} isBatchRoot={false} />;
-        return <BatchFrame batchCount={props.batchCount} batchExpanded={props.batchExpanded} batchOpening={props.batchOpening} batchRecovering={props.batchRecovering} theme={props.theme} onToggleBatch={props.onToggleBatch}>{content}</BatchFrame>;
+        return <BatchFrame batchCount={props.batchCount} batchExpanded={props.batchExpanded} batchOpening={props.batchOpening} batchRecovering={props.batchRecovering} reduceMediaEffects={props.reduceMediaEffects} theme={props.theme} onToggleBatch={props.onToggleBatch}>{content}</BatchFrame>;
     }
     if (!props.node.metadata?.content) return <EmptyImageContent {...props} />;
-    return <ImageContent node={props.node} theme={props.theme} isBatchRoot={props.isBatchRoot} batchCount={props.batchCount} batchExpanded={props.batchExpanded} batchOpening={props.batchOpening} batchRecovering={props.batchRecovering} onToggleBatch={props.onToggleBatch} />;
+    return <ImageContent node={props.node} theme={props.theme} isBatchRoot={props.isBatchRoot} batchCount={props.batchCount} batchExpanded={props.batchExpanded} batchOpening={props.batchOpening} batchRecovering={props.batchRecovering} reduceMediaEffects={props.reduceMediaEffects} onToggleBatch={props.onToggleBatch} />;
 }
 
-function EmptyImageContent({ node, theme, isBatchRoot, batchCount, batchExpanded, batchOpening, batchRecovering, onToggleBatch }: CanvasNodeContentProps) {
+function EmptyImageContent({ node, theme, isBatchRoot, batchCount, batchExpanded, batchOpening, batchRecovering, reduceMediaEffects, onToggleBatch }: CanvasNodeContentProps) {
     const isCharacterReference = node.metadata?.workflowKind === "character" && node.metadata?.characterView === "multi";
     const content = (
         <div className="flex h-full w-full flex-col items-center justify-center gap-3" style={{ color: theme.node.placeholder }}>
@@ -410,7 +410,7 @@ function EmptyImageContent({ node, theme, isBatchRoot, batchCount, batchExpanded
             ) : <span className="text-[var(--fs-tiny)] tracking-[0.18em] opacity-50">空图片节点</span>}
         </div>
     );
-    if (isBatchRoot) return <BatchFrame batchCount={batchCount} batchExpanded={batchExpanded} batchOpening={batchOpening} batchRecovering={batchRecovering} theme={theme} onToggleBatch={onToggleBatch}>{content}</BatchFrame>;
+    if (isBatchRoot) return <BatchFrame batchCount={batchCount} batchExpanded={batchExpanded} batchOpening={batchOpening} batchRecovering={batchRecovering} reduceMediaEffects={reduceMediaEffects} theme={theme} onToggleBatch={onToggleBatch}>{content}</BatchFrame>;
     return content;
 }
 
@@ -426,6 +426,7 @@ function VideoNodeContent({ node, theme, reduceMediaEffects }: CanvasNodeContent
     const [videoSize, setVideoSize] = useState<{ width: number; height: number } | null>(null);
 
     useEffect(() => {
+        if (reduceMediaEffects) return;
         const box = playerBoxRef.current;
         const video = box?.querySelector("video");
         if (!video) return;
@@ -445,9 +446,10 @@ function VideoNodeContent({ node, theme, reduceMediaEffects }: CanvasNodeContent
             video.removeEventListener("timeupdate", handleTimeUpdate);
             video.removeEventListener("loadedmetadata", handleLoadedMetadata);
         };
-    }, [node.id, node.metadata?.naturalHeight, node.metadata?.naturalWidth, subtitleEntries.length, updateMetadata, url]);
+    }, [node.id, node.metadata?.naturalHeight, node.metadata?.naturalWidth, reduceMediaEffects, subtitleEntries.length, updateMetadata, url]);
 
     if (!node.metadata?.content) return <EmptyMediaContent icon={<Video className="size-7 opacity-35" />} label="空视频节点" color={theme.node.placeholder} />;
+    if (reduceMediaEffects) return <VideoLodPreview node={node} />;
     if (!url) return <DeferredMediaLoad icon={loading ? <LoaderCircle className="size-5 animate-spin" /> : <Play className="size-5 fill-current" />} label={loading ? "正在缓存视频" : "加载视频（保持暂停）"} disabled={loading} onClick={() => { void load(); }} />;
 
     const sourceRatio = (videoSize?.width || node.metadata?.naturalWidth || node.width) / Math.max(1, videoSize?.height || node.metadata?.naturalHeight || node.height);
@@ -500,6 +502,33 @@ function VideoNodeContent({ node, theme, reduceMediaEffects }: CanvasNodeContent
     );
 }
 
+function VideoLodPreview({ node }: Pick<CanvasNodeContentProps, "node">) {
+    const posterUrl = staticVideoPosterUrl(node.metadata?.previewContent);
+    return (
+        <div
+            data-canvas-media-surface
+            data-canvas-video-lod
+            className="relative flex size-full cursor-grab items-center justify-center overflow-hidden rounded-[var(--node-radius)] bg-black active:cursor-grabbing"
+            aria-label={`${node.title || "视频"}，选中后可播放`}
+        >
+            {posterUrl ? <img src={posterUrl} alt="" loading="lazy" decoding="async" draggable={false} className="pointer-events-none absolute inset-0 size-full object-contain opacity-90" /> : null}
+            <div className="pointer-events-none relative flex flex-col items-center gap-2 text-white/88">
+                <span className="grid size-11 place-items-center rounded-full border border-white/15 bg-black/45 shadow-sm">
+                    <Play className="ml-0.5 size-5 fill-current" />
+                </span>
+                <span className="max-w-[80%] truncate text-[var(--fs-tiny)] font-medium">选中后播放</span>
+            </div>
+        </div>
+    );
+}
+
+function staticVideoPosterUrl(value?: string) {
+    const source = value?.trim() || "";
+    if (!source) return "";
+    if (/^data:image\//i.test(source)) return source;
+    return /\.(?:avif|gif|jpe?g|png|webp)(?:[?#]|$)/i.test(source) ? source : "";
+}
+
 function AudioNodeContent({ node, theme }: CanvasNodeContentProps) {
     const audioRef = useRef<HTMLAudioElement>(null);
     const { url, loading, load } = useNodeResourceUrl(node, false);
@@ -517,10 +546,12 @@ function EmptyMediaContent({ icon, label, color }: { icon: ReactNode; label: str
     return <div className="flex h-full w-full flex-col items-center justify-center gap-3" style={{ color }}>{icon}<span className="text-sm">{label}</span></div>;
 }
 
-function ImageContent({ node, theme, isBatchRoot, batchCount, batchExpanded, batchOpening, batchRecovering, onToggleBatch }: Pick<CanvasNodeContentProps, "node" | "theme" | "isBatchRoot" | "batchCount" | "batchExpanded" | "batchOpening" | "batchRecovering" | "onToggleBatch">) {
+function ImageContent({ node, theme, isBatchRoot, batchCount, batchExpanded, batchOpening, batchRecovering, reduceMediaEffects, onToggleBatch }: Pick<CanvasNodeContentProps, "node" | "theme" | "isBatchRoot" | "batchCount" | "batchExpanded" | "batchOpening" | "batchRecovering" | "reduceMediaEffects" | "onToggleBatch">) {
     const imageContainerRef = useRef<HTMLDivElement>(null);
     const nearViewport = useNearViewport(imageContainerRef);
-    const { url, loading } = useNodeResourceUrl(node, nearViewport);
+    const lightweightPreviewUrl = reduceMediaEffects ? node.metadata?.previewContent || "" : "";
+    const { url, loading } = useNodeResourceUrl(node, nearViewport && !lightweightPreviewUrl);
+    const displayUrl = lightweightPreviewUrl || url;
     const importedFromLibTV = node.metadata?.importSource?.provider === "libtv";
     const { resizeNode, updateMetadata } = useCanvasNodeActions();
 
@@ -549,9 +580,9 @@ function ImageContent({ node, theme, isBatchRoot, batchCount, batchExpanded, bat
     };
 
     return (
-        <BatchFrame batchCount={isBatchRoot ? batchCount : 0} batchExpanded={batchExpanded} batchOpening={batchOpening} batchRecovering={batchRecovering} theme={theme} onToggleBatch={onToggleBatch}>
+        <BatchFrame batchCount={isBatchRoot ? batchCount : 0} batchExpanded={batchExpanded} batchOpening={batchOpening} batchRecovering={batchRecovering} reduceMediaEffects={reduceMediaEffects} theme={theme} onToggleBatch={onToggleBatch}>
             <div ref={imageContainerRef} className="h-full w-full overflow-hidden rounded-[var(--node-radius)]">
-                {url ? <img src={url} alt={node.title} loading={importedFromLibTV ? "eager" : "lazy"} decoding="async" draggable={false} onDragStart={(event) => event.preventDefault()} onLoad={(event) => fitToImage(event.currentTarget)} className={`pointer-events-none block h-full w-full select-none ${node.metadata?.freeResize ? "object-fill" : "object-contain"}`} /> : <div className="grid size-full place-items-center" style={{ color: theme.node.muted }}>{loading ? <LoaderCircle className="size-5 animate-spin" /> : <ImageIcon className="size-5 opacity-45" />}</div>}
+                {displayUrl ? <img src={displayUrl} alt={node.title} loading={importedFromLibTV && !reduceMediaEffects ? "eager" : "lazy"} decoding="async" draggable={false} onDragStart={(event) => event.preventDefault()} onLoad={(event) => { if (!lightweightPreviewUrl) fitToImage(event.currentTarget); }} className={`pointer-events-none block h-full w-full select-none ${node.metadata?.freeResize ? "object-fill" : "object-contain"}`} /> : <div className="grid size-full place-items-center" style={{ color: theme.node.muted }}>{loading ? <LoaderCircle className="size-5 animate-spin" /> : <ImageIcon className="size-5 opacity-45" />}</div>}
             </div>
         </BatchFrame>
     );
@@ -635,22 +666,27 @@ export function CanvasNodeImageInfo({ node }: { node: CanvasNodeData }) {
     return <span className="ml-auto max-w-full shrink-0 truncate rounded-[var(--r-sm)] bg-black/55 px-2 py-1 text-[var(--fs-label)] font-medium leading-none text-white backdrop-blur-sm">{width} x {height}{size ? ` · ${size}` : ""}</span>;
 }
 
-function BatchFrame({ batchCount, batchExpanded, batchOpening, batchRecovering, theme, onToggleBatch, children }: { batchCount: number; batchExpanded: boolean; batchOpening: boolean; batchRecovering: boolean; theme: CanvasTheme; onToggleBatch?: () => void; children: ReactNode }) {
+function BatchFrame({ batchCount, batchExpanded, batchOpening, batchRecovering, reduceMediaEffects = false, theme, onToggleBatch, children }: { batchCount: number; batchExpanded: boolean; batchOpening: boolean; batchRecovering: boolean; reduceMediaEffects?: boolean; theme: CanvasTheme; onToggleBatch?: () => void; children: ReactNode }) {
     const isBatchRoot = batchCount > 1;
     return (
         <div className="group/batch relative h-full w-full overflow-visible" onDoubleClick={isBatchRoot ? (event) => { event.stopPropagation(); onToggleBatch?.(); } : undefined}>
             {isBatchRoot ? (
                 <div className="pointer-events-none absolute inset-0 overflow-visible">
-                    {Array.from({ length: Math.min(batchCount - 1, 5) }).map((_, index) => (
+                    {Array.from({ length: Math.min(batchCount - 1, reduceMediaEffects ? 1 : 5) }).map((_, index) => (
                         <div
                             key={index}
-                            className="absolute rounded-[inherit] transition-all duration-300 group-hover/batch:translate-x-2"
+                            className={`absolute rounded-[inherit] ${reduceMediaEffects ? "" : "transition-all duration-300 group-hover/batch:translate-x-2"}`}
                             style={{
                                 inset: 0,
                                 background: theme.node.panel,
-                                boxShadow: `inset 0 0 0 1px ${theme.node.stroke}`,
+                                boxShadow: reduceMediaEffects ? "none" : `inset 0 0 0 1px ${theme.node.stroke}`,
+                                border: reduceMediaEffects ? `1px solid ${theme.node.stroke}` : undefined,
                                 opacity: batchExpanded && !batchOpening ? 0.34 : 1,
-                                transform: batchOpening || batchRecovering ? `translate(${54 + index * 22}px, ${20 + index * 12}px) rotate(${8 + index * 5}deg) scale(.98)` : `translate(${34 + index * 18}px, ${14 + index * 10}px) rotate(${6 + index * 4}deg)`,
+                                transform: reduceMediaEffects
+                                    ? "translate(18px, 9px)"
+                                    : batchOpening || batchRecovering
+                                        ? `translate(${54 + index * 22}px, ${20 + index * 12}px) rotate(${8 + index * 5}deg) scale(.98)`
+                                        : `translate(${34 + index * 18}px, ${14 + index * 10}px) rotate(${6 + index * 4}deg)`,
                                 zIndex: -index - 1,
                             }}
                         />

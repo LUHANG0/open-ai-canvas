@@ -302,11 +302,12 @@ export const CanvasNode = React.memo(function CanvasNode({
                 className="pc-canvas-node canvas-node-shell relative h-full w-full cursor-grab overflow-visible rounded-[var(--node-radius)] active:cursor-grabbing"
                 data-node-state={nodeState}
                 data-state={data.metadata?.status || (isActive ? "active" : isRelated ? "related" : "idle")}
+                data-canvas-media-effects={reduceMediaEffects ? "reduced" : "full"}
                 style={{
                     background: hasImageContent || hasVideoContent ? "transparent" : theme.node.fill,
                     // 固定占位但不绘制描边，避免聚焦切换时边框宽度变化造成白边跳动。
                     border: isComposerNode ? "0" : "1px solid transparent",
-                    boxShadow: isComposerNode ? "none" : isSelected || hovered ? theme.node.hoverShadow : theme.node.shadow,
+                    boxShadow: isComposerNode || reduceMediaEffects ? "none" : isSelected || hovered ? theme.node.hoverShadow : theme.node.shadow,
                 }}
                 onMouseDown={(event) => onMouseDown(event, data.id)}
                 onDoubleClick={(event) => {

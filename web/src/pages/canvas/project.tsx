@@ -1368,6 +1368,31 @@ function InfiniteCanvasPage() {
         setContextMenu,
         focusSelection: fitCanvasSelection,
     });
+    // viewport 在拖动/缩放时高频更新，但不应让整个 Agent 树跟随重渲染。
+    // 仅在节点、连线或选区变化时更换快照对象；viewport 通过 getter 在工具真正读取时取最新值。
+    const liveAgentSnapshotRef = useRef(agentSnapshot);
+    liveAgentSnapshotRef.current = agentSnapshot;
+    const assistantSelectedNodeIds = useMemo(() => Array.from(selectedNodeIds), [selectedNodeIds]);
+    const assistantSnapshot = useMemo(
+        () => ({
+            projectId: agentSnapshot.projectId,
+            domainProjectId: agentSnapshot.domainProjectId,
+            title: agentSnapshot.title,
+            nodes: agentSnapshot.nodes,
+            connections: agentSnapshot.connections,
+            selectedNodeIds: assistantSelectedNodeIds,
+            get viewport() {
+                return viewportRef.current;
+            },
+            get revision() {
+                return liveAgentSnapshotRef.current.revision;
+            },
+            get stateHash() {
+                return liveAgentSnapshotRef.current.stateHash;
+            },
+        }),
+        [agentSnapshot.connections, agentSnapshot.domainProjectId, agentSnapshot.nodes, agentSnapshot.projectId, agentSnapshot.title, assistantSelectedNodeIds],
+    );
 
     const { selectCanvasStyle, styleApplying } = useCanvasStyleWorkflow({
         domainProjectId: currentProject?.projectId,
@@ -1488,6 +1513,7 @@ function InfiniteCanvasPage() {
         setChatSessions(sessions);
         setActiveChatId(activeId);
     }, []);
+    const consumeCinematicAgentEntry = useCallback(() => setCinematicAgentEntry(false), []);
 
     const startTitleEditing = useCallback(() => {
         setTitleDraft(currentProject?.title || "未命名画布");
@@ -2049,7 +2075,7 @@ function InfiniteCanvasPage() {
                 id="canvas-main"
                 tabIndex={-1}
                 className="pc-canvas-workspace flex h-full min-h-0 overflow-hidden outline-none"
-                data-assistant-open={assistantMounted ? "true" : "false"}
+                data-assistant-open={assistantOpen ? "true" : "false"}
                 data-focus-mode={focusMode ? "true" : "false"}
                 data-workspace-mode={workspaceMode}
                 style={{ background: theme.canvas.background, color: theme.node.text }}
@@ -2105,8 +2131,8 @@ function InfiniteCanvasPage() {
                         {!focusMode ? (
                             <div
                                 data-canvas-no-zoom
-                                className="pc-canvas-workspace__mode-switch pointer-events-none absolute bottom-[calc(var(--canvas-inset-y)+var(--space-16))] z-[var(--z-toolbar)] transition-[right,bottom] duration-300 lg:bottom-[var(--canvas-inset-y)]"
-                                style={{ right: assistantMounted ? `calc(var(--canvas-inset-x) + ${assistantWidth}px + var(--space-3))` : "var(--canvas-inset-x)" }}
+                                className="pc-canvas-workspace__mode-switch pointer-events-none absolute bottom-[calc(var(--canvas-inset-y)+var(--space-16))] z-[var(--z-toolbar)] transition-[bottom] duration-300 lg:bottom-[var(--canvas-inset-y)]"
+                                style={{ right: assistantOpen ? assistantWidth + 24 : "var(--canvas-inset-x)" }}
                                 onMouseDown={(event) => event.stopPropagation()}
                                 onPointerDown={(event) => event.stopPropagation()}
                                 onWheel={(event) => event.stopPropagation()}
@@ -2251,12 +2277,18 @@ function InfiniteCanvasPage() {
                                     </CanvasNodeActionContext.Provider>
                                 </InfiniteCanvas>
 
-                                <CanvasActiveTaskPanel tasks={activeTasks} onCancelTask={cancelCanvasTask} topInset={focusMode ? "var(--space-3)" : "var(--canvas-topbar-offset)"} />
+                                <CanvasActiveTaskPanel
+                                    tasks={activeTasks}
+                                    onCancelTask={cancelCanvasTask}
+                                    topInset={focusMode ? "var(--space-3)" : "var(--canvas-topbar-offset)"}
+                                    rightInset={assistantOpen ? assistantWidth + 12 : "var(--space-3)"}
+                                />
 
                                 {focusMode ? (
                                     <CanvasFocusModeBar
                                         dockRevealed={focusDockRevealed}
                                         agentOpen={assistantOpen}
+                                        rightInset={assistantOpen ? assistantWidth : 0}
                                         zoomPercent={viewport.k}
                                         onToggleDock={() => setFocusDockRevealed((value) => !value)}
                                         onToggleAgent={() => (assistantOpen ? closeAgent() : openAgent())}
@@ -2275,6 +2307,7 @@ function InfiniteCanvasPage() {
                                     <CanvasToolbar
                                         selectedCount={selectedNodeIds.size}
                                         workspaceMode={workspaceMode}
+                                        rightInset={assistantOpen ? assistantWidth + 16 : "var(--canvas-inset-x)"}
                                         canvasTool={canvasTool}
                                         onToolChange={setCanvasTool}
                                         isProjectLinked={Boolean(shortDramaEnabled && currentProject?.projectId)}
@@ -2316,7 +2349,7 @@ function InfiniteCanvasPage() {
                                         <CanvasAssistantPanel
                                             nodes={nodes}
                                             selectedNodeIds={selectedNodeIds}
-                                            snapshot={agentSnapshot}
+                                            snapshot={assistantSnapshot}
                                             projectId={projectId}
                                             sessions={chatSessions}
                                             activeSessionId={activeChatId}
@@ -2333,7 +2366,7 @@ function InfiniteCanvasPage() {
                                             closing={assistantClosing}
                                             onCollapse={closeAgent}
                                             cinematicEntry={cinematicAgentEntry}
-                                            onCinematicEntryConsumed={() => setCinematicAgentEntry(false)}
+                                            onCinematicEntryConsumed={consumeCinematicAgentEntry}
                                             resizing={resizing}
                                         />
                                     )}
@@ -2784,7 +2817,7 @@ function InfiniteCanvasPage() {
                             onInsertFolder={projectAssetScope === "canvas" ? handleProjectFolderInsert : undefined}
                         />
                         {codexCompactAgent && !assistantMounted ? (
-                            <CanvasLocalAgentPanel headless snapshot={agentSnapshot} canUndoOps={canUndoAgentOps} undoOpsCount={agentUndoCount} onApplyOps={applyAgentOps} onUndoOps={undoAgentOps} autoConnect={codexAutoConnect} />
+                            <CanvasLocalAgentPanel headless snapshot={assistantSnapshot} canUndoOps={canUndoAgentOps} undoOpsCount={agentUndoCount} onApplyOps={applyAgentOps} onUndoOps={undoAgentOps} autoConnect={codexAutoConnect} />
                         ) : null}
                     </section>
                 </CanvasOverlayLayerProvider>
