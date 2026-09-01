@@ -2,8 +2,19 @@
 
 .pc-canvas-library-page .pc-canvas-library-only,
 .pc-canvas-library-dialog-pc-only,
-.pc-canvas-folder__preview-count {
+.pc-canvas-folder__preview-count,
+.pc-canvas-opening__pulse,
+.pc-canvas-opening small,
+.pc-canvas-library__empty-guide {
     display: none;
+}
+
+.pc-canvas-opening strong {
+    font: inherit;
+}
+
+.pc-canvas-library__empty-buttons {
+    display: contents;
 }
 
 @media (min-width: 1024px) {
@@ -12,6 +23,64 @@
         --pc-canvas-library-preview-ratio: 16 / 9;
         --pc-canvas-library-accent-soft: color-mix(in srgb, var(--app-brand-600) 8%, transparent);
         --pc-canvas-library-accent-line: color-mix(in srgb, var(--app-brand-600) 38%, var(--app-border-default));
+    }
+
+    .pc-canvas-opening {
+        gap: var(--app-space-3, 12px);
+        color: var(--app-text-secondary);
+        background: var(--app-bg-page);
+    }
+
+    .pc-canvas-opening__pulse {
+        position: relative;
+        display: block;
+        width: 34px;
+        height: 34px;
+        flex: 0 0 auto;
+        border: 1px solid var(--app-selection-border);
+        border-radius: var(--app-control-radius);
+        background: var(--app-selection-bg);
+    }
+
+    .pc-canvas-opening__pulse::before,
+    .pc-canvas-opening__pulse::after {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        content: "";
+        border-radius: 50%;
+        transform: translate(-50%, -50%);
+    }
+
+    .pc-canvas-opening__pulse::before {
+        width: 8px;
+        height: 8px;
+        background: var(--app-action-primary-bg);
+    }
+
+    .pc-canvas-opening__pulse::after {
+        width: 20px;
+        height: 20px;
+        border: 1px solid var(--app-action-primary-bg);
+        animation: pc-canvas-opening-pulse 1.4s var(--app-ease-standard) infinite;
+    }
+
+    .pc-canvas-opening > span:last-child {
+        display: grid;
+        gap: 2px;
+    }
+
+    .pc-canvas-opening strong {
+        color: var(--app-text-primary);
+        font-size: var(--app-font-size-body);
+        font-weight: 650;
+    }
+
+    .pc-canvas-opening small {
+        display: block;
+        max-width: 540px;
+        color: var(--app-text-muted);
+        font-size: var(--app-font-size-label);
     }
 
     .pc-canvas-library-page .app-workspace-page-content {
@@ -501,7 +570,7 @@
 
     .pc-canvas-library-page .pc-canvas-library__empty {
         display: flex;
-        min-height: 320px;
+        min-height: 304px;
         border: 1px dashed var(--pc-canvas-library-accent-line);
         border-radius: var(--app-surface-radius, 12px);
         background: linear-gradient(var(--app-border-subtle) 1px, transparent 1px), linear-gradient(90deg, var(--app-border-subtle) 1px, transparent 1px), var(--app-surface-2);
@@ -523,10 +592,52 @@
 
     .pc-canvas-library__empty-actions {
         display: flex;
+        min-width: min(560px, calc(100vw - 96px));
         flex-wrap: wrap;
+        flex-direction: column;
         align-items: center;
         justify-content: center;
+        gap: var(--app-space-4, 16px);
+    }
+
+    .pc-canvas-library__empty-buttons {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
         gap: var(--app-space-2, 8px);
+    }
+
+    .pc-canvas-library__empty-guide {
+        display: grid;
+        width: 100%;
+        grid-template-columns: max-content 1fr max-content 1fr max-content;
+        align-items: center;
+        gap: var(--app-space-3, 12px);
+        color: var(--app-text-muted);
+        font-size: 11px;
+    }
+
+    .pc-canvas-library__empty-guide > span {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        white-space: nowrap;
+    }
+
+    .pc-canvas-library__empty-guide b {
+        color: var(--app-brand-700);
+        font-family: var(--app-font-mono);
+        font-size: 9px;
+        letter-spacing: 0.05em;
+    }
+
+    .dark .pc-canvas-library__empty-guide b {
+        color: var(--app-brand-300);
+    }
+
+    .pc-canvas-library__empty-guide i {
+        height: 1px;
+        background: var(--app-border-default);
     }
 
     .pc-canvas-library-page .pc-canvas-library__loading {
@@ -587,6 +698,19 @@
         background: var(--app-surface-overlay);
         box-shadow: var(--app-shadow-overlay);
     }
+
+    @keyframes pc-canvas-opening-pulse {
+        0% {
+            opacity: 0.82;
+            transform: translate(-50%, -50%) scale(0.72);
+        }
+
+        70%,
+        100% {
+            opacity: 0;
+            transform: translate(-50%, -50%) scale(1.35);
+        }
+    }
 }
 
 @media (min-width: 1024px) and (max-width: 1199px) {
@@ -605,6 +729,11 @@
 }
 
 @media (min-width: 1024px) and (prefers-reduced-motion: reduce) {
+    .pc-canvas-opening__pulse::after {
+        animation: none;
+        opacity: 0.4;
+    }
+
     .pc-canvas-library__filter,
     .pc-canvas-library__reset,
     .pc-canvas-library-page .app-canvas-create-card,

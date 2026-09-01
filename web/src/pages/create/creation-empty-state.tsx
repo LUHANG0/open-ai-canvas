@@ -75,7 +75,7 @@ export function CreationEmptySuggest({ onStartPrompt }: { onStartPrompt: (mode: 
                 {emptyStateActions.map((item, index) => {
                     const Icon = item.icon;
                     return (
-                        <button key={item.title} type="button" className={`suggest-card is-${item.mode}`} onClick={() => onStartPrompt(item.mode, item.prompt)}>
+                        <button key={item.title} type="button" className={`suggest-card is-${item.mode}`} aria-label={`使用“${item.title}”作为创作起点`} onClick={() => onStartPrompt(item.mode, item.prompt)}>
                             <span className="suggest-visual" aria-hidden="true">
                                 <span className="suggest-index">0{index + 1}</span>
                                 <span className="suggest-icon">
@@ -86,6 +86,7 @@ export function CreationEmptySuggest({ onStartPrompt }: { onStartPrompt: (mode: 
                             <span className="suggest-copy">
                                 <strong>{item.title}</strong>
                                 <span>{item.hint}</span>
+                                <span className="creation-starter-action">套用创作起点</span>
                             </span>
                             <ArrowRight className="suggest-card-arrow" aria-hidden="true" />
                         </button>
