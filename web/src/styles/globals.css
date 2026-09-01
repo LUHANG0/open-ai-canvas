@@ -7329,6 +7329,16 @@
         padding: 11px;
     }
 
+    .canvas-generation-settings-guide-target {
+        transition: border-color 180ms ease, box-shadow 180ms ease, background-color 180ms ease;
+    }
+
+    .canvas-generation-settings-guide-target.is-guided {
+        border-color: color-mix(in srgb, var(--workspace-accent) 46%, transparent);
+        background: color-mix(in srgb, var(--workspace-accent) 7%, var(--workspace-surface-strong));
+        box-shadow: 0 0 0 3px color-mix(in srgb, var(--workspace-accent) 10%, transparent);
+    }
+
     .canvas-generation-settings-body button:not(:disabled) {
         cursor: pointer;
     }

@@ -1,4 +1,3 @@
-import { AnimatePresence } from "motion/react";
 import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import { ArrowLeft, Check, ChevronRight, Clipboard, CloudUpload, Copy, FolderOpen, FolderPlus, Image as ImageIcon, Layers3, Link2, Maximize2, PanelTop, Pencil, Plus, Redo2, Tags, Trash2, Undo2, Upload, UserRound } from "lucide-react";
 
@@ -93,6 +92,8 @@ export function CanvasNodeContextMenu({
     onToggleFrame,
 }: CanvasNodeContextMenuProps) {
     const theme = canvasThemes[useThemeStore((state) => state.theme)];
+    const installations = usePluginStore((state) => state.installations);
+    const pluginStates = usePluginStore((state) => state.pluginStates);
     const [addOpen, setAddOpen] = useState(false);
     const [categoryOpen, setCategoryOpen] = useState(false);
 
@@ -105,6 +106,7 @@ export function CanvasNodeContextMenu({
         const closeOnEscape = (event: KeyboardEvent) => {
             if (event.key !== "Escape") return;
             if (categoryOpen) setCategoryOpen(false);
+            else if (addOpen) setAddOpen(false);
             else onClose();
         };
         window.addEventListener("pointerdown", close);
@@ -113,7 +115,7 @@ export function CanvasNodeContextMenu({
             window.removeEventListener("pointerdown", close);
             window.removeEventListener("keydown", closeOnEscape);
         };
-    }, [categoryOpen, onClose]);
+    }, [addOpen, categoryOpen, onClose]);
 
     useEffect(() => {
         setAddOpen(menu.type === "canvas" && Boolean(menu.createOpen));
@@ -124,6 +126,37 @@ export function CanvasNodeContextMenu({
         action();
         onClose();
     };
+    const createPosition = menu.type === "canvas" ? menu.position : { x: menu.x, y: menu.y };
+    const createContext: AddNodeMenuContext = {
+        workspaceMode,
+        isProjectLinked,
+        enabledPluginIds: new Set(installations.filter((item) => pluginStates[item.manifest.id]?.effectiveEnabled ?? item.enabled).map((item) => item.manifest.id)),
+        handlers: {
+            onAddText: () => runAction(() => onAddNode(CanvasNodeType.Text)),
+            onAddImage: () => runAction(() => onAddNode(CanvasNodeType.Image)),
+            onAddVideo: () => runAction(() => onAddNode(CanvasNodeType.Video)),
+            onAddAudio: () => runAction(() => onAddNode(CanvasNodeType.Audio)),
+            onAddScript: () => runAction(() => onAddNode(CanvasNodeType.Script)),
+            onAddFrame: () => runAction(() => onAddNode(CanvasNodeType.Frame)),
+            onAddFolder: () => runAction(onAddFolder),
+            onAddDrawing: () => runAction(() => onAddNode(CanvasNodeType.Drawing)),
+            onAddExtensionNode: (type) => runAction(() => onAddNode(type)),
+            onAddWorkflow: () => runAction(() => onAddNode(CanvasNodeType.Config)),
+            onChooseStyle: () => runAction(onChooseStyle),
+            onOpenDirector: () => runAction(() => onOpenDirector(createPosition)),
+            onUpload: () => runAction(onUpload),
+            onOpenMyAssets: () => runAction(onOpenAssets),
+            onOpenProjectCharacters: () => runAction(onOpenProjectCharacters),
+        },
+    };
+    const createCommands: CanvasCreateCommand[] = resolveAddNodeMenuCommands(createContext).map((command) => ({
+        id: command.id,
+        label: command.label,
+        icon: command.icon,
+        badge: command.badge,
+        section: command.section,
+        onClick: () => command.run(createContext),
+    }));
     const nodeContent = typeof node?.metadata?.content === "string" ? node.metadata.content : "";
     const isImage = node?.type === CanvasNodeType.Image;
     const isText = node?.type === CanvasNodeType.Text;
@@ -140,7 +173,8 @@ export function CanvasNodeContextMenu({
     const canGenerateFromText = Boolean(isText && !isCharacterReference && hasNodeContent);
     const canCopyMediaUrl = Boolean(isMedia && hasNodeContent);
     const assetCategory = node ? canvasNodeAssetCategory(node) : "other";
-    const position = getContextMenuPosition(menu);
+    const contextWidth = menu.type === "canvas" && addOpen ? 360 : 224;
+    const position = getContextMenuPosition(menu, contextWidth);
 
     return (
         <>
@@ -150,14 +184,16 @@ export function CanvasNodeContextMenu({
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ duration: aceternityMotion.duration.instant, ease: aceternityMotion.easing.enter }}
-                className="pc-canvas-context-menu pc-canvas-panel aceternity-floating-panel fixed z-[var(--z-popover)] flex w-[224px] max-h-[calc(100vh-56px)] origin-top-left flex-col overflow-hidden rounded-xl border p-1.5 backdrop-blur-2xl"
-                style={{ left: position.left, top: position.top, background: theme.spatial.elevated, borderColor: theme.toolbar.border, color: theme.node.text }}
+                className="pc-canvas-context-menu pc-canvas-panel aceternity-floating-panel fixed z-[var(--z-popover)] flex max-h-[calc(100vh-56px)] origin-top-left flex-col overflow-hidden rounded-xl border p-1.5 backdrop-blur-2xl transition-[width] duration-150"
+                style={{ left: position.left, top: position.top, width: contextWidth, background: theme.spatial.elevated, borderColor: theme.toolbar.border, color: theme.node.text }}
                 onContextMenu={(event) => event.preventDefault()}
                 onPointerDown={(event) => event.stopPropagation()}
             >
                 <div className="absolute inset-x-8 top-0 h-px" style={{ background: `linear-gradient(90deg, transparent, ${theme.toolbar.border}, transparent)` }} />
                 <div className="thin-scrollbar min-h-0 overflow-y-auto">
-                    {menu.type === "node" && isMedia && categoryOpen ? (
+                    {menu.type === "canvas" && addOpen ? (
+                        <CanvasCreateMenu commands={createCommands} variant="context" onBack={() => setAddOpen(false)} />
+                    ) : menu.type === "node" && isMedia && categoryOpen ? (
                         <>
                             <MenuHeader title="设置资产分类" description={node?.title || nodeTypeLabel(node)} onBack={() => setCategoryOpen(false)} />
                             <MenuSection label="项目用途" />
@@ -237,78 +273,7 @@ export function CanvasNodeContextMenu({
                     )}
                 </div>
             </SpotlightSurface>
-
-            <AnimatePresence>
-                {menu.type === "canvas" && addOpen ? (
-                    <AddNodeContextMenu
-                        parentPosition={position}
-                        workspaceMode={workspaceMode}
-                        isProjectLinked={isProjectLinked}
-                        onAddNode={(type) => runAction(() => onAddNode(type))}
-                        onAddFolder={() => runAction(onAddFolder)}
-                        onChooseStyle={() => runAction(onChooseStyle)}
-                        onOpenDirector={() => runAction(() => onOpenDirector(menu.position))}
-                        onUpload={() => runAction(onUpload)}
-                        onOpenAssets={() => runAction(onOpenAssets)}
-                        onOpenProjectCharacters={() => runAction(onOpenProjectCharacters)}
-                    />
-                ) : null}
-            </AnimatePresence>
         </>
-    );
-}
-
-function AddNodeContextMenu({ parentPosition, workspaceMode, isProjectLinked, onAddNode, onAddFolder, onChooseStyle, onOpenDirector, onUpload, onOpenAssets, onOpenProjectCharacters }: { parentPosition: { left: number; top: number }; workspaceMode: CanvasWorkspaceMode; isProjectLinked: boolean; onAddNode: (type: CanvasNodeTypeId) => void; onAddFolder: () => void; onChooseStyle: () => void; onOpenDirector: () => void; onUpload: () => void; onOpenAssets: () => void; onOpenProjectCharacters: () => void }) {
-    const theme = canvasThemes[useThemeStore((state) => state.theme)];
-    const installations = usePluginStore((state) => state.installations);
-    const pluginStates = usePluginStore((state) => state.pluginStates);
-    const left = getSubmenuLeft(parentPosition.left);
-    const createContext: AddNodeMenuContext = {
-        workspaceMode,
-        isProjectLinked,
-        enabledPluginIds: new Set(installations.filter((item) => pluginStates[item.manifest.id]?.effectiveEnabled ?? item.enabled).map((item) => item.manifest.id)),
-        handlers: {
-            onAddText: () => onAddNode(CanvasNodeType.Text),
-            onAddImage: () => onAddNode(CanvasNodeType.Image),
-            onAddVideo: () => onAddNode(CanvasNodeType.Video),
-            onAddAudio: () => onAddNode(CanvasNodeType.Audio),
-            onAddScript: () => onAddNode(CanvasNodeType.Script),
-            onAddFrame: () => onAddNode(CanvasNodeType.Frame),
-            onAddFolder,
-            onAddDrawing: () => onAddNode(CanvasNodeType.Drawing),
-            onAddExtensionNode: onAddNode,
-            onAddWorkflow: () => onAddNode(CanvasNodeType.Config),
-            onChooseStyle,
-            onOpenDirector,
-            onUpload,
-            onOpenMyAssets: onOpenAssets,
-            onOpenProjectCharacters,
-        },
-    };
-    const commands: CanvasCreateCommand[] = resolveAddNodeMenuCommands(createContext).map((command) => ({
-        id: command.id,
-        label: command.label,
-        icon: command.icon,
-        badge: command.badge,
-        section: command.section,
-        onClick: () => command.run(createContext),
-    }));
-
-    return (
-        <SpotlightSurface
-            spotlightColor={theme.toolbar.itemHover}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: aceternityMotion.duration.instant, ease: aceternityMotion.easing.enter }}
-            className="aceternity-floating-panel fixed z-[var(--z-popover)] w-[260px] origin-top overflow-hidden rounded-[var(--dock-radius)] border p-2 backdrop-blur-2xl"
-            style={{ left, top: parentPosition.top, background: theme.spatial.elevated, borderColor: theme.toolbar.border, color: theme.node.text }}
-            onContextMenu={(event) => event.preventDefault()}
-            onPointerDown={(event) => event.stopPropagation()}
-        >
-            <div className="absolute inset-x-8 top-0 h-px" style={{ background: `linear-gradient(90deg, transparent, ${theme.toolbar.border}, transparent)` }} />
-            <CanvasCreateMenu commands={commands} />
-        </SpotlightSurface>
     );
 }
 
@@ -350,19 +315,17 @@ function MenuDivider() {
     return <div className="mx-1.5 my-1 h-px" style={{ background: `linear-gradient(90deg, transparent, ${theme.toolbar.border}, transparent)` }} />;
 }
 
-function getContextMenuPosition(menu: ContextMenuState) {
+function getContextMenuPosition(menu: ContextMenuState, width = 224) {
     if (typeof window === "undefined") return { left: menu.x, top: menu.y };
-    const width = 224;
-    const estimatedHeight = menu.type === "node" ? Math.min(360, window.innerHeight - 72) : menu.type === "canvas" ? 250 : 84;
+    const estimatedHeight = menu.type === "node"
+        ? Math.min(360, window.innerHeight - 72)
+        : menu.type === "canvas"
+            ? Math.min(width > 224 ? 560 : 250, window.innerHeight - 72)
+            : 84;
     return {
         left: clamp(menu.x, 12, Math.max(12, window.innerWidth - width - 12)),
         top: clamp(menu.y, 68, Math.max(68, window.innerHeight - estimatedHeight - 12)),
     };
-}
-
-function getSubmenuLeft(parentLeft: number) {
-    if (typeof window === "undefined") return parentLeft + 192;
-    return parentLeft + 224 + 8 + 260 <= window.innerWidth - 12 ? parentLeft + 232 : Math.max(12, parentLeft - 268);
 }
 
 function clamp(value: number, min: number, max: number) {

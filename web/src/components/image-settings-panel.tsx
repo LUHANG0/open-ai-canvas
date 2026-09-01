@@ -1,4 +1,4 @@
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import { ConfigProvider, Switch } from "antd";
 
 import { type CanvasTheme } from "@/lib/canvas-theme";
@@ -51,6 +51,11 @@ type ImageSettingsPanelProps = {
 
 export function ImageSettingsPanel({ config, onConfigChange, theme, showTitle = true, showCount = true, className = "w-[304px] space-y-3 rounded-2xl px-1 py-0.5", maxCount = 15, quickCount = 3 }: ImageSettingsPanelProps) {
     const [snapDimensionToStep, setSnapDimensionToStep] = useState(true);
+    const [guidedSection, setGuidedSection] = useState<"custom" | "aspect" | "exact" | null>(null);
+    const customSizeSectionRef = useRef<HTMLDivElement>(null);
+    const aspectSectionRef = useRef<HTMLDivElement>(null);
+    const exactSizeSectionRef = useRef<HTMLDivElement>(null);
+    const guideTimerRef = useRef<number | null>(null);
     const profile = mergedImageCapabilityConfig(config, config.model || config.imageModel);
     const normalized = normalizeImageValue(profile, config);
     const quality = normalized.quality;
@@ -87,11 +92,41 @@ export function ImageSettingsPanel({ config, onConfigChange, theme, showTitle = 
     const selectResolution = (choice: ImageResolutionChoice) => {
         if (choice === "auto") {
             onConfigChange("size", "auto");
+            guideToSizeSelection();
             return;
         }
         const ratio = activeRatio || availableAspects[0]?.label;
         const size = imageSizeForResolution(resolutionOptions, choice, ratio) || resolutionOptions.find((item) => item.tier === choice)?.size;
-        if (size) onConfigChange("size", size);
+        if (size) {
+            onConfigChange("size", size);
+            guideToSizeSelection();
+        }
+    };
+    const guideToSizeSelection = () => {
+        window.requestAnimationFrame(() => {
+            window.requestAnimationFrame(() => {
+                const target = aspectSectionRef.current || exactSizeSectionRef.current || customSizeSectionRef.current;
+                if (!target) return;
+                const scroller = target.closest<HTMLElement>(".canvas-generation-settings-scroll");
+                const kind = target === aspectSectionRef.current ? "aspect" : target === exactSizeSectionRef.current ? "exact" : "custom";
+                setGuidedSection(kind);
+                if (scroller) {
+                    const scrollerRect = scroller.getBoundingClientRect();
+                    const targetRect = target.getBoundingClientRect();
+                    const fullyVisible = targetRect.top >= scrollerRect.top + 8 && targetRect.bottom <= scrollerRect.bottom - 8;
+                    if (!fullyVisible) {
+                        const top = scroller.scrollTop + targetRect.top - scrollerRect.top - 10;
+                        const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+                        scroller.scrollTo({ top: Math.max(0, top), behavior: reducedMotion ? "auto" : "smooth" });
+                    }
+                }
+                if (guideTimerRef.current !== null) window.clearTimeout(guideTimerRef.current);
+                guideTimerRef.current = window.setTimeout(() => {
+                    setGuidedSection(null);
+                    guideTimerRef.current = null;
+                }, 900);
+            });
+        });
     };
     const updateDimension = (key: "width" | "height", value: number | null) => {
         const next = Math.max(1, Math.floor(value || dimensions[key] || 1024));
@@ -99,6 +134,10 @@ export function ImageSettingsPanel({ config, onConfigChange, theme, showTitle = 
         const height = key === "height" ? next : dimensions.height;
         onConfigChange("size", `${alignDimension(width, snapDimensionToStep)}x${alignDimension(height, snapDimensionToStep)}`);
     };
+
+    useEffect(() => () => {
+        if (guideTimerRef.current !== null) window.clearTimeout(guideTimerRef.current);
+    }, []);
 
     return (
         <ImageSettingsTheme theme={theme}>
@@ -147,7 +186,7 @@ export function ImageSettingsPanel({ config, onConfigChange, theme, showTitle = 
                         ))}
                     </div>
                 </div> : null}
-                {profile.size.allowCustom ? <div className="space-y-2">
+                {profile.size.allowCustom ? <div ref={customSizeSectionRef} className={`space-y-2 canvas-generation-settings-guide-target ${guidedSection === "custom" ? "is-guided" : ""}`}>
                     <div className="flex items-center justify-between gap-3">
                         <SettingTitle color={theme.node.muted}>尺寸</SettingTitle>
                         <div className="flex items-center gap-2">
@@ -165,7 +204,7 @@ export function ImageSettingsPanel({ config, onConfigChange, theme, showTitle = 
                         <DimensionInput prefix="H" value={dimensions.height} disabled={activeSize === "auto"} theme={theme} alignToStep={snapDimensionToStep} onChange={(value) => updateDimension("height", value)} />
                     </div>
                 </div> : null}
-                {visualAspects.length ? <div className="space-y-2">
+                {visualAspects.length ? <div ref={aspectSectionRef} className={`space-y-2 canvas-generation-settings-guide-target ${guidedSection === "aspect" ? "is-guided" : ""}`}>
                     <SettingTitle color={theme.node.muted}>画面比例</SettingTitle>
                     <div className="grid grid-cols-4 gap-1.5 min-[380px]:grid-cols-5">
                         {visualAspects.map((item) => (
@@ -184,7 +223,7 @@ export function ImageSettingsPanel({ config, onConfigChange, theme, showTitle = 
                         ))}
                     </div>
                 </div> : null}
-                {exactSizeOptions.length > 1 ? <div className="space-y-2">
+                {exactSizeOptions.length > 1 ? <div ref={exactSizeSectionRef} className={`space-y-2 canvas-generation-settings-guide-target ${guidedSection === "exact" ? "is-guided" : ""}`}>
                     <div className="flex items-end justify-between gap-3">
                         <SettingTitle color={theme.node.muted}>精确尺寸</SettingTitle>
                         <span className="text-[var(--fs-tiny)]" style={{ color: theme.node.muted }}>保留模型全部规格</span>

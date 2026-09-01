@@ -16,8 +16,9 @@
 | 验证提交 | 本文档提交 / `canvas-interaction-system-r2-20260901` | 浏览器回归、待验收项与交付记录 |
 | 交互修正 | `24aff8e` / `canvas-interaction-system-r3-20260901` | 恢复节点主体拖拽、隔离真实媒体控件并压紧批量素材布局 |
 | 体验修正 | `d789473` / `canvas-interaction-system-r5-20260901` | 中央播放按钮、关闭画面播放手势、增强点阵、紧凑工具栏设置与首页直达入口 |
-| 播放与设置修正 | 本轮提交 / `canvas-interaction-system-r7-20260901` | 播放中单击暂停、拖动阈值隔离、图片/视频设置统一排版与视频工具分组 |
-| 图片设置修正 | 本轮提交 / `canvas-interaction-system-r8-20260901` | 比例与精确像素尺寸分层，修复大量模型尺寸平铺导致的文本拥挤 |
+| 播放与设置修正 | `f60af19` / `canvas-interaction-system-r7-20260901` | 播放中单击暂停、拖动阈值隔离、图片/视频设置统一排版与视频工具分组 |
+| 图片设置修正 | `41cfffd` / `canvas-interaction-system-r8-20260901` | 比例与精确像素尺寸分层，修复大量模型尺寸平铺导致的文本拥挤 |
+| 设置引导与添加节点重排 | 本轮提交 / `canvas-interaction-system-r9-20260901` | 分辨率选择后定位尺寸、添加节点分组重排、右键原位钻取与浮层边缘避让 |
 
 ## 统一规则
 
@@ -52,6 +53,8 @@
 - 工具栏设置采用双列紧凑行，拖拽柄、图标、名称、顺序状态和开关保持同一阅读行；顶栏左侧提供直接返回首页入口。
 - 图片与视频生成设置统一为 420px PC 浮层：固定标题和当前规格摘要、独立滚动参数区、关闭入口与“修改后立即应用”状态提示；原模型能力、价格档禁用规则和参数写入保持不变。
 - 图片设置只在比例区显示去重后的短比例；模型提供的大量精确像素规格收纳到单独选择器，仍可完整选择，不再把长尺寸文本铺进比例网格。
+- 选择 1K、2K、4K 等分辨率档后，仅在设置浮层内部自动定位到画面比例或精确尺寸，并短暂高亮下一步；系统减少动态效果时改为无动画定位，不抢夺键盘焦点。
+- 添加节点按“常用创作、剧情与布局、高级工具、扩展节点、导入资源、项目配置”组织；Dock 使用紧凑四列创作卡，右键菜单使用两列横向卡并在原菜单内钻取，避免双层浮窗互相遮挡。
 - 视频节点工具栏只平铺下载、时间线和替换视频；字幕、提取画面、提取音频与截取片段归入“视频处理”，删除及低频能力保留在“更多”。
 
 ## 修改文件
@@ -59,7 +62,7 @@
 - 算法与主题：`web/src/lib/canvas/canvas-node-size.ts`、`canvas-node-placement.ts`、`canvas-theme.ts`
 - 节点与媒体：`web/src/components/canvas/canvas-node.tsx`、`canvas-node-content.tsx`
 - 播放与生成设置：`web/src/components/video-player.tsx`、`video-player.css`、`image-settings-panel.tsx`、`video-settings-panel.tsx`、`canvas-generation-settings-shell.tsx`、`canvas-image-settings-popover.tsx`、`canvas-video-settings-popover.tsx`、`canvas-node-toolbar.tsx`
-- 工具与外观：`web/src/components/canvas/canvas-toolbar.tsx`、`canvas-asset-tray.tsx`、`infinite-canvas.tsx`
+- 工具与外观：`web/src/components/canvas/canvas-toolbar.tsx`、`canvas-create-menu.tsx`、`canvas-context-menu.tsx`、`canvas-asset-tray.tsx`、`infinite-canvas.tsx`
 - 页面协调：`web/src/pages/canvas/project.tsx`、`shared.tsx`、`use-canvas-node-operations.ts`、`use-canvas-upload.ts`、`use-canvas-project-lifecycle.ts`
 - 工具注册：`web/src/lib/canvas/tool-registry/definitions/main-toolbar-tools.tsx`、`tool-definition.ts`
 - 验证：`web/test/canvas-interaction-system.test.ts`、`web/scripts/canvas-p0-chrome-e2e.mjs`
@@ -75,6 +78,8 @@
 - 本轮 `bun run typecheck` 通过；4 个画布相关测试文件 27 项通过；`bun run build` 通过，仅保留项目既有大 chunk 提示。
 - 本轮 1440 × 900 浏览器回归：中央按钮开始播放后，轻点非控件画面立即暂停；新版视频设置的标题、规格摘要、参数分组、关闭按钮与即时应用提示完整显示；视频工具栏正确收敛为“下载 / 时间线 / 视频处理 / 替换视频 / 更多”。
 - 图片设置拥挤修正：`image-resolution-tiers` 与画布夹具共 9 项测试通过，TypeScript 和生产构建通过；所有原精确尺寸值继续原样写入配置。
+- 设置引导与添加节点重排：TypeScript 通过；4 个专项测试文件 32 项通过；生产构建通过；完整画布 Chrome E2E 41 项通过。
+- 1440 × 900 与 1024 × 768 浏览器回归：添加节点各分组与完整名称可见且浮层不越界；点击 2K 后设置滚动区从顶部自动定位到“画面比例”，目标短暂高亮，精确尺寸紧随其后；靠近视口顶部打开图片设置时会自动选择下方空间，标题与底部状态均完整可见。
 
 ## 风险与后续确认
 

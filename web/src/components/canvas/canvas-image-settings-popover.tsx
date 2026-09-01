@@ -110,12 +110,16 @@ function ImageSettingsPortal({
     const alignCenter = placement === "top" || placement === "bottom";
     const left = alignCenter ? buttonRect.left + buttonRect.width / 2 - width / 2 : alignRight ? buttonRect.right - width : buttonRect.left;
     const topPlacement = placement?.startsWith("top");
+    const estimatedHeight = 520;
+    const topSpace = buttonRect.top - gap - margin;
+    const bottomSpace = window.innerHeight - buttonRect.bottom - gap - margin;
+    const placeAbove = topPlacement ? topSpace >= estimatedHeight || topSpace >= bottomSpace : bottomSpace < estimatedHeight && topSpace > bottomSpace;
     const style = {
         position: "fixed",
         zIndex: "var(--z-dialog-popover)",
         width,
         left: Math.max(margin, Math.min(window.innerWidth - width - margin, left)),
-        ...(topPlacement ? { bottom: window.innerHeight - buttonRect.top + gap, maxHeight: Math.max(260, buttonRect.top - margin * 2) } : { top: buttonRect.bottom + gap, maxHeight: Math.max(260, window.innerHeight - buttonRect.bottom - margin * 2) }),
+        ...(placeAbove ? { bottom: window.innerHeight - buttonRect.top + gap, maxHeight: Math.max(140, topSpace) } : { top: buttonRect.bottom + gap, maxHeight: Math.max(140, bottomSpace) }),
         background: theme.spatial.elevated,
         border: `1px solid ${theme.toolbar.border}`,
         borderRadius: 16,
