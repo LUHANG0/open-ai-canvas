@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState, type ComponentType, type CSSPrope
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router";
 
 import { navigationTools, type NavigationToolSlug } from "@/constant/navigation-tools";
+import { usePcBrandViewport } from "@/hooks/use-pc-brand-viewport";
 import { useWalletBalance } from "@/hooks/use-wallet-balance";
 import { useWorkspaceLogout } from "@/hooks/use-workspace-logout";
 import { cn } from "@/lib/utils";
@@ -27,13 +28,14 @@ type WorkspaceNavGroup = {
 };
 
 /** 设置页分区子项，沿用 /settings?section=<key> 路由合同。 */
-const SETTINGS_SECTIONS: Array<{ key: string; label: string }> = [
+const SETTINGS_SECTIONS: Array<{ key: string; label: string; desktopOnly?: boolean }> = [
     { key: "local-cli", label: "本机工具" },
     { key: "channels", label: "自定义渠道" },
     { key: "models", label: "模型选择" },
     { key: "preferences", label: "生成偏好" },
     { key: "prompts", label: "提示词偏好" },
     { key: "storage", label: "我的对象存储" },
+    { key: "diagnostics", label: "问题诊断", desktopOnly: true },
 ];
 
 function toolItem(slug: NavigationToolSlug, to: string): WorkspaceNavItem {
@@ -41,7 +43,7 @@ function toolItem(slug: NavigationToolSlug, to: string): WorkspaceNavItem {
     return { id: slug, title: tool?.label ?? slug, icon: tool?.icon, to };
 }
 
-function buildNav(features: FeatureAvailability, balance: string, isAdmin: boolean): { groups: WorkspaceNavGroup[]; footer: WorkspaceNavItem[] } {
+function buildNav(features: FeatureAvailability, balance: string, isAdmin: boolean, isPcBrandViewport: boolean): { groups: WorkspaceNavGroup[]; footer: WorkspaceNavItem[] } {
     const groups: WorkspaceNavGroup[] = [
         {
             heading: "创作空间",
@@ -61,7 +63,7 @@ function buildNav(features: FeatureAvailability, balance: string, isAdmin: boole
         },
     ];
 
-    const settingsSections = SETTINGS_SECTIONS.filter((section) => section.key !== "channels" || features.customChannelsEnabled);
+    const settingsSections = SETTINGS_SECTIONS.filter((section) => (!section.desktopOnly || isPcBrandViewport) && (section.key !== "channels" || features.customChannelsEnabled));
     const footer: WorkspaceNavItem[] = [
         ...(isAdmin ? [{ id: "admin", title: "管理员后台", icon: ShieldCheck, to: "/admin" }] : []),
         {
@@ -122,7 +124,11 @@ function WorkspaceSwitcher({ collapsed, onNavigate, onExpand }: { collapsed: boo
             {isOpen ? (
                 <>
                     <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)} />
-                    <div className="app-workspace-nav-popover absolute left-3 right-3 top-full z-50 mt-1 overflow-hidden rounded-lg border border-[var(--workspace-border)] bg-[var(--workspace-surface-strong)] py-1 animate-in fade-in zoom-in-95 duration-100" role="menu" aria-label="工作区快捷入口">
+                    <div
+                        className="app-workspace-nav-popover absolute left-3 right-3 top-full z-50 mt-1 overflow-hidden rounded-lg border border-[var(--workspace-border)] bg-[var(--workspace-surface-strong)] py-1 animate-in fade-in zoom-in-95 duration-100"
+                        role="menu"
+                        aria-label="工作区快捷入口"
+                    >
                         <div className="px-3 py-2.5">
                             <div className="truncate text-[var(--fs-body)] font-semibold">影策</div>
                             <div className="mt-0.5 truncate text-[var(--fs-label)] text-foreground/45">创作工作台</div>
@@ -133,12 +139,23 @@ function WorkspaceSwitcher({ collapsed, onNavigate, onExpand }: { collapsed: boo
                             { label: "画布", to: "/canvas" },
                             { label: "设置", to: "/settings" },
                         ].map((entry) => (
-                            <button key={entry.to} type="button" role="menuitem" onClick={() => go(entry.to)} className="flex w-full items-center gap-2 px-3 py-2 text-[var(--fs-body)] text-foreground/80 transition-colors hover:bg-surface-hover hover:text-foreground">
+                            <button
+                                key={entry.to}
+                                type="button"
+                                role="menuitem"
+                                onClick={() => go(entry.to)}
+                                className="flex w-full items-center gap-2 px-3 py-2 text-[var(--fs-body)] text-foreground/80 transition-colors hover:bg-surface-hover hover:text-foreground"
+                            >
                                 {entry.label}
                             </button>
                         ))}
                         <div className="mx-2 my-1 h-px bg-[var(--workspace-border)]" />
-                        <button type="button" role="menuitem" onClick={() => go("/canvas?mode=new")} className="flex w-full items-center gap-2 px-3 py-2 text-[var(--fs-body)] text-foreground/45 transition-colors hover:bg-surface-hover hover:text-foreground">
+                        <button
+                            type="button"
+                            role="menuitem"
+                            onClick={() => go("/canvas?mode=new")}
+                            className="flex w-full items-center gap-2 px-3 py-2 text-[var(--fs-body)] text-foreground/45 transition-colors hover:bg-surface-hover hover:text-foreground"
+                        >
                             <Plus className="size-3.5" /> 新建画布
                         </button>
                     </div>
@@ -314,13 +331,14 @@ export function WorkspaceSidebarNav({ collapsed, onNavigate, onOpenSearch, onExp
     const [searchParams] = useSearchParams();
     const features = useUserStore((state) => state.features);
     const user = useUserStore((state) => state.user);
+    const isPcBrandViewport = usePcBrandViewport();
     const creditsEnabled = useUserStore((state) => state.features.creditsEnabled);
     const { availableMicrocredits } = useWalletBalance(user?.id, creditsEnabled);
     const { handleLogout } = useWorkspaceLogout();
 
     const balance = availableMicrocredits === null ? "--" : (availableMicrocredits / 1_000_000).toLocaleString("zh-CN", { maximumFractionDigits: 2 });
 
-    const { groups, footer } = useMemo(() => buildNav(features, balance, user?.role === "admin"), [features, balance, user?.role]);
+    const { groups, footer } = useMemo(() => buildNav(features, balance, user?.role === "admin", isPcBrandViewport), [features, balance, user?.role, isPcBrandViewport]);
 
     const slug = pathname.split("/").filter(Boolean)[0] || "create";
     const section = searchParams.get("section");
