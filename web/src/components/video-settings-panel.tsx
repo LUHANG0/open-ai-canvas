@@ -348,7 +348,7 @@ function SwitchRow({ label, checked, theme, onChange }: { label: string; checked
                 {label}
             </span>
             <span className="shrink-0" onMouseDown={(event) => event.stopPropagation()}>
-                <Switch size="small" checked={checked} onChange={onChange} />
+                <Switch size="small" aria-label={label} checked={checked} onChange={onChange} />
             </span>
         </div>
     );

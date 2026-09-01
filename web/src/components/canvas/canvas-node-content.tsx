@@ -551,6 +551,7 @@ function VideoPosterPreview({ node, theme, policy, loadingPlayback, onPlay }: Pi
                 aria-label={loadingPlayback ? "正在加载视频" : "播放视频"}
                 disabled={loadingPlayback}
                 className="relative grid size-11 cursor-pointer place-items-center rounded-full border border-white/25 bg-black/45 text-white shadow-sm backdrop-blur-sm transition-colors hover:bg-black/65 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-wait"
+                style={{ transform: "scale(clamp(1, calc(var(--canvas-live-inverse-scale, 1) * 0.55), 10))" }}
                 onMouseDown={(event) => event.stopPropagation()}
                 onPointerDown={(event) => {
                     event.stopPropagation();
@@ -622,8 +623,19 @@ function staticVideoPosterUrl(value?: string) {
 function AudioNodeContent({ node, theme }: CanvasNodeContentProps) {
     const audioRef = useRef<HTMLAudioElement>(null);
     const { url, loading, load } = useNodeResourceUrl(node, false);
+    const sourceIdentity = JSON.stringify([node.id, node.metadata?.storageKey, node.metadata?.content]);
+    const [playRequest, setPlayRequest] = useState<string | null>(null);
+    const playRequested = playRequest === sourceIdentity;
+    useEffect(() => {
+        setPlayRequest((current) => current === sourceIdentity ? current : null);
+    }, [sourceIdentity]);
+    useEffect(() => {
+        const audio = audioRef.current;
+        if (!url || !playRequested || !audio) return;
+        void audio.play().catch(() => undefined).finally(() => setPlayRequest(null));
+    }, [playRequested, url]);
     if (!node.metadata?.content) return <EmptyMediaContent icon={<Music2 className="size-7 opacity-35" />} label="空音频节点" color={theme.node.placeholder} />;
-    if (!url) return <DeferredMediaLoad icon={loading ? <LoaderCircle className="size-5 animate-spin" /> : <Play className="size-5 fill-current" />} label={loading ? "正在缓存音频" : "加载音频（保持暂停）"} disabled={loading} onClick={() => { void load(); }} />;
+    if (!url) return <DeferredMediaLoad icon={loading ? <LoaderCircle className="size-5 animate-spin" /> : <Play className="size-5 fill-current" />} label={loading ? "正在加载音频" : "播放音频"} disabled={loading} onClick={() => { setPlayRequest(sourceIdentity); void load(); }} />;
     return (
         <div className="flex h-full w-full cursor-grab flex-col justify-center gap-3 px-4 active:cursor-grabbing" data-canvas-media-surface style={{ background: theme.node.fill, color: theme.node.text }}>
             <div className="flex min-w-0 items-center gap-2 text-sm opacity-70"><Music2 className="size-4 shrink-0" /><span className="min-w-0 truncate" title={node.title || "音频"}>{node.title || "音频"}</span></div>

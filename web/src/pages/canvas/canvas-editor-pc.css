@@ -150,6 +150,12 @@
         padding-inline: 132px;
     }
 
+    /* Agent 展开时给左侧视图控制和素材入口预留真实空间，避免三组 Dock 相互覆盖。 */
+    .pc-canvas-workspace[data-assistant-open="true"] .pc-canvas-toolbar {
+        left: calc(var(--canvas-inset-x) + 320px);
+        padding-inline: 0;
+    }
+
     .pc-canvas-workspace .pc-canvas-toolbar > .canvas-floating-dock,
     .pc-canvas-workspace .pc-canvas-zoom > .canvas-floating-dock,
     .pc-canvas-workspace .pc-canvas-workspace__mode-switch .canvas-mode-switch-trigger {

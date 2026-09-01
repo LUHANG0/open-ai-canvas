@@ -171,6 +171,7 @@ export function ImageSettingsPanel({ config, onConfigChange, theme, showTitle = 
                     <span title="是否支持透明背景由当前模型接口决定" onMouseDown={(event) => event.stopPropagation()}>
                         <Switch
                             size="small"
+                            aria-label="透明背景"
                             checked={transparentBackground}
                             onChange={(checked) => onConfigChange("transparentBackground", checked ? "true" : "false")}
                         />
@@ -194,7 +195,7 @@ export function ImageSettingsPanel({ config, onConfigChange, theme, showTitle = 
                                 16倍数对齐
                             </span>
                             <span title="输入完成后自动向上补成 16 的倍数" onMouseDown={(event) => event.stopPropagation()}>
-                                <Switch size="small" checked={snapDimensionToStep} onChange={setSnapDimensionToStep} />
+                                <Switch size="small" aria-label="尺寸按 16 倍数对齐" checked={snapDimensionToStep} onChange={setSnapDimensionToStep} />
                             </span>
                         </div>
                     </div>

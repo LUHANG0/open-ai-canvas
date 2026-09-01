@@ -76,6 +76,7 @@ type ToolbarTool = {
     active?: boolean;
     danger?: boolean;
     disabled?: boolean;
+    disabledReason?: string;
 };
 
 export function CanvasNodeToolbar({
@@ -238,10 +239,11 @@ export function CanvasNodeToolbar({
         active: tool.active?.(nodeHoverCtx),
         danger: tool.danger,
         disabled: tool.disabled?.(nodeHoverCtx),
+        disabledReason: tool.disabledReason?.(nodeHoverCtx),
         onClick: () => tool.run(nodeHoverCtx),
     }));
     const allTools: ToolbarTool[] = hasImage && !simpleMode
-        ? [...otherTools, ...imageTools.map((tool) => ({ id: tool.id, label: tool.label, icon: tool.icon, onClick: tool.onClick }))]
+        ? [...otherTools, ...imageTools.map((tool) => ({ id: tool.id, label: tool.label, icon: tool.icon, disabled: tool.disabled, disabledReason: tool.disabledReason, onClick: tool.onClick }))]
         : otherTools;
     const toolById = new Map(allTools.map((tool) => [tool.id, tool]));
     const takeTools = (ids: string[]) => ids.map((id) => toolById.get(id)).filter((tool): tool is ToolbarTool => Boolean(tool));
@@ -327,6 +329,7 @@ function NodeDockToolButton({ tool }: { tool: ToolbarTool }) {
             aria-label={tool.label}
             aria-pressed={tool.active || undefined}
             disabled={tool.disabled}
+            title={tool.disabledReason}
             onClick={tool.onClick}
         >
             <span className="grid size-3.5 shrink-0 place-items-center">{tool.icon}</span>
@@ -337,7 +340,7 @@ function NodeDockToolButton({ tool }: { tool: ToolbarTool }) {
 
 function NodeDockMenuButton({ menuId, label, icon, tools, openMenuId, onOpenChange, placement = "top" }: { menuId: string; label: string; icon: ReactNode; tools: ToolbarTool[]; openMenuId: string | null; onOpenChange: (menuId: string, open: boolean) => void; placement?: "top" | "topRight" }) {
     const open = openMenuId === menuId;
-    const items: MenuProps["items"] = tools.map((tool) => ({ key: tool.id, icon: tool.icon, label: tool.label, disabled: tool.disabled, onClick: tool.onClick }));
+    const items: MenuProps["items"] = tools.map((tool) => ({ key: tool.id, icon: tool.icon, label: tool.label, title: tool.disabledReason, disabled: tool.disabled, onClick: tool.onClick }));
     return (
         <Dropdown open={open} trigger={["click"]} placement={placement} onOpenChange={(nextOpen) => onOpenChange(menuId, nextOpen)} menu={{ items }}>
             <button
