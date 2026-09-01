@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from "react";
-import { AlertCircle, BookOpenCheck, Clock3, Download, FileText, Image as ImageIcon, LoaderCircle, Music2, Pencil, Play, RefreshCw, Video } from "lucide-react";
+import { AlertCircle, BookOpenCheck, Clock3, Download, FileText, Film, Image as ImageIcon, LoaderCircle, Music2, Pencil, Play, RefreshCw, Video } from "lucide-react";
 
 import { VideoPlayer } from "@/components/video-player";
 import { CONTENT_MODERATION_ERROR_CODE, generationErrorMessage, isContentModerationError } from "@/lib/generation-error";
@@ -8,12 +8,14 @@ import { canvasRichTextHTML } from "@/lib/canvas/canvas-rich-text";
 import { fitNodeSize } from "@/lib/canvas/canvas-node-size";
 import { loadCanvasDrawingPreview } from "@/lib/canvas/canvas-drawing-storage";
 import { buildLibTVImagePreviewUrl } from "@/lib/canvas/libtv-import";
+import type { CanvasMediaRenderPolicy } from "@/lib/canvas/canvas-performance-mode";
 import type { CanvasResourceReference } from "@/lib/canvas/canvas-resource-references";
 import type { CanvasTheme } from "@/lib/canvas-theme";
 import { formatBytes } from "@/lib/image-utils";
 import { resourceIdFromStorageKey } from "@/services/api/resources";
 import type { GenerationTask } from "@/services/api/task-center";
 import { cacheResourceObjectUrl, getCachedResourceObjectUrl } from "@/services/resource-blob-cache";
+import { loadCanvasVideoPoster } from "@/services/canvas-video-poster-cache";
 import { CanvasNodeType, type CanvasNodeData } from "@/types/canvas";
 import { getNodeDefinition } from "@/lib/canvas/node-registry";
 import { PORTRAIT_CLEARANCE_NODE_TYPE } from "@/lib/portrait-clearance/contracts";
@@ -50,6 +52,8 @@ export type CanvasNodeContentProps = {
     onOpenTaskDetails?: (node: CanvasNodeData) => void;
     onToggleBatch?: () => void;
     reduceMediaEffects?: boolean;
+    mediaRenderPolicy?: CanvasMediaRenderPolicy;
+    videoPreviewOnly?: boolean;
 };
 
 export function CanvasNodeContent(props: CanvasNodeContentProps) {
@@ -414,7 +418,7 @@ function EmptyImageContent({ node, theme, isBatchRoot, batchCount, batchExpanded
     return content;
 }
 
-function VideoNodeContent({ node, theme, reduceMediaEffects }: CanvasNodeContentProps) {
+function VideoNodeContent({ node, theme, reduceMediaEffects, mediaRenderPolicy, videoPreviewOnly }: CanvasNodeContentProps) {
     const playerBoxRef = useRef<HTMLDivElement>(null);
     const pointerGestureRef = useRef<{ pointerId: number; startX: number; startY: number; moved: boolean } | null>(null);
     const suppressSurfaceClickRef = useRef(false);
@@ -449,7 +453,7 @@ function VideoNodeContent({ node, theme, reduceMediaEffects }: CanvasNodeContent
     }, [node.id, node.metadata?.naturalHeight, node.metadata?.naturalWidth, reduceMediaEffects, subtitleEntries.length, updateMetadata, url]);
 
     if (!node.metadata?.content) return <EmptyMediaContent icon={<Video className="size-7 opacity-35" />} label="空视频节点" color={theme.node.placeholder} />;
-    if (reduceMediaEffects) return <VideoLodPreview node={node} />;
+    if (videoPreviewOnly ?? reduceMediaEffects) return <VideoPosterPreview node={node} theme={theme} policy={mediaRenderPolicy} />;
     if (!url) return <DeferredMediaLoad icon={loading ? <LoaderCircle className="size-5 animate-spin" /> : <Play className="size-5 fill-current" />} label={loading ? "正在缓存视频" : "加载视频（保持暂停）"} disabled={loading} onClick={() => { void load(); }} />;
 
     const sourceRatio = (videoSize?.width || node.metadata?.naturalWidth || node.width) / Math.max(1, videoSize?.height || node.metadata?.naturalHeight || node.height);
@@ -502,24 +506,68 @@ function VideoNodeContent({ node, theme, reduceMediaEffects }: CanvasNodeContent
     );
 }
 
-function VideoLodPreview({ node }: Pick<CanvasNodeContentProps, "node">) {
-    const posterUrl = staticVideoPosterUrl(node.metadata?.previewContent);
+function VideoPosterPreview({ node, theme, policy }: Pick<CanvasNodeContentProps, "node" | "theme"> & { policy?: CanvasMediaRenderPolicy }) {
+    const staticPosterUrl = staticVideoPosterUrl(node.metadata?.previewContent);
+    const [staticPosterFailed, setStaticPosterFailed] = useState(false);
+    const generatedPoster = useCanvasVideoPoster(node, policy, !staticPosterUrl || staticPosterFailed);
+    const posterUrl = staticPosterUrl && !staticPosterFailed ? staticPosterUrl : generatedPoster.url;
+    const isLoading = !posterUrl && generatedPoster.status === "loading";
+
+    useEffect(() => setStaticPosterFailed(false), [staticPosterUrl]);
+
     return (
         <div
             data-canvas-media-surface
             data-canvas-video-lod
-            className="relative flex size-full cursor-grab items-center justify-center overflow-hidden rounded-[var(--node-radius)] bg-black active:cursor-grabbing"
+            data-canvas-video-poster-status={posterUrl ? "ready" : generatedPoster.status}
+            className="relative flex size-full cursor-grab items-center justify-center overflow-hidden rounded-[var(--node-radius)] active:cursor-grabbing"
+            style={{ background: `linear-gradient(145deg, ${theme.node.fill} 0%, ${theme.canvas.background} 100%)`, color: theme.node.text }}
             aria-label={`${node.title || "视频"}，选中后可播放`}
         >
-            {posterUrl ? <img src={posterUrl} alt="" loading="lazy" decoding="async" draggable={false} className="pointer-events-none absolute inset-0 size-full object-contain opacity-90" /> : null}
-            <div className="pointer-events-none relative flex flex-col items-center gap-2 text-white/88">
-                <span className="grid size-11 place-items-center rounded-full border border-white/15 bg-black/45 shadow-sm">
-                    <Play className="ml-0.5 size-5 fill-current" />
-                </span>
-                <span className="max-w-[80%] truncate text-[var(--fs-tiny)] font-medium">选中后播放</span>
+            {posterUrl ? <>
+                <img src={posterUrl} alt="" aria-hidden loading="lazy" decoding="async" draggable={false} className="pointer-events-none absolute inset-[-8%] size-[116%] object-cover opacity-35 blur-xl" />
+                <img src={posterUrl} alt="" loading="lazy" decoding="async" draggable={false} onError={() => { if (posterUrl === staticPosterUrl) setStaticPosterFailed(true); }} className="pointer-events-none absolute inset-0 size-full object-contain" />
+            </> : (
+                <div className="pointer-events-none absolute inset-0 opacity-70" style={{ backgroundImage: `radial-gradient(circle at 25% 20%, ${theme.accent.primarySoft}, transparent 36%), linear-gradient(135deg, transparent, ${theme.node.stroke})` }} />
+            )}
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-black/5" />
+            <div className="pointer-events-none relative grid size-11 place-items-center rounded-full border border-white/25 bg-black/45 text-white shadow-sm backdrop-blur-sm">
+                {isLoading ? <LoaderCircle className="size-5 animate-spin" /> : posterUrl ? <Play className="ml-0.5 size-5 fill-current" /> : <Film className="size-5" />}
+            </div>
+            <div className="pointer-events-none absolute inset-x-3 bottom-3 flex min-w-0 items-end justify-between gap-2 text-white">
+                <span className="min-w-0 truncate rounded-md bg-black/48 px-2 py-1 text-[var(--fs-tiny)] font-medium backdrop-blur-sm">{node.title || "视频素材"}</span>
+                <span className="shrink-0 rounded-md bg-black/48 px-2 py-1 text-[10px] backdrop-blur-sm">{isLoading ? "生成预览中" : posterUrl ? "选中播放" : "选中查看"}</span>
             </div>
         </div>
     );
+}
+
+function useCanvasVideoPoster(node: CanvasNodeData, policy: CanvasMediaRenderPolicy | undefined, enabled: boolean) {
+    const [state, setState] = useState<{ url: string; status: "idle" | "loading" | "ready" | "error" }>({ url: "", status: "idle" });
+    const storageKey = node.metadata?.storageKey || "";
+    const sourceUrl = node.metadata?.content || "";
+    const maxWidth = policy?.posterMaxWidth || 640;
+    const quality = policy?.posterQuality || 0.78;
+    const concurrency = policy?.posterConcurrency || 1;
+    const cacheIdentity = storageKey || sourceUrl;
+
+    useEffect(() => {
+        let active = true;
+        if (!enabled || !cacheIdentity) {
+            setState({ url: "", status: "idle" });
+            return () => { active = false; };
+        }
+        setState((current) => current.url ? current : { url: "", status: "loading" });
+        void loadCanvasVideoPoster({ cacheIdentity, storageKey, sourceUrl, maxWidth, quality, concurrency }).then((url) => {
+            if (!active) return;
+            setState(url ? { url, status: "ready" } : { url: "", status: "error" });
+        }).catch(() => {
+            if (active) setState({ url: "", status: "error" });
+        });
+        return () => { active = false; };
+    }, [cacheIdentity, concurrency, enabled, maxWidth, quality, sourceUrl, storageKey]);
+
+    return state;
 }
 
 function staticVideoPosterUrl(value?: string) {

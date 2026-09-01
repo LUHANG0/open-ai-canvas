@@ -23,6 +23,7 @@
 | 重命名、节点反馈与 Agent 切换 | 本轮提交 / `canvas-interaction-system-r11-20260902` | 空白点击完成改名、节点轻量悬浮反馈、Agent 双模式保活与面板动效减负 |
 | 生成设置视觉与画幅修正 | 本轮提交 / `canvas-interaction-system-r12-20260902` | 视频设置分层重排、动态选项分列、通用比例预览与图片精确像素标准画幅映射 |
 | Agent 呼出与媒体性能 | 本轮提交 / `canvas-interaction-system-r13-20260902` | 覆盖式 Agent 抽屉、本机 Runtime 懒挂载与保活、稳定快照、低缩放媒体 LOD、PC 排版及紧凑视口避让 |
+| 视频代表帧与统一媒体模式 | 本轮提交 / `canvas-interaction-system-r14-20260902` | 视频代表帧提取与浏览器缓存、智能/画质/性能策略统一、播放器挂载隔离与模式反馈 |
 
 ## 统一规则
 
@@ -79,9 +80,11 @@
 
 ### 媒体性能分级
 
-- 自动性能模式综合当前缩放、可见节点、可见媒体和可见视频数；原有“画质优先 / 性能优先”手动选择仍优先于自动策略。
-- 超远景且存在视频时，非唯一选中视频不挂载完整 `VideoPlayer`，改显示封面或黑底轻量预览；单选时立即恢复播放器，多选或全选不会批量挂载视频元素。
-- 低细节模式同时关闭非选中节点阴影，简化批次图片堆叠层数和动画；图片优先用 `previewContent`，无预览时仍按视区懒加载原图。
+- “智能模式”综合当前缩放、可见节点、可见媒体和可见视频数，在均衡与轻量展示间自动切换；“画质优先 / 性能优先”分别固定高清与轻量策略，并继续保存在当前浏览器。
+- 三种模式统一把播放器挂载与显示清晰度解耦：未选中视频只显示封面，唯一选中时才挂载完整 `VideoPlayer`；多选或全选不会批量挂载播放器。
+- 没有上游封面的视频由单任务/双任务前端队列从多个时间点选择非黑场代表帧；优先使用可流式读取的现有地址，避免为了封面下载完整视频，结果以 Blob 存入独立 IndexedDB 缓存，不写入项目 JSON。
+- 性能优先使用约 480px 封面、预览图片、单任务提取和精简视觉效果；画质优先使用最高约 1280px 封面、原图、双任务提取和完整效果；智能模式根据密度选择 640px 或 960px 档位。
+- 提取期间使用带素材名称的渐变状态卡；无法取得代表帧时保留可识别的信息卡，不再回退成纯黑素材块。图片无预览时仍按视区懒加载原图。
 
 ## 修改文件
 
@@ -90,7 +93,7 @@
 - 播放与生成设置：`web/src/components/video-player.tsx`、`video-player.css`、`image-settings-panel.tsx`、`video-settings-panel.tsx`、`canvas-generation-settings-shell.tsx`、`canvas-image-settings-popover.tsx`、`canvas-video-settings-popover.tsx`、`canvas-node-toolbar.tsx`
 - 工具、外观与 Agent：`web/src/components/canvas/canvas-toolbar.tsx`、`canvas-create-menu.tsx`、`canvas-context-menu.tsx`、`canvas-asset-tray.tsx`、`infinite-canvas.tsx`、`canvas-assistant-panel.tsx`、`canvas-agent-panel-chrome.tsx`、`canvas-local-agent-panel.tsx`、`canvas-focus-mode-bar.tsx`、`canvas-active-task-panel.tsx`、`web/src/components/ui/aceternity/floating-dock.tsx`
 - 页面协调：`web/src/pages/canvas/project.tsx`、`canvas-assistant-panel-column.tsx`、`use-canvas-assistant-visibility.ts`、`use-canvas-render-model.ts`、`canvas-project-world-layers.tsx`、`shared.tsx`、`use-canvas-node-operations.ts`、`use-canvas-upload.ts`、`use-canvas-project-lifecycle.ts`
-- 性能策略：`web/src/lib/canvas/canvas-performance-mode.ts`、`web/src/components/canvas/canvas-node-content.tsx`、`canvas-node.tsx`
+- 性能策略：`web/src/lib/canvas/canvas-performance-mode.ts`、`web/src/services/canvas-video-poster-cache.ts`、`web/src/components/canvas/canvas-node-content.tsx`、`canvas-node.tsx`、`web/src/pages/canvas/canvas-project-top-bar.tsx`
 - 工具注册：`web/src/lib/canvas/tool-registry/definitions/main-toolbar-tools.tsx`、`tool-definition.ts`
 - 验证：`web/test/canvas-interaction-system.test.ts`、`web/test/canvas-performance-mode.test.ts`、`web/scripts/canvas-p0-chrome-e2e.mjs`
 
@@ -114,6 +117,8 @@
 - R12：TypeScript、生产构建、27 项模型/画幅专项测试和完整 Chrome E2E 59 项全部通过；浏览器实测 1360×1024 会选中 4:3，视频 480P/720P 双列无空位，输出尺寸、比例、时长和声音分组均正常显示。
 - R13：TypeScript、生产构建、28 项 Agent/本机 Runtime/媒体性能专项测试通过；完整 Chrome E2E 扩展至 68 项，覆盖 Agent 打开不改变 viewport 宽度和节点挂载数、本机 Runtime 懒加载/保活、收起焦点、顶栏命中、Dock 避让与 1024×768 紧凑 PC 布局。
 - R13 真实 39 节点画布回归：16% 缩放下打开 Agent 前后 viewport 均为 1021px、可见节点均为 29；22 个可见视频使用 LOD 且完整 `<video>` 为 0，单选后恢复 1 个播放器，39 节点全选后仍为 0。网站模式首开本机 Agent DOM 为 0，用户切到本机后收起重开仍保留原模式和 Runtime 树。
+- R14：TypeScript、生产构建、32 项 Agent/本机 Runtime/媒体策略专项测试和完整 Chrome E2E 68 项全部通过；新增覆盖三种模式策略映射、缓存键隔离、唯一选中播放器规则及画质优先封面渲染。
+- R14 真实 39 节点画布回归：27% 缩放下 29 个可见视频均成功生成非黑场代表帧，未选中时画布内完整播放器为 0；智能、画质优先和性能优先分别显示“轻量 / 高清 / 轻量展示”，切换时均保持 29 个封面且不批量挂载播放器。
 
 ## 风险与后续确认
 
@@ -121,4 +126,4 @@
 - 主素材入口支持混合媒体；左下快捷托盘仍专注图片，这是明确的功能分工，不是两个同义入口。
 - 上线前建议用一个包含 30 个以上节点、横竖图、视频、音频、文字和文件夹的真实副本做一次用户验收。
 - 本机 Agent 首次启用后在收起态继续保持 Runtime 连接，这是避免重连卡顿的明确取舍；上线后应继续观察长时会话的内存和连接占用。
-- 无封面视频在超远景 LOD 下使用黑底播放占位，选中后才加载完整播放器；这是当前性能优先策略，不影响原视频资源。
+- 视频代表帧缓存在当前浏览器，首次打开新素材需要短暂提取；跨域地址无法读取画面且现有资源缓存也不可用时会显示带名称的信息卡，选中后仍可按原链路播放。

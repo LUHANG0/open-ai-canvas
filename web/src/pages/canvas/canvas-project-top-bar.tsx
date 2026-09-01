@@ -8,6 +8,7 @@ import { useWalletBalance } from "@/hooks/use-wallet-balance";
 import { aceternityMotion } from "@/lib/aceternity-motion";
 import { canvasDockStyle } from "@/lib/canvas/canvas-aceternity-style";
 import type { CanvasContextSummary } from "@/lib/canvas/canvas-context-summary";
+import { CANVAS_MEDIA_MODE_PRESENTATION, CANVAS_MEDIA_TIER_LABEL, type CanvasMediaRenderTier } from "@/lib/canvas/canvas-performance-mode";
 import { canvasSaveStatusPresentation, type CanvasSaveStatus } from "@/lib/canvas/canvas-save-status";
 import type { CanvasShortDramaProgress } from "@/lib/canvas/canvas-short-drama";
 import { canvasThemes } from "@/lib/canvas-theme";
@@ -39,6 +40,7 @@ type CanvasTopBarProps = {
     onToggleAgent: () => void;
     shortcutRequestNonce: number;
     mediaPerformanceMode: CanvasMediaPerformanceMode;
+    mediaRenderTier: CanvasMediaRenderTier;
     onMediaPerformanceModeChange: (mode: CanvasMediaPerformanceMode) => void;
     onOpenSearch: () => void;
     saveStatus: CanvasSaveStatus;
@@ -71,6 +73,7 @@ export function CanvasTopBar({
     onToggleAgent,
     shortcutRequestNonce,
     mediaPerformanceMode,
+    mediaRenderTier,
     onMediaPerformanceModeChange,
     onOpenSearch,
     saveStatus,
@@ -86,6 +89,7 @@ export function CanvasTopBar({
     const { availableMicrocredits, refreshing } = useWalletBalance(user?.id, creditsEnabled);
     const titleRef = useRef<HTMLDivElement>(null);
     const [shortcutsOpen, setShortcutsOpen] = useState(false);
+    const [mediaModeOpen, setMediaModeOpen] = useState(false);
 
     const handleShortDramaGuideToggle = () => {
         shortDramaGuide?.onToggle();
@@ -130,11 +134,11 @@ export function CanvasTopBar({
                                     {
                                         key: "performance",
                                         icon: <Gauge className="size-4" />,
-                                        label: "媒体性能",
+                                        label: "媒体显示",
                                         children: [
-                                            { key: "performance-auto", label: "自动性能", onClick: () => onMediaPerformanceModeChange("auto") },
-                                            { key: "performance-quality", label: "画质优先", onClick: () => onMediaPerformanceModeChange("quality") },
-                                            { key: "performance-fast", label: "性能优先", onClick: () => onMediaPerformanceModeChange("performance") },
+                                            { key: "performance-auto", label: <MediaModeMenuLabel mode="auto" active={mediaPerformanceMode === "auto"} />, onClick: () => onMediaPerformanceModeChange("auto") },
+                                            { key: "performance-quality", label: <MediaModeMenuLabel mode="quality" active={mediaPerformanceMode === "quality"} />, onClick: () => onMediaPerformanceModeChange("quality") },
+                                            { key: "performance-fast", label: <MediaModeMenuLabel mode="performance" active={mediaPerformanceMode === "performance"} />, onClick: () => onMediaPerformanceModeChange("performance") },
                                         ],
                                     },
                                     { type: "divider" },
@@ -228,22 +232,27 @@ export function CanvasTopBar({
                             </Button>
                         </Dropdown>
                     </CanvasTopBarTooltip>
-                    <CanvasTopBarTooltip label="媒体性能模式">
+                    <CanvasTopBarTooltip label={`媒体模式：${CANVAS_MEDIA_MODE_PRESENTATION[mediaPerformanceMode].label} · ${CANVAS_MEDIA_TIER_LABEL[mediaRenderTier]}`} disabled={mediaModeOpen}>
                         <Dropdown
                             trigger={["click"]}
+                            open={mediaModeOpen}
+                            onOpenChange={setMediaModeOpen}
                             classNames={{ root: "pc-canvas-overlay pc-canvas-menu-overlay" }}
                             menu={{
                                 selectable: true,
                                 selectedKeys: [mediaPerformanceMode],
                                 onClick: ({ key }) => onMediaPerformanceModeChange(key as CanvasMediaPerformanceMode),
                                 items: [
-                                    { key: "auto", label: "自动性能" },
-                                    { key: "quality", label: "画质优先" },
-                                    { key: "performance", label: "性能优先" },
+                                    { key: "auto", label: <MediaModeMenuLabel mode="auto" active={mediaPerformanceMode === "auto"} /> },
+                                    { key: "quality", label: <MediaModeMenuLabel mode="quality" active={mediaPerformanceMode === "quality"} /> },
+                                    { key: "performance", label: <MediaModeMenuLabel mode="performance" active={mediaPerformanceMode === "performance"} /> },
                                 ],
                             }}
                         >
-                            <Button type="text" className="canvas-topbar-action !hidden !h-10 !w-10 !min-w-10 !rounded-xl !p-0 xl:!inline-flex" style={{ color: theme.node.text }} icon={<Gauge className="size-4" />} aria-label="媒体性能模式" />
+                            <Button type="text" className="canvas-topbar-action !relative !hidden !h-10 !min-w-10 !rounded-xl !px-2.5 xl:!inline-flex" style={{ color: theme.node.text }} icon={<Gauge className="size-4" />} aria-label="媒体性能模式">
+                                <span className="hidden text-xs font-medium 2xl:inline">{CANVAS_MEDIA_MODE_PRESENTATION[mediaPerformanceMode].shortLabel}</span>
+                                <span className="absolute right-1.5 top-1.5 size-1.5 rounded-full" style={{ background: mediaRenderTier === "lightweight" ? "#f59e0b" : mediaRenderTier === "quality" ? "#22c55e" : theme.accent.primary }} aria-hidden />
+                            </Button>
                         </Dropdown>
                     </CanvasTopBarTooltip>
                     <CanvasSaveStatusButton status={saveStatus} onRetry={onRetrySave} />
@@ -376,16 +385,29 @@ export function CanvasWorkspaceModeSwitch({ mode, onChange }: { mode: CanvasWork
 
 type CanvasTheme = (typeof canvasThemes)[keyof typeof canvasThemes];
 
-function CanvasTopBarTooltip({ label, children }: { label: string; children: ReactNode }) {
+function CanvasTopBarTooltip({ label, children, disabled = false }: { label: string; children: ReactNode; disabled?: boolean }) {
     return (
-        <span className="group relative inline-flex">
+        <span className={`${disabled ? "" : "group"} relative inline-flex`}>
             {children}
-            <span
+            {!disabled ? <span
                 role="tooltip"
                 className="aceternity-dock-tooltip pointer-events-none absolute left-1/2 top-[calc(100%+8px)] z-[var(--dock-tooltip-z)] -translate-x-1/2 translate-y-1 whitespace-nowrap rounded-md border px-2 py-1 text-[var(--fs-tiny)] font-medium opacity-0 shadow-xl backdrop-blur-xl transition-all duration-150 motion-reduce:transition-none group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:translate-y-0 group-focus-within:opacity-100"
             >
                 {label}
+            </span> : null}
+        </span>
+    );
+}
+
+function MediaModeMenuLabel({ mode, active }: { mode: CanvasMediaPerformanceMode; active: boolean }) {
+    const presentation = CANVAS_MEDIA_MODE_PRESENTATION[mode];
+    return (
+        <span className="flex min-w-60 items-start gap-2 py-1">
+            <span className="min-w-0 flex-1">
+                <span className="block text-sm font-semibold leading-5">{presentation.label}</span>
+                <span className="mt-0.5 block whitespace-normal text-xs leading-4 opacity-55">{presentation.description}</span>
             </span>
+            <Check className={`mt-1 size-3.5 shrink-0 ${active ? "opacity-100" : "opacity-0"}`} aria-hidden />
         </span>
     );
 }

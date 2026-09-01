@@ -1210,6 +1210,7 @@ function InfiniteCanvasPage() {
         imageAssets,
         infoNode,
         maskEditNode,
+        mediaRenderPolicy,
         mentionReferencesByNodeId,
         nodeById,
         previewNode,
@@ -2110,6 +2111,7 @@ function InfiniteCanvasPage() {
                                 onToggleAgent={() => (assistantOpen ? closeAgent() : openAgent())}
                                 shortcutRequestNonce={shortcutRequestNonce}
                                 mediaPerformanceMode={mediaPerformanceMode}
+                                mediaRenderTier={mediaRenderPolicy.tier}
                                 onMediaPerformanceModeChange={setMediaPerformanceMode}
                                 onOpenSearch={() => setNodeSearchOpen(true)}
                                 saveStatus={saveStatus}
@@ -2238,6 +2240,7 @@ function InfiniteCanvasPage() {
                                                 batchMotionById={batchMotionById}
                                                 showImageInfo={showImageInfo}
                                                 reduceMediaEffects={reduceMediaEffects}
+                                                mediaRenderPolicy={mediaRenderPolicy}
                                                 resourceReferenceByNodeId={resourceReferenceByNodeId}
                                                 mentionReferencesByNodeId={mentionReferencesByNodeId}
                                                 mediaEffectsDisabledNodeId={emotionNodeId}

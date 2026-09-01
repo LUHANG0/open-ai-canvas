@@ -3,7 +3,7 @@ import { useMemo, useRef } from "react";
 import { buildNodeGenerationInputs, type NodeGenerationInput } from "@/components/canvas/canvas-node-generation";
 import { isFrameNode } from "@/lib/canvas/canvas-frame";
 import { sameNodeSemanticData } from "@/lib/canvas/canvas-project-domain";
-import { shouldReduceCanvasMediaEffects } from "@/lib/canvas/canvas-performance-mode";
+import { resolveCanvasMediaRenderPolicy } from "@/lib/canvas/canvas-performance-mode";
 import { buildCanvasResourceReferences, buildNodeMentionReferences, createCanvasResourceGraphIndex } from "@/lib/canvas/canvas-resource-references";
 import { buildSkillMentionReferences } from "@/lib/canvas/canvas-skill-mentions";
 import type { Skill } from "@/services/api/skills";
@@ -115,10 +115,11 @@ export function useCanvasRenderModel({
                 && node.position.y < bottom;
         });
     }, [nodes, renderHiddenNodeIds, viewport.k, viewport.x, viewport.y, viewportSize.height, viewportSize.width]);
-    const reduceMediaEffects = useMemo(
-        () => shouldReduceCanvasMediaEffects(mediaPerformanceMode, nodes, { viewportScale: viewport.k, visibleNodes: visibleNodesForPerformance }),
+    const mediaRenderPolicy = useMemo(
+        () => resolveCanvasMediaRenderPolicy(mediaPerformanceMode, nodes, { viewportScale: viewport.k, visibleNodes: visibleNodesForPerformance }),
         [mediaPerformanceMode, nodes, viewport.k, visibleNodesForPerformance],
     );
+    const reduceMediaEffects = mediaRenderPolicy.reduceEffects;
     const connectionLayerBounds = useMemo(() => {
         const padding = (reduceMediaEffects ? 96 : 144) / Math.max(viewport.k, 0.05);
         const left = -viewport.x / viewport.k - padding;
@@ -305,6 +306,7 @@ export function useCanvasRenderModel({
         infoNode,
         maskEditNode,
         mentionReferencesByNodeId,
+        mediaRenderPolicy,
         nodeById,
         previewNode,
         reduceMediaEffects,

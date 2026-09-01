@@ -6,6 +6,7 @@ import { useCanvasNodeActions } from "./canvas-node-action-context";
 
 import { canvasThemes } from "@/lib/canvas-theme";
 import { storyboardMinNodeHeight } from "@/lib/canvas/canvas-storyboard-layout";
+import type { CanvasMediaRenderPolicy } from "@/lib/canvas/canvas-performance-mode";
 import { resourceStorageLabel, resourceStorageLocation, resourceStorageTitle } from "@/lib/canvas/resource-storage-status";
 import { useThemeStore } from "@/stores/use-theme-store";
 import { CanvasNodeType, type CanvasNodeData, type CanvasNodeTypeId, type Position } from "@/types/canvas";
@@ -29,6 +30,8 @@ type CanvasNodeProps = {
     forceInputVisible?: boolean;
     showImageInfo: boolean;
     reduceMediaEffects?: boolean;
+    mediaRenderPolicy?: CanvasMediaRenderPolicy;
+    videoPreviewOnly?: boolean;
     readOnly?: boolean;
     resourceLabel?: CanvasResourceReference;
     mentionReferences?: CanvasResourceReference[];
@@ -73,6 +76,8 @@ export const CanvasNode = React.memo(function CanvasNode({
     forceInputVisible = false,
     showImageInfo,
     reduceMediaEffects = false,
+    mediaRenderPolicy,
+    videoPreviewOnly = false,
     readOnly = false,
     resourceLabel,
     mentionReferences = [],
@@ -378,6 +383,8 @@ export const CanvasNode = React.memo(function CanvasNode({
                         onOpenTaskDetails={onOpenTaskDetails}
                         onToggleBatch={() => onToggleBatch?.(data.id)}
                         reduceMediaEffects={reduceMediaEffects}
+                        mediaRenderPolicy={mediaRenderPolicy}
+                        videoPreviewOnly={videoPreviewOnly}
                     />
                 </div>
 
@@ -487,6 +494,8 @@ function areCanvasNodePropsEqual(previous: CanvasNodeProps, next: CanvasNodeProp
         previous.forceInputVisible === next.forceInputVisible &&
         previous.showImageInfo === next.showImageInfo &&
         previous.reduceMediaEffects === next.reduceMediaEffects &&
+        previous.mediaRenderPolicy === next.mediaRenderPolicy &&
+        previous.videoPreviewOnly === next.videoPreviewOnly &&
         previous.readOnly === next.readOnly &&
         previous.resourceLabel === next.resourceLabel &&
         previous.mentionReferences === next.mentionReferences &&
