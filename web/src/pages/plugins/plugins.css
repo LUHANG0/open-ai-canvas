@@ -844,6 +844,11 @@
 
 /* R6 desktop contract: public plugin pages consume the shared --app-* system. */
 @media (min-width: 1024px) {
+    .plugins-page {
+        --plugins-accent-soft: color-mix(in srgb, var(--app-brand-600) 8%, transparent);
+        --plugins-accent-line: color-mix(in srgb, var(--app-brand-600) 38%, var(--app-border-default));
+    }
+
     .plugins-page-content {
         min-height: 100%;
         padding: var(--app-space-5, 20px) var(--app-page-gutter, 24px) var(--app-space-8, 32px);
@@ -875,14 +880,18 @@
     }
 
     .plugins-subnav .pc-subnav-layout__rail {
+        overflow: hidden;
+        background: var(--app-surface-1, var(--background));
         border-color: var(--app-border-subtle, var(--border));
         border-radius: var(--app-surface-radius, 12px);
-        box-shadow: var(--app-shadow-surface, 0 1px 2px rgba(0, 0, 0, 0.04));
+        box-shadow:
+            inset 0 1px 0 color-mix(in srgb, var(--app-brand-400) 18%, transparent),
+            var(--app-shadow-surface, 0 1px 2px rgba(0, 0, 0, 0.04));
     }
 
     .plugins-subnav .pc-subnav-layout__rail-header {
         padding: var(--app-space-3, 12px) var(--app-space-4, 16px);
-        background: var(--app-surface-2, var(--surface-card));
+        background: color-mix(in srgb, var(--app-surface-2, var(--surface-card)) 82%, var(--app-selection-bg));
     }
 
     .plugins-subnav-heading {
@@ -906,6 +915,19 @@
         text-align: center;
     }
 
+    .plugins-subnav-heading::before {
+        width: 3px;
+        height: 16px;
+        flex: 0 0 auto;
+        background: var(--app-brand-gradient);
+        border-radius: var(--app-radius-1, 6px);
+        content: "";
+    }
+
+    .plugins-subnav-heading > span {
+        margin-right: auto;
+    }
+
     .plugins-subnav .pc-subnav-layout__nav {
         gap: var(--app-space-1, 4px);
         padding: var(--app-space-2, 8px);
@@ -922,8 +944,12 @@
         inset: 9px auto 9px 0;
         width: 3px;
         content: "";
-        background: var(--app-action-primary-bg, var(--primary));
+        background: var(--app-brand-gradient, var(--app-action-primary-bg, var(--primary)));
         border-radius: 0 4px 4px 0;
+    }
+
+    .plugins-subnav .pc-subnav-layout__item.is-active {
+        background: var(--app-selection-bg);
     }
 
     .plugins-subnav .pc-subnav-layout__item-icon {
@@ -938,15 +964,24 @@
     }
 
     .plugins-subnav .pc-subnav-layout__item.is-active .pc-subnav-layout__item-icon {
-        color: var(--app-selection-fg, var(--foreground));
-        background: var(--app-surface-1, var(--background));
+        color: var(--app-brand-700, var(--app-selection-fg, var(--foreground)));
+        background: color-mix(in srgb, var(--app-surface-1, var(--background)) 78%, var(--app-brand-100));
+        box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--app-brand-600) 18%, transparent);
+    }
+
+    .dark .plugins-subnav .pc-subnav-layout__item.is-active .pc-subnav-layout__item-icon {
+        color: var(--app-brand-300);
+        background: color-mix(in srgb, var(--app-surface-2) 78%, var(--app-brand-900));
     }
 
     .plugins-subnav .pc-subnav-layout__content {
         min-height: 560px;
+        background: var(--app-surface-1, var(--background));
         border-color: var(--app-border-subtle, var(--border));
         border-radius: var(--app-surface-radius, 12px);
-        box-shadow: var(--app-shadow-surface, 0 1px 2px rgba(0, 0, 0, 0.04));
+        box-shadow:
+            inset 0 1px 0 color-mix(in srgb, var(--app-text-primary) 3%, transparent),
+            var(--app-shadow-surface, 0 1px 2px rgba(0, 0, 0, 0.04));
     }
 
     .plugins-subnav .pc-subnav-layout__content-body {
@@ -958,8 +993,12 @@
         grid-template-columns: minmax(260px, 1fr) 152px 152px auto;
         min-height: 52px;
         gap: var(--app-space-2, 8px);
+        margin: calc(var(--app-space-1, 4px) * -1) calc(var(--app-space-1, 4px) * -1) 0;
+        padding: var(--app-space-3, 12px);
         padding-bottom: var(--app-space-4, 16px);
+        background: color-mix(in srgb, var(--app-surface-2) 72%, transparent);
         border-bottom: 1px solid var(--app-border-subtle, var(--border));
+        border-radius: var(--app-control-radius, 8px) var(--app-control-radius, 8px) 0 0;
     }
 
     .plugins-search.pc-search-field {
@@ -1006,10 +1045,14 @@
     .plugin-section-icon {
         width: 36px;
         height: 36px;
-        color: var(--app-text-secondary, var(--muted-foreground));
-        background: var(--app-surface-2, var(--surface-card));
-        border-color: var(--app-border-subtle, var(--border));
+        color: var(--app-brand-700, var(--app-selection-fg));
+        background: var(--app-selection-bg);
+        border-color: var(--app-selection-border);
         border-radius: var(--app-control-radius, 8px);
+    }
+
+    .dark .plugin-section-icon {
+        color: var(--app-brand-300);
     }
 
     .plugin-section-heading h2 {
@@ -1026,8 +1069,8 @@
     .plugin-section-count {
         min-width: 28px;
         height: 24px;
-        color: var(--app-text-secondary, var(--muted-foreground));
-        background: var(--app-surface-2, var(--surface-card));
+        color: var(--app-selection-fg, var(--app-text-secondary));
+        background: var(--app-selection-bg);
         border-radius: var(--r-full, 999px);
     }
 
@@ -1038,7 +1081,9 @@
     }
 
     .plugin-card {
+        position: relative;
         min-height: 248px;
+        overflow: hidden;
         padding: var(--app-space-4, 16px);
         background: var(--app-surface-1, var(--background));
         border: 1px solid var(--app-border-subtle, var(--border));
@@ -1046,11 +1091,22 @@
         box-shadow: none;
     }
 
+    .plugin-card.is-trusted::before {
+        position: absolute;
+        inset: 0 0 auto;
+        height: 2px;
+        background: linear-gradient(90deg, var(--app-brand-600), color-mix(in srgb, var(--app-brand-400) 22%, transparent) 72%, transparent);
+        content: "";
+        pointer-events: none;
+    }
+
     .plugin-card:hover,
     .plugin-card:focus-within {
         background: var(--app-surface-1, var(--background));
-        border-color: var(--app-border-default, var(--border));
-        box-shadow: var(--app-shadow-surface, 0 1px 2px rgba(0, 0, 0, 0.04));
+        border-color: var(--plugins-accent-line);
+        box-shadow:
+            0 0 0 2px var(--plugins-accent-soft),
+            var(--app-shadow-surface, 0 1px 2px rgba(0, 0, 0, 0.04));
     }
 
     .plugin-card-main:focus-visible {
@@ -1061,10 +1117,20 @@
     .plugin-icon-tile {
         width: 40px;
         height: 40px;
-        color: var(--app-text-secondary, var(--muted-foreground));
-        background: var(--app-surface-2, var(--surface-card));
-        border: 1px solid var(--app-border-subtle, var(--border));
+        color: var(--app-brand-700, var(--app-selection-fg));
+        background: var(--app-selection-bg);
+        border: 1px solid var(--app-selection-border);
         border-radius: var(--app-control-radius, 8px);
+    }
+
+    .dark .plugin-icon-tile {
+        color: var(--app-brand-300);
+    }
+
+    .plugin-card:hover .plugin-icon-tile,
+    .plugin-card:focus-within .plugin-icon-tile {
+        color: var(--app-selection-fg);
+        background: var(--app-selection-hover);
     }
 
     .plugin-card-title-row h3 {
@@ -1100,12 +1166,26 @@
     }
 
     .plugins-empty-state {
+        position: relative;
         min-height: 320px;
         margin-top: var(--app-space-5, 20px);
         color: var(--app-text-muted, var(--muted-foreground));
         background: var(--app-surface-2, var(--surface-card));
         border: 1px dashed var(--app-border-default, var(--border));
         border-radius: var(--app-surface-radius, 12px);
+    }
+
+    .plugins-empty-state > svg {
+        box-sizing: content-box;
+        padding: var(--app-space-3, 12px);
+        color: var(--app-brand-700);
+        background: var(--app-selection-bg);
+        border: 1px solid var(--app-selection-border);
+        border-radius: var(--app-surface-radius, 12px);
+    }
+
+    .dark .plugins-empty-state > svg {
+        color: var(--app-brand-300);
     }
 
     .plugins-empty-state h3 {
@@ -1118,10 +1198,20 @@
     }
 
     .plugin-settings-fields > div {
+        position: relative;
         padding: var(--app-space-4, 16px);
         background: var(--app-surface-2, var(--surface-card));
         border: 1px solid var(--app-border-subtle, var(--border));
         border-radius: var(--app-control-radius, 8px);
+    }
+
+    .plugin-settings-fields > div::before {
+        position: absolute;
+        inset: 0 auto 0 0;
+        width: 2px;
+        background: var(--app-selection-border);
+        border-radius: var(--app-control-radius, 8px) 0 0 var(--app-control-radius, 8px);
+        content: "";
     }
 
     .plugin-permissions {
