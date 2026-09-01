@@ -212,6 +212,7 @@ export default function CanvasPage() {
         <WorkspacePage grid className="canvas-library-page pc-canvas-library-page">
             <div className="studio-band pc-canvas-library__header">
                 <PageHeader
+                    eyebrow="VISUAL CANVAS"
                     title="画布"
                     description="把镜头、素材和想法留在同一张画布里。"
                     meta={

@@ -131,6 +131,7 @@ export default function EagleLibraryPage() {
         return (
             <WorkspacePage grid className="library-page eagle-library-page">
                 <PageHeader
+                    eyebrow="EXTERNAL ASSET SOURCE"
                     title="Eagle 素材库"
                     description="把 Eagle 作为影策的外部素材来源，直接浏览和管理 Eagle 原始文件。"
                     actions={
@@ -160,6 +161,7 @@ export default function EagleLibraryPage() {
             <WorkspacePage grid className="library-page assets-library-page canvas-library-page eagle-library-page">
                 <div className="studio-band">
                     <PageHeader
+                        eyebrow="EXTERNAL ASSET SOURCE"
                         title="Eagle 素材库"
                         description="Eagle 是影策的外部素材来源；这里复用影策素材库的浏览方式，直接读取和写入 Eagle 原始文件。"
                         meta={

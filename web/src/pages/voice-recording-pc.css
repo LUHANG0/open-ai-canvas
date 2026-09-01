@@ -50,6 +50,15 @@
     }
 
     .pc-voice-page-content {
+        --voice-page-bg: var(--app-bg-page);
+        --voice-card-bg: var(--app-surface-1);
+        --voice-control-bg: var(--app-control-bg);
+        --voice-panel-bg: var(--app-surface-2);
+        --voice-border: var(--app-border-default);
+        --voice-text: var(--app-text-primary);
+        --voice-muted: var(--app-text-secondary);
+        --voice-accent: var(--app-brand-600);
+        --voice-accent-fg: var(--app-action-primary-fg);
         display: grid;
         width: 100%;
         max-width: 980px;
