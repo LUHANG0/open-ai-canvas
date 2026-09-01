@@ -15,6 +15,8 @@ export type CanvasNodeActionContextValue = {
     resizeNode?: (nodeId: string, size: { width: number; height: number }) => void;
     /** 打开节点级肖像排查工作台；任务生命周期由画布页面持有。 */
     openPortraitClearance?: (node: CanvasNodeData) => void;
+    /** 明确播放时单选视频，不经过节点拖拽的按下事件。 */
+    selectVideoForPlayback?: (nodeId: string) => void;
 };
 
 export const CanvasNodeActionContext = createContext<CanvasNodeActionContextValue>({});

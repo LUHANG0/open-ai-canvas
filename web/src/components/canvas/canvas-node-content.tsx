@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from "react";
-import { AlertCircle, BookOpenCheck, Clock3, Download, FileText, Film, Image as ImageIcon, LoaderCircle, Music2, Pencil, Play, RefreshCw, Video } from "lucide-react";
+import { AlertCircle, BookOpenCheck, Clock3, Download, FileText, Image as ImageIcon, LoaderCircle, Music2, Pencil, Play, RefreshCw, Video } from "lucide-react";
 
 import { VideoPlayer } from "@/components/video-player";
 import { CONTENT_MODERATION_ERROR_CODE, generationErrorMessage, isContentModerationError } from "@/lib/generation-error";
@@ -422,8 +422,21 @@ function VideoNodeContent({ node, theme, reduceMediaEffects, mediaRenderPolicy, 
     const playerBoxRef = useRef<HTMLDivElement>(null);
     const pointerGestureRef = useRef<{ pointerId: number; startX: number; startY: number; moved: boolean } | null>(null);
     const suppressSurfaceClickRef = useRef(false);
-    const { updateMetadata } = useCanvasNodeActions();
+    const { updateMetadata, selectVideoForPlayback } = useCanvasNodeActions();
     const { url, loading, load } = useNodeResourceUrl(node, false);
+    const previewOnly = videoPreviewOnly ?? reduceMediaEffects;
+    const sourceIdentity = JSON.stringify([node.id, node.metadata?.storageKey, node.metadata?.content]);
+    const [playRequest, setPlayRequest] = useState<string | null>(null);
+    const playRequested = playRequest === sourceIdentity;
+    const requestPlayback = () => {
+        setPlayRequest(sourceIdentity);
+        selectVideoForPlayback?.(node.id);
+        void load();
+    };
+    useEffect(() => {
+        // 取消选中、进入多选或更换素材后，不保留稍后突然播放的意图。
+        setPlayRequest((current) => previewOnly || current !== sourceIdentity ? null : current);
+    }, [previewOnly, sourceIdentity]);
     const subtitleEntries = node.metadata?.subtitleEntries || [];
     const subtitleStyle = node.metadata?.subtitleStyle || createDefaultSubtitleStyle();
     const [currentTimeMs, setCurrentTimeMs] = useState(0);
@@ -453,8 +466,7 @@ function VideoNodeContent({ node, theme, reduceMediaEffects, mediaRenderPolicy, 
     }, [node.id, node.metadata?.naturalHeight, node.metadata?.naturalWidth, reduceMediaEffects, subtitleEntries.length, updateMetadata, url]);
 
     if (!node.metadata?.content) return <EmptyMediaContent icon={<Video className="size-7 opacity-35" />} label="空视频节点" color={theme.node.placeholder} />;
-    if (videoPreviewOnly ?? reduceMediaEffects) return <VideoPosterPreview node={node} theme={theme} policy={mediaRenderPolicy} />;
-    if (!url) return <DeferredMediaLoad icon={loading ? <LoaderCircle className="size-5 animate-spin" /> : <Play className="size-5 fill-current" />} label={loading ? "正在缓存视频" : "加载视频（保持暂停）"} disabled={loading} onClick={() => { void load(); }} />;
+    if (previewOnly || !url) return <VideoPosterPreview node={node} theme={theme} policy={mediaRenderPolicy} loadingPlayback={playRequested && loading} onPlay={requestPlayback} />;
 
     const sourceRatio = (videoSize?.width || node.metadata?.naturalWidth || node.width) / Math.max(1, videoSize?.height || node.metadata?.naturalHeight || node.height);
     const fitHeight = Math.min(node.height, node.width / Math.max(0.01, sourceRatio));
@@ -499,19 +511,20 @@ function VideoNodeContent({ node, theme, reduceMediaEffects, mediaRenderPolicy, 
             }}
         >
             <div className="relative" style={{ width: fitWidth, height: Math.round(fitHeight) }}>
-                <VideoPlayer src={url} mimeType={node.metadata?.mimeType} title={node.title || "视频"} preload={reduceMediaEffects ? "none" : "metadata"} brandColor={theme.accent.primary} className="h-full w-full rounded-[var(--node-radius)] bg-black" dataCanvasNoZoom compactControls />
+                <VideoPlayer src={url} mimeType={node.metadata?.mimeType} title={node.title || "视频"} preload={reduceMediaEffects ? "none" : "metadata"} autoPlay={playRequested} onPlay={() => setPlayRequest(null)} onAutoPlayFail={() => setPlayRequest(null)} brandColor={theme.accent.primary} className="h-full w-full rounded-[var(--node-radius)] bg-black" dataCanvasNoZoom compactControls />
                 {activeEntry && activeEntry.text.trim() ? <CanvasSubtitleOverlay text={activeEntry.text} highlight={activeHighlight} style={subtitleStyle} /> : null}
             </div>
         </div>
     );
 }
 
-function VideoPosterPreview({ node, theme, policy }: Pick<CanvasNodeContentProps, "node" | "theme"> & { policy?: CanvasMediaRenderPolicy }) {
+function VideoPosterPreview({ node, theme, policy, loadingPlayback, onPlay }: Pick<CanvasNodeContentProps, "node" | "theme"> & { policy?: CanvasMediaRenderPolicy; loadingPlayback: boolean; onPlay: () => void }) {
     const staticPosterUrl = staticVideoPosterUrl(node.metadata?.previewContent);
     const [staticPosterFailed, setStaticPosterFailed] = useState(false);
     const generatedPoster = useCanvasVideoPoster(node, policy, !staticPosterUrl || staticPosterFailed);
     const posterUrl = staticPosterUrl && !staticPosterFailed ? staticPosterUrl : generatedPoster.url;
     const isLoading = !posterUrl && generatedPoster.status === "loading";
+    const playGestureRef = useRef<{ x: number; y: number; cancelled: boolean } | null>(null);
 
     useEffect(() => setStaticPosterFailed(false), [staticPosterUrl]);
 
@@ -522,7 +535,7 @@ function VideoPosterPreview({ node, theme, policy }: Pick<CanvasNodeContentProps
             data-canvas-video-poster-status={posterUrl ? "ready" : generatedPoster.status}
             className="relative flex size-full cursor-grab items-center justify-center overflow-hidden rounded-[var(--node-radius)] active:cursor-grabbing"
             style={{ background: `linear-gradient(145deg, ${theme.node.fill} 0%, ${theme.canvas.background} 100%)`, color: theme.node.text }}
-            aria-label={`${node.title || "视频"}，选中后可播放`}
+            aria-label={`${node.title || "视频"}，点击中央按钮播放`}
         >
             {posterUrl ? <>
                 <img src={posterUrl} alt="" aria-hidden loading="lazy" decoding="async" draggable={false} className="pointer-events-none absolute inset-[-8%] size-[116%] object-cover opacity-35 blur-xl" />
@@ -531,12 +544,41 @@ function VideoPosterPreview({ node, theme, policy }: Pick<CanvasNodeContentProps
                 <div className="pointer-events-none absolute inset-0 opacity-70" style={{ backgroundImage: `radial-gradient(circle at 25% 20%, ${theme.accent.primarySoft}, transparent 36%), linear-gradient(135deg, transparent, ${theme.node.stroke})` }} />
             )}
             <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-black/5" />
-            <div className="pointer-events-none relative grid size-11 place-items-center rounded-full border border-white/25 bg-black/45 text-white shadow-sm backdrop-blur-sm">
-                {isLoading ? <LoaderCircle className="size-5 animate-spin" /> : posterUrl ? <Play className="ml-0.5 size-5 fill-current" /> : <Film className="size-5" />}
-            </div>
+            <button
+                type="button"
+                data-canvas-no-zoom
+                data-canvas-video-poster-play
+                aria-label={loadingPlayback ? "正在加载视频" : "播放视频"}
+                disabled={loadingPlayback}
+                className="relative grid size-11 cursor-pointer place-items-center rounded-full border border-white/25 bg-black/45 text-white shadow-sm backdrop-blur-sm transition-colors hover:bg-black/65 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-wait"
+                onMouseDown={(event) => event.stopPropagation()}
+                onPointerDown={(event) => {
+                    event.stopPropagation();
+                    if (event.button !== 0) return;
+                    playGestureRef.current = { x: event.clientX, y: event.clientY, cancelled: false };
+                    event.currentTarget.setPointerCapture(event.pointerId);
+                }}
+                onPointerMove={(event) => {
+                    const gesture = playGestureRef.current;
+                    if (gesture && Math.hypot(event.clientX - gesture.x, event.clientY - gesture.y) >= 6) gesture.cancelled = true;
+                }}
+                onPointerUp={(event) => {
+                    const gesture = playGestureRef.current;
+                    if (gesture && Math.hypot(event.clientX - gesture.x, event.clientY - gesture.y) >= 6) gesture.cancelled = true;
+                }}
+                onPointerCancel={() => { if (playGestureRef.current) playGestureRef.current.cancelled = true; }}
+                onClick={(event) => {
+                    event.stopPropagation();
+                    if (event.detail !== 0 && playGestureRef.current?.cancelled) return;
+                    onPlay();
+                }}
+                onDoubleClick={(event) => event.stopPropagation()}
+            >
+                {loadingPlayback ? <LoaderCircle className="size-5 animate-spin" /> : <Play className="ml-0.5 size-5 fill-current" />}
+            </button>
             <div className="pointer-events-none absolute inset-x-3 bottom-3 flex min-w-0 items-end justify-between gap-2 text-white">
                 <span className="min-w-0 truncate rounded-md bg-black/48 px-2 py-1 text-[var(--fs-tiny)] font-medium backdrop-blur-sm">{node.title || "视频素材"}</span>
-                <span className="shrink-0 rounded-md bg-black/48 px-2 py-1 text-[10px] backdrop-blur-sm">{isLoading ? "生成预览中" : posterUrl ? "选中播放" : "选中查看"}</span>
+                <span className="shrink-0 rounded-md bg-black/48 px-2 py-1 text-[10px] backdrop-blur-sm">{loadingPlayback ? "正在加载视频" : isLoading ? "生成预览中 · 可播放" : "点击播放"}</span>
             </div>
         </div>
     );
@@ -643,8 +685,9 @@ function DeferredMediaLoad({ icon, label, disabled, onClick }: { icon: ReactNode
 function useNodeResourceUrl(node: CanvasNodeData, eager: boolean) {
     const storageKey = node.metadata?.storageKey || "";
     const content = node.metadata?.content || "";
-    const fallback = node.metadata?.previewContent
-        || (node.type === CanvasNodeType.Image && node.metadata?.importSource?.provider === "libtv" ? buildLibTVImagePreviewUrl(content) : content);
+    const fallback = node.type === CanvasNodeType.Image
+        ? node.metadata?.previewContent || (node.metadata?.importSource?.provider === "libtv" ? buildLibTVImagePreviewUrl(content) : content)
+        : content;
     const isRemoteResource = Boolean(resourceIdFromStorageKey(storageKey));
     const [url, setUrl] = useState(isRemoteResource ? "" : fallback);
     const [loading, setLoading] = useState(isRemoteResource && eager);

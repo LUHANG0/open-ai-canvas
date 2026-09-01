@@ -2010,9 +2010,19 @@ function InfiniteCanvasPage() {
     }, []);
     const duplicateCanvasNodeFromContext = useCallback((node: CanvasNodeData) => duplicateNode(node.id), [duplicateNode]);
     const deleteCanvasNodeFromContext = useCallback((node: CanvasNodeData) => deleteNodes(new Set([node.id])), [deleteNodes]);
+    const selectVideoForPlayback = useCallback((nodeId: string) => {
+        const node = nodesRef.current.find((item) => item.id === nodeId && item.type === CanvasNodeType.Video);
+        if (!node) return;
+        const selection = new Set([nodeId]);
+        selectedNodeIdsRef.current = selection;
+        setSelectedNodeIds(selection);
+        setSelectedConnectionId(null);
+        handleNodeInteractionStart(false);
+        handleSelectedNodeClick(node);
+    }, [handleNodeInteractionStart, handleSelectedNodeClick, nodesRef, selectedNodeIdsRef]);
     const canvasNodeActions = useMemo<CanvasNodeActionContextValue>(
-        () => ({ download: downloadNodeImage, duplicate: duplicateCanvasNodeFromContext, deleteNode: deleteCanvasNodeFromContext, updateMetadata: updateCanvasNodeMetadata, resizeNode: resizeCanvasNodeFromContent, openPortraitClearance }),
-        [deleteCanvasNodeFromContext, downloadNodeImage, duplicateCanvasNodeFromContext, openPortraitClearance, resizeCanvasNodeFromContent, updateCanvasNodeMetadata],
+        () => ({ download: downloadNodeImage, duplicate: duplicateCanvasNodeFromContext, deleteNode: deleteCanvasNodeFromContext, updateMetadata: updateCanvasNodeMetadata, resizeNode: resizeCanvasNodeFromContent, openPortraitClearance, selectVideoForPlayback }),
+        [deleteCanvasNodeFromContext, downloadNodeImage, duplicateCanvasNodeFromContext, openPortraitClearance, resizeCanvasNodeFromContent, selectVideoForPlayback, updateCanvasNodeMetadata],
     );
     const handleConnectionSelect = useCallback((connectionId: string) => {
         setSelectedConnectionId(connectionId);
