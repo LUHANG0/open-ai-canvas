@@ -165,7 +165,8 @@
         gap: var(--app-space-2);
     }
 
-    .assets-library-page .assets-collection-heading strong {
+    .assets-library-page .assets-collection-heading h2 {
+        margin: 0;
         color: var(--app-text-primary);
         font-size: var(--app-font-size-body);
         font-weight: 680;
@@ -410,10 +411,6 @@
 @media (min-width: 1024px) and (max-width: 1279px) {
     .assets-library-page .assets-library-layout {
         grid-template-columns: 168px minmax(0, 1fr);
-    }
-
-    .assets-library-page .assets-library-grid {
-        grid-template-columns: repeat(3, minmax(0, 1fr));
     }
 
     .assets-library-page .assets-selection-guide,

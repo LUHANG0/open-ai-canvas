@@ -2414,6 +2414,9 @@ html:not(.dark) .creation-media-preview-modal.is-video .ant-modal-container {
         width: 38px;
         height: 38px;
         flex-basis: 38px;
+    }
+
+    .creation-home .creation-chat-composer:is(.is-empty, .is-thread) .canvas-node-composer-submit:not(:disabled) .canvas-node-composer-submit-action {
         box-shadow: 0 8px 20px color-mix(in srgb, var(--app-action-primary-bg) 22%, transparent);
     }
 

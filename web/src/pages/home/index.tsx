@@ -43,7 +43,7 @@ const ASSET_KINDS: Array<{ key: AssetKind; label: string }> = [
 ];
 
 const CHART_BRAND = "var(--home-chart-brand, var(--workspace-accent))";
-const CHART_BRAND_MUTED = "color-mix(in srgb, var(--home-chart-brand, var(--workspace-accent)) 34%, transparent)";
+const CHART_BRAND_MUTED = "color-mix(in srgb, var(--home-chart-brand, var(--workspace-accent)) 30%, transparent)";
 const CHART_AI = "var(--home-chart-ai, var(--workspace-accent))";
 
 export default function IndexPage() {
@@ -574,10 +574,10 @@ function assetSummaryHint(counts: Partial<Record<AssetKind, number>>) {
 function assetChartData(assets: ReturnType<typeof useAssetStore.getState>["assets"]) {
     const colors = [
         CHART_BRAND,
-        "color-mix(in srgb, var(--home-chart-brand, var(--workspace-accent)) 72%, transparent)",
-        "color-mix(in srgb, var(--home-chart-brand, var(--workspace-accent)) 52%, transparent)",
-        "color-mix(in srgb, var(--home-chart-brand, var(--workspace-accent)) 34%, transparent)",
-        "color-mix(in srgb, var(--home-chart-brand, var(--workspace-accent)) 20%, transparent)",
+        "color-mix(in srgb, var(--home-chart-brand, var(--workspace-accent)) 66%, transparent)",
+        "color-mix(in srgb, var(--home-chart-brand, var(--workspace-accent)) 44%, transparent)",
+        "color-mix(in srgb, var(--home-chart-brand, var(--workspace-accent)) 28%, transparent)",
+        "color-mix(in srgb, var(--home-chart-brand, var(--workspace-accent)) 16%, transparent)",
     ];
     const counts = new Map<string, number>();
     for (const asset of assets) counts.set(asset.kind, (counts.get(asset.kind) || 0) + 1);

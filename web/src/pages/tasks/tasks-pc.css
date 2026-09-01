@@ -448,6 +448,23 @@
     .task-library-page .task-record-table-head,
     .task-library-page .task-record-row {
         min-width: 1220px;
+        grid-template-columns: minmax(360px, 2.4fr) minmax(96px, 0.7fr) minmax(150px, 1fr) minmax(130px, 0.8fr) 126px 112px 76px;
+    }
+
+    .task-library-page .task-record-table-head > span:nth-child(2),
+    .task-library-page .task-record-table-head > span:nth-child(3),
+    .task-library-page .task-record-table-head > span:nth-child(4) {
+        display: block;
+    }
+
+    .task-library-page .task-record-kind,
+    .task-library-page .task-record-model,
+    .task-library-page .task-record-canvas {
+        display: flex;
+    }
+
+    .task-library-page .task-record-mobile-meta {
+        display: none;
     }
 }
 

@@ -6,6 +6,16 @@
     display: none;
 }
 
+.pc-home-page .home-welcome .app-page-header-meta {
+    display: none;
+}
+
+@media (max-width: 1023px) {
+    .pc-home-page .home-brand-hero {
+        display: contents;
+    }
+}
+
 @media (min-width: 1024px) {
     .pc-home-page {
         --home-chart-ai: var(--app-status-running-fg);
@@ -135,6 +145,10 @@
         background: var(--app-selection-bg);
         border: 1px solid var(--app-selection-border);
         border-radius: var(--app-control-radius-sm);
+    }
+
+    .pc-home-page .home-welcome .app-page-header-meta {
+        display: flex;
     }
 
     .pc-home-page .home-hero-status i {

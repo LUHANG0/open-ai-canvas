@@ -416,11 +416,11 @@ export default function AssetsPage() {
                                 className="lg:mt-5"
                             />
                         </aside>
-                        <section className="min-w-0">
+                        <section className="min-w-0" aria-labelledby={validAssets.length ? "assets-collection-title" : undefined} aria-label={validAssets.length ? undefined : "素材列表"}>
                             {validAssets.length ? (
                                 <div className="assets-collection-heading hidden">
                                     <div>
-                                        <strong>{kindFilter === "all" && categoryFilter === "all" ? "全部媒体资产" : "筛选结果"}</strong>
+                                        <h2 id="assets-collection-title">{kindFilter === "all" && categoryFilter === "all" ? "全部媒体资产" : "筛选结果"}</h2>
                                         <span>{filteredAssets.length} 项</span>
                                     </div>
                                     <span>点击媒体查看档案，勾选后进入批量处理</span>

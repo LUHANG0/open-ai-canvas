@@ -53,6 +53,7 @@
         background: var(--app-brand-600);
         content: "";
         mask: url("/logo.svg") center / contain no-repeat;
+        -webkit-mask: url("/logo.svg") center / contain no-repeat;
     }
 
     .pc-system-card::after {
