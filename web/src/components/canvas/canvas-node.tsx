@@ -637,13 +637,10 @@ function NodeExternalHeader({ node, scale, dimensionLabel, active, editable, edi
 
     return (
         <div
-            className="canvas-node-external-header absolute bottom-full left-0 z-[var(--node-z-overlay)] flex h-6 items-center gap-1 overflow-hidden"
+            className="canvas-node-external-header absolute bottom-full left-0 z-[var(--node-z-overlay)] flex h-7 items-center justify-between gap-1.5 overflow-visible"
             style={{
                 width: dimensionLabel ? externalHeaderWidth : undefined,
                 maxWidth: dimensionLabel ? undefined : maxHeaderWidth,
-                borderRadius: "var(--r-sm)",
-                background: "transparent",
-                paddingInline: "var(--space-1-half)",
                 color: active ? theme.node.text : theme.node.label,
                 transform: `scale(var(--canvas-live-inverse-scale, ${inverseScale}))`,
                 transformOrigin: "left bottom",
@@ -657,49 +654,66 @@ function NodeExternalHeader({ node, scale, dimensionLabel, active, editable, edi
             }}
             onPointerDown={(event) => event.stopPropagation()}
         >
-            {draggable ? (
-                <button
-                    type="button"
-                    data-canvas-node-drag-handle
-                    className="grid size-5 shrink-0 cursor-grab place-items-center rounded-[var(--r-xs)] opacity-55 transition-[background,opacity] hover:opacity-100 active:cursor-grabbing focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-1"
-                    style={{ outlineColor: theme.node.muted }}
-                    aria-label={`拖动节点：${node.title}`}
-                    title="拖动节点"
-                    onMouseDown={(event) => {
-                        event.preventDefault();
-                        onDragStart(event);
-                    }}
-                >
-                    <GripVertical className="size-3" strokeWidth={1.8} />
-                </button>
-            ) : null}
-            <div className="flex min-w-0 items-center gap-1" style={{ maxWidth: maxHeaderWidth }}>
-                <Icon className="size-3 shrink-0" strokeWidth={1.8} />
-                {editing ? (
-                    <input
-                        autoFocus
-                        value={draft}
-                        className="h-6 min-w-20 max-w-[190px] flex-1 truncate rounded bg-transparent px-1.5 text-xs font-medium outline-none"
-                        style={{ background: "transparent", color: theme.node.text }}
-                        onChange={(event) => onDraftChange(event.target.value)}
-                        onFocus={(event) => event.currentTarget.select()}
-                        onBlur={onCommit}
-                        onKeyDown={(event) => {
-                            if (event.key === "Enter") event.currentTarget.blur();
-                            if (event.key === "Escape") onCancel();
+            <div
+                className="canvas-node-title-chip flex h-6 min-w-0 items-center gap-1 rounded-[var(--r-sm)] border px-1 shadow-sm backdrop-blur-md transition-[border-color,box-shadow]"
+                style={{
+                    maxWidth: maxHeaderWidth,
+                    background: theme.spatial.elevated,
+                    borderColor: active ? theme.node.activeStroke : theme.toolbar.border,
+                    boxShadow: active ? `0 4px 14px ${theme.spatial.shadow}` : `0 2px 8px ${theme.spatial.shadow}`,
+                }}
+            >
+                {draggable ? (
+                    <button
+                        type="button"
+                        data-canvas-node-drag-handle
+                        className="grid size-5 shrink-0 cursor-grab place-items-center rounded-[var(--r-xs)] opacity-55 transition-[background,opacity] hover:opacity-100 active:cursor-grabbing focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-1"
+                        style={{ outlineColor: theme.node.muted }}
+                        aria-label={`拖动节点：${node.title}`}
+                        title="拖动节点"
+                        onMouseDown={(event) => {
+                            event.preventDefault();
+                            onDragStart(event);
                         }}
-                        aria-label="节点名称"
-                    />
-                ) : editable ? (
-                    <button type="button" className="group flex min-w-0 flex-1 items-center gap-1 rounded px-0.5 text-xs font-medium outline-none transition-opacity hover:opacity-100 focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-1" style={{ opacity: active ? 1 : 0.78, outlineColor: theme.node.muted }} onClick={onEdit} aria-label={`编辑节点名称：${node.title}`}>
-                        <span className="min-w-0 flex-1 truncate" title={node.title}>{node.title}</span>
-                        <Pencil className="size-2.5 shrink-0 opacity-55 transition-opacity group-hover:opacity-100" />
+                    >
+                        <GripVertical className="size-3" strokeWidth={1.8} />
                     </button>
-                ) : (
-                    <span className="min-w-0 flex-1 truncate text-xs font-medium" title={node.title} style={{ opacity: active ? 1 : 0.78 }}>{node.title}</span>
-                )}
+                ) : null}
+                <div className="flex min-w-0 flex-1 items-center gap-1">
+                    <Icon className="size-3 shrink-0" strokeWidth={1.8} />
+                    {editing ? (
+                        <input
+                            autoFocus
+                            value={draft}
+                            className="h-5 min-w-20 max-w-[190px] flex-1 truncate rounded px-1.5 text-xs font-medium outline-none"
+                            style={{ background: theme.toolbar.itemHover, color: theme.node.text }}
+                            onChange={(event) => onDraftChange(event.target.value)}
+                            onFocus={(event) => event.currentTarget.select()}
+                            onBlur={onCommit}
+                            onKeyDown={(event) => {
+                                if (event.key === "Enter") event.currentTarget.blur();
+                                if (event.key === "Escape") onCancel();
+                            }}
+                            aria-label="节点名称"
+                        />
+                    ) : editable ? (
+                        <button type="button" className="group flex min-w-0 flex-1 items-center gap-1 rounded px-0.5 text-xs font-medium outline-none transition-opacity hover:opacity-100 focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-1" style={{ opacity: active ? 1 : 0.88, outlineColor: theme.node.muted }} onClick={onEdit} aria-label={`编辑节点名称：${node.title}`}>
+                            <span className="min-w-0 flex-1 truncate" title={node.title}>{node.title}</span>
+                            <Pencil className="size-2.5 shrink-0 opacity-55 transition-opacity group-hover:opacity-100" />
+                        </button>
+                    ) : (
+                        <span className="min-w-0 flex-1 truncate text-xs font-medium" title={node.title} style={{ opacity: active ? 1 : 0.88 }}>{node.title}</span>
+                    )}
+                </div>
             </div>
-            {dimensionLabel ? <span className="ml-auto shrink-0 whitespace-nowrap text-[var(--fs-micro)] font-medium leading-none tabular-nums" style={{ color: theme.node.muted }}>{dimensionLabel}</span> : null}
+            {dimensionLabel ? (
+                <span
+                    className="canvas-node-dimension-chip ml-auto inline-flex h-6 shrink-0 items-center whitespace-nowrap rounded-[var(--r-sm)] border px-2 text-[var(--fs-micro)] font-semibold leading-none tabular-nums shadow-sm backdrop-blur-md"
+                    style={{ background: theme.spatial.elevated, borderColor: active ? theme.node.activeStroke : theme.toolbar.border, color: theme.node.muted, boxShadow: `0 2px 8px ${theme.spatial.shadow}` }}
+                >
+                    {dimensionLabel}
+                </span>
+            ) : null}
         </div>
     );
 }

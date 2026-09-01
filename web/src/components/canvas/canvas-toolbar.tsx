@@ -94,11 +94,54 @@ export function CanvasToolbar({
     const [settingsOpen, setSettingsOpen] = useState(false);
     const [panelX, setPanelX] = useState(0);
     const [prefs, setPrefs] = useState<ToolbarPrefs | null>(() => readToolbarPrefs("main"));
+    const addHoverTimerRef = useRef<number | null>(null);
+    const addCloseTimerRef = useRef<number | null>(null);
+
+    const clearAddHoverTimer = () => {
+        if (addHoverTimerRef.current === null) return;
+        window.clearTimeout(addHoverTimerRef.current);
+        addHoverTimerRef.current = null;
+    };
+    const clearAddCloseTimer = () => {
+        if (addCloseTimerRef.current === null) return;
+        window.clearTimeout(addCloseTimerRef.current);
+        addCloseTimerRef.current = null;
+    };
+    const keepAddPanelOpen = () => {
+        clearAddHoverTimer();
+        clearAddCloseTimer();
+    };
+    const openAddPanelOnHover = (event: ReactMouseEvent<HTMLElement>) => {
+        if (window.matchMedia("(pointer: coarse)").matches) return;
+        const nextX = getPanelX(dockRef.current, event.currentTarget);
+        clearAddCloseTimer();
+        clearAddHoverTimer();
+        addHoverTimerRef.current = window.setTimeout(() => {
+            setPanelX(nextX);
+            setAppearanceOpen(false);
+            setMoreOpen(false);
+            setAddOpen(true);
+            addHoverTimerRef.current = null;
+        }, 150);
+    };
+    const closeAddPanelAfterHover = () => {
+        clearAddHoverTimer();
+        clearAddCloseTimer();
+        addCloseTimerRef.current = window.setTimeout(() => {
+            setAddOpen(false);
+            addCloseTimerRef.current = null;
+        }, 260);
+    };
 
     // 设置面板关闭后重新读取偏好（用户可能调整了排序/显隐）
     useEffect(() => {
         if (!settingsOpen) setPrefs(readToolbarPrefs("main"));
     }, [settingsOpen]);
+
+    useEffect(() => () => {
+        clearAddHoverTimer();
+        clearAddCloseTimer();
+    }, []);
 
     const placePanel = (event: ReactMouseEvent<HTMLElement>) => setPanelX(getPanelX(dockRef.current, event.currentTarget));
     const runAddAction = (action: () => void) => {
@@ -144,7 +187,7 @@ export function CanvasToolbar({
         onOpenProjectCharacters,
         onBackgroundModeChange,
         onShowImageInfoChange,
-        onToggleAddPanel: (event: ReactMouseEvent<HTMLElement>) => { placePanel(event); setAppearanceOpen(false); setMoreOpen(false); setAddOpen((value) => !value); },
+        onToggleAddPanel: (event: ReactMouseEvent<HTMLElement>) => { keepAddPanelOpen(); placePanel(event); setAppearanceOpen(false); setMoreOpen(false); setAddOpen((value) => !value); },
         onToggleAppearancePanel: (event: ReactMouseEvent<HTMLElement>) => { placePanel(event); setAddOpen(false); setMoreOpen(false); setAppearanceOpen((value) => !value); },
         onToggleSettingsPanel: (event: ReactMouseEvent<HTMLElement>) => { placePanel(event); setAddOpen(false); setAppearanceOpen(false); setMoreOpen((value) => !value); },
         onDeleteSelected: onDelete,
@@ -178,7 +221,11 @@ export function CanvasToolbar({
 
     const enabledPluginIds = new Set(installations.filter((item) => pluginStates[item.manifest.id]?.effectiveEnabled ?? item.enabled).map((item) => item.manifest.id));
 
-    const items = resolveToolbarEntries("main", ctx, prefs ?? defaultToolbarPrefs("main"));
+    const items = resolveToolbarEntries("main", ctx, prefs ?? defaultToolbarPrefs("main")).map((item) => item.kind === "separator" || item.id !== "tool-add" ? item : {
+        ...item,
+        onMouseEnter: openAddPanelOnHover,
+        onMouseLeave: closeAddPanelAfterHover,
+    });
 
     // 解析添加节点菜单命令——onClick 绑定到 runAddAction 以在执行后关闭面板
     const addNodeCommands = resolveAddNodeMenuCommands({ ...ctx, enabledPluginIds });
@@ -200,6 +247,8 @@ export function CanvasToolbar({
                         x={panelX}
                         theme={theme}
                         commands={createCommands}
+                        onMouseEnter={keepAddPanelOpen}
+                        onMouseLeave={closeAddPanelAfterHover}
                     />
                 ) : null}
             </AnimatePresence>
@@ -291,13 +340,15 @@ function CanvasBackgroundPresetButton({ mode, colorTheme, active, onSelect }: { 
     );
 }
 
-function AddNodeMenu({ x, theme, commands }: {
+function AddNodeMenu({ x, theme, commands, onMouseEnter, onMouseLeave }: {
     x: number;
     theme: CanvasTheme;
     commands: CanvasCreateCommand[];
+    onMouseEnter: () => void;
+    onMouseLeave: () => void;
 }) {
     return (
-        <motion.div initial={{ opacity: 0, scaleY: 0.9, y: 8 }} animate={{ opacity: 1, scaleY: 1, y: 0 }} exit={{ opacity: 0, scaleY: 0.92, y: 6 }} transition={{ duration: aceternityMotion.duration.panel, ease: aceternityMotion.easing.enter }} className="pc-canvas-toolbar__popover pointer-events-auto absolute bottom-[var(--canvas-dock-popover-offset)] z-[var(--dock-z-popover)] w-[420px] max-w-[calc(100vw-24px)]" style={{ left: x || "50%", transformOrigin: "bottom center", x: "-50%" }}>
+        <motion.div initial={{ opacity: 0, scaleY: 0.9, y: 8 }} animate={{ opacity: 1, scaleY: 1, y: 0 }} exit={{ opacity: 0, scaleY: 0.92, y: 6 }} transition={{ duration: aceternityMotion.duration.panel, ease: aceternityMotion.easing.enter }} className="pc-canvas-toolbar__popover pointer-events-auto absolute bottom-[var(--canvas-dock-popover-offset)] z-[var(--dock-z-popover)] w-[420px] max-w-[calc(100vw-24px)]" style={{ left: x || "50%", transformOrigin: "bottom center", x: "-50%" }} onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave}>
             <SpotlightSurface spotlightColor={theme.toolbar.itemHover} initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.97, transition: { duration: 0 } }} transition={{ duration: aceternityMotion.duration.instant, ease: aceternityMotion.easing.enter }} className="pc-canvas-panel aceternity-floating-panel overflow-hidden rounded-[var(--panel-radius)] border p-2 backdrop-blur-2xl" style={{ background: theme.spatial.elevated, borderColor: theme.toolbar.border, color: theme.node.text }} onWheel={(event) => event.stopPropagation()}>
                 <CanvasCreateMenu commands={commands} variant="dock" />
             </SpotlightSurface>

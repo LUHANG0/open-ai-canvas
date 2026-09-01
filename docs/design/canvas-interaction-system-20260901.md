@@ -18,7 +18,8 @@
 | 体验修正 | `d789473` / `canvas-interaction-system-r5-20260901` | 中央播放按钮、关闭画面播放手势、增强点阵、紧凑工具栏设置与首页直达入口 |
 | 播放与设置修正 | `f60af19` / `canvas-interaction-system-r7-20260901` | 播放中单击暂停、拖动阈值隔离、图片/视频设置统一排版与视频工具分组 |
 | 图片设置修正 | `41cfffd` / `canvas-interaction-system-r8-20260901` | 比例与精确像素尺寸分层，修复大量模型尺寸平铺导致的文本拥挤 |
-| 设置引导与添加节点重排 | 本轮提交 / `canvas-interaction-system-r9-20260901` | 分辨率选择后定位尺寸、添加节点分组重排、右键原位钻取与浮层边缘避让 |
+| 设置引导与添加节点重排 | `ddcbcd3` / `canvas-interaction-system-r9-20260901` | 分辨率选择后定位尺寸、添加节点分组重排、右键原位钻取与浮层边缘避让 |
+| 悬浮创建与标题可读性 | 本轮提交 / `canvas-interaction-system-r10-20260901` | 添加节点悬浮打开、安全延迟关闭、点击兜底与节点双胶囊标题 |
 
 ## 统一规则
 
@@ -42,6 +43,7 @@
 - 视频和音频资源加载后保持暂停，只有明确点击播放器控件才播放。
 - 视频画面手势与节点拖拽分层：画布节点关闭播放器自带的画面播放手势，中央播放按钮和底部控制区负责播放，其余画面负责拖动节点，拖动不会误触播放。
 - 视频播放中轻点非控件画面会暂停；移动达到 6px 后视为拖动，不触发暂停。暂停状态仍只由中央播放按钮或底部播放按钮启动，避免节点拖移误播放。
+- 图片、视频、文本、音频及扩展节点的外部标题使用常驻浮层胶囊；标题与尺寸拆分显示，浅色、深色及不同画布底纹下均保持稳定对比度，标题编辑和拖拽入口不改变原行为。
 
 ### 工具栏与外观
 
@@ -55,6 +57,7 @@
 - 图片设置只在比例区显示去重后的短比例；模型提供的大量精确像素规格收纳到单独选择器，仍可完整选择，不再把长尺寸文本铺进比例网格。
 - 选择 1K、2K、4K 等分辨率档后，仅在设置浮层内部自动定位到画面比例或精确尺寸，并短暂高亮下一步；系统减少动态效果时改为无动画定位，不抢夺键盘焦点。
 - 添加节点按“常用创作、剧情与布局、高级工具、扩展节点、导入资源、项目配置”组织；Dock 使用紧凑四列创作卡，右键菜单使用两列横向卡并在原菜单内钻取，避免双层浮窗互相遮挡。
+- Dock 的“添加节点”悬浮 150ms 自动打开；按钮与菜单之间保留 260ms 安全移动时间，进入菜单取消关闭，离开两者后延迟收起。右键画布菜单的“添加节点”同样支持悬浮打开；点击、键盘、触屏、`Esc` 与外部点击继续作为兜底。
 - 视频节点工具栏只平铺下载、时间线和替换视频；字幕、提取画面、提取音频与截取片段归入“视频处理”，删除及低频能力保留在“更多”。
 
 ## 修改文件
@@ -62,7 +65,7 @@
 - 算法与主题：`web/src/lib/canvas/canvas-node-size.ts`、`canvas-node-placement.ts`、`canvas-theme.ts`
 - 节点与媒体：`web/src/components/canvas/canvas-node.tsx`、`canvas-node-content.tsx`
 - 播放与生成设置：`web/src/components/video-player.tsx`、`video-player.css`、`image-settings-panel.tsx`、`video-settings-panel.tsx`、`canvas-generation-settings-shell.tsx`、`canvas-image-settings-popover.tsx`、`canvas-video-settings-popover.tsx`、`canvas-node-toolbar.tsx`
-- 工具与外观：`web/src/components/canvas/canvas-toolbar.tsx`、`canvas-create-menu.tsx`、`canvas-context-menu.tsx`、`canvas-asset-tray.tsx`、`infinite-canvas.tsx`
+- 工具与外观：`web/src/components/canvas/canvas-toolbar.tsx`、`canvas-create-menu.tsx`、`canvas-context-menu.tsx`、`canvas-asset-tray.tsx`、`infinite-canvas.tsx`、`web/src/components/ui/aceternity/floating-dock.tsx`
 - 页面协调：`web/src/pages/canvas/project.tsx`、`shared.tsx`、`use-canvas-node-operations.ts`、`use-canvas-upload.ts`、`use-canvas-project-lifecycle.ts`
 - 工具注册：`web/src/lib/canvas/tool-registry/definitions/main-toolbar-tools.tsx`、`tool-definition.ts`
 - 验证：`web/test/canvas-interaction-system.test.ts`、`web/scripts/canvas-p0-chrome-e2e.mjs`
@@ -80,6 +83,8 @@
 - 图片设置拥挤修正：`image-resolution-tiers` 与画布夹具共 9 项测试通过，TypeScript 和生产构建通过；所有原精确尺寸值继续原样写入配置。
 - 设置引导与添加节点重排：TypeScript 通过；4 个专项测试文件 32 项通过；生产构建通过；完整画布 Chrome E2E 41 项通过。
 - 1440 × 900 与 1024 × 768 浏览器回归：添加节点各分组与完整名称可见且浮层不越界；点击 2K 后设置滚动区从顶部自动定位到“画面比例”，目标短暂高亮，精确尺寸紧随其后；靠近视口顶部打开图片设置时会自动选择下方空间，标题与底部状态均完整可见。
+- 悬浮创建与标题可读性：4 个专项测试文件 28 项通过；生产构建通过；完整画布 Chrome E2E 扩展至 47 项并全部通过，新增覆盖 Dock 悬浮打开、菜单安全移动、离开延迟关闭、右键菜单悬浮钻取和标题/尺寸非透明背景。
+- 1440 × 900 浏览器视觉回归：浅色点阵与深色蓝图下，视频、图片标题和尺寸胶囊均保持清晰；添加菜单点击兜底与原有节点拖拽、撤销重做、保存恢复、搜索和缩放链路保持正常。
 
 ## 风险与后续确认
 

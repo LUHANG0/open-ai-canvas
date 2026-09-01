@@ -265,6 +265,18 @@ async function connectCdp(cdpPort) {
         await send("Input.dispatchMouseEvent", { type: "mouseReleased", x: box.x, y: box.y, button: "left", buttons: 0, clickCount: 1 });
         return true;
     };
+    const hover = async (selector) => {
+        const deadline = Date.now() + 5000;
+        let box = null;
+        while (!box && Date.now() < deadline) {
+            box = await readBox(selector);
+            if (!box) await sleep(100);
+        }
+        if (!box) return false;
+        await send("Input.dispatchMouseEvent", { type: "mouseMoved", x: box.x, y: box.y, buttons: 0 });
+        return true;
+    };
+    const movePointer = (x, y) => send("Input.dispatchMouseEvent", { type: "mouseMoved", x, y, buttons: 0 });
     const drag = async (selector, dx, dy) => {
         const box = await readBox(selector);
         if (!box) return false;
@@ -293,7 +305,7 @@ async function connectCdp(cdpPort) {
         if (!mounted) throw new Error("Canvas repro fixture did not mount within 60s");
     };
 
-    return { send, evaluate, poll, click, drag, shortcut, navigate, problems, close: () => ws.close() };
+    return { send, evaluate, poll, click, hover, movePointer, drag, shortcut, navigate, problems, close: () => ws.close() };
 }
 
 async function shellScenario(cdp, url) {
@@ -335,6 +347,34 @@ async function interactionScenario(cdp) {
     })()`);
     const nodeSelector = '[data-node-id="canvas-p0-text-story"] .canvas-node-shell';
     const wrapperSelector = '[data-node-id="canvas-p0-text-story"]';
+    const headerMaterial = await cdp.evaluate(`(() => {
+        const title = document.querySelector('[data-node-id="canvas-p0-image-reference"] .canvas-node-title-chip');
+        const dimension = document.querySelector('[data-node-id="canvas-p0-image-reference"] .canvas-node-dimension-chip');
+        const titleBackground = title instanceof HTMLElement ? getComputedStyle(title).backgroundColor : '';
+        const dimensionBackground = dimension instanceof HTMLElement ? getComputedStyle(dimension).backgroundColor : '';
+        const transparent = (value) => !value || value === 'transparent' || /rgba?\\([^)]*,\\s*0(?:\\.0+)?\\s*\\)$/.test(value);
+        return { titleBackground, dimensionBackground, titleOpaque: !transparent(titleBackground), dimensionOpaque: !transparent(dimensionBackground) };
+    })()`);
+    assert(headerMaterial.titleOpaque && headerMaterial.dimensionOpaque, "B0a node title and dimension use persistent readable surfaces", JSON.stringify(headerMaterial));
+
+    assert(await cdp.hover('[aria-label="添加节点"]') && await cdp.poll(`!!document.querySelector('.canvas-create-menu-dock')`, "hover add-node menu"), "B0b add-node menu opens from Dock hover");
+    assert(await cdp.hover('.canvas-create-menu-dock') && (await sleep(340), await cdp.evaluate(`!!document.querySelector('.canvas-create-menu-dock')`)), "B0c moving from Dock into add-node menu keeps it open");
+    await cdp.movePointer(24, 420);
+    assert(await cdp.poll(`!document.querySelector('.canvas-create-menu-dock')`, "hover add-node menu closes"), "B0d leaving Dock and menu closes after a safe delay");
+
+    await cdp.evaluate(`(() => {
+        const canvas = document.querySelector('.pc-canvas-infinite');
+        if (!(canvas instanceof HTMLElement)) return false;
+        return canvas.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: 720, clientY: 160, button: 2, buttons: 2 }));
+    })()`);
+    assert(await cdp.poll(`document.querySelector('[data-canvas-context-menu]')?.textContent?.includes('画布命令')`, "canvas context menu"), "B0e blank canvas context menu opens");
+    assert(await cdp.hover('[data-canvas-context-menu] [aria-label="添加节点"]') && await cdp.poll(`!!document.querySelector('.canvas-create-menu-context')`, "context add-node hover"), "B0f context add-node entry opens on hover");
+    await cdp.send("Input.dispatchKeyEvent", { type: "keyDown", key: "Escape", code: "Escape", windowsVirtualKeyCode: 27 });
+    await cdp.send("Input.dispatchKeyEvent", { type: "keyUp", key: "Escape", code: "Escape", windowsVirtualKeyCode: 27 });
+    await cdp.poll(`!document.querySelector('.canvas-create-menu-context')`, "context add-node closes");
+    await cdp.send("Input.dispatchKeyEvent", { type: "keyDown", key: "Escape", code: "Escape", windowsVirtualKeyCode: 27 });
+    await cdp.send("Input.dispatchKeyEvent", { type: "keyUp", key: "Escape", code: "Escape", windowsVirtualKeyCode: 27 });
+
     const initialTransform = await cdp.evaluate(`document.querySelector(${JSON.stringify(wrapperSelector)})?.style.transform || ''`);
     if (!(await cdp.drag(nodeSelector, 90, 54))) throw new Error("Story node was not draggable");
     const moved = await cdp.poll(`document.querySelector(${JSON.stringify(wrapperSelector)})?.style.transform !== ${JSON.stringify(initialTransform)}`, "node moved");

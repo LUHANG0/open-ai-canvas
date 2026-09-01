@@ -13,6 +13,8 @@ export type FloatingDockCommand = {
     wide?: boolean;
     quiet?: boolean;
     onClick?: (event: MouseEvent<HTMLButtonElement>) => void;
+    onMouseEnter?: (event: MouseEvent<HTMLButtonElement>) => void;
+    onMouseLeave?: (event: MouseEvent<HTMLButtonElement>) => void;
     active?: boolean;
     disabled?: boolean;
     danger?: boolean;
@@ -207,8 +209,8 @@ function DockCommandButton({ command, mouseX, metrics, motionEnabled, compact, s
                     )}
                     whileTap={!command.disabled ? { scale: 0.96 } : undefined}
                     transition={aceternityMotion.spring.dock}
-                    onMouseEnter={() => setHovered(true)}
-                    onMouseLeave={() => setHovered(false)}
+                    onMouseEnter={(event) => { setHovered(true); command.onMouseEnter?.(event); }}
+                    onMouseLeave={(event) => { setHovered(false); command.onMouseLeave?.(event); }}
                     onFocus={() => setFocused(true)}
                     onBlur={() => setFocused(false)}
                     onClick={command.onClick}
@@ -233,8 +235,8 @@ function DockCommandButton({ command, mouseX, metrics, motionEnabled, compact, s
                 className={cn("aceternity-dock-command group relative grid size-full place-items-center rounded-[var(--dock-item-radius)] border outline-none", command.quiet && "is-quiet", command.active && "is-active", command.danger && "is-danger")}
                 whileTap={motionEnabled && !command.disabled ? { scale: 0.92 } : undefined}
                 transition={aceternityMotion.spring.dock}
-                onMouseEnter={() => setHovered(true)}
-                onMouseLeave={() => setHovered(false)}
+                onMouseEnter={(event) => { setHovered(true); command.onMouseEnter?.(event); }}
+                onMouseLeave={(event) => { setHovered(false); command.onMouseLeave?.(event); }}
                 onFocus={(event) => setFocused(event.currentTarget.matches(":focus-visible"))}
                 onBlur={() => setFocused(false)}
                 onMouseDown={() => setFocused(false)}

@@ -1,4 +1,4 @@
-import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { ArrowLeft, Check, ChevronRight, Clipboard, CloudUpload, Copy, FolderOpen, FolderPlus, Image as ImageIcon, Layers3, Link2, Maximize2, PanelTop, Pencil, Plus, Redo2, Tags, Trash2, Undo2, Upload, UserRound } from "lucide-react";
 
 import { CanvasCreateMenu, type CanvasCreateCommand } from "@/components/canvas/canvas-create-menu";
@@ -96,6 +96,21 @@ export function CanvasNodeContextMenu({
     const pluginStates = usePluginStore((state) => state.pluginStates);
     const [addOpen, setAddOpen] = useState(false);
     const [categoryOpen, setCategoryOpen] = useState(false);
+    const addHoverTimerRef = useRef<number | null>(null);
+
+    const clearAddHoverTimer = () => {
+        if (addHoverTimerRef.current === null) return;
+        window.clearTimeout(addHoverTimerRef.current);
+        addHoverTimerRef.current = null;
+    };
+    const openAddPanelOnHover = () => {
+        if (window.matchMedia("(pointer: coarse)").matches || addOpen) return;
+        clearAddHoverTimer();
+        addHoverTimerRef.current = window.setTimeout(() => {
+            setAddOpen(true);
+            addHoverTimerRef.current = null;
+        }, 150);
+    };
 
     useEffect(() => {
         const close = (event: PointerEvent) => {
@@ -114,10 +129,12 @@ export function CanvasNodeContextMenu({
         return () => {
             window.removeEventListener("pointerdown", close);
             window.removeEventListener("keydown", closeOnEscape);
+            clearAddHoverTimer();
         };
     }, [addOpen, categoryOpen, onClose]);
 
     useEffect(() => {
+        clearAddHoverTimer();
         setAddOpen(menu.type === "canvas" && Boolean(menu.createOpen));
         setCategoryOpen(false);
     }, [menu]);
@@ -210,7 +227,7 @@ export function CanvasNodeContextMenu({
                     ) : menu.type === "canvas" ? (
                         <>
                             <MenuHeader title="画布命令" />
-                            <MenuButton icon={<Plus className="size-4" />} label="添加节点" chevron active={addOpen} onClick={() => setAddOpen((value) => !value)} />
+                            <MenuButton icon={<Plus className="size-4" />} label="添加节点" chevron active={addOpen} onMouseEnter={openAddPanelOnHover} onClick={() => { clearAddHoverTimer(); setAddOpen(true); }} />
                             <MenuButton icon={<Upload className="size-4" />} label="上传到这里" onClick={() => runAction(onUpload)} />
                             {!isProjectLinked ? <MenuButton icon={<FolderOpen className="size-4" />} label="从素材库插入" onClick={() => runAction(onOpenAssets)} /> : null}
                             <MenuDivider />
@@ -291,16 +308,18 @@ function MenuSection({ label }: { label: string }) {
     return <div className="px-2 pb-1 pt-1.5 text-[var(--fs-micro)] font-medium opacity-45">{label}</div>;
 }
 
-function MenuButton({ icon, label, detail, shortcut, badge, chevron = false, active = false, disabled = false, danger = false, onClick }: { icon: ReactNode; label: string; detail?: string; shortcut?: string; badge?: string; chevron?: boolean; active?: boolean; disabled?: boolean; danger?: boolean; onClick?: () => void }) {
+function MenuButton({ icon, label, detail, shortcut, badge, chevron = false, active = false, disabled = false, danger = false, onClick, onMouseEnter }: { icon: ReactNode; label: string; detail?: string; shortcut?: string; badge?: string; chevron?: boolean; active?: boolean; disabled?: boolean; danger?: boolean; onClick?: () => void; onMouseEnter?: () => void }) {
     const theme = canvasThemes[useThemeStore((state) => state.theme)];
     const color = danger ? theme.accent.danger : theme.node.text;
     return (
         <button
             type="button"
+            aria-label={label}
             className="canvas-menu-item group flex min-h-9 w-full items-center gap-2 rounded-lg border border-transparent px-1.5 py-1 text-left outline-none enabled:hover:border-black/10 enabled:hover:bg-black/5 focus-visible:ring-2 disabled:cursor-not-allowed disabled:opacity-35 dark:enabled:hover:border-white/10 dark:enabled:hover:bg-white/8"
             style={{ color, background: active ? theme.toolbar.activeBg : undefined, "--tw-ring-color": theme.node.muted } as CSSProperties}
             disabled={disabled}
             onClick={onClick}
+            onMouseEnter={onMouseEnter}
         >
             <span className="canvas-menu-item-icon grid size-7 shrink-0 place-items-center rounded-md border opacity-75 group-hover:opacity-100 [&_svg]:size-3.5" style={{ background: danger ? `${theme.accent.danger}12` : theme.spatial.surface, borderColor: danger ? `${theme.accent.danger}33` : theme.toolbar.border, color: danger ? theme.accent.danger : theme.node.text }}>{icon}</span>
             <span className="min-w-0 flex-1"><span className="flex items-center gap-1 text-xs font-medium"><span className="truncate">{label}</span>{badge ? <span className="rounded-full border px-1 py-0.5 text-[var(--fs-nano)] font-bold" style={{ background: theme.toolbar.activeBg, borderColor: theme.toolbar.border, color: theme.node.muted }}>{badge}</span> : null}</span>{detail ? <span className="mt-0.5 block truncate text-[var(--fs-micro)]" style={{ color: theme.node.muted }}>{detail}</span> : null}</span>
