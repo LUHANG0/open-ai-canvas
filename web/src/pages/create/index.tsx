@@ -49,6 +49,7 @@ import { createClientId } from "@/lib/client-id";
 import { generationErrorCode, generationErrorMessage } from "@/lib/generation-error";
 import { useCopyText } from "@/hooks/use-copy-text";
 import { useExternalAssetSources } from "@/hooks/use-external-asset-sources";
+import { usePcBrandViewport } from "@/hooks/use-pc-brand-viewport";
 import { buildImageResolutionOptions, formatImageResolutionSize, imageRatioForSize, imageResolutionChoices, imageResolutionOption, imageSizeForResolution, supportsImageResolutionPresets, type ImageResolutionChoice } from "@/lib/image-resolution-tiers";
 import { formatVideoResolutionLabel as videoResolutionLabel, VIDEO_RESOLUTION_OPTIONS } from "@/lib/video-generation-options";
 import { modelCapabilityConfigFor, normalizeImageValue, normalizeVideoValue, videoDurationAllowed, videoDurationOptions, type ImageCapabilityConfig, type VideoCapabilityConfig } from "@/lib/model-capabilities";
@@ -286,6 +287,7 @@ function completedCreationGenerationTask(input: {
 
 export default function CreatePage() {
     const { message: toast, modal } = App.useApp();
+    const pcBrandV2 = usePcBrandViewport();
     const config = useEffectiveConfig();
     const promptOptimizerInstallation = usePluginStore((state) => state.installations.find((item) => item.manifest.id === PROMPT_OPTIMIZER_PLUGIN_ID));
     const promptOptimizerEnabled = usePluginStore((state) => state.pluginStates[PROMPT_OPTIMIZER_PLUGIN_ID]?.effectiveEnabled ?? Boolean(state.installations.find((item) => item.manifest.id === PROMPT_OPTIMIZER_PLUGIN_ID)?.enabled));
@@ -551,7 +553,7 @@ export default function CreatePage() {
     }, []);
 
     useEffect(() => {
-        if (!activeConversation?.messages.length) {
+        if (pcBrandV2 && !activeConversation?.messages.length) {
             const frame = window.requestAnimationFrame(() => {
                 const container = threadScrollRef.current;
                 if (container) container.scrollTop = 0;
@@ -564,7 +566,7 @@ export default function CreatePage() {
             if (container) container.scrollTop = container.scrollHeight;
         });
         return () => window.cancelAnimationFrame(frame);
-    }, [activeConversation?.id, activeConversation?.messages]);
+    }, [activeConversation?.id, activeConversation?.messages, pcBrandV2]);
 
     const updateActive = useCallback(
         (updater: (conversation: CreationConversation) => CreationConversation) => {

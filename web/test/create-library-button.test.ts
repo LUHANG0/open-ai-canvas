@@ -9,18 +9,23 @@ function compactSource(source: string) {
 }
 
 describe("creation library button", () => {
-    test("空白创作工作区从顶部展示，有消息时仍跟随最新结果", () => {
+    test("PC Brand V2 空白创作工作区从顶部展示，移动端保留原跟随逻辑", () => {
         const source = compactSource(readFileSync(resolve(import.meta.dir, "../src/pages/create/index.tsx"), "utf8"));
-        const scrollEffectStart = source.indexOf("if (!activeConversation?.messages.length)");
+        const scrollEffectStart = source.indexOf("if (pcBrandV2 && !activeConversation?.messages.length)");
         const scrollEffectEnd = source.indexOf("const updateActive", scrollEffectStart);
 
+        expect(source).toContain('import { usePcBrandViewport } from "@/hooks/use-pc-brand-viewport"');
+        expect(source).toContain("const pcBrandV2 = usePcBrandViewport()");
         expect(scrollEffectStart).toBeGreaterThanOrEqual(0);
         expect(scrollEffectEnd).toBeGreaterThan(scrollEffectStart);
         const scrollEffect = source.slice(scrollEffectStart, scrollEffectEnd);
 
+        expect(scrollEffect).toContain("if (pcBrandV2 && !activeConversation?.messages.length)");
+        expect(scrollEffect).not.toContain("if (!activeConversation?.messages.length)");
         expect(scrollEffect).toContain("container.scrollTop = 0");
         expect(scrollEffect).toContain("if (!followLatestMessageRef.current) return");
         expect(scrollEffect).toContain("container.scrollTop = container.scrollHeight");
+        expect(scrollEffect).toContain("[activeConversation?.id, activeConversation?.messages, pcBrandV2]");
     });
 
     test("本机上传和素材库入口长期显示在参考素材区域，底栏不重复", () => {
