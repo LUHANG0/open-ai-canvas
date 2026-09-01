@@ -8,6 +8,7 @@ import { useWalletBalance } from "@/hooks/use-wallet-balance";
 import { aceternityMotion } from "@/lib/aceternity-motion";
 import { canvasDockStyle } from "@/lib/canvas/canvas-aceternity-style";
 import type { CanvasContextSummary } from "@/lib/canvas/canvas-context-summary";
+import { canvasSaveStatusPresentation, type CanvasSaveStatus } from "@/lib/canvas/canvas-save-status";
 import type { CanvasShortDramaProgress } from "@/lib/canvas/canvas-short-drama";
 import { canvasThemes } from "@/lib/canvas-theme";
 import { useThemeStore } from "@/stores/use-theme-store";
@@ -40,6 +41,8 @@ type CanvasTopBarProps = {
     mediaPerformanceMode: CanvasMediaPerformanceMode;
     onMediaPerformanceModeChange: (mode: CanvasMediaPerformanceMode) => void;
     onOpenSearch: () => void;
+    saveStatus: CanvasSaveStatus;
+    onRetrySave: () => void;
     projectContext?: CanvasContextSummary & { projectId: string; projectName: string };
     onEnterFocusMode: () => void;
     shortDramaGuide?: { progress: CanvasShortDramaProgress; collapsed: boolean; onToggle: () => void };
@@ -70,6 +73,8 @@ export function CanvasTopBar({
     mediaPerformanceMode,
     onMediaPerformanceModeChange,
     onOpenSearch,
+    saveStatus,
+    onRetrySave,
     projectContext,
     onEnterFocusMode,
     shortDramaGuide,
@@ -236,6 +241,7 @@ export function CanvasTopBar({
                             <Button type="text" className="canvas-topbar-action !hidden !h-10 !w-10 !min-w-10 !rounded-xl !p-0 xl:!inline-flex" style={{ color: theme.node.text }} icon={<Gauge className="size-4" />} aria-label="媒体性能模式" />
                         </Dropdown>
                     </CanvasTopBarTooltip>
+                    <CanvasSaveStatusButton status={saveStatus} onRetry={onRetrySave} />
                     {compactAgentStatus ? <CompactAgentStatus status={compactAgentStatus} onClick={onToggleAgent} /> : null}
                     {user && creditsEnabled ? (
                         <CanvasTopBarTooltip label="查看积分明细">
@@ -436,6 +442,34 @@ function CompactAgentStatus({ status, onClick }: { status: { connected: boolean;
             >
                 <span className="pc-canvas-agent-status__dot size-2 rounded-full" style={{ background: dotColor }} />
                 <span className="pc-canvas-agent-status__label max-w-[180px] truncate">{label}</span>
+            </button>
+        </CanvasTopBarTooltip>
+    );
+}
+
+function CanvasSaveStatusButton({ status, onRetry }: { status: CanvasSaveStatus; onRetry: () => void }) {
+    const theme = canvasThemes[useThemeStore((state) => state.theme)];
+    const presentation = canvasSaveStatusPresentation(status);
+    const toneColor = presentation.tone === "danger" ? "#ef4444" : presentation.tone === "warning" ? "#f59e0b" : presentation.tone === "success" ? "#22c55e" : theme.node.muted;
+    return (
+        <CanvasTopBarTooltip label={`${presentation.detail}${presentation.retryable ? "，点击重试" : ""}`}>
+            <button
+                type="button"
+                className="canvas-topbar-action pc-canvas-save-status inline-flex h-10 min-w-10 items-center justify-center gap-1.5 rounded-xl px-2 text-[var(--fs-caption)] font-medium"
+                style={{ color: theme.node.text }}
+                onClick={presentation.retryable ? onRetry : undefined}
+                aria-label={`${presentation.label}。${presentation.detail}${presentation.retryable ? "。点击重试" : ""}`}
+                aria-live="polite"
+                disabled={!presentation.retryable}
+            >
+                {presentation.busy ? (
+                    <LoaderCircle className="size-3.5 animate-spin" style={{ color: toneColor }} />
+                ) : presentation.retryable ? (
+                    <Redo2 className="size-3.5" style={{ color: toneColor }} />
+                ) : (
+                    <Check className="size-3.5" style={{ color: toneColor }} />
+                )}
+                <span className="hidden whitespace-nowrap 2xl:inline">{presentation.label}</span>
             </button>
         </CanvasTopBarTooltip>
     );

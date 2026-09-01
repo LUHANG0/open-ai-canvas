@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type Dispatch, type MutableRefObject, type SetStateAction } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type Dispatch, type MutableRefObject, type SetStateAction } from "react";
 import { App } from "antd";
 import { useNavigate } from "react-router";
 
@@ -6,8 +6,9 @@ import type { CanvasBackgroundMode } from "@/lib/canvas-theme";
 import { removeCanvasDrawing } from "@/lib/canvas/canvas-drawing-storage";
 import { normalizeCanvasNodeTimestamps } from "@/lib/canvas/canvas-node-timestamps";
 import { hydrateAssistantImages, hydrateCanvasImages, resetInterruptedGeneration } from "@/lib/canvas/canvas-project-generation";
+import { shouldBlockCanvasUnload, type CanvasLocalSaveStatus, type CanvasSaveStatus } from "@/lib/canvas/canvas-save-status";
 import { listAddedSkills, type Skill } from "@/services/api/skills";
-import { createCanvasProjectWithRemoteSync, deleteCanvasProjectsWithRemoteSync, saveRemoteUserDataNow } from "@/services/user-data-sync";
+import { createCanvasProjectWithRemoteSync, deleteCanvasProjectsWithRemoteSync, getRemoteUserDataSyncStatus, saveRemoteUserDataNow, subscribeRemoteUserDataSyncStatus } from "@/services/user-data-sync";
 import { flushCanvasStorePersistence, useCanvasStore } from "@/stores/canvas/use-canvas-store";
 import type { CanvasAssistantSession, CanvasConnection, CanvasNodeData, CanvasNodeMetadata, ViewportTransform } from "@/types/canvas";
 import type { CanvasHistorySnapshot } from "./use-canvas-history";
@@ -74,6 +75,59 @@ export function useCanvasProjectLifecycle({
     const currentProject = useCanvasStore((state) => state.projects.find((project) => project.id === projectId));
     const [addedSkills, setAddedSkills] = useState<Skill[]>([]);
     const viewportSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const localSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const localSaveVersionRef = useRef(0);
+    const [localSaveStatus, setLocalSaveStatusState] = useState<CanvasLocalSaveStatus>({ phase: "saved", lastSavedAt: null, error: null });
+    const localSaveStatusRef = useRef(localSaveStatus);
+    const remoteSaveStatus = useSyncExternalStore(subscribeRemoteUserDataSyncStatus, getRemoteUserDataSyncStatus, getRemoteUserDataSyncStatus);
+    const saveStatus: CanvasSaveStatus = { local: localSaveStatus, remote: remoteSaveStatus };
+    const saveStatusRef = useRef(saveStatus);
+
+    const setLocalSaveStatus = useCallback((status: CanvasLocalSaveStatus) => {
+        localSaveStatusRef.current = status;
+        setLocalSaveStatusState(status);
+    }, []);
+
+    const flushLocalPersistence = useCallback(
+        async (version: number) => {
+            try {
+                await flushCanvasStorePersistence();
+                if (localSaveVersionRef.current === version) setLocalSaveStatus({ phase: "saved", lastSavedAt: Date.now(), error: null });
+                return true;
+            } catch (error) {
+                if (localSaveVersionRef.current === version) {
+                    setLocalSaveStatus({ phase: "failed", lastSavedAt: localSaveStatusRef.current.lastSavedAt, error: error instanceof Error ? error.message : "本地存储写入失败" });
+                }
+                return false;
+            }
+        },
+        [setLocalSaveStatus],
+    );
+
+    const scheduleLocalPersistence = useCallback(() => {
+        const version = localSaveVersionRef.current + 1;
+        localSaveVersionRef.current = version;
+        setLocalSaveStatus({ phase: "saving", lastSavedAt: localSaveStatusRef.current.lastSavedAt, error: null });
+        if (localSaveTimerRef.current) clearTimeout(localSaveTimerRef.current);
+        localSaveTimerRef.current = setTimeout(() => {
+            localSaveTimerRef.current = null;
+            void flushLocalPersistence(version);
+        }, 550);
+    }, [flushLocalPersistence, setLocalSaveStatus]);
+
+    const flushLocalPersistenceNow = useCallback(async () => {
+        if (localSaveTimerRef.current) {
+            clearTimeout(localSaveTimerRef.current);
+            localSaveTimerRef.current = null;
+        }
+        const version = localSaveVersionRef.current;
+        setLocalSaveStatus({ phase: "saving", lastSavedAt: localSaveStatusRef.current.lastSavedAt, error: null });
+        return flushLocalPersistence(version);
+    }, [flushLocalPersistence, setLocalSaveStatus]);
+
+    useEffect(() => {
+        saveStatusRef.current = saveStatus;
+    }, [localSaveStatus, remoteSaveStatus]);
 
     useEffect(() => {
         if (!hydrated) return;
@@ -148,25 +202,60 @@ export function useCanvasProjectLifecycle({
     useEffect(() => {
         if (!projectLoaded || historyPausedRef.current) return;
         updateProject(projectId, { nodes, connections, chatSessions, activeChatId, backgroundMode, showImageInfo });
-    }, [activeChatId, backgroundMode, chatSessions, connections, historyPausedRef, nodes, projectId, projectLoaded, showImageInfo, updateProject]);
+        scheduleLocalPersistence();
+    }, [activeChatId, backgroundMode, chatSessions, connections, historyPausedRef, nodes, projectId, projectLoaded, scheduleLocalPersistence, showImageInfo, updateProject]);
 
     useEffect(() => {
         if (!projectLoaded) return;
         if (viewportSaveTimerRef.current) clearTimeout(viewportSaveTimerRef.current);
         viewportSaveTimerRef.current = setTimeout(() => {
             updateProject(projectId, { viewport: viewportRef.current });
+            scheduleLocalPersistence();
             viewportSaveTimerRef.current = null;
         }, 500);
         return () => {
             if (viewportSaveTimerRef.current) clearTimeout(viewportSaveTimerRef.current);
         };
-    }, [projectId, projectLoaded, updateProject, viewport, viewportRef]);
+    }, [projectId, projectLoaded, scheduleLocalPersistence, updateProject, viewport, viewportRef]);
 
-    useEffect(() => () => {
+    useEffect(
+        () => () => {
+            if (!projectLoaded) return;
+            if (viewportSaveTimerRef.current) clearTimeout(viewportSaveTimerRef.current);
+            if (localSaveTimerRef.current) clearTimeout(localSaveTimerRef.current);
+            updateProject(projectId, { viewport: viewportRef.current });
+            void flushCanvasStorePersistence().catch(() => undefined);
+        },
+        [projectId, projectLoaded, updateProject, viewportRef],
+    );
+
+    useEffect(() => {
         if (!projectLoaded) return;
-        if (viewportSaveTimerRef.current) clearTimeout(viewportSaveTimerRef.current);
-        updateProject(projectId, { viewport: viewportRef.current });
-    }, [projectId, projectLoaded, updateProject, viewportRef]);
+        const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+            if (!shouldBlockCanvasUnload(saveStatusRef.current)) return;
+            event.preventDefault();
+            event.returnValue = "";
+        };
+        const handlePageHide = () => {
+            updateProject(projectId, {
+                nodes: nodesRef.current,
+                connections: connectionsRef.current,
+                chatSessions,
+                activeChatId,
+                backgroundMode,
+                showImageInfo,
+                viewport: viewportRef.current,
+                directorScenes: currentProject?.directorScenes || [],
+            });
+            void flushCanvasStorePersistence().catch(() => undefined);
+        };
+        window.addEventListener("beforeunload", handleBeforeUnload);
+        window.addEventListener("pagehide", handlePageHide);
+        return () => {
+            window.removeEventListener("beforeunload", handleBeforeUnload);
+            window.removeEventListener("pagehide", handlePageHide);
+        };
+    }, [activeChatId, backgroundMode, chatSessions, connectionsRef, currentProject?.directorScenes, nodesRef, projectId, projectLoaded, showImageInfo, updateProject, viewportRef]);
 
     const createAndOpenProject = useCallback(() => {
         void createCanvasProjectWithRemoteSync(`自由画布 ${useCanvasStore.getState().projects.length + 1}`).then(({ id, syncError }) => {
@@ -176,7 +265,7 @@ export function useCanvasProjectLifecycle({
     }, [message, navigate]);
 
     const deleteCurrentProject = useCallback(async () => {
-        const drawingIds = nodesRef.current.flatMap((node) => node.type === "drawing" && node.metadata?.drawingId ? [node.metadata.drawingId] : []);
+        const drawingIds = nodesRef.current.flatMap((node) => (node.type === "drawing" && node.metadata?.drawingId ? [node.metadata.drawingId] : []));
         try {
             await deleteCanvasProjectsWithRemoteSync([projectId]);
         } catch (error) {
@@ -184,16 +273,19 @@ export function useCanvasProjectLifecycle({
             return;
         }
         if (drawingIds.length) {
-            void Promise.all(drawingIds.map((drawingId) => removeCanvasDrawing(projectId, drawingId)))
-                .catch(() => message.warning("项目已删除，但部分本地绘图缓存清理失败"));
+            void Promise.all(drawingIds.map((drawingId) => removeCanvasDrawing(projectId, drawingId))).catch(() => message.warning("项目已删除，但部分本地绘图缓存清理失败"));
         }
         cleanupAssetImages();
         navigate("/canvas");
     }, [cleanupAssetImages, message, navigate, nodesRef, projectId]);
 
-    const renameCurrentProject = useCallback((title: string) => {
-        renameProject(projectId, title);
-    }, [projectId, renameProject]);
+    const renameCurrentProject = useCallback(
+        (title: string) => {
+            renameProject(projectId, title);
+            scheduleLocalPersistence();
+        },
+        [projectId, renameProject, scheduleLocalPersistence],
+    );
 
     const saveCanvasProject = useCallback(async (): Promise<boolean> => {
         try {
@@ -207,7 +299,8 @@ export function useCanvasProjectLifecycle({
                 viewport: viewportRef.current,
                 directorScenes: currentProject?.directorScenes || [],
             });
-            await flushCanvasStorePersistence();
+            const saved = await flushLocalPersistenceNow();
+            if (!saved) throw new Error("本地存储写入失败");
         } catch {
             message.error("画布保存失败，请稍后重试");
             return false;
@@ -220,7 +313,7 @@ export function useCanvasProjectLifecycle({
             message.warning(`本地画布布局已保存，云端同步失败：${detail}`);
         }
         return true;
-    }, [activeChatId, backgroundMode, chatSessions, connectionsRef, currentProject?.directorScenes, message, nodesRef, projectId, showImageInfo, updateProject, viewportRef]);
+    }, [activeChatId, backgroundMode, chatSessions, connectionsRef, currentProject?.directorScenes, flushLocalPersistenceNow, message, nodesRef, projectId, showImageInfo, updateProject, viewportRef]);
 
     const clearCanvasFiles = useCallback(() => {
         cleanupCanvasFiles({ projectId, nodes: [], chatSessions: [] });
@@ -234,6 +327,7 @@ export function useCanvasProjectLifecycle({
         deleteCurrentProject,
         renameCurrentProject,
         saveCanvasProject,
+        saveStatus,
         updateProject,
     };
 }

@@ -307,6 +307,7 @@ async function shellScenario(cdp, url) {
             nodes: document.querySelectorAll('[data-node-id]').length,
             connections: document.querySelectorAll('[data-connection-id]').length,
             topbar: !!document.querySelector('.pc-canvas-topbar'),
+            saveStatus: document.querySelector('.pc-canvas-save-status')?.getAttribute('aria-label') || '',
             dock: !!document.querySelector('[aria-label="画布创作工具"]'),
             workspaceHeight: workspace?.getBoundingClientRect().height || 0,
             horizontalOverflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
@@ -318,7 +319,8 @@ async function shellScenario(cdp, url) {
     assert(state.topbar && state.dock && state.workspaceHeight >= 900, "A3 PC canvas shell fills the viewport", JSON.stringify(state));
     assert(state.horizontalOverflow <= 1, "A4 no document-level horizontal overflow", `overflow=${state.horizontalOverflow}`);
     assert(state.imageReady, "A5 same-origin fixture image decoded");
-    assert(cdp.problems.length === 0, "A6 no browser/network problems", JSON.stringify(cdp.problems));
+    assert(Boolean(state.saveStatus), "A6 save status is exposed in the project toolbar", state.saveStatus);
+    assert(cdp.problems.length === 0, "A7 no browser/network problems", JSON.stringify(cdp.problems));
 }
 
 async function interactionScenario(cdp) {
@@ -348,15 +350,16 @@ async function interactionScenario(cdp) {
     await sleep(150);
     await cdp.shortcut("y");
     assert(await cdp.poll(`document.querySelector(${JSON.stringify(wrapperSelector)})?.style.transform === ${JSON.stringify(movedTransform)}`, "redo transform"), "B4 Ctrl+Y restores the moved position");
+    assert(await cdp.poll(`document.querySelector('.pc-canvas-save-status')?.getAttribute('aria-label')?.startsWith('已保存到本机')`, "local save settled"), "B5 node edits settle into a durable local save");
 
     await cdp.shortcut("f");
-    assert(await cdp.poll(`!!document.querySelector('input[aria-label="搜索画布节点"]')`, "search modal"), "B5 Ctrl+F opens node search");
+    assert(await cdp.poll(`!!document.querySelector('input[aria-label="搜索画布节点"]')`, "search modal"), "B6 Ctrl+F opens node search");
     await cdp.click('input[aria-label="搜索画布节点"]');
     await cdp.shortcut("a");
     await cdp.send("Input.insertText", { text: "主视觉参考" });
     assert(
         await cdp.poll(`[...document.querySelectorAll('[role="option"]')].some((element) => element.getClientRects().length > 0 && (element.textContent || '').includes('主视觉参考'))`, "matching search result"),
-        "B6 search returns the reference image",
+        "B7 search returns the reference image",
     );
     await cdp.send("Input.dispatchKeyEvent", { type: "keyDown", key: "Enter", code: "Enter", windowsVirtualKeyCode: 13 });
     await cdp.send("Input.dispatchKeyEvent", { type: "keyUp", key: "Enter", code: "Enter", windowsVirtualKeyCode: 13 });
@@ -368,7 +371,7 @@ async function interactionScenario(cdp) {
     })()`,
             "image focused",
         ),
-        "B7 Enter focuses the matching image node",
+        "B8 Enter focuses the matching image node",
     );
 
     // 搜索定位会平滑移动视口；等待动画结束后再验证显式缩放，避免二者互相覆盖。
@@ -377,7 +380,7 @@ async function interactionScenario(cdp) {
     const scaleBefore = await cdp.evaluate(`Number(getComputedStyle(document.querySelector('.pc-canvas-infinite')).getPropertyValue('--canvas-committed-scale'))`);
     await cdp.shortcut("=");
     const scaleIncreased = await cdp.poll(`Number(getComputedStyle(document.querySelector('.pc-canvas-infinite')).getPropertyValue('--canvas-committed-scale')) > ${scaleBefore}`, "scale increased");
-    assert(scaleIncreased, "B8 Ctrl+= increases committed scale", `before=${scaleBefore}`);
+    assert(scaleIncreased, "B9 Ctrl+= increases committed scale", `before=${scaleBefore}`);
     if (!(await cdp.click('[aria-label="打开小地图"]'))) {
         const diagnostic = await cdp.evaluate(`(() => {
             const button = document.querySelector('[aria-label="打开小地图"]');
@@ -388,14 +391,14 @@ async function interactionScenario(cdp) {
         })()`);
         throw new Error(`Minimap control was not clickable: ${JSON.stringify(diagnostic)}`);
     }
-    assert(await cdp.poll(`!!document.querySelector('.pc-canvas-mini-map[aria-label="画布小地图"]')`, "minimap opens"), "B9 minimap opens from the dock");
+    assert(await cdp.poll(`!!document.querySelector('.pc-canvas-mini-map[aria-label="画布小地图"]')`, "minimap opens"), "B10 minimap opens from the dock");
 
     // 搜索已经明确选中图片节点；用真实键盘事件覆盖跨组件复制/粘贴链路。
     await cdp.shortcut("c");
     await sleep(200);
     await cdp.shortcut("v");
-    assert(await cdp.poll(`document.querySelectorAll('[data-node-id]').length === 5`, "copied node appears"), "B10 Ctrl+C/Ctrl+V duplicates the selected node");
-    assert(cdp.problems.length === 0, "B11 no browser/network problems", JSON.stringify(cdp.problems));
+    assert(await cdp.poll(`document.querySelectorAll('[data-node-id]').length === 5`, "copied node appears"), "B11 Ctrl+C/Ctrl+V duplicates the selected node");
+    assert(cdp.problems.length === 0, "B12 no browser/network problems", JSON.stringify(cdp.problems));
     return movedTransform;
 }
 
