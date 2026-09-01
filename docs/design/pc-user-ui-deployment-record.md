@@ -1,5 +1,41 @@
 # PC 用户端部署记录
 
+## 2026-09-01 逐入口精修本地部署
+
+| 项目     | 结果                                                                      |
+| -------- | ------------------------------------------------------------------------- |
+| 部署时间 | 2026-09-01 10:30 CST                                                      |
+| 目标仓库 | `/Users/hanglu/Documents/影策/open-ai-canvas`                             |
+| 目标分支 | `main`                                                                    |
+| 合并提交 | `b2c539c`（`refactor/pc-ui-detail-polish-20260901`，使用 `--no-ff` 合并） |
+| 受测代码 | `1004428`（`pc-user-ui-detail-r4-tested-20260901`）                       |
+| 树一致性 | 受测代码与合并提交均为 tree `0cd7f1697bd8ad9efaa6c96a80b55f305981b9e6`    |
+| 远端状态 | 未推送                                                                    |
+| 禁改范围 | 后端、Admin、services、stores、router、`globals.css` 相对基线零差异       |
+
+### 构建与服务
+
+- 合并后在主工作树 `web` 再次执行 `bun run build` 成功，共转换 13,510 个模块；只有既有的大 chunk 警告。
+- 前端继续复用唯一的 `yingce-web` Screen 和 `*:8888`，新 Screen 为 `82790.yingce-web`，监听 PID 为 `82792`。
+- 前端代理目标保持 `http://127.0.0.1:8080`。
+- 后端未重启、未修改，继续监听 `127.0.0.1:8080`，PID 仍为 `21178`。
+- 未创建第二个长期前端或后端服务。
+
+### 部署后验证
+
+- `GET /`、`GET /@vite/client`、`GET /api/health`、`GET /api/auth/session` 均返回 `200`。
+- 当前登录会话访问 `/home` 正常显示“欢迎使用影策，HANGLU”；创作和插件入口可达，页面无全局横向溢出。
+- 合并提交与完成 1130/1130 测试、13,510 模块构建、1024/1280/1440、明暗主题、二级弹层和 1023/1024 钱包边界回归的代码树一致。
+- 详细结果见 `docs/design/pc-user-ui-detail-polish-test-report.md`，验收截图见 `.local/pc-ui-detail-screenshots-20260901/`。
+
+### 回滚
+
+- 原始部署基线：`pc-user-ui-detail-r0-20260901`。
+- 页面完成点：`pc-user-ui-detail-r2-pages-20260901`。
+- 首轮集中测试点：`pc-user-ui-detail-r3-tested-20260901`。
+- 最终边界测试点：`pc-user-ui-detail-r4-tested-20260901`。
+- 整体撤回使用 `git revert -m 1 b2c539c`，再按相同 8888 启动命令替换前端；禁止 `reset --hard` 与强推。
+
 ## 2026-09-01 Brand V2 本地部署
 
 | 项目     | 结果                                                                    |
