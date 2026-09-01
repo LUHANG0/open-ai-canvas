@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState, type ComponentType } from "react"
 import { useNavigate } from "react-router";
 
 import { navigationTools } from "@/constant/navigation-tools";
+import { usePcBrandViewport } from "@/hooks/use-pc-brand-viewport";
 import { cn } from "@/lib/utils";
 import { useUserStore } from "@/stores/use-user-store";
 
@@ -17,6 +18,8 @@ type PaletteEntry = {
 export function WorkspaceCommandPalette({ open, onClose }: { open: boolean; onClose: () => void }) {
     const navigate = useNavigate();
     const features = useUserStore((state) => state.features);
+    const user = useUserStore((state) => state.user);
+    const isPcBrandViewport = usePcBrandViewport();
     const [query, setQuery] = useState("");
     const [highlight, setHighlight] = useState(0);
     const inputRef = useRef<HTMLInputElement>(null);
@@ -34,10 +37,11 @@ export function WorkspaceCommandPalette({ open, onClose }: { open: boolean; onCl
             ...(features.taskCenterEnabled ? [toolEntry("tasks", "/tasks")] : []),
             toolEntry("assets", "/assets"),
             toolEntry("skills", "/skills"),
+            ...(isPcBrandViewport && (features.pluginCenterEnabled || user?.role === "admin") ? [toolEntry("plugins", "/plugins")] : []),
             ...(features.creditsEnabled ? [toolEntry("wallet", "/wallet")] : []),
             toolEntry("settings", "/settings"),
         ];
-    }, [features]);
+    }, [features, isPcBrandViewport, user?.role]);
 
     const filtered = useMemo(() => {
         const keyword = query.trim().toLowerCase();
@@ -88,7 +92,7 @@ export function WorkspaceCommandPalette({ open, onClose }: { open: boolean; onCl
     if (!open) return null;
 
     return (
-        <div className="absolute inset-0 z-50 flex items-start justify-center bg-background/40 px-4 pt-28 backdrop-blur-sm lg:pt-32">
+        <div className="absolute inset-0 z-50 flex items-start justify-center bg-background/40 px-4 pt-28 backdrop-blur-sm lg:pt-32" role="dialog" aria-modal="true" aria-label="快速搜索工作区页面">
             <div className="absolute inset-0" onClick={onClose} />
             <div className="relative w-full max-w-xl overflow-hidden rounded-xl border border-[var(--workspace-border)] bg-[var(--workspace-surface-strong)] shadow-2xl animate-in fade-in zoom-in-95 duration-200">
                 <div className="p-3 pb-2">
@@ -100,6 +104,7 @@ export function WorkspaceCommandPalette({ open, onClose }: { open: boolean; onCl
                             onChange={(event) => setQuery(event.target.value)}
                             className="min-w-0 flex-1 bg-transparent text-[var(--fs-body)] outline-none placeholder:text-foreground/45"
                             placeholder="搜索页面或操作…"
+                            aria-label="搜索工作区页面"
                         />
                         <kbd
                             onClick={onClose}
@@ -136,6 +141,7 @@ export function WorkspaceCommandPalette({ open, onClose }: { open: boolean; onCl
                                                 "flex w-full items-center gap-2.5 rounded-[var(--r-sm)] px-3 py-2.5 text-left text-[var(--fs-body)] transition-colors",
                                                 index === highlight ? "bg-surface-hover text-foreground" : "text-foreground/65",
                                             )}
+                                            aria-current={index === highlight ? "true" : undefined}
                                         >
                                             <Icon className={cn("size-4 shrink-0", index === highlight ? "text-foreground" : "text-foreground/55")} strokeWidth={1.6} />
                                             <span className="truncate">{entry.title}</span>

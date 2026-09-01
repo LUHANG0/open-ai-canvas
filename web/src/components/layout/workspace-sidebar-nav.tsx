@@ -103,7 +103,7 @@ function WorkspaceSwitcher({ collapsed, onNavigate, onExpand }: { collapsed: boo
             <button
                 type="button"
                 onClick={() => setIsOpen((open) => !open)}
-                aria-haspopup="listbox"
+                aria-haspopup="menu"
                 aria-expanded={isOpen}
                 className="app-workspace-brand-switcher group flex w-full items-center justify-between rounded-[var(--r-sm)] px-2 py-2 text-left transition-colors select-none hover:bg-surface-hover"
             >
@@ -122,7 +122,7 @@ function WorkspaceSwitcher({ collapsed, onNavigate, onExpand }: { collapsed: boo
             {isOpen ? (
                 <>
                     <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)} />
-                    <div className="app-workspace-nav-popover absolute left-3 right-3 top-full z-50 mt-1 overflow-hidden rounded-lg border border-[var(--workspace-border)] bg-[var(--workspace-surface-strong)] py-1 animate-in fade-in zoom-in-95 duration-100">
+                    <div className="app-workspace-nav-popover absolute left-3 right-3 top-full z-50 mt-1 overflow-hidden rounded-lg border border-[var(--workspace-border)] bg-[var(--workspace-surface-strong)] py-1 animate-in fade-in zoom-in-95 duration-100" role="menu" aria-label="工作区快捷入口">
                         <div className="px-3 py-2.5">
                             <div className="truncate text-[var(--fs-body)] font-semibold">影策</div>
                             <div className="mt-0.5 truncate text-[var(--fs-label)] text-foreground/45">创作工作台</div>
@@ -133,12 +133,12 @@ function WorkspaceSwitcher({ collapsed, onNavigate, onExpand }: { collapsed: boo
                             { label: "画布", to: "/canvas" },
                             { label: "设置", to: "/settings" },
                         ].map((entry) => (
-                            <button key={entry.to} type="button" onClick={() => go(entry.to)} className="flex w-full items-center gap-2 px-3 py-2 text-[var(--fs-body)] text-foreground/80 transition-colors hover:bg-surface-hover hover:text-foreground">
+                            <button key={entry.to} type="button" role="menuitem" onClick={() => go(entry.to)} className="flex w-full items-center gap-2 px-3 py-2 text-[var(--fs-body)] text-foreground/80 transition-colors hover:bg-surface-hover hover:text-foreground">
                                 {entry.label}
                             </button>
                         ))}
                         <div className="mx-2 my-1 h-px bg-[var(--workspace-border)]" />
-                        <button type="button" onClick={() => go("/canvas?mode=new")} className="flex w-full items-center gap-2 px-3 py-2 text-[var(--fs-body)] text-foreground/45 transition-colors hover:bg-surface-hover hover:text-foreground">
+                        <button type="button" role="menuitem" onClick={() => go("/canvas?mode=new")} className="flex w-full items-center gap-2 px-3 py-2 text-[var(--fs-body)] text-foreground/45 transition-colors hover:bg-surface-hover hover:text-foreground">
                             <Plus className="size-3.5" /> 新建画布
                         </button>
                     </div>
