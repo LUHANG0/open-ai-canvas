@@ -74,9 +74,12 @@ export default function TestVoiceRecording() {
                     <div className="pc-voice-card-content space-y-4">
                         {/* 文本输入 */}
                         <div className="pc-voice-composer">
-                            <label htmlFor="pc-voice-input" className="pc-voice-label mb-2 block text-sm font-medium">
-                                文本输入（语音转写结果会自动填入）
-                            </label>
+                            <div className="pc-voice-composer-heading">
+                                <label htmlFor="pc-voice-input" className="pc-voice-label mb-2 block text-sm font-medium">
+                                    文本输入（语音转写结果会自动填入）
+                                </label>
+                                <span className="pc-voice-count">{prompt.length} 字</span>
+                            </div>
                             <textarea
                                 id="pc-voice-input"
                                 value={prompt}
@@ -96,6 +99,18 @@ export default function TestVoiceRecording() {
                             <Button type="primary" icon={<Send className="size-4" />} disabled={!prompt.trim()} loading={sending} onClick={handleSubmit} className="pc-voice-send">
                                 发送
                             </Button>
+                        </div>
+
+                        <div className="pc-voice-status-strip" aria-label="语音转写流程">
+                            <span>
+                                <i aria-hidden="true">1</i>开始录音
+                            </span>
+                            <span>
+                                <i aria-hidden="true">2</i>自动转写
+                            </span>
+                            <span>
+                                <i aria-hidden="true">3</i>确认并发送
+                            </span>
                         </div>
 
                         {/* 说明 */}

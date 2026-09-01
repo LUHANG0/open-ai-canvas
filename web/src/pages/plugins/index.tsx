@@ -1,5 +1,5 @@
 import { App, Button, Input, Select, Switch, Typography } from "antd";
-import { AudioLines, CalendarDays, CheckCircle2, Clock3, ExternalLink, Film, FolderOpen, Image as ImageIcon, MessageSquareText, PlugZap, RefreshCw, Settings2, ShieldCheck, SlidersHorizontal } from "lucide-react";
+import { AudioLines, CalendarDays, CheckCircle2, ChevronRight, Clock3, ExternalLink, Film, FolderOpen, Image as ImageIcon, MessageSquareText, PlugZap, RefreshCw, Settings2, ShieldCheck, SlidersHorizontal } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 
@@ -260,6 +260,9 @@ export default function PluginsPage() {
     };
 
     const hasActiveFilters = Boolean(search.trim() || categoryFilter !== "all" || statusFilter !== "all" || trustFilter !== "all");
+    const filteredEnabledCount = filteredPlugins.filter((plugin) => isPluginEnabled(plugin)).length;
+    const filteredTrustedCount = filteredPlugins.filter((plugin) => plugin.manifest.trusted).length;
+    const filteredConfigurableCount = filteredPlugins.filter(canConfigurePlugin).length;
 
     return (
         <WorkspacePage className="plugins-page" contentClassName="plugins-page-content">
@@ -294,6 +297,31 @@ export default function PluginsPage() {
                     </div>
                 }
             >
+                <div className="plugins-overview" aria-label="当前插件概览">
+                    <div className="plugins-overview-copy">
+                        <span>当前视图</span>
+                        <strong>{navigationItems.find((item) => item.value === categoryFilter)?.label || "全部插件"}</strong>
+                        <small>{hasActiveFilters ? "已应用搜索或筛选条件" : "按能力分类浏览当前账号可用扩展"}</small>
+                    </div>
+                    <dl className="plugins-overview-metrics">
+                        <div>
+                            <dt>当前结果</dt>
+                            <dd>{filteredPlugins.length}</dd>
+                        </div>
+                        <div>
+                            <dt>已启用</dt>
+                            <dd>{filteredEnabledCount}</dd>
+                        </div>
+                        <div>
+                            <dt>可信来源</dt>
+                            <dd>{filteredTrustedCount}</dd>
+                        </div>
+                        <div>
+                            <dt>可配置</dt>
+                            <dd>{filteredConfigurableCount}</dd>
+                        </div>
+                    </dl>
+                </div>
                 <div className="plugins-toolbar" aria-label="插件筛选">
                     <SearchField containerClassName="plugins-search" value={search} placeholder="搜索插件名称、描述或作者" onChange={(event) => setSearch(event.target.value)} onClear={() => setSearch("")} />
                     <Select
@@ -357,7 +385,11 @@ export default function PluginsPage() {
                                             const sourceLabel = pluginSourceLabel(plugin, state);
                                             const canConfigure = canConfigurePlugin(plugin);
                                             return (
-                                                <section key={plugin.manifest.id} className={`plugin-card library-card-surface${trusted ? " is-trusted" : ""}`}>
+                                                <section
+                                                    key={plugin.manifest.id}
+                                                    data-plugin-section={section.key}
+                                                    className={`plugin-card library-card-surface${trusted ? " is-trusted" : ""}${enabled ? " is-enabled" : " is-disabled"}${!state?.platformAvailable && state?.blockedReason ? " is-blocked" : ""}`}
+                                                >
                                                     <button
                                                         type="button"
                                                         className="plugin-card-main"
@@ -371,7 +403,8 @@ export default function PluginsPage() {
                                                     >
                                                         <div className="plugin-card-heading">
                                                             <span className={`plugin-icon-tile${trusted ? " is-trusted" : ""}`} aria-hidden="true">
-                                                                <PlugZap className="size-5" />
+                                                                <PlugZap className="plugin-default-card-icon size-5" />
+                                                                <SectionIcon className="plugin-section-card-icon size-5" />
                                                             </span>
                                                             <div className="min-w-0 flex-1">
                                                                 <div className="plugin-card-title-row">
@@ -418,6 +451,10 @@ export default function PluginsPage() {
                                                             {plugin.manifest.contributes.providers?.some((provider) => provider.poll) ? <span>异步轮询</span> : null}
                                                             <span>{plugin.manifest.permissions.length} 项能力</span>
                                                         </div>
+                                                        <span className="plugin-card-open-hint">
+                                                            查看能力与权限
+                                                            <ChevronRight className="size-3.5" aria-hidden="true" />
+                                                        </span>
                                                     </button>
 
                                                     <div className="plugin-card-actions">

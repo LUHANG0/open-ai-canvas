@@ -215,7 +215,16 @@ export default function SkillsPage() {
                     />
                 </div>
 
-                <ListToolbar className="library-toolbar skills-toolbar" active={filtersActive} onReset={resetFilters}>
+                <ListToolbar
+                    className="library-toolbar skills-toolbar"
+                    active={filtersActive}
+                    onReset={resetFilters}
+                    trailing={
+                        <span className="skills-filter-summary" aria-live="polite">
+                            {loading ? "正在更新" : total ? `本页 ${skills.length} 个 · 共 ${total} 个` : "0 个结果"}
+                        </span>
+                    }
+                >
                     <ViewToggle
                         className="skills-scope-toggle"
                         value={scope}
@@ -253,7 +262,7 @@ export default function SkillsPage() {
                         }}
                     />
                     <Select
-                        className="w-28"
+                        className="skills-category-select w-28"
                         value={tag}
                         options={[{ value: "all", label: "全部分类" }, ...categories]}
                         onChange={(value) => {
@@ -262,7 +271,7 @@ export default function SkillsPage() {
                         }}
                     />
                     <Select
-                        className="w-24"
+                        className="skills-sort-select w-24"
                         value={sort}
                         options={sortOptions}
                         onChange={(value) => {
@@ -427,7 +436,7 @@ function SkillCard({
 }) {
     const CategoryIcon = categoryIconOf(skill.tag);
     return (
-        <article style={style} className={`library-card library-card-surface skill-library-card group${skill.is_added ? " is-selected is-added" : ""}`}>
+        <article style={style} data-skill-category={skill.tag} aria-busy={loading} className={`library-card library-card-surface skill-library-card group${skill.is_added ? " is-selected is-added" : ""}${skill.is_owner ? " is-owned" : ""}`}>
             <span className="library-icon-tile skill-card-icon lg:hidden" aria-hidden="true">
                 <CategoryIcon />
             </span>
@@ -437,6 +446,7 @@ function SkillCard({
                     <CategoryIcon />
                 </span>
                 <span className="skill-card-cover-category">{skillCategoryLabel(skill.tag, categories)}</span>
+                <span className="skill-card-cover-state">{skill.is_owner ? "我创建的" : skill.is_added ? "已收入工具架" : "可加入"}</span>
             </button>
             <div className="skill-card-content contents">
                 <div className="skill-card-top">
@@ -454,7 +464,7 @@ function SkillCard({
                                 onClick: ({ key }) => (key === "edit" ? onEdit() : onDelete()),
                             }}
                         >
-                            <button type="button" aria-label="技能操作" className="skill-card-more">
+                            <button type="button" aria-label={`管理技能：${skill.skill_name}`} className="skill-card-more">
                                 <MoreHorizontal className="size-4" />
                             </button>
                         </Dropdown>
@@ -468,7 +478,9 @@ function SkillCard({
                         <Heart className={`size-3.5 ${skill.is_like ? "fill-current text-rose-500" : ""}`} />
                         <span>{formatSkillCount(skill.like_count)}</span>
                     </button>
-                    <span className="skill-card-author">{skill.effective_user.name || "未知用户"}</span>
+                    <span className="skill-card-author" title={skill.effective_user.name || "未知用户"}>
+                        {skill.effective_user.name || "未知用户"}
+                    </span>
                     <span className="skill-card-tag">{skillCategoryLabel(skill.tag, categories)}</span>
                     {skill.is_private ? <span className="skill-card-flag">仅自己</span> : null}
                 </div>

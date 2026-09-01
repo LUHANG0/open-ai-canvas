@@ -1,6 +1,6 @@
 import { type FormEvent, useEffect, useState, type ReactNode } from "react";
 import { App, Button, Divider, Input } from "antd";
-import { ArrowRight, LockKeyhole, UserRound } from "lucide-react";
+import { ArrowRight, LockKeyhole, ShieldCheck, UserRound } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router";
 
 import { applyUserSession } from "@/lib/user-session";
@@ -69,6 +69,10 @@ export default function LoginPage() {
             <Button className="pc-auth-submit" type="primary" htmlType="submit" size="large" block loading={submitting} icon={<ArrowRight className="size-4" />} iconPlacement="end">
                 登录
             </Button>
+            <div className="pc-auth-form-assurance">
+                <ShieldCheck className="size-3.5" aria-hidden="true" />
+                <span>登录凭据只用于当前影策服务的身份验证</span>
+            </div>
             {linuxdoEnabled ? (
                 <>
                     <Divider plain className="pc-auth-divider !border-white/10 !text-white/30">
