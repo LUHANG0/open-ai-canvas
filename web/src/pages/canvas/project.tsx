@@ -23,8 +23,6 @@ import { resolveProjectCanvasStyle } from "@/components/canvas/canvas-style-pick
 import { createStyleProfileSnapshot, resolveStyleProfile, serializeStyleProfile } from "@/lib/canvas/style-profile";
 import { CanvasNodeInfoModal, CanvasNodeToolbar } from "@/components/canvas/canvas-node-toolbar";
 import { CanvasNodeAnglePanel } from "@/components/canvas/canvas-node-angle-dialog";
-import { CanvasStylePickerModal } from "@/components/canvas/canvas-style-picker-modal";
-import { CanvasDirectorTemplateModal } from "@/components/canvas/director/canvas-director-template-modal";
 import { CanvasFileDropOverlay } from "@/components/canvas/canvas-file-drop-overlay";
 import { CanvasUploadModal } from "@/components/canvas/canvas-upload-modal";
 import { InfiniteCanvas } from "@/components/canvas/infinite-canvas";
@@ -33,7 +31,6 @@ import type { CanvasNodeGenerationMode } from "@/components/canvas/canvas-node-p
 import { CanvasToolbar } from "@/components/canvas/canvas-toolbar";
 import { getProject } from "@/services/api/projects";
 import { CanvasZoomControls } from "@/components/canvas/canvas-zoom-controls";
-import { CanvasShareModal } from "@/components/canvas/canvas-share-modal";
 import { CanvasLocalAgentPanel } from "@/components/canvas/canvas-local-agent-panel";
 import { useFocusMode } from "@/hooks/use-focus-mode";
 import { useCanvasAgentStore } from "@/stores/canvas/use-canvas-agent-store";
@@ -48,12 +45,11 @@ import { batchSourceRestriction } from "@/lib/canvas/canvas-batch-connection";
 import { CanvasAgentChangeToast, CanvasMergeStatusToast, CanvasUploadStatusToast } from "./canvas-project-feedback";
 import { backendProviderConfig } from "@/lib/canvas/canvas-project-generation";
 import { CanvasTopBar, CanvasWorkspaceModeSwitch } from "./canvas-project-top-bar";
-import { LibTVImportDialog } from "./components/libtv-import-dialog";
-import { TapNowImportDialog } from "./components/tapnow-import-dialog";
 import { CanvasFocusModeBar } from "@/components/canvas/canvas-focus-mode-bar";
 import { CanvasProjectContextMenu } from "./canvas-project-context-menu";
 import { CanvasProjectMediaDialogs } from "./canvas-project-media-dialogs";
 import { CanvasProjectDirectorWorkbench } from "./canvas-project-director-workbench";
+import { CanvasProjectEntryDialogs } from "./canvas-project-entry-dialogs";
 import { CanvasProjectAssetDialogs, CanvasProjectVersionCompareDialog } from "./canvas-project-library-dialogs";
 import { CanvasProjectNodeEditorDialogs } from "./canvas-project-node-editor-dialogs";
 import { CanvasProjectNodeSearch } from "./canvas-project-node-search";
@@ -1317,13 +1313,28 @@ function InfiniteCanvasPage() {
                             <CanvasShortDramaGuide progress={shortDramaGuide.progress} collapsed={shortDramaGuide.collapsed} onToggle={shortDramaGuide.onToggle} onSkip={skipShortDramaGuide} onStepClick={activateShortDramaStep} />
                         ) : null}
 
-                        <CanvasShareModal projectId={projectId} open={shareModalOpen} onClose={() => setShareModalOpen(false)} beforeCreate={saveCanvasProject} />
-                        <LibTVImportDialog open={libTVImportOpen} projectId={projectId} viewport={viewport} viewportSize={size} onClose={() => setLibTVImportOpen(false)} onApply={applyLibTVImport} />
-                        <TapNowImportDialog open={tapNowImportOpen} projectId={projectId} viewport={viewport} viewportSize={size} onClose={() => setTapNowImportOpen(false)} onApply={applyTapNowImport} />
-
-                        <CanvasStylePickerModal open={stylePickerOpen} value={activeStylePresetId} applying={styleApplying} onClose={() => setStylePickerOpen(false)} onSelect={selectCanvasStyle} />
-
-                        <CanvasDirectorTemplateModal open={Boolean(directorTemplateRequest)} onClose={() => setDirectorTemplateRequest(null)} onSelect={(templateId) => createDirectorShot(templateId, directorTemplateRequest?.position)} />
+                        <CanvasProjectEntryDialogs
+                            projectId={projectId}
+                            viewport={viewport}
+                            viewportSize={size}
+                            shareOpen={shareModalOpen}
+                            onCloseShare={() => setShareModalOpen(false)}
+                            beforeCreateShare={saveCanvasProject}
+                            libTVImportOpen={libTVImportOpen}
+                            onCloseLibTVImport={() => setLibTVImportOpen(false)}
+                            onApplyLibTVImport={applyLibTVImport}
+                            tapNowImportOpen={tapNowImportOpen}
+                            onCloseTapNowImport={() => setTapNowImportOpen(false)}
+                            onApplyTapNowImport={applyTapNowImport}
+                            stylePickerOpen={stylePickerOpen}
+                            styleValue={activeStylePresetId}
+                            styleApplying={styleApplying}
+                            onCloseStylePicker={() => setStylePickerOpen(false)}
+                            onSelectStyle={selectCanvasStyle}
+                            directorTemplateRequest={directorTemplateRequest}
+                            onCloseDirectorTemplate={() => setDirectorTemplateRequest(null)}
+                            onCreateDirectorShot={createDirectorShot}
+                        />
 
                         <div className="pc-canvas-workspace__body relative flex min-h-0 min-w-0 flex-1">
                             <div className="pc-canvas-workspace__viewport relative min-w-0 flex-1 overflow-hidden">
