@@ -79,8 +79,8 @@ export function AppProviders({ children, router }: { children: ReactNode; router
 
     // DEV 复现台必须是同源本地确定性场景：AuthSessionHydrator 会打 /api/auth/session，
     // ClientRootInit 会打 /api/model-catalog；没有后端时产生的错误会污染导演台和画布的验收判据。
-    // 只匹配两个复现路由；生产构建中 import.meta.env.DEV 为 false，本分支被摇树删除。
-    const isolateDevRepro = import.meta.env.DEV && typeof window !== "undefined" && (window.location.pathname === "/dev/director-repro" || window.location.pathname.startsWith("/dev/canvas-repro/"));
+    // 只匹配显式的 DEV 复现路由；生产构建中 import.meta.env.DEV 为 false，本分支被摇树删除。
+    const isolateDevRepro = import.meta.env.DEV && typeof window !== "undefined" && (window.location.pathname === "/dev/director-repro" || window.location.pathname.startsWith("/dev/canvas-repro/") || window.location.pathname === "/dev/project-delivery-repro");
 
     return (
         <ConfigProvider locale={zhCN} theme={antTheme}>

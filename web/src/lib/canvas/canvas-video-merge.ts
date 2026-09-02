@@ -8,6 +8,7 @@ export type MergeVideoInput = { id: string; url?: string; storageKey?: string };
 export type MergeVideoProgress = { phase: "loading" | "reading" | "encoding"; progress: number };
 
 let ffmpegPromise: Promise<FFmpeg> | null = null;
+let mergeSequence = 0;
 
 // ffmpeg 只在用户明确合并视频时加载，避免把 wasm 和 worker 放进画布首屏包体。
 export async function loadFFmpeg(onProgress?: (progress: MergeVideoProgress) => void) {
@@ -36,35 +37,54 @@ export async function loadFFmpeg(onProgress?: (progress: MergeVideoProgress) => 
 export async function mergeVideos(inputs: MergeVideoInput[], onProgress?: (progress: MergeVideoProgress) => void) {
     if (inputs.length < 2) throw new Error("至少选择 2 个视频才能合并");
     const ffmpeg = await loadFFmpeg(onProgress);
+    const blobs: Blob[] = [];
+    for (let index = 0; index < inputs.length; index += 1) {
+        const input = inputs[index];
+        const storedBlob = input.storageKey ? await getMediaBlob(input.storageKey) : null;
+        const remoteBlob = !storedBlob && input.url ? await fetch(input.url).then((response) => {
+            if (!response.ok) throw new Error(`视频资源请求失败（${response.status}）`);
+            return response.blob();
+        }) : null;
+        const blob = storedBlob || remoteBlob;
+        if (!blob) throw new Error(`无法读取第 ${index + 1} 个视频`);
+        blobs.push(blob);
+        onProgress?.({ phase: "reading", progress: Math.round(((index + 1) / inputs.length) * 45) });
+    }
+    return encodeVideoBlobs(ffmpeg, blobs, onProgress);
+}
+
+/** 将已读取的视频统一封装为 MP4；交付包用它避免重复下载镜头资源。 */
+export async function mergeVideoBlobs(blobs: Blob[], onProgress?: (progress: MergeVideoProgress) => void) {
+    if (blobs.length === 0) throw new Error("至少需要 1 个视频才能生成成片");
+    const ffmpeg = await loadFFmpeg(onProgress);
+    return encodeVideoBlobs(ffmpeg, blobs, onProgress);
+}
+
+async function encodeVideoBlobs(ffmpeg: FFmpeg, blobs: Blob[], onProgress?: (progress: MergeVideoProgress) => void) {
+    const runId = `merge-${Date.now()}-${mergeSequence += 1}`;
     const files: string[] = [];
+    const concatFile = `${runId}-concat.txt`;
+    const outputFile = `${runId}-output.mp4`;
     try {
-        for (let index = 0; index < inputs.length; index += 1) {
-            const input = inputs[index];
-            const storedBlob = input.storageKey ? await getMediaBlob(input.storageKey) : null;
-            const remoteBlob = !storedBlob && input.url ? await fetch(input.url).then((response) => {
-                if (!response.ok) throw new Error(`视频资源请求失败（${response.status}）`);
-                return response.blob();
-            }) : null;
-            const blob = storedBlob || remoteBlob;
-            if (!blob) throw new Error(`无法读取第 ${index + 1} 个视频`);
-            const name = `input-${index}.mp4`;
-            await ffmpeg.writeFile(name, await fetchFile(blob));
+        for (let index = 0; index < blobs.length; index += 1) {
+            const name = `${runId}-input-${index}.mp4`;
+            await ffmpeg.writeFile(name, await fetchFile(blobs[index]));
             files.push(name);
-            onProgress?.({ phase: "reading", progress: Math.round(((index + 1) / inputs.length) * 45) });
+            onProgress?.({ phase: "reading", progress: Math.round(((index + 1) / blobs.length) * 45) });
         }
         const concatList = files.map((file) => `file '${file}'`).join("\n");
-        await ffmpeg.writeFile("concat.txt", concatList);
+        await ffmpeg.writeFile(concatFile, concatList);
         onProgress?.({ phase: "encoding", progress: 55 });
         // 先尝试无损拼接；不同模型输出的编码参数不一致时再回退到统一转码。
-        let exitCode = await ffmpeg.exec(["-f", "concat", "-safe", "0", "-i", "concat.txt", "-c", "copy", "merged.mp4"]);
+        let exitCode = await ffmpeg.exec(["-y", "-f", "concat", "-safe", "0", "-i", concatFile, "-c", "copy", outputFile]);
         if (exitCode !== 0) {
-            exitCode = await ffmpeg.exec(["-f", "concat", "-safe", "0", "-i", "concat.txt", "-c:v", "libx264", "-c:a", "aac", "-movflags", "+faststart", "merged.mp4"]);
+            exitCode = await ffmpeg.exec(["-y", "-f", "concat", "-safe", "0", "-i", concatFile, "-c:v", "libx264", "-c:a", "aac", "-movflags", "+faststart", outputFile]);
         }
         if (exitCode !== 0) throw new Error("视频编码失败，请确认视频编码格式兼容");
-        const output = await ffmpeg.readFile("merged.mp4");
+        const output = await ffmpeg.readFile(outputFile);
         onProgress?.({ phase: "encoding", progress: 100 });
         return new Blob([output as BlobPart], { type: "video/mp4" });
     } finally {
-        await Promise.all([...files, "concat.txt", "merged.mp4"].map((file) => ffmpeg.deleteFile(file).catch(() => undefined)));
+        await Promise.all([...files, concatFile, outputFile].map((file) => ffmpeg.deleteFile(file).catch(() => undefined)));
     }
 }
