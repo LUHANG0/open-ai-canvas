@@ -1,6 +1,6 @@
 import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { Dispatch, SetStateAction } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useParams, useSearchParams } from "react-router";
 import { useConfigStore, useEffectiveConfig } from "@/stores/use-config-store";
 import { uploadMediaFile } from "@/services/file-storage";
@@ -17,7 +17,7 @@ import { useAssetStore } from "@/stores/use-asset-store";
 import { flushCanvasStorePersistence } from "@/stores/canvas/use-canvas-store";
 import { useThemeStore } from "@/stores/use-theme-store";
 import { useUserStore } from "@/stores/use-user-store";
-import { App, Modal } from "antd";
+import { App } from "antd";
 import { getNodeSpec } from "@/constant/canvas";
 import { CanvasConfigComposer } from "@/components/canvas/canvas-config-composer";
 import { CanvasConfigNodePanel } from "@/components/canvas/canvas-config-node-panel";
@@ -71,7 +71,6 @@ import { batchSourceRestriction } from "@/lib/canvas/canvas-batch-connection";
 import { deriveStoryboardPipelineProgress } from "@/lib/canvas/canvas-storyboard-progress";
 import { CanvasAgentChangeToast, CanvasMergeStatusToast, CanvasUploadStatusToast } from "./canvas-project-feedback";
 import { backendProviderConfig, getGenerationCount } from "@/lib/canvas/canvas-project-generation";
-import { cancelGenerationTask } from "@/services/api/task-center";
 import { CanvasTopBar, CanvasWorkspaceModeSwitch } from "./canvas-project-top-bar";
 import { LibTVImportDialog } from "./components/libtv-import-dialog";
 import { TapNowImportDialog } from "./components/tapnow-import-dialog";
@@ -85,7 +84,6 @@ import { CanvasNodeActionContext, type CanvasNodeActionContextValue } from "@/co
 import { PortraitClearanceModal } from "@/components/canvas/portrait-clearance/portrait-clearance-modal";
 import { CanvasNodeGraphContext, type CanvasNodeGraphContextValue } from "@/components/canvas/canvas-node-graph-context";
 import { CanvasRefreshShell } from "./canvas-refresh-shell";
-import { queryGenerationTask } from "@/services/api/task-center";
 import type { CanvasImageEmotionPayload } from "@/components/canvas/canvas-node-emotion-panel";
 import { CanvasEmotionWorkspace } from "@/components/canvas/canvas-emotion-workspace";
 import { useCanvasConnectionController } from "./use-canvas-connection-controller";
@@ -170,7 +168,6 @@ export default function CanvasPage() {
 
 function InfiniteCanvasPage() {
     const { message } = App.useApp();
-    const queryClient = useQueryClient();
     const params = useParams<{ id: string }>();
     const [searchParams, setSearchParams] = useSearchParams();
     const projectId = params.id || "";
@@ -347,7 +344,7 @@ function InfiniteCanvasPage() {
         refetchLinkedProject,
     });
     const canvasContext = useMemo(() => summarizeCanvasContext(nodes, selectedNodeIds, linkedProjectQuery.data?.units), [linkedProjectQuery.data?.units, nodes, selectedNodeIds]);
-    const { applyGenerationTaskResult, bindGenerationTask, finishGenerationRequest, openNodeTaskDetails, runningNodeId, setRunningNodeId, setTaskDetail, startGenerationRequest, taskDetail, taskDetailLoading, taskDetailLogs } = useCanvasGeneration({
+    const { applyGenerationTaskResult, bindGenerationTask, cancelCanvasTask, finishGenerationRequest, openCanvasNodeTaskDetails, reloadCanvasNodeResource, runningNodeId, setRunningNodeId, setTaskDetail, startGenerationRequest, taskDetail, taskDetailLoading, taskDetailLogs } = useCanvasGeneration({
         projectId,
         domainProjectId: linkedProjectId,
         projectLoaded,
@@ -355,35 +352,6 @@ function InfiniteCanvasPage() {
         nodesRef,
         setNodes,
     });
-
-    const cancelCanvasTask = useCallback(
-        (task: import("@/services/api/task-center").GenerationTask) => {
-            if (task.provider === "dreamina-cli") {
-                message.warning("官方即梦 CLI 当前不支持可靠取消，请等待官方状态同步");
-                return;
-            }
-            Modal.confirm({
-                title: "取消生成任务？",
-                content: "任务会立即停止本地执行；如果已经提交到生成服务，系统会继续核对取消结果和积分状态。",
-                okText: "取消任务",
-                okButtonProps: { danger: true },
-                cancelText: "继续等待",
-                onOk: async () => {
-                    try {
-                        const next = await cancelGenerationTask(task.id);
-                        const node = nodesRef.current.find((item) => item.metadata?.taskId === task.id);
-                        if (node) bindGenerationTask(node.id, next);
-                        setTaskDetail((current) => (current?.id === task.id ? next : current));
-                        await queryClient.invalidateQueries({ queryKey: ["canvas-active-tasks", projectId] });
-                        message.success("任务已取消");
-                    } catch (error) {
-                        message.error(error instanceof Error ? error.message : "取消任务失败");
-                    }
-                },
-            });
-        },
-        [bindGenerationTask, message, nodesRef, projectId, queryClient, setTaskDetail],
-    );
 
     useEffect(() => {
         if (!projectLoaded || !codexAutoConnect) return;
@@ -1276,23 +1244,6 @@ function InfiniteCanvasPage() {
         bindGenerationTask,
         applyGenerationTaskResult,
     });
-    const reloadCanvasNodeResource = useCallback(
-        async (node: CanvasNodeData) => {
-            const taskId = node.metadata?.taskId;
-            if (!taskId || !node.metadata?.resourceReloadAvailable) return;
-            setNodes((current) => current.map((item) => (item.id === node.id ? { ...item, metadata: { ...item.metadata, status: "loading", taskStage: "正在重新加载资源", errorDetails: undefined } } : item)));
-            try {
-                const task = await queryGenerationTask(taskId);
-                if (task.status !== "succeeded") throw new Error("原生成任务尚未成功，无法重新加载资源");
-                await applyGenerationTaskResult(node.id, task);
-            } catch (error) {
-                setNodes((current) =>
-                    current.map((item) => (item.id === node.id ? { ...item, metadata: { ...item.metadata, status: "error", errorDetails: error instanceof Error ? error.message : "资源重新加载失败", resourceReloadAvailable: true } } : item)),
-                );
-            }
-        },
-        [applyGenerationTaskResult, setNodes],
-    );
     const reconcileImageBatchRootNode = useCallback(
         (rootId: string) => {
             setNodes((current) => {
@@ -1546,12 +1497,6 @@ function InfiniteCanvasPage() {
             void handleRetryNode(node);
         },
         [generateScriptRows, handleRetryNode, message, nodesRef, retryImageBatchChildren],
-    );
-    const openCanvasNodeTaskDetails = useCallback(
-        (node: CanvasNodeData) => {
-            void openNodeTaskDetails(node);
-        },
-        [openNodeTaskDetails],
     );
     const openCanvasNodeVersions = useCallback((node: CanvasNodeData) => setVersionCompareRootId(node.metadata?.versionOfNodeId || node.id), []);
     const viewCanvasNodeImage = useCallback((node: CanvasNodeData) => setPreviewNodeId(node.id), []);
