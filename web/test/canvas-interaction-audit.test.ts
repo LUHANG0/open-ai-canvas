@@ -181,3 +181,15 @@ test("reduced motion stops spotlight pointer calculations instead of only hiding
     expect(spotlight).toContain("if (!enabled || reducedMotion) return");
     expect(spotlight).toContain("{enabled && !reducedMotion ? <motion.span");
 });
+
+test("project feedback states render through one owned layer", async () => {
+    const project = await Bun.file(new URL("../src/pages/canvas/project.tsx", import.meta.url)).text();
+    const feedback = await Bun.file(new URL("../src/pages/canvas/canvas-project-feedback.tsx", import.meta.url)).text();
+    expect(project).toContain("<CanvasProjectFeedbackLayer");
+    expect(project).not.toContain("<CanvasUploadStatusToast");
+    expect(project).not.toContain("<CanvasMergeStatusToast");
+    expect(project).not.toContain("<CanvasAgentChangeToast");
+    expect(feedback).toContain("uploadStatus ? <CanvasUploadStatusToast");
+    expect(feedback).toContain("mergeVideoProgress ? <CanvasMergeStatusToast");
+    expect(feedback).toContain("agentChange ? <CanvasAgentChangeToast");
+});

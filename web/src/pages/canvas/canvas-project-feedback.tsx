@@ -19,6 +19,32 @@ export type CanvasUploadStatus = {
 
 type CanvasTheme = (typeof canvasThemes)[keyof typeof canvasThemes];
 
+export function CanvasProjectFeedbackLayer({
+    uploadStatus,
+    mergeVideoProgress,
+    agentChange,
+    theme,
+    onViewAgentChange,
+    onUndoAgentChange,
+    onCloseAgentChange,
+}: {
+    uploadStatus?: CanvasUploadStatus | null;
+    mergeVideoProgress?: MergeVideoProgress | null;
+    agentChange?: CanvasAgentChange | null;
+    theme: CanvasTheme;
+    onViewAgentChange: () => void;
+    onUndoAgentChange: () => void;
+    onCloseAgentChange: () => void;
+}) {
+    return (
+        <>
+            {uploadStatus ? <CanvasUploadStatusToast status={uploadStatus} theme={theme} /> : null}
+            {mergeVideoProgress ? <CanvasMergeStatusToast progress={mergeVideoProgress} theme={theme} /> : null}
+            {agentChange ? <CanvasAgentChangeToast change={agentChange} theme={theme} onView={onViewAgentChange} onUndo={onUndoAgentChange} onClose={onCloseAgentChange} /> : null}
+        </>
+    );
+}
+
 export function CanvasUploadStatusToast({ status, theme }: { status: CanvasUploadStatus; theme: CanvasTheme }) {
     const progress = Math.round((Math.min(status.step, status.total) / Math.max(status.total, 1)) * 100);
     const accent = status.error ? theme.accent.danger : status.done ? "#22c55e" : theme.node.activeStroke;

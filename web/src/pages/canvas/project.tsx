@@ -42,7 +42,7 @@ import { CanvasFreeformEmptyState, CanvasLinkedProjectEmptyState, CanvasShortDra
 import { createCanvasNode } from "@/lib/canvas/canvas-project-domain";
 import { stampCanvasNodeChanges } from "@/lib/canvas/canvas-node-timestamps";
 import { batchSourceRestriction } from "@/lib/canvas/canvas-batch-connection";
-import { CanvasAgentChangeToast, CanvasMergeStatusToast, CanvasUploadStatusToast } from "./canvas-project-feedback";
+import { CanvasProjectFeedbackLayer } from "./canvas-project-feedback";
 import { backendProviderConfig } from "@/lib/canvas/canvas-project-generation";
 import { CanvasTopBar, CanvasWorkspaceModeSwitch } from "./canvas-project-top-bar";
 import { CanvasFocusModeBar } from "@/components/canvas/canvas-focus-mode-bar";
@@ -1620,19 +1620,15 @@ function InfiniteCanvasPage() {
                             />
                         ) : null}
 
-                        {uploadStatus ? <CanvasUploadStatusToast status={uploadStatus} theme={theme} /> : null}
-                        {mergeVideoProgress ? <CanvasMergeStatusToast progress={mergeVideoProgress} theme={theme} /> : null}
-                        {lastAgentChange ? (
-                            <CanvasAgentChangeToast
-                                change={lastAgentChange}
-                                theme={theme}
-                                onView={viewLastAgentChange}
-                                onUndo={() => {
-                                    undoAgentOps();
-                                }}
-                                onClose={dismissLastAgentChange}
-                            />
-                        ) : null}
+                        <CanvasProjectFeedbackLayer
+                            uploadStatus={uploadStatus}
+                            mergeVideoProgress={mergeVideoProgress}
+                            agentChange={lastAgentChange}
+                            theme={theme}
+                            onViewAgentChange={viewLastAgentChange}
+                            onUndoAgentChange={undoAgentOps}
+                            onCloseAgentChange={dismissLastAgentChange}
+                        />
 
                         <CanvasNodeToolbar
                             node={isNodeDragging || nodeImageSettingsOpen || emotionNodeId ? null : toolbarNode}
