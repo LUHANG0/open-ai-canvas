@@ -91,6 +91,7 @@ import { useCanvasShortDrama } from "./use-canvas-short-drama";
 import { useCanvasStoryboard } from "./use-canvas-storyboard";
 import { useCanvasUpload } from "./use-canvas-upload";
 import { useCanvasViewportController } from "./use-canvas-viewport-controller";
+import { useCanvasViewportMeasurement } from "./use-canvas-viewport-measurement";
 import { useCanvasPortraitClearance } from "./use-canvas-portrait-clearance";
 import "./canvas-editor-pc.css";
 import {
@@ -129,7 +130,6 @@ function InfiniteCanvasPage() {
     const localAgentActivity = useCanvasAgentStore((state) => state.activity);
     const localAgentEnabled = useCanvasAgentStore((state) => state.enabled);
     const containerRef = useRef<HTMLDivElement>(null);
-    const didInitialCenterRef = useRef(false);
     const config = useConfigStore((state) => state.config);
     const effectiveConfig = useEffectiveConfig();
     const isAiConfigReady = useConfigStore((state) => state.isAiConfigReady);
@@ -159,7 +159,6 @@ function InfiniteCanvasPage() {
     const [chatSessions, setChatSessions] = useState<CanvasAssistantSession[]>([]);
     const [activeChatId, setActiveChatId] = useState<string | null>(null);
     const [viewport, setViewport] = useState<ViewportTransform>({ x: 0, y: 0, k: 1 });
-    const [size, setSize] = useState({ width: 1200, height: 720 });
     const [selectedNodeIds, setSelectedNodeIds] = useState<Set<string>>(new Set());
     const [selectedConnectionId, setSelectedConnectionId] = useState<string | null>(null);
     const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
@@ -203,15 +202,12 @@ function InfiniteCanvasPage() {
     const { tasks: activeTasks } = useCanvasActiveTasks(projectId, projectLoaded);
     const { focusMode, enterFocusMode, exitFocusMode, toggleFocusMode } = useFocusMode();
 
-    useEffect(() => {
-        didInitialCenterRef.current = false;
-    }, [projectId]);
-
     const connectionsRef = useRef(connections);
     const chatSessionsRef = useRef(chatSessions);
     const activeChatIdRef = useRef(activeChatId);
     const selectedNodeIdsRef = useRef(selectedNodeIds);
     const viewportRef = useRef(viewport);
+    const size = useCanvasViewportMeasurement({ projectId, projectLoaded, containerRef, viewportRef, setViewport });
     const generateNodeRef = useRef<((nodeId: string, mode: CanvasNodeGenerationMode, prompt: string, options?: CanvasNodeGenerationOptions) => Promise<void>) | null>(null);
     const historyRestoreUiRef = useRef<() => void>(() => undefined);
 
@@ -331,31 +327,6 @@ function InfiniteCanvasPage() {
         selectedNodeIdsRef.current = selectedNodeIds;
         viewportRef.current = viewport;
     }, [activeChatId, chatSessions, nodes, connections, selectedNodeIds, viewport]);
-
-    useEffect(() => {
-        if (!projectLoaded) return;
-        const el = containerRef.current;
-        if (!el) return;
-
-        const updateSize = () => {
-            const rect = el.getBoundingClientRect();
-            setSize((current) => (current.width === rect.width && current.height === rect.height ? current : { width: rect.width, height: rect.height }));
-            if (!didInitialCenterRef.current) {
-                didInitialCenterRef.current = true;
-                const current = viewportRef.current;
-                if (current.x === 0 && current.y === 0 && current.k === 1) {
-                    const centered = { x: rect.width / 2, y: rect.height / 2, k: 1 };
-                    viewportRef.current = centered;
-                    setViewport(centered);
-                }
-            }
-        };
-
-        updateSize();
-        const resizeObserver = new ResizeObserver(updateSize);
-        resizeObserver.observe(el);
-        return () => resizeObserver.disconnect();
-    }, [projectLoaded]);
 
     const {
         fitCanvasContent,
