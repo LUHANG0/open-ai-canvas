@@ -80,7 +80,7 @@ describe("PC creation chat and storyboard director workbench regression gates", 
 
     test("uses stable message-backed shot ids for selection instead of array indexes", async () => {
         const [source, typesSource, storyboardSource] = await Promise.all([read("../src/pages/create/index.tsx"), read("../src/pages/create/creation-types.ts"), read("../src/pages/create/creation-storyboard-workbench.tsx")]);
-        const projection = sourceSection(source, "function shotsFromMessages", "function completedCreationGenerationTask");
+        const projection = sourceSection(source, "function shotsFromMessages", "export default function CreatePage");
         const selection = sourceSection(source, "const shots = useMemo", "useEffect(() => {");
         const selectShot = sourceSection(source, "const selectStoryboardShot", "const beginVariantFromShot");
         const rail = sourceSection(storyboardSource, "function StoryboardShotRail", "function StoryboardComposerContext");
@@ -302,7 +302,7 @@ describe("PC creation chat and storyboard director workbench regression gates", 
     });
 
     test("treats expected materialization cancellation as lifecycle cleanup instead of a generation failure", async () => {
-        const source = await read("../src/pages/create/index.tsx");
+        const source = await read("../src/pages/create/creation-task-lifecycle.ts");
         const materialization = sourceSection(source, "async function materializeCreationTaskResults", "function reconcileCreationTaskMessages");
         const cancellationPosition = materialization.indexOf("if (isGenerationTaskCancelled(error, signal)) return task");
         const warningPosition = materialization.indexOf("创作生成结果资源化失败");
