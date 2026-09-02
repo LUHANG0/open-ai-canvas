@@ -26,7 +26,6 @@ import { App, Modal } from "antd";
 import { getNodeSpec } from "@/constant/canvas";
 import { CanvasConfigComposer } from "@/components/canvas/canvas-config-composer";
 import { CanvasConfigNodePanel } from "@/components/canvas/canvas-config-node-panel";
-import { CanvasAssistantPanel } from "@/components/canvas/canvas-assistant-panel";
 import { AssistantPanelColumn, getPanelWidthBounds } from "./canvas-assistant-panel-column";
 import { CanvasActiveTaskPanel } from "@/components/canvas/canvas-active-task-panel";
 import { CanvasAssetTray } from "@/components/canvas/canvas-asset-tray";
@@ -144,6 +143,8 @@ import type { PortraitClearanceNodeState } from "@/lib/portrait-clearance/contra
 import { createDefaultPortraitClearanceState, PORTRAIT_CLEARANCE_NODE_TYPE } from "@/lib/portrait-clearance/contracts";
 import { reconcilePortraitClearanceInputBindings } from "@/lib/portrait-clearance/input-bindings";
 
+const loadCanvasAssistantPanel = () => import("@/components/canvas/canvas-assistant-panel").then((module) => ({ default: module.CanvasAssistantPanel }));
+const CanvasAssistantPanel = lazy(loadCanvasAssistantPanel);
 const CanvasDirectorWorkbench = lazy(() => import("@/components/canvas/director/canvas-director-workbench").then((module) => ({ default: module.CanvasDirectorWorkbench })));
 const CanvasDrawingEditorModal = lazy(() => import("@/components/canvas/canvas-drawing-editor-modal").then((module) => ({ default: module.CanvasDrawingEditorModal })));
 
@@ -315,6 +316,14 @@ function InfiniteCanvasPage() {
     useEffect(() => {
         persistCanvasMediaPerformanceMode(mediaPerformanceMode);
     }, [mediaPerformanceMode]);
+
+    useEffect(() => {
+        // 首屏完成后再预取 Agent：减轻画布初次解析，同时避免用户第一次呼出时长时间等待。
+        const timer = window.setTimeout(() => {
+            void loadCanvasAssistantPanel();
+        }, 600);
+        return () => window.clearTimeout(timer);
+    }, []);
 
     useEffect(() => {
         didInitialCenterRef.current = false;
@@ -2396,28 +2405,30 @@ function InfiniteCanvasPage() {
                             {assistantMounted ? (
                                 <AssistantPanelColumn width={assistantWidth} closing={assistantClosing} topInset={focusMode ? "0px" : "var(--canvas-topbar-offset)"} onWidthChange={setAssistantWidth}>
                                     {() => (
-                                        <CanvasAssistantPanel
-                                            nodes={nodes}
-                                            selectedNodeIds={selectedNodeIds}
-                                            snapshot={assistantSnapshot}
-                                            projectId={projectId}
-                                            sessions={chatSessions}
-                                            activeSessionId={activeChatId}
-                                            onSelectNodeIds={setSelectedNodeIds}
-                                            onSessionsChange={handleAssistantSessionsChange}
-                                            onApplyOps={applyAgentOps}
-                                            canUndoOps={canUndoAgentOps}
-                                            undoOpsCount={agentUndoCount}
-                                            onUndoOps={undoAgentOps}
-                                            onPasteImage={pasteAssistantImage}
-                                            agentMode={agentMode}
-                                            onAgentModeChange={setAgentMode}
-                                            autoConnectLocal={codexAutoConnect}
-                                            closing={assistantClosing}
-                                            onCollapse={closeAgent}
-                                            cinematicEntry={cinematicAgentEntry}
-                                            onCinematicEntryConsumed={consumeCinematicAgentEntry}
-                                        />
+                                        <Suspense fallback={<div data-canvas-no-zoom className="grid h-full min-h-0 place-items-center px-6 text-sm text-foreground/55">正在准备 Agent…</div>}>
+                                            <CanvasAssistantPanel
+                                                nodes={nodes}
+                                                selectedNodeIds={selectedNodeIds}
+                                                snapshot={assistantSnapshot}
+                                                projectId={projectId}
+                                                sessions={chatSessions}
+                                                activeSessionId={activeChatId}
+                                                onSelectNodeIds={setSelectedNodeIds}
+                                                onSessionsChange={handleAssistantSessionsChange}
+                                                onApplyOps={applyAgentOps}
+                                                canUndoOps={canUndoAgentOps}
+                                                undoOpsCount={agentUndoCount}
+                                                onUndoOps={undoAgentOps}
+                                                onPasteImage={pasteAssistantImage}
+                                                agentMode={agentMode}
+                                                onAgentModeChange={setAgentMode}
+                                                autoConnectLocal={codexAutoConnect}
+                                                closing={assistantClosing}
+                                                onCollapse={closeAgent}
+                                                cinematicEntry={cinematicAgentEntry}
+                                                onCinematicEntryConsumed={consumeCinematicAgentEntry}
+                                            />
+                                        </Suspense>
                                     )}
                                 </AssistantPanelColumn>
                             ) : null}
