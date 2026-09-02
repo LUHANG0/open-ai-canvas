@@ -2,9 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useParams, useSearchParams } from "react-router";
 import { useConfigStore, useEffectiveConfig } from "@/stores/use-config-store";
 import { uploadMediaFile } from "@/services/file-storage";
-import { readLocalRuntimeBootstrapState } from "@/services/local-runtime-bootstrap";
 import { canvasThemes } from "@/lib/canvas-theme";
-import { shouldAutoConnectCanvasRuntime } from "@/lib/canvas/local-runtime-connection";
 import { useAssetStore } from "@/stores/use-asset-store";
 import { flushCanvasStorePersistence } from "@/stores/canvas/use-canvas-store";
 import { useThemeStore } from "@/stores/use-theme-store";
@@ -38,6 +36,7 @@ import { CanvasProjectViewport } from "./canvas-project-viewport";
 import { resolveCanvasActiveNodeTargets } from "./canvas-active-node-targets";
 import { CanvasProjectHeadlessAgent, CanvasProjectUtilityDialogs } from "./canvas-project-utility-overlays";
 import { CanvasRefreshShell } from "./canvas-refresh-shell";
+import { resolveCanvasLocalAgentEntry } from "./canvas-local-agent-entry";
 import { useCanvasConnectionController } from "./use-canvas-connection-controller";
 import { useCanvasClear } from "./use-canvas-clear";
 import { useCanvasContextInteractions } from "./use-canvas-context-interactions";
@@ -137,8 +136,7 @@ function InfiniteCanvasPage() {
     const [projectLoaded, setProjectLoaded] = useState(false);
     const { clearConfirmOpen, directorTemplateRequest, libTVImportOpen, nodeSearchOpen, setClearConfirmOpen, setDirectorTemplateRequest, setLibTVImportOpen, setNodeSearchOpen, setShareModalOpen, setShortcutRequestNonce, setStylePickerOpen, setTapNowImportOpen, shareModalOpen, shortcutRequestNonce, stylePickerOpen, tapNowImportOpen } = useCanvasProjectDialogState();
     const { characterReferenceNodeId, dialogNodeId, directorNodeId, drawingNodeId, infoNodeId, portraitClearanceNodeId, previewNodeId, scriptEditorNodeId, scriptScrollTopById, setCharacterReferenceNodeId, setDialogNodeId, setDirectorNodeId, setDrawingNodeId, setInfoNodeId, setPortraitClearanceNodeId, setPreviewNodeId, setScriptEditorNodeId, setScriptScrollTopById, setSubtitleNodeId, setSuperResolveNodeId, setTextEditorNodeId, setTimelineNodeId, setToolbarNodeId, setVersionCompareRootId, subtitleNodeId, superResolveNodeId, textEditorNodeId, timelineNodeId, toolbarNodeId, versionCompareRootId } = useCanvasNodePanelState();
-    const codexAutoConnect = shouldAutoConnectCanvasRuntime(searchParams);
-    const codexCompactAgent = codexAutoConnect && readLocalRuntimeBootstrapState().legacyDeepLinkRejected;
+    const { autoConnect: codexAutoConnect, compactAgent: codexCompactAgent } = resolveCanvasLocalAgentEntry(searchParams);
     const { assistantWidth, focusDockRevealed, mediaPerformanceMode, setAssistantWidth, setFocusDockRevealed, setMediaPerformanceMode, setWorkspaceMode, workspaceMode } = useCanvasWorkspacePreferences({
         preloadAssistant: loadCanvasAssistantPanel,
     });
