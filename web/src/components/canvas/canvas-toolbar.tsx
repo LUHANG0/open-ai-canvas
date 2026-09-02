@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from "motion/react";
-import { useEffect, useRef, useState, type MouseEvent as ReactMouseEvent, type ReactNode } from "react";
+import { lazy, Suspense, useEffect, useRef, useState, type MouseEvent as ReactMouseEvent, type ReactNode } from "react";
 import { Switch } from "antd";
 import { Check, Eraser, Info, Moon, Palette, Settings2, Sun } from "lucide-react";
 
@@ -7,7 +7,6 @@ import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 import { FloatingDock } from "@/components/ui/aceternity/floating-dock";
 import { SpotlightSurface } from "@/components/ui/aceternity/spotlight-surface";
 import { CanvasCreateMenu, type CanvasCreateCommand } from "@/components/canvas/canvas-create-menu";
-import { ToolbarSettingsModal } from "@/components/canvas/toolbars/toolbar-settings-modal";
 import { aceternityMotion } from "@/lib/aceternity-motion";
 import { canvasDockStyle } from "@/lib/canvas/canvas-aceternity-style";
 import { canvasBackgroundModes, canvasBackgroundPresets, canvasThemes, type CanvasBackgroundMode, type CanvasColorTheme, type CanvasTheme } from "@/lib/canvas-theme";
@@ -15,6 +14,8 @@ import { defaultToolbarPrefs, readToolbarPrefs, resolveAddNodeMenuCommands, reso
 import { useThemeStore } from "@/stores/use-theme-store";
 import { usePluginStore } from "@/stores/use-plugin-store";
 import type { CanvasNodeTypeId, CanvasToolMode, CanvasWorkspaceMode } from "@/types/canvas";
+
+const ToolbarSettingsModal = lazy(() => import("@/components/canvas/toolbars/toolbar-settings-modal").then((module) => ({ default: module.ToolbarSettingsModal })));
 
 export function CanvasToolbar({
     selectedCount,
@@ -315,7 +316,30 @@ export function CanvasToolbar({
                 ) : null}
             </AnimatePresence>
 
-            <ToolbarSettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} toolbar="main" />
+            {settingsOpen ? (
+                <Suspense fallback={<ToolbarSettingsLoading x={panelX} onClose={() => setSettingsOpen(false)} />}>
+                    <ToolbarSettingsModal open onClose={() => setSettingsOpen(false)} toolbar="main" />
+                </Suspense>
+            ) : null}
+        </div>
+    );
+}
+
+function ToolbarSettingsLoading({ x, onClose }: { x: number; onClose: () => void }) {
+    return (
+        <div
+            data-canvas-no-zoom
+            className="pc-canvas-toolbar__popover pointer-events-auto absolute bottom-[var(--canvas-dock-popover-offset)] z-[var(--dock-z-popover)] w-[244px] max-w-[calc(100vw-24px)] -translate-x-1/2 rounded-[var(--panel-radius)] border border-border bg-background/95 p-3 shadow-xl backdrop-blur-xl"
+            style={{ left: x || "50%" }}
+            role="status"
+            aria-live="polite"
+        >
+            <div className="flex items-center justify-between gap-3 text-xs font-medium text-foreground/65">
+                <span>正在加载工具栏设置…</span>
+                <button type="button" className="shrink-0 rounded-md px-2 py-1 text-foreground/55 transition-colors hover:bg-foreground/5 hover:text-foreground" onClick={onClose}>
+                    关闭
+                </button>
+            </div>
         </div>
     );
 }

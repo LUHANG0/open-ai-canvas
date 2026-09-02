@@ -1,9 +1,12 @@
-import type { Dispatch, RefObject, SetStateAction } from "react";
+import { lazy, Suspense, type ComponentProps, type Dispatch, type SetStateAction } from "react";
 
-import { CanvasNodeToolbar } from "@/components/canvas/canvas-node-toolbar";
-import type { CanvasNodeData, CanvasWorkspaceMode, ViewportTransform } from "@/types/canvas";
+import type { CanvasNodeToolbar as CanvasNodeToolbarComponent } from "@/components/canvas/canvas-node-toolbar";
+import type { CanvasNodeData } from "@/types/canvas";
 import { canvasNodeInfoUsesTextEditor, nextCanvasNodeFontSize, resolveCanvasProjectToolbarNode } from "./canvas-node-toolbar-routing";
 
+const CanvasNodeToolbar = lazy(() => import("@/components/canvas/canvas-node-toolbar").then((module) => ({ default: module.CanvasNodeToolbar })));
+
+type CanvasNodeToolbarProps = ComponentProps<typeof CanvasNodeToolbarComponent>;
 type NodeAction = (node: CanvasNodeData) => unknown;
 type SetNodeId = Dispatch<SetStateAction<string | null>>;
 
@@ -44,11 +47,11 @@ type CanvasProjectNodeToolbarActions = {
 type CanvasProjectNodeToolbarProps = {
     node: CanvasNodeData | null;
     blocked: boolean;
-    workspaceMode: CanvasWorkspaceMode;
-    viewport: ViewportTransform;
-    containerRef: RefObject<HTMLDivElement | null>;
-    onKeep: (nodeId: string) => void;
-    onLeave: () => void;
+    workspaceMode: NonNullable<CanvasNodeToolbarProps["workspaceMode"]>;
+    viewport: CanvasNodeToolbarProps["viewport"];
+    containerRef: CanvasNodeToolbarProps["containerRef"];
+    onKeep: CanvasNodeToolbarProps["onKeep"];
+    onLeave: CanvasNodeToolbarProps["onLeave"];
     setters: CanvasProjectNodeToolbarSetters;
     actions: CanvasProjectNodeToolbarActions;
     extractingVideoFrames: boolean;
@@ -58,7 +61,9 @@ type CanvasProjectNodeToolbarProps = {
 
 export function CanvasProjectNodeToolbar({ node, blocked, workspaceMode, viewport, containerRef, onKeep, onLeave, setters, actions, extractingVideoFrames, extractingAudio, trimmingVideo }: CanvasProjectNodeToolbarProps) {
     const visibleNode = resolveCanvasProjectToolbarNode(node, blocked);
+    if (!visibleNode) return null;
     return (
+        <Suspense fallback={<CanvasNodeToolbarLoading node={visibleNode} viewport={viewport} />}>
         <CanvasNodeToolbar
             node={visibleNode}
             workspaceMode={workspaceMode}
@@ -105,5 +110,18 @@ export function CanvasProjectNodeToolbar({ node, blocked, workspaceMode, viewpor
             onToggleLocked={(target) => void actions.toggleLocked(target.id)}
             onDelete={(target) => void actions.deleteNodes(new Set([target.id]))}
         />
+        </Suspense>
+    );
+}
+
+function CanvasNodeToolbarLoading({ node, viewport }: Pick<CanvasNodeToolbarProps, "node" | "viewport">) {
+    if (!node) return null;
+    const left = viewport.x + (node.position.x + node.width / 2) * viewport.k;
+    const top = viewport.y + node.position.y * viewport.k - 8;
+    return (
+        <div data-canvas-no-zoom className="pointer-events-none absolute z-[var(--z-node-toolbar)] -translate-x-1/2 -translate-y-full" style={{ left, top }} role="status" aria-live="polite">
+            <span className="block h-1 w-10 animate-pulse rounded-full bg-foreground/15" aria-hidden />
+            <span className="sr-only">正在加载节点工具栏…</span>
+        </div>
     );
 }
