@@ -1,13 +1,15 @@
-import type { ComponentProps, ReactNode } from "react";
+import { lazy, Suspense, type ComponentProps, type ReactNode } from "react";
 
-import { CanvasActiveTaskPanel } from "@/components/canvas/canvas-active-task-panel";
+import type { CanvasActiveTaskPanel as CanvasActiveTaskPanelComponent } from "@/components/canvas/canvas-active-task-panel";
 import { CanvasFileDropOverlay } from "@/components/canvas/canvas-file-drop-overlay";
 import { CanvasFocusModeBar } from "@/components/canvas/canvas-focus-mode-bar";
 import type { CanvasTheme } from "@/lib/canvas-theme";
 import { canvasActiveTaskPanelInsets } from "./canvas-workspace-overlay-state";
 
-type ActiveTasks = ComponentProps<typeof CanvasActiveTaskPanel>["tasks"];
-type CancelTask = ComponentProps<typeof CanvasActiveTaskPanel>["onCancelTask"];
+const CanvasActiveTaskPanel = lazy(() => import("@/components/canvas/canvas-active-task-panel").then((module) => ({ default: module.CanvasActiveTaskPanel })));
+
+type ActiveTasks = ComponentProps<typeof CanvasActiveTaskPanelComponent>["tasks"];
+type CancelTask = ComponentProps<typeof CanvasActiveTaskPanelComponent>["onCancelTask"];
 
 type CanvasProjectWorkspaceOverlaysProps = {
     activeTasks: ActiveTasks;
@@ -51,7 +53,11 @@ export function CanvasProjectWorkspaceOverlays({
     const taskInsets = canvasActiveTaskPanelInsets(focusMode, assistantOpen, assistantWidth);
     return (
         <>
-            <CanvasActiveTaskPanel tasks={activeTasks} onCancelTask={onCancelTask} topInset={taskInsets.topInset} rightInset={taskInsets.rightInset} />
+            {activeTasks.length ? (
+                <Suspense fallback={null}>
+                    <CanvasActiveTaskPanel tasks={activeTasks} onCancelTask={onCancelTask} topInset={taskInsets.topInset} rightInset={taskInsets.rightInset} />
+                </Suspense>
+            ) : null}
             {focusMode ? (
                 <CanvasFocusModeBar
                     dockRevealed={focusDockRevealed}
