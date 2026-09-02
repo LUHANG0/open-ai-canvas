@@ -23,7 +23,6 @@ import { resolveProjectCanvasStyle } from "@/components/canvas/canvas-style-pick
 import { createStyleProfileSnapshot, resolveStyleProfile, serializeStyleProfile } from "@/lib/canvas/style-profile";
 import { CanvasNodeInfoModal, CanvasNodeToolbar } from "@/components/canvas/canvas-node-toolbar";
 import { CanvasNodeAnglePanel } from "@/components/canvas/canvas-node-angle-dialog";
-import { CanvasNodeSearchModal } from "@/components/canvas/canvas-node-search-modal";
 import { CanvasStylePickerModal } from "@/components/canvas/canvas-style-picker-modal";
 import { CanvasDirectorTemplateModal } from "@/components/canvas/director/canvas-director-template-modal";
 import { CanvasFileDropOverlay } from "@/components/canvas/canvas-file-drop-overlay";
@@ -57,6 +56,7 @@ import { CanvasProjectMediaDialogs } from "./canvas-project-media-dialogs";
 import { CanvasProjectDirectorWorkbench } from "./canvas-project-director-workbench";
 import { CanvasProjectAssetDialogs, CanvasProjectVersionCompareDialog } from "./canvas-project-library-dialogs";
 import { CanvasProjectNodeEditorDialogs } from "./canvas-project-node-editor-dialogs";
+import { CanvasProjectNodeSearch } from "./canvas-project-node-search";
 import { CanvasProjectScriptEditor } from "./canvas-project-script-editor";
 import { CanvasProjectTimelineDialogs } from "./canvas-project-timeline-dialogs";
 import { CanvasProjectSelectionToolbar } from "./canvas-project-selection-toolbar";
@@ -1300,22 +1300,17 @@ function InfiniteCanvasPage() {
                             </div>
                         ) : null}
 
-                        <CanvasNodeSearchModal
+                        <CanvasProjectNodeSearch
                             open={nodeSearchOpen}
                             nodes={nodes}
+                            nodeById={nodeById}
+                            selectedNodeIdsRef={selectedNodeIdsRef}
+                            setSelectedNodeIds={setSelectedNodeIds}
+                            setSelectedConnectionId={setSelectedConnectionId}
                             onClose={() => setNodeSearchOpen(false)}
-                            onFocus={(nodeId) => {
-                                const target = nodeById.get(nodeId);
-                                const parent = target?.parentId ? nodeById.get(target.parentId) : null;
-                                if (parent?.metadata?.frame?.collapsed) toggleFrameCollapsed(parent.id);
-                                const batchRoot = target?.metadata?.batchRootId ? nodeById.get(target.metadata.batchRootId) : null;
-                                if (batchRoot && !batchRoot.metadata?.imageBatchExpanded) toggleBatchExpanded(batchRoot.id);
-                                const selection = new Set([nodeId]);
-                                selectedNodeIdsRef.current = selection;
-                                setSelectedNodeIds(selection);
-                                setSelectedConnectionId(null);
-                                focusCanvasNode(nodeId);
-                            }}
+                            onToggleFrame={toggleFrameCollapsed}
+                            onToggleBatch={toggleBatchExpanded}
+                            onFocusNode={focusCanvasNode}
                         />
 
                         {!focusMode && shortDramaGuide ? (
