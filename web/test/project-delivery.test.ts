@@ -40,6 +40,19 @@ function deliveryFixture(): ProjectDetail {
 }
 
 describe("短剧交付包", () => {
+    test("后台交付使用独立项目任务接口并保留本机兜底", async () => {
+        const apiSource = await Bun.file(new URL("../src/services/api/projects.ts", import.meta.url)).text();
+        const viewSource = await Bun.file(new URL("../src/pages/projects/detail/workflow-stage-views.tsx", import.meta.url)).text();
+        expect(apiSource).toContain("/delivery-jobs");
+        expect(apiSource).toContain("/delivery-jobs/latest");
+        expect(apiSource).not.toContain("createProjectDeliveryJob(projectId: string, unitId: string, model");
+        expect(viewSource).toContain("后台生成交付包");
+        expect(viewSource).toContain("本机直接生成");
+        expect(viewSource).toContain("关闭页面也会继续");
+        expect(viewSource).toContain("有效期至");
+        expect(viewSource).toContain("Date.parse(job.expiresAt");
+    });
+
     test("按设备内存给出保守容量预算，并区分安全、预警和阻断", () => {
         expect(projectDeliverySourceBudget()).toBe(PROJECT_DELIVERY_FALLBACK_SOURCE_BUDGET);
         expect(projectDeliverySourceBudget(1)).toBe(PROJECT_DELIVERY_MIN_SOURCE_BUDGET);

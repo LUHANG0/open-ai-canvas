@@ -2,8 +2,11 @@ package handler
 
 import (
 	"fmt"
+	"io"
+	"mime"
 	"net/http"
 	"strconv"
+	"time"
 
 	"infinite-canvas/backend/internal/service"
 
@@ -705,6 +708,82 @@ func RegisterProjectRoutes(r *gin.RouterGroup, svc *service.Service) {
 			return
 		}
 		ok(c, gin.H{"workflow": workflow})
+	})
+	r.POST("/projects/:id/units/:unitId/delivery-jobs", func(c *gin.Context) {
+		user, err := currentUser(c, svc)
+		if err != nil {
+			failService(c, err)
+			return
+		}
+		policy, available := loadRuntimePolicy(c, svc)
+		if !available || !enforceRateLimit(c, "project-delivery:"+user.ID, policy.Request.TaskCreatePerMinute, time.Minute) {
+			return
+		}
+		job, err := svc.CreateProjectDeliveryJob(user.ID, c.Param("id"), c.Param("unitId"))
+		if err != nil {
+			failService(c, err)
+			return
+		}
+		ok(c, gin.H{"job": job})
+	})
+	r.GET("/projects/:id/units/:unitId/delivery-jobs/latest", func(c *gin.Context) {
+		user, err := currentUser(c, svc)
+		if err != nil {
+			failService(c, err)
+			return
+		}
+		job, err := svc.LatestProjectDeliveryJob(user.ID, c.Param("id"), c.Param("unitId"))
+		if err != nil {
+			failService(c, err)
+			return
+		}
+		ok(c, gin.H{"job": job})
+	})
+	r.GET("/projects/:id/units/:unitId/delivery-jobs/:jobId", func(c *gin.Context) {
+		user, err := currentUser(c, svc)
+		if err != nil {
+			failService(c, err)
+			return
+		}
+		job, err := svc.ProjectDeliveryJob(user.ID, c.Param("id"), c.Param("unitId"), c.Param("jobId"))
+		if err != nil {
+			failService(c, err)
+			return
+		}
+		ok(c, gin.H{"job": job})
+	})
+	r.GET("/projects/:id/units/:unitId/delivery-jobs/:jobId/file", func(c *gin.Context) {
+		user, err := currentUser(c, svc)
+		if err != nil {
+			failService(c, err)
+			return
+		}
+		job, stream, err := svc.OpenProjectDeliveryJob(user.ID, c.Param("id"), c.Param("unitId"), c.Param("jobId"), c.GetHeader("Range"))
+		if err != nil {
+			failService(c, err)
+			return
+		}
+		defer stream.Body.Close()
+		mimeType := stream.Resource.MimeType
+		if mimeType == "" {
+			mimeType = "application/zip"
+		}
+		c.Header("Cache-Control", "private, no-store")
+		c.Header("Accept-Ranges", "bytes")
+		c.Header("X-Content-Type-Options", "nosniff")
+		c.Header("Content-Security-Policy", "sandbox")
+		c.Header("Content-Disposition", mime.FormatMediaType("attachment", map[string]string{"filename": job.FileName}))
+		if stream.Resource.Provider == "local" {
+			if seeker, ok := stream.Body.(io.ReadSeeker); ok {
+				c.Header("Content-Type", mimeType)
+				http.ServeContent(c.Writer, c.Request, job.FileName, stream.Resource.UpdatedAt, seeker)
+				return
+			}
+		}
+		if stream.ContentRange != "" {
+			c.Header("Content-Range", stream.ContentRange)
+		}
+		c.DataFromReader(stream.StatusCode, stream.ContentLength, mimeType, stream.Body, nil)
 	})
 	r.PATCH("/projects/:id/workflow-steps/:stepId", func(c *gin.Context) {
 		user, err := currentUser(c, svc)

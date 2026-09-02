@@ -38,6 +38,7 @@ func newProjectDeleteTestService(t *testing.T) (*Service, *gorm.DB) {
 		&model.WorkflowStepInstance{},
 		&model.WorkflowStepTask{},
 		&model.ProductionTaskLink{},
+		&model.ProjectDeliveryJob{},
 	); err != nil {
 		t.Fatal(err)
 	}
@@ -233,6 +234,26 @@ func TestDeleteProjectRejectsActiveProjectOrCanvasTasks(t *testing.T) {
 	}
 	if storedTask.ProjectID != canvas.ID {
 		t.Fatalf("active task project id = %q, want %q", storedTask.ProjectID, canvas.ID)
+	}
+}
+
+func TestDeleteProjectRejectsActiveDeliveryJob(t *testing.T) {
+	service, db := newProjectDeleteTestService(t)
+	project := model.Project{ID: "project-1", UserID: "user-1", Name: "短剧", Status: model.ProjectStatusActive}
+	activeKey := "user-1:project-1:unit-1"
+	job := model.ProjectDeliveryJob{ID: "delivery-1", UserID: "user-1", ProjectID: project.ID, UnitID: "unit-1", Status: model.ProjectDeliveryJobStatusRunning, ActiveKey: &activeKey}
+	for _, item := range []any{&project, &job} {
+		if err := db.Create(item).Error; err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	err := service.DeleteProject("user-1", project.ID)
+	if err == nil || err.Error() != "项目仍有进行中的交付任务，请等待交付包完成后再删除" {
+		t.Fatalf("DeleteProject() error = %v", err)
+	}
+	if err := db.First(&model.Project{}, "id = ?", project.ID).Error; err != nil {
+		t.Fatalf("project should remain after rejected deletion: %v", err)
 	}
 }
 

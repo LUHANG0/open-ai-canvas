@@ -1,13 +1,13 @@
 import { useState } from "react";
 import { App, Button, Progress } from "antd";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { saveAs } from "file-saver";
 import { Clock3, Download, Film, Layers3, PackageCheck } from "lucide-react";
 import { Link } from "react-router";
 
 import { Surface } from "@/components/ui/pc";
 import { projectSourceTextToPlainText } from "@/lib/project-source-text";
-import { listProjectAssetsPage, type ProjectDetail } from "@/services/api/projects";
+import { createProjectDeliveryJob, getLatestProjectDeliveryJob, listProjectAssetsPage, projectDeliveryJobFileUrl, type ProjectDeliveryJob, type ProjectDetail } from "@/services/api/projects";
 
 import { createProjectDeliveryArchive, type ProjectDeliveryExportProgress } from "./project-delivery-export";
 import { planProjectDelivery } from "./project-delivery";
@@ -29,29 +29,88 @@ export function AssetsStage({ detail, projectId, unitId }: { detail: ProjectDeta
 
 export function DeliveryStage({ detail, unitId }: { detail: ProjectDetail; unitId: string }) {
     const { message } = App.useApp();
-    const [exporting, setExporting] = useState(false);
-    const [progress, setProgress] = useState<ProjectDeliveryExportProgress>();
+    const queryClient = useQueryClient();
+    const [localExporting, setLocalExporting] = useState(false);
+    const [serverSubmitting, setServerSubmitting] = useState(false);
+    const [localProgress, setLocalProgress] = useState<ProjectDeliveryExportProgress>();
     const plan = planProjectDelivery(detail, unitId);
     const readyVideoCount = plan.shots.length - plan.missingShots.length;
-    const buttonLabel = plan.shots.length === 0
+    const unavailableLabel = plan.shots.length === 0
         ? "先完成分镜与视频"
         : plan.missingShots.length > 0
             ? `还差 ${plan.missingShots.length} 个镜头视频`
-            : "在本机生成交付包";
-    const exportDelivery = async () => {
-        if (!plan.ready || exporting) return;
-        setExporting(true);
-        setProgress({ phase: "checking", progress: 0, message: "正在核对镜头容量" });
+            : "";
+    const deliveryQueryKey = ["project", detail.project.id, "unit", unitId, "delivery-job"] as const;
+    const deliveryQuery = useQuery({
+        queryKey: deliveryQueryKey,
+        queryFn: () => getLatestProjectDeliveryJob(detail.project.id, unitId),
+        enabled: Boolean(detail.project.id && unitId),
+        refetchInterval: (query) => {
+            const currentJob = query.state.data?.job;
+            const status = currentJob?.status;
+            if (status === "queued" || status === "running") return 2_000;
+            if (currentJob?.status === "succeeded" && currentJob.expiresAt) {
+                const remainingMs = Date.parse(currentJob.expiresAt) - Date.now();
+                return remainingMs > 0 ? remainingMs + 1_000 : false;
+            }
+            return false;
+        },
+    });
+    const job = deliveryQuery.data?.job;
+    const serverActive = job?.status === "queued" || job?.status === "running";
+    const serverExpired = job?.status === "expired" || (job?.status === "succeeded" && Boolean(job.expiresAt) && Date.parse(job.expiresAt || "") <= Date.now());
+    const startServerDelivery = async () => {
+        if (!plan.ready || serverSubmitting || serverActive) return;
+        setServerSubmitting(true);
         try {
-            const result = await createProjectDeliveryArchive(detail, unitId, setProgress);
+            const result = await createProjectDeliveryJob(detail.project.id, unitId);
+            queryClient.setQueryData<{ job: ProjectDeliveryJob | null }>(deliveryQueryKey, result);
+            message.success("交付任务已提交，可离开页面等待后台完成");
+        } catch (error) {
+            message.error(error instanceof Error ? error.message : "后台交付任务提交失败");
+        } finally {
+            setServerSubmitting(false);
+        }
+    };
+    const downloadServerDelivery = () => {
+        if (!job?.resourceId) return;
+        const link = document.createElement("a");
+        link.href = projectDeliveryJobFileUrl(detail.project.id, unitId, job.id);
+        link.download = job.fileName || `${plan.fileBaseName}-交付包.zip`;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        message.success("交付包已开始下载");
+    };
+    const exportDeliveryLocally = async () => {
+        if (!plan.ready || localExporting) return;
+        setLocalExporting(true);
+        setLocalProgress({ phase: "checking", progress: 0, message: "正在核对镜头容量" });
+        try {
+            const result = await createProjectDeliveryArchive(detail, unitId, setLocalProgress);
             saveAs(result.archive, result.fileName);
             message.success("交付包已生成并开始下载");
         } catch (error) {
-            setProgress(undefined);
+            setLocalProgress(undefined);
             message.error(error instanceof Error ? error.message : "交付包生成失败");
         } finally {
-            setExporting(false);
+            setLocalExporting(false);
         }
     };
-    return <section className="workflow-stage-overview is-delivery mx-auto max-w-5xl"><StageHeading eyebrow="06 / 交付与打包" title="交付前质量门禁" description="所有镜头都有已选中的可用视频后，即可在本机打包成片与生产资料。" /><div className="mt-6 grid gap-4 sm:grid-cols-3"><MetricCard icon={<Film className="size-5" />} label="视频已就绪" value={`${readyVideoCount} / ${plan.shots.length}`} /><MetricCard icon={<Clock3 className="size-5" />} label="总时长" value={formatDuration(plan.totalDurationMs)} /><MetricCard icon={<Layers3 className="size-5" />} label="历史过期产物" value={String(plan.staleArtifactCount)} /></div><Surface className="workflow-delivery-plan mt-5" padding="lg"><div className="flex items-start gap-3"><PackageCheck className="mt-0.5 size-5 text-[var(--workspace-accent)]" /><div><h3 className="text-sm font-semibold">交付包内容</h3><p className="mt-1 text-xs leading-5 text-foreground/48">成片 MP4、字幕 SRT、分镜 JSON/CSV、资产清单和生成参数 ZIP。视频合成与打包全部在当前浏览器完成，不额外上传素材；导出前会核对视频容量，超出本机安全上限时会在合成前停止。旧的过期产物仅作历史提示，不阻断新版本交付。</p></div></div><Button className="mt-5" type="primary" icon={<Download className="size-4" />} disabled={!plan.ready} loading={exporting} onClick={() => void exportDelivery()}>{exporting ? "正在生成交付包" : buttonLabel}</Button>{progress ? <div className="mt-4 max-w-md" aria-live="polite"><Progress percent={progress.progress} showInfo={false} size="small" /><p className="mt-1 text-xs text-foreground/48">{progress.message}</p></div> : null}</Surface></section>;
+    const serverButton = job?.status === "succeeded" && job.resourceId && !serverExpired
+        ? <Button type="primary" icon={<Download className="size-4" />} onClick={downloadServerDelivery}>下载后台交付包</Button>
+        : <Button type="primary" disabled={!plan.ready || serverActive} loading={serverSubmitting || serverActive} onClick={() => void startServerDelivery()}>{unavailableLabel || (serverActive ? job?.stage || "后台生成中" : job?.status === "failed" || serverExpired ? "重新后台生成" : "后台生成交付包")}</Button>;
+    return <section className="workflow-stage-overview is-delivery mx-auto max-w-5xl">
+        <StageHeading eyebrow="06 / 交付与打包" title="交付前质量门禁" description="所有镜头都有已选中的可用视频后，可交给服务器后台打包；关闭页面也会继续。" />
+        <div className="mt-6 grid gap-4 sm:grid-cols-3"><MetricCard icon={<Film className="size-5" />} label="视频已就绪" value={`${readyVideoCount} / ${plan.shots.length}`} /><MetricCard icon={<Clock3 className="size-5" />} label="总时长" value={formatDuration(plan.totalDurationMs)} /><MetricCard icon={<Layers3 className="size-5" />} label="历史过期产物" value={String(plan.staleArtifactCount)} /></div>
+        <Surface className="workflow-delivery-plan mt-5" padding="lg">
+            <div className="flex items-start gap-3"><PackageCheck className="mt-0.5 size-5 text-[var(--workspace-accent)]" /><div><h3 className="text-sm font-semibold">交付包内容</h3><p className="mt-1 text-xs leading-5 text-foreground/48">成片 MP4、字幕 SRT、分镜 JSON/CSV、资产清单和生成参数 ZIP。后台模式不会占用当前浏览器，完成后保留 7 天；本机模式仍可作为服务器组件不可用时的备用方案。旧的过期产物仅作历史提示，不阻断新版本交付。</p></div></div>
+            <div className="mt-5 flex flex-wrap gap-2">{serverButton}{job?.status === "succeeded" && !serverExpired ? <Button disabled={!plan.ready} loading={serverSubmitting} onClick={() => void startServerDelivery()}>后台重新生成</Button> : null}<Button icon={<Download className="size-4" />} disabled={!plan.ready || serverActive} loading={localExporting} onClick={() => void exportDeliveryLocally()}>{unavailableLabel || "本机直接生成"}</Button></div>
+            {serverActive ? <div className="mt-4 max-w-md" aria-live="polite"><Progress percent={job?.progress || 0} showInfo={false} size="small" /><p className="mt-1 text-xs text-foreground/48">{job?.stage || "后台生成中"}，可以离开本页</p></div> : null}
+            {job?.status === "succeeded" && !serverExpired ? <p className="mt-3 text-xs text-foreground/48">后台交付包已就绪{job.expiresAt ? `，有效期至 ${new Date(job.expiresAt).toLocaleString()}` : ""}。</p> : null}
+            {job?.status === "failed" ? <p className="mt-3 text-xs text-destructive">{job.error || "后台交付包生成失败，可重新生成或改用本机模式。"}</p> : null}
+            {serverExpired ? <p className="mt-3 text-xs text-foreground/48">上一份后台交付包已过期，请重新生成。</p> : null}
+            {localProgress ? <div className="mt-4 max-w-md" aria-live="polite"><Progress percent={localProgress.progress} showInfo={false} size="small" /><p className="mt-1 text-xs text-foreground/48">{localProgress.message}</p></div> : null}
+        </Surface>
+    </section>;
 }

@@ -30,6 +30,8 @@ var ErrProjectAssetFolderNotEmpty = errors.New("project asset folder is not empt
 
 var ErrProjectHasActiveTasks = errors.New("project has active tasks")
 
+var ErrProjectHasActiveDeliveryJobs = errors.New("project has active delivery jobs")
+
 var ErrProjectUnitShotsChanged = errors.New("project unit shots changed")
 
 type Repository struct {
@@ -1172,6 +1174,15 @@ func (r *Repository) DeleteProject(userID string, id string, canvasUpdates []mod
 		if activeTaskCount > 0 {
 			return ErrProjectHasActiveTasks
 		}
+		var activeDeliveryCount int64
+		if err := tx.Model(&model.ProjectDeliveryJob{}).
+			Where("user_id = ? AND project_id = ? AND status IN ?", userID, id, []model.ProjectDeliveryJobStatus{model.ProjectDeliveryJobStatusQueued, model.ProjectDeliveryJobStatusRunning}).
+			Count(&activeDeliveryCount).Error; err != nil {
+			return err
+		}
+		if activeDeliveryCount > 0 {
+			return ErrProjectHasActiveDeliveryJobs
+		}
 		if err := tx.Where("user_id = ? AND project_id = ?", userID, id).Delete(&model.CanvasShare{}).Error; err != nil {
 			return err
 		}
@@ -1330,6 +1341,15 @@ func (r *Repository) UpdateProjectUnit(unit *model.ProjectUnit, invalidateWorkfl
 
 func (r *Repository) DeleteProjectUnit(projectID string, id string) error {
 	return r.db.Transaction(func(tx *gorm.DB) error {
+		var activeDeliveryCount int64
+		if err := tx.Model(&model.ProjectDeliveryJob{}).
+			Where("project_id = ? AND unit_id = ? AND status IN ?", projectID, id, []model.ProjectDeliveryJobStatus{model.ProjectDeliveryJobStatusQueued, model.ProjectDeliveryJobStatusRunning}).
+			Count(&activeDeliveryCount).Error; err != nil {
+			return err
+		}
+		if activeDeliveryCount > 0 {
+			return ErrProjectHasActiveDeliveryJobs
+		}
 		if err := tx.Where("project_id = ? AND unit_id = ?", projectID, id).Delete(&model.CanvasUnitLink{}).Error; err != nil {
 			return err
 		}

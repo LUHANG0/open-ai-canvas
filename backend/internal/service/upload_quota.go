@@ -34,6 +34,43 @@ func (s *Service) reserveGeneratedResourceQuota(userID string, size int64) (stri
 	return s.reserveUserStoredFileQuota(userID, size, megabytes(policy.Resource.GeneratedFileMB)+1, megabytes(policy.Resource.DailyUploadMB), gigabytes(policy.Resource.StoredFileGB), fmt.Sprintf("单个生成文件不能超过 %dMB", policy.Resource.GeneratedFileMB))
 }
 
+// Delivery archives are derived from files the account already owns. They do
+// not consume the upload-per-day allowance, but they still reserve total file
+// storage so concurrent workers cannot overcommit the account.
+func (s *Service) reserveDeliveryResourceQuota(userID string, size int64) error {
+	policy, err := s.RuntimePolicy()
+	if err != nil {
+		return err
+	}
+	if size <= 0 {
+		return BadAuthRequest("交付包不能为空")
+	}
+	s.storageMu.Lock()
+	defer s.storageMu.Unlock()
+	storedBytes, err := s.repo.UserStoredFileBytes(userID)
+	if err != nil {
+		return err
+	}
+	if s.pendingStorage == nil {
+		s.pendingStorage = map[string]int64{}
+	}
+	limit := gigabytes(policy.Resource.StoredFileGB)
+	if storedBytes+s.pendingStorage[userID]+size >= limit {
+		return BadAuthRequest(fmt.Sprintf("账号资源和交付包已达到 %s 上限，请先清理历史文件", formatStorageLimit(limit)))
+	}
+	s.pendingStorage[userID] += size
+	return nil
+}
+
+func (s *Service) releaseDeliveryResourceQuota(userID string, size int64) {
+	if size <= 0 {
+		return
+	}
+	s.storageMu.Lock()
+	defer s.storageMu.Unlock()
+	s.decreasePendingStorage(userID, size)
+}
+
 func (s *Service) reserveUserStoredFileQuota(userID string, size int64, exclusiveSingleFileLimit int64, dailyLimit int64, storedLimit int64, singleFileMessage string) (string, error) {
 	if size <= 0 {
 		return "", BadAuthRequest("上传文件不能为空")
