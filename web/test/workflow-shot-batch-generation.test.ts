@@ -3,7 +3,8 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { App } from "antd";
 
-import { WorkflowBatchVideoButton } from "../src/pages/projects/detail/workflow-batch-video-button";
+import { WorkflowBatchPrevizButton, WorkflowBatchVideoButton } from "../src/pages/projects/detail/workflow-batch-video-button";
+import { buildWorkflowArtifactPrompt, workflowArtifactSpecification } from "../src/pages/projects/detail/workflow-generation-prompt";
 import {
     planWorkflowBatchGeneration,
     savedShotEditorValues,
@@ -80,6 +81,34 @@ describe("短剧镜头批量生成", () => {
         })));
         expect(markup).toContain("批量生成缺失视频（1）");
         expect(markup).toContain("只提交缺少已选中视频且当前没有运行任务的 1 个镜头");
+    });
+
+    test("动作预演使用固定 3×4 契约并显示可批量提交数量", () => {
+        const prompt = buildWorkflowArtifactPrompt("previz", { plotDescription: "林夏推门进入楼道", action: "抬手、推门、回头" });
+        expect(prompt).toContain("12 宫格");
+        expect(prompt).toContain("严格 3 列 4 行");
+        expect(prompt).toContain("从左到右、从上到下");
+        expect(workflowArtifactSpecification("previz", "720", "2k")).toEqual({ quality: "2k", actionBoardRows: 4, actionBoardColumns: 3, actionBoardFrameCount: 12 });
+
+        const markup = renderToStaticMarkup(React.createElement(App, null, React.createElement(WorkflowBatchPrevizButton, {
+            detail: detailFixture(),
+            projectId: "project-1",
+            unitId: "unit-1",
+            editorDirty: false,
+            routedModel: "gpt-image-1",
+            aspectRatio: "16:9",
+            resolution: "720",
+            imageQuality: "2k",
+            effectiveConfig: defaultConfig,
+            generationConfig: { ...defaultConfig, model: "gpt-image-1", imageModel: "gpt-image-1" },
+            availableSkills: [],
+            selectedSkillIds: [],
+            submittingShotIds: new Set<string>(),
+            onSubmittingChange: () => undefined,
+            onRefresh: async () => undefined,
+        })));
+        expect(markup).toContain("批量生成 12 宫格预演（4）");
+        expect(markup).toContain("只提交缺少已选中预演且当前没有运行任务的 4 个镜头");
     });
 
     test("并发提交有上限、保持结果顺序并隔离单项失败", async () => {

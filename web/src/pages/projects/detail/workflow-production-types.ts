@@ -22,7 +22,7 @@ const shotEditorValueKeys: Array<keyof ShotEditorValues> = [
 
 export const productionStageCopy = {
     storyboard: { label: "分镜图", action: "生成分镜图", empty: "生成静态分镜图，确认构图、景别与角色位置" },
-    previz: { label: "动作预演", action: "生成黑白预演", empty: "生成黑白动作预演，确认表演节拍与镜头运动" },
+    previz: { label: "12 宫格动作预演", action: "生成 12 宫格预演", empty: "生成黑白 12 宫格动作预演，确认表演节拍与镜头运动" },
     video: { label: "镜头视频", action: "生成镜头视频", empty: "选择视频模型后生成当前镜头" },
 } as const;
 

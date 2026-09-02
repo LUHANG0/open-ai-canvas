@@ -37,7 +37,7 @@ import {
 } from "./workflow-shared";
 import { buildShotAssetReferenceContext, ensureShotAssetMentionPrompt, resolveShotAssetMentionPrompt } from "./workflow-shot-references";
 import { buildWorkflowArtifactPrompt, workflowArtifactSpecification } from "./workflow-generation-prompt";
-import { WorkflowBatchVideoButton } from "./workflow-batch-video-button";
+import { WorkflowBatchPrevizButton, WorkflowBatchVideoButton } from "./workflow-batch-video-button";
 import { AssetLibrary, BoundAssets, ShotAssetMentionTextarea } from "./workflow-production-assets";
 import { EpisodeLibrary, ShotLibrary, ShotTimeline } from "./workflow-production-navigation";
 import { WorkflowArtifactPreviewPanel } from "./workflow-production-preview";
@@ -384,6 +384,7 @@ export default function WorkflowProductionWorkbench(props: Props) {
 
     const stageCopy = productionStageCopy[activeStage as "storyboard" | "previz" | "video"];
     const selectedShotSubmitting = submittingShotIds.has(selectedShot?.id || "");
+    const BatchArtifactButton = activeStage === "video" ? WorkflowBatchVideoButton : activeStage === "previz" ? WorkflowBatchPrevizButton : null;
 
     if (!selectedShot) {
         return <div className="workflow-empty-shot"><Empty description="当前章节还没有分镜"><Button type="primary" icon={<Plus className="size-4" />} loading={addingShot} onClick={onAddShot}>新增第一个分镜</Button></Empty></div>;
@@ -513,7 +514,7 @@ export default function WorkflowProductionWorkbench(props: Props) {
                             <div className="flex items-center gap-2">
                                 <Button danger icon={<Trash2 className="size-4" />} loading={deleteShot.isPending} disabled={saveShot.isPending || selectedShotSubmitting || changeAssetBinding.isPending} onClick={requestDeleteShot}>删除镜头</Button>
                                 <Button htmlType="submit" icon={<Save className="size-4" />} loading={saveShot.isPending} disabled={!editorDirty || deleteShot.isPending}>保存脚本</Button>
-                                {activeStage === "video" ? <WorkflowBatchVideoButton
+                                {BatchArtifactButton ? <BatchArtifactButton
                                     detail={detail}
                                     projectId={projectId}
                                     unitId={unitId}
