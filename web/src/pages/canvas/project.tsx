@@ -104,6 +104,7 @@ import { useCanvasKeyboard } from "./use-canvas-keyboard";
 import { useCanvasMediaTools } from "./use-canvas-media-tools";
 import { useCanvasNodeEditor } from "./use-canvas-node-editor";
 import { useCanvasNodeFocus } from "./use-canvas-node-focus";
+import { useCanvasNodeHoverToolbar } from "./use-canvas-node-hover-toolbar";
 import { useCanvasNodeOperations } from "./use-canvas-node-operations";
 import { useCanvasNodeSharing } from "./use-canvas-node-sharing";
 import { useCanvasLinkedProjectAssetSync, useCanvasLinkedProjectFolderInteractions } from "./use-canvas-linked-project-assets";
@@ -177,8 +178,6 @@ function InfiniteCanvasPage() {
     const localAgentEnabled = useCanvasAgentStore((state) => state.enabled);
     const containerRef = useRef<HTMLDivElement>(null);
     const didInitialCenterRef = useRef(false);
-    const toolbarHideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
     const config = useConfigStore((state) => state.config);
     const effectiveConfig = useEffectiveConfig();
     const isAiConfigReady = useConfigStore((state) => state.isAiConfigReady);
@@ -223,7 +222,6 @@ function InfiniteCanvasPage() {
     const [tapNowImportOpen, setTapNowImportOpen] = useState(false);
     const [nodeSearchOpen, setNodeSearchOpen] = useState(false);
     const [toolbarNodeId, setToolbarNodeId] = useState<string | null>(null);
-    const [nodeImageSettingsOpen, setNodeImageSettingsOpen] = useState(false);
     const [dialogNodeId, setDialogNodeId] = useState<string | null>(null);
     const [textEditorNodeId, setTextEditorNodeId] = useState<string | null>(null);
     const [characterReferenceNodeId, setCharacterReferenceNodeId] = useState<string | null>(null);
@@ -372,10 +370,6 @@ function InfiniteCanvasPage() {
         setIsMiniMapOpen(false);
         setFocusDockRevealed(false);
     }, [closeAgent, focusMode]);
-
-    useEffect(() => {
-        if (!dialogNodeId) setNodeImageSettingsOpen(false);
-    }, [dialogNodeId]);
 
     useLayoutEffect(() => {
         nodesRef.current = nodes;
@@ -592,39 +586,6 @@ function InfiniteCanvasPage() {
         bindGenerationTask,
     });
 
-    useEffect(() => {
-        historyRestoreUiRef.current = () => {
-            setHoveredNodeId(null);
-            setToolbarNodeId(null);
-            setNodeImageSettingsOpen(false);
-            setDialogNodeId(null);
-            setTextEditorNodeId(null);
-            setCharacterReferenceNodeId(null);
-            setDrawingNodeId(null);
-            setInfoNodeId(null);
-            setSubtitleNodeId(null);
-            setTimelineNodeId(null);
-            setSuperResolveNodeId(null);
-            setPreviewNodeId(null);
-            setScriptEditorNodeId(null);
-            setPortraitClearanceNodeId(null);
-            setDirectorNodeId(null);
-            setVersionCompareRootId(null);
-            setFrameDialogNodeId(null);
-            setSegmentDialogNodeId(null);
-            setCropNodeId(null);
-            setMaskEditNodeId(null);
-            setAnnotationNodeId(null);
-            setSplitNodeId(null);
-            setUpscaleNodeId(null);
-            setAngleNodeId(null);
-            setEmotionNodeId(null);
-        };
-        return () => {
-            historyRestoreUiRef.current = () => undefined;
-        };
-    }, [setAngleNodeId, setAnnotationNodeId, setCropNodeId, setEmotionNodeId, setFrameDialogNodeId, setMaskEditNodeId, setSegmentDialogNodeId, setSplitNodeId, setUpscaleNodeId]);
-
     const handleNodesDeleted = useCallback(
         (removedIds: Set<string>, nextNodes: CanvasNodeData[], _removedNodes: CanvasNodeData[]) => {
             const clearDeletedId = (current: string | null) => (current && removedIds.has(current) ? null : current);
@@ -772,25 +733,43 @@ function InfiniteCanvasPage() {
         closeAgent();
     }, [closeAgent, deselectCanvas]);
 
-    const keepNodeToolbar = useCallback(
-        (nodeId: string) => {
-            if (nodeDraggingRef.current || nodeImageSettingsOpen) return;
-            if (toolbarHideTimerRef.current) {
-                clearTimeout(toolbarHideTimerRef.current);
-                toolbarHideTimerRef.current = null;
-            }
-            setToolbarNodeId(nodeId);
-        },
-        [nodeImageSettingsOpen],
-    );
+    const { handleCanvasNodeHoverEnd, handleCanvasNodeHoverStart, handleNodeImageSettingsOpenChange, hideNodeToolbar, keepNodeToolbar, nodeImageSettingsOpen, resetNodeHoverToolbar } = useCanvasNodeHoverToolbar({
+        dialogNodeId,
+        nodeDraggingRef,
+        setHoveredNodeId,
+        setToolbarNodeId,
+    });
 
-    const hideNodeToolbar = useCallback(() => {
-        if (toolbarHideTimerRef.current) clearTimeout(toolbarHideTimerRef.current);
-        toolbarHideTimerRef.current = setTimeout(() => {
-            setToolbarNodeId(null);
-            toolbarHideTimerRef.current = null;
-        }, 120);
-    }, []);
+    useEffect(() => {
+        historyRestoreUiRef.current = () => {
+            resetNodeHoverToolbar();
+            setDialogNodeId(null);
+            setTextEditorNodeId(null);
+            setCharacterReferenceNodeId(null);
+            setDrawingNodeId(null);
+            setInfoNodeId(null);
+            setSubtitleNodeId(null);
+            setTimelineNodeId(null);
+            setSuperResolveNodeId(null);
+            setPreviewNodeId(null);
+            setScriptEditorNodeId(null);
+            setPortraitClearanceNodeId(null);
+            setDirectorNodeId(null);
+            setVersionCompareRootId(null);
+            setFrameDialogNodeId(null);
+            setSegmentDialogNodeId(null);
+            setCropNodeId(null);
+            setMaskEditNodeId(null);
+            setAnnotationNodeId(null);
+            setSplitNodeId(null);
+            setUpscaleNodeId(null);
+            setAngleNodeId(null);
+            setEmotionNodeId(null);
+        };
+        return () => {
+            historyRestoreUiRef.current = () => undefined;
+        };
+    }, [resetNodeHoverToolbar, setAngleNodeId, setAnnotationNodeId, setCropNodeId, setEmotionNodeId, setFrameDialogNodeId, setMaskEditNodeId, setSegmentDialogNodeId, setSplitNodeId, setUpscaleNodeId]);
 
     const {
         collapsingBatchIds,
@@ -1337,14 +1316,11 @@ function InfiniteCanvasPage() {
                     onClose={() => setDialogNodeId(null)}
                     onNodeMouseDown={handleNodeMouseDown}
                     workspaceMode={workspaceMode}
-                    onImageSettingsOpenChange={(open) => {
-                        setNodeImageSettingsOpen(open);
-                        if (open) setToolbarNodeId(null);
-                    }}
+                    onImageSettingsOpenChange={handleNodeImageSettingsOpenChange}
                 />
             );
         },
-        [configInputsById, handleConfigNodeChange, handleGenerateNode, handleNodePromptChange, handleRemoveNodeReference, mentionReferencesByNodeId, runningNodeId, skillMentionReferences, workspaceMode],
+        [configInputsById, handleConfigNodeChange, handleGenerateNode, handleNodeImageSettingsOpenChange, handleNodePromptChange, handleRemoveNodeReference, mentionReferencesByNodeId, runningNodeId, skillMentionReferences, workspaceMode],
     );
 
     const renderCanvasNodeContent = useCallback(
@@ -1454,21 +1430,6 @@ function InfiniteCanvasPage() {
         ],
     );
 
-    const handleCanvasNodeHoverStart = useCallback(
-        (nodeId: string) => {
-            if (nodeDraggingRef.current) return;
-            setHoveredNodeId(nodeId);
-            keepNodeToolbar(nodeId);
-        },
-        [keepNodeToolbar],
-    );
-    const handleCanvasNodeHoverEnd = useCallback(
-        (nodeId: string) => {
-            setHoveredNodeId((current) => (current === nodeId ? null : current));
-            hideNodeToolbar();
-        },
-        [hideNodeToolbar],
-    );
     const retryCanvasNode = useCallback(
         (node: CanvasNodeData) => {
             if (node.type === CanvasNodeType.Script) {
