@@ -163,6 +163,15 @@ test("canvas node editors load only after an editor target is selected", async (
     expect(editorsSource).toContain("<CanvasNodeEditorLoading");
 });
 
+test("canvas timeline tools load only after their dialog target is selected", async () => {
+    const timelineSource = await Bun.file(new URL("../src/pages/canvas/canvas-project-timeline-dialogs.tsx", import.meta.url)).text();
+    expect(timelineSource).toContain('lazy(() => import("@/components/canvas/canvas-subtitle-dialog")');
+    expect(timelineSource).toContain('lazy(() => import("@/components/canvas/canvas-timeline-dialog")');
+    expect(timelineSource).toContain('lazy(() => import("@/components/canvas/canvas-video-frame-dialog")');
+    expect(timelineSource).toContain('lazy(() => import("@/components/canvas/canvas-video-segment-dialog")');
+    expect(timelineSource).toContain("<Suspense fallback={<CanvasTimelineDialogLoading");
+});
+
 test("assistant layout reserves the left dock and low zoom keeps video play reachable", async () => {
     const css = await Bun.file(new URL("../src/pages/canvas/canvas-editor-pc.css", import.meta.url)).text();
     const content = await Bun.file(new URL("../src/components/canvas/canvas-node-content.tsx", import.meta.url)).text();
