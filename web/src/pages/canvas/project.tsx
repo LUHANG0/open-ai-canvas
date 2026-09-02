@@ -18,7 +18,6 @@ import { flushCanvasStorePersistence } from "@/stores/canvas/use-canvas-store";
 import { useThemeStore } from "@/stores/use-theme-store";
 import { useUserStore } from "@/stores/use-user-store";
 import { App } from "antd";
-import { getNodeSpec } from "@/constant/canvas";
 import { CanvasConfigComposer } from "@/components/canvas/canvas-config-composer";
 import { CanvasConfigNodePanel } from "@/components/canvas/canvas-config-node-panel";
 import { AssistantPanelColumn } from "./canvas-assistant-panel-column";
@@ -69,7 +68,7 @@ import { stampCanvasNodeChanges } from "@/lib/canvas/canvas-node-timestamps";
 import { batchSourceRestriction } from "@/lib/canvas/canvas-batch-connection";
 import { deriveStoryboardPipelineProgress } from "@/lib/canvas/canvas-storyboard-progress";
 import { CanvasAgentChangeToast, CanvasMergeStatusToast, CanvasUploadStatusToast } from "./canvas-project-feedback";
-import { backendProviderConfig, getGenerationCount } from "@/lib/canvas/canvas-project-generation";
+import { backendProviderConfig } from "@/lib/canvas/canvas-project-generation";
 import { CanvasTopBar, CanvasWorkspaceModeSwitch } from "./canvas-project-top-bar";
 import { LibTVImportDialog } from "./components/libtv-import-dialog";
 import { TapNowImportDialog } from "./components/tapnow-import-dialog";
@@ -109,6 +108,7 @@ import { useCanvasNodeOperations } from "./use-canvas-node-operations";
 import { useCanvasNodeReferences } from "./use-canvas-node-references";
 import { useCanvasNodeRetry } from "./use-canvas-node-retry";
 import { useCanvasNodeSharing } from "./use-canvas-node-sharing";
+import { useCanvasTextToImage } from "./use-canvas-text-to-image";
 import { useCanvasLinkedProjectAssetSync, useCanvasLinkedProjectFolderInteractions } from "./use-canvas-linked-project-assets";
 import { useCanvasTitleEditing, useCanvasWorkspacePreferences } from "./use-canvas-workspace-shell";
 import { useCanvasProjectImport } from "./use-canvas-project-import";
@@ -1194,46 +1194,7 @@ function InfiniteCanvasPage() {
         bindGenerationTask,
         applyGenerationTaskResult,
     });
-    const generateImageFromTextNode = useCallback(
-        (node: CanvasNodeData) => {
-            const prompt = (node.metadata?.content || node.metadata?.prompt || "").trim();
-            if (!prompt) {
-                message.warning("文本节点为空，无法生图");
-                return;
-            }
-            const sourceNode = nodesRef.current.find((item) => item.id === node.id);
-            if (!sourceNode) return;
-            const nodeSize = getNodeSpec(CanvasNodeType.Image);
-            const imageNode = createCanvasNode(
-                CanvasNodeType.Image,
-                {
-                    x: sourceNode.position.x + sourceNode.width + 96 + nodeSize.width / 2,
-                    y: sourceNode.position.y + sourceNode.height / 2,
-                },
-                {
-                    prompt: "@文本1",
-                    composerContent: "@文本1",
-                    model: effectiveConfig.imageModel || effectiveConfig.model,
-                    size: effectiveConfig.size,
-                    quality: effectiveConfig.quality,
-                    transparentBackground: effectiveConfig.transparentBackground,
-                    count: getGenerationCount(effectiveConfig.canvasImageCount || effectiveConfig.count),
-                },
-            );
-            imageNode.title = "图片生成";
-            const connection = { id: nanoid(), fromNodeId: sourceNode.id, toNodeId: imageNode.id };
-            const nextNodes = nodesRef.current.map((item) => (item.id === sourceNode.id ? { ...item, metadata: { ...item.metadata, content: prompt, richText: undefined, prompt, status: NODE_STATUS_SUCCESS } } : item)).concat(imageNode);
-            const nextConnections = [...connectionsRef.current, connection];
-            nodesRef.current = nextNodes;
-            connectionsRef.current = nextConnections;
-            setNodes(nextNodes);
-            setConnections(nextConnections);
-            setSelectedNodeIds(new Set([imageNode.id]));
-            setSelectedConnectionId(null);
-            setDialogNodeId(imageNode.id);
-        },
-        [effectiveConfig, message],
-    );
+    const generateImageFromTextNode = useCanvasTextToImage({ nodesRef, connectionsRef, setNodes, setConnections, setSelectedNodeIds, setSelectedConnectionId, setDialogNodeId });
 
     const renderCanvasNodePanel = useCallback(
         (panelNode: CanvasNodeData) => {
