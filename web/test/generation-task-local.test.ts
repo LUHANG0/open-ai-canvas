@@ -209,7 +209,7 @@ test("Dreamina submission uncertainty is not an accepted background task", () =>
 test("Canvas task surfaces route Dreamina uncertainty through shared display semantics without cancellation", async () => {
     const [nodeSource, detailSource, scriptSource, taskCenterSource, createSource] = await Promise.all([
         Bun.file(new URL("../src/components/canvas/canvas-node-content.tsx", import.meta.url)).text(),
-        Bun.file(new URL("../src/pages/canvas/canvas-project-status-dialogs.tsx", import.meta.url)).text(),
+        Bun.file(new URL("../src/pages/canvas/canvas-project-task-detail-dialog.tsx", import.meta.url)).text(),
         Bun.file(new URL("../src/components/canvas/canvas-script-node.tsx", import.meta.url)).text(),
         Bun.file(new URL("../src/pages/tasks/index.tsx", import.meta.url)).text(),
         Bun.file(new URL("../src/pages/create/index.tsx", import.meta.url)).text(),
