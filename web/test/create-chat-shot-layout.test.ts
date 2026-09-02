@@ -272,11 +272,11 @@ describe("PC creation chat and storyboard director workbench regression gates", 
     });
 
     test("retains preview, download, retry, canvas handoff, upload, and generation fingerprints", async () => {
-        const [source, messageSource] = await Promise.all([read("../src/pages/create/index.tsx"), read("../src/pages/create/creation-message-view.tsx")]);
+        const [source, messageSource, composerSource] = await Promise.all([read("../src/pages/create/index.tsx"), read("../src/pages/create/creation-message-view.tsx"), read("../src/pages/create/creation-composer.tsx")]);
         const shotCard = sourceSection(source, "function StoryboardShotCard", "function StoryboardNextShotCard");
         const result = sourceSection(source, "function StoryboardShotResult", "async function buildTextMessageContent");
         const downloads = sourceSection(messageSource, "export function CreationResultDownloads", "function CreationMediaPending");
-        const composer = sourceSection(source, "function CreationComposer", "function ModePicker");
+        const composer = sourceSection(composerSource, "function CreationComposer", "function ModePicker");
 
         expect(source).toContain("creationCanvasHandoffPath(resultAssetIds, resultUrls.length)");
         expect(source).toContain("runBackendGenerationTask(");
