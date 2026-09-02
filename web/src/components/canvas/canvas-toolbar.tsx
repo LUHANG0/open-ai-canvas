@@ -6,7 +6,7 @@ import { Check, Eraser, Info, Moon, Palette, Settings2, Sun } from "lucide-react
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 import { FloatingDock } from "@/components/ui/aceternity/floating-dock";
 import { SpotlightSurface } from "@/components/ui/aceternity/spotlight-surface";
-import { CanvasCreateMenu, type CanvasCreateCommand } from "@/components/canvas/canvas-create-menu";
+import type { CanvasCreateCommand } from "@/components/canvas/canvas-create-menu";
 import { aceternityMotion } from "@/lib/aceternity-motion";
 import { canvasDockStyle } from "@/lib/canvas/canvas-aceternity-style";
 import { canvasBackgroundModes, canvasBackgroundPresets, canvasThemes, type CanvasBackgroundMode, type CanvasColorTheme, type CanvasTheme } from "@/lib/canvas-theme";
@@ -15,6 +15,7 @@ import { useThemeStore } from "@/stores/use-theme-store";
 import { usePluginStore } from "@/stores/use-plugin-store";
 import type { CanvasNodeTypeId, CanvasToolMode, CanvasWorkspaceMode } from "@/types/canvas";
 
+const CanvasCreateMenu = lazy(() => import("@/components/canvas/canvas-create-menu").then((module) => ({ default: module.CanvasCreateMenu })));
 const ToolbarSettingsModal = lazy(() => import("@/components/canvas/toolbars/toolbar-settings-modal").then((module) => ({ default: module.ToolbarSettingsModal })));
 
 export function CanvasToolbar({
@@ -384,9 +385,22 @@ function AddNodeMenu({ x, theme, commands, onMouseEnter, onMouseLeave }: {
     return (
         <motion.div initial={{ opacity: 0, scaleY: 0.9, y: 8 }} animate={{ opacity: 1, scaleY: 1, y: 0 }} exit={{ opacity: 0, scaleY: 0.92, y: 6 }} transition={{ duration: aceternityMotion.duration.panel, ease: aceternityMotion.easing.enter }} className="pc-canvas-toolbar__popover pointer-events-auto absolute bottom-[var(--canvas-dock-popover-offset)] z-[var(--dock-z-popover)] w-[420px] max-w-[calc(100vw-24px)]" style={{ left: x || "50%", transformOrigin: "bottom center", x: "-50%" }} onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave}>
             <SpotlightSurface spotlightColor={theme.toolbar.itemHover} initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.97, transition: { duration: 0 } }} transition={{ duration: aceternityMotion.duration.instant, ease: aceternityMotion.easing.enter }} className="pc-canvas-panel aceternity-floating-panel overflow-hidden rounded-[var(--panel-radius)] border p-2 backdrop-blur-2xl" style={{ background: theme.spatial.elevated, borderColor: theme.toolbar.border, color: theme.node.text }} onWheel={(event) => event.stopPropagation()}>
-                <CanvasCreateMenu commands={commands} variant="dock" />
+                <Suspense fallback={<CanvasCreateMenuLoading />}>
+                    <CanvasCreateMenu commands={commands} variant="dock" />
+                </Suspense>
             </SpotlightSurface>
         </motion.div>
+    );
+}
+
+function CanvasCreateMenuLoading() {
+    return (
+        <div className="pointer-events-none flex min-h-[180px] w-full flex-col gap-3 rounded-[var(--dock-item-radius-labeled)] px-2 py-3" role="status" aria-live="polite">
+            <span className="h-3 w-24 animate-pulse rounded-full bg-foreground/[.08]" />
+            <span className="h-12 w-full animate-pulse rounded-lg bg-foreground/[.05]" />
+            <span className="h-12 w-full animate-pulse rounded-lg bg-foreground/[.04]" />
+            <span className="sr-only">正在加载添加节点菜单…</span>
+        </div>
     );
 }
 

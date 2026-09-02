@@ -1,12 +1,7 @@
-import { useCallback, type Dispatch, type MutableRefObject, type PointerEvent as ReactPointerEvent, type SetStateAction } from "react";
+import { lazy, Suspense, useCallback, type Dispatch, type MutableRefObject, type PointerEvent as ReactPointerEvent, type SetStateAction } from "react";
 
-import { CanvasCharacterReferenceNodeContent } from "@/components/canvas/canvas-character-reference-node";
-import { CanvasConfigNodePanel } from "@/components/canvas/canvas-config-node-panel";
 import type { NodeGenerationInput } from "@/components/canvas/canvas-node-generation";
 import type { CanvasNodeGenerationMode } from "@/components/canvas/canvas-node-prompt-panel";
-import { CanvasScriptNodeContent } from "@/components/canvas/canvas-script-node";
-import { CanvasStoryInputNodeContent, CanvasStylePlaceholderNodeContent } from "@/components/canvas/canvas-short-drama-entry";
-import { CanvasDirectorNodePanel } from "@/components/canvas/director/canvas-director-node-panel";
 import { getInputSummary } from "@/lib/canvas/canvas-project-domain";
 import type { CanvasResourceReference } from "@/lib/canvas/canvas-resource-references";
 import { storyboardMinNodeHeight } from "@/lib/canvas/canvas-storyboard-layout";
@@ -14,6 +9,13 @@ import { deriveStoryboardPipelineProgress } from "@/lib/canvas/canvas-storyboard
 import type { DirectorScene } from "@/types/director";
 import type { CanvasConnection, CanvasNodeData, CanvasNodeMetadata, CanvasWorkspaceMode, StoryboardRow } from "@/types/canvas";
 import { canvasNodeContentKind } from "./canvas-node-content-routing";
+
+const CanvasCharacterReferenceNodeContent = lazy(() => import("@/components/canvas/canvas-character-reference-node").then((module) => ({ default: module.CanvasCharacterReferenceNodeContent })));
+const CanvasConfigNodePanel = lazy(() => import("@/components/canvas/canvas-config-node-panel").then((module) => ({ default: module.CanvasConfigNodePanel })));
+const CanvasScriptNodeContent = lazy(() => import("@/components/canvas/canvas-script-node").then((module) => ({ default: module.CanvasScriptNodeContent })));
+const CanvasStoryInputNodeContent = lazy(() => import("@/components/canvas/canvas-short-drama-entry").then((module) => ({ default: module.CanvasStoryInputNodeContent })));
+const CanvasStylePlaceholderNodeContent = lazy(() => import("@/components/canvas/canvas-short-drama-entry").then((module) => ({ default: module.CanvasStylePlaceholderNodeContent })));
+const CanvasDirectorNodePanel = lazy(() => import("@/components/canvas/director/canvas-director-node-panel").then((module) => ({ default: module.CanvasDirectorNodePanel })));
 
 function visibleGenerationBatch(node: CanvasNodeData) {
     const batches = node.metadata?.generationBatches || [];
@@ -95,12 +97,13 @@ export function useCanvasNodeContentRenderer(options: UseCanvasNodeContentRender
     return useCallback(
         (contentNode: CanvasNodeData) => {
             const kind = canvasNodeContentKind(contentNode);
-            if (kind === "character") return <CanvasCharacterReferenceNodeContent node={contentNode} />;
-            if (kind === "style-placeholder") return <CanvasStylePlaceholderNodeContent onChoose={() => setStylePickerOpen(true)} />;
-            if (kind === "story-input") return <CanvasStoryInputNodeContent node={contentNode} onEdit={() => openStoryInput(contentNode.id)} />;
+            if (kind === "character") return <Suspense fallback={<CanvasNodeContentLoading />}><CanvasCharacterReferenceNodeContent node={contentNode} /></Suspense>;
+            if (kind === "style-placeholder") return <Suspense fallback={<CanvasNodeContentLoading />}><CanvasStylePlaceholderNodeContent onChoose={() => setStylePickerOpen(true)} /></Suspense>;
+            if (kind === "story-input") return <Suspense fallback={<CanvasNodeContentLoading />}><CanvasStoryInputNodeContent node={contentNode} onEdit={() => openStoryInput(contentNode.id)} /></Suspense>;
             if (kind === "script") {
                 const pipeline = deriveStoryboardPipelineProgress(contentNode, nodesRef.current, connectionsRef.current);
                 return (
+                    <Suspense fallback={<CanvasNodeContentLoading />}>
                     <CanvasScriptNodeContent
                         node={contentNode}
                         nodes={nodesRef.current}
@@ -137,10 +140,12 @@ export function useCanvasNodeContentRenderer(options: UseCanvasNodeContentRender
                         onConnectStart={(event, rowId, handleType) => onConnectStart(event, contentNode.id, handleType, rowId === "context" ? "storyboard:context" : `row:${rowId}`)}
                         onScrollTopChange={(scrollTop) => setScriptScrollTopById((current) => (current[contentNode.id] === scrollTop ? current : { ...current, [contentNode.id]: scrollTop }))}
                     />
+                    </Suspense>
                 );
             }
             if (kind === "director") {
                 return (
+                    <Suspense fallback={<CanvasNodeContentLoading />}>
                     <CanvasDirectorNodePanel
                         node={contentNode}
                         scene={directorScenes?.find((scene) => scene.id === contentNode.metadata?.directorSceneId) || null}
@@ -148,9 +153,11 @@ export function useCanvasNodeContentRenderer(options: UseCanvasNodeContentRender
                         professional={workspaceMode === "professional"}
                         onOpen={() => openDirectorWorkbench(contentNode.id)}
                     />
+                    </Suspense>
                 );
             }
             return (
+                <Suspense fallback={<CanvasNodeContentLoading />}>
                 <CanvasConfigNodePanel
                     node={contentNode}
                     isRunning={runningNodeId === contentNode.id}
@@ -163,8 +170,17 @@ export function useCanvasNodeContentRenderer(options: UseCanvasNodeContentRender
                     }}
                     workspaceMode={workspaceMode}
                 />
+                </Suspense>
             );
         },
         [addScriptRow, configInputsById, connectionsRef, createAndGenerateScriptVideos, createScriptActionBoards, createScriptImageNodes, createScriptVideoNodes, directorScenes, generateScriptImages, generateScriptRows, generateScriptVideos, mentionReferencesByNodeId, mergeVideosByIds, nodesRef, onConfigChange, onConnectStart, onGenerateNode, onNodeResize, openDirectorWorkbench, openStoryInput, removeScriptRow, retryFailedBatchItems, runningNodeId, setDialogNodeId, setScriptEditorNodeId, setScriptScrollTopById, setStylePickerOpen, stopRemainingBatchItems, updateScriptRow, viewportScale, workspaceMode],
+    );
+}
+
+function CanvasNodeContentLoading() {
+    return (
+        <div data-canvas-no-zoom className="pointer-events-none flex size-full min-h-20 items-center justify-center bg-background/20 px-3 text-center text-xs text-foreground/45" role="status" aria-live="polite">
+            正在加载节点内容…
+        </div>
     );
 }

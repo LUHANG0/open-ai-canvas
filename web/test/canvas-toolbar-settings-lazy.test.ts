@@ -10,11 +10,12 @@ test("toolbar settings modal loads only after customization opens", async () => 
     expect(source).toContain('<ToolbarSettingsModal open onClose={() => setSettingsOpen(false)} toolbar="main" />');
 });
 
-test("main toolbar and primary creation actions stay eager", async () => {
+test("main toolbar and primary creation routing stay eager while menu content is deferred", async () => {
     const source = await Bun.file(new URL("../src/components/canvas/canvas-toolbar.tsx", import.meta.url)).text();
 
     expect(source).toContain('import { FloatingDock } from "@/components/ui/aceternity/floating-dock"');
-    expect(source).toContain('import { CanvasCreateMenu, type CanvasCreateCommand } from "@/components/canvas/canvas-create-menu"');
+    expect(source).toContain('import type { CanvasCreateCommand } from "@/components/canvas/canvas-create-menu"');
+    expect(source).toContain('lazy(() => import("@/components/canvas/canvas-create-menu")');
     expect(source).toContain("onToolChange");
     expect(source).toContain("onUndo");
     expect(source).toContain("onRedo");

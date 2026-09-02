@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from "react";
 import { AlertCircle, BookOpenCheck, Clock3, Download, FileText, Image as ImageIcon, LoaderCircle, Music2, Pencil, Play, RefreshCw, Video } from "lucide-react";
 
 import { VideoPlayer } from "@/components/video-player";
@@ -23,14 +23,15 @@ import { createDefaultSubtitleStyle } from "@/types/timeline";
 import { CanvasResourceMentionTextarea } from "./canvas-resource-mention-textarea";
 import { useCanvasNodeActions } from "./canvas-node-action-context";
 import { CanvasSubtitleOverlay } from "./canvas-subtitle-overlay";
-import { MarkdownNodeContent } from "./nodes/markdown-node";
-import { ChartNodeContent } from "./nodes/chart-node";
-import { CompareNodeContent } from "./nodes/compare-node";
-import { ColorGradeNodeContent } from "./nodes/color-grade-node";
-import { HtmlNodeContent } from "./nodes/html-node";
-import { PanoramaNodeContent } from "./nodes/panorama-node";
-import { SvgNodeContent } from "./nodes/svg-node";
-import { PortraitClearanceNodeContent } from "./nodes/portrait-clearance-node";
+
+const ChartNodeContent = lazy(() => import("./nodes/chart-node").then((module) => ({ default: module.ChartNodeContent })));
+const ColorGradeNodeContent = lazy(() => import("./nodes/color-grade-node").then((module) => ({ default: module.ColorGradeNodeContent })));
+const CompareNodeContent = lazy(() => import("./nodes/compare-node").then((module) => ({ default: module.CompareNodeContent })));
+const HtmlNodeContent = lazy(() => import("./nodes/html-node").then((module) => ({ default: module.HtmlNodeContent })));
+const MarkdownNodeContent = lazy(() => import("./nodes/markdown-node").then((module) => ({ default: module.MarkdownNodeContent })));
+const PanoramaNodeContent = lazy(() => import("./nodes/panorama-node").then((module) => ({ default: module.PanoramaNodeContent })));
+const PortraitClearanceNodeContent = lazy(() => import("./nodes/portrait-clearance-node").then((module) => ({ default: module.PortraitClearanceNodeContent })));
+const SvgNodeContent = lazy(() => import("./nodes/svg-node").then((module) => ({ default: module.SvgNodeContent })));
 
 export type CanvasNodeContentProps = {
     node: CanvasNodeData;
@@ -64,13 +65,17 @@ export function CanvasNodeContent(props: CanvasNodeContentProps) {
         || (props.node.metadata?.workflowKind === "story_input" && !props.isEditingContent)
         || (props.node.metadata?.workflowKind === "styleboard" && !props.node.metadata.content);
     if (hasCustomContent && props.renderNodeContent) return props.renderNodeContent(props.node);
-    if (props.node.type === PORTRAIT_CLEARANCE_NODE_TYPE) return <PortraitClearanceNodeContent node={props.node} />;
+    if (props.node.type === PORTRAIT_CLEARANCE_NODE_TYPE) {
+        return <Suspense fallback={<DeferredNodeContentFallback theme={props.theme} />}><PortraitClearanceNodeContent node={props.node} /></Suspense>;
+    }
     if (props.isBatchRoot) return <ImageNodeContent {...props} />;
     if (props.node.metadata?.status === "loading") return <LoadingContent node={props.node} theme={props.theme} onOpenTaskDetails={props.onOpenTaskDetails} />;
     if (props.node.metadata?.status === "error") return <ErrorContent node={props.node} theme={props.theme} onRetry={props.onRetry} onReloadResource={props.onReloadResource} />;
 
     const pluginDefinition = getNodeDefinition(props.node.type)?.plugin;
     if (pluginDefinition) return <PluginCanvasNodeContent {...props} renderer={pluginDefinition.renderer} schema={pluginDefinition.schema} />;
+    const DeferredRenderer = deferredNodeContentRenderers[props.node.type];
+    if (DeferredRenderer) return <Suspense fallback={<DeferredNodeContentFallback theme={props.theme} />}><DeferredRenderer {...props} /></Suspense>;
     const Renderer = nodeContentRenderers[props.node.type];
     return Renderer ? <Renderer {...props} /> : <UnknownNodeContent theme={props.theme} />;
 }
@@ -106,6 +111,9 @@ const nodeContentRenderers: Partial<Record<string, (props: CanvasNodeContentProp
     [CanvasNodeType.Audio]: AudioNodeContent,
     [CanvasNodeType.Drawing]: DrawingContent,
     [CanvasNodeType.Frame]: UnknownNodeContent,
+};
+
+const deferredNodeContentRenderers: Partial<Record<string, (props: CanvasNodeContentProps) => ReactNode>> = {
     [CanvasNodeType.Markdown]: MarkdownNodeContent,
     [CanvasNodeType.Svg]: SvgNodeContent,
     [CanvasNodeType.Html]: HtmlNodeContent,
@@ -114,6 +122,14 @@ const nodeContentRenderers: Partial<Record<string, (props: CanvasNodeContentProp
     [CanvasNodeType.Chart]: ChartNodeContent,
     [CanvasNodeType.ColorGrade]: ColorGradeNodeContent,
 };
+
+function DeferredNodeContentFallback({ theme }: Pick<CanvasNodeContentProps, "theme">) {
+    return (
+        <div className="pointer-events-none h-full w-full overflow-hidden" style={{ background: theme.node.panel }} aria-hidden>
+            <div className="h-full w-full opacity-40" style={{ background: `linear-gradient(135deg, ${theme.node.fill}, ${theme.toolbar.itemHover})` }} />
+        </div>
+    );
+}
 
 function DrawingContent({ node, theme, drawingProjectId }: CanvasNodeContentProps) {
     const shapeCount = node.metadata?.drawingShapeCount || 0;
