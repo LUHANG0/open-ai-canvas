@@ -3,6 +3,7 @@ import { useMemo, useRef } from "react";
 import { buildNodeGenerationInputs, type NodeGenerationInput } from "@/components/canvas/canvas-node-generation";
 import { createCanvasNodeGraphContextValue } from "@/components/canvas/canvas-node-graph-context";
 import { isFrameNode } from "@/lib/canvas/canvas-frame";
+import { summarizeCanvasContext } from "@/lib/canvas/canvas-context-summary";
 import { sameNodeSemanticData } from "@/lib/canvas/canvas-project-domain";
 import { resolveCanvasMediaRenderPolicy } from "@/lib/canvas/canvas-performance-mode";
 import { getCanvasSelectionCapabilities } from "@/lib/canvas/canvas-selection-capabilities";
@@ -10,6 +11,7 @@ import { canvasNodeIntersectsRenderBounds } from "@/lib/canvas/canvas-render-cul
 import { buildCanvasResourceReferences, buildNodeMentionReferences, createCanvasResourceGraphIndex } from "@/lib/canvas/canvas-resource-references";
 import { buildSkillMentionReferences } from "@/lib/canvas/canvas-skill-mentions";
 import type { Skill } from "@/services/api/skills";
+import type { ProjectUnit } from "@/services/api/projects";
 import type { Asset, ImageAsset } from "@/stores/use-asset-store";
 import type { DirectorScene } from "@/types/director";
 import { CanvasNodeType, type CanvasConnection, type CanvasMediaPerformanceMode, type CanvasNodeData, type ContextMenuState, type ViewportTransform } from "@/types/canvas";
@@ -29,6 +31,7 @@ type UseCanvasRenderModelOptions = {
     collapsingBatchIds: Set<string>;
     addedSkills: Skill[];
     directorScenes?: DirectorScene[];
+    projectUnits?: ProjectUnit[];
     infoNodeId: string | null;
     cropNodeId: string | null;
     maskEditNodeId: string | null;
@@ -59,6 +62,7 @@ export function useCanvasRenderModel({
     collapsingBatchIds,
     addedSkills,
     directorScenes,
+    projectUnits,
     infoNodeId,
     cropNodeId,
     maskEditNodeId,
@@ -76,6 +80,7 @@ export function useCanvasRenderModel({
     dialogNodeId,
 }: UseCanvasRenderModelOptions) {
     const nodeById = useMemo(() => new Map(nodes.map((node) => [node.id, node])), [nodes]);
+    const canvasContext = useMemo(() => summarizeCanvasContext(nodes, selectedNodeIds, projectUnits), [nodes, projectUnits, selectedNodeIds]);
     const semanticNodesRef = useRef(nodes);
     const semanticNodes = useMemo(() => {
         const previous = semanticNodesRef.current;
@@ -301,6 +306,7 @@ export function useCanvasRenderModel({
         annotationNode,
         batchChildCountById,
         batchMotionById,
+        canvasContext,
         canvasImageNodes,
         configInputsById,
         connectionLayerBounds,

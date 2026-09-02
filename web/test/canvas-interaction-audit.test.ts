@@ -2,6 +2,7 @@ import { expect, test } from "bun:test";
 
 import { getCanvasSelectionCapabilities } from "../src/lib/canvas/canvas-selection-capabilities";
 import { canvasNodeIntersectsRenderBounds } from "../src/lib/canvas/canvas-render-culling";
+import { summarizeCanvasContext } from "../src/lib/canvas/canvas-context-summary";
 import { partitionCanvasUploadFiles } from "../src/lib/canvas/canvas-upload-batch";
 import { normalizeToolbarPrefs } from "../src/lib/canvas/tool-registry";
 import { applyCanvasHistoryPatch, buildCanvasHistoryCleanupOptions, createCanvasHistoryPatch, type CanvasHistorySnapshot } from "../src/pages/canvas/use-canvas-history";
@@ -34,6 +35,26 @@ test("selection toolbar counts only nodes that the action can actually use", () 
     expect(capabilities.storyboardEligibleCount).toBe(1);
     expect(capabilities.referenceGroupEligibleCount).toBe(2);
     expect(capabilities.batchConnectEligibleCount).toBe(4);
+});
+
+test("canvas header context follows the live selection and linked chapter titles", () => {
+    const nodes = [
+        node("shot-1", CanvasNodeType.Image),
+        { ...node("shot-2", CanvasNodeType.Video), metadata: { chapterId: "chapter-1", shotIndex: 1 } },
+    ];
+    const context = summarizeCanvasContext(nodes, new Set(["shot-2"]), [{
+        id: "chapter-1",
+        projectId: "project-1",
+        kind: "chapter",
+        title: "第一章",
+        sourceText: "",
+        wordCount: 0,
+        status: "draft",
+        position: 0,
+        createdAt: "2026-09-02T00:00:00.000Z",
+        updatedAt: "2026-09-02T00:00:00.000Z",
+    }]);
+    expect(context).toEqual({ nodeCount: 2, selectedCount: 1, chapterLabel: "第一章", shotLabel: "镜头 2" });
 });
 
 test("legacy toolbar preferences cannot hide the recovery command", () => {

@@ -5,7 +5,6 @@ import { useConfigStore, useEffectiveConfig } from "@/stores/use-config-store";
 import { uploadMediaFile } from "@/services/file-storage";
 import { readLocalRuntimeBootstrapState } from "@/services/local-runtime-bootstrap";
 import { canvasThemes, type CanvasBackgroundMode } from "@/lib/canvas-theme";
-import { summarizeCanvasContext } from "@/lib/canvas/canvas-context-summary";
 import { shouldAutoConnectCanvasRuntime } from "@/lib/canvas/local-runtime-connection";
 import { useAssetStore } from "@/stores/use-asset-store";
 import { flushCanvasStorePersistence } from "@/stores/canvas/use-canvas-store";
@@ -258,7 +257,6 @@ function InfiniteCanvasPage() {
         setNodes,
         refetchLinkedProject,
     });
-    const canvasContext = useMemo(() => summarizeCanvasContext(nodes, selectedNodeIds, linkedProjectQuery.data?.units), [linkedProjectQuery.data?.units, nodes, selectedNodeIds]);
     const { applyGenerationTaskResult, bindGenerationTask, cancelCanvasTask, finishGenerationRequest, openCanvasNodeTaskDetails, reloadCanvasNodeResource, runningNodeId, setRunningNodeId, setTaskDetail, startGenerationRequest, taskDetail, taskDetailLoading, taskDetailLogs } = useCanvasGeneration({
         projectId,
         domainProjectId: linkedProjectId,
@@ -674,6 +672,7 @@ function InfiniteCanvasPage() {
         annotationNode,
         batchChildCountById,
         batchMotionById,
+        canvasContext,
         canvasImageNodes,
         configInputsById,
         connectionLayerBounds,
@@ -715,6 +714,7 @@ function InfiniteCanvasPage() {
         collapsingBatchIds,
         addedSkills,
         directorScenes: currentProject?.directorScenes,
+        projectUnits: linkedProjectQuery.data?.units,
         infoNodeId,
         cropNodeId,
         maskEditNodeId,
