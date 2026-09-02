@@ -9,9 +9,13 @@ function compactSource(source: string) {
 }
 
 function readCreateSource() {
-    return ["../src/pages/create/index.tsx", "../src/pages/create/creation-composer.tsx"]
+    return ["../src/pages/create/index.tsx", "../src/pages/create/creation-composer.tsx", "../src/pages/create/use-creation-asset-workflow.ts"]
         .map((relativePath) => readFileSync(resolve(import.meta.dir, relativePath), "utf8"))
         .join("\n");
+}
+
+function readCreationAssetWorkflowSource() {
+    return readFileSync(resolve(import.meta.dir, "../src/pages/create/use-creation-asset-workflow.ts"), "utf8");
 }
 
 describe("creation library button", () => {
@@ -58,13 +62,14 @@ describe("creation library button", () => {
 
     test("素材库上传只入库，不静默勾选或加入当前创作", () => {
         const source = readCreateSource();
+        const workflowSource = readCreationAssetWorkflowSource();
         const pickerSource = readFileSync(resolve(import.meta.dir, "../src/components/assets/asset-library-picker-modal.tsx"), "utf8");
-        const uploadStart = source.indexOf("const uploadLibraryAssets = async");
-        const uploadEnd = source.indexOf("const handleFileChange", uploadStart);
+        const uploadStart = workflowSource.indexOf("const uploadLibraryAssets = async");
+        const uploadEnd = workflowSource.indexOf("const hasReferenceCapacity", uploadStart);
 
         expect(uploadStart).toBeGreaterThanOrEqual(0);
         expect(uploadEnd).toBeGreaterThan(uploadStart);
-        expect(source.slice(uploadStart, uploadEnd)).not.toContain("setAttachments");
+        expect(workflowSource.slice(uploadStart, uploadEnd)).not.toContain("setAttachments");
         expect(source).toContain("onUpload: uploadLibraryAssets");
         expect(source).not.toContain("onUpload={() => fileInputRef.current?.click()}");
         expect(source).toContain("先保存到素材库，确认后再加入本次创作");
@@ -302,9 +307,9 @@ describe("creation library button", () => {
     });
 
     test("素材库批量选择超限时原子拒绝，不静默裁剪或关闭弹窗", () => {
-        const source = readCreateSource();
+        const source = readCreationAssetWorkflowSource();
         const start = source.indexOf("const handleLibrarySelect");
-        const end = source.indexOf("const removeAttachment", start);
+        const end = source.indexOf("const replaceReferenceFromFiles", start);
         const selection = source.slice(start, end);
 
         expect(start).toBeGreaterThanOrEqual(0);

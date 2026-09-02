@@ -1,12 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { App, Spin, Tooltip } from "antd";
 import { History } from "lucide-react";
 
-import { AssetLibraryPickerModal, type AssetLibraryPickerItem } from "@/components/assets/asset-library-picker-modal";
+import { AssetLibraryPickerModal } from "@/components/assets/asset-library-picker-modal";
 import { createGenerationBatchRetryContexts, createGenerationRetryContext, runGenerationOperationOnce, type GenerationRetryContext } from "@/lib/canvas/canvas-project-generation";
 import { createClientId } from "@/lib/client-id";
 import { generationErrorCode, generationErrorMessage } from "@/lib/generation-error";
-import { useExternalAssetSources } from "@/hooks/use-external-asset-sources";
 import { usePcBrandViewport } from "@/hooks/use-pc-brand-viewport";
 import { modelCapabilityConfigFor, normalizeImageValue, normalizeVideoValue, videoDurationAllowed } from "@/lib/model-capabilities";
 import { inferVideoOperation, modelCompatibilityError, modelGroupReferenceLimits, modelGroupVideoOperations, resolveCompatibleModel, type ModelInputSummary, type ModelRequirements } from "@/lib/model-selection";
@@ -15,14 +14,12 @@ import { requestImageQuestion } from "@/services/api/image";
 import { listAddedSkills, type Skill } from "@/services/api/skills";
 import { subscribeGenerationTasks, type GenerationTask } from "@/services/api/task-center";
 import { createTextReplayPublisher } from "@/lib/creation-text-replay";
-import { uploadMediaFile } from "@/services/file-storage";
-import { uploadImage } from "@/services/image-storage";
 import { consumeGenerationTaskMessage, generationTaskMaterializedUrls } from "@/services/project-asset-sync";
 import { applyGenerationConsumerEffect } from "@/services/generation-consumer-dedupe";
 import { beginGenerationConsumer } from "@/services/generation-consumer-lifecycle";
 import { loadCreationConversations, pendingCreationTaskIds, pendingCreationTaskKey, removeCreationConversationSnapshot, saveCreationConversations, updateCreationConversationSnapshot } from "@/services/creation-conversation-store";
 import { modelDisplayName, resolveModelChannel, selectableModelsByCapability, useConfigStore, useEffectiveConfig } from "@/stores/use-config-store";
-import { useAssetStore, type Asset } from "@/stores/use-asset-store";
+import { useAssetStore } from "@/stores/use-asset-store";
 import type { PromptOptimizerProvider } from "@/lib/plugins/plugin-types";
 import { promptOptimizerPlugin, PROMPT_OPTIMIZER_PLUGIN_ID } from "@/lib/plugins/builtin/prompt-optimizer";
 import { createPluginHostContext } from "@/services/plugin-host";
@@ -30,29 +27,15 @@ import { usePluginStore } from "@/stores/use-plugin-store";
 import { buildCreationMentionReferences, expandCreationPrompt, removeCreationReferenceTokens, replaceCreationAttachmentReference, selectedCreationReferences, type CreationReference } from "./creation-references";
 import { skillRuntime } from "@/services/skill-runtime";
 import {
-    creationAttachmentFromAsset,
-    creationAttachmentFromAudio,
-    creationAttachmentFromAudioAsset,
-    creationAttachmentFromDocument,
-    creationAttachmentFromExternalAsset,
-    creationAttachmentFromImage,
-    creationAttachmentFromVideo,
-    creationAttachmentFromVideoAsset,
     creationAttachmentKind,
-    creationAttachmentLimit,
-    creationAudioAsset,
     creationVideoFrameAttachmentIds,
-    creationImageAsset,
-    creationVideoAsset,
     countCreationAttachments,
-    filterCreationUploadFiles,
     normalizeCreationVideoImageRoles,
     reconcileCreationAttachmentLimits,
     removeCreationAttachment,
     setCreationVideoImageRole,
     splitCreationAttachments,
     type CreationAttachment,
-    type CreationAttachmentKind,
     type CreationAttachmentLimits,
     type CreationVideoImageRole,
 } from "./creation-assets";
@@ -62,6 +45,7 @@ import { CreationMessageView } from "./creation-message-view";
 import { StoryboardComposerContext, StoryboardNextShotCard, StoryboardShotCard, StoryboardShotRail, StoryboardToolbar } from "./creation-storyboard-workbench";
 import { attachCreationTaskContexts, buildTextMessageContent, completedCreationGenerationTask, conversationTimestamp, isImageAttachment, materializeCreationTaskResults, reconcileCreationTaskMessages } from "./creation-task-lifecycle";
 import type { CreationConversation, CreationMessage, CreationSettings, CreationShot, CreationVideoOperationChoice, CreationViewMode } from "./creation-types";
+import { useCreationAssetWorkflow } from "./use-creation-asset-workflow";
 import { CreationHistoryDrawer, CreationWorkspaceToolbar } from "./creation-workspace-toolbar";
 import "./creation-workspace.css";
 
@@ -153,18 +137,12 @@ export default function CreatePage() {
     const [count, setCount] = useState(String(Math.max(1, Math.min(4, Number(config.count) || 1))));
     const [videoOperationChoice, setVideoOperationChoice] = useState<CreationVideoOperationChoice>("auto");
     const [busy, setBusy] = useState(false);
-    const [referenceReplacementBusy, setReferenceReplacementBusy] = useState(false);
-    const [pendingUploadCount, setPendingUploadCount] = useState(0);
-    const [uploadError, setUploadError] = useState("");
-    const pendingUploadCountRef = useRef(0);
     const [viewMode, setViewMode] = useState<CreationViewMode>("chat");
     const [selectedShotId, setSelectedShotId] = useState("");
     const [composingNextShot, setComposingNextShot] = useState(false);
     const [variantSourceShotId, setVariantSourceShotId] = useState("");
     const [storyboardTimelineOpen, setStoryboardTimelineOpen] = useState(true);
     const [historyOpen, setHistoryOpen] = useState(false);
-    const [libraryOpen, setLibraryOpen] = useState(false);
-    const externalAssetSources = useExternalAssetSources(libraryOpen);
     const abortRef = useRef<AbortController | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const composerFocusRef = useRef<HTMLTextAreaElement>(null);
@@ -426,6 +404,53 @@ export default function CreatePage() {
         await saveCreationConversations(next);
     }, []);
 
+    const replaceAttachmentReference = useCallback((targetAttachmentId: string, replacement: CreationAttachment) => {
+        const currentAttachments = attachmentsRef.current;
+        const target = currentAttachments.find((attachment) => attachment.id === targetAttachmentId);
+        if (!target) throw new Error("要替换的参考图不存在");
+        if (creationAttachmentKind(target) !== "image" || creationAttachmentKind(replacement) !== "image") throw new Error("目前只支持替换提示词中的图片引用");
+        if (target.id === replacement.id) return false;
+
+        const replacementWithRole = target.videoImageRole ? { ...replacement, videoImageRole: target.videoImageRole } : replacement;
+        const result = replaceCreationAttachmentReference(promptRef.current, currentAttachments, targetAttachmentId, replacementWithRole);
+        promptRef.current = result.prompt;
+        attachmentsRef.current = result.attachments;
+        setPrompt(result.prompt);
+        setAttachments(result.attachments);
+        return true;
+    }, []);
+
+    const {
+        referenceReplacementBusy,
+        pendingUploadCount,
+        pendingUploadCountRef,
+        uploadError,
+        dismissUploadError,
+        libraryOpen,
+        setLibraryOpen,
+        externalAssetSources,
+        libraryItems,
+        trackUploadBatch,
+        uploadLibraryAssets,
+        addOrStoreLocalFiles,
+        handleFileChange,
+        handleLibrarySelect,
+        replaceReferenceFromFiles,
+    } = useCreationAssetWorkflow({
+        toast,
+        mode,
+        selectedModel,
+        attachments,
+        setAttachments,
+        maxReferences,
+        referenceLimits,
+        assets,
+        addAsset,
+        busy,
+        normalizeVideoAttachments: (items) => normalizeCreationVideoAttachments(items, videoOperationChoice, Boolean(promptRef.current.trim())),
+        replaceAttachmentReference,
+    });
+
     const selectMode = (next: CreationMode) => {
         if (pendingUploadCountRef.current > 0) {
             toast.info("素材正在上传，请等待完成后再切换创作类型");
@@ -437,214 +462,6 @@ export default function CreatePage() {
         if (!nextModels.includes(current) && nextModels[0]) {
             updateConfig(next === "text" ? "textModel" : next === "image" ? "imageModel" : "videoModel", nextModels[0]);
         }
-    };
-
-    const referenceCounts = useMemo(() => countCreationAttachments(attachments), [attachments]);
-    const attachmentDisabledReason = useCallback(
-        (kind: CreationAttachmentKind, alreadySelected = false, ignoreCapacity = false) => {
-            if (!selectedModel) return `请先选择可用${modeLabels[mode]}模型`;
-            if (alreadySelected) return undefined;
-            if (!ignoreCapacity && mode === "text" && attachments.length >= maxReferences) return `文本创作最多添加 ${maxReferences} 个参考内容`;
-            const limit = creationAttachmentLimit(mode, referenceLimits, kind);
-            const label = kind === "image" ? "图片" : kind === "video" ? "视频" : kind === "audio" ? "音频" : "文件";
-            if (limit <= 0) return mode === "image" ? "图片创作仅支持参考图" : `当前模型不支持参考${label}`;
-            if (!ignoreCapacity && referenceCounts[kind] >= limit) return `当前模型最多支持 ${limit} 个参考${label}`;
-            return undefined;
-        },
-        [attachments.length, maxReferences, mode, referenceCounts, referenceLimits, selectedModel],
-    );
-
-    const externalLibraryItems = useMemo<AssetLibraryPickerItem[]>(
-        () =>
-            externalAssetSources.items.map((item) => ({
-                ...item,
-                disabledReason:
-                    item.external?.item.kind === "image" || item.external?.item.kind === "video" || item.external?.item.kind === "audio"
-                        ? attachmentDisabledReason(
-                              item.external.item.kind,
-                              attachments.some((attachment) => attachment.id === item.id),
-                              true,
-                          )
-                        : "当前素材类型不能作为创作参考",
-            })),
-        [attachmentDisabledReason, attachments, externalAssetSources.items],
-    );
-    const libraryItems = useMemo<AssetLibraryPickerItem[]>(
-        () => [
-            ...assets
-                .filter((asset): asset is Extract<Asset, { kind: "image" | "video" | "audio" }> => asset.kind === "image" || asset.kind === "video" || asset.kind === "audio")
-                .map((asset) => ({
-                    id: asset.id,
-                    title: asset.title,
-                    category: asset.category || "other",
-                    kindLabel: asset.kind === "video" ? "视频" : asset.kind === "audio" ? "音频" : "图片",
-                    asset,
-                    searchText: (asset.tags || []).join(" "),
-                    disabledReason: attachmentDisabledReason(
-                        asset.kind,
-                        attachments.some((attachment) => attachment.id === `asset:${asset.id}`),
-                        true,
-                    ),
-                })),
-            ...externalLibraryItems,
-        ],
-        [assets, attachmentDisabledReason, attachments, externalLibraryItems],
-    );
-    const uploadCreationAsset = async (file: File) => {
-        if (file.type.startsWith("video/")) {
-            const uploaded = await uploadMediaFile(file, "create-upload");
-            return {
-                asset: creationVideoAsset({ title: file.name, uploaded, metadata: { source: "create-upload", fileName: file.name } }),
-                attachment: creationAttachmentFromVideo(file, uploaded),
-            };
-        }
-        if (file.type.startsWith("audio/")) {
-            const uploaded = await uploadMediaFile(file, "create-upload");
-            return {
-                asset: creationAudioAsset({ title: file.name, uploaded, metadata: { source: "create-upload", fileName: file.name } }),
-                attachment: creationAttachmentFromAudio(file, uploaded),
-            };
-        }
-        if (!file.type.startsWith("image/")) {
-            const uploaded = await uploadMediaFile(file, "create-upload");
-            return { attachment: creationAttachmentFromDocument(file, uploaded) };
-        }
-        const uploaded = await uploadImage(file);
-        return {
-            asset: creationImageAsset({ title: file.name, uploaded, metadata: { source: "create-upload", fileName: file.name } }),
-            attachment: creationAttachmentFromImage(file, uploaded),
-        };
-    };
-    const trackUploadBatch = useCallback(async <T,>(count: number, operation: () => Promise<T>) => {
-        if (count <= 0) return operation();
-        pendingUploadCountRef.current += count;
-        setPendingUploadCount(pendingUploadCountRef.current);
-        setUploadError("");
-        try {
-            return await operation();
-        } catch (error) {
-            setUploadError(error instanceof Error ? error.message : "素材上传失败，请重试");
-            throw error;
-        } finally {
-            pendingUploadCountRef.current = Math.max(0, pendingUploadCountRef.current - count);
-            setPendingUploadCount(pendingUploadCountRef.current);
-        }
-    }, []);
-    const addAttachments = (files: FileList | File[]) => {
-        const filtered = filterCreationUploadFiles(Array.from(files), mode, referenceLimits, attachments);
-        const remainingTotal = mode === "text" ? Math.max(0, maxReferences - attachments.length) : filtered.acceptedFiles.length;
-        const next = filtered.acceptedFiles.slice(0, remainingTotal);
-        const rejectedCount = filtered.rejectedFiles.length + Math.max(0, filtered.acceptedFiles.length - next.length);
-        if (rejectedCount) toast.warning(`${rejectedCount} 个素材超出当前模型的类型或数量限制`);
-        if (!next.length) return;
-        void trackUploadBatch(next.length, async () => {
-            const settled = await Promise.allSettled(
-                next.map(async (file) => {
-                    const { asset, attachment } = await uploadCreationAsset(file);
-                    if (asset) addAsset(asset);
-                    return attachment;
-                }),
-            );
-            const items = settled.flatMap((entry) => (entry.status === "fulfilled" ? [entry.value] : []));
-            const failed = settled.filter((entry) => entry.status === "rejected");
-            if (items.length) {
-                setAttachments((current) => {
-                    const merged = [...current, ...items.filter((item) => !current.some((currentItem) => currentItem.id === item.id))];
-                    const byKind = reconcileCreationAttachmentLimits(merged, mode, referenceLimits).attachments;
-                    const limited = mode === "text" ? byKind.slice(0, maxReferences) : byKind;
-                    return mode === "video" ? normalizeCreationVideoAttachments(limited, videoOperationChoice, Boolean(promptRef.current.trim())) : limited;
-                });
-            }
-            if (failed.length) {
-                const message = `${failed.length} 个参考素材上传失败，请重试`;
-                setUploadError(message);
-                toast.error(message);
-            }
-        });
-    };
-
-    const uploadLibraryAssets = async (files: FileList | File[]) => {
-        const requested = Array.from(files);
-        const next = requested.filter((file) => file.type.startsWith("image/") || file.type.startsWith("video/") || file.type.startsWith("audio/"));
-        const unsupportedCount = requested.length - next.length;
-        if (unsupportedCount) toast.warning(`${unsupportedCount} 个文件暂不能保存到素材库；目前支持图片、视频和音频`);
-        if (!next.length) return [];
-        return trackUploadBatch(next.length, async () => {
-            const settled = await Promise.allSettled(
-                next.map(async (file) => {
-                    const { asset } = await uploadCreationAsset(file);
-                    return asset ? addAsset(asset) : "";
-                }),
-            );
-            const assetIds = settled.flatMap((entry) => (entry.status === "fulfilled" && entry.value ? [entry.value] : []));
-            const failed = settled.filter((entry) => entry.status === "rejected");
-            if (assetIds.length) toast.success(`${assetIds.length} 个素材已保存到素材库`);
-            if (failed.length) {
-                const message = `${failed.length} 个素材上传失败，请重试`;
-                setUploadError(message);
-                toast.error(message);
-            }
-            return assetIds;
-        });
-    };
-
-    const hasReferenceCapacity = () => {
-        if (!selectedModel) return false;
-        if (mode === "text" && attachments.length >= maxReferences) return false;
-        return (["image", "video", "audio", "file"] as const).some((kind) => referenceCounts[kind] < creationAttachmentLimit(mode, referenceLimits, kind));
-    };
-
-    const addOrStoreLocalFiles = (files: FileList | File[]) => {
-        const requested = Array.from(files);
-        if (!requested.length) return;
-        if (pendingUploadCountRef.current > 0) {
-            toast.info("已有素材正在上传，请等待完成后再继续添加");
-            return;
-        }
-        if (!hasReferenceCapacity()) {
-            void uploadLibraryAssets(requested);
-            return;
-        }
-
-        const filtered = filterCreationUploadFiles(requested, mode, referenceLimits, attachments);
-        const remainingTotal = mode === "text" ? Math.max(0, maxReferences - attachments.length) : filtered.acceptedFiles.length;
-        const attachable = filtered.acceptedFiles.slice(0, remainingTotal);
-        const libraryOnly = [...filtered.acceptedFiles.slice(remainingTotal), ...filtered.rejectedFiles];
-        if (attachable.length) addAttachments(attachable);
-        if (libraryOnly.length) {
-            toast.info(`${libraryOnly.length} 个素材不适合当前生成配置，已改为保存到素材库`);
-            void uploadLibraryAssets(libraryOnly);
-        }
-    };
-
-    const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
-        if (event.target.files) addOrStoreLocalFiles(event.target.files);
-        event.target.value = "";
-    };
-
-    const handleLibrarySelect = (selectedIds: string[]) => {
-        const selectedIdSet = new Set(selectedIds);
-        const next = selectedIds.flatMap((id): CreationAttachment[] => {
-            const asset = assets.find((item) => item.id === id);
-            if (asset?.kind === "image") return [creationAttachmentFromAsset(asset)];
-            if (asset?.kind === "video" && mode !== "image") return [creationAttachmentFromVideoAsset(asset)];
-            if (asset?.kind === "audio" && mode !== "image") return [creationAttachmentFromAudioAsset(asset)];
-            const external = libraryItems.find((item) => item.id === id)?.external;
-            return external ? [creationAttachmentFromExternalAsset(external)] : [];
-        });
-        if (selectedIds.length && !next.length) throw new Error("所选素材不能用于当前生成配置，请更换模型或素材类型");
-        const retainedAttachments = attachments.filter((item) => {
-            const libraryId = item.id.startsWith("asset:") ? item.id.slice(6) : item.id.startsWith("external:") ? item.id : "";
-            return !libraryId || selectedIdSet.has(libraryId);
-        });
-        const merged = [...retainedAttachments.filter((item) => !next.some((candidate) => candidate.id === item.id)), ...next];
-        const reconciled = reconcileCreationAttachmentLimits(merged, mode, referenceLimits);
-        if (reconciled.removedAttachments.length || (mode === "text" && merged.length > maxReferences)) {
-            throw new Error("所选素材超过当前模型的类型或数量上限，请减少选择后再试");
-        }
-        const normalized = mode === "video" ? normalizeCreationVideoAttachments(merged, videoOperationChoice, Boolean(promptRef.current.trim())) : merged;
-        setAttachments(normalized);
-        setLibraryOpen(false);
     };
 
     const removeAttachment = (id: string) => {
@@ -665,22 +482,6 @@ export default function CreatePage() {
         setAttachments(next);
     }, []);
 
-    const replaceAttachmentReference = useCallback((targetAttachmentId: string, replacement: CreationAttachment) => {
-        const currentAttachments = attachmentsRef.current;
-        const target = currentAttachments.find((attachment) => attachment.id === targetAttachmentId);
-        if (!target) throw new Error("要替换的参考图不存在");
-        if (creationAttachmentKind(target) !== "image" || creationAttachmentKind(replacement) !== "image") throw new Error("目前只支持替换提示词中的图片引用");
-        if (target.id === replacement.id) return false;
-
-        const replacementWithRole = target.videoImageRole ? { ...replacement, videoImageRole: target.videoImageRole } : replacement;
-        const result = replaceCreationAttachmentReference(promptRef.current, currentAttachments, targetAttachmentId, replacementWithRole);
-        promptRef.current = result.prompt;
-        attachmentsRef.current = result.attachments;
-        setPrompt(result.prompt);
-        setAttachments(result.attachments);
-        return true;
-    }, []);
-
     const replaceReferenceFromTrack = useCallback(
         (targetAttachmentId: string, replacement: CreationAttachment) => {
             try {
@@ -690,31 +491,6 @@ export default function CreatePage() {
             }
         },
         [replaceAttachmentReference, toast],
-    );
-
-    const replaceReferenceFromFiles = useCallback(
-        async (targetAttachmentId: string, files: File[]) => {
-            if (busy || referenceReplacementBusy || pendingUploadCountRef.current > 0) return;
-            const file = files.find((item) => item.type.startsWith("image/"));
-            if (!file) {
-                toast.warning("请拖入图片文件进行替换");
-                return;
-            }
-            setReferenceReplacementBusy(true);
-            try {
-                const { asset, attachment } = await trackUploadBatch(1, () => uploadCreationAsset(file));
-                if (creationAttachmentKind(attachment) !== "image") throw new Error("上传结果不是可用图片");
-                if (asset) addAsset(asset);
-                if (replaceAttachmentReference(targetAttachmentId, attachment)) toast.success("参考图已替换，槽位不变，提示词无需修改");
-            } catch (error) {
-                const message = error instanceof Error ? error.message : "参考图上传或替换失败";
-                setUploadError(message);
-                toast.error(message);
-            } finally {
-                setReferenceReplacementBusy(false);
-            }
-        },
-        [addAsset, busy, referenceReplacementBusy, replaceAttachmentReference, toast, trackUploadBatch],
     );
 
     const changeVideoOperation = useCallback((choice: CreationVideoOperationChoice) => {
@@ -1290,7 +1066,7 @@ export default function CreatePage() {
         referenceReplacementBusy,
         uploadPendingCount: pendingUploadCount,
         uploadError,
-        onDismissUploadError: () => setUploadError(""),
+        onDismissUploadError: dismissUploadError,
         attachments,
         referenceImageSize,
         maxReferences,
