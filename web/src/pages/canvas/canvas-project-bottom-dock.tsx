@@ -1,29 +1,30 @@
-import type { ComponentProps, RefObject } from "react";
+import { lazy, Suspense, type ComponentProps } from "react";
 
 import { CanvasAssetTray } from "@/components/canvas/canvas-asset-tray";
-import { Minimap } from "@/components/canvas/canvas-mini-map";
 import { CanvasOverlayLayerContainer } from "@/components/canvas/canvas-overlay-layer";
 import { CanvasZoomControls } from "@/components/canvas/canvas-zoom-controls";
-import type { CanvasNodeData, ViewportTransform } from "@/types/canvas";
 import { activeCanvasAssetTrayNodeId, canShowCanvasMiniMap } from "./canvas-bottom-dock-state";
+
+const Minimap = lazy(() => import("@/components/canvas/canvas-mini-map").then((module) => ({ default: module.Minimap })));
 
 type AssetImages = ComponentProps<typeof CanvasAssetTray>["assetImages"];
 type CanvasImages = ComponentProps<typeof CanvasAssetTray>["canvasImages"];
 type InsertAssetImage = ComponentProps<typeof CanvasAssetTray>["onInsertAssetImage"];
+type MinimapProps = ComponentProps<typeof import("@/components/canvas/canvas-mini-map").Minimap>;
 
 type CanvasProjectBottomDockProps = {
     focusMode: boolean;
     isMiniMapOpen: boolean;
-    nodes: CanvasNodeData[];
-    viewport: ViewportTransform;
-    viewportSize: { width: number; height: number };
-    containerRef: RefObject<HTMLDivElement | null>;
+    nodes: MinimapProps["nodes"];
+    viewport: MinimapProps["viewport"];
+    viewportSize: MinimapProps["viewportSize"];
+    containerRef: NonNullable<MinimapProps["canvasContainerRef"]>;
     selectedNodeIds: ReadonlySet<string>;
     assetImages: AssetImages;
     canvasImages: CanvasImages;
     projectLinked: boolean;
-    onViewportPreviewChange: (viewport: ViewportTransform) => void;
-    onViewportChange: (viewport: ViewportTransform) => void;
+    onViewportPreviewChange: NonNullable<MinimapProps["onViewportPreviewChange"]>;
+    onViewportChange: MinimapProps["onViewportChange"];
     onScaleChange: (scale: number) => void;
     onFitContent: () => void;
     onAutoArrange: () => void;
@@ -59,7 +60,15 @@ export function CanvasProjectBottomDock({
     return (
         <>
             {canShowCanvasMiniMap(isMiniMapOpen, focusMode) ? (
-                <Minimap nodes={nodes} viewport={viewport} viewportSize={viewportSize} canvasContainerRef={containerRef} onViewportPreviewChange={onViewportPreviewChange} onViewportChange={onViewportChange} />
+                <Suspense
+                    fallback={
+                        <span className="sr-only" role="status" aria-live="polite">
+                            正在加载画布小地图…
+                        </span>
+                    }
+                >
+                    <Minimap nodes={nodes} viewport={viewport} viewportSize={viewportSize} canvasContainerRef={containerRef} onViewportPreviewChange={onViewportPreviewChange} onViewportChange={onViewportChange} />
+                </Suspense>
             ) : null}
 
             {!focusMode ? (
