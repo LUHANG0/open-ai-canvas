@@ -5,7 +5,8 @@ import { Link, useParams } from "react-router";
 import { nanoid } from "nanoid";
 
 import { ConnectionPath } from "@/components/canvas/canvas-connections";
-import { CanvasNodeToolbar, CanvasNodeInfoModal } from "@/components/canvas/canvas-node-toolbar";
+import { CanvasNodeInfoModal } from "@/components/canvas/canvas-node-info-modal";
+import { CanvasNodeToolbar } from "@/components/canvas/canvas-node-toolbar";
 import { CanvasFrameNode } from "@/components/canvas/canvas-frame-node";
 import { CanvasNode } from "@/components/canvas/canvas-node";
 import { CanvasZoomControls } from "@/components/canvas/canvas-zoom-controls";
