@@ -1,69 +1,33 @@
-import type { RefObject } from "react";
+import { lazy, Suspense, type RefObject } from "react";
 
 import { CanvasSelectionToolbar } from "@/components/canvas/canvas-workspace-overlays";
-import { FloatingDock } from "@/components/ui/aceternity/floating-dock";
-import { canvasThemes } from "@/lib/canvas-theme";
-import { canvasDockStyle } from "@/lib/canvas/canvas-aceternity-style";
-import { defaultToolbarPrefs, readToolbarPrefs, resolveToolbarEntries, type ToolContext, type ToolbarHandlers } from "@/lib/canvas/tool-registry";
-import type { CanvasAlignmentMode } from "@/lib/canvas/canvas-layout";
-import { useThemeStore } from "@/stores/use-theme-store";
+import type { CanvasProjectSelectionToolbarContentProps } from "./canvas-project-selection-toolbar-content";
 import { canShowCanvasSelectionToolbar } from "./canvas-selection-toolbar-visibility";
 
-type CanvasProjectSelectionToolbarProps = {
+const CanvasProjectSelectionToolbarContent = lazy(() => import("./canvas-project-selection-toolbar-content").then((module) => ({ default: module.CanvasProjectSelectionToolbarContent })));
+
+type CanvasProjectSelectionToolbarProps = CanvasProjectSelectionToolbarContentProps & {
     anchorRef: RefObject<HTMLDivElement | null>;
     containerRef: RefObject<HTMLDivElement | null>;
-    count: number;
-    selectedVideoCount: number;
-    layoutEligibleCount: number;
-    storyboardEligibleCount: number;
-    referenceGroupEligibleCount: number;
-    batchConnectEligibleCount: number;
-    mergingVideos: boolean;
-    onAlign: (mode: CanvasAlignmentMode) => void;
-    onArrange: (mode: "row" | "column" | "grid" | "flow") => void;
-    onCreateStoryboard: () => void;
-    onCreateReferenceGroup: () => void;
-    onBatchConnect: () => void;
-    onMergeVideos: () => void;
 };
 
-export function CanvasProjectSelectionToolbar({ anchorRef, containerRef, count, selectedVideoCount, layoutEligibleCount, storyboardEligibleCount, referenceGroupEligibleCount, batchConnectEligibleCount, mergingVideos, onAlign, onArrange, onCreateStoryboard, onCreateReferenceGroup, onBatchConnect, onMergeVideos }: CanvasProjectSelectionToolbarProps) {
-    const theme = canvasThemes[useThemeStore((state) => state.theme)];
-
-    const handlers = {
-        onAlign, onArrange, onCreateStoryboard, onCreateReferenceGroup, onBatchConnect, onMergeVideos,
-    } as Partial<ToolbarHandlers> as ToolbarHandlers;
-
-    const ctx: ToolContext = {
-        selectedCount: count,
-        selectedNodeTypes: new Set(),
-        selectedVideoCount,
-        layoutEligibleCount,
-        storyboardEligibleCount,
-        referenceGroupEligibleCount,
-        batchConnectEligibleCount,
-        canvasTool: "move",
-        workspaceMode: "professional",
-        isProjectLinked: false,
-        canUndo: false,
-        canRedo: false,
-        extractingVideoFrames: false,
-        extractingAudio: false,
-        trimmingVideo: false,
-        mergingVideos,
-        addPanelOpen: false,
-        appearancePanelOpen: false,
-        settingsPanelOpen: false,
-        handlers,
-    };
-
-    const prefs = readToolbarPrefs("selection") ?? defaultToolbarPrefs("selection");
-    const items = resolveToolbarEntries("selection", ctx, prefs);
-
+export function CanvasProjectSelectionToolbar({ anchorRef, containerRef, ...contentProps }: CanvasProjectSelectionToolbarProps) {
     return (
-        <CanvasSelectionToolbar anchorRef={anchorRef} containerRef={containerRef} count={count}>
-            <FloatingDock items={items} size="compact" magnify={false} className="canvas-floating-dock" style={canvasDockStyle(theme)} ariaLabel="多选节点布局工具" />
+        <CanvasSelectionToolbar anchorRef={anchorRef} containerRef={containerRef} count={contentProps.count}>
+            <Suspense fallback={<CanvasSelectionToolbarLoading />}>
+                <CanvasProjectSelectionToolbarContent {...contentProps} />
+            </Suspense>
         </CanvasSelectionToolbar>
+    );
+}
+
+function CanvasSelectionToolbarLoading() {
+    return (
+        <div data-canvas-no-zoom className="pointer-events-none flex h-10 min-w-52 items-center gap-2 rounded-full border border-border bg-background/90 px-3 shadow-sm backdrop-blur" role="status" aria-live="polite">
+            <span className="h-2 flex-1 animate-pulse rounded-full bg-foreground/[.07]" />
+            <span className="h-2 w-12 animate-pulse rounded-full bg-foreground/[.05]" />
+            <span className="sr-only">正在加载多选工具…</span>
+        </div>
     );
 }
 
@@ -76,22 +40,7 @@ type CanvasProjectSelectionToolbarOverlayProps = Omit<CanvasProjectSelectionTool
     onMergeSelectedVideos: () => unknown;
 };
 
-export function CanvasProjectSelectionToolbarOverlay({
-    selectionCount,
-    selectionBoxActive,
-    nodeDragging,
-    selectedNodeIds,
-    onBeginBatchConnection,
-    onMergeSelectedVideos,
-    ...toolbarProps
-}: CanvasProjectSelectionToolbarOverlayProps) {
+export function CanvasProjectSelectionToolbarOverlay({ selectionCount, selectionBoxActive, nodeDragging, selectedNodeIds, onBeginBatchConnection, onMergeSelectedVideos, ...toolbarProps }: CanvasProjectSelectionToolbarOverlayProps) {
     if (!canShowCanvasSelectionToolbar(selectionCount, selectionBoxActive, nodeDragging) || selectionCount === null) return null;
-    return (
-        <CanvasProjectSelectionToolbar
-            {...toolbarProps}
-            count={selectionCount}
-            onBatchConnect={() => onBeginBatchConnection(Array.from(selectedNodeIds))}
-            onMergeVideos={() => void onMergeSelectedVideos()}
-        />
-    );
+    return <CanvasProjectSelectionToolbar {...toolbarProps} count={selectionCount} onBatchConnect={() => onBeginBatchConnection(Array.from(selectedNodeIds))} onMergeVideos={() => void onMergeSelectedVideos()} />;
 }

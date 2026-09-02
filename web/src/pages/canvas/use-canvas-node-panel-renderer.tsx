@@ -1,25 +1,29 @@
-import { useCallback, type ComponentProps, type Dispatch, type SetStateAction } from "react";
+import { lazy, Suspense, useCallback, type ComponentProps, type Dispatch, type SetStateAction } from "react";
 
-import { CanvasConfigComposer } from "@/components/canvas/canvas-config-composer";
-import type { NodeGenerationInput } from "@/components/canvas/canvas-node-generation";
-import { CanvasNodePromptPanel } from "@/components/canvas/canvas-node-prompt-panel";
-import type { CanvasResourceReference } from "@/lib/canvas/canvas-resource-references";
+import type { CanvasConfigComposer as CanvasConfigComposerComponent } from "@/components/canvas/canvas-config-composer";
+import type { CanvasNodePromptPanel as CanvasNodePromptPanelComponent } from "@/components/canvas/canvas-node-prompt-panel";
 import type { CanvasNodeData, CanvasWorkspaceMode } from "@/types/canvas";
 import { canvasNodePanelKind } from "./canvas-node-panel-routing";
 
+const CanvasConfigComposer = lazy(() => import("@/components/canvas/canvas-config-composer").then((module) => ({ default: module.CanvasConfigComposer })));
+const CanvasNodePromptPanel = lazy(() => import("@/components/canvas/canvas-node-prompt-panel").then((module) => ({ default: module.CanvasNodePromptPanel })));
+
+type CanvasConfigComposerProps = ComponentProps<typeof CanvasConfigComposerComponent>;
+type CanvasNodePromptPanelProps = ComponentProps<typeof CanvasNodePromptPanelComponent>;
+
 type UseCanvasNodePanelRendererOptions = {
-    configInputsById: ReadonlyMap<string, NodeGenerationInput[]>;
-    skillMentionReferences: CanvasResourceReference[];
-    mentionReferencesByNodeId: ReadonlyMap<string, CanvasResourceReference[]>;
+    configInputsById: ReadonlyMap<string, CanvasConfigComposerProps["inputs"]>;
+    skillMentionReferences: NonNullable<CanvasConfigComposerProps["skillReferences"]>;
+    mentionReferencesByNodeId: ReadonlyMap<string, NonNullable<CanvasNodePromptPanelProps["mentionReferences"]>>;
     runningNodeId: string | null;
     workspaceMode: CanvasWorkspaceMode;
     setDialogNodeId: Dispatch<SetStateAction<string | null>>;
-    onConfigChange: ComponentProps<typeof CanvasNodePromptPanel>["onConfigChange"];
-    onGenerate: ComponentProps<typeof CanvasNodePromptPanel>["onGenerate"];
-    onImageSettingsOpenChange: NonNullable<ComponentProps<typeof CanvasNodePromptPanel>["onImageSettingsOpenChange"]>;
-    onNodeMouseDown: NonNullable<ComponentProps<typeof CanvasNodePromptPanel>["onNodeMouseDown"]>;
-    onPromptChange: ComponentProps<typeof CanvasNodePromptPanel>["onPromptChange"];
-    onRemoveReference: NonNullable<ComponentProps<typeof CanvasNodePromptPanel>["onRemoveReference"]>;
+    onConfigChange: CanvasNodePromptPanelProps["onConfigChange"];
+    onGenerate: CanvasNodePromptPanelProps["onGenerate"];
+    onImageSettingsOpenChange: NonNullable<CanvasNodePromptPanelProps["onImageSettingsOpenChange"]>;
+    onNodeMouseDown: NonNullable<CanvasNodePromptPanelProps["onNodeMouseDown"]>;
+    onPromptChange: CanvasNodePromptPanelProps["onPromptChange"];
+    onRemoveReference: NonNullable<CanvasNodePromptPanelProps["onRemoveReference"]>;
 };
 
 export function useCanvasNodePanelRenderer({
@@ -42,35 +46,50 @@ export function useCanvasNodePanelRenderer({
             if (!kind) return null;
             if (kind === "config") {
                 return (
-                    <CanvasConfigComposer
-                        value={panelNode.metadata?.composerContent ?? panelNode.metadata?.prompt ?? ""}
-                        inputs={configInputsById.get(panelNode.id) || []}
-                        skillReferences={skillMentionReferences}
-                        generationMode={panelNode.metadata?.generationMode}
-                        metadata={panelNode.metadata}
-                        workspaceMode={workspaceMode}
-                        onChange={(composerContent) => onConfigChange(panelNode.id, { composerContent })}
-                        onMetadataChange={(patch) => onConfigChange(panelNode.id, patch)}
-                        onClose={() => setDialogNodeId(null)}
-                    />
+                    <Suspense fallback={<CanvasNodePanelLoading label="正在加载配置编排器…" onClose={() => setDialogNodeId(null)} />}>
+                        <CanvasConfigComposer
+                            value={panelNode.metadata?.composerContent ?? panelNode.metadata?.prompt ?? ""}
+                            inputs={configInputsById.get(panelNode.id) || []}
+                            skillReferences={skillMentionReferences}
+                            generationMode={panelNode.metadata?.generationMode}
+                            metadata={panelNode.metadata}
+                            workspaceMode={workspaceMode}
+                            onChange={(composerContent) => onConfigChange(panelNode.id, { composerContent })}
+                            onMetadataChange={(patch) => onConfigChange(panelNode.id, patch)}
+                            onClose={() => setDialogNodeId(null)}
+                        />
+                    </Suspense>
                 );
             }
             return (
-                <CanvasNodePromptPanel
-                    node={panelNode}
-                    isRunning={runningNodeId === panelNode.id}
-                    mentionReferences={mentionReferencesByNodeId.get(panelNode.id) || []}
-                    onPromptChange={onPromptChange}
-                    onConfigChange={onConfigChange}
-                    onGenerate={onGenerate}
-                    onRemoveReference={onRemoveReference}
-                    onClose={() => setDialogNodeId(null)}
-                    onNodeMouseDown={onNodeMouseDown}
-                    workspaceMode={workspaceMode}
-                    onImageSettingsOpenChange={onImageSettingsOpenChange}
-                />
+                <Suspense fallback={<CanvasNodePanelLoading label="正在加载节点设置…" onClose={() => setDialogNodeId(null)} />}>
+                    <CanvasNodePromptPanel
+                        node={panelNode}
+                        isRunning={runningNodeId === panelNode.id}
+                        mentionReferences={mentionReferencesByNodeId.get(panelNode.id) || []}
+                        onPromptChange={onPromptChange}
+                        onConfigChange={onConfigChange}
+                        onGenerate={onGenerate}
+                        onRemoveReference={onRemoveReference}
+                        onClose={() => setDialogNodeId(null)}
+                        onNodeMouseDown={onNodeMouseDown}
+                        workspaceMode={workspaceMode}
+                        onImageSettingsOpenChange={onImageSettingsOpenChange}
+                    />
+                </Suspense>
             );
         },
         [configInputsById, mentionReferencesByNodeId, onConfigChange, onGenerate, onImageSettingsOpenChange, onNodeMouseDown, onPromptChange, onRemoveReference, runningNodeId, setDialogNodeId, skillMentionReferences, workspaceMode],
+    );
+}
+
+function CanvasNodePanelLoading({ label, onClose }: { label: string; onClose: () => void }) {
+    return (
+        <div data-canvas-no-zoom className="flex min-h-[190px] w-full items-start justify-between gap-3 rounded-[var(--r-2xl)] border bg-background/95 px-4 py-3 text-sm text-foreground shadow-xl backdrop-blur-xl" role="status" aria-live="polite">
+            <span className="pt-1 font-medium">{label}</span>
+            <button type="button" className="shrink-0 rounded-md px-2 py-1 text-xs text-foreground/60 transition-colors hover:bg-foreground/5 hover:text-foreground" onClick={onClose} aria-label="关闭节点设置">
+                关闭
+            </button>
+        </div>
     );
 }

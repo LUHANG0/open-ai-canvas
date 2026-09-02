@@ -41,15 +41,15 @@ test("guide fallback stays in the toolbar lane and does not cover the canvas", a
     expect(source).toContain('aria-live="polite"');
 });
 
-test("empty states, node content, and workspace mode switch remain eager", async () => {
+test("node content and workspace mode switch remain eager after entry views split", async () => {
     const [entrySource, workspaceSource] = await Promise.all([
         Bun.file(new URL("../src/components/canvas/canvas-short-drama-entry.tsx", import.meta.url)).text(),
         Bun.file(new URL("../src/pages/canvas/canvas-project-workspace-chrome.tsx", import.meta.url)).text(),
     ]);
 
-    expect(entrySource).toContain("export function CanvasLinkedProjectEmptyState");
-    expect(entrySource).toContain("export function CanvasShortDramaEmptyState");
-    expect(entrySource).toContain("export function CanvasFreeformEmptyState");
+    expect(entrySource).not.toContain("export function CanvasLinkedProjectEmptyState");
+    expect(entrySource).not.toContain("export function CanvasShortDramaEmptyState");
+    expect(entrySource).not.toContain("export function CanvasFreeformEmptyState");
     expect(entrySource).toContain("export function CanvasStylePlaceholderNodeContent");
     expect(entrySource).toContain("export function CanvasStoryInputNodeContent");
     expect(workspaceSource).toContain('import { CanvasWorkspaceModeSwitch } from "./canvas-project-top-bar"');
