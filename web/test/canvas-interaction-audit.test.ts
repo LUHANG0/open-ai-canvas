@@ -133,7 +133,7 @@ test("a true blank-canvas click collapses the assistant without changing node in
     const infiniteCanvas = await Bun.file(new URL("../src/components/canvas/infinite-canvas.tsx", import.meta.url)).text();
     expect(project).toContain("const handleCanvasBlankClick = useCallback(() => {");
     expect(project).toContain("deselectCanvas();\n        closeAgent();");
-    expect(project).toContain("onCanvasDeselect={handleCanvasBlankClick}");
+    expect(project).toContain("onCanvasDeselect: handleCanvasBlankClick");
     expect(infiniteCanvas).toContain('const isBackgroundClick = !target?.closest("[data-node-id],[data-connection-id]")');
     expect(infiniteCanvas).toContain('event.type === "pointerup" && !panState.current.hasMoved');
 });

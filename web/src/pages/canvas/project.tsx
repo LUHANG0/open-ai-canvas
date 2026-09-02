@@ -20,7 +20,6 @@ import { resolveProjectCanvasStyle } from "@/components/canvas/canvas-style-pick
 import { createStyleProfileSnapshot, resolveStyleProfile, serializeStyleProfile } from "@/lib/canvas/style-profile";
 import { CanvasNodeInfoModal } from "@/components/canvas/canvas-node-toolbar";
 import { CanvasUploadModal } from "@/components/canvas/canvas-upload-modal";
-import { InfiniteCanvas } from "@/components/canvas/infinite-canvas";
 import type { CanvasNodeGenerationMode } from "@/components/canvas/canvas-node-prompt-panel";
 import { getProject } from "@/services/api/projects";
 import { CanvasLocalAgentPanel } from "@/components/canvas/canvas-local-agent-panel";
@@ -28,7 +27,6 @@ import { useFocusMode } from "@/hooks/use-focus-mode";
 import { useCanvasAgentStore } from "@/stores/canvas/use-canvas-agent-store";
 import { getContextResourceNodesFromIndex } from "@/lib/canvas/canvas-resource-references";
 import { CanvasOverlayLayerProvider } from "@/components/canvas/canvas-overlay-layer";
-import { CanvasLeaferGraphicsLayer } from "@/components/canvas/canvas-leafer-graphics-layer";
 import { createCanvasNode } from "@/lib/canvas/canvas-project-domain";
 import { stampCanvasNodeChanges } from "@/lib/canvas/canvas-node-timestamps";
 import { batchSourceRestriction } from "@/lib/canvas/canvas-batch-connection";
@@ -54,9 +52,8 @@ import { CanvasProjectSelectionToolbarOverlay } from "./canvas-project-selection
 import { CanvasProjectStatusDialogs } from "./canvas-project-status-dialogs";
 import { CanvasProjectWorkspaceOverlays } from "./canvas-project-workspace-overlays";
 import { CanvasProjectShortDramaGuide, CanvasProjectWorkspaceModeSwitch } from "./canvas-project-workspace-chrome";
-import { CanvasProjectWorldLayers } from "./canvas-project-world-layers";
-import { CanvasNodeActionContext } from "@/components/canvas/canvas-node-action-context";
-import { CanvasNodeGraphContext, type CanvasNodeGraphContextValue } from "@/components/canvas/canvas-node-graph-context";
+import { CanvasProjectViewport } from "./canvas-project-viewport";
+import type { CanvasNodeGraphContextValue } from "@/components/canvas/canvas-node-graph-context";
 import { CanvasRefreshShell } from "./canvas-refresh-shell";
 import { useCanvasConnectionController } from "./use-canvas-connection-controller";
 import { useCanvasContextInteractions } from "./use-canvas-context-interactions";
@@ -1321,110 +1318,107 @@ function InfiniteCanvasPage() {
 
                         <div className="pc-canvas-workspace__body relative flex min-h-0 min-w-0 flex-1">
                             <div className="pc-canvas-workspace__viewport relative min-w-0 flex-1 overflow-hidden">
-                                <InfiniteCanvas
-                                    containerRef={containerRef}
-                                    viewport={viewport}
-                                    backgroundMode={backgroundMode}
-                                    graphicsLayer={
-                                        <CanvasLeaferGraphicsLayer
-                                            containerRef={containerRef}
-                                            viewport={viewport}
-                                            theme={theme}
-                                            displayConnections={displayConnections}
-                                            selectedConnectionId={selectedConnectionId}
-                                            relatedConnectionIds={relatedHighlight.connectionIds}
-                                            scriptScrollTopById={scriptScrollTopById}
-                                            connectingParams={connectingParams}
-                                            batchConnectionPreview={batchConnectionPreview}
-                                            mouseWorld={mouseWorld}
-                                            connectionTargetNodeId={connectionTargetNodeId}
-                                            connectionTargetAnchorRatio={connectionTargetAnchorRatio}
-                                            nodeById={nodeById}
-                                            selectionBox={selectionBox}
-                                            selectedNodeBounds={selectedNodeBounds}
-                                            alignmentGuides={alignmentGuides}
-                                        />
-                                    }
-                                    onViewportChange={handleViewportChange}
-                                    onViewportPreviewChange={handleViewportPreviewChange}
-                                    onCanvasMouseDown={handleCanvasMouseDown}
-                                    boxSelectEnabled={canvasTool === "box-select"}
-                                    onCanvasDoubleClick={handleCanvasDoubleClick}
-                                    onCanvasDeselect={handleCanvasBlankClick}
-                                    onContextMenu={handleCanvasContextMenu}
-                                    onDrop={handleDrop}
-                                    onFileDragEnter={handleFileDragEnter}
-                                    onFileDragLeave={handleFileDragLeave}
-                                    onFileDragOver={handleFileDragOver}
-                                >
-                                    <CanvasNodeActionContext.Provider value={canvasNodeActions}>
-                                        <CanvasNodeGraphContext.Provider value={nodeGraphContext}>
-                                            <CanvasProjectWorldLayers
-                                                projectId={projectId}
-                                                viewportScale={viewport.k}
-                                                connectionLayerBounds={connectionLayerBounds}
-                                                displayConnections={displayConnections}
-                                                selectedConnectionId={selectedConnectionId}
-                                                relatedConnectionIds={relatedHighlight.connectionIds}
-                                                scriptScrollTopById={scriptScrollTopById}
-                                                connectingParams={connectingParams}
-                                                mouseWorld={mouseWorld}
-                                                connectionTargetNodeId={connectionTargetNodeId}
-                                                nodeById={nodeById}
-                                                visibleNodes={visibleNodes}
-                                                frameChildrenById={frameChildrenById}
-                                                linkedFolderPreviewNodesById={linkedFolderPreviewNodesById}
-                                                dragPreview={dragPreview}
-                                                selectedNodeIds={selectedNodeIds}
-                                                frameDropTargetId={frameDropTargetId}
-                                                relatedNodeIds={relatedHighlight.nodeIds}
-                                                activeNodeId={activeNodeId}
-                                                selectionBox={selectionBox}
-                                                batchChildCountById={batchChildCountById}
-                                                collapsingBatchIds={collapsingBatchIds}
-                                                openingBatchIds={openingBatchIds}
-                                                batchMotionById={batchMotionById}
-                                                showImageInfo={showImageInfo}
-                                                reduceMediaEffects={reduceMediaEffects}
-                                                mediaRenderPolicy={mediaRenderPolicy}
-                                                resourceReferenceByNodeId={resourceReferenceByNodeId}
-                                                mentionReferencesByNodeId={mentionReferencesByNodeId}
-                                                mediaEffectsDisabledNodeId={emotionNodeId}
-                                                selectedNodeBounds={selectedNodeBounds}
-                                                batchSourceNodeIds={batchSourceNodeIds}
-                                                batchConnectionPreview={batchConnectionPreview}
-                                                isNodeDragging={isNodeDragging}
-                                                selectionBoundsElementRef={selectionBoundsElementRef}
-                                                renderCanvasNodeContent={renderCanvasNodeContent}
-                                                onConnectionSelect={handleConnectionSelect}
-                                                onConnectionContextMenu={handleConnectionContextMenu}
-                                                onNodeMouseDown={handleNodeMouseDown}
-                                                onNodeHoverStart={handleCanvasNodeHoverStart}
-                                                onNodeHoverEnd={handleCanvasNodeHoverEnd}
-                                                onConnectStart={handleConnectStart}
-                                                onNodeResize={handleNodeResize}
-                                                onToggleFrame={handleFrameToggle}
-                                                onFolderStyleChange={handleFolderStyleChange}
-                                                onFolderThemeChange={handleFolderThemeChange}
-                                                onNodeTitleChange={handleNodeTitleChange}
-                                                onNodeContextMenu={handleNodeContextMenu}
-                                                onNodeContentChange={handleNodeContentChange}
-                                                onToggleBatch={toggleBatchExpanded}
-                                                onSetBatchPrimary={setBatchPrimary}
-                                                onRetry={retryCanvasNode}
-                                                onReloadResource={reloadCanvasNodeResource}
-                                                onOpenTaskDetails={openCanvasNodeTaskDetails}
-                                                onOpenVersions={openCanvasNodeVersions}
-                                                onViewImage={viewCanvasNodeImage}
-                                                onReplaceMedia={replaceCanvasNodeMedia}
-                                                onOpenTextEditor={openTextNodeEditor}
-                                                onOpenDirector={editCanvasDirector}
-                                                onOpenDrawing={openDrawingNode}
-                                                onStartBatchConnection={startBatchConnection}
-                                            />
-                                        </CanvasNodeGraphContext.Provider>
-                                    </CanvasNodeActionContext.Provider>
-                                </InfiniteCanvas>
+                                <CanvasProjectViewport
+                                    canvas={{
+                                        containerRef,
+                                        viewport,
+                                        backgroundMode,
+                                        onViewportChange: handleViewportChange,
+                                        onViewportPreviewChange: handleViewportPreviewChange,
+                                        onCanvasMouseDown: handleCanvasMouseDown,
+                                        boxSelectEnabled: canvasTool === "box-select",
+                                        onCanvasDoubleClick: handleCanvasDoubleClick,
+                                        onCanvasDeselect: handleCanvasBlankClick,
+                                        onContextMenu: handleCanvasContextMenu,
+                                        onDrop: handleDrop,
+                                        onFileDragEnter: handleFileDragEnter,
+                                        onFileDragLeave: handleFileDragLeave,
+                                        onFileDragOver: handleFileDragOver,
+                                    }}
+                                    graphics={{
+                                        containerRef,
+                                        viewport,
+                                        theme,
+                                        displayConnections,
+                                        selectedConnectionId,
+                                        relatedConnectionIds: relatedHighlight.connectionIds,
+                                        scriptScrollTopById,
+                                        connectingParams,
+                                        batchConnectionPreview,
+                                        mouseWorld,
+                                        connectionTargetNodeId,
+                                        connectionTargetAnchorRatio,
+                                        nodeById,
+                                        selectionBox,
+                                        selectedNodeBounds,
+                                        alignmentGuides,
+                                    }}
+                                    nodeActions={canvasNodeActions}
+                                    nodeGraph={nodeGraphContext}
+                                    world={{
+                                        projectId,
+                                        viewportScale: viewport.k,
+                                        connectionLayerBounds,
+                                        displayConnections,
+                                        selectedConnectionId,
+                                        relatedConnectionIds: relatedHighlight.connectionIds,
+                                        scriptScrollTopById,
+                                        connectingParams,
+                                        mouseWorld,
+                                        connectionTargetNodeId,
+                                        nodeById,
+                                        visibleNodes,
+                                        frameChildrenById,
+                                        linkedFolderPreviewNodesById,
+                                        dragPreview,
+                                        selectedNodeIds,
+                                        frameDropTargetId,
+                                        relatedNodeIds: relatedHighlight.nodeIds,
+                                        activeNodeId,
+                                        selectionBox,
+                                        batchChildCountById,
+                                        collapsingBatchIds,
+                                        openingBatchIds,
+                                        batchMotionById,
+                                        showImageInfo,
+                                        reduceMediaEffects,
+                                        mediaRenderPolicy,
+                                        resourceReferenceByNodeId,
+                                        mentionReferencesByNodeId,
+                                        mediaEffectsDisabledNodeId: emotionNodeId,
+                                        selectedNodeBounds,
+                                        batchSourceNodeIds,
+                                        batchConnectionPreview,
+                                        isNodeDragging,
+                                        selectionBoundsElementRef,
+                                        renderCanvasNodeContent,
+                                        onConnectionSelect: handleConnectionSelect,
+                                        onConnectionContextMenu: handleConnectionContextMenu,
+                                        onNodeMouseDown: handleNodeMouseDown,
+                                        onNodeHoverStart: handleCanvasNodeHoverStart,
+                                        onNodeHoverEnd: handleCanvasNodeHoverEnd,
+                                        onConnectStart: handleConnectStart,
+                                        onNodeResize: handleNodeResize,
+                                        onToggleFrame: handleFrameToggle,
+                                        onFolderStyleChange: handleFolderStyleChange,
+                                        onFolderThemeChange: handleFolderThemeChange,
+                                        onNodeTitleChange: handleNodeTitleChange,
+                                        onNodeContextMenu: handleNodeContextMenu,
+                                        onNodeContentChange: handleNodeContentChange,
+                                        onToggleBatch: toggleBatchExpanded,
+                                        onSetBatchPrimary: setBatchPrimary,
+                                        onRetry: retryCanvasNode,
+                                        onReloadResource: reloadCanvasNodeResource,
+                                        onOpenTaskDetails: openCanvasNodeTaskDetails,
+                                        onOpenVersions: openCanvasNodeVersions,
+                                        onViewImage: viewCanvasNodeImage,
+                                        onReplaceMedia: replaceCanvasNodeMedia,
+                                        onOpenTextEditor: openTextNodeEditor,
+                                        onOpenDirector: editCanvasDirector,
+                                        onOpenDrawing: openDrawingNode,
+                                        onStartBatchConnection: startBatchConnection,
+                                    }}
+                                />
 
                                 <CanvasProjectWorkspaceOverlays
                                     activeTasks={activeTasks}
