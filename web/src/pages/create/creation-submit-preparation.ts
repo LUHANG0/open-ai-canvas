@@ -157,10 +157,12 @@ export function prepareCreationSubmission(input: CreationSubmissionPreparationIn
 
     return {
         ok: true as const,
+        mode,
         text,
         submissionAttachments,
         submissionInput,
         videoOperation,
+        videoOperationExplicit: videoOperationChoice !== "auto",
         settings,
         references,
         referenceImages,
@@ -173,6 +175,8 @@ export function prepareCreationSubmission(input: CreationSubmissionPreparationIn
         imageTaskCount: Math.max(1, Math.min(imageProfile.maxOutputs, Math.floor(Number(count) || 1))),
     };
 }
+
+export type PreparedCreationSubmission = Extract<ReturnType<typeof prepareCreationSubmission>, { ok: true }>;
 
 function preparationError(level: CreationSubmissionPreparationError["level"], message: string): CreationSubmissionPreparationError {
     return { ok: false, level, message };

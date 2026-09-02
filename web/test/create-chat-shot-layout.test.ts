@@ -275,15 +275,16 @@ describe("PC creation chat and storyboard director workbench regression gates", 
     });
 
     test("retains preview, download, retry, canvas handoff, upload, and generation fingerprints", async () => {
-        const [source, messageSource, composerSource, storyboardSource] = await Promise.all([read("../src/pages/create/index.tsx"), read("../src/pages/create/creation-message-view.tsx"), read("../src/pages/create/creation-composer.tsx"), read("../src/pages/create/creation-storyboard-workbench.tsx")]);
+        const [source, executorSource, messageSource, composerSource, storyboardSource] = await Promise.all([read("../src/pages/create/index.tsx"), read("../src/pages/create/creation-generation-executor.ts"), read("../src/pages/create/creation-message-view.tsx"), read("../src/pages/create/creation-composer.tsx"), read("../src/pages/create/creation-storyboard-workbench.tsx")]);
         const shotCard = sourceSection(storyboardSource, "function StoryboardShotCard", "function StoryboardNextShotCard");
         const result = storyboardSource.slice(storyboardSource.indexOf("function StoryboardShotResult"));
         const downloads = sourceSection(messageSource, "export function CreationResultDownloads", "function CreationMediaPending");
         const composer = sourceSection(composerSource, "function CreationComposer", "function ModePicker");
 
         expect(storyboardSource).toContain("creationCanvasHandoffPath(resultAssetIds, resultUrls.length)");
-        expect(source).toContain("runBackendGenerationTask(");
-        expect(source).toContain("runBackendGenerationTaskBatch(");
+        expect(executorSource).toContain("runBackendGenerationTask(");
+        expect(executorSource).toContain("runBackendGenerationTaskBatch(");
+        expect(source).toContain("executeCreationGeneration({");
         expect(source).toContain("onSubmit: () => void submit()");
         expect(shotCard).toContain("onRetryFailure");
         expect(shotCard).toContain('<Link className="storyboard-workbench-card-action" to={canvasPath}>');
