@@ -1,5 +1,5 @@
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { lazy, Suspense, useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { Link } from "react-router";
 import { Bot, Check, ChevronDown, Clapperboard, CloudDownload, Coins, CopyPlus, Focus, FolderKanban, Gauge, Home, LayoutGrid, LoaderCircle, Menu, Pencil, Plus, Redo2, Search, Settings2, Share2, Sparkles, Trash2, Undo2, Upload } from "lucide-react";
 import { Button, Dropdown } from "antd";
@@ -15,8 +15,6 @@ import { canvasThemes } from "@/lib/canvas-theme";
 import { useThemeStore } from "@/stores/use-theme-store";
 import { useUserStore } from "@/stores/use-user-store";
 import type { CanvasMediaPerformanceMode, CanvasWorkspaceMode } from "@/types/canvas";
-
-const CanvasShortcutsModal = lazy(() => import("./canvas-shortcuts-modal").then((module) => ({ default: module.CanvasShortcutsModal })));
 
 type CanvasTopBarProps = {
     title: string;
@@ -39,7 +37,6 @@ type CanvasTopBarProps = {
     agentOpen: boolean;
     compactAgentStatus?: { connected: boolean; enabled: boolean; activity: string };
     onToggleAgent: () => void;
-    shortcutRequestNonce: number;
     mediaPerformanceMode: CanvasMediaPerformanceMode;
     mediaRenderTier: CanvasMediaRenderTier;
     onMediaPerformanceModeChange: (mode: CanvasMediaPerformanceMode) => void;
@@ -72,7 +69,6 @@ export function CanvasTopBar({
     agentOpen,
     compactAgentStatus,
     onToggleAgent,
-    shortcutRequestNonce,
     mediaPerformanceMode,
     mediaRenderTier,
     onMediaPerformanceModeChange,
@@ -89,16 +85,11 @@ export function CanvasTopBar({
     const creditsEnabled = useUserStore((state) => state.features.creditsEnabled);
     const { availableMicrocredits, refreshing } = useWalletBalance(user?.id, creditsEnabled);
     const titleRef = useRef<HTMLDivElement>(null);
-    const [shortcutsOpen, setShortcutsOpen] = useState(false);
     const [mediaModeOpen, setMediaModeOpen] = useState(false);
 
     const handleShortDramaGuideToggle = () => {
         shortDramaGuide?.onToggle();
     };
-
-    useEffect(() => {
-        if (shortcutRequestNonce > 0) setShortcutsOpen(true);
-    }, [shortcutRequestNonce]);
 
     useEffect(() => {
         if (!isTitleEditing) return;
@@ -305,17 +296,6 @@ export function CanvasTopBar({
                     </Button>
                 </div>
             </div>
-            {shortcutsOpen ? (
-                <Suspense
-                    fallback={
-                        <div className="sr-only" role="status" aria-live="polite">
-                            正在加载画布快捷键…
-                        </div>
-                    }
-                >
-                    <CanvasShortcutsModal open onClose={() => setShortcutsOpen(false)} />
-                </Suspense>
-            ) : null}
         </>
     );
 }

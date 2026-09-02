@@ -349,7 +349,7 @@ test("project entry dialogs share one transient state owner", async () => {
     const dialogStateSource = await Bun.file(new URL("../src/pages/canvas/use-canvas-project-dialog-state.ts", import.meta.url)).text();
     expect(projectSource).toContain("useCanvasProjectDialogState()");
     expect(projectSource).not.toContain("const [shareModalOpen, setShareModalOpen]");
-    for (const stateName of ["shareModalOpen", "nodeSearchOpen", "stylePickerOpen", "directorTemplateRequest", "shortcutRequestNonce"]) expect(dialogStateSource).toContain(stateName);
+    for (const stateName of ["shareModalOpen", "nodeSearchOpen", "stylePickerOpen", "directorTemplateRequest", "shortcutsOpen"]) expect(dialogStateSource).toContain(stateName);
 });
 
 test("node editors and inspectors share one panel target state owner", async () => {

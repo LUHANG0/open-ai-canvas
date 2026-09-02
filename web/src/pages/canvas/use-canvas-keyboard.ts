@@ -9,7 +9,7 @@ type UseCanvasKeyboardOptions = {
     setSelectedNodeIds: Dispatch<SetStateAction<Set<string>>>;
     setSelectedConnectionId: Dispatch<SetStateAction<string | null>>;
     setContextMenu: Dispatch<SetStateAction<ContextMenuState | null>>;
-    setShortcutRequestNonce: Dispatch<SetStateAction<number>>;
+    onOpenShortcuts: () => void;
     setInfoNodeId: Dispatch<SetStateAction<string | null>>;
     setCropNodeId: Dispatch<SetStateAction<string | null>>;
     setMaskEditNodeId: Dispatch<SetStateAction<string | null>>;
@@ -89,7 +89,7 @@ export function useCanvasKeyboard({
     setSelectedNodeIds,
     setSelectedConnectionId,
     setContextMenu,
-    setShortcutRequestNonce,
+    onOpenShortcuts,
     setInfoNodeId,
     setCropNodeId,
     setMaskEditNodeId,
@@ -167,7 +167,7 @@ export function useCanvasKeyboard({
             }
             if (event.key === "?" && !isModifierShortcut && !event.altKey) {
                 event.preventDefault();
-                setShortcutRequestNonce((value) => value + 1);
+                onOpenShortcuts();
                 return;
             }
             if (isModifierShortcut && !event.altKey && (key === "1" || key === "2" || key === "3")) {
@@ -259,5 +259,5 @@ export function useCanvasKeyboard({
             window.removeEventListener("keydown", handleKeyDown, true);
             window.removeEventListener("paste", handlePaste, true);
         };
-    }, [assistantOpen, beginBatchConnection, cancelSelectionBox, closeAgent, copySelectedNodes, deleteConnection, deleteNodes, deselectCanvas, exitFocusMode, fitCanvasContent, fitCanvasSelection, focusMode, nodesRef, onOpenSearch, pasteCopiedNodes, pasteSystemClipboard, redoCanvas, restoreCopiedNodesFromText, saveCanvasProject, selectedConnectionId, selectedNodeIdsRef, setAnnotationNodeId, setContextMenu, setCropNodeId, setInfoNodeId, setMaskEditNodeId, setSelectedConnectionId, setSelectedNodeIds, setShortcutRequestNonce, shouldPreferCopiedNodes, toggleFocusMode, undoCanvas, zoomCanvasIn, zoomCanvasOut, zoomToActualSize]);
+    }, [assistantOpen, beginBatchConnection, cancelSelectionBox, closeAgent, copySelectedNodes, deleteConnection, deleteNodes, deselectCanvas, exitFocusMode, fitCanvasContent, fitCanvasSelection, focusMode, nodesRef, onOpenSearch, onOpenShortcuts, pasteCopiedNodes, pasteSystemClipboard, redoCanvas, restoreCopiedNodesFromText, saveCanvasProject, selectedConnectionId, selectedNodeIdsRef, setAnnotationNodeId, setContextMenu, setCropNodeId, setInfoNodeId, setMaskEditNodeId, setSelectedConnectionId, setSelectedNodeIds, shouldPreferCopiedNodes, toggleFocusMode, undoCanvas, zoomCanvasIn, zoomCanvasOut, zoomToActualSize]);
 }

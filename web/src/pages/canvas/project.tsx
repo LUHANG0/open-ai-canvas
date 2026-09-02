@@ -20,6 +20,7 @@ import { CanvasProjectNodeOverlays } from "./canvas-project-node-overlays";
 import { CanvasProjectNodeToolbar } from "./canvas-project-node-toolbar";
 import { CanvasProjectNodeSearch } from "./canvas-project-node-search";
 import { CanvasProjectScriptEditor } from "./canvas-project-script-editor";
+import { CanvasProjectShortcutsDialog } from "./canvas-project-shortcuts-dialog";
 import { CanvasProjectTimelineDialogs } from "./canvas-project-timeline-dialogs";
 import { CanvasProjectSelectionToolbarOverlay } from "./canvas-project-selection-toolbar";
 import { CanvasProjectStatusDialogs } from "./canvas-project-status-dialogs";
@@ -111,7 +112,7 @@ function InfiniteCanvasPage() {
     const { batchSourceNodeIds, selectedConnectionId, selectedNodeIds, setSelectedConnectionId, setSelectedNodeIds } = useCanvasSelectionState(nodes);
     const { backgroundMode, canvasTool, contextMenu, hoveredNodeId, isMiniMapOpen, setBackgroundMode, setCanvasTool, setContextMenu, setHoveredNodeId, setIsMiniMapOpen, setShowImageInfo, showImageInfo } = useCanvasWorkspaceUiState();
     const [projectLoaded, setProjectLoaded] = useState(false);
-    const { clearConfirmOpen, directorTemplateRequest, libTVImportOpen, nodeSearchOpen, setClearConfirmOpen, setDirectorTemplateRequest, setLibTVImportOpen, setNodeSearchOpen, setShareModalOpen, setShortcutRequestNonce, setStylePickerOpen, setTapNowImportOpen, shareModalOpen, shortcutRequestNonce, stylePickerOpen, tapNowImportOpen } = useCanvasProjectDialogState();
+    const { clearConfirmOpen, directorTemplateRequest, libTVImportOpen, nodeSearchOpen, setClearConfirmOpen, setDirectorTemplateRequest, setLibTVImportOpen, setNodeSearchOpen, setShareModalOpen, setShortcutsOpen, setStylePickerOpen, setTapNowImportOpen, shareModalOpen, shortcutsOpen, stylePickerOpen, tapNowImportOpen } = useCanvasProjectDialogState();
     const { characterReferenceNodeId, dialogNodeId, directorNodeId, drawingNodeId, infoNodeId, portraitClearanceNodeId, previewNodeId, scriptEditorNodeId, scriptScrollTopById, setCharacterReferenceNodeId, setDialogNodeId, setDirectorNodeId, setDrawingNodeId, setInfoNodeId, setPortraitClearanceNodeId, setPreviewNodeId, setScriptEditorNodeId, setScriptScrollTopById, setSubtitleNodeId, setSuperResolveNodeId, setTextEditorNodeId, setTimelineNodeId, setToolbarNodeId, setVersionCompareRootId, subtitleNodeId, superResolveNodeId, textEditorNodeId, timelineNodeId, toolbarNodeId, versionCompareRootId } = useCanvasNodePanelState();
     const { assistantWidth, focusDockRevealed, mediaPerformanceMode, setAssistantWidth, setFocusDockRevealed, setMediaPerformanceMode, setWorkspaceMode, workspaceMode } = useCanvasWorkspacePreferences({
         preloadAssistant: loadCanvasAssistantPanel,
@@ -814,7 +815,7 @@ function InfiniteCanvasPage() {
         setSelectedNodeIds,
         setSelectedConnectionId,
         setContextMenu,
-        setShortcutRequestNonce,
+        onOpenShortcuts: () => setShortcutsOpen(true),
         setInfoNodeId,
         setCropNodeId,
         setMaskEditNodeId,
@@ -1028,7 +1029,6 @@ function InfiniteCanvasPage() {
                                 agentOpen: assistantOpen,
                                 compactAgentStatus: codexCompactAgent ? { connected: localAgentConnected, enabled: localAgentEnabled, activity: localAgentActivity } : undefined,
                                 onToggleAgent: () => (assistantOpen ? closeAgent() : openAgent()),
-                                shortcutRequestNonce,
                                 mediaPerformanceMode,
                                 mediaRenderTier: mediaRenderPolicy.tier,
                                 onMediaPerformanceModeChange: setMediaPerformanceMode,
@@ -1090,6 +1090,8 @@ function InfiniteCanvasPage() {
                             onCloseDirectorTemplate={() => setDirectorTemplateRequest(null)}
                             onCreateDirectorShot={createDirectorShot}
                         />
+
+                        <CanvasProjectShortcutsDialog open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
 
                         <div className="pc-canvas-workspace__body relative flex min-h-0 min-w-0 flex-1">
                             <div className="pc-canvas-workspace__viewport relative min-w-0 flex-1 overflow-hidden">
@@ -1392,7 +1394,7 @@ function InfiniteCanvasPage() {
                             onAutoArrange={autoArrangeCanvasNodes}
                             onDismissContextMenu={() => setContextMenu(null)}
                             onToggleMiniMap={() => setIsMiniMapOpen((value) => !value)}
-                            onOpenShortcuts={() => setShortcutRequestNonce((value) => value + 1)}
+                            onOpenShortcuts={() => setShortcutsOpen(true)}
                             onInsertAssetImage={(asset) => void createImageAssetNode(asset)}
                             onFocusCanvasImage={focusCanvasImageNode}
                         />

@@ -5,19 +5,27 @@ async function source(path: string) {
 }
 
 describe("canvas shortcuts modal lazy loading", () => {
-    test("loads and mounts the shortcuts modal only while it is open", async () => {
-        const topBarSource = await source("../src/pages/canvas/canvas-project-top-bar.tsx");
+    test("keeps the shortcuts owner mounted outside the focus-sensitive top bar", async () => {
+        const [dialogSource, projectSource, topBarSource] = await Promise.all([
+            source("../src/pages/canvas/canvas-project-shortcuts-dialog.tsx"),
+            source("../src/pages/canvas/project.tsx"),
+            source("../src/pages/canvas/canvas-project-top-bar.tsx"),
+        ]);
 
-        expect(topBarSource).toContain('lazy(() => import("./canvas-shortcuts-modal")');
-        expect(topBarSource).not.toContain('import { CanvasShortcutsModal } from "./canvas-shortcuts-modal"');
-        expect(topBarSource).toContain("if (shortcutRequestNonce > 0) setShortcutsOpen(true)");
-        expect(topBarSource).toContain("shortcutsOpen ? (");
-        expect(topBarSource).toContain("<Suspense");
-        expect(topBarSource).toContain('className="sr-only"');
-        expect(topBarSource).toContain('role="status"');
-        expect(topBarSource).toContain('aria-live="polite"');
-        expect(topBarSource).toContain("正在加载画布快捷键…");
-        expect(topBarSource).toContain("<CanvasShortcutsModal open onClose={() => setShortcutsOpen(false)} />");
+        expect(dialogSource).toContain('lazy(() => import("./canvas-shortcuts-modal")');
+        expect(dialogSource).not.toContain('import { CanvasShortcutsModal } from "./canvas-shortcuts-modal"');
+        expect(dialogSource).toContain("if (!open) return null");
+        expect(dialogSource).toContain("<Suspense");
+        expect(dialogSource).toContain('className="sr-only"');
+        expect(dialogSource).toContain('role="status"');
+        expect(dialogSource).toContain('aria-live="polite"');
+        expect(dialogSource).toContain("正在加载画布快捷键…");
+        expect(dialogSource).toContain("<CanvasShortcutsModal open onClose={onClose} />");
+        expect(projectSource).toContain("<CanvasProjectShortcutsDialog open={shortcutsOpen}");
+        expect(projectSource).toContain("onOpenShortcuts: () => setShortcutsOpen(true)");
+        expect(projectSource).toContain("onOpenShortcuts={() => setShortcutsOpen(true)}");
+        expect(topBarSource).not.toContain("CanvasShortcutsModal");
+        expect(topBarSource).not.toContain("shortcutRequestNonce");
     });
 
     test("keeps the deferred dialog keyboard and accessibility semantics", async () => {

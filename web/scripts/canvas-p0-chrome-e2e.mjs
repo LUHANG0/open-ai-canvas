@@ -466,6 +466,30 @@ async function interactionScenario(cdp) {
     await cdp.shortcut("=");
     const scaleIncreased = await cdp.poll(`Number(getComputedStyle(document.querySelector('.pc-canvas-infinite')).getPropertyValue('--canvas-committed-scale')) > ${scaleBefore}`, "scale increased");
     assert(scaleIncreased, "B9 Ctrl+= increases committed scale", `before=${scaleBefore}`);
+
+    const pressQuestionMark = async () => {
+        await cdp.send("Input.dispatchKeyEvent", { type: "keyDown", key: "?", code: "Slash", windowsVirtualKeyCode: 191, modifiers: 8 });
+        await cdp.send("Input.dispatchKeyEvent", { type: "keyUp", key: "?", code: "Slash", windowsVirtualKeyCode: 191, modifiers: 8 });
+    };
+    const pressEscape = async () => {
+        await cdp.send("Input.dispatchKeyEvent", { type: "keyDown", key: "Escape", code: "Escape", windowsVirtualKeyCode: 27 });
+        await cdp.send("Input.dispatchKeyEvent", { type: "keyUp", key: "Escape", code: "Escape", windowsVirtualKeyCode: 27 });
+    };
+    await pressQuestionMark();
+    assert(await cdp.poll(`!!document.querySelector('input[aria-label="搜索画布快捷键"]')`, "shortcuts modal opens"), "B9a ? opens shortcuts in normal mode");
+    await pressEscape();
+    assert(await cdp.poll(`!document.querySelector('input[aria-label="搜索画布快捷键"]')`, "shortcuts modal closes"), "B9b shortcuts modal closes before focus mode");
+    await cdp.evaluate(`(() => { document.querySelector('#canvas-main')?.focus(); })()`);
+    await cdp.shortcut("f", { shift: true });
+    assert(await cdp.poll(`!!document.querySelector('[aria-label="专注模式工具栏"]') && !document.querySelector('.pc-canvas-topbar')`, "focus mode active"), "B9c focus mode hides the top bar");
+    await pressQuestionMark();
+    assert(await cdp.poll(`!!document.querySelector('input[aria-label="搜索画布快捷键"]')`, "focus shortcuts modal opens"), "B9d ? opens shortcuts while the top bar is unmounted");
+    await pressEscape();
+    assert(await cdp.poll(`!document.querySelector('input[aria-label="搜索画布快捷键"]')`, "focus shortcuts modal closes"), "B9e focus shortcuts modal closes");
+    await cdp.evaluate(`(() => { document.querySelector('#canvas-main')?.focus(); })()`);
+    await cdp.shortcut("f", { shift: true });
+    assert(await cdp.poll(`!!document.querySelector('.pc-canvas-topbar') && !document.querySelector('[aria-label="专注模式工具栏"]') && !document.querySelector('input[aria-label="搜索画布快捷键"]')`, "normal mode restored"), "B9f leaving focus mode does not replay a historical shortcuts request");
+
     if (!(await cdp.click('[aria-label="打开小地图"]'))) {
         const diagnostic = await cdp.evaluate(`(() => {
             const button = document.querySelector('[aria-label="打开小地图"]');
@@ -558,7 +582,7 @@ async function interactionScenario(cdp) {
     );
     assert(!agentOpenLayout.localMounted, "B23 website mode keeps the local Agent runtime lazy", JSON.stringify(agentOpenLayout));
     await cdp.evaluate(`document.querySelector('.pc-canvas-assistant-panel')?.setAttribute('data-e2e-panel-instance', 'stable')`);
-    assert(await activate('[aria-label="Agent 运行位置"] button:nth-of-type(2)') && await cdp.poll(`!!document.querySelector('[data-canvas-agent-mode="local"]')`, "local Agent mounts", 20000), "B24 local Agent loads only after explicit mode selection");
+    assert(await activate('[aria-label="Agent 运行位置"] button:nth-of-type(2)') && await cdp.poll(`(() => { const layer = document.querySelector('[data-canvas-agent-mode="local"]'); return !!layer && !layer.textContent?.includes('正在准备本机 Agent'); })()`, "local Agent mounts", 20000), "B24 local Agent loads only after explicit mode selection");
     assert(await activate('[aria-label="Agent 运行位置"] button:nth-of-type(1)'), "B25 Agent can switch back to website mode");
     const preservedLocalAgent = await cdp.evaluate(`(() => {
         const panel = document.querySelector('.pc-canvas-assistant-panel');

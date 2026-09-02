@@ -12,7 +12,7 @@ export function useCanvasProjectDialogState() {
     const [stylePickerOpen, setStylePickerOpen] = useState(false);
     const [directorTemplateRequest, setDirectorTemplateRequest] = useState<CanvasDirectorTemplateRequest | null>(null);
     const [libTVImportOpen, setLibTVImportOpen] = useState(false);
-    const [shortcutRequestNonce, setShortcutRequestNonce] = useState(0);
+    const [shortcutsOpen, setShortcutsOpen] = useState(false);
 
     return {
         clearConfirmOpen,
@@ -24,11 +24,11 @@ export function useCanvasProjectDialogState() {
         setLibTVImportOpen,
         setNodeSearchOpen,
         setShareModalOpen,
-        setShortcutRequestNonce,
+        setShortcutsOpen,
         setStylePickerOpen,
         setTapNowImportOpen,
         shareModalOpen,
-        shortcutRequestNonce,
+        shortcutsOpen,
         stylePickerOpen,
         tapNowImportOpen,
     };
