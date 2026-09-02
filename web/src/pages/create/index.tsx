@@ -6,8 +6,6 @@ import { AssetLibraryPickerModal } from "@/components/assets/asset-library-picke
 import { createClientId } from "@/lib/client-id";
 import { generationErrorCode, generationErrorMessage } from "@/lib/generation-error";
 import { usePcBrandViewport } from "@/hooks/use-pc-brand-viewport";
-import { modelCapabilityConfigFor } from "@/lib/model-capabilities";
-import { modelGroupReferenceLimits, modelGroupVideoOperations, resolveCompatibleModel, type ModelInputSummary, type ModelRequirements } from "@/lib/model-selection";
 import { isGenerationTaskCancelled } from "@/services/api/generation-task";
 import { listAddedSkills, type Skill } from "@/services/api/skills";
 import type { GenerationTask } from "@/services/api/task-center";
@@ -26,7 +24,6 @@ import {
     removeCreationAttachment,
     setCreationVideoImageRole,
     type CreationAttachment,
-    type CreationAttachmentLimits,
     type CreationVideoImageRole,
 } from "./creation-assets";
 import { CreationComposer } from "./creation-composer";
@@ -34,12 +31,12 @@ import { CreationEmptyIntro, CreationEmptySuggest, type CreationMode } from "./c
 import { CreationMessageView } from "./creation-message-view";
 import { StoryboardComposerContext, StoryboardNextShotCard, StoryboardShotCard, StoryboardShotRail, StoryboardToolbar } from "./creation-storyboard-workbench";
 import { executeCreationGeneration, type CreationRetryContext } from "./creation-generation-executor";
-import { isImageAttachment } from "./creation-task-lifecycle";
-import { creationInputSummary, normalizeCreationVideoAttachments, prepareCreationSubmission, resolvedCreationVideoOperation } from "./creation-submit-preparation";
+import { normalizeCreationVideoAttachments, prepareCreationSubmission } from "./creation-submit-preparation";
 import type { CreationConversation, CreationMessage, CreationShot, CreationVideoOperationChoice, CreationViewMode } from "./creation-types";
 import { useCreationAssetWorkflow } from "./use-creation-asset-workflow";
 import { useCreationConversationWorkflow } from "./use-creation-conversation-workflow";
 import { useCreationDraftWorkflow, type CreationRetryTarget } from "./use-creation-draft-workflow";
+import { useCreationModelWorkflow } from "./use-creation-model-workflow";
 import { CreationHistoryDrawer, CreationWorkspaceToolbar } from "./creation-workspace-toolbar";
 import "./creation-workspace.css";
 
@@ -109,58 +106,18 @@ export default function CreatePage() {
     promptRef.current = prompt;
     attachmentsRef.current = attachments;
 
-    const preferredModel = mode === "text" ? config.textModel : mode === "image" ? config.imageModel : config.videoModel;
-    const hasPrompt = Boolean(prompt.trim());
-    const modelInput = useMemo<ModelInputSummary>(() => creationInputSummary(attachments, hasPrompt), [attachments, hasPrompt]);
-    const requestedVideoOperation = mode === "video" ? resolvedCreationVideoOperation(videoOperationChoice, modelInput) : undefined;
-    const modelRequirements = useMemo<ModelRequirements>(
-        () => ({
-            capability: mode,
-            input: modelInput,
-            videoOperation: requestedVideoOperation,
-            videoOperationExplicit: mode === "video" ? videoOperationChoice !== "auto" : undefined,
-            videoSeconds: mode === "video" ? seconds : undefined,
-            imageSize: mode === "image" ? ratio : undefined,
-            options:
-                mode === "image"
-                    ? { size: ratio, quality, count: Number(count), transparentBackground: config.transparentBackground === "true" }
-                    : mode === "video"
-                      ? { size: ratio, videoSeconds: Number(seconds), vquality: videoQuality, videoGenerateAudio: config.videoGenerateAudio === "true", videoWatermark: config.videoWatermark === "true" }
-                      : {},
-        }),
-        [config.transparentBackground, config.videoGenerateAudio, config.videoWatermark, count, mode, modelInput, quality, ratio, requestedVideoOperation, seconds, videoOperationChoice, videoQuality],
-    );
-    const selectableModels = useMemo(() => selectableModelsByCapability(config, mode), [config, mode]);
-    const preferredAvailableModel = selectableModels.includes(preferredModel) ? preferredModel : selectableModels[0] || "";
-    const selectedModel = resolveCompatibleModel(config, preferredAvailableModel, modelRequirements) || preferredAvailableModel;
-    const imageProfile = useMemo(() => modelCapabilityConfigFor(config, selectedModel).image!, [config, selectedModel]);
-    const videoProfile = useMemo(() => modelCapabilityConfigFor(config, selectedModel).video!, [config, selectedModel]);
-    const groupReferenceLimits = useMemo(() => (selectedModel ? modelGroupReferenceLimits(config, selectedModel, mode) : undefined), [config, mode, selectedModel]);
-    const videoOperations = useMemo(() => (selectedModel ? modelGroupVideoOperations(config, selectedModel) : []), [config, selectedModel]);
-    const referenceLimits = useMemo<CreationAttachmentLimits>(
-        () =>
-            !selectedModel
-                ? { maxImages: 0, maxVideos: 0, maxAudios: 0, maxFiles: 0 }
-                : mode === "video"
-                  ? {
-                        maxImages: videoOperationChoice === "text_to_video" || videoOperationChoice === "audio_to_video" ? 0 : (groupReferenceLimits?.maxImages ?? videoProfile.references.maxImages),
-                        maxVideos: videoOperationChoice === "auto" || videoOperationChoice === "reference_to_video" ? (groupReferenceLimits?.maxVideos ?? videoProfile.references.maxVideos) : 0,
-                        maxAudios: videoOperationChoice === "text_to_video" ? 0 : (groupReferenceLimits?.maxAudios ?? videoProfile.references.maxAudios),
-                        maxFiles: 0,
-                    }
-                  : mode === "image"
-                    ? { maxImages: groupReferenceLimits?.maxImages ?? imageProfile.references.maxImages, maxVideos: 0, maxAudios: 0, maxFiles: 0 }
-                    : { maxImages: 6, maxVideos: 6, maxAudios: 0, maxFiles: 6 },
-        [groupReferenceLimits, imageProfile.references.maxImages, mode, selectedModel, videoOperationChoice, videoProfile.references.maxAudios, videoProfile.references.maxImages, videoProfile.references.maxVideos],
-    );
-    const maxReferences = mode === "text" ? 6 : referenceLimits.maxImages + referenceLimits.maxVideos + referenceLimits.maxAudios;
-    const referenceImageSize = useMemo(() => {
-        const imageAttachments = attachments.filter(isImageAttachment);
-        if (imageAttachments.length !== 1) return undefined;
-        const { width, height } = imageAttachments[0];
-        if (typeof width !== "number" || typeof height !== "number" || width <= 0 || height <= 0) return undefined;
-        return { width, height };
-    }, [attachments]);
+    const { preferredModel, requestedVideoOperation, modelRequirements, selectedModel, imageProfile, videoProfile, videoOperations, referenceLimits, maxReferences, referenceImageSize } = useCreationModelWorkflow({
+        config,
+        mode,
+        prompt,
+        attachments,
+        ratio,
+        seconds,
+        quality,
+        videoQuality,
+        count,
+        videoOperationChoice,
+    });
     const mentionReferences = useMemo(() => buildCreationMentionReferences(addedSkills, attachments, draftReferences), [addedSkills, attachments, draftReferences]);
     const isEmpty = !activeConversation?.messages.length;
     const shots = useMemo(() => shotsFromMessages(activeConversation?.messages || []), [activeConversation]);
