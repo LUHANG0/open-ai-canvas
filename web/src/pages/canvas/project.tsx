@@ -1,12 +1,10 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Dispatch, SetStateAction } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useParams, useSearchParams } from "react-router";
 import { useConfigStore, useEffectiveConfig } from "@/stores/use-config-store";
 import { uploadMediaFile } from "@/services/file-storage";
 import { readLocalRuntimeBootstrapState } from "@/services/local-runtime-bootstrap";
-import { createCanvasGenerationLiveProjectAdapter, registerCanvasGenerationLiveProject } from "@/services/canvas-generation-consumer";
-import { getActiveUserScope } from "@/lib/user-scope";
 import { canvasThemes, type CanvasBackgroundMode } from "@/lib/canvas-theme";
 import { summarizeCanvasContext } from "@/lib/canvas/canvas-context-summary";
 import { shouldAutoConnectCanvasRuntime } from "@/lib/canvas/local-runtime-connection";
@@ -80,6 +78,7 @@ import { useCanvasNodeSharing } from "./use-canvas-node-sharing";
 import { useCanvasTextToImage } from "./use-canvas-text-to-image";
 import { useCanvasLinkedProjectAssetSync, useCanvasLinkedProjectFolderInteractions } from "./use-canvas-linked-project-assets";
 import { useCanvasLinkedProjectStyle } from "./use-canvas-linked-project-style";
+import { useCanvasLiveProject } from "./use-canvas-live-project";
 import { useCanvasTitleEditing, useCanvasWorkspacePreferences, useCanvasWorkspaceTransitions } from "./use-canvas-workspace-shell";
 import { useCanvasProjectImport } from "./use-canvas-project-import";
 import { useCanvasProjectLifecycle } from "./use-canvas-project-lifecycle";
@@ -122,7 +121,6 @@ function InfiniteCanvasPage() {
     const params = useParams<{ id: string }>();
     const [searchParams, setSearchParams] = useSearchParams();
     const projectId = params.id || "";
-    const canvasStorageScope = getActiveUserScope();
     const localAgentConnected = useCanvasAgentStore((state) => state.connected);
     const localAgentActivity = useCanvasAgentStore((state) => state.activity);
     const localAgentEnabled = useCanvasAgentStore((state) => state.enabled);
@@ -199,23 +197,23 @@ function InfiniteCanvasPage() {
     const { tasks: activeTasks } = useCanvasActiveTasks(projectId, projectLoaded);
     const { focusMode, enterFocusMode, exitFocusMode, toggleFocusMode } = useFocusMode();
 
-    const connectionsRef = useRef(connections);
-    const chatSessionsRef = useRef(chatSessions);
-    const activeChatIdRef = useRef(activeChatId);
-    const selectedNodeIdsRef = useRef(selectedNodeIds);
-    const viewportRef = useRef(viewport);
+    const { connectionsRef, chatSessionsRef, activeChatIdRef, selectedNodeIdsRef, viewportRef } = useCanvasLiveProject({
+        projectId,
+        nodesRef,
+        nodes,
+        connections,
+        chatSessions,
+        activeChatId,
+        selectedNodeIds,
+        viewport,
+        setNodes,
+        setConnections,
+        setChatSessions,
+        setActiveChatId,
+    });
     const size = useCanvasViewportMeasurement({ projectId, projectLoaded, containerRef, viewportRef, setViewport });
     const generateNodeRef = useRef<((nodeId: string, mode: CanvasNodeGenerationMode, prompt: string, options?: CanvasNodeGenerationOptions) => Promise<void>) | null>(null);
     const historyRestoreUiRef = useRef<() => void>(() => undefined);
-
-    useEffect(() => {
-        if (!projectId) return;
-        return registerCanvasGenerationLiveProject({
-            scope: canvasStorageScope,
-            projectId,
-            adapter: createCanvasGenerationLiveProjectAdapter({ nodesRef, connectionsRef, chatSessionsRef, activeChatIdRef, setNodes, setConnections, setChatSessions, setActiveChatId }),
-        });
-    }, [canvasStorageScope, projectId]);
 
     const { getHistoryCleanupContext, historyPausedRef, historyState, prepareExternalHistoryUpdate, redoCanvas, resetHistory, undoCanvas } = useCanvasHistory({
         projectLoaded,
@@ -307,15 +305,6 @@ function InfiniteCanvasPage() {
         setIsMiniMapOpen,
         setFocusDockRevealed,
     });
-
-    useLayoutEffect(() => {
-        nodesRef.current = nodes;
-        connectionsRef.current = connections;
-        chatSessionsRef.current = chatSessions;
-        activeChatIdRef.current = activeChatId;
-        selectedNodeIdsRef.current = selectedNodeIds;
-        viewportRef.current = viewport;
-    }, [activeChatId, chatSessions, nodes, connections, selectedNodeIds, viewport]);
 
     const {
         fitCanvasContent,
