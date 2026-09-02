@@ -110,6 +110,16 @@ test("canvas client mount fallback has one owned gate", async () => {
     expect(gateSource).toContain("<CanvasRefreshShell />");
 });
 
+test("short drama guide visibility and toggle stay inside the short drama controller", async () => {
+    const projectSource = await Bun.file(new URL("../src/pages/canvas/project.tsx", import.meta.url)).text();
+    const controllerSource = await Bun.file(new URL("../src/pages/canvas/use-canvas-short-drama.ts", import.meta.url)).text();
+    expect(projectSource).toContain("guide: shortDramaGuide");
+    expect(projectSource).toContain("guideEnabled: shortDramaEnabled && !currentProject?.projectId");
+    expect(projectSource).not.toContain("setShortDramaGuideCollapsed");
+    expect(controllerSource).toContain("guideEnabled && progress.active");
+    expect(controllerSource).toContain("onToggle: toggleGuide");
+});
+
 test("assistant layout reserves the left dock and low zoom keeps video play reachable", async () => {
     const css = await Bun.file(new URL("../src/pages/canvas/canvas-editor-pc.css", import.meta.url)).text();
     const content = await Bun.file(new URL("../src/components/canvas/canvas-node-content.tsx", import.meta.url)).text();

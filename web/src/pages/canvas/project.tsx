@@ -786,12 +786,11 @@ function InfiniteCanvasPage() {
     const {
         activateStep: activateShortDramaStep,
         createPipeline: createShortDramaPipeline,
-        guideCollapsed: shortDramaGuideCollapsed,
+        guide: shortDramaGuide,
         openStoryInput,
-        progress: shortDramaProgress,
-        setGuideCollapsed: setShortDramaGuideCollapsed,
         skipGuide: skipShortDramaGuide,
     } = useCanvasShortDrama({
+        guideEnabled: shortDramaEnabled && !currentProject?.projectId,
         nodes,
         connections,
         nodesRef,
@@ -807,8 +806,6 @@ function InfiniteCanvasPage() {
         focusCanvasNode,
         openTextEditor: openTextNodeEditor,
     });
-
-    const shortDramaGuide = shortDramaEnabled && !currentProject?.projectId && shortDramaProgress.active ? { progress: shortDramaProgress, collapsed: shortDramaGuideCollapsed, onToggle: () => setShortDramaGuideCollapsed((value) => !value) } : undefined;
 
     const clearCanvas = useCanvasClear({
         setNodes,
