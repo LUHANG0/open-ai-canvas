@@ -188,11 +188,10 @@ function InfiniteCanvasPage() {
     const codexAutoConnect = shouldAutoConnectCanvasRuntime(searchParams);
     const codexCompactAgent = codexAutoConnect && readLocalRuntimeBootstrapState().legacyDeepLinkRejected;
     const [shortcutRequestNonce, setShortcutRequestNonce] = useState(0);
-    const [cinematicAgentEntry, setCinematicAgentEntry] = useState(false);
     const { assistantWidth, focusDockRevealed, mediaPerformanceMode, setAssistantWidth, setFocusDockRevealed, setMediaPerformanceMode, setWorkspaceMode, workspaceMode } = useCanvasWorkspacePreferences({
         preloadAssistant: loadCanvasAssistantPanel,
     });
-    const { agentMode, assistantClosing, assistantMounted, assistantOpen, closeAgent, openAgent, setAgentMode } = useCanvasAssistantVisibility();
+    const { agentMode, assistantClosing, assistantMounted, assistantOpen, cinematicAgentEntry, closeAgent, consumeCinematicAgentEntry, openAgent, openCinematicAgent, setAgentMode } = useCanvasAssistantVisibility();
     const { tasks: activeTasks } = useCanvasActiveTasks(projectId, projectLoaded);
     const { focusMode, enterFocusMode, exitFocusMode, toggleFocusMode } = useFocusMode();
 
@@ -930,8 +929,6 @@ function InfiniteCanvasPage() {
         beginBatchConnection: () => beginBatchConnectionMode(Array.from(selectedNodeIdsRef.current)),
     });
 
-    const consumeCinematicAgentEntry = useCallback(() => setCinematicAgentEntry(false), []);
-
     const { handleCanvasContextMenu, handleConnectionContextMenu, handleConnectionSelect, handleNodeContextMenu, pasteAtPosition } = useCanvasContextInteractions({
         closeConnectionCreateMenu,
         pasteCopiedNodes,
@@ -1053,9 +1050,7 @@ function InfiniteCanvasPage() {
         onUploadRequest: handleUploadRequest,
         onCreateNode: createNode,
         onCreatePipeline: createShortDramaPipeline,
-        setCinematicAgentEntry,
-        setAgentMode,
-        openAgent,
+        openCinematicAgent,
         onOpenAssets: openProjectAssets,
         onInsertProjectChapter: handleProjectChapterInsert,
     });

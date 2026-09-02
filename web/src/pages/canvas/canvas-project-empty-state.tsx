@@ -20,27 +20,19 @@ type CanvasProjectEmptyStateOptions = {
     onInsertProjectChapter: (chapter: ProjectChapterInsert) => void | Promise<void>;
 };
 
-export function activateCanvasEmptyStateAgent(setCinematicAgentEntry: (active: boolean) => void, setAgentMode: (mode: "online") => void, openAgent: (mode: "online") => void) {
-    setCinematicAgentEntry(true);
-    setAgentMode("online");
-    openAgent("online");
-}
-
 type CanvasProjectEmptyStateEntryOptions = Omit<CanvasProjectEmptyStateOptions, "onUpload" | "onAddText" | "onAddScript" | "onOpenAgent"> & {
     onUploadRequest: () => void;
     onCreateNode: (type: CanvasNodeType) => void;
-    setCinematicAgentEntry: (active: boolean) => void;
-    setAgentMode: (mode: "online") => void;
-    openAgent: (mode: "online") => void;
+    openCinematicAgent: () => void;
 };
 
-export function renderCanvasProjectEmptyStateEntry({ onUploadRequest, onCreateNode, setCinematicAgentEntry, setAgentMode, openAgent, ...options }: CanvasProjectEmptyStateEntryOptions) {
+export function renderCanvasProjectEmptyStateEntry({ onUploadRequest, onCreateNode, openCinematicAgent, ...options }: CanvasProjectEmptyStateEntryOptions) {
     return renderCanvasProjectEmptyState({
         ...options,
         onUpload: onUploadRequest,
         onAddText: () => onCreateNode(CanvasNodeType.Text),
         onAddScript: () => onCreateNode(CanvasNodeType.Script),
-        onOpenAgent: () => activateCanvasEmptyStateAgent(setCinematicAgentEntry, setAgentMode, openAgent),
+        onOpenAgent: openCinematicAgent,
     });
 }
 
