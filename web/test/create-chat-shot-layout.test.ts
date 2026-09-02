@@ -54,7 +54,7 @@ function sourceSection(source: string, startMarker: string, endMarker: string) {
 
 describe("PC creation chat and storyboard director workbench regression gates", () => {
     test("keeps the director workbench PC-only and exposes the fixed mode toolbar in the empty state", async () => {
-        const [source, styles] = await Promise.all([read("../src/pages/create/index.tsx"), read("../src/pages/create/creation-workspace.css")]);
+        const [source, toolbarSource, styles] = await Promise.all([read("../src/pages/create/index.tsx"), read("../src/pages/create/creation-workspace-toolbar.tsx"), read("../src/pages/create/creation-workspace.css")]);
         const desktopStart = styles.indexOf("@media (min-width: 1024px)");
         expect(desktopStart).toBeGreaterThanOrEqual(0);
         const preDesktopStyles = styles.slice(0, desktopStart);
@@ -70,6 +70,10 @@ describe("PC creation chat and storyboard director workbench regression gates", 
         expect(emptyRender).toContain('viewMode === "storyboard"');
         expect(emptyRender).toContain('className="creation-empty-workspace creation-scrollbar"');
         expect((source.match(/<CreationWorkspaceToolbar/g) || []).length).toBeGreaterThanOrEqual(3);
+        expect(source).toContain('from "./creation-workspace-toolbar"');
+        expect(source).not.toContain("function CreationWorkspaceToolbar");
+        expect(toolbarSource).toContain("export function CreationHistoryDrawer");
+        expect(toolbarSource).toContain("export function CreationWorkspaceToolbar");
         expectRuleWith(desktopStyles, ".creation-home .creation-workspace-toolbar", [/display:\s*grid/, /height:\s*52px/, /grid-template-columns:\s*minmax\([^;]+,\s*1fr\)\s+248px\s+minmax\([^;]+,\s*1fr\)/]);
         expectRuleWith(desktopStyles, ".creation-home > .creation-workspace-toolbar + .creation-empty-workspace", [/min-height:\s*0/, /flex:\s*1\s+1\s+auto/]);
     });
@@ -177,9 +181,8 @@ describe("PC creation chat and storyboard director workbench regression gates", 
     });
 
     test("uses ordered-list and button semantics with aria-current instead of a fake listbox", async () => {
-        const source = await read("../src/pages/create/index.tsx");
+        const [source, toolbar] = await Promise.all([read("../src/pages/create/index.tsx"), read("../src/pages/create/creation-workspace-toolbar.tsx")]);
         const rail = sourceSection(source, "function StoryboardShotRail", "function StoryboardComposerContext");
-        const toolbar = sourceSection(source, "function CreationWorkspaceToolbar", "function CreationMessageView");
 
         expect(rail).toContain('<ol className="storyboard-editor-rail-list creation-scrollbar" aria-label="镜头列表">');
         expect(rail).toContain('aria-current={active ? "true" : undefined}');
@@ -197,7 +200,7 @@ describe("PC creation chat and storyboard director workbench regression gates", 
         const [source, styles] = await Promise.all([read("../src/pages/create/index.tsx"), read("../src/pages/create/creation-workspace.css")]);
         const stateContract = sourceSection(source, "type StoryboardShotState", "function storyboardShotTitle");
         const shotCard = sourceSection(source, "function StoryboardShotCard", "function StoryboardNextShotCard");
-        const result = sourceSection(source, "function StoryboardShotResult", "function formatMessageTime");
+        const result = sourceSection(source, "function StoryboardShotResult", "async function buildTextMessageContent");
         const desktopStyles = styles.slice(styles.indexOf("@media (min-width: 1024px)"));
 
         expect(stateContract).toContain('cancelled: "已停止"');
@@ -269,10 +272,10 @@ describe("PC creation chat and storyboard director workbench regression gates", 
     });
 
     test("retains preview, download, retry, canvas handoff, upload, and generation fingerprints", async () => {
-        const source = await read("../src/pages/create/index.tsx");
+        const [source, messageSource] = await Promise.all([read("../src/pages/create/index.tsx"), read("../src/pages/create/creation-message-view.tsx")]);
         const shotCard = sourceSection(source, "function StoryboardShotCard", "function StoryboardNextShotCard");
-        const result = sourceSection(source, "function StoryboardShotResult", "function formatMessageTime");
-        const downloads = sourceSection(source, "function CreationResultDownloads", "function CreationMediaPending");
+        const result = sourceSection(source, "function StoryboardShotResult", "async function buildTextMessageContent");
+        const downloads = sourceSection(messageSource, "export function CreationResultDownloads", "function CreationMediaPending");
         const composer = sourceSection(source, "function CreationComposer", "function ModePicker");
 
         expect(source).toContain("creationCanvasHandoffPath(resultAssetIds, resultUrls.length)");
