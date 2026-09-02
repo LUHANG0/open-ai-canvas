@@ -48,6 +48,7 @@ import { CanvasProjectHeadlessAgent, CanvasProjectUtilityDialogs } from "./canva
 import type { CanvasNodeGraphContextValue } from "@/components/canvas/canvas-node-graph-context";
 import { CanvasRefreshShell } from "./canvas-refresh-shell";
 import { useCanvasConnectionController } from "./use-canvas-connection-controller";
+import { useCanvasClear } from "./use-canvas-clear";
 import { useCanvasContextInteractions } from "./use-canvas-context-interactions";
 import { useCanvasAgentOperations, useCanvasAssistantSnapshot } from "./use-canvas-agent-operations";
 import { useCanvasAssistantVisibility } from "./use-canvas-assistant-visibility";
@@ -862,25 +863,26 @@ function InfiniteCanvasPage() {
 
     const shortDramaGuide = shortDramaEnabled && !currentProject?.projectId && shortDramaProgress.active ? { progress: shortDramaProgress, collapsed: shortDramaGuideCollapsed, onToggle: () => setShortDramaGuideCollapsed((value) => !value) } : undefined;
 
-    const clearCanvas = useCallback(() => {
-        // 清空操作仍可撤销，因此绘图文档在项目永久删除前继续保留。
-        setNodes([]);
-        setConnections([]);
-        setTextEditorNodeId(null);
-        setDrawingNodeId(null);
-        setInfoNodeId(null);
-        setSubtitleNodeId(null);
-        setCropNodeId(null);
-        setMaskEditNodeId(null);
-        setAnnotationNodeId(null);
-        setAngleNodeId(null);
-        setEmotionNodeId(null);
-        setPreviewNodeId(null);
-        setRunningNodeId(null);
-        deselectCanvas();
-        setClearConfirmOpen(false);
-        clearCanvasFiles();
-    }, [clearCanvasFiles, deselectCanvas, setEmotionNodeId]);
+    const clearCanvas = useCanvasClear({
+        setNodes,
+        setConnections,
+        resetters: {
+            textEditor: setTextEditorNodeId,
+            drawing: setDrawingNodeId,
+            info: setInfoNodeId,
+            subtitle: setSubtitleNodeId,
+            crop: setCropNodeId,
+            maskEdit: setMaskEditNodeId,
+            annotation: setAnnotationNodeId,
+            angle: setAngleNodeId,
+            emotion: setEmotionNodeId,
+            preview: setPreviewNodeId,
+            running: setRunningNodeId,
+        },
+        deselectCanvas,
+        setClearConfirmOpen,
+        clearCanvasFiles,
+    });
 
     useCanvasKeyboard({
         nodesRef,
