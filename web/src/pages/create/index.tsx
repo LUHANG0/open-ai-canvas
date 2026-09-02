@@ -3,11 +3,10 @@ import { App, Spin, Tooltip } from "antd";
 import { History } from "lucide-react";
 
 import { AssetLibraryPickerModal } from "@/components/assets/asset-library-picker-modal";
-import { createGenerationBatchRetryContexts, createGenerationRetryContext } from "@/lib/canvas/canvas-project-generation";
 import { createClientId } from "@/lib/client-id";
 import { generationErrorCode, generationErrorMessage } from "@/lib/generation-error";
 import { usePcBrandViewport } from "@/hooks/use-pc-brand-viewport";
-import { modelCapabilityConfigFor, normalizeImageValue, normalizeVideoValue } from "@/lib/model-capabilities";
+import { modelCapabilityConfigFor } from "@/lib/model-capabilities";
 import { modelGroupReferenceLimits, modelGroupVideoOperations, resolveCompatibleModel, type ModelInputSummary, type ModelRequirements } from "@/lib/model-selection";
 import { isGenerationTaskCancelled } from "@/services/api/generation-task";
 import { listAddedSkills, type Skill } from "@/services/api/skills";
@@ -37,18 +36,13 @@ import { StoryboardComposerContext, StoryboardNextShotCard, StoryboardShotCard, 
 import { executeCreationGeneration, type CreationRetryContext } from "./creation-generation-executor";
 import { isImageAttachment } from "./creation-task-lifecycle";
 import { creationInputSummary, normalizeCreationVideoAttachments, prepareCreationSubmission, resolvedCreationVideoOperation } from "./creation-submit-preparation";
-import type { CreationConversation, CreationMessage, CreationSettings, CreationShot, CreationVideoOperationChoice, CreationViewMode } from "./creation-types";
+import type { CreationConversation, CreationMessage, CreationShot, CreationVideoOperationChoice, CreationViewMode } from "./creation-types";
 import { useCreationAssetWorkflow } from "./use-creation-asset-workflow";
 import { useCreationConversationWorkflow } from "./use-creation-conversation-workflow";
+import { useCreationDraftWorkflow, type CreationRetryTarget } from "./use-creation-draft-workflow";
 import { CreationHistoryDrawer, CreationWorkspaceToolbar } from "./creation-workspace-toolbar";
 import "./creation-workspace.css";
 
-type CreationRetryTarget = {
-    conversationId: string;
-    userMessageId: string;
-    assistantMessageId: string;
-    shotId: string;
-};
 const modeLabels: Record<CreationMode, string> = { text: "文本", image: "图片", video: "视频" };
 
 function newMessage(role: CreationMessage["role"], content: string, extra: Partial<CreationMessage> = {}): CreationMessage {
@@ -102,9 +96,6 @@ export default function CreatePage() {
     const [videoOperationChoice, setVideoOperationChoice] = useState<CreationVideoOperationChoice>("auto");
     const [busy, setBusy] = useState(false);
     const [viewMode, setViewMode] = useState<CreationViewMode>("chat");
-    const [selectedShotId, setSelectedShotId] = useState("");
-    const [composingNextShot, setComposingNextShot] = useState(false);
-    const [variantSourceShotId, setVariantSourceShotId] = useState("");
     const [storyboardTimelineOpen, setStoryboardTimelineOpen] = useState(true);
     const [historyOpen, setHistoryOpen] = useState(false);
     const abortRef = useRef<AbortController | null>(null);
@@ -112,11 +103,9 @@ export default function CreatePage() {
     const composerFocusRef = useRef<HTMLTextAreaElement>(null);
     const threadScrollRef = useRef<HTMLElement>(null);
     const followLatestMessageRef = useRef(true);
-    const retryPreparingRef = useRef(new Set<string>());
-    const pendingRetryRef = useRef<{ context: CreationRetryContext; lockKey: string; target: CreationRetryTarget } | null>(null);
-    const [retrySequence, setRetrySequence] = useState(0);
-    const draftSettingsRestoreRef = useRef<{ mode: CreationMode; settings: CreationSettings } | null>(null);
-    const [draftSettingsRestoreRevision, setDraftSettingsRestoreRevision] = useState(0);
+    const followLatestMessage = useCallback(() => {
+        followLatestMessageRef.current = true;
+    }, []);
     promptRef.current = prompt;
     attachmentsRef.current = attachments;
 
@@ -175,52 +164,51 @@ export default function CreatePage() {
     const mentionReferences = useMemo(() => buildCreationMentionReferences(addedSkills, attachments, draftReferences), [addedSkills, attachments, draftReferences]);
     const isEmpty = !activeConversation?.messages.length;
     const shots = useMemo(() => shotsFromMessages(activeConversation?.messages || []), [activeConversation]);
+    const hasStoryboardDraft = Boolean(prompt.trim() || attachments.length || draftReferences.length);
+    const {
+        selectedShotId,
+        composingNextShot,
+        variantSourceShotId,
+        pendingRetry,
+        retryFailedMessage,
+        createVariant,
+        beginComposeNextShot,
+        cancelComposeNextShot,
+        selectStoryboardShot,
+        beginVariantFromShot,
+        updateComposerPrompt,
+        resetStoryboardDraftState,
+        selectSubmittedShot,
+        releaseRetryLock,
+        clearPendingRetry,
+    } = useCreationDraftWorkflow({
+        activeConversation,
+        busy,
+        pcBrandV2,
+        viewMode,
+        hasStoryboardDraft,
+        mode,
+        preferredModel,
+        imageProfile,
+        videoProfile,
+        count,
+        setMode,
+        setPrompt,
+        setAttachments,
+        setDraftReferences,
+        setRatio,
+        setSeconds,
+        setQuality,
+        setVideoQuality,
+        setCount,
+        setVideoOperationChoice,
+        updateConfig,
+        composerFocusRef,
+        onFollowLatest: followLatestMessage,
+        toast,
+    });
     const selectedShotIndex = selectedShotId ? shots.findIndex((shot) => shot.id === selectedShotId) : -1;
     const visibleShotIndex = shots.length ? (selectedShotIndex >= 0 ? selectedShotIndex : shots.length - 1) : -1;
-
-    useEffect(() => {
-        if (mode !== "image") return;
-        const pendingRestore = draftSettingsRestoreRef.current;
-        if (pendingRestore?.mode === "image") {
-            const restored = pendingRestore.settings;
-            setRatio(restored.ratio);
-            setQuality(restored.quality);
-            setCount(restored.count);
-            draftSettingsRestoreRef.current = null;
-            return;
-        }
-        // 前台逻辑模型的默认参数优先于旧的全局创作参数；否则旧的合法值会一直覆盖后台刚配置的默认值。
-        const normalized = normalizeImageValue(imageProfile, {
-            size: imageProfile.size.default,
-            quality: imageProfile.quality.default,
-            count,
-        });
-        setRatio(normalized.size);
-        setQuality(normalized.quality);
-        setCount(normalized.count);
-    }, [draftSettingsRestoreRevision, mode, preferredModel]);
-
-    useEffect(() => {
-        if (mode !== "video") return;
-        const pendingRestore = draftSettingsRestoreRef.current;
-        if (pendingRestore?.mode === "video") {
-            const restored = pendingRestore.settings;
-            setRatio(restored.ratio);
-            setSeconds(restored.seconds);
-            setVideoQuality(restored.videoQuality);
-            draftSettingsRestoreRef.current = null;
-            return;
-        }
-        // 前台逻辑模型的默认参数必须直接落到创作端状态，提交任务时才不会被旧状态覆盖。
-        const normalized = normalizeVideoValue(videoProfile, {
-            seconds: String(videoProfile.duration.default),
-            ratio: videoProfile.defaultRatio,
-            resolution: videoProfile.defaultResolution,
-        });
-        setSeconds(normalized.seconds);
-        setRatio(normalized.ratio);
-        setVideoQuality(normalized.resolution.replace(/p$/i, ""));
-    }, [draftSettingsRestoreRevision, mode, preferredModel]);
 
     useEffect(() => {
         if (mode !== "video" || !requestedVideoOperation) return;
@@ -360,27 +348,25 @@ export default function CreatePage() {
     }, []);
 
     const submit = async (retryContext?: CreationRetryContext, retryLockKey?: string, retryTarget?: CreationRetryTarget) => {
-        const releaseRetryLock = () => {
-            if (retryLockKey) retryPreparingRef.current.delete(retryLockKey);
-        };
+        const releaseCurrentRetryLock = () => releaseRetryLock(retryLockKey);
         const text = prompt.trim();
         if (pendingUploadCountRef.current > 0) {
             toast.info("素材仍在上传，完成后才能提交生成");
-            releaseRetryLock();
+            releaseCurrentRetryLock();
             return;
         }
         if (!text || busy || !activeConversation) {
-            releaseRetryLock();
+            releaseCurrentRetryLock();
             return;
         }
         if (retryTarget && activeConversation.id !== retryTarget.conversationId) {
             toast.warning("已切换到其他创作，本次重试未执行");
-            releaseRetryLock();
+            releaseCurrentRetryLock();
             return;
         }
         if (!selectedModel) {
             toast.warning(`请先在设置中配置${modeLabels[mode]}模型`);
-            releaseRetryLock();
+            releaseCurrentRetryLock();
             return;
         }
         const preparation = prepareCreationSubmission({
@@ -404,7 +390,7 @@ export default function CreatePage() {
         });
         if (!preparation.ok) {
             toast[preparation.level](preparation.message);
-            releaseRetryLock();
+            releaseCurrentRetryLock();
             return;
         }
         const { submissionAttachments, videoOperation, settings, references, skillReferences, skillPrompt } = preparation;
@@ -418,7 +404,7 @@ export default function CreatePage() {
             });
         } catch (error) {
             toast.error(error instanceof Error ? error.message : "技能上下文加载失败");
-            releaseRetryLock();
+            releaseCurrentRetryLock();
             return;
         }
         const expandedPrompt = skillExecution.prompt;
@@ -469,9 +455,7 @@ export default function CreatePage() {
         setPrompt("");
         setAttachments([]);
         setDraftReferences([]);
-        setSelectedShotId(userMessage.id);
-        setComposingNextShot(false);
-        setVariantSourceShotId("");
+        selectSubmittedShot(userMessage.id);
         setBusy(true);
         const controller = new AbortController();
         const requestLifecycle = beginGenerationConsumer(controller.signal);
@@ -510,7 +494,7 @@ export default function CreatePage() {
             }));
         } finally {
             requestLifecycle.release();
-            releaseRetryLock();
+            releaseCurrentRetryLock();
             if (abortRef.current === controller) {
                 abortRef.current = null;
                 setBusy(false);
@@ -519,12 +503,10 @@ export default function CreatePage() {
     };
 
     useEffect(() => {
-        if (!retrySequence) return;
-        const pending = pendingRetryRef.current;
-        if (!pending) return;
-        pendingRetryRef.current = null;
-        void submit(pending.context, pending.lockKey, pending.target);
-    }, [retrySequence]);
+        if (!pendingRetry) return;
+        clearPendingRetry();
+        void submit(pendingRetry.context, pendingRetry.lockKey, pendingRetry.target);
+    }, [pendingRetry]);
 
     const startNewConversation = () => {
         if (pendingUploadCountRef.current > 0) {
@@ -537,9 +519,7 @@ export default function CreatePage() {
         setAttachments([]);
         setVideoOperationChoice("auto");
         setDraftReferences([]);
-        setSelectedShotId("");
-        setComposingNextShot(false);
-        setVariantSourceShotId("");
+        resetStoryboardDraftState();
         setHistoryOpen(false);
     };
 
@@ -554,9 +534,7 @@ export default function CreatePage() {
         setAttachments([]);
         setVideoOperationChoice("auto");
         setDraftReferences([]);
-        setSelectedShotId("");
-        setComposingNextShot(false);
-        setVariantSourceShotId("");
+        resetStoryboardDraftState();
         setHistoryOpen(false);
     };
 
@@ -579,9 +557,7 @@ export default function CreatePage() {
                         setAttachments([]);
                         setVideoOperationChoice("auto");
                         setDraftReferences([]);
-                        setSelectedShotId("");
-                        setComposingNextShot(false);
-                        setVariantSourceShotId("");
+                        resetStoryboardDraftState();
                     }
                     toast.success("历史对话已删除，素材仍保留");
                 } catch (error) {
@@ -590,81 +566,6 @@ export default function CreatePage() {
                 }
             },
         });
-    };
-
-    const restoreMessageDraft = (item: CreationMessage) => {
-        const nextMode = item.mode || "text";
-        const nextSettings = item.settings;
-        draftSettingsRestoreRef.current = nextSettings && nextMode !== "text" ? { mode: nextMode, settings: nextSettings } : null;
-        setMode(nextMode);
-        setPrompt(item.content);
-        setAttachments(item.attachments ? [...item.attachments] : []);
-        setDraftReferences(item.references ? [...item.references] : []);
-        if (item.model) updateConfig(nextMode === "text" ? "textModel" : nextMode === "image" ? "imageModel" : "videoModel", item.model);
-        if (!nextSettings) {
-            setVideoOperationChoice("auto");
-            setDraftSettingsRestoreRevision((current) => current + 1);
-            return;
-        }
-        setRatio(nextSettings.ratio);
-        setSeconds(nextSettings.seconds);
-        setQuality(nextSettings.quality);
-        setVideoQuality(nextSettings.videoQuality);
-        setCount(nextSettings.count);
-        setVideoOperationChoice(nextSettings.videoOperation || "auto");
-        if (nextMode === "video" && nextSettings.generateAudio !== undefined) updateConfig("videoGenerateAudio", nextSettings.generateAudio);
-        if (nextMode === "video" && nextSettings.watermark !== undefined) updateConfig("videoWatermark", nextSettings.watermark);
-        setDraftSettingsRestoreRevision((current) => current + 1);
-    };
-
-    const retryFailedMessage = async (item: CreationMessage, index: number) => {
-        const previous = item.role === "assistant" ? activeConversation?.messages[index - 1] : item;
-        const assistant = item.role === "assistant" ? item : activeConversation?.messages[index + 1];
-        if (!previous?.content || !assistant || busy || !activeConversation) return;
-        const retryOf = item.taskIds?.[0];
-        const restoreForRetry = (openAsDraft: boolean) => {
-            followLatestMessageRef.current = true;
-            restoreMessageDraft(previous);
-            setSelectedShotId(previous.id);
-            setComposingNextShot(openAsDraft);
-            setVariantSourceShotId(openAsDraft ? previous.id : "");
-        };
-        if (!retryOf) {
-            restoreForRetry(true);
-            toast.info("原镜头已保留，请确认草稿后再次生成");
-            window.requestAnimationFrame(() => composerFocusRef.current?.focus());
-            return;
-        }
-        if (retryPreparingRef.current.has(retryOf)) return;
-        retryPreparingRef.current.add(retryOf);
-        try {
-            const attemptGroupId = item.attemptGroupId || item.retryOf || retryOf;
-            const context: CreationRetryContext = {
-                ...(await createGenerationRetryContext(retryOf, attemptGroupId)),
-                ...(item.taskIds && item.taskIds.length > 1 ? { retryContextsByBatchIndex: await createGenerationBatchRetryContexts(item.taskIds, attemptGroupId) } : {}),
-            };
-            restoreForRetry(false);
-            pendingRetryRef.current = {
-                context,
-                lockKey: retryOf,
-                target: {
-                    conversationId: activeConversation.id,
-                    userMessageId: previous.id,
-                    assistantMessageId: assistant.id,
-                    shotId: previous.id,
-                },
-            };
-            setRetrySequence((current) => current + 1);
-        } catch (error) {
-            retryPreparingRef.current.delete(retryOf);
-            toast.error(generationErrorMessage(error));
-        }
-    };
-
-    const createVariant = (item: CreationMessage, index: number) => {
-        const previous = item.role === "assistant" ? activeConversation?.messages[index - 1] : item;
-        if (!previous?.content || busy) return;
-        restoreMessageDraft(previous);
     };
 
     if (!hydrated || !activeConversation)
@@ -681,40 +582,8 @@ export default function CreatePage() {
     };
 
     const nextShotNumber = shots.length + 1;
-    const hasStoryboardDraft = Boolean(prompt.trim() || attachments.length || draftReferences.length);
     const variantSourceShotIndex = variantSourceShotId ? shots.findIndex((shot) => shot.id === variantSourceShotId) : -1;
     const variantSourceShotNumber = variantSourceShotIndex >= 0 ? variantSourceShotIndex + 1 : undefined;
-
-    const beginComposeNextShot = () => {
-        setComposingNextShot(true);
-        if (!hasStoryboardDraft) setVariantSourceShotId("");
-        window.requestAnimationFrame(() => composerFocusRef.current?.focus());
-    };
-
-    const cancelComposeNextShot = () => {
-        setComposingNextShot(false);
-        if (pcBrandV2 && hasStoryboardDraft) toast.info("草稿已保留在下方输入区");
-    };
-
-    const selectStoryboardShot = (shotId: string) => {
-        setSelectedShotId(shotId);
-        setComposingNextShot(false);
-    };
-
-    const beginVariantFromShot = (shot: CreationShot, shotNumber: number, resultIndex: number) => {
-        if (!shot.result || resultIndex < 0) return;
-        createVariant(shot.result, resultIndex);
-        setVariantSourceShotId(shot.id);
-        setSelectedShotId(shot.id);
-        setComposingNextShot(true);
-        toast.info(`已复用 SC.${String(shotNumber).padStart(2, "0")} 的参数，将创建一个新镜头`);
-        window.requestAnimationFrame(() => composerFocusRef.current?.focus());
-    };
-
-    const updateComposerPrompt = (value: string) => {
-        setPrompt(value);
-        if (pcBrandV2 && viewMode === "storyboard" && value.trim()) setComposingNextShot(true);
-    };
 
     const composerProps = {
         mode,

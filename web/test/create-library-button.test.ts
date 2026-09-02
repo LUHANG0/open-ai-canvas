@@ -14,6 +14,7 @@ function readCreateSource() {
         "../src/pages/create/creation-composer.tsx",
         "../src/pages/create/use-creation-asset-workflow.ts",
         "../src/pages/create/use-creation-conversation-workflow.ts",
+        "../src/pages/create/use-creation-draft-workflow.ts",
         "../src/pages/create/creation-submit-preparation.ts",
         "../src/pages/create/creation-generation-executor.ts",
     ]
@@ -275,8 +276,8 @@ describe("creation library button", () => {
 
         expect(source).toContain("draftSettingsRestoreRef");
         expect(source).toContain('pendingRestore?.mode === "video"');
-        expect(source).toContain('nextMode === "video" && nextSettings.generateAudio !== undefined');
-        expect(source).toContain('nextMode === "video" && nextSettings.watermark !== undefined');
+        expect(source).toContain('draft.mode === "video" && draft.settings.generateAudio !== undefined');
+        expect(source).toContain('draft.mode === "video" && draft.settings.watermark !== undefined');
         expect(source).toContain('setVideoOperationChoice("auto")');
     });
 

@@ -79,10 +79,15 @@ describe("PC creation chat and storyboard director workbench regression gates", 
     });
 
     test("uses stable message-backed shot ids for selection instead of array indexes", async () => {
-        const [source, typesSource, storyboardSource] = await Promise.all([read("../src/pages/create/index.tsx"), read("../src/pages/create/creation-types.ts"), read("../src/pages/create/creation-storyboard-workbench.tsx")]);
+        const [source, draftSource, typesSource, storyboardSource] = await Promise.all([
+            read("../src/pages/create/index.tsx"),
+            read("../src/pages/create/use-creation-draft-workflow.ts"),
+            read("../src/pages/create/creation-types.ts"),
+            read("../src/pages/create/creation-storyboard-workbench.tsx"),
+        ]);
         const projection = sourceSection(source, "function shotsFromMessages", "export default function CreatePage");
-        const selection = sourceSection(source, "const shots = useMemo", "useEffect(() => {");
-        const selectShot = sourceSection(source, "const selectStoryboardShot", "const beginVariantFromShot");
+        const selection = sourceSection(source, "const shots = useMemo", "const visibleShotIndex");
+        const selectShot = sourceSection(draftSource, "const selectStoryboardShot", "const beginVariantFromShot");
         const rail = sourceSection(storyboardSource, "function StoryboardShotRail", "function StoryboardComposerContext");
         const submit = sourceSection(source, "const submit = async", "useEffect(() => {");
 
@@ -99,7 +104,7 @@ describe("PC creation chat and storyboard director workbench regression gates", 
         expect(rail).toContain("onClick={() => onSelect(shot.id)}");
         expect(rail).toContain("activeItemRef.current?.scrollIntoView");
         expect(submit).toContain("...(retryTarget ? { id: retryTarget.shotId } : {})");
-        expect(submit).toContain("setSelectedShotId(userMessage.id)");
+        expect(submit).toContain("selectSubmittedShot(userMessage.id)");
     });
 
     test("renders a vertical shot rail, central preview, right inspector, and bottom composer context", async () => {
@@ -218,14 +223,14 @@ describe("PC creation chat and storyboard director workbench regression gates", 
     });
 
     test("presents variants as a new-shot flow and never as an in-place mutation", async () => {
-        const [source, storyboardSource] = await Promise.all([read("../src/pages/create/index.tsx"), read("../src/pages/create/creation-storyboard-workbench.tsx")]);
-        const variant = sourceSection(source, "const beginVariantFromShot", "const updateComposerPrompt");
+        const [source, draftSource, storyboardSource] = await Promise.all([read("../src/pages/create/index.tsx"), read("../src/pages/create/use-creation-draft-workflow.ts"), read("../src/pages/create/creation-storyboard-workbench.tsx")]);
+        const variant = sourceSection(draftSource, "const beginVariantFromShot", "const updateComposerPrompt");
         const context = sourceSection(storyboardSource, "function StoryboardComposerContext", "function StoryboardToolbar");
         const shotCard = sourceSection(storyboardSource, "function StoryboardShotCard", "function StoryboardNextShotCard");
         const stage = sourceSection(source, "const storyboardStageContent", "return (");
         const nextCard = sourceSection(storyboardSource, "function StoryboardNextShotCard", "function StoryboardBriefAttachments");
-        const promptUpdate = sourceSection(source, "const updateComposerPrompt", "const composerProps");
-        const composeControls = sourceSection(source, "const cancelComposeNextShot", "const selectStoryboardShot");
+        const promptUpdate = sourceSection(draftSource, "const updateComposerPrompt", "const resetStoryboardDraftState");
+        const composeControls = sourceSection(draftSource, "const cancelComposeNextShot", "const selectStoryboardShot");
 
         expect(variant).toContain("createVariant(shot.result, resultIndex)");
         expect(variant).toContain("setVariantSourceShotId(shot.id)");
@@ -244,19 +249,19 @@ describe("PC creation chat and storyboard director workbench regression gates", 
     });
 
     test("keeps failed-shot retry non-destructive until validation and guards conversation changes", async () => {
-        const [source, preparationSource] = await Promise.all([read("../src/pages/create/index.tsx"), read("../src/pages/create/creation-submit-preparation.ts")]);
+        const [source, draftSource, preparationSource] = await Promise.all([read("../src/pages/create/index.tsx"), read("../src/pages/create/use-creation-draft-workflow.ts"), read("../src/pages/create/creation-submit-preparation.ts")]);
         const submit = sourceSection(source, "const submit = async", "useEffect(() => {");
-        const retry = sourceSection(source, "const retryFailedMessage", "const createVariant");
-        const retryEffect = sourceSection(source, "if (!retrySequence) return", "const startNewConversation");
+        const retry = sourceSection(draftSource, "const retryFailedMessage", "const createVariant");
+        const retryEffect = sourceSection(source, "if (!pendingRetry) return", "const startNewConversation");
 
         expect(retry).not.toContain("updateActive(");
         expect(retry).not.toContain("removedIds");
         expect(retry).not.toContain("messages.filter");
         expect(retry).toContain("原镜头已保留，请确认草稿后再次生成");
         expect(retry).toContain("conversationId: activeConversation.id");
-        expect(retry).toContain("userMessageId: previous.id");
-        expect(retry).toContain("assistantMessageId: assistant.id");
-        expect(retryEffect).toContain("void submit(pending.context, pending.lockKey, pending.target)");
+        expect(retry).toContain("userMessageId: pair.userMessage.id");
+        expect(retry).toContain("assistantMessageId: pair.assistantMessage.id");
+        expect(retryEffect).toContain("void submit(pendingRetry.context, pendingRetry.lockKey, pendingRetry.target)");
 
         const guardPosition = submit.indexOf("if (retryTarget && activeConversation.id !== retryTarget.conversationId)");
         const validationPosition = submit.indexOf("const preparation = prepareCreationSubmission");
@@ -271,7 +276,7 @@ describe("PC creation chat and storyboard director workbench regression gates", 
         expect(submit).toContain('toast.warning("已切换到其他创作，本次重试未执行")');
         expect(submit).toContain("if (retryTarget && conversation.id === retryTarget.conversationId)");
         expect(submit).toContain("retained.splice(insertAt >= 0 ? insertAt : retained.length, 0, userMessage, assistantMessage)");
-        expect(submit).toContain("setSelectedShotId(userMessage.id)");
+        expect(submit).toContain("selectSubmittedShot(userMessage.id)");
     });
 
     test("retains preview, download, retry, canvas handoff, upload, and generation fingerprints", async () => {
