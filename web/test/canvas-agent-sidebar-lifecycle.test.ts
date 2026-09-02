@@ -33,10 +33,10 @@ describe("PC 画布 Agent 侧栏生命周期", () => {
     });
 
     test("首次挂载、收起保活、聚焦模式和空白点击的既有路由保持不变", async () => {
-        const [visibility, workspace, focus] = await Promise.all([
+        const [visibility, workspace, project] = await Promise.all([
             readSource("../src/pages/canvas/use-canvas-assistant-visibility.ts"),
             readSource("../src/pages/canvas/use-canvas-workspace-shell.ts"),
-            readSource("../src/pages/canvas/use-canvas-node-focus.ts"),
+            readSource("../src/pages/canvas/project.tsx"),
         ]);
 
         expect(visibility).toContain("setAssistantMounted(true)");
@@ -45,6 +45,6 @@ describe("PC 画布 Agent 侧栏生命周期", () => {
         expect(workspace).toContain('if (action === "set-local-mode") setAgentMode("local")');
         expect(workspace).toContain('if (action === "open-local-agent") openAgent("local")');
         expect(workspace).toContain("if (!enteredFocus) return");
-        expect(focus).toContain("applyCanvasBlankClick(handleCanvasDeselect, closeAgent)");
+        expect(project).toContain("applyCanvasBlankClick(deselectCanvas, closeAgent)");
     });
 });

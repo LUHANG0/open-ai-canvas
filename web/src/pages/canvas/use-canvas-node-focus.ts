@@ -36,7 +36,6 @@ type UseCanvasNodeFocusOptions = {
     setCharacterReferenceNodeId: Dispatch<SetStateAction<string | null>>;
     setDrawingNodeId: Dispatch<SetStateAction<string | null>>;
     setPortraitClearanceNodeId: Dispatch<SetStateAction<string | null>>;
-    closeAgent: () => void;
 };
 
 export function useCanvasNodeFocus({
@@ -53,7 +52,6 @@ export function useCanvasNodeFocus({
     setCharacterReferenceNodeId,
     setDrawingNodeId,
     setPortraitClearanceNodeId,
-    closeAgent,
 }: UseCanvasNodeFocusOptions) {
     const clearTransientChrome = useCallback(() => {
         setContextMenu(null);
@@ -97,8 +95,6 @@ export function useCanvasNodeFocus({
         clearTransientChrome();
         setDialogNodeId(null);
     }, [clearTransientChrome, setDialogNodeId]);
-
-    const handleCanvasBlankClick = useCallback(() => applyCanvasBlankClick(handleCanvasDeselect, closeAgent), [closeAgent, handleCanvasDeselect]);
 
     const openTextNodeEditor = useCallback(
         (node: CanvasNodeData) => {
@@ -147,7 +143,6 @@ export function useCanvasNodeFocus({
 
     return {
         handleCanvasDeselect,
-        handleCanvasBlankClick,
         handleCanvasSelectionStart,
         handleNodeInteractionStart,
         handleSelectedNodeClick,

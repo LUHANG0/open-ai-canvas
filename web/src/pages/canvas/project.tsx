@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { uploadMediaFile } from "@/services/file-storage";
 import { flushCanvasStorePersistence } from "@/stores/canvas/use-canvas-store";
 import { useFocusMode } from "@/hooks/use-focus-mode";
@@ -52,7 +52,7 @@ import { useCanvasKeyboard } from "./use-canvas-keyboard";
 import { useCanvasMediaTools } from "./use-canvas-media-tools";
 import { useCanvasNodeEditor } from "./use-canvas-node-editor";
 import { useCanvasNodeActionBindings } from "./use-canvas-node-action-bindings";
-import { useCanvasNodeFocus } from "./use-canvas-node-focus";
+import { applyCanvasBlankClick, useCanvasNodeFocus } from "./use-canvas-node-focus";
 import { useCanvasNodeHoverToolbar } from "./use-canvas-node-hover-toolbar";
 import { useCanvasNodeOperations } from "./use-canvas-node-operations";
 import { useCanvasNodeContentRenderer } from "./use-canvas-node-content-renderer";
@@ -473,7 +473,7 @@ function InfiniteCanvasPage() {
         setDrawingNodeId,
     });
 
-    const { handleCanvasBlankClick, handleCanvasDeselect, handleCanvasSelectionStart, handleNodeInteractionStart, handleSelectedNodeClick, openDrawingNode, openPortraitClearance, openTextNodeEditor, selectVideoForPlayback } = useCanvasNodeFocus({
+    const { handleCanvasDeselect, handleCanvasSelectionStart, handleNodeInteractionStart, handleSelectedNodeClick, openDrawingNode, openPortraitClearance, openTextNodeEditor, selectVideoForPlayback } = useCanvasNodeFocus({
         nodesRef,
         selectedNodeIdsRef,
         dialogNodeId,
@@ -487,7 +487,6 @@ function InfiniteCanvasPage() {
         setCharacterReferenceNodeId,
         setDrawingNodeId,
         setPortraitClearanceNodeId,
-        closeAgent,
     });
 
     const { alignmentGuides, cancelSelectionBox, deselectCanvas, dragPreview, frameDropTargetId, handleCanvasMouseDown, handleNodeMouseDown, isNodeDragging, nodeDraggingRef, selectionBoundsElementRef, selectionBox } = useCanvasSelectionController({
@@ -509,6 +508,11 @@ function InfiniteCanvasPage() {
         onDeselect: handleCanvasDeselect,
         onSelectionBoxEnd: () => setCanvasTool((tool) => (tool === "box-select" ? "move" : tool)),
     });
+
+    const handleCanvasBlankClick = useCallback(
+        () => applyCanvasBlankClick(deselectCanvas, closeAgent),
+        [closeAgent, deselectCanvas],
+    );
 
     const { handleCanvasNodeHoverEnd, handleCanvasNodeHoverStart, handleNodeImageSettingsOpenChange, hideNodeToolbar, keepNodeToolbar, nodeImageSettingsOpen, resetNodeHoverToolbar } = useCanvasNodeHoverToolbar({
         dialogNodeId,

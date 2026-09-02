@@ -428,6 +428,37 @@ async function interactionScenario(cdp) {
         "B2 dragged node exposes its focus/selection tools",
     );
 
+    const blankClickPoint = await cdp.evaluate(`(() => {
+        const canvas = document.querySelector('.pc-canvas-infinite');
+        if (!(canvas instanceof HTMLElement)) return null;
+        const rect = canvas.getBoundingClientRect();
+        for (let y = rect.top + 48; y < rect.bottom - 48; y += 56) {
+            for (let x = rect.left + 48; x < rect.right - 48; x += 56) {
+                const hit = document.elementFromPoint(x, y);
+                if (!hit?.closest('.pc-canvas-infinite')) continue;
+                if (hit.closest('[data-node-id],[data-connection-id],[data-canvas-no-zoom]')) continue;
+                return [x, y];
+            }
+        }
+        return null;
+    })()`);
+    assert(Array.isArray(blankClickPoint), "B2a fixture exposes a genuine blank-canvas point", JSON.stringify(blankClickPoint));
+    if (Array.isArray(blankClickPoint)) {
+        await cdp.send("Input.dispatchMouseEvent", { type: "mouseMoved", x: blankClickPoint[0], y: blankClickPoint[1], buttons: 0 });
+        await cdp.send("Input.dispatchMouseEvent", { type: "mousePressed", x: blankClickPoint[0], y: blankClickPoint[1], button: "left", buttons: 1, clickCount: 1 });
+        await cdp.send("Input.dispatchMouseEvent", { type: "mouseReleased", x: blankClickPoint[0], y: blankClickPoint[1], button: "left", buttons: 0, clickCount: 1 });
+    }
+    assert(
+        await cdp.poll(
+            `(() => {
+        const state = document.querySelector(${JSON.stringify(nodeSelector)})?.getAttribute('data-node-state');
+        return state !== 'selected' && state !== 'focus' && !document.querySelector('[aria-label="节点快捷工具"]');
+    })()`,
+            "blank click clears node tools",
+        ),
+        "B2b clicking blank canvas fully dismisses the selected-node toolbar",
+    );
+
     // 历史记录以 180ms 合并连续状态；等事务落盘后再验证撤销/重做。
     await sleep(350);
     await cdp.shortcut("z");
