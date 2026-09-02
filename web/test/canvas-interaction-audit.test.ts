@@ -131,6 +131,17 @@ test("canvas project environment owns external store subscriptions", async () =>
     expect(environmentSource).toContain("canvasThemes[useThemeStore");
 });
 
+test("canvas project route owns route params and local agent entry parsing", async () => {
+    const projectSource = await Bun.file(new URL("../src/pages/canvas/project.tsx", import.meta.url)).text();
+    const routeSource = await Bun.file(new URL("../src/pages/canvas/use-canvas-project-route.ts", import.meta.url)).text();
+    expect(projectSource).toContain("useCanvasProjectRoute()");
+    expect(projectSource).not.toContain("useParams<");
+    expect(projectSource).not.toContain("resolveCanvasLocalAgentEntry(searchParams)");
+    expect(routeSource).toContain("useSearchParams()");
+    expect(routeSource).toContain("resolveCanvasLocalAgentEntry(searchParams)");
+    expect(routeSource).toContain('params.id || ""');
+});
+
 test("assistant layout reserves the left dock and low zoom keeps video play reachable", async () => {
     const css = await Bun.file(new URL("../src/pages/canvas/canvas-editor-pc.css", import.meta.url)).text();
     const content = await Bun.file(new URL("../src/components/canvas/canvas-node-content.tsx", import.meta.url)).text();

@@ -1,5 +1,4 @@
 import { useRef, useState } from "react";
-import { useParams, useSearchParams } from "react-router";
 import { uploadMediaFile } from "@/services/file-storage";
 import { flushCanvasStorePersistence } from "@/stores/canvas/use-canvas-store";
 import { useFocusMode } from "@/hooks/use-focus-mode";
@@ -31,7 +30,6 @@ import { resolveCanvasActiveNodeTargets } from "./canvas-active-node-targets";
 import { CanvasProjectHeadlessAgent, CanvasProjectUtilityDialogs } from "./canvas-project-utility-overlays";
 import { CanvasClientMountGate } from "./canvas-client-mount-gate";
 import { CanvasRefreshShell } from "./canvas-refresh-shell";
-import { resolveCanvasLocalAgentEntry } from "./canvas-local-agent-entry";
 import { useCanvasConnectionController } from "./use-canvas-connection-controller";
 import { useCanvasClear } from "./use-canvas-clear";
 import { useCanvasContextInteractions } from "./use-canvas-context-interactions";
@@ -74,6 +72,7 @@ import { useCanvasProjectContentState } from "./use-canvas-project-content-state
 import { useCanvasProjectDialogState } from "./use-canvas-project-dialog-state";
 import { useCanvasProjectEnvironment } from "./use-canvas-project-environment";
 import { useCanvasProjectLifecycle } from "./use-canvas-project-lifecycle";
+import { useCanvasProjectRoute } from "./use-canvas-project-route";
 import { useCanvasRenderModel } from "./use-canvas-render-model";
 import { useCanvasSelectionState } from "./use-canvas-selection-state";
 import { useCanvasSelectionController } from "./use-canvas-selection-controller";
@@ -103,9 +102,7 @@ export default function CanvasPage() {
 }
 
 function InfiniteCanvasPage() {
-    const params = useParams<{ id: string }>();
-    const [searchParams, setSearchParams] = useSearchParams();
-    const projectId = params.id || "";
+    const { autoConnect: codexAutoConnect, compactAgent: codexCompactAgent, projectId, searchParams, setSearchParams } = useCanvasProjectRoute();
     const containerRef = useRef<HTMLDivElement>(null);
     const { assets, assetsHydrated, cleanupAssetImages, config, defaultDrawingEngine, directorOnboardingScope, effectiveConfig, isAiConfigReady, localAgentActivity, localAgentConnected, localAgentEnabled, shortDramaEnabled, theme } = useCanvasProjectEnvironment();
     const { nodes, nodesRef, setNodes } = useCanvasNodeState();
@@ -116,7 +113,6 @@ function InfiniteCanvasPage() {
     const [projectLoaded, setProjectLoaded] = useState(false);
     const { clearConfirmOpen, directorTemplateRequest, libTVImportOpen, nodeSearchOpen, setClearConfirmOpen, setDirectorTemplateRequest, setLibTVImportOpen, setNodeSearchOpen, setShareModalOpen, setShortcutRequestNonce, setStylePickerOpen, setTapNowImportOpen, shareModalOpen, shortcutRequestNonce, stylePickerOpen, tapNowImportOpen } = useCanvasProjectDialogState();
     const { characterReferenceNodeId, dialogNodeId, directorNodeId, drawingNodeId, infoNodeId, portraitClearanceNodeId, previewNodeId, scriptEditorNodeId, scriptScrollTopById, setCharacterReferenceNodeId, setDialogNodeId, setDirectorNodeId, setDrawingNodeId, setInfoNodeId, setPortraitClearanceNodeId, setPreviewNodeId, setScriptEditorNodeId, setScriptScrollTopById, setSubtitleNodeId, setSuperResolveNodeId, setTextEditorNodeId, setTimelineNodeId, setToolbarNodeId, setVersionCompareRootId, subtitleNodeId, superResolveNodeId, textEditorNodeId, timelineNodeId, toolbarNodeId, versionCompareRootId } = useCanvasNodePanelState();
-    const { autoConnect: codexAutoConnect, compactAgent: codexCompactAgent } = resolveCanvasLocalAgentEntry(searchParams);
     const { assistantWidth, focusDockRevealed, mediaPerformanceMode, setAssistantWidth, setFocusDockRevealed, setMediaPerformanceMode, setWorkspaceMode, workspaceMode } = useCanvasWorkspacePreferences({
         preloadAssistant: loadCanvasAssistantPanel,
     });
