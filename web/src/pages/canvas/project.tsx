@@ -349,6 +349,7 @@ function InfiniteCanvasPage() {
         openAssetsAtPosition,
         pasteAssistantImage,
         pasteSystemClipboard,
+        replaceCanvasNodeMedia,
         startUploadStatus,
         uploadModalOpen,
         uploadTimelineMedia,
@@ -366,8 +367,6 @@ function InfiniteCanvasPage() {
         setContextMenu,
         setDialogNodeId,
     });
-    const replaceCanvasNodeMedia = useCallback((node: CanvasNodeData) => handleUploadRequest(node.id), [handleUploadRequest]);
-
     useCanvasAssetHandoff({ assets, assetsHydrated, handleProjectAssetsInsert, nodesRef, projectId, projectLoaded, searchParams, setSearchParams, updateProject });
 
     const {

@@ -21,6 +21,7 @@ import { useAssetStore, type ImageAsset } from "@/stores/use-asset-store";
 import { CanvasNodeType, type CanvasNodeData, type ContextMenuState, type Position } from "@/types/canvas";
 import type { TimelineDirectMedia } from "@/types/timeline";
 import type { CanvasUploadStatus } from "./canvas-project-feedback";
+import { requestCanvasNodeMediaReplacement } from "./canvas-upload-target";
 
 type UseCanvasUploadOptions = {
     canvasId: string;
@@ -298,6 +299,10 @@ export function useCanvasUpload({
         }
         imageInputRef.current?.click();
     }, [nodesRef]);
+
+    const replaceCanvasNodeMedia = useCallback((node: CanvasNodeData) => {
+        requestCanvasNodeMediaReplacement(node, handleUploadRequest);
+    }, [handleUploadRequest]);
 
     const closeUploadModal = useCallback(() => {
         uploadTargetRef.current = null;
@@ -787,6 +792,7 @@ export function useCanvasUpload({
         openAssetsAtPosition,
         pasteAssistantImage,
         pasteSystemClipboard,
+        replaceCanvasNodeMedia,
         startUploadStatus,
         uploadModalOpen,
         uploadStatus,

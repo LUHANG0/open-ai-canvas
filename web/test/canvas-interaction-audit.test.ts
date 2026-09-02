@@ -5,6 +5,7 @@ import { canvasNodeIntersectsRenderBounds } from "../src/lib/canvas/canvas-rende
 import { partitionCanvasUploadFiles } from "../src/lib/canvas/canvas-upload-batch";
 import { normalizeToolbarPrefs } from "../src/lib/canvas/tool-registry";
 import { applyCanvasHistoryPatch, buildCanvasHistoryCleanupOptions, createCanvasHistoryPatch, type CanvasHistorySnapshot } from "../src/pages/canvas/use-canvas-history";
+import { requestCanvasNodeMediaReplacement } from "../src/pages/canvas/canvas-upload-target";
 import { CanvasNodeType, type CanvasNodeData } from "../src/types/canvas";
 
 function node(id: string, type: CanvasNodeType, options?: { locked?: boolean; content?: string }): CanvasNodeData {
@@ -64,6 +65,12 @@ test("history cleanup keeps undo snapshots alongside the current cleanup target"
     const history = { past: ["patch"], future: [] };
     const extra = { projectId: "canvas-1", nodes: [] };
     expect(buildCanvasHistoryCleanupOptions(extra, history, lastHistory)).toEqual({ extra, history, lastHistory });
+});
+
+test("media replacement reuses the upload target path with the selected node id", () => {
+    const requested: string[] = [];
+    requestCanvasNodeMediaReplacement({ id: "video-1" }, (nodeId) => requested.push(nodeId));
+    expect(requested).toEqual(["video-1"]);
 });
 
 test("undoable drawing deletion retains local drawing documents", async () => {
