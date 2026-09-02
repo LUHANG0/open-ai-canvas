@@ -113,7 +113,7 @@ describe("creation library button", () => {
     });
 
     test("previews prompt reference images without removing them", () => {
-        const createSource = readFileSync(resolve(import.meta.dir, "../src/pages/create/index.tsx"), "utf8");
+        const createSource = readFileSync(resolve(import.meta.dir, "../src/pages/create/creation-message-view.tsx"), "utf8");
         const canvasSource = readFileSync(resolve(import.meta.dir, "../src/components/canvas/canvas-node-prompt-panel.tsx"), "utf8");
 
         expect(createSource).toContain('className="creation-user-message-attachments"');
@@ -380,7 +380,12 @@ describe("creation library button", () => {
     });
 
     test("对话消息、生成明细与媒体预览采用统一结果卡设计", () => {
-        const source = compactSource(readFileSync(resolve(import.meta.dir, "../src/pages/create/index.tsx"), "utf8"));
+        const entrySource = readFileSync(resolve(import.meta.dir, "../src/pages/create/index.tsx"), "utf8");
+        const source = compactSource(
+            ["../src/pages/create/creation-message-view.tsx", "../src/pages/create/creation-types.ts"]
+                .map((path) => readFileSync(resolve(import.meta.dir, path), "utf8"))
+                .join("\n"),
+        );
         const workspaceStyles = readFileSync(resolve(import.meta.dir, "../src/pages/create/creation-workspace.css"), "utf8");
 
         expect(source).toContain("completedAt?: string");
@@ -391,6 +396,9 @@ describe("creation library button", () => {
         expect(source).toContain("image.naturalWidth");
         expect(source).toContain('width="fit-content"');
         expect(source).toContain('playsInline preload="metadata"');
+        expect(entrySource).toContain('from "./creation-message-view"');
+        expect(entrySource).toContain('from "./creation-types"');
+        expect(entrySource).not.toContain("function CreationMessageView");
         expect(workspaceStyles).toContain(".creation-home .creation-user-message {");
         expect(workspaceStyles).toContain(".creation-home .creation-assistant-message {");
         expect(workspaceStyles).toContain(".creation-home .creation-media-details {");
