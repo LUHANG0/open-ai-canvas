@@ -59,7 +59,7 @@ import { CanvasVersionCompareModal } from "@/components/canvas/canvas-version-co
 import { CanvasLocalAgentPanel } from "@/components/canvas/canvas-local-agent-panel";
 import { useFocusMode } from "@/hooks/use-focus-mode";
 import { useCanvasAgentStore } from "@/stores/canvas/use-canvas-agent-store";
-import { getContextResourceNodesFromIndex, normalizeCanvasNodeMentionTokens, type CanvasResourceReference } from "@/lib/canvas/canvas-resource-references";
+import { getContextResourceNodesFromIndex, type CanvasResourceReference } from "@/lib/canvas/canvas-resource-references";
 import { CanvasConnectionCreateMenu, CanvasNodePanelOverlay } from "@/components/canvas/canvas-workspace-overlays";
 import { CanvasOverlayLayerContainer, CanvasOverlayLayerProvider } from "@/components/canvas/canvas-overlay-layer";
 import { CanvasLeaferGraphicsLayer } from "@/components/canvas/canvas-leafer-graphics-layer";
@@ -107,6 +107,7 @@ import { useCanvasNodeActionBindings } from "./use-canvas-node-action-bindings";
 import { useCanvasNodeFocus } from "./use-canvas-node-focus";
 import { useCanvasNodeHoverToolbar } from "./use-canvas-node-hover-toolbar";
 import { useCanvasNodeOperations } from "./use-canvas-node-operations";
+import { useCanvasNodeReferences } from "./use-canvas-node-references";
 import { useCanvasNodeSharing } from "./use-canvas-node-sharing";
 import { useCanvasLinkedProjectAssetSync, useCanvasLinkedProjectFolderInteractions } from "./use-canvas-linked-project-assets";
 import { useCanvasTitleEditing, useCanvasWorkspacePreferences } from "./use-canvas-workspace-shell";
@@ -828,26 +829,6 @@ function InfiniteCanvasPage() {
         });
     }, [connections, setNodes]);
 
-    const handleRemoveNodeReference = useCallback(
-        (targetNodeId: string, reference: CanvasResourceReference) => {
-            const referenceNodeId = reference.nodeId;
-            if (!referenceNodeId) return;
-            // 生成节点可能通过配置节点接收参考，只移除参考来源边，保留目标到配置节点的主链。
-            const configNodeId = connectionsRef.current.find((connection) => {
-                if (connection.fromNodeId !== targetNodeId) return false;
-                return nodesRef.current.find((node) => node.id === connection.toNodeId)?.type === CanvasNodeType.Config;
-            })?.toNodeId;
-            const removedConnectionIds = new Set(
-                connectionsRef.current.filter((connection) => connection.fromNodeId === referenceNodeId && (connection.toNodeId === targetNodeId || connection.toNodeId === configNodeId)).map((connection) => connection.id),
-            );
-            if (!removedConnectionIds.size) return;
-            connectionsRef.current = connectionsRef.current.filter((connection) => !removedConnectionIds.has(connection.id));
-            setConnections(connectionsRef.current);
-            setSelectedConnectionId((current) => (current && removedConnectionIds.has(current) ? null : current));
-        },
-        [connectionsRef, nodesRef, setConnections, setSelectedConnectionId],
-    );
-
     const { handleFrameToggle, handleProjectFolderInsert, linkedFolderPreviewNodesById } = useCanvasLinkedProjectFolderInteractions({
         assets,
         linkedProjectId,
@@ -927,27 +908,17 @@ function InfiniteCanvasPage() {
         scriptEditorNodeId,
         dialogNodeId,
     });
+    const { handleRemoveNodeReference } = useCanvasNodeReferences({
+        nodesRef,
+        connectionsRef,
+        mentionReferencesByNodeId,
+        setNodes,
+        setConnections,
+        setSelectedConnectionId,
+    });
     // 扩展节点只关心语义数据。使用共享图索引后，每个节点取上游不再重复扫描整张画布，
     // 且纯位置变化不会刷新 Context，避免所有可见节点绕过 memo 重渲染。
     const nodeGraphContext = useMemo<CanvasNodeGraphContextValue>(() => ({ getUpstreamNodes: (nodeId: string) => getContextResourceNodesFromIndex(nodeId, resourceGraphIndex) }), [resourceGraphIndex]);
-    useEffect(() => {
-        setNodes((current) => {
-            let changed = false;
-            const next = current.map((node) => {
-                const references = mentionReferencesByNodeId.get(node.id);
-                const savedPrompt = node.metadata?.composerContent ?? node.metadata?.prompt;
-                if (!references?.length || !savedPrompt?.includes("@[node:")) return node;
-                const normalizedPrompt = normalizeCanvasNodeMentionTokens(savedPrompt, references);
-                if (normalizedPrompt === savedPrompt) return node;
-                changed = true;
-                return {
-                    ...node,
-                    metadata: node.metadata?.composerContent !== undefined ? { ...node.metadata, composerContent: normalizedPrompt } : { ...node.metadata, prompt: normalizedPrompt },
-                };
-            });
-            return changed ? next : current;
-        });
-    }, [mentionReferencesByNodeId, setNodes]);
     const dialogNode = dialogNodeId ? nodeById.get(dialogNodeId) || null : null;
     const subtitleNode = subtitleNodeId ? nodeById.get(subtitleNodeId) || null : null;
     const timelineNode = timelineNodeId ? nodeById.get(timelineNodeId) || null : null;
