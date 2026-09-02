@@ -17,11 +17,8 @@ import { useUserStore } from "@/stores/use-user-store";
 import { App } from "antd";
 import { resolveProjectCanvasStyle } from "@/components/canvas/canvas-style-picker-modal";
 import { createStyleProfileSnapshot, resolveStyleProfile, serializeStyleProfile } from "@/lib/canvas/style-profile";
-import { CanvasNodeInfoModal } from "@/components/canvas/canvas-node-toolbar";
-import { CanvasUploadModal } from "@/components/canvas/canvas-upload-modal";
 import type { CanvasNodeGenerationMode } from "@/components/canvas/canvas-node-prompt-panel";
 import { getProject } from "@/services/api/projects";
-import { CanvasLocalAgentPanel } from "@/components/canvas/canvas-local-agent-panel";
 import { useFocusMode } from "@/hooks/use-focus-mode";
 import { useCanvasAgentStore } from "@/stores/canvas/use-canvas-agent-store";
 import { getContextResourceNodesFromIndex } from "@/lib/canvas/canvas-resource-references";
@@ -52,6 +49,7 @@ import { CanvasProjectStatusDialogs } from "./canvas-project-status-dialogs";
 import { CanvasProjectWorkspaceOverlays } from "./canvas-project-workspace-overlays";
 import { CanvasProjectShortDramaGuide, CanvasProjectWorkspaceModeSwitch } from "./canvas-project-workspace-chrome";
 import { CanvasProjectViewport } from "./canvas-project-viewport";
+import { CanvasProjectHeadlessAgent, CanvasProjectUtilityDialogs } from "./canvas-project-utility-overlays";
 import type { CanvasNodeGraphContextValue } from "@/components/canvas/canvas-node-graph-context";
 import { CanvasRefreshShell } from "./canvas-refresh-shell";
 import { useCanvasConnectionController } from "./use-canvas-connection-controller";
@@ -1659,11 +1657,12 @@ function InfiniteCanvasPage() {
                             onToggleFrame={handleFrameToggle}
                         />
 
-                        <CanvasUploadModal open={uploadModalOpen} onClose={closeUploadModal} onUpload={handleUploadFiles} />
-
-                        <input ref={imageInputRef} type="file" accept="image/*,video/*,audio/mpeg,audio/wav,audio/x-wav,.mp3,.wav" className="hidden" onChange={handleImageInputChange} />
-
-                        <CanvasNodeInfoModal node={infoNode} open={Boolean(infoNode)} onClose={() => setInfoNodeId(null)} onMetadataChange={handleConfigNodeChange} />
+                        <CanvasProjectUtilityDialogs
+                            upload={{ open: uploadModalOpen, onClose: closeUploadModal, onUpload: handleUploadFiles }}
+                            fileInputRef={imageInputRef}
+                            onFileInputChange={handleImageInputChange}
+                            info={{ node: infoNode, open: Boolean(infoNode), onClose: () => setInfoNodeId(null), onMetadataChange: handleConfigNodeChange }}
+                        />
 
                         <CanvasProjectTimelineDialogs
                             projectId={projectId}
@@ -1791,9 +1790,11 @@ function InfiniteCanvasPage() {
                             onInsertProjectAssets={handleTimelineProjectAssetsInsert}
                             onInsertProjectFolder={handleProjectFolderInsert}
                         />
-                        {codexCompactAgent && !assistantMounted ? (
-                            <CanvasLocalAgentPanel headless snapshot={assistantSnapshot} canUndoOps={canUndoAgentOps} undoOpsCount={agentUndoCount} onApplyOps={applyAgentOps} onUndoOps={undoAgentOps} autoConnect={codexAutoConnect} />
-                        ) : null}
+                        <CanvasProjectHeadlessAgent
+                            compactAgent={codexCompactAgent}
+                            assistantMounted={assistantMounted}
+                            panel={{ snapshot: assistantSnapshot, canUndoOps: canUndoAgentOps, undoOpsCount: agentUndoCount, onApplyOps: applyAgentOps, onUndoOps: undoAgentOps, autoConnect: codexAutoConnect }}
+                        />
                     </section>
                 </CanvasOverlayLayerProvider>
             </main>
