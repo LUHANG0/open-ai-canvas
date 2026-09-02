@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 
 import { parseProjectEditorDraft, projectEditorDraftKey } from "../src/services/project-editor-draft";
-import { revisionInput, shotEditorValuesEqual, shotEditorValuesKey, type ShotEditorValues } from "../src/pages/projects/detail/workflow-production-types";
+import { revisionInput, shotEditorValuesEqual, shotEditorValuesKey, workflowShotEditorInitiallyDirty, type ShotEditorValues } from "../src/pages/projects/detail/workflow-production-types";
 
 describe("项目编辑草稿", () => {
     test("按编辑对象隔离章节和镜头草稿", () => {
@@ -57,5 +57,12 @@ describe("项目编辑草稿", () => {
             negativePrompt: values.negativePrompt,
             continuityNotes: values.continuityNotes,
         });
+    });
+
+    test("没有选中镜头时不把空工作台误判为未保存草稿", () => {
+        expect(workflowShotEditorInitiallyDirty(false, undefined, "")).toBeFalse();
+        expect(workflowShotEditorInitiallyDirty(true, undefined, "")).toBeTrue();
+        expect(workflowShotEditorInitiallyDirty(true, "已保存提示", "已保存提示")).toBeFalse();
+        expect(workflowShotEditorInitiallyDirty(true, "旧提示", "新提示")).toBeTrue();
     });
 });

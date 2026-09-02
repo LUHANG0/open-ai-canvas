@@ -50,6 +50,10 @@ export function shotEditorValuesKey(values: Partial<ShotEditorValues>) {
     return JSON.stringify(shotEditorValueKeys.map((key) => values[key] ?? ""));
 }
 
+export function workflowShotEditorInitiallyDirty(hasSelectedShot: boolean, revisionVideoPrompt: string | undefined, serverVideoPrompt: string | undefined) {
+    return hasSelectedShot && (revisionVideoPrompt === undefined || serverVideoPrompt !== revisionVideoPrompt);
+}
+
 export function formatTaskElapsed(startedAt: number, now: number) {
     const totalSeconds = Math.max(0, Math.floor((now - (Number.isFinite(startedAt) ? startedAt : now)) / 1_000));
     return `${Math.floor(totalSeconds / 60)}分钟${String(totalSeconds % 60).padStart(2, "0")}秒`;

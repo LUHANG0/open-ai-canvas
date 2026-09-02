@@ -5,7 +5,7 @@ import { useBlocker } from "react-router";
 import { loadProjectEditorDraft, removeProjectEditorDraft, saveProjectEditorDraft } from "@/services/project-editor-draft";
 import type { ProjectShot, ShotRevision } from "@/services/api/projects";
 
-import { shotEditorValuesEqual, type ShotEditorValues } from "./workflow-production-types";
+import { shotEditorValuesEqual, workflowShotEditorInitiallyDirty, type ShotEditorValues } from "./workflow-production-types";
 
 type Args = {
     form: FormInstance<ShotEditorValues>;
@@ -46,7 +46,7 @@ export function useWorkflowShotDraft({ form, projectId, selectedShot, revision, 
         userEditedRef.current = false;
         form.setFieldsValue(serverValues);
         resetPreviewArtifactId("");
-        setEditorDirty(!revision || serverValues.videoPrompt !== revision.videoPrompt);
+        setEditorDirty(workflowShotEditorInitiallyDirty(Boolean(selectedShot), revision?.videoPrompt, serverValues.videoPrompt));
         if (!selectedShot) return;
         void loadProjectEditorDraft<{ values: ShotEditorValues }>("shot", projectId, selectedShot.id).then((draft) => {
             if (!draft || draftLoadVersionRef.current !== loadVersion || userEditedRef.current) return;
