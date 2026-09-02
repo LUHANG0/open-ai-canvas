@@ -15,15 +15,12 @@ import { flushCanvasStorePersistence } from "@/stores/canvas/use-canvas-store";
 import { useThemeStore } from "@/stores/use-theme-store";
 import { useUserStore } from "@/stores/use-user-store";
 import { App } from "antd";
-import { resolveProjectCanvasStyle } from "@/components/canvas/canvas-style-picker-modal";
-import { createStyleProfileSnapshot, resolveStyleProfile, serializeStyleProfile } from "@/lib/canvas/style-profile";
 import type { CanvasNodeGenerationMode } from "@/components/canvas/canvas-node-prompt-panel";
 import { getProject } from "@/services/api/projects";
 import { useFocusMode } from "@/hooks/use-focus-mode";
 import { useCanvasAgentStore } from "@/stores/canvas/use-canvas-agent-store";
 import { getContextResourceNodesFromIndex } from "@/lib/canvas/canvas-resource-references";
 import { CanvasOverlayLayerProvider } from "@/components/canvas/canvas-overlay-layer";
-import { createCanvasNode } from "@/lib/canvas/canvas-project-domain";
 import { stampCanvasNodeChanges } from "@/lib/canvas/canvas-node-timestamps";
 import { batchSourceRestriction } from "@/lib/canvas/canvas-batch-connection";
 import { CanvasProjectFeedbackLayer } from "./canvas-project-feedback";
@@ -82,6 +79,7 @@ import { useCanvasNodeRetry } from "./use-canvas-node-retry";
 import { useCanvasNodeSharing } from "./use-canvas-node-sharing";
 import { useCanvasTextToImage } from "./use-canvas-text-to-image";
 import { useCanvasLinkedProjectAssetSync, useCanvasLinkedProjectFolderInteractions } from "./use-canvas-linked-project-assets";
+import { useCanvasLinkedProjectStyle } from "./use-canvas-linked-project-style";
 import { useCanvasTitleEditing, useCanvasWorkspacePreferences, useCanvasWorkspaceTransitions } from "./use-canvas-workspace-shell";
 import { useCanvasProjectImport } from "./use-canvas-project-import";
 import { useCanvasProjectLifecycle } from "./use-canvas-project-lifecycle";
@@ -107,7 +105,6 @@ import {
 } from "@/types/canvas";
 import type { ReferenceImage } from "@/types/image";
 
-const NODE_STATUS_SUCCESS = "success" as const;
 export default function CanvasPage() {
     const [mounted, setMounted] = useState(false);
 
@@ -349,36 +346,7 @@ function InfiniteCanvasPage() {
         setToolbarNodeId,
     });
 
-    useEffect(() => {
-        const project = linkedProjectQuery.data?.project;
-        const preset = resolveProjectCanvasStyle(project?.stylePresetId, project?.styleProfileJson);
-        if (!projectLoaded || !preset) return;
-        const profile = resolveStyleProfile(project?.stylePresetId, project?.styleProfileJson, preset.profile || createStyleProfileSnapshot(preset));
-        if (!profile) return;
-        const current = nodesRef.current.find((node) => node.type === CanvasNodeType.Text && node.metadata?.workflowKind === "styleboard");
-        const nextMetadata = {
-            content: profile.prompt,
-            prompt: profile.prompt,
-            status: NODE_STATUS_SUCCESS,
-            workflowKind: "styleboard" as const,
-            workflowTitle: "项目画风",
-            workflowDescription: profile.description,
-            stylePresetId: profile.presetId,
-            styleProfileJson: serializeStyleProfile(profile),
-            fontSize: 14,
-            locked: true,
-        };
-        if (current) {
-            if (current.metadata?.stylePresetId === profile.presetId && current.metadata?.content === profile.prompt && current.metadata?.styleProfileJson === nextMetadata.styleProfileJson && current.metadata?.locked) return;
-            setNodes((nodes) => nodes.map((node) => (node.id === current.id ? { ...node, title: `项目画风 · ${profile.title}`, metadata: { ...node.metadata, ...nextMetadata } } : node)));
-            return;
-        }
-        const node = createCanvasNode(CanvasNodeType.Text, getCanvasCenter(), nextMetadata);
-        node.title = `项目画风 · ${profile.title}`;
-        node.width = 420;
-        node.height = 240;
-        setNodes((nodes) => [...nodes, node]);
-    }, [getCanvasCenter, linkedProjectQuery.data?.project, projectLoaded, setNodes]);
+    useCanvasLinkedProjectStyle({ projectLoaded, project: linkedProjectQuery.data?.project, nodesRef, getCanvasCenter, setNodes });
 
     const {
         assetPickerOpen,
