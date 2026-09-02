@@ -246,3 +246,11 @@ test("node editors and inspectors share one panel target state owner", async () 
     expect(projectSource).not.toContain("const [dialogNodeId, setDialogNodeId]");
     for (const stateName of ["dialogNodeId", "textEditorNodeId", "subtitleNodeId", "scriptEditorNodeId", "directorNodeId", "versionCompareRootId"]) expect(panelStateSource).toContain(stateName);
 });
+
+test("workspace chrome state is isolated from project content state", async () => {
+    const projectSource = await Bun.file(new URL("../src/pages/canvas/project.tsx", import.meta.url)).text();
+    const workspaceStateSource = await Bun.file(new URL("../src/pages/canvas/use-canvas-workspace-ui-state.ts", import.meta.url)).text();
+    expect(projectSource).toContain("useCanvasWorkspaceUiState()");
+    expect(projectSource).not.toContain("const [contextMenu, setContextMenu]");
+    for (const stateName of ["hoveredNodeId", "contextMenu", "isMiniMapOpen", "backgroundMode", "showImageInfo", "canvasTool"]) expect(workspaceStateSource).toContain(stateName);
+});

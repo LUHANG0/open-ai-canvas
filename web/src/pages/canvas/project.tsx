@@ -4,7 +4,7 @@ import { useParams, useSearchParams } from "react-router";
 import { useConfigStore, useEffectiveConfig } from "@/stores/use-config-store";
 import { uploadMediaFile } from "@/services/file-storage";
 import { readLocalRuntimeBootstrapState } from "@/services/local-runtime-bootstrap";
-import { canvasThemes, type CanvasBackgroundMode } from "@/lib/canvas-theme";
+import { canvasThemes } from "@/lib/canvas-theme";
 import { shouldAutoConnectCanvasRuntime } from "@/lib/canvas/local-runtime-connection";
 import { useAssetStore } from "@/stores/use-asset-store";
 import { flushCanvasStorePersistence } from "@/stores/canvas/use-canvas-store";
@@ -87,6 +87,7 @@ import { useCanvasStoryboard } from "./use-canvas-storyboard";
 import { useCanvasUpload } from "./use-canvas-upload";
 import { useCanvasViewportController } from "./use-canvas-viewport-controller";
 import { useCanvasViewportMeasurement } from "./use-canvas-viewport-measurement";
+import { useCanvasWorkspaceUiState } from "./use-canvas-workspace-ui-state";
 import { useCanvasPortraitClearance } from "./use-canvas-portrait-clearance";
 import "./canvas-editor-pc.css";
 import {
@@ -95,8 +96,6 @@ import {
     type CanvasConnection,
     type CanvasNodeData,
     type CanvasWorkflowKind,
-    type CanvasToolMode,
-    type ContextMenuState,
     type Position,
     type ViewportTransform,
 } from "@/types/canvas";
@@ -139,12 +138,7 @@ function InfiniteCanvasPage() {
     const [viewport, setViewport] = useState<ViewportTransform>({ x: 0, y: 0, k: 1 });
     const [selectedNodeIds, setSelectedNodeIds] = useState<Set<string>>(new Set());
     const [selectedConnectionId, setSelectedConnectionId] = useState<string | null>(null);
-    const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
-    const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
-    const [isMiniMapOpen, setIsMiniMapOpen] = useState(false);
-    const [backgroundMode, setBackgroundMode] = useState<CanvasBackgroundMode>("lines");
-    const [showImageInfo, setShowImageInfo] = useState(false);
-    const [canvasTool, setCanvasTool] = useState<CanvasToolMode>("move");
+    const { backgroundMode, canvasTool, contextMenu, hoveredNodeId, isMiniMapOpen, setBackgroundMode, setCanvasTool, setContextMenu, setHoveredNodeId, setIsMiniMapOpen, setShowImageInfo, showImageInfo } = useCanvasWorkspaceUiState();
     const [projectLoaded, setProjectLoaded] = useState(false);
     const { clearConfirmOpen, directorTemplateRequest, libTVImportOpen, nodeSearchOpen, setClearConfirmOpen, setDirectorTemplateRequest, setLibTVImportOpen, setNodeSearchOpen, setShareModalOpen, setShortcutRequestNonce, setStylePickerOpen, setTapNowImportOpen, shareModalOpen, shortcutRequestNonce, stylePickerOpen, tapNowImportOpen } = useCanvasProjectDialogState();
     const { characterReferenceNodeId, dialogNodeId, directorNodeId, drawingNodeId, infoNodeId, portraitClearanceNodeId, previewNodeId, scriptEditorNodeId, scriptScrollTopById, setCharacterReferenceNodeId, setDialogNodeId, setDirectorNodeId, setDrawingNodeId, setInfoNodeId, setPortraitClearanceNodeId, setPreviewNodeId, setScriptEditorNodeId, setScriptScrollTopById, setSubtitleNodeId, setSuperResolveNodeId, setTextEditorNodeId, setTimelineNodeId, setToolbarNodeId, setVersionCompareRootId, subtitleNodeId, superResolveNodeId, textEditorNodeId, timelineNodeId, toolbarNodeId, versionCompareRootId } = useCanvasNodePanelState();
