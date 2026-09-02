@@ -121,6 +121,16 @@ test("canvas owns one assistant transition and disables dock magnification in de
     expect(toolbar).toContain("magnify={false}");
 });
 
+test("a true blank-canvas click collapses the assistant without changing node interactions", async () => {
+    const project = await Bun.file(new URL("../src/pages/canvas/project.tsx", import.meta.url)).text();
+    const infiniteCanvas = await Bun.file(new URL("../src/components/canvas/infinite-canvas.tsx", import.meta.url)).text();
+    expect(project).toContain("const handleCanvasBlankClick = useCallback(() => {");
+    expect(project).toContain("deselectCanvas();\n        closeAgent();");
+    expect(project).toContain("onCanvasDeselect={handleCanvasBlankClick}");
+    expect(infiniteCanvas).toContain('const isBackgroundClick = !target?.closest("[data-node-id],[data-connection-id]")');
+    expect(infiniteCanvas).toContain('event.type === "pointerup" && !panState.current.hasMoved');
+});
+
 test("node toolbar commits immediate pointer actions before hover relocation can swallow the click", async () => {
     const toolbar = await Bun.file(new URL("../src/components/canvas/canvas-node-toolbar.tsx", import.meta.url)).text();
     expect(toolbar).toContain("onMouseDown={(event) =>");

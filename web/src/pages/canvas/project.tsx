@@ -1057,6 +1057,11 @@ function InfiniteCanvasPage() {
         onSelectionBoxEnd: () => setCanvasTool((tool) => (tool === "box-select" ? "move" : tool)),
     });
 
+    const handleCanvasBlankClick = useCallback(() => {
+        deselectCanvas();
+        closeAgent();
+    }, [closeAgent, deselectCanvas]);
+
     const keepNodeToolbar = useCallback(
         (nodeId: string) => {
             if (nodeDraggingRef.current || nodeImageSettingsOpen) return;
@@ -2244,7 +2249,7 @@ function InfiniteCanvasPage() {
                                     onCanvasMouseDown={handleCanvasMouseDown}
                                     boxSelectEnabled={canvasTool === "box-select"}
                                     onCanvasDoubleClick={handleCanvasDoubleClick}
-                                    onCanvasDeselect={deselectCanvas}
+                                    onCanvasDeselect={handleCanvasBlankClick}
                                     onContextMenu={handleCanvasContextMenu}
                                     onDrop={handleDrop}
                                     onFileDragEnter={handleFileDragEnter}
