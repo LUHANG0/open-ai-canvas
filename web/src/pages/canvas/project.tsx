@@ -71,7 +71,6 @@ import { CanvasFreeformEmptyState, CanvasLinkedProjectEmptyState, CanvasShortDra
 import { failedImageBatchChildren, markImageBatchRetrying, reconcileImageBatchRoot, restoreUnsubmittedImageBatchChild } from "@/lib/canvas/canvas-image-batch-retry";
 import { createCanvasNode, getInputSummary, isHiddenBatchChild, persistCanvasWorkspaceMode, readCanvasWorkspaceMode } from "@/lib/canvas/canvas-project-domain";
 import { stampCanvasNodeChanges } from "@/lib/canvas/canvas-node-timestamps";
-import { canvasAssetHandoffAttempt, finalizeCanvasAssetHandoff, uninsertedCanvasAssetHandoffPayloads } from "@/lib/canvas/canvas-asset-handoff";
 import { batchSourceRestriction } from "@/lib/canvas/canvas-batch-connection";
 import { deriveStoryboardPipelineProgress } from "@/lib/canvas/canvas-storyboard-progress";
 import { CanvasAgentChangeToast, CanvasMergeStatusToast, CanvasUploadStatusToast } from "./canvas-project-feedback";
@@ -98,6 +97,7 @@ import { useCanvasContextInteractions } from "./use-canvas-context-interactions"
 import { useCanvasAgentOperations } from "./use-canvas-agent-operations";
 import { useCanvasAssistantVisibility } from "./use-canvas-assistant-visibility";
 import { useCanvasActiveTasks } from "./use-canvas-active-tasks";
+import { useCanvasAssetHandoff } from "./use-canvas-asset-handoff";
 import { useCanvasAssetInsertion } from "./use-canvas-asset-insertion";
 import { useCanvasStyleWorkflow } from "./use-canvas-style-workflow";
 import { useCanvasDirector } from "./use-canvas-director";
@@ -186,7 +186,6 @@ function InfiniteCanvasPage() {
     const containerRef = useRef<HTMLDivElement>(null);
     const didInitialCenterRef = useRef(false);
     const toolbarHideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-    const assetHandoffRef = useRef("");
 
     const config = useConfigStore((state) => state.config);
     const effectiveConfig = useEffectiveConfig();
@@ -600,41 +599,7 @@ function InfiniteCanvasPage() {
     });
     const replaceCanvasNodeMedia = useCallback((node: CanvasNodeData) => handleUploadRequest(node.id), [handleUploadRequest]);
 
-    useEffect(() => {
-        if (!projectLoaded || !assetsHydrated || searchParams.get("mode") !== "handoff") return;
-        const attempt = canvasAssetHandoffAttempt(assets, searchParams);
-        const { assetIds, payloads } = attempt;
-        if (!assetIds.length) return;
-        const assetReadiness = assetIds
-            .map((assetId) => {
-                const asset = assets.find((candidate) => candidate.id === assetId);
-                return `${assetId}:${asset?.kind || "missing"}`;
-            })
-            .join("|");
-        const handoffKey = `${projectId}:${assetReadiness}`;
-        if (assetHandoffRef.current === handoffKey) return;
-        assetHandoffRef.current = handoffKey;
-
-        if (attempt.kind === "retry") return;
-        const pendingPayloads = uninsertedCanvasAssetHandoffPayloads(nodesRef.current, payloads);
-        const persistHandoff = async (createdNodes: CanvasNodeData[]) => {
-            const finalized = await finalizeCanvasAssetHandoff({
-                searchParams,
-                currentNodes: nodesRef.current,
-                createdNodes,
-                persist: async (nextNodes) => {
-                    nodesRef.current = nextNodes;
-                    updateProject(projectId, { nodes: nextNodes });
-                    await flushCanvasStorePersistence();
-                },
-            });
-            setSearchParams(finalized.searchParams, { replace: true });
-        };
-        const insertion = pendingPayloads.length ? handleProjectAssetsInsert(pendingPayloads) : Promise.resolve([] as CanvasNodeData[]);
-        void insertion.then(persistHandoff).catch(() => {
-            assetHandoffRef.current = "";
-        });
-    }, [assets, assetsHydrated, handleProjectAssetsInsert, message, nodesRef, projectId, projectLoaded, searchParams, setSearchParams, updateProject]);
+    useCanvasAssetHandoff({ assets, assetsHydrated, handleProjectAssetsInsert, nodesRef, projectId, projectLoaded, searchParams, setSearchParams, updateProject });
 
     const {
         assetInsertScope,
