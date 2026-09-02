@@ -2,6 +2,7 @@ package service
 
 import (
 	"archive/zip"
+	"context"
 	"encoding/json"
 	"errors"
 	"os"
@@ -184,6 +185,76 @@ func TestProjectDeliveryCopyCompatibilityRejectsMixedStreams(t *testing.T) {
 	}
 	if got := projectDeliveryMediaDuration([]projectDeliveryMediaInfo{base, base}); got != 2 {
 		t.Fatalf("duration = %v", got)
+	}
+}
+
+func TestProjectDeliveryFFmpegNormalizesMixedStreams(t *testing.T) {
+	if os.Getenv("CANVAS_DELIVERY_FFMPEG_INTEGRATION") != "1" {
+		t.Skip("set CANVAS_DELIVERY_FFMPEG_INTEGRATION=1 to run the real FFmpeg integration test")
+	}
+	ffmpegPath, err := exec.LookPath("ffmpeg")
+	if err != nil {
+		t.Fatal("ffmpeg is required for the delivery integration test")
+	}
+	ffprobePath, err := exec.LookPath("ffprobe")
+	if err != nil {
+		t.Fatal("ffprobe is required for the delivery integration test")
+	}
+
+	workDir := t.TempDir()
+	ctx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
+	defer cancel()
+	inputNames := []string{"shot-0000.mp4", "shot-0001.webm"}
+	if err := runProjectDeliveryFFmpeg(ctx, ffmpegPath, workDir, []string{
+		"-y", "-f", "lavfi", "-i", "color=c=red:s=320x180:r=24:d=1",
+		"-f", "lavfi", "-i", "sine=frequency=440:sample_rate=48000:duration=1",
+		"-shortest", "-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "aac", inputNames[0],
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := runProjectDeliveryFFmpeg(ctx, ffmpegPath, workDir, []string{
+		"-y", "-f", "lavfi", "-i", "color=c=blue:s=480x270:r=30:d=1",
+		"-c:v", "libvpx-vp9", "-an", inputNames[1],
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	infos, err := probeProjectDeliveryInputs(ctx, ffprobePath, workDir, inputNames)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if projectDeliveryInputsCopyCompatible(infos) {
+		t.Fatal("mixed MP4/WebM streams must take the normalization path")
+	}
+	expectedDuration := projectDeliveryMediaDuration(infos)
+	normalizedNames, err := normalizeProjectDeliveryInputs(ctx, ffmpegPath, workDir, inputNames, infos)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := writeProjectDeliveryConcatFile(filepath.Join(workDir, "concat-normalized.txt"), normalizedNames); err != nil {
+		t.Fatal(err)
+	}
+	if err := runProjectDeliveryFFmpeg(ctx, ffmpegPath, workDir, []string{
+		"-y", "-f", "concat", "-safe", "0", "-i", "concat-normalized.txt",
+		"-c", "copy", "-movflags", "+faststart", "final.mp4",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := validateProjectDeliveryVideo(ctx, ffmpegPath, ffprobePath, workDir, "final.mp4", expectedDuration); err != nil {
+		t.Fatal(err)
+	}
+	finalInfo, err := probeProjectDeliveryMedia(ctx, ffprobePath, workDir, "final.mp4")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if finalInfo.VideoCodec != "h264" || finalInfo.PixelFormat != "yuv420p" || finalInfo.Width != 320 || finalInfo.Height != 180 {
+		t.Fatalf("final video stream = %#v", finalInfo)
+	}
+	if !finalInfo.HasAudio || finalInfo.AudioCodec != "aac" || finalInfo.SampleRate != "48000" || finalInfo.Channels != 2 {
+		t.Fatalf("final audio stream = %#v", finalInfo)
+	}
+	if finalInfo.DurationSecond < 1.8 || finalInfo.DurationSecond > 2.3 {
+		t.Fatalf("final duration = %v", finalInfo.DurationSecond)
 	}
 }
 
