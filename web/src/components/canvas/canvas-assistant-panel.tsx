@@ -242,7 +242,7 @@ type OnlineToolResult = { ok: true; message: string; data?: unknown } | { ok: fa
 type OnlineExecutedToolCall = { toolCallId: string; name: string; result: OnlineToolResult };
 type PendingOnlineToolContext = { messages: ResponseInputMessage[]; toolCalls: ResponseToolCall[]; assistantId: string; step: number };
 
-type CanvasAssistantPanelProps = {
+export type CanvasAssistantPanelProps = {
     nodes: CanvasNodeData[];
     selectedNodeIds: Set<string>;
     snapshot: CanvasAgentSnapshot;

@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { Dispatch, SetStateAction } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useParams, useSearchParams } from "react-router";
@@ -15,7 +15,6 @@ import { flushCanvasStorePersistence } from "@/stores/canvas/use-canvas-store";
 import { useThemeStore } from "@/stores/use-theme-store";
 import { useUserStore } from "@/stores/use-user-store";
 import { App } from "antd";
-import { AssistantPanelColumn } from "./canvas-assistant-panel-column";
 import { CanvasProjectSidebar } from "@/components/canvas/canvas-project-sidebar";
 import { resolveProjectCanvasStyle } from "@/components/canvas/canvas-style-picker-modal";
 import { createStyleProfileSnapshot, resolveStyleProfile, serializeStyleProfile } from "@/lib/canvas/style-profile";
@@ -44,6 +43,7 @@ import { CanvasProjectMainToolbar } from "./canvas-project-main-toolbar";
 import { CanvasProjectDirectorWorkbench } from "./canvas-project-director-workbench";
 import { CanvasProjectEntryDialogs } from "./canvas-project-entry-dialogs";
 import { CanvasProjectAssetDialogs, CanvasProjectVersionCompareDialog } from "./canvas-project-library-dialogs";
+import { CanvasProjectAssistantColumn, loadCanvasAssistantPanel } from "./canvas-project-assistant-column";
 import { CanvasProjectNodeEditorDialogs } from "./canvas-project-node-editor-dialogs";
 import { CanvasProjectNodeOverlays } from "./canvas-project-node-overlays";
 import { CanvasProjectNodeToolbar } from "./canvas-project-node-toolbar";
@@ -109,9 +109,6 @@ import {
     type ViewportTransform,
 } from "@/types/canvas";
 import type { ReferenceImage } from "@/types/image";
-
-const loadCanvasAssistantPanel = () => import("@/components/canvas/canvas-assistant-panel").then((module) => ({ default: module.CanvasAssistantPanel }));
-const CanvasAssistantPanel = lazy(loadCanvasAssistantPanel);
 
 const NODE_STATUS_SUCCESS = "success" as const;
 export default function CanvasPage() {
@@ -1487,36 +1484,34 @@ function InfiniteCanvasPage() {
                                 />
                             </div>
 
-                            {assistantMounted ? (
-                                <AssistantPanelColumn width={assistantWidth} closing={assistantClosing} topInset={focusMode ? "0px" : "var(--canvas-topbar-offset)"} onWidthChange={setAssistantWidth}>
-                                    {() => (
-                                        <Suspense fallback={<div data-canvas-no-zoom className="grid h-full min-h-0 place-items-center px-6 text-sm text-foreground/55">正在准备 Agent…</div>}>
-                                            <CanvasAssistantPanel
-                                                nodes={nodes}
-                                                selectedNodeIds={selectedNodeIds}
-                                                snapshot={assistantSnapshot}
-                                                projectId={projectId}
-                                                sessions={chatSessions}
-                                                activeSessionId={activeChatId}
-                                                onSelectNodeIds={setSelectedNodeIds}
-                                                onSessionsChange={handleAssistantSessionsChange}
-                                                onApplyOps={applyAgentOps}
-                                                canUndoOps={canUndoAgentOps}
-                                                undoOpsCount={agentUndoCount}
-                                                onUndoOps={undoAgentOps}
-                                                onPasteImage={pasteAssistantImage}
-                                                agentMode={agentMode}
-                                                onAgentModeChange={setAgentMode}
-                                                autoConnectLocal={codexAutoConnect}
-                                                closing={assistantClosing}
-                                                onCollapse={closeAgent}
-                                                cinematicEntry={cinematicAgentEntry}
-                                                onCinematicEntryConsumed={consumeCinematicAgentEntry}
-                                            />
-                                        </Suspense>
-                                    )}
-                                </AssistantPanelColumn>
-                            ) : null}
+                            <CanvasProjectAssistantColumn
+                                mounted={assistantMounted}
+                                width={assistantWidth}
+                                closing={assistantClosing}
+                                focusMode={focusMode}
+                                onWidthChange={setAssistantWidth}
+                                panelProps={{
+                                    nodes,
+                                    selectedNodeIds,
+                                    snapshot: assistantSnapshot,
+                                    projectId,
+                                    sessions: chatSessions,
+                                    activeSessionId: activeChatId,
+                                    onSelectNodeIds: setSelectedNodeIds,
+                                    onSessionsChange: handleAssistantSessionsChange,
+                                    onApplyOps: applyAgentOps,
+                                    canUndoOps: canUndoAgentOps,
+                                    undoOpsCount: agentUndoCount,
+                                    onUndoOps: undoAgentOps,
+                                    onPasteImage: pasteAssistantImage,
+                                    agentMode,
+                                    onAgentModeChange: setAgentMode,
+                                    autoConnectLocal: codexAutoConnect,
+                                    onCollapse: closeAgent,
+                                    cinematicEntry: cinematicAgentEntry,
+                                    onCinematicEntryConsumed: consumeCinematicAgentEntry,
+                                }}
+                            />
                         </div>
 
                         <CanvasProjectNodeOverlays
