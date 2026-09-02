@@ -320,6 +320,7 @@ export type ProjectAssetPage = {
 
 export type ProjectAssetCandidatePage = {
     candidates: ProjectAssetCandidate[];
+    categoryCounts: Record<string, number>;
     page: number;
     pageSize: number;
     total: number;

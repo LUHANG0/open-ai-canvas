@@ -180,7 +180,9 @@ func taskClientContext(raw string) *TaskClientContext {
 		return &TaskClientContext{DomainProjectID: metadata.DomainProjectID, ShotID: metadata.ShotID, WorkflowStepID: metadata.WorkflowStepID, ArtifactType: metadata.ArtifactType}
 	}
 	chapterOperation := ""
-	if metadata.Operation == "chapter_character_breakdown" {
+	if metadata.Operation == "chapter_asset_breakdown" {
+		chapterOperation = "assets"
+	} else if metadata.Operation == "chapter_character_breakdown" {
 		chapterOperation = "characters"
 	} else if metadata.Source == "short-drama-chapter-storyboard" {
 		chapterOperation = "storyboard"

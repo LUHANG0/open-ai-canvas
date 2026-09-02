@@ -52,6 +52,10 @@ func TestTaskClientContextRequiresCreatePageMetadata(t *testing.T) {
 }
 
 func TestTaskClientContextProjectsChapterOperations(t *testing.T) {
+	assets := taskClientContext(`{"metadata":{"domainProjectId":"project-1","chapterId":"chapter-0","operation":"chapter_asset_breakdown"}}`)
+	if assets == nil || assets.DomainProjectID != "project-1" || assets.ChapterID != "chapter-0" || assets.ChapterOperation != "assets" {
+		t.Fatalf("asset task context was not decoded: %+v", assets)
+	}
 	characters := taskClientContext(`{"metadata":{"domainProjectId":"project-1","chapterId":"chapter-1","operation":"chapter_character_breakdown"}}`)
 	if characters == nil || characters.DomainProjectID != "project-1" || characters.ChapterID != "chapter-1" || characters.ChapterOperation != "characters" {
 		t.Fatalf("character task context was not decoded: %+v", characters)

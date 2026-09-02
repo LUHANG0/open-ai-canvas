@@ -195,6 +195,29 @@ func (r *Repository) ProjectAssetCandidatesPage(projectID string, page int, page
 	return candidates, total, err
 }
 
+func (r *Repository) ProjectAssetCandidateCategoryCounts(projectID string, unitID string, status string) (map[string]int64, error) {
+	type categoryCount struct {
+		Category string
+		Count    int64
+	}
+	var rows []categoryCount
+	query := r.db.Model(&model.ProjectAssetCandidate{}).Where("project_id = ?", projectID)
+	if value := strings.TrimSpace(unitID); value != "" {
+		query = query.Where("unit_id = ?", value)
+	}
+	if value := strings.TrimSpace(status); value != "" {
+		query = query.Where("status = ?", value)
+	}
+	if err := query.Select("category, COUNT(*) AS count").Group("category").Scan(&rows).Error; err != nil {
+		return nil, err
+	}
+	counts := make(map[string]int64, len(rows))
+	for _, row := range rows {
+		counts[row.Category] = row.Count
+	}
+	return counts, nil
+}
+
 func (r *Repository) ProjectAssetsPage(userID string, projectID string, page int, pageSize int, category string, mediaType string, status string, folderID *string, queryText string) ([]model.Asset, int64, error) {
 	var assets []model.Asset
 	var total int64

@@ -22,7 +22,7 @@ import {
     Save,
     Search,
     Trash2,
-    UsersRound,
+    Boxes,
     X,
 } from "lucide-react";
 
@@ -51,10 +51,11 @@ import { loadProjectEditorDraft, removeProjectEditorDraft, saveProjectEditorDraf
 
 import { formatCount, formatTime, statusLabel, type ProjectDetailViewProps } from "./shared";
 import { chapterStoryboardAssets, chapterStoryboardCharacters, chapterStoryboardReplaceImpact, storyboardRowsToProjectShots } from "./chapter-storyboard-production";
-import { chapterCharactersFromGenerationTask, chapterStoryboardFromGenerationTask, chapterTaskIdentity, extractChapterCharacters, generateChapterStoryboard } from "./project-chapter-ai";
+import { chapterAssetsFromGenerationTask, chapterCharactersFromGenerationTask, chapterStoryboardFromGenerationTask, chapterTaskIdentity, extractChapterAssets, extractChapterCharacters, generateChapterStoryboard } from "./project-chapter-ai";
+import { chapterAssetCandidateDetails, freshChapterAssetBreakdowns } from "./project-chapter-assets";
 import { ChapterEditorToolbar } from "./chapter-editor-toolbar";
 import { CreateChapterDialog, ImportNovelDialog, plainTextToHtml } from "./chapter-import-dialogs";
-import { ChapterCharacterExtractionDialog, ChapterStoryboardGenerationDialog, MoveChapterDialog } from "./chapter-generation-dialogs";
+import { ChapterAssetExtractionDialog, ChapterStoryboardGenerationDialog, MoveChapterDialog } from "./chapter-generation-dialogs";
 import { chapterOperationFromTask, chapterOperationKey, chapterTaskResultAlreadyApplied, formatOperationElapsed, readStoredScroll, type ChapterOperation, type ChapterOperationKind } from "./chapter-operation-state";
 
 const CHAPTER_ROW_HEIGHT = 62;
@@ -156,9 +157,16 @@ export default function ProjectChaptersView({ detail, refreshProject }: ProjectD
         return new Set([...latest].filter(([, task]) => task.status === "succeeded").map(([key]) => key));
     }, [chapterTasksQuery.data]);
     const runningOperationCount = new Set([...Object.keys(chapterOperations), ...serverChapterOperations.keys()]).size;
-    const characterOperation = selectedUnit ? chapterOperations[chapterOperationKey(selectedUnit.id, "characters")] || serverChapterOperations.get(chapterOperationKey(selectedUnit.id, "characters")) : undefined;
+    const assetOperation = selectedUnit ? chapterOperations[chapterOperationKey(selectedUnit.id, "assets")]
+        || serverChapterOperations.get(chapterOperationKey(selectedUnit.id, "assets"))
+        || chapterOperations[chapterOperationKey(selectedUnit.id, "characters")]
+        || serverChapterOperations.get(chapterOperationKey(selectedUnit.id, "characters")) : undefined;
     const storyboardOperation = selectedUnit ? chapterOperations[chapterOperationKey(selectedUnit.id, "storyboard")] || serverChapterOperations.get(chapterOperationKey(selectedUnit.id, "storyboard")) : undefined;
-    const charactersGenerated = Boolean(selectedUnit && (completedChapterOperations[chapterOperationKey(selectedUnit.id, "characters")] || serverCompletedOperations.has(chapterOperationKey(selectedUnit.id, "characters")) || detail.assetCandidates.some((candidate) => candidate.unitId === selectedUnit.id && candidate.category === "character")));
+    const assetsGenerated = Boolean(selectedUnit && (completedChapterOperations[chapterOperationKey(selectedUnit.id, "assets")]
+        || completedChapterOperations[chapterOperationKey(selectedUnit.id, "characters")]
+        || serverCompletedOperations.has(chapterOperationKey(selectedUnit.id, "assets"))
+        || serverCompletedOperations.has(chapterOperationKey(selectedUnit.id, "characters"))
+        || detail.assetCandidates.some((candidate) => candidate.unitId === selectedUnit.id)));
     const storyboardGenerated = Boolean(selectedUnit && (completedChapterOperations[chapterOperationKey(selectedUnit.id, "storyboard")] || serverCompletedOperations.has(chapterOperationKey(selectedUnit.id, "storyboard")) || storyboardImpact.shotCount > 0));
     const visibleUnits = useMemo(() => {
         if (!deferredSearchQuery) return orderedUnits;
@@ -377,6 +385,7 @@ export default function ProjectChaptersView({ detail, refreshProject }: ProjectD
     const chapterAnalysisInput = (textModel: string) => {
         const unit = selectedUnit;
         if (!unit) throw new Error("章节正文尚未加载完成");
+        if (detail.project.status === "archived") throw new Error("项目已归档，请先在项目设置中恢复");
         if (dirty) throw new Error("请先保存当前章节，再运行 AI 分析");
         const sourceText = editor?.getText().trim() || projectSourceTextToPlainText(unit.sourceText);
         if (!sourceText) throw new Error("当前章节没有可分析的正文");
@@ -438,6 +447,20 @@ export default function ProjectChaptersView({ detail, refreshProject }: ProjectD
         refreshProject();
         return fresh.length;
     };
+    const storeExtractedAssets = async (unitId: string, assets: Awaited<ReturnType<typeof extractChapterAssets>>) => {
+        const fresh = freshChapterAssetBreakdowns(assets, detail.assetCandidates);
+        if (fresh.length) {
+            await createProjectAssetCandidates(detail.project.id, fresh.map((asset) => ({
+                unitId,
+                name: asset.name,
+                category: asset.category,
+                details: chapterAssetCandidateDetails(asset),
+            })));
+        }
+        markChapterOperationCompleted(unitId, "assets");
+        refreshProject();
+        return fresh.length;
+    };
     const storeGeneratedStoryboard = async (unitId: string, rows: ReturnType<typeof chapterStoryboardFromGenerationTask>["rows"]) => {
         const shots = storyboardRowsToProjectShots(rows, detail);
         await replaceProjectUnitShots(detail.project.id, unitId, shots, detail.shots.filter((shot) => shot.unitId === unitId).map((shot) => shot.id));
@@ -448,26 +471,26 @@ export default function ProjectChaptersView({ detail, refreshProject }: ProjectD
         markChapterOperationCompleted(unitId, "storyboard");
         return shots.length;
     };
-    const extractCharacters = async () => {
+    const extractAssets = async () => {
         let operationUnitId = "";
         try {
             const input = chapterAnalysisInput(selectedTextModel);
             if (!input) return;
             operationUnitId = input.chapterId;
             setCharacterExtractOpen(false);
-            beginChapterOperation(operationUnitId, "characters");
-            message.info("角色提取任务已开始，可继续编辑或切换章节");
-            const characters = await extractChapterCharacters(input, { onTaskUpdate: (task) => updateChapterOperation(operationUnitId, "characters", task) });
-            const freshCount = await storeExtractedCharacters(operationUnitId, characters);
+            beginChapterOperation(operationUnitId, "assets");
+            message.info("资产拆分任务已开始，可继续编辑或切换章节");
+            const assets = await extractChapterAssets(input, { onTaskUpdate: (task) => updateChapterOperation(operationUnitId, "assets", task) });
+            const freshCount = await storeExtractedAssets(operationUnitId, assets);
             if (!freshCount) {
-                message.info("本章角色已存在于待确认列表中");
+                message.info("本章识别出的资产已存在于待确认列表中");
                 return;
             }
-            message.success(`已提取 ${freshCount} 个角色，请到项目资产确认`);
+            message.success(`已拆分 ${freshCount} 项资产，请到“角色与资产”确认`);
         } catch (error) {
-            message.error(error instanceof Error ? error.message : "角色提取失败");
+            message.error(error instanceof Error ? error.message : "资产拆分失败");
         } finally {
-            if (operationUnitId) finishChapterOperation(operationUnitId, "characters");
+            if (operationUnitId) finishChapterOperation(operationUnitId, "assets");
         }
     };
     const createStoryboard = async () => {
@@ -553,7 +576,10 @@ export default function ProjectChaptersView({ detail, refreshProject }: ProjectD
             }
             recoveringTaskIdsRef.current.add(task.id);
             void queryGenerationTask(task.id).then(async (completedTask) => {
-                if (kind === "characters") {
+                if (kind === "assets") {
+                    await storeExtractedAssets(taskChapterId, chapterAssetsFromGenerationTask(completedTask));
+                    message.success("已恢复刷新前完成的资产拆分结果");
+                } else if (kind === "characters") {
                     await storeExtractedCharacters(taskChapterId, chapterCharactersFromGenerationTask(completedTask));
                     message.success("已恢复刷新前完成的角色提取结果");
                 } else {
@@ -676,7 +702,7 @@ export default function ProjectChaptersView({ detail, refreshProject }: ProjectD
                                 <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[var(--fs-tiny)] text-foreground/38"><span>{dirty ? "有未保存修改" : `保存于 ${formatTime(selectedUnit.updatedAt)}`}</span><span>·</span><span>{formatCount(wordCount)} 字</span><span>·</span><span>{chapterCanvasCount(selectedUnit.id)} 个画布</span></div>
                             </div>
                             <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
-                                <Button size="small" icon={<UsersRound className="size-3.5" />} disabled={!selectedUnit || dirty || Boolean(characterOperation)} loading={Boolean(characterOperation)} onClick={() => { setSelectedTextModel(effectiveConfig.textModel || effectiveConfig.model || effectiveConfig.textModels[0] || ""); setCharacterExtractOpen(true); }} aria-label={characterOperation ? `提取角色，已运行 ${formatOperationElapsed(characterOperation.startedAt, operationNow)}` : "提取角色"}>{characterOperation ? `提取角色（已运行${formatOperationElapsed(characterOperation.startedAt, operationNow)}）` : charactersGenerated ? "提取角色（已生成）" : "提取角色"}</Button>
+                                <Button size="small" icon={<Boxes className="size-3.5" />} disabled={!selectedUnit || dirty || Boolean(assetOperation)} loading={Boolean(assetOperation)} onClick={() => { setSelectedTextModel(effectiveConfig.textModel || effectiveConfig.model || effectiveConfig.textModels[0] || ""); setCharacterExtractOpen(true); }} aria-label={assetOperation ? `拆分资产，已运行 ${formatOperationElapsed(assetOperation.startedAt, operationNow)}` : "拆分资产"}>{assetOperation ? `拆分资产（已运行${formatOperationElapsed(assetOperation.startedAt, operationNow)}）` : assetsGenerated ? "拆分资产（已生成）" : "拆分资产"}</Button>
                                 <Button size="small" type="primary" icon={<Clapperboard className="size-3.5" />} disabled={!selectedUnit || dirty || Boolean(storyboardOperation)} loading={Boolean(storyboardOperation)} onClick={() => { setSelectedTextModel(effectiveConfig.textModel || effectiveConfig.model || effectiveConfig.textModels[0] || ""); setSelectedSkillIds([]); setStoryboardOpen(true); }} aria-label={storyboardOperation ? `生成到分镜制作，已运行 ${formatOperationElapsed(storyboardOperation.startedAt, operationNow)}` : "生成到分镜制作"}>{storyboardOperation ? `生成到分镜制作（已运行${formatOperationElapsed(storyboardOperation.startedAt, operationNow)}）` : storyboardGenerated ? "生成到分镜制作（已生成）" : "生成到分镜制作"}</Button>
                                 <Button size="small" type={dirty ? "primary" : "default"} icon={dirty ? <Save className="size-3.5" /> : <Check className="size-3.5" />} disabled={!selectedUnit || !dirty || !draftTitle.trim() || saveMutation.isPending} loading={saveMutation.isPending} onClick={() => saveMutation.mutate(chapterDraftRef.current)}>{dirty ? "保存" : "已保存"}</Button>
                             </div>
@@ -690,7 +716,7 @@ export default function ProjectChaptersView({ detail, refreshProject }: ProjectD
             </section>
             <CreateChapterDialog open={createOpen} onClose={() => setCreateOpen(false)} loading={createMutation.isPending} onSubmit={(values) => createMutation.mutate(values)} />
             <ImportNovelDialog open={importOpen} loading={importMutation.isPending} onClose={closeImport} onImport={(chapters) => importMutation.mutate(chapters)} />
-            <ChapterCharacterExtractionDialog open={characterExtractOpen} selectedUnit={selectedUnit} effectiveConfig={effectiveConfig} selectedTextModel={selectedTextModel} onTextModelChange={setSelectedTextModel} onClose={() => setCharacterExtractOpen(false)} onSubmit={() => void extractCharacters()} />
+            <ChapterAssetExtractionDialog open={characterExtractOpen} selectedUnit={selectedUnit} effectiveConfig={effectiveConfig} selectedTextModel={selectedTextModel} onTextModelChange={setSelectedTextModel} onClose={() => setCharacterExtractOpen(false)} onSubmit={() => void extractAssets()} />
             <ChapterStoryboardGenerationDialog open={storyboardOpen} selectedUnit={selectedUnit} effectiveConfig={effectiveConfig} selectedTextModel={selectedTextModel} onTextModelChange={setSelectedTextModel} onClose={() => setStoryboardOpen(false)} onSubmit={() => void createStoryboard()} storyboardImpact={storyboardImpact} availableSkills={availableSkills} skillsLoading={skillsLoading} selectedSkillIds={selectedSkillIds} onSkillIdsChange={setSelectedSkillIds} />
             <MoveChapterDialog open={Boolean(moveTargetId)} position={movePosition} chapterCount={orderedUnits.length} loading={reorderMutation.isPending} onPositionChange={setMovePosition} onClose={() => { setMoveTargetId(""); setMovePosition(null); }} onSubmit={moveChapterToPosition} />
         </div>

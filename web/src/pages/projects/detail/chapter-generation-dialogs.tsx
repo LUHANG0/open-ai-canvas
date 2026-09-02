@@ -18,18 +18,18 @@ type ModelDialogProps = {
     onSubmit: () => void;
 };
 
-export function ChapterCharacterExtractionDialog({ open, selectedUnit, effectiveConfig, selectedTextModel, onTextModelChange, onClose, onSubmit }: ModelDialogProps) {
+export function ChapterAssetExtractionDialog({ open, selectedUnit, effectiveConfig, selectedTextModel, onTextModelChange, onClose, onSubmit }: ModelDialogProps) {
     return (
-        <DialogFrame className="pc-project-dialog" title="提取章节角色" subtitle="正文会交给本次选择的文本模型分析，结果进入待确认资产。" open={open} frameSize="sm" okText="开始提取" cancelText="取消" okButtonProps={{ disabled: !selectedTextModel }} onCancel={onClose} onOk={onSubmit}>
+        <DialogFrame className="pc-project-dialog" title="拆分章节资产" subtitle="识别角色、场景、服饰、道具和武器，结果统一进入待确认资产。" open={open} frameSize="sm" okText="开始拆分" cancelText="取消" okButtonProps={{ disabled: !selectedTextModel }} onCancel={onClose} onOk={onSubmit}>
             <div className="grid gap-4">
                 <div className="rounded-lg border border-border/70 bg-foreground/[.018] px-3 py-2.5">
                     <div className="text-[var(--fs-tiny)] text-foreground/42">当前章节</div>
                     <div className="mt-1 truncate text-sm font-medium text-foreground/85">{selectedUnit?.title}</div>
-                    <div className="mt-1 text-[var(--fs-tiny)] text-foreground/38">正文会交给本次选择的文本模型分析，提取结果进入“角色与资产”待确认列表。</div>
+                    <div className="mt-1 text-[var(--fs-tiny)] text-foreground/38">正文会交给本次选择的文本模型分析，只保留后续分镜和生成需要跨镜头一致的制作资产。</div>
                 </div>
                 <label className="block">
                     <span className="mb-1.5 block text-xs font-medium text-foreground/68">文本模型</span>
-                    <ModelPicker config={effectiveConfig} capability="text" value={selectedTextModel} onChange={onTextModelChange} fullWidth placeholder="选择用于提取角色的文本模型" showSelectedPrice={false} onMissingConfig={() => navigateToSettings({ continueCreation: true })} />
+                    <ModelPicker config={effectiveConfig} capability="text" value={selectedTextModel} onChange={onTextModelChange} fullWidth placeholder="选择用于拆分资产的文本模型" showSelectedPrice={false} onMissingConfig={() => navigateToSettings({ continueCreation: true })} />
                 </label>
             </div>
         </DialogFrame>

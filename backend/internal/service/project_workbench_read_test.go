@@ -85,6 +85,30 @@ func seedWorkbenchProject(t *testing.T, db *gorm.DB) model.Project {
 	return project
 }
 
+func TestProjectAssetCandidatePageIncludesUnfilteredCategoryCounts(t *testing.T) {
+	service, db := newProjectWorkbenchReadTestService(t)
+	project := seedWorkbenchProject(t, db)
+	items := []model.ProjectAssetCandidate{
+		{ID: "candidate-character", ProjectID: project.ID, Name: "林夏", Category: model.AssetCategoryCharacter, Status: "pending_confirmation"},
+		{ID: "candidate-prop-1", ProjectID: project.ID, Name: "钥匙", Category: model.AssetCategoryProp, Status: "pending_confirmation"},
+		{ID: "candidate-prop-2", ProjectID: project.ID, Name: "夜灯", Category: model.AssetCategoryProp, Status: "pending_confirmation"},
+		{ID: "candidate-confirmed", ProjectID: project.ID, Name: "旧道具", Category: model.AssetCategoryProp, Status: "confirmed"},
+	}
+	if err := db.Create(&items).Error; err != nil {
+		t.Fatal(err)
+	}
+	page, err := service.ProjectAssetCandidatesPage("user-1", project.ID, 1, 20, "", "pending_confirmation", "character")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(page.Candidates) != 1 || page.Total != 1 {
+		t.Fatalf("filtered page mismatch: %+v", page)
+	}
+	if page.CategoryCounts["character"] != 1 || page.CategoryCounts["prop"] != 2 {
+		t.Fatalf("category counts must cover the full status filter: %+v", page.CategoryCounts)
+	}
+}
+
 func TestProjectOverviewUsesAggregatesWithoutLoadingProjectCollections(t *testing.T) {
 	service, db := newProjectWorkbenchReadTestService(t)
 	project := seedWorkbenchProject(t, db)

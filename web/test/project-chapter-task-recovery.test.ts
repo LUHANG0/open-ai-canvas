@@ -14,6 +14,13 @@ describe("章节生成任务刷新恢复", () => {
                 chapterOperation: "characters",
             },
         }))).toEqual({ chapterId: "chapter-1", kind: "characters" });
+        expect(chapterTaskIdentity(task({
+            clientContext: {
+                domainProjectId: "project-1",
+                chapterId: "chapter-2",
+                chapterOperation: "assets",
+            },
+        }))).toEqual({ chapterId: "chapter-2", kind: "assets" });
     });
 
     test("任务详情可从脱敏输入 metadata 恢复分镜操作", () => {
@@ -30,6 +37,7 @@ describe("章节生成任务刷新恢复", () => {
 
     test("无关、缺少章节或损坏的任务输入不会关联章节按钮", () => {
         expect(chapterTaskIdentity(task({ inputJson: "{" }))).toBeNull();
+        expect(chapterTaskIdentity(task({ inputJson: JSON.stringify({ metadata: { chapterId: "chapter-1", operation: "chapter_asset_breakdown" } }) }))).toEqual({ chapterId: "chapter-1", kind: "assets" });
         expect(chapterTaskIdentity(task({ inputJson: JSON.stringify({ metadata: { operation: "chapter_character_breakdown" } }) }))).toBeNull();
         expect(chapterTaskIdentity(task({ inputJson: JSON.stringify({ metadata: { chapterId: "chapter-1", operation: "other" } }) }))).toBeNull();
     });
@@ -49,6 +57,7 @@ describe("章节生成任务刷新恢复", () => {
         expect(chapterOperationFromTask(completed)).toEqual({ startedAt: Date.parse("2026-08-29T00:00:01.000Z"), taskId: "task-1" });
         expect(formatOperationElapsed(0, 65_000)).toBe("1分钟05秒");
         expect(chapterTaskResultAlreadyApplied(completed, "chapter-1", "characters", detail)).toBeTrue();
+        expect(chapterTaskResultAlreadyApplied(completed, "chapter-1", "assets", detail)).toBeTrue();
         expect(chapterTaskResultAlreadyApplied(completed, "chapter-2", "storyboard", detail)).toBeFalse();
     });
 });

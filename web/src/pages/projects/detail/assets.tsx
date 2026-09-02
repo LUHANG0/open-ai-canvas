@@ -98,16 +98,18 @@ export default function ProjectAssetsView({ detail, refreshProject }: ProjectDet
         }),
     });
     const foldersQuery = useQuery({ queryKey: ["project", detail.project.id, "asset-folders"], queryFn: () => listProjectAssetFolders(detail.project.id) });
-    const showPendingCandidates = folderId === ALL_FOLDERS && (category === "all" || category === "character");
+    const showPendingCandidates = folderId === ALL_FOLDERS;
     const candidatesQuery = useQuery({
-        queryKey: ["project", detail.project.id, "asset-candidates", candidatePage, candidatePageSize, "character", "pending_confirmation"],
-        queryFn: () => listProjectAssetCandidates(detail.project.id, { page: candidatePage, pageSize: candidatePageSize, category: "character", status: "pending_confirmation" }),
+        queryKey: ["project", detail.project.id, "asset-candidates", candidatePage, candidatePageSize, category, "pending_confirmation"],
+        queryFn: () => listProjectAssetCandidates(detail.project.id, { page: candidatePage, pageSize: candidatePageSize, category: category === "all" ? undefined : category, status: "pending_confirmation" }),
         enabled: showPendingCandidates,
     });
     const assets = assetsQuery.data?.assets || [];
     const assetFolders = foldersQuery.data?.folders || [];
     const pendingCandidates = candidatesQuery.data?.candidates || [];
     const pendingCandidateCount = showPendingCandidates ? candidatesQuery.data?.total || 0 : 0;
+    const pendingCandidateCounts = candidatesQuery.data?.categoryCounts || {};
+    const totalPendingCandidateCount = Object.values(pendingCandidateCounts).reduce((total, count) => total + count, 0);
     const categoryCountMap = assetsQuery.data?.categoryCounts || {};
     const folderCountMap = assetsQuery.data?.folderCounts || {};
     const totalAssetCount = Object.values(categoryCountMap).reduce((total, count) => total + count, 0);
@@ -134,6 +136,7 @@ export default function ProjectAssetsView({ detail, refreshProject }: ProjectDet
         setCategory(nextCategory);
         setFolderId(ALL_FOLDERS);
         setPage(1);
+        setCandidatePage(1);
     };
 
     const projectAssetIds = new Set(assets.map((asset) => asset.id));
@@ -174,8 +177,8 @@ export default function ProjectAssetsView({ detail, refreshProject }: ProjectDet
     const categoryCounts = categories.map((value) => ({
         value,
         count: value === "all"
-            ? totalAssetCount + pendingCandidateCount
-            : (categoryCountMap[value] || 0) + (value === "character" ? pendingCandidateCount : 0),
+            ? totalAssetCount + totalPendingCandidateCount
+            : (categoryCountMap[value] || 0) + (pendingCandidateCounts[value] || 0),
     }));
     const audioPickerItems = useMemo<AssetLibraryPickerItem[]>(() => {
         const localItems = personalAssets.flatMap((asset) => {
@@ -274,12 +277,13 @@ export default function ProjectAssetsView({ detail, refreshProject }: ProjectDet
         onError: failed("文件夹删除失败"),
     });
     const confirmMutation = useMutation({
-        mutationFn: ({ candidateId, targetAssetId }: { candidateId: string; targetAssetId?: string }) => confirmProjectAssetCandidate(detail.project.id, candidateId, targetAssetId),
+        mutationFn: ({ candidateId, targetAssetId }: { candidateId: string; targetAssetId?: string; category: string }) => confirmProjectAssetCandidate(detail.project.id, candidateId, targetAssetId),
         onSuccess: ({ asset }, variables) => {
-            syncPersonalCharacterProjection(asset);
-            done(variables.targetAssetId ? "候选信息已归并到角色新版本" : "角色卡已创建");
+            if (variables.category === "character") syncPersonalCharacterProjection(asset);
+            void candidatesQuery.refetch();
+            done(variables.targetAssetId ? "候选信息已归并到角色新版本" : `${categoryLabel(variables.category)}资产已创建`);
         },
-        onError: failed("角色确认失败"),
+        onError: failed("资产确认失败"),
     });
     const confirmingCandidateId = confirmMutation.isPending ? confirmMutation.variables?.candidateId || "" : "";
     const saveCharacter = useMutation({
@@ -364,7 +368,7 @@ export default function ProjectAssetsView({ detail, refreshProject }: ProjectDet
                 className="pc-project-assets-header"
                 title="角色与资产"
                 description="统一维护角色设定、声音、参考媒体、目录与版本关系。"
-                meta={<><StatusBadge tone="neutral">{totalAssetCount} 项已确认</StatusBadge><StatusBadge tone="info">{characterAssetCount} 个角色</StatusBadge><StatusBadge tone="neutral">{mediaAssetCount} 项媒体</StatusBadge>{pendingCandidateCount ? <StatusBadge tone="warning" icon={<Sparkles className="size-3.5" />}>{pendingCandidateCount} 个待确认</StatusBadge> : null}</>}
+                meta={<><StatusBadge tone="neutral">{totalAssetCount} 项已确认</StatusBadge><StatusBadge tone="info">{characterAssetCount} 个角色</StatusBadge><StatusBadge tone="neutral">{mediaAssetCount} 项媒体</StatusBadge>{totalPendingCandidateCount ? <StatusBadge tone="warning" icon={<Sparkles className="size-3.5" />}>{totalPendingCandidateCount} 个待确认</StatusBadge> : null}</>}
                 actions={<div className="flex shrink-0 items-center gap-1.5">
                     <Button type="text" className="!h-9 !px-3" icon={<FolderPlus className="size-3.5" />} onClick={() => openFolderEditor()}>新建文件夹</Button>
                     <Button type="text" className="!h-9 !px-3" icon={<Link2 className="size-3.5" />} onClick={() => setAddOpen(true)}>引用素材</Button>
@@ -389,26 +393,27 @@ export default function ProjectAssetsView({ detail, refreshProject }: ProjectDet
                         </div>
                         {folderId !== ALL_FOLDERS ? <Button type="text" size="small" icon={<FolderPlus className="size-3.5" />} onClick={() => openFolderEditor(undefined, folderId)}>新建子文件夹</Button> : null}
                     </div>
-                    {showPendingCandidates && candidatesQuery.isError ? <Alert className="mb-3" type="error" showIcon message="待确认角色读取失败" description={candidatesQuery.error instanceof Error ? candidatesQuery.error.message : "请稍后重试。"} action={<Button size="small" onClick={() => void candidatesQuery.refetch()}>重试</Button>} /> : null}
+                    {showPendingCandidates && candidatesQuery.isError ? <Alert className="mb-3" type="error" showIcon message="待确认资产读取失败" description={candidatesQuery.error instanceof Error ? candidatesQuery.error.message : "请稍后重试。"} action={<Button size="small" onClick={() => void candidatesQuery.refetch()}>重试</Button>} /> : null}
                     {childFolders.length ? <div className="project-asset-folder-grid mb-5">{childFolders.map((folder) => <ProjectAssetFolderCard key={folder.id} folder={folder} folders={assetFolders} assets={assets} folderCounts={folderCountMap} personalAssets={personalAssets} onOpen={() => selectFolder(folder.id)} onRename={() => openFolderEditor(folder)} onMove={(parentId) => moveFolderMutation.mutate({ id: folder.id, parentId })} onStyle={(style) => styleFolderMutation.mutate({ id: folder.id, style })} onTheme={(theme) => themeFolderMutation.mutate({ id: folder.id, theme })} onDelete={() => modal.confirm({ title: `删除文件夹“${folder.name}”？`, content: "仅空文件夹可以删除，素材和子文件夹不会被级联删除。", okText: "删除", okButtonProps: { danger: true }, cancelText: "取消", onOk: () => deleteFolderMutation.mutateAsync(folder.id) })} deleting={(deleteFolderMutation.isPending && deleteFolderMutation.variables === folder.id) || (moveFolderMutation.isPending && moveFolderMutation.variables?.id === folder.id) || (styleFolderMutation.isPending && styleFolderMutation.variables?.id === folder.id) || (themeFolderMutation.isPending && themeFolderMutation.variables?.id === folder.id)} />)}</div> : null}
-                    {folderId === ALL_FOLDERS && (category === "all" || category === "character") && pendingCandidates.length ? (
-                        <section className="mb-4" aria-label="待确认角色">
+                    {showPendingCandidates && pendingCandidates.length ? (
+                        <section className="mb-4" aria-label="待确认资产">
                             <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-                                <div className="flex items-center gap-1.5 text-xs font-medium"><Sparkles className="size-3.5 text-foreground/50" />剧情识别出的角色</div>
+                                <div className="flex items-center gap-1.5 text-xs font-medium"><Sparkles className="size-3.5 text-foreground/50" />剧情识别出的待确认资产</div>
                                 <span className="text-[var(--fs-tiny)] tabular-nums text-foreground/42">剩余 {pendingCandidateCount} 个待确认</span>
                             </div>
                             <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
                                 {pendingCandidates.map((candidate) => {
                                     const confirming = confirmingCandidateId === candidate.id;
+                                    const isCharacter = candidate.category === "character";
                                     return (
                                         <article key={candidate.id} className="flex min-h-28 items-center gap-3 rounded-lg bg-surface-active p-3">
-                                            <span className="grid size-12 shrink-0 place-items-center rounded-md bg-foreground/[.045] text-foreground/25"><UserRound className="size-5" /></span>
+                                            <span className="grid size-12 shrink-0 place-items-center rounded-md bg-foreground/[.045] text-foreground/25">{isCharacter ? <UserRound className="size-5" /> : <Box className="size-5" />}</span>
                                             <div className="min-w-0 flex-1">
                                                 <div className="truncate text-xs font-semibold">{candidate.name}</div>
-                                                <div className="mt-1 text-[var(--fs-tiny)] text-foreground/42">待确认角色卡 · 来自章节分析</div>
+                                                <div className="mt-1 line-clamp-2 text-[var(--fs-tiny)] text-foreground/42">待确认{categoryLabel(candidate.category)} · {assetCandidateSummary(candidate.detailsJson)}</div>
                                                 <div className="mt-2 flex min-w-0 flex-wrap items-center gap-1">
-                                                    <Button type="text" size="small" icon={<Check className="size-3.5" />} loading={confirming} disabled={Boolean(confirmingCandidateId) && !confirming} onClick={() => confirmMutation.mutate({ candidateId: candidate.id })}>确认新角色</Button>
-                                                    {characterAssets.length ? <Dropdown trigger={["click"]} menu={{ items: characterAssets.map((asset) => ({ key: asset.id, label: asset.title })), onClick: ({ key }) => confirmMutation.mutate({ candidateId: candidate.id, targetAssetId: key }) }}><Button type="text" size="small" disabled={Boolean(confirmingCandidateId)}>归并到角色<ChevronDown className="size-3" /></Button></Dropdown> : null}
+                                                    <Button type="text" size="small" icon={<Check className="size-3.5" />} loading={confirming} disabled={Boolean(confirmingCandidateId) && !confirming} onClick={() => confirmMutation.mutate({ candidateId: candidate.id, category: candidate.category })}>确认新{categoryLabel(candidate.category)}</Button>
+                                                    {isCharacter && characterAssets.length ? <Dropdown trigger={["click"]} menu={{ items: characterAssets.map((asset) => ({ key: asset.id, label: asset.title })), onClick: ({ key }) => confirmMutation.mutate({ candidateId: candidate.id, targetAssetId: key, category: candidate.category }) }}><Button type="text" size="small" disabled={Boolean(confirmingCandidateId)}>归并到角色<ChevronDown className="size-3" /></Button></Dropdown> : null}
                                                 </div>
                                             </div>
                                         </article>
@@ -687,6 +692,15 @@ function characterDefinition(values: CharacterForm) {
 }
 
 function fieldValue(value: unknown) { return Array.isArray(value) ? value.join("，") : typeof value === "string" ? value : ""; }
+function assetCandidateSummary(detailsJson: string) {
+    try {
+        const details = JSON.parse(detailsJson || "{}") as { description?: unknown; sourceEvidence?: unknown; role?: unknown };
+        const value = details.description || details.role || details.sourceEvidence;
+        return typeof value === "string" && value.trim() ? value.trim() : "来自章节分析";
+    } catch {
+        return "来自章节分析";
+    }
+}
 function syncPersonalCharacterProjection(asset: ProjectAsset) {
     if (!asset.character) return;
     const current = useAssetStore.getState().assets;

@@ -10,6 +10,7 @@ const (
 	promptOperationStoryboardRepair     = "storyboard_repair"
 	promptOperationStoryboardFirstFrame = "storyboard_first_frame"
 	promptOperationStoryboardVideo      = "storyboard_video"
+	promptOperationProjectAssetExtract  = "project_asset_extract"
 	promptOperationCharacterExtract     = "character_extract"
 	promptOperationCharacterTurnaround  = "character_turnaround"
 )
@@ -83,6 +84,12 @@ func defaultPromptDefinitions() []PromptOperationDefinition {
 {{负面要求}}`,
 		},
 		{
+			Operation: promptOperationProjectAssetExtract, Label: "章节资产拆分", Category: "资产", OutputType: "json", SchemaKey: "project-asset-breakdown/v1",
+			Description:    "从章节正文拆分需要跨镜头保持一致的角色、场景、服饰、道具与武器。",
+			Variables:      []PromptTemplateVariable{{Label: "项目名称", Placeholder: "{{项目名称}}"}, {Label: "章节名称", Placeholder: "{{章节名称}}"}, {Label: "项目画风", Placeholder: "{{项目画风}}"}},
+			DefaultContent: `你是短剧资产拆分导演。只提取章节中实际出现、对叙事或动作有明确作用，并且后续分镜与生成需要保持一致的资产。按 character、environment、wardrobe、prop、weapon 分类；不要把抽象概念、气氛、动作、系统播报或泛指群众当作资产。合并同一资产的别名，服饰和武器不要重复归入道具。正文未明确的信息写“正文未明确”，不得编造品牌、历史、材质或角色关系。视觉提示词必须继承项目画风，并给出跨镜头可复用的稳定特征。`,
+		},
+		{
 			Operation: promptOperationCharacterExtract, Label: "角色卡提取", Category: "角色", OutputType: "json", SchemaKey: "character-breakdown/v1",
 			Description:    "从章节正文提取需要跨镜头保持一致的角色资产。",
 			Variables:      []PromptTemplateVariable{{Label: "项目名称", Placeholder: "{{项目名称}}"}, {Label: "章节名称", Placeholder: "{{章节名称}}"}, {Label: "项目画风", Placeholder: "{{项目画风}}"}},
@@ -103,6 +110,8 @@ func protectedPromptContext(operation string, values map[string]string) string {
 		return storyboardProtectedContext(values)
 	case promptOperationStoryboardRepair:
 		return storyboardRepairProtectedContext(values)
+	case promptOperationProjectAssetExtract:
+		return projectAssetExtractProtectedContext(values)
 	case promptOperationCharacterExtract:
 		return characterExtractProtectedContext(values)
 	case promptOperationCharacterTurnaround:
@@ -118,6 +127,8 @@ func promptOutputContract(operation string) string {
 		return "服务端固定 JSON Schema storyboard-plan/v3（不可由运营模板或用户定制覆盖）：\n" + storyboardPlanJSONSchema
 	case promptOperationCharacterExtract:
 		return "服务端固定 JSON Schema character-breakdown/v1（不可由运营模板或用户定制覆盖）：\n" + characterBreakdownJSONSchema
+	case promptOperationProjectAssetExtract:
+		return "服务端固定 JSON Schema project-asset-breakdown/v1（不可由运营模板或用户定制覆盖）：\n" + projectAssetBreakdownJSONSchema
 	default:
 		return "当前操作输出普通文本提示词，没有 JSON Schema。"
 	}
@@ -213,6 +224,56 @@ const characterBreakdownJSONSchema = `{
   }
 }`
 
+const projectAssetBreakdownJSONSchema = `{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["assets"],
+  "properties": {
+    "assets": {
+      "type": "array",
+      "maxItems": 100,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "aliases", "category", "description", "visualPrompt", "continuityNotes", "sourceEvidence", "character"],
+        "properties": {
+          "name": {"type": "string"},
+          "aliases": {"type": "array", "items": {"type": "string"}},
+          "category": {"type": "string", "enum": ["character", "environment", "wardrobe", "prop", "weapon"]},
+          "description": {"type": "string"},
+          "visualPrompt": {"type": "string"},
+          "continuityNotes": {"type": "string"},
+          "sourceEvidence": {"type": "string"},
+          "character": {
+            "description": "category 为 character 时填写完整对象，其他分类必须为 null",
+            "anyOf": [
+              {"type": "null"},
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["role", "appearance", "clothing", "physique", "personality", "props", "consistencyPrompt", "multiViewPrompt", "voiceLanguage", "voiceAge", "voiceTimbre"],
+                "properties": {
+                  "role": {"type": "string"},
+                  "appearance": {"type": "string"},
+                  "clothing": {"type": "string"},
+                  "physique": {"type": "string"},
+                  "personality": {"type": "string"},
+                  "props": {"type": "string"},
+                  "consistencyPrompt": {"type": "string"},
+                  "multiViewPrompt": {"type": "string"},
+                  "voiceLanguage": {"type": "string"},
+                  "voiceAge": {"type": "string"},
+                  "voiceTimbre": {"type": "string"}
+                }
+              }
+            ]
+          }
+        }
+      }
+    }
+  }
+}`
+
 func storyboardProtectedContext(values map[string]string) string {
 	return strings.Join([]string{
 		"【剧情】\n" + values["剧情"],
@@ -257,5 +318,14 @@ func characterExtractProtectedContext(values map[string]string) string {
 		"【项目画风】\n" + values["项目画风"],
 		"【章节正文】\n" + values["章节正文"],
 		"【受保护输出契约】\n" + promptOutputContract(promptOperationCharacterExtract) + "\n严格 JSON 示例：{\"characters\":[{\"name\":\"角色名\",\"aliases\":[],\"role\":\"剧情定位与人物关系\",\"appearance\":\"稳定外貌\",\"clothing\":\"固定服装\",\"physique\":\"体型体态\",\"personality\":\"表演基线\",\"props\":\"\",\"consistencyPrompt\":\"跨镜头一致性约束\",\"multiViewPrompt\":\"三视图结构重点\",\"voiceLanguage\":\"语言口音\",\"voiceAge\":\"声音年龄感\",\"voiceTimbre\":\"音色语速力度\"}]}",
+	}, "\n\n")
+}
+
+func projectAssetExtractProtectedContext(values map[string]string) string {
+	return strings.Join([]string{
+		fmt.Sprintf("【任务】\n从短剧项目《%s》的章节“%s”拆分制作资产。", values["项目名称"], values["章节名称"]),
+		"【项目画风】\n" + values["项目画风"],
+		"【章节正文】\n" + values["章节正文"],
+		"【受保护输出契约】\n" + promptOutputContract(promptOperationProjectAssetExtract) + "\n只返回完整 JSON，不要 Markdown 或解释。角色必须填写 character 对象并满足完整角色卡字段；其他分类的 character 必须为 null。sourceEvidence 用简短正文事实说明为何需要该资产，不要大段复制原文。",
 	}, "\n\n")
 }
