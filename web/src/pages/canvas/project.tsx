@@ -43,6 +43,7 @@ import { CanvasProjectStatusDialogs } from "./canvas-project-status-dialogs";
 import { CanvasProjectWorkspaceOverlays } from "./canvas-project-workspace-overlays";
 import { CanvasProjectShortDramaGuide, CanvasProjectWorkspaceModeSwitch } from "./canvas-project-workspace-chrome";
 import { CanvasProjectViewport } from "./canvas-project-viewport";
+import { resolveCanvasActiveNodeTargets } from "./canvas-active-node-targets";
 import { CanvasProjectHeadlessAgent, CanvasProjectUtilityDialogs } from "./canvas-project-utility-overlays";
 import type { CanvasNodeGraphContextValue } from "@/components/canvas/canvas-node-graph-context";
 import { CanvasRefreshShell } from "./canvas-refresh-shell";
@@ -772,16 +773,18 @@ function InfiniteCanvasPage() {
     // 扩展节点只关心语义数据。使用共享图索引后，每个节点取上游不再重复扫描整张画布，
     // 且纯位置变化不会刷新 Context，避免所有可见节点绕过 memo 重渲染。
     const nodeGraphContext = useMemo<CanvasNodeGraphContextValue>(() => ({ getUpstreamNodes: (nodeId: string) => getContextResourceNodesFromIndex(nodeId, resourceGraphIndex) }), [resourceGraphIndex]);
-    const dialogNode = dialogNodeId ? nodeById.get(dialogNodeId) || null : null;
-    const subtitleNode = subtitleNodeId ? nodeById.get(subtitleNodeId) || null : null;
-    const timelineNode = timelineNodeId ? nodeById.get(timelineNodeId) || null : null;
-    const frameNode = frameDialogNodeId ? nodeById.get(frameDialogNodeId) || null : null;
-    const segmentNode = segmentDialogNodeId ? nodeById.get(segmentDialogNodeId) || null : null;
-    const textEditorNode = textEditorNodeId ? nodeById.get(textEditorNodeId) || null : null;
-    const characterReferenceNode = characterReferenceNodeId ? nodeById.get(characterReferenceNodeId) || null : null;
-    const drawingNode = drawingNodeId ? nodeById.get(drawingNodeId) || null : null;
-    const pendingConnectionSourceNode = pendingConnectionCreate?.connection.handleType === "source" ? nodeById.get(pendingConnectionCreate.connection.nodeId) : null;
-    const canCreateDrawingFromConnection = !pendingConnectionCreate?.batchSourceNodeIds?.length && pendingConnectionSourceNode?.type === CanvasNodeType.Image && Boolean(pendingConnectionSourceNode.metadata?.content);
+    const { dialogNode, subtitleNode, timelineNode, frameNode, segmentNode, textEditorNode, characterReferenceNode, drawingNode, canCreateDrawingFromConnection } = resolveCanvasActiveNodeTargets({
+        nodeById,
+        dialogNodeId,
+        subtitleNodeId,
+        timelineNodeId,
+        frameDialogNodeId,
+        segmentDialogNodeId,
+        textEditorNodeId,
+        characterReferenceNodeId,
+        drawingNodeId,
+        pendingConnectionCreate,
+    });
 
     const { agentSnapshot, agentUndoCount, applyAgentOps, canUndoAgentOps, dismissLastAgentChange, lastAgentChange, undoAgentOps, viewLastAgentChange } = useCanvasAgentOperations({
         projectId,
