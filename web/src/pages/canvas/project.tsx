@@ -15,7 +15,6 @@ import { flushCanvasStorePersistence } from "@/stores/canvas/use-canvas-store";
 import { useThemeStore } from "@/stores/use-theme-store";
 import { useUserStore } from "@/stores/use-user-store";
 import { App } from "antd";
-import { CanvasProjectSidebar } from "@/components/canvas/canvas-project-sidebar";
 import { resolveProjectCanvasStyle } from "@/components/canvas/canvas-style-picker-modal";
 import { createStyleProfileSnapshot, resolveStyleProfile, serializeStyleProfile } from "@/lib/canvas/style-profile";
 import { CanvasNodeInfoModal } from "@/components/canvas/canvas-node-toolbar";
@@ -32,7 +31,7 @@ import { stampCanvasNodeChanges } from "@/lib/canvas/canvas-node-timestamps";
 import { batchSourceRestriction } from "@/lib/canvas/canvas-batch-connection";
 import { CanvasProjectFeedbackLayer } from "./canvas-project-feedback";
 import { backendProviderConfig } from "@/lib/canvas/canvas-project-generation";
-import { CanvasTopBar } from "./canvas-project-top-bar";
+import { CanvasProjectHeader, CanvasProjectNavigationSidebar } from "./canvas-project-chrome";
 import { CanvasProjectContextMenu } from "./canvas-project-context-menu";
 import { CanvasProjectMediaDialogs } from "./canvas-project-media-dialogs";
 import { CanvasProjectBottomDock } from "./canvas-project-bottom-dock";
@@ -1217,53 +1216,55 @@ function InfiniteCanvasPage() {
                 style={{ background: theme.canvas.background, color: theme.node.text }}
                 aria-label="画布编辑工作台"
             >
-                {!focusMode && shortDramaEnabled && currentProject?.projectId ? (
-                    <CanvasProjectSidebar projectId={currentProject.projectId} detail={linkedProjectQuery.data} onAddChapter={handleProjectChapterInsert} onLocateStyle={locateProjectStyleNode} onOpenAssets={() => openProjectAssets()} />
-                ) : null}
+                <CanvasProjectNavigationSidebar
+                    focusMode={focusMode}
+                    shortDramaEnabled={shortDramaEnabled}
+                    projectId={currentProject?.projectId || ""}
+                    detail={linkedProjectQuery.data}
+                    onAddChapter={handleProjectChapterInsert}
+                    onLocateStyle={locateProjectStyleNode}
+                    onOpenAssets={openProjectAssets}
+                />
                 <CanvasOverlayLayerProvider>
                     <section className="pc-canvas-workspace__stage relative min-w-0 flex-1 flex flex-col min-h-0 overflow-hidden">
-                        {!focusMode ? (
-                            <CanvasTopBar
-                                title={currentProject?.title || "未命名画布"}
-                                titleDraft={titleDraft}
-                                isTitleEditing={titleEditing}
-                                onTitleDraftChange={setTitleDraft}
-                                onStartTitleEditing={startTitleEditing}
-                                onFinishTitleEditing={finishTitleEditing}
-                                onCancelTitleEditing={cancelTitleEditing}
-                                canUndo={historyState.canUndo}
-                                canRedo={historyState.canRedo}
-                                onCreateProject={createAndOpenProject}
-                                onDeleteProject={deleteCurrentProject}
-                                onImportImage={() => handleUploadRequest()}
-                                onImportLibTV={() => setLibTVImportOpen(true)}
-                                onImportTapNow={() => setTapNowImportOpen(true)}
-                                onUndo={undoCanvas}
-                                onRedo={redoCanvas}
-                                onShare={() => setShareModalOpen(true)}
-                                agentOpen={assistantOpen}
-                                compactAgentStatus={codexCompactAgent ? { connected: localAgentConnected, enabled: localAgentEnabled, activity: localAgentActivity } : undefined}
-                                onToggleAgent={() => (assistantOpen ? closeAgent() : openAgent())}
-                                shortcutRequestNonce={shortcutRequestNonce}
-                                mediaPerformanceMode={mediaPerformanceMode}
-                                mediaRenderTier={mediaRenderPolicy.tier}
-                                onMediaPerformanceModeChange={setMediaPerformanceMode}
-                                onOpenSearch={() => setNodeSearchOpen(true)}
-                                saveStatus={saveStatus}
-                                onRetrySave={() => void saveCanvasProject()}
-                                projectContext={
-                                    shortDramaEnabled && currentProject?.projectId
-                                        ? {
-                                              ...canvasContext,
-                                              projectId: currentProject.projectId,
-                                              projectName: linkedProjectQuery.data?.project.name || currentProject.title,
-                                          }
-                                        : undefined
-                                }
-                                onEnterFocusMode={enterFocusMode}
-                                shortDramaGuide={shortDramaGuide}
-                            />
-                        ) : null}
+                        <CanvasProjectHeader
+                            focusMode={focusMode}
+                            shortDramaEnabled={shortDramaEnabled}
+                            linkedProjectId={currentProject?.projectId}
+                            linkedProjectName={linkedProjectQuery.data?.project.name || currentProject?.title || "未命名项目"}
+                            context={canvasContext}
+                            topBar={{
+                                title: currentProject?.title || "未命名画布",
+                                titleDraft,
+                                isTitleEditing: titleEditing,
+                                onTitleDraftChange: setTitleDraft,
+                                onStartTitleEditing: startTitleEditing,
+                                onFinishTitleEditing: finishTitleEditing,
+                                onCancelTitleEditing: cancelTitleEditing,
+                                canUndo: historyState.canUndo,
+                                canRedo: historyState.canRedo,
+                                onCreateProject: createAndOpenProject,
+                                onDeleteProject: deleteCurrentProject,
+                                onImportImage: () => handleUploadRequest(),
+                                onImportLibTV: () => setLibTVImportOpen(true),
+                                onImportTapNow: () => setTapNowImportOpen(true),
+                                onUndo: undoCanvas,
+                                onRedo: redoCanvas,
+                                onShare: () => setShareModalOpen(true),
+                                agentOpen: assistantOpen,
+                                compactAgentStatus: codexCompactAgent ? { connected: localAgentConnected, enabled: localAgentEnabled, activity: localAgentActivity } : undefined,
+                                onToggleAgent: () => (assistantOpen ? closeAgent() : openAgent()),
+                                shortcutRequestNonce,
+                                mediaPerformanceMode,
+                                mediaRenderTier: mediaRenderPolicy.tier,
+                                onMediaPerformanceModeChange: setMediaPerformanceMode,
+                                onOpenSearch: () => setNodeSearchOpen(true),
+                                saveStatus,
+                                onRetrySave: () => void saveCanvasProject(),
+                                onEnterFocusMode: enterFocusMode,
+                                shortDramaGuide,
+                            }}
+                        />
 
                         <CanvasProjectWorkspaceModeSwitch
                             focusMode={focusMode}
