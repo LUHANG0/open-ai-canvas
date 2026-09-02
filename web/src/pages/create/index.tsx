@@ -4,9 +4,7 @@ import { History } from "lucide-react";
 
 import { AssetLibraryPickerModal } from "@/components/assets/asset-library-picker-modal";
 import { usePcBrandViewport } from "@/hooks/use-pc-brand-viewport";
-import { isGenerationTaskCancelled } from "@/services/api/generation-task";
 import { listAddedSkills, type Skill } from "@/services/api/skills";
-import { beginGenerationConsumer } from "@/services/generation-consumer-lifecycle";
 import { modelDisplayName, useConfigStore, useEffectiveConfig } from "@/stores/use-config-store";
 import { useAssetStore } from "@/stores/use-asset-store";
 import type { PromptOptimizerProvider } from "@/lib/plugins/plugin-types";
@@ -14,7 +12,6 @@ import { promptOptimizerPlugin, PROMPT_OPTIMIZER_PLUGIN_ID } from "@/lib/plugins
 import { createPluginHostContext } from "@/services/plugin-host";
 import { usePluginStore } from "@/stores/use-plugin-store";
 import { buildCreationMentionReferences, removeCreationReferenceTokens, replaceCreationAttachmentReference, type CreationReference } from "./creation-references";
-import { skillRuntime } from "@/services/skill-runtime";
 import {
     creationAttachmentKind,
     removeCreationAttachment,
@@ -24,28 +21,16 @@ import { CreationComposer } from "./creation-composer";
 import { CreationEmptyIntro, CreationEmptySuggest, type CreationMode } from "./creation-empty-state";
 import { CreationMessageView } from "./creation-message-view";
 import { StoryboardComposerContext, StoryboardNextShotCard, StoryboardShotCard, StoryboardShotRail, StoryboardToolbar } from "./creation-storyboard-workbench";
-import { executeCreationGeneration, type CreationRetryContext } from "./creation-generation-executor";
-import {
-    applyCreationSubmissionToConversation,
-    cancelCreationSubmissionMessage,
-    completeCreationSubmissionMessage,
-    createCreationSubmissionMessages,
-    createCreationTaskBindings,
-    creationMessageWithBoundTask,
-    failCreationSubmissionMessage,
-    recordCreationTaskBinding,
-} from "./creation-submission-transaction";
-import { normalizeCreationVideoAttachments, prepareCreationSubmission } from "./creation-submit-preparation";
+import { normalizeCreationVideoAttachments } from "./creation-submit-preparation";
 import type { CreationConversation, CreationMessage, CreationShot, CreationVideoOperationChoice, CreationViewMode } from "./creation-types";
 import { useCreationAssetWorkflow } from "./use-creation-asset-workflow";
 import { useCreationConversationWorkflow } from "./use-creation-conversation-workflow";
-import { useCreationDraftWorkflow, type CreationRetryTarget } from "./use-creation-draft-workflow";
+import { useCreationDraftWorkflow } from "./use-creation-draft-workflow";
 import { useCreationModeWorkflow } from "./use-creation-mode-workflow";
 import { useCreationModelWorkflow } from "./use-creation-model-workflow";
+import { useCreationSubmitWorkflow } from "./use-creation-submit-workflow";
 import { CreationHistoryDrawer, CreationWorkspaceToolbar } from "./creation-workspace-toolbar";
 import "./creation-workspace.css";
-
-const modeLabels: Record<CreationMode, string> = { text: "文本", image: "图片", video: "视频" };
 
 function shotsFromMessages(messages: CreationMessage[]): CreationShot[] {
     const shots: CreationShot[] = [];
@@ -96,7 +81,6 @@ export default function CreatePage() {
     const [viewMode, setViewMode] = useState<CreationViewMode>("chat");
     const [storyboardTimelineOpen, setStoryboardTimelineOpen] = useState(true);
     const [historyOpen, setHistoryOpen] = useState(false);
-    const abortRef = useRef<AbortController | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const composerFocusRef = useRef<HTMLTextAreaElement>(null);
     const threadScrollRef = useRef<HTMLElement>(null);
@@ -167,8 +151,6 @@ export default function CreatePage() {
     });
     const selectedShotIndex = selectedShotId ? shots.findIndex((shot) => shot.id === selectedShotId) : -1;
     const visibleShotIndex = shots.length ? (selectedShotIndex >= 0 ? selectedShotIndex : shots.length - 1) : -1;
-
-    useEffect(() => () => abortRef.current?.abort(), []);
 
     useEffect(() => {
         let cancelled = false;
@@ -259,6 +241,40 @@ export default function CreatePage() {
         updateConfig,
         toast,
     });
+    const { submit } = useCreationSubmitWorkflow({
+        prompt,
+        busy,
+        setBusy,
+        activeConversation,
+        pendingUploadCountRef,
+        mode,
+        selectedModel,
+        config,
+        attachments,
+        mentionReferences,
+        referenceLimits,
+        maxReferences,
+        modelRequirements,
+        videoOperationChoice,
+        imageProfile,
+        videoProfile,
+        ratio,
+        seconds,
+        quality,
+        videoQuality,
+        count,
+        pendingRetry,
+        clearPendingRetry,
+        releaseRetryLock,
+        updateActive,
+        updateConversationMessage,
+        setPrompt,
+        setAttachments,
+        setDraftReferences,
+        selectSubmittedShot,
+        followLatestMessageRef,
+        toast,
+    });
 
     const removeAttachment = (id: string) => {
         const reference = mentionReferences.find((item) => item.attachmentId === id);
@@ -288,137 +304,6 @@ export default function CreatePage() {
         },
         [replaceAttachmentReference, toast],
     );
-
-    const submit = async (retryContext?: CreationRetryContext, retryLockKey?: string, retryTarget?: CreationRetryTarget) => {
-        const releaseCurrentRetryLock = () => releaseRetryLock(retryLockKey);
-        const text = prompt.trim();
-        if (pendingUploadCountRef.current > 0) {
-            toast.info("素材仍在上传，完成后才能提交生成");
-            releaseCurrentRetryLock();
-            return;
-        }
-        if (!text || busy || !activeConversation) {
-            releaseCurrentRetryLock();
-            return;
-        }
-        if (retryTarget && activeConversation.id !== retryTarget.conversationId) {
-            toast.warning("已切换到其他创作，本次重试未执行");
-            releaseCurrentRetryLock();
-            return;
-        }
-        if (!selectedModel) {
-            toast.warning(`请先在设置中配置${modeLabels[mode]}模型`);
-            releaseCurrentRetryLock();
-            return;
-        }
-        const preparation = prepareCreationSubmission({
-            text,
-            mode,
-            selectedModel,
-            config,
-            attachments,
-            mentionReferences,
-            referenceLimits,
-            maxReferences,
-            modelRequirements,
-            videoOperationChoice,
-            imageProfile,
-            videoProfile,
-            ratio,
-            seconds,
-            quality,
-            videoQuality,
-            count,
-        });
-        if (!preparation.ok) {
-            toast[preparation.level](preparation.message);
-            releaseCurrentRetryLock();
-            return;
-        }
-        const { submissionAttachments, videoOperation, settings, references, skillReferences, skillPrompt } = preparation;
-        let skillExecution: Awaited<ReturnType<typeof skillRuntime.prepare<"creation">>>;
-        try {
-            skillExecution = await skillRuntime.prepare({
-                profile: "creation",
-                prompt: skillPrompt,
-                skills: skillReferences,
-                selectedSkillIds: skillReferences.map((skill) => skill.skill_id),
-            });
-        } catch (error) {
-            toast.error(error instanceof Error ? error.message : "技能上下文加载失败");
-            releaseCurrentRetryLock();
-            return;
-        }
-        const expandedPrompt = skillExecution.prompt;
-        const referenceMetadata = skillExecution.metadata;
-        followLatestMessageRef.current = true;
-        const { userMessage, assistantMessage } = createCreationSubmissionMessages({
-            text,
-            mode,
-            selectedModel,
-            attachments: submissionAttachments,
-            references,
-            settings,
-            retryContext,
-            retryTarget,
-        });
-        const originConversationId = activeConversation.id;
-        const updateOriginAssistant = (updater: (item: CreationMessage) => CreationMessage) => updateConversationMessage(originConversationId, assistantMessage.id, updater);
-        const bindings = createCreationTaskBindings();
-        const bindTask = (task: Parameters<typeof recordCreationTaskBinding>[1]) => {
-            recordCreationTaskBinding(bindings, task);
-            updateOriginAssistant((item) => creationMessageWithBoundTask(item, task));
-            if (abortRef.current === controller) {
-                abortRef.current = null;
-                setBusy(false);
-            }
-        };
-        updateActive((conversation) => applyCreationSubmissionToConversation({ conversation, text, userMessage, assistantMessage, retryTarget }));
-        setPrompt("");
-        setAttachments([]);
-        setDraftReferences([]);
-        selectSubmittedShot(userMessage.id);
-        setBusy(true);
-        const controller = new AbortController();
-        const requestLifecycle = beginGenerationConsumer(controller.signal);
-        abortRef.current = controller;
-        try {
-            await executeCreationGeneration({
-                preparation,
-                expandedPrompt,
-                referenceMetadata,
-                activeConversation,
-                userMessage,
-                assistantMessage,
-                retryContext,
-                signal: requestLifecycle.signal,
-                bindTask,
-                bindings,
-                updateAssistant: updateOriginAssistant,
-                onWarning: (message) => toast.warning(message),
-            });
-            updateOriginAssistant((item) => completeCreationSubmissionMessage(item));
-        } catch (error) {
-            if (isGenerationTaskCancelled(error, requestLifecycle.signal)) {
-                updateOriginAssistant((item) => cancelCreationSubmissionMessage(item));
-                return;
-            }
-            updateOriginAssistant((item) => failCreationSubmissionMessage(item, error, { operation: mode === "video" ? videoOperation : mode, assistantCreatedAt: assistantMessage.createdAt }));
-        } finally {
-            requestLifecycle.release();
-            releaseCurrentRetryLock();
-            if (abortRef.current === controller) {
-                abortRef.current = null;
-                setBusy(false);
-            }
-        }
-    };
-
-    useEffect(() => {
-        if (!pendingRetry) return;
-        clearPendingRetry();
-        void submit(pendingRetry.context, pendingRetry.lockKey, pendingRetry.target);
-    }, [pendingRetry]);
 
     const startNewConversation = () => {
         if (pendingUploadCountRef.current > 0) {

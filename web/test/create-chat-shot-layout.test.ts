@@ -79,18 +79,19 @@ describe("PC creation chat and storyboard director workbench regression gates", 
     });
 
     test("uses stable message-backed shot ids for selection instead of array indexes", async () => {
-        const [source, draftSource, typesSource, storyboardSource, transactionSource] = await Promise.all([
+        const [source, draftSource, typesSource, storyboardSource, transactionSource, submitSource] = await Promise.all([
             read("../src/pages/create/index.tsx"),
             read("../src/pages/create/use-creation-draft-workflow.ts"),
             read("../src/pages/create/creation-types.ts"),
             read("../src/pages/create/creation-storyboard-workbench.tsx"),
             read("../src/pages/create/creation-submission-transaction.ts"),
+            read("../src/pages/create/use-creation-submit-workflow.ts"),
         ]);
         const projection = sourceSection(source, "function shotsFromMessages", "export default function CreatePage");
         const selection = sourceSection(source, "const shots = useMemo", "const visibleShotIndex");
         const selectShot = sourceSection(draftSource, "const selectStoryboardShot", "const beginVariantFromShot");
         const rail = sourceSection(storyboardSource, "function StoryboardShotRail", "function StoryboardComposerContext");
-        const submit = sourceSection(source, "const submit = async", "useEffect(() => {");
+        const submit = sourceSection(submitSource, "const submit = async", "useEffect(() => {");
 
         expect(typesSource).toContain("export type CreationShot = {");
         expect(typesSource).toContain("id: string;");
@@ -250,15 +251,17 @@ describe("PC creation chat and storyboard director workbench regression gates", 
     });
 
     test("keeps failed-shot retry non-destructive until validation and guards conversation changes", async () => {
-        const [source, draftSource, preparationSource, transactionSource] = await Promise.all([
+        const [source, draftSource, preparationSource, transactionSource, submitSource] = await Promise.all([
             read("../src/pages/create/index.tsx"),
             read("../src/pages/create/use-creation-draft-workflow.ts"),
             read("../src/pages/create/creation-submit-preparation.ts"),
             read("../src/pages/create/creation-submission-transaction.ts"),
+            read("../src/pages/create/use-creation-submit-workflow.ts"),
         ]);
-        const submit = sourceSection(source, "const submit = async", "useEffect(() => {");
+        const submit = sourceSection(submitSource, "const submit = async", "useEffect(() => {");
+        const guard = sourceSection(submitSource, "export function creationSubmissionStartGuard", "export function useCreationSubmitWorkflow");
         const retry = sourceSection(draftSource, "const retryFailedMessage", "const createVariant");
-        const retryEffect = sourceSection(source, "if (!pendingRetry) return", "const startNewConversation");
+        const retryEffect = sourceSection(submitSource, "if (!pendingRetry) return", "return { submit }");
 
         expect(retry).not.toContain("updateActive(");
         expect(retry).not.toContain("removedIds");
@@ -269,7 +272,7 @@ describe("PC creation chat and storyboard director workbench regression gates", 
         expect(retry).toContain("assistantMessageId: pair.assistantMessage.id");
         expect(retryEffect).toContain("void submit(pendingRetry.context, pendingRetry.lockKey, pendingRetry.target)");
 
-        const guardPosition = submit.indexOf("if (retryTarget && activeConversation.id !== retryTarget.conversationId)");
+        const guardPosition = submit.indexOf("const guard = creationSubmissionStartGuard");
         const validationPosition = submit.indexOf("const preparation = prepareCreationSubmission");
         const preparePosition = submit.indexOf("skillExecution = await skillRuntime.prepare");
         const replacementPosition = submit.indexOf("applyCreationSubmissionToConversation");
@@ -277,16 +280,17 @@ describe("PC creation chat and storyboard director workbench regression gates", 
         expect(validationPosition).toBeGreaterThan(guardPosition);
         expect(preparePosition).toBeGreaterThan(validationPosition);
         expect(replacementPosition).toBeGreaterThan(preparePosition);
+        expect(guard.indexOf("if (input.retryConversationId")).toBeLessThan(guard.indexOf("if (!input.selectedModel)"));
         expect(preparationSource).toContain("const compatibilityError = modelCompatibilityError");
         expect(preparationSource).toContain("reconcileCreationAttachmentLimits(submissionAttachments, mode, referenceLimits)");
-        expect(submit).toContain('toast.warning("已切换到其他创作，本次重试未执行")');
+        expect(guard).toContain('message: "已切换到其他创作，本次重试未执行"');
         expect(transactionSource).toContain("if (retryTarget && conversation.id === retryTarget.conversationId)");
         expect(transactionSource).toContain("retained.splice(insertAt >= 0 ? insertAt : retained.length, 0, userMessage, assistantMessage)");
         expect(submit).toContain("selectSubmittedShot(userMessage.id)");
     });
 
     test("retains preview, download, retry, canvas handoff, upload, and generation fingerprints", async () => {
-        const [source, executorSource, messageSource, composerSource, storyboardSource] = await Promise.all([read("../src/pages/create/index.tsx"), read("../src/pages/create/creation-generation-executor.ts"), read("../src/pages/create/creation-message-view.tsx"), read("../src/pages/create/creation-composer.tsx"), read("../src/pages/create/creation-storyboard-workbench.tsx")]);
+        const [source, executorSource, messageSource, composerSource, storyboardSource, submitSource] = await Promise.all([read("../src/pages/create/index.tsx"), read("../src/pages/create/creation-generation-executor.ts"), read("../src/pages/create/creation-message-view.tsx"), read("../src/pages/create/creation-composer.tsx"), read("../src/pages/create/creation-storyboard-workbench.tsx"), read("../src/pages/create/use-creation-submit-workflow.ts")]);
         const shotCard = sourceSection(storyboardSource, "function StoryboardShotCard", "function StoryboardNextShotCard");
         const result = storyboardSource.slice(storyboardSource.indexOf("function StoryboardShotResult"));
         const downloads = sourceSection(messageSource, "export function CreationResultDownloads", "function CreationMediaPending");
@@ -295,7 +299,9 @@ describe("PC creation chat and storyboard director workbench regression gates", 
         expect(storyboardSource).toContain("creationCanvasHandoffPath(resultAssetIds, resultUrls.length)");
         expect(executorSource).toContain("runBackendGenerationTask(");
         expect(executorSource).toContain("runBackendGenerationTaskBatch(");
-        expect(source).toContain("executeCreationGeneration({");
+        expect(submitSource).toContain("executeCreationGeneration({");
+        expect((submitSource.match(/requestLifecycle\.release\(\)/g) || []).length).toBe(1);
+        expect(submitSource).toContain("useEffect(() => () => abortRef.current?.abort(), [])");
         expect(source).toContain("onSubmit: () => void submit()");
         expect(shotCard).toContain("onRetryFailure");
         expect(shotCard).toContain('<Link className="storyboard-workbench-card-action" to={canvasPath}>');

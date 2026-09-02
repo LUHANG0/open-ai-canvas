@@ -17,6 +17,7 @@ function readCreateSource() {
         "../src/pages/create/use-creation-draft-workflow.ts",
         "../src/pages/create/use-creation-mode-workflow.ts",
         "../src/pages/create/use-creation-model-workflow.ts",
+        "../src/pages/create/use-creation-submit-workflow.ts",
         "../src/pages/create/creation-submit-preparation.ts",
         "../src/pages/create/creation-submission-transaction.ts",
         "../src/pages/create/creation-generation-executor.ts",
@@ -314,7 +315,7 @@ describe("creation library button", () => {
         expect(source).toContain("disabled={interactionBusy || !canSubmit}");
         expect(source).toContain("请先选择${modeLabels[props.mode]}模型");
         expect(source).toContain('to={settingsPath("models", true)}');
-        expect(source).toContain("if (!selectedModel) {");
+        expect(source).toContain("if (!input.selectedModel) return");
     });
 
     test("素材库批量选择超限时原子拒绝，不静默裁剪或关闭弹窗", () => {
