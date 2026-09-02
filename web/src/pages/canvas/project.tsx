@@ -24,11 +24,6 @@ import { WorkspaceState } from "@/components/layout/workspace-state";
 import { resolveProjectCanvasStyle } from "@/components/canvas/canvas-style-picker-modal";
 import { createStyleProfileSnapshot, resolveStyleProfile, serializeStyleProfile } from "@/lib/canvas/style-profile";
 import { CanvasNodeInfoModal, CanvasNodeToolbar } from "@/components/canvas/canvas-node-toolbar";
-import { CanvasSubtitleDialog } from "@/components/canvas/canvas-subtitle-dialog";
-import { CanvasVideoFrameDialog } from "@/components/canvas/canvas-video-frame-dialog";
-import { CanvasVideoSegmentDialog } from "@/components/canvas/canvas-video-segment-dialog";
-import { CanvasTimelineDialog } from "@/components/canvas/canvas-timeline-dialog";
-import { syncNodeSubtitlesToTimeline } from "@/lib/timeline/timeline-build";
 import { CanvasNodeAnglePanel } from "@/components/canvas/canvas-node-angle-dialog";
 import { CanvasNodeSearchModal } from "@/components/canvas/canvas-node-search-modal";
 import { CanvasStylePickerModal } from "@/components/canvas/canvas-style-picker-modal";
@@ -65,6 +60,7 @@ import { CanvasFocusModeBar } from "@/components/canvas/canvas-focus-mode-bar";
 import { CanvasProjectContextMenu } from "./canvas-project-context-menu";
 import { CanvasProjectMediaDialogs } from "./canvas-project-media-dialogs";
 import { CanvasProjectNodeEditorDialogs } from "./canvas-project-node-editor-dialogs";
+import { CanvasProjectTimelineDialogs } from "./canvas-project-timeline-dialogs";
 import { CanvasProjectSelectionToolbar } from "./canvas-project-selection-toolbar";
 import { CanvasProjectStatusDialogs } from "./canvas-project-status-dialogs";
 import { CanvasProjectWorldLayers } from "./canvas-project-world-layers";
@@ -1767,67 +1763,33 @@ function InfiniteCanvasPage() {
 
                         <CanvasNodeInfoModal node={infoNode} open={Boolean(infoNode)} onClose={() => setInfoNodeId(null)} onMetadataChange={handleConfigNodeChange} />
 
-                        {subtitleNode ? (
-                            <CanvasSubtitleDialog
-                                node={subtitleNode}
-                                open={Boolean(subtitleNode)}
-                                projectId={projectId}
-                                config={effectiveConfig}
-                                onClose={() => setSubtitleNodeId(null)}
-                                onSave={(nodeId, patch) => {
-                                    handleConfigNodeChange(nodeId, patch);
-                                    const currentTimeline = currentProject?.timeline;
-                                    if (currentTimeline) {
-                                        const next = syncNodeSubtitlesToTimeline(currentTimeline, nodeId, patch.subtitleEntries || []);
-                                        if (next !== currentTimeline) updateProject(projectId, { timeline: next });
-                                    }
-                                }}
-                            />
-                        ) : null}
-
-                        {frameNode ? <CanvasVideoFrameDialog node={frameNode} open={Boolean(frameNode)} onClose={closeFrameDialog} onConfirm={(params) => void extractVideoFrames(frameNode, params)} /> : null}
-
-                        {segmentNode && segmentDialogMode ? (
-                            <CanvasVideoSegmentDialog
-                                node={segmentNode}
-                                nodes={nodes}
-                                connections={connections}
-                                open={Boolean(segmentNode && segmentDialogMode)}
-                                mode={segmentDialogMode}
-                                config={effectiveConfig}
-                                timeline={currentProject?.timeline || null}
-                                onClose={closeSegmentDialog}
-                                onConfirm={(params) => void handleSegmentConfirm(segmentNode, params)}
-                            />
-                        ) : null}
-
-                        {timelineNode ? (
-                            <CanvasTimelineDialog
-                                node={timelineNode}
-                                open={Boolean(timelineNode)}
-                                nodes={nodes}
-                                timeline={currentProject?.timeline || null}
-                                onClose={() => setTimelineNodeId(null)}
-                                onOpenSubtitleDialog={(subNodeId) => {
-                                    setTimelineNodeId(null);
-                                    setSubtitleNodeId(subNodeId);
-                                }}
-                                onSave={(next) => updateProject(projectId, { timeline: next })}
-                                onSaveSubtitles={(subNodeId, entries) =>
-                                    handleConfigNodeChange(subNodeId, {
-                                        subtitleEntries: entries,
-                                        ...(entries.length ? {} : { subtitleHighlights: [] }),
-                                        subtitleUpdatedAt: new Date().toISOString(),
-                                    })
-                                }
-                                onOpenAssetLibrary={openTimelineAssetLibrary}
-                                onOpenProjectAssets={() => openProjectAssets("all", undefined, "timeline")}
-                                onUploadLocalFiles={uploadTimelineMedia}
-                                addNodeToTimelineRef={timelineAddNodeRef}
-                                addMediaToTimelineRef={timelineMediaAddRef}
-                                onCreateAssembledNode={createVideoNodeFromBlob}
-                            />
-                        ) : null}
+                        <CanvasProjectTimelineDialogs
+                            projectId={projectId}
+                            config={effectiveConfig}
+                            nodes={nodes}
+                            connections={connections}
+                            timeline={currentProject?.timeline || null}
+                            subtitleNode={subtitleNode}
+                            frameNode={frameNode}
+                            segmentNode={segmentNode}
+                            segmentDialogMode={segmentDialogMode}
+                            timelineNode={timelineNode}
+                            onCloseSubtitle={() => setSubtitleNodeId(null)}
+                            onUpdateNodeMetadata={handleConfigNodeChange}
+                            onUpdateTimeline={(next) => updateProject(projectId, { timeline: next })}
+                            onCloseFrame={closeFrameDialog}
+                            onExtractVideoFrames={extractVideoFrames}
+                            onCloseSegment={closeSegmentDialog}
+                            onConfirmVideoSegment={handleSegmentConfirm}
+                            onCloseTimeline={() => setTimelineNodeId(null)}
+                            onOpenSubtitle={setSubtitleNodeId}
+                            onOpenAssetLibrary={openTimelineAssetLibrary}
+                            onOpenProjectAssets={() => openProjectAssets("all", undefined, "timeline")}
+                            onUploadLocalFiles={uploadTimelineMedia}
+                            addNodeToTimelineRef={timelineAddNodeRef}
+                            addMediaToTimelineRef={timelineMediaAddRef}
+                            onCreateAssembledNode={createVideoNodeFromBlob}
+                        />
 
                         <CanvasProjectNodeEditorDialogs
                             projectId={projectId}
