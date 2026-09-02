@@ -30,13 +30,13 @@ import { useCanvasAgentStore } from "@/stores/canvas/use-canvas-agent-store";
 import { getContextResourceNodesFromIndex } from "@/lib/canvas/canvas-resource-references";
 import { CanvasOverlayLayerProvider } from "@/components/canvas/canvas-overlay-layer";
 import { CanvasLeaferGraphicsLayer } from "@/components/canvas/canvas-leafer-graphics-layer";
-import { CanvasFreeformEmptyState, CanvasLinkedProjectEmptyState, CanvasShortDramaEmptyState, CanvasShortDramaGuide } from "@/components/canvas/canvas-short-drama-entry";
+import { CanvasFreeformEmptyState, CanvasLinkedProjectEmptyState, CanvasShortDramaEmptyState } from "@/components/canvas/canvas-short-drama-entry";
 import { createCanvasNode } from "@/lib/canvas/canvas-project-domain";
 import { stampCanvasNodeChanges } from "@/lib/canvas/canvas-node-timestamps";
 import { batchSourceRestriction } from "@/lib/canvas/canvas-batch-connection";
 import { CanvasProjectFeedbackLayer } from "./canvas-project-feedback";
 import { backendProviderConfig } from "@/lib/canvas/canvas-project-generation";
-import { CanvasTopBar, CanvasWorkspaceModeSwitch } from "./canvas-project-top-bar";
+import { CanvasTopBar } from "./canvas-project-top-bar";
 import { CanvasProjectContextMenu } from "./canvas-project-context-menu";
 import { CanvasProjectMediaDialogs } from "./canvas-project-media-dialogs";
 import { CanvasProjectBottomDock } from "./canvas-project-bottom-dock";
@@ -53,6 +53,7 @@ import { CanvasProjectTimelineDialogs } from "./canvas-project-timeline-dialogs"
 import { CanvasProjectSelectionToolbarOverlay } from "./canvas-project-selection-toolbar";
 import { CanvasProjectStatusDialogs } from "./canvas-project-status-dialogs";
 import { CanvasProjectWorkspaceOverlays } from "./canvas-project-workspace-overlays";
+import { CanvasProjectShortDramaGuide, CanvasProjectWorkspaceModeSwitch } from "./canvas-project-workspace-chrome";
 import { CanvasProjectWorldLayers } from "./canvas-project-world-layers";
 import { CanvasNodeActionContext } from "@/components/canvas/canvas-node-action-context";
 import { CanvasNodeGraphContext, type CanvasNodeGraphContextValue } from "@/components/canvas/canvas-node-graph-context";
@@ -1277,18 +1278,13 @@ function InfiniteCanvasPage() {
                             />
                         ) : null}
 
-                        {!focusMode ? (
-                            <div
-                                data-canvas-no-zoom
-                                className="pc-canvas-workspace__mode-switch pointer-events-none absolute bottom-[calc(var(--canvas-inset-y)+var(--space-16))] z-[var(--z-toolbar)] transition-[bottom] duration-300 lg:bottom-[var(--canvas-inset-y)]"
-                                style={{ right: assistantOpen ? assistantWidth + 24 : "var(--canvas-inset-x)" }}
-                                onMouseDown={(event) => event.stopPropagation()}
-                                onPointerDown={(event) => event.stopPropagation()}
-                                onWheel={(event) => event.stopPropagation()}
-                            >
-                                <CanvasWorkspaceModeSwitch mode={workspaceMode} onChange={setWorkspaceMode} />
-                            </div>
-                        ) : null}
+                        <CanvasProjectWorkspaceModeSwitch
+                            focusMode={focusMode}
+                            assistantOpen={assistantOpen}
+                            assistantWidth={assistantWidth}
+                            workspaceMode={workspaceMode}
+                            onWorkspaceModeChange={setWorkspaceMode}
+                        />
 
                         <CanvasProjectNodeSearch
                             open={nodeSearchOpen}
@@ -1303,9 +1299,12 @@ function InfiniteCanvasPage() {
                             onFocusNode={focusCanvasNode}
                         />
 
-                        {!focusMode && shortDramaGuide ? (
-                            <CanvasShortDramaGuide progress={shortDramaGuide.progress} collapsed={shortDramaGuide.collapsed} onToggle={shortDramaGuide.onToggle} onSkip={skipShortDramaGuide} onStepClick={activateShortDramaStep} />
-                        ) : null}
+                        <CanvasProjectShortDramaGuide
+                            focusMode={focusMode}
+                            guide={shortDramaGuide}
+                            onSkip={skipShortDramaGuide}
+                            onStepClick={activateShortDramaStep}
+                        />
 
                         <CanvasProjectEntryDialogs
                             projectId={projectId}
