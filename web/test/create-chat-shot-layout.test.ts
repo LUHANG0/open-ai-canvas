@@ -79,11 +79,12 @@ describe("PC creation chat and storyboard director workbench regression gates", 
     });
 
     test("uses stable message-backed shot ids for selection instead of array indexes", async () => {
-        const [source, draftSource, typesSource, storyboardSource] = await Promise.all([
+        const [source, draftSource, typesSource, storyboardSource, transactionSource] = await Promise.all([
             read("../src/pages/create/index.tsx"),
             read("../src/pages/create/use-creation-draft-workflow.ts"),
             read("../src/pages/create/creation-types.ts"),
             read("../src/pages/create/creation-storyboard-workbench.tsx"),
+            read("../src/pages/create/creation-submission-transaction.ts"),
         ]);
         const projection = sourceSection(source, "function shotsFromMessages", "export default function CreatePage");
         const selection = sourceSection(source, "const shots = useMemo", "const visibleShotIndex");
@@ -103,7 +104,7 @@ describe("PC creation chat and storyboard director workbench regression gates", 
         expect(rail).toContain("const active = shot.id === activeShotId && !composing");
         expect(rail).toContain("onClick={() => onSelect(shot.id)}");
         expect(rail).toContain("activeItemRef.current?.scrollIntoView");
-        expect(submit).toContain("...(retryTarget ? { id: retryTarget.shotId } : {})");
+        expect(transactionSource).toContain("...(input.retryTarget ? { id: input.retryTarget.shotId } : {})");
         expect(submit).toContain("selectSubmittedShot(userMessage.id)");
     });
 
@@ -249,7 +250,12 @@ describe("PC creation chat and storyboard director workbench regression gates", 
     });
 
     test("keeps failed-shot retry non-destructive until validation and guards conversation changes", async () => {
-        const [source, draftSource, preparationSource] = await Promise.all([read("../src/pages/create/index.tsx"), read("../src/pages/create/use-creation-draft-workflow.ts"), read("../src/pages/create/creation-submit-preparation.ts")]);
+        const [source, draftSource, preparationSource, transactionSource] = await Promise.all([
+            read("../src/pages/create/index.tsx"),
+            read("../src/pages/create/use-creation-draft-workflow.ts"),
+            read("../src/pages/create/creation-submit-preparation.ts"),
+            read("../src/pages/create/creation-submission-transaction.ts"),
+        ]);
         const submit = sourceSection(source, "const submit = async", "useEffect(() => {");
         const retry = sourceSection(draftSource, "const retryFailedMessage", "const createVariant");
         const retryEffect = sourceSection(source, "if (!pendingRetry) return", "const startNewConversation");
@@ -266,7 +272,7 @@ describe("PC creation chat and storyboard director workbench regression gates", 
         const guardPosition = submit.indexOf("if (retryTarget && activeConversation.id !== retryTarget.conversationId)");
         const validationPosition = submit.indexOf("const preparation = prepareCreationSubmission");
         const preparePosition = submit.indexOf("skillExecution = await skillRuntime.prepare");
-        const replacementPosition = submit.indexOf("const replacedIds = new Set");
+        const replacementPosition = submit.indexOf("applyCreationSubmissionToConversation");
         expect(guardPosition).toBeGreaterThanOrEqual(0);
         expect(validationPosition).toBeGreaterThan(guardPosition);
         expect(preparePosition).toBeGreaterThan(validationPosition);
@@ -274,8 +280,8 @@ describe("PC creation chat and storyboard director workbench regression gates", 
         expect(preparationSource).toContain("const compatibilityError = modelCompatibilityError");
         expect(preparationSource).toContain("reconcileCreationAttachmentLimits(submissionAttachments, mode, referenceLimits)");
         expect(submit).toContain('toast.warning("已切换到其他创作，本次重试未执行")');
-        expect(submit).toContain("if (retryTarget && conversation.id === retryTarget.conversationId)");
-        expect(submit).toContain("retained.splice(insertAt >= 0 ? insertAt : retained.length, 0, userMessage, assistantMessage)");
+        expect(transactionSource).toContain("if (retryTarget && conversation.id === retryTarget.conversationId)");
+        expect(transactionSource).toContain("retained.splice(insertAt >= 0 ? insertAt : retained.length, 0, userMessage, assistantMessage)");
         expect(submit).toContain("selectSubmittedShot(userMessage.id)");
     });
 

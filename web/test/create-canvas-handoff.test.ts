@@ -96,13 +96,13 @@ test("Create refresh subscriptions share one durable scheduler observation witho
 });
 
 test("Create durably correlates failures that happen before the first Runtime response", async () => {
-    const source = await Promise.all(["../src/pages/create/index.tsx", "../src/pages/create/creation-types.ts"].map((path) => Bun.file(new URL(path, import.meta.url)).text())).then((parts) => parts.join("\n"));
+    const source = await Promise.all(["../src/pages/create/index.tsx", "../src/pages/create/creation-types.ts", "../src/pages/create/creation-submission-transaction.ts"].map((path) => Bun.file(new URL(path, import.meta.url)).text())).then((parts) => parts.join("\n"));
     expect(source).toContain("generationErrorCode?: string");
     expect(source).toContain("generationOperation?: string");
     expect(source).toContain("generationOperation: task.operation");
     expect(source).toContain("generationErrorCode: task.errorCode");
     expect(source).toContain("generationErrorCode(error)");
-    expect(source).toContain("createdAt: assistantMessage.createdAt");
+    expect(source).toContain("assistantCreatedAt: assistantMessage.createdAt");
 });
 
 test("creation results hand off exact asset ids to one new canvas and consume the route once", async () => {

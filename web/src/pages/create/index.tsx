@@ -3,12 +3,9 @@ import { App, Spin, Tooltip } from "antd";
 import { History } from "lucide-react";
 
 import { AssetLibraryPickerModal } from "@/components/assets/asset-library-picker-modal";
-import { createClientId } from "@/lib/client-id";
-import { generationErrorCode, generationErrorMessage } from "@/lib/generation-error";
 import { usePcBrandViewport } from "@/hooks/use-pc-brand-viewport";
 import { isGenerationTaskCancelled } from "@/services/api/generation-task";
 import { listAddedSkills, type Skill } from "@/services/api/skills";
-import type { GenerationTask } from "@/services/api/task-center";
 import { beginGenerationConsumer } from "@/services/generation-consumer-lifecycle";
 import { modelDisplayName, useConfigStore, useEffectiveConfig } from "@/stores/use-config-store";
 import { useAssetStore } from "@/stores/use-asset-store";
@@ -28,6 +25,16 @@ import { CreationEmptyIntro, CreationEmptySuggest, type CreationMode } from "./c
 import { CreationMessageView } from "./creation-message-view";
 import { StoryboardComposerContext, StoryboardNextShotCard, StoryboardShotCard, StoryboardShotRail, StoryboardToolbar } from "./creation-storyboard-workbench";
 import { executeCreationGeneration, type CreationRetryContext } from "./creation-generation-executor";
+import {
+    applyCreationSubmissionToConversation,
+    cancelCreationSubmissionMessage,
+    completeCreationSubmissionMessage,
+    createCreationSubmissionMessages,
+    createCreationTaskBindings,
+    creationMessageWithBoundTask,
+    failCreationSubmissionMessage,
+    recordCreationTaskBinding,
+} from "./creation-submission-transaction";
 import { normalizeCreationVideoAttachments, prepareCreationSubmission } from "./creation-submit-preparation";
 import type { CreationConversation, CreationMessage, CreationShot, CreationVideoOperationChoice, CreationViewMode } from "./creation-types";
 import { useCreationAssetWorkflow } from "./use-creation-asset-workflow";
@@ -39,10 +46,6 @@ import { CreationHistoryDrawer, CreationWorkspaceToolbar } from "./creation-work
 import "./creation-workspace.css";
 
 const modeLabels: Record<CreationMode, string> = { text: "文本", image: "图片", video: "视频" };
-
-function newMessage(role: CreationMessage["role"], content: string, extra: Partial<CreationMessage> = {}): CreationMessage {
-    return { id: createClientId(), role, content, createdAt: new Date().toISOString(), ...extra };
-}
 
 function shotsFromMessages(messages: CreationMessage[]): CreationShot[] {
     const shots: CreationShot[] = [];
@@ -349,48 +352,28 @@ export default function CreatePage() {
         const expandedPrompt = skillExecution.prompt;
         const referenceMetadata = skillExecution.metadata;
         followLatestMessageRef.current = true;
-        const userMessage = newMessage("user", text, { ...(retryTarget ? { id: retryTarget.shotId } : {}), mode, model: selectedModel, attachments: submissionAttachments, references, settings });
-        const assistantMessage = newMessage("assistant", "", { mode, model: selectedModel, status: mode === "text" ? "streaming" : "pending", settings, ...retryContext });
+        const { userMessage, assistantMessage } = createCreationSubmissionMessages({
+            text,
+            mode,
+            selectedModel,
+            attachments: submissionAttachments,
+            references,
+            settings,
+            retryContext,
+            retryTarget,
+        });
         const originConversationId = activeConversation.id;
         const updateOriginAssistant = (updater: (item: CreationMessage) => CreationMessage) => updateConversationMessage(originConversationId, assistantMessage.id, updater);
-        const boundTaskIds = new Set<string>();
-        const boundTaskIdsByBatchIndex = new Map<number, string>();
-        const boundTasks = new Map<string, GenerationTask>();
-        const bindTask = (task: GenerationTask) => {
-            if (typeof task.clientContext?.batchIndex === "number") boundTaskIdsByBatchIndex.set(task.clientContext.batchIndex, task.id);
-            boundTaskIds.add(task.id);
-            boundTasks.set(task.id, task);
-            updateOriginAssistant((item) => ({
-                ...item,
-                generationStage: task.stage,
-                generationOperation: task.operation,
-                generationErrorCode: task.errorCode,
-                taskIds: Array.from(new Set([...(item.taskIds || []), task.id])),
-                clientOperationId: task.clientOperationId,
-                retryOf: task.retryOf,
-                attemptGroupId: task.attemptGroupId,
-            }));
+        const bindings = createCreationTaskBindings();
+        const bindTask = (task: Parameters<typeof recordCreationTaskBinding>[1]) => {
+            recordCreationTaskBinding(bindings, task);
+            updateOriginAssistant((item) => creationMessageWithBoundTask(item, task));
             if (abortRef.current === controller) {
                 abortRef.current = null;
                 setBusy(false);
             }
         };
-        updateActive((conversation) => {
-            const messages = [...conversation.messages];
-            if (retryTarget && conversation.id === retryTarget.conversationId) {
-                const insertAt = messages.findIndex((message) => message.id === retryTarget.userMessageId);
-                const replacedIds = new Set([retryTarget.userMessageId, retryTarget.assistantMessageId]);
-                const retained = messages.filter((message) => !replacedIds.has(message.id));
-                retained.splice(insertAt >= 0 ? insertAt : retained.length, 0, userMessage, assistantMessage);
-                return { ...conversation, updatedAt: new Date().toISOString(), messages: retained };
-            }
-            return {
-                ...conversation,
-                title: conversation.messages.length ? conversation.title : text.slice(0, 24),
-                updatedAt: new Date().toISOString(),
-                messages: [...messages, userMessage, assistantMessage],
-            };
-        });
+        updateActive((conversation) => applyCreationSubmissionToConversation({ conversation, text, userMessage, assistantMessage, retryTarget }));
         setPrompt("");
         setAttachments([]);
         setDraftReferences([]);
@@ -410,27 +393,17 @@ export default function CreatePage() {
                 retryContext,
                 signal: requestLifecycle.signal,
                 bindTask,
-                bindings: { taskIds: boundTaskIds, taskIdsByBatchIndex: boundTaskIdsByBatchIndex, tasks: boundTasks },
+                bindings,
                 updateAssistant: updateOriginAssistant,
                 onWarning: (message) => toast.warning(message),
             });
-            updateOriginAssistant((item) => ({ ...item, status: "done", completedAt: item.completedAt || new Date().toISOString() }));
+            updateOriginAssistant((item) => completeCreationSubmissionMessage(item));
         } catch (error) {
             if (isGenerationTaskCancelled(error, requestLifecycle.signal)) {
-                updateOriginAssistant((item) => ({ ...item, status: "cancelled", completedAt: new Date().toISOString(), content: "已停止" }));
+                updateOriginAssistant((item) => cancelCreationSubmissionMessage(item));
                 return;
             }
-            const message = generationErrorMessage(error);
-            updateOriginAssistant((item) => ({
-                ...item,
-                status: "error",
-                completedAt: new Date().toISOString(),
-                error: message,
-                generationErrorCode: item.generationErrorCode || generationErrorCode(error),
-                generationOperation: item.generationOperation || (mode === "video" ? videoOperation : mode),
-                createdAt: assistantMessage.createdAt,
-                content: "生成失败",
-            }));
+            updateOriginAssistant((item) => failCreationSubmissionMessage(item, error, { operation: mode === "video" ? videoOperation : mode, assistantCreatedAt: assistantMessage.createdAt }));
         } finally {
             requestLifecycle.release();
             releaseCurrentRetryLock();

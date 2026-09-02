@@ -18,6 +18,7 @@ function readCreateSource() {
         "../src/pages/create/use-creation-mode-workflow.ts",
         "../src/pages/create/use-creation-model-workflow.ts",
         "../src/pages/create/creation-submit-preparation.ts",
+        "../src/pages/create/creation-submission-transaction.ts",
         "../src/pages/create/creation-generation-executor.ts",
     ]
         .map((relativePath) => readFileSync(resolve(import.meta.dir, relativePath), "utf8"))
