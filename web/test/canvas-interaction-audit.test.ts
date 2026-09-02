@@ -172,6 +172,16 @@ test("canvas timeline tools load only after their dialog target is selected", as
     expect(timelineSource).toContain("<Suspense fallback={<CanvasTimelineDialogLoading");
 });
 
+test("canvas asset and version dialogs load only when opened", async () => {
+    const librarySource = await Bun.file(new URL("../src/pages/canvas/canvas-project-library-dialogs.tsx", import.meta.url)).text();
+    expect(librarySource).toContain('lazy(() => import("@/components/canvas/asset-picker-modal")');
+    expect(librarySource).toContain('lazy(() => import("@/components/canvas/canvas-project-asset-modal")');
+    expect(librarySource).toContain('lazy(() => import("@/components/canvas/canvas-version-compare-modal")');
+    expect(librarySource).toContain("if (!open) return null");
+    expect(librarySource).toContain("assetPickerOpen ? (");
+    expect(librarySource).toContain("projectAssetOpen ? (");
+});
+
 test("assistant layout reserves the left dock and low zoom keeps video play reachable", async () => {
     const css = await Bun.file(new URL("../src/pages/canvas/canvas-editor-pc.css", import.meta.url)).text();
     const content = await Bun.file(new URL("../src/components/canvas/canvas-node-content.tsx", import.meta.url)).text();
