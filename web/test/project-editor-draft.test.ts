@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 
 import { parseProjectEditorDraft, projectEditorDraftKey } from "../src/services/project-editor-draft";
-import { revisionInput, shotEditorValuesEqual, type ShotEditorValues } from "../src/pages/projects/detail/workflow-production-types";
+import { revisionInput, shotEditorValuesEqual, shotEditorValuesKey, type ShotEditorValues } from "../src/pages/projects/detail/workflow-production-types";
 
 describe("项目编辑草稿", () => {
     test("按编辑对象隔离章节和镜头草稿", () => {
@@ -42,6 +42,8 @@ describe("项目编辑草稿", () => {
 
         expect(shotEditorValuesEqual(values, { ...values })).toBeTrue();
         expect(shotEditorValuesEqual(values, { ...values, dialogue: "另一句台词" })).toBeFalse();
+        expect(shotEditorValuesKey(values)).toBe(shotEditorValuesKey({ ...values }));
+        expect(shotEditorValuesKey(values)).not.toBe(shotEditorValuesKey({ ...values, dialogue: "另一句台词" }));
         expect(revisionInput(values)).toEqual({
             plotDescription: values.plotDescription,
             action: values.action,

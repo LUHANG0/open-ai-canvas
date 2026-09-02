@@ -13,6 +13,7 @@ type Args = {
     selectedShot?: ProjectShot;
     revision?: ShotRevision;
     serverValues: ShotEditorValues;
+    serverSnapshotKey: string;
     resetPreviewArtifactId: Dispatch<SetStateAction<string>>;
 };
 
@@ -25,7 +26,7 @@ type Result = {
     removeDraft: (shotId: string) => void;
 };
 
-export function useWorkflowShotDraft({ form, projectId, selectedShot, revision, serverValues, resetPreviewArtifactId }: Args): Result {
+export function useWorkflowShotDraft({ form, projectId, selectedShot, revision, serverValues, serverSnapshotKey, resetPreviewArtifactId }: Args): Result {
     const { message, modal } = App.useApp();
     const [editorDirty, setEditorDirty] = useState(false);
     const [draftRevision, setDraftRevision] = useState(0);
@@ -58,9 +59,9 @@ export function useWorkflowShotDraft({ form, projectId, selectedShot, revision, 
             setEditorDirty(true);
             message.info(draft.sourceUpdatedAt === (revision?.createdAt || selectedShot.updatedAt) ? "已恢复本机未保存的镜头草稿" : "已恢复本机镜头草稿；服务端版本已变化，请核对后再保存");
         }).catch(reportDraftStorageFailure);
-        // 只有编辑对象或服务端版本变更才重新恢复，避免普通轮询刷新覆盖未保存输入。
+        // 按字段内容快照而非对象身份重载，避免等值轮询刷新覆盖未保存输入。
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [form, message, projectId, reportDraftStorageFailure, resetPreviewArtifactId, revision?.id, selectedShot?.id, serverValues]);
+    }, [form, message, projectId, reportDraftStorageFailure, resetPreviewArtifactId, revision?.id, selectedShot?.id, serverSnapshotKey]);
 
     useEffect(() => {
         if (!editorDirty || !selectedShot || !draftRevision) return;

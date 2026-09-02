@@ -5,6 +5,21 @@ export type ShotEditorValues = Omit<ShotRevisionInput, "durationMs"> & {
     durationSeconds: number;
 };
 
+const shotEditorValueKeys: Array<keyof ShotEditorValues> = [
+    "title",
+    "plotDescription",
+    "action",
+    "dialogue",
+    "shotSize",
+    "cameraAngle",
+    "cameraMovement",
+    "durationSeconds",
+    "imagePrompt",
+    "videoPrompt",
+    "negativePrompt",
+    "continuityNotes",
+];
+
 export const productionStageCopy = {
     storyboard: { label: "分镜图", action: "生成分镜图", empty: "生成静态分镜图，确认构图、景别与角色位置" },
     previz: { label: "动作预演", action: "生成黑白预演", empty: "生成黑白动作预演，确认表演节拍与镜头运动" },
@@ -28,21 +43,11 @@ export function revisionInput(values: ShotEditorValues): ShotRevisionInput {
 }
 
 export function shotEditorValuesEqual(left: Partial<ShotEditorValues>, right: Partial<ShotEditorValues>) {
-    const keys: Array<keyof ShotEditorValues> = [
-        "title",
-        "plotDescription",
-        "action",
-        "dialogue",
-        "shotSize",
-        "cameraAngle",
-        "cameraMovement",
-        "durationSeconds",
-        "imagePrompt",
-        "videoPrompt",
-        "negativePrompt",
-        "continuityNotes",
-    ];
-    return keys.every((key) => (left[key] ?? "") === (right[key] ?? ""));
+    return shotEditorValueKeys.every((key) => (left[key] ?? "") === (right[key] ?? ""));
+}
+
+export function shotEditorValuesKey(values: Partial<ShotEditorValues>) {
+    return JSON.stringify(shotEditorValueKeys.map((key) => values[key] ?? ""));
 }
 
 export function formatTaskElapsed(startedAt: number, now: number) {

@@ -30,6 +30,8 @@ describe("短剧创作全链路回归门禁", () => {
             expect(source).toContain("loadProjectEditorDraft");
             expect(source).toContain("saveProjectEditorDraft");
         }
+        expect(workflowDraft).toContain("serverSnapshotKey");
+        expect(workflowDraft).toContain("selectedShot?.id, serverSnapshotKey]");
     });
 
     test("失败的制作阶段可重新打开，任务失败原因可见", async () => {

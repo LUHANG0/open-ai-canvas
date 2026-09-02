@@ -41,7 +41,7 @@ import { AssetLibrary, BoundAssets, ShotAssetMentionTextarea } from "./workflow-
 import { EpisodeLibrary, ShotLibrary, ShotTimeline } from "./workflow-production-navigation";
 import { WorkflowArtifactPreviewPanel } from "./workflow-production-preview";
 import { WorkflowGenerationSettings } from "./workflow-production-settings";
-import { formatTaskElapsed, productionStageCopy, revisionInput, type ShotEditorValues } from "./workflow-production-types";
+import { formatTaskElapsed, productionStageCopy, revisionInput, shotEditorValuesKey, type ShotEditorValues } from "./workflow-production-types";
 import { useWorkflowShotDraft } from "./use-workflow-shot-draft";
 
 type Props = {
@@ -226,6 +226,7 @@ export default function WorkflowProductionWorkbench(props: Props) {
         selectedShot,
         revision,
         serverValues,
+        serverSnapshotKey: shotEditorValuesKey(serverValues),
         resetPreviewArtifactId: setPreviewArtifactId,
     });
 
