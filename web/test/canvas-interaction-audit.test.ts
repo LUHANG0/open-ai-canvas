@@ -266,3 +266,14 @@ test("project content state has a focused owner", async () => {
     expect(stateSource).toContain("const [chatSessions, setChatSessions]");
     expect(stateSource).toContain("const [activeChatId, setActiveChatId]");
 });
+
+test("canvas selection state has a focused owner", async () => {
+    const projectSource = await Bun.file(new URL("../src/pages/canvas/project.tsx", import.meta.url)).text();
+    const stateSource = await Bun.file(new URL("../src/pages/canvas/use-canvas-selection-state.ts", import.meta.url)).text();
+
+    expect(projectSource).toContain("useCanvasSelectionState()");
+    expect(projectSource).not.toContain("useState<Set<string>>");
+    expect(projectSource).not.toContain("const [selectedConnectionId, setSelectedConnectionId]");
+    expect(stateSource).toContain("const [selectedNodeIds, setSelectedNodeIds]");
+    expect(stateSource).toContain("const [selectedConnectionId, setSelectedConnectionId]");
+});

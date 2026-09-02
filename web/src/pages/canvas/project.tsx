@@ -82,6 +82,7 @@ import { useCanvasProjectContentState } from "./use-canvas-project-content-state
 import { useCanvasProjectDialogState } from "./use-canvas-project-dialog-state";
 import { useCanvasProjectLifecycle } from "./use-canvas-project-lifecycle";
 import { useCanvasRenderModel } from "./use-canvas-render-model";
+import { useCanvasSelectionState } from "./use-canvas-selection-state";
 import { useCanvasSelectionController } from "./use-canvas-selection-controller";
 import { useCanvasShortDrama } from "./use-canvas-short-drama";
 import { useCanvasStoryboard } from "./use-canvas-storyboard";
@@ -133,8 +134,7 @@ function InfiniteCanvasPage() {
     const { nodes, nodesRef, setNodes } = useCanvasNodeState();
     const { activeChatId, chatSessions, connections, setActiveChatId, setChatSessions, setConnections } = useCanvasProjectContentState();
     const [viewport, setViewport] = useState<ViewportTransform>({ x: 0, y: 0, k: 1 });
-    const [selectedNodeIds, setSelectedNodeIds] = useState<Set<string>>(new Set());
-    const [selectedConnectionId, setSelectedConnectionId] = useState<string | null>(null);
+    const { selectedConnectionId, selectedNodeIds, setSelectedConnectionId, setSelectedNodeIds } = useCanvasSelectionState();
     const { backgroundMode, canvasTool, contextMenu, hoveredNodeId, isMiniMapOpen, setBackgroundMode, setCanvasTool, setContextMenu, setHoveredNodeId, setIsMiniMapOpen, setShowImageInfo, showImageInfo } = useCanvasWorkspaceUiState();
     const [projectLoaded, setProjectLoaded] = useState(false);
     const { clearConfirmOpen, directorTemplateRequest, libTVImportOpen, nodeSearchOpen, setClearConfirmOpen, setDirectorTemplateRequest, setLibTVImportOpen, setNodeSearchOpen, setShareModalOpen, setShortcutRequestNonce, setStylePickerOpen, setTapNowImportOpen, shareModalOpen, shortcutRequestNonce, stylePickerOpen, tapNowImportOpen } = useCanvasProjectDialogState();
