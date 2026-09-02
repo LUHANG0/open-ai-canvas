@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import type { Dispatch, SetStateAction } from "react";
 import { persistCanvasMediaPerformanceMode, readCanvasMediaPerformanceMode } from "@/lib/canvas/canvas-performance-mode";
 import { persistCanvasWorkspaceMode, readCanvasWorkspaceMode } from "@/lib/canvas/canvas-project-domain";
 import { getPanelWidthBounds } from "./canvas-assistant-panel-column";
@@ -12,6 +13,47 @@ export function initialCanvasAssistantWidth(viewportWidth: number) {
 
 export function clampCanvasAssistantWidth(width: number, bounds: { min: number; max: number }) {
     return Math.min(bounds.max, Math.max(bounds.min, width));
+}
+
+export type CanvasAutoConnectAction = "none" | "set-local-mode" | "open-local-agent";
+
+export function resolveCanvasAutoConnectAction(projectLoaded: boolean, autoConnect: boolean, compactAgent: boolean): CanvasAutoConnectAction {
+    if (!projectLoaded || !autoConnect) return "none";
+    return compactAgent ? "set-local-mode" : "open-local-agent";
+}
+
+export function didEnterCanvasFocusMode(previous: boolean, current: boolean) {
+    return current && !previous;
+}
+
+type UseCanvasWorkspaceTransitionsOptions = {
+    projectLoaded: boolean;
+    autoConnect: boolean;
+    compactAgent: boolean;
+    focusMode: boolean;
+    openAgent: (mode?: "local" | "online") => void;
+    closeAgent: () => void;
+    setAgentMode: Dispatch<SetStateAction<"local" | "online">>;
+    setIsMiniMapOpen: Dispatch<SetStateAction<boolean>>;
+    setFocusDockRevealed: Dispatch<SetStateAction<boolean>>;
+};
+
+export function useCanvasWorkspaceTransitions({ projectLoaded, autoConnect, compactAgent, focusMode, openAgent, closeAgent, setAgentMode, setIsMiniMapOpen, setFocusDockRevealed }: UseCanvasWorkspaceTransitionsOptions) {
+    useEffect(() => {
+        const action = resolveCanvasAutoConnectAction(projectLoaded, autoConnect, compactAgent);
+        if (action === "set-local-mode") setAgentMode("local");
+        if (action === "open-local-agent") openAgent("local");
+    }, [autoConnect, compactAgent, openAgent, projectLoaded, setAgentMode]);
+
+    const previousFocusModeRef = useRef(focusMode);
+    useEffect(() => {
+        const enteredFocus = didEnterCanvasFocusMode(previousFocusModeRef.current, focusMode);
+        previousFocusModeRef.current = focusMode;
+        if (!enteredFocus) return;
+        closeAgent();
+        setIsMiniMapOpen(false);
+        setFocusDockRevealed(false);
+    }, [closeAgent, focusMode, setFocusDockRevealed, setIsMiniMapOpen]);
 }
 
 type UseCanvasWorkspacePreferencesOptions = {

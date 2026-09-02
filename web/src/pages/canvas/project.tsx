@@ -82,7 +82,7 @@ import { useCanvasNodeRetry } from "./use-canvas-node-retry";
 import { useCanvasNodeSharing } from "./use-canvas-node-sharing";
 import { useCanvasTextToImage } from "./use-canvas-text-to-image";
 import { useCanvasLinkedProjectAssetSync, useCanvasLinkedProjectFolderInteractions } from "./use-canvas-linked-project-assets";
-import { useCanvasTitleEditing, useCanvasWorkspacePreferences } from "./use-canvas-workspace-shell";
+import { useCanvasTitleEditing, useCanvasWorkspacePreferences, useCanvasWorkspaceTransitions } from "./use-canvas-workspace-shell";
 import { useCanvasProjectImport } from "./use-canvas-project-import";
 import { useCanvasProjectLifecycle } from "./use-canvas-project-lifecycle";
 import { useCanvasRenderModel } from "./use-canvas-render-model";
@@ -299,25 +299,17 @@ function InfiniteCanvasPage() {
         setNodes,
     });
 
-    useEffect(() => {
-        if (!projectLoaded || !codexAutoConnect) return;
-        if (codexCompactAgent) {
-            setAgentMode("local");
-            return;
-        }
-        openAgent("local");
-    }, [codexAutoConnect, codexCompactAgent, openAgent, projectLoaded, setAgentMode]);
-
-    // 沉浸专注进入时收起智能体与小地图、重置 Dock 唤出态；仅响应「进入」瞬间，避免关闭专注内主动唤出的面板。
-    const prevFocusModeRef = useRef(focusMode);
-    useEffect(() => {
-        const enteredFocus = focusMode && !prevFocusModeRef.current;
-        prevFocusModeRef.current = focusMode;
-        if (!enteredFocus) return;
-        closeAgent();
-        setIsMiniMapOpen(false);
-        setFocusDockRevealed(false);
-    }, [closeAgent, focusMode]);
+    useCanvasWorkspaceTransitions({
+        projectLoaded,
+        autoConnect: codexAutoConnect,
+        compactAgent: codexCompactAgent,
+        focusMode,
+        openAgent,
+        closeAgent,
+        setAgentMode,
+        setIsMiniMapOpen,
+        setFocusDockRevealed,
+    });
 
     useLayoutEffect(() => {
         nodesRef.current = nodes;
