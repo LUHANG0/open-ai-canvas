@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 
 import { buildNodeMentionReferences, canvasResourceMentionToken, collectUpstreamVideoNodes, createCanvasResourceGraphIndex, getContextResourceNodesFromIndex } from "../src/lib/canvas/canvas-resource-references";
+import { createCanvasNodeGraphContextValue } from "../src/components/canvas/canvas-node-graph-context";
 import { CanvasNodeType, type CanvasConnection, type CanvasNodeData } from "../src/types/canvas";
 
 function videoNode(id: string): CanvasNodeData {
@@ -84,6 +85,7 @@ describe("canvas resource mention slots", () => {
         const graphIndex = createCanvasResourceGraphIndex(nodes, connections);
 
         expect(getContextResourceNodesFromIndex(target.id, graphIndex)).toEqual([image]);
+        expect(createCanvasNodeGraphContextValue(graphIndex).getUpstreamNodes?.(target.id)).toEqual([image]);
         expect(buildNodeMentionReferences(target, [] as CanvasNodeData[], [] as CanvasConnection[], graphIndex).map((reference) => reference.nodeId)).toEqual([image.id]);
     });
 

@@ -1,6 +1,7 @@
 import { useMemo, useRef } from "react";
 
 import { buildNodeGenerationInputs, type NodeGenerationInput } from "@/components/canvas/canvas-node-generation";
+import { createCanvasNodeGraphContextValue } from "@/components/canvas/canvas-node-graph-context";
 import { isFrameNode } from "@/lib/canvas/canvas-frame";
 import { sameNodeSemanticData } from "@/lib/canvas/canvas-project-domain";
 import { resolveCanvasMediaRenderPolicy } from "@/lib/canvas/canvas-performance-mode";
@@ -83,6 +84,7 @@ export function useCanvasRenderModel({
         return semanticNodesRef.current;
     }, [nodes]);
     const resourceGraphIndex = useMemo(() => createCanvasResourceGraphIndex(semanticNodes, connections), [connections, semanticNodes]);
+    const nodeGraphContext = useMemo(() => createCanvasNodeGraphContextValue(resourceGraphIndex), [resourceGraphIndex]);
     const collapsedBatchChildIds = useMemo(() => {
         const hidden = new Set<string>();
         nodes.forEach((node) => {
@@ -311,12 +313,12 @@ export function useCanvasRenderModel({
         maskEditNode,
         mentionReferencesByNodeId,
         mediaRenderPolicy,
+        nodeGraphContext,
         nodeById,
         previewNode,
         reduceMediaEffects,
         relatedHighlight,
         resourceReferenceByNodeId,
-        resourceGraphIndex,
         selectedNodeBounds,
         selectedVideoNodes,
         selectionCapabilities,

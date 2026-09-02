@@ -14,7 +14,6 @@ import { useUserStore } from "@/stores/use-user-store";
 import { getProject } from "@/services/api/projects";
 import { useFocusMode } from "@/hooks/use-focus-mode";
 import { useCanvasAgentStore } from "@/stores/canvas/use-canvas-agent-store";
-import { getContextResourceNodesFromIndex } from "@/lib/canvas/canvas-resource-references";
 import { CanvasOverlayLayerProvider } from "@/components/canvas/canvas-overlay-layer";
 import { selectBatchConnectionSourceNodeIds } from "@/lib/canvas/canvas-batch-connection";
 import { CanvasProjectFeedbackLayer } from "./canvas-project-feedback";
@@ -42,7 +41,6 @@ import { CanvasProjectShortDramaGuide, CanvasProjectWorkspaceModeSwitch } from "
 import { CanvasProjectViewport } from "./canvas-project-viewport";
 import { resolveCanvasActiveNodeTargets } from "./canvas-active-node-targets";
 import { CanvasProjectHeadlessAgent, CanvasProjectUtilityDialogs } from "./canvas-project-utility-overlays";
-import type { CanvasNodeGraphContextValue } from "@/components/canvas/canvas-node-graph-context";
 import { CanvasRefreshShell } from "./canvas-refresh-shell";
 import { useCanvasConnectionController } from "./use-canvas-connection-controller";
 import { useCanvasClear } from "./use-canvas-clear";
@@ -688,12 +686,12 @@ function InfiniteCanvasPage() {
         maskEditNode,
         mediaRenderPolicy,
         mentionReferencesByNodeId,
+        nodeGraphContext,
         nodeById,
         previewNode,
         reduceMediaEffects,
         relatedHighlight,
         resourceReferenceByNodeId,
-        resourceGraphIndex,
         selectedNodeBounds,
         selectedVideoNodes,
         selectionCapabilities,
@@ -741,9 +739,6 @@ function InfiniteCanvasPage() {
         setConnections,
         setSelectedConnectionId,
     });
-    // 扩展节点只关心语义数据。使用共享图索引后，每个节点取上游不再重复扫描整张画布，
-    // 且纯位置变化不会刷新 Context，避免所有可见节点绕过 memo 重渲染。
-    const nodeGraphContext = useMemo<CanvasNodeGraphContextValue>(() => ({ getUpstreamNodes: (nodeId: string) => getContextResourceNodesFromIndex(nodeId, resourceGraphIndex) }), [resourceGraphIndex]);
     const { dialogNode, subtitleNode, timelineNode, frameNode, segmentNode, textEditorNode, characterReferenceNode, drawingNode, canCreateDrawingFromConnection } = resolveCanvasActiveNodeTargets({
         nodeById,
         dialogNodeId,
