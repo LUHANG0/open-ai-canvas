@@ -11,24 +11,22 @@ import type { PromptOptimizerProvider } from "@/lib/plugins/plugin-types";
 import { promptOptimizerPlugin, PROMPT_OPTIMIZER_PLUGIN_ID } from "@/lib/plugins/builtin/prompt-optimizer";
 import { createPluginHostContext } from "@/services/plugin-host";
 import { usePluginStore } from "@/stores/use-plugin-store";
-import { buildCreationMentionReferences, removeCreationReferenceTokens, replaceCreationAttachmentReference, type CreationReference } from "./creation-references";
-import {
-    creationAttachmentKind,
-    removeCreationAttachment,
-    type CreationAttachment,
-} from "./creation-assets";
+import { buildCreationMentionReferences, type CreationReference } from "./creation-references";
+import type { CreationAttachment } from "./creation-assets";
 import { CreationComposer } from "./creation-composer";
 import { CreationEmptyIntro, CreationEmptySuggest, type CreationMode } from "./creation-empty-state";
 import { CreationMessageView } from "./creation-message-view";
 import { StoryboardComposerContext, StoryboardNextShotCard, StoryboardShotCard, StoryboardShotRail, StoryboardToolbar } from "./creation-storyboard-workbench";
 import { normalizeCreationVideoAttachments } from "./creation-submit-preparation";
-import type { CreationConversation, CreationMessage, CreationShot, CreationVideoOperationChoice, CreationViewMode } from "./creation-types";
+import type { CreationMessage, CreationShot, CreationVideoOperationChoice, CreationViewMode } from "./creation-types";
 import { useCreationAssetWorkflow } from "./use-creation-asset-workflow";
 import { useCreationConversationWorkflow } from "./use-creation-conversation-workflow";
 import { useCreationDraftWorkflow } from "./use-creation-draft-workflow";
 import { useCreationModeWorkflow } from "./use-creation-mode-workflow";
 import { useCreationModelWorkflow } from "./use-creation-model-workflow";
+import { useCreationReferenceWorkflow } from "./use-creation-reference-workflow";
 import { useCreationSubmitWorkflow } from "./use-creation-submit-workflow";
+import { useCreationWorkspaceActions } from "./use-creation-workspace-actions";
 import { CreationHistoryDrawer, CreationWorkspaceToolbar } from "./creation-workspace-toolbar";
 import "./creation-workspace.css";
 
@@ -67,8 +65,6 @@ export default function CreatePage() {
     const [mode, setMode] = useState<CreationMode>("video");
     const [prompt, setPrompt] = useState("");
     const [attachments, setAttachments] = useState<CreationAttachment[]>([]);
-    const promptRef = useRef(prompt);
-    const attachmentsRef = useRef(attachments);
     const [draftReferences, setDraftReferences] = useState<CreationReference[]>([]);
     const [addedSkills, setAddedSkills] = useState<Skill[]>([]);
     const [ratio, setRatio] = useState("16:9");
@@ -80,7 +76,6 @@ export default function CreatePage() {
     const [busy, setBusy] = useState(false);
     const [viewMode, setViewMode] = useState<CreationViewMode>("chat");
     const [storyboardTimelineOpen, setStoryboardTimelineOpen] = useState(true);
-    const [historyOpen, setHistoryOpen] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const composerFocusRef = useRef<HTMLTextAreaElement>(null);
     const threadScrollRef = useRef<HTMLElement>(null);
@@ -88,9 +83,6 @@ export default function CreatePage() {
     const followLatestMessage = useCallback(() => {
         followLatestMessageRef.current = true;
     }, []);
-    promptRef.current = prompt;
-    attachmentsRef.current = attachments;
-
     const { preferredModel, requestedVideoOperation, modelRequirements, selectedModel, imageProfile, videoProfile, videoOperations, referenceLimits, maxReferences, referenceImageSize } = useCreationModelWorkflow({
         config,
         mode,
@@ -182,22 +174,14 @@ export default function CreatePage() {
         return () => window.cancelAnimationFrame(frame);
     }, [activeConversation?.id, activeConversation?.messages, pcBrandV2]);
 
-    const replaceAttachmentReference = useCallback((targetAttachmentId: string, replacement: CreationAttachment) => {
-        const currentAttachments = attachmentsRef.current;
-        const target = currentAttachments.find((attachment) => attachment.id === targetAttachmentId);
-        if (!target) throw new Error("要替换的参考图不存在");
-        if (creationAttachmentKind(target) !== "image" || creationAttachmentKind(replacement) !== "image") throw new Error("目前只支持替换提示词中的图片引用");
-        if (target.id === replacement.id) return false;
-
-        const replacementWithRole = target.videoImageRole ? { ...replacement, videoImageRole: target.videoImageRole } : replacement;
-        const result = replaceCreationAttachmentReference(promptRef.current, currentAttachments, targetAttachmentId, replacementWithRole);
-        promptRef.current = result.prompt;
-        attachmentsRef.current = result.attachments;
-        setPrompt(result.prompt);
-        setAttachments(result.attachments);
-        return true;
-    }, []);
-
+    const { promptRef, attachmentsRef, replaceAttachmentReference, removeAttachment, clearAttachments, reorderAttachments, replaceReferenceFromTrack } = useCreationReferenceWorkflow({
+        prompt,
+        attachments,
+        references: mentionReferences,
+        setPrompt,
+        setAttachments,
+        toast,
+    });
     const {
         referenceReplacementBusy,
         pendingUploadCount,
@@ -275,95 +259,20 @@ export default function CreatePage() {
         followLatestMessageRef,
         toast,
     });
-
-    const removeAttachment = (id: string) => {
-        const reference = mentionReferences.find((item) => item.attachmentId === id);
-        setAttachments((current) => removeCreationAttachment(current, id));
-        if (reference) setPrompt((current) => removeCreationReferenceTokens(current, [reference]));
-    };
-
-    const clearAttachments = () => {
-        const attachmentIds = new Set(attachments.map((item) => item.id));
-        const references = mentionReferences.filter((item) => item.attachmentId && attachmentIds.has(item.attachmentId));
-        setAttachments([]);
-        if (references.length) setPrompt((current) => removeCreationReferenceTokens(current, references));
-    };
-
-    const reorderAttachments = useCallback((next: CreationAttachment[]) => {
-        attachmentsRef.current = next;
-        setAttachments(next);
-    }, []);
-
-    const replaceReferenceFromTrack = useCallback(
-        (targetAttachmentId: string, replacement: CreationAttachment) => {
-            try {
-                if (replaceAttachmentReference(targetAttachmentId, replacement)) toast.success("参考图已替换，槽位不变，提示词无需修改");
-            } catch (error) {
-                toast.error(error instanceof Error ? error.message : "参考图替换失败");
-            }
-        },
-        [replaceAttachmentReference, toast],
-    );
-
-    const startNewConversation = () => {
-        if (pendingUploadCountRef.current > 0) {
-            toast.info("素材正在上传，请等待完成后再新建创作");
-            return;
-        }
-        createConversation();
-        followLatestMessageRef.current = true;
-        setPrompt("");
-        setAttachments([]);
-        setVideoOperationChoice("auto");
-        setDraftReferences([]);
-        resetStoryboardDraftState();
-        setHistoryOpen(false);
-    };
-
-    const selectConversation = (conversation: CreationConversation) => {
-        if (pendingUploadCountRef.current > 0) {
-            toast.info("素材正在上传，请等待完成后再切换对话");
-            return;
-        }
-        followLatestMessageRef.current = true;
-        activateConversation(conversation.id);
-        setPrompt("");
-        setAttachments([]);
-        setVideoOperationChoice("auto");
-        setDraftReferences([]);
-        resetStoryboardDraftState();
-        setHistoryOpen(false);
-    };
-
-    const confirmDeleteConversation = (conversation: CreationConversation) => {
-        const title = conversation.title.trim() || "新创作";
-        const label = title.length > 32 ? `${title.slice(0, 32)}...` : title;
-        modal.confirm({
-            className: "workspace-modal workspace-modal-compact",
-            title: "删除历史对话？",
-            content: `确定删除「${label}」吗？这只会删除历史对话记录，不会删除已上传或生成的任何素材。此操作不可撤销。`,
-            okText: "删除对话",
-            okButtonProps: { danger: true },
-            cancelText: "保留",
-            onOk: async () => {
-                try {
-                    const deletion = await deleteConversation(conversation.id);
-                    if (deletion.deletedActive) {
-                        followLatestMessageRef.current = true;
-                        setPrompt("");
-                        setAttachments([]);
-                        setVideoOperationChoice("auto");
-                        setDraftReferences([]);
-                        resetStoryboardDraftState();
-                    }
-                    toast.success("历史对话已删除，素材仍保留");
-                } catch (error) {
-                    toast.error(error instanceof Error ? error.message : "历史对话删除失败");
-                    throw error;
-                }
-            },
-        });
-    };
+    const { historyOpen, openHistory, closeHistory, startNewConversation, selectConversation, confirmDeleteConversation } = useCreationWorkspaceActions({
+        pendingUploadCountRef,
+        followLatestMessageRef,
+        createConversation,
+        activateConversation,
+        deleteConversation,
+        setPrompt,
+        setAttachments,
+        setVideoOperationChoice,
+        setDraftReferences,
+        resetStoryboardDraftState,
+        toast,
+        modal,
+    });
 
     if (!hydrated || !activeConversation)
         return (
@@ -470,7 +379,7 @@ export default function CreatePage() {
                                 viewMode={viewMode}
                                 onViewModeChange={setViewMode}
                                 onNewConversation={startNewConversation}
-                                onOpenHistory={() => setHistoryOpen(true)}
+                                onOpenHistory={openHistory}
                                 storyboard={
                                     viewMode === "storyboard"
                                         ? {
@@ -487,7 +396,7 @@ export default function CreatePage() {
                         ) : (
                             <div className="creation-top-actions">
                                 <Tooltip title="历史对话">
-                                    <button type="button" aria-label="查看历史对话" aria-expanded={historyOpen} className="creation-top-action" onClick={() => setHistoryOpen(true)}>
+                                    <button type="button" aria-label="查看历史对话" aria-expanded={historyOpen} className="creation-top-action" onClick={openHistory}>
                                         <History />
                                         <span>历史</span>
                                     </button>
@@ -514,7 +423,7 @@ export default function CreatePage() {
                     </>
                 ) : viewMode === "chat" ? (
                     <div className="creation-thread-workbench">
-                        <CreationWorkspaceToolbar viewMode={viewMode} onViewModeChange={setViewMode} onNewConversation={startNewConversation} onOpenHistory={() => setHistoryOpen(true)} />
+                        <CreationWorkspaceToolbar viewMode={viewMode} onViewModeChange={setViewMode} onNewConversation={startNewConversation} onOpenHistory={openHistory} />
                         <main ref={threadScrollRef} onScroll={handleThreadScroll} className="creation-thread-scroll creation-scrollbar" aria-label="连续对话" tabIndex={0}>
                             <section className="creation-thread-stage">
                                 <div className="creation-results" role="log" aria-live="polite" aria-relevant="additions text">
@@ -542,7 +451,7 @@ export default function CreatePage() {
                                 viewMode={viewMode}
                                 onViewModeChange={setViewMode}
                                 onNewConversation={startNewConversation}
-                                onOpenHistory={() => setHistoryOpen(true)}
+                                onOpenHistory={openHistory}
                                 storyboard={{
                                     timelineOpen: storyboardTimelineOpen,
                                     count: shots.length,
@@ -564,7 +473,7 @@ export default function CreatePage() {
                                 onBeginCompose={beginComposeNextShot}
                                 onCancelCompose={cancelComposeNextShot}
                                 onNewConversation={startNewConversation}
-                                onOpenHistory={() => setHistoryOpen(true)}
+                                onOpenHistory={openHistory}
                                 viewMode={viewMode}
                                 onViewModeChange={setViewMode}
                             />
@@ -613,7 +522,7 @@ export default function CreatePage() {
                     </div>
                 )}
             </div>
-            <CreationHistoryDrawer open={historyOpen} conversations={historyConversations} activeId={activeConversation.id} onClose={() => setHistoryOpen(false)} onSelect={selectConversation} onDelete={confirmDeleteConversation} />
+            <CreationHistoryDrawer open={historyOpen} conversations={historyConversations} activeId={activeConversation.id} onClose={closeHistory} onSelect={selectConversation} onDelete={confirmDeleteConversation} />
             <AssetLibraryPickerModal
                 open={libraryOpen}
                 items={libraryItems}

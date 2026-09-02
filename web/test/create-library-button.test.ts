@@ -17,7 +17,9 @@ function readCreateSource() {
         "../src/pages/create/use-creation-draft-workflow.ts",
         "../src/pages/create/use-creation-mode-workflow.ts",
         "../src/pages/create/use-creation-model-workflow.ts",
+        "../src/pages/create/use-creation-reference-workflow.ts",
         "../src/pages/create/use-creation-submit-workflow.ts",
+        "../src/pages/create/use-creation-workspace-actions.ts",
         "../src/pages/create/creation-submit-preparation.ts",
         "../src/pages/create/creation-submission-transaction.ts",
         "../src/pages/create/creation-generation-executor.ts",
@@ -34,7 +36,7 @@ describe("creation library button", () => {
     test("PC Brand V2 空白创作工作区从顶部展示，移动端保留原跟随逻辑", () => {
         const source = compactSource(readCreateSource());
         const scrollEffectStart = source.indexOf("if (pcBrandV2 && !activeConversation?.messages.length)");
-        const scrollEffectEnd = source.indexOf("const replaceAttachmentReference", scrollEffectStart);
+        const scrollEffectEnd = source.indexOf("const { promptRef, attachmentsRef", scrollEffectStart);
 
         expect(source).toContain('import { usePcBrandViewport } from "@/hooks/use-pc-brand-viewport"');
         expect(source).toContain("const pcBrandV2 = usePcBrandViewport()");
