@@ -1,5 +1,6 @@
-import { useEffect } from "react";
+import { useCallback, useEffect } from "react";
 import type { Dispatch, SetStateAction } from "react";
+import { App } from "antd";
 import { resolveProjectCanvasStyle } from "@/components/canvas/canvas-style-picker-modal";
 import { createCanvasNode } from "@/lib/canvas/canvas-project-domain";
 import { createStyleProfileSnapshot, resolveStyleProfile, serializeStyleProfile } from "@/lib/canvas/style-profile";
@@ -41,20 +42,27 @@ export function isLinkedProjectStyleNodeCurrent(node: CanvasNodeData, resolved: 
     return node.metadata?.stylePresetId === resolved.metadata.stylePresetId && node.metadata?.content === resolved.metadata.content && node.metadata?.styleProfileJson === resolved.metadata.styleProfileJson && Boolean(node.metadata?.locked);
 }
 
+export function findCanvasStyleboardNode(nodes: readonly CanvasNodeData[]) {
+    return nodes.find((node) => node.type === CanvasNodeType.Text && node.metadata?.workflowKind === "styleboard") || null;
+}
+
 interface UseCanvasLinkedProjectStyleOptions {
     projectLoaded: boolean;
     project?: LinkedProjectStyleSource | null;
     nodesRef: { current: CanvasNodeData[] };
     getCanvasCenter: () => Position;
     setNodes: Dispatch<SetStateAction<CanvasNodeData[]>>;
+    focusCanvasNode: (nodeId: string) => void;
 }
 
-export function useCanvasLinkedProjectStyle({ projectLoaded, project, nodesRef, getCanvasCenter, setNodes }: UseCanvasLinkedProjectStyleOptions) {
+export function useCanvasLinkedProjectStyle({ projectLoaded, project, nodesRef, getCanvasCenter, setNodes, focusCanvasNode }: UseCanvasLinkedProjectStyleOptions) {
+    const { message } = App.useApp();
+
     useEffect(() => {
         if (!projectLoaded) return;
         const resolved = resolveLinkedProjectStyleNode(project);
         if (!resolved) return;
-        const current = nodesRef.current.find((node) => node.type === CanvasNodeType.Text && node.metadata?.workflowKind === "styleboard");
+        const current = findCanvasStyleboardNode(nodesRef.current);
         if (current) {
             if (isLinkedProjectStyleNodeCurrent(current, resolved)) return;
             setNodes((nodes) => nodes.map((node) => (node.id === current.id ? { ...node, title: resolved.title, metadata: { ...node.metadata, ...resolved.metadata } } : node)));
@@ -66,4 +74,15 @@ export function useCanvasLinkedProjectStyle({ projectLoaded, project, nodesRef, 
         node.height = 240;
         setNodes((nodes) => [...nodes, node]);
     }, [getCanvasCenter, nodesRef, project, projectLoaded, setNodes]);
+
+    const locateProjectStyleNode = useCallback(() => {
+        const styleNode = findCanvasStyleboardNode(nodesRef.current);
+        if (!styleNode) {
+            message.info("项目画风节点正在同步，请稍后再试");
+            return;
+        }
+        focusCanvasNode(styleNode.id);
+    }, [focusCanvasNode, message, nodesRef]);
+
+    return { locateProjectStyleNode };
 }

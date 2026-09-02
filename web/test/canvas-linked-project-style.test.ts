@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { CanvasNodeType, type CanvasNodeData } from "../src/types/canvas";
-import { isLinkedProjectStyleNodeCurrent, resolveLinkedProjectStyleNode } from "../src/pages/canvas/use-canvas-linked-project-style";
+import { findCanvasStyleboardNode, isLinkedProjectStyleNodeCurrent, resolveLinkedProjectStyleNode } from "../src/pages/canvas/use-canvas-linked-project-style";
 
 describe("关联项目画风节点同步", () => {
     test("没有有效画风时不创建节点", () => {
@@ -29,5 +29,15 @@ describe("关联项目画风节点同步", () => {
         } as CanvasNodeData;
         expect(isLinkedProjectStyleNodeCurrent(node, resolved!)).toBe(true);
         expect(isLinkedProjectStyleNodeCurrent({ ...node, metadata: { ...node.metadata, locked: false } }, resolved!)).toBe(false);
+    });
+
+    test("定位时只接受文本类型的项目画风节点", () => {
+        const nodes = [
+            { id: "wrong-type", type: CanvasNodeType.Image, metadata: { workflowKind: "styleboard" } },
+            { id: "plain-text", type: CanvasNodeType.Text, metadata: { workflowKind: "story_input" } },
+            { id: "style", type: CanvasNodeType.Text, metadata: { workflowKind: "styleboard" } },
+        ] as CanvasNodeData[];
+        expect(findCanvasStyleboardNode(nodes)?.id).toBe("style");
+        expect(findCanvasStyleboardNode(nodes.slice(0, 2))).toBeNull();
     });
 });

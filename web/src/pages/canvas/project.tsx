@@ -12,7 +12,6 @@ import { useAssetStore } from "@/stores/use-asset-store";
 import { flushCanvasStorePersistence } from "@/stores/canvas/use-canvas-store";
 import { useThemeStore } from "@/stores/use-theme-store";
 import { useUserStore } from "@/stores/use-user-store";
-import { App } from "antd";
 import type { CanvasNodeGenerationMode } from "@/components/canvas/canvas-node-prompt-panel";
 import { getProject } from "@/services/api/projects";
 import { useFocusMode } from "@/hooks/use-focus-mode";
@@ -118,7 +117,6 @@ export default function CanvasPage() {
 }
 
 function InfiniteCanvasPage() {
-    const { message } = App.useApp();
     const params = useParams<{ id: string }>();
     const [searchParams, setSearchParams] = useSearchParams();
     const projectId = params.id || "";
@@ -336,7 +334,7 @@ function InfiniteCanvasPage() {
         setToolbarNodeId,
     });
 
-    useCanvasLinkedProjectStyle({ projectLoaded, project: linkedProjectQuery.data?.project, nodesRef, getCanvasCenter, setNodes });
+    const { locateProjectStyleNode } = useCanvasLinkedProjectStyle({ projectLoaded, project: linkedProjectQuery.data?.project, nodesRef, getCanvasCenter, setNodes, focusCanvasNode });
 
     const {
         assetPickerOpen,
@@ -1057,14 +1055,6 @@ function InfiniteCanvasPage() {
         openPortraitClearance,
         selectVideoForPlayback,
     });
-    const locateProjectStyleNode = useCallback(() => {
-        const styleNode = nodesRef.current.find((node) => node.type === CanvasNodeType.Text && node.metadata?.workflowKind === "styleboard");
-        if (!styleNode) {
-            message.info("项目画风节点正在同步，请稍后再试");
-            return;
-        }
-        focusCanvasNode(styleNode.id);
-    }, [focusCanvasNode, message, nodesRef]);
     const emptyCanvasState = renderCanvasProjectEmptyState({
         nodeCount: nodes.length,
         shortDramaEnabled,
