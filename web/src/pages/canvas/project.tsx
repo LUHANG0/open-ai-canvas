@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
 import { useParams, useSearchParams } from "react-router";
 import { useConfigStore, useEffectiveConfig } from "@/stores/use-config-store";
 import { uploadMediaFile } from "@/services/file-storage";
@@ -10,7 +9,6 @@ import { useAssetStore } from "@/stores/use-asset-store";
 import { flushCanvasStorePersistence } from "@/stores/canvas/use-canvas-store";
 import { useThemeStore } from "@/stores/use-theme-store";
 import { useUserStore } from "@/stores/use-user-store";
-import { getProject } from "@/services/api/projects";
 import { useFocusMode } from "@/hooks/use-focus-mode";
 import { useCanvasAgentStore } from "@/stores/canvas/use-canvas-agent-store";
 import { CanvasOverlayLayerProvider } from "@/components/canvas/canvas-overlay-layer";
@@ -74,6 +72,7 @@ import { useCanvasNodeState } from "./use-canvas-node-state";
 import { useCanvasNodeSharing } from "./use-canvas-node-sharing";
 import { useCanvasTextToImage } from "./use-canvas-text-to-image";
 import { useCanvasLinkedProjectAssetSync, useCanvasLinkedProjectFolderInteractions } from "./use-canvas-linked-project-assets";
+import { useCanvasLinkedProjectQuery } from "./use-canvas-linked-project-query";
 import { useCanvasLinkedProjectStyle } from "./use-canvas-linked-project-style";
 import { useCanvasLiveProject } from "./use-canvas-live-project";
 import { useCanvasTitleEditing, useCanvasWorkspacePreferences, useCanvasWorkspaceTransitions } from "./use-canvas-workspace-shell";
@@ -216,15 +215,13 @@ function InfiniteCanvasPage() {
     const { cancelTitleEditing, finishTitleEditing, setTitleDraft, startTitleEditing, titleDraft, titleEditing } = useCanvasTitleEditing({ currentTitle: currentProject?.title, renameCurrentProject });
 
     const { applyLibTVImport, applyTapNowImport } = useCanvasProjectImport({ nodesRef, connectionsRef, setNodes, setConnections, saveCanvasProject });
-    const linkedProjectId = shortDramaEnabled ? currentProject?.projectId || "" : "";
-    const linkedProjectQuery = useQuery({ queryKey: ["project", linkedProjectId], queryFn: () => getProject(linkedProjectId), enabled: Boolean(linkedProjectId) });
-    const refetchLinkedProject = linkedProjectQuery.refetch;
+    const { linkedProjectDetail, linkedProjectId, refetchLinkedProject } = useCanvasLinkedProjectQuery(shortDramaEnabled, currentProject?.projectId);
     const { archiveNodesToLinkedFolder } = useCanvasLinkedProjectAssetSync({
         canvasId: projectId,
         linkedProjectId,
         projectLoaded,
-        projectAssets: linkedProjectQuery.data?.assets,
-        projectFolders: linkedProjectQuery.data?.assetFolders,
+        projectAssets: linkedProjectDetail?.assets,
+        projectFolders: linkedProjectDetail?.assetFolders,
         setNodes,
         refetchLinkedProject,
     });
@@ -278,7 +275,7 @@ function InfiniteCanvasPage() {
         setToolbarNodeId,
     });
 
-    const { locateProjectStyleNode } = useCanvasLinkedProjectStyle({ projectLoaded, project: linkedProjectQuery.data?.project, nodesRef, getCanvasCenter, setNodes, focusCanvasNode });
+    const { locateProjectStyleNode } = useCanvasLinkedProjectStyle({ projectLoaded, project: linkedProjectDetail?.project, nodesRef, getCanvasCenter, setNodes, focusCanvasNode });
 
     const {
         assetPickerOpen,
@@ -624,8 +621,8 @@ function InfiniteCanvasPage() {
     const { handleFrameToggle, handleProjectFolderInsert, linkedFolderPreviewNodesById } = useCanvasLinkedProjectFolderInteractions({
         assets,
         linkedProjectId,
-        projectAssets: linkedProjectQuery.data?.assets,
-        projectFolders: linkedProjectQuery.data?.assetFolders,
+        projectAssets: linkedProjectDetail?.assets,
+        projectFolders: linkedProjectDetail?.assetFolders,
         projectAssetInsertPosition,
         nodesRef,
         createFolder,
@@ -685,7 +682,7 @@ function InfiniteCanvasPage() {
         collapsingBatchIds,
         addedSkills,
         directorScenes: currentProject?.directorScenes,
-        projectUnits: linkedProjectQuery.data?.units,
+        projectUnits: linkedProjectDetail?.units,
         infoNodeId,
         cropNodeId,
         maskEditNodeId,
@@ -995,8 +992,8 @@ function InfiniteCanvasPage() {
         shortDramaEnabled,
         linkedProjectId: currentProject?.projectId,
         projectTitle: currentProject?.title || "未命名画布",
-        linkedProjectName: linkedProjectQuery.data?.project.name,
-        chapters: linkedProjectQuery.data?.units,
+        linkedProjectName: linkedProjectDetail?.project.name,
+        chapters: linkedProjectDetail?.units,
         onUploadRequest: handleUploadRequest,
         onCreateNode: createNode,
         onCreatePipeline: createShortDramaPipeline,
@@ -1028,7 +1025,7 @@ function InfiniteCanvasPage() {
                     focusMode={focusMode}
                     shortDramaEnabled={shortDramaEnabled}
                     projectId={currentProject?.projectId || ""}
-                    detail={linkedProjectQuery.data}
+                    detail={linkedProjectDetail}
                     onAddChapter={handleProjectChapterInsert}
                     onLocateStyle={locateProjectStyleNode}
                     onOpenAssets={openProjectAssets}
@@ -1039,7 +1036,7 @@ function InfiniteCanvasPage() {
                             focusMode={focusMode}
                             shortDramaEnabled={shortDramaEnabled}
                             linkedProjectId={currentProject?.projectId}
-                            linkedProjectName={linkedProjectQuery.data?.project.name || currentProject?.title || "未命名项目"}
+                            linkedProjectName={linkedProjectDetail?.project.name || currentProject?.title || "未命名项目"}
                             context={canvasContext}
                             topBar={{
                                 title: currentProject?.title || "未命名画布",
@@ -1592,7 +1589,7 @@ function InfiniteCanvasPage() {
                             onInsertLibraryAssets={handleLibraryAssetsInsert}
                             onCloseAssetPicker={closeAssetPicker}
                             projectAssetOpen={projectAssetOpen}
-                            projectDetail={linkedProjectQuery.data}
+                            projectDetail={linkedProjectDetail}
                             projectAssetInitialCategory={projectAssetInitialCategory}
                             projectAssetInitialFolderId={projectAssetInitialFolderId}
                             projectAssetScope={projectAssetScope}
