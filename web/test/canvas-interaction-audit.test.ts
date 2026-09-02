@@ -271,11 +271,13 @@ test("canvas selection state has a focused owner", async () => {
     const projectSource = await Bun.file(new URL("../src/pages/canvas/project.tsx", import.meta.url)).text();
     const stateSource = await Bun.file(new URL("../src/pages/canvas/use-canvas-selection-state.ts", import.meta.url)).text();
 
-    expect(projectSource).toContain("useCanvasSelectionState()");
+    expect(projectSource).toContain("useCanvasSelectionState(nodes)");
     expect(projectSource).not.toContain("useState<Set<string>>");
     expect(projectSource).not.toContain("const [selectedConnectionId, setSelectedConnectionId]");
+    expect(projectSource).not.toContain("selectBatchConnectionSourceNodeIds");
     expect(stateSource).toContain("const [selectedNodeIds, setSelectedNodeIds]");
     expect(stateSource).toContain("const [selectedConnectionId, setSelectedConnectionId]");
+    expect(stateSource).toContain("selectBatchConnectionSourceNodeIds(nodes, selectedNodeIds)");
 });
 
 test("canvas viewport state has a focused owner", async () => {

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, useSearchParams } from "react-router";
 import { useConfigStore, useEffectiveConfig } from "@/stores/use-config-store";
 import { uploadMediaFile } from "@/services/file-storage";
@@ -12,7 +12,6 @@ import { useUserStore } from "@/stores/use-user-store";
 import { useFocusMode } from "@/hooks/use-focus-mode";
 import { useCanvasAgentStore } from "@/stores/canvas/use-canvas-agent-store";
 import { CanvasOverlayLayerProvider } from "@/components/canvas/canvas-overlay-layer";
-import { selectBatchConnectionSourceNodeIds } from "@/lib/canvas/canvas-batch-connection";
 import { CanvasProjectFeedbackLayer } from "./canvas-project-feedback";
 import { backendProviderConfig } from "@/lib/canvas/canvas-project-generation";
 import { CanvasProjectHeader, CanvasProjectNavigationSidebar } from "./canvas-project-chrome";
@@ -133,7 +132,7 @@ function InfiniteCanvasPage() {
     const { nodes, nodesRef, setNodes } = useCanvasNodeState();
     const { activeChatId, chatSessions, connections, setActiveChatId, setChatSessions, setConnections } = useCanvasProjectContentState();
     const { setViewport, viewport } = useCanvasViewportState();
-    const { selectedConnectionId, selectedNodeIds, setSelectedConnectionId, setSelectedNodeIds } = useCanvasSelectionState();
+    const { batchSourceNodeIds, selectedConnectionId, selectedNodeIds, setSelectedConnectionId, setSelectedNodeIds } = useCanvasSelectionState(nodes);
     const { backgroundMode, canvasTool, contextMenu, hoveredNodeId, isMiniMapOpen, setBackgroundMode, setCanvasTool, setContextMenu, setHoveredNodeId, setIsMiniMapOpen, setShowImageInfo, showImageInfo } = useCanvasWorkspaceUiState();
     const [projectLoaded, setProjectLoaded] = useState(false);
     const { clearConfirmOpen, directorTemplateRequest, libTVImportOpen, nodeSearchOpen, setClearConfirmOpen, setDirectorTemplateRequest, setLibTVImportOpen, setNodeSearchOpen, setShareModalOpen, setShortcutRequestNonce, setStylePickerOpen, setTapNowImportOpen, shareModalOpen, shortcutRequestNonce, stylePickerOpen, tapNowImportOpen } = useCanvasProjectDialogState();
@@ -499,7 +498,6 @@ function InfiniteCanvasPage() {
         setDrawingNodeId,
     });
 
-    const batchSourceNodeIds = useMemo(() => selectBatchConnectionSourceNodeIds(nodes, selectedNodeIds), [nodes, selectedNodeIds]);
     const { handleCanvasBlankClick, handleCanvasDeselect, handleCanvasSelectionStart, handleNodeInteractionStart, handleSelectedNodeClick, openDrawingNode, openPortraitClearance, openTextNodeEditor, selectVideoForPlayback } = useCanvasNodeFocus({
         nodesRef,
         selectedNodeIdsRef,
