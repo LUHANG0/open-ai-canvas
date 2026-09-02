@@ -418,6 +418,8 @@ function EmptyImageContent({ node, theme, isBatchRoot, batchCount, batchExpanded
     return content;
 }
 
+const CANVAS_VIDEO_INTERACTIVE_CONTROL_SELECTOR = ".vds-menu-items,.vds-button,.vds-slider";
+
 function VideoNodeContent({ node, theme, reduceMediaEffects, mediaRenderPolicy, videoPreviewOnly }: CanvasNodeContentProps) {
     const playerBoxRef = useRef<HTMLDivElement>(null);
     const pointerGestureRef = useRef<{ pointerId: number; startX: number; startY: number; moved: boolean } | null>(null);
@@ -483,7 +485,7 @@ function VideoNodeContent({ node, theme, reduceMediaEffects, mediaRenderPolicy, 
             data-canvas-media-surface
             className="relative flex h-full w-full cursor-grab items-center justify-center overflow-hidden rounded-[var(--node-radius)] bg-black active:cursor-grabbing"
             onPointerDownCapture={(event) => {
-                if (event.target instanceof Element && event.target.closest(".vds-controls,.vds-menu-items,.vds-button,.vds-slider")) return;
+                if (event.target instanceof Element && event.target.closest(CANVAS_VIDEO_INTERACTIVE_CONTROL_SELECTOR)) return;
                 pointerGestureRef.current = { pointerId: event.pointerId, startX: event.clientX, startY: event.clientY, moved: false };
                 suppressSurfaceClickRef.current = false;
             }}
@@ -503,7 +505,7 @@ function VideoNodeContent({ node, theme, reduceMediaEffects, mediaRenderPolicy, 
                 pointerGestureRef.current = null;
             }}
             onClickCapture={(event) => {
-                if (event.target instanceof Element && event.target.closest(".vds-controls,.vds-menu-items,.vds-button,.vds-slider")) return;
+                if (event.target instanceof Element && event.target.closest(CANVAS_VIDEO_INTERACTIVE_CONTROL_SELECTOR)) return;
                 event.preventDefault();
                 event.stopPropagation();
                 const wasDrag = suppressSurfaceClickRef.current;

@@ -79,4 +79,11 @@ describe("画布视频播放入口", () => {
         expect(source).toContain("useNodeResourceUrl(node, !previewOnly)");
         expect(source).toContain("loadingPlayback={loading && (!previewOnly || playRequested)}");
     });
+
+    test("播放中点击视频画面可暂停，只有真实控件不拦截画面点击", async () => {
+        const source = await Bun.file(new URL("../src/components/canvas/canvas-node-content.tsx", import.meta.url)).text();
+        expect(source).toContain('CANVAS_VIDEO_INTERACTIVE_CONTROL_SELECTOR = ".vds-menu-items,.vds-button,.vds-slider"');
+        expect(source).toContain("if (video && !video.paused && !video.ended) video.pause();");
+        expect(source).not.toContain('closest(".vds-controls,.vds-menu-items,.vds-button,.vds-slider")');
+    });
 });
