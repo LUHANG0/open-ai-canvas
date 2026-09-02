@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { useParams, useSearchParams } from "react-router";
 import { useConfigStore, useEffectiveConfig } from "@/stores/use-config-store";
 import { uploadMediaFile } from "@/services/file-storage";
@@ -35,6 +35,7 @@ import { CanvasProjectShortDramaGuide, CanvasProjectWorkspaceModeSwitch } from "
 import { CanvasProjectViewport } from "./canvas-project-viewport";
 import { resolveCanvasActiveNodeTargets } from "./canvas-active-node-targets";
 import { CanvasProjectHeadlessAgent, CanvasProjectUtilityDialogs } from "./canvas-project-utility-overlays";
+import { CanvasClientMountGate } from "./canvas-client-mount-gate";
 import { CanvasRefreshShell } from "./canvas-refresh-shell";
 import { resolveCanvasLocalAgentEntry } from "./canvas-local-agent-entry";
 import { useCanvasConnectionController } from "./use-canvas-connection-controller";
@@ -99,15 +100,11 @@ import {
 import type { ReferenceImage } from "@/types/image";
 
 export default function CanvasPage() {
-    const [mounted, setMounted] = useState(false);
-
-    useEffect(() => {
-        setMounted(true);
-    }, []);
-
-    if (!mounted) return <CanvasRefreshShell />;
-
-    return <InfiniteCanvasPage />;
+    return (
+        <CanvasClientMountGate>
+            <InfiniteCanvasPage />
+        </CanvasClientMountGate>
+    );
 }
 
 function InfiniteCanvasPage() {

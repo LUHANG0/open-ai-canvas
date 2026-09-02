@@ -101,6 +101,15 @@ test("undoable drawing deletion retains local drawing documents", async () => {
     expect(lifecycleSource).toContain("removeCanvasProjectDrawings(projectId)");
 });
 
+test("canvas client mount fallback has one owned gate", async () => {
+    const projectSource = await Bun.file(new URL("../src/pages/canvas/project.tsx", import.meta.url)).text();
+    const gateSource = await Bun.file(new URL("../src/pages/canvas/canvas-client-mount-gate.tsx", import.meta.url)).text();
+    expect(projectSource).toContain("<CanvasClientMountGate>");
+    expect(projectSource).not.toContain("const [mounted, setMounted]");
+    expect(gateSource).toContain("useEffect(() =>");
+    expect(gateSource).toContain("<CanvasRefreshShell />");
+});
+
 test("assistant layout reserves the left dock and low zoom keeps video play reachable", async () => {
     const css = await Bun.file(new URL("../src/pages/canvas/canvas-editor-pc.css", import.meta.url)).text();
     const content = await Bun.file(new URL("../src/components/canvas/canvas-node-content.tsx", import.meta.url)).text();
