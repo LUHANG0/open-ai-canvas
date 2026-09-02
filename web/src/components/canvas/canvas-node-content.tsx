@@ -423,8 +423,11 @@ function VideoNodeContent({ node, theme, reduceMediaEffects, mediaRenderPolicy, 
     const pointerGestureRef = useRef<{ pointerId: number; startX: number; startY: number; moved: boolean } | null>(null);
     const suppressSurfaceClickRef = useRef(false);
     const { updateMetadata, selectVideoForPlayback } = useCanvasNodeActions();
-    const { url, loading, load } = useNodeResourceUrl(node, false);
     const previewOnly = videoPreviewOnly ?? reduceMediaEffects;
+    // 画布只为唯一选中的视频准备完整资源。远程视频若等到播放按钮点击后才下载，
+    // 异步鉴权下载会越过浏览器的用户手势窗口，首击只能挂载播放器、需要再点一次。
+    // 选中后提前准备 Blob URL，既保留未选中视频的封面性能，也让中央按钮首击直接播放。
+    const { url, loading, load } = useNodeResourceUrl(node, !previewOnly);
     const sourceIdentity = JSON.stringify([node.id, node.metadata?.storageKey, node.metadata?.content]);
     const [playRequest, setPlayRequest] = useState<string | null>(null);
     const playRequested = playRequest === sourceIdentity;
@@ -466,7 +469,7 @@ function VideoNodeContent({ node, theme, reduceMediaEffects, mediaRenderPolicy, 
     }, [node.id, node.metadata?.naturalHeight, node.metadata?.naturalWidth, reduceMediaEffects, subtitleEntries.length, updateMetadata, url]);
 
     if (!node.metadata?.content) return <EmptyMediaContent icon={<Video className="size-7 opacity-35" />} label="空视频节点" color={theme.node.placeholder} />;
-    if (previewOnly || !url) return <VideoPosterPreview node={node} theme={theme} policy={mediaRenderPolicy} loadingPlayback={playRequested && loading} onPlay={requestPlayback} />;
+    if (previewOnly || !url) return <VideoPosterPreview node={node} theme={theme} policy={mediaRenderPolicy} loadingPlayback={loading && (!previewOnly || playRequested)} onPlay={requestPlayback} />;
 
     const sourceRatio = (videoSize?.width || node.metadata?.naturalWidth || node.width) / Math.max(1, videoSize?.height || node.metadata?.naturalHeight || node.height);
     const fitHeight = Math.min(node.height, node.width / Math.max(0.01, sourceRatio));

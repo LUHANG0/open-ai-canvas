@@ -73,4 +73,10 @@ describe("画布视频播放入口", () => {
         expect(markup).not.toContain("加载视频（保持暂停）");
         expect(markup).not.toContain("<video");
     });
+
+    test("唯一选中的远程视频会提前准备播放资源，避免首次点击只完成加载", async () => {
+        const source = await Bun.file(new URL("../src/components/canvas/canvas-node-content.tsx", import.meta.url)).text();
+        expect(source).toContain("useNodeResourceUrl(node, !previewOnly)");
+        expect(source).toContain("loadingPlayback={loading && (!previewOnly || playRequested)}");
+    });
 });
