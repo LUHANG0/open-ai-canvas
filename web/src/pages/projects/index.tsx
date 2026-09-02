@@ -87,11 +87,10 @@ export default function ProjectsPage() {
             return;
         }
         setGenerating(true);
-        setGenerationStatus("正在创建项目…");
+        setGenerationStatus("AI 正在生成故事大纲与章节…");
         setGenerationPreview("");
+        let createdProjectId = "";
         try {
-            const project = await createUniqueProjectName(story, selectedStyle);
-            setGenerationStatus("AI 正在生成故事大纲与章节…");
             const answer = await requestImageQuestion(
                 { ...effectiveConfig, model: textModel, imageModel: textModel, videoModel: textModel, textModel },
                 [
@@ -107,6 +106,9 @@ export default function ProjectsPage() {
             );
             const parsed = parseGeneratedStory(answer);
             if (!parsed.chapters.length) throw new Error("AI 没有返回有效的章节内容，请重试");
+            setGenerationStatus("正在创建项目…");
+            const project = await createUniqueProjectName(parsed.title, parsed.synopsis || story, selectedStyle);
+            createdProjectId = project.project.id;
             setGenerationStatus(`正在导入 ${parsed.chapters.length} 个章节…`);
             await importProjectUnits(
                 project.project.id,
@@ -115,7 +117,14 @@ export default function ProjectsPage() {
             await queryClient.invalidateQueries({ queryKey: ["projects"] });
             navigate(`/projects/${project.project.id}/overview`);
         } catch (error) {
-            message.error(error instanceof Error ? error.message : "AI 生成失败，请重试");
+            const detail = error instanceof Error ? error.message : "AI 生成失败，请重试";
+            if (createdProjectId) {
+                await queryClient.invalidateQueries({ queryKey: ["projects"] });
+                message.warning(`项目已创建，但章节导入失败：${detail}。可以在项目中重新导入或手动添加章节。`);
+                navigate(`/projects/${createdProjectId}/overview`);
+            } else {
+                message.error(detail);
+            }
         } finally {
             setGenerating(false);
             setGenerationStatus("");
@@ -132,10 +141,10 @@ export default function ProjectsPage() {
     });
     const mutation = useMutation({
         mutationFn: createProject,
-        onSuccess: ({ project }) => {
+        onSuccess: ({ project }, input) => {
             setCreateOpen(false);
             void queryClient.invalidateQueries({ queryKey: ["projects"] });
-            navigate(`/projects/${project.id}/overview`);
+            navigate(input.sourceType === "novel" || input.sourceType === "text" ? `/projects/${project.id}/chapters?import=1` : `/projects/${project.id}/overview`);
         },
         onError: (error) => message.error(error instanceof Error ? error.message : "项目创建失败"),
     });
@@ -520,6 +529,7 @@ export default function ProjectsPage() {
                     <div className="grid grid-cols-2 gap-3">
                         <Form.Item name="aspectRatio" label="默认画幅">
                             <Select
+                                onChange={(value) => setCreateSource(value as typeof createSource)}
                                 options={[
                                     { label: "9:16 竖屏", value: "9:16" },
                                     { label: "16:9 横屏", value: "16:9" },
@@ -655,14 +665,14 @@ function parseGeneratedStory(answer: string) {
     return { title: title || storyTitleFromAnswer(answer), synopsis, chapters };
 }
 
-async function createUniqueProjectName(story: string, selectedStyle: CanvasStylePreset | null) {
-    const base = story.trim().slice(0, 24);
+async function createUniqueProjectName(title: string, description: string, selectedStyle: CanvasStylePreset | null) {
+    const base = title.trim().slice(0, 24) || "AI 生成短剧";
     const buildInput = (name: string) => ({
         name,
         type: "short-drama" as const,
         aspectRatio: "9:16",
         sourceType: "blank",
-        description: story.trim(),
+        description: description.trim(),
         ...(selectedStyle ? { stylePresetId: selectedStyle.id, styleProfileJson: serializeStyleProfile(selectedStyle.profile || createStyleProfileSnapshot(selectedStyle)) } : {}),
     });
     let attempt = 0;
@@ -683,11 +693,11 @@ function storyTitleFromAnswer(answer: string) {
     return line ? line.trim().slice(0, 24) : "AI 生成短剧";
 }
 
-const generationSteps = [{ label: "正在创建项目" }, { label: "AI 正在生成故事大纲与章节" }, { label: "正在导入章节" }];
+const generationSteps = [{ label: "AI 正在生成故事大纲与章节" }, { label: "正在创建项目" }, { label: "正在导入章节" }];
 
 function generationStepDone(label: string, status: string) {
-    if (label === "正在创建项目") return status.startsWith("AI 正在生成") || status.startsWith("正在导入");
-    if (label === "AI 正在生成故事大纲与章节") return status.startsWith("正在导入");
+    if (label === "AI 正在生成故事大纲与章节") return status.startsWith("正在创建项目") || status.startsWith("正在导入");
+    if (label === "正在创建项目") return status.startsWith("正在导入");
     return false;
 }
 

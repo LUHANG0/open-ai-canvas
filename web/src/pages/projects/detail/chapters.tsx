@@ -45,7 +45,7 @@ import {
     X,
 } from "lucide-react";
 
-import { useNavigate, useParams } from "react-router";
+import { useBlocker, useNavigate, useParams, useSearchParams } from "react-router";
 
 import { SkillRuntimePicker, useSkillRuntimeCatalog } from "@/components/skills/skill-runtime-picker";
 import { ModelPicker } from "@/components/model-picker";
@@ -68,6 +68,7 @@ import {
 } from "@/services/api/projects";
 import { useConfigStore, useEffectiveConfig } from "@/stores/use-config-store";
 import { listGenerationTasks, queryGenerationTask, type GenerationTask } from "@/services/api/task-center";
+import { loadProjectEditorDraft, removeProjectEditorDraft, saveProjectEditorDraft } from "@/services/project-editor-draft";
 
 import { formatCount, formatTime, statusLabel, type ProjectDetailViewProps } from "./shared";
 import { chapterStoryboardAssets, chapterStoryboardCharacters, chapterStoryboardReplaceImpact, storyboardRowsToProjectShots } from "./chapter-storyboard-production";
@@ -77,6 +78,7 @@ const CHAPTER_ROW_HEIGHT = 62;
 const MAX_NOVEL_IMPORT_CHAPTERS = 2500;
 type ChapterOperationKind = "characters" | "storyboard";
 type ChapterOperation = { startedAt: number; taskId?: string };
+type ChapterEditorDraft = { title: string; html: string };
 
 function formatChapterListCount(value: number) {
     if (value < 10_000) return formatCount(value);
@@ -88,10 +90,11 @@ export default function ProjectChaptersView({ detail, refreshProject }: ProjectD
     const navigate = useNavigate();
     const queryClient = useQueryClient();
     const { chapterId = "" } = useParams();
+    const [searchParams, setSearchParams] = useSearchParams();
     const initialSelectedId = detail.units.some((unit) => unit.id === chapterId) ? chapterId : detail.units[0]?.id || "";
     const [selectedId, setSelectedId] = useState(initialSelectedId);
     const [createOpen, setCreateOpen] = useState(false);
-    const [importOpen, setImportOpen] = useState(false);
+    const [importOpen, setImportOpen] = useState(() => searchParams.get("import") === "1");
     const [searchQuery, setSearchQuery] = useState("");
     const [moveTargetId, setMoveTargetId] = useState("");
     const [movePosition, setMovePosition] = useState<number | null>(null);
@@ -114,7 +117,25 @@ export default function ProjectChaptersView({ detail, refreshProject }: ProjectD
     const locallyOwnedTaskIdsRef = useRef(new Set<string>());
     const recoveredTaskIdsRef = useRef(new Set<string>());
     const recoveringTaskIdsRef = useRef(new Set<string>());
+    const draftLoadVersionRef = useRef(0);
+    const userEditedRef = useRef(false);
+    const navigationConfirmOpenRef = useRef(false);
+    const draftStorageWarningRef = useRef(false);
+    const chapterDraftRef = useRef<ChapterEditorDraft>({ title: "", html: "" });
+    chapterDraftRef.current = { title: draftTitle, html: draftHtml };
+    const reportDraftStorageFailure = () => {
+        if (draftStorageWarningRef.current) return;
+        draftStorageWarningRef.current = true;
+        message.warning("本机草稿保存失败，请尽快手动保存章节，离开或刷新前不要关闭页面");
+    };
     const deferredSearchQuery = useDeferredValue(searchQuery.trim().toLocaleLowerCase("zh-CN"));
+    const closeImport = () => {
+        setImportOpen(false);
+        if (!searchParams.has("import")) return;
+        const next = new URLSearchParams(searchParams);
+        next.delete("import");
+        setSearchParams(next, { replace: true });
+    };
     const orderedUnits = useMemo(() => {
         const byId = new Map(detail.units.map((unit) => [unit.id, unit]));
         return orderedIds.map((id) => byId.get(id)).filter((unit): unit is ProjectUnit => Boolean(unit));
@@ -204,14 +225,14 @@ export default function ProjectChaptersView({ detail, refreshProject }: ProjectD
     }, [runningOperationCount]);
 
     const saveMutation = useMutation({
-        mutationFn: () => selectedUnit
+        mutationFn: (draft: ChapterEditorDraft) => selectedUnit
             ? updateProjectUnit(detail.project.id, selectedUnit.id, {
-                title: draftTitle.trim(),
-                sourceText: draftHtml,
-                status: stripHtml(draftHtml) ? "ready" : "draft",
+                title: draft.title.trim(),
+                sourceText: draft.html,
+                status: stripHtml(draft.html) ? "ready" : "draft",
             })
             : Promise.reject(new Error("请选择章节")),
-        onSuccess: ({ unit }) => {
+        onSuccess: ({ unit }, savedDraft) => {
             queryClient.setQueryData(["project-unit", detail.project.id, unit.id], { unit });
             queryClient.setQueryData<{ units: ProjectDetail["units"]; canvasCounts: Record<string, number> }>(["project", detail.project.id, "units"], (current) => current ? {
                 ...current,
@@ -223,12 +244,56 @@ export default function ProjectChaptersView({ detail, refreshProject }: ProjectD
                     updatedAt: unit.updatedAt,
                 } : item),
             } : current);
-            setDirty(false);
+            const currentDraft = chapterDraftRef.current;
+            const unchangedSinceSubmit = currentDraft.title === savedDraft.title && currentDraft.html === savedDraft.html;
+            if (unchangedSinceSubmit) {
+                userEditedRef.current = false;
+                setDirty(false);
+                void removeProjectEditorDraft("chapter", detail.project.id, unit.id).catch(reportDraftStorageFailure);
+            } else {
+                void saveProjectEditorDraft({
+                    kind: "chapter",
+                    projectId: detail.project.id,
+                    entityId: unit.id,
+                    sourceUpdatedAt: unit.updatedAt,
+                    payload: currentDraft,
+                }).catch(reportDraftStorageFailure);
+            }
             refreshProject();
-            message.success("章节已保存");
+            message.success(unchangedSinceSubmit ? "章节已保存" : "章节已保存，提交期间的新修改仍保留在本地草稿");
         },
         onError: (error) => message.error(error instanceof Error ? error.message : "章节保存失败"),
     });
+    const navigationBlocker = useBlocker(dirty);
+
+    useEffect(() => {
+        const beforeUnload = (event: BeforeUnloadEvent) => {
+            if (!dirty) return;
+            event.preventDefault();
+            event.returnValue = "";
+        };
+        window.addEventListener("beforeunload", beforeUnload);
+        return () => window.removeEventListener("beforeunload", beforeUnload);
+    }, [dirty]);
+
+    useEffect(() => {
+        if (navigationBlocker.state !== "blocked" || navigationConfirmOpenRef.current) return;
+        navigationConfirmOpenRef.current = true;
+        modal.confirm({
+            title: "离开未保存的章节？",
+            content: "当前修改已暂存在本机，返回本章时会自动恢复；服务端内容只有点击保存后才会更新。",
+            okText: "保留草稿并离开",
+            cancelText: "继续编辑",
+            onOk: () => {
+                navigationConfirmOpenRef.current = false;
+                navigationBlocker.proceed();
+            },
+            onCancel: () => {
+                navigationConfirmOpenRef.current = false;
+                navigationBlocker.reset();
+            },
+        });
+    }, [modal, navigationBlocker]);
     const createMutation = useMutation({
         mutationFn: (values: { title: string; sourceText?: string }) => createProjectUnit(detail.project.id, { kind: "chapter", title: values.title, sourceText: plainTextToHtml(values.sourceText || ""), position: detail.units.length }),
         onSuccess: ({ unit }) => { setCreateOpen(false); setSelectedId(unit.id); refreshProject(); navigate(`/projects/${detail.project.id}/chapters/${unit.id}`); message.success("章节已创建"); },
@@ -236,7 +301,7 @@ export default function ProjectChaptersView({ detail, refreshProject }: ProjectD
     });
     const importMutation = useMutation({
         mutationFn: (chapters: Array<{ title: string; plainText: string }>) => importProjectUnits(detail.project.id, chapters.map((chapter) => ({ kind: "chapter", title: chapter.title, sourceText: plainTextToHtml(chapter.plainText) }))),
-        onSuccess: ({ units }) => { setImportOpen(false); if (units[0]) { setSelectedId(units[0].id); navigate(`/projects/${detail.project.id}/chapters/${units[0].id}`); } refreshProject(); message.success(`已导入 ${units.length} 章`); },
+        onSuccess: ({ units }) => { closeImport(); if (units[0]) { setSelectedId(units[0].id); navigate(`/projects/${detail.project.id}/chapters/${units[0].id}`); } refreshProject(); message.success(`已导入 ${units.length} 章`); },
         onError: (error) => message.error(error instanceof Error ? error.message : "小说导入失败"),
     });
     const reorderMutation = useMutation({
@@ -274,11 +339,13 @@ export default function ProjectChaptersView({ detail, refreshProject }: ProjectD
         ],
         content: selectedUnit?.sourceText || "",
         editorProps: { attributes: { class: "project-chapter-editor focus:outline-none" } },
-        onUpdate: ({ editor: nextEditor }) => { setDraftHtml(nextEditor.getHTML()); setDirty(true); },
+        onUpdate: ({ editor: nextEditor }) => { userEditedRef.current = true; setDraftHtml(nextEditor.getHTML()); setDirty(true); },
     });
 
     useEffect(() => {
         if (!selectedUnitSummary) return;
+        draftLoadVersionRef.current += 1;
+        userEditedRef.current = false;
         setDraftTitle(selectedUnitSummary.title);
         setDraftHtml("");
         setDirty(false);
@@ -287,12 +354,43 @@ export default function ProjectChaptersView({ detail, refreshProject }: ProjectD
     useEffect(() => {
         const loadedUnit = selectedUnit;
         if (!loadedUnit || !editor) return;
+        const loadVersion = ++draftLoadVersionRef.current;
+        userEditedRef.current = false;
         setDraftTitle(loadedUnit.title);
         setDraftHtml(loadedUnit.sourceText || "");
         setDirty(false);
         editor.commands.setContent(loadedUnit.sourceText || "", { emitUpdate: false });
+        void loadProjectEditorDraft<ChapterEditorDraft>("chapter", detail.project.id, loadedUnit.id).then((draft) => {
+            if (!draft || draftLoadVersionRef.current !== loadVersion || userEditedRef.current) return;
+            const title = draft.payload?.title;
+            const html = draft.payload?.html;
+            if (typeof title !== "string" || typeof html !== "string") return;
+            if (title === loadedUnit.title && html === (loadedUnit.sourceText || "")) {
+                void removeProjectEditorDraft("chapter", detail.project.id, loadedUnit.id).catch(reportDraftStorageFailure);
+                return;
+            }
+            setDraftTitle(title);
+            setDraftHtml(html);
+            editor.commands.setContent(html, { emitUpdate: false });
+            setDirty(true);
+            message.info(draft.sourceUpdatedAt === loadedUnit.updatedAt ? "已恢复本机未保存的章节草稿" : "已恢复本机章节草稿；服务端内容已变化，请核对后再保存");
+        }).catch(reportDraftStorageFailure);
         // 只在切换章节时装载服务端内容，避免项目刷新覆盖当前未保存正文。
-    }, [editor, selectedUnit?.id]);
+    }, [detail.project.id, editor, message, selectedUnit?.id]);
+
+    useEffect(() => {
+        if (!dirty || !selectedUnit) return;
+        const timer = window.setTimeout(() => {
+            void saveProjectEditorDraft({
+                kind: "chapter",
+                projectId: detail.project.id,
+                entityId: selectedUnit.id,
+                sourceUpdatedAt: selectedUnit.updatedAt,
+                payload: chapterDraftRef.current,
+            }).catch(reportDraftStorageFailure);
+        }, 400);
+        return () => window.clearTimeout(timer);
+    }, [detail.project.id, dirty, draftHtml, draftTitle, selectedUnit]);
 
     const wordCount = useMemo(() => editor?.storage.characterCount?.characters?.() || stripHtml(draftHtml).length || 0, [draftHtml, editor]);
     const chapterCanvasCount = (unitId: string) => canvasCountByUnitId.get(unitId) || 0;
@@ -466,6 +564,7 @@ export default function ProjectChaptersView({ detail, refreshProject }: ProjectD
             if (!latestByOperation.has(key)) latestByOperation.set(key, { task, ...identity });
         }
         for (const { task, chapterId: taskChapterId, kind } of latestByOperation.values()) {
+            if (taskChapterId !== selectedUnit?.id) continue;
             if (task.status !== "succeeded" || locallyOwnedTaskIdsRef.current.has(task.id) || recoveredTaskIdsRef.current.has(task.id) || recoveringTaskIdsRef.current.has(task.id)) continue;
             if (chapterTaskResultAlreadyApplied(task, taskChapterId, kind, detail)) {
                 recoveredTaskIdsRef.current.add(task.id);
@@ -486,7 +585,7 @@ export default function ProjectChaptersView({ detail, refreshProject }: ProjectD
                 message.error(error instanceof Error ? `任务结果恢复失败：${error.message}` : "任务结果恢复失败");
             }).finally(() => recoveringTaskIdsRef.current.delete(task.id));
         }
-    }, [chapterTasksQuery.data, detail]);
+    }, [chapterTasksQuery.data, detail, selectedUnit?.id]);
 
     const selectChapter = (unitId: string) => {
         if (unitId === selectedId) return;
@@ -593,13 +692,13 @@ export default function ProjectChaptersView({ detail, refreshProject }: ProjectD
                         <header className="flex shrink-0 flex-wrap items-start gap-3 border-b border-border/70 px-4 py-3">
                             <div className="min-w-0 flex-1">
                                 <div className="mb-1 text-[var(--fs-tiny)] font-medium tabular-nums text-foreground/38">第 {String(orderedUnits.findIndex((unit) => unit.id === selectedUnit.id) + 1).padStart(2, "0")} 章</div>
-                                <Input variant="borderless" value={draftTitle} disabled={!selectedUnit} onChange={(event) => { setDraftTitle(event.target.value); setDirty(true); }} className="!h-auto !px-0 !py-0 !text-xl !font-semibold !leading-tight disabled:!cursor-wait disabled:!text-foreground" placeholder="章节标题" />
+                                <Input variant="borderless" value={draftTitle} disabled={!selectedUnit} onChange={(event) => { userEditedRef.current = true; setDraftTitle(event.target.value); setDirty(true); }} className="!h-auto !px-0 !py-0 !text-xl !font-semibold !leading-tight disabled:!cursor-wait disabled:!text-foreground" placeholder="章节标题" />
                                 <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[var(--fs-tiny)] text-foreground/38"><span>{dirty ? "有未保存修改" : `保存于 ${formatTime(selectedUnit.updatedAt)}`}</span><span>·</span><span>{formatCount(wordCount)} 字</span><span>·</span><span>{chapterCanvasCount(selectedUnit.id)} 个画布</span></div>
                             </div>
                             <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
                                 <Button size="small" icon={<UsersRound className="size-3.5" />} disabled={!selectedUnit || dirty || Boolean(characterOperation)} loading={Boolean(characterOperation)} onClick={() => { setSelectedTextModel(effectiveConfig.textModel || effectiveConfig.model || effectiveConfig.textModels[0] || ""); setCharacterExtractOpen(true); }} aria-label={characterOperation ? `提取角色，已运行 ${formatOperationElapsed(characterOperation.startedAt, operationNow)}` : "提取角色"}>{characterOperation ? `提取角色（已运行${formatOperationElapsed(characterOperation.startedAt, operationNow)}）` : charactersGenerated ? "提取角色（已生成）" : "提取角色"}</Button>
                                 <Button size="small" type="primary" icon={<Clapperboard className="size-3.5" />} disabled={!selectedUnit || dirty || Boolean(storyboardOperation)} loading={Boolean(storyboardOperation)} onClick={() => { setSelectedTextModel(effectiveConfig.textModel || effectiveConfig.model || effectiveConfig.textModels[0] || ""); setSelectedSkillIds([]); setStoryboardOpen(true); }} aria-label={storyboardOperation ? `生成到分镜制作，已运行 ${formatOperationElapsed(storyboardOperation.startedAt, operationNow)}` : "生成到分镜制作"}>{storyboardOperation ? `生成到分镜制作（已运行${formatOperationElapsed(storyboardOperation.startedAt, operationNow)}）` : storyboardGenerated ? "生成到分镜制作（已生成）" : "生成到分镜制作"}</Button>
-                                <Button size="small" type={dirty ? "primary" : "default"} icon={dirty ? <Save className="size-3.5" /> : <Check className="size-3.5" />} disabled={!selectedUnit || !dirty || !draftTitle.trim() || saveMutation.isPending} loading={saveMutation.isPending} onClick={() => saveMutation.mutate()}>{dirty ? "保存" : "已保存"}</Button>
+                                <Button size="small" type={dirty ? "primary" : "default"} icon={dirty ? <Save className="size-3.5" /> : <Check className="size-3.5" />} disabled={!selectedUnit || !dirty || !draftTitle.trim() || saveMutation.isPending} loading={saveMutation.isPending} onClick={() => saveMutation.mutate(chapterDraftRef.current)}>{dirty ? "保存" : "已保存"}</Button>
                             </div>
                         </header>
                         <EditorToolbar editor={editor} />
@@ -610,7 +709,7 @@ export default function ProjectChaptersView({ detail, refreshProject }: ProjectD
                 ) : <WorkspaceState icon="projects" compact className="h-full" title="请选择章节" description="从左侧章节列表选择一章开始编辑。" />}
             </section>
             <CreateChapterModal open={createOpen} onClose={() => setCreateOpen(false)} loading={createMutation.isPending} onSubmit={(values) => createMutation.mutate(values)} />
-            <ImportNovelModal open={importOpen} loading={importMutation.isPending} onClose={() => setImportOpen(false)} onImport={(chapters) => importMutation.mutate(chapters)} />
+            <ImportNovelModal open={importOpen} loading={importMutation.isPending} onClose={closeImport} onImport={(chapters) => importMutation.mutate(chapters)} />
             <DialogFrame className="pc-project-dialog" title="提取章节角色" subtitle="正文会交给本次选择的文本模型分析，结果进入待确认资产。" open={characterExtractOpen} frameSize="sm" okText="开始提取" cancelText="取消" okButtonProps={{ disabled: !selectedTextModel }} onCancel={() => setCharacterExtractOpen(false)} onOk={() => void extractCharacters()}>
                 <div className="grid gap-4">
                     <div className="rounded-lg border border-border/70 bg-foreground/[.018] px-3 py-2.5">

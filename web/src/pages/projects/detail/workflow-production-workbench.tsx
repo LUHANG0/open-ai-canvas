@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { App, Button, Empty, Form, Image, Input, InputNumber, Segmented, Select } from "antd";
 import { Box, ChevronDown, ChevronLeft, ChevronRight, Download, Film, Image as ImageIcon, Layers3, List, Play, Plus, RefreshCcw, Save, SlidersHorizontal, Trash2, UsersRound, WandSparkles, X } from "lucide-react";
-import { Link, useNavigate } from "react-router";
+import { Link, useBlocker, useNavigate } from "react-router";
 
 import { CanvasResourceMentionTextarea } from "@/components/canvas/canvas-resource-mention-textarea";
 import { ModelPicker } from "@/components/model-picker";
@@ -31,6 +31,7 @@ import {
 } from "@/services/api/projects";
 import { resourceFileUrl, resourceIdFromStorageKey } from "@/services/api/resources";
 import { skillRuntime } from "@/services/skill-runtime";
+import { loadProjectEditorDraft, removeProjectEditorDraft, saveProjectEditorDraft } from "@/services/project-editor-draft";
 import { configuredModelMatchesCapability, modelDisplayName, modelOptionName, resolveModelChannel, selectableModelsByCapability, useConfigStore, useEffectiveConfig } from "@/stores/use-config-store";
 import { useUserStore } from "@/stores/use-user-store";
 import { SkillRuntimePicker, useSkillRuntimeCatalog } from "@/components/skills/skill-runtime-picker";
@@ -46,6 +47,7 @@ import {
     type ShortDramaWorkflowStage,
 } from "./workflow-shared";
 import { buildShotAssetReferenceContext, ensureShotAssetMentionPrompt, resolveShotAssetMentionPrompt } from "./workflow-shot-references";
+import { buildWorkflowArtifactPrompt, workflowArtifactSpecification, workflowArtifactSpecificationLabel } from "./workflow-generation-prompt";
 
 type ShotEditorValues = Omit<ShotRevisionInput, "durationMs"> & {
     title: string;
@@ -85,10 +87,20 @@ export default function WorkflowProductionWorkbench(props: Props) {
     const [previewTab, setPreviewTab] = useState<"latest" | "history">("latest");
     const [previewArtifactId, setPreviewArtifactId] = useState("");
     const [editorDirty, setEditorDirty] = useState(false);
+    const [draftRevision, setDraftRevision] = useState(0);
     const [submittingShotIds, setSubmittingShotIds] = useState<Set<string>>(() => new Set());
     const [taskClock, setTaskClock] = useState(() => Date.now());
     const activeShotIdRef = useRef(selectedShot?.id || "");
     activeShotIdRef.current = selectedShot?.id || "";
+    const draftLoadVersionRef = useRef(0);
+    const userEditedRef = useRef(false);
+    const navigationConfirmOpenRef = useRef(false);
+    const draftStorageWarningRef = useRef(false);
+    const reportDraftStorageFailure = () => {
+        if (draftStorageWarningRef.current) return;
+        draftStorageWarningRef.current = true;
+        message.warning("本机草稿保存失败，请尽快手动保存镜头脚本，离开或刷新前不要关闭页面");
+    };
     const shots = useMemo(() => (detail.shots || []).filter((item) => item.unitId === unitId).slice().sort((left, right) => left.position - right.position), [detail.shots, unitId]);
     const shotIndex = selectedShot ? shots.findIndex((item) => item.id === selectedShot.id) : -1;
     const revision = currentRevision(detail, selectedShot);
@@ -219,7 +231,7 @@ export default function WorkflowProductionWorkbench(props: Props) {
             ? Number(normalizeVideoValue(modelCapabilityConfigFor(effectiveConfig, currentModel).video!, { seconds: String(shotDurationSeconds) }).seconds)
             : shotDurationSeconds;
         const videoPrompt = ensureShotAssetMentionPrompt(revision?.videoPrompt || "", shotAssetReferenceContext.mentionReferences);
-        form.setFieldsValue({
+        const serverValues: ShotEditorValues = {
             title: selectedShot?.title || "",
             plotDescription: revision?.plotDescription || selectedShot?.description || "",
             action: revision?.action || "",
@@ -232,10 +244,39 @@ export default function WorkflowProductionWorkbench(props: Props) {
             videoPrompt,
             negativePrompt: revision?.negativePrompt || "",
             continuityNotes: revision?.continuityNotes || "",
-        });
+        };
+        const loadVersion = ++draftLoadVersionRef.current;
+        userEditedRef.current = false;
+        form.setFieldsValue(serverValues);
         setPreviewArtifactId("");
         setEditorDirty(!revision || videoPrompt !== revision.videoPrompt);
-    }, [effectiveConfig, form, generationCapability, initialModel, revision?.id, selectedShot?.id, shotAssetReferenceContext.mentionReferences]);
+        if (!selectedShot) return;
+        void loadProjectEditorDraft<{ values: ShotEditorValues }>("shot", projectId, selectedShot.id).then((draft) => {
+            if (!draft || draftLoadVersionRef.current !== loadVersion || userEditedRef.current) return;
+            const values = draft.payload?.values;
+            if (!values || typeof values !== "object" || shotEditorValuesEqual(values, serverValues)) {
+                if (values && shotEditorValuesEqual(values, serverValues)) void removeProjectEditorDraft("shot", projectId, selectedShot.id).catch(reportDraftStorageFailure);
+                return;
+            }
+            form.setFieldsValue(values);
+            setEditorDirty(true);
+            message.info(draft.sourceUpdatedAt === (revision?.createdAt || selectedShot.updatedAt) ? "已恢复本机未保存的镜头草稿" : "已恢复本机镜头草稿；服务端版本已变化，请核对后再保存");
+        }).catch(reportDraftStorageFailure);
+    }, [effectiveConfig, form, generationCapability, initialModel, message, projectId, revision?.id, selectedShot?.id, shotAssetReferenceContext.mentionReferences]);
+
+    useEffect(() => {
+        if (!editorDirty || !selectedShot || !draftRevision) return;
+        const timer = window.setTimeout(() => {
+            void saveProjectEditorDraft({
+                kind: "shot",
+                projectId,
+                entityId: selectedShot.id,
+                sourceUpdatedAt: revision?.createdAt || selectedShot.updatedAt,
+                payload: { values: form.getFieldsValue(true) as ShotEditorValues },
+            }).catch(reportDraftStorageFailure);
+        }, 400);
+        return () => window.clearTimeout(timer);
+    }, [draftRevision, editorDirty, form, projectId, revision?.createdAt, selectedShot]);
 
     const changeGenerationModel = (nextModel: string) => {
         selectedModelRef.current = nextModel;
@@ -273,13 +314,62 @@ export default function WorkflowProductionWorkbench(props: Props) {
                 revision: revisionInput(values),
             });
         },
-        onSuccess: async () => { setEditorDirty(false); await onRefresh(); message.success("镜头脚本已保存为新版本"); },
+        onSuccess: async (_result, savedValues) => {
+            const currentValues = form.getFieldsValue(true) as ShotEditorValues;
+            const unchangedSinceSubmit = shotEditorValuesEqual(currentValues, savedValues);
+            if (unchangedSinceSubmit && selectedShot) {
+                userEditedRef.current = false;
+                setEditorDirty(false);
+                void removeProjectEditorDraft("shot", projectId, selectedShot.id).catch(reportDraftStorageFailure);
+            } else if (selectedShot) {
+                void saveProjectEditorDraft({
+                    kind: "shot",
+                    projectId,
+                    entityId: selectedShot.id,
+                    sourceUpdatedAt: new Date().toISOString(),
+                    payload: { values: currentValues },
+                }).catch(reportDraftStorageFailure);
+            }
+            await onRefresh();
+            message.success(unchangedSinceSubmit ? "镜头脚本已保存为新版本" : "镜头脚本已保存，提交期间的新修改仍保留在本地草稿");
+        },
         onError: (error) => message.error(error instanceof Error ? error.message : "镜头保存失败"),
     });
+    const navigationBlocker = useBlocker(editorDirty);
+
+    useEffect(() => {
+        const beforeUnload = (event: BeforeUnloadEvent) => {
+            if (!editorDirty) return;
+            event.preventDefault();
+            event.returnValue = "";
+        };
+        window.addEventListener("beforeunload", beforeUnload);
+        return () => window.removeEventListener("beforeunload", beforeUnload);
+    }, [editorDirty]);
+
+    useEffect(() => {
+        if (navigationBlocker.state !== "blocked" || navigationConfirmOpenRef.current) return;
+        navigationConfirmOpenRef.current = true;
+        modal.confirm({
+            title: "离开未保存的镜头脚本？",
+            content: "当前修改已暂存在本机，返回这个镜头时会自动恢复；服务端版本只有点击保存或提交生成后才会更新。",
+            okText: "保留草稿并离开",
+            cancelText: "继续编辑",
+            onOk: () => {
+                navigationConfirmOpenRef.current = false;
+                navigationBlocker.proceed();
+            },
+            onCancel: () => {
+                navigationConfirmOpenRef.current = false;
+                navigationBlocker.reset();
+            },
+        });
+    }, [modal, navigationBlocker]);
 
     const deleteShot = useMutation({
         mutationFn: async ({ shotId }: { shotId: string; nextShotId: string }) => deleteProjectShot(projectId, shotId),
-        onSuccess: async (_result, { nextShotId }) => {
+        onSuccess: async (_result, { shotId, nextShotId }) => {
+            void removeProjectEditorDraft("shot", projectId, shotId).catch(reportDraftStorageFailure);
             onSelectShot(nextShotId);
             await onRefresh();
             message.success("镜头已删除");
@@ -302,8 +392,24 @@ export default function WorkflowProductionWorkbench(props: Props) {
         if (!selectedShot || submittingShotIds.has(selectedShot.id)) return;
         const submittingShot = selectedShot;
         setSubmittingShotIds((current) => new Set(current).add(submittingShot.id));
+        let shotSaved = false;
         try {
             const values = await form.validateFields();
+            if (!routedModel) throw new Error(activeStage === "video" ? "请先配置视频模型" : "请先配置图片模型");
+            if (routedModel.startsWith("local:dreamina-cli")) throw new Error("本机即梦任务暂不能登记到分镜产物，请选择后端模型渠道");
+            const compatibilityError = modelCompatibilityError(effectiveConfig, routedModel, modelRequirements);
+            if (compatibilityError) throw new Error(`当前模型配置不可用：${compatibilityError}`);
+            const mode = generationCapability;
+            const config = { ...generationConfig, videoSeconds: String(Math.max(1, Math.round(values.durationSeconds))) };
+            if (!isAiConfigReady(config, routedModel)) throw new Error("当前模型渠道配置不完整，请先到设置中补齐");
+            const basePrompt = buildWorkflowArtifactPrompt(activeStage, values);
+            const resolvedPrompt = resolveShotAssetMentionPrompt(basePrompt, shotAssetReferenceContext, { dialogue: values.dialogue });
+            const skillExecution = await skillRuntime.prepare({
+                profile: "shortDrama",
+                prompt: resolvedPrompt,
+                skills: availableSkills,
+                selectedSkillIds,
+            });
             let productionStep = workflowStep;
             if (!productionStep) {
                 const initialized = await createUnitWorkflow(projectId, unitId);
@@ -311,10 +417,6 @@ export default function WorkflowProductionWorkbench(props: Props) {
             }
             if (!productionStep) throw new Error("当前生成阶段不可用，请刷新页面后重试");
             if (productionStep.status === "failed") throw new Error("当前生成阶段失败，请刷新后重试");
-            if (!routedModel) throw new Error(activeStage === "video" ? "请先配置视频模型" : "请先配置图片模型");
-            if (routedModel.startsWith("local:dreamina-cli")) throw new Error("本机即梦任务暂不能登记到分镜产物，请选择后端模型渠道");
-            const compatibilityError = modelCompatibilityError(effectiveConfig, routedModel, modelRequirements);
-            if (compatibilityError) throw new Error(`当前模型配置不可用：${compatibilityError}`);
             const saved = await saveProjectShot(projectId, {
                 id: submittingShot.id,
                 unitId,
@@ -325,19 +427,12 @@ export default function WorkflowProductionWorkbench(props: Props) {
                 status: submittingShot.status,
                 revision: revisionInput(values),
             });
-            const mode = generationCapability;
-            const config = { ...generationConfig, videoSeconds: String(Math.max(1, Math.round(values.durationSeconds))) };
-            if (!isAiConfigReady(config, routedModel)) throw new Error("当前模型渠道配置不完整，请先到设置中补齐");
-            const basePrompt = mode === "video"
-                ? [values.videoPrompt || values.plotDescription, values.action, values.dialogue && `台词：${values.dialogue}`, values.continuityNotes].filter(Boolean).join("\n")
-                : [values.imagePrompt || values.plotDescription, values.action, "黑白分镜草图，清晰动作节拍，电影构图"].filter(Boolean).join("\n");
-            const resolvedPrompt = resolveShotAssetMentionPrompt(basePrompt, shotAssetReferenceContext, { dialogue: values.dialogue });
-            const skillExecution = await skillRuntime.prepare({
-                profile: "shortDrama",
-                prompt: resolvedPrompt,
-                skills: availableSkills,
-                selectedSkillIds,
-            });
+            shotSaved = true;
+            if (activeShotIdRef.current === submittingShot.id && shotEditorValuesEqual(form.getFieldsValue(true) as ShotEditorValues, values)) {
+                userEditedRef.current = false;
+                setEditorDirty(false);
+                void removeProjectEditorDraft("shot", projectId, submittingShot.id).catch(reportDraftStorageFailure);
+            }
             await submitBackendGenerationTask({
                 projectId,
                 mode,
@@ -357,14 +452,14 @@ export default function WorkflowProductionWorkbench(props: Props) {
                     source: "short-drama-workflow",
                     ...(mode === "video" && shotAssetReferenceContext.referenceImages.length ? { videoEditOperation: "reference_to_video" } : {}),
                     resolvedCharacterVersions: shotAssetReferenceContext.resolvedCharacterVersions,
-                    artifactMetadata: { model: routedModel, aspectRatio, resolution, durationSeconds: values.durationSeconds, ...skillExecution.metadata },
+                    artifactMetadata: { model: routedModel, aspectRatio, ...workflowArtifactSpecification(activeStage, resolution, imageQuality), durationSeconds: values.durationSeconds, ...skillExecution.metadata },
                 },
             });
-            if (activeShotIdRef.current === submittingShot.id) setEditorDirty(false);
             await onRefresh();
             message.success(`${productionStageCopy[activeStage as "storyboard" | "previz" | "video"].label}任务已提交`);
         } catch (error) {
-            message.error(error instanceof Error ? error.message : "生成任务提交失败");
+            const detail = error instanceof Error ? error.message : "生成任务提交失败";
+            message.error(shotSaved ? `镜头脚本已保存，但生成任务提交失败：${detail}` : detail);
         } finally {
             setSubmittingShotIds((current) => {
                 const next = new Set(current);
@@ -392,7 +487,11 @@ export default function WorkflowProductionWorkbench(props: Props) {
             content: "切换镜头会放弃这些修改。",
             okText: "放弃修改并切换",
             cancelText: "继续编辑",
-            onOk: () => onSelectShot(nextShotId),
+            onOk: () => {
+                void removeProjectEditorDraft("shot", projectId, selectedShot.id).catch(reportDraftStorageFailure);
+                setEditorDirty(false);
+                onSelectShot(nextShotId);
+            },
         });
     };
 
@@ -406,7 +505,11 @@ export default function WorkflowProductionWorkbench(props: Props) {
             content: "新增镜头会离开当前编辑内容。",
             okText: "放弃修改并新增",
             cancelText: "继续编辑",
-            onOk: onAddShot,
+            onOk: () => {
+                void removeProjectEditorDraft("shot", projectId, selectedShot.id).catch(reportDraftStorageFailure);
+                setEditorDirty(false);
+                onAddShot();
+            },
         });
     };
 
@@ -457,7 +560,7 @@ export default function WorkflowProductionWorkbench(props: Props) {
                         </div>
                         <div className="flex items-center gap-1"><span className="mr-1 text-[var(--fs-micro)] text-foreground/45">{shotIndex + 1} / {shots.length}</span><Button type="text" size="small" icon={<ChevronLeft className="size-4" />} disabled={shotIndex <= 0} onClick={() => selectRelativeShot(-1)} aria-label="上一个镜头" /><Button type="text" size="small" icon={<ChevronRight className="size-4" />} disabled={shotIndex >= shots.length - 1} onClick={() => selectRelativeShot(1)} aria-label="下一个镜头" /></div>
                     </header>
-                    <Form form={form} layout="vertical" className="workflow-shot-form" onValuesChange={() => setEditorDirty(true)} onFinish={(values) => saveShot.mutate(values)}>
+                    <Form form={form} layout="vertical" className="workflow-shot-form" onValuesChange={() => { userEditedRef.current = true; setEditorDirty(true); setDraftRevision((value) => value + 1); }} onFinish={(values) => saveShot.mutate(values)}>
                         <div className="workflow-shot-form-scroll thin-scrollbar">
                             <div className="workflow-form-section-heading"><span>镜头脚本</span><small>先写清镜头里发生什么，再调整生成参数</small></div>
                             <Form.Item name="title" label="镜头名称" rules={[{ required: true, message: "请输入镜头名称" }]}><Input placeholder="用一句话概括这个镜头" /></Form.Item>
@@ -560,7 +663,7 @@ export default function WorkflowProductionWorkbench(props: Props) {
                     </header>
                     <div className="workflow-preview-scroll thin-scrollbar">
                         {previewTab === "latest" ? <LatestPreview artifact={previewArtifact} emptyText={stageCopy.empty} /> : <ArtifactHistory artifacts={artifacts} activeId={previewArtifact?.id} onSelect={(artifact) => { setPreviewArtifactId(artifact.id); setPreviewTab("latest"); }} />}
-                        <div className="workflow-preview-summary"><div className="flex items-center justify-between gap-2"><span className="text-xs font-medium">当前产物</span><ArtifactStatus artifact={newestArtifact} compact /></div><div className="mt-1 text-[var(--fs-micro)] text-foreground/45">{newestArtifact ? `${formatDuration(selectedShot.durationMs)} · ${resolution}p · v${newestArtifact.version}` : "当前镜头还没有生成产物"}</div></div>
+                        <div className="workflow-preview-summary"><div className="flex items-center justify-between gap-2"><span className="text-xs font-medium">当前产物</span><ArtifactStatus artifact={newestArtifact} compact /></div><div className="mt-1 text-[var(--fs-micro)] text-foreground/45">{newestArtifact ? `${formatDuration(selectedShot.durationMs)} · ${workflowArtifactSpecificationLabel(activeStage, resolution, imageQuality)} · v${newestArtifact.version}` : "当前镜头还没有生成产物"}</div></div>
                         <div className="workflow-preview-actions"><Button icon={<RefreshCcw className="size-3.5" />} loading={selectedShotSubmitting || shotTask?.status === "queued" || shotTask?.status === "running"} onClick={() => void generateArtifact()}>重新生成</Button><Button icon={<Download className="size-3.5" />} disabled={!previewArtifact?.resourceId} onClick={() => previewArtifact?.resourceId && void downloadArtifact(previewArtifact, selectedShot.title, message.error)}>下载{activeStage === "video" ? "视频" : "图片"}</Button></div>
                         <ArtifactHistory artifacts={artifacts.slice(0, 4)} activeId={previewArtifact?.id} onSelect={(artifact) => setPreviewArtifactId(artifact.id)} compact />
                     </div>
@@ -605,7 +708,7 @@ function AssetLibrary({ detail, referenceByVersionId, changing, onToggle }: { de
     }, [assetsPage]);
     const total = assetsQuery.data?.total || 0;
     const pages = Math.max(1, Math.ceil(total / pageSize));
-    return <div className="workflow-asset-groups"><Select size="small" className="mb-2 w-full" value={category} options={[{ value: "all", label: `全部资产（${Object.values(assetsQuery.data?.categoryCounts || {}).reduce((sum, count) => sum + count, 0)}）` }, ...Object.entries(assetsQuery.data?.categoryCounts || {}).filter(([, count]) => count > 0).map(([value, count]) => ({ value, label: `${assetCategoryLabel(value)}（${count}）` }))]} onChange={(value) => { setCategory(value); setPage(1); }} />{assetsQuery.isLoading ? <div className="py-6 text-center text-xs text-foreground/45">正在读取资产…</div> : groups.length ? groups.map(([groupCategory, assets]) => <section key={groupCategory}><h3>{assetCategoryLabel(groupCategory)} <span>({assets.length})</span></h3><div className="workflow-asset-list">{assets.map((asset) => { const reference = asset.primaryVersionId ? referenceByVersionId.get(asset.primaryVersionId) : undefined; const active = Boolean(reference); const previewUrl = assetPreviewUrl(asset); return <button key={asset.id} type="button" className={`workflow-asset-row ${active ? "is-active" : ""}`} disabled={changing || !asset.primaryVersionId} aria-pressed={active} onClick={() => onToggle(asset, reference)}><span className="workflow-asset-thumb">{previewUrl ? <img src={previewUrl} alt="" loading="lazy" /> : asset.category === "character" ? <UsersRound /> : asset.mediaType === "image" ? <ImageIcon /> : <Box />}</span><span className="min-w-0 flex-1"><strong>{asset.title}</strong><small>{active ? "已绑定 · 点击取消" : `${assetCategoryLabel(asset.category)} · v${Math.max(1, asset.versionCount)}`}</small></span>{active ? <span className="workflow-bound-dot" /> : null}</button>; })}</div></section>) : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="项目还没有资产" />}{total > pageSize ? <div className="mt-3 flex items-center justify-between border-t border-border/60 pt-2 text-[var(--fs-micro)] text-foreground/45"><span>{page}/{pages} · 共 {total} 项</span><span className="flex gap-1"><Button type="text" size="small" icon={<ChevronLeft className="size-3.5" />} disabled={page <= 1} onClick={() => setPage((value) => Math.max(1, value - 1))} /><Button type="text" size="small" icon={<ChevronRight className="size-3.5" />} disabled={page >= pages} onClick={() => setPage((value) => Math.min(pages, value + 1))} /></span></div> : null}</div>;
+    return <div className="workflow-asset-groups"><Select size="small" className="mb-2 w-full" value={category} options={[{ value: "all", label: `全部资产（${Object.values(assetsQuery.data?.categoryCounts || {}).reduce((sum, count) => sum + count, 0)}）` }, ...Object.entries(assetsQuery.data?.categoryCounts || {}).filter(([, count]) => count > 0).map(([value, count]) => ({ value, label: `${assetCategoryLabel(value)}（${count}）` }))]} onChange={(value) => { setCategory(value); setPage(1); }} />{assetsQuery.isLoading ? <div className="py-6 text-center text-xs text-foreground/45">正在读取资产…</div> : assetsQuery.isError ? <div className="grid gap-2 py-6 text-center text-xs text-red-500"><span>{assetsQuery.error instanceof Error ? assetsQuery.error.message : "资产读取失败"}</span><Button size="small" onClick={() => void assetsQuery.refetch()}>重试</Button></div> : groups.length ? groups.map(([groupCategory, assets]) => <section key={groupCategory}><h3>{assetCategoryLabel(groupCategory)} <span>({assets.length})</span></h3><div className="workflow-asset-list">{assets.map((asset) => { const reference = asset.primaryVersionId ? referenceByVersionId.get(asset.primaryVersionId) : undefined; const active = Boolean(reference); const previewUrl = assetPreviewUrl(asset); return <button key={asset.id} type="button" className={`workflow-asset-row ${active ? "is-active" : ""}`} disabled={changing || !asset.primaryVersionId} aria-pressed={active} onClick={() => onToggle(asset, reference)}><span className="workflow-asset-thumb">{previewUrl ? <img src={previewUrl} alt="" loading="lazy" /> : asset.category === "character" ? <UsersRound /> : asset.mediaType === "image" ? <ImageIcon /> : <Box />}</span><span className="min-w-0 flex-1"><strong>{asset.title}</strong><small>{active ? "已绑定 · 点击取消" : `${assetCategoryLabel(asset.category)} · v${Math.max(1, asset.versionCount)}`}</small></span>{active ? <span className="workflow-bound-dot" /> : null}</button>; })}</div></section>) : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="项目还没有资产" />}{total > pageSize ? <div className="mt-3 flex items-center justify-between border-t border-border/60 pt-2 text-[var(--fs-micro)] text-foreground/45"><span>{page}/{pages} · 共 {total} 项</span><span className="flex gap-1"><Button type="text" size="small" icon={<ChevronLeft className="size-3.5" />} disabled={page <= 1} onClick={() => setPage((value) => Math.max(1, value - 1))} /><Button type="text" size="small" icon={<ChevronRight className="size-3.5" />} disabled={page >= pages} onClick={() => setPage((value) => Math.min(pages, value + 1))} /></span></div> : null}</div>;
 }
 
 function ShotAssetMentionTextarea({ value = "", onChange = () => undefined, references, variant = "motion" }: { value?: string; onChange?: (value: string) => void; references: ReturnType<typeof buildShotAssetReferenceContext>["mentionReferences"]; variant?: "scene" | "motion" }) {
@@ -711,6 +814,24 @@ function revisionInput(values: ShotEditorValues): ShotRevisionInput {
         negativePrompt: values.negativePrompt,
         continuityNotes: values.continuityNotes,
     };
+}
+
+function shotEditorValuesEqual(left: Partial<ShotEditorValues>, right: Partial<ShotEditorValues>) {
+    const keys: Array<keyof ShotEditorValues> = [
+        "title",
+        "plotDescription",
+        "action",
+        "dialogue",
+        "shotSize",
+        "cameraAngle",
+        "cameraMovement",
+        "durationSeconds",
+        "imagePrompt",
+        "videoPrompt",
+        "negativePrompt",
+        "continuityNotes",
+    ];
+    return keys.every((key) => (left[key] ?? "") === (right[key] ?? ""));
 }
 
 async function downloadArtifact(artifact: ShotArtifact, shotTitle: string, onError: (content: string) => void) {

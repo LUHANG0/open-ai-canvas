@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useMutation, useMutationState, useQuery } from "@tanstack/react-query";
-import { App, Button, Dropdown, Form, Input, Modal, Popconfirm, Tabs, type FormInstance } from "antd";
+import { Alert, App, Button, Dropdown, Form, Input, Modal, Popconfirm, Tabs, type FormInstance } from "antd";
 import { Box, Check, ChevronDown, Download, FileText, FolderOpen, FolderPlus, Image as ImageIcon, Link2, MoreHorizontal, MoveRight, Music2, Pencil, Plus, RefreshCw, Sparkles, Trash2, Upload, UserRound, Video, VolumeX } from "lucide-react";
 
 import { WorkspaceState } from "@/components/layout/workspace-state";
@@ -102,10 +102,12 @@ export default function ProjectAssetsView({ detail, refreshProject }: ProjectDet
     const candidatesQuery = useQuery({
         queryKey: ["project", detail.project.id, "asset-candidates", candidatePage, candidatePageSize, "character", "pending_confirmation"],
         queryFn: () => listProjectAssetCandidates(detail.project.id, { page: candidatePage, pageSize: candidatePageSize, category: "character", status: "pending_confirmation" }),
+        enabled: showPendingCandidates,
     });
     const assets = assetsQuery.data?.assets || [];
     const assetFolders = foldersQuery.data?.folders || [];
     const pendingCandidates = candidatesQuery.data?.candidates || [];
+    const pendingCandidateCount = showPendingCandidates ? candidatesQuery.data?.total || 0 : 0;
     const categoryCountMap = assetsQuery.data?.categoryCounts || {};
     const folderCountMap = assetsQuery.data?.folderCounts || {};
     const totalAssetCount = Object.values(categoryCountMap).reduce((total, count) => total + count, 0);
@@ -172,8 +174,8 @@ export default function ProjectAssetsView({ detail, refreshProject }: ProjectDet
     const categoryCounts = categories.map((value) => ({
         value,
         count: value === "all"
-            ? totalAssetCount + (candidatesQuery.data?.total || 0)
-            : (categoryCountMap[value] || 0) + (value === "character" ? candidatesQuery.data?.total || 0 : 0),
+            ? totalAssetCount + pendingCandidateCount
+            : (categoryCountMap[value] || 0) + (value === "character" ? pendingCandidateCount : 0),
     }));
     const audioPickerItems = useMemo<AssetLibraryPickerItem[]>(() => {
         const localItems = personalAssets.flatMap((asset) => {
@@ -362,13 +364,14 @@ export default function ProjectAssetsView({ detail, refreshProject }: ProjectDet
                 className="pc-project-assets-header"
                 title="角色与资产"
                 description="统一维护角色设定、声音、参考媒体、目录与版本关系。"
-                meta={<><StatusBadge tone="neutral">{totalAssetCount} 项已确认</StatusBadge><StatusBadge tone="info">{characterAssetCount} 个角色</StatusBadge><StatusBadge tone="neutral">{mediaAssetCount} 项媒体</StatusBadge>{(candidatesQuery.data?.total || 0) ? <StatusBadge tone="warning" icon={<Sparkles className="size-3.5" />}>{candidatesQuery.data?.total || 0} 个待确认</StatusBadge> : null}</>}
+                meta={<><StatusBadge tone="neutral">{totalAssetCount} 项已确认</StatusBadge><StatusBadge tone="info">{characterAssetCount} 个角色</StatusBadge><StatusBadge tone="neutral">{mediaAssetCount} 项媒体</StatusBadge>{pendingCandidateCount ? <StatusBadge tone="warning" icon={<Sparkles className="size-3.5" />}>{pendingCandidateCount} 个待确认</StatusBadge> : null}</>}
                 actions={<div className="flex shrink-0 items-center gap-1.5">
                     <Button type="text" className="!h-9 !px-3" icon={<FolderPlus className="size-3.5" />} onClick={() => openFolderEditor()}>新建文件夹</Button>
                     <Button type="text" className="!h-9 !px-3" icon={<Link2 className="size-3.5" />} onClick={() => setAddOpen(true)}>引用素材</Button>
                     <Button type="primary" className="!h-9 !px-3.5" icon={<Plus className="size-3.5" />} onClick={() => openCharacterEditor("new")}>新建角色</Button>
                 </div>}
             />
+            {foldersQuery.isError ? <Alert className="mt-3" type="error" showIcon message="素材目录读取失败" description="已确认素材仍可查看，但文件夹结构暂不可用。" action={<Button size="small" onClick={() => void foldersQuery.refetch()}>重试</Button>} /> : null}
             <div className="project-assets-layout mt-3 grid gap-3">
                 <nav className="pc-project-assets-nav space-y-0.5" aria-label="素材目录与资产分类">
                     <div className="mb-1 flex h-8 items-center justify-between px-2 text-[var(--fs-tiny)] font-medium text-foreground/42"><span>素材目录</span><button type="button" className="rounded p-1 hover:bg-surface-hover" aria-label="新建根目录文件夹" onClick={() => openFolderEditor(undefined, "")}><FolderPlus className="size-3.5" /></button></div>
@@ -386,12 +389,13 @@ export default function ProjectAssetsView({ detail, refreshProject }: ProjectDet
                         </div>
                         {folderId !== ALL_FOLDERS ? <Button type="text" size="small" icon={<FolderPlus className="size-3.5" />} onClick={() => openFolderEditor(undefined, folderId)}>新建子文件夹</Button> : null}
                     </div>
+                    {showPendingCandidates && candidatesQuery.isError ? <Alert className="mb-3" type="error" showIcon message="待确认角色读取失败" description={candidatesQuery.error instanceof Error ? candidatesQuery.error.message : "请稍后重试。"} action={<Button size="small" onClick={() => void candidatesQuery.refetch()}>重试</Button>} /> : null}
                     {childFolders.length ? <div className="project-asset-folder-grid mb-5">{childFolders.map((folder) => <ProjectAssetFolderCard key={folder.id} folder={folder} folders={assetFolders} assets={assets} folderCounts={folderCountMap} personalAssets={personalAssets} onOpen={() => selectFolder(folder.id)} onRename={() => openFolderEditor(folder)} onMove={(parentId) => moveFolderMutation.mutate({ id: folder.id, parentId })} onStyle={(style) => styleFolderMutation.mutate({ id: folder.id, style })} onTheme={(theme) => themeFolderMutation.mutate({ id: folder.id, theme })} onDelete={() => modal.confirm({ title: `删除文件夹“${folder.name}”？`, content: "仅空文件夹可以删除，素材和子文件夹不会被级联删除。", okText: "删除", okButtonProps: { danger: true }, cancelText: "取消", onOk: () => deleteFolderMutation.mutateAsync(folder.id) })} deleting={(deleteFolderMutation.isPending && deleteFolderMutation.variables === folder.id) || (moveFolderMutation.isPending && moveFolderMutation.variables?.id === folder.id) || (styleFolderMutation.isPending && styleFolderMutation.variables?.id === folder.id) || (themeFolderMutation.isPending && themeFolderMutation.variables?.id === folder.id)} />)}</div> : null}
                     {folderId === ALL_FOLDERS && (category === "all" || category === "character") && pendingCandidates.length ? (
                         <section className="mb-4" aria-label="待确认角色">
                             <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
                                 <div className="flex items-center gap-1.5 text-xs font-medium"><Sparkles className="size-3.5 text-foreground/50" />剧情识别出的角色</div>
-                                <span className="text-[var(--fs-tiny)] tabular-nums text-foreground/42">剩余 {candidatesQuery.data?.total || 0} 个待确认</span>
+                                <span className="text-[var(--fs-tiny)] tabular-nums text-foreground/42">剩余 {pendingCandidateCount} 个待确认</span>
                             </div>
                             <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
                                 {pendingCandidates.map((candidate) => {
@@ -411,11 +415,11 @@ export default function ProjectAssetsView({ detail, refreshProject }: ProjectDet
                                     );
                                 })}
                             </div>
-                            <PaginationBar current={candidatePage} pageSize={candidatePageSize} total={candidatesQuery.data?.total || 0} itemLabel="项" pageSizeOptions={[candidatePageSize]} onChange={(nextPage) => setCandidatePage(nextPage)} />
+                            <PaginationBar current={candidatePage} pageSize={candidatePageSize} total={pendingCandidateCount} itemLabel="项" pageSizeOptions={[candidatePageSize]} onChange={(nextPage) => setCandidatePage(nextPage)} />
                         </section>
                     ) : null}
                     <div className="mb-2 flex items-center justify-between text-xs text-foreground/45"><span>{currentFolder?.name || (folderId === ALL_FOLDERS ? (category === "all" ? "全部资产" : categoryLabel(category)) : "根目录内容")}</span><span>{assetsQuery.data?.total || 0} 项已确认</span></div>
-                    {assetsQuery.isLoading ? <WorkspaceState icon="assets" compact title="正在读取资产" description="按当前目录和分类加载这一页。" /> : visibleAssets.length ? <><div className="project-assets-grid assets-library-grid">{visibleAssets.map((asset) => asset.category === "character" ? <ProjectCharacterCard key={asset.id} asset={asset} folderItems={folderMoveItems} generating={generatingAssetIds.has(asset.id)} removing={(moveMutation.isPending && moveMutation.variables?.id === asset.id) || (unlinkMutation.isPending && unlinkMutation.variables === asset.id)} onOpen={() => setPreviewAsset(asset)} onEdit={() => openCharacterEditor(asset)} onGenerate={() => generateMutation.mutate(asset)} onBindImages={() => openImages(asset)} onBindVoice={() => openVoice(asset)} onMove={(nextFolderId) => moveMutation.mutate({ id: asset.id, nextFolderId })} onRemove={() => unlinkMutation.mutate(asset.id)} /> : <MediaAssetCard key={asset.id} asset={asset} personalAsset={personalAssets.find((item) => item.id === asset.id)} folderItems={folderMoveItems} onOpen={() => setPreviewAsset(asset)} onMove={(nextFolderId) => moveMutation.mutate({ id: asset.id, nextFolderId })} onCategoryChange={(next) => categoryMutation.mutate({ id: asset.id, next })} onVersion={() => versionMutation.mutate(asset.id)} onRemove={() => unlinkMutation.mutate(asset.id)} loading={(moveMutation.isPending && moveMutation.variables?.id === asset.id) || (categoryMutation.isPending && categoryMutation.variables?.id === asset.id) || (versionMutation.isPending && versionMutation.variables === asset.id) || (unlinkMutation.isPending && unlinkMutation.variables === asset.id)} />)}</div><PaginationBar current={page} pageSize={pageSize} total={assetsQuery.data?.total || 0} itemLabel="项" pageSizeOptions={[20, 40, 80]} onChange={(nextPage, nextPageSize) => { setPage(nextPageSize !== pageSize ? 1 : nextPage); setPageSize(nextPageSize); }} /></> : childFolders.length || (showPendingCandidates && pendingCandidates.length) ? null : <WorkspaceState icon="assets" compact title="这个文件夹还没有内容" description="可以新建子文件夹、引用个人素材，或把画布产物归档到这里。" />}
+                    {assetsQuery.isLoading ? <WorkspaceState icon="assets" compact title="正在读取资产" description="按当前目录和分类加载这一页。" /> : assetsQuery.isError ? <WorkspaceState role="alert" icon="error" compact title="资产读取失败" description={assetsQuery.error instanceof Error ? assetsQuery.error.message : "请检查网络连接后重试。"} action={<Button size="small" onClick={() => void assetsQuery.refetch()}>重新读取</Button>} /> : visibleAssets.length ? <><div className="project-assets-grid assets-library-grid">{visibleAssets.map((asset) => asset.category === "character" ? <ProjectCharacterCard key={asset.id} asset={asset} folderItems={folderMoveItems} generating={generatingAssetIds.has(asset.id)} removing={(moveMutation.isPending && moveMutation.variables?.id === asset.id) || (unlinkMutation.isPending && unlinkMutation.variables === asset.id)} onOpen={() => setPreviewAsset(asset)} onEdit={() => openCharacterEditor(asset)} onGenerate={() => generateMutation.mutate(asset)} onBindImages={() => openImages(asset)} onBindVoice={() => openVoice(asset)} onMove={(nextFolderId) => moveMutation.mutate({ id: asset.id, nextFolderId })} onRemove={() => unlinkMutation.mutate(asset.id)} /> : <MediaAssetCard key={asset.id} asset={asset} personalAsset={personalAssets.find((item) => item.id === asset.id)} folderItems={folderMoveItems} onOpen={() => setPreviewAsset(asset)} onMove={(nextFolderId) => moveMutation.mutate({ id: asset.id, nextFolderId })} onCategoryChange={(next) => categoryMutation.mutate({ id: asset.id, next })} onVersion={() => versionMutation.mutate(asset.id)} onRemove={() => unlinkMutation.mutate(asset.id)} loading={(moveMutation.isPending && moveMutation.variables?.id === asset.id) || (categoryMutation.isPending && categoryMutation.variables?.id === asset.id) || (versionMutation.isPending && versionMutation.variables === asset.id) || (unlinkMutation.isPending && unlinkMutation.variables === asset.id)} />)}</div><PaginationBar current={page} pageSize={pageSize} total={assetsQuery.data?.total || 0} itemLabel="项" pageSizeOptions={[20, 40, 80]} onChange={(nextPage, nextPageSize) => { setPage(nextPageSize !== pageSize ? 1 : nextPage); setPageSize(nextPageSize); }} /></> : childFolders.length || (showPendingCandidates && pendingCandidates.length) ? null : <WorkspaceState icon="assets" compact title="这个文件夹还没有内容" description="可以新建子文件夹、引用个人素材，或把画布产物归档到这里。" />}
                 </div>
             </div>
 
