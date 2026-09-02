@@ -110,12 +110,14 @@ async function connectCDP(port) {
     const pending = new Map();
     const problems = [];
     const videos = new Map();
+    const metadataChecks = [];
     const send = (method, params = {}) => {
         const id = ++nextId;
         return new Promise((resolve, reject) => {
-            pending.set(id, { resolve, reject });
+            const waiter = { resolve, reject, timer: undefined };
+            pending.set(id, waiter);
             ws.send(JSON.stringify({ id, method, params }));
-            setTimeout(() => {
+            waiter.timer = setTimeout(() => {
                 if (!pending.has(id)) return;
                 pending.delete(id);
                 reject(new Error(`CDP timeout: ${method}`));
@@ -132,6 +134,7 @@ async function connectCDP(port) {
         if (message.id && pending.has(message.id)) {
             const waiter = pending.get(message.id);
             pending.delete(message.id);
+            clearTimeout(waiter.timer);
             if (message.error) waiter.reject(new Error(`CDP error: ${JSON.stringify(message.error)}`));
             else waiter.resolve(message.result);
             return;
@@ -144,16 +147,33 @@ async function connectCDP(port) {
         if (message.method === "Fetch.requestPaused") {
             let pathname = "";
             try { pathname = new URL(params.request.url).pathname; } catch { /* continue below */ }
-            const resourceId = pathname.match(/\/api\/resources\/(delivery-resource-[12])\/file$/)?.[1];
-            const body = resourceId ? videos.get(resourceId) : undefined;
-            const action = body
+            const fileResourceId = pathname.match(/\/api\/resources\/(delivery-resource-[12])\/file$/)?.[1];
+            const metadataResourceId = pathname.match(/\/api\/resources\/(delivery-resource-[12])$/)?.[1];
+            const videoBody = fileResourceId ? videos.get(fileResourceId) : undefined;
+            const metadataVideoBody = metadataResourceId ? videos.get(metadataResourceId) : undefined;
+            if (metadataResourceId && metadataVideoBody) metadataChecks.push(metadataResourceId);
+            const metadataBody = metadataResourceId && metadataVideoBody
+                ? Buffer.from(JSON.stringify({
+                    code: 0,
+                    msg: "ok",
+                    data: { resource: { id: metadataResourceId, kind: "video", status: "ready", size: Buffer.from(metadataVideoBody, "base64").byteLength } },
+                })).toString("base64")
+                : undefined;
+            const action = videoBody
                 ? send("Fetch.fulfillRequest", {
                     requestId: params.requestId,
                     responseCode: 200,
                     responseHeaders: [{ name: "Content-Type", value: "video/webm" }, { name: "Cache-Control", value: "no-store" }],
-                    body,
+                    body: videoBody,
                 })
-                : send("Fetch.continueRequest", { requestId: params.requestId });
+                : metadataBody
+                    ? send("Fetch.fulfillRequest", {
+                        requestId: params.requestId,
+                        responseCode: 200,
+                        responseHeaders: [{ name: "Content-Type", value: "application/json" }, { name: "Cache-Control", value: "no-store" }],
+                        body: metadataBody,
+                    })
+                    : send("Fetch.continueRequest", { requestId: params.requestId });
             action.catch((error) => record("fetch.intercept", error.message));
         }
     });
@@ -186,7 +206,7 @@ async function connectCDP(port) {
         await send("Input.dispatchMouseEvent", { type: "mouseReleased", x: box.x, y: box.y, button: "left", buttons: 0, clickCount: 1 });
         return true;
     };
-    return { send, evaluate, poll, click, problems, videos, close: () => ws.close() };
+    return { send, evaluate, poll, click, problems, videos, metadataChecks, close: () => ws.close() };
 }
 
 async function generateVideo(cdp, color, direction) {
@@ -268,6 +288,7 @@ try {
     assert(srt.includes("00:00:00,000 --> 00:00:00,600") && srt.includes("00:00:00,600 --> 00:00:01,200"), "SRT 时码与两个镜头对齐");
     const manifest = JSON.parse(new TextDecoder().decode(entries["manifest.json"]));
     assert(manifest.summary?.shotCount === 2 && manifest.summary?.durationMs === 1200, "交付清单记录真实镜头数与时长");
+    assert(new Set(cdp.metadataChecks).size === 2, "合成前已核对两个视频的容量");
     assert(cdp.problems.length === 0, "合成与下载期间无浏览器错误", JSON.stringify(cdp.problems));
     if (failures) throw new Error(`${failures} delivery E2E assertion(s) failed`);
     console.log(`\n交付 Chrome E2E 通过：${passes.length}/${passes.length}`);

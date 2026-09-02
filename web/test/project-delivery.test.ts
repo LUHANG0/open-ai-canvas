@@ -1,6 +1,13 @@
 import { describe, expect, test } from "bun:test";
 
 import { readZip } from "../src/lib/zip";
+import {
+    PROJECT_DELIVERY_FALLBACK_SOURCE_BUDGET,
+    PROJECT_DELIVERY_MAX_SOURCE_BUDGET,
+    PROJECT_DELIVERY_MIN_SOURCE_BUDGET,
+    inspectProjectDeliveryCapacity,
+    projectDeliverySourceBudget,
+} from "../src/pages/projects/detail/project-delivery-capacity";
 import { createProjectDeliveryArchive } from "../src/pages/projects/detail/project-delivery-export";
 import { buildProjectDeliveryCsv, buildProjectDeliverySrt, planProjectDelivery, safeDeliveryFileName } from "../src/pages/projects/detail/project-delivery";
 import type { ProjectDetail } from "../src/services/api/projects";
@@ -33,6 +40,17 @@ function deliveryFixture(): ProjectDetail {
 }
 
 describe("短剧交付包", () => {
+    test("按设备内存给出保守容量预算，并区分安全、预警和阻断", () => {
+        expect(projectDeliverySourceBudget()).toBe(PROJECT_DELIVERY_FALLBACK_SOURCE_BUDGET);
+        expect(projectDeliverySourceBudget(1)).toBe(PROJECT_DELIVERY_MIN_SOURCE_BUDGET);
+        expect(projectDeliverySourceBudget(8)).toBe(PROJECT_DELIVERY_MAX_SOURCE_BUDGET);
+
+        expect(inspectProjectDeliveryCapacity([10, 20], 100).level).toBe("safe");
+        expect(inspectProjectDeliveryCapacity([35, 35], 100).level).toBe("warning");
+        expect(inspectProjectDeliveryCapacity([60, 50], 100).level).toBe("blocked");
+        expect(inspectProjectDeliveryCapacity([20, undefined], 100)).toMatchObject({ level: "unknown", unknownResourceCount: 1 });
+    });
+
     test("按分镜顺序生成时间线，并只用当前可用视频执行门禁", () => {
         const detail = deliveryFixture();
         const plan = planProjectDelivery(detail, "unit-1");
@@ -68,6 +86,7 @@ describe("短剧交付包", () => {
         const loaded: string[] = [];
         let mergedCount = 0;
         const result = await createProjectDeliveryArchive(deliveryFixture(), "unit-1", undefined, {
+            loadResourceMetadata: async () => ({ size: 10, kind: "video", status: "ready" }),
             loadResourceBlob: async (resourceId) => {
                 loaded.push(resourceId);
                 return new Blob([resourceId], { type: "video/webm" });
@@ -94,5 +113,38 @@ describe("短剧交付包", () => {
         ].sort());
         expect(await files.get("成片/雨夜_追凶-第一集.mp4")?.text()).toBe("mp4-output");
         expect(await files.get("manifest.json")?.text()).toContain("2026-09-03T08:00:00.000Z");
+    });
+
+    test("元数据已超限时在下载和合成前阻断", async () => {
+        let loaded = false;
+        let merged = false;
+        await expect(createProjectDeliveryArchive(deliveryFixture(), "unit-1", undefined, {
+            sourceBudgetBytes: 10,
+            loadResourceMetadata: async () => ({ size: 6, kind: "video", status: "ready" }),
+            loadResourceBlob: async () => {
+                loaded = true;
+                return new Blob(["video"]);
+            },
+            mergeVideoBlobs: async () => {
+                merged = true;
+                return new Blob();
+            },
+        })).rejects.toThrow("超过当前浏览器本机打包的安全上限");
+        expect(loaded).toBe(false);
+        expect(merged).toBe(false);
+    });
+
+    test("容量元数据不准确时按实际下载体积二次阻断", async () => {
+        let merged = false;
+        await expect(createProjectDeliveryArchive(deliveryFixture(), "unit-1", undefined, {
+            sourceBudgetBytes: 10,
+            loadResourceMetadata: async () => ({ size: 1, kind: "video", status: "ready" }),
+            loadResourceBlob: async () => new Blob([new Uint8Array(6)]),
+            mergeVideoBlobs: async () => {
+                merged = true;
+                return new Blob();
+            },
+        })).rejects.toThrow("超过当前浏览器本机打包的安全上限");
+        expect(merged).toBe(false);
     });
 });
