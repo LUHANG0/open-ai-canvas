@@ -12,7 +12,6 @@ import { useAssetStore } from "@/stores/use-asset-store";
 import { flushCanvasStorePersistence } from "@/stores/canvas/use-canvas-store";
 import { useThemeStore } from "@/stores/use-theme-store";
 import { useUserStore } from "@/stores/use-user-store";
-import type { CanvasNodeGenerationMode } from "@/components/canvas/canvas-node-prompt-panel";
 import { getProject } from "@/services/api/projects";
 import { useFocusMode } from "@/hooks/use-focus-mode";
 import { useCanvasAgentStore } from "@/stores/canvas/use-canvas-agent-store";
@@ -60,7 +59,7 @@ import { useCanvasDirector } from "./use-canvas-director";
 import { useCanvasDeletedNodeCleanup } from "./use-canvas-deleted-node-cleanup";
 import { useCanvasGeneration } from "./use-canvas-generation";
 import { useCanvasGenerationBatches } from "./use-canvas-generation-batches";
-import { useCanvasGenerationExecutor, type CanvasNodeGenerationOptions } from "./use-canvas-generation-executor";
+import { useCanvasGenerationExecutor } from "./use-canvas-generation-executor";
 import { useCanvasGenerationRetry } from "./use-canvas-generation-retry";
 import { useCanvasHistory } from "./use-canvas-history";
 import { useCanvasHistoryUiCleanup } from "./use-canvas-history-ui-cleanup";
@@ -212,7 +211,6 @@ function InfiniteCanvasPage() {
         setActiveChatId,
     });
     const size = useCanvasViewportMeasurement({ projectId, projectLoaded, containerRef, viewportRef, setViewport });
-    const generateNodeRef = useRef<((nodeId: string, mode: CanvasNodeGenerationMode, prompt: string, options?: CanvasNodeGenerationOptions) => Promise<void>) | null>(null);
     const historyRestoreUiRef = useRef<() => void>(() => undefined);
 
     const { getHistoryCleanupContext, historyPausedRef, historyState, prepareExternalHistoryUpdate, redoCanvas, resetHistory, undoCanvas } = useCanvasHistory({
@@ -786,6 +784,25 @@ function InfiniteCanvasPage() {
         pendingConnectionCreate,
     });
 
+    const handleGenerateNode = useCanvasGenerationExecutor({
+        projectId,
+        domainProjectId: currentProject?.projectId,
+        addedSkills,
+        assets,
+        nodesRef,
+        connectionsRef,
+        setNodes,
+        setConnections,
+        setSelectedNodeIds,
+        setSelectedConnectionId,
+        setDialogNodeId,
+        setRunningNodeId,
+        startGenerationRequest,
+        finishGenerationRequest,
+        bindGenerationTask,
+        applyGenerationTaskResult,
+    });
+
     const { agentSnapshot, agentUndoCount, applyAgentOps, canUndoAgentOps, dismissLastAgentChange, lastAgentChange, undoAgentOps, viewLastAgentChange } = useCanvasAgentOperations({
         projectId,
         domainProjectId: currentProject?.projectId,
@@ -798,7 +815,7 @@ function InfiniteCanvasPage() {
         connectionsRef,
         selectedNodeIdsRef,
         viewportRef,
-        generateNodeRef,
+        generateNode: handleGenerateNode,
         setNodes,
         setConnections,
         setSelectedNodeIds,
@@ -937,28 +954,6 @@ function InfiniteCanvasPage() {
         setToolbarNodeId,
         shouldPreferCopiedNodes,
     });
-
-    const handleGenerateNode = useCanvasGenerationExecutor({
-        projectId,
-        domainProjectId: currentProject?.projectId,
-        addedSkills,
-        assets,
-        nodesRef,
-        connectionsRef,
-        setNodes,
-        setConnections,
-        setSelectedNodeIds,
-        setSelectedConnectionId,
-        setDialogNodeId,
-        setRunningNodeId,
-        startGenerationRequest,
-        finishGenerationRequest,
-        bindGenerationTask,
-        applyGenerationTaskResult,
-    });
-    useEffect(() => {
-        generateNodeRef.current = handleGenerateNode;
-    }, [handleGenerateNode]);
 
     const { enqueueGenerationBatch, retryFailedBatchItems, stopRemainingBatchItems } = useCanvasGenerationBatches({
         projectId,

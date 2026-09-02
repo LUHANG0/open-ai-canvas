@@ -27,4 +27,12 @@ describe("画布 Agent 实时快照视图", () => {
         expect(view.revision).toBe(2);
         expect(view.stateHash).toBe("hash-2");
     });
+
+    test("Agent 直接消费最新生成执行器，不再依赖页面级 ref 桥接", async () => {
+        const projectSource = await Bun.file(new URL("../src/pages/canvas/project.tsx", import.meta.url)).text();
+        const operationsSource = await Bun.file(new URL("../src/pages/canvas/use-canvas-agent-operations.ts", import.meta.url)).text();
+        expect(projectSource).not.toContain("generateNodeRef");
+        expect(projectSource).toContain("generateNode: handleGenerateNode");
+        expect(operationsSource).toContain("generate: generateNode");
+    });
 });
