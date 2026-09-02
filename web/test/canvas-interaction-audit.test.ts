@@ -142,6 +142,16 @@ test("canvas project route owns route params and local agent entry parsing", asy
     expect(routeSource).toContain('params.id || ""');
 });
 
+test("heavy canvas media dialogs load only when their tool opens", async () => {
+    const dialogsSource = await Bun.file(new URL("../src/pages/canvas/canvas-project-media-dialogs.tsx", import.meta.url)).text();
+    expect(dialogsSource).toContain('lazy(() => import("@/components/canvas/canvas-node-crop-dialog")');
+    expect(dialogsSource).toContain('lazy(() => import("@/components/canvas/canvas-node-annotation-dialog")');
+    expect(dialogsSource).toContain('lazy(() => import("@/components/canvas/canvas-node-mask-edit-dialog")');
+    expect(dialogsSource).toContain('lazy(() => import("@/components/canvas/canvas-node-split-dialog")');
+    expect(dialogsSource).toContain('lazy(() => import("@/components/canvas/canvas-node-upscale-dialog")');
+    expect(dialogsSource).toContain("<Suspense fallback={<CanvasMediaDialogLoading />}>");
+});
+
 test("assistant layout reserves the left dock and low zoom keeps video play reachable", async () => {
     const css = await Bun.file(new URL("../src/pages/canvas/canvas-editor-pc.css", import.meta.url)).text();
     const content = await Bun.file(new URL("../src/components/canvas/canvas-node-content.tsx", import.meta.url)).text();
