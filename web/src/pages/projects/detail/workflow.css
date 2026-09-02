@@ -1230,6 +1230,7 @@
     .workflow-form-grid.is-three { grid-template-columns: 1fr; }
     .workflow-disclosure-summary > span { display: none; }
     .workflow-shot-form-scroll { padding-inline: 14px; }
+    .workflow-batch-video-button__label { display: none; }
     .workflow-timeline-shot,
     .workflow-add-shot-card { width: 138px; min-width: 138px; }
     .workflow-timeline-media { height: 52px; flex-basis: 52px; }

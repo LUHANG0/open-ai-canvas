@@ -37,6 +37,7 @@ import {
 } from "./workflow-shared";
 import { buildShotAssetReferenceContext, ensureShotAssetMentionPrompt, resolveShotAssetMentionPrompt } from "./workflow-shot-references";
 import { buildWorkflowArtifactPrompt, workflowArtifactSpecification } from "./workflow-generation-prompt";
+import { WorkflowBatchVideoButton } from "./workflow-batch-video-button";
 import { AssetLibrary, BoundAssets, ShotAssetMentionTextarea } from "./workflow-production-assets";
 import { EpisodeLibrary, ShotLibrary, ShotTimeline } from "./workflow-production-navigation";
 import { WorkflowArtifactPreviewPanel } from "./workflow-production-preview";
@@ -296,6 +297,20 @@ export default function WorkflowProductionWorkbench(props: Props) {
         onError: (error) => message.error(error instanceof Error ? error.message : "镜头资产更新失败"),
     });
 
+    const ensureProductionStep = async () => {
+        let productionStep = workflowStep;
+        if (!productionStep) {
+            const initialized = await createUnitWorkflow(projectId, unitId);
+            productionStep = (initialized.workflow.steps || []).find((step) => step.stepKey === activeStage);
+        }
+        if (!productionStep) throw new Error("当前生成阶段不可用，请刷新页面后重试");
+        if (productionStep.status === "failed") {
+            const reopened = await updateWorkflowStep(projectId, productionStep.id, { status: "ready" });
+            productionStep = reopened.step;
+        }
+        return productionStep;
+    };
+
     const generateArtifact = async () => {
         if (!selectedShot || submittingShotIds.has(selectedShot.id)) return;
         const submittingShot = selectedShot;
@@ -318,16 +333,7 @@ export default function WorkflowProductionWorkbench(props: Props) {
                 skills: availableSkills,
                 selectedSkillIds,
             });
-            let productionStep = workflowStep;
-            if (!productionStep) {
-                const initialized = await createUnitWorkflow(projectId, unitId);
-                productionStep = (initialized.workflow.steps || []).find((step) => step.stepKey === activeStage);
-            }
-            if (!productionStep) throw new Error("当前生成阶段不可用，请刷新页面后重试");
-            if (productionStep.status === "failed") {
-                const reopened = await updateWorkflowStep(projectId, productionStep.id, { status: "ready" });
-                productionStep = reopened.step;
-            }
+            const productionStep = await ensureProductionStep();
             const saved = await saveProjectShot(projectId, {
                 id: submittingShot.id,
                 unitId,
@@ -504,7 +510,34 @@ export default function WorkflowProductionWorkbench(props: Props) {
                             <div className="workflow-generation-cost" aria-live="polite">
                                 {creditsEnabled && formattedGenerationCredits ? <><CreditSymbol /><span>本次预计 {formattedGenerationCredits} 积分</span></> : creditsEnabled && routedModel ? <span>本次费用将在提交时按实际规格计算</span> : null}
                             </div>
-                            <div className="flex items-center gap-2"><Button danger icon={<Trash2 className="size-4" />} loading={deleteShot.isPending} disabled={saveShot.isPending || selectedShotSubmitting || changeAssetBinding.isPending} onClick={requestDeleteShot}>删除镜头</Button><Button htmlType="submit" icon={<Save className="size-4" />} loading={saveShot.isPending} disabled={!editorDirty || deleteShot.isPending}>保存脚本</Button><Button type="primary" icon={<Play className="size-4" />} loading={selectedShotSubmitting || shotTask?.status === "queued" || shotTask?.status === "running"} disabled={deleteShot.isPending} onClick={() => void generateArtifact()}>{selectedShotSubmitting ? `${stageCopy.action}（正在提交）` : shotTask?.status === "queued" || shotTask?.status === "running" ? `${stageCopy.action}（已运行${shotTaskElapsed}）` : shotTask?.status === "failed" ? `${stageCopy.action}（上次失败，可重试）` : shotTask?.status === "succeeded" && !newestArtifact ? `${stageCopy.action}（已完成，正在同步）` : newestArtifact ? `${stageCopy.action}（已生成）` : stageCopy.action}</Button></div>
+                            <div className="flex items-center gap-2">
+                                <Button danger icon={<Trash2 className="size-4" />} loading={deleteShot.isPending} disabled={saveShot.isPending || selectedShotSubmitting || changeAssetBinding.isPending} onClick={requestDeleteShot}>删除镜头</Button>
+                                <Button htmlType="submit" icon={<Save className="size-4" />} loading={saveShot.isPending} disabled={!editorDirty || deleteShot.isPending}>保存脚本</Button>
+                                {activeStage === "video" ? <WorkflowBatchVideoButton
+                                    detail={detail}
+                                    projectId={projectId}
+                                    unitId={unitId}
+                                    workflowStep={workflowStep}
+                                    editorDirty={editorDirty}
+                                    routedModel={routedModel}
+                                    aspectRatio={aspectRatio}
+                                    resolution={resolution}
+                                    imageQuality={imageQuality}
+                                    effectiveConfig={effectiveConfig}
+                                    generationConfig={generationConfig}
+                                    availableSkills={availableSkills}
+                                    selectedSkillIds={selectedSkillIds}
+                                    submittingShotIds={submittingShotIds}
+                                    disabled={deleteShot.isPending}
+                                    onRefresh={onRefresh}
+                                    onSubmittingChange={(shotIds, active) => setSubmittingShotIds((current) => {
+                                        const next = new Set(current);
+                                        shotIds.forEach((shotId) => active ? next.add(shotId) : next.delete(shotId));
+                                        return next;
+                                    })}
+                                /> : null}
+                                <Button type="primary" icon={<Play className="size-4" />} loading={selectedShotSubmitting || shotTask?.status === "queued" || shotTask?.status === "running"} disabled={deleteShot.isPending} onClick={() => void generateArtifact()}>{selectedShotSubmitting ? `${stageCopy.action}（正在提交）` : shotTask?.status === "queued" || shotTask?.status === "running" ? `${stageCopy.action}（已运行${shotTaskElapsed}）` : shotTask?.status === "failed" ? `${stageCopy.action}（上次失败，可重试）` : shotTask?.status === "succeeded" && !newestArtifact ? `${stageCopy.action}（已完成，正在同步）` : newestArtifact ? `${stageCopy.action}（已生成）` : stageCopy.action}</Button>
+                            </div>
                         </footer>
                     </Form>
                 </section>
