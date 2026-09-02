@@ -22,3 +22,11 @@ test("Canvas keyboard keeps node copy as the fallback when no text is selected",
     expect(source).toContain("if (hasCanvasTextSelection(window.getSelection())) return;");
     expect(source).toContain("event.preventDefault();\n                copySelectedNodes();");
 });
+
+test("Escape collapses the visible Agent before changing canvas selection", async () => {
+    const source = await Bun.file(new URL("../src/pages/canvas/use-canvas-keyboard.ts", import.meta.url)).text();
+    const escapeBlock = source.slice(source.indexOf('if (event.key === "Escape")'), source.indexOf("// 沉浸专注"));
+    expect(escapeBlock).toContain("if (assistantOpen)");
+    expect(escapeBlock).toContain("closeAgent();");
+    expect(escapeBlock).toContain("return;");
+});

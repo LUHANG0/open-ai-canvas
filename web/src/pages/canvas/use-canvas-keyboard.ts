@@ -34,6 +34,8 @@ type UseCanvasKeyboardOptions = {
     focusMode: boolean;
     exitFocusMode: () => void;
     toggleFocusMode: () => void;
+    assistantOpen: boolean;
+    closeAgent: () => void;
     onOpenSearch: () => void;
     beginBatchConnection: () => void;
 };
@@ -112,6 +114,8 @@ export function useCanvasKeyboard({
     focusMode,
     exitFocusMode,
     toggleFocusMode,
+    assistantOpen,
+    closeAgent,
     onOpenSearch,
     beginBatchConnection,
 }: UseCanvasKeyboardOptions) {
@@ -214,6 +218,13 @@ export function useCanvasKeyboard({
                 else if (selectedConnectionId) deleteConnection(selectedConnectionId);
             }
             if (event.key === "Escape") {
+                // 右侧 Agent 是画布最上层工作区；先收纳面板，第二次 Esc 再处理节点选择或专注模式。
+                if (assistantOpen) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    closeAgent();
+                    return;
+                }
                 // 沉浸专注：无选中且无弹窗/下拉/右键菜单时，Esc 退出专注；否则保留原有取消选择行为。
                 if (focusMode && !selectedNodeIdsRef.current.size) {
                     event.stopPropagation();
@@ -248,5 +259,5 @@ export function useCanvasKeyboard({
             window.removeEventListener("keydown", handleKeyDown, true);
             window.removeEventListener("paste", handlePaste, true);
         };
-    }, [beginBatchConnection, cancelSelectionBox, copySelectedNodes, deleteConnection, deleteNodes, deselectCanvas, exitFocusMode, fitCanvasContent, fitCanvasSelection, focusMode, nodesRef, onOpenSearch, pasteCopiedNodes, pasteSystemClipboard, redoCanvas, restoreCopiedNodesFromText, saveCanvasProject, selectedConnectionId, selectedNodeIdsRef, setAnnotationNodeId, setContextMenu, setCropNodeId, setInfoNodeId, setMaskEditNodeId, setSelectedConnectionId, setSelectedNodeIds, setShortcutRequestNonce, shouldPreferCopiedNodes, toggleFocusMode, undoCanvas, zoomCanvasIn, zoomCanvasOut, zoomToActualSize]);
+    }, [assistantOpen, beginBatchConnection, cancelSelectionBox, closeAgent, copySelectedNodes, deleteConnection, deleteNodes, deselectCanvas, exitFocusMode, fitCanvasContent, fitCanvasSelection, focusMode, nodesRef, onOpenSearch, pasteCopiedNodes, pasteSystemClipboard, redoCanvas, restoreCopiedNodesFromText, saveCanvasProject, selectedConnectionId, selectedNodeIdsRef, setAnnotationNodeId, setContextMenu, setCropNodeId, setInfoNodeId, setMaskEditNodeId, setSelectedConnectionId, setSelectedNodeIds, setShortcutRequestNonce, shouldPreferCopiedNodes, toggleFocusMode, undoCanvas, zoomCanvasIn, zoomCanvasOut, zoomToActualSize]);
 }
