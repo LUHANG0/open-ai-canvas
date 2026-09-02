@@ -89,6 +89,7 @@ import { useCanvasStoryboard } from "./use-canvas-storyboard";
 import { useCanvasUpload } from "./use-canvas-upload";
 import { useCanvasViewportController } from "./use-canvas-viewport-controller";
 import { useCanvasViewportMeasurement } from "./use-canvas-viewport-measurement";
+import { useCanvasViewportState } from "./use-canvas-viewport-state";
 import { useCanvasWorkspaceUiState } from "./use-canvas-workspace-ui-state";
 import { useCanvasPortraitClearance } from "./use-canvas-portrait-clearance";
 import "./canvas-editor-pc.css";
@@ -97,7 +98,6 @@ import {
     type CanvasNodeData,
     type CanvasWorkflowKind,
     type Position,
-    type ViewportTransform,
 } from "@/types/canvas";
 import type { ReferenceImage } from "@/types/image";
 
@@ -133,7 +133,7 @@ function InfiniteCanvasPage() {
     const directorOnboardingScope = useUserStore((state) => state.user?.id?.trim() || "");
     const { nodes, nodesRef, setNodes } = useCanvasNodeState();
     const { activeChatId, chatSessions, connections, setActiveChatId, setChatSessions, setConnections } = useCanvasProjectContentState();
-    const [viewport, setViewport] = useState<ViewportTransform>({ x: 0, y: 0, k: 1 });
+    const { setViewport, viewport } = useCanvasViewportState();
     const { selectedConnectionId, selectedNodeIds, setSelectedConnectionId, setSelectedNodeIds } = useCanvasSelectionState();
     const { backgroundMode, canvasTool, contextMenu, hoveredNodeId, isMiniMapOpen, setBackgroundMode, setCanvasTool, setContextMenu, setHoveredNodeId, setIsMiniMapOpen, setShowImageInfo, showImageInfo } = useCanvasWorkspaceUiState();
     const [projectLoaded, setProjectLoaded] = useState(false);
