@@ -16,12 +16,10 @@ import { useThemeStore } from "@/stores/use-theme-store";
 import { useUserStore } from "@/stores/use-user-store";
 import { App } from "antd";
 import { AssistantPanelColumn } from "./canvas-assistant-panel-column";
-import { CanvasActiveTaskPanel } from "@/components/canvas/canvas-active-task-panel";
 import { CanvasProjectSidebar } from "@/components/canvas/canvas-project-sidebar";
 import { resolveProjectCanvasStyle } from "@/components/canvas/canvas-style-picker-modal";
 import { createStyleProfileSnapshot, resolveStyleProfile, serializeStyleProfile } from "@/lib/canvas/style-profile";
 import { CanvasNodeInfoModal } from "@/components/canvas/canvas-node-toolbar";
-import { CanvasFileDropOverlay } from "@/components/canvas/canvas-file-drop-overlay";
 import { CanvasUploadModal } from "@/components/canvas/canvas-upload-modal";
 import { InfiniteCanvas } from "@/components/canvas/infinite-canvas";
 import type { CanvasNodeGenerationMode } from "@/components/canvas/canvas-node-prompt-panel";
@@ -40,7 +38,6 @@ import { batchSourceRestriction } from "@/lib/canvas/canvas-batch-connection";
 import { CanvasProjectFeedbackLayer } from "./canvas-project-feedback";
 import { backendProviderConfig } from "@/lib/canvas/canvas-project-generation";
 import { CanvasTopBar, CanvasWorkspaceModeSwitch } from "./canvas-project-top-bar";
-import { CanvasFocusModeBar } from "@/components/canvas/canvas-focus-mode-bar";
 import { CanvasProjectContextMenu } from "./canvas-project-context-menu";
 import { CanvasProjectMediaDialogs } from "./canvas-project-media-dialogs";
 import { CanvasProjectBottomDock } from "./canvas-project-bottom-dock";
@@ -55,6 +52,7 @@ import { CanvasProjectScriptEditor } from "./canvas-project-script-editor";
 import { CanvasProjectTimelineDialogs } from "./canvas-project-timeline-dialogs";
 import { CanvasProjectSelectionToolbarOverlay } from "./canvas-project-selection-toolbar";
 import { CanvasProjectStatusDialogs } from "./canvas-project-status-dialogs";
+import { CanvasProjectWorkspaceOverlays } from "./canvas-project-workspace-overlays";
 import { CanvasProjectWorldLayers } from "./canvas-project-world-layers";
 import { CanvasNodeActionContext } from "@/components/canvas/canvas-node-action-context";
 import { CanvasNodeGraphContext, type CanvasNodeGraphContextValue } from "@/components/canvas/canvas-node-graph-context";
@@ -1439,31 +1437,25 @@ function InfiniteCanvasPage() {
                                     </CanvasNodeActionContext.Provider>
                                 </InfiniteCanvas>
 
-                                <CanvasActiveTaskPanel
-                                    tasks={activeTasks}
+                                <CanvasProjectWorkspaceOverlays
+                                    activeTasks={activeTasks}
                                     onCancelTask={cancelCanvasTask}
-                                    topInset={focusMode ? "var(--space-3)" : "var(--canvas-topbar-offset)"}
-                                    rightInset={assistantOpen ? assistantWidth + 12 : "var(--space-3)"}
+                                    focusMode={focusMode}
+                                    focusDockRevealed={focusDockRevealed}
+                                    assistantOpen={assistantOpen}
+                                    assistantWidth={assistantWidth}
+                                    zoomScale={viewport.k}
+                                    onToggleFocusDock={() => setFocusDockRevealed((value) => !value)}
+                                    onOpenAgent={openAgent}
+                                    onCloseAgent={closeAgent}
+                                    onExitFocusMode={exitFocusMode}
+                                    onZoomIn={zoomCanvasIn}
+                                    onZoomOut={zoomCanvasOut}
+                                    onFitContent={fitCanvasContent}
+                                    fileDropActive={fileDropActive}
+                                    theme={theme}
+                                    emptyCanvasState={emptyCanvasState}
                                 />
-
-                                {focusMode ? (
-                                    <CanvasFocusModeBar
-                                        dockRevealed={focusDockRevealed}
-                                        agentOpen={assistantOpen}
-                                        rightInset={assistantOpen ? assistantWidth : 0}
-                                        zoomPercent={viewport.k}
-                                        onToggleDock={() => setFocusDockRevealed((value) => !value)}
-                                        onToggleAgent={() => (assistantOpen ? closeAgent() : openAgent())}
-                                        onExit={exitFocusMode}
-                                        onZoomIn={zoomCanvasIn}
-                                        onZoomOut={zoomCanvasOut}
-                                        onFit={fitCanvasContent}
-                                    />
-                                ) : null}
-
-                                <CanvasFileDropOverlay active={fileDropActive} theme={theme} />
-
-                                {emptyCanvasState ? <div className="pc-canvas-empty-stage contents">{emptyCanvasState}</div> : null}
 
                                 {!focusMode || focusDockRevealed ? (
                                     <CanvasToolbar
