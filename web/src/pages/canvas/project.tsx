@@ -15,7 +15,6 @@ import { flushCanvasStorePersistence } from "@/stores/canvas/use-canvas-store";
 import { useThemeStore } from "@/stores/use-theme-store";
 import { useUserStore } from "@/stores/use-user-store";
 import { App } from "antd";
-import { CanvasConfigComposer } from "@/components/canvas/canvas-config-composer";
 import { CanvasConfigNodePanel } from "@/components/canvas/canvas-config-node-panel";
 import { AssistantPanelColumn } from "./canvas-assistant-panel-column";
 import { CanvasActiveTaskPanel } from "@/components/canvas/canvas-active-task-panel";
@@ -42,7 +41,7 @@ import { CanvasFileDropOverlay } from "@/components/canvas/canvas-file-drop-over
 import { CanvasUploadModal } from "@/components/canvas/canvas-upload-modal";
 import { InfiniteCanvas } from "@/components/canvas/infinite-canvas";
 import { Minimap } from "@/components/canvas/canvas-mini-map";
-import { CanvasNodePromptPanel, type CanvasNodeGenerationMode } from "@/components/canvas/canvas-node-prompt-panel";
+import type { CanvasNodeGenerationMode } from "@/components/canvas/canvas-node-prompt-panel";
 import { CanvasToolbar } from "@/components/canvas/canvas-toolbar";
 import { AssetPickerModal } from "@/components/canvas/asset-picker-modal";
 import { getProject } from "@/services/api/projects";
@@ -102,6 +101,7 @@ import { useCanvasNodeActionBindings } from "./use-canvas-node-action-bindings";
 import { useCanvasNodeFocus } from "./use-canvas-node-focus";
 import { useCanvasNodeHoverToolbar } from "./use-canvas-node-hover-toolbar";
 import { useCanvasNodeOperations } from "./use-canvas-node-operations";
+import { useCanvasNodePanelRenderer } from "./use-canvas-node-panel-renderer";
 import { useCanvasNodeReferences } from "./use-canvas-node-references";
 import { useCanvasNodeRetry } from "./use-canvas-node-retry";
 import { useCanvasNodeSharing } from "./use-canvas-node-sharing";
@@ -1151,39 +1151,20 @@ function InfiniteCanvasPage() {
     });
     const generateImageFromTextNode = useCanvasTextToImage({ nodesRef, connectionsRef, setNodes, setConnections, setSelectedNodeIds, setSelectedConnectionId, setDialogNodeId });
 
-    const renderCanvasNodePanel = useCallback(
-        (panelNode: CanvasNodeData) => {
-            if (panelNode.type === CanvasNodeType.Script || panelNode.type === CanvasNodeType.Drawing) return null;
-            return panelNode.type === CanvasNodeType.Config ? (
-                <CanvasConfigComposer
-                    value={panelNode.metadata?.composerContent ?? panelNode.metadata?.prompt ?? ""}
-                    inputs={configInputsById.get(panelNode.id) || []}
-                    skillReferences={skillMentionReferences}
-                    generationMode={panelNode.metadata?.generationMode}
-                    metadata={panelNode.metadata}
-                    workspaceMode={workspaceMode}
-                    onChange={(composerContent) => handleConfigNodeChange(panelNode.id, { composerContent })}
-                    onMetadataChange={(patch) => handleConfigNodeChange(panelNode.id, patch)}
-                    onClose={() => setDialogNodeId(null)}
-                />
-            ) : (
-                <CanvasNodePromptPanel
-                    node={panelNode}
-                    isRunning={runningNodeId === panelNode.id}
-                    mentionReferences={mentionReferencesByNodeId.get(panelNode.id) || EMPTY_RESOURCE_REFERENCES}
-                    onPromptChange={handleNodePromptChange}
-                    onConfigChange={handleConfigNodeChange}
-                    onGenerate={handleGenerateNode}
-                    onRemoveReference={handleRemoveNodeReference}
-                    onClose={() => setDialogNodeId(null)}
-                    onNodeMouseDown={handleNodeMouseDown}
-                    workspaceMode={workspaceMode}
-                    onImageSettingsOpenChange={handleNodeImageSettingsOpenChange}
-                />
-            );
-        },
-        [configInputsById, handleConfigNodeChange, handleGenerateNode, handleNodeImageSettingsOpenChange, handleNodePromptChange, handleRemoveNodeReference, mentionReferencesByNodeId, runningNodeId, skillMentionReferences, workspaceMode],
-    );
+    const renderCanvasNodePanel = useCanvasNodePanelRenderer({
+        configInputsById,
+        skillMentionReferences,
+        mentionReferencesByNodeId,
+        runningNodeId,
+        workspaceMode,
+        setDialogNodeId,
+        onConfigChange: handleConfigNodeChange,
+        onGenerate: handleGenerateNode,
+        onImageSettingsOpenChange: handleNodeImageSettingsOpenChange,
+        onNodeMouseDown: handleNodeMouseDown,
+        onPromptChange: handleNodePromptChange,
+        onRemoveReference: handleRemoveNodeReference,
+    });
 
     const renderCanvasNodeContent = useCallback(
         (contentNode: CanvasNodeData) => {
