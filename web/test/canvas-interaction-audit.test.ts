@@ -116,11 +116,13 @@ test("canvas owns one assistant transition and disables dock magnification in de
     const assistant = await Bun.file(new URL("../src/components/canvas/canvas-assistant-panel.tsx", import.meta.url)).text();
     const assistantColumn = await Bun.file(new URL("../src/pages/canvas/canvas-assistant-panel-column.tsx", import.meta.url)).text();
     const project = await Bun.file(new URL("../src/pages/canvas/project.tsx", import.meta.url)).text();
+    const workspaceShell = await Bun.file(new URL("../src/pages/canvas/use-canvas-workspace-shell.ts", import.meta.url)).text();
     const toolbar = await Bun.file(new URL("../src/components/canvas/canvas-toolbar.tsx", import.meta.url)).text();
     expect(assistant).not.toContain("<motion.aside");
     expect(assistantColumn).toContain("translate3d");
     expect(project).toContain('const loadCanvasAssistantPanel = () => import("@/components/canvas/canvas-assistant-panel")');
-    expect(project).toContain("void loadCanvasAssistantPanel();");
+    expect(project).toContain("preloadAssistant: loadCanvasAssistantPanel");
+    expect(workspaceShell).toContain("void preloadAssistant();");
     expect(project).toContain("正在准备 Agent…");
     expect(toolbar).toContain("magnify={false}");
 });
