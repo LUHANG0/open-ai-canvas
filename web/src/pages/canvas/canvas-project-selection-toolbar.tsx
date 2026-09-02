@@ -7,6 +7,7 @@ import { canvasDockStyle } from "@/lib/canvas/canvas-aceternity-style";
 import { defaultToolbarPrefs, readToolbarPrefs, resolveToolbarEntries, type ToolContext, type ToolbarHandlers } from "@/lib/canvas/tool-registry";
 import type { CanvasAlignmentMode } from "@/lib/canvas/canvas-layout";
 import { useThemeStore } from "@/stores/use-theme-store";
+import { canShowCanvasSelectionToolbar } from "./canvas-selection-toolbar-visibility";
 
 type CanvasProjectSelectionToolbarProps = {
     anchorRef: RefObject<HTMLDivElement | null>;
@@ -63,5 +64,34 @@ export function CanvasProjectSelectionToolbar({ anchorRef, containerRef, count, 
         <CanvasSelectionToolbar anchorRef={anchorRef} containerRef={containerRef} count={count}>
             <FloatingDock items={items} size="compact" magnify={false} className="canvas-floating-dock" style={canvasDockStyle(theme)} ariaLabel="多选节点布局工具" />
         </CanvasSelectionToolbar>
+    );
+}
+
+type CanvasProjectSelectionToolbarOverlayProps = Omit<CanvasProjectSelectionToolbarProps, "count" | "onBatchConnect" | "onMergeVideos"> & {
+    selectionCount: number | null;
+    selectionBoxActive: boolean;
+    nodeDragging: boolean;
+    selectedNodeIds: ReadonlySet<string>;
+    onBeginBatchConnection: (nodeIds: string[]) => void;
+    onMergeSelectedVideos: () => unknown;
+};
+
+export function CanvasProjectSelectionToolbarOverlay({
+    selectionCount,
+    selectionBoxActive,
+    nodeDragging,
+    selectedNodeIds,
+    onBeginBatchConnection,
+    onMergeSelectedVideos,
+    ...toolbarProps
+}: CanvasProjectSelectionToolbarOverlayProps) {
+    if (!canShowCanvasSelectionToolbar(selectionCount, selectionBoxActive, nodeDragging) || selectionCount === null) return null;
+    return (
+        <CanvasProjectSelectionToolbar
+            {...toolbarProps}
+            count={selectionCount}
+            onBatchConnect={() => onBeginBatchConnection(Array.from(selectedNodeIds))}
+            onMergeVideos={() => void onMergeSelectedVideos()}
+        />
     );
 }

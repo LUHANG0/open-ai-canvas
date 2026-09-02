@@ -54,7 +54,7 @@ import { CanvasProjectNodeOverlays } from "./canvas-project-node-overlays";
 import { CanvasProjectNodeSearch } from "./canvas-project-node-search";
 import { CanvasProjectScriptEditor } from "./canvas-project-script-editor";
 import { CanvasProjectTimelineDialogs } from "./canvas-project-timeline-dialogs";
-import { CanvasProjectSelectionToolbar } from "./canvas-project-selection-toolbar";
+import { CanvasProjectSelectionToolbarOverlay } from "./canvas-project-selection-toolbar";
 import { CanvasProjectStatusDialogs } from "./canvas-project-status-dialogs";
 import { CanvasProjectWorldLayers } from "./canvas-project-world-layers";
 import { CanvasNodeActionContext } from "@/components/canvas/canvas-node-action-context";
@@ -1560,25 +1560,26 @@ function InfiniteCanvasPage() {
                             onCloseConnectionCreate={cancelPendingConnectionCreate}
                         />
 
-                        {selectedNodeBounds && !selectionBox && !isNodeDragging ? (
-                            <CanvasProjectSelectionToolbar
-                                anchorRef={selectionBoundsElementRef}
-                                containerRef={containerRef}
-                                count={selectedNodeBounds.count}
-                                selectedVideoCount={selectedVideoNodes.length}
-                                layoutEligibleCount={selectionCapabilities.layoutEligibleCount}
-                                storyboardEligibleCount={selectionCapabilities.storyboardEligibleCount}
-                                referenceGroupEligibleCount={selectionCapabilities.referenceGroupEligibleCount}
-                                batchConnectEligibleCount={selectionCapabilities.batchConnectEligibleCount}
-                                mergingVideos={Boolean(mergeVideoProgress)}
-                                onAlign={alignSelectedNodes}
-                                onArrange={arrangeSelectedNodes}
-                                onCreateStoryboard={createStoryboardGroup}
-                                onCreateReferenceGroup={createReferenceGroup}
-                                onBatchConnect={() => beginBatchConnectionMode(Array.from(selectedNodeIds))}
-                                onMergeVideos={() => void mergeSelectedVideos()}
-                            />
-                        ) : null}
+                        <CanvasProjectSelectionToolbarOverlay
+                            anchorRef={selectionBoundsElementRef}
+                            containerRef={containerRef}
+                            selectionCount={selectedNodeBounds?.count ?? null}
+                            selectionBoxActive={Boolean(selectionBox)}
+                            nodeDragging={isNodeDragging}
+                            selectedNodeIds={selectedNodeIds}
+                            selectedVideoCount={selectedVideoNodes.length}
+                            layoutEligibleCount={selectionCapabilities.layoutEligibleCount}
+                            storyboardEligibleCount={selectionCapabilities.storyboardEligibleCount}
+                            referenceGroupEligibleCount={selectionCapabilities.referenceGroupEligibleCount}
+                            batchConnectEligibleCount={selectionCapabilities.batchConnectEligibleCount}
+                            mergingVideos={Boolean(mergeVideoProgress)}
+                            onAlign={alignSelectedNodes}
+                            onArrange={arrangeSelectedNodes}
+                            onCreateStoryboard={createStoryboardGroup}
+                            onCreateReferenceGroup={createReferenceGroup}
+                            onBeginBatchConnection={beginBatchConnectionMode}
+                            onMergeSelectedVideos={mergeSelectedVideos}
+                        />
 
                         <CanvasProjectFeedbackLayer
                             uploadStatus={uploadStatus}
