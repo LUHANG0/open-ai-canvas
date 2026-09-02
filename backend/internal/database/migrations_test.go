@@ -49,6 +49,14 @@ func TestMigrateSchemaRecordsAndValidatesVersion(t *testing.T) {
 	if !db.Migrator().HasIndex(&model.Task{}, "idx_tasks_user_idempotency") {
 		t.Fatal("schema migration v4 did not create the task idempotency index")
 	}
+	if !db.Migrator().HasTable(&model.ProjectDeliveryJob{}) {
+		t.Fatal("schema migration v5 did not create project delivery jobs")
+	}
+	for _, index := range []string{"idx_project_delivery_claim", "idx_project_delivery_scope_created", "idx_project_delivery_jobs_active_key"} {
+		if !db.Migrator().HasIndex(&model.ProjectDeliveryJob{}, index) {
+			t.Fatalf("schema migration v5 did not create %s", index)
+		}
+	}
 	// 旧任务不回填伪键；可空列必须允许同一用户有多条历史数据。
 	for _, task := range []model.Task{{ID: "legacy-task-1", UserID: "legacy-user"}, {ID: "legacy-task-2", UserID: "legacy-user"}} {
 		if err := db.Create(&task).Error; err != nil {
@@ -67,6 +75,46 @@ func TestMigrateSchemaRecordsAndValidatesVersion(t *testing.T) {
 	}
 	if err := MigrateSchema(db); err != nil {
 		t.Fatalf("migration should be idempotent: %v", err)
+	}
+}
+
+func TestMigrateSchemaUpgradesV4DatabaseWithProjectDeliveryJobs(t *testing.T) {
+	db, err := Open(Config{Driver: "sqlite", DSN: "file:migration-project-delivery?mode=memory&cache=shared"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := MigrateSchema(db); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Migrator().DropTable(&model.ProjectDeliveryJob{}); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Delete(&schemaMigration{}, "version = ?", 5).Error; err != nil {
+		t.Fatal(err)
+	}
+	status, err := ReadSchemaStatus(db)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if status.Current != 4 || status.Ready {
+		t.Fatalf("pre-upgrade schema status = %#v", status)
+	}
+
+	if err := MigrateSchema(db); err != nil {
+		t.Fatalf("upgrade v4 database: %v", err)
+	}
+	if !db.Migrator().HasTable(&model.ProjectDeliveryJob{}) {
+		t.Fatal("v5 upgrade did not create project delivery jobs")
+	}
+	if !db.Migrator().HasIndex(&model.ProjectDeliveryJob{}, "idx_project_delivery_jobs_active_key") {
+		t.Fatal("v5 upgrade did not create the active-job uniqueness index")
+	}
+	status, err = ReadSchemaStatus(db)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !status.Ready || status.Current != 5 {
+		t.Fatalf("post-upgrade schema status = %#v", status)
 	}
 }
 
