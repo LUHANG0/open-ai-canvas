@@ -202,6 +202,17 @@ test("canvas entry dialogs load only after their entry opens", async () => {
     expect(entrySource).toContain("directorTemplateRequest ? (");
 });
 
+test("canvas task detail loads only when a task is opened", async () => {
+    const statusSource = await Bun.file(new URL("../src/pages/canvas/canvas-project-status-dialogs.tsx", import.meta.url)).text();
+    const taskSource = await Bun.file(new URL("../src/pages/canvas/canvas-project-task-detail-dialog.tsx", import.meta.url)).text();
+    expect(statusSource).toContain('lazy(() => import("./canvas-project-task-detail-dialog")');
+    expect(statusSource).toContain("task ? <Suspense");
+    expect(statusSource).not.toContain("function taskParameterRows");
+    expect(taskSource).toContain("function taskParameterRows");
+    expect(taskSource).toContain("useEffectiveConfig()");
+    expect(taskSource).toContain("onCancel(task)");
+});
+
 test("assistant layout reserves the left dock and low zoom keeps video play reachable", async () => {
     const css = await Bun.file(new URL("../src/pages/canvas/canvas-editor-pc.css", import.meta.url)).text();
     const content = await Bun.file(new URL("../src/components/canvas/canvas-node-content.tsx", import.meta.url)).text();
