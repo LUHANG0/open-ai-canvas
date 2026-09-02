@@ -105,6 +105,7 @@ import { useCanvasHistory } from "./use-canvas-history";
 import { useCanvasKeyboard } from "./use-canvas-keyboard";
 import { useCanvasMediaTools } from "./use-canvas-media-tools";
 import { useCanvasNodeEditor } from "./use-canvas-node-editor";
+import { useCanvasNodeFocus } from "./use-canvas-node-focus";
 import { useCanvasNodeOperations } from "./use-canvas-node-operations";
 import { useCanvasNodeSharing } from "./use-canvas-node-sharing";
 import { useCanvasLinkedProjectAssetSync, useCanvasLinkedProjectFolderInteractions } from "./use-canvas-linked-project-assets";
@@ -762,48 +763,21 @@ function InfiniteCanvasPage() {
     });
 
     const batchSourceNodeIds = useMemo(() => nodes.filter((node) => selectedNodeIds.has(node.id) && !batchSourceRestriction(node)).map((node) => node.id), [nodes, selectedNodeIds]);
-
-    const handleCanvasSelectionStart = useCallback(() => {
-        setContextMenu(null);
-    }, []);
-
-    const handleNodeInteractionStart = useCallback((selectionModifier: boolean) => {
-        setContextMenu(null);
-        setHoveredNodeId(null);
-        setToolbarNodeId(null);
-        if (selectionModifier) setDialogNodeId(null);
-    }, []);
-
-    const handleSelectedNodeClick = useCallback(
-        (node: CanvasNodeData) => {
-            if (node.type === CanvasNodeType.Drawing) {
-                setDialogNodeId(null);
-                setDrawingNodeId(node.id);
-            } else if (node.type === CanvasNodeType.Script) {
-                setDialogNodeId(null);
-            } else if (node.type === CanvasNodeType.Text || node.type === CanvasNodeType.Frame) {
-                setDialogNodeId((current) => (current === node.id ? current : null));
-            } else if (node.type === PORTRAIT_CLEARANCE_NODE_TYPE) {
-                setDialogNodeId(null);
-                setPortraitClearanceNodeId(node.id);
-            } else {
-                // 选择参考媒体时保留当前工作流配置面板，避免点击图片后配置“返回/消失”。
-                // 没有工作流配置面板时，媒体节点仍按原逻辑打开自己的面板。
-                setDialogNodeId((current) => {
-                    const currentNode = current ? nodesRef.current.find((item) => item.id === current) : undefined;
-                    return currentNode?.type === CanvasNodeType.Config ? current : node.id;
-                });
-            }
-        },
-        [nodesRef],
-    );
-
-    const handleCanvasDeselect = useCallback(() => {
-        setContextMenu(null);
-        setHoveredNodeId(null);
-        setToolbarNodeId(null);
-        setDialogNodeId(null);
-    }, []);
+    const { handleCanvasDeselect, handleCanvasSelectionStart, handleNodeInteractionStart, handleSelectedNodeClick, openDrawingNode, openPortraitClearance, openTextNodeEditor, selectVideoForPlayback } = useCanvasNodeFocus({
+        nodesRef,
+        selectedNodeIdsRef,
+        dialogNodeId,
+        setSelectedNodeIds,
+        setSelectedConnectionId,
+        setContextMenu,
+        setHoveredNodeId,
+        setToolbarNodeId,
+        setDialogNodeId,
+        setTextEditorNodeId,
+        setCharacterReferenceNodeId,
+        setDrawingNodeId,
+        setPortraitClearanceNodeId,
+    });
 
     const { alignmentGuides, cancelSelectionBox, deselectCanvas, dragPreview, frameDropTargetId, handleCanvasMouseDown, handleNodeMouseDown, isNodeDragging, nodeDraggingRef, selectionBoundsElementRef, selectionBox } = useCanvasSelectionController({
         containerRef,
@@ -1065,39 +1039,6 @@ function InfiniteCanvasPage() {
     const pendingConnectionSourceNode = pendingConnectionCreate?.connection.handleType === "source" ? nodeById.get(pendingConnectionCreate.connection.nodeId) : null;
     const canCreateDrawingFromConnection = !pendingConnectionCreate?.batchSourceNodeIds?.length && pendingConnectionSourceNode?.type === CanvasNodeType.Image && Boolean(pendingConnectionSourceNode.metadata?.content);
 
-    const openTextNodeEditor = useCallback((node: CanvasNodeData) => {
-        if (node.type !== CanvasNodeType.Text) return;
-        setSelectedNodeIds(new Set([node.id]));
-        setSelectedConnectionId(null);
-        setContextMenu(null);
-        setDialogNodeId(null);
-        setToolbarNodeId(null);
-        if (node.metadata?.workflowKind === "character" && node.metadata.characterAssetId) {
-            setCharacterReferenceNodeId(node.id);
-            return;
-        }
-        setTextEditorNodeId(node.id);
-    }, []);
-
-    const openDrawingNode = useCallback((node: CanvasNodeData) => {
-        if (node.type !== CanvasNodeType.Drawing) return;
-        setSelectedNodeIds(new Set([node.id]));
-        setSelectedConnectionId(null);
-        setContextMenu(null);
-        setDialogNodeId(null);
-        setToolbarNodeId(null);
-        setDrawingNodeId(node.id);
-    }, []);
-
-    const openPortraitClearance = useCallback((node: CanvasNodeData) => {
-        if (node.type !== PORTRAIT_CLEARANCE_NODE_TYPE) return;
-        setSelectedNodeIds(new Set([node.id]));
-        setSelectedConnectionId(null);
-        setContextMenu(null);
-        setDialogNodeId(null);
-        setToolbarNodeId(null);
-        setPortraitClearanceNodeId(node.id);
-    }, []);
     const { agentSnapshot, agentUndoCount, applyAgentOps, canUndoAgentOps, dismissLastAgentChange, lastAgentChange, undoAgentOps, viewLastAgentChange } = useCanvasAgentOperations({
         projectId,
         domainProjectId: currentProject?.projectId,
@@ -1623,16 +1564,6 @@ function InfiniteCanvasPage() {
     }, []);
     const duplicateCanvasNodeFromContext = useCallback((node: CanvasNodeData) => duplicateNode(node.id), [duplicateNode]);
     const deleteCanvasNodeFromContext = useCallback((node: CanvasNodeData) => deleteNodes(new Set([node.id])), [deleteNodes]);
-    const selectVideoForPlayback = useCallback((nodeId: string) => {
-        const node = nodesRef.current.find((item) => item.id === nodeId && item.type === CanvasNodeType.Video);
-        if (!node) return;
-        const selection = new Set([nodeId]);
-        selectedNodeIdsRef.current = selection;
-        setSelectedNodeIds(selection);
-        setSelectedConnectionId(null);
-        handleNodeInteractionStart(false);
-        handleSelectedNodeClick(node);
-    }, [handleNodeInteractionStart, handleSelectedNodeClick, nodesRef, selectedNodeIdsRef]);
     const canvasNodeActions = useMemo<CanvasNodeActionContextValue>(
         () => ({ download: downloadNodeImage, duplicate: duplicateCanvasNodeFromContext, deleteNode: deleteCanvasNodeFromContext, updateMetadata: updateCanvasNodeMetadata, resizeNode: resizeCanvasNodeFromContent, openPortraitClearance, selectVideoForPlayback }),
         [deleteCanvasNodeFromContext, downloadNodeImage, duplicateCanvasNodeFromContext, openPortraitClearance, resizeCanvasNodeFromContent, selectVideoForPlayback, updateCanvasNodeMetadata],
