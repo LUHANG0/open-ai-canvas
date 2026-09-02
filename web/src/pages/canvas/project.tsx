@@ -1638,36 +1638,30 @@ function InfiniteCanvasPage() {
                             canPaste={hasCopiedNodes || Boolean(navigator.clipboard)}
                             screenToCanvas={screenToCanvas}
                             onClose={() => setContextMenu(null)}
-                            onAddNode={(type, position) => createNode(type, position)}
+                            onAddNode={createNode}
                             onAddFolder={createFolder}
                             onChooseStyle={() => setStylePickerOpen(true)}
                             onOpenDirector={(position) => setDirectorTemplateRequest({ position })}
-                            onUpload={(nodeId, position) => handleUploadRequest(nodeId, position)}
+                            onUpload={handleUploadRequest}
                             onOpenAssets={openCanvasAssetLibrary}
                             onOpenProjectCharacters={(position) => openProjectAssets("character", position)}
                             onUndo={undoCanvas}
                             onRedo={redoCanvas}
                             onPaste={pasteAtPosition}
-                            onCopyNode={(nodeId) => copyNodesToClipboard(new Set([nodeId]))}
+                            onCopyNodes={copyNodesToClipboard}
                             onDuplicate={duplicateNode}
-                            onDeleteNode={(nodeId) => deleteNodes(new Set([nodeId]))}
+                            onDeleteNodes={deleteNodes}
                             onDeleteConnection={deleteConnection}
-                            onSaveAsset={(node) => {
-                                void saveNodeAsset(node);
-                            }}
-                            onViewMedia={(node) => setPreviewNodeId(node.id)}
+                            onSaveAsset={saveNodeAsset}
+                            onPreviewNode={setPreviewNodeId}
                             onEditText={openTextNodeEditor}
                             onOpenDrawing={openDrawingNode}
                             onGenerateImage={generateImageFromTextNode}
-                            onCopyContent={(node) => {
-                                void copyNodeContentToClipboard(node);
-                            }}
-                            onCopyMediaUrl={(node) => {
-                                void copyNodeMediaUrlToClipboard(node);
-                            }}
+                            onCopyContent={copyNodeContentToClipboard}
+                            onCopyMediaUrl={copyNodeMediaUrlToClipboard}
                             onUploadToArkPrivateAsset={confirmUploadNodeImageToArkPrivateAsset}
                             onSetAssetCategory={(nodeId, assetCategory) => handleConfigNodeChange(nodeId, { assetCategory })}
-                            onToggleFrame={(node) => handleFrameToggle(node.id)}
+                            onToggleFrame={handleFrameToggle}
                         />
 
                         <CanvasUploadModal open={uploadModalOpen} onClose={closeUploadModal} onUpload={handleUploadFiles} />

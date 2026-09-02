@@ -1,5 +1,6 @@
 import { CanvasNodeContextMenu } from "@/components/canvas/canvas-context-menu";
 import { CanvasNodeType, type CanvasNodeData, type CanvasNodeTypeId, type CanvasWorkspaceMode, type ContextMenuState, type Position } from "@/types/canvas";
+import { canvasContextMenuDeleteTarget, canvasContextMenuNodeIds, canvasContextMenuTargetPosition } from "./canvas-context-menu-routing";
 
 type CanvasAssetCategory = NonNullable<NonNullable<CanvasNodeData["metadata"]>["assetCategory"]>;
 
@@ -23,25 +24,25 @@ type CanvasProjectContextMenuProps = {
     onUndo: () => void;
     onRedo: () => void;
     onPaste: (position: Position) => void;
-    onCopyNode: (nodeId: string) => void;
+    onCopyNodes: (nodeIds: Set<string>) => void;
     onDuplicate: (nodeId: string) => void;
-    onDeleteNode: (nodeId: string) => void;
+    onDeleteNodes: (nodeIds: Set<string>) => void;
     onDeleteConnection: (connectionId: string) => void;
-    onSaveAsset: (node: CanvasNodeData) => void;
-    onViewMedia: (node: CanvasNodeData) => void;
+    onSaveAsset: (node: CanvasNodeData) => void | Promise<unknown>;
+    onPreviewNode: (nodeId: string) => void;
     onEditText: (node: CanvasNodeData) => void;
     onOpenDrawing: (node: CanvasNodeData) => void;
     onGenerateImage: (node: CanvasNodeData) => void;
-    onCopyContent: (node: CanvasNodeData | null) => void;
-    onCopyMediaUrl: (node: CanvasNodeData | null) => void;
+    onCopyContent: (node: CanvasNodeData | null) => void | Promise<void>;
+    onCopyMediaUrl: (node: CanvasNodeData | null) => void | Promise<void>;
     onUploadToArkPrivateAsset: (node: CanvasNodeData) => void;
     onSetAssetCategory: (nodeId: string, category: CanvasAssetCategory) => void;
-    onToggleFrame: (node: CanvasNodeData) => void;
+    onToggleFrame: (nodeId: string) => void;
 };
 
 export function CanvasProjectContextMenu({ menu, node, screenToCanvas, ...props }: CanvasProjectContextMenuProps) {
     if (!menu) return null;
-    const menuPosition = () => menu.type === "canvas" ? menu.position : screenToCanvas(menu.x, menu.y);
+    const menuPosition = () => canvasContextMenuTargetPosition(menu, screenToCanvas);
     return (
         <CanvasNodeContextMenu
             menu={menu}
@@ -67,20 +68,21 @@ export function CanvasProjectContextMenu({ menu, node, screenToCanvas, ...props 
             onRedo={props.onRedo}
             onPaste={() => props.onPaste(menuPosition())}
             onCopyNode={() => {
-                if (menu.type === "node") props.onCopyNode(menu.nodeId);
+                if (menu.type === "node") props.onCopyNodes(canvasContextMenuNodeIds(menu));
             }}
             onDuplicate={() => {
                 if (menu.type === "node") props.onDuplicate(menu.nodeId);
             }}
             onDelete={() => {
-                if (menu.type === "node") props.onDeleteNode(menu.nodeId);
-                else if (menu.type === "connection") props.onDeleteConnection(menu.connectionId);
+                const target = canvasContextMenuDeleteTarget(menu);
+                if (target?.type === "node") props.onDeleteNodes(new Set([target.id]));
+                else if (target?.type === "connection") props.onDeleteConnection(target.id);
             }}
             onSaveAsset={() => {
-                if (node) props.onSaveAsset(node);
+                if (node) void props.onSaveAsset(node);
             }}
             onViewMedia={() => {
-                if (node) props.onViewMedia(node);
+                if (node) props.onPreviewNode(node.id);
             }}
             onEditText={() => {
                 if (node) props.onEditText(node);
@@ -91,8 +93,8 @@ export function CanvasProjectContextMenu({ menu, node, screenToCanvas, ...props 
             onGenerateImage={() => {
                 if (node) props.onGenerateImage(node);
             }}
-            onCopyContent={() => props.onCopyContent(node)}
-            onCopyMediaUrl={() => props.onCopyMediaUrl(node)}
+            onCopyContent={() => void props.onCopyContent(node)}
+            onCopyMediaUrl={() => void props.onCopyMediaUrl(node)}
             onUploadToArkPrivateAsset={() => {
                 if (node?.type === CanvasNodeType.Image) props.onUploadToArkPrivateAsset(node);
             }}
@@ -100,7 +102,7 @@ export function CanvasProjectContextMenu({ menu, node, screenToCanvas, ...props 
                 if (menu.type === "node") props.onSetAssetCategory(menu.nodeId, category);
             }}
             onToggleFrame={() => {
-                if (node?.type === CanvasNodeType.Frame) props.onToggleFrame(node);
+                if (node?.type === CanvasNodeType.Frame) props.onToggleFrame(node.id);
             }}
         />
     );
