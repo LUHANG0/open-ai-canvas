@@ -79,7 +79,11 @@ func (s *Service) CreateProjectDeliveryJob(userID string, projectID string, unit
 	} else if latest != nil && (latest.Status == model.ProjectDeliveryJobStatusQueued || latest.Status == model.ProjectDeliveryJobStatusRunning) {
 		return latest, nil
 	}
-	if _, err := s.deliveryFFmpegExecutable(); err != nil {
+	ffmpegPath, err := s.deliveryFFmpegExecutable()
+	if err != nil {
+		return nil, &AppError{Status: 503, Message: "服务器暂未配置视频合成组件，请先使用本机生成交付包", Cause: err}
+	}
+	if _, err := projectDeliveryFFprobeExecutable(ffmpegPath); err != nil {
 		return nil, &AppError{Status: 503, Message: "服务器暂未配置视频合成组件，请先使用本机生成交付包", Cause: err}
 	}
 	snapshot, sourceBytes, err := s.buildProjectDeliverySnapshot(userID, *project, *unit)
@@ -411,13 +415,16 @@ func (s *Service) generateProjectDeliveryArchive(ctx context.Context, job *model
 		}
 		inputNames = append(inputNames, name)
 	}
-	concatText := strings.Builder{}
-	for _, name := range inputNames {
-		concatText.WriteString("file '")
-		concatText.WriteString(strings.ReplaceAll(name, "'", "'\\''"))
-		concatText.WriteString("'\n")
+	ffprobePath, err := projectDeliveryFFprobeExecutable(ffmpegPath)
+	if err != nil {
+		return nil, "", errors.New("服务器缺少视频规格检查组件")
 	}
-	if err := os.WriteFile(filepath.Join(workDir, "concat.txt"), []byte(concatText.String()), 0o640); err != nil {
+	mediaInfos, err := probeProjectDeliveryInputs(ctx, ffprobePath, workDir, inputNames)
+	if err != nil {
+		return nil, "", err
+	}
+	expectedDuration := projectDeliveryMediaDuration(mediaInfos)
+	if err := writeProjectDeliveryConcatFile(filepath.Join(workDir, "concat.txt"), inputNames); err != nil {
 		return nil, "", err
 	}
 	if err := s.repo.UpdateProjectDeliveryJobProgress(job.ID, owner, "正在合成 MP4 成片", 45); err != nil {
@@ -425,11 +432,31 @@ func (s *Service) generateProjectDeliveryArchive(ctx context.Context, job *model
 	}
 	outputName := "final.mp4"
 	copyArgs := []string{"-y", "-f", "concat", "-safe", "0", "-i", "concat.txt", "-c", "copy", "-movflags", "+faststart", outputName}
-	if commandErr := runProjectDeliveryFFmpeg(ctx, ffmpegPath, workDir, copyArgs); commandErr != nil {
+	commandErr := errors.New("镜头视频规格不同")
+	if projectDeliveryInputsCopyCompatible(mediaInfos) {
+		commandErr = runProjectDeliveryFFmpeg(ctx, ffmpegPath, workDir, copyArgs)
+		if commandErr == nil {
+			commandErr = validateProjectDeliveryVideo(ctx, ffmpegPath, ffprobePath, workDir, outputName, expectedDuration)
+		}
+	}
+	if commandErr != nil {
 		_ = os.Remove(filepath.Join(workDir, outputName))
-		reencodeArgs := []string{"-y", "-f", "concat", "-safe", "0", "-i", "concat.txt", "-map", "0:v:0", "-map", "0:a?", "-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-c:a", "aac", "-movflags", "+faststart", outputName}
+		if err := s.repo.UpdateProjectDeliveryJobProgress(job.ID, owner, "镜头格式不同，正在统一视频规格", 55); err != nil {
+			return nil, "", err
+		}
+		normalizedNames, normalizeErr := normalizeProjectDeliveryInputs(ctx, ffmpegPath, workDir, inputNames, mediaInfos)
+		if normalizeErr != nil {
+			return nil, "", normalizeErr
+		}
+		if err := writeProjectDeliveryConcatFile(filepath.Join(workDir, "concat-normalized.txt"), normalizedNames); err != nil {
+			return nil, "", err
+		}
+		reencodeArgs := []string{"-y", "-f", "concat", "-safe", "0", "-i", "concat-normalized.txt", "-c", "copy", "-movflags", "+faststart", outputName}
 		if retryErr := runProjectDeliveryFFmpeg(ctx, ffmpegPath, workDir, reencodeArgs); retryErr != nil {
 			return nil, "", retryErr
+		}
+		if validateErr := validateProjectDeliveryVideo(ctx, ffmpegPath, ffprobePath, workDir, outputName, expectedDuration); validateErr != nil {
+			return nil, "", validateErr
 		}
 	}
 	if err := s.repo.UpdateProjectDeliveryJobProgress(job.ID, owner, "正在打包字幕与生产资料", 85); err != nil {
@@ -472,6 +499,180 @@ func deliveryVideoExtension(mimeType string) string {
 	default:
 		return ".mp4"
 	}
+}
+
+func writeProjectDeliveryConcatFile(path string, inputNames []string) error {
+	concatText := strings.Builder{}
+	for _, name := range inputNames {
+		concatText.WriteString("file '")
+		concatText.WriteString(strings.ReplaceAll(name, "'", "'\\''"))
+		concatText.WriteString("'\n")
+	}
+	return os.WriteFile(path, []byte(concatText.String()), 0o640)
+}
+
+type projectDeliveryMediaInfo struct {
+	Width          int
+	Height         int
+	HasAudio       bool
+	VideoCodec     string
+	PixelFormat    string
+	FrameRate      string
+	VideoTimeBase  string
+	AudioCodec     string
+	SampleRate     string
+	Channels       int
+	ChannelLayout  string
+	AudioTimeBase  string
+	DurationSecond float64
+}
+
+func projectDeliveryFFprobeExecutable(ffmpegPath string) (string, error) {
+	candidate := filepath.Join(filepath.Dir(ffmpegPath), "ffprobe")
+	if info, err := os.Stat(candidate); err == nil && !info.IsDir() {
+		return candidate, nil
+	}
+	return exec.LookPath("ffprobe")
+}
+
+func probeProjectDeliveryMedia(ctx context.Context, ffprobePath string, workDir string, inputName string) (projectDeliveryMediaInfo, error) {
+	var payload struct {
+		Streams []struct {
+			CodecType     string `json:"codec_type"`
+			CodecName     string `json:"codec_name"`
+			Width         int    `json:"width"`
+			Height        int    `json:"height"`
+			PixelFormat   string `json:"pix_fmt"`
+			FrameRate     string `json:"avg_frame_rate"`
+			TimeBase      string `json:"time_base"`
+			SampleRate    string `json:"sample_rate"`
+			Channels      int    `json:"channels"`
+			ChannelLayout string `json:"channel_layout"`
+		} `json:"streams"`
+		Format struct {
+			Duration string `json:"duration"`
+		} `json:"format"`
+	}
+	command := exec.CommandContext(ctx, ffprobePath, "-v", "error", "-show_entries", "stream=codec_type,codec_name,width,height,pix_fmt,avg_frame_rate,time_base,sample_rate,channels,channel_layout:format=duration", "-of", "json", inputName)
+	command.Dir = workDir
+	output, err := command.CombinedOutput()
+	if err != nil {
+		return projectDeliveryMediaInfo{}, fmt.Errorf("读取视频规格失败：%s", truncateRunes(strings.TrimSpace(string(output)), 500))
+	}
+	if err := json.Unmarshal(output, &payload); err != nil {
+		return projectDeliveryMediaInfo{}, errors.New("读取视频规格失败")
+	}
+	info := projectDeliveryMediaInfo{}
+	for _, stream := range payload.Streams {
+		switch stream.CodecType {
+		case "video":
+			if info.Width == 0 && info.Height == 0 {
+				info.Width, info.Height = stream.Width, stream.Height
+				info.VideoCodec, info.PixelFormat = stream.CodecName, stream.PixelFormat
+				info.FrameRate, info.VideoTimeBase = stream.FrameRate, stream.TimeBase
+			}
+		case "audio":
+			if !info.HasAudio {
+				info.HasAudio = true
+				info.AudioCodec, info.SampleRate = stream.CodecName, stream.SampleRate
+				info.Channels, info.ChannelLayout, info.AudioTimeBase = stream.Channels, stream.ChannelLayout, stream.TimeBase
+			}
+		}
+	}
+	info.DurationSecond, _ = strconv.ParseFloat(payload.Format.Duration, 64)
+	if info.Width <= 0 || info.Height <= 0 || info.Width > 16_384 || info.Height > 16_384 {
+		return projectDeliveryMediaInfo{}, errors.New("视频尺寸无效，无法统一交付规格")
+	}
+	return info, nil
+}
+
+func probeProjectDeliveryInputs(ctx context.Context, ffprobePath string, workDir string, inputNames []string) ([]projectDeliveryMediaInfo, error) {
+	infos := make([]projectDeliveryMediaInfo, 0, len(inputNames))
+	for _, inputName := range inputNames {
+		info, probeErr := probeProjectDeliveryMedia(ctx, ffprobePath, workDir, inputName)
+		if probeErr != nil {
+			return nil, probeErr
+		}
+		infos = append(infos, info)
+	}
+	return infos, nil
+}
+
+func projectDeliveryInputsCopyCompatible(infos []projectDeliveryMediaInfo) bool {
+	if len(infos) == 0 {
+		return false
+	}
+	first := infos[0]
+	for _, info := range infos[1:] {
+		if info.Width != first.Width || info.Height != first.Height || info.VideoCodec != first.VideoCodec || info.PixelFormat != first.PixelFormat || info.FrameRate != first.FrameRate || info.VideoTimeBase != first.VideoTimeBase || info.HasAudio != first.HasAudio {
+			return false
+		}
+		if info.HasAudio && (info.AudioCodec != first.AudioCodec || info.SampleRate != first.SampleRate || info.Channels != first.Channels || info.ChannelLayout != first.ChannelLayout || info.AudioTimeBase != first.AudioTimeBase) {
+			return false
+		}
+	}
+	return true
+}
+
+func projectDeliveryMediaDuration(infos []projectDeliveryMediaInfo) float64 {
+	var total float64
+	for _, info := range infos {
+		if info.DurationSecond > 0 {
+			total += info.DurationSecond
+		}
+	}
+	return total
+}
+
+func normalizeProjectDeliveryInputs(ctx context.Context, ffmpegPath string, workDir string, inputNames []string, infos []projectDeliveryMediaInfo) ([]string, error) {
+	if len(inputNames) == 0 || len(inputNames) != len(infos) {
+		return nil, errors.New("交付任务视频规格无效")
+	}
+	targetWidth := infos[0].Width - infos[0].Width%2
+	targetHeight := infos[0].Height - infos[0].Height%2
+	if targetWidth < 2 || targetHeight < 2 {
+		return nil, errors.New("视频尺寸无效，无法统一交付规格")
+	}
+	normalizedNames := make([]string, 0, len(inputNames))
+	for index, inputName := range inputNames {
+		outputName := fmt.Sprintf("normalized-%04d.mp4", index)
+		args := projectDeliveryNormalizeArgs(inputName, outputName, targetWidth, targetHeight, infos[index].HasAudio)
+		if err := runProjectDeliveryFFmpeg(ctx, ffmpegPath, workDir, args); err != nil {
+			return nil, err
+		}
+		normalizedNames = append(normalizedNames, outputName)
+	}
+	return normalizedNames, nil
+}
+
+func projectDeliveryNormalizeArgs(inputName string, outputName string, width int, height int, hasAudio bool) []string {
+	args := []string{"-y", "-i", inputName}
+	audioMap := "0:a:0"
+	if !hasAudio {
+		args = append(args, "-f", "lavfi", "-i", "anullsrc=channel_layout=stereo:sample_rate=48000")
+		audioMap = "1:a:0"
+	}
+	videoFilter := fmt.Sprintf("scale=w=%d:h=%d:force_original_aspect_ratio=decrease,pad=%d:%d:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=30", width, height, width, height)
+	return append(args,
+		"-map", "0:v:0", "-map", audioMap, "-vf", videoFilter,
+		"-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-pix_fmt", "yuv420p",
+		"-af", "apad", "-c:a", "aac", "-b:a", "192k", "-ar", "48000", "-ac", "2",
+		"-shortest", "-movflags", "+faststart", outputName,
+	)
+}
+
+func validateProjectDeliveryVideo(ctx context.Context, ffmpegPath string, ffprobePath string, workDir string, outputName string, expectedDuration float64) error {
+	if err := runProjectDeliveryFFmpeg(ctx, ffmpegPath, workDir, []string{"-v", "error", "-xerror", "-i", outputName, "-map", "0:v:0", "-map", "0:a?", "-f", "null", "-"}); err != nil {
+		return err
+	}
+	info, err := probeProjectDeliveryMedia(ctx, ffprobePath, workDir, outputName)
+	if err != nil {
+		return err
+	}
+	if expectedDuration > 0 && (info.DurationSecond < expectedDuration*0.9 || info.DurationSecond > expectedDuration*1.1+0.5) {
+		return errors.New("合成交付成片的时长校验失败")
+	}
+	return nil
 }
 
 func runProjectDeliveryFFmpeg(ctx context.Context, executable string, workDir string, args []string) error {

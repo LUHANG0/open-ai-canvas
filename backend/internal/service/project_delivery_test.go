@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -30,7 +31,18 @@ func newProjectDeliveryTestService(t *testing.T) (*Service, *gorm.DB) {
 	); err != nil {
 		t.Fatal(err)
 	}
-	return &Service{repo: repository.New(db), dataDir: t.TempDir(), deliveryFFmpegPath: "/bin/true"}, db
+	toolDir := t.TempDir()
+	ffmpegPath := filepath.Join(toolDir, "ffmpeg")
+	truePath, err := exec.LookPath("true")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"ffmpeg", "ffprobe"} {
+		if err := os.Symlink(truePath, filepath.Join(toolDir, name)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	return &Service{repo: repository.New(db), dataDir: t.TempDir(), deliveryFFmpegPath: ffmpegPath}, db
 }
 
 func seedProjectDeliveryPlan(t *testing.T, db *gorm.DB) {
@@ -135,6 +147,43 @@ func TestProjectDeliveryTextFilesAndZipContract(t *testing.T) {
 		if !found {
 			t.Fatalf("zip missing %s", name)
 		}
+	}
+}
+
+func TestProjectDeliveryNormalizeArgsAlwaysProducesCompatibleAudioAndVideo(t *testing.T) {
+	withAudio := strings.Join(projectDeliveryNormalizeArgs("source.webm", "normalized.mp4", 1280, 720, true), " ")
+	if !strings.Contains(withAudio, "-map 0:a:0") || strings.Contains(withAudio, "anullsrc") {
+		t.Fatalf("with-audio args = %s", withAudio)
+	}
+	withoutAudio := strings.Join(projectDeliveryNormalizeArgs("source.mp4", "normalized.mp4", 720, 1280, false), " ")
+	for _, expected := range []string{"anullsrc=channel_layout=stereo:sample_rate=48000", "-map 1:a:0", "pad=720:1280", "-pix_fmt yuv420p", "-ar 48000", "-ac 2"} {
+		if !strings.Contains(withoutAudio, expected) {
+			t.Fatalf("without-audio args missing %q: %s", expected, withoutAudio)
+		}
+	}
+}
+
+func TestProjectDeliveryCopyCompatibilityRejectsMixedStreams(t *testing.T) {
+	base := projectDeliveryMediaInfo{
+		Width: 1280, Height: 720, HasAudio: true, VideoCodec: "h264", PixelFormat: "yuv420p",
+		FrameRate: "30/1", VideoTimeBase: "1/15360", AudioCodec: "aac", SampleRate: "48000",
+		Channels: 2, ChannelLayout: "stereo", AudioTimeBase: "1/48000", DurationSecond: 1,
+	}
+	if !projectDeliveryInputsCopyCompatible([]projectDeliveryMediaInfo{base, base}) {
+		t.Fatal("identical streams should use lossless concatenation")
+	}
+	mixedCodec := base
+	mixedCodec.VideoCodec = "vp9"
+	if projectDeliveryInputsCopyCompatible([]projectDeliveryMediaInfo{base, mixedCodec}) {
+		t.Fatal("mixed video codecs must be normalized before concatenation")
+	}
+	missingAudio := base
+	missingAudio.HasAudio = false
+	if projectDeliveryInputsCopyCompatible([]projectDeliveryMediaInfo{base, missingAudio}) {
+		t.Fatal("mixed audio presence must be normalized before concatenation")
+	}
+	if got := projectDeliveryMediaDuration([]projectDeliveryMediaInfo{base, base}); got != 2 {
+		t.Fatalf("duration = %v", got)
 	}
 }
 
