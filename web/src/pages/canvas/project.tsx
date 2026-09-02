@@ -21,7 +21,7 @@ import { CanvasAssetTray } from "@/components/canvas/canvas-asset-tray";
 import { CanvasProjectSidebar } from "@/components/canvas/canvas-project-sidebar";
 import { resolveProjectCanvasStyle } from "@/components/canvas/canvas-style-picker-modal";
 import { createStyleProfileSnapshot, resolveStyleProfile, serializeStyleProfile } from "@/lib/canvas/style-profile";
-import { CanvasNodeInfoModal, CanvasNodeToolbar } from "@/components/canvas/canvas-node-toolbar";
+import { CanvasNodeInfoModal } from "@/components/canvas/canvas-node-toolbar";
 import { CanvasFileDropOverlay } from "@/components/canvas/canvas-file-drop-overlay";
 import { CanvasUploadModal } from "@/components/canvas/canvas-upload-modal";
 import { InfiniteCanvas } from "@/components/canvas/infinite-canvas";
@@ -51,6 +51,7 @@ import { CanvasProjectEntryDialogs } from "./canvas-project-entry-dialogs";
 import { CanvasProjectAssetDialogs, CanvasProjectVersionCompareDialog } from "./canvas-project-library-dialogs";
 import { CanvasProjectNodeEditorDialogs } from "./canvas-project-node-editor-dialogs";
 import { CanvasProjectNodeOverlays } from "./canvas-project-node-overlays";
+import { CanvasProjectNodeToolbar } from "./canvas-project-node-toolbar";
 import { CanvasProjectNodeSearch } from "./canvas-project-node-search";
 import { CanvasProjectScriptEditor } from "./canvas-project-script-editor";
 import { CanvasProjectTimelineDialogs } from "./canvas-project-timeline-dialogs";
@@ -1591,51 +1592,49 @@ function InfiniteCanvasPage() {
                             onCloseAgentChange={dismissLastAgentChange}
                         />
 
-                        <CanvasNodeToolbar
-                            node={isNodeDragging || nodeImageSettingsOpen || emotionNodeId ? null : toolbarNode}
+                        <CanvasProjectNodeToolbar
+                            node={toolbarNode}
+                            blocked={Boolean(isNodeDragging || nodeImageSettingsOpen || emotionNodeId)}
                             workspaceMode={workspaceMode}
                             viewport={viewport}
                             containerRef={containerRef}
                             onKeep={keepNodeToolbar}
                             onLeave={hideNodeToolbar}
-                            onInfo={(node) => (node.metadata?.workflowKind === "character" && node.metadata.characterAssetId ? openTextNodeEditor(node) : setInfoNodeId(node.id))}
-                            onEditText={openTextNodeEditor}
-                            onDecreaseFont={(node) => handleFontSizeChange(node.id, Math.max(10, (node.metadata?.fontSize || 14) - 2))}
-                            onIncreaseFont={(node) => handleFontSizeChange(node.id, Math.min(32, (node.metadata?.fontSize || 14) + 2))}
-                            onToggleDialog={(node) => setDialogNodeId((current) => (current === node.id ? null : node.id))}
-                            onGenerateImage={generateImageFromTextNode}
-                            onUpload={(node) => handleUploadRequest(node.id)}
-                            onDownload={downloadNodeImage}
-                            onSaveAsset={(node) => void saveNodeAsset(node)}
-                            onAnnotate={(node) => setAnnotationNodeId(node.id)}
-                            onMaskEdit={(node) => setMaskEditNodeId(node.id)}
-                            onEmotion={(node) => {
-                                setDialogNodeId(null);
-                                setEmotionNodeId((current) => (current === node.id ? null : node.id));
+                            setters={{
+                                info: setInfoNodeId,
+                                dialog: setDialogNodeId,
+                                annotation: setAnnotationNodeId,
+                                maskEdit: setMaskEditNodeId,
+                                emotion: setEmotionNodeId,
+                                crop: setCropNodeId,
+                                split: setSplitNodeId,
+                                upscale: setUpscaleNodeId,
+                                superResolve: setSuperResolveNodeId,
+                                angle: setAngleNodeId,
+                                preview: setPreviewNodeId,
+                                subtitle: setSubtitleNodeId,
+                                timeline: setTimelineNodeId,
                             }}
-                            onPortraitTexture={openPortraitTextureEditor}
-                            onCrop={(node) => setCropNodeId(node.id)}
-                            onSplit={(node) => setSplitNodeId(node.id)}
-                            onUpscale={(node) => setUpscaleNodeId(node.id)}
-                            onSuperResolve={(node) => setSuperResolveNodeId(node.id)}
-                            onAngle={(node) => {
-                                setDialogNodeId(null);
-                                setAngleNodeId((current) => (current === node.id ? null : node.id));
+                            actions={{
+                                editText: openTextNodeEditor,
+                                changeFontSize: handleFontSizeChange,
+                                generateImage: generateImageFromTextNode,
+                                uploadNode: (nodeId) => handleUploadRequest(nodeId),
+                                downloadNode: downloadNodeImage,
+                                saveAsset: saveNodeAsset,
+                                openPortraitTexture: openPortraitTextureEditor,
+                                extractVideoFrames: openVideoFrameExtractor,
+                                extractAudioFromVideo,
+                                trimVideoSegments: openVideoSegmentExtractor,
+                                reversePrompt: createImageReversePromptNodes,
+                                retryNode: retryCanvasNode,
+                                toggleFreeResize: toggleNodeFreeResize,
+                                toggleLocked: toggleNodeLocked,
+                                deleteNodes,
                             }}
-                            onViewImage={(node) => setPreviewNodeId(node.id)}
-                            onExtractVideoFrames={openVideoFrameExtractor}
-                            onExtractAudioFromVideo={(node) => void extractAudioFromVideo(node)}
-                            onTrimVideoSegments={openVideoSegmentExtractor}
-                            onSubtitles={(node) => setSubtitleNodeId(node.id)}
-                            onTimeline={(node) => setTimelineNodeId(node.id)}
                             extractingVideoFrames={toolbarNode?.id === extractingVideoFramesNodeId}
                             extractingAudio={segmentRunningMode === "audio"}
                             trimmingVideo={segmentRunningMode === "video"}
-                            onReversePrompt={createImageReversePromptNodes}
-                            onRetry={retryCanvasNode}
-                            onToggleFreeResize={(node) => toggleNodeFreeResize(node.id)}
-                            onToggleLocked={(node) => toggleNodeLocked(node.id)}
-                            onDelete={(node) => deleteNodes(new Set([node.id]))}
                         />
 
                         {isMiniMapOpen && !focusMode ? <Minimap nodes={nodes} viewport={viewport} viewportSize={size} canvasContainerRef={containerRef} onViewportPreviewChange={previewViewport} onViewportChange={handleViewportChange} /> : null}
