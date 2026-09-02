@@ -96,7 +96,8 @@ export default function ProjectDetailPage() {
                     await linkCanvasUnit(projectId, { canvasId: id, unitId: unit.id, role: "storyboard" });
                 } catch (error) {
                     refreshProject();
-                    message.error(error instanceof Error ? `画布已创建，但章节关联失败：${error.message}` : "画布已创建，但章节关联失败");
+                    message.warning(error instanceof Error ? `画布已创建，但章节关联失败：${error.message}。可以在项目画布中稍后重试。` : "画布已创建，但章节关联失败，可以在项目画布中稍后重试");
+                    navigate(`/canvas/${id}`);
                     return;
                 }
             }

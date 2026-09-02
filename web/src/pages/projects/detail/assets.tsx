@@ -70,7 +70,7 @@ export default function ProjectAssetsView({ detail, refreshProject }: ProjectDet
     const effectiveConfig = useEffectiveConfig();
     const isAiConfigReady = useConfigStore((state) => state.isAiConfigReady);
     const [category, setCategory] = useState("all");
-    const [folderId, setFolderId] = useState("");
+    const [folderId, setFolderId] = useState(ALL_FOLDERS);
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(40);
     const [candidatePage, setCandidatePage] = useState(1);

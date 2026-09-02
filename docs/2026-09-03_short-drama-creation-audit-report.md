@@ -40,6 +40,10 @@
 | P0 | 生成按钮先保存镜头版本，再校验模型渠道是否完整 | `workflow-production-workbench.tsx` 的 `generateArtifact` | 配置错误也会产生新版本、令旧产物过期 | 所有无副作用校验前置；提交失败时区分“仅保存成功”和“任务已提交” |
 | P1 | 分镜图和黑白动作预演共用黑白提示语 | `workflow-production-workbench.tsx` 图片 prompt 组装 | 分镜图被错误限定为黑白预演风格 | 按 `storyboard` / `previz` 分别组装提示语并加纯函数测试 |
 | P1 | 图片阶段的产物元数据和预览摘要仍显示视频分辨率 | 同文件 `artifactMetadata` 与预览摘要 | 产物规格展示与真实请求不一致 | 图片记录画质，视频记录分辨率；摘要按能力显示 |
+| P1 | 工作流步骤一旦为失败态，前端直接拒绝重试；后端实际允许 `failed → ready/running` | `workflow-production-workbench.tsx` 与后端 `canTransitionWorkflowStep` | 某阶段失败后无法再次生成 | 重试前把失败步骤恢复为 `ready`，保持现有后端状态机 |
+| P1 | 生成任务失败只显示“可重试”，真实安全错误原因不可见 | `workflow-production-workbench.tsx` | 用户无法判断模型、参考图或协议问题 | 在产物区显示规范化失败原因与重试入口 |
+| P1 | 章节画布创建成功但章节关联失败时停留原页 | `detail.tsx` 关联异常分支直接 `return` | 已创建画布难以发现，后续关联路径不清楚 | 明确提示部分成功并继续打开画布 |
+| P1 | 制作流程的“剧情与章节”直接渲染持久化 HTML 字符串 | `workflow-stage-views.tsx` | 用户看到 `<p>`、`<br>` 等标签 | 使用可测试的纯文本投影，保留段落和列表顺序 |
 | P1 | 资产、画布和分镜侧栏请求失败时落入“空列表”表现 | `assets.tsx`、`canvases.tsx`、`workflow-production-workbench.tsx` | 用户误以为数据被清空 | 增加明确错误态、重试入口，保留已有数据时不闪空 |
 | P1 | AI 创建流程先创建项目再请求模型；模型或 JSON 解析失败会留下无提示的空项目 | `pages/projects/index.tsx` `generateStory` | 项目列表出现孤儿项目，用户不知道如何继续 | 先生成并校验章节，再创建项目；导入失败时导航到已创建项目并明确提示可继续 |
 | P2 | 不可见的待确认角色分页仍会请求 | `assets.tsx` candidates query | 大项目额外请求与渲染压力 | 按当前文件夹和分类启用查询 |
@@ -60,5 +64,5 @@
 | --- | --- | --- | --- | --- | --- |
 | 0. 隔离与基线 | 完成 | 无业务代码 | 创建独立 worktree、分支和基线标签；安装锁定依赖；完成基线验证 | 无 | `audit/short-drama-creation-base-a855fa6` |
 | 1. 数据安全与生成正确性 | 完成 | `project-editor-draft.ts`、`chapters.tsx`、`workflow-production-workbench.tsx`、`workflow-generation-prompt.ts`、`index.tsx` | 用户隔离草稿与恢复、并发保存保护、路由/关闭保护、当前章节任务恢复、生成校验前置、分阶段提示语、AI 创建顺序与部分成功反馈 | IndexedDB 不可用时明确告警；不触发真实生成 | `refactor(projects): 短剧创作 - 加固草稿恢复与生成链路` |
-| 2. 错误态、性能与 PC 交互 | 完成 | `assets.tsx`、`canvases.tsx`、`workflow-production-workbench.tsx` | 素材、目录、候选角色、项目画布与分镜资产侧栏增加错误态和重试；隐藏候选列表不再请求；图片/视频规格按真实能力展示 | 保持现有移动端布局与 CSS 断点 | 同阶段 1 提交 |
+| 2. 错误态、性能与 PC 交互 | 完成 | `assets.tsx`、`canvases.tsx`、`workflow-production-workbench.tsx`、`workflow-stage-views.tsx`、`project-source-text.ts`、`detail.tsx` | 素材、目录、候选角色、项目画布与分镜资产侧栏增加错误态和重试；默认进入可发现待确认角色的全量视图，进入目录后停止隐藏候选请求；图片/视频规格按真实能力展示；任务失败原因可见；失败步骤可重试；章节富文本以可读纯文本显示；画布部分成功仍可继续 | 保持现有移动端布局与 CSS 断点；复用现有后端状态机 | `fix(projects): 短剧创作 - 完善失败恢复与画布衔接` |
 | 3. 集中验证与交付 | 未开始 | 待更新 | 类型、专项测试、生产构建、浏览器回归、最终遗留项 | 付费生成仅记录待确认 | 待提交 |

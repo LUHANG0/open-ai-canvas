@@ -55,6 +55,7 @@ import { resolveProjectCanvasStyle } from "@/components/canvas/canvas-style-pick
 import { normalizeCharacterName } from "@/lib/canvas/canvas-character-reference";
 import { decodeNovelText, splitTextIntoChapters } from "@/lib/canvas/canvas-document";
 import { navigateToSettings } from "@/lib/settings-navigation";
+import { projectSourceTextToPlainText } from "@/lib/project-source-text";
 import {
     createProjectAssetCandidates,
     createProjectUnit,
@@ -229,7 +230,7 @@ export default function ProjectChaptersView({ detail, refreshProject }: ProjectD
             ? updateProjectUnit(detail.project.id, selectedUnit.id, {
                 title: draft.title.trim(),
                 sourceText: draft.html,
-                status: stripHtml(draft.html) ? "ready" : "draft",
+                status: projectSourceTextToPlainText(draft.html) ? "ready" : "draft",
             })
             : Promise.reject(new Error("请选择章节")),
         onSuccess: ({ unit }, savedDraft) => {
@@ -392,13 +393,13 @@ export default function ProjectChaptersView({ detail, refreshProject }: ProjectD
         return () => window.clearTimeout(timer);
     }, [detail.project.id, dirty, draftHtml, draftTitle, selectedUnit]);
 
-    const wordCount = useMemo(() => editor?.storage.characterCount?.characters?.() || stripHtml(draftHtml).length || 0, [draftHtml, editor]);
+    const wordCount = useMemo(() => editor?.storage.characterCount?.characters?.() || projectSourceTextToPlainText(draftHtml).length || 0, [draftHtml, editor]);
     const chapterCanvasCount = (unitId: string) => canvasCountByUnitId.get(unitId) || 0;
     const chapterAnalysisInput = (textModel: string) => {
         const unit = selectedUnit;
         if (!unit) throw new Error("章节正文尚未加载完成");
         if (dirty) throw new Error("请先保存当前章节，再运行 AI 分析");
-        const sourceText = editor?.getText().trim() || stripHtml(unit.sourceText);
+        const sourceText = editor?.getText().trim() || projectSourceTextToPlainText(unit.sourceText);
         if (!sourceText) throw new Error("当前章节没有可分析的正文");
         const config = { ...effectiveConfig, model: textModel, textModel };
         if (!textModel || !isAiConfigReady(config, textModel)) {
@@ -495,7 +496,7 @@ export default function ProjectChaptersView({ detail, refreshProject }: ProjectD
         if (!unit) return message.warning("章节正文尚未加载完成");
         if (dirty) return message.warning("请先保存当前章节，再生成分镜");
         if (detail.project.status === "archived") return message.warning("项目已归档，请先在项目设置中恢复");
-        const sourceText = editor?.getText().trim() || stripHtml(unit.sourceText);
+        const sourceText = editor?.getText().trim() || projectSourceTextToPlainText(unit.sourceText);
         if (!sourceText) return message.warning("当前章节没有可用于分镜的正文");
         const projectStyle = resolveProjectCanvasStyle(detail.project.stylePresetId, detail.project.styleProfileJson);
         if (!projectStyle?.prompt.trim()) return message.warning("请先在项目设置中选择项目画风，再生成分镜");
@@ -894,10 +895,6 @@ function ImportChapterPreview({ chapters }: { chapters: Array<{ title: string; p
 function plainTextToHtml(value: string) {
     const escaped = value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
     return escaped.split(/\n{2,}/).map((paragraph) => `<p>${paragraph.replace(/\n/g, "<br>")}</p>`).join("");
-}
-
-function stripHtml(value: string) {
-    return value.replace(/<[^>]+>/g, "").replace(/&nbsp;/g, " ").trim();
 }
 
 function readStoredScroll(key: string) {

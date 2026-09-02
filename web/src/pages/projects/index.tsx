@@ -651,7 +651,12 @@ function parseGeneratedStory(answer: string) {
         .replace(/```/g, "")
         .trim();
     const match = cleaned.match(/\{[\s\S]*\}/);
-    const payload = match ? JSON.parse(match[0]) : {};
+    let payload: Record<string, unknown> = {};
+    try {
+        payload = match ? JSON.parse(match[0]) as Record<string, unknown> : {};
+    } catch {
+        throw new Error("AI 返回的章节格式无法解析，请重试或改用手动创建");
+    }
     const title = String(payload.title || "").trim();
     const synopsis = String(payload.synopsis || "").trim();
     const chapters = Array.isArray(payload.chapters)

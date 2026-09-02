@@ -4,13 +4,15 @@ import { Clock3, Film, Layers3, PackageCheck } from "lucide-react";
 import { Link } from "react-router";
 
 import { Surface } from "@/components/ui/pc";
+import { projectSourceTextToPlainText } from "@/lib/project-source-text";
 import { listProjectAssetsPage, type ProjectDetail } from "@/services/api/projects";
 
 import { assetCategoryLabel, formatDuration, MetricCard, StageHeading } from "./workflow-shared";
 
 export function StoryStage({ detail, projectId, unitId }: { detail: ProjectDetail; projectId: string; unitId: string }) {
     const unit = detail.units.find((item) => item.id === unitId)!;
-    return <section className="workflow-stage-overview is-story mx-auto max-w-5xl"><StageHeading eyebrow="01 / 剧情与章节" title={unit.title} description="章节原文是资产拆分、分镜版本和生成提示的唯一来源。" /><Surface className="workflow-story-source mt-6" padding="lg"><div className="mb-3 flex items-center justify-between"><span className="text-xs font-medium text-foreground/55">章节原文</span><Link to={`/projects/${projectId}/chapters/${unit.id}`}><Button size="small">编辑章节</Button></Link></div><div className="max-h-[60vh] whitespace-pre-wrap text-sm leading-7 text-foreground/78">{unit.sourceText || "当前章节还没有正文。请先在剧情章节中上传小说或添加内容。"}</div></Surface></section>;
+    const sourceText = projectSourceTextToPlainText(unit.sourceText);
+    return <section className="workflow-stage-overview is-story mx-auto max-w-5xl"><StageHeading eyebrow="01 / 剧情与章节" title={unit.title} description="章节原文是资产拆分、分镜版本和生成提示的唯一来源。" /><Surface className="workflow-story-source mt-6" padding="lg"><div className="mb-3 flex items-center justify-between"><span className="text-xs font-medium text-foreground/55">章节原文</span><Link to={`/projects/${projectId}/chapters/${unit.id}`}><Button size="small">编辑章节</Button></Link></div><div className="max-h-[60vh] whitespace-pre-wrap text-sm leading-7 text-foreground/78">{sourceText || "当前章节还没有正文。请先在剧情章节中上传小说或添加内容。"}</div></Surface></section>;
 }
 
 export function AssetsStage({ detail, projectId, unitId }: { detail: ProjectDetail; projectId: string; unitId: string }) {

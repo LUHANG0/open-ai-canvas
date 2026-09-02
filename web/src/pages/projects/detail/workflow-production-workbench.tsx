@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { App, Button, Empty, Form, Image, Input, InputNumber, Segmented, Select } from "antd";
+import { Alert, App, Button, Empty, Form, Image, Input, InputNumber, Segmented, Select } from "antd";
 import { Box, ChevronDown, ChevronLeft, ChevronRight, Download, Film, Image as ImageIcon, Layers3, List, Play, Plus, RefreshCcw, Save, SlidersHorizontal, Trash2, UsersRound, WandSparkles, X } from "lucide-react";
 import { Link, useBlocker, useNavigate } from "react-router";
 
@@ -10,6 +10,7 @@ import { CreditSymbol, requestCreditCost } from "@/constant/credits";
 import { modelCapabilityConfigFor, normalizeImageValue, normalizeVideoValue, videoDurationOptions } from "@/lib/model-capabilities";
 import { modelQuoteRequest } from "@/lib/model-pricing";
 import { modelCompatibilityError, resolveCompatibleModel, type ModelRequirements } from "@/lib/model-selection";
+import { generationErrorMessage } from "@/lib/generation-error";
 import { formatVideoResolutionLabel } from "@/lib/video-generation-options";
 import { submitBackendGenerationTask } from "@/services/api/generation-task";
 import { quoteLogicalModel } from "@/services/api/logical-models";
@@ -21,6 +22,7 @@ import {
     listProjectAssetsPage,
     saveProjectShot,
     unlinkShotAsset,
+    updateWorkflowStep,
     type ProjectAsset,
     type ProjectDetail,
     type ProjectShot,
@@ -416,7 +418,10 @@ export default function WorkflowProductionWorkbench(props: Props) {
                 productionStep = (initialized.workflow.steps || []).find((step) => step.stepKey === activeStage);
             }
             if (!productionStep) throw new Error("当前生成阶段不可用，请刷新页面后重试");
-            if (productionStep.status === "failed") throw new Error("当前生成阶段失败，请刷新后重试");
+            if (productionStep.status === "failed") {
+                const reopened = await updateWorkflowStep(projectId, productionStep.id, { status: "ready" });
+                productionStep = reopened.step;
+            }
             const saved = await saveProjectShot(projectId, {
                 id: submittingShot.id,
                 unitId,
@@ -662,6 +667,7 @@ export default function WorkflowProductionWorkbench(props: Props) {
                         />
                     </header>
                     <div className="workflow-preview-scroll thin-scrollbar">
+                        {shotTask?.status === "failed" || shotTask?.status === "cancelled" ? <Alert className="mb-3" type={shotTask.status === "failed" ? "error" : "warning"} showIcon message={shotTask.status === "failed" ? "上次生成失败" : "上次生成已取消"} description={shotTask.error ? generationErrorMessage(shotTask.error) : "可以检查模型与参考资产后重新提交。"} action={<Button size="small" onClick={() => void generateArtifact()}>重试</Button>} /> : null}
                         {previewTab === "latest" ? <LatestPreview artifact={previewArtifact} emptyText={stageCopy.empty} /> : <ArtifactHistory artifacts={artifacts} activeId={previewArtifact?.id} onSelect={(artifact) => { setPreviewArtifactId(artifact.id); setPreviewTab("latest"); }} />}
                         <div className="workflow-preview-summary"><div className="flex items-center justify-between gap-2"><span className="text-xs font-medium">当前产物</span><ArtifactStatus artifact={newestArtifact} compact /></div><div className="mt-1 text-[var(--fs-micro)] text-foreground/45">{newestArtifact ? `${formatDuration(selectedShot.durationMs)} · ${workflowArtifactSpecificationLabel(activeStage, resolution, imageQuality)} · v${newestArtifact.version}` : "当前镜头还没有生成产物"}</div></div>
                         <div className="workflow-preview-actions"><Button icon={<RefreshCcw className="size-3.5" />} loading={selectedShotSubmitting || shotTask?.status === "queued" || shotTask?.status === "running"} onClick={() => void generateArtifact()}>重新生成</Button><Button icon={<Download className="size-3.5" />} disabled={!previewArtifact?.resourceId} onClick={() => previewArtifact?.resourceId && void downloadArtifact(previewArtifact, selectedShot.title, message.error)}>下载{activeStage === "video" ? "视频" : "图片"}</Button></div>
