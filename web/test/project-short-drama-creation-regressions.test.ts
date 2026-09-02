@@ -13,6 +13,14 @@ describe("短剧创作全链路回归门禁", () => {
         expect(source).toContain("/chapters?import=1");
     });
 
+    test("项目入口将卡片展示和 AI 故事投影与页面编排分离", async () => {
+        const source = await Bun.file(new URL("../src/pages/projects/index.tsx", import.meta.url)).text();
+        expect(source).toContain('from "./project-list-card"');
+        expect(source).toContain('from "./project-story-generation"');
+        expect(source).not.toContain("function ProjectRow(");
+        expect(source).not.toContain("function parseGeneratedStory(");
+    });
+
     test("章节与镜头编辑都持久化草稿并保护路由离开", async () => {
         const chapters = await Bun.file(new URL("../src/pages/projects/detail/chapters.tsx", import.meta.url)).text();
         const workflowDraft = await Bun.file(new URL("../src/pages/projects/detail/use-workflow-shot-draft.ts", import.meta.url)).text();

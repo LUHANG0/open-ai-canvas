@@ -1,23 +1,23 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { App, Button, Form, Input, Select } from "antd";
-import { ArrowRight, BookOpenText, FileText, FolderKanban, Images, LayoutGrid, Palette, Plus, Search, Sparkles, Trash2 } from "lucide-react";
-import { Link, useNavigate, useSearchParams } from "react-router";
+import { BookOpenText, FileText, FolderKanban, Palette, Plus, Search, Sparkles } from "lucide-react";
+import { useNavigate, useSearchParams } from "react-router";
 
 import { CollectionGrid, ListToolbar, PageHeader, WorkspacePage } from "@/components/layout/workspace-page";
 import { WorkspaceErrorState, WorkspaceLoadingState, WorkspaceState } from "@/components/layout/workspace-state";
 import { DialogFrame, SearchField, SectionHeader, StatusBadge, Surface } from "@/components/ui/pc";
-import { CanvasStylePickerModal, resolveCanvasStylePreset, resolveProjectCanvasStyle, type CanvasStylePreset } from "@/components/canvas/canvas-style-picker-modal";
-import { resourceFileUrl } from "@/services/api/resources";
+import { CanvasStylePickerModal, resolveCanvasStylePreset, type CanvasStylePreset } from "@/components/canvas/canvas-style-picker-modal";
 import { ModelPicker } from "@/components/model-picker";
 import { createStyleProfileSnapshot, parseStyleProfile, serializeStyleProfile } from "@/lib/canvas/style-profile";
-import { projectSummaryCompletion, projectSummaryStage } from "@/lib/project-workbench";
+import { projectSummaryCompletion } from "@/lib/project-workbench";
 import { settingsPath } from "@/lib/settings-navigation";
 import { requestImageQuestion } from "@/services/api/image";
-import { createProject, deleteProject, importProjectUnits, listProjects, type ProjectSummary } from "@/services/api/projects";
+import { createProject, deleteProject, importProjectUnits, listProjects } from "@/services/api/projects";
 import { modelDisplayName, useEffectiveConfig } from "@/stores/use-config-store";
 
-import { sourceTypeLabel } from "./detail/shared";
+import { ProjectListCard } from "./project-list-card";
+import { createUniqueProjectName, generationStepDone, generationSteps, parseGeneratedStory } from "./project-story-generation";
 
 import "./projects.css";
 
@@ -424,7 +424,7 @@ export default function ProjectsPage() {
                 {!query.isLoading && !hasInitialError && rows.length ? (
                     <CollectionGrid className="library-grid project-library-grid">
                         {rows.map((row) => (
-                            <ProjectRow key={row.project.id} row={row} onDelete={() => confirmDeleteProject(row.project.id, row.project.name)} />
+                            <ProjectListCard key={row.project.id} row={row} onDelete={() => confirmDeleteProject(row.project.id, row.project.name)} />
                         ))}
                     </CollectionGrid>
                 ) : null}
@@ -642,140 +642,5 @@ export default function ProjectsPage() {
                 </div>
             </DialogFrame>
         </WorkspacePage>
-    );
-}
-
-function parseGeneratedStory(answer: string) {
-    const cleaned = answer
-        .replace(/```json/gi, "")
-        .replace(/```/g, "")
-        .trim();
-    const match = cleaned.match(/\{[\s\S]*\}/);
-    let payload: Record<string, unknown> = {};
-    try {
-        payload = match ? JSON.parse(match[0]) as Record<string, unknown> : {};
-    } catch {
-        throw new Error("AI 返回的章节格式无法解析，请重试或改用手动创建");
-    }
-    const title = String(payload.title || "").trim();
-    const synopsis = String(payload.synopsis || "").trim();
-    const chapters = Array.isArray(payload.chapters)
-        ? payload.chapters
-              .map((chapter: unknown) => {
-                  const item = typeof chapter === "object" && chapter ? (chapter as Record<string, unknown>) : {};
-                  return { title: String(item.title || "").trim(), content: String(item.content || "").trim() };
-              })
-              .filter((chapter: { title: string; content: string }) => chapter.title && chapter.content)
-        : [];
-    return { title: title || storyTitleFromAnswer(answer), synopsis, chapters };
-}
-
-async function createUniqueProjectName(title: string, description: string, selectedStyle: CanvasStylePreset | null) {
-    const base = title.trim().slice(0, 24) || "AI 生成短剧";
-    const buildInput = (name: string) => ({
-        name,
-        type: "short-drama" as const,
-        aspectRatio: "9:16",
-        sourceType: "blank",
-        description: description.trim(),
-        ...(selectedStyle ? { stylePresetId: selectedStyle.id, styleProfileJson: serializeStyleProfile(selectedStyle.profile || createStyleProfileSnapshot(selectedStyle)) } : {}),
-    });
-    let attempt = 0;
-    for (;;) {
-        try {
-            return await createProject(buildInput(attempt === 0 ? base : `${base}（${attempt + 1}）`));
-        } catch (error) {
-            const message = error instanceof Error ? error.message : "";
-            const uniqueConflict = message.includes("UNIQUE") || message.includes("projects.user_id") || message.includes("projects.name");
-            if (!uniqueConflict || attempt >= 5) throw error;
-            attempt += 1;
-        }
-    }
-}
-
-function storyTitleFromAnswer(answer: string) {
-    const line = answer.split(/\r?\n/).find((item) => item.trim());
-    return line ? line.trim().slice(0, 24) : "AI 生成短剧";
-}
-
-const generationSteps = [{ label: "AI 正在生成故事大纲与章节" }, { label: "正在创建项目" }, { label: "正在导入章节" }];
-
-function generationStepDone(label: string, status: string) {
-    if (label === "AI 正在生成故事大纲与章节") return status.startsWith("正在创建项目") || status.startsWith("正在导入");
-    if (label === "正在创建项目") return status.startsWith("正在导入");
-    return false;
-}
-
-function ProjectRow({ row, onDelete }: { row: ProjectSummary; onDelete: () => void }) {
-    const completion = projectSummaryCompletion(row);
-    const stage = projectSummaryStage(row);
-    const projectStyle = resolveProjectCanvasStyle(row.project.stylePresetId, row.project.styleProfileJson);
-    const styleTitle = projectStyle?.title || parseStyleProfile(row.project.styleProfileJson)?.title || resolveCanvasStylePreset(row.project.stylePresetId)?.title || (row.project.stylePresetId ? "自定义画风" : "未设置画风");
-    const coverUrl = row.project.coverResourceId ? resourceFileUrl(row.project.coverResourceId) : projectStyle?.imageUrl;
-    return (
-        <Link to={`/projects/${row.project.id}/overview`} className="library-card project-library-card group">
-            <span className="project-library-cover">
-                {coverUrl ? (
-                    <img className="project-library-cover-art" src={coverUrl} alt="" />
-                ) : (
-                    <span className="project-library-cover-icon">
-                        <FolderKanban className="size-7" />
-                    </span>
-                )}
-                <span className="project-library-cover-scrim" />
-                <span className="project-library-cover-ratio">{row.project.aspectRatio}</span>
-                <span className="project-library-cover-stage">{stage.label}</span>
-                <button
-                    type="button"
-                    className="project-library-cover-delete"
-                    title="删除项目"
-                    aria-label={`删除项目 ${row.project.name}`}
-                    onClick={(event) => {
-                        event.preventDefault();
-                        event.stopPropagation();
-                        onDelete();
-                    }}
-                >
-                    <Trash2 className="size-3.5" />
-                </button>
-            </span>
-            <span className="project-library-body">
-                <span className="project-library-heading">
-                    <strong title={row.project.name}>{row.project.name}</strong>
-                    {row.project.status === "archived" ? <em>已归档</em> : null}
-                    <ArrowRight className="project-library-arrow size-4" />
-                </span>
-                <span className="project-library-subtitle">
-                    {styleTitle} · {sourceTypeLabel(row.project.sourceType)}
-                </span>
-                <span className="project-library-progress">
-                    <span>
-                        <span>
-                            {row.completedUnitCount}/{row.unitCount} 章
-                        </span>
-                        <span>{completion}%</span>
-                    </span>
-                    <i className="pc-project-progress-legacy" aria-hidden="true">
-                        <b style={{ width: `${completion}%` }} />
-                    </i>
-                    <progress className="pc-project-progress-pc" max={100} value={completion} aria-label={`${row.project.name}章节完成度 ${completion}%`} />
-                </span>
-                <span className="project-library-stats">
-                    <ProjectCount icon={<BookOpenText className="size-3.5" />} label="章节" value={row.unitCount} />
-                    <ProjectCount icon={<LayoutGrid className="size-3.5" />} label="画布" value={row.canvasCount} />
-                    <ProjectCount icon={<Images className="size-3.5" />} label="资产" value={row.assetCount} />
-                </span>
-            </span>
-        </Link>
-    );
-}
-
-function ProjectCount({ icon, label, value }: { icon: ReactNode; label: string; value: number }) {
-    return (
-        <span className="inline-flex items-center gap-1.5" title={`${value} ${label}`}>
-            <span className="text-foreground/32">{icon}</span>
-            <strong className="font-medium tabular-nums text-foreground/65">{value}</strong>
-            <span>{label}</span>
-        </span>
     );
 }
