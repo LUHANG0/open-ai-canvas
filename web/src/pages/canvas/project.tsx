@@ -1,5 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { Dispatch, SetStateAction } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useParams, useSearchParams } from "react-router";
 import { useConfigStore, useEffectiveConfig } from "@/stores/use-config-store";
@@ -17,7 +16,6 @@ import { useFocusMode } from "@/hooks/use-focus-mode";
 import { useCanvasAgentStore } from "@/stores/canvas/use-canvas-agent-store";
 import { getContextResourceNodesFromIndex } from "@/lib/canvas/canvas-resource-references";
 import { CanvasOverlayLayerProvider } from "@/components/canvas/canvas-overlay-layer";
-import { stampCanvasNodeChanges } from "@/lib/canvas/canvas-node-timestamps";
 import { selectBatchConnectionSourceNodeIds } from "@/lib/canvas/canvas-batch-connection";
 import { CanvasProjectFeedbackLayer } from "./canvas-project-feedback";
 import { backendProviderConfig } from "@/lib/canvas/canvas-project-generation";
@@ -74,6 +72,7 @@ import { useCanvasNodeContentRenderer } from "./use-canvas-node-content-renderer
 import { useCanvasNodePanelRenderer } from "./use-canvas-node-panel-renderer";
 import { useCanvasNodeReferences } from "./use-canvas-node-references";
 import { useCanvasNodeRetry } from "./use-canvas-node-retry";
+import { useCanvasNodeState } from "./use-canvas-node-state";
 import { useCanvasNodeSharing } from "./use-canvas-node-sharing";
 import { useCanvasTextToImage } from "./use-canvas-text-to-image";
 import { useCanvasLinkedProjectAssetSync, useCanvasLinkedProjectFolderInteractions } from "./use-canvas-linked-project-assets";
@@ -134,21 +133,7 @@ function InfiniteCanvasPage() {
     const defaultDrawingEngine = useUserStore((state) => state.drawingEngine.defaultEngine);
     const shortDramaEnabled = useUserStore((state) => state.features.shortDramaEnabled);
     const directorOnboardingScope = useUserStore((state) => state.user?.id?.trim() || "");
-    const nodesRef = useRef<CanvasNodeData[]>([]);
-    const [nodes, setNodesState] = useState<CanvasNodeData[]>([]);
-    const setNodes = useCallback<Dispatch<SetStateAction<CanvasNodeData[]>>>((value) => {
-        if (typeof value === "function") {
-            setNodesState((current) => {
-                const next = stampCanvasNodeChanges(current, value(current));
-                nodesRef.current = next;
-                return next;
-            });
-            return;
-        }
-        const next = stampCanvasNodeChanges(nodesRef.current, value);
-        nodesRef.current = next;
-        setNodesState(next);
-    }, []);
+    const { nodes, nodesRef, setNodes } = useCanvasNodeState();
     const [connections, setConnections] = useState<CanvasConnection[]>([]);
     const [chatSessions, setChatSessions] = useState<CanvasAssistantSession[]>([]);
     const [activeChatId, setActiveChatId] = useState<string | null>(null);
