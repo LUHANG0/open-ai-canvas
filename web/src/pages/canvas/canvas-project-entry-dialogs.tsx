@@ -1,21 +1,26 @@
-import type { ComponentProps } from "react";
+import { lazy, Suspense, type ComponentProps } from "react";
 
-import { CanvasShareModal } from "@/components/canvas/canvas-share-modal";
-import { CanvasStylePickerModal } from "@/components/canvas/canvas-style-picker-modal";
-import { CanvasDirectorTemplateModal } from "@/components/canvas/director/canvas-director-template-modal";
+import type { CanvasShareModal as CanvasShareModalComponent } from "@/components/canvas/canvas-share-modal";
+import type { CanvasStylePickerModal as CanvasStylePickerModalComponent } from "@/components/canvas/canvas-style-picker-modal";
 import type { DirectorTemplateId } from "@/lib/canvas/director/director-templates";
 import type { Position } from "@/types/canvas";
-import { LibTVImportDialog } from "./components/libtv-import-dialog";
-import { TapNowImportDialog } from "./components/tapnow-import-dialog";
+import type { LibTVImportDialog as LibTVImportDialogComponent } from "./components/libtv-import-dialog";
+import type { TapNowImportDialog as TapNowImportDialogComponent } from "./components/tapnow-import-dialog";
 import { resolveCanvasDirectorTemplateSelection } from "./canvas-project-entry-dialog-routing";
 
-type ShareBeforeCreate = ComponentProps<typeof CanvasShareModal>["beforeCreate"];
-type ImportViewport = ComponentProps<typeof LibTVImportDialog>["viewport"];
-type ImportViewportSize = ComponentProps<typeof LibTVImportDialog>["viewportSize"];
-type LibTVApply = ComponentProps<typeof LibTVImportDialog>["onApply"];
-type TapNowApply = ComponentProps<typeof TapNowImportDialog>["onApply"];
-type StyleValue = ComponentProps<typeof CanvasStylePickerModal>["value"];
-type StyleSelect = ComponentProps<typeof CanvasStylePickerModal>["onSelect"];
+const CanvasShareModal = lazy(() => import("@/components/canvas/canvas-share-modal").then((module) => ({ default: module.CanvasShareModal })));
+const CanvasStylePickerModal = lazy(() => import("@/components/canvas/canvas-style-picker-modal").then((module) => ({ default: module.CanvasStylePickerModal })));
+const CanvasDirectorTemplateModal = lazy(() => import("@/components/canvas/director/canvas-director-template-modal").then((module) => ({ default: module.CanvasDirectorTemplateModal })));
+const LibTVImportDialog = lazy(() => import("./components/libtv-import-dialog").then((module) => ({ default: module.LibTVImportDialog })));
+const TapNowImportDialog = lazy(() => import("./components/tapnow-import-dialog").then((module) => ({ default: module.TapNowImportDialog })));
+
+type ShareBeforeCreate = ComponentProps<typeof CanvasShareModalComponent>["beforeCreate"];
+type ImportViewport = ComponentProps<typeof LibTVImportDialogComponent>["viewport"];
+type ImportViewportSize = ComponentProps<typeof LibTVImportDialogComponent>["viewportSize"];
+type LibTVApply = ComponentProps<typeof LibTVImportDialogComponent>["onApply"];
+type TapNowApply = ComponentProps<typeof TapNowImportDialogComponent>["onApply"];
+type StyleValue = ComponentProps<typeof CanvasStylePickerModalComponent>["value"];
+type StyleSelect = ComponentProps<typeof CanvasStylePickerModalComponent>["onSelect"];
 
 type CanvasProjectEntryDialogsProps = {
     projectId: string;
@@ -64,18 +69,30 @@ export function CanvasProjectEntryDialogs({
 }: CanvasProjectEntryDialogsProps) {
     return (
         <>
-            <CanvasShareModal projectId={projectId} open={shareOpen} onClose={onCloseShare} beforeCreate={beforeCreateShare} />
-            <LibTVImportDialog open={libTVImportOpen} projectId={projectId} viewport={viewport} viewportSize={viewportSize} onClose={onCloseLibTVImport} onApply={onApplyLibTVImport} />
-            <TapNowImportDialog open={tapNowImportOpen} projectId={projectId} viewport={viewport} viewportSize={viewportSize} onClose={onCloseTapNowImport} onApply={onApplyTapNowImport} />
-            <CanvasStylePickerModal open={stylePickerOpen} value={styleValue} applying={styleApplying} onClose={onCloseStylePicker} onSelect={onSelectStyle} />
-            <CanvasDirectorTemplateModal
-                open={Boolean(directorTemplateRequest)}
-                onClose={onCloseDirectorTemplate}
-                onSelect={(templateId) => {
-                    const selection = resolveCanvasDirectorTemplateSelection(directorTemplateRequest, templateId);
-                    onCreateDirectorShot(selection.templateId, selection.position);
-                }}
-            />
+            {shareOpen ? <Suspense fallback={<CanvasEntryDialogLoading label="正在加载分享设置…" />}><CanvasShareModal projectId={projectId} open onClose={onCloseShare} beforeCreate={beforeCreateShare} /></Suspense> : null}
+            {libTVImportOpen ? <Suspense fallback={<CanvasEntryDialogLoading label="正在加载 LibTV 导入…" />}><LibTVImportDialog open projectId={projectId} viewport={viewport} viewportSize={viewportSize} onClose={onCloseLibTVImport} onApply={onApplyLibTVImport} /></Suspense> : null}
+            {tapNowImportOpen ? <Suspense fallback={<CanvasEntryDialogLoading label="正在加载 TapNow 导入…" />}><TapNowImportDialog open projectId={projectId} viewport={viewport} viewportSize={viewportSize} onClose={onCloseTapNowImport} onApply={onApplyTapNowImport} /></Suspense> : null}
+            {stylePickerOpen ? <Suspense fallback={<CanvasEntryDialogLoading label="正在加载画风选择…" />}><CanvasStylePickerModal open value={styleValue} applying={styleApplying} onClose={onCloseStylePicker} onSelect={onSelectStyle} /></Suspense> : null}
+            {directorTemplateRequest ? (
+                <Suspense fallback={<CanvasEntryDialogLoading label="正在加载导演模板…" />}>
+                    <CanvasDirectorTemplateModal
+                        open
+                        onClose={onCloseDirectorTemplate}
+                        onSelect={(templateId) => {
+                            const selection = resolveCanvasDirectorTemplateSelection(directorTemplateRequest, templateId);
+                            onCreateDirectorShot(selection.templateId, selection.position);
+                        }}
+                    />
+                </Suspense>
+            ) : null}
         </>
+    );
+}
+
+function CanvasEntryDialogLoading({ label }: { label: string }) {
+    return (
+        <div className="fixed inset-0 z-[var(--z-toast)] grid place-items-center bg-black/20 px-5 backdrop-blur-sm" role="status" aria-live="polite">
+            <div className="rounded-xl border bg-background px-5 py-3 text-sm font-medium text-foreground shadow-xl">{label}</div>
+        </div>
     );
 }

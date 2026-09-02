@@ -191,6 +191,17 @@ test("canvas upload and compatibility agent load only when needed", async () => 
     expect(utilitySource).toContain("<Suspense fallback={null}><CanvasLocalAgentPanel");
 });
 
+test("canvas entry dialogs load only after their entry opens", async () => {
+    const entrySource = await Bun.file(new URL("../src/pages/canvas/canvas-project-entry-dialogs.tsx", import.meta.url)).text();
+    expect(entrySource).toContain('lazy(() => import("@/components/canvas/canvas-share-modal")');
+    expect(entrySource).toContain('lazy(() => import("@/components/canvas/canvas-style-picker-modal")');
+    expect(entrySource).toContain('lazy(() => import("@/components/canvas/director/canvas-director-template-modal")');
+    expect(entrySource).toContain('lazy(() => import("./components/libtv-import-dialog")');
+    expect(entrySource).toContain('lazy(() => import("./components/tapnow-import-dialog")');
+    expect(entrySource).toContain("shareOpen ? <Suspense");
+    expect(entrySource).toContain("directorTemplateRequest ? (");
+});
+
 test("assistant layout reserves the left dock and low zoom keeps video play reachable", async () => {
     const css = await Bun.file(new URL("../src/pages/canvas/canvas-editor-pc.css", import.meta.url)).text();
     const content = await Bun.file(new URL("../src/components/canvas/canvas-node-content.tsx", import.meta.url)).text();
