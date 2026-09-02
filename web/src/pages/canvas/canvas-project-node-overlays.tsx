@@ -1,0 +1,99 @@
+import type { ComponentProps, ReactNode, RefObject } from "react";
+
+import { CanvasEmotionWorkspace } from "@/components/canvas/canvas-emotion-workspace";
+import { CanvasNodeAnglePanel } from "@/components/canvas/canvas-node-angle-dialog";
+import { CanvasConnectionCreateMenu, CanvasNodePanelOverlay, type PendingConnectionCreate } from "@/components/canvas/canvas-workspace-overlays";
+import type { CanvasNodeData, ViewportTransform } from "@/types/canvas";
+import { canRenderCanvasInlineNodePanel, resolveCanvasNodeOverlayDrag, type CanvasOverlayDragPreview } from "./canvas-node-overlay-state";
+
+type AngleParams = Parameters<ComponentProps<typeof CanvasNodeAnglePanel>["onConfirm"]>[0];
+type EmotionPayload = Parameters<ComponentProps<typeof CanvasEmotionWorkspace>["onConfirm"]>[0];
+type ConnectionNodeType = Parameters<ComponentProps<typeof CanvasConnectionCreateMenu>["onCreate"]>[0];
+
+type CanvasProjectNodeOverlaysProps = {
+    angleNode: CanvasNodeData | null;
+    emotionNode: CanvasNodeData | null;
+    dialogNode: CanvasNodeData | null;
+    viewport: ViewportTransform;
+    viewportSize: { width: number; height: number };
+    containerRef: RefObject<HTMLDivElement | null>;
+    dragPreview: CanvasOverlayDragPreview;
+    isNodeDragging: boolean;
+    selectionActive: boolean;
+    renderNodePanel: (node: CanvasNodeData) => ReactNode;
+    onCloseAngle: () => void;
+    onGenerateAngle: (node: CanvasNodeData, params: AngleParams) => unknown;
+    onCloseEmotion: () => void;
+    onGenerateEmotion: (node: CanvasNodeData, payload: EmotionPayload) => unknown;
+    pendingConnectionCreate: PendingConnectionCreate | null;
+    canCreateDrawingFromConnection: boolean;
+    getConnectionCreateDisabledReason: (type: ConnectionNodeType, pending: PendingConnectionCreate) => string;
+    onCreateConnectedNode: (type: ConnectionNodeType, pending: PendingConnectionCreate) => unknown;
+    onCloseConnectionCreate: () => void;
+};
+
+export function CanvasProjectNodeOverlays({
+    angleNode,
+    emotionNode,
+    dialogNode,
+    viewport,
+    viewportSize,
+    containerRef,
+    dragPreview,
+    isNodeDragging,
+    selectionActive,
+    renderNodePanel,
+    onCloseAngle,
+    onGenerateAngle,
+    onCloseEmotion,
+    onGenerateEmotion,
+    pendingConnectionCreate,
+    canCreateDrawingFromConnection,
+    getConnectionCreateDisabledReason,
+    onCreateConnectedNode,
+    onCloseConnectionCreate,
+}: CanvasProjectNodeOverlaysProps) {
+    const angleDrag = angleNode ? resolveCanvasNodeOverlayDrag(angleNode.id, dragPreview, isNodeDragging) : null;
+    const emotionDrag = emotionNode ? resolveCanvasNodeOverlayDrag(emotionNode.id, dragPreview, isNodeDragging) : null;
+    const dialogDrag = dialogNode ? resolveCanvasNodeOverlayDrag(dialogNode.id, dragPreview, isNodeDragging) : null;
+    return (
+        <>
+            {angleNode?.metadata?.content ? (
+                <CanvasNodePanelOverlay node={angleNode} viewport={viewport} containerRef={containerRef} panelWidth={580} panelHeight={350} dragOffset={angleDrag?.dragOffset} isDragging={angleDrag?.isDragging}>
+                    <CanvasNodeAnglePanel dataUrl={angleNode.metadata.content} onClose={onCloseAngle} onConfirm={(params) => void onGenerateAngle(angleNode, params)} />
+                </CanvasNodePanelOverlay>
+            ) : null}
+
+            {emotionNode?.metadata?.content ? (
+                <CanvasEmotionWorkspace
+                    node={emotionNode}
+                    viewport={viewport}
+                    containerRef={containerRef}
+                    dragOffset={emotionDrag?.dragOffset}
+                    isDragging={emotionDrag?.isDragging}
+                    onClose={onCloseEmotion}
+                    onConfirm={(payload) => void onGenerateEmotion(emotionNode, payload)}
+                />
+            ) : null}
+
+            {canRenderCanvasInlineNodePanel(dialogNode, selectionActive) && dialogNode ? (
+                <CanvasNodePanelOverlay node={dialogNode} viewport={viewport} containerRef={containerRef} dragOffset={dialogDrag?.dragOffset} isDragging={dialogDrag?.isDragging}>
+                    {renderNodePanel(dialogNode)}
+                </CanvasNodePanelOverlay>
+            ) : null}
+
+            {pendingConnectionCreate ? (
+                <CanvasConnectionCreateMenu
+                    pending={pendingConnectionCreate}
+                    viewport={viewport}
+                    viewportSize={viewportSize}
+                    containerRef={containerRef}
+                    canCreateDrawing={canCreateDrawingFromConnection}
+                    getDisabledReason={(type) => getConnectionCreateDisabledReason(type, pendingConnectionCreate)}
+                    onCreate={(type) => void onCreateConnectedNode(type, pendingConnectionCreate)}
+                    onClose={onCloseConnectionCreate}
+                />
+            ) : null}
+        </>
+    );
+}

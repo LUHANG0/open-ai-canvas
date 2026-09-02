@@ -22,7 +22,6 @@ import { CanvasProjectSidebar } from "@/components/canvas/canvas-project-sidebar
 import { resolveProjectCanvasStyle } from "@/components/canvas/canvas-style-picker-modal";
 import { createStyleProfileSnapshot, resolveStyleProfile, serializeStyleProfile } from "@/lib/canvas/style-profile";
 import { CanvasNodeInfoModal, CanvasNodeToolbar } from "@/components/canvas/canvas-node-toolbar";
-import { CanvasNodeAnglePanel } from "@/components/canvas/canvas-node-angle-dialog";
 import { CanvasFileDropOverlay } from "@/components/canvas/canvas-file-drop-overlay";
 import { CanvasUploadModal } from "@/components/canvas/canvas-upload-modal";
 import { InfiniteCanvas } from "@/components/canvas/infinite-canvas";
@@ -35,7 +34,6 @@ import { CanvasLocalAgentPanel } from "@/components/canvas/canvas-local-agent-pa
 import { useFocusMode } from "@/hooks/use-focus-mode";
 import { useCanvasAgentStore } from "@/stores/canvas/use-canvas-agent-store";
 import { getContextResourceNodesFromIndex } from "@/lib/canvas/canvas-resource-references";
-import { CanvasConnectionCreateMenu, CanvasNodePanelOverlay } from "@/components/canvas/canvas-workspace-overlays";
 import { CanvasOverlayLayerContainer, CanvasOverlayLayerProvider } from "@/components/canvas/canvas-overlay-layer";
 import { CanvasLeaferGraphicsLayer } from "@/components/canvas/canvas-leafer-graphics-layer";
 import { CanvasFreeformEmptyState, CanvasLinkedProjectEmptyState, CanvasShortDramaEmptyState, CanvasShortDramaGuide } from "@/components/canvas/canvas-short-drama-entry";
@@ -52,6 +50,7 @@ import { CanvasProjectDirectorWorkbench } from "./canvas-project-director-workbe
 import { CanvasProjectEntryDialogs } from "./canvas-project-entry-dialogs";
 import { CanvasProjectAssetDialogs, CanvasProjectVersionCompareDialog } from "./canvas-project-library-dialogs";
 import { CanvasProjectNodeEditorDialogs } from "./canvas-project-node-editor-dialogs";
+import { CanvasProjectNodeOverlays } from "./canvas-project-node-overlays";
 import { CanvasProjectNodeSearch } from "./canvas-project-node-search";
 import { CanvasProjectScriptEditor } from "./canvas-project-script-editor";
 import { CanvasProjectTimelineDialogs } from "./canvas-project-timeline-dialogs";
@@ -61,8 +60,6 @@ import { CanvasProjectWorldLayers } from "./canvas-project-world-layers";
 import { CanvasNodeActionContext } from "@/components/canvas/canvas-node-action-context";
 import { CanvasNodeGraphContext, type CanvasNodeGraphContextValue } from "@/components/canvas/canvas-node-graph-context";
 import { CanvasRefreshShell } from "./canvas-refresh-shell";
-import type { CanvasImageEmotionPayload } from "@/components/canvas/canvas-node-emotion-panel";
-import { CanvasEmotionWorkspace } from "@/components/canvas/canvas-emotion-workspace";
 import { useCanvasConnectionController } from "./use-canvas-connection-controller";
 import { useCanvasContextInteractions } from "./use-canvas-context-interactions";
 import { useCanvasAgentOperations } from "./use-canvas-agent-operations";
@@ -1541,64 +1538,27 @@ function InfiniteCanvasPage() {
                             ) : null}
                         </div>
 
-                        {angleNode?.metadata?.content ? (
-                            <CanvasNodePanelOverlay
-                                node={angleNode}
-                                viewport={viewport}
-                                containerRef={containerRef}
-                                panelWidth={580}
-                                panelHeight={350}
-                                dragOffset={dragPreview?.nodeIds.has(angleNode.id) ? { x: dragPreview.x, y: dragPreview.y } : null}
-                                isDragging={isNodeDragging && Boolean(dragPreview?.nodeIds.has(angleNode.id))}
-                            >
-                                <CanvasNodeAnglePanel
-                                    dataUrl={angleNode.metadata.content}
-                                    onClose={() => setAngleNodeId(null)}
-                                    onConfirm={(params) => {
-                                        void generateAngleNode(angleNode, params);
-                                    }}
-                                />
-                            </CanvasNodePanelOverlay>
-                        ) : null}
-
-                        {emotionNode?.metadata?.content ? (
-                            <CanvasEmotionWorkspace
-                                node={emotionNode}
-                                viewport={viewport}
-                                containerRef={containerRef}
-                                dragOffset={dragPreview?.nodeIds.has(emotionNode.id) ? { x: dragPreview.x, y: dragPreview.y } : null}
-                                isDragging={isNodeDragging && Boolean(dragPreview?.nodeIds.has(emotionNode.id))}
-                                onClose={() => setEmotionNodeId(null)}
-                                onConfirm={(payload: CanvasImageEmotionPayload) => {
-                                    void generateEmotionNode(emotionNode, payload);
-                                }}
-                            />
-                        ) : null}
-
-                        {dialogNode && dialogNode.type !== CanvasNodeType.Script && dialogNode.type !== CanvasNodeType.Drawing && !selectionBox ? (
-                            <CanvasNodePanelOverlay
-                                node={dialogNode}
-                                viewport={viewport}
-                                containerRef={containerRef}
-                                dragOffset={dragPreview?.nodeIds.has(dialogNode.id) ? { x: dragPreview.x, y: dragPreview.y } : null}
-                                isDragging={isNodeDragging && Boolean(dragPreview?.nodeIds.has(dialogNode.id))}
-                            >
-                                {renderCanvasNodePanel(dialogNode)}
-                            </CanvasNodePanelOverlay>
-                        ) : null}
-
-                        {pendingConnectionCreate ? (
-                            <CanvasConnectionCreateMenu
-                                pending={pendingConnectionCreate}
-                                viewport={viewport}
-                                viewportSize={size}
-                                containerRef={containerRef}
-                                canCreateDrawing={canCreateDrawingFromConnection}
-                                getDisabledReason={(type) => getConnectionCreateDisabledReason(type, pendingConnectionCreate)}
-                                onCreate={(type) => void createConnectedNode(type, pendingConnectionCreate)}
-                                onClose={cancelPendingConnectionCreate}
-                            />
-                        ) : null}
+                        <CanvasProjectNodeOverlays
+                            angleNode={angleNode}
+                            emotionNode={emotionNode}
+                            dialogNode={dialogNode}
+                            viewport={viewport}
+                            viewportSize={size}
+                            containerRef={containerRef}
+                            dragPreview={dragPreview}
+                            isNodeDragging={isNodeDragging}
+                            selectionActive={Boolean(selectionBox)}
+                            renderNodePanel={renderCanvasNodePanel}
+                            onCloseAngle={() => setAngleNodeId(null)}
+                            onGenerateAngle={generateAngleNode}
+                            onCloseEmotion={() => setEmotionNodeId(null)}
+                            onGenerateEmotion={generateEmotionNode}
+                            pendingConnectionCreate={pendingConnectionCreate}
+                            canCreateDrawingFromConnection={canCreateDrawingFromConnection}
+                            getConnectionCreateDisabledReason={getConnectionCreateDisabledReason}
+                            onCreateConnectedNode={createConnectedNode}
+                            onCloseConnectionCreate={cancelPendingConnectionCreate}
+                        />
 
                         {selectedNodeBounds && !selectionBox && !isNodeDragging ? (
                             <CanvasProjectSelectionToolbar
