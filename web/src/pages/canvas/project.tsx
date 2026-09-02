@@ -1,5 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import type { Dispatch, MouseEvent as ReactMouseEvent, SetStateAction } from "react";
+import type { Dispatch, SetStateAction } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useParams, useSearchParams } from "react-router";
 import { useConfigStore, useEffectiveConfig } from "@/stores/use-config-store";
@@ -94,6 +94,7 @@ import { queryGenerationTask } from "@/services/api/task-center";
 import type { CanvasImageEmotionPayload } from "@/components/canvas/canvas-node-emotion-panel";
 import { CanvasEmotionWorkspace } from "@/components/canvas/canvas-emotion-workspace";
 import { useCanvasConnectionController } from "./use-canvas-connection-controller";
+import { useCanvasContextInteractions } from "./use-canvas-context-interactions";
 import { useCanvasAgentOperations } from "./use-canvas-agent-operations";
 import { useCanvasAssistantVisibility } from "./use-canvas-assistant-visibility";
 import { useCanvasActiveTasks } from "./use-canvas-active-tasks";
@@ -1427,53 +1428,18 @@ function InfiniteCanvasPage() {
         setTitleEditing(false);
     }, [renameCurrentProject, titleDraft]);
 
-    const pasteAtPosition = useCallback(
-        (position: Position) => {
-            if (shouldPreferCopiedNodes() && pasteCopiedNodes(position)) return;
-            void (async () => {
-                try {
-                    // 标记写入成功时仍优先系统图片，兼容截图和从外部应用复制的媒体。
-                    const handled = await pasteSystemClipboard(position);
-                    if (!handled) pasteCopiedNodes(position);
-                } catch {
-                    if (!pasteCopiedNodes(position)) message.warning("无法读取剪贴板内容");
-                }
-            })();
-        },
-        [message, pasteCopiedNodes, pasteSystemClipboard, shouldPreferCopiedNodes],
-    );
-
-    const handleCanvasContextMenu = useCallback(
-        (event: ReactMouseEvent) => {
-            const target = event.target instanceof Element ? event.target : null;
-            if (target?.closest("[data-node-id],[data-connection-id]")) return;
-
-            event.preventDefault();
-            event.stopPropagation();
-            if (target?.closest("[data-canvas-no-zoom],.ant-modal,.ant-popover,.ant-dropdown")) {
-                setContextMenu(null);
-                return;
-            }
-
-            closeConnectionCreateMenu();
-            setContextMenu({ type: "canvas", x: event.clientX, y: event.clientY, position: screenToCanvas(event.clientX, event.clientY) });
-        },
-        [closeConnectionCreateMenu, screenToCanvas],
-    );
-
-    const handleNodeContextMenu = useCallback(
-        (event: ReactMouseEvent, id: string) => {
-            event.preventDefault();
-            event.stopPropagation();
-            setSelectedNodeIds(new Set([id]));
-            setSelectedConnectionId(null);
-            closeConnectionCreateMenu();
-            setToolbarNodeId(null);
-            setDialogNodeId(null);
-            setContextMenu({ type: "node", x: event.clientX, y: event.clientY, nodeId: id });
-        },
-        [closeConnectionCreateMenu],
-    );
+    const { handleCanvasContextMenu, handleConnectionContextMenu, handleConnectionSelect, handleNodeContextMenu, pasteAtPosition } = useCanvasContextInteractions({
+        closeConnectionCreateMenu,
+        pasteCopiedNodes,
+        pasteSystemClipboard,
+        screenToCanvas,
+        setContextMenu,
+        setDialogNodeId,
+        setSelectedConnectionId,
+        setSelectedNodeIds,
+        setToolbarNodeId,
+        shouldPreferCopiedNodes,
+    });
 
     const handleGenerateNode = useCanvasGenerationExecutor({
         projectId,
@@ -1833,20 +1799,6 @@ function InfiniteCanvasPage() {
     const canvasNodeActions = useMemo<CanvasNodeActionContextValue>(
         () => ({ download: downloadNodeImage, duplicate: duplicateCanvasNodeFromContext, deleteNode: deleteCanvasNodeFromContext, updateMetadata: updateCanvasNodeMetadata, resizeNode: resizeCanvasNodeFromContent, openPortraitClearance, selectVideoForPlayback }),
         [deleteCanvasNodeFromContext, downloadNodeImage, duplicateCanvasNodeFromContext, openPortraitClearance, resizeCanvasNodeFromContent, selectVideoForPlayback, updateCanvasNodeMetadata],
-    );
-    const handleConnectionSelect = useCallback((connectionId: string) => {
-        setSelectedConnectionId(connectionId);
-        setSelectedNodeIds(new Set());
-        setContextMenu(null);
-    }, []);
-    const handleConnectionContextMenu = useCallback(
-        (event: ReactMouseEvent<SVGPathElement>, connectionId: string) => {
-            setSelectedConnectionId(connectionId);
-            setSelectedNodeIds(new Set());
-            closeConnectionCreateMenu();
-            setContextMenu({ type: "connection", x: event.clientX, y: event.clientY, connectionId });
-        },
-        [closeConnectionCreateMenu],
     );
     const locateProjectStyleNode = useCallback(() => {
         const styleNode = nodesRef.current.find((node) => node.type === CanvasNodeType.Text && node.metadata?.workflowKind === "styleboard");
