@@ -1,4 +1,5 @@
 import { CanvasFreeformEmptyState, CanvasLinkedProjectEmptyState, CanvasShortDramaEmptyState } from "@/components/canvas/canvas-short-drama-entry";
+import { CanvasNodeType } from "@/types/canvas";
 import { firstCanvasProjectChapter, resolveCanvasEmptyStateKind, type CanvasEmptyStateChapter } from "./canvas-empty-state-routing";
 
 type ProjectChapterInsert = CanvasEmptyStateChapter & { projectId: string };
@@ -18,6 +19,30 @@ type CanvasProjectEmptyStateOptions = {
     onOpenAssets: () => void;
     onInsertProjectChapter: (chapter: ProjectChapterInsert) => void | Promise<void>;
 };
+
+export function activateCanvasEmptyStateAgent(setCinematicAgentEntry: (active: boolean) => void, setAgentMode: (mode: "online") => void, openAgent: (mode: "online") => void) {
+    setCinematicAgentEntry(true);
+    setAgentMode("online");
+    openAgent("online");
+}
+
+type CanvasProjectEmptyStateEntryOptions = Omit<CanvasProjectEmptyStateOptions, "onUpload" | "onAddText" | "onAddScript" | "onOpenAgent"> & {
+    onUploadRequest: () => void;
+    onCreateNode: (type: CanvasNodeType) => void;
+    setCinematicAgentEntry: (active: boolean) => void;
+    setAgentMode: (mode: "online") => void;
+    openAgent: (mode: "online") => void;
+};
+
+export function renderCanvasProjectEmptyStateEntry({ onUploadRequest, onCreateNode, setCinematicAgentEntry, setAgentMode, openAgent, ...options }: CanvasProjectEmptyStateEntryOptions) {
+    return renderCanvasProjectEmptyState({
+        ...options,
+        onUpload: onUploadRequest,
+        onAddText: () => onCreateNode(CanvasNodeType.Text),
+        onAddScript: () => onCreateNode(CanvasNodeType.Script),
+        onOpenAgent: () => activateCanvasEmptyStateAgent(setCinematicAgentEntry, setAgentMode, openAgent),
+    });
+}
 
 export function renderCanvasProjectEmptyState({
     nodeCount,

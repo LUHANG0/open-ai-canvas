@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 
 import { firstCanvasProjectChapter, resolveCanvasEmptyStateKind } from "../src/pages/canvas/canvas-empty-state-routing";
+import { activateCanvasEmptyStateAgent } from "../src/pages/canvas/canvas-project-empty-state";
 
 describe("画布空状态分流", () => {
     test("根据节点、短剧开关和项目关联选择起点", () => {
@@ -18,5 +19,15 @@ describe("画布空状态分流", () => {
         expect(firstCanvasProjectChapter(chapters)?.id).toBe("chapter-1");
         expect(chapters.map((chapter) => chapter.id)).toEqual(["chapter-2", "chapter-1"]);
         expect(firstCanvasProjectChapter()).toBeNull();
+    });
+
+    test("短剧空状态按入口标记、在线模式、展开 Agent 的顺序启动", () => {
+        const calls: string[] = [];
+        activateCanvasEmptyStateAgent(
+            (active) => calls.push(`cinematic:${active}`),
+            (mode) => calls.push(`mode:${mode}`),
+            (mode) => calls.push(`open:${mode}`),
+        );
+        expect(calls).toEqual(["cinematic:true", "mode:online", "open:online"]);
     });
 });

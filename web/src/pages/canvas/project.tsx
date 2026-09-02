@@ -29,7 +29,7 @@ import { CanvasProjectBottomDock } from "./canvas-project-bottom-dock";
 import { CanvasProjectMainToolbar } from "./canvas-project-main-toolbar";
 import { CanvasProjectDirectorWorkbench } from "./canvas-project-director-workbench";
 import { CanvasProjectEntryDialogs } from "./canvas-project-entry-dialogs";
-import { renderCanvasProjectEmptyState } from "./canvas-project-empty-state";
+import { renderCanvasProjectEmptyStateEntry } from "./canvas-project-empty-state";
 import { CanvasProjectAssetDialogs, CanvasProjectVersionCompareDialog } from "./canvas-project-library-dialogs";
 import { CanvasProjectAssistantColumn, loadCanvasAssistantPanel } from "./canvas-project-assistant-column";
 import { CanvasProjectNodeEditorDialogs } from "./canvas-project-node-editor-dialogs";
@@ -1058,22 +1058,19 @@ function InfiniteCanvasPage() {
         openPortraitClearance,
         selectVideoForPlayback,
     });
-    const emptyCanvasState = renderCanvasProjectEmptyState({
+    const emptyCanvasState = renderCanvasProjectEmptyStateEntry({
         nodeCount: nodes.length,
         shortDramaEnabled,
         linkedProjectId: currentProject?.projectId,
         projectTitle: currentProject?.title || "未命名画布",
         linkedProjectName: linkedProjectQuery.data?.project.name,
         chapters: linkedProjectQuery.data?.units,
-        onUpload: () => handleUploadRequest(),
-        onAddText: () => createNode(CanvasNodeType.Text),
-        onAddScript: () => createNode(CanvasNodeType.Script),
+        onUploadRequest: handleUploadRequest,
+        onCreateNode: createNode,
         onCreatePipeline: createShortDramaPipeline,
-        onOpenAgent: () => {
-            setCinematicAgentEntry(true);
-            setAgentMode("online");
-            openAgent("online");
-        },
+        setCinematicAgentEntry,
+        setAgentMode,
+        openAgent,
         onOpenAssets: openProjectAssets,
         onInsertProjectChapter: handleProjectChapterInsert,
     });
