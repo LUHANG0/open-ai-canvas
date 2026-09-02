@@ -20,18 +20,16 @@ import { CanvasActiveTaskPanel } from "@/components/canvas/canvas-active-task-pa
 import { CanvasAssetTray } from "@/components/canvas/canvas-asset-tray";
 import { CanvasProjectSidebar } from "@/components/canvas/canvas-project-sidebar";
 import { CanvasProjectAssetModal } from "@/components/canvas/canvas-project-asset-modal";
-import { CanvasCharacterReferenceModal } from "@/components/canvas/canvas-character-reference-modal";
 import { WorkspaceState } from "@/components/layout/workspace-state";
 import { resolveProjectCanvasStyle } from "@/components/canvas/canvas-style-picker-modal";
 import { createStyleProfileSnapshot, resolveStyleProfile, serializeStyleProfile } from "@/lib/canvas/style-profile";
-import { CanvasNodeToolbar, CanvasNodeInfoModal } from "@/components/canvas/canvas-node-toolbar";
+import { CanvasNodeInfoModal, CanvasNodeToolbar } from "@/components/canvas/canvas-node-toolbar";
 import { CanvasSubtitleDialog } from "@/components/canvas/canvas-subtitle-dialog";
 import { CanvasVideoFrameDialog } from "@/components/canvas/canvas-video-frame-dialog";
 import { CanvasVideoSegmentDialog } from "@/components/canvas/canvas-video-segment-dialog";
 import { CanvasTimelineDialog } from "@/components/canvas/canvas-timeline-dialog";
 import { syncNodeSubtitlesToTimeline } from "@/lib/timeline/timeline-build";
 import { CanvasNodeAnglePanel } from "@/components/canvas/canvas-node-angle-dialog";
-import { CanvasTextEditorModal } from "@/components/canvas/canvas-text-editor-modal";
 import { CanvasNodeSearchModal } from "@/components/canvas/canvas-node-search-modal";
 import { CanvasStylePickerModal } from "@/components/canvas/canvas-style-picker-modal";
 import { CanvasDirectorTemplateModal } from "@/components/canvas/director/canvas-director-template-modal";
@@ -66,11 +64,11 @@ import { TapNowImportDialog } from "./components/tapnow-import-dialog";
 import { CanvasFocusModeBar } from "@/components/canvas/canvas-focus-mode-bar";
 import { CanvasProjectContextMenu } from "./canvas-project-context-menu";
 import { CanvasProjectMediaDialogs } from "./canvas-project-media-dialogs";
+import { CanvasProjectNodeEditorDialogs } from "./canvas-project-node-editor-dialogs";
 import { CanvasProjectSelectionToolbar } from "./canvas-project-selection-toolbar";
 import { CanvasProjectStatusDialogs } from "./canvas-project-status-dialogs";
 import { CanvasProjectWorldLayers } from "./canvas-project-world-layers";
 import { CanvasNodeActionContext } from "@/components/canvas/canvas-node-action-context";
-import { PortraitClearanceModal } from "@/components/canvas/portrait-clearance/portrait-clearance-modal";
 import { CanvasNodeGraphContext, type CanvasNodeGraphContextValue } from "@/components/canvas/canvas-node-graph-context";
 import { CanvasRefreshShell } from "./canvas-refresh-shell";
 import type { CanvasImageEmotionPayload } from "@/components/canvas/canvas-node-emotion-panel";
@@ -131,7 +129,6 @@ import type { ReferenceImage } from "@/types/image";
 const loadCanvasAssistantPanel = () => import("@/components/canvas/canvas-assistant-panel").then((module) => ({ default: module.CanvasAssistantPanel }));
 const CanvasAssistantPanel = lazy(loadCanvasAssistantPanel);
 const CanvasDirectorWorkbench = lazy(() => import("@/components/canvas/director/canvas-director-workbench").then((module) => ({ default: module.CanvasDirectorWorkbench })));
-const CanvasDrawingEditorModal = lazy(() => import("@/components/canvas/canvas-drawing-editor-modal").then((module) => ({ default: module.CanvasDrawingEditorModal })));
 
 const NODE_STATUS_SUCCESS = "success" as const;
 export default function CanvasPage() {
@@ -1832,62 +1829,21 @@ function InfiniteCanvasPage() {
                             />
                         ) : null}
 
-                        <CanvasCharacterReferenceModal node={characterReferenceNode} open={Boolean(characterReferenceNode)} onClose={() => setCharacterReferenceNodeId(null)} />
-
-                        <CanvasTextEditorModal
-                            node={textEditorNode}
-                            open={Boolean(textEditorNode)}
-                            onClose={() => setTextEditorNodeId(null)}
-                            onSave={(nodeId, title, content, richText) => {
-                                setNodes((current) => current.map((node) => (node.id === nodeId ? { ...node, title, metadata: { ...node.metadata, content, richText } } : node)));
-                            }}
-                        />
-
-                        {drawingNode ? (
-                            <Suspense
-                                fallback={
-                                    <div className="fixed inset-0 z-[var(--z-toast)] grid place-items-center px-5" style={{ background: theme.canvas.background, color: theme.node.text }}>
-                                        <WorkspaceState icon="loading" title="正在加载绘图编辑器" description="正在准备绘图画布。" />
-                                    </div>
-                                }
-                            >
-                                <CanvasDrawingEditorModal
-                                    node={drawingNode}
-                                    projectId={projectId}
-                                    open={Boolean(drawingNode)}
-                                    onClose={() => setDrawingNodeId(null)}
-                                    onSaved={(nodeId, summary) => {
-                                        setNodes((current) =>
-                                            current.map((node) =>
-                                                node.id === nodeId
-                                                    ? {
-                                                          ...node,
-                                                          metadata: {
-                                                              ...node.metadata,
-                                                              drawingEngine: summary.engine,
-                                                              drawingRevision: summary.revision,
-                                                              drawingUpdatedAt: summary.updatedAt,
-                                                              drawingShapeCount: summary.shapeCount,
-                                                              drawingPageCount: summary.pageCount,
-                                                          },
-                                                      }
-                                                    : node,
-                                            ),
-                                        );
-                                        message.success("绘图已保存");
-                                    }}
-                                />
-                            </Suspense>
-                        ) : null}
-
-                        <PortraitClearanceModal
+                        <CanvasProjectNodeEditorDialogs
                             projectId={projectId}
-                            node={portraitClearanceNode}
-                            upstreamNodes={portraitClearanceInputs}
-                            open={Boolean(portraitClearanceNode)}
-                            onClose={() => setPortraitClearanceNodeId(null)}
-                            onUpdateState={handlePortraitClearanceStateUpdate}
-                            onAddCandidate={addPortraitCandidateToCanvas}
+                            theme={theme}
+                            characterReferenceNode={characterReferenceNode}
+                            textEditorNode={textEditorNode}
+                            drawingNode={drawingNode}
+                            portraitClearanceNode={portraitClearanceNode}
+                            portraitClearanceInputs={portraitClearanceInputs}
+                            setNodes={setNodes}
+                            onCloseCharacterReference={() => setCharacterReferenceNodeId(null)}
+                            onCloseTextEditor={() => setTextEditorNodeId(null)}
+                            onCloseDrawing={() => setDrawingNodeId(null)}
+                            onClosePortraitClearance={() => setPortraitClearanceNodeId(null)}
+                            onUpdatePortraitClearance={handlePortraitClearanceStateUpdate}
+                            onAddPortraitCandidate={addPortraitCandidateToCanvas}
                         />
 
                         <CanvasScriptEditor
