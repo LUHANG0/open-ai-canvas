@@ -559,7 +559,7 @@ function InfiniteCanvasPage() {
     });
 
     const batchSourceNodeIds = useMemo(() => selectBatchConnectionSourceNodeIds(nodes, selectedNodeIds), [nodes, selectedNodeIds]);
-    const { handleCanvasDeselect, handleCanvasSelectionStart, handleNodeInteractionStart, handleSelectedNodeClick, openDrawingNode, openPortraitClearance, openTextNodeEditor, selectVideoForPlayback } = useCanvasNodeFocus({
+    const { handleCanvasBlankClick, handleCanvasDeselect, handleCanvasSelectionStart, handleNodeInteractionStart, handleSelectedNodeClick, openDrawingNode, openPortraitClearance, openTextNodeEditor, selectVideoForPlayback } = useCanvasNodeFocus({
         nodesRef,
         selectedNodeIdsRef,
         dialogNodeId,
@@ -573,6 +573,7 @@ function InfiniteCanvasPage() {
         setCharacterReferenceNodeId,
         setDrawingNodeId,
         setPortraitClearanceNodeId,
+        closeAgent,
     });
 
     const { alignmentGuides, cancelSelectionBox, deselectCanvas, dragPreview, frameDropTargetId, handleCanvasMouseDown, handleNodeMouseDown, isNodeDragging, nodeDraggingRef, selectionBoundsElementRef, selectionBox } = useCanvasSelectionController({
@@ -594,11 +595,6 @@ function InfiniteCanvasPage() {
         onDeselect: handleCanvasDeselect,
         onSelectionBoxEnd: () => setCanvasTool((tool) => (tool === "box-select" ? "move" : tool)),
     });
-
-    const handleCanvasBlankClick = useCallback(() => {
-        deselectCanvas();
-        closeAgent();
-    }, [closeAgent, deselectCanvas]);
 
     const { handleCanvasNodeHoverEnd, handleCanvasNodeHoverStart, handleNodeImageSettingsOpenChange, hideNodeToolbar, keepNodeToolbar, nodeImageSettingsOpen, resetNodeHoverToolbar } = useCanvasNodeHoverToolbar({
         dialogNodeId,

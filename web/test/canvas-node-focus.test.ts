@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { PORTRAIT_CLEARANCE_NODE_TYPE } from "../src/lib/portrait-clearance/contracts";
-import { resolveCanvasNodeClickTarget } from "../src/pages/canvas/use-canvas-node-focus";
+import { applyCanvasBlankClick, resolveCanvasNodeClickTarget } from "../src/pages/canvas/use-canvas-node-focus";
 import { CanvasNodeType, type CanvasNodeData, type CanvasNodeTypeId } from "../src/types/canvas";
 
 function node(id: string, type: CanvasNodeTypeId): CanvasNodeData {
@@ -23,5 +23,11 @@ describe("画布节点聚焦规则", () => {
         const video = node("video", CanvasNodeType.Video);
         expect(resolveCanvasNodeClickTarget(video, "config", CanvasNodeType.Config).dialogNodeId).toBe("config");
         expect(resolveCanvasNodeClickTarget(video, "image", CanvasNodeType.Image).dialogNodeId).toBe("video");
+    });
+
+    test("点击真正的画布空白先取消选择，再收起 Agent", () => {
+        const calls: string[] = [];
+        applyCanvasBlankClick(() => calls.push("deselect"), () => calls.push("close-agent"));
+        expect(calls).toEqual(["deselect", "close-agent"]);
     });
 });
