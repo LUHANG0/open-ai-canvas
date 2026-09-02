@@ -152,6 +152,17 @@ test("heavy canvas media dialogs load only when their tool opens", async () => {
     expect(dialogsSource).toContain("<Suspense fallback={<CanvasMediaDialogLoading />}>");
 });
 
+test("canvas node editors load only after an editor target is selected", async () => {
+    const editorsSource = await Bun.file(new URL("../src/pages/canvas/canvas-project-node-editor-dialogs.tsx", import.meta.url)).text();
+    expect(editorsSource).toContain('lazy(() => import("@/components/canvas/canvas-character-reference-modal")');
+    expect(editorsSource).toContain('lazy(() => import("@/components/canvas/canvas-text-editor-modal")');
+    expect(editorsSource).toContain('lazy(() => import("@/components/canvas/portrait-clearance/portrait-clearance-modal")');
+    expect(editorsSource).toContain("characterReferenceNode ? (");
+    expect(editorsSource).toContain("textEditorNode ? (");
+    expect(editorsSource).toContain("portraitClearanceNode ? (");
+    expect(editorsSource).toContain("<CanvasNodeEditorLoading");
+});
+
 test("assistant layout reserves the left dock and low zoom keeps video play reachable", async () => {
     const css = await Bun.file(new URL("../src/pages/canvas/canvas-editor-pc.css", import.meta.url)).text();
     const content = await Bun.file(new URL("../src/components/canvas/canvas-node-content.tsx", import.meta.url)).text();
