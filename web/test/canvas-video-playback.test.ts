@@ -43,6 +43,9 @@ describe("画布视频播放入口", () => {
                 mediaRenderPolicy: resolveCanvasMediaRenderPolicy(mode, [video], { viewportScale: 1, visibleNodes: [video] }),
             });
             expect(markup).toMatch(/<button[^>]*data-canvas-video-poster-play[^>]*aria-label="播放视频"/);
+            expect(markup).toContain("color:#fff");
+            expect(markup).toContain("background-color:rgba(0, 0, 0, 0.68)");
+            expect(markup).toContain("z-20");
             expect(markup).toContain('src="/test-poster.jpg"');
             expect(markup).not.toContain("<video");
             expect(markup).not.toContain("选中播放");

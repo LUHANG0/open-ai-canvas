@@ -550,8 +550,14 @@ function VideoPosterPreview({ node, theme, policy, loadingPlayback, onPlay }: Pi
                 data-canvas-video-poster-play
                 aria-label={loadingPlayback ? "正在加载视频" : "播放视频"}
                 disabled={loadingPlayback}
-                className={`relative grid size-11 cursor-pointer place-items-center rounded-full border border-white/25 bg-black/45 text-white shadow-sm transition-colors hover:bg-black/65 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-wait ${policy?.reduceEffects ? "" : "backdrop-blur-sm"}`}
-                style={{ transform: "scale(clamp(1, calc(var(--canvas-live-inverse-scale, 1) * 0.55), 10))" }}
+                className={`relative z-20 grid size-11 cursor-pointer place-items-center rounded-full border shadow-sm transition-[filter,box-shadow] hover:brightness-110 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-wait ${policy?.reduceEffects ? "" : "backdrop-blur-sm"}`}
+                style={{
+                    transform: "scale(clamp(1, calc(var(--canvas-live-inverse-scale, 1) * 0.55), 10))",
+                    color: "#fff",
+                    backgroundColor: "rgba(0, 0, 0, 0.68)",
+                    borderColor: "rgba(255, 255, 255, 0.58)",
+                    boxShadow: "0 4px 16px rgba(0, 0, 0, 0.38), inset 0 0 0 1px rgba(0, 0, 0, 0.12)",
+                }}
                 onMouseDown={(event) => event.stopPropagation()}
                 onPointerDown={(event) => {
                     event.stopPropagation();
@@ -575,7 +581,7 @@ function VideoPosterPreview({ node, theme, policy, loadingPlayback, onPlay }: Pi
                 }}
                 onDoubleClick={(event) => event.stopPropagation()}
             >
-                {loadingPlayback ? <LoaderCircle className="size-5 animate-spin" /> : <Play className="ml-0.5 size-5 fill-current" />}
+                {loadingPlayback ? <LoaderCircle className="size-5 animate-spin" /> : <Play className="ml-0.5 size-5 fill-current" aria-hidden />}
             </button>
             <div className="pointer-events-none absolute inset-x-3 bottom-3 flex min-w-0 items-end justify-between gap-2 text-white">
                 <span className={`min-w-0 truncate rounded-md bg-black/48 px-2 py-1 text-[var(--fs-tiny)] font-medium ${policy?.reduceEffects ? "" : "backdrop-blur-sm"}`}>{node.title || "视频素材"}</span>
