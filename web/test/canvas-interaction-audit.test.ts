@@ -120,6 +120,17 @@ test("short drama guide visibility and toggle stay inside the short drama contro
     expect(controllerSource).toContain("onToggle: toggleGuide");
 });
 
+test("canvas project environment owns external store subscriptions", async () => {
+    const projectSource = await Bun.file(new URL("../src/pages/canvas/project.tsx", import.meta.url)).text();
+    const environmentSource = await Bun.file(new URL("../src/pages/canvas/use-canvas-project-environment.ts", import.meta.url)).text();
+    expect(projectSource).toContain("useCanvasProjectEnvironment()");
+    expect(projectSource).not.toContain("useCanvasAgentStore((state)");
+    expect(projectSource).not.toContain("useAssetStore((state)");
+    expect(environmentSource).toContain("useEffectiveConfig()");
+    expect(environmentSource).toContain("state.features.shortDramaEnabled");
+    expect(environmentSource).toContain("canvasThemes[useThemeStore");
+});
+
 test("assistant layout reserves the left dock and low zoom keeps video play reachable", async () => {
     const css = await Bun.file(new URL("../src/pages/canvas/canvas-editor-pc.css", import.meta.url)).text();
     const content = await Bun.file(new URL("../src/components/canvas/canvas-node-content.tsx", import.meta.url)).text();
