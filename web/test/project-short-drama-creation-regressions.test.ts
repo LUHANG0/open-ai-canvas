@@ -15,8 +15,8 @@ describe("短剧创作全链路回归门禁", () => {
 
     test("章节与镜头编辑都持久化草稿并保护路由离开", async () => {
         const chapters = await Bun.file(new URL("../src/pages/projects/detail/chapters.tsx", import.meta.url)).text();
-        const workflow = await Bun.file(new URL("../src/pages/projects/detail/workflow-production-workbench.tsx", import.meta.url)).text();
-        for (const source of [chapters, workflow]) {
+        const workflowDraft = await Bun.file(new URL("../src/pages/projects/detail/use-workflow-shot-draft.ts", import.meta.url)).text();
+        for (const source of [chapters, workflowDraft]) {
             expect(source).toContain("useBlocker(");
             expect(source).toContain("beforeunload");
             expect(source).toContain("loadProjectEditorDraft");
@@ -25,10 +25,27 @@ describe("短剧创作全链路回归门禁", () => {
     });
 
     test("失败的制作阶段可重新打开，任务失败原因可见", async () => {
+        const workbench = await Bun.file(new URL("../src/pages/projects/detail/workflow-production-workbench.tsx", import.meta.url)).text();
+        const preview = await Bun.file(new URL("../src/pages/projects/detail/workflow-production-preview.tsx", import.meta.url)).text();
+        expect(workbench).toContain('updateWorkflowStep(projectId, productionStep.id, { status: "ready" })');
+        expect(preview).toContain("generationErrorMessage(shotTask.error)");
+        expect(preview).toContain("上次生成失败");
+    });
+
+    test("制作工作台按资产、规格、预览、导航和草稿边界拆分", async () => {
         const source = await Bun.file(new URL("../src/pages/projects/detail/workflow-production-workbench.tsx", import.meta.url)).text();
-        expect(source).toContain('updateWorkflowStep(projectId, productionStep.id, { status: "ready" })');
-        expect(source).toContain("generationErrorMessage(shotTask.error)");
-        expect(source).toContain("上次生成失败");
+        for (const moduleName of [
+            "workflow-production-assets",
+            "workflow-production-settings",
+            "workflow-production-preview",
+            "workflow-production-navigation",
+            "use-workflow-shot-draft",
+        ]) {
+            expect(source).toContain(`from "./${moduleName}"`);
+        }
+        expect(source).not.toContain("function AssetLibrary(");
+        expect(source).not.toContain("function ArtifactHistory(");
+        expect(source).not.toContain("useBlocker(");
     });
 
     test("章节画布关联失败仍打开已创建的画布", async () => {

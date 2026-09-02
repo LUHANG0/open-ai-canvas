@@ -16,11 +16,13 @@ test("章节页直接生成到分镜制作，并通过共享选择器执行技�
 });
 
 test("镜头画面使用已绑定资产的 @ 引用编辑器", async () => {
-    const source = await Bun.file(new URL("../src/pages/projects/detail/workflow-production-workbench.tsx", import.meta.url)).text();
-    expect(source).toContain('name="plotDescription"');
-    expect(source).toContain('<ShotAssetMentionTextarea variant="scene"');
-    expect(source).toContain("resolveShotAssetMentionPrompt(basePrompt, shotAssetReferenceContext, { dialogue: values.dialogue })");
-    expect(source).toContain("<Image.PreviewGroup>");
+    const workbench = await Bun.file(new URL("../src/pages/projects/detail/workflow-production-workbench.tsx", import.meta.url)).text();
+    const settings = await Bun.file(new URL("../src/pages/projects/detail/workflow-production-settings.tsx", import.meta.url)).text();
+    const assets = await Bun.file(new URL("../src/pages/projects/detail/workflow-production-assets.tsx", import.meta.url)).text();
+    expect(settings).toContain('name="plotDescription"');
+    expect(settings).toContain('<ShotAssetMentionTextarea variant="scene"');
+    expect(workbench).toContain("resolveShotAssetMentionPrompt(basePrompt, shotAssetReferenceContext, { dialogue: values.dialogue })");
+    expect(assets).toContain("<Image.PreviewGroup>");
 });
 
 test("技能选择器占满表单宽度", async () => {
