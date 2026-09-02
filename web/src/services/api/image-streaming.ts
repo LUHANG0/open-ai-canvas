@@ -112,7 +112,7 @@ export async function requestStreamingClaude(config: AiConfig, body: Record<stri
             if (!raw || raw === "[DONE]") continue;
             let payload: Record<string, unknown>;
             try { payload = JSON.parse(raw) as Record<string, unknown>; } catch { throw new Error("Claude 流式响应格式无效"); }
-            if (event === "error" || payload.type === "error") throw new Error(String((payload.error as Record<string, unknown> | undefined)?.message || "Claude 上游返回失败"));
+            if (event === "error" || payload.type === "error") throw new Error(String((payload.error as Record<string, unknown> | undefined)?.message || "Claude 服务返回失败"));
             if (payload.type === "content_block_start") {
                 const contentBlock = payload.content_block as Record<string, unknown> | undefined;
                 if (contentBlock?.type === "tool_use") {

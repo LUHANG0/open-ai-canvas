@@ -10,6 +10,22 @@ export const statusLabel: Record<TaskStatus, string> = {
 
 type GenerationTaskDisplayTarget = Pick<GenerationTask, "provider" | "status" | "stage" | "officialStatus"> & Partial<Pick<GenerationTask, "errorCode">>;
 
+const publicStageLabel: Record<string, string> = {
+    queued: "排队中",
+    generating: "生成中",
+    "等待队列调度": "排队中",
+    "后端接管任务": "准备生成",
+    "调用生成模型": "生成中",
+    "正在连接上游": "生成中",
+    "上游生成中": "生成中",
+    "后台仍在生成": "生成中",
+    "同步方舟可信素材": "准备素材",
+    "修复分镜结构": "整理生成结果",
+    "任务完成": "已完成",
+    "已完成": "已完成",
+    "任务已取消": "已取消",
+};
+
 export function isGenerationTaskSubmissionUncertain(task: GenerationTaskDisplayTarget) {
     return task.provider === "dreamina-cli" && (task.stage === "submission_unknown" || task.errorCode === "dreamina_submission_unknown");
 }
@@ -29,8 +45,10 @@ export function generationTaskStageLabel(task: GenerationTaskDisplayTarget) {
     if (task.provider === "dreamina-cli" && task.stage === "submitting") return "正在提交，等待官方确认";
     if (task.provider === "dreamina-cli" && task.officialStatus) return `官方返回状态：${task.officialStatus}`;
     if (task.provider === "dreamina-cli" && task.status === "running" && task.stage === "submitted") return "已提交，等待状态更新";
-    if (task.stage === "generating") return "生成中";
-    if (task.stage === "queued") return "排队中";
+    if (task.status === "succeeded") return "已完成";
+    if (task.status === "failed") return "生成失败";
+    if (task.status === "cancelled") return "已取消";
+    if (task.stage && publicStageLabel[task.stage]) return publicStageLabel[task.stage];
     return task.stage || generationTaskStatusLabel(task);
 }
 

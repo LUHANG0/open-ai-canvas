@@ -3,6 +3,7 @@ import { FileAudio, FileImage, Film, Grip, Play, RotateCcw, Square, Upload, Wand
 import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 
 import { generationErrorMessage } from "@/lib/generation-error";
+import { generationTaskStageLabel } from "@/lib/generation-task-display";
 import { resourceFileUrl, resourceIdFromStorageKey } from "@/services/api/resources";
 import { runBackendGenerationTask, type BackendGenerationResult } from "@/services/api/generation-task";
 import { useConfigStore, type AiConfig, type RunningHubCapability, type WorkflowFieldMapping } from "@/stores/use-config-store";
@@ -565,5 +566,5 @@ function taskStageLabel(status: string, stage?: string) {
     if (status === "queued") return "任务已排队";
     if (status === "succeeded") return "正在读取结果";
     if (status === "failed") return "任务失败";
-    return stage ? `运行中 · ${stage}` : "工作流运行中";
+    return stage ? `运行中 · ${generationTaskStageLabel({ provider: undefined, status: "running", stage, officialStatus: undefined })}` : "工作流运行中";
 }

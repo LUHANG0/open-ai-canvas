@@ -160,7 +160,7 @@ function assertAudioConfig(config: AiConfig, model: string) {
 
 async function assertAudioBlob(blob: Blob) {
     const mimeType = blob.type.toLowerCase();
-    if (mimeType.startsWith("image/") || mimeType.startsWith("video/") || mimeType.startsWith("text/")) throw new Error(`上游返回了非音频内容：${mimeType}`);
+    if (mimeType.startsWith("image/") || mimeType.startsWith("video/") || mimeType.startsWith("text/")) throw new Error(`模型服务返回了非音频内容：${mimeType}`);
     if (!mimeType.includes("json")) return;
     let payload: { code?: number; msg?: string; error?: { message?: string } };
     try {

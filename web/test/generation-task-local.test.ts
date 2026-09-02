@@ -164,6 +164,16 @@ test("task display does not claim a submitted Dreamina receipt is actively gener
     expect(generationTaskStatusLabel(generating)).toBe("生成中");
     expect(generationTaskShowsProgress(generating)).toBe(true);
 
+    const managedRunning = { ...generating, provider: "managed" } as GenerationTask;
+    expect(generationTaskStageLabel({ ...managedRunning, status: "queued", stage: "等待队列调度" })).toBe("排队中");
+    expect(generationTaskStageLabel({ ...managedRunning, stage: "后端接管任务" })).toBe("准备生成");
+    for (const stage of ["调用生成模型", "正在连接上游", "上游生成中", "后台仍在生成"]) {
+        expect(generationTaskStageLabel({ ...managedRunning, stage })).toBe("生成中");
+    }
+    expect(generationTaskStageLabel({ ...managedRunning, status: "succeeded", stage: "任务完成" })).toBe("已完成");
+    expect(generationTaskStageLabel({ ...managedRunning, status: "failed", stage: "任务失败" })).toBe("生成失败");
+    expect(generationTaskStageLabel({ ...managedRunning, status: "cancelled", stage: "任务已取消" })).toBe("已取消");
+
     for (const stage of ["等待队列调度", "后端接管任务", "正在连接上游", "调用生成模型"]) {
         expect(generationTaskShowsProgress({ ...generating, provider: "managed", stage })).toBe(false);
     }

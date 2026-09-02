@@ -4,7 +4,7 @@ import { useState } from "react";
 
 import { MediaPreview } from "@/components/media-preview";
 import { CONTENT_MODERATION_ERROR_CODE, generationErrorMessage, isContentModerationError } from "@/lib/generation-error";
-import { formatTaskKind, statusLabel } from "@/lib/generation-task-display";
+import { formatTaskKind, generationTaskStageLabel, statusLabel } from "@/lib/generation-task-display";
 import type { GenerationTask } from "@/services/api/task-center";
 import type { AiConfig } from "@/stores/use-config-store";
 import { formatModelName, getTaskCanvasContext, isTaskFailed, statusDotClassName, taskAttentionReason, TaskBilling, TaskDate } from "./task-shared";
@@ -64,7 +64,7 @@ export function TaskListRow({
                     </div>
                     {isActive ? (
                         <div className="task-record-progress">
-                            <span>{task.stage || "正在生成"}</span>
+                            <span>{generationTaskStageLabel(task)}</span>
                             <span>{task.progress || 0}%</span>
                             <i>
                                 <b style={{ width: `${task.progress || 0}%` }} />

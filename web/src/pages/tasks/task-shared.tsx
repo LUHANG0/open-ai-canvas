@@ -2,6 +2,7 @@ import { Coins } from "lucide-react";
 
 import { formatCredits } from "@/constant/credits";
 import { CONTENT_MODERATION_ERROR_CODE, generationErrorMessage, isContentModerationError } from "@/lib/generation-error";
+import { generationTaskStageLabel } from "@/lib/generation-task-display";
 import type { GenerationTask, TaskStatus } from "@/services/api/task-center";
 import { modelDisplayName, type AiConfig } from "@/stores/use-config-store";
 
@@ -21,18 +22,18 @@ export function taskAttentionReason(task: GenerationTask) {
     if (task.status === "cancelled") return providerCancelStatusLabel(task);
     if (task.errorCode === CONTENT_MODERATION_ERROR_CODE || isContentModerationError(task.error)) return "内容审核未通过，请修改输入后新建任务";
     if (task.error) return generationErrorMessage(task.error);
-    return task.stage || "生成失败，打开详情查看原因";
+    return generationTaskStageLabel(task) || "生成失败，打开详情查看原因";
 }
 
 export function providerCancelStatusLabel(task: GenerationTask) {
-    if (task.providerCancelStatus === "requested") return "已请求上游取消，正在等待确认";
-    if (task.providerCancelStatus === "confirmed") return "上游已确认取消，积分已退回";
+    if (task.providerCancelStatus === "requested") return "取消请求已提交，正在等待确认";
+    if (task.providerCancelStatus === "confirmed") return "任务已取消，积分已退回";
     if (task.providerCancelStatus === "uncertain") {
-        if (task.billing?.status === "settled") return "上游未能取消，费用已结算";
-        if (task.billing?.status === "refunded") return "上游取消结果未确认，积分已退回";
-        return task.providerCancelError || "上游无法确认取消，费用待核对";
+        if (task.billing?.status === "settled") return "任务未能及时取消，费用已结算";
+        if (task.billing?.status === "refunded") return "取消结果未确认，积分已退回";
+        return task.providerCancelError || "取消结果无法确认，费用待核对";
     }
-    return task.billing?.status === "refunded" ? "任务在调用上游前取消，积分已退回" : "任务已取消，可按原输入重新提交";
+    return task.billing?.status === "refunded" ? "任务在生成开始前取消，积分已退回" : "任务已取消，可按原输入重新提交";
 }
 
 export function statusDotClassName(status: TaskStatus) {
