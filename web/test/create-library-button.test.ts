@@ -9,7 +9,14 @@ function compactSource(source: string) {
 }
 
 function readCreateSource() {
-    return ["../src/pages/create/index.tsx", "../src/pages/create/creation-composer.tsx", "../src/pages/create/use-creation-asset-workflow.ts", "../src/pages/create/creation-submit-preparation.ts", "../src/pages/create/creation-generation-executor.ts"]
+    return [
+        "../src/pages/create/index.tsx",
+        "../src/pages/create/creation-composer.tsx",
+        "../src/pages/create/use-creation-asset-workflow.ts",
+        "../src/pages/create/use-creation-conversation-workflow.ts",
+        "../src/pages/create/creation-submit-preparation.ts",
+        "../src/pages/create/creation-generation-executor.ts",
+    ]
         .map((relativePath) => readFileSync(resolve(import.meta.dir, relativePath), "utf8"))
         .join("\n");
 }
@@ -22,7 +29,7 @@ describe("creation library button", () => {
     test("PC Brand V2 空白创作工作区从顶部展示，移动端保留原跟随逻辑", () => {
         const source = compactSource(readCreateSource());
         const scrollEffectStart = source.indexOf("if (pcBrandV2 && !activeConversation?.messages.length)");
-        const scrollEffectEnd = source.indexOf("const updateActive", scrollEffectStart);
+        const scrollEffectEnd = source.indexOf("const replaceAttachmentReference", scrollEffectStart);
 
         expect(source).toContain('import { usePcBrandViewport } from "@/hooks/use-pc-brand-viewport"');
         expect(source).toContain("const pcBrandV2 = usePcBrandViewport()");

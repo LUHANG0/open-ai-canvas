@@ -11,11 +11,8 @@ import { modelCapabilityConfigFor, normalizeImageValue, normalizeVideoValue } fr
 import { modelGroupReferenceLimits, modelGroupVideoOperations, resolveCompatibleModel, type ModelInputSummary, type ModelRequirements } from "@/lib/model-selection";
 import { isGenerationTaskCancelled } from "@/services/api/generation-task";
 import { listAddedSkills, type Skill } from "@/services/api/skills";
-import { subscribeGenerationTasks, type GenerationTask } from "@/services/api/task-center";
-import { consumeGenerationTaskMessage, generationTaskMaterializedUrls } from "@/services/project-asset-sync";
-import { applyGenerationConsumerEffect } from "@/services/generation-consumer-dedupe";
+import type { GenerationTask } from "@/services/api/task-center";
 import { beginGenerationConsumer } from "@/services/generation-consumer-lifecycle";
-import { loadCreationConversations, pendingCreationTaskIds, pendingCreationTaskKey, removeCreationConversationSnapshot, saveCreationConversations, updateCreationConversationSnapshot } from "@/services/creation-conversation-store";
 import { modelDisplayName, selectableModelsByCapability, useConfigStore, useEffectiveConfig } from "@/stores/use-config-store";
 import { useAssetStore } from "@/stores/use-asset-store";
 import type { PromptOptimizerProvider } from "@/lib/plugins/plugin-types";
@@ -38,10 +35,11 @@ import { CreationEmptyIntro, CreationEmptySuggest, type CreationMode } from "./c
 import { CreationMessageView } from "./creation-message-view";
 import { StoryboardComposerContext, StoryboardNextShotCard, StoryboardShotCard, StoryboardShotRail, StoryboardToolbar } from "./creation-storyboard-workbench";
 import { executeCreationGeneration, type CreationRetryContext } from "./creation-generation-executor";
-import { attachCreationTaskContexts, conversationTimestamp, isImageAttachment, materializeCreationTaskResults, reconcileCreationTaskMessages } from "./creation-task-lifecycle";
+import { isImageAttachment } from "./creation-task-lifecycle";
 import { creationInputSummary, normalizeCreationVideoAttachments, prepareCreationSubmission, resolvedCreationVideoOperation } from "./creation-submit-preparation";
 import type { CreationConversation, CreationMessage, CreationSettings, CreationShot, CreationVideoOperationChoice, CreationViewMode } from "./creation-types";
 import { useCreationAssetWorkflow } from "./use-creation-asset-workflow";
+import { useCreationConversationWorkflow } from "./use-creation-conversation-workflow";
 import { CreationHistoryDrawer, CreationWorkspaceToolbar } from "./creation-workspace-toolbar";
 import "./creation-workspace.css";
 
@@ -52,10 +50,6 @@ type CreationRetryTarget = {
     shotId: string;
 };
 const modeLabels: Record<CreationMode, string> = { text: "文本", image: "图片", video: "视频" };
-
-function newConversation(): CreationConversation {
-    return { id: createClientId(), title: "新创作", updatedAt: new Date().toISOString(), messages: [] };
-}
 
 function newMessage(role: CreationMessage["role"], content: string, extra: Partial<CreationMessage> = {}): CreationMessage {
     return { id: createClientId(), role, content, createdAt: new Date().toISOString(), ...extra };
@@ -89,11 +83,10 @@ export default function CreatePage() {
     const assets = useAssetStore((state) => state.assets);
     const assetsHydrated = useAssetStore((state) => state.hydrated);
     const addAsset = useAssetStore((state) => state.addAsset);
-    const [conversations, setConversations] = useState<CreationConversation[]>([]);
-    const conversationsRef = useRef<CreationConversation[]>([]);
-    const [activeId, setActiveId] = useState("");
-    const activeIdRef = useRef("");
-    const [hydrated, setHydrated] = useState(false);
+    const { activeConversation, historyConversations, hydrated, updateActive, updateConversationMessage, createConversation, activateConversation, deleteConversation } = useCreationConversationWorkflow({
+        assetsHydrated,
+        toast,
+    });
     const [mode, setMode] = useState<CreationMode>("video");
     const [prompt, setPrompt] = useState("");
     const [attachments, setAttachments] = useState<CreationAttachment[]>([]);
@@ -119,7 +112,6 @@ export default function CreatePage() {
     const composerFocusRef = useRef<HTMLTextAreaElement>(null);
     const threadScrollRef = useRef<HTMLElement>(null);
     const followLatestMessageRef = useRef(true);
-    const taskSyncWarningRef = useRef(false);
     const retryPreparingRef = useRef(new Set<string>());
     const pendingRetryRef = useRef<{ context: CreationRetryContext; lockKey: string; target: CreationRetryTarget } | null>(null);
     const [retrySequence, setRetrySequence] = useState(0);
@@ -128,11 +120,6 @@ export default function CreatePage() {
     promptRef.current = prompt;
     attachmentsRef.current = attachments;
 
-    const activeConversation = useMemo(() => conversations.find((item) => item.id === activeId) || conversations[0], [activeId, conversations]);
-    const historyConversations = useMemo(
-        () => conversations.filter((conversation) => conversation.id === activeId || conversation.messages.length > 0).sort((left, right) => conversationTimestamp(right.updatedAt) - conversationTimestamp(left.updatedAt)),
-        [activeId, conversations],
-    );
     const preferredModel = mode === "text" ? config.textModel : mode === "image" ? config.imageModel : config.videoModel;
     const hasPrompt = Boolean(prompt.trim());
     const modelInput = useMemo<ModelInputSummary>(() => creationInputSummary(attachments, hasPrompt), [attachments, hasPrompt]);
@@ -187,8 +174,6 @@ export default function CreatePage() {
     }, [attachments]);
     const mentionReferences = useMemo(() => buildCreationMentionReferences(addedSkills, attachments, draftReferences), [addedSkills, attachments, draftReferences]);
     const isEmpty = !activeConversation?.messages.length;
-    const pendingTaskKey = useMemo(() => pendingCreationTaskKey(conversations), [conversations]);
-    const pendingTaskIds = useMemo(() => pendingCreationTaskIds(conversations), [conversations]);
     const shots = useMemo(() => shotsFromMessages(activeConversation?.messages || []), [activeConversation]);
     const selectedShotIndex = selectedShotId ? shots.findIndex((shot) => shot.id === selectedShotId) : -1;
     const visibleShotIndex = shots.length ? (selectedShotIndex >= 0 ? selectedShotIndex : shots.length - 1) : -1;
@@ -243,87 +228,7 @@ export default function CreatePage() {
         if (normalized !== attachments) setAttachments(normalized);
     }, [attachments, mode, requestedVideoOperation]);
 
-    useEffect(() => {
-        let cancelled = false;
-        void loadCreationConversations<CreationConversation>().then((stored) => {
-            if (cancelled) return;
-            const next = stored?.length ? stored : [newConversation()];
-            conversationsRef.current = next;
-            setConversations(next);
-            setActiveId(next[0].id);
-            setHydrated(true);
-        });
-        return () => {
-            cancelled = true;
-            // 页面卸载只停止当前页面的状态更新，后台任务由任务中心继续执行，返回页面后再恢复状态。
-        };
-    }, []);
-
     useEffect(() => () => abortRef.current?.abort(), []);
-
-    useEffect(() => {
-        activeIdRef.current = activeId;
-    }, [activeId]);
-
-    useEffect(() => {
-        conversationsRef.current = conversations;
-        if (hydrated) void saveCreationConversations(conversations);
-    }, [conversations, hydrated]);
-
-    useEffect(() => {
-        if (!hydrated || !assetsHydrated || !pendingTaskKey || !pendingTaskIds.length) return;
-        let cancelled = false;
-        const observationController = new AbortController();
-        const applyTasks = async (tasks: GenerationTask[]) => {
-            const contextual = attachCreationTaskContexts(tasks, conversations);
-            const persistedTasks = await materializeCreationTaskResults(contextual, observationController.signal);
-            if (cancelled) return;
-            taskSyncWarningRef.current = false;
-            const attachable = persistedTasks.filter((task) => task.status === "succeeded" && Boolean(task.clientContext?.messageId) && Boolean(task.creationResultUrls?.length));
-            for (const task of attachable) {
-                await consumeGenerationTaskMessage(
-                    task,
-                    task.clientContext!.messageId!,
-                    async ({ effectKey, resultUrls }) => {
-                        if (cancelled) return;
-                        await updateConversationMessage(
-                            task.clientContext!.conversationId!,
-                            task.clientContext!.messageId!,
-                            (item) =>
-                                applyGenerationConsumerEffect(item, effectKey, (current) => ({
-                                    ...current,
-                                    status: "done" as const,
-                                    completedAt: task.updatedAt || new Date().toISOString(),
-                                    content: current.mode === "video" ? "视频已生成" : "图片已生成",
-                                    error: undefined,
-                                    generationErrorCode: undefined,
-                                    resultUrls: Array.from(new Set([...(current.resultUrls || []), ...resultUrls])),
-                                })).value,
-                        );
-                    },
-                    { signal: observationController.signal, materialize: async () => task, materializedUrls: generationTaskMaterializedUrls },
-                );
-            }
-            if (!attachable.length && !cancelled) setConversations((current) => reconcileCreationTaskMessages(current, persistedTasks));
-        };
-        const warnSync = (error: unknown) => {
-            if (cancelled || observationController.signal.aborted) return;
-            console.warn("创作任务状态同步失败", error);
-            if (!taskSyncWarningRef.current) {
-                taskSyncWarningRef.current = true;
-                toast.warning("任务状态暂时无法同步，请稍后刷新");
-            }
-        };
-        let applyChain = Promise.resolve();
-        const unsubscribe = subscribeGenerationTasks(pendingTaskIds, (task) => {
-            applyChain = applyChain.then(() => applyTasks([task])).catch(warnSync);
-        });
-        return () => {
-            cancelled = true;
-            observationController.abort();
-            unsubscribe();
-        };
-    }, [assetsHydrated, hydrated, pendingTaskKey, toast]);
 
     useEffect(() => {
         let cancelled = false;
@@ -354,26 +259,6 @@ export default function CreatePage() {
         });
         return () => window.cancelAnimationFrame(frame);
     }, [activeConversation?.id, activeConversation?.messages, pcBrandV2]);
-
-    const updateActive = useCallback(
-        (updater: (conversation: CreationConversation) => CreationConversation) => {
-            const next = updateCreationConversationSnapshot(conversationsRef.current, activeId, updater);
-            conversationsRef.current = next;
-            setConversations(next);
-        },
-        [activeId],
-    );
-
-    const updateConversationMessage = useCallback(async (conversationId: string, id: string, updater: (item: CreationMessage) => CreationMessage) => {
-        const next = updateCreationConversationSnapshot(conversationsRef.current, conversationId, (conversation) => ({
-            ...conversation,
-            updatedAt: new Date().toISOString(),
-            messages: conversation.messages.map((item) => (item.id === id ? updater(item) : item)),
-        }));
-        conversationsRef.current = next;
-        setConversations(next);
-        await saveCreationConversations(next);
-    }, []);
 
     const replaceAttachmentReference = useCallback((targetAttachmentId: string, replacement: CreationAttachment) => {
         const currentAttachments = attachmentsRef.current;
@@ -646,10 +531,8 @@ export default function CreatePage() {
             toast.info("素材正在上传，请等待完成后再新建创作");
             return;
         }
-        const next = newConversation();
+        createConversation();
         followLatestMessageRef.current = true;
-        setConversations((current) => [next, ...current]);
-        setActiveId(next.id);
         setPrompt("");
         setAttachments([]);
         setVideoOperationChoice("auto");
@@ -666,7 +549,7 @@ export default function CreatePage() {
             return;
         }
         followLatestMessageRef.current = true;
-        setActiveId(conversation.id);
+        activateConversation(conversation.id);
         setPrompt("");
         setAttachments([]);
         setVideoOperationChoice("auto");
@@ -689,17 +572,9 @@ export default function CreatePage() {
             cancelText: "保留",
             onOk: async () => {
                 try {
-                    const remaining = removeCreationConversationSnapshot(conversationsRef.current, conversation.id);
-                    const sortedRemaining = [...remaining].sort((left, right) => conversationTimestamp(right.updatedAt) - conversationTimestamp(left.updatedAt));
-                    const fallback = sortedRemaining.find((item) => item.messages.length > 0) || sortedRemaining[0] || newConversation();
-                    const next = remaining.length ? remaining : [fallback];
-                    await saveCreationConversations(next);
-                    conversationsRef.current = next;
-                    setConversations(next);
-                    if (activeIdRef.current === conversation.id) {
+                    const deletion = await deleteConversation(conversation.id);
+                    if (deletion.deletedActive) {
                         followLatestMessageRef.current = true;
-                        activeIdRef.current = fallback.id;
-                        setActiveId(fallback.id);
                         setPrompt("");
                         setAttachments([]);
                         setVideoOperationChoice("auto");
