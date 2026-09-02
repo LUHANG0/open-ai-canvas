@@ -19,7 +19,6 @@ import { AssistantPanelColumn } from "./canvas-assistant-panel-column";
 import { CanvasActiveTaskPanel } from "@/components/canvas/canvas-active-task-panel";
 import { CanvasAssetTray } from "@/components/canvas/canvas-asset-tray";
 import { CanvasProjectSidebar } from "@/components/canvas/canvas-project-sidebar";
-import { CanvasProjectAssetModal } from "@/components/canvas/canvas-project-asset-modal";
 import { resolveProjectCanvasStyle } from "@/components/canvas/canvas-style-picker-modal";
 import { createStyleProfileSnapshot, resolveStyleProfile, serializeStyleProfile } from "@/lib/canvas/style-profile";
 import { CanvasNodeInfoModal, CanvasNodeToolbar } from "@/components/canvas/canvas-node-toolbar";
@@ -33,11 +32,9 @@ import { InfiniteCanvas } from "@/components/canvas/infinite-canvas";
 import { Minimap } from "@/components/canvas/canvas-mini-map";
 import type { CanvasNodeGenerationMode } from "@/components/canvas/canvas-node-prompt-panel";
 import { CanvasToolbar } from "@/components/canvas/canvas-toolbar";
-import { AssetPickerModal } from "@/components/canvas/asset-picker-modal";
 import { getProject } from "@/services/api/projects";
 import { CanvasZoomControls } from "@/components/canvas/canvas-zoom-controls";
 import { CanvasShareModal } from "@/components/canvas/canvas-share-modal";
-import { CanvasVersionCompareModal } from "@/components/canvas/canvas-version-compare-modal";
 import { CanvasLocalAgentPanel } from "@/components/canvas/canvas-local-agent-panel";
 import { useFocusMode } from "@/hooks/use-focus-mode";
 import { useCanvasAgentStore } from "@/stores/canvas/use-canvas-agent-store";
@@ -58,6 +55,7 @@ import { CanvasFocusModeBar } from "@/components/canvas/canvas-focus-mode-bar";
 import { CanvasProjectContextMenu } from "./canvas-project-context-menu";
 import { CanvasProjectMediaDialogs } from "./canvas-project-media-dialogs";
 import { CanvasProjectDirectorWorkbench } from "./canvas-project-director-workbench";
+import { CanvasProjectAssetDialogs, CanvasProjectVersionCompareDialog } from "./canvas-project-library-dialogs";
 import { CanvasProjectNodeEditorDialogs } from "./canvas-project-node-editor-dialogs";
 import { CanvasProjectScriptEditor } from "./canvas-project-script-editor";
 import { CanvasProjectTimelineDialogs } from "./canvas-project-timeline-dialogs";
@@ -1831,15 +1829,12 @@ function InfiniteCanvasPage() {
                             onFlush={() => flushCanvasStorePersistence()}
                         />
 
-                        <CanvasVersionCompareModal
+                        <CanvasProjectVersionCompareDialog
                             open={Boolean(versionCompareRootId)}
                             versions={versionCompareNodes}
                             onClose={() => setVersionCompareRootId(null)}
                             onSetPrimary={setPrimaryVersion}
-                            onFocus={(nodeId) => {
-                                setVersionCompareRootId(null);
-                                focusCanvasNode(nodeId);
-                            }}
+                            onFocus={focusCanvasNode}
                         />
 
                         <CanvasProjectMediaDialogs
@@ -1876,15 +1871,19 @@ function InfiniteCanvasPage() {
                             onConfirmClear={clearCanvas}
                         />
 
-                        <AssetPickerModal open={assetPickerOpen} multiple={assetInsertScope === "canvas"} onInsert={handleLibraryAssetsInsert} onClose={closeAssetPicker} />
-                        <CanvasProjectAssetModal
-                            open={projectAssetOpen}
-                            detail={linkedProjectQuery.data}
-                            initialCategory={projectAssetInitialCategory}
-                            initialFolderId={projectAssetInitialFolderId}
-                            onClose={closeProjectAssets}
-                            onInsert={handleTimelineProjectAssetsInsert}
-                            onInsertFolder={projectAssetScope === "canvas" ? handleProjectFolderInsert : undefined}
+                        <CanvasProjectAssetDialogs
+                            assetPickerOpen={assetPickerOpen}
+                            assetInsertScope={assetInsertScope}
+                            onInsertLibraryAssets={handleLibraryAssetsInsert}
+                            onCloseAssetPicker={closeAssetPicker}
+                            projectAssetOpen={projectAssetOpen}
+                            projectDetail={linkedProjectQuery.data}
+                            projectAssetInitialCategory={projectAssetInitialCategory}
+                            projectAssetInitialFolderId={projectAssetInitialFolderId}
+                            projectAssetScope={projectAssetScope}
+                            onCloseProjectAssets={closeProjectAssets}
+                            onInsertProjectAssets={handleTimelineProjectAssetsInsert}
+                            onInsertProjectFolder={handleProjectFolderInsert}
                         />
                         {codexCompactAgent && !assistantMounted ? (
                             <CanvasLocalAgentPanel headless snapshot={assistantSnapshot} canUndoOps={canUndoAgentOps} undoOpsCount={agentUndoCount} onApplyOps={applyAgentOps} onUndoOps={undoAgentOps} autoConnect={codexAutoConnect} />
