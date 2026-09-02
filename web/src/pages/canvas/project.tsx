@@ -29,7 +29,6 @@ import { useCanvasAgentStore } from "@/stores/canvas/use-canvas-agent-store";
 import { getContextResourceNodesFromIndex } from "@/lib/canvas/canvas-resource-references";
 import { CanvasOverlayLayerProvider } from "@/components/canvas/canvas-overlay-layer";
 import { CanvasLeaferGraphicsLayer } from "@/components/canvas/canvas-leafer-graphics-layer";
-import { CanvasFreeformEmptyState, CanvasLinkedProjectEmptyState, CanvasShortDramaEmptyState } from "@/components/canvas/canvas-short-drama-entry";
 import { createCanvasNode } from "@/lib/canvas/canvas-project-domain";
 import { stampCanvasNodeChanges } from "@/lib/canvas/canvas-node-timestamps";
 import { batchSourceRestriction } from "@/lib/canvas/canvas-batch-connection";
@@ -42,6 +41,7 @@ import { CanvasProjectBottomDock } from "./canvas-project-bottom-dock";
 import { CanvasProjectMainToolbar } from "./canvas-project-main-toolbar";
 import { CanvasProjectDirectorWorkbench } from "./canvas-project-director-workbench";
 import { CanvasProjectEntryDialogs } from "./canvas-project-entry-dialogs";
+import { renderCanvasProjectEmptyState } from "./canvas-project-empty-state";
 import { CanvasProjectAssetDialogs, CanvasProjectVersionCompareDialog } from "./canvas-project-library-dialogs";
 import { CanvasProjectAssistantColumn, loadCanvasAssistantPanel } from "./canvas-project-assistant-column";
 import { CanvasProjectNodeEditorDialogs } from "./canvas-project-node-editor-dialogs";
@@ -1181,32 +1181,25 @@ function InfiniteCanvasPage() {
         }
         focusCanvasNode(styleNode.id);
     }, [focusCanvasNode, message, nodesRef]);
-    const emptyCanvasState = nodes.length ? null : !shortDramaEnabled ? (
-        <CanvasFreeformEmptyState onUpload={() => handleUploadRequest()} onAddText={() => createNode(CanvasNodeType.Text)} />
-    ) : currentProject?.projectId ? (
-        <CanvasLinkedProjectEmptyState
-            projectName={linkedProjectQuery.data?.project.name || currentProject.title}
-            hasChapter={Boolean(linkedProjectQuery.data?.units.length)}
-            onAddFirstChapter={() => {
-                const first = linkedProjectQuery.data?.units.slice().sort((left, right) => left.position - right.position)[0];
-                if (first) void handleProjectChapterInsert({ id: first.id, projectId: currentProject.projectId!, title: first.title, position: first.position });
-            }}
-            onOpenAssets={() => openProjectAssets()}
-            onAddText={() => createNode(CanvasNodeType.Text)}
-        />
-    ) : (
-        <CanvasShortDramaEmptyState
-            onCreatePipeline={createShortDramaPipeline}
-            onOpenAgent={() => {
-                setCinematicAgentEntry(true);
-                setAgentMode("online");
-                openAgent("online");
-            }}
-            onUpload={() => handleUploadRequest()}
-            onAddText={() => createNode(CanvasNodeType.Text)}
-            onAddScript={() => createNode(CanvasNodeType.Script)}
-        />
-    );
+    const emptyCanvasState = renderCanvasProjectEmptyState({
+        nodeCount: nodes.length,
+        shortDramaEnabled,
+        linkedProjectId: currentProject?.projectId,
+        projectTitle: currentProject?.title || "未命名画布",
+        linkedProjectName: linkedProjectQuery.data?.project.name,
+        chapters: linkedProjectQuery.data?.units,
+        onUpload: () => handleUploadRequest(),
+        onAddText: () => createNode(CanvasNodeType.Text),
+        onAddScript: () => createNode(CanvasNodeType.Script),
+        onCreatePipeline: createShortDramaPipeline,
+        onOpenAgent: () => {
+            setCinematicAgentEntry(true);
+            setAgentMode("online");
+            openAgent("online");
+        },
+        onOpenAssets: openProjectAssets,
+        onInsertProjectChapter: handleProjectChapterInsert,
+    });
     if (!projectLoaded) return <CanvasRefreshShell />;
 
     return (
