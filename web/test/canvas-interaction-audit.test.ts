@@ -182,6 +182,15 @@ test("canvas asset and version dialogs load only when opened", async () => {
     expect(librarySource).toContain("projectAssetOpen ? (");
 });
 
+test("canvas upload and compatibility agent load only when needed", async () => {
+    const utilitySource = await Bun.file(new URL("../src/pages/canvas/canvas-project-utility-overlays.tsx", import.meta.url)).text();
+    expect(utilitySource).toContain('lazy(() => import("@/components/canvas/canvas-upload-modal")');
+    expect(utilitySource).toContain('lazy(() => import("@/components/canvas/canvas-local-agent-panel")');
+    expect(utilitySource).toContain("upload.open ? (");
+    expect(utilitySource).toContain("if (!shouldMountCanvasHeadlessAgent(compactAgent, assistantMounted)) return null");
+    expect(utilitySource).toContain("<Suspense fallback={null}><CanvasLocalAgentPanel");
+});
+
 test("assistant layout reserves the left dock and low zoom keeps video play reachable", async () => {
     const css = await Bun.file(new URL("../src/pages/canvas/canvas-editor-pc.css", import.meta.url)).text();
     const content = await Bun.file(new URL("../src/components/canvas/canvas-node-content.tsx", import.meta.url)).text();
