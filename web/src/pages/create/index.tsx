@@ -10,7 +10,7 @@ import { isGenerationTaskCancelled } from "@/services/api/generation-task";
 import { listAddedSkills, type Skill } from "@/services/api/skills";
 import type { GenerationTask } from "@/services/api/task-center";
 import { beginGenerationConsumer } from "@/services/generation-consumer-lifecycle";
-import { modelDisplayName, selectableModelsByCapability, useConfigStore, useEffectiveConfig } from "@/stores/use-config-store";
+import { modelDisplayName, useConfigStore, useEffectiveConfig } from "@/stores/use-config-store";
 import { useAssetStore } from "@/stores/use-asset-store";
 import type { PromptOptimizerProvider } from "@/lib/plugins/plugin-types";
 import { promptOptimizerPlugin, PROMPT_OPTIMIZER_PLUGIN_ID } from "@/lib/plugins/builtin/prompt-optimizer";
@@ -20,11 +20,8 @@ import { buildCreationMentionReferences, removeCreationReferenceTokens, replaceC
 import { skillRuntime } from "@/services/skill-runtime";
 import {
     creationAttachmentKind,
-    normalizeCreationVideoImageRoles,
     removeCreationAttachment,
-    setCreationVideoImageRole,
     type CreationAttachment,
-    type CreationVideoImageRole,
 } from "./creation-assets";
 import { CreationComposer } from "./creation-composer";
 import { CreationEmptyIntro, CreationEmptySuggest, type CreationMode } from "./creation-empty-state";
@@ -36,6 +33,7 @@ import type { CreationConversation, CreationMessage, CreationShot, CreationVideo
 import { useCreationAssetWorkflow } from "./use-creation-asset-workflow";
 import { useCreationConversationWorkflow } from "./use-creation-conversation-workflow";
 import { useCreationDraftWorkflow, type CreationRetryTarget } from "./use-creation-draft-workflow";
+import { useCreationModeWorkflow } from "./use-creation-mode-workflow";
 import { useCreationModelWorkflow } from "./use-creation-model-workflow";
 import { CreationHistoryDrawer, CreationWorkspaceToolbar } from "./creation-workspace-toolbar";
 import "./creation-workspace.css";
@@ -167,12 +165,6 @@ export default function CreatePage() {
     const selectedShotIndex = selectedShotId ? shots.findIndex((shot) => shot.id === selectedShotId) : -1;
     const visibleShotIndex = shots.length ? (selectedShotIndex >= 0 ? selectedShotIndex : shots.length - 1) : -1;
 
-    useEffect(() => {
-        if (mode !== "video" || !requestedVideoOperation) return;
-        const normalized = normalizeCreationVideoImageRoles(attachments, requestedVideoOperation);
-        if (normalized !== attachments) setAttachments(normalized);
-    }, [attachments, mode, requestedVideoOperation]);
-
     useEffect(() => () => abortRef.current?.abort(), []);
 
     useEffect(() => {
@@ -251,19 +243,19 @@ export default function CreatePage() {
         normalizeVideoAttachments: (items) => normalizeCreationVideoAttachments(items, videoOperationChoice, Boolean(promptRef.current.trim())),
         replaceAttachmentReference,
     });
-
-    const selectMode = (next: CreationMode) => {
-        if (pendingUploadCountRef.current > 0) {
-            toast.info("素材正在上传，请等待完成后再切换创作类型");
-            return;
-        }
-        setMode(next);
-        const nextModels = selectableModelsByCapability(config, next);
-        const current = next === "text" ? config.textModel : next === "image" ? config.imageModel : config.videoModel;
-        if (!nextModels.includes(current) && nextModels[0]) {
-            updateConfig(next === "text" ? "textModel" : next === "image" ? "imageModel" : "videoModel", nextModels[0]);
-        }
-    };
+    const { selectMode, changeVideoOperation, changeVideoImageRole } = useCreationModeWorkflow({
+        config,
+        mode,
+        attachments,
+        requestedVideoOperation,
+        promptRef,
+        pendingUploadCountRef,
+        setMode,
+        setAttachments,
+        setVideoOperationChoice,
+        updateConfig,
+        toast,
+    });
 
     const removeAttachment = (id: string) => {
         const reference = mentionReferences.find((item) => item.attachmentId === id);
@@ -293,16 +285,6 @@ export default function CreatePage() {
         },
         [replaceAttachmentReference, toast],
     );
-
-    const changeVideoOperation = useCallback((choice: CreationVideoOperationChoice) => {
-        setVideoOperationChoice(choice);
-        setAttachments((current) => normalizeCreationVideoAttachments(current, choice, Boolean(promptRef.current.trim())));
-    }, []);
-
-    const changeVideoImageRole = useCallback((attachmentId: string, role: CreationVideoImageRole) => {
-        if (role === "first_frame" || role === "last_frame") setVideoOperationChoice("image_to_video");
-        setAttachments((current) => setCreationVideoImageRole(current, attachmentId, role));
-    }, []);
 
     const submit = async (retryContext?: CreationRetryContext, retryLockKey?: string, retryTarget?: CreationRetryTarget) => {
         const releaseCurrentRetryLock = () => releaseRetryLock(retryLockKey);
