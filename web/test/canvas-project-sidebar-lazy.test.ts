@@ -38,3 +38,11 @@ test("top bar and project context routing stay eager and unchanged", async () =>
     expect(source).toContain("buildCanvasProjectTopBarContext(context, shortDramaEnabled, linkedProjectId, linkedProjectName)");
     expect(source).toContain("<CanvasTopBar {...topBar} projectContext={projectContext} />");
 });
+
+test("top bar direct exit returns to the canvas list instead of the site home", async () => {
+    const source = await Bun.file(new URL("../src/pages/canvas/canvas-project-top-bar.tsx", import.meta.url)).text();
+
+    expect(source).toContain('<Link to="/canvas"');
+    expect(source).toContain('aria-label="返回画布列表"');
+    expect(source).not.toContain('aria-label="返回首页"');
+});

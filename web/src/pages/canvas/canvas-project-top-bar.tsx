@@ -104,9 +104,9 @@ export function CanvasTopBar({
         <>
             <div className="canvas-topbar pc-canvas-topbar pointer-events-none absolute left-0 right-0 top-0 z-[var(--z-toolbar)] flex h-[var(--canvas-topbar-h)] items-center justify-between px-4 sm:px-5" role="toolbar" aria-label="画布项目操作">
                 <div className="canvas-topbar-cluster canvas-topbar-project-cluster pc-canvas-topbar__project pointer-events-auto flex min-w-0 items-center gap-2" style={dockStyle} role="group" aria-label="画布与项目">
-                    <CanvasTopBarTooltip label="返回首页">
-                        <Link to="/" className="canvas-topbar-action grid size-9 shrink-0 place-items-center rounded-full" style={{ color: theme.node.text }} aria-label="返回首页">
-                            <Home className="size-4.5" />
+                    <CanvasTopBarTooltip label="返回画布列表">
+                        <Link to="/canvas" className="canvas-topbar-action grid size-9 shrink-0 place-items-center rounded-full" style={{ color: theme.node.text }} aria-label="返回画布列表">
+                            <LayoutGrid className="size-4.5" />
                         </Link>
                     </CanvasTopBarTooltip>
                     <CanvasTopBarTooltip label="打开画布菜单">

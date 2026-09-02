@@ -319,7 +319,7 @@ async function shellScenario(cdp, url) {
             nodes: document.querySelectorAll('[data-node-id]').length,
             connections: document.querySelectorAll('[data-connection-id]').length,
             topbar: !!document.querySelector('.pc-canvas-topbar'),
-            homeHref: document.querySelector('a[aria-label="返回首页"]')?.getAttribute('href') || '',
+            canvasListHref: document.querySelector('a[aria-label="返回画布列表"]')?.getAttribute('href') || '',
             saveStatus: document.querySelector('.pc-canvas-save-status')?.getAttribute('aria-label') || '',
             dock: !!document.querySelector('[aria-label="画布创作工具"]'),
             workspaceHeight: workspace?.getBoundingClientRect().height || 0,
@@ -333,7 +333,7 @@ async function shellScenario(cdp, url) {
     assert(state.horizontalOverflow <= 1, "A4 no document-level horizontal overflow", `overflow=${state.horizontalOverflow}`);
     assert(state.imageReady, "A5 same-origin fixture image decoded");
     assert(Boolean(state.saveStatus), "A6 save status is exposed in the project toolbar", state.saveStatus);
-    assert(state.homeHref === "/", "A7 top bar provides a direct home entry", state.homeHref);
+    assert(state.canvasListHref === "/canvas", "A7 top bar provides a direct canvas-list entry", state.canvasListHref);
     assert(cdp.problems.length === 0, "A8 no browser/network problems", JSON.stringify(cdp.problems));
 }
 
