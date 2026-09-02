@@ -131,6 +131,15 @@ test("a true blank-canvas click collapses the assistant without changing node in
     expect(infiniteCanvas).toContain('event.type === "pointerup" && !panState.current.hasMoved');
 });
 
+test("an open running task detail follows shared task updates and refreshes its logs", async () => {
+    const generation = await Bun.file(new URL("../src/pages/canvas/use-canvas-generation.ts", import.meta.url)).text();
+    expect(generation).toContain("const taskId = taskDetail?.id;");
+    expect(generation).toContain("subscribeCanvasGenerationRecoveryTasks([taskId]");
+    expect(generation).toContain("current?.id === taskId ? task : current");
+    expect(generation).toContain("setTaskDetailLogs(logs)");
+    expect(generation).toContain("unsubscribe();");
+});
+
 test("node toolbar commits immediate pointer actions before hover relocation can swallow the click", async () => {
     const toolbar = await Bun.file(new URL("../src/components/canvas/canvas-node-toolbar.tsx", import.meta.url)).text();
     expect(toolbar).toContain("onMouseDown={(event) =>");

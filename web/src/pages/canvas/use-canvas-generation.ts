@@ -365,6 +365,40 @@ export function useCanvasGeneration({ projectId, domainProjectId, projectLoaded,
         [],
     );
 
+    useEffect(() => {
+        const taskId = taskDetail?.id;
+        if (!taskId || taskDetail.status === "succeeded" || taskDetail.status === "failed" || taskDetail.status === "cancelled") return;
+
+        let disposed = false;
+        let logRefreshTimer: ReturnType<typeof setTimeout> | undefined;
+        let logRefreshVersion = 0;
+        const refreshLogs = () => {
+            if (logRefreshTimer) clearTimeout(logRefreshTimer);
+            const version = ++logRefreshVersion;
+            logRefreshTimer = setTimeout(() => {
+                void listTaskLogs(taskId)
+                    .then((logs) => {
+                        if (!disposed && version === logRefreshVersion) setTaskDetailLogs(logs);
+                    })
+                    .catch(() => undefined);
+            }, 250);
+        };
+        const unsubscribe = subscribeCanvasGenerationRecoveryTasks([taskId], (task) => {
+            if (disposed || task.id !== taskId) return;
+            setTaskDetail((current) => (current?.id === taskId ? task : current));
+            refreshLogs();
+        });
+
+        return () => {
+            disposed = true;
+            logRefreshVersion += 1;
+            if (logRefreshTimer) clearTimeout(logRefreshTimer);
+            unsubscribe();
+        };
+        // 订阅跟随当前详情任务，不随阶段更新重建；终态日志由同一订阅完成最后一次刷新。
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [taskDetail?.id]);
+
     const recoverInterruptedGenerationTasks = useCallback(
         async (startedProjectId: string, signal: AbortSignal, isCurrentProject: () => boolean) => {
             if (!isCurrentProject()) return;
