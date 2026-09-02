@@ -78,6 +78,7 @@ import { useCanvasLinkedProjectStyle } from "./use-canvas-linked-project-style";
 import { useCanvasLiveProject } from "./use-canvas-live-project";
 import { useCanvasTitleEditing, useCanvasWorkspacePreferences, useCanvasWorkspaceTransitions } from "./use-canvas-workspace-shell";
 import { useCanvasProjectImport } from "./use-canvas-project-import";
+import { useCanvasProjectContentState } from "./use-canvas-project-content-state";
 import { useCanvasProjectDialogState } from "./use-canvas-project-dialog-state";
 import { useCanvasProjectLifecycle } from "./use-canvas-project-lifecycle";
 import { useCanvasRenderModel } from "./use-canvas-render-model";
@@ -92,8 +93,6 @@ import { useCanvasPortraitClearance } from "./use-canvas-portrait-clearance";
 import "./canvas-editor-pc.css";
 import {
     CanvasNodeType,
-    type CanvasAssistantSession,
-    type CanvasConnection,
     type CanvasNodeData,
     type CanvasWorkflowKind,
     type Position,
@@ -132,9 +131,7 @@ function InfiniteCanvasPage() {
     const shortDramaEnabled = useUserStore((state) => state.features.shortDramaEnabled);
     const directorOnboardingScope = useUserStore((state) => state.user?.id?.trim() || "");
     const { nodes, nodesRef, setNodes } = useCanvasNodeState();
-    const [connections, setConnections] = useState<CanvasConnection[]>([]);
-    const [chatSessions, setChatSessions] = useState<CanvasAssistantSession[]>([]);
-    const [activeChatId, setActiveChatId] = useState<string | null>(null);
+    const { activeChatId, chatSessions, connections, setActiveChatId, setChatSessions, setConnections } = useCanvasProjectContentState();
     const [viewport, setViewport] = useState<ViewportTransform>({ x: 0, y: 0, k: 1 });
     const [selectedNodeIds, setSelectedNodeIds] = useState<Set<string>>(new Set());
     const [selectedConnectionId, setSelectedConnectionId] = useState<string | null>(null);

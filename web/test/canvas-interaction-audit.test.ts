@@ -254,3 +254,15 @@ test("workspace chrome state is isolated from project content state", async () =
     expect(projectSource).not.toContain("const [contextMenu, setContextMenu]");
     for (const stateName of ["hoveredNodeId", "contextMenu", "isMiniMapOpen", "backgroundMode", "showImageInfo", "canvasTool"]) expect(workspaceStateSource).toContain(stateName);
 });
+
+test("project content state has a focused owner", async () => {
+    const projectSource = await Bun.file(new URL("../src/pages/canvas/project.tsx", import.meta.url)).text();
+    const stateSource = await Bun.file(new URL("../src/pages/canvas/use-canvas-project-content-state.ts", import.meta.url)).text();
+
+    expect(projectSource).toContain("useCanvasProjectContentState()");
+    expect(projectSource).not.toContain("useState<CanvasConnection[]>");
+    expect(projectSource).not.toContain("useState<CanvasAssistantSession[]>");
+    expect(stateSource).toContain("const [connections, setConnections]");
+    expect(stateSource).toContain("const [chatSessions, setChatSessions]");
+    expect(stateSource).toContain("const [activeChatId, setActiveChatId]");
+});
