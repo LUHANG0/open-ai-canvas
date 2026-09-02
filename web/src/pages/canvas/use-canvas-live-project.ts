@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef } from "react";
 import type { Dispatch, SetStateAction } from "react";
 import { getActiveUserScope } from "@/lib/user-scope";
 import { createCanvasGenerationLiveProjectAdapter, registerCanvasGenerationLiveProject } from "@/services/canvas-generation-consumer";
@@ -62,5 +62,15 @@ export function useCanvasLiveProject({ projectId, nodesRef, nodes, connections, 
         });
     }, [activeChatIdRef, canvasStorageScope, chatSessionsRef, connectionsRef, nodesRef, projectId, setActiveChatId, setChatSessions, setConnections, setNodes]);
 
-    return { connectionsRef, chatSessionsRef, activeChatIdRef, selectedNodeIdsRef, viewportRef };
+    const handleAssistantSessionsChange = useCallback(
+        (sessions: CanvasAssistantSession[], activeId: string | null) => {
+            chatSessionsRef.current = sessions;
+            activeChatIdRef.current = activeId;
+            setChatSessions(sessions);
+            setActiveChatId(activeId);
+        },
+        [setActiveChatId, setChatSessions],
+    );
+
+    return { connectionsRef, chatSessionsRef, activeChatIdRef, selectedNodeIdsRef, viewportRef, handleAssistantSessionsChange };
 }

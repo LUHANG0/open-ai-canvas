@@ -54,6 +54,36 @@ export type CanvasAgentChange = {
 
 type CanvasAgentUndoBatch = { snapshot: CanvasAgentSnapshot; afterNodes: CanvasNodeData[]; afterConnections: CanvasConnection[]; change: Omit<CanvasAgentChange, "undoCount"> };
 
+export function createCanvasAssistantSnapshotView(snapshot: CanvasAgentSnapshot, selectedNodeIds: string[], viewportRef: { current: ViewportTransform }, liveSnapshotRef: { current: CanvasAgentSnapshot }): CanvasAgentSnapshot {
+    return {
+        projectId: snapshot.projectId,
+        domainProjectId: snapshot.domainProjectId,
+        title: snapshot.title,
+        nodes: snapshot.nodes,
+        connections: snapshot.connections,
+        selectedNodeIds,
+        get viewport() {
+            return viewportRef.current;
+        },
+        get revision() {
+            return liveSnapshotRef.current.revision;
+        },
+        get stateHash() {
+            return liveSnapshotRef.current.stateHash;
+        },
+    };
+}
+
+export function useCanvasAssistantSnapshot(snapshot: CanvasAgentSnapshot, selectedNodeIds: Set<string>, viewportRef: { current: ViewportTransform }) {
+    const liveSnapshotRef = useRef(snapshot);
+    liveSnapshotRef.current = snapshot;
+    const selectedNodeIdList = useMemo(() => Array.from(selectedNodeIds), [selectedNodeIds]);
+    return useMemo(
+        () => createCanvasAssistantSnapshotView(snapshot, selectedNodeIdList, viewportRef, liveSnapshotRef),
+        [selectedNodeIdList, snapshot.connections, snapshot.domainProjectId, snapshot.nodes, snapshot.projectId, snapshot.title, viewportRef],
+    );
+}
+
 type RunCanvasAgentGenerationOpsInput = {
     generationOps: Array<Extract<CanvasAgentOp, { type: "run_generation" }>>;
     nodes: CanvasNodeData[];

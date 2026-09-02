@@ -49,7 +49,7 @@ import type { CanvasNodeGraphContextValue } from "@/components/canvas/canvas-nod
 import { CanvasRefreshShell } from "./canvas-refresh-shell";
 import { useCanvasConnectionController } from "./use-canvas-connection-controller";
 import { useCanvasContextInteractions } from "./use-canvas-context-interactions";
-import { useCanvasAgentOperations } from "./use-canvas-agent-operations";
+import { useCanvasAgentOperations, useCanvasAssistantSnapshot } from "./use-canvas-agent-operations";
 import { useCanvasAssistantVisibility } from "./use-canvas-assistant-visibility";
 import { useCanvasActiveTasks } from "./use-canvas-active-tasks";
 import { useCanvasAssetHandoff } from "./use-canvas-asset-handoff";
@@ -197,7 +197,7 @@ function InfiniteCanvasPage() {
     const { tasks: activeTasks } = useCanvasActiveTasks(projectId, projectLoaded);
     const { focusMode, enterFocusMode, exitFocusMode, toggleFocusMode } = useFocusMode();
 
-    const { connectionsRef, chatSessionsRef, activeChatIdRef, selectedNodeIdsRef, viewportRef } = useCanvasLiveProject({
+    const { connectionsRef, selectedNodeIdsRef, viewportRef, handleAssistantSessionsChange } = useCanvasLiveProject({
         projectId,
         nodesRef,
         nodes,
@@ -805,31 +805,8 @@ function InfiniteCanvasPage() {
         setContextMenu,
         focusSelection: fitCanvasSelection,
     });
-    // viewport 在拖动/缩放时高频更新，但不应让整个 Agent 树跟随重渲染。
-    // 仅在节点、连线或选区变化时更换快照对象；viewport 通过 getter 在工具真正读取时取最新值。
-    const liveAgentSnapshotRef = useRef(agentSnapshot);
-    liveAgentSnapshotRef.current = agentSnapshot;
-    const assistantSelectedNodeIds = useMemo(() => Array.from(selectedNodeIds), [selectedNodeIds]);
-    const assistantSnapshot = useMemo(
-        () => ({
-            projectId: agentSnapshot.projectId,
-            domainProjectId: agentSnapshot.domainProjectId,
-            title: agentSnapshot.title,
-            nodes: agentSnapshot.nodes,
-            connections: agentSnapshot.connections,
-            selectedNodeIds: assistantSelectedNodeIds,
-            get viewport() {
-                return viewportRef.current;
-            },
-            get revision() {
-                return liveAgentSnapshotRef.current.revision;
-            },
-            get stateHash() {
-                return liveAgentSnapshotRef.current.stateHash;
-            },
-        }),
-        [agentSnapshot.connections, agentSnapshot.domainProjectId, agentSnapshot.nodes, agentSnapshot.projectId, agentSnapshot.title, assistantSelectedNodeIds],
-    );
+    // 高频视口变化通过 getter 读取，不迫使整个 Agent 树跟随重渲染。
+    const assistantSnapshot = useCanvasAssistantSnapshot(agentSnapshot, selectedNodeIds, viewportRef);
 
     const { selectCanvasStyle, styleApplying } = useCanvasStyleWorkflow({
         domainProjectId: currentProject?.projectId,
@@ -943,12 +920,6 @@ function InfiniteCanvasPage() {
         beginBatchConnection: () => beginBatchConnectionMode(Array.from(selectedNodeIdsRef.current)),
     });
 
-    const handleAssistantSessionsChange = useCallback((sessions: CanvasAssistantSession[], activeId: string | null) => {
-        chatSessionsRef.current = sessions;
-        activeChatIdRef.current = activeId;
-        setChatSessions(sessions);
-        setActiveChatId(activeId);
-    }, []);
     const consumeCinematicAgentEntry = useCallback(() => setCinematicAgentEntry(false), []);
 
     const { handleCanvasContextMenu, handleConnectionContextMenu, handleConnectionSelect, handleNodeContextMenu, pasteAtPosition } = useCanvasContextInteractions({
