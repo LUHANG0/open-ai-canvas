@@ -1,13 +1,13 @@
 import { lazy, Suspense } from "react";
-import { Button, Image, Modal } from "antd";
+import { Button, Modal } from "antd";
 import { Sparkles } from "lucide-react";
 
 import type { GenerationTask, TaskLog } from "@/services/api/task-center";
-import { CanvasNodeType, type CanvasNodeData } from "@/types/canvas";
-import { VideoPlayer } from "@/components/video-player";
+import type { CanvasNodeData } from "@/types/canvas";
 import type { CanvasStatusDialogTheme } from "./canvas-project-task-detail-dialog";
 
 const CanvasProjectTaskDetailDialog = lazy(() => import("./canvas-project-task-detail-dialog").then((module) => ({ default: module.CanvasProjectTaskDetailDialog })));
+const CanvasProjectMediaPreview = lazy(() => import("./canvas-project-media-preview").then((module) => ({ default: module.CanvasProjectMediaPreview })));
 
 type CanvasProjectStatusDialogsProps = {
     theme: CanvasStatusDialogTheme;
@@ -55,36 +55,10 @@ export function CanvasProjectStatusDialogs({
                 </div>
             </Modal>
 
-            <Modal
-                rootClassName="pc-canvas-overlay pc-canvas-modal pc-canvas-preview-modal"
-                title="视频预览"
-                open={Boolean(previewNode?.metadata?.content && previewNode.type === CanvasNodeType.Video)}
-                centered
-                onCancel={onClosePreview}
-                footer={null}
-                width="min(1200px, calc(100vw - 32px))"
-                styles={{ body: { padding: 0, display: "flex", justifyContent: "center", alignItems: "center", maxHeight: "84vh", overflow: "hidden", background: "#090909" } }}
-            >
-                {previewNode?.metadata?.content && previewNode.type === CanvasNodeType.Video ? (
-                    <VideoPlayer src={previewNode.metadata.content} mimeType={previewNode.metadata.mimeType} title={previewNode.title || "视频预览"} className="max-h-[84vh] max-w-full bg-black" />
-                ) : null}
-            </Modal>
-
-            {previewNode?.metadata?.content && previewNode.type === CanvasNodeType.Image ? (
-                <Image
-                    src={previewNode.metadata.content}
-                    alt={previewNode.title || "图片"}
-                    style={{ display: "none" }}
-                    preview={{
-                        open: true,
-                        rootClassName: "pc-canvas-overlay pc-canvas-image-preview",
-                        movable: true,
-                        minScale: 0.5,
-                        maxScale: 12,
-                        scaleStep: 0.25,
-                        onOpenChange: (open) => !open && onClosePreview(),
-                    }}
-                />
+            {previewNode?.metadata?.content ? (
+                <Suspense fallback={<CanvasStatusDialogLoading label="正在加载媒体预览…" />}>
+                    <CanvasProjectMediaPreview node={previewNode} onClose={onClosePreview} />
+                </Suspense>
             ) : null}
 
             <Modal
