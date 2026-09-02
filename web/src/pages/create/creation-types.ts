@@ -42,6 +42,12 @@ export type CreationMessage = {
     generationEffectKeys?: string[];
 };
 
+export type CreationShot = {
+    id: string;
+    user?: CreationMessage;
+    result?: CreationMessage;
+};
+
 export type CreationConversation = {
     id: string;
     title: string;

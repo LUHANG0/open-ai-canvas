@@ -79,14 +79,15 @@ describe("PC creation chat and storyboard director workbench regression gates", 
     });
 
     test("uses stable message-backed shot ids for selection instead of array indexes", async () => {
-        const source = await read("../src/pages/create/index.tsx");
-        const projection = sourceSection(source, "type CreationShot", "function completedCreationGenerationTask");
+        const [source, typesSource, storyboardSource] = await Promise.all([read("../src/pages/create/index.tsx"), read("../src/pages/create/creation-types.ts"), read("../src/pages/create/creation-storyboard-workbench.tsx")]);
+        const projection = sourceSection(source, "function shotsFromMessages", "function completedCreationGenerationTask");
         const selection = sourceSection(source, "const shots = useMemo", "useEffect(() => {");
         const selectShot = sourceSection(source, "const selectStoryboardShot", "const beginVariantFromShot");
-        const rail = sourceSection(source, "function StoryboardShotRail", "function StoryboardComposerContext");
+        const rail = sourceSection(storyboardSource, "function StoryboardShotRail", "function StoryboardComposerContext");
         const submit = sourceSection(source, "const submit = async", "useEffect(() => {");
 
-        expect(projection).toContain("type CreationShot = { id: string;");
+        expect(typesSource).toContain("export type CreationShot = {");
+        expect(typesSource).toContain("id: string;");
         expect(projection).toContain("shots.push({ id: message.id, user: message })");
         expect(projection).toContain("shots.push({ id: message.id, result: message })");
         expect(projection).toContain("!shots[shots.length - 1].result");
@@ -102,12 +103,12 @@ describe("PC creation chat and storyboard director workbench regression gates", 
     });
 
     test("renders a vertical shot rail, central preview, right inspector, and bottom composer context", async () => {
-        const [source, styles] = await Promise.all([read("../src/pages/create/index.tsx"), read("../src/pages/create/creation-workspace.css")]);
+        const [source, storyboardSource, styles] = await Promise.all([read("../src/pages/create/index.tsx"), read("../src/pages/create/creation-storyboard-workbench.tsx"), read("../src/pages/create/creation-workspace.css")]);
         const desktopStyles = styles.slice(styles.indexOf("@media (min-width: 1024px)"));
         const storyboardRender = sourceSection(source, '<div className="storyboard-workbench">', "<CreationHistoryDrawer");
-        const rail = sourceSection(source, "function StoryboardShotRail", "function StoryboardComposerContext");
-        const shotCard = sourceSection(source, "function StoryboardShotCard", "function StoryboardNextShotCard");
-        const nextCard = sourceSection(source, "function StoryboardNextShotCard", "function StoryboardBriefAttachments");
+        const rail = sourceSection(storyboardSource, "function StoryboardShotRail", "function StoryboardComposerContext");
+        const shotCard = sourceSection(storyboardSource, "function StoryboardShotCard", "function StoryboardNextShotCard");
+        const nextCard = sourceSection(storyboardSource, "function StoryboardNextShotCard", "function StoryboardBriefAttachments");
 
         const railPosition = storyboardRender.indexOf("<StoryboardShotRail");
         const stagePosition = storyboardRender.indexOf('className="storyboard-workbench-stage"');
@@ -181,8 +182,8 @@ describe("PC creation chat and storyboard director workbench regression gates", 
     });
 
     test("uses ordered-list and button semantics with aria-current instead of a fake listbox", async () => {
-        const [source, toolbar] = await Promise.all([read("../src/pages/create/index.tsx"), read("../src/pages/create/creation-workspace-toolbar.tsx")]);
-        const rail = sourceSection(source, "function StoryboardShotRail", "function StoryboardComposerContext");
+        const [storyboardSource, toolbar] = await Promise.all([read("../src/pages/create/creation-storyboard-workbench.tsx"), read("../src/pages/create/creation-workspace-toolbar.tsx")]);
+        const rail = sourceSection(storyboardSource, "function StoryboardShotRail", "function StoryboardComposerContext");
 
         expect(rail).toContain('<ol className="storyboard-editor-rail-list creation-scrollbar" aria-label="镜头列表">');
         expect(rail).toContain('aria-current={active ? "true" : undefined}');
@@ -197,10 +198,10 @@ describe("PC creation chat and storyboard director workbench regression gates", 
     });
 
     test("maps streaming and cancelled states consistently in the rail, card, and result", async () => {
-        const [source, styles] = await Promise.all([read("../src/pages/create/index.tsx"), read("../src/pages/create/creation-workspace.css")]);
-        const stateContract = sourceSection(source, "type StoryboardShotState", "function storyboardShotTitle");
-        const shotCard = sourceSection(source, "function StoryboardShotCard", "function StoryboardNextShotCard");
-        const result = sourceSection(source, "function StoryboardShotResult", "async function buildTextMessageContent");
+        const [storyboardSource, styles] = await Promise.all([read("../src/pages/create/creation-storyboard-workbench.tsx"), read("../src/pages/create/creation-workspace.css")]);
+        const stateContract = sourceSection(storyboardSource, "type StoryboardShotState", "function storyboardShotTitle");
+        const shotCard = sourceSection(storyboardSource, "function StoryboardShotCard", "function StoryboardNextShotCard");
+        const result = storyboardSource.slice(storyboardSource.indexOf("function StoryboardShotResult"));
         const desktopStyles = styles.slice(styles.indexOf("@media (min-width: 1024px)"));
 
         expect(stateContract).toContain('cancelled: "已停止"');
@@ -217,12 +218,12 @@ describe("PC creation chat and storyboard director workbench regression gates", 
     });
 
     test("presents variants as a new-shot flow and never as an in-place mutation", async () => {
-        const source = await read("../src/pages/create/index.tsx");
+        const [source, storyboardSource] = await Promise.all([read("../src/pages/create/index.tsx"), read("../src/pages/create/creation-storyboard-workbench.tsx")]);
         const variant = sourceSection(source, "const beginVariantFromShot", "const updateComposerPrompt");
-        const context = sourceSection(source, "function StoryboardComposerContext", "function StoryboardToolbar");
-        const shotCard = sourceSection(source, "function StoryboardShotCard", "function StoryboardNextShotCard");
+        const context = sourceSection(storyboardSource, "function StoryboardComposerContext", "function StoryboardToolbar");
+        const shotCard = sourceSection(storyboardSource, "function StoryboardShotCard", "function StoryboardNextShotCard");
         const stage = sourceSection(source, "const storyboardStageContent", "return (");
-        const nextCard = sourceSection(source, "function StoryboardNextShotCard", "function StoryboardBriefAttachments");
+        const nextCard = sourceSection(storyboardSource, "function StoryboardNextShotCard", "function StoryboardBriefAttachments");
         const promptUpdate = sourceSection(source, "const updateComposerPrompt", "const composerProps");
         const composeControls = sourceSection(source, "const cancelComposeNextShot", "const selectStoryboardShot");
 
@@ -272,13 +273,13 @@ describe("PC creation chat and storyboard director workbench regression gates", 
     });
 
     test("retains preview, download, retry, canvas handoff, upload, and generation fingerprints", async () => {
-        const [source, messageSource, composerSource] = await Promise.all([read("../src/pages/create/index.tsx"), read("../src/pages/create/creation-message-view.tsx"), read("../src/pages/create/creation-composer.tsx")]);
-        const shotCard = sourceSection(source, "function StoryboardShotCard", "function StoryboardNextShotCard");
-        const result = sourceSection(source, "function StoryboardShotResult", "async function buildTextMessageContent");
+        const [source, messageSource, composerSource, storyboardSource] = await Promise.all([read("../src/pages/create/index.tsx"), read("../src/pages/create/creation-message-view.tsx"), read("../src/pages/create/creation-composer.tsx"), read("../src/pages/create/creation-storyboard-workbench.tsx")]);
+        const shotCard = sourceSection(storyboardSource, "function StoryboardShotCard", "function StoryboardNextShotCard");
+        const result = storyboardSource.slice(storyboardSource.indexOf("function StoryboardShotResult"));
         const downloads = sourceSection(messageSource, "export function CreationResultDownloads", "function CreationMediaPending");
         const composer = sourceSection(composerSource, "function CreationComposer", "function ModePicker");
 
-        expect(source).toContain("creationCanvasHandoffPath(resultAssetIds, resultUrls.length)");
+        expect(storyboardSource).toContain("creationCanvasHandoffPath(resultAssetIds, resultUrls.length)");
         expect(source).toContain("runBackendGenerationTask(");
         expect(source).toContain("runBackendGenerationTaskBatch(");
         expect(source).toContain("onSubmit: () => void submit()");
