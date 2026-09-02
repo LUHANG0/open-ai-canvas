@@ -44,6 +44,10 @@ export type BatchConnectionCreateRequest = {
     position: Position;
 };
 
+export function selectBatchConnectionSourceNodeIds(nodes: readonly CanvasNodeData[], selectedNodeIds: ReadonlySet<string>) {
+    return nodes.filter((node) => selectedNodeIds.has(node.id) && !batchSourceRestriction(node)).map((node) => node.id);
+}
+
 export function buildBatchConnectionCreateRequest(sourceNodeIds: string[], nodes: CanvasNodeData[], position: Position): BatchConnectionCreateRequest | null {
     const eligibleSourceNodeIds = Array.from(new Set(sourceNodeIds)).filter((nodeId) => {
         const node = nodes.find((item) => item.id === nodeId);

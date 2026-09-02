@@ -18,7 +18,7 @@ import { useCanvasAgentStore } from "@/stores/canvas/use-canvas-agent-store";
 import { getContextResourceNodesFromIndex } from "@/lib/canvas/canvas-resource-references";
 import { CanvasOverlayLayerProvider } from "@/components/canvas/canvas-overlay-layer";
 import { stampCanvasNodeChanges } from "@/lib/canvas/canvas-node-timestamps";
-import { batchSourceRestriction } from "@/lib/canvas/canvas-batch-connection";
+import { selectBatchConnectionSourceNodeIds } from "@/lib/canvas/canvas-batch-connection";
 import { CanvasProjectFeedbackLayer } from "./canvas-project-feedback";
 import { backendProviderConfig } from "@/lib/canvas/canvas-project-generation";
 import { CanvasProjectHeader, CanvasProjectNavigationSidebar } from "./canvas-project-chrome";
@@ -558,7 +558,7 @@ function InfiniteCanvasPage() {
         setDrawingNodeId,
     });
 
-    const batchSourceNodeIds = useMemo(() => nodes.filter((node) => selectedNodeIds.has(node.id) && !batchSourceRestriction(node)).map((node) => node.id), [nodes, selectedNodeIds]);
+    const batchSourceNodeIds = useMemo(() => selectBatchConnectionSourceNodeIds(nodes, selectedNodeIds), [nodes, selectedNodeIds]);
     const { handleCanvasDeselect, handleCanvasSelectionStart, handleNodeInteractionStart, handleSelectedNodeClick, openDrawingNode, openPortraitClearance, openTextNodeEditor, selectVideoForPlayback } = useCanvasNodeFocus({
         nodesRef,
         selectedNodeIdsRef,
