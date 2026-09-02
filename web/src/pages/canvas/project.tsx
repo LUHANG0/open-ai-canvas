@@ -17,7 +17,6 @@ import { useUserStore } from "@/stores/use-user-store";
 import { App } from "antd";
 import { AssistantPanelColumn } from "./canvas-assistant-panel-column";
 import { CanvasActiveTaskPanel } from "@/components/canvas/canvas-active-task-panel";
-import { CanvasAssetTray } from "@/components/canvas/canvas-asset-tray";
 import { CanvasProjectSidebar } from "@/components/canvas/canvas-project-sidebar";
 import { resolveProjectCanvasStyle } from "@/components/canvas/canvas-style-picker-modal";
 import { createStyleProfileSnapshot, resolveStyleProfile, serializeStyleProfile } from "@/lib/canvas/style-profile";
@@ -25,16 +24,14 @@ import { CanvasNodeInfoModal } from "@/components/canvas/canvas-node-toolbar";
 import { CanvasFileDropOverlay } from "@/components/canvas/canvas-file-drop-overlay";
 import { CanvasUploadModal } from "@/components/canvas/canvas-upload-modal";
 import { InfiniteCanvas } from "@/components/canvas/infinite-canvas";
-import { Minimap } from "@/components/canvas/canvas-mini-map";
 import type { CanvasNodeGenerationMode } from "@/components/canvas/canvas-node-prompt-panel";
 import { CanvasToolbar } from "@/components/canvas/canvas-toolbar";
 import { getProject } from "@/services/api/projects";
-import { CanvasZoomControls } from "@/components/canvas/canvas-zoom-controls";
 import { CanvasLocalAgentPanel } from "@/components/canvas/canvas-local-agent-panel";
 import { useFocusMode } from "@/hooks/use-focus-mode";
 import { useCanvasAgentStore } from "@/stores/canvas/use-canvas-agent-store";
 import { getContextResourceNodesFromIndex } from "@/lib/canvas/canvas-resource-references";
-import { CanvasOverlayLayerContainer, CanvasOverlayLayerProvider } from "@/components/canvas/canvas-overlay-layer";
+import { CanvasOverlayLayerProvider } from "@/components/canvas/canvas-overlay-layer";
 import { CanvasLeaferGraphicsLayer } from "@/components/canvas/canvas-leafer-graphics-layer";
 import { CanvasFreeformEmptyState, CanvasLinkedProjectEmptyState, CanvasShortDramaEmptyState, CanvasShortDramaGuide } from "@/components/canvas/canvas-short-drama-entry";
 import { createCanvasNode } from "@/lib/canvas/canvas-project-domain";
@@ -46,6 +43,7 @@ import { CanvasTopBar, CanvasWorkspaceModeSwitch } from "./canvas-project-top-ba
 import { CanvasFocusModeBar } from "@/components/canvas/canvas-focus-mode-bar";
 import { CanvasProjectContextMenu } from "./canvas-project-context-menu";
 import { CanvasProjectMediaDialogs } from "./canvas-project-media-dialogs";
+import { CanvasProjectBottomDock } from "./canvas-project-bottom-dock";
 import { CanvasProjectDirectorWorkbench } from "./canvas-project-director-workbench";
 import { CanvasProjectEntryDialogs } from "./canvas-project-entry-dialogs";
 import { CanvasProjectAssetDialogs, CanvasProjectVersionCompareDialog } from "./canvas-project-library-dialogs";
@@ -1637,41 +1635,28 @@ function InfiniteCanvasPage() {
                             trimmingVideo={segmentRunningMode === "video"}
                         />
 
-                        {isMiniMapOpen && !focusMode ? <Minimap nodes={nodes} viewport={viewport} viewportSize={size} canvasContainerRef={containerRef} onViewportPreviewChange={previewViewport} onViewportChange={handleViewportChange} /> : null}
-
-                        {!focusMode ? (
-                            <CanvasOverlayLayerContainer
-                                overlayId="asset-tray"
-                                fallbackZIndex="var(--z-panel)"
-                                className="pc-canvas-workspace__bottom-dock absolute bottom-[calc(var(--canvas-inset-y)+var(--space-16))] left-[var(--canvas-inset-x)] flex items-end gap-2 lg:bottom-[var(--canvas-inset-y)]"
-                                onMouseDown={(event) => event.stopPropagation()}
-                                onPointerDown={(event) => event.stopPropagation()}
-                                onWheel={(event) => event.stopPropagation()}
-                            >
-                                <CanvasZoomControls
-                                    scale={viewport.k}
-                                    containerRef={containerRef}
-                                    onScaleChange={setZoomScale}
-                                    onFitContent={fitCanvasContent}
-                                    onAutoArrange={() => {
-                                        setContextMenu(null);
-                                        autoArrangeCanvasNodes();
-                                        window.requestAnimationFrame(() => fitCanvasContent());
-                                    }}
-                                    isMiniMapOpen={isMiniMapOpen}
-                                    onToggleMiniMap={() => { setContextMenu(null); setIsMiniMapOpen((value) => !value); }}
-                                    onOpenShortcuts={() => { setContextMenu(null); setShortcutRequestNonce((value) => value + 1); }}
-                                />
-                                <CanvasAssetTray
-                                    assetImages={imageAssets}
-                                    canvasImages={canvasImageNodes}
-                                    showLibrary={!currentProject?.projectId}
-                                    activeNodeId={selectedNodeIds.size === 1 ? Array.from(selectedNodeIds)[0] : null}
-                                    onInsertAssetImage={(asset) => void createImageAssetNode(asset)}
-                                    onFocusCanvasImage={focusCanvasImageNode}
-                                />
-                            </CanvasOverlayLayerContainer>
-                        ) : null}
+                        <CanvasProjectBottomDock
+                            focusMode={focusMode}
+                            isMiniMapOpen={isMiniMapOpen}
+                            nodes={nodes}
+                            viewport={viewport}
+                            viewportSize={size}
+                            containerRef={containerRef}
+                            selectedNodeIds={selectedNodeIds}
+                            assetImages={imageAssets}
+                            canvasImages={canvasImageNodes}
+                            projectLinked={Boolean(currentProject?.projectId)}
+                            onViewportPreviewChange={previewViewport}
+                            onViewportChange={handleViewportChange}
+                            onScaleChange={setZoomScale}
+                            onFitContent={fitCanvasContent}
+                            onAutoArrange={autoArrangeCanvasNodes}
+                            onDismissContextMenu={() => setContextMenu(null)}
+                            onToggleMiniMap={() => setIsMiniMapOpen((value) => !value)}
+                            onOpenShortcuts={() => setShortcutRequestNonce((value) => value + 1)}
+                            onInsertAssetImage={(asset) => void createImageAssetNode(asset)}
+                            onFocusCanvasImage={focusCanvasImageNode}
+                        />
 
                         <CanvasProjectContextMenu
                             menu={contextMenu}
