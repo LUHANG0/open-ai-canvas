@@ -61,6 +61,7 @@ import { useCanvasAssetHandoff } from "./use-canvas-asset-handoff";
 import { useCanvasAssetInsertion } from "./use-canvas-asset-insertion";
 import { useCanvasStyleWorkflow } from "./use-canvas-style-workflow";
 import { useCanvasDirector } from "./use-canvas-director";
+import { useCanvasDeletedNodeCleanup } from "./use-canvas-deleted-node-cleanup";
 import { useCanvasGeneration } from "./use-canvas-generation";
 import { useCanvasGenerationBatches } from "./use-canvas-generation-batches";
 import { useCanvasGenerationExecutor, type CanvasNodeGenerationOptions } from "./use-canvas-generation-executor";
@@ -536,40 +537,37 @@ function InfiniteCanvasPage() {
         bindGenerationTask,
     });
 
-    const handleNodesDeleted = useCallback(
-        (removedIds: Set<string>, nextNodes: CanvasNodeData[], _removedNodes: CanvasNodeData[]) => {
-            const clearDeletedId = (current: string | null) => (current && removedIds.has(current) ? null : current);
-            setHoveredNodeId(clearDeletedId);
-            setToolbarNodeId(clearDeletedId);
-            setDialogNodeId(clearDeletedId);
-            setTextEditorNodeId(clearDeletedId);
-            setCharacterReferenceNodeId(clearDeletedId);
-            setDrawingNodeId(clearDeletedId);
-            setInfoNodeId(clearDeletedId);
-            setSubtitleNodeId(clearDeletedId);
-            setFrameDialogNodeId(clearDeletedId);
-            setSegmentDialogNodeId(clearDeletedId);
-            setCropNodeId(clearDeletedId);
-            setMaskEditNodeId(clearDeletedId);
-            setAnnotationNodeId(clearDeletedId);
-            setSplitNodeId(clearDeletedId);
-            setUpscaleNodeId(clearDeletedId);
-            setAngleNodeId(clearDeletedId);
-            setEmotionNodeId(clearDeletedId);
-            setSuperResolveNodeId(clearDeletedId);
-            setPreviewNodeId(clearDeletedId);
-            setRunningNodeId(clearDeletedId);
-            setScriptEditorNodeId(clearDeletedId);
-            setPortraitClearanceNodeId(clearDeletedId);
-            setDirectorNodeId(clearDeletedId);
-            setVersionCompareRootId(clearDeletedId);
-            setScriptScrollTopById((current) => Object.fromEntries(Object.entries(current).filter(([id]) => !removedIds.has(id))));
-            setContextMenu((current) => (current?.type === "node" && removedIds.has(current.nodeId) ? null : current));
-            // 绘图文档随项目保留：节点删除可撤销，恢复后仍能读取原内容。
-            cleanupCanvasFiles({ projectId, nodes: nextNodes, chatSessions });
-        },
-        [chatSessions, cleanupCanvasFiles, message, projectId, setAngleNodeId, setAnnotationNodeId, setCropNodeId, setEmotionNodeId, setFrameDialogNodeId, setMaskEditNodeId, setSegmentDialogNodeId, setSplitNodeId, setUpscaleNodeId, setRunningNodeId],
-    );
+    const handleNodesDeleted = useCanvasDeletedNodeCleanup({
+        projectId,
+        chatSessions,
+        cleanupCanvasFiles,
+        setHoveredNodeId,
+        setToolbarNodeId,
+        setDialogNodeId,
+        setTextEditorNodeId,
+        setCharacterReferenceNodeId,
+        setDrawingNodeId,
+        setInfoNodeId,
+        setSubtitleNodeId,
+        setFrameDialogNodeId,
+        setSegmentDialogNodeId,
+        setCropNodeId,
+        setMaskEditNodeId,
+        setAnnotationNodeId,
+        setSplitNodeId,
+        setUpscaleNodeId,
+        setAngleNodeId,
+        setEmotionNodeId,
+        setSuperResolveNodeId,
+        setPreviewNodeId,
+        setRunningNodeId,
+        setScriptEditorNodeId,
+        setPortraitClearanceNodeId,
+        setDirectorNodeId,
+        setVersionCompareRootId,
+        setScriptScrollTopById,
+        setContextMenu,
+    });
 
     const {
         alignSelectedNodes,
