@@ -213,7 +213,7 @@ function InfiniteCanvasPage() {
     const size = useCanvasViewportMeasurement({ projectId, projectLoaded, containerRef, viewportRef, setViewport });
     const historyRestoreUiRef = useRef<() => void>(() => undefined);
 
-    const { getHistoryCleanupContext, historyPausedRef, historyState, prepareExternalHistoryUpdate, redoCanvas, resetHistory, undoCanvas } = useCanvasHistory({
+    const { cleanupCanvasFiles, historyPausedRef, historyState, prepareExternalHistoryUpdate, redoCanvas, resetHistory, undoCanvas } = useCanvasHistory({
         projectLoaded,
         nodes,
         connections,
@@ -231,14 +231,8 @@ function InfiniteCanvasPage() {
         setSelectedConnectionId,
         setContextMenu,
         onApplySnapshot: () => historyRestoreUiRef.current(),
+        cleanupAssetImages,
     });
-
-    const cleanupCanvasFiles = useCallback(
-        (extra?: unknown) => {
-            cleanupAssetImages({ extra, ...getHistoryCleanupContext() });
-        },
-        [cleanupAssetImages, getHistoryCleanupContext],
-    );
 
     const { addedSkills, clearCanvasFiles, createAndOpenProject, currentProject, deleteCurrentProject, renameCurrentProject, saveCanvasProject, saveStatus, updateProject } = useCanvasProjectLifecycle({
         projectId,

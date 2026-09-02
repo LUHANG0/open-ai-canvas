@@ -51,7 +51,12 @@ type UseCanvasHistoryOptions = CanvasHistorySnapshot & {
     setContextMenu: Dispatch<SetStateAction<ContextMenuState | null>>;
     /** 撤销/重做前关闭节点编辑器等瞬时 UI，避免恢复后残留幽灵面板。 */
     onApplySnapshot?: () => void;
+    cleanupAssetImages: (options?: unknown) => void;
 };
+
+export function buildCanvasHistoryCleanupOptions(extra: unknown, history: unknown, lastHistory: CanvasHistorySnapshot | null) {
+    return { extra, history, lastHistory };
+}
 
 export function useCanvasHistory({
     projectLoaded,
@@ -71,6 +76,7 @@ export function useCanvasHistory({
     setSelectedConnectionId,
     setContextMenu,
     onApplySnapshot,
+    cleanupAssetImages,
 }: UseCanvasHistoryOptions) {
     const historyRef = useRef<{ past: CanvasHistoryPatch[]; future: CanvasHistoryPatch[] }>({ past: [], future: [] });
     const lastHistoryRef = useRef<CanvasHistorySnapshot | null>(null);
@@ -170,6 +176,13 @@ export function useCanvasHistory({
     }, [applyHistorySnapshot]);
 
     const getHistoryCleanupContext = useCallback(() => ({ history: historyRef.current, lastHistory: lastHistoryRef.current }), []);
+    const cleanupCanvasFiles = useCallback(
+        (extra?: unknown) => {
+            const { history, lastHistory } = getHistoryCleanupContext();
+            cleanupAssetImages(buildCanvasHistoryCleanupOptions(extra, history, lastHistory));
+        },
+        [cleanupAssetImages, getHistoryCleanupContext],
+    );
 
     useEffect(() => {
         if (!projectLoaded || applyingHistoryRef.current || historyPausedRef.current) return;
@@ -205,7 +218,7 @@ export function useCanvasHistory({
         if (applyTimerRef.current) clearTimeout(applyTimerRef.current);
     }, [clearCommitTimer]);
 
-    return { getHistoryCleanupContext, historyPausedRef, historyState, prepareExternalHistoryUpdate, redoCanvas, resetHistory, undoCanvas };
+    return { cleanupCanvasFiles, historyPausedRef, historyState, prepareExternalHistoryUpdate, redoCanvas, resetHistory, undoCanvas };
 }
 
 function snapshotsShareReferences(before: CanvasHistorySnapshot, after: CanvasHistorySnapshot) {

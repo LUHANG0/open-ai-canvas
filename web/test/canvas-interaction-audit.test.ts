@@ -4,7 +4,7 @@ import { getCanvasSelectionCapabilities } from "../src/lib/canvas/canvas-selecti
 import { canvasNodeIntersectsRenderBounds } from "../src/lib/canvas/canvas-render-culling";
 import { partitionCanvasUploadFiles } from "../src/lib/canvas/canvas-upload-batch";
 import { normalizeToolbarPrefs } from "../src/lib/canvas/tool-registry";
-import { applyCanvasHistoryPatch, createCanvasHistoryPatch, type CanvasHistorySnapshot } from "../src/pages/canvas/use-canvas-history";
+import { applyCanvasHistoryPatch, buildCanvasHistoryCleanupOptions, createCanvasHistoryPatch, type CanvasHistorySnapshot } from "../src/pages/canvas/use-canvas-history";
 import { CanvasNodeType, type CanvasNodeData } from "../src/types/canvas";
 
 function node(id: string, type: CanvasNodeType, options?: { locked?: boolean; content?: string }): CanvasNodeData {
@@ -57,6 +57,13 @@ test("history ignores external media hydration and reference-only no-op arrays",
     expect(history).toContain("prepareExternalHistoryUpdate");
     expect(history).toContain("if (!createCanvasHistoryPatch(previous, next))");
     expect(lifecycle).toContain("prepareExternalHistoryUpdate();");
+});
+
+test("history cleanup keeps undo snapshots alongside the current cleanup target", () => {
+    const lastHistory: CanvasHistorySnapshot = { nodes: [], connections: [], chatSessions: [], activeChatId: null, backgroundMode: "lines", showImageInfo: false };
+    const history = { past: ["patch"], future: [] };
+    const extra = { projectId: "canvas-1", nodes: [] };
+    expect(buildCanvasHistoryCleanupOptions(extra, history, lastHistory)).toEqual({ extra, history, lastHistory });
 });
 
 test("undoable drawing deletion retains local drawing documents", async () => {
