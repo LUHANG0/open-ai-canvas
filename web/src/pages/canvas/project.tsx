@@ -67,6 +67,7 @@ import { useCanvasGenerationBatches } from "./use-canvas-generation-batches";
 import { useCanvasGenerationExecutor, type CanvasNodeGenerationOptions } from "./use-canvas-generation-executor";
 import { useCanvasGenerationRetry } from "./use-canvas-generation-retry";
 import { useCanvasHistory } from "./use-canvas-history";
+import { useCanvasHistoryUiCleanup } from "./use-canvas-history-ui-cleanup";
 import { useCanvasKeyboard } from "./use-canvas-keyboard";
 import { useCanvasMediaTools } from "./use-canvas-media-tools";
 import { useCanvasNodeEditor } from "./use-canvas-node-editor";
@@ -688,36 +689,34 @@ function InfiniteCanvasPage() {
         setToolbarNodeId,
     });
 
-    useEffect(() => {
-        historyRestoreUiRef.current = () => {
-            resetNodeHoverToolbar();
-            setDialogNodeId(null);
-            setTextEditorNodeId(null);
-            setCharacterReferenceNodeId(null);
-            setDrawingNodeId(null);
-            setInfoNodeId(null);
-            setSubtitleNodeId(null);
-            setTimelineNodeId(null);
-            setSuperResolveNodeId(null);
-            setPreviewNodeId(null);
-            setScriptEditorNodeId(null);
-            setPortraitClearanceNodeId(null);
-            setDirectorNodeId(null);
-            setVersionCompareRootId(null);
-            setFrameDialogNodeId(null);
-            setSegmentDialogNodeId(null);
-            setCropNodeId(null);
-            setMaskEditNodeId(null);
-            setAnnotationNodeId(null);
-            setSplitNodeId(null);
-            setUpscaleNodeId(null);
-            setAngleNodeId(null);
-            setEmotionNodeId(null);
-        };
-        return () => {
-            historyRestoreUiRef.current = () => undefined;
-        };
-    }, [resetNodeHoverToolbar, setAngleNodeId, setAnnotationNodeId, setCropNodeId, setEmotionNodeId, setFrameDialogNodeId, setMaskEditNodeId, setSegmentDialogNodeId, setSplitNodeId, setUpscaleNodeId]);
+    useCanvasHistoryUiCleanup({
+        historyRestoreUiRef,
+        resetNodeHoverToolbar,
+        resetters: {
+            dialog: setDialogNodeId,
+            textEditor: setTextEditorNodeId,
+            characterReference: setCharacterReferenceNodeId,
+            drawing: setDrawingNodeId,
+            info: setInfoNodeId,
+            subtitle: setSubtitleNodeId,
+            timeline: setTimelineNodeId,
+            superResolve: setSuperResolveNodeId,
+            preview: setPreviewNodeId,
+            scriptEditor: setScriptEditorNodeId,
+            portraitClearance: setPortraitClearanceNodeId,
+            director: setDirectorNodeId,
+            versionCompare: setVersionCompareRootId,
+            frameDialog: setFrameDialogNodeId,
+            segmentDialog: setSegmentDialogNodeId,
+            crop: setCropNodeId,
+            maskEdit: setMaskEditNodeId,
+            annotation: setAnnotationNodeId,
+            split: setSplitNodeId,
+            upscale: setUpscaleNodeId,
+            angle: setAngleNodeId,
+            emotion: setEmotionNodeId,
+        },
+    });
 
     const {
         collapsingBatchIds,
