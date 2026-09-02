@@ -80,7 +80,7 @@ import { CanvasProjectMediaDialogs } from "./canvas-project-media-dialogs";
 import { CanvasProjectSelectionToolbar } from "./canvas-project-selection-toolbar";
 import { CanvasProjectStatusDialogs } from "./canvas-project-status-dialogs";
 import { CanvasProjectWorldLayers } from "./canvas-project-world-layers";
-import { CanvasNodeActionContext, type CanvasNodeActionContextValue } from "@/components/canvas/canvas-node-action-context";
+import { CanvasNodeActionContext } from "@/components/canvas/canvas-node-action-context";
 import { PortraitClearanceModal } from "@/components/canvas/portrait-clearance/portrait-clearance-modal";
 import { CanvasNodeGraphContext, type CanvasNodeGraphContextValue } from "@/components/canvas/canvas-node-graph-context";
 import { CanvasRefreshShell } from "./canvas-refresh-shell";
@@ -103,6 +103,7 @@ import { useCanvasHistory } from "./use-canvas-history";
 import { useCanvasKeyboard } from "./use-canvas-keyboard";
 import { useCanvasMediaTools } from "./use-canvas-media-tools";
 import { useCanvasNodeEditor } from "./use-canvas-node-editor";
+import { useCanvasNodeActionBindings } from "./use-canvas-node-action-bindings";
 import { useCanvasNodeFocus } from "./use-canvas-node-focus";
 import { useCanvasNodeHoverToolbar } from "./use-canvas-node-hover-toolbar";
 import { useCanvasNodeOperations } from "./use-canvas-node-operations";
@@ -124,7 +125,6 @@ import {
     type CanvasAssistantSession,
     type CanvasConnection,
     type CanvasNodeData,
-    type CanvasNodeMetadata,
     type StoryboardColumn,
     type StoryboardShotCount,
     type StoryboardShotDuration,
@@ -1459,21 +1459,17 @@ function InfiniteCanvasPage() {
         },
         [generateScriptRows, handleRetryNode, message, nodesRef, retryImageBatchChildren],
     );
-    const openCanvasNodeVersions = useCallback((node: CanvasNodeData) => setVersionCompareRootId(node.metadata?.versionOfNodeId || node.id), []);
-    const viewCanvasNodeImage = useCallback((node: CanvasNodeData) => setPreviewNodeId(node.id), []);
-    const editCanvasDirector = useCallback((node: CanvasNodeData) => openDirectorWorkbench(node.id), [openDirectorWorkbench]);
-    const updateCanvasNodeMetadata = useCallback((nodeId: string, patch: CanvasNodeMetadata) => {
-        setNodes((current) => current.map((node) => (node.id === nodeId ? { ...node, metadata: { ...node.metadata, ...patch } } : node)));
-    }, []);
-    const resizeCanvasNodeFromContent = useCallback((nodeId: string, size: { width: number; height: number }) => {
-        setNodes((current) => current.map((node) => (node.id === nodeId ? { ...node, width: size.width, height: size.height } : node)));
-    }, []);
-    const duplicateCanvasNodeFromContext = useCallback((node: CanvasNodeData) => duplicateNode(node.id), [duplicateNode]);
-    const deleteCanvasNodeFromContext = useCallback((node: CanvasNodeData) => deleteNodes(new Set([node.id])), [deleteNodes]);
-    const canvasNodeActions = useMemo<CanvasNodeActionContextValue>(
-        () => ({ download: downloadNodeImage, duplicate: duplicateCanvasNodeFromContext, deleteNode: deleteCanvasNodeFromContext, updateMetadata: updateCanvasNodeMetadata, resizeNode: resizeCanvasNodeFromContent, openPortraitClearance, selectVideoForPlayback }),
-        [deleteCanvasNodeFromContext, downloadNodeImage, duplicateCanvasNodeFromContext, openPortraitClearance, resizeCanvasNodeFromContent, selectVideoForPlayback, updateCanvasNodeMetadata],
-    );
+    const { canvasNodeActions, editCanvasDirector, openCanvasNodeVersions, viewCanvasNodeImage } = useCanvasNodeActionBindings({
+        setNodes,
+        setVersionCompareRootId,
+        setPreviewNodeId,
+        openDirectorWorkbench,
+        duplicateNode,
+        deleteNodes,
+        downloadNodeImage,
+        openPortraitClearance,
+        selectVideoForPlayback,
+    });
     const locateProjectStyleNode = useCallback(() => {
         const styleNode = nodesRef.current.find((node) => node.type === CanvasNodeType.Text && node.metadata?.workflowKind === "styleboard");
         if (!styleNode) {
