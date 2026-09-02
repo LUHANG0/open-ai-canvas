@@ -244,7 +244,7 @@ describe("PC creation chat and storyboard director workbench regression gates", 
     });
 
     test("keeps failed-shot retry non-destructive until validation and guards conversation changes", async () => {
-        const source = await read("../src/pages/create/index.tsx");
+        const [source, preparationSource] = await Promise.all([read("../src/pages/create/index.tsx"), read("../src/pages/create/creation-submit-preparation.ts")]);
         const submit = sourceSection(source, "const submit = async", "useEffect(() => {");
         const retry = sourceSection(source, "const retryFailedMessage", "const createVariant");
         const retryEffect = sourceSection(source, "if (!retrySequence) return", "const startNewConversation");
@@ -259,13 +259,15 @@ describe("PC creation chat and storyboard director workbench regression gates", 
         expect(retryEffect).toContain("void submit(pending.context, pending.lockKey, pending.target)");
 
         const guardPosition = submit.indexOf("if (retryTarget && activeConversation.id !== retryTarget.conversationId)");
-        const compatibilityPosition = submit.indexOf("const compatibilityError = modelCompatibilityError");
+        const validationPosition = submit.indexOf("const preparation = prepareCreationSubmission");
         const preparePosition = submit.indexOf("skillExecution = await skillRuntime.prepare");
         const replacementPosition = submit.indexOf("const replacedIds = new Set");
         expect(guardPosition).toBeGreaterThanOrEqual(0);
-        expect(compatibilityPosition).toBeGreaterThan(guardPosition);
-        expect(preparePosition).toBeGreaterThan(compatibilityPosition);
+        expect(validationPosition).toBeGreaterThan(guardPosition);
+        expect(preparePosition).toBeGreaterThan(validationPosition);
         expect(replacementPosition).toBeGreaterThan(preparePosition);
+        expect(preparationSource).toContain("const compatibilityError = modelCompatibilityError");
+        expect(preparationSource).toContain("reconcileCreationAttachmentLimits(submissionAttachments, mode, referenceLimits)");
         expect(submit).toContain('toast.warning("已切换到其他创作，本次重试未执行")');
         expect(submit).toContain("if (retryTarget && conversation.id === retryTarget.conversationId)");
         expect(submit).toContain("retained.splice(insertAt >= 0 ? insertAt : retained.length, 0, userMessage, assistantMessage)");

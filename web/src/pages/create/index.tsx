@@ -7,8 +7,8 @@ import { createGenerationBatchRetryContexts, createGenerationRetryContext, runGe
 import { createClientId } from "@/lib/client-id";
 import { generationErrorCode, generationErrorMessage } from "@/lib/generation-error";
 import { usePcBrandViewport } from "@/hooks/use-pc-brand-viewport";
-import { modelCapabilityConfigFor, normalizeImageValue, normalizeVideoValue, videoDurationAllowed } from "@/lib/model-capabilities";
-import { inferVideoOperation, modelCompatibilityError, modelGroupReferenceLimits, modelGroupVideoOperations, resolveCompatibleModel, type ModelInputSummary, type ModelRequirements } from "@/lib/model-selection";
+import { modelCapabilityConfigFor, normalizeImageValue, normalizeVideoValue } from "@/lib/model-capabilities";
+import { modelGroupReferenceLimits, modelGroupVideoOperations, resolveCompatibleModel, type ModelInputSummary, type ModelRequirements } from "@/lib/model-selection";
 import { backendModelRuntimeRequired, isGenerationTaskCancelled, runBackendGenerationTask, runBackendGenerationTaskBatch } from "@/services/api/generation-task";
 import { requestImageQuestion } from "@/services/api/image";
 import { listAddedSkills, type Skill } from "@/services/api/skills";
@@ -18,23 +18,19 @@ import { consumeGenerationTaskMessage, generationTaskMaterializedUrls } from "@/
 import { applyGenerationConsumerEffect } from "@/services/generation-consumer-dedupe";
 import { beginGenerationConsumer } from "@/services/generation-consumer-lifecycle";
 import { loadCreationConversations, pendingCreationTaskIds, pendingCreationTaskKey, removeCreationConversationSnapshot, saveCreationConversations, updateCreationConversationSnapshot } from "@/services/creation-conversation-store";
-import { modelDisplayName, resolveModelChannel, selectableModelsByCapability, useConfigStore, useEffectiveConfig } from "@/stores/use-config-store";
+import { modelDisplayName, selectableModelsByCapability, useConfigStore, useEffectiveConfig } from "@/stores/use-config-store";
 import { useAssetStore } from "@/stores/use-asset-store";
 import type { PromptOptimizerProvider } from "@/lib/plugins/plugin-types";
 import { promptOptimizerPlugin, PROMPT_OPTIMIZER_PLUGIN_ID } from "@/lib/plugins/builtin/prompt-optimizer";
 import { createPluginHostContext } from "@/services/plugin-host";
 import { usePluginStore } from "@/stores/use-plugin-store";
-import { buildCreationMentionReferences, expandCreationPrompt, removeCreationReferenceTokens, replaceCreationAttachmentReference, selectedCreationReferences, type CreationReference } from "./creation-references";
+import { buildCreationMentionReferences, removeCreationReferenceTokens, replaceCreationAttachmentReference, type CreationReference } from "./creation-references";
 import { skillRuntime } from "@/services/skill-runtime";
 import {
     creationAttachmentKind,
-    creationVideoFrameAttachmentIds,
-    countCreationAttachments,
     normalizeCreationVideoImageRoles,
-    reconcileCreationAttachmentLimits,
     removeCreationAttachment,
     setCreationVideoImageRole,
-    splitCreationAttachments,
     type CreationAttachment,
     type CreationAttachmentLimits,
     type CreationVideoImageRole,
@@ -44,6 +40,7 @@ import { CreationEmptyIntro, CreationEmptySuggest, type CreationMode } from "./c
 import { CreationMessageView } from "./creation-message-view";
 import { StoryboardComposerContext, StoryboardNextShotCard, StoryboardShotCard, StoryboardShotRail, StoryboardToolbar } from "./creation-storyboard-workbench";
 import { attachCreationTaskContexts, buildTextMessageContent, completedCreationGenerationTask, conversationTimestamp, isImageAttachment, materializeCreationTaskResults, reconcileCreationTaskMessages } from "./creation-task-lifecycle";
+import { creationInputSummary, normalizeCreationVideoAttachments, prepareCreationSubmission, resolvedCreationVideoOperation } from "./creation-submit-preparation";
 import type { CreationConversation, CreationMessage, CreationSettings, CreationShot, CreationVideoOperationChoice, CreationViewMode } from "./creation-types";
 import { useCreationAssetWorkflow } from "./use-creation-asset-workflow";
 import { CreationHistoryDrawer, CreationWorkspaceToolbar } from "./creation-workspace-toolbar";
@@ -57,30 +54,6 @@ type CreationRetryTarget = {
     shotId: string;
 };
 const modeLabels: Record<CreationMode, string> = { text: "文本", image: "图片", video: "视频" };
-function resolvedCreationVideoOperation(choice: CreationVideoOperationChoice, input: ModelInputSummary) {
-    return choice === "auto" ? inferVideoOperation(input) : choice;
-}
-
-function creationVideoOperationError(operation: string, input: ModelInputSummary, frames?: ReturnType<typeof creationVideoFrameAttachmentIds>) {
-    const mediaCount = input.imageCount + input.videoCount + input.audioCount;
-    if (operation === "text_to_video" && mediaCount > 0) return "文生视频模式不使用参考素材，请移除素材或切换生成方式";
-    if (operation === "image_to_video" && input.imageCount === 0) return "首/尾帧模式至少需要 1 张参考图片";
-    if (operation === "image_to_video" && !frames?.videoStartFrameNodeId) return "首/尾帧模式必须指定首帧，尾帧可以不填";
-    if (operation === "image_to_video" && input.videoCount > 0) return "首/尾帧模式不使用参考视频，请切换为全模态参考";
-    if (operation === "reference_to_video" && mediaCount === 0) return "全模态参考模式至少需要 1 个参考素材";
-    if (operation === "audio_to_video" && input.audioCount === 0) return "音频驱动模式至少需要 1 个参考音频";
-    if (operation === "audio_to_video" && input.imageCount + input.videoCount > 0) return "音频驱动模式只使用音频参考，图像或视频请改用全模态参考";
-    return "";
-}
-
-function creationInputSummary(attachments: readonly CreationAttachment[], hasText: boolean): ModelInputSummary {
-    const counts = countCreationAttachments(attachments);
-    return { textCount: hasText ? 1 : 0, imageCount: counts.image, videoCount: counts.video, audioCount: counts.audio, characterCount: 0 };
-}
-
-function normalizeCreationVideoAttachments(attachments: CreationAttachment[], choice: CreationVideoOperationChoice, hasText: boolean) {
-    return normalizeCreationVideoImageRoles(attachments, resolvedCreationVideoOperation(choice, creationInputSummary(attachments, hasText)));
-}
 
 function newConversation(): CreationConversation {
     return { id: createClientId(), title: "新创作", updatedAt: new Date().toISOString(), messages: [] };
@@ -527,70 +500,36 @@ export default function CreatePage() {
             releaseRetryLock();
             return;
         }
-        if (mode === "video" && !videoDurationAllowed(videoProfile, Number(seconds))) {
-            toast.error("当前模型不支持所选视频时长，请重新选择");
-            releaseRetryLock();
-            return;
-        }
-        const submissionAttachments = mode === "video" ? normalizeCreationVideoAttachments(attachments, videoOperationChoice, true) : attachments;
-        const submissionInput = creationInputSummary(submissionAttachments, true);
-        const videoOperation = mode === "video" ? resolvedCreationVideoOperation(videoOperationChoice, submissionInput) : undefined;
-        const videoFrames = creationVideoFrameAttachmentIds(submissionAttachments);
-        const reconciledSubmission = reconcileCreationAttachmentLimits(submissionAttachments, mode, referenceLimits);
-        if (reconciledSubmission.removedAttachments.length || (mode === "text" && submissionAttachments.length > maxReferences)) {
-            toast.warning("当前生成方式不支持部分参考内容，请移除超限素材或切换生成方式");
-            releaseRetryLock();
-            return;
-        }
-        if (mode === "video") {
-            const operationError = creationVideoOperationError(videoOperation || "", submissionInput, videoFrames);
-            if (operationError) {
-                toast.error(operationError);
-                releaseRetryLock();
-                return;
-            }
-            const interfaceType = resolveModelChannel(config, selectedModel).interfaceType;
-            if (interfaceType === "xai-video" && videoOperation === "image_to_video" && (submissionInput.imageCount > 1 || Boolean(videoFrames.videoEndFrameNodeId))) {
-                toast.error("xAI 首帧模式只支持 1 张起始图，不支持尾帧；多图请切换为全模态参考");
-                releaseRetryLock();
-                return;
-            }
-        }
-        const compatibilityError = modelCompatibilityError(config, selectedModel, {
-            ...modelRequirements,
-            input: submissionInput,
-            videoOperation,
-        });
-        if (compatibilityError) {
-            toast.error(`当前模型${compatibilityError}，请更换模型或调整参考素材`);
-            releaseRetryLock();
-            return;
-        }
-        const settings: CreationSettings = {
+        const preparation = prepareCreationSubmission({
+            text,
+            mode,
+            selectedModel,
+            config,
+            attachments,
+            mentionReferences,
+            referenceLimits,
+            maxReferences,
+            modelRequirements,
+            videoOperationChoice,
+            imageProfile,
+            videoProfile,
             ratio,
             seconds,
             quality,
             videoQuality,
             count,
-            ...(mode === "video"
-                ? {
-                      videoOperation: videoOperationChoice,
-                      generateAudio: String(videoProfile.generateAudio.supported && config.videoGenerateAudio === "true"),
-                      watermark: String(videoProfile.watermark.supported && config.videoWatermark === "true"),
-                  }
-                : {}),
-        };
-        const references = selectedCreationReferences(text, mentionReferences);
-        // 后端对图片和视频使用不同的参考字段；这里先拆分，避免媒体类型在写入任务时被误判。
-        const { referenceImages, referenceVideos, referenceAudios } = splitCreationAttachments(submissionAttachments);
-        const { videoStartFrameNodeId, videoEndFrameNodeId } = videoFrames;
-        const videoFrameMetadata = mode === "video" ? { videoStartFrameNodeId, videoEndFrameNodeId } : {};
-        const skillReferences = references.flatMap((reference) => (reference.skill ? [reference.skill] : []));
+        });
+        if (!preparation.ok) {
+            toast[preparation.level](preparation.message);
+            releaseRetryLock();
+            return;
+        }
+        const { submissionAttachments, videoOperation, settings, references, referenceImages, referenceVideos, referenceAudios, videoFrameMetadata, skillReferences, skillPrompt, requestConfig, imageTaskCount } = preparation;
         let skillExecution: Awaited<ReturnType<typeof skillRuntime.prepare<"creation">>>;
         try {
             skillExecution = await skillRuntime.prepare({
                 profile: "creation",
-                prompt: expandCreationPrompt(text, references, submissionAttachments),
+                prompt: skillPrompt,
                 skills: skillReferences,
                 selectedSkillIds: skillReferences.map((skill) => skill.skill_id),
             });
@@ -654,26 +593,6 @@ export default function CreatePage() {
         const controller = new AbortController();
         const requestLifecycle = beginGenerationConsumer(controller.signal);
         abortRef.current = controller;
-        const normalizedImage = mode === "image" ? normalizeImageValue(imageProfile, { size: ratio, quality, count }) : undefined;
-        const normalizedVideo = mode === "video" ? normalizeVideoValue(videoProfile, { seconds, ratio, resolution: videoQuality }) : undefined;
-        const requestConfig = {
-            ...config,
-            model: selectedModel,
-            imageModel: selectedModel,
-            videoModel: selectedModel,
-            textModel: selectedModel,
-            ...(mode === "image"
-                ? { size: normalizedImage?.size || ratio, quality: normalizedImage?.quality || quality, count: normalizedImage?.count || count, videoSeconds: config.videoSeconds }
-                : mode === "video"
-                  ? {
-                        size: normalizedVideo?.ratio ?? ratio,
-                        videoSeconds: normalizedVideo?.seconds || seconds,
-                        vquality: (normalizedVideo?.resolution ?? videoQuality).replace(/p$/i, ""),
-                        videoGenerateAudio: String(videoProfile.generateAudio.supported && config.videoGenerateAudio === "true"),
-                        videoWatermark: String(videoProfile.watermark.supported && config.videoWatermark === "true"),
-                    }
-                  : {}),
-        };
         try {
             if (mode === "text") {
                 if (backendModelRuntimeRequired(requestConfig)) {
@@ -721,7 +640,7 @@ export default function CreatePage() {
                     replayPublisher.finish(finalText);
                 }
             } else if (mode === "image") {
-                const taskCount = Math.max(1, Math.min(imageProfile.maxOutputs, Math.floor(Number(count) || 1)));
+                const taskCount = imageTaskCount;
                 const settled = await runGenerationOperationOnce(retryContext?.clientOperationId, () =>
                     runBackendGenerationTaskBatch({
                         mode: "image",

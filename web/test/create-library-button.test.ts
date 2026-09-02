@@ -9,7 +9,7 @@ function compactSource(source: string) {
 }
 
 function readCreateSource() {
-    return ["../src/pages/create/index.tsx", "../src/pages/create/creation-composer.tsx", "../src/pages/create/use-creation-asset-workflow.ts"]
+    return ["../src/pages/create/index.tsx", "../src/pages/create/creation-composer.tsx", "../src/pages/create/use-creation-asset-workflow.ts", "../src/pages/create/creation-submit-preparation.ts"]
         .map((relativePath) => readFileSync(resolve(import.meta.dir, relativePath), "utf8"))
         .join("\n");
 }
