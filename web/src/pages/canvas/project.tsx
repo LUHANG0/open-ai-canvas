@@ -77,6 +77,7 @@ import { useCanvasLinkedProjectStyle } from "./use-canvas-linked-project-style";
 import { useCanvasLiveProject } from "./use-canvas-live-project";
 import { useCanvasTitleEditing, useCanvasWorkspacePreferences, useCanvasWorkspaceTransitions } from "./use-canvas-workspace-shell";
 import { useCanvasProjectImport } from "./use-canvas-project-import";
+import { useCanvasProjectDialogState } from "./use-canvas-project-dialog-state";
 import { useCanvasProjectLifecycle } from "./use-canvas-project-lifecycle";
 import { useCanvasRenderModel } from "./use-canvas-render-model";
 import { useCanvasSelectionController } from "./use-canvas-selection-controller";
@@ -144,18 +145,12 @@ function InfiniteCanvasPage() {
     const [showImageInfo, setShowImageInfo] = useState(false);
     const [canvasTool, setCanvasTool] = useState<CanvasToolMode>("move");
     const [projectLoaded, setProjectLoaded] = useState(false);
-    const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
-    const [shareModalOpen, setShareModalOpen] = useState(false);
-    const [tapNowImportOpen, setTapNowImportOpen] = useState(false);
-    const [nodeSearchOpen, setNodeSearchOpen] = useState(false);
+    const { clearConfirmOpen, directorTemplateRequest, libTVImportOpen, nodeSearchOpen, setClearConfirmOpen, setDirectorTemplateRequest, setLibTVImportOpen, setNodeSearchOpen, setShareModalOpen, setShortcutRequestNonce, setStylePickerOpen, setTapNowImportOpen, shareModalOpen, shortcutRequestNonce, stylePickerOpen, tapNowImportOpen } = useCanvasProjectDialogState();
     const [toolbarNodeId, setToolbarNodeId] = useState<string | null>(null);
     const [dialogNodeId, setDialogNodeId] = useState<string | null>(null);
     const [textEditorNodeId, setTextEditorNodeId] = useState<string | null>(null);
     const [characterReferenceNodeId, setCharacterReferenceNodeId] = useState<string | null>(null);
     const [drawingNodeId, setDrawingNodeId] = useState<string | null>(null);
-    const [stylePickerOpen, setStylePickerOpen] = useState(false);
-    // 新建导演台镜头必须先选模板：null 表示未在选择中，undefined position 表示用画布中心。
-    const [directorTemplateRequest, setDirectorTemplateRequest] = useState<{ position?: Position } | null>(null);
     const [infoNodeId, setInfoNodeId] = useState<string | null>(null);
     const [subtitleNodeId, setSubtitleNodeId] = useState<string | null>(null);
     const [timelineNodeId, setTimelineNodeId] = useState<string | null>(null);
@@ -166,10 +161,8 @@ function InfiniteCanvasPage() {
     const [scriptScrollTopById, setScriptScrollTopById] = useState<Record<string, number>>({});
     const [directorNodeId, setDirectorNodeId] = useState<string | null>(null);
     const [versionCompareRootId, setVersionCompareRootId] = useState<string | null>(null);
-    const [libTVImportOpen, setLibTVImportOpen] = useState(false);
     const codexAutoConnect = shouldAutoConnectCanvasRuntime(searchParams);
     const codexCompactAgent = codexAutoConnect && readLocalRuntimeBootstrapState().legacyDeepLinkRejected;
-    const [shortcutRequestNonce, setShortcutRequestNonce] = useState(0);
     const { assistantWidth, focusDockRevealed, mediaPerformanceMode, setAssistantWidth, setFocusDockRevealed, setMediaPerformanceMode, setWorkspaceMode, workspaceMode } = useCanvasWorkspacePreferences({
         preloadAssistant: loadCanvasAssistantPanel,
     });
