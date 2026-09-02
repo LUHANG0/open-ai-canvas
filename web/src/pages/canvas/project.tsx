@@ -7,9 +7,6 @@ import { uploadMediaFile } from "@/services/file-storage";
 import { readLocalRuntimeBootstrapState } from "@/services/local-runtime-bootstrap";
 import { createCanvasGenerationLiveProjectAdapter, registerCanvasGenerationLiveProject } from "@/services/canvas-generation-consumer";
 import { getActiveUserScope } from "@/lib/user-scope";
-import { uploadImage } from "@/services/image-storage";
-import { imageMetadata } from "@/lib/canvas/canvas-generation-task-sync";
-import { nanoid } from "nanoid";
 import { canvasThemes, type CanvasBackgroundMode } from "@/lib/canvas-theme";
 import { summarizeCanvasContext } from "@/lib/canvas/canvas-context-summary";
 import { shouldAutoConnectCanvasRuntime } from "@/lib/canvas/local-runtime-connection";
@@ -119,7 +116,7 @@ import { useCanvasShortDrama } from "./use-canvas-short-drama";
 import { useCanvasStoryboard } from "./use-canvas-storyboard";
 import { useCanvasUpload } from "./use-canvas-upload";
 import { useCanvasViewportController } from "./use-canvas-viewport-controller";
-import { usePortraitClearanceCoordinator } from "./use-portrait-clearance-coordinator";
+import { useCanvasPortraitClearance } from "./use-canvas-portrait-clearance";
 import "./canvas-editor-pc.css";
 import {
     CanvasNodeType,
@@ -136,9 +133,6 @@ import {
     type ViewportTransform,
 } from "@/types/canvas";
 import type { ReferenceImage } from "@/types/image";
-import type { PortraitClearanceNodeState } from "@/lib/portrait-clearance/contracts";
-import { createDefaultPortraitClearanceState, PORTRAIT_CLEARANCE_NODE_TYPE } from "@/lib/portrait-clearance/contracts";
-import { reconcilePortraitClearanceInputBindings } from "@/lib/portrait-clearance/input-bindings";
 
 const loadCanvasAssistantPanel = () => import("@/components/canvas/canvas-assistant-panel").then((module) => ({ default: module.CanvasAssistantPanel }));
 const CanvasAssistantPanel = lazy(loadCanvasAssistantPanel);
@@ -806,28 +800,16 @@ function InfiniteCanvasPage() {
         releaseCopiedNodesPastePriority,
     });
 
-    const handlePortraitClearanceStateUpdate = useCallback(
-        (nodeId: string, state: PortraitClearanceNodeState) => {
-            handleConfigNodeChange(nodeId, { portraitClearance: state });
-        },
-        [handleConfigNodeChange],
-    );
-    usePortraitClearanceCoordinator({ nodes, onUpdateState: handlePortraitClearanceStateUpdate });
-
-    useEffect(() => {
-        setNodes((current) => {
-            let changed = false;
-            const next = current.map((node) => {
-                if (node.type !== PORTRAIT_CLEARANCE_NODE_TYPE) return node;
-                const state = node.metadata?.portraitClearance || createDefaultPortraitClearanceState();
-                const inputBindings = reconcilePortraitClearanceInputBindings(node.metadata?.portraitClearance?.mode || state.mode, node.id, connections, current, state.inputBindings);
-                if (JSON.stringify(inputBindings) === JSON.stringify(state.inputBindings) && node.metadata?.portraitClearance) return node;
-                changed = true;
-                return { ...node, metadata: { ...node.metadata, portraitClearance: { ...state, inputBindings } } };
-            });
-            return changed ? next : current;
-        });
-    }, [connections, setNodes]);
+    const { addPortraitCandidateToCanvas, handlePortraitClearanceStateUpdate, portraitClearanceInputs, portraitClearanceNode } = useCanvasPortraitClearance({
+        nodes,
+        connections,
+        nodesRef,
+        portraitClearanceNodeId,
+        setNodes,
+        setConnections,
+        setSelectedNodeIds,
+        updateNodeMetadata: handleConfigNodeChange,
+    });
 
     const { handleFrameToggle, handleProjectFolderInsert, linkedFolderPreviewNodesById } = useCanvasLinkedProjectFolderInteractions({
         assets,
@@ -927,33 +909,6 @@ function InfiniteCanvasPage() {
     const textEditorNode = textEditorNodeId ? nodeById.get(textEditorNodeId) || null : null;
     const characterReferenceNode = characterReferenceNodeId ? nodeById.get(characterReferenceNodeId) || null : null;
     const drawingNode = drawingNodeId ? nodeById.get(drawingNodeId) || null : null;
-    const portraitClearanceNode = portraitClearanceNodeId ? nodeById.get(portraitClearanceNodeId) || null : null;
-    const portraitClearanceInputs = portraitClearanceNode
-        ? connections
-              .filter((connection) => connection.toNodeId === portraitClearanceNode.id)
-              .sort((left, right) => left.id.localeCompare(right.id))
-              .map((connection) => nodeById.get(connection.fromNodeId))
-              .filter((node): node is CanvasNodeData => Boolean(node))
-        : [];
-    const addPortraitCandidateToCanvas = useCallback(
-        async (candidate: { id: string; title: string; imageArtifactId: string }, dataUrl: string) => {
-            const target = portraitClearanceNodeId ? nodesRef.current.find((node) => node.id === portraitClearanceNodeId) : undefined;
-            if (!target) return;
-            try {
-                const image = await uploadImage(dataUrl);
-                const created = createCanvasNode(CanvasNodeType.Image, { x: target.position.x + target.width + 260, y: target.position.y + target.height / 2 }, imageMetadata(image));
-                created.title = candidate.title.slice(0, 80) || "肖像排查候选";
-                const connection = { id: nanoid(), fromNodeId: created.id, toNodeId: target.id };
-                setNodes((current) => [...current, created]);
-                setConnections((current) => [...current, connection]);
-                setSelectedNodeIds(new Set([created.id]));
-                message.success("候选图片已添加到画布并连接到排查节点");
-            } catch (error) {
-                message.error(error instanceof Error ? error.message : "候选图片添加失败");
-            }
-        },
-        [message, portraitClearanceNodeId, setConnections, setNodes, setSelectedNodeIds],
-    );
     const pendingConnectionSourceNode = pendingConnectionCreate?.connection.handleType === "source" ? nodeById.get(pendingConnectionCreate.connection.nodeId) : null;
     const canCreateDrawingFromConnection = !pendingConnectionCreate?.batchSourceNodeIds?.length && pendingConnectionSourceNode?.type === CanvasNodeType.Image && Boolean(pendingConnectionSourceNode.metadata?.content);
 
@@ -2039,7 +1994,7 @@ function InfiniteCanvasPage() {
                             upstreamNodes={portraitClearanceInputs}
                             open={Boolean(portraitClearanceNode)}
                             onClose={() => setPortraitClearanceNodeId(null)}
-                            onUpdateState={(nodeId, state: PortraitClearanceNodeState) => handleConfigNodeChange(nodeId, { portraitClearance: state })}
+                            onUpdateState={handlePortraitClearanceStateUpdate}
                             onAddCandidate={addPortraitCandidateToCanvas}
                         />
 
