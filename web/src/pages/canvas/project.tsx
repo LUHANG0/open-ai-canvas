@@ -64,7 +64,6 @@ import { CanvasConnectionCreateMenu, CanvasNodePanelOverlay } from "@/components
 import { CanvasOverlayLayerContainer, CanvasOverlayLayerProvider } from "@/components/canvas/canvas-overlay-layer";
 import { CanvasLeaferGraphicsLayer } from "@/components/canvas/canvas-leafer-graphics-layer";
 import { CanvasFreeformEmptyState, CanvasLinkedProjectEmptyState, CanvasShortDramaEmptyState, CanvasShortDramaGuide, CanvasStoryInputNodeContent, CanvasStylePlaceholderNodeContent } from "@/components/canvas/canvas-short-drama-entry";
-import { failedImageBatchChildren, markImageBatchRetrying, reconcileImageBatchRoot, restoreUnsubmittedImageBatchChild } from "@/lib/canvas/canvas-image-batch-retry";
 import { createCanvasNode, getInputSummary, isHiddenBatchChild } from "@/lib/canvas/canvas-project-domain";
 import { stampCanvasNodeChanges } from "@/lib/canvas/canvas-node-timestamps";
 import { batchSourceRestriction } from "@/lib/canvas/canvas-batch-connection";
@@ -108,6 +107,7 @@ import { useCanvasNodeFocus } from "./use-canvas-node-focus";
 import { useCanvasNodeHoverToolbar } from "./use-canvas-node-hover-toolbar";
 import { useCanvasNodeOperations } from "./use-canvas-node-operations";
 import { useCanvasNodeReferences } from "./use-canvas-node-references";
+import { useCanvasNodeRetry } from "./use-canvas-node-retry";
 import { useCanvasNodeSharing } from "./use-canvas-node-sharing";
 import { useCanvasLinkedProjectAssetSync, useCanvasLinkedProjectFolderInteractions } from "./use-canvas-linked-project-assets";
 import { useCanvasTitleEditing, useCanvasWorkspacePreferences } from "./use-canvas-workspace-shell";
@@ -1194,31 +1194,6 @@ function InfiniteCanvasPage() {
         bindGenerationTask,
         applyGenerationTaskResult,
     });
-    const reconcileImageBatchRootNode = useCallback(
-        (rootId: string) => {
-            setNodes((current) => {
-                const root = current.find((item) => item.id === rootId);
-                if (!root) return current;
-                const reconciled = reconcileImageBatchRoot(root, current);
-                return current.map((item) => (item.id === root.id ? reconciled : item));
-            });
-        },
-        [setNodes],
-    );
-    const retryImageBatchChildren = useCallback(
-        (rootId: string, children: CanvasNodeData[]) => {
-            const childIds = children.map((child) => child.id);
-            setNodes((current) => markImageBatchRetrying(rootId, childIds, current));
-            void Promise.allSettled(
-                children.map(async (child) => {
-                    await handleRetryNode(child);
-                    setNodes((current) => current.map((item) => (item.id === child.id ? restoreUnsubmittedImageBatchChild(item, child) : item)));
-                }),
-            ).finally(() => reconcileImageBatchRootNode(rootId));
-        },
-        [handleRetryNode, reconcileImageBatchRootNode, setNodes],
-    );
-
     const generateImageFromTextNode = useCallback(
         (node: CanvasNodeData) => {
             const prompt = (node.metadata?.content || node.metadata?.prompt || "").trim();
@@ -1401,35 +1376,7 @@ function InfiniteCanvasPage() {
         ],
     );
 
-    const retryCanvasNode = useCallback(
-        (node: CanvasNodeData) => {
-            if (node.type === CanvasNodeType.Script) {
-                const prompt = (node.metadata?.composerContent || node.metadata?.prompt || "").trim();
-                if (!prompt) {
-                    message.warning("分镜脚本缺少剧情内容，无法重试");
-                    return;
-                }
-                void generateScriptRows(node.id, prompt);
-                return;
-            }
-            if (node.type === CanvasNodeType.Image && node.metadata?.isBatchRoot) {
-                const failedChildren = failedImageBatchChildren(node, nodesRef.current);
-                if (!failedChildren.length) {
-                    message.info("当前批次没有需要重试的失败图片");
-                    return;
-                }
-                message.info(`正在重试 ${failedChildren.length} 个失败图片`);
-                retryImageBatchChildren(node.id, failedChildren);
-                return;
-            }
-            if (node.type === CanvasNodeType.Image && node.metadata?.batchRootId) {
-                retryImageBatchChildren(node.metadata.batchRootId, [node]);
-                return;
-            }
-            void handleRetryNode(node);
-        },
-        [generateScriptRows, handleRetryNode, message, nodesRef, retryImageBatchChildren],
-    );
+    const retryCanvasNode = useCanvasNodeRetry({ nodesRef, setNodes, generateScriptRows, retryGenerationNode: handleRetryNode });
     const { canvasNodeActions, editCanvasDirector, openCanvasNodeVersions, viewCanvasNodeImage } = useCanvasNodeActionBindings({
         setNodes,
         setVersionCompareRootId,
