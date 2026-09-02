@@ -23,7 +23,6 @@ import { CanvasNodeInfoModal } from "@/components/canvas/canvas-node-toolbar";
 import { CanvasUploadModal } from "@/components/canvas/canvas-upload-modal";
 import { InfiniteCanvas } from "@/components/canvas/infinite-canvas";
 import type { CanvasNodeGenerationMode } from "@/components/canvas/canvas-node-prompt-panel";
-import { CanvasToolbar } from "@/components/canvas/canvas-toolbar";
 import { getProject } from "@/services/api/projects";
 import { CanvasLocalAgentPanel } from "@/components/canvas/canvas-local-agent-panel";
 import { useFocusMode } from "@/hooks/use-focus-mode";
@@ -41,6 +40,7 @@ import { CanvasTopBar, CanvasWorkspaceModeSwitch } from "./canvas-project-top-ba
 import { CanvasProjectContextMenu } from "./canvas-project-context-menu";
 import { CanvasProjectMediaDialogs } from "./canvas-project-media-dialogs";
 import { CanvasProjectBottomDock } from "./canvas-project-bottom-dock";
+import { CanvasProjectMainToolbar } from "./canvas-project-main-toolbar";
 import { CanvasProjectDirectorWorkbench } from "./canvas-project-director-workbench";
 import { CanvasProjectEntryDialogs } from "./canvas-project-entry-dialogs";
 import { CanvasProjectAssetDialogs, CanvasProjectVersionCompareDialog } from "./canvas-project-library-dialogs";
@@ -1457,44 +1457,35 @@ function InfiniteCanvasPage() {
                                     emptyCanvasState={emptyCanvasState}
                                 />
 
-                                {!focusMode || focusDockRevealed ? (
-                                    <CanvasToolbar
-                                        selectedCount={selectedNodeIds.size}
-                                        workspaceMode={workspaceMode}
-                                        rightInset={assistantOpen ? assistantWidth + 16 : "var(--canvas-inset-x)"}
-                                        canvasTool={canvasTool}
-                                        onToolChange={setCanvasTool}
-                                        isProjectLinked={Boolean(shortDramaEnabled && currentProject?.projectId)}
-                                        canUndo={historyState.canUndo}
-                                        canRedo={historyState.canRedo}
-                                        backgroundMode={backgroundMode}
-                                        showImageInfo={showImageInfo}
-                                        onAddImage={() => createNode(CanvasNodeType.Image)}
-                                        onAddVideo={() => createNode(CanvasNodeType.Video)}
-                                        onAddAudio={() => createNode(CanvasNodeType.Audio)}
-                                        onAddText={() => createNode(CanvasNodeType.Text)}
-                                        onChooseStyle={() => setStylePickerOpen(true)}
-                                        onAddScript={() => createNode(CanvasNodeType.Script)}
-                                        onAddFrame={() => createNode(CanvasNodeType.Frame)}
-                                        onAddFolder={createFolder}
-                                        onAddDrawing={() => createNode(CanvasNodeType.Drawing)}
-                                        onAddExtensionNode={(type) => createNode(type)}
-                                        onAddWorkflow={() => createNode(CanvasNodeType.Config)}
-                                        onOpenDirector={() => setDirectorTemplateRequest({})}
-                                        onUndo={undoCanvas}
-                                        onRedo={redoCanvas}
-                                        onUpload={() => handleUploadRequest()}
-                                        onDelete={() => deleteNodes(new Set(selectedNodeIds))}
-                                        onClear={() => setClearConfirmOpen(true)}
-                                        onDeselect={deselectCanvas}
-                                        onBackgroundModeChange={setBackgroundMode}
-                                        onShowImageInfoChange={setShowImageInfo}
-                                        onOpenMyAssets={() => {
-                                            openCanvasAssetLibrary();
-                                        }}
-                                        onOpenProjectCharacters={() => openProjectAssets("character")}
-                                    />
-                                ) : null}
+                                <CanvasProjectMainToolbar
+                                    focusMode={focusMode}
+                                    focusDockRevealed={focusDockRevealed}
+                                    assistantOpen={assistantOpen}
+                                    assistantWidth={assistantWidth}
+                                    selectedNodeIds={selectedNodeIds}
+                                    workspaceMode={workspaceMode}
+                                    canvasTool={canvasTool}
+                                    projectLinked={Boolean(shortDramaEnabled && currentProject?.projectId)}
+                                    canUndo={historyState.canUndo}
+                                    canRedo={historyState.canRedo}
+                                    backgroundMode={backgroundMode}
+                                    showImageInfo={showImageInfo}
+                                    onToolChange={setCanvasTool}
+                                    onCreateNode={createNode}
+                                    onCreateFolder={createFolder}
+                                    onChooseStyle={() => setStylePickerOpen(true)}
+                                    onOpenDirector={() => setDirectorTemplateRequest({})}
+                                    onUndo={undoCanvas}
+                                    onRedo={redoCanvas}
+                                    onUpload={() => handleUploadRequest()}
+                                    onDeleteNodes={deleteNodes}
+                                    onClear={() => setClearConfirmOpen(true)}
+                                    onDeselect={deselectCanvas}
+                                    onBackgroundModeChange={setBackgroundMode}
+                                    onShowImageInfoChange={setShowImageInfo}
+                                    onOpenMyAssets={openCanvasAssetLibrary}
+                                    onOpenProjectCharacters={() => openProjectAssets("character")}
+                                />
                             </div>
 
                             {assistantMounted ? (
