@@ -17,7 +17,7 @@ import { createProject, deleteProject, importProjectUnits, listProjects } from "
 import { modelDisplayName, useEffectiveConfig } from "@/stores/use-config-store";
 
 import { ProjectListCard } from "./project-list-card";
-import { createUniqueProjectName, generationStepDone, generationSteps, parseGeneratedStory } from "./project-story-generation";
+import { generationStepDone, generationSteps, isProjectNameConflict, parseGeneratedStory, projectNameCandidates } from "./project-story-generation";
 
 import "./projects.css";
 
@@ -107,7 +107,24 @@ export default function ProjectsPage() {
             const parsed = parseGeneratedStory(answer);
             if (!parsed.chapters.length) throw new Error("AI 没有返回有效的章节内容，请重试");
             setGenerationStatus("正在创建项目…");
-            const project = await createUniqueProjectName(parsed.title, parsed.synopsis || story, selectedStyle);
+            const projectNames = projectNameCandidates(parsed.title);
+            let project: Awaited<ReturnType<typeof createProject>> | undefined;
+            for (const [index, name] of projectNames.entries()) {
+                try {
+                    project = await createProject({
+                        name,
+                        type: "short-drama",
+                        aspectRatio: "9:16",
+                        sourceType: "blank",
+                        description: (parsed.synopsis || story).trim(),
+                        ...(selectedStyle ? { stylePresetId: selectedStyle.id, styleProfileJson: serializeStyleProfile(selectedStyle.profile || createStyleProfileSnapshot(selectedStyle)) } : {}),
+                    });
+                    break;
+                } catch (error) {
+                    if (!isProjectNameConflict(error) || index === projectNames.length - 1) throw error;
+                }
+            }
+            if (!project) throw new Error("项目创建失败，请重试");
             createdProjectId = project.project.id;
             setGenerationStatus(`正在导入 ${parsed.chapters.length} 个章节…`);
             await importProjectUnits(
@@ -529,7 +546,6 @@ export default function ProjectsPage() {
                     <div className="grid grid-cols-2 gap-3">
                         <Form.Item name="aspectRatio" label="默认画幅">
                             <Select
-                                onChange={(value) => setCreateSource(value as typeof createSource)}
                                 options={[
                                     { label: "9:16 竖屏", value: "9:16" },
                                     { label: "16:9 横屏", value: "16:9" },
@@ -539,6 +555,7 @@ export default function ProjectsPage() {
                         </Form.Item>
                         <Form.Item name="sourceType" label="内容来源">
                             <Select
+                                onChange={(value) => setCreateSource(value as typeof createSource)}
                                 options={[
                                     { label: "空白开始", value: "blank" },
                                     { label: "导入小说", value: "novel" },

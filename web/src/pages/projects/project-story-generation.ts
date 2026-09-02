@@ -1,7 +1,3 @@
-import { createStyleProfileSnapshot, serializeStyleProfile } from "@/lib/canvas/style-profile";
-import { createProject } from "@/services/api/projects";
-import type { CanvasStylePreset } from "@/components/canvas/canvas-style-picker-modal";
-
 export type GeneratedStory = {
     title: string;
     synopsis: string;
@@ -33,27 +29,14 @@ export function parseGeneratedStory(answer: string): GeneratedStory {
     return { title: title || storyTitleFromAnswer(answer), synopsis, chapters };
 }
 
-export async function createUniqueProjectName(title: string, description: string, selectedStyle: CanvasStylePreset | null) {
+export function projectNameCandidates(title: string) {
     const base = title.trim().slice(0, 24) || "AI 生成短剧";
-    const buildInput = (name: string) => ({
-        name,
-        type: "short-drama" as const,
-        aspectRatio: "9:16",
-        sourceType: "blank",
-        description: description.trim(),
-        ...(selectedStyle ? { stylePresetId: selectedStyle.id, styleProfileJson: serializeStyleProfile(selectedStyle.profile || createStyleProfileSnapshot(selectedStyle)) } : {}),
-    });
-    let attempt = 0;
-    for (;;) {
-        try {
-            return await createProject(buildInput(attempt === 0 ? base : `${base}（${attempt + 1}）`));
-        } catch (error) {
-            const message = error instanceof Error ? error.message : "";
-            const uniqueConflict = message.includes("UNIQUE") || message.includes("projects.user_id") || message.includes("projects.name");
-            if (!uniqueConflict || attempt >= 5) throw error;
-            attempt += 1;
-        }
-    }
+    return Array.from({ length: 6 }, (_, attempt) => attempt === 0 ? base : `${base}（${attempt + 1}）`);
+}
+
+export function isProjectNameConflict(error: unknown) {
+    const message = error instanceof Error ? error.message : "";
+    return message.includes("UNIQUE") || message.includes("projects.user_id") || message.includes("projects.name");
 }
 
 export const generationSteps = [{ label: "AI 正在生成故事大纲与章节" }, { label: "正在创建项目" }, { label: "正在导入章节" }];

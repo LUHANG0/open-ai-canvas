@@ -4,7 +4,7 @@ describe("短剧创作全链路回归门禁", () => {
     test("AI 章节先生成并校验，再创建项目和导入章节", async () => {
         const source = await Bun.file(new URL("../src/pages/projects/index.tsx", import.meta.url)).text();
         const generateIndex = source.indexOf("const answer = await requestImageQuestion");
-        const createIndex = source.indexOf("const project = await createUniqueProjectName");
+        const createIndex = source.indexOf("project = await createProject({");
         const importIndex = source.indexOf("await importProjectUnits");
         expect(generateIndex).toBeGreaterThan(0);
         expect(createIndex).toBeGreaterThan(generateIndex);
@@ -15,10 +15,21 @@ describe("短剧创作全链路回归门禁", () => {
 
     test("项目入口将卡片展示和 AI 故事投影与页面编排分离", async () => {
         const source = await Bun.file(new URL("../src/pages/projects/index.tsx", import.meta.url)).text();
+        const storyProjection = await Bun.file(new URL("../src/pages/projects/project-story-generation.ts", import.meta.url)).text();
         expect(source).toContain('from "./project-list-card"');
         expect(source).toContain('from "./project-story-generation"');
         expect(source).not.toContain("function ProjectRow(");
         expect(source).not.toContain("function parseGeneratedStory(");
+        expect(storyProjection).not.toContain("@/services/api/projects");
+        expect(storyProjection).not.toContain("createProject(");
+    });
+
+    test("项目创建表单的画幅与内容来源分别更新各自状态", async () => {
+        const source = await Bun.file(new URL("../src/pages/projects/index.tsx", import.meta.url)).text();
+        const aspectRatioBlock = source.slice(source.indexOf('name="aspectRatio"'), source.indexOf('name="sourceType"'));
+        const sourceTypeBlock = source.slice(source.indexOf('name="sourceType"'), source.indexOf("</div>", source.indexOf('name="sourceType"')));
+        expect(aspectRatioBlock).not.toContain("setCreateSource");
+        expect(sourceTypeBlock).toContain("setCreateSource");
     });
 
     test("章节与镜头编辑都持久化草稿并保护路由离开", async () => {
