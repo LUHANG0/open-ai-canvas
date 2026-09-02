@@ -20,7 +20,6 @@ import { CanvasActiveTaskPanel } from "@/components/canvas/canvas-active-task-pa
 import { CanvasAssetTray } from "@/components/canvas/canvas-asset-tray";
 import { CanvasProjectSidebar } from "@/components/canvas/canvas-project-sidebar";
 import { CanvasProjectAssetModal } from "@/components/canvas/canvas-project-asset-modal";
-import { WorkspaceState } from "@/components/layout/workspace-state";
 import { resolveProjectCanvasStyle } from "@/components/canvas/canvas-style-picker-modal";
 import { createStyleProfileSnapshot, resolveStyleProfile, serializeStyleProfile } from "@/lib/canvas/style-profile";
 import { CanvasNodeInfoModal, CanvasNodeToolbar } from "@/components/canvas/canvas-node-toolbar";
@@ -58,6 +57,7 @@ import { TapNowImportDialog } from "./components/tapnow-import-dialog";
 import { CanvasFocusModeBar } from "@/components/canvas/canvas-focus-mode-bar";
 import { CanvasProjectContextMenu } from "./canvas-project-context-menu";
 import { CanvasProjectMediaDialogs } from "./canvas-project-media-dialogs";
+import { CanvasProjectDirectorWorkbench } from "./canvas-project-director-workbench";
 import { CanvasProjectNodeEditorDialogs } from "./canvas-project-node-editor-dialogs";
 import { CanvasProjectScriptEditor } from "./canvas-project-script-editor";
 import { CanvasProjectTimelineDialogs } from "./canvas-project-timeline-dialogs";
@@ -123,7 +123,6 @@ import type { ReferenceImage } from "@/types/image";
 
 const loadCanvasAssistantPanel = () => import("@/components/canvas/canvas-assistant-panel").then((module) => ({ default: module.CanvasAssistantPanel }));
 const CanvasAssistantPanel = lazy(loadCanvasAssistantPanel);
-const CanvasDirectorWorkbench = lazy(() => import("@/components/canvas/director/canvas-director-workbench").then((module) => ({ default: module.CanvasDirectorWorkbench })));
 
 const NODE_STATUS_SUCCESS = "success" as const;
 export default function CanvasPage() {
@@ -1819,27 +1818,18 @@ function InfiniteCanvasPage() {
                             onVideoInputModeChange={(nodeId, storyboardVideoInputMode) => handleConfigNodeChange(nodeId, { storyboardVideoInputMode })}
                         />
 
-                        {directorNodeId && activeDirectorScene ? (
-                            <Suspense
-                                fallback={
-                                    <div className="fixed inset-0 z-[var(--z-toast)] grid place-items-center px-5" style={{ background: theme.canvas.background, color: theme.node.text }}>
-                                        <WorkspaceState icon="loading" title="正在加载 3D 导演台" description="准备场景、镜头与空间控制。" />
-                                    </div>
-                                }
-                            >
-                                <CanvasDirectorWorkbench
-                                    open
-                                    scene={activeDirectorScene}
-                                    imageNodes={nodes.filter((node) => node.type === CanvasNodeType.Image && Boolean(node.metadata?.content))}
-                                    onClose={() => setDirectorNodeId(null)}
-                                    onChange={saveDirectorScene}
-                                    onApply={applyDirectorOutput}
-                                    onDeleteImageNode={(nodeId) => deleteNodes(new Set([nodeId]))}
-                                    onFlush={() => flushCanvasStorePersistence()}
-                                    onboardingScope={directorOnboardingScope}
-                                />
-                            </Suspense>
-                        ) : null}
+                        <CanvasProjectDirectorWorkbench
+                            open={Boolean(directorNodeId && activeDirectorScene)}
+                            scene={activeDirectorScene}
+                            nodes={nodes}
+                            theme={theme}
+                            onboardingScope={directorOnboardingScope}
+                            onClose={() => setDirectorNodeId(null)}
+                            onChange={saveDirectorScene}
+                            onApply={applyDirectorOutput}
+                            onDeleteImageNode={(nodeId) => deleteNodes(new Set([nodeId]))}
+                            onFlush={() => flushCanvasStorePersistence()}
+                        />
 
                         <CanvasVersionCompareModal
                             open={Boolean(versionCompareRootId)}
