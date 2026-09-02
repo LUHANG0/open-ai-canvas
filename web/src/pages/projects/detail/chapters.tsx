@@ -1,59 +1,37 @@
-import { useDeferredValue, useEffect, useMemo, useRef, useState, type ChangeEvent, type DragEvent, type ReactNode } from "react";
+import { useDeferredValue, useEffect, useMemo, useRef, useState, type DragEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { Alert, App, Button, Dropdown, Form, Input, InputNumber, Modal, Popconfirm, Tooltip } from "antd";
+import { App, Button, Dropdown, Input, Popconfirm, Tooltip } from "antd";
 import CharacterCount from "@tiptap/extension-character-count";
 import Color from "@tiptap/extension-color";
 import Highlight from "@tiptap/extension-highlight";
 import Placeholder from "@tiptap/extension-placeholder";
 import TextAlign from "@tiptap/extension-text-align";
 import { TextStyle } from "@tiptap/extension-text-style";
-import { EditorContent, useEditor, type Editor } from "@tiptap/react";
+import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import {
-    AlignCenter,
-    AlignJustify,
-    AlignLeft,
-    AlignRight,
-    Bold,
     Check,
-    ChevronDown,
     Clapperboard,
-    Code2,
     Crosshair,
-    Eraser,
     FileUp,
     GripVertical,
-    Highlighter,
-    Italic,
-    Link2,
-    List,
-    ListOrdered,
-    Minus,
     MoreHorizontal,
     MoveVertical,
     Plus,
-    Quote,
-    Redo2,
     Save,
     Search,
-    Strikethrough,
     Trash2,
-    Underline,
-    Undo2,
     UsersRound,
     X,
 } from "lucide-react";
 
 import { useBlocker, useNavigate, useParams, useSearchParams } from "react-router";
 
-import { SkillRuntimePicker, useSkillRuntimeCatalog } from "@/components/skills/skill-runtime-picker";
-import { ModelPicker } from "@/components/model-picker";
+import { useSkillRuntimeCatalog } from "@/components/skills/skill-runtime-picker";
 import { WorkspaceState } from "@/components/layout/workspace-state";
-import { DialogFrame } from "@/components/ui/pc";
 import { resolveProjectCanvasStyle } from "@/components/canvas/canvas-style-picker-modal";
 import { normalizeCharacterName } from "@/lib/canvas/canvas-character-reference";
-import { decodeNovelText, splitTextIntoChapters } from "@/lib/canvas/canvas-document";
 import { navigateToSettings } from "@/lib/settings-navigation";
 import { projectSourceTextToPlainText } from "@/lib/project-source-text";
 import {
@@ -74,11 +52,12 @@ import { loadProjectEditorDraft, removeProjectEditorDraft, saveProjectEditorDraf
 import { formatCount, formatTime, statusLabel, type ProjectDetailViewProps } from "./shared";
 import { chapterStoryboardAssets, chapterStoryboardCharacters, chapterStoryboardReplaceImpact, storyboardRowsToProjectShots } from "./chapter-storyboard-production";
 import { chapterCharactersFromGenerationTask, chapterStoryboardFromGenerationTask, chapterTaskIdentity, extractChapterCharacters, generateChapterStoryboard } from "./project-chapter-ai";
+import { ChapterEditorToolbar } from "./chapter-editor-toolbar";
+import { CreateChapterDialog, ImportNovelDialog, plainTextToHtml } from "./chapter-import-dialogs";
+import { ChapterCharacterExtractionDialog, ChapterStoryboardGenerationDialog, MoveChapterDialog } from "./chapter-generation-dialogs";
+import { chapterOperationFromTask, chapterOperationKey, chapterTaskResultAlreadyApplied, formatOperationElapsed, readStoredScroll, type ChapterOperation, type ChapterOperationKind } from "./chapter-operation-state";
 
 const CHAPTER_ROW_HEIGHT = 62;
-const MAX_NOVEL_IMPORT_CHAPTERS = 2500;
-type ChapterOperationKind = "characters" | "storyboard";
-type ChapterOperation = { startedAt: number; taskId?: string };
 type ChapterEditorDraft = { title: string; html: string };
 
 function formatChapterListCount(value: number) {
@@ -702,202 +681,18 @@ export default function ProjectChaptersView({ detail, refreshProject }: ProjectD
                                 <Button size="small" type={dirty ? "primary" : "default"} icon={dirty ? <Save className="size-3.5" /> : <Check className="size-3.5" />} disabled={!selectedUnit || !dirty || !draftTitle.trim() || saveMutation.isPending} loading={saveMutation.isPending} onClick={() => saveMutation.mutate(chapterDraftRef.current)}>{dirty ? "保存" : "已保存"}</Button>
                             </div>
                         </header>
-                        <EditorToolbar editor={editor} />
+                        <ChapterEditorToolbar editor={editor} />
                         <div className="project-chapter-editor-scroll thin-scrollbar min-h-0 flex-1 overflow-y-auto bg-foreground/[.012]">
                             <div className="project-chapter-editor-wrap min-h-full"><EditorContent editor={editor} /></div>
                         </div>
                     </div>
                 ) : <WorkspaceState icon="projects" compact className="h-full" title="请选择章节" description="从左侧章节列表选择一章开始编辑。" />}
             </section>
-            <CreateChapterModal open={createOpen} onClose={() => setCreateOpen(false)} loading={createMutation.isPending} onSubmit={(values) => createMutation.mutate(values)} />
-            <ImportNovelModal open={importOpen} loading={importMutation.isPending} onClose={closeImport} onImport={(chapters) => importMutation.mutate(chapters)} />
-            <DialogFrame className="pc-project-dialog" title="提取章节角色" subtitle="正文会交给本次选择的文本模型分析，结果进入待确认资产。" open={characterExtractOpen} frameSize="sm" okText="开始提取" cancelText="取消" okButtonProps={{ disabled: !selectedTextModel }} onCancel={() => setCharacterExtractOpen(false)} onOk={() => void extractCharacters()}>
-                <div className="grid gap-4">
-                    <div className="rounded-lg border border-border/70 bg-foreground/[.018] px-3 py-2.5">
-                        <div className="text-[var(--fs-tiny)] text-foreground/42">当前章节</div>
-                        <div className="mt-1 truncate text-sm font-medium text-foreground/85">{selectedUnit?.title}</div>
-                        <div className="mt-1 text-[var(--fs-tiny)] text-foreground/38">正文会交给本次选择的文本模型分析，提取结果进入“角色与资产”待确认列表。</div>
-                    </div>
-                    <label className="block">
-                        <span className="mb-1.5 block text-xs font-medium text-foreground/68">文本模型</span>
-                        <ModelPicker config={effectiveConfig} capability="text" value={selectedTextModel} onChange={setSelectedTextModel} fullWidth placeholder="选择用于提取角色的文本模型" showSelectedPrice={false} onMissingConfig={() => navigateToSettings({ continueCreation: true })} />
-                    </label>
-                </div>
-            </DialogFrame>
-            <DialogFrame className="pc-project-dialog" title="生成章节分镜" subtitle="生成成功后会写入分镜制作；已有镜头仅在确认后整体替换。" open={storyboardOpen} frameSize="md" okText={storyboardImpact.shotCount ? "重新生成分镜" : "生成分镜"} cancelText="取消" okButtonProps={{ disabled: !selectedTextModel }} onCancel={() => setStoryboardOpen(false)} onOk={() => void createStoryboard()}>
-                <div className="grid gap-4">
-                    <div className="rounded-lg border border-border/70 bg-foreground/[.018] px-3 py-2.5">
-                        <div className="text-[var(--fs-tiny)] text-foreground/42">当前章节</div>
-                        <div className="mt-1 truncate text-sm font-medium text-foreground/85">{selectedUnit?.title}</div>
-                        <div className="mt-1 text-[var(--fs-tiny)] text-foreground/38">正文将作为分镜依据，生成结果会直接写入“分镜制作”。</div>
-                    </div>
-                    {storyboardImpact.shotCount ? <Alert type="warning" showIcon message={`本章已有 ${storyboardImpact.shotCount} 个分镜`} description="继续后会先生成新分镜；生成成功后，再按确认内容整体替换旧镜头及其关联数据。" /> : null}
-                    <label className="block">
-                        <span className="mb-1.5 block text-xs font-medium text-foreground/68">文本模型</span>
-                        <ModelPicker config={effectiveConfig} capability="text" value={selectedTextModel} onChange={setSelectedTextModel} fullWidth placeholder="选择用于生成分镜的文本模型" showSelectedPrice={false} onMissingConfig={() => navigateToSettings({ continueCreation: true })} />
-                    </label>
-                    <div>
-                        <label className="block">
-                            <span className="mb-1.5 block text-xs font-medium text-foreground/68">分镜技能</span>
-                            <SkillRuntimePicker profile="shortDrama" skills={availableSkills} loading={skillsLoading} value={selectedSkillIds} onChange={setSelectedSkillIds} placeholder="选择本次章节分镜使用的技能" />
-                        </label>
-                        <p className="mt-2 text-[var(--fs-tiny)] leading-5 text-foreground/42">可不选，最多 4 个。所选技能会在本次生成时由统一 Skill Runtime 按需读取，并记录实际使用的版本和文件。</p>
-                    </div>
-                </div>
-            </DialogFrame>
-            <DialogFrame className="pc-project-dialog" title="移动章节" subtitle="其他章节会按目标位置自动顺延。" open={Boolean(moveTargetId)} frameSize="sm" okText="移动" cancelText="取消" okButtonProps={{ disabled: !movePosition || movePosition < 1 || movePosition > orderedUnits.length, loading: reorderMutation.isPending }} onCancel={() => { setMoveTargetId(""); setMovePosition(null); }} onOk={moveChapterToPosition}>
-                <div className="text-xs leading-5 text-foreground/50">输入目标章节位置。适合上千章项目的长距离调整，移动后其他章节会自动顺延。</div>
-                <label className="mt-3 flex items-center gap-2 text-sm"><span className="shrink-0">移动到第</span><InputNumber min={1} max={orderedUnits.length} precision={0} value={movePosition} onChange={setMovePosition} className="min-w-0 flex-1" /><span className="shrink-0">章</span></label>
-            </DialogFrame>
+            <CreateChapterDialog open={createOpen} onClose={() => setCreateOpen(false)} loading={createMutation.isPending} onSubmit={(values) => createMutation.mutate(values)} />
+            <ImportNovelDialog open={importOpen} loading={importMutation.isPending} onClose={closeImport} onImport={(chapters) => importMutation.mutate(chapters)} />
+            <ChapterCharacterExtractionDialog open={characterExtractOpen} selectedUnit={selectedUnit} effectiveConfig={effectiveConfig} selectedTextModel={selectedTextModel} onTextModelChange={setSelectedTextModel} onClose={() => setCharacterExtractOpen(false)} onSubmit={() => void extractCharacters()} />
+            <ChapterStoryboardGenerationDialog open={storyboardOpen} selectedUnit={selectedUnit} effectiveConfig={effectiveConfig} selectedTextModel={selectedTextModel} onTextModelChange={setSelectedTextModel} onClose={() => setStoryboardOpen(false)} onSubmit={() => void createStoryboard()} storyboardImpact={storyboardImpact} availableSkills={availableSkills} skillsLoading={skillsLoading} selectedSkillIds={selectedSkillIds} onSkillIdsChange={setSelectedSkillIds} />
+            <MoveChapterDialog open={Boolean(moveTargetId)} position={movePosition} chapterCount={orderedUnits.length} loading={reorderMutation.isPending} onPositionChange={setMovePosition} onClose={() => { setMoveTargetId(""); setMovePosition(null); }} onSubmit={moveChapterToPosition} />
         </div>
     );
-}
-
-function chapterOperationKey(unitId: string, kind: ChapterOperationKind) {
-    return `${unitId}:${kind}`;
-}
-
-function chapterOperationFromTask(task: GenerationTask): ChapterOperation {
-    const startedAt = Date.parse(task.startedAt || task.createdAt);
-    return { startedAt: Number.isFinite(startedAt) ? startedAt : Date.now(), taskId: task.id };
-}
-
-function chapterTaskResultAlreadyApplied(task: GenerationTask, chapterId: string, kind: ChapterOperationKind, detail: ProjectDetail) {
-    const completedAt = Date.parse(task.completedAt || task.updatedAt);
-    if (!Number.isFinite(completedAt)) return false;
-    const updatedAt = kind === "characters"
-        ? detail.assetCandidates.filter((candidate) => candidate.unitId === chapterId && candidate.category === "character").map((candidate) => Date.parse(candidate.updatedAt))
-        : detail.shots.filter((shot) => shot.unitId === chapterId).map((shot) => Date.parse(shot.updatedAt));
-    return updatedAt.some((timestamp) => Number.isFinite(timestamp) && timestamp >= completedAt);
-}
-
-function formatOperationElapsed(startedAt: number, now: number) {
-    const totalSeconds = Math.max(0, Math.floor((now - startedAt) / 1_000));
-    const minutes = Math.floor(totalSeconds / 60);
-    const seconds = String(totalSeconds % 60).padStart(2, "0");
-    return `${minutes}分钟${seconds}秒`;
-}
-
-function EditorToolbar({ editor }: { editor: Editor | null }) {
-    const setLink = () => {
-        if (!editor) return;
-        const current = String(editor.getAttributes("link").href || "");
-        const href = window.prompt("输入链接地址", current);
-        if (href === null) return;
-        if (!href.trim()) editor.chain().focus().unsetLink().run();
-        else editor.chain().focus().extendMarkRange("link").setLink({ href: href.trim() }).run();
-    };
-    const setColor = () => {
-        const color = window.prompt("输入文字颜色，例如 #d97706", String(editor?.getAttributes("textStyle").color || "#d97706"));
-        if (color?.trim()) editor?.chain().focus().setColor(color.trim()).run();
-    };
-    const setHighlight = () => {
-        const color = window.prompt("输入高亮颜色，例如 #fef3c7", String(editor?.getAttributes("highlight").color || "#fef3c7"));
-        if (color?.trim()) editor?.chain().focus().toggleHighlight({ color: color.trim() }).run();
-    };
-    const blockLabel = editor?.isActive("heading", { level: 1 }) ? "标题 1" : editor?.isActive("heading", { level: 2 }) ? "标题 2" : editor?.isActive("heading", { level: 3 }) ? "标题 3" : "正文";
-    const alignment = editor?.isActive({ textAlign: "center" }) ? "center" : editor?.isActive({ textAlign: "right" }) ? "right" : editor?.isActive({ textAlign: "justify" }) ? "justify" : "left";
-    const alignmentIcon = alignment === "center" ? <AlignCenter className="size-3.5" /> : alignment === "right" ? <AlignRight className="size-3.5" /> : alignment === "justify" ? <AlignJustify className="size-3.5" /> : <AlignLeft className="size-3.5" />;
-    return (
-        <div className="hide-scrollbar flex h-10 shrink-0 items-center gap-0.5 overflow-x-auto border-b border-border/70 px-2">
-            <EditorTool editor={editor} label="撤销" icon={<Undo2 className="size-3.5" />} onClick={() => editor?.chain().focus().undo().run()} />
-            <EditorTool editor={editor} label="重做" icon={<Redo2 className="size-3.5" />} onClick={() => editor?.chain().focus().redo().run()} />
-            <ToolbarDivider />
-            <Dropdown trigger={["click"]} menu={{ selectedKeys: [blockLabel], items: ["正文", "标题 1", "标题 2", "标题 3"].map((key) => ({ key, label: key })), onClick: ({ key }) => key === "正文" ? editor?.chain().focus().setParagraph().run() : editor?.chain().focus().toggleHeading({ level: Number(key.slice(-1)) as 1 | 2 | 3 }).run() }}>
-                <button type="button" className="flex h-7 items-center gap-1 rounded px-2 text-xs text-foreground/60 hover:bg-surface-hover" aria-label="段落格式">{blockLabel}<ChevronDown className="size-3" /></button>
-            </Dropdown>
-            <EditorTool editor={editor} label="粗体" icon={<Bold className="size-3.5" />} onClick={() => editor?.chain().focus().toggleBold().run()} active={Boolean(editor?.isActive("bold"))} />
-            <EditorTool editor={editor} label="斜体" icon={<Italic className="size-3.5" />} onClick={() => editor?.chain().focus().toggleItalic().run()} active={Boolean(editor?.isActive("italic"))} />
-            <EditorTool editor={editor} label="下划线" icon={<Underline className="size-3.5" />} onClick={() => editor?.chain().focus().toggleUnderline().run()} active={Boolean(editor?.isActive("underline"))} />
-            <EditorTool editor={editor} label="删除线" icon={<Strikethrough className="size-3.5" />} onClick={() => editor?.chain().focus().toggleStrike().run()} active={Boolean(editor?.isActive("strike"))} />
-            <ToolbarDivider />
-            <Dropdown trigger={["click"]} menu={{ selectedKeys: [alignment], items: [{ key: "left", icon: <AlignLeft className="size-3.5" />, label: "左对齐" }, { key: "center", icon: <AlignCenter className="size-3.5" />, label: "居中" }, { key: "right", icon: <AlignRight className="size-3.5" />, label: "右对齐" }, { key: "justify", icon: <AlignJustify className="size-3.5" />, label: "两端对齐" }], onClick: ({ key }) => editor?.chain().focus().setTextAlign(key).run() }}>
-                <button type="button" className="grid size-7 place-items-center rounded text-foreground/60 hover:bg-surface-hover" aria-label="文字对齐">{alignmentIcon}</button>
-            </Dropdown>
-            <EditorTool editor={editor} label="项目符号" icon={<List className="size-3.5" />} onClick={() => editor?.chain().focus().toggleBulletList().run()} active={Boolean(editor?.isActive("bulletList"))} />
-            <EditorTool editor={editor} label="编号列表" icon={<ListOrdered className="size-3.5" />} onClick={() => editor?.chain().focus().toggleOrderedList().run()} active={Boolean(editor?.isActive("orderedList"))} />
-            <EditorTool editor={editor} label="引用" icon={<Quote className="size-3.5" />} onClick={() => editor?.chain().focus().toggleBlockquote().run()} active={Boolean(editor?.isActive("blockquote"))} />
-            <EditorTool editor={editor} label="链接" icon={<Link2 className="size-3.5" />} onClick={setLink} active={Boolean(editor?.isActive("link"))} />
-            <Dropdown trigger={["click"]} placement="bottomRight" menu={{ items: [{ key: "color", icon: <span className="text-[var(--fs-label)] font-bold text-amber-600">A</span>, label: "文字颜色" }, { key: "highlight", icon: <Highlighter className="size-3.5" />, label: "高亮颜色" }, { type: "divider" }, { key: "code", icon: <Code2 className="size-3.5" />, label: "行内代码" }, { key: "rule", icon: <Minus className="size-3.5" />, label: "分隔线" }, { key: "clear", icon: <Eraser className="size-3.5" />, label: "清除格式" }], onClick: ({ key }) => { if (key === "color") setColor(); else if (key === "highlight") setHighlight(); else if (key === "code") editor?.chain().focus().toggleCode().run(); else if (key === "rule") editor?.chain().focus().setHorizontalRule().run(); else if (key === "clear") editor?.chain().focus().clearNodes().unsetAllMarks().run(); } }}>
-                <button type="button" className="grid size-7 place-items-center rounded text-foreground/60 hover:bg-surface-hover" aria-label="更多格式"><MoreHorizontal className="size-4" /></button>
-            </Dropdown>
-        </div>
-    );
-}
-
-function EditorTool({ editor, label, icon, active = false, onClick }: { editor: Editor | null; label: string; icon: ReactNode; active?: boolean; onClick: () => void }) {
-    return <Tooltip title={label}><button type="button" aria-label={label} className={`grid size-7 shrink-0 place-items-center rounded ${active ? "bg-surface-active text-[var(--workspace-accent)]" : "text-foreground/55 hover:bg-surface-hover hover:text-foreground"}`} disabled={!editor} onClick={onClick}>{icon}</button></Tooltip>;
-}
-
-function ToolbarDivider() {
-    return <span className="mx-1 h-4 w-px shrink-0 bg-border" />;
-}
-
-function CreateChapterModal({ open, onClose, loading, onSubmit }: { open: boolean; onClose: () => void; loading: boolean; onSubmit: (values: { title: string; sourceText?: string }) => void }) {
-    return <DialogFrame className="pc-project-dialog" title="添加章节" subtitle="创建后可继续编辑正文、角色和分镜。" open={open} footer={null} destroyOnHidden onCancel={onClose} frameSize="sm"><Form layout="vertical" onFinish={onSubmit}><Form.Item name="title" label="章节标题" rules={[{ required: true, whitespace: true, message: "请输入章节标题" }]}><Input autoFocus placeholder="例如：雨夜归城" /></Form.Item><Form.Item name="sourceText" label="正文（可选）"><Input.TextArea rows={4} placeholder="创建后仍可继续编辑和排版" /></Form.Item><div className="flex justify-end gap-2"><Button onClick={onClose}>取消</Button><Button type="primary" htmlType="submit" loading={loading}>创建章节</Button></div></Form></DialogFrame>;
-}
-
-function ImportNovelModal({ open, loading, onClose, onImport }: { open: boolean; loading: boolean; onClose: () => void; onImport: (chapters: Array<{ title: string; plainText: string }>) => void }) {
-    const fileInputRef = useRef<HTMLInputElement>(null);
-    const [text, setText] = useState("");
-    const [fileName, setFileName] = useState("");
-    const deferredText = useDeferredValue(text);
-    const chapters = useMemo(() => deferredText.trim() ? splitTextIntoChapters(deferredText).map((chapter) => ({ title: chapter.title, plainText: chapter.plainText })) : [], [deferredText]);
-    useEffect(() => { if (!open) { setText(""); setFileName(""); } }, [open]);
-    const readFile = async (event: ChangeEvent<HTMLInputElement>) => {
-        const file = event.target.files?.[0];
-        event.target.value = "";
-        if (!file) return;
-        setFileName(file.name);
-        setText(decodeNovelText(await file.arrayBuffer()));
-    };
-    return (
-        <Modal rootClassName="pc-projects-import-dialog-root" className="pc-projects-import-dialog" title={null} open={open} footer={null} destroyOnHidden onCancel={onClose} width={760} styles={{ container: { padding: 0, overflow: "hidden" }, body: { padding: 0 } }}>
-            <div className="flex min-h-[478px] flex-col">
-                <header className="flex h-12 shrink-0 items-center border-b border-border px-4"><div><h2 className="text-sm font-semibold">导入小说</h2><p className="mt-0.5 text-[var(--fs-tiny)] text-foreground/42">自动识别章节标题，确认后追加到当前项目</p></div></header>
-                <div className="grid min-h-[430px] flex-1 grid-cols-1 md:grid-cols-[minmax(0,1fr)_240px]">
-                <div className="border-b border-border p-3 md:border-b-0 md:border-r">
-                    <div className="mb-2 flex items-center justify-between gap-2"><div><div className="text-sm font-medium">小说正文</div><div className="mt-0.5 text-[var(--fs-label)] text-foreground/45">识别章节标题后追加到现有章节</div></div><Button size="small" icon={<FileUp className="size-3.5" />} onClick={() => fileInputRef.current?.click()}>{fileName || "选择 TXT"}</Button></div>
-                    <input ref={fileInputRef} type="file" accept=".txt,.md,text/plain,text/markdown" className="hidden" onChange={(event) => void readFile(event)} />
-                    <Input.TextArea value={text} onChange={(event) => setText(event.target.value)} rows={16} placeholder={'也可以直接粘贴小说正文，例如：\n\n第一章 雨夜来信\n正文……\n\n第二章 灯塔以北\n正文……'} className="!resize-none" />
-                </div>
-                <div className="flex min-h-0 flex-col">
-                    <div className="flex h-11 shrink-0 items-center justify-between border-b border-border px-3 text-xs"><span className="font-medium">拆分预览</span><span className="tabular-nums text-foreground/45">{chapters.length} 章</span></div>
-                    <ImportChapterPreview chapters={chapters} />
-                    <div className="flex shrink-0 items-center justify-between gap-2 border-t border-border p-3"><span className={`text-[var(--fs-tiny)] ${chapters.length > MAX_NOVEL_IMPORT_CHAPTERS ? "text-red-500" : "text-foreground/38"}`}>{chapters.length > MAX_NOVEL_IMPORT_CHAPTERS ? `最多一次导入 ${MAX_NOVEL_IMPORT_CHAPTERS.toLocaleString("zh-CN")} 章` : `支持最多 ${MAX_NOVEL_IMPORT_CHAPTERS.toLocaleString("zh-CN")} 章`}</span><div className="flex gap-2"><Button size="small" onClick={onClose}>取消</Button><Button size="small" type="primary" disabled={!chapters.length || chapters.length > MAX_NOVEL_IMPORT_CHAPTERS} loading={loading} onClick={() => onImport(chapters)}>导入 {chapters.length || ""} 章</Button></div></div>
-                </div>
-                </div>
-            </div>
-        </Modal>
-    );
-}
-
-function ImportChapterPreview({ chapters }: { chapters: Array<{ title: string; plainText: string }> }) {
-    const scrollRef = useRef<HTMLDivElement>(null);
-    const virtualizer = useVirtualizer({
-        count: chapters.length,
-        getScrollElement: () => scrollRef.current,
-        estimateSize: () => 49,
-        overscan: 10,
-    });
-    return (
-        <div ref={scrollRef} className="thin-scrollbar min-h-0 flex-1 overflow-y-auto p-2">
-            {chapters.length ? <div className="relative w-full" style={{ height: virtualizer.getTotalSize() }}>
-                {virtualizer.getVirtualItems().map((virtualItem) => {
-                    const chapter = chapters[virtualItem.index];
-                    return <div key={`${chapter.title}-${virtualItem.index}`} className="absolute left-0 top-0 flex w-full gap-2 border-b border-border/60 px-1.5 py-2" style={{ height: virtualItem.size, transform: `translateY(${virtualItem.start}px)` }}><span className="w-8 shrink-0 pt-0.5 text-[var(--fs-tiny)] tabular-nums text-foreground/35">{String(virtualItem.index + 1).padStart(Math.max(2, String(chapters.length).length), "0")}</span><div className="min-w-0"><div className="truncate text-xs font-medium">{chapter.title}</div><div className="mt-0.5 text-[var(--fs-tiny)] text-foreground/40">{formatCount(chapter.plainText.length)} 字</div></div></div>;
-                })}
-            </div> : <div className="grid h-full place-items-center px-4 text-center text-xs leading-5 text-foreground/40">选择 TXT 文件或粘贴正文后，这里会显示拆分结果</div>}
-        </div>
-    );
-}
-
-function plainTextToHtml(value: string) {
-    const escaped = value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-    return escaped.split(/\n{2,}/).map((paragraph) => `<p>${paragraph.replace(/\n/g, "<br>")}</p>`).join("");
-}
-
-function readStoredScroll(key: string) {
-    const value = Number(sessionStorage.getItem(key) || 0);
-    return Number.isFinite(value) && value > 0 ? value : 0;
 }

@@ -48,6 +48,21 @@ describe("短剧创作全链路回归门禁", () => {
         expect(source).not.toContain("useBlocker(");
     });
 
+    test("章节页将编辑器、导入、生成对话框和任务状态投影分离", async () => {
+        const source = await Bun.file(new URL("../src/pages/projects/detail/chapters.tsx", import.meta.url)).text();
+        for (const moduleName of [
+            "chapter-editor-toolbar",
+            "chapter-import-dialogs",
+            "chapter-generation-dialogs",
+            "chapter-operation-state",
+        ]) {
+            expect(source).toContain(`from "./${moduleName}"`);
+        }
+        expect(source).not.toContain("function EditorToolbar(");
+        expect(source).not.toContain("function ImportNovelModal(");
+        expect(source).not.toContain("function chapterTaskResultAlreadyApplied(");
+    });
+
     test("章节画布关联失败仍打开已创建的画布", async () => {
         const source = await Bun.file(new URL("../src/pages/projects/detail.tsx", import.meta.url)).text();
         const failureStart = source.indexOf("画布已创建，但章节关联失败");
