@@ -522,7 +522,7 @@ async function interactionScenario(cdp) {
     assert(Boolean(agentClosedBaseline) && !agentClosedBaseline.localMounted, "B20 website Agent does not pre-mount the local runtime", JSON.stringify(agentClosedBaseline));
     assert(
         await activate('.pc-canvas-agent-button')
-            && await cdp.poll(`document.querySelector('.pc-canvas-assistant-column')?.getAttribute('data-state') === 'open' && document.querySelector('.pc-canvas-assistant-panel')?.getAttribute('aria-hidden') !== 'true'`, "Agent panel opens"),
+            && await cdp.poll(`document.querySelector('.pc-canvas-assistant-column')?.getAttribute('data-state') === 'open' && !!document.querySelector('.pc-canvas-assistant-panel:not([aria-hidden="true"])')`, "Agent panel opens"),
         "B21 Agent panel opens from the project bar",
     );
     const agentOpenLayout = await cdp.evaluate(`(() => {
@@ -531,7 +531,7 @@ async function interactionScenario(cdp) {
         const rect = viewport.getBoundingClientRect();
         const panel = document.querySelector('.pc-canvas-assistant-column')?.getBoundingClientRect();
         const panelColumn = document.querySelector('.pc-canvas-assistant-column');
-        const dock = document.querySelector('.canvas-floating-dock')?.getBoundingClientRect();
+        const dock = document.querySelector('[aria-label="画布创作工具"] > .canvas-floating-dock')?.getBoundingClientRect();
         const trigger = document.querySelector('.pc-canvas-agent-button');
         const triggerRect = trigger instanceof HTMLElement ? trigger.getBoundingClientRect() : null;
         const triggerHit = triggerRect ? document.elementFromPoint(triggerRect.left + triggerRect.width / 2, triggerRect.top + triggerRect.height / 2) : null;
@@ -645,12 +645,12 @@ async function compactViewportScenario(cdp) {
     assert(layout.width === 1024 && layout.height === 768, "D1 compact PC viewport applied", JSON.stringify(layout));
     assert(layout.nodes === 5 && layout.topbar && layout.dock && layout.zoom, "D2 canvas content and primary controls remain available", JSON.stringify(layout));
     assert(layout.overflow <= 1, "D3 no horizontal overflow at 1024x768", `overflow=${layout.overflow}`);
-    assert(await activate('.pc-canvas-agent-button') && await cdp.poll(`document.querySelector('.pc-canvas-assistant-column')?.getAttribute('data-state') === 'open'`, "compact Agent opens"), "D4 compact PC can open Agent");
+    assert(await activate('.pc-canvas-agent-button') && await cdp.poll(`document.querySelector('.pc-canvas-assistant-column')?.getAttribute('data-state') === 'open' && !!document.querySelector('.pc-canvas-assistant-panel:not([aria-hidden="true"])')`, "compact Agent opens"), "D4 compact PC can open Agent");
     // Dock 与模式切换使用 200–300ms 的位置过渡，等待其进入最终可交互位置再测遮挡。
     await sleep(380);
     const compactOverlay = await cdp.evaluate(`(() => {
         const panel = document.querySelector('.pc-canvas-assistant-column')?.getBoundingClientRect();
-        const dock = document.querySelector('.canvas-floating-dock')?.getBoundingClientRect();
+        const dock = document.querySelector('[aria-label="画布创作工具"] > .canvas-floating-dock')?.getBoundingClientRect();
         const modeSwitch = document.querySelector('.pc-canvas-workspace__mode-switch')?.getBoundingClientRect();
         return {
             panel: panel ? { left: panel.left, right: panel.right, width: panel.width } : null,

@@ -1,4 +1,4 @@
-import { memo, useEffect, useMemo, useRef, useState } from "react";
+import { lazy, memo, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import copyToClipboard from "copy-to-clipboard";
 import { Copy, Cpu, Settings2, Trash2, X } from "lucide-react";
 import { Button, Modal, Segmented, Select, Tooltip } from "antd";
@@ -25,7 +25,6 @@ import { AgentChatComposer, AgentChatMessage, AgentWorkingMessage, type CanvasAg
 import { VoiceRecordingButton } from "@/components/conversation/voice-recording-button";
 import { ModelLogo } from "@/components/model-logo";
 import { AgentChatEmptyState, AgentPanelChrome } from "./canvas-agent-panel-chrome";
-import { CanvasLocalAgentPanel } from "./canvas-local-agent-panel";
 import { NODE_DEFAULT_SIZE } from "@/constant/canvas";
 import { CanvasNodeType, type CanvasAssistantMessage, type CanvasAssistantPendingBackendSession, type CanvasAssistantReference, type CanvasAssistantSession, type CanvasNodeData } from "@/types/canvas";
 import { useCanvasAgentStore } from "@/stores/canvas/use-canvas-agent-store";
@@ -36,6 +35,9 @@ import { resolveStoryboardGenerationContext } from "@/lib/canvas/canvas-storyboa
 import { buildCanvasWorkflowOps, looksLikeWorkflowRequest, type CanvasWorkflowInput } from "@/lib/canvas/canvas-agent-workflow";
 import { listAddedSkills, type Skill } from "@/services/api/skills";
 import { buildSkillMentionReferences, SKILL_RUNTIME_AGENT_GUIDANCE, skillRuntime } from "@/services/skill-runtime";
+
+export const loadCanvasLocalAgentPanel = () => import("./canvas-local-agent-panel").then((module) => ({ default: module.CanvasLocalAgentPanel }));
+const CanvasLocalAgentPanel = lazy(loadCanvasLocalAgentPanel);
 
 export const CANVAS_AGENT_PANEL_MOTION_MS = 200;
 const ONLINE_AGENT_MAX_STEPS = 8;
@@ -1211,7 +1213,15 @@ function CanvasAssistantPanelImpl({
             </div>
             {localAgentMounted ? (
                 <div data-canvas-agent-mode="local" className={agentMode === "local" ? "flex min-h-0 flex-1 flex-col" : "hidden"} aria-hidden={agentMode !== "local"}>
-                    <CanvasLocalAgentPanel embedded snapshot={snapshot} canUndoOps={canUndoOps} undoOpsCount={undoOpsCount} onApplyOps={onApplyOps} onUndoOps={onUndoOps} autoConnect={autoConnectLocal && agentMode === "local"} />
+                    <Suspense
+                        fallback={(
+                            <div className="flex min-h-0 flex-1 items-center justify-center px-6 text-sm" style={{ color: theme.node.muted }} role="status" aria-live="polite">
+                                正在准备本机 Agent…
+                            </div>
+                        )}
+                    >
+                        <CanvasLocalAgentPanel embedded snapshot={snapshot} canUndoOps={canUndoOps} undoOpsCount={undoOpsCount} onApplyOps={onApplyOps} onUndoOps={onUndoOps} autoConnect={autoConnectLocal && agentMode === "local"} />
+                    </Suspense>
                 </div>
             ) : agentMode === "local" ? (
                 <div className="flex min-h-0 flex-1 items-center justify-center px-6 text-sm" style={{ color: theme.node.muted }} role="status" aria-live="polite">

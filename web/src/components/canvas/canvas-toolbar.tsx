@@ -248,7 +248,7 @@ export function CanvasToolbar({
         <div
             ref={rootRef}
             data-canvas-no-zoom
-            className="pc-canvas-toolbar pointer-events-none absolute bottom-[var(--canvas-inset-y)] left-[var(--canvas-inset-x)] z-[var(--z-toolbar)] flex justify-center transition-[right] duration-200"
+            className="pc-canvas-toolbar pointer-events-none absolute bottom-[var(--canvas-inset-y)] left-[var(--canvas-inset-x)] z-[var(--z-toolbar)] flex justify-center transition-[right,bottom] duration-200"
             style={{ right: rightInset }}
             role="toolbar"
             aria-label="画布创作工具"
@@ -265,7 +265,7 @@ export function CanvasToolbar({
                 ) : null}
             </AnimatePresence>
 
-            <FloatingDock ref={dockRef} items={items} magnify={false} className="canvas-floating-dock pointer-events-auto max-w-full" style={canvasDockStyle(theme)} />
+            <FloatingDock ref={dockRef} items={items} magnify={false} className="canvas-floating-dock pointer-events-auto min-w-0 max-w-full" style={canvasDockStyle(theme)} />
 
             <AnimatePresence>
                 {appearanceOpen ? (

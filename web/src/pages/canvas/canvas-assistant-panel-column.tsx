@@ -26,7 +26,20 @@ export function AssistantPanelColumn({
     children: (resizing: boolean) => ReactNode;
 }) {
     const columnRef = useRef<HTMLDivElement>(null);
+    const resizeCleanupRef = useRef<(() => void) | null>(null);
     const [resizing, setResizing] = useState(false);
+
+    useEffect(() => {
+        if (closing) {
+            resizeCleanupRef.current?.();
+            resizeCleanupRef.current = null;
+            setResizing(false);
+        }
+        return () => {
+            resizeCleanupRef.current?.();
+            resizeCleanupRef.current = null;
+        };
+    }, [closing]);
 
     useEffect(() => {
         if (!closing) return;
@@ -40,18 +53,26 @@ export function AssistantPanelColumn({
     // 拖拽时列右边缘固定（flex 末位），左边缘随鼠标移动。
     const startResize = useCallback((event: React.MouseEvent) => {
         event.preventDefault();
+        resizeCleanupRef.current?.();
         const rightEdge = columnRef.current?.getBoundingClientRect().right ?? 0;
         const { min, max } = getPanelWidthBounds();
+        const previousCursor = document.body.style.cursor;
+        const previousUserSelect = document.body.style.userSelect;
         const move = (e: MouseEvent) => {
             onWidthChange(Math.min(max, Math.max(min, rightEdge - e.clientX)));
         };
-        const stop = () => {
-            setResizing(false);
-            document.body.style.cursor = "";
-            document.body.style.userSelect = "";
+        const cleanup = () => {
+            document.body.style.cursor = previousCursor;
+            document.body.style.userSelect = previousUserSelect;
             document.removeEventListener("mousemove", move);
             document.removeEventListener("mouseup", stop);
         };
+        const stop = () => {
+            cleanup();
+            if (resizeCleanupRef.current === cleanup) resizeCleanupRef.current = null;
+            setResizing(false);
+        };
+        resizeCleanupRef.current = cleanup;
         setResizing(true);
         document.body.style.cursor = "col-resize";
         document.body.style.userSelect = "none";

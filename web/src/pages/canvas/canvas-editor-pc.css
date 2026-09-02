@@ -150,9 +150,11 @@
         padding-inline: 132px;
     }
 
-    /* Agent 展开时给左侧视图控制和素材入口预留真实空间，避免三组 Dock 相互覆盖。 */
+    /* Agent 展开时将主 Dock 上移一行，避免在同一水平线同时挤压左侧视图控制和右侧 Agent。 */
     .pc-canvas-workspace[data-assistant-open="true"] .pc-canvas-toolbar {
-        left: calc(var(--canvas-inset-x) + 320px);
+        bottom: calc(var(--canvas-inset-y) + var(--space-12));
+        left: var(--canvas-inset-x);
+        min-width: 0;
         padding-inline: 0;
     }
 
@@ -164,6 +166,11 @@
 
     .pc-canvas-workspace .pc-canvas-toolbar > .canvas-floating-dock {
         max-width: min(760px, calc(100vw - 460px));
+    }
+
+    .pc-canvas-workspace[data-assistant-open="true"] .pc-canvas-toolbar > .canvas-floating-dock {
+        min-width: 0;
+        max-width: 100%;
     }
 
     .pc-canvas-workspace .pc-canvas-toolbar__popover,
@@ -1026,6 +1033,19 @@
 
     .pc-canvas-workspace .pc-canvas-toolbar > .canvas-floating-dock {
         max-width: min(620px, calc(100vw - 380px));
+    }
+
+    .pc-canvas-workspace[data-assistant-open="true"] .pc-canvas-toolbar > .canvas-floating-dock {
+        min-width: 0;
+        max-width: 100%;
+        overflow-x: auto;
+        overflow-y: hidden;
+        overscroll-behavior-inline: contain;
+        scrollbar-width: none;
+    }
+
+    .pc-canvas-workspace[data-assistant-open="true"] .pc-canvas-toolbar > .canvas-floating-dock::-webkit-scrollbar {
+        display: none;
     }
 
     .pc-canvas-workspace .pc-canvas-active-tasks {
