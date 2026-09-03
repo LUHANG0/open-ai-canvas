@@ -7,6 +7,8 @@ description: Host Updater、Release 检查、数据库备份迁移、健康验�
 
 管理后台的“系统配置 → 系统更新”只负责管理员鉴权、展示状态和发起操作。真正的 Docker、数据库备份与服务切换由宿主机上的 `open-ai-canvas-host-updater` 执行，业务后端不挂载 Docker Socket。
 
+正式发布前还必须阅读[上线监控、值守与发布回滚手册](./launch-operations)。该手册定义值守角色、灰度批次、观察阈值、停止条件，以及自动回退不覆盖 Backend 数据目录和外部对象存储时的人工恢复边界。
+
 ```text
 管理员浏览器 → Backend 管理 API → 带 Token 的 Unix Socket → Host Updater → Docker Compose
 ```

@@ -28,6 +28,7 @@
 - [维护与分支策略](content/docs/overview/maintenance-policy.mdx)
 - [本地开发](content/docs/backend/local-development.mdx)
 - [后端数据库](content/docs/backend/backend-database.mdx)
+- [上线监控、值守与发布回滚手册](content/docs/backend/launch-operations.mdx)
 - 代码地图：待补充
 - 待办：待补充
 - [待测试](content/docs/progress/pending-test.mdx)
