@@ -135,7 +135,7 @@ function InfiniteCanvasPage() {
         setChatSessions,
         setActiveChatId,
     });
-    const size = useCanvasViewportMeasurement({ projectId, projectLoaded, containerRef, viewportRef, setViewport });
+    const size = useCanvasViewportMeasurement({ projectId, projectLoaded, containerRef, nodeCount: nodes.length, nodesRef, viewportRef, setViewport });
     const historyRestoreUiRef = useRef<() => void>(() => undefined);
 
     const { cleanupCanvasFiles, historyPausedRef, historyState, prepareExternalHistoryUpdate, redoCanvas, resetHistory, undoCanvas } = useCanvasHistory({
