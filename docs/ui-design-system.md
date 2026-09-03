@@ -105,7 +105,7 @@
 
 允许新增的中性组件：
 
-- 页面：`PageScaffold`、`SectionHeader`、`Surface`、`SubnavLayout`。
+- 页面：`PageScaffold`、`SectionHeader`、`Surface`、`SubnavLayout`、`PathBreadcrumb`。
 - 筛选：`SearchField`、`FilterBar`、`FilterChip`、`ViewToggle`。
 - 数据：`DataTable`、`SelectionBar`、`RowActions`、`StatusBadge`、`StatTile`。
 - 状态：`WorkspaceState`、`WorkspaceLoadingState`、`WorkspaceErrorState`、`FullScreenState`。

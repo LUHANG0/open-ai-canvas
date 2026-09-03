@@ -5,6 +5,7 @@ import { Box, Check, ChevronDown, Download, FileText, FolderOpen, FolderPlus, Im
 
 import { WorkspaceState } from "@/components/ui/pc/workspace-state";
 import { PaginationBar } from "@/components/ui/pc/page";
+import { PathBreadcrumb } from "@/components/ui/pc/path-breadcrumb";
 import { SectionHeader, StatusBadge } from "@/components/ui/pc";
 import { AssetMediaPreview } from "@/components/asset-media-preview";
 import { CachedResourceImage } from "@/components/cached-resource-image";
@@ -546,26 +547,14 @@ export default function ProjectAssetsView({ detail, refreshProject }: ProjectDet
                 </nav>
                 <div className="pc-project-assets-content min-w-0">
                     <div className="mb-3 flex min-h-9 flex-wrap items-center justify-between gap-2">
-                        <div className="flex min-w-0 items-center gap-1 text-xs text-foreground/48">
-                            <button type="button" className="truncate rounded px-1.5 py-1 hover:bg-surface-hover" onClick={() => selectFolder("")}>
-                                素材库
-                            </button>
-                            {folderId === ALL_FOLDERS ? (
-                                <>
-                                    <span>/</span>
-                                    <span className="font-medium text-foreground">全部资产</span>
-                                </>
-                            ) : (
-                                folderPath.map((folder) => (
-                                    <span key={folder.id} className="contents">
-                                        <span>/</span>
-                                        <button type="button" className="truncate rounded px-1.5 py-1 font-medium text-foreground hover:bg-surface-hover" onClick={() => selectFolder(folder.id)}>
-                                            {folder.name}
-                                        </button>
-                                    </span>
-                                ))
-                            )}
-                        </div>
+                        <PathBreadcrumb
+                            ariaLabel="素材目录路径"
+                            rootLabel="素材库"
+                            items={folderId === ALL_FOLDERS ? [] : folderPath.map((folder) => ({ key: folder.id, label: folder.name }))}
+                            currentLabel={folderId === ALL_FOLDERS ? "全部资产" : undefined}
+                            onRootClick={() => selectFolder("")}
+                            onItemClick={selectFolder}
+                        />
                         {folderId !== ALL_FOLDERS ? (
                             <Button type="text" size="small" icon={<FolderPlus className="size-3.5" />} onClick={() => openFolderEditor(undefined, folderId)}>
                                 新建子文件夹

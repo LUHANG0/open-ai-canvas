@@ -12,6 +12,7 @@ import { usePluginStore } from "@/stores/use-plugin-store";
 import { CollectionGrid, ListToolbar, PageHeader, PaginationBar, WorkspacePage } from "@/components/ui/pc/page";
 import { WorkspaceErrorState, WorkspaceLoadingState, WorkspaceState } from "@/components/ui/pc/workspace-state";
 import { DrawerFrame, StatusBadge, Surface } from "@/components/ui/pc";
+import { PathBreadcrumb } from "@/components/ui/pc/path-breadcrumb";
 import { AssetLibraryCard, AssetLibraryCardMedia } from "@/components/assets/asset-library-card";
 import { usePcBrandViewport } from "@/hooks/use-pc-brand-viewport";
 import "./eagle.css";
@@ -256,19 +257,14 @@ export default function EagleLibraryPage() {
                         </aside>
 
                         <section className="min-w-0">
-                            <nav aria-label="Eagle 文件夹路径" className="eagle-breadcrumb mb-3 flex min-w-0 items-center gap-1 text-xs text-foreground/48">
-                                <button type="button" className="truncate rounded px-1.5 py-1 hover:bg-surface-hover" onClick={() => handleFolderSelect("root")}>
-                                    Eagle 素材库
-                                </button>
-                                {folderPath.map((folder) => (
-                                    <span key={folder.id} className="contents">
-                                        <span aria-hidden="true">/</span>
-                                        <button type="button" className="truncate rounded px-1.5 py-1 font-medium text-foreground hover:bg-surface-hover" onClick={() => handleFolderSelect(folder.id)}>
-                                            {folder.name}
-                                        </button>
-                                    </span>
-                                ))}
-                            </nav>
+                            <PathBreadcrumb
+                                ariaLabel="Eagle 文件夹路径"
+                                className="eagle-breadcrumb mb-3"
+                                rootLabel="Eagle 素材库"
+                                items={folderPath.map((folder) => ({ key: folder.id, label: folder.name }))}
+                                onRootClick={() => handleFolderSelect("root")}
+                                onItemClick={handleFolderSelect}
+                            />
 
                             <div className="eagle-content-header mb-4 flex flex-wrap items-start justify-between gap-3">
                                 <div className="min-w-0">
