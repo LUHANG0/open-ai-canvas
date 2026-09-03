@@ -61,7 +61,7 @@ export default function LoginPage() {
             <AuthField label="用户名 / 邮箱">
                 <Input
                     size="large"
-                    prefix={<UserRound className="pc-auth-field-icon size-4 text-white/35" />}
+                    prefix={<UserRound className="pc-auth-field-icon size-4" />}
                     value={username}
                     name="username"
                     onChange={(event) => {
@@ -80,7 +80,7 @@ export default function LoginPage() {
             <AuthField label="密码">
                 <Input.Password
                     size="large"
-                    prefix={<LockKeyhole className="pc-auth-field-icon size-4 text-white/35" />}
+                    prefix={<LockKeyhole className="pc-auth-field-icon size-4" />}
                     value={password}
                     name="password"
                     onChange={(event) => {
@@ -109,7 +109,7 @@ export default function LoginPage() {
             </div>
             {settings?.linuxdoEnabled ? (
                 <>
-                    <Divider plain className="pc-auth-divider !border-white/10 !text-white/30">
+                    <Divider plain className="pc-auth-divider">
                         或
                     </Divider>
                     <Button className="pc-auth-oauth" size="large" block icon={<LinuxDOIcon />} href={linuxDOLoginURL(next)}>
@@ -124,7 +124,7 @@ export default function LoginPage() {
 function AuthField({ label, children }: { label: string; children: ReactNode }) {
     return (
         <label className="pc-auth-field block space-y-2">
-            <span className="pc-auth-field-label text-xs font-medium text-white/62">{label}</span>
+            <span className="pc-auth-field-label">{label}</span>
             {children}
         </label>
     );

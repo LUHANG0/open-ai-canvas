@@ -123,16 +123,7 @@ export default function RegisterPage() {
             ) : null}
             <div className="grid gap-4 sm:grid-cols-2">
                 <AuthField label="用户名">
-                    <Input
-                        size="large"
-                        prefix={<UserRound className="pc-auth-field-icon size-4 text-white/35" />}
-                        value={username}
-                        onChange={(event) => setUsername(event.target.value)}
-                        placeholder="3-32 位字符"
-                        autoComplete="username"
-                        required
-                        disabled={disabled}
-                    />
+                    <Input size="large" prefix={<UserRound className="pc-auth-field-icon size-4" />} value={username} onChange={(event) => setUsername(event.target.value)} placeholder="3-32 位字符" autoComplete="username" required disabled={disabled} />
                 </AuthField>
                 <AuthField label="显示名称">
                     <Input size="large" value={displayName} onChange={(event) => setDisplayName(event.target.value)} placeholder="不填则使用用户名" disabled={disabled} />
@@ -142,7 +133,7 @@ export default function RegisterPage() {
             <AuthField label="邮箱">
                 <Input
                     size="large"
-                    prefix={<Mail className="pc-auth-field-icon size-4 text-white/35" />}
+                    prefix={<Mail className="pc-auth-field-icon size-4" />}
                     value={email}
                     onChange={(event) => setEmail(event.target.value)}
                     placeholder="用于登录与安全验证"
@@ -157,7 +148,7 @@ export default function RegisterPage() {
                     <div className="grid grid-cols-[minmax(0,1fr)_116px] gap-2">
                         <Input
                             size="large"
-                            prefix={<ShieldCheck className="pc-auth-field-icon size-4 text-white/35" />}
+                            prefix={<ShieldCheck className="pc-auth-field-icon size-4" />}
                             value={emailCode}
                             onChange={(event) => setEmailCode(event.target.value.replace(/\D/g, "").slice(0, 6))}
                             placeholder="6 位验证码"
@@ -177,7 +168,7 @@ export default function RegisterPage() {
                 <AuthField label="密码">
                     <Input.Password
                         size="large"
-                        prefix={<LockKeyhole className="pc-auth-field-icon size-4 text-white/35" />}
+                        prefix={<LockKeyhole className="pc-auth-field-icon size-4" />}
                         value={password}
                         onChange={(event) => setPassword(event.target.value)}
                         placeholder="至少 8 位"
@@ -189,7 +180,7 @@ export default function RegisterPage() {
                 <AuthField label="确认密码">
                     <Input.Password
                         size="large"
-                        prefix={<LockKeyhole className="pc-auth-field-icon size-4 text-white/35" />}
+                        prefix={<LockKeyhole className="pc-auth-field-icon size-4" />}
                         value={confirmPassword}
                         onChange={(event) => setConfirmPassword(event.target.value)}
                         placeholder="再次输入密码"
@@ -210,7 +201,7 @@ export default function RegisterPage() {
             </Button>
             {settings?.linuxdoEnabled ? (
                 <>
-                    <Divider plain className="pc-auth-divider !border-white/10 !text-white/30">
+                    <Divider plain className="pc-auth-divider">
                         或
                     </Divider>
                     <Button className="pc-auth-oauth" size="large" block icon={<LinuxDOIcon />} href={linuxDOLoginURL(next)}>
@@ -225,7 +216,7 @@ export default function RegisterPage() {
 function AuthField({ label, children }: { label: string; children: ReactNode }) {
     return (
         <label className="pc-auth-field block space-y-2">
-            <span className="pc-auth-field-label text-xs font-medium text-white/62">{label}</span>
+            <span className="pc-auth-field-label">{label}</span>
             {children}
         </label>
     );

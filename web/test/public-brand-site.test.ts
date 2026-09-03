@@ -1,14 +1,16 @@
 import { expect, test } from "bun:test";
 
-test("public brand site owns root routes while workspace remains authenticated", async () => {
-    const router = await Bun.file(new URL("../src/router.tsx", import.meta.url)).text();
+test("temporary single-entry mode redirects public pages to login", async () => {
+    const [router, adminShell] = await Promise.all([Bun.file(new URL("../src/router.tsx", import.meta.url)).text(), Bun.file(new URL("../src/pages/admin/components/admin-shell.tsx", import.meta.url)).text()]);
     for (const path of ['path: "/"', 'path: "/product"', 'path: "/showcase"', 'path: "/about"']) {
         expect(router).toContain(path);
     }
-    expect(router).toContain("<PublicSiteLayout />");
-    expect(router).not.toContain('{ path: "/", element: <Navigate to="/create" replace /> }');
+    expect(router.match(/<Navigate to="\/login" replace \/>/g)?.length).toBe(4);
+    expect(router).not.toContain("<PublicSiteLayout />");
+    expect(router).not.toContain("PublicHomePage");
     expect(router).toContain('{ path: "/home", element: <RequireAuth>');
-    expect(router).toContain('path: "settings/public-site"');
+    expect(router).toContain('{ path: "settings/public-site", element: <Navigate to="/admin/settings/branding" replace /> }');
+    expect(adminShell).not.toContain('path: "/admin/settings/public-site"');
 });
 
 test("public content keeps draft and published states separate", async () => {
@@ -57,7 +59,7 @@ test("public site remains scrollable inside the application shell and resets on 
     expect(css).toContain("inset: 66px 0 0;");
 });
 
-test("public navigation and auth entry keep account and recovery actions explicit", async () => {
+test("dormant public navigation remains recoverable while auth exposes no public-site exit", async () => {
     const [layout, auth, register] = await Promise.all([
         Bun.file(new URL("../src/pages/public-site/layout.tsx", import.meta.url)).text(),
         Bun.file(new URL("../src/pages/auth/auth-scene.tsx", import.meta.url)).text(),
@@ -66,8 +68,8 @@ test("public navigation and auth entry keep account and recovery actions explici
     expect(layout).toContain('const accountHref = user ? "/settings" : "/login"');
     expect(layout).toContain('const accountLabel = user ? "账号设置" : "登录"');
     expect(layout).toContain('event.key === "Escape"');
-    expect(auth).toContain('className="pc-auth-back-link');
-    expect(auth).toContain("返回首页");
+    expect(auth).not.toContain('className="pc-auth-back-link');
+    expect(auth).not.toContain("返回首页");
     expect(register).toContain("邮箱注册暂不可用");
     expect(register).toContain("返回登录");
 });
