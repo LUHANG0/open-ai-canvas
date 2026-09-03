@@ -12,7 +12,6 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"runtime"
 	"sort"
@@ -301,7 +300,7 @@ func (m *Manager) createBackup(version string) (Backup, error) {
 	if err != nil {
 		return Backup{}, err
 	}
-	if err := m.compose(m.composePath(), version, m.config.StepTimeout, dataEntry, "exec", "-T", "--user", "root", "backend", "tar", "-C", "/data", "-cf", "-", "."); err != nil {
+	if err := m.compose(m.composePath(), version, m.config.StepTimeout, dataEntry, "run", "--rm", "--no-deps", "-T", "--user", "root", "backend", "tar", "-C", "/data", "-cf", "-", "."); err != nil {
 		return Backup{}, fmt.Errorf("备份数据目录：%w", err)
 	}
 	if err := archive.Close(); err != nil {
@@ -416,30 +415,129 @@ func (m *Manager) restoreDatabase(backup Backup) error {
 	defer cancel()
 	args := []string{"compose", "--env-file", m.envPath(), "-f", m.composePath(), "exec", "-T", "postgres", "pg_restore", "-U", postgresUser, "-d", postgresDB, "--no-owner", "--no-privileges"}
 	var stderr bytes.Buffer
-	command := execCommandWithInput{runner: m.runner, input: reader}
-	if err := command.Run(ctx, "docker", args, []string{"CANVAS_IMAGE_TAG=" + strings.TrimPrefix(backup.Version, "v")}, io.Discard, &stderr); err != nil {
+	if err := runCommandWithInput(ctx, m.runner, "docker", args, []string{"CANVAS_IMAGE_TAG=" + strings.TrimPrefix(backup.Version, "v")}, reader, io.Discard, &stderr); err != nil {
 		return fmt.Errorf("恢复 PostgreSQL：%s", strings.TrimSpace(stderr.String()))
 	}
 	return nil
 }
 
-type execCommandWithInput struct {
-	runner commandRunner
-	input  io.Reader
+const backendDataRestoreScript = `
+data_dir="$1"
+restore_dir="${data_dir}/.canvas-updater-restore"
+previous_dir="${data_dir}/.canvas-updater-previous"
+phase=extract
+
+move_contents() {
+    source_dir="$1"
+    target_dir="$2"
+    for path in "${source_dir}"/* "${source_dir}"/.[!.]* "${source_dir}"/..?*; do
+        [ -e "$path" ] || [ -L "$path" ] || continue
+        mv "$path" "${target_dir}/"
+    done
 }
 
-func (c execCommandWithInput) Run(ctx context.Context, name string, args, environment []string, stdout, stderr io.Writer) error {
-	runner, ok := c.runner.(execRunner)
+clear_live_data() {
+    for path in "${data_dir}"/* "${data_dir}"/.[!.]* "${data_dir}"/..?*; do
+        [ -e "$path" ] || [ -L "$path" ] || continue
+        case "$path" in
+            "$restore_dir"|"$previous_dir") continue ;;
+        esac
+        rm -rf "$path"
+    done
+}
+
+preserve_live_data() {
+    for path in "${data_dir}"/* "${data_dir}"/.[!.]* "${data_dir}"/..?*; do
+        [ -e "$path" ] || [ -L "$path" ] || continue
+        case "$path" in
+            "$restore_dir"|"$previous_dir") continue ;;
+        esac
+        mv "$path" "${previous_dir}/"
+    done
+}
+
+recover_previous() {
+    status="$?"
+    trap - EXIT HUP INT TERM
+    if [ "$phase" = activate ]; then
+        clear_live_data
+    fi
+    if [ "$phase" = preserve ] || [ "$phase" = activate ]; then
+        move_contents "$previous_dir" "$data_dir"
+    fi
+    rm -rf "$restore_dir"
+    if [ -d "$previous_dir" ]; then
+        rmdir "$previous_dir" 2>/dev/null || true
+    fi
+    exit "$status"
+}
+
+[ ! -e "$previous_dir" ] || {
+    echo "检测到未处理的 Backend 数据恢复现场：${previous_dir}" >&2
+    exit 1
+}
+rm -rf "$restore_dir"
+mkdir -p "$restore_dir"
+trap recover_previous EXIT HUP INT TERM
+tar -C "$restore_dir" -xf -
+mkdir "$previous_dir"
+phase=preserve
+preserve_live_data
+phase=activate
+move_contents "$restore_dir" "$data_dir"
+phase=complete
+rm -rf "$restore_dir" "$previous_dir"
+trap - EXIT HUP INT TERM
+`
+
+func (m *Manager) restoreBackendData(backup Backup) error {
+	if err := verifyZipBackup(backup.Path, backup.Checksum); err != nil {
+		return fmt.Errorf("拒绝恢复未通过校验的备份：%w", err)
+	}
+	archive, err := zip.OpenReader(backup.Path)
+	if err != nil {
+		return err
+	}
+	defer archive.Close()
+	var dataArchive *zip.File
+	for _, entry := range archive.File {
+		if entry.Name == "backend-data.tar" {
+			dataArchive = entry
+			break
+		}
+	}
+	if dataArchive == nil {
+		return errors.New("备份中不存在 backend-data.tar")
+	}
+	reader, err := dataArchive.Open()
+	if err != nil {
+		return err
+	}
+	defer reader.Close()
+	ctx, cancel := context.WithTimeout(context.Background(), m.config.StepTimeout)
+	defer cancel()
+	args := []string{
+		"compose", "--env-file", m.envPath(), "-f", m.composePath(),
+		"run", "--rm", "--no-deps", "-T", "--user", "root", "backend",
+		"sh", "-ceu", backendDataRestoreScript, "canvas-backend-data-restore", "/data",
+	}
+	var stderr bytes.Buffer
+	if err := runCommandWithInput(ctx, m.runner, "docker", args, []string{"CANVAS_IMAGE_TAG=" + strings.TrimPrefix(backup.Version, "v")}, reader, io.Discard, &stderr); err != nil {
+		message := strings.TrimSpace(stderr.String())
+		if message == "" {
+			message = err.Error()
+		}
+		return fmt.Errorf("恢复 Backend 数据目录：%s", message)
+	}
+	return nil
+}
+
+func runCommandWithInput(ctx context.Context, runner commandRunner, name string, args, environment []string, stdin io.Reader, stdout, stderr io.Writer) error {
+	inputRunner, ok := runner.(commandRunnerWithInput)
 	if !ok {
 		return errors.New("当前命令执行器不支持标准输入")
 	}
-	command := exec.CommandContext(ctx, name, args...)
-	command.Dir = runner.dir
-	command.Env = append(os.Environ(), environment...)
-	command.Stdin = c.input
-	command.Stdout = stdout
-	command.Stderr = stderr
-	return command.Run()
+	return inputRunner.RunWithInput(ctx, name, args, environment, stdin, stdout, stderr)
 }
 
 func (m *Manager) verifyHealthy(targetVersion string) error {

@@ -12,7 +12,7 @@ description: 周日上线的观测指标、阈值、值守分工、灰度步骤�
 > **本次周日上线的当前阻断项**
 >
 > - 发布指挥、应用值守、数据账务值守、存储值守和客户沟通均尚未实名指派。任何必需角色无人值守时不得上线。
-> - 当前 Host Updater 会把 `backend-data.tar` 写入备份 ZIP，但自动回退只恢复 PostgreSQL，不会恢复 Backend 数据目录。涉及本地媒体、设置密钥、插件或其他 `/data` 文件变化时，不得依赖自动回退宣称完整恢复。
+> - Host Updater 已在停写后把 PostgreSQL 和 `backend-data.tar` 写入同一备份 ZIP，自动回退会同时恢复两者，任一步失败都保持业务服务停止。上线前仍必须在隔离环境完成一次完整恢复演练。
 > - 外部 OSS/COS 不在 Host Updater 备份范围内。启用外部对象存储时，必须单独确认版本、清单或可恢复快照。
 > - 当前生产 Compose 只有一组 Web/Backend，不能原生做百分比流量切分。若入口层没有可靠的分批放量能力，只能在公开通知前用受控账号做功能灰度；受控验证未完成不得公开放量。
 > - `/api/health/ready` 目前不会在每次请求时重新 Ping Redis；“ready”成功不能单独证明 Redis 持续健康。
@@ -296,7 +296,7 @@ SQL
 4. **确认恢复点。** 校验旧版本号、旧镜像 digest、旧 Compose SHA-256、数据库 dump、Backend 数据归档和对象存储恢复点属于同一发布前时间点。
 5. **恢复旧 Compose 和固定镜像标签。** 先执行 `docker compose config --quiet`，此时不要启动 Web/Backend。
 6. **恢复 PostgreSQL。** 删除并重建业务数据库后导入已校验 dump；验证表、Schema 版本、任务和账本计数。
-7. **恢复 Backend 数据目录。** 原子替换 `/data` 内容，恢复 `.settings-key`、本地媒体、插件/技能包及其他文件；核对属主和权限。当前 Host Updater 不会自动完成此步。
+7. **恢复 Backend 数据目录。** 隔离解包并替换 `/data` 内容，恢复 `.settings-key`、本地媒体、插件/技能包及其他文件；核对属主和权限。Host Updater 使用隔离目录与保留目录执行此步，中断时会尽力恢复原内容。
 8. **恢复外部媒体。** 仅当对象发生变化时，按版本或清单恢复 OSS/COS，使资源引用与数据库一致；禁止根据文件名猜测对象。
 9. **处理 Redis。** PostgreSQL 是任务和账务真相。通常保持 Redis 服务并清理/等待过期的应用协调键，不把旧 AOF 强行覆盖到业务恢复点；只有明确证明 Redis 保存不可重建业务状态时才单独制定恢复方案。
 10. **只启动 PostgreSQL、Redis 和旧 Backend。** 验证数据库、Schema、runtime、build version/commit、队列和待核对账务。
@@ -307,11 +307,23 @@ SQL
 
 ### 自动回退的使用限制
 
-Host Updater 当前自动回退会恢复旧 Compose、旧标签和 PostgreSQL，但不会恢复备份 ZIP 中的 `backend-data.tar`。因此：
+Host Updater 会恢复旧 Compose、旧标签、PostgreSQL 和备份 ZIP 中的 `backend-data.tar`。自动路径的边界是：
 
-- 迁移或启动在公开入口开放前失败，且确认 `/data` 没有变化时，可以使用自动回退后继续人工校验。
-- 目标版本已接受任何生产写入、持久化过媒体、改变 `/data` 或操作外部对象存储后，不得把自动回退结果视为完整恢复。
-- 自动回退进入 `manual_intervention` 时停止重复操作，保存日志和现场，由发布指挥转入人工恢复。
+- 只覆盖 Compose 管理的 PostgreSQL 和 Backend `/data`，不覆盖外部 OSS/COS、上游任务或支付/退款系统。
+- 停服、备份校验、数据库恢复、数据目录恢复或健康验证任一失败都进入 `manual_intervention`；数据恢复不完整时不会启动旧服务。
+- 若 `/data/.canvas-updater-previous` 存在，说明数据目录切换曾中断。立即停止重试，不得删除该目录；保留它和 `.canvas-updater-restore`，由数据值守在隔离副本中对比后手工恢复。
+- 目标版本若已向外部系统提交任务或写入对象，即使本地自动回退成功，也必须进入人工对账与对象恢复。
+
+### `manual_intervention` 人工恢复卡
+
+1. 继续封闭入口，确认 web/backend 已停止；任一容器仍可写时立即停止，不执行数据命令。
+2. 保存 `journalctl -u open-ai-canvas-host-updater`、`state.json`、当前 Compose/环境文件摘要和故障时点数据副本，不删除 `.canvas-updater-previous`。
+3. 用 `sha256sum` 对比状态文件中的摘要，再用 `unzip -t`、`unzip -p "$BACKUP_ZIP" database.dump | pg_restore --list`和 `unzip -p "$BACKUP_ZIP" backend-data.tar | tar -tf -` 验证两份数据。任一命令失败即 **No-Go**。
+4. 在隔离副本中确认 `.canvas-updater-previous` 是回退前现场、`.canvas-updater-restore` 是待切换内容；无法确认时保持停服并升级为 P0，不根据文件时间或名称猜测。
+5. 依次恢复旧 Compose、PostgreSQL 和 Backend `/data`，再固定旧标签。只有数据库、Schema、`.settings-key`、媒体样本、属主/权限全部核对成功才启动旧 Backend。
+6. 启动后校验 `/api/health/ready` 中的 version/commit/schema，再检查 Redis、登录、资源读取、画布保存和账务。任一不一致时重新停服，不开放 Web。
+
+**No-Go：** 备份摘要或归档不可读、无法证明 PostgreSQL 与 `/data` 同时点、中断目录语义不明、外部对象恢复点不存在、旧版本与 Schema 不兼容，或缺少双人复核时，一律保持服务关闭，不进入真实业务验收。
 
 ## 分级处理问题
 
@@ -376,7 +388,7 @@ Host Updater 当前自动回退会恢复旧 Compose、旧标签和 PostgreSQL，
 | `backend/cmd/server/system_status.go` | ready 覆盖数据库、Schema、构建和启动时运行状态，但不实时 Ping Redis | 每轮单独执行 `redis-cli ping`；连续失败触发停止 | 把 Redis 实时状态纳入管理员健康摘要 |
 | `backend/internal/service/analytics.go` | 已有成功率、P95 和队列数量；没有队列年龄、首次成功、保存或播放指标 | 任务/账务用只读 SQL，客户端指标由每批受控账号记录 | 增加第一方聚合和管理端展示 |
 | `web/src/services/diagnostics/client-diagnostics.ts` | 已捕获前端异常和请求失败，但只在页面内存中保留最多 500 条 | 受控账号复验并在用户确认后使用诊断导出 | 只上传最小事件字段，不传正文或第三方 |
-| `backend/internal/hostupdate/manager_ops.go` | ZIP 同时备份数据库和 `/data`，恢复函数只导入数据库 | `/data` 变化时禁止把自动回退视为完整恢复 | 增加同时间点数据目录恢复及自动测试 |
+| `backend/internal/hostupdate/manager_ops.go` | ZIP 在停写后同时备份数据库和 `/data`，回退会隔离切换两者 | 上线前在隔离环境演练完整自动回退；任一恢复步骤失败保持停服 | 补充故障注入与大数据卷容量/耗时测试 |
 | `docker-compose.deploy.yml` | 单组 Web/Backend，没有百分比流量路由 | 用未公开入口和分批账号控制影响；否则按全量处理 | 在有明确入口能力后再设计基础设施灰度 |
 
 证据到决策的固定路径为：采集上述只读证据 → 按指标表判定绿色/保持/停止 → 发布指挥选择前向修复、应用回滚、完整恢复或暂停服务 → 记录验证与客户通知。任何一步证据不足时，不得推断为绿色。

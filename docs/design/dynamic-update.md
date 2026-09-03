@@ -41,7 +41,7 @@
 ## 升级状态机
 
 ```text
-idle -> checking -> preflight -> draining -> backup -> pulling
+idle -> checking -> preflight -> pulling -> draining -> backup
      -> migrating -> switching -> verifying -> succeeded
                        |             |            |
                        +---------- failed --------+

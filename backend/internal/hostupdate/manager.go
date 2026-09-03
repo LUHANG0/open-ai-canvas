@@ -41,12 +41,21 @@ type commandRunner interface {
 	Run(context.Context, string, []string, []string, io.Writer, io.Writer) error
 }
 
+type commandRunnerWithInput interface {
+	RunWithInput(context.Context, string, []string, []string, io.Reader, io.Writer, io.Writer) error
+}
+
 type execRunner struct{ dir string }
 
 func (r execRunner) Run(ctx context.Context, name string, args, environment []string, stdout, stderr io.Writer) error {
+	return r.RunWithInput(ctx, name, args, environment, nil, stdout, stderr)
+}
+
+func (r execRunner) RunWithInput(ctx context.Context, name string, args, environment []string, stdin io.Reader, stdout, stderr io.Writer) error {
 	command := exec.CommandContext(ctx, name, args...)
 	command.Dir = r.dir
 	command.Env = append(os.Environ(), environment...)
+	command.Stdin = stdin
 	command.Stdout = stdout
 	command.Stderr = stderr
 	return command.Run()
@@ -245,22 +254,6 @@ func (m *Manager) runUpdate(fromVersion, targetVersion string) {
 		defer os.Remove(updaterBinary)
 	}
 
-	m.setPhase(PhaseBackingUp, "创建 PostgreSQL 与数据目录 ZIP 备份")
-	backup, err := m.createBackup(fromVersion)
-	if err != nil {
-		m.failWithoutRollback(PhaseFailed, err)
-		return
-	}
-	m.mu.Lock()
-	m.state.LastBackup = &backup
-	m.state.RollbackVersion = fromVersion
-	_ = m.saveStateLocked()
-	m.mu.Unlock()
-	if err := replaceFile(m.composePath(), m.previousComposePath(), 0o600); err != nil {
-		m.failWithoutRollback(PhaseFailed, fmt.Errorf("保存旧 Compose 配置：%w", err))
-		return
-	}
-
 	m.setPhase(PhasePulling, "拉取目标版本镜像")
 	if err := m.compose(nextCompose, targetVersion, m.config.StepTimeout, nil, "pull", "backend", "web"); err != nil {
 		m.failWithoutRollback(PhaseFailed, err)
@@ -270,12 +263,28 @@ func (m *Manager) runUpdate(fromVersion, targetVersion string) {
 		m.failWithoutRollback(PhaseFailed, err)
 		return
 	}
-
-	m.setPhase(PhaseDraining, "停止 Web 与 Backend，等待后台任务优雅退出")
-	if err := m.compose(m.composePath(), fromVersion, m.config.StepTimeout, nil, "stop", "web", "backend"); err != nil {
-		m.failWithRollback(err, fromVersion, backup)
+	if err := replaceFile(m.composePath(), m.previousComposePath(), 0o600); err != nil {
+		m.failWithoutRollback(PhaseFailed, fmt.Errorf("保存旧 Compose 配置：%w", err))
 		return
 	}
+
+	m.setPhase(PhaseDraining, "停止 Web 与 Backend，等待写入与后台任务优雅退出")
+	if err := m.compose(m.composePath(), fromVersion, m.config.StepTimeout, nil, "stop", "web", "backend"); err != nil {
+		m.failWithoutRollback(PhaseManualIntervention, fmt.Errorf("无法确认旧服务已完全停止，未开始备份或迁移：%w", err))
+		return
+	}
+
+	m.setPhase(PhaseBackingUp, "写入停止后创建 PostgreSQL 与数据目录 ZIP 备份")
+	backup, err := m.createBackup(fromVersion)
+	if err != nil {
+		m.recoverAfterBackupFailure(err, fromVersion)
+		return
+	}
+	m.mu.Lock()
+	m.state.LastBackup = &backup
+	m.state.RollbackVersion = fromVersion
+	_ = m.saveStateLocked()
+	m.mu.Unlock()
 
 	m.setPhase(PhaseMigrating, "执行目标版本数据库迁移")
 	if err := m.compose(nextCompose, targetVersion, m.config.StepTimeout, nil, "run", "--rm", "migrate"); err != nil {
@@ -339,7 +348,11 @@ func (m *Manager) failWithoutRollback(phase Phase, err error) {
 	m.state.Operation.Phase = phase
 	m.state.Operation.Error = safeOperationError(err)
 	m.state.Operation.FinishedAt = &now
-	m.appendLogLocked(phase, "更新已中止，尚未修改运行版本")
+	message := "更新已中止，尚未修改运行版本"
+	if phase == PhaseManualIntervention {
+		message = "更新已中止，运行版本未切换，服务状态需人工确认"
+	}
+	m.appendLogLocked(phase, message)
 	_ = m.saveStateLocked()
 }
 
@@ -348,7 +361,7 @@ func (m *Manager) failWithRollback(cause error, targetVersion string, backup Bac
 	m.state.Operation.Error = safeOperationError(cause)
 	m.state.Operation.AutomaticRollback = true
 	m.state.Operation.Phase = PhaseRollingBack
-	m.appendLogLocked(PhaseRollingBack, "更新失败，正在自动恢复旧版本和数据库备份")
+	m.appendLogLocked(PhaseRollingBack, "更新失败，正在自动恢复旧版本、数据库和 Backend 数据目录")
 	_ = m.saveStateLocked()
 	m.mu.Unlock()
 	m.runRollback(targetVersion, backup, true)
@@ -358,28 +371,70 @@ func (m *Manager) runRollback(targetVersion string, backup Backup, automatic boo
 	var failures []error
 	if err := m.compose(m.composePath(), targetVersion, 5*time.Minute, nil, "stop", "web", "backend"); err != nil {
 		failures = append(failures, err)
+		m.finishRollback(targetVersion, automatic, failures)
+		return
 	}
-	if _, err := os.Stat(m.previousComposePath()); err == nil {
-		if err := replaceFile(m.previousComposePath(), m.composePath(), 0o600); err != nil {
-			failures = append(failures, fmt.Errorf("恢复旧 Compose 配置：%w", err))
-		}
+	if _, err := os.Stat(m.previousComposePath()); err != nil {
+		failures = append(failures, fmt.Errorf("读取旧 Compose 配置：%w", err))
+		m.finishRollback(targetVersion, automatic, failures)
+		return
+	}
+	if err := replaceFile(m.previousComposePath(), m.composePath(), 0o600); err != nil {
+		failures = append(failures, fmt.Errorf("恢复旧 Compose 配置：%w", err))
+		m.finishRollback(targetVersion, automatic, failures)
+		return
 	}
 	if err := m.restoreDatabase(backup); err != nil {
 		failures = append(failures, err)
+		m.finishRollback(targetVersion, automatic, failures)
+		return
+	}
+	if err := m.restoreBackendData(backup); err != nil {
+		failures = append(failures, err)
+		m.finishRollback(targetVersion, automatic, failures)
+		return
 	}
 	if err := setEnvValue(m.envPath(), "CANVAS_IMAGE_TAG", strings.TrimPrefix(targetVersion, "v")); err != nil {
 		failures = append(failures, err)
+		m.finishRollback(targetVersion, automatic, failures)
+		return
 	}
-	started := true
 	if err := m.compose(m.composePath(), targetVersion, m.config.StepTimeout, nil, "up", "-d", "--remove-orphans", "--wait", "--wait-timeout", "600"); err != nil {
-		started = false
+		failures = append(failures, err)
+		m.finishRollback(targetVersion, automatic, failures)
+		return
+	}
+	if err := m.verifyHealthy(targetVersion); err != nil {
 		failures = append(failures, err)
 	}
-	if started {
-		if err := m.verifyHealthy(targetVersion); err != nil {
-			failures = append(failures, err)
-		}
+	m.finishRollback(targetVersion, automatic, failures)
+}
+
+func (m *Manager) recoverAfterBackupFailure(cause error, currentVersion string) {
+	var recoveryFailures []error
+	if err := m.compose(m.composePath(), currentVersion, m.config.StepTimeout, nil, "up", "-d", "--remove-orphans", "--wait", "--wait-timeout", "600"); err != nil {
+		recoveryFailures = append(recoveryFailures, err)
+	} else if err := m.verifyHealthy(currentVersion); err != nil {
+		recoveryFailures = append(recoveryFailures, err)
 	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	now := time.Now().UTC()
+	m.state.Operation.FinishedAt = &now
+	m.state.Operation.Error = safeOperationError(fmt.Errorf("写入停止后备份失败：%w", cause))
+	if recoveryErr := errors.Join(recoveryFailures...); recoveryErr != nil {
+		m.state.Operation.Phase = PhaseManualIntervention
+		m.state.Operation.RollbackError = safeOperationError(fmt.Errorf("恢复原服务失败：%w", recoveryErr))
+		m.appendLogLocked(PhaseManualIntervention, "备份失败且原服务未能恢复，保持停止并等待人工介入")
+	} else {
+		m.state.Operation.Phase = PhaseFailed
+		m.state.Operation.RollbackError = ""
+		m.appendLogLocked(PhaseFailed, "备份失败，未执行迁移，已恢复原版本服务")
+	}
+	_ = m.saveStateLocked()
+}
+
+func (m *Manager) finishRollback(targetVersion string, automatic bool, failures []error) {
 	rollbackErr := errors.Join(failures...)
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -389,7 +444,11 @@ func (m *Manager) runRollback(targetVersion string, backup Backup, automatic boo
 	if rollbackErr != nil {
 		m.state.Operation.Phase = PhaseManualIntervention
 		m.state.Operation.RollbackError = safeOperationError(rollbackErr)
-		m.appendLogLocked(PhaseManualIntervention, "自动回退未能完成，需要人工介入")
+		message := "人工回退未能完成，需要继续人工介入"
+		if automatic {
+			message = "自动回退未能完成，需要人工介入"
+		}
+		m.appendLogLocked(PhaseManualIntervention, message)
 	} else {
 		m.state.Operation.Phase = PhaseRolledBack
 		m.state.Operation.RollbackError = ""
