@@ -8,167 +8,163 @@
 
 <p align="center">
   <a href="https://github.com/LUHANG0/open-ai-canvas">GitHub</a> ·
-  <a href="docs/content/docs/overview/features.mdx">功能</a> ·
-  <a href="docs/content/docs/backend/local-development.mdx">文档</a> ·
+  <a href="docs/content/docs/overview/features.mdx">功能清单</a> ·
+  <a href="docs/index.md">开发文档</a> ·
+  <a href="CHANGELOG.md">更新日志</a> ·
   <a href="SECURITY.md">安全策略</a>
 </p>
 
-影策是一个开源的 AI 影视与短剧创作工作台。它把自由画布、结构化分镜、角色与风格资产、图片/视频/音频生成、异步任务和本地 Agent 放在同一条创作链路里，让创作者从文字 brief 走到可复用的镜头资产。
+影策是一套面向 AI 影视、短剧和视觉内容生产的开源创作工作台。它把对话创作、自由画布、结构化分镜、角色与场景资产、多媒体生成、任务管理和本地 Agent 整合在同一个项目中，帮助创作者把文字构思逐步转化为可管理、可复用、可交付的镜头素材。
+
+当前版本以 **PC 端创作体验** 为核心，适合个人创作者、AI 影视团队和需要自行接入模型渠道的工作室。
 
 > **维护声明：** `LUHANG0/open-ai-canvas` 的 `main` 是本项目唯一持续维护、测试和部署的代码基线。原作者仓库仅作为上游来源与版权归属记录，不会被安装脚本、自动更新器或日常开发任务自动同步、合并或部署。
 
-> 项目仍在快速开发，数据结构和外部接口可能直接调整。默认适合个人、本地或可信环境部署；未经安全配置，不要直接作为公网多人服务使用。
+> 项目仍在持续开发，数据结构和外部接口可能随版本调整。默认适合本地或可信环境部署；公开上线前，请先完成 HTTPS、注册策略、跨域、数据备份和密钥保护配置。
 
-## 赞助商
+## 影策能做什么
 
-感谢以下赞助商对影策项目的支持：
+一条典型的创作链路可以在影策内完成：
 
-| LOGO                                                             | 类型 | 赞助商名称     | 说明                                                                    | 网站                                            |
-| ---------------------------------------------------------------- | ---- | -------------- | ----------------------------------------------------------------------- | ----------------------------------------------- |
-| <img src="assets/artdance.png" alt="ArtDance" width="160">       | 商业 | ArtDance       | 本项目 Seedance 模型的天使投资人。                                      | [artbox.top](https://artbox.top)                |
-| <img src="assets/sponsor1.svg" alt="快乐机艺术小组" width="160"> | 团队 | 快乐机艺术小组 | 一支跨学科的艺术创作团队，持续探索数字与艺术的全新表达形式。            | 暂无                                            |
-| <img src="assets/metaso.png" alt="秘塔" width="160">             | 企业 | 秘塔           | 提供 MiniMax H3 视频生成 API，支持原生 2K、音画同步和 OpenAI 兼容协议。 | [metaso.cn](https://metaso.cn/minimax-h3/?s=dd) |
-| <img src="assets/fruivision.png" alt="浮瑞万相AI" width="160">   | 企业 | 浮瑞万相AI     | 一家专注于AI视听的AI Native公司                                         | 暂无                                            |
-| <img src="assets/xmzm.png" alt="喜马抓马" width="160">           | 团队 | 喜马抓马       | 中国AI视听先锋厂牌/AI 视听全链路综合服务平台                            | [himadrama.com](https://himadrama.com)          |
+1. 通过连续对话、创作入口或短剧工作台整理故事、角色和脚本。
+2. 建立角色、场景、风格、参考图和其他项目资产。
+3. 调用已配置的图片、视频、文本或音频模型生成内容。
+4. 将生成结果添加到镜头或自由画布，继续编排、关联和迭代。
+5. 在任务中心追踪异步任务，在素材库沉淀可复用资产。
+6. 通过短剧流程、时间线和导出能力完成后续制作与交付。
 
-## 贡献者与团队
+## 核心能力
 
-感谢参与产品设计、开发、测试、内容和社区建设的成员：
+| 模块       | 主要能力                                                                                     |
+| ---------- | -------------------------------------------------------------------------------------------- |
+| 创作入口   | 连续对话、镜头创作、图片生成、视频生成、历史会话和结果复用                                   |
+| 自由画布   | 文本、图片、视频、音频、分镜、文件夹等节点；拖拽、框选、缩放、连线、分组、撤销重做和导入导出 |
+| 短剧工作台 | 项目、剧本、角色、场景、分镜与生成资产的结构化管理                                           |
+| 多模型生成 | 文本、图片、视频、音频任务；支持参考素材、首尾帧、运镜、续写、局部修改和批量生成             |
+| 任务与素材 | 异步任务、进度状态、失败重试、任务日志、账号素材库和资源引用检查                             |
+| 模型与计费 | 系统渠道、逻辑模型、协议适配、Token/次数计费、积分结算和功能开关                             |
+| Agent 协作 | 画布助手、本地 Canvas Agent、MCP 工具、Codex App 插件和技能扩展                              |
+| 管理能力   | 用户、渠道、模型、用量、积分、对象存储、系统配置和管理后台                                   |
 
-| 头像                                                                   | 昵称                                           | 邮箱                                                        | 个性签名                                        |
-| ---------------------------------------------------------------------- | ---------------------------------------------- | ----------------------------------------------------------- | ----------------------------------------------- |
-| <img src="assets/user-sikongyue.png" alt="爱笑的毛毛虫" width="80">    | 爱笑的毛毛虫<br><sub>用户名：sikongyue</sub>   | [315515767@qq.com](mailto:315515767@qq.com)                 | 正在啃 main 分支，争取下次 merge 的时候变成蝴蝶 |
-| <img src="assets/user-delve.jpg" alt="delve-s" width="80">             | delve-s                                        | [3013141136@qq.com](mailto:3013141136@qq.com)               | 我亦无他，惟手熟尔                              |
-| <img src="assets/user-CyrusAuyeung.jpg" alt="CyrusAuyeung" width="80"> | CyrusAuyeung                                   | [cyrusauyeungho@gmail.com](mailto:cyrusauyeungho@gmail.com) | HKUST(GZ) UG                                    |
-| <img src="assets/user-nz.jpg" alt="奶大佬" width="80">                 | 奶大佬                                         | [1304634970@qq.com](mailto:1304634970@qq.com)               | 人生就是要不断的探索                            |
-| <img src="assets/user-dyh.jpg" alt="dyh" width="80">                   | dyh                                            | [1613203335@qq.com](mailto:1613203335@qq.com)               | 无                                              |
-| <img src="assets/user-kyori.jpg" alt="kyori" width="80">               | kyori                                          | [1771634408@qq.com](mailto:1771634408@qq.com)               | 励志成为未来最好用的画布仓库的贡献者            |
-| <img src="assets/user-bowen.jpg" alt="Bowen" width="80">               | Bowen                                          | [admin@bowen.games](mailto:admin@bowen.games)               | 剑走偏峰，雷厉风行。                            |
-| <img src="assets/user-ken.jpg" alt="ken" width="80">                   | ken                                            | [2506802@qq.com](mailto:2506802@qq.com)                     | 走自己的路                                      |
-| <img src="assets/user-fish.png.jpg" alt="fish" width="80">             | fish                                           | [cihai.sea@gmail.com](mailto:cihai.sea@gmail.com)           | AI 界热于助人的拖油瓶                           |
-| <img src="assets/user-QAyong.jpg" alt="QAyong" width="80">             | QAyong<br><sub>ID：QAyong<br>B站：QAyong</sub> | [2110491559@qq.com](mailto:2110491559@qq.com)               | AI 短剧合规，资产确权                           |
-| <img src="assets/user-K37ix.jpg" alt="_K37ix." width="80">             | _K37ix.                                        | [2773843782@qq.com](mailto:2773843782@qq.com)               | Making things that think                        |
-| <img src="assets/user-rou.jpg" alt="Rou" width="80">                   | Rou                                            | [rou325089@163.com](mailto:rou325089@163.com)               | 上善若水                                        |
+更细的功能边界和当前实现状态见[功能清单](docs/content/docs/overview/features.mdx)。
 
-## 交流与反馈
-
-Issue 反馈、技术讨论和产品升级建议都可以在 QQ 群中沟通。群内还会不定期组织 AI 学习与培训交流会。
-
-<p align="center">
-  <img src="assets/qq.jpg" alt="影策 QQ 交流群" width="280">
-  <img src="assets/wx.jpg" alt="影策 微信交流群" width="280">
-</p>
-
-## 当前能力
-
-- **自由画布**：项目、节点、连线、框选、缩放、小地图、撤销重做、导入导出和公开只读分享。
-- **影视工作流**：剧本、角色、场景、风格板、参考素材、结构化分镜和 3D 导演台。
-- **多媒体生成**：文本、图片、视频、音频任务，支持参考图、首尾帧、运镜、视频续写、局部修改和批量生成。
-- **任务与素材**：后端异步队列、任务日志、取消/重试、账号素材库、资源引用校验和登录后的跨设备同步。
-- **Agent 协作**：画布助手、本地 Canvas Agent、MCP 工具、Codex App 插件和技能库。
-- **管理与渠道**：系统渠道、逻辑模型、用量/积分、功能开关、对象存储、响应拦截和管理后台。
-
-详细功能清单见 [`docs/content/docs/overview/features.mdx`](docs/content/docs/overview/features.mdx)，已维护文档和设计沉淀的入口见 [`docs/index.md`](docs/index.md)。
-
-## 架构概览
+## 项目结构
 
 ```text
-浏览器（web/）
-  ├─ React 工作区、画布、任务中心、素材库
-  ├─ localForage/Zustand 本地状态、读缓存与历史媒体迁移
-  └─ request.ts / channel relay
-          │ 登录态 JSON、SSE、资源请求
-          ▼
-后端（backend/）
-  ├─ Gin handler -> service -> repository/model
-  ├─ SQLite（本地）或 PostgreSQL + Redis（部署）
-  ├─ 异步任务 worker、资源存储、权限和模型中转
-  └─ provider/outbound -> 外部模型渠道
-
-本地 Agent（canvas-agent/） <-> 浏览器画布 <-> Codex MCP / 本机 CLI
-Codex 插件（`plugins/yingce/`）负责把 MCP 接入 Codex App。
+open-ai-canvas/
+├── web/             React + TypeScript 前端，包含创作页、画布、短剧和管理入口
+├── backend/         Go 后端，负责账号、项目、任务、资源、渠道、计费和权限
+├── canvas-agent/    连接网页画布与本机 Codex/CLI 的本地 Agent
+├── plugins/yingce/  影策 Codex App 插件
+├── docs/            产品、架构、开发、部署和测试文档
+├── scripts/         本地启动、服务器安装、更新和维护脚本
+└── nginx.conf       生产环境反向代理、资源和 SSE 路由示例
 ```
 
-前端默认把 `/api` 代理到 `http://127.0.0.1:8080`；生产环境由网页容器的 Nginx 代理到后端，只有 web 的 `3000` 端口需要对外暴露。系统模型和文本任务的 SSE 只在明确的流式路径关闭代理缓冲，路由边界和超时配置以 [`nginx.conf`](nginx.conf) 为准。
+整体调用关系：
 
-## 本地开发
+```text
+浏览器（web）
+  ├─ 创作页 / 自由画布 / 短剧工作台 / 管理入口
+  ├─ Zustand 与 localForage 本地状态、缓存和历史媒体迁移
+  └─ /api 请求、资源请求、SSE
+          │
+          ▼
+后端（backend）
+  ├─ Gin handler → service → repository/model
+  ├─ SQLite（本地）或 PostgreSQL + Redis（部署）
+  ├─ 异步任务、资源存储、权限、渠道和积分结算
+  └─ provider/outbound → 外部模型服务
 
-### 环境
+Canvas Agent ↔ 浏览器画布 ↔ Codex MCP / 本机 CLI
+```
 
-- Bun（前端和文档站）
-- Go 1.25（后端）
-- Node.js 18+（Canvas Agent）
-- 如使用 Docker 开发，需要 Docker Compose
+开发环境中，前端默认将 `/api` 代理到 `http://127.0.0.1:8080`。生产环境由网页容器的 Nginx 转发请求，通常只需对外开放 Web 端口。
 
-### 宿主机启动
+## 快速开始
+
+### 环境要求
+
+- Bun
+- Go 1.25
+- Node.js 18+（使用 Canvas Agent 时需要）
+- Docker 与 Docker Compose（仅容器方式需要）
+
+### 本机开发
+
+克隆当前维护仓库：
 
 ```bash
 git clone https://github.com/LUHANG0/open-ai-canvas.git
 cd open-ai-canvas
-
-# 开发数据必须使用 Git 忽略的目录，不要直接使用 backend/data
 mkdir -p .local/project-workbench-debug .local/cache/go-build .local/cache/go-mod
+```
 
-# 终端一：后端
+启动后端：
+
+```bash
 cd backend
 CANVAS_BACKEND_DATA_DIR=../.local/project-workbench-debug go run ./cmd/server
+```
 
-# 终端二：前端
-cd ../web
-bun install
+另开一个终端启动前端：
+
+```bash
+cd web
+bun install --frozen-lockfile
 bun run dev
 ```
 
-Windows PowerShell 用户也可以在仓库根目录执行一键启动脚本：
+打开 <http://localhost:3000>。后端默认监听 `8080`，前端默认监听 `3000`。注册第一个管理员账号后，在管理端配置模型渠道、逻辑模型和计费规则。
+
+Windows PowerShell 可以在仓库根目录执行：
 
 ```powershell
 .\scripts\start-local.ps1
 ```
 
-脚本会使用 `.local/project-workbench-debug` 作为后端开发数据目录，并分别打开前后端窗口。缺少 `web/node_modules` 时会自动执行 `bun install --frozen-lockfile`。详细说明见 [`本地开发`](docs/content/docs/backend/local-development.mdx)。
+该脚本使用 Git 忽略的 `.local/project-workbench-debug` 保存开发数据，避免与仓库示例数据混用。更多环境变量和排错方法见[本地开发文档](docs/content/docs/backend/local-development.mdx)。
 
-打开 <http://localhost:3000>，注册第一个管理员账号，再在设置中配置模型渠道。前端的 Vite 配置会把 `/api` 代理到本机 `8080`。
+### Docker 开发
 
-如需修改代理目标，设置 `VITE_API_PROXY_TARGET`；如生产前端与后端不共源，构建时设置 `VITE_CANVAS_BACKEND_URL`。用户的模型 Base URL、API Key 和模型名保存在浏览器本地，真实密钥只应发送到可信且启用 HTTPS 的自部署后端。
-
-### Docker 开发和本地构建
-
-源码热更新（Vite HMR + Air）：
+源码热更新：
 
 ```bash
 LOCAL_UID=$(id -u) LOCAL_GID=$(id -g) \
   docker compose -f docker-compose.dev.yml up --build
 ```
 
-本地构建前后端 release 镜像：
+本地构建 release 镜像：
 
 ```bash
 docker compose -f docker-compose.local.yml up -d --build
 ```
 
-两种方式都使用容器内的数据卷；源码热更新编排额外绑定 `.local/project-workbench-debug`，避免 Compose 静默创建另一套开发账号数据。端口冲突时可通过 `CANVAS_WEB_HOST_PORT`、`CANVAS_BACKEND_HOST_PORT` 覆盖开发端口。
+端口冲突时，可以通过 `CANVAS_WEB_HOST_PORT` 和 `CANVAS_BACKEND_HOST_PORT` 修改宿主机映射端口。
 
-### 私网模型和本机渠道
+### 私网模型与本机渠道
 
-后端默认拒绝本机、私网和链路本地模型地址。开发时只为可信主机设置精确白名单：
+后端默认拒绝本机、私网和链路本地的上游地址。开发环境如需访问可信私网模型，请配置精确白名单：
 
 ```bash
 CANVAS_ALLOWED_PRIVATE_UPSTREAM_HOSTS=192.168.1.10
 ```
 
-不要用 `CANVAS_ALLOW_PRIVATE_UPSTREAMS=true` 代替白名单。桌面本机渠道是另一项能力，只有后端绑定 `127.0.0.1:8080` 且设置 `CANVAS_DESKTOP_LOCAL_CHANNELS_ENABLED=true` 才会生效，云端和 Docker 默认不会获得该能力。
+不要用全局放行代替白名单。本机渠道只有在后端绑定 `127.0.0.1:8080` 且设置 `CANVAS_DESKTOP_LOCAL_CHANNELS_ENABLED=true` 时才会启用。
 
 ## 服务器部署
 
-### 一键源码构建（推荐）
+### 从当前源码构建
 
-适用于 Linux 云服务器。脚本会安装 Docker，拉取源码，生成受保护的 `.env`，构建网页/后端镜像并启动 PostgreSQL、Redis、后端和网页：
+Linux 服务器推荐使用当前 `main` 的源码安装脚本：
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/LUHANG0/open-ai-canvas/main/scripts/install-server.sh | sudo bash
 ```
 
-默认访问 `http://服务器IP:3000`。第一个注册账号会成为管理员；公开注册默认关闭。更新或排查：
+脚本会安装并配置 Docker，生成受保护的 `.env`，构建前后端镜像，并启动 PostgreSQL、Redis、后端和 Web 服务。默认访问地址为 `http://服务器IP:3000`。
+
+查看状态与日志：
 
 ```bash
 cd /opt/open-ai-canvas
@@ -178,57 +174,43 @@ sudo docker compose --env-file .env \
   -f docker-compose.deploy.yml -f docker-compose.build.yml logs -f --tail=200
 ```
 
-### 直接使用 GHCR 镜像
+### 使用已发布镜像
 
-服务器不需要源码时可使用镜像脚本：
+只有确认 GHCR 中存在与当前维护版本匹配的 `LUHANG0` 镜像时，才使用镜像安装方式：
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/LUHANG0/open-ai-canvas/main/scripts/install-server-image.sh | sudo bash
 ```
 
-容器包不可匿名拉取时，先通过 `GHCR_USERNAME` 和 `GHCR_TOKEN` 登录 GHCR。生产环境应在 `/opt/open-ai-canvas/.env` 中把 `CANVAS_IMAGE_TAG` 固定为具体 Release（不要使用 `latest`），端口由 `CANVAS_HTTP_PORT` 配置。
+生产环境应将 `CANVAS_IMAGE_TAG` 固定为明确的 Release，不要长期使用 `latest`。系统更新、备份验证和异常回退流程见[系统更新文档](docs/content/docs/backend/system-update.mdx)。
 
-固定版本的 GHCR 部署可安装宿主机在线更新器；安装后管理后台会出现“系统配置 → 系统更新”，更新器会在切换前强制生成并校验 PostgreSQL 与数据目录 ZIP 备份：
+### 上线前检查
 
-```bash
-cd /opt/open-ai-canvas
-curl -fsSL https://raw.githubusercontent.com/LUHANG0/open-ai-canvas/main/scripts/install-host-updater.sh | sudo bash
-sudo docker compose --env-file .env -f docker-compose.deploy.yml up -d --force-recreate backend web --wait
-```
+- 在受控网络中注册首个管理员，然后保持 `CANVAS_REGISTRATION_ENABLED=false`。
+- 配置准确的 `CANVAS_CORS_ORIGINS`，公网环境不要使用 `*`。
+- 使用 HTTPS，并正确传递 `Host`、`X-Forwarded-For` 和 `X-Forwarded-Proto`。
+- 后端 `8080` 应留在容器网络或可信内网，不要直接暴露到公网。
+- 保护 `.env`、数据库、上传目录、对象存储密钥、备份和 `.settings-key`。
+- 为数据库和媒体目录建立独立、可恢复的备份，不能把数据卷本身当作备份。
+- SSE 关闭缓冲的配置只应用于明确的事件流路径，不要复制到所有 API 请求。
 
-更新流程、数据库迁移、健康验证和异常回退说明见 [`docs/content/docs/backend/system-update.mdx`](docs/content/docs/backend/system-update.mdx)。
+反向代理与流式路由示例见 [nginx.conf](nginx.conf)。
 
-### 公网必做事项
+## 数据、渠道与安全边界
 
-- 先在受控网络注册首个管理员，再开放公网入口；保持 `CANVAS_REGISTRATION_ENABLED=false`。
-- 设置准确的 `CANVAS_CORS_ORIGINS`，不要在公网使用 `*`。
-- 使用 HTTPS，并保留反向代理的 `Host`、`X-Forwarded-For`、`X-Forwarded-Proto`。
-- 只对 `/api/tasks/:id/text-events` 和系统模型事件流路径关闭缓冲、缓存和 gzip；不要把 SSE 配置复制给所有 `/api/` 请求。
-- 限制 `.env`、数据库、PostgreSQL/Redis 数据卷、上传目录、备份和 `.settings-key` 的权限；数据卷不等于备份。
-- 后端 `8080` 留在 Compose 网络内，不要直接暴露到公网。
+- 项目、画布、任务和素材在登录后同步到后端；浏览器保留必要的本地状态、读缓存和历史媒体迁移能力。
+- 本地默认使用 SQLite；部署环境使用 PostgreSQL 和 Redis。多实例模式需要 Redis 协调限流、并发和熔断状态。
+- 媒体资源可存放在后端数据目录、阿里云 OSS 或腾讯云 COS；长期引用使用稳定的资源标识。
+- 自定义渠道经后端中转，并受 SSRF 防护限制。开发中的可信私网主机必须显式加入白名单。
+- 用户 API Key 不应出现在 URL、日志、错误上报或公开配置中；接入真实渠道前应确认后端可信且链路使用 HTTPS。
+- Token 或次数计费由管理端规则控制。上线前应使用真实渠道的小额任务核对预授权、最终 usage、积分扣减、失败退款和明细记录。
+- `CANVAS_BILLING_TOKEN_SUPPLEMENT_MAX_BPS` 用于限制实际 Token 费用超出预授权时的自动补扣范围；超限或余额不足的任务应进入人工核对，而不是产生负余额。
 
-仓库内的 Nginx 反向代理、SSE 断线恢复与资源流式路由示例见 [`nginx.conf`](nginx.conf)；版本更新与回退见 [`docs/content/docs/backend/system-update.mdx`](docs/content/docs/backend/system-update.mdx)。
+安全问题请按照[安全策略](SECURITY.md)报告，不要在公开 Issue 中粘贴密钥、Cookie、数据库内容或生产日志。
 
-## 数据和安全边界
+## Canvas Agent 与 Codex 插件
 
-- 画布、项目、任务和素材登录后同步到后端；浏览器 `localForage` 保留本地状态、读缓存和历史媒体迁移能力。新媒体上传必须在后端资源持久化成功后才返回，后端失败不会伪装成本地上传成功。
-- 本地默认使用 SQLite；部署 Compose 使用 PostgreSQL 和 Redis。多实例 PostgreSQL 模式需要 `REDIS_URL` 用于限流、并发和熔断协调。
-- 生产环境用 `CANVAS_BILLING_TOKEN_SUPPLEMENT_MAX_BPS` 限制 Token 实际费用超出预授权时的自动补扣，默认 `10000`（差额最多等于原预授权）；余额不足或越过上限会保留真实 usage 并转人工核对，不会自动产生负余额。
-- 媒体资源可使用后端数据目录、阿里云 OSS 或腾讯云 COS。资源长期引用使用 `resource:<id>`，删除素材前会检查业务引用。
-- 用户 API Key 不应出现在 URL、日志、错误上报或服务端长期明文存储中；使用真实 Key 前确认部署可信且链路为 HTTPS。
-- 自定义渠道经后端 `/api/ai/custom` 中转；默认 SSRF 防护拒绝本机和私网目标，可信开发主机必须显式白名单。
-
-安全问题请按 [`SECURITY.md`](SECURITY.md) 报告，不要在公开 Issue 中粘贴密钥、Cookie、数据库或生产日志。
-
-## Canvas Agent 和 Codex 插件
-
-本地 Agent 用来连接网页画布与本机 Codex/CLI：
-
-```bash
-npx -y @ddcat666/open-ai-canvas-agent
-```
-
-仓库内开发构建：
+Canvas Agent 用于连接网页画布与本机 Codex/CLI。仓库内开发运行方式：
 
 ```bash
 cd canvas-agent
@@ -237,41 +219,73 @@ npm run build
 node dist/index.js
 ```
 
-启动后将终端输出的 Local URL 和 Connect token 填入画布右上角 Agent 面板。Agent 默认只监听 `127.0.0.1`，token 不应写入 URL、日志或任务正文。完整 MCP 工具、Codex App 插件安装和本地安全边界见 [`canvas-agent/README.md`](canvas-agent/README.md) 与 [`plugins/yingce/README.md`](plugins/yingce/README.md)。
+启动后，将终端输出的 Local URL 和 Connect token 填入画布右上角的 Agent 面板。Agent 默认只监听 `127.0.0.1`，连接 token 不应写入 URL、日志或任务正文。
 
-## 验证命令
-
-项目不会在每次修改后自动执行验证；按改动范围手动运行：
+为了兼容既有安装方式，当前已发布 npm 包名仍沿用历史名称：
 
 ```bash
-# 前端
-cd web && bun test && bun run build
-
-# 后端
-cd backend && go test ./...
-
-# Canvas Agent
-cd canvas-agent && npm test && npm run build
-
-# 入口文档链接（已包含在前端全量测试中）
-cd web && bun test test/documentation-links.test.ts
+npx -y @ddcat666/open-ai-canvas-agent
 ```
 
-前端 `bun test` 会自动发现全部测试；`bun run build` 会依次执行 Canvas Agent 桥接构建、TypeScript 检查、Vite 生产构建和体积预算。优先在开发中运行与改动模块相关的专项测试，交付前再运行全量测试与构建；UI 改动还应在浏览器检查关键路由、主题、弹窗、滚动和空态。
+后续开发和版本判断以本仓库源码为准。完整说明见 [Canvas Agent 文档](canvas-agent/README.md)和[影策 Codex 插件文档](plugins/yingce/README.md)。
+
+## 开发与验证
+
+按改动范围运行对应验证：
+
+```bash
+# 前端测试与生产构建
+cd web
+bun test
+bun run build
+
+# 后端测试
+cd ../backend
+go test ./...
+
+# Canvas Agent
+cd ../canvas-agent
+npm test
+npm run build
+```
+
+入口文档链接可以单独检查：
+
+```bash
+cd web
+bun test test/documentation-links.test.ts
+```
+
+前端 `bun run build` 会执行 Canvas Agent 桥接构建、TypeScript 检查、Vite 生产构建和体积预算。UI 改动除自动化测试外，还应在浏览器中回归关键路由、主题、弹窗、滚动、上传、任务状态和空态。
 
 ## 文档导航
 
-- [功能介绍](docs/content/docs/overview/features.mdx)
+- [功能清单](docs/content/docs/overview/features.mdx)
 - [维护与分支策略](docs/content/docs/overview/maintenance-policy.mdx)
 - [本地开发](docs/content/docs/backend/local-development.mdx)
 - [数据库结构](docs/content/docs/backend/backend-database.mdx)
+- [系统更新](docs/content/docs/backend/system-update.mdx)
 - [插件系统](docs/content/docs/plugins/plugin-system.mdx)
 - [插件显示形态](docs/content/docs/plugins/plugin-surfaces.mdx)
 - [待测试清单](docs/content/docs/progress/pending-test.mdx)
-- [更新日志](CHANGELOG.md) · [贡献指南](CONTRIBUTING.md) · [上游声明](NOTICE)
+- [短剧界面审计](docs/content/docs/progress/short-drama-content-ui-audit-20260903.mdx)
+- [完整文档索引](docs/index.md)
+- [更新日志](CHANGELOG.md)
+- [贡献指南](CONTRIBUTING.md)
 
-根目录 [`AGENTS.md`](AGENTS.md) 约束协作方式；`docs/index.md` 是面向 AI 的文档索引。
+根目录 [AGENTS.md](AGENTS.md) 约束协作方式，维护和部署相关变更必须遵守当前仓库的分支与回滚规则。
 
-## 许可证和上游
+## 维护与版本来源
 
-本项目采用 [MIT](LICENSE) 协议。本维护版本基于 [ddcat-ai/open-ai-canvas](https://github.com/ddcat-ai/open-ai-canvas) 继续开发；该项目又源自 [basketikun/infinite-canvas](https://github.com/basketikun/infinite-canvas) 的早期版本。上游作者和贡献者保留其对应代码的权利与署名；完整记录见 [NOTICE](NOTICE)。
+- 日常开发、修复、部署和发布只以 `LUHANG0/open-ai-canvas` 的 `main` 为基线。
+- 功能分支完成验证后再合并到 `main`，关键阶段应建立可识别的 Git 提交和回滚点。
+- 上游仓库只用于版权说明和人工参考，不会自动覆盖本项目代码。
+- 部署脚本、在线更新器和镜像命名空间均指向当前维护仓库。
+
+详细规则见[维护与分支策略](docs/content/docs/overview/maintenance-policy.mdx)。
+
+## 许可证与上游
+
+本项目采用 [MIT License](LICENSE)。当前维护版本由 [LUHANG0/open-ai-canvas](https://github.com/LUHANG0/open-ai-canvas) 持续开发，基于 [ddcat-ai/open-ai-canvas](https://github.com/ddcat-ai/open-ai-canvas) 演进；该项目又源自 [basketikun/infinite-canvas](https://github.com/basketikun/infinite-canvas) 的早期版本。
+
+上游作者和贡献者保留其对应代码的权利与署名，完整记录见 [NOTICE](NOTICE)。
