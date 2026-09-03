@@ -1,12 +1,12 @@
-import { Button, Tooltip } from "antd";
-import { Eye, FileText, FolderKanban, Image as ImageIcon, Play, RotateCcw, Video } from "lucide-react";
+import { Eye, FileText, FolderKanban, Image as ImageIcon, Play, Video } from "lucide-react";
 import { useState } from "react";
 
 import { MediaPreview } from "@/components/media-preview";
-import { CONTENT_MODERATION_ERROR_CODE, generationErrorMessage, isContentModerationError } from "@/lib/generation-error";
+import { generationErrorMessage } from "@/lib/generation-error";
 import { formatTaskKind, generationTaskStageLabel, statusLabel } from "@/lib/generation-task-display";
 import type { GenerationTask } from "@/services/api/task-center";
 import type { AiConfig } from "@/stores/use-config-store";
+import { TaskActions } from "./task-actions";
 import { formatModelName, getTaskCanvasContext, isTaskFailed, statusDotClassName, taskAttentionReason, TaskBilling, TaskDate } from "./task-shared";
 
 export function TaskListRow({
@@ -37,7 +37,6 @@ export function TaskListRow({
     const model = formatModelName(effectiveConfig, task);
     const canvasLabel = context.projectName ? `${context.canvasName} · ${context.projectName}` : context.canvasName;
     const rowTone = isFailed ? "is-failed" : isActive ? "is-active" : "is-success";
-    const retryDisabled = task.errorCode === CONTENT_MODERATION_ERROR_CODE || isContentModerationError(task.error);
     return (
         <article className={`task-record-row group ${rowTone}`} aria-busy={isActive}>
             <div className="task-record-identity">
@@ -88,14 +87,7 @@ export function TaskListRow({
             </div>
             {creditsEnabled ? <TaskBilling billing={task.billing} /> : <span className="task-record-billing-empty" aria-hidden="true" />}
             <div className="task-record-actions">
-                <Tooltip title="查看详情">
-                    <Button type="text" size="small" icon={<Eye className="size-3.5" />} aria-label="查看详情" onClick={onOpen} />
-                </Tooltip>
-                {isFailed ? (
-                    <Tooltip title={retryDisabled ? "内容审核未通过，请修改输入后新建任务" : "按原参数重试任务"}>
-                        <Button type="text" size="small" icon={<RotateCcw className="size-3.5" />} aria-label="重试任务" loading={actingId === task.id} disabled={retryDisabled} onClick={onRetry} />
-                    </Tooltip>
-                ) : null}
+                <TaskActions task={task} actingId={actingId} onOpen={onOpen} onRetry={onRetry} />
             </div>
         </article>
     );
