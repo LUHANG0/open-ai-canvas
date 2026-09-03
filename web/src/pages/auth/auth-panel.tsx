@@ -20,6 +20,7 @@ export function AuthPanel({ mode, Page, reducedMotion, onClose }: { mode: AuthMo
     const desktop = usePcBrandViewport();
     const { branding } = useBranding();
     const { settings } = useAuthSettings();
+    const invitationOnly = Boolean(settings && !settings.firstUser && !settings.registrationEnabled);
 
     const tabs = useMemo(() => {
         if (settings?.firstUser) return [{ key: "register", label: "创建管理员" }];
@@ -49,7 +50,7 @@ export function AuthPanel({ mode, Page, reducedMotion, onClose }: { mode: AuthMo
                     </div>
 
                     <footer className="pc-auth-panel-footer">
-                        <span>{mode === "login" ? "还没有账号？" : "已经有账号？"}</span>
+                        <span>{mode === "login" ? (invitationOnly ? "仅限受邀成员使用，需要账号请联系团队管理员" : "还没有账号？") : "已经有账号？"}</span>
                         <div className="pc-auth-tabs-wrap">
                             <Tabs className="pc-auth-tabs" activeKey={mode} items={tabs} onChange={(key) => navigate({ pathname: key === "register" ? "/register" : "/login", search: location.search })} />
                         </div>

@@ -106,8 +106,8 @@ export default function RegisterPage() {
         return (
             <div className="pc-auth-state-panel" role="status">
                 <TriangleAlert aria-hidden="true" />
-                <h3>{registrationClosed ? "当前未开放注册" : "邮箱注册暂不可用"}</h3>
-                <p>{registrationClosed ? "管理员已关闭普通账号注册，请使用已有账号登录。" : "管理员尚未配置注册邮件，请先使用已有账号登录，或联系管理员完善邮件服务。"}</p>
+                <h3>当前仅限受邀成员使用</h3>
+                <p>如需开通账号，请联系团队管理员获取邀请；已有账号可直接登录。</p>
                 <Button className="pc-auth-submit" type="primary" icon={<ArrowRight className="size-4" />} iconPlacement="end" onClick={goToLogin}>
                     返回登录
                 </Button>

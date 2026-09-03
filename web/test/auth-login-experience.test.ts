@@ -48,6 +48,16 @@ describe("auth login experience", () => {
         expect(login).not.toContain("pc-auth-credential-group");
     });
 
+    test("presents registration-disabled states as an invitation-only customer flow", async () => {
+        const [panel, register] = await Promise.all([read("../src/pages/auth/auth-panel.tsx"), read("../src/pages/auth/register.tsx")]);
+
+        expect(panel).toContain("仅限受邀成员使用，需要账号请联系团队管理员");
+        expect(register).toContain("当前仅限受邀成员使用");
+        expect(register).toContain("请联系团队管理员获取邀请");
+        expect(register).not.toContain("管理员尚未配置注册邮件");
+        expect(register).not.toContain("邮箱注册暂不可用");
+    });
+
     test("contains guest hydration failures instead of leaking an unhandled rejection", async () => {
         const [hydrator, session] = await Promise.all([read("../src/components/auth/auth-session-hydrator.tsx"), read("../src/lib/user-session.ts")]);
 

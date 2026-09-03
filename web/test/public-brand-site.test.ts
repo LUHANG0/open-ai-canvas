@@ -70,6 +70,7 @@ test("dormant public navigation remains recoverable while auth exposes no public
     expect(layout).toContain('event.key === "Escape"');
     expect(auth).not.toContain('className="pc-auth-back-link');
     expect(auth).not.toContain("返回首页");
-    expect(register).toContain("邮箱注册暂不可用");
+    expect(register).toContain("当前仅限受邀成员使用");
+    expect(register).not.toContain("管理员尚未配置注册邮件");
     expect(register).toContain("返回登录");
 });
