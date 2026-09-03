@@ -58,7 +58,7 @@
     display: flex;
     min-height: 84px;
     align-items: center;
-    justify-content: space-between;
+    justify-content: flex-end;
     gap: 24px;
     padding: 20px clamp(22px, 4vw, 64px);
 }
@@ -72,46 +72,35 @@
 }
 
 .pc-auth-brand-link {
-    display: inline-flex;
-    min-height: 44px;
+    display: flex;
+    min-height: 72px;
+    flex-direction: column;
     align-items: center;
-    gap: 12px;
+    gap: 10px;
 }
 
 .pc-auth-brand-symbol {
     display: grid;
-    width: 40px;
-    height: 40px;
+    width: 56px;
+    height: 56px;
     flex: none;
     place-items: center;
     border: 1px solid rgba(255, 255, 255, 0.7);
-    border-radius: 12px;
+    border-radius: 16px;
     background: rgba(255, 255, 255, 0.94);
     box-shadow: 0 14px 34px rgba(0, 0, 0, 0.24);
 }
 
 .pc-auth-brand-logo {
-    width: 26px;
-    height: 26px;
+    width: 36px;
+    height: 36px;
 }
 
-.pc-auth-brand-wordmark {
-    display: grid;
-    gap: 4px;
-    line-height: 1;
-}
-
-.pc-auth-brand-wordmark strong {
+.pc-auth-brand-link > strong {
     color: var(--auth-text);
-    font-size: 15px;
-    font-weight: 700;
-    letter-spacing: 0.04em;
-}
-
-.pc-auth-brand-wordmark small {
-    color: var(--auth-text-muted);
-    font-size: 10px;
-    font-weight: 550;
+    font-size: 22px;
+    font-weight: 720;
+    letter-spacing: 0.08em;
 }
 
 .pc-auth-back-link {
@@ -145,63 +134,47 @@
 .pc-auth-layout {
     position: relative;
     z-index: 2;
-    display: grid;
-    width: min(1180px, calc(100% - 48px));
+    display: flex;
+    width: min(460px, calc(100% - 40px));
     min-height: 100%;
     margin: 0 auto;
-    grid-template-columns: minmax(0, 1fr) minmax(390px, 438px);
+    flex-direction: column;
     align-items: center;
-    gap: clamp(54px, 8vw, 126px);
-    padding: 112px 0 56px;
+    justify-content: center;
+    gap: 24px;
+    padding: 104px 0 52px;
 }
 
-.pc-auth-brand-copy {
-    min-width: 0;
-    align-self: end;
-    padding-bottom: 9vh;
-}
-
-.pc-auth-brand-kicker {
-    display: inline-flex;
+.pc-auth-brand-head {
+    display: flex;
+    width: 100%;
+    flex-direction: column;
     align-items: center;
-    gap: 10px;
-    color: rgba(255, 255, 255, 0.7);
-    font-size: 12px;
-    font-weight: 620;
-}
-
-.pc-auth-brand-kicker::before {
-    width: 28px;
-    height: 2px;
-    border-radius: 999px;
-    background: var(--auth-brand);
-    box-shadow: 0 0 18px color-mix(in srgb, var(--auth-brand) 70%, transparent);
-    content: "";
+    text-align: center;
 }
 
 .pc-auth-brand-title {
-    max-width: 760px;
-    margin: 22px 0 0;
+    max-width: 18ch;
+    margin: 20px 0 0;
     color: var(--auth-text);
-    font-size: clamp(48px, 5.2vw, 76px);
-    font-weight: 700;
-    letter-spacing: -0.055em;
-    line-height: 1.03;
+    font-size: clamp(25px, 2.5vw, 34px);
+    font-weight: 680;
+    letter-spacing: -0.04em;
+    line-height: 1.16;
     text-wrap: balance;
     white-space: pre-line;
 }
 
 .pc-auth-brand-summary {
-    max-width: 540px;
-    margin: 22px 0 0;
+    max-width: 42ch;
+    margin: 10px 0 0;
     color: var(--auth-text-secondary);
-    font-size: 15px;
-    line-height: 1.8;
+    font-size: 13px;
+    line-height: 1.7;
 }
 
 .pc-auth-card-wrap {
     width: 100%;
-    align-self: center;
 }
 
 .pc-auth-card {
@@ -403,8 +376,7 @@
 }
 
 .pc-auth-form-assurance svg,
-.pc-auth-password-status svg,
-.pc-auth-card-footnote svg {
+.pc-auth-password-status svg {
     flex: none;
     color: var(--auth-brand);
 }
@@ -437,21 +409,6 @@
     flex: none;
     margin-top: 1px;
     color: rgba(252, 165, 165, 0.9);
-}
-
-.pc-auth-card-footnote {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 7px;
-    margin: 14px 0 0;
-    color: rgba(255, 255, 255, 0.42);
-    font-size: 11px;
-}
-
-.pc-auth-card-footnote svg {
-    width: 14px;
-    height: 14px;
 }
 
 .pc-auth-settings-retry {
@@ -554,56 +511,37 @@
     }
 
     .pc-auth-layout {
-        width: min(560px, calc(100% - 32px));
+        width: min(460px, calc(100% - 32px));
         min-height: 100%;
-        grid-template-columns: 1fr;
-        align-content: start;
-        gap: 28px;
-        padding: 110px 0 40px;
-    }
-
-    .pc-auth-brand-copy {
-        align-self: auto;
-        padding: 0 4px;
+        justify-content: flex-start;
+        gap: 22px;
+        padding: 96px 0 40px;
     }
 
     .pc-auth-brand-title {
-        max-width: 12ch;
-        margin-top: 14px;
-        font-size: clamp(34px, 9vw, 48px);
-        line-height: 1.08;
+        margin-top: 16px;
+        font-size: clamp(24px, 7vw, 32px);
     }
 
     .pc-auth-brand-summary {
         display: none;
     }
-
-    .pc-auth-card-wrap {
-        align-self: auto;
-    }
 }
 
 @media (max-width: 560px) {
-    .pc-auth-brand-wordmark small {
-        display: none;
-    }
-
     .pc-auth-back-link {
         padding-right: 0;
     }
 
     .pc-auth-layout {
         width: calc(100% - 24px);
-        gap: 22px;
-        padding-top: 96px;
-    }
-
-    .pc-auth-brand-kicker {
-        font-size: 11px;
+        gap: 18px;
+        padding-top: 82px;
     }
 
     .pc-auth-brand-title {
-        font-size: clamp(30px, 10vw, 40px);
+        margin-top: 14px;
+        font-size: 26px;
     }
 
     .pc-auth-card {
@@ -631,28 +569,69 @@
     }
 }
 
-@media (min-width: 1024px) and (max-height: 760px) {
+@media (min-width: 1024px) and (max-height: 820px) {
     .pc-auth-layout {
-        padding-top: 92px;
-        padding-bottom: 28px;
+        gap: 8px;
+        padding-top: 28px;
+        padding-bottom: 12px;
     }
 
-    .pc-auth-brand-copy {
-        padding-bottom: 4vh;
+    .pc-auth-brand-link {
+        min-height: 50px;
+        gap: 4px;
+    }
+
+    .pc-auth-brand-symbol {
+        width: 40px;
+        height: 40px;
+        border-radius: 11px;
+    }
+
+    .pc-auth-brand-logo {
+        width: 26px;
+        height: 26px;
+    }
+
+    .pc-auth-brand-link > strong {
+        font-size: 16px;
     }
 
     .pc-auth-brand-title {
-        font-size: clamp(44px, 4.5vw, 62px);
+        margin-top: 6px;
+        font-size: 20px;
+    }
+
+    .pc-auth-brand-summary {
+        display: none;
+    }
+
+    .pc-auth-card-content.is-login {
+        min-height: 0;
     }
 
     .pc-auth-card-header {
-        padding-top: 24px;
-        padding-bottom: 15px;
+        padding: 20px 24px 12px;
+    }
+
+    .pc-auth-card-title {
+        margin-top: 5px;
+        font-size: 24px;
+    }
+
+    .pc-auth-card-description {
+        margin-top: 5px;
+    }
+
+    .pc-auth-tabs-wrap {
+        padding: 0 24px;
     }
 
     .pc-auth-form-slot {
-        padding-top: 20px;
-        padding-bottom: 24px;
+        padding: 18px 24px 20px;
+    }
+
+    .pc-auth-form {
+        gap: 14px;
     }
 }
 

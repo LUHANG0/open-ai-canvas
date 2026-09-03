@@ -7,15 +7,14 @@ describe("auth login experience", () => {
         const scene = await read("../src/pages/auth/auth-scene.tsx");
 
         expect(scene).toContain("branding.config.auth.title");
-        expect(scene).toContain("pc-auth-brand-kicker");
-        expect(scene).toContain("pc-auth-card-footnote");
-        expect(scene).toContain("账号与项目数据受当前工作区保护");
+        expect(scene).toContain("pc-auth-brand-head");
+        expect(scene).not.toContain("pc-auth-card-footnote");
         expect(scene).not.toContain("creativeCapabilities");
         expect(scene).not.toContain('aria-label="影视创作流程"');
         expect(scene).not.toContain("WELCOME BACK");
         expect(scene).not.toContain("AUTHENTICATION");
         expect(scene).toContain("pc-auth-media-layer");
-        expect(scene).toContain('hasHeroMedia ? " has-auth-media"');
+        expect(scene).not.toContain("hasHeroMedia");
     });
 
     test("provides local failure feedback and accessible login fields", async () => {
@@ -47,8 +46,9 @@ describe("auth login experience", () => {
         expect(styles).toContain("@media (max-width: 1023px)");
         expect(styles).toContain(".pc-auth-topbar");
         expect(styles).toContain(".pc-auth-login-error");
-        expect(styles).toContain(".pc-auth-card-footnote");
-        expect(styles).toContain("grid-template-columns: minmax(0, 1fr) minmax(390px, 438px)");
+        expect(styles).not.toContain(".pc-auth-card-footnote");
+        expect(styles).toContain("flex-direction: column");
+        expect(styles).toContain("width: min(460px, calc(100% - 40px))");
         expect(styles).toContain("var(--auth-brand)");
     });
 });

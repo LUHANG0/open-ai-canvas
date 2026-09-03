@@ -1,4 +1,4 @@
-import { App, Button, Input, Select, Skeleton } from "antd";
+import { App, Button, Input, Select, Skeleton, Tabs } from "antd";
 import { AlertTriangle, ExternalLink, Image as ImageIcon, MonitorSmartphone, Palette, RefreshCw, RotateCcw, Save, Type, Upload } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import { useBlocker } from "react-router";
@@ -7,7 +7,7 @@ import { toPublicBranding, useBranding } from "@/components/branding/branding-pr
 import { cn } from "@/lib/utils";
 import { clearAdminBrandAsset, getAdminBranding, resetAdminBranding, updateAdminBranding, uploadAdminBrandAsset, type AdminBrandingSetting, type BrandAssetSlot, type BrandingConfig } from "@/services/api/branding";
 import { AdminPageFrame } from "../components/admin-shell";
-import { AdminStatusBadge, SettingsSectionCard } from "../components/admin-ui";
+import { AdminStatusBadge } from "../components/admin-ui";
 import "./branding-settings-page.css";
 
 type AssetDefinition = {
@@ -195,7 +195,7 @@ export default function BrandingSettingsPage() {
 
     if (loading && !draft) {
         return (
-            <AdminPageFrame title="品牌设置" description="管理网站名称、登录页和品牌资源" scroll>
+            <AdminPageFrame title="品牌中心" description="管理网站名称、视觉资源和登录入口" scroll>
                 <div className="admin-branding-loading">
                     <Skeleton active paragraph={{ rows: 12 }} />
                 </div>
@@ -205,7 +205,7 @@ export default function BrandingSettingsPage() {
 
     if (!setting || !draft) {
         return (
-            <AdminPageFrame title="品牌设置" description="管理网站名称、登录页和品牌资源" scroll>
+            <AdminPageFrame title="品牌中心" description="管理网站名称、视觉资源和登录入口" scroll>
                 <div className="admin-branding-error" role="alert">
                     <AlertTriangle className="size-5" />
                     <div>
@@ -221,7 +221,7 @@ export default function BrandingSettingsPage() {
     }
 
     return (
-        <AdminPageFrame title="品牌设置" description="管理网站名称、登录页和品牌资源" scroll>
+        <AdminPageFrame title="品牌中心" description="管理网站名称、视觉资源和登录入口" scroll>
             <div className="admin-settings-stack admin-branding-settings">
                 <div className={cn("admin-branding-command", dirty && "is-dirty")}>
                     <div>
@@ -259,92 +259,135 @@ export default function BrandingSettingsPage() {
                     </div>
                 ) : null}
 
-                <div className="admin-branding-form-stack">
-                    <SettingsSectionCard icon={<Palette className="size-4" />} title="品牌信息" description="这些内容会用于登录页、工作台和分享页面。">
-                        <div className="admin-branding-fields two-columns">
-                            <BrandField label="品牌名称">
-                                <Input value={draft.identity.displayName} maxLength={40} onChange={(event) => updateDraft("identity", "displayName", event.target.value)} />
-                            </BrandField>
-                            <BrandField label="短名称">
-                                <Input value={draft.identity.shortName} maxLength={20} onChange={(event) => updateDraft("identity", "shortName", event.target.value)} />
-                            </BrandField>
-                            <BrandField label="工作区说明">
-                                <Input value={draft.identity.workspaceLabel} maxLength={40} onChange={(event) => updateDraft("identity", "workspaceLabel", event.target.value)} />
-                            </BrandField>
-                        </div>
-                        <BrandField label="品牌标语">
-                            <Input value={draft.identity.slogan} maxLength={160} onChange={(event) => updateDraft("identity", "slogan", event.target.value)} />
-                        </BrandField>
-                        <BrandField label="平台简介">
-                            <Input.TextArea value={draft.identity.description} maxLength={400} autoSize={{ minRows: 2, maxRows: 4 }} onChange={(event) => updateDraft("identity", "description", event.target.value)} />
-                        </BrandField>
-                        <div className="admin-branding-subsection">
-                            <div>
-                                <strong>主题色</strong>
-                                <p>用于主要按钮、选中状态和品牌强调。</p>
-                            </div>
-                            <div className="admin-branding-color-row">
-                                <input aria-label="选择品牌主题色" type="color" value={draft.theme.primaryColor} onChange={(event) => updateDraft("theme", "primaryColor", event.target.value.toUpperCase())} />
-                                <Input value={draft.theme.primaryColor} maxLength={7} onChange={(event) => updateDraft("theme", "primaryColor", event.target.value.toUpperCase())} />
-                                <span style={{ background: draft.theme.primaryColor }} aria-hidden="true" />
-                            </div>
-                        </div>
-                        <div className="admin-branding-subsection">
-                            <div>
-                                <strong>品牌图片</strong>
-                                <p>上传品牌标志和浏览器图标，上传后立即生效。</p>
-                            </div>
-                            <div className="admin-branding-assets-grid">{assetDefinitions.slice(0, 2).map((asset) => renderAssetEditor(asset, setting, busy, uploadingSlot, fileInputs, uploadAsset, clearAsset))}</div>
-                        </div>
-                    </SettingsSectionCard>
-
-                    <SettingsSectionCard icon={<MonitorSmartphone className="size-4" />} title="登录页内容" description="只保留品牌标题和一句辅助说明，登录表单使用系统固定文案。">
-                        <BrandField label="主标题">
-                            <Input.TextArea value={draft.auth.title} maxLength={140} autoSize={{ minRows: 2, maxRows: 3 }} onChange={(event) => updateDraft("auth", "title", event.target.value)} />
-                        </BrandField>
-                        <BrandField label="辅助说明">
-                            <Input.TextArea value={draft.auth.description} maxLength={300} autoSize={{ minRows: 2, maxRows: 4 }} onChange={(event) => updateDraft("auth", "description", event.target.value)} />
-                        </BrandField>
-                    </SettingsSectionCard>
-
-                    <SettingsSectionCard icon={<ImageIcon className="size-4" />} title="登录页背景" description="可以上传图片或视频，也可以填写 B 站安全直链。">
-                        <div className="admin-branding-external-assets">
-                            <div className="admin-branding-external-hero-row">
-                                <BrandField label="背景链接">
-                                    <Input value={draft.auth.heroUrl} maxLength={2048} allowClear placeholder="https://..." onChange={(event) => updateHeroURL(event.target.value)} />
-                                </BrandField>
-                                <BrandField label="背景类型">
-                                    <Select
-                                        aria-label="登录页背景类型"
-                                        value={draft.auth.heroKind || "video"}
-                                        disabled={!draft.auth.heroUrl}
-                                        options={[
-                                            { value: "video", label: "视频" },
-                                            { value: "image", label: "图片" },
-                                        ]}
-                                        onChange={(value) => updateDraft("auth", "heroKind", value)}
-                                    />
-                                </BrandField>
-                            </div>
-                            <BrandField label="视频封面链接（可选）">
-                                <Input value={draft.auth.heroPosterUrl} maxLength={2048} allowClear placeholder="https://..." onChange={(event) => updateDraft("auth", "heroPosterUrl", event.target.value)} />
-                            </BrandField>
-                            <p>外部链接优先生效；清空后恢复使用下方上传的文件。只接受以 https:// 开头的安全链接。</p>
-                        </div>
-                        <div className="admin-branding-assets-grid">{assetDefinitions.slice(2).map((asset) => renderAssetEditor(asset, setting, busy, uploadingSlot, fileInputs, uploadAsset, clearAsset))}</div>
-                    </SettingsSectionCard>
-
-                    <SettingsSectionCard icon={<Type className="size-4" />} title="浏览器显示" description="设置浏览器标签页标题和搜索结果摘要。">
-                        <BrandField label="浏览器标题">
-                            <Input value={draft.browser.title} maxLength={80} onChange={(event) => updateDraft("browser", "title", event.target.value)} />
-                        </BrandField>
-                        <BrandField label="搜索摘要">
-                            <Input.TextArea value={draft.browser.metaDescription} maxLength={300} autoSize={{ minRows: 2, maxRows: 4 }} onChange={(event) => updateDraft("browser", "metaDescription", event.target.value)} />
-                        </BrandField>
-                    </SettingsSectionCard>
+                <div className="admin-branding-workspace">
+                    <Tabs
+                        className="admin-branding-tabs"
+                        defaultActiveKey="visual"
+                        destroyOnHidden={false}
+                        items={[
+                            {
+                                key: "identity",
+                                label: "品牌资料",
+                                children: (
+                                    <BrandPanel icon={<Type className="size-4" />} title="品牌资料" description="这些内容会同步到登录页、工作台和分享页面。">
+                                        <div className="admin-branding-fields two-columns">
+                                            <BrandField label="品牌名称">
+                                                <Input value={draft.identity.displayName} maxLength={40} onChange={(event) => updateDraft("identity", "displayName", event.target.value)} />
+                                            </BrandField>
+                                            <BrandField label="短名称">
+                                                <Input value={draft.identity.shortName} maxLength={20} onChange={(event) => updateDraft("identity", "shortName", event.target.value)} />
+                                            </BrandField>
+                                            <BrandField label="工作区名称">
+                                                <Input value={draft.identity.workspaceLabel} maxLength={40} onChange={(event) => updateDraft("identity", "workspaceLabel", event.target.value)} />
+                                            </BrandField>
+                                        </div>
+                                        <BrandField label="品牌标语">
+                                            <Input value={draft.identity.slogan} maxLength={160} onChange={(event) => updateDraft("identity", "slogan", event.target.value)} />
+                                        </BrandField>
+                                        <BrandField label="平台简介">
+                                            <Input.TextArea value={draft.identity.description} maxLength={400} autoSize={{ minRows: 3, maxRows: 5 }} onChange={(event) => updateDraft("identity", "description", event.target.value)} />
+                                        </BrandField>
+                                    </BrandPanel>
+                                ),
+                            },
+                            {
+                                key: "visual",
+                                label: "标志与颜色",
+                                children: (
+                                    <BrandPanel icon={<Palette className="size-4" />} title="标志与颜色" description="上传品牌图片并设置全站主要强调颜色。">
+                                        <div className="admin-branding-assets-grid">{assetDefinitions.slice(0, 2).map((asset) => renderAssetEditor(asset, setting, busy, uploadingSlot, fileInputs, uploadAsset, clearAsset))}</div>
+                                        <div className="admin-branding-subsection">
+                                            <div>
+                                                <strong>主题颜色</strong>
+                                                <p>用于主要按钮、链接和选中状态。</p>
+                                            </div>
+                                            <div className="admin-branding-color-row">
+                                                <input aria-label="选择品牌主题色" type="color" value={draft.theme.primaryColor} onChange={(event) => updateDraft("theme", "primaryColor", event.target.value.toUpperCase())} />
+                                                <Input value={draft.theme.primaryColor} maxLength={7} onChange={(event) => updateDraft("theme", "primaryColor", event.target.value.toUpperCase())} />
+                                                <span style={{ background: draft.theme.primaryColor }} aria-hidden="true" />
+                                            </div>
+                                        </div>
+                                    </BrandPanel>
+                                ),
+                            },
+                            {
+                                key: "login",
+                                label: "登录页面",
+                                children: (
+                                    <BrandPanel icon={<MonitorSmartphone className="size-4" />} title="登录页面" description="设置中央品牌标题、背景图片或背景视频。">
+                                        <BrandField label="主标题">
+                                            <Input.TextArea value={draft.auth.title} maxLength={140} autoSize={{ minRows: 2, maxRows: 3 }} onChange={(event) => updateDraft("auth", "title", event.target.value)} />
+                                        </BrandField>
+                                        <BrandField label="辅助说明">
+                                            <Input.TextArea value={draft.auth.description} maxLength={300} autoSize={{ minRows: 2, maxRows: 4 }} onChange={(event) => updateDraft("auth", "description", event.target.value)} />
+                                        </BrandField>
+                                        <div className="admin-branding-subsection">
+                                            <div>
+                                                <strong>背景来源</strong>
+                                                <p>可以上传文件，也可以填写 B 站安全直链；外部链接优先生效。</p>
+                                            </div>
+                                            <div className="admin-branding-external-assets">
+                                                <div className="admin-branding-external-hero-row">
+                                                    <BrandField label="背景链接">
+                                                        <Input value={draft.auth.heroUrl} maxLength={2048} allowClear placeholder="https://..." onChange={(event) => updateHeroURL(event.target.value)} />
+                                                    </BrandField>
+                                                    <BrandField label="背景类型">
+                                                        <Select
+                                                            aria-label="登录页背景类型"
+                                                            value={draft.auth.heroKind || "video"}
+                                                            disabled={!draft.auth.heroUrl}
+                                                            options={[
+                                                                { value: "video", label: "视频" },
+                                                                { value: "image", label: "图片" },
+                                                            ]}
+                                                            onChange={(value) => updateDraft("auth", "heroKind", value)}
+                                                        />
+                                                    </BrandField>
+                                                </div>
+                                                <BrandField label="视频封面链接（可选）">
+                                                    <Input value={draft.auth.heroPosterUrl} maxLength={2048} allowClear placeholder="https://..." onChange={(event) => updateDraft("auth", "heroPosterUrl", event.target.value)} />
+                                                </BrandField>
+                                                <p>清空链接后恢复使用上传文件。只接受以 https:// 开头的安全链接。</p>
+                                            </div>
+                                            <div className="admin-branding-assets-grid">{assetDefinitions.slice(2).map((asset) => renderAssetEditor(asset, setting, busy, uploadingSlot, fileInputs, uploadAsset, clearAsset))}</div>
+                                        </div>
+                                    </BrandPanel>
+                                ),
+                            },
+                            {
+                                key: "browser",
+                                label: "浏览器显示",
+                                children: (
+                                    <BrandPanel icon={<ImageIcon className="size-4" />} title="浏览器显示" description="设置浏览器标签标题和搜索结果摘要。">
+                                        <BrandField label="浏览器标题">
+                                            <Input value={draft.browser.title} maxLength={80} onChange={(event) => updateDraft("browser", "title", event.target.value)} />
+                                        </BrandField>
+                                        <BrandField label="搜索摘要">
+                                            <Input.TextArea value={draft.browser.metaDescription} maxLength={300} autoSize={{ minRows: 3, maxRows: 5 }} onChange={(event) => updateDraft("browser", "metaDescription", event.target.value)} />
+                                        </BrandField>
+                                    </BrandPanel>
+                                ),
+                            },
+                        ]}
+                    />
                 </div>
             </div>
         </AdminPageFrame>
+    );
+}
+
+function BrandPanel({ icon, title, description, children }: { icon: React.ReactNode; title: string; description: string; children: React.ReactNode }) {
+    return (
+        <section className="admin-branding-panel" aria-labelledby={`brand-panel-${title}`}>
+            <header className="admin-branding-panel-header">
+                <span aria-hidden="true">{icon}</span>
+                <div>
+                    <h2 id={`brand-panel-${title}`}>{title}</h2>
+                    <p>{description}</p>
+                </div>
+            </header>
+            <div className="admin-branding-panel-content">{children}</div>
+        </section>
     );
 }
 

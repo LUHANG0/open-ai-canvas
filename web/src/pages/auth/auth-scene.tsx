@@ -1,7 +1,7 @@
 import { motion, useReducedMotion } from "motion/react";
 import { ConfigProvider, Tabs } from "antd";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import { ArrowLeft, ShieldCheck } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { Link, Outlet, useLocation, useNavigate } from "react-router";
 
 import { BrandMark } from "@/components/branding/brand-mark";
@@ -102,12 +102,11 @@ export function AuthScene() {
     const showVideo = Boolean(desktop && !reducedMotion && hero.authHeroKind === "video" && hero.authHeroUrl && !heroFailed);
     const showImage = Boolean(hero.authHeroKind === "image" && hero.authHeroUrl && !heroFailed);
     const showPoster = Boolean(hero.authHeroKind === "video" && hero.authHeroPosterUrl && !showVideo);
-    const hasHeroMedia = showVideo || showImage || showPoster;
     const context = useMemo<AuthSettingsContextValue>(() => ({ settings, loading, error, refresh }), [error, loading, refresh, settings]);
 
     return (
         <AuthSettingsContext.Provider value={context}>
-            <main className={`pc-auth-scene h-dvh min-h-0 overflow-y-auto text-white lg:overflow-hidden${hasHeroMedia ? " has-auth-media" : ""}`}>
+            <main className="pc-auth-scene h-dvh min-h-0 overflow-y-auto text-white lg:overflow-hidden">
                 <div className="pc-auth-media-layer" aria-hidden="true">
                     {showVideo ? (
                         <video className="pc-auth-media" src={hero.authHeroUrl} poster={hero.authHeroPosterUrl || undefined} autoPlay muted loop playsInline preload="metadata" onError={() => setHeroFailed(true)} />
@@ -119,15 +118,6 @@ export function AuthScene() {
                     <div className="pc-auth-media-grade" />
                 </div>
                 <header className="pc-auth-topbar">
-                    <Link to="/" className="pc-auth-brand-link" aria-label={`${branding.config.identity.displayName}官网首页`}>
-                        <span className="pc-auth-brand-symbol">
-                            <BrandMark className="pc-auth-brand-logo" />
-                        </span>
-                        <span className="pc-auth-brand-wordmark">
-                            <strong>{branding.config.identity.displayName}</strong>
-                            <small>{branding.config.identity.workspaceLabel}</small>
-                        </span>
-                    </Link>
                     <Link to="/" className="pc-auth-back-link">
                         <ArrowLeft aria-hidden="true" />
                         返回首页
@@ -135,17 +125,22 @@ export function AuthScene() {
                 </header>
 
                 <div className="pc-auth-layout">
-                    <motion.section
+                    <motion.header
                         initial={reducedMotion ? false : { opacity: 0, y: 18 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: aceternityMotion.duration.panel, ease: aceternityMotion.easing.enter }}
-                        className="pc-auth-brand-copy"
+                        className="pc-auth-brand-head"
                         aria-label={`${branding.config.identity.displayName}品牌介绍`}
                     >
-                        <span className="pc-auth-brand-kicker">{branding.config.identity.slogan || branding.config.identity.workspaceLabel}</span>
+                        <Link to="/" className="pc-auth-brand-link" aria-label={`${branding.config.identity.displayName}官网首页`}>
+                            <span className="pc-auth-brand-symbol">
+                                <BrandMark className="pc-auth-brand-logo" />
+                            </span>
+                            <strong>{branding.config.identity.displayName}</strong>
+                        </Link>
                         <h1 className="pc-auth-brand-title">{branding.config.auth.title}</h1>
                         {branding.config.auth.description ? <p className="pc-auth-brand-summary">{branding.config.auth.description}</p> : null}
-                    </motion.section>
+                    </motion.header>
 
                     <motion.div
                         initial={reducedMotion ? false : { opacity: 0, y: 14 }}
@@ -171,10 +166,6 @@ export function AuthScene() {
                                 </section>
                             </div>
                         </ConfigProvider>
-                        <p className="pc-auth-card-footnote">
-                            <ShieldCheck aria-hidden="true" />
-                            账号与项目数据受当前工作区保护
-                        </p>
                     </motion.div>
                 </div>
             </main>

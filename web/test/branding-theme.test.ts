@@ -38,9 +38,11 @@ test("brand configuration is wired into public, auth and admin entry points", as
     expect(authScene).not.toContain("bilibili.com");
     expect(router).toContain('path: "settings/branding"');
     expect(adminShell).toContain('path: "/admin/settings/branding"');
-    expect(brandingSettings).toContain('title="品牌信息"');
-    expect(brandingSettings).toContain('title="登录页内容"');
-    expect(brandingSettings).toContain('title="登录页背景"');
+    expect(brandingSettings).toContain('defaultActiveKey="visual"');
+    expect(brandingSettings).toContain('label: "品牌资料"');
+    expect(brandingSettings).toContain('label: "标志与颜色"');
+    expect(brandingSettings).toContain('label: "登录页面"');
+    expect(brandingSettings).toContain('label: "浏览器显示"');
     expect(brandingSettings).toContain('title="浏览器显示"');
     expect(brandingSettings).toContain("只接受以 https:// 开头的安全链接");
     expect(brandingSettings).toContain('heroKind: value ? draft.auth.heroKind || "video" : ""');

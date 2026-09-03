@@ -82,7 +82,7 @@ const adminNavigation: Array<{ label: string; items: AdminNavigationItem[] }> = 
     {
         label: "系统配置",
         items: [
-            { path: "/admin/settings/branding", label: "品牌与外观", description: "站点身份与登录页", icon: <Palette className="size-4" /> },
+            { path: "/admin/settings/branding", label: "品牌中心", description: "品牌资料与登录页", icon: <Palette className="size-4" /> },
             { path: "/admin/settings/public-site", label: "官网内容", description: "页面内容与发布管理", icon: <Globe2 className="size-4" /> },
             { path: "/admin/settings/features", label: "功能开放", description: "工作台、插件与模型能力", icon: <ToggleLeft className="size-4" /> },
             { path: "/admin/settings/drawing-engine", label: "绘图工具", description: "画布绘图节点默认引擎", icon: <Paintbrush className="size-4" /> },
