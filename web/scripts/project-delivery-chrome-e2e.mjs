@@ -26,6 +26,16 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const passes = [];
 let failures = 0;
 
+async function stopChild(child) {
+    if (!child || child.exitCode !== null || child.signalCode !== null) return;
+    const exited = new Promise((resolve) => child.once("exit", resolve));
+    child.kill("SIGTERM");
+    await Promise.race([exited, sleep(3_000)]);
+    if (child.exitCode !== null || child.signalCode !== null) return;
+    child.kill("SIGKILL");
+    await Promise.race([exited, sleep(1_000)]);
+}
+
 function assert(condition, name, detail = "") {
     if (condition) {
         passes.push(name);
@@ -271,11 +281,12 @@ try {
     cdp.videos.set("delivery-resource-2", await generateVideo(cdp, "#2457c5", -1));
     await cdp.send("Page.navigate", { url: `http://127.0.0.1:${vitePort}/dev/project-delivery-repro` });
     assert(await cdp.poll(`Boolean(document.querySelector('[data-delivery-repro]'))`, 30_000), "DEV 交付复现台已加载");
-    const gate = await cdp.evaluate(`(() => { const button = [...document.querySelectorAll('button')].find((item) => item.textContent.includes('在本机生成交付包')); return { enabled: Boolean(button) && !button.disabled, text: document.body.innerText }; })()`);
+    const localExportSelector = '[data-testid="project-delivery-local-export"]';
+    const gate = await cdp.evaluate(`(() => { const button = document.querySelector(${JSON.stringify(localExportSelector)}); return { enabled: button instanceof HTMLButtonElement && !button.disabled, text: document.body.innerText }; })()`);
     assert(gate.enabled, "2 / 2 镜头时交付按钮可用");
     assert(gate.text.includes("2 / 2") && gate.text.includes("历史过期产物") && gate.text.includes("1"), "旧过期产物只提示不阻断");
-    assert(await cdp.click(".workflow-delivery-plan button"), "交付按钮已通过真实指针事件触发");
-    assert(await cdp.poll(`document.body.innerText.includes('正在生成交付包')`, 10_000), "页面展示本地合成进度");
+    assert(await cdp.click(localExportSelector), "交付按钮已通过真实指针事件触发");
+    assert(await cdp.poll(`Boolean(document.querySelector('[data-delivery-local-progress]'))`, 10_000), "页面展示本地合成进度");
 
     const zipPath = await waitForDownload(downloadDir, 180_000);
     const entries = unzipSync(readFileSync(zipPath));
@@ -309,8 +320,6 @@ try {
     process.exitCode = 1;
 } finally {
     cdp?.close();
-    vite?.child.kill("SIGTERM");
-    chrome?.child.kill("SIGTERM");
-    await sleep(300);
-    rmSync(tempRoot, { recursive: true, force: true });
+    await Promise.all([stopChild(vite?.child), stopChild(chrome?.child)]);
+    rmSync(tempRoot, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
 }

@@ -48,9 +48,19 @@ describe("短剧交付包", () => {
         expect(apiSource).not.toContain("createProjectDeliveryJob(projectId: string, unitId: string, model");
         expect(viewSource).toContain("后台生成交付包");
         expect(viewSource).toContain("本机直接生成");
+        expect(viewSource).toContain('data-testid="project-delivery-local-export"');
         expect(viewSource).toContain("关闭页面也会继续");
         expect(viewSource).toContain("有效期至");
         expect(viewSource).toContain("Date.parse(job.expiresAt");
+    });
+
+    test("本机交付复现台禁用后台查询并使用稳定按钮标识", async () => {
+        const labSource = await Bun.file(new URL("../src/pages/dev/project-delivery-repro-lab.tsx", import.meta.url)).text();
+        const e2eSource = await Bun.file(new URL("../scripts/project-delivery-chrome-e2e.mjs", import.meta.url)).text();
+        expect(labSource).toContain("enableServerDelivery={false}");
+        expect(e2eSource).toContain("project-delivery-local-export");
+        expect(e2eSource).toContain("data-delivery-local-progress");
+        expect(e2eSource).not.toContain("在本机生成交付包");
     });
 
     test("按设备内存给出保守容量预算，并区分安全、预警和阻断", () => {

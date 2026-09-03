@@ -36,7 +36,7 @@ function deliveryFixture(): ProjectDetail {
 export default function ProjectDeliveryReproLab() {
     return (
         <main className="min-h-screen overflow-auto bg-background px-8 py-10 text-foreground" data-delivery-repro>
-            <DeliveryStage detail={deliveryFixture()} unitId="delivery-unit" />
+            <DeliveryStage detail={deliveryFixture()} unitId="delivery-unit" enableServerDelivery={false} />
         </main>
     );
 }
