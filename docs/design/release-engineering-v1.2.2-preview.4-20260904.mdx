@@ -1,0 +1,67 @@
+# v1.2.2-preview.4 发布工程记录（2026-09-04）
+
+## 交付状态与发布边界
+
+本记录对应候选版本 `v1.2.2-preview.4`。P0/P1 发布工程改动已在独立 worktree 和功能分支完成，本地构建、测试、Compose 渲染、Nginx 行为与镜像健康检查均已通过。
+
+> 当前仅完成候选制品准备和本地验证。没有推送分支、创建正式标签、发布 GHCR 镜像或部署任何环境。执行这些动作前仍需发布授权。
+
+- 上游基线：`origin/main` 的 `2d9078a150608d370eeae7ba5f3ea5584cd0d8b1`。
+- 主工作区状态：开始时无未提交改动，未直接修改主工作区。
+- 独立 worktree：`/Users/hanglu/Documents/影策/open-ai-canvas-release-baseline`。
+- 功能分支：`fix/release-baseline`。
+- 已验证功能树：`a6694691b6aae55d641adaa4c30ee06386276422`。
+- 候选版本：`v1.2.2-preview.4`；本地镜像标签：`1.2.2-preview.4-a6694691b6aa`。
+
+## 独立变更批次
+
+| 批次 | 提交 | 变更文件 | 结果 | 独立回滚 |
+| --- | --- | --- | --- | --- |
+| Canvas Agent 可复现安装 | `481297033d3954db1636365f9be44cada5e8e502` | `README.md`、`canvas-agent/README.md`、`canvas-agent/package.json` | 将直接依赖 `zod` 与 override 固定为同一版本，声明 Bun 版本，统一文档为 `bun install --frozen-lockfile`；npm 只作脚本运行器 | `git revert --no-edit 481297033d3954db1636365f9be44cada5e8e502` |
+| 候选版本、镜像来源与构建元数据 | `a4aab9d81c6a48891033b7be25c94263e2fc5fb0` | `.env.example`、`.github/workflows/publish-images.yml`、`CHANGELOG.md`、`Dockerfile`、`README.md`、`VERSION`、`backend/Dockerfile`、`docker-compose.build.yml`、`docker-compose.deploy.yml`、`docker-compose.local.yml`、`docs/content/docs/backend/system-update.mdx`、`scripts/install-server-image.sh`、`scripts/install-server.sh` | 固定候选版本和 canonical GHCR 来源；生产部署必须显式指定非 `latest` 标签；源码构建注入版本、完整提交和时间；前后端镜像写入 OCI 版本与 revision 标签 | `git revert --no-edit a4aab9d81c6a48891033b7be25c94263e2fc5fb0` |
+| Nginx 缓存与安全响应头 | `a6694691b6aae55d641adaa4c30ee06386276422` | `Dockerfile`、`nginx.conf`、`nginx-security-headers.conf` | 指纹静态资源使用一年不可变缓存，固定公共资源使用一小时重验证，HTML/SPA 使用 no-store；补齐安全响应头且保持 API、SSE、媒体、分享和 Bridge 行为 | `git revert --no-edit a6694691b6aae55d641adaa4c30ee06386276422` |
+
+三个功能提交均在最终功能树上通过 `git show --format= <SHA> | git apply --reverse --check`，可各自反向应用，不依赖按批次正序撤销。整组回滚时仍建议按 Nginx、发布工程、Canvas Agent 的逆序执行，并在每次回滚后复跑相关验证。
+
+## 验证记录
+
+| 范围 | 命令或检查 | 结果 |
+| --- | --- | --- |
+| Canvas Agent 锁文件安装 | `cd canvas-agent && bun install --frozen-lockfile` | 通过；154 个包按锁文件安装 |
+| npm 兼容性 | `cd canvas-agent && npm install --package-lock-only --ignore-scripts --dry-run` | 通过；未再出现 `EOVERRIDE` |
+| Canvas Agent 测试 | `cd canvas-agent && npm test` | 通过；316 项通过、5 项跳过、0 项失败 |
+| Canvas Agent 构建 | `cd canvas-agent && npm run build` | 通过 |
+| Web 安装与测试 | `cd web && bun install --frozen-lockfile && bun test` | 通过；无失败测试 |
+| Web 生产构建 | `cd web && CANVAS_BUILD_VERSION=v1.2.2-preview.4 VITE_BUILD_COMMIT=a6694691b6aae55d641adaa4c30ee06386276422 bun run build` | 通过；13,666 个模块转换，既有构建预算全部通过 |
+| Backend 测试 | `cd backend && go test ./...` | 全部包通过 |
+| 脚本语法 | `bash -n scripts/install-server.sh scripts/install-server-image.sh scripts/install-host-updater.sh` | 通过 |
+| Workflow 与 Compose 语法 | Ruby YAML 解析全部相关 YAML；`docker compose config` 验证 deploy、deploy+build 与 local 组合 | 通过 |
+| 必填生产标签 | 不提供 `CANVAS_IMAGE_TAG` 渲染 deploy Compose | 按设计失败并输出必填提示 |
+| 安装器 `latest` 防线 | 直接调用镜像安装脚本标签校验函数 | `latest` 按设计被拒绝 |
+| Nginx 配置 | `nginx:1.27-alpine nginx -t`，挂载候选配置与安全头 include | 通过 |
+| 前后端镜像构建 | deploy 与 build Compose 组合，传入候选版本、完整提交和构建时间 | 前后端镜像均构建成功；标签为 `1.2.2-preview.4-a6694691b6aa` |
+| OCI 元数据 | `docker image inspect` 检查两个候选镜像 | 两者 version 为 `v1.2.2-preview.4`，revision 为完整 `a669469…` SHA |
+| 镜像健康集成 | 隔离 Docker 网络、后端临时 SQLite `tmpfs`、候选 Web 代理 | 前后端均 `healthy`；直连与代理 `/api/health/ready` JSON 完全一致 |
+| Git 回滚性 | 对三个功能提交分别执行 reverse patch check | 全部通过 |
+
+最终健康响应确认：`ready=true`，构建版本为 `v1.2.2-preview.4`，提交为 `a6694691b6aae55d641adaa4c30ee06386276422`，构建时间为 `2026-09-04T00:00:00Z`，schema 为 `6/6` 且 ready。测试容器、隔离网络和临时数据在验证后均已清理。
+
+### Nginx 行为抽查
+
+| 路径类型 | 预期与实测结果 |
+| --- | --- |
+| `/index.html` 与 SPA 回退 | `200`，`no-cache, no-store, must-revalidate`，包含全部安全响应头 |
+| `/assets/<指纹文件>` | `200`，一年缓存并带 `immutable`；不存在的指纹资源直接 `404` |
+| `/icons/openai.svg` 等固定公共资源 | `200`，一小时缓存并要求重验证 |
+| `/assets`、`/canvas/release-check`、`/share/canvas/release-check` | 保持 SPA 回退并使用 no-store |
+| Bridge 下载 | `200`，保持附件下载与 no-cache，包含安全响应头 |
+| `/api/public/share/release-check` | 由后端返回 `404`，没有被 SPA 吞掉 |
+| `/api/canvas/release-check/text-events` | 由后端返回未认证 `401`，SSE/事件路由仍经代理 |
+
+## 风险与后续门禁
+
+- GitHub Actions 未实际运行，因为本轮禁止推送；已完成 YAML 解析、工作流规则审查和同参数本地 Docker 构建。正式发布仍需在 canonical 仓库观察完整工作流。
+- Compose 通过必填变量阻止隐式回退到 `latest`；支持的镜像安装器和主机更新器还会显式拒绝 `latest`。直接手写 Compose 环境变量仍属于运维绕过，发布操作必须使用已发布的不可变候选标签。
+- 镜像健康集成使用临时 SQLite 验证元数据、迁移就绪与代理闭环，没有连接或修改生产 PostgreSQL、Redis、卷或账号数据。PostgreSQL/Redis 的发布环境验收应继续由部署门禁承担。
+- 本地候选镜像仅用于验证，没有推送到 `ghcr.io/luhang0`。正式标签应指向最终批准的发布提交，由发布工作流重新注入该提交的完整 SHA。
+- 发布批准后的顺序为：推送功能分支并复核 CI、合并批准提交、创建 `v1.2.2-preview.4` 标签、确认 GHCR 版本与 SHA 标签、再使用固定版本标签部署。任一步失败均停止后续动作，不改用 `latest` 绕过。
