@@ -17,6 +17,9 @@ export type BrandingConfig = {
         title: string;
         description: string;
         liveBadge: string;
+        heroUrl: string;
+        heroKind: "" | "image" | "video";
+        heroPosterUrl: string;
     };
     browser: {
         title: string;

@@ -24,12 +24,25 @@
 - 浏览器实测：桌面与 `390 × 844` 窄屏布局正常；未登录访问控制台 `errors=[]`、`warnings=[]`。
 - 本地服务：前端 `8888`、后端 `8080`，健康检查返回 ready。
 
+## 全页视频与外链自定义
+
+- 原登录视频能力没有删除；品牌化改造后不再硬编码第三方 URL，而当时又没有上传品牌背景，所以页面自动降级为渐变。
+- 已将原始 HEVC 素材转为 H.264、1280×720、20 秒静音循环版本，大小约 7.1 MB，并通过品牌资源服务启用；原始素材和海报保留在 `.local/branding-source/`。
+- 登录背景从左侧品牌区提升为全页媒体层，桌面端自动静音循环，右侧登录卡片使用半透明遮罩保证可读性。
+- 移动端和“减少动态效果”模式不自动播放视频，改为展示视频海报；媒体失败时继续降级为内置渐变，不影响登录。
+- 管理后台新增背景 URL、媒体类型和海报 URL，可直接填写 B 站 CDN 等 HTTPS 直链。外链优先，清空后回到上传素材；上传新文件时自动切回本站存储。
+
+证据 → 结论 → 路径：公开品牌接口返回修订 2、`authHeroKind=video`，视频 Range 请求返回 `206`、`video/mp4` 且总大小 7,466,880 字节；由此确认品牌引用、流式读取和浏览器播放链路均已接通。桌面浏览器中视频 `readyState=4`、`paused=false`、画布边界与 `1280×720` 视口一致，证明媒体层已覆盖整页。
+
 本地验收截图（Git 忽略目录）：
 
 - `.local/screenshots/login-optimized-desktop-20260903.png`
 - `.local/screenshots/login-optimized-mobile-20260903.png`
+- `.local/screenshots/login-full-video-desktop-20260903.png`
+- `.local/screenshots/login-full-video-mobile-20260903.png`
 
 ## 回滚
 
 本轮改动使用独立 Git 提交 `feat(auth): polish branded login experience`。如需撤回，仅回退该提交即可；数据库 schema、品牌设置与用户数据均无需回滚。
 
+启用全页视频前的数据库与资源快照位于 `.local/deploy-backups/20260903-1455-before-auth-video/`，数据库 SHA-256 为 `ddc36735fb9f3cfbd7ed7014080f8c65b62ffdaf3d5827efbe366b33b0367cc8`。全页视频与 HTTPS 外链能力使用后续独立提交，代码可单独回退；如需连同运行时品牌引用回退，应在停止后端后恢复该快照，不能只覆盖正在使用 WAL 的数据库文件。

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"mime/multipart"
 	"net/http"
+	"net/url"
 	"regexp"
 	"strings"
 	"time"
@@ -49,10 +50,13 @@ type BrandingTheme struct {
 }
 
 type BrandingAuth struct {
-	Eyebrow     string `json:"eyebrow"`
-	Title       string `json:"title"`
-	Description string `json:"description"`
-	LiveBadge   string `json:"liveBadge"`
+	Eyebrow       string `json:"eyebrow"`
+	Title         string `json:"title"`
+	Description   string `json:"description"`
+	LiveBadge     string `json:"liveBadge"`
+	HeroURL       string `json:"heroUrl"`
+	HeroKind      string `json:"heroKind"`
+	HeroPosterURL string `json:"heroPosterUrl"`
 }
 
 type BrandingBrowser struct {
@@ -219,7 +223,15 @@ func (s *Service) UploadBrandAsset(actor *model.User, slot string, expectedRevis
 		_ = s.deleteFreshAnnouncementImageResource(resource)
 		return nil, err
 	}
-	updated, err := s.writeBrandingSetting(actor, expectedRevision, value.Config, &assets, "branding.asset.upload", "上传并启用网站品牌资源")
+	config := value.Config
+	switch slot {
+	case BrandAssetAuthHero:
+		config.Auth.HeroURL = ""
+		config.Auth.HeroKind = ""
+	case BrandAssetAuthHeroPoster:
+		config.Auth.HeroPosterURL = ""
+	}
+	updated, err := s.writeBrandingSetting(actor, expectedRevision, config, &assets, "branding.asset.upload", "上传并启用网站品牌资源")
 	if err == nil {
 		return updated, nil
 	}
@@ -325,12 +337,12 @@ func (s *Service) readBrandingSetting() (*model.SystemSetting, brandingSettingVa
 }
 
 func (s *Service) publicBranding(value brandingSettingValue) *PublicBrandingSetting {
-	return &PublicBrandingSetting{Revision: value.Revision, Config: value.Config, Assets: brandingAssetURLs(value.Assets, value.Revision, s.brandHeroKind(value.Assets.AuthHeroResourceID))}
+	return &PublicBrandingSetting{Revision: value.Revision, Config: value.Config, Assets: brandingAssetURLs(value.Assets, value.Config.Auth, value.Revision, s.brandHeroKind(value.Assets.AuthHeroResourceID))}
 }
 
 func (s *Service) adminBranding(setting *model.SystemSetting, value brandingSettingValue) *AdminBrandingSetting {
 	view := &AdminBrandingSetting{
-		PublicBrandingSetting: PublicBrandingSetting{Revision: value.Revision, Config: value.Config, Assets: brandingAssetURLs(value.Assets, value.Revision, s.brandHeroKind(value.Assets.AuthHeroResourceID))},
+		PublicBrandingSetting: PublicBrandingSetting{Revision: value.Revision, Config: value.Config, Assets: brandingAssetURLs(value.Assets, value.Config.Auth, value.Revision, s.brandHeroKind(value.Assets.AuthHeroResourceID))},
 		AssetReferences:       value.Assets,
 		Configured:            setting != nil,
 	}
@@ -359,7 +371,7 @@ func (s *Service) brandHeroKind(resourceID string) string {
 	return ""
 }
 
-func brandingAssetURLs(assets BrandingAssetReferences, revision int64, heroKind string) BrandingAssetURLs {
+func brandingAssetURLs(assets BrandingAssetReferences, auth BrandingAuth, revision int64, heroKind string) BrandingAssetURLs {
 	version := fmt.Sprintf("?v=%d", revision)
 	result := BrandingAssetURLs{LogoURL: "/logo.svg", FaviconURL: "/logo.svg", AuthHeroKind: heroKind}
 	if assets.LogoResourceID != "" {
@@ -373,6 +385,13 @@ func brandingAssetURLs(assets BrandingAssetReferences, revision int64, heroKind 
 	}
 	if assets.AuthHeroPosterResourceID != "" {
 		result.AuthHeroPosterURL = "/api/public/branding/assets/" + BrandAssetAuthHeroPoster + version
+	}
+	if auth.HeroURL != "" {
+		result.AuthHeroURL = auth.HeroURL
+		result.AuthHeroKind = auth.HeroKind
+	}
+	if auth.HeroPosterURL != "" {
+		result.AuthHeroPosterURL = auth.HeroPosterURL
 	}
 	return result
 }
@@ -389,6 +408,9 @@ func normalizeBrandingConfig(config BrandingConfig) (BrandingConfig, error) {
 	config.Auth.Title = strings.TrimSpace(config.Auth.Title)
 	config.Auth.Description = strings.TrimSpace(config.Auth.Description)
 	config.Auth.LiveBadge = strings.TrimSpace(config.Auth.LiveBadge)
+	config.Auth.HeroURL = strings.TrimSpace(config.Auth.HeroURL)
+	config.Auth.HeroKind = strings.ToLower(strings.TrimSpace(config.Auth.HeroKind))
+	config.Auth.HeroPosterURL = strings.TrimSpace(config.Auth.HeroPosterURL)
 	config.Browser.Title = strings.TrimSpace(config.Browser.Title)
 	config.Browser.MetaDescription = strings.TrimSpace(config.Browser.MetaDescription)
 
@@ -421,7 +443,36 @@ func normalizeBrandingConfig(config BrandingConfig) (BrandingConfig, error) {
 	if !brandHexColorPattern.MatchString(config.Theme.PrimaryColor) {
 		return BrandingConfig{}, BadAuthRequest("品牌主色必须是 #RRGGBB 格式")
 	}
+	if config.Auth.HeroURL == "" {
+		config.Auth.HeroKind = ""
+	} else {
+		if config.Auth.HeroKind != "image" && config.Auth.HeroKind != "video" {
+			return BrandingConfig{}, BadAuthRequest("登录页背景 URL 必须选择图片或视频类型")
+		}
+		if err := validateExternalBrandAssetURL(config.Auth.HeroURL); err != nil {
+			return BrandingConfig{}, BadAuthRequest("登录页背景 URL " + err.Error())
+		}
+	}
+	if config.Auth.HeroPosterURL != "" {
+		if err := validateExternalBrandAssetURL(config.Auth.HeroPosterURL); err != nil {
+			return BrandingConfig{}, BadAuthRequest("视频海报 URL " + err.Error())
+		}
+	}
 	return config, nil
+}
+
+func validateExternalBrandAssetURL(value string) error {
+	if utf8.RuneCountInString(value) > 2048 {
+		return errors.New("不能超过 2048 个字符")
+	}
+	parsed, err := url.Parse(value)
+	if err != nil || parsed.Scheme != "https" || parsed.Hostname() == "" {
+		return errors.New("必须是完整的 https:// 地址")
+	}
+	if parsed.User != nil {
+		return errors.New("不能包含账号或密码")
+	}
+	return nil
 }
 
 func validateBrandAssetUpload(slot string, header *multipart.FileHeader) (string, string, error) {

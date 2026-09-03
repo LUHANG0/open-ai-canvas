@@ -83,6 +83,37 @@ func TestBrandingValidationAndAssetSniffing(t *testing.T) {
 	}
 }
 
+func TestBrandingExternalHeroURL(t *testing.T) {
+	svc, _ := newBrandingTestService(t)
+	admin := &model.User{ID: "admin", Role: model.UserRoleAdmin, Status: model.UserStatusActive}
+	config := DefaultBrandingConfig()
+	config.Auth.HeroURL = " https://boss-shjd.biliapi.net/example/background.mp4 "
+	config.Auth.HeroKind = "VIDEO"
+	config.Auth.HeroPosterURL = "https://i0.hdslb.com/example/poster.jpg"
+
+	updated, err := svc.UpdateBranding(admin, UpdateBrandingRequest{ExpectedRevision: 0, Config: config})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if updated.Assets.AuthHeroURL != "https://boss-shjd.biliapi.net/example/background.mp4" || updated.Assets.AuthHeroKind != "video" || updated.Assets.AuthHeroPosterURL != config.Auth.HeroPosterURL {
+		t.Fatalf("external hero assets = %+v", updated.Assets)
+	}
+
+	for _, invalid := range []string{
+		"http://example.com/background.mp4",
+		"javascript:alert(1)",
+		"data:video/mp4;base64,AAAA",
+		"https://user:password@example.com/background.mp4",
+	} {
+		candidate := DefaultBrandingConfig()
+		candidate.Auth.HeroURL = invalid
+		candidate.Auth.HeroKind = "video"
+		if _, err := normalizeBrandingConfig(candidate); err == nil {
+			t.Fatalf("external hero URL %q should be rejected", invalid)
+		}
+	}
+}
+
 func newBrandingTestService(t *testing.T) (*Service, *gorm.DB) {
 	t.Helper()
 	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})

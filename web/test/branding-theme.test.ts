@@ -25,11 +25,12 @@ describe("website branding theme", () => {
 });
 
 test("brand configuration is wired into public, auth and admin entry points", async () => {
-    const [application, authScene, router, adminShell] = await Promise.all([
+    const [application, authScene, router, adminShell, brandingSettings] = await Promise.all([
         Bun.file(new URL("../src/application.tsx", import.meta.url)).text(),
         Bun.file(new URL("../src/pages/auth/auth-scene.tsx", import.meta.url)).text(),
         Bun.file(new URL("../src/router.tsx", import.meta.url)).text(),
         Bun.file(new URL("../src/pages/admin/components/admin-shell.tsx", import.meta.url)).text(),
+        Bun.file(new URL("../src/pages/admin/settings/branding-settings-page.tsx", import.meta.url)).text(),
     ]);
 
     expect(application).toContain("<BrandingProvider>");
@@ -37,4 +38,7 @@ test("brand configuration is wired into public, auth and admin entry points", as
     expect(authScene).not.toContain("bilibili.com");
     expect(router).toContain('path: "settings/branding"');
     expect(adminShell).toContain('path: "/admin/settings/branding"');
+    expect(brandingSettings).toContain("登录页背景 URL");
+    expect(brandingSettings).toContain("仅允许完整的 https:// 地址");
+    expect(brandingSettings).toContain('heroKind: value ? draft.auth.heroKind || "video" : ""');
 });

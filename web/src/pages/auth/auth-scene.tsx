@@ -110,32 +110,24 @@ export function AuthScene() {
     const showVideo = Boolean(desktop && !reducedMotion && hero.authHeroKind === "video" && hero.authHeroUrl && !heroFailed);
     const showImage = Boolean(hero.authHeroKind === "image" && hero.authHeroUrl && !heroFailed);
     const showPoster = Boolean(hero.authHeroKind === "video" && hero.authHeroPosterUrl && !showVideo);
+    const hasHeroMedia = showVideo || showImage || showPoster;
     const context = useMemo<AuthSettingsContextValue>(() => ({ settings, loading, error, refresh }), [error, loading, refresh, settings]);
 
     return (
         <AuthSettingsContext.Provider value={context}>
-            <main className="pc-auth-scene h-dvh min-h-0 overflow-y-auto text-white lg:overflow-hidden">
+            <main className={`pc-auth-scene h-dvh min-h-0 overflow-y-auto text-white lg:overflow-hidden${hasHeroMedia ? " has-auth-media" : ""}`}>
+                <div className="pc-auth-media-layer" aria-hidden="true">
+                    {showVideo ? (
+                        <video className="pc-auth-media" src={hero.authHeroUrl} poster={hero.authHeroPosterUrl || undefined} autoPlay muted loop playsInline preload="metadata" onError={() => setHeroFailed(true)} />
+                    ) : showImage || showPoster ? (
+                        <img className="pc-auth-media" src={showImage ? hero.authHeroUrl : hero.authHeroPosterUrl} alt="" referrerPolicy="no-referrer" onError={() => setHeroFailed(true)} />
+                    ) : (
+                        <div className="pc-auth-brand-ambient absolute inset-0" />
+                    )}
+                    <div className="pc-auth-media-grade" />
+                </div>
                 <div className="pc-auth-layout grid min-h-full lg:h-full lg:grid-cols-[minmax(0,1.32fr)_minmax(520px,1fr)]">
                     <section className="pc-auth-brand relative min-h-[250px] overflow-hidden sm:min-h-[320px] lg:min-h-0" aria-label={`${branding.config.identity.displayName}品牌介绍`}>
-                        {showVideo ? (
-                            <video
-                                className="pc-auth-brand-video absolute inset-0 size-full object-cover"
-                                src={hero.authHeroUrl}
-                                poster={hero.authHeroPosterUrl || undefined}
-                                autoPlay
-                                muted
-                                loop
-                                playsInline
-                                preload="metadata"
-                                aria-hidden="true"
-                                onError={() => setHeroFailed(true)}
-                            />
-                        ) : showImage || showPoster ? (
-                            <img className="pc-auth-brand-video absolute inset-0 size-full object-cover" src={showImage ? hero.authHeroUrl : hero.authHeroPosterUrl} alt="" aria-hidden="true" onError={() => setHeroFailed(true)} />
-                        ) : null}
-                        {!showVideo && !showImage && !showPoster ? <div aria-hidden className="pc-auth-brand-ambient absolute inset-0" /> : null}
-                        <div aria-hidden className="pc-auth-brand-shade absolute inset-0" />
-                        <div aria-hidden className="pc-auth-brand-fade absolute inset-y-0 right-0 hidden lg:block" />
                         <div className="pc-auth-brand-nav absolute inset-x-0 top-0 flex items-center justify-between gap-4 p-5 sm:p-7 lg:p-9">
                             <div className="pc-auth-brand-link inline-flex items-center gap-2.5 text-sm font-semibold text-white drop-shadow-sm">
                                 <BrandMark className="pc-auth-brand-logo size-7" />

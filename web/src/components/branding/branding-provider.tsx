@@ -22,6 +22,9 @@ export const DEFAULT_PUBLIC_BRANDING: PublicBrandingSetting = {
             title: "让一个故事，\n从文字走向银幕。",
             description: "在同一个创作空间里组织素材、生成内容并完成画布编排。",
             liveBadge: "创作正在发生",
+            heroUrl: "",
+            heroKind: "",
+            heroPosterUrl: "",
         },
         browser: {
             title: "影策",

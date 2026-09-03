@@ -10,6 +10,8 @@ describe("auth login experience", () => {
         expect(scene).toContain("creativeCapabilities.map");
         expect(scene).toContain("STORY TO SCREEN");
         expect(scene).toContain('aria-label="核心创作能力"');
+        expect(scene).toContain("pc-auth-media-layer");
+        expect(scene).toContain('hasHeroMedia ? " has-auth-media"');
     });
 
     test("provides local failure feedback and accessible login fields", async () => {
@@ -38,6 +40,7 @@ describe("auth login experience", () => {
         expect(styles).toContain("@media (max-width: 1023px)");
         expect(styles).toContain(".pc-auth-panel-glow");
         expect(styles).toContain(".pc-auth-login-error");
+        expect(styles).toContain(".pc-auth-scene.has-auth-media .pc-auth-brand");
         expect(styles).toContain("var(--auth-brand)");
     });
 });

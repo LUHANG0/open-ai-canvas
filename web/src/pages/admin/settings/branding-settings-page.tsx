@@ -1,4 +1,4 @@
-import { App, Button, Input, Skeleton } from "antd";
+import { App, Button, Input, Select, Skeleton } from "antd";
 import { AlertTriangle, Image as ImageIcon, MonitorSmartphone, Palette, RefreshCw, RotateCcw, Save, Type, Upload } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import { useBlocker } from "react-router";
@@ -22,7 +22,7 @@ type AssetDefinition = {
 const assetDefinitions: AssetDefinition[] = [
     { slot: "logo", label: "品牌 Logo", description: "建议透明背景、1:1 或接近方形，最大 2MB。", accept: "image/png,image/jpeg,image/webp,image/gif", referenceKey: "logoResourceId" },
     { slot: "favicon", label: "浏览器图标", description: "建议 64×64 或 128×128 PNG/WebP，最大 512KB。", accept: "image/png,image/jpeg,image/webp,image/gif", referenceKey: "faviconResourceId" },
-    { slot: "auth-hero", label: "登录页背景", description: "支持图片或 MP4/WebM；移动端不自动播放视频。", accept: "image/png,image/jpeg,image/webp,image/gif,video/mp4,video/webm", referenceKey: "authHeroResourceId" },
+    { slot: "auth-hero", label: "登录页背景", description: "支持图片或 MP4/WebM，视频最大 40MB；移动端不自动播放。", accept: "image/png,image/jpeg,image/webp,image/gif,video/mp4,video/webm", referenceKey: "authHeroResourceId" },
     { slot: "auth-hero-poster", label: "视频海报", description: "视频加载前、移动端和减少动态效果时展示。", accept: "image/png,image/jpeg,image/webp,image/gif", referenceKey: "authHeroPosterResourceId" },
 ];
 
@@ -90,7 +90,7 @@ export default function BrandingSettingsPage() {
         if (blocker.state !== "blocked") return;
         modal.confirm({
             title: "放弃品牌配置调整？",
-            content: "当前文案和颜色还没有保存，离开后会丢失。",
+            content: "当前文案、颜色或资源 URL 还没有保存，离开后会丢失。",
             okText: "放弃并离开",
             cancelText: "继续编辑",
             okButtonProps: { danger: true },
@@ -131,6 +131,12 @@ export default function BrandingSettingsPage() {
         try {
             const { setting: next } = await uploadAdminBrandAsset(slot, setting.revision, file);
             applySetting(next, dirty);
+            if (dirty && draft && slot === "auth-hero") {
+                setDraft({ ...draft, auth: { ...draft.auth, heroUrl: "", heroKind: "" } });
+            }
+            if (dirty && draft && slot === "auth-hero-poster") {
+                setDraft({ ...draft, auth: { ...draft.auth, heroPosterUrl: "" } });
+            }
             message.success("品牌资源已上传并生效");
         } catch (error) {
             message.error(error instanceof Error ? error.message : "上传品牌资源失败");
@@ -182,6 +188,12 @@ export default function BrandingSettingsPage() {
         setSaveError("");
     };
 
+    const updateHeroURL = (value: string) => {
+        if (!draft) return;
+        setDraft({ ...draft, auth: { ...draft.auth, heroUrl: value, heroKind: value ? draft.auth.heroKind || "video" : "" } });
+        setSaveError("");
+    };
+
     if (loading && !draft) {
         return (
             <AdminPageFrame title="品牌与外观" description="统一管理站点身份、登录页与浏览器元信息" scroll>
@@ -218,7 +230,7 @@ export default function BrandingSettingsPage() {
                             <strong>{dirty ? "品牌文案有未保存调整" : "品牌配置已同步"}</strong>
                             <AdminStatusBadge label={dirty ? "尚未生效" : setting.configured ? `服务端修订 ${setting.revision}` : "系统默认"} tone={dirty ? "warning" : setting.configured ? "success" : "neutral"} />
                         </div>
-                        <p>图片上传会立即生效；文案和颜色需点击保存。每次变更均写入管理审计记录。</p>
+                        <p>文件上传会立即生效；文案、颜色和资源 URL 需点击保存。每次变更均写入管理审计记录。</p>
                     </div>
                     <div className="admin-branding-command-actions">
                         {dirty ? (
@@ -295,7 +307,30 @@ export default function BrandingSettingsPage() {
                             </BrandField>
                         </SettingsSectionCard>
 
-                        <SettingsSectionCard icon={<ImageIcon className="size-4" />} title="4. 品牌资源" description="不接受外部 URL；文件上传到当前平台存储并使用专用公开路由读取。">
+                        <SettingsSectionCard icon={<ImageIcon className="size-4" />} title="4. 品牌资源" description="可上传到当前平台，也可使用 B 站 CDN 等 HTTPS 直链；外链填写后优先生效。">
+                            <div className="admin-branding-external-assets">
+                                <div className="admin-branding-external-hero-row">
+                                    <BrandField label="登录页背景 URL">
+                                        <Input value={draft.auth.heroUrl} maxLength={2048} allowClear placeholder="https://.../background.mp4" onChange={(event) => updateHeroURL(event.target.value)} />
+                                    </BrandField>
+                                    <BrandField label="背景类型">
+                                        <Select
+                                            aria-label="登录页背景类型"
+                                            value={draft.auth.heroKind || "video"}
+                                            disabled={!draft.auth.heroUrl}
+                                            options={[
+                                                { value: "video", label: "视频（MP4 / WebM）" },
+                                                { value: "image", label: "图片" },
+                                            ]}
+                                            onChange={(value) => updateDraft("auth", "heroKind", value)}
+                                        />
+                                    </BrandField>
+                                </div>
+                                <BrandField label="视频海报 URL（可选）">
+                                    <Input value={draft.auth.heroPosterUrl} maxLength={2048} allowClear placeholder="https://.../poster.jpg" onChange={(event) => updateDraft("auth", "heroPosterUrl", event.target.value)} />
+                                </BrandField>
+                                <p>仅允许完整的 https:// 地址。清空 URL 后会自动回到下方已上传的素材；上传新文件时会切回本站存储。</p>
+                            </div>
                             <div className="admin-branding-assets">
                                 {assetDefinitions.map((asset) => {
                                     const configured = Boolean(setting.assetReferences[asset.referenceKey]);
