@@ -3,13 +3,15 @@ import { describe, expect, test } from "bun:test";
 const read = (path: string) => Bun.file(new URL(path, import.meta.url)).text();
 
 describe("auth login experience", () => {
-    test("uses a bright editorial workspace with a separate brand media frame", async () => {
+    test("uses an ambient brand backdrop with a focused authentication sheet", async () => {
         const scene = await read("../src/pages/auth/auth-scene.tsx");
 
         expect(scene).toContain("branding.config.auth.title");
         expect(scene).toContain("pc-auth-brand-head");
-        expect(scene).toContain("pc-auth-media-frame");
+        expect(scene).toContain("pc-auth-atmosphere-media");
+        expect(scene).toContain("pc-auth-brand-stage");
         expect(scene).toContain("pc-auth-workspace");
+        expect(scene).toContain("pc-auth-sheet");
         expect(scene).not.toContain("pc-auth-card-footnote");
         expect(scene).not.toContain("creativeCapabilities");
         expect(scene).not.toContain('aria-label="影视创作流程"');
@@ -46,13 +48,15 @@ describe("auth login experience", () => {
     test("covers compact and desktop layouts without dropping dynamic theme tokens", async () => {
         const styles = await read("../src/pages/auth/auth-pc.css");
 
-        expect(styles).toContain("@media (max-width: 1023px)");
-        expect(styles).toContain(".pc-auth-media-frame");
+        expect(styles).toContain("@media (max-width: 900px)");
+        expect(styles).toContain(".pc-auth-atmosphere-media");
+        expect(styles).toContain("filter: blur(42px)");
         expect(styles).toContain(".pc-auth-workspace");
+        expect(styles).toContain(".pc-auth-credential-group");
         expect(styles).toContain(".pc-auth-login-error");
         expect(styles).not.toContain(".pc-auth-card-footnote");
-        expect(styles).toContain("grid-template-columns: minmax(0, 1.28fr) minmax(420px, 0.72fr)");
-        expect(styles).toContain("--auth-canvas: #f5f2eb");
+        expect(styles).toContain("grid-template-columns: minmax(0, 1fr) minmax(430px, 500px)");
+        expect(styles).toContain("--auth-paper: rgba(250, 248, 243, 0.94)");
         expect(styles).toContain("var(--auth-brand)");
     });
 });

@@ -1,12 +1,11 @@
 import { type FormEvent, useEffect, useState, type ReactNode } from "react";
 import { App, Button, Divider, Input } from "antd";
-import { ArrowRight, LockKeyhole, ShieldCheck, TriangleAlert, UserRound } from "lucide-react";
+import { ArrowRight, LockKeyhole, TriangleAlert, UserRound } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router";
 
 import { applyUserSession } from "@/lib/user-session";
 import { getAuthSession, linuxDOLoginURL, login } from "@/services/api/auth";
 import { useUserStore } from "@/stores/use-user-store";
-import { useBranding } from "@/components/branding/branding-provider";
 import { LinuxDOIcon, useAuthSettings } from "./auth-scene";
 
 export default function LoginPage() {
@@ -18,7 +17,6 @@ export default function LoginPage() {
     const [submitting, setSubmitting] = useState(false);
     const [submitError, setSubmitError] = useState("");
     const { settings } = useAuthSettings();
-    const { branding } = useBranding();
     const next = safeNext(params.get("next"));
     const user = useUserStore((state) => state.user);
     const hydrated = useUserStore((state) => state.hydrated);
@@ -58,42 +56,44 @@ export default function LoginPage() {
 
     return (
         <form onSubmit={submit} className="pc-auth-form space-y-5">
-            <AuthField label="用户名 / 邮箱">
-                <Input
-                    size="large"
-                    prefix={<UserRound className="pc-auth-field-icon size-4" />}
-                    value={username}
-                    name="username"
-                    onChange={(event) => {
-                        setUsername(event.target.value);
-                        if (submitError) setSubmitError("");
-                    }}
-                    placeholder="用户名或邮箱"
-                    autoComplete="username"
-                    autoFocus
-                    spellCheck={false}
-                    aria-invalid={Boolean(submitError)}
-                    aria-describedby={submitError ? "login-error" : undefined}
-                    required
-                />
-            </AuthField>
-            <AuthField label="密码">
-                <Input.Password
-                    size="large"
-                    prefix={<LockKeyhole className="pc-auth-field-icon size-4" />}
-                    value={password}
-                    name="password"
-                    onChange={(event) => {
-                        setPassword(event.target.value);
-                        if (submitError) setSubmitError("");
-                    }}
-                    placeholder="请输入密码"
-                    autoComplete="current-password"
-                    aria-invalid={Boolean(submitError)}
-                    aria-describedby={submitError ? "login-error" : undefined}
-                    required
-                />
-            </AuthField>
+            <div className="pc-auth-credential-group">
+                <AuthField label="用户名 / 邮箱">
+                    <Input
+                        size="large"
+                        prefix={<UserRound className="pc-auth-field-icon size-4" />}
+                        value={username}
+                        name="username"
+                        onChange={(event) => {
+                            setUsername(event.target.value);
+                            if (submitError) setSubmitError("");
+                        }}
+                        placeholder="用户名或邮箱"
+                        autoComplete="username"
+                        autoFocus
+                        spellCheck={false}
+                        aria-invalid={Boolean(submitError)}
+                        aria-describedby={submitError ? "login-error" : undefined}
+                        required
+                    />
+                </AuthField>
+                <AuthField label="密码">
+                    <Input.Password
+                        size="large"
+                        prefix={<LockKeyhole className="pc-auth-field-icon size-4" />}
+                        value={password}
+                        name="password"
+                        onChange={(event) => {
+                            setPassword(event.target.value);
+                            if (submitError) setSubmitError("");
+                        }}
+                        placeholder="请输入密码"
+                        autoComplete="current-password"
+                        aria-invalid={Boolean(submitError)}
+                        aria-describedby={submitError ? "login-error" : undefined}
+                        required
+                    />
+                </AuthField>
+            </div>
             {submitError ? (
                 <div id="login-error" className="pc-auth-login-error" role="alert">
                     <TriangleAlert className="size-4" aria-hidden="true" />
@@ -103,10 +103,6 @@ export default function LoginPage() {
             <Button className="pc-auth-submit" type="primary" htmlType="submit" size="large" block loading={submitting} disabled={submitting} icon={<ArrowRight className="size-4" />} iconPlacement="end">
                 登录
             </Button>
-            <div className="pc-auth-form-assurance">
-                <ShieldCheck className="size-3.5" aria-hidden="true" />
-                <span>登录凭据只用于当前{branding.config.identity.shortName}服务的身份验证</span>
-            </div>
             {settings?.linuxdoEnabled ? (
                 <>
                     <Divider plain className="pc-auth-divider">

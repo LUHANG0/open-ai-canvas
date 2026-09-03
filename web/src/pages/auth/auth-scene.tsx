@@ -106,25 +106,26 @@ export function AuthScene() {
     return (
         <AuthSettingsContext.Provider value={context}>
             <main className="pc-auth-scene h-dvh min-h-0 overflow-y-auto">
+                <div className="pc-auth-atmosphere" aria-hidden="true">
+                    {showVideo ? (
+                        <video className="pc-auth-atmosphere-media" src={hero.authHeroUrl} poster={hero.authHeroPosterUrl || undefined} autoPlay muted loop playsInline preload="metadata" onError={() => setHeroFailed(true)} />
+                    ) : showImage || showPoster ? (
+                        <img className="pc-auth-atmosphere-media" src={showImage ? hero.authHeroUrl : hero.authHeroPosterUrl} alt="" referrerPolicy="no-referrer" onError={() => setHeroFailed(true)} />
+                    ) : (
+                        <div className="pc-auth-brand-ambient" />
+                    )}
+                    <div className="pc-auth-atmosphere-grade" />
+                </div>
+
                 <div className="pc-auth-layout">
                     <motion.section
                         initial={reducedMotion ? false : { opacity: 0, x: -18 }}
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ duration: aceternityMotion.duration.panel, ease: aceternityMotion.easing.enter }}
-                        className="pc-auth-media-frame"
-                        aria-label={`${branding.config.identity.displayName}品牌画面`}
+                        className="pc-auth-brand-stage"
+                        aria-label={`${branding.config.identity.displayName}品牌介绍`}
                     >
-                        <div className="pc-auth-media-viewport" aria-hidden="true">
-                            {showVideo ? (
-                                <video className="pc-auth-media" src={hero.authHeroUrl} poster={hero.authHeroPosterUrl || undefined} autoPlay muted loop playsInline preload="metadata" onError={() => setHeroFailed(true)} />
-                            ) : showImage || showPoster ? (
-                                <img className="pc-auth-media" src={showImage ? hero.authHeroUrl : hero.authHeroPosterUrl} alt="" referrerPolicy="no-referrer" onError={() => setHeroFailed(true)} />
-                            ) : (
-                                <div className="pc-auth-brand-ambient" />
-                            )}
-                            <div className="pc-auth-media-grade" />
-                        </div>
-                        <div className="pc-auth-media-copy">
+                        <div className="pc-auth-stage-copy">
                             <p>{branding.config.identity.slogan}</p>
                             <h2>{branding.config.auth.title}</h2>
                             {branding.config.auth.description ? <span>{branding.config.auth.description}</span> : null}
@@ -132,30 +133,42 @@ export function AuthScene() {
                     </motion.section>
 
                     <motion.section initial={reducedMotion ? false : { opacity: 0, x: 18 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: aceternityMotion.duration.panel, ease: aceternityMotion.easing.enter }} className="pc-auth-workspace">
-                        <header className="pc-auth-brand-head" aria-label={`${branding.config.identity.displayName}登录入口`}>
-                            <span className="pc-auth-brand-link">
-                                <span className="pc-auth-brand-symbol">
-                                    <BrandMark className="pc-auth-brand-logo" />
+                        <div className="pc-auth-sheet">
+                            <header className="pc-auth-brand-head" aria-label={`${branding.config.identity.displayName}登录入口`}>
+                                <span className="pc-auth-brand-link">
+                                    <span className="pc-auth-brand-symbol">
+                                        <BrandMark className="pc-auth-brand-logo" />
+                                    </span>
+                                    <span className="pc-auth-brand-wordmark">
+                                        <strong>{branding.config.identity.displayName}</strong>
+                                        <small>{branding.config.identity.workspaceLabel}</small>
+                                    </span>
                                 </span>
-                                <strong>{branding.config.identity.displayName}</strong>
-                            </span>
-                        </header>
+                                <span className="pc-auth-access-label">安全访问</span>
+                            </header>
 
-                        <ConfigProvider theme={withBrandingAntTheme(getAntThemeConfig(false, desktop), branding.config.theme.primaryColor, false)}>
-                            <section aria-label={copy.title} className={`pc-auth-card-content ${activeTab === "login" ? "is-login" : "is-register"}`}>
-                                <header className="pc-auth-card-header">
-                                    <p className="pc-auth-card-eyebrow">{settings?.firstUser ? "首次设置" : activeTab === "login" ? "账号登录" : "创建账号"}</p>
-                                    <h1 className="pc-auth-card-title">{settings?.firstUser ? "创建第一个管理员" : copy.title}</h1>
-                                    <p className="pc-auth-card-description">{settings?.firstUser ? `完成 ${branding.config.identity.displayName} 的首次初始化。` : copy.description}</p>
-                                </header>
-                                <div className="pc-auth-tabs-wrap">
-                                    <Tabs className="pc-auth-tabs" activeKey={activeTab} items={tabs} onChange={(key) => navigate({ pathname: key === "register" ? "/register" : "/login", search: location.search })} />
-                                </div>
-                                <div key={location.pathname} className="pc-auth-form-slot">
-                                    <Outlet />
-                                </div>
-                            </section>
-                        </ConfigProvider>
+                            <ConfigProvider theme={withBrandingAntTheme(getAntThemeConfig(false, desktop), branding.config.theme.primaryColor, false)}>
+                                <section aria-label={copy.title} className={`pc-auth-card-content ${activeTab === "login" ? "is-login" : "is-register"}`}>
+                                    <div className="pc-auth-tabs-wrap">
+                                        <Tabs className="pc-auth-tabs" activeKey={activeTab} items={tabs} onChange={(key) => navigate({ pathname: key === "register" ? "/register" : "/login", search: location.search })} />
+                                    </div>
+                                    <header className="pc-auth-card-header">
+                                        <p className="pc-auth-card-eyebrow">{settings?.firstUser ? "首次设置" : activeTab === "login" ? "欢迎回来" : "开始创作"}</p>
+                                        <h1 className="pc-auth-card-title">{settings?.firstUser ? "创建第一个管理员" : activeTab === "login" ? `登录${branding.config.identity.shortName}` : copy.title}</h1>
+                                        <p className="pc-auth-card-description">{settings?.firstUser ? `完成 ${branding.config.identity.displayName} 的首次初始化。` : copy.description}</p>
+                                    </header>
+                                    <div key={location.pathname} className="pc-auth-form-slot">
+                                        <Outlet />
+                                    </div>
+                                </section>
+                            </ConfigProvider>
+
+                            <footer className="pc-auth-sheet-footer">
+                                <span>仅用于当前服务身份验证</span>
+                                <i aria-hidden="true" />
+                                <span>{branding.config.identity.shortName}</span>
+                            </footer>
+                        </div>
                     </motion.section>
                 </div>
             </main>

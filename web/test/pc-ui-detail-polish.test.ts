@@ -38,8 +38,8 @@ describe("PC detail polish regression gates", () => {
     test("keeps ecosystem helper content responsive at compact breakpoints", async () => {
         const [auth, plugins, settings, voice] = await Promise.all([read("../src/pages/auth/auth-pc.css"), read("../src/pages/plugins/plugins.css"), read("../src/pages/settings/settings.css"), read("../src/pages/voice-recording-pc.css")]);
 
-        expect(compact(auth)).toContain("@media (max-width: 1023px)");
-        expect(compact(auth)).toContain(".pc-auth-media-copy p, .pc-auth-media-copy span { display: none; }");
+        expect(compact(auth)).toContain("@media (max-width: 900px)");
+        expect(compact(auth)).toContain(".pc-auth-brand-stage { display: none; }");
         expect(compact(auth)).toContain(".pc-auth-form-assurance, .pc-auth-password-status { display: flex;");
         expect(auth).not.toContain(".pc-auth-brand-capabilities");
         expect(compact(plugins.slice(0, plugins.indexOf("@media (min-width: 1024px)")))).toContain(".plugins-overview, .plugin-card-open-hint, .plugin-section-card-icon { display: none; }");
