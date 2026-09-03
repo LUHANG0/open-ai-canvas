@@ -1,0 +1,196 @@
+---
+title: v1.2.2-preview.4 真实业务验收与 Go/No-Go 记录
+description: 2026-09-04 对最终 RC 的自动门禁、零费用隔离业务链、权限、SSE、存储、重启与备份恢复验收记录。
+---
+
+# v1.2.2-preview.4 真实业务验收与 Go/No-Go 记录
+
+## 结论
+
+**当前整体结论：No-Go。** RC 的自动门禁、离线验证和零费用隔离业务链全部通过，未发现已确认的 P0/P1 产品缺陷；但真实目标环境、真实渠道、付费生成与计费、外部对象存储、维护窗口内运行中任务恢复尚未获得授权或输入，不能把本轮结果外推为生产可上线。
+
+本轮可给出的精确判断是：
+
+- **进入外部真实业务验收：Go。** 代码、构建、数据库迁移、权限、任务状态、SSE、存储、重启持久化及隔离恢复没有形成新的技术阻塞。
+- **生产发布：No-Go。** 下文“未执行项”仍包含发布必测项；这些项通过前不得发布。
+
+## 身份、边界与清理
+
+| 项目 | 记录 |
+| --- | --- |
+| RC 分支 | `fix/final-rc-v1.2.2-preview.4` |
+| 验收起点 | `f0618e42096c88c2d57efd7b96d350fd29fb6dec` |
+| 版本 | `v1.2.2-preview.4` |
+| 数据库 Schema | 当前 `6`，期望 `6` |
+| 独立验收分支 | `test/real-business-acceptance-v1.2.2-preview.4` |
+| 验收时段 | 2026-09-04 06:12–06:32 CST |
+| 原 `main` | `2d9078a150608d370eeae7ba5f3ea5584cd0d8b1`，未改动 |
+| 外部影响 | 未推送、未发布、未部署、未访问生产、未调用付费渠道、未写入外部对象存储 |
+
+隔离环境使用 Compose 项目 `yingce-acceptance-rc4`、本机端口 `43124`、一次性测试账号、测试密码和独立卷。验收结束后已执行 `docker compose ... down -v`，四个服务容器、迁移容器、网络、PostgreSQL/Redis/Backend 数据卷及单独恢复卷均已删除。仅保留本地候选镜像缓存，不构成远端发布。
+
+Host Updater 的失败注入、自动回退、重复人工回退和 fail-closed 结果沿用本 RC 已提交的验收证据；本轮 `go test ./...` 再次覆盖其常规测试包，但没有重复已完成的完整 Docker 失败注入。原始记录见 [最终 RC 集成与上线前验收](final-rc-v1.2.2-preview.4-20260904.mdx)。
+
+## 执行结果总表
+
+| ID | 环境/时间 | 输入类型 | 预期 | 实际 | 证据位置 | 严重性 | 阻塞 |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| E-001 | Git / 06:12 | RC 身份 | 分支指向指定 SHA，版本固定 | `HEAD=f0618e4...`，`VERSION=v1.2.2-preview.4`，Schema 常量为 `6` | 本文“可复现命令”A | 通过 | 否 |
+| E-002 | 本机 / 06:12–06:18 | 全量测试与构建 | Web、Backend、Agent 全绿 | Web `1683/1683`；Backend 全包通过；Agent `316 passed / 5 skipped / 0 failed`；Web/Agent 构建通过 | 本文“可复现命令”B | 通过 | 否 |
+| E-003 | Chrome/CDP / 06:13–06:18 | 关键浏览器路径 | 画布、导演台、交付链无功能或控制台错误 | Canvas 串行 `76/76`，Director `58/58`，Delivery `11/11` | 本文“浏览器与视觉证据” | 通过 | 否 |
+| E-004 | Go/SQLite / 06:18 | 健康、Schema、权限 | 迁移安全，跨账号和公开投影不泄漏 | 定向测试全部通过 | 本文“可复现命令”C | 通过 | 否 |
+| E-005 | Go/SQLite / 06:18 | Task/Billing 状态机 | 明确证据自动结算/退款，不确定证据进人工复核 | 定向测试全部通过，含并发幂等、取消、陈旧订单与分页 | 本文“可复现命令”D | 通过 | 否 |
+| E-006 | Go/SQLite / 06:18 | Storage/SSE | Range、签名、转发流式刷新、游标续传正确 | 定向测试全部通过 | 本文“可复现命令”E | 通过 | 否 |
+| E-007 | PostgreSQL 17 / 06:19 | 真实数据库语义 | 关键迁移与并发幂等通过 | 三项 PostgreSQL 专属测试通过 | 本文“可复现命令”F | 通过 | 否 |
+| E-008 | Docker Compose / 06:20–06:23 | 生产拓扑与候选镜像 | migrate 退出 0，服务 healthy，版本/提交/Schema 一致 | PostgreSQL、Redis、Backend、Web 全 healthy；代理健康接口 `ready=true`，Schema `6/6` | 本文“隔离业务链” | 通过 | 否 |
+| E-009 | Nginx→Backend / 06:23–06:27 | 零费用主链 | 登录、上传、画布、分享、权限、SSE、重启持久化闭环 | 全部符合预期；无真实上游调用和扣费 | 本文“隔离业务链” | 通过 | 否 |
+| E-010 | PostgreSQL/卷 / 06:27–06:30 | 备份恢复 | 数据库、媒体和健康状态一致 | 5 类行数一致，媒体聚合 SHA-256 一致，恢复实例 ready | 本文“备份与恢复” | 通过 | 否 |
+| E-011 | 内置浏览器 / 06:30–06:32 | 登录页响应式与基础校验 | 桌面/窄屏无横向溢出，必填校验可达，无控制台错误 | 1280×720 与 390×844 通过；窄屏 `scrollWidth=innerWidth=390`，错误/警告 0 | 本文“浏览器与视觉证据” | 通过 | 否 |
+| O-001 | Chrome/CDP 并行压力 | 测试可靠性 | 三套 E2E 可并行稳定运行 | 首次并行 Canvas 为 `72/76`，单独重跑 `76/76`；失败项均为超时，未复现功能缺陷 | 本文“观察项” | P3 | 否 |
+| S-001 | 外部/生产 | 真实业务输入 | 完成实际渠道、计费、存储与维护窗口验证 | 未获必要输入，未执行 | 本文“未执行项” | 发布门禁 | 是 |
+
+没有已确认失败项。Canvas Agent 的 5 个 skip 均为 Windows 专属语义，在本次 macOS 环境按套件设计跳过。
+
+## 隔离业务链
+
+本轮从本地 RC 源码构建 Backend/Web 候选镜像，OCI 元数据写入 `v1.2.2-preview.4`、完整 revision `f0618e42096c88c2d57efd7b96d350fd29fb6dec` 和提交时间。Compose 配置校验通过；生产镜像中的 Backend 运行时为 Go `1.25.14`，健康接口同时返回版本、revision 和 Schema。
+
+经正式 Nginx 入口 `http://127.0.0.1:43124` 完成以下零费用链路：
+
+1. 注册首位管理员，创建普通用户 B，并分别登录。
+2. 管理员上传仓库内图片；认证 Range `bytes=0-15` 返回 `206`，16 字节 SHA-256 为 `02a3e298f1533f62558c58e4c70edcab9af5a50d62d925fd5390942020fb0fb8`。
+3. 保存含图片引用的画布，并故意写入 `apiKey`、`taskId` 形态的秘密字段。用户 B 读取返回 `404`；匿名分享投影中对应字段数为 `0`。
+4. 匿名分享资源 Range 返回 `206` 且哈希一致；撤销分享后画布与资源入口均返回 `404`。
+5. 创建前端托管文本重放任务，渠道指向 `.invalid` 且不入队、不访问上游、不计费。SSE 首次返回 progress 和 `id: 1` delta，并带 `X-Accel-Buffering: no`；追加第二段并完成后，以 `Last-Event-ID: 1` 重连，只收到 `id: 2` 和 terminal。
+6. 未登录访问任务返回 `401`，用户 B 访问他人任务返回 `404`，用户 B 访问管理员用户接口返回 `403`。
+7. 重启 Backend 后，readiness 恢复为 true；登录、画布及成功任务仍可读取。
+
+健康与版本结果：`/api/health/live`、`/api/health/ready`、`/api/system/version` 均返回 HTTP 200；`ready=true`、`started=true`、`draining=false`，database/runtime/schema 全部为 true，`currentSchemaVersion=expectedSchemaVersion=6`。`migrate-schema status` 和 `verify` 同样通过。
+
+这条链验证了状态机、持久化、权限和 SSE 代理，但不等价于真实供应商任务执行，也没有产生费用。
+
+## 备份与恢复
+
+PostgreSQL 使用 `pg_dump -Fc` 直接流入独立恢复库 `open_ai_canvas_restore_rc4`。源库与恢复库计数完全一致：users `2`、resources `1`、canvases `1`、tasks `1`、Schema `6`。
+
+Backend 媒体卷通过 tar 流恢复到独立卷；源/恢复聚合 SHA-256 均为 `08924f641dff9547cf622734fe5d528bc49f9c5cd0bcb23a6a5b2b812a6d6720`。恢复实例使用同一候选镜像启动后 `ready=true`、Schema `6/6`、revision 与 RC 一致。
+
+该结果只证明隔离 PostgreSQL 与 Backend `/data` 的备份恢复，不覆盖生产备份落点、外部 OSS/COS 版本恢复或实际 RTO/RPO。
+
+## 浏览器与视觉证据
+
+三套仓库原生真实 Chrome/CDP 验收均通过：
+
+- Canvas：拖拽、撤销/重做、搜索、复制/粘贴、保存刷新、Agent 面板、324 节点/612 连线大画布及错误采集，串行结果 `76/76`。
+- 导演台：成功、缺失模型重试、加载中删除、WebGL context 丢失/恢复及保存失败关闭守卫，`58/58`。
+- 项目交付：真实 FFmpeg MP4、ZIP、SRT、manifest 与下载，`11/11`；生成 MP4 为 3004 字节，ZIP 含 7 个文件。
+
+内置浏览器另行检查登录入口。桌面首屏和登录面板布局完整；390×844 时对话框范围为 left `12`、right `378`、width `366`，页面 `overflowX=0`。空表单提交触发原生“请填写此字段。”并将焦点置于用户名字段；控制台 error/warning 均为 0。
+
+已有、且与同一 RC 对应的可视证据可复核：
+
+- [邀请制登录页，390×844](evidence/final-rc-v1.2.2-preview.4/login-invitation-390x844.png)
+- [标准画布恢复，1366×768](evidence/final-rc-v1.2.2-preview.4/canvas-restored-1366x768.png)
+- [移动端画布恢复，390×844](evidence/final-rc-v1.2.2-preview.4/canvas-mobile-restored-390x844.png)
+- [大画布，1600×1000](evidence/final-rc-v1.2.2-preview.4/canvas-large-1600x1000.png)
+- [素材空目录，390×844](evidence/final-rc-v1.2.2-preview.4/assets-empty-390x844.png)
+- [插件中心，1366×768](evidence/final-rc-v1.2.2-preview.4/plugins-customer-copy-1366x768.png)
+
+## 观察项
+
+### O-001：Canvas E2E 并行运行出现超时，串行不复现
+
+同时运行 Canvas、Director 和 Delivery 三套 Chrome 时，Canvas 的搜索、复制/粘贴及其依赖断言出现 4 个超时，结果 `72/76`；释放并行浏览器负载后，原命令无修改重跑为 `76/76`。Director 与 Delivery 同轮保持全绿，浏览器问题列表为空。
+
+判定为 P3 测试编排可靠性观察，不是已确认产品失败。发布门禁应继续串行运行三套浏览器 E2E；若串行再现则升级为阻断缺陷。
+
+前端构建同时打印若干大于 500 kB 的 Vite chunk 提示，但仓库的 7 项 gzip 体积预算全部通过；最紧项目为最大 CSS `119.4/123.0 KiB`。这是容量余量观察，不构成本次失败。
+
+## 未执行项
+
+以下项目因缺少外部环境或会产生真实费用/生产影响而按边界跳过，均不得被描述为通过：
+
+| 项目 | 跳过原因 | 通过标准 |
+| --- | --- | --- |
+| 目标 URL 的 HTTPS、反向代理、版本与 Schema | 未提供目标环境 | 目标入口返回指定 SHA/版本，ready 全绿，安全头和 SSE 不被代理缓冲 |
+| 真实管理员与 A/B 双账号浏览器路径 | 未提供账号 | 登录/退出/重登、跨账号 401/403/404、分享撤销在目标环境一致 |
+| 真实文本、图片、视频生成 | 未提供获批渠道和费用上限 | 三类最小样例成功，产物可预览/下载，失败/超时/取消行为符合合同 |
+| 真实钱包、订单和供应商用量 | 会产生费用，未授权 | 预授权、结算、退款、未知证据人工复核与供应商用量可对账 |
+| 外部 OSS/COS/S3 | 未提供隔离桶与权限 | 上传、Range、签名、历史、删除、错误恢复与备份边界通过 |
+| 运行中任务重启恢复 | 需要真实渠道和维护窗口 | 启动前后无重复扣费、无错误自动退款，任务进入确定终态或人工复核 |
+| 目标环境浏览器矩阵 | 未提供 URL/账号 | 桌面、窄屏、明暗主题和至少 Chrome/Safari 的关键路径无阻断问题 |
+| 生产备份/恢复和回退执行 | 禁止生产写入，未提供窗口与负责人 | 备份可校验恢复，RTO/RPO 可接受，停止条件和回退责任人明确 |
+
+## 证据—发现—处置路径
+
+| 证据 | 发现 | 处置路径 |
+| --- | --- | --- |
+| E-001–E-011 全部通过 | RC 具备进入受控外部验收的技术基础 | 固定该 SHA 和不可变镜像 digest，只补外部门禁，不在验收分支修改产品代码 |
+| O-001 串行全绿、并行超时 | 浏览器门禁在并行资源争用下有噪声 | 发布前串行运行；串行失败立即停止并建缺陷 |
+| S-001 未执行 | 当前证据不能证明真实渠道、计费、对象存储和生产恢复 | 保持生产 No-Go；取得最小输入后按上表逐项执行并记录证据 |
+
+主路径为：`固定 RC → 全量测试/构建 → PostgreSQL 专项 → 隔离 Compose → 零费用 HTTP/SSE/权限链 → 重启持久化 → 备份恢复 → 受控外部真实业务 → Go/No-Go 复判`。
+
+## 可复现命令
+
+### A. 身份与 Schema
+
+```bash
+git rev-parse fix/final-rc-v1.2.2-preview.4
+git rev-parse HEAD
+git rev-parse main
+cat VERSION
+rg 'CurrentSchemaVersion' backend/internal/database/migrations.go
+```
+
+### B. 全量门禁
+
+```bash
+cd web && bun test && bun run build
+cd backend && go test ./...
+cd canvas-agent && npm test && npm run build
+cd web && bun run test:canvas:e2e
+cd web && bun run test:director:e2e
+cd web && bun run test:project-delivery:e2e
+```
+
+Web 构建的体积预算结果：启动壳 JS `592.1/610.4 KiB`、启动壳 CSS `120.6/125.0 KiB`、画布新增 JS `834.0/859.4 KiB`、创作页新增 JS `400.0/415.0 KiB`、最大业务入口 `180.3/187.5 KiB`、最大 JS `725.8/761.7 KiB`、最大 CSS `119.4/123.0 KiB`，全部 PASS。
+
+### C. 健康、迁移与权限
+
+```bash
+cd backend
+go test -count=1 -v ./cmd/server ./internal/database -run 'Test(SystemReadiness|MigrateSchema|RequireSchemaVersion|PostgresProjectDeliveryMigration|PostgresAssetIDMigration|AssetIDColumns|PostgresAssetIDMigrations)'
+go test -count=1 -v ./internal/... -run 'Test(ShareTokenHashNotExposed|PublicCanvas|ForeignTaskDiagnostics|DeleteCanvas|ResourceOwnership|ResourceSigning|OtherUserStyle|TaskOutput|SafeMedia|Idempotency)'
+```
+
+### D. Task/Billing
+
+```bash
+cd backend
+go test -count=1 -v ./internal/... -run 'Test(Recover|Reconcile|Billing|Cancel|Refund|Stale|Idempotency|AsyncVideo)'
+```
+
+### E. Storage/SSE
+
+```bash
+cd backend
+go test -count=1 -v ./internal/... -run 'Test(Tencent|Aliyun|Range|PublicSignature|S3|Relay|SecretRedaction|StorageRoutes|SystemProxySSE|TaskTextEvents)'
+```
+
+### F. PostgreSQL 专项
+
+```bash
+CANVAS_TEST_POSTGRES_DSN='postgresql://postgres:acceptance@127.0.0.1:43125/postgres?sslmode=disable' \
+  go test -count=1 -v ./internal/database ./internal/repository \
+  -run 'Test(PostgresAssetIDMigration|PostgresProjectDeliveryMigrationUpgradesV4|PostgresCreateTaskIdempotencyConcurrentReservation)'
+```
+
+## 最小剩余外部输入
+
+1. 目标验收 URL。
+2. 管理员、账号 A、账号 B。
+3. 获批的真实文本/图片/视频渠道与外部对象存储测试桶。
+4. 本轮付费上限。
+5. 可执行重启与恢复的维护窗口。
+6. 发布、监控、回退、客户沟通的实名负责人及替补。
