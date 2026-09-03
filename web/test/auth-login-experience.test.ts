@@ -3,15 +3,17 @@ import { describe, expect, test } from "bun:test";
 const read = (path: string) => Bun.file(new URL(path, import.meta.url)).text();
 
 describe("auth login experience", () => {
-    test("uses an ambient brand backdrop with a focused authentication sheet", async () => {
+    test("uses blurred ambient video, a clear feature frame and a compact auth panel", async () => {
         const scene = await read("../src/pages/auth/auth-scene.tsx");
 
         expect(scene).toContain("branding.config.auth.title");
         expect(scene).toContain("pc-auth-brand-head");
         expect(scene).toContain("pc-auth-atmosphere-media");
         expect(scene).toContain("pc-auth-brand-stage");
+        expect(scene).toContain("pc-auth-feature-media");
         expect(scene).toContain("pc-auth-workspace");
-        expect(scene).toContain("pc-auth-sheet");
+        expect(scene).toContain("pc-auth-panel");
+        expect(scene).not.toContain("pc-auth-sheet");
         expect(scene).not.toContain("pc-auth-card-footnote");
         expect(scene).not.toContain("creativeCapabilities");
         expect(scene).not.toContain('aria-label="影视创作流程"');
@@ -27,12 +29,14 @@ describe("auth login experience", () => {
 
         expect(login).toContain('role="alert"');
         expect(login).toContain('aria-describedby={submitError ? "login-error" : undefined}');
-        expect(login).toContain("autoFocus");
+        expect(login).toContain('autoComplete="username"');
         expect(login).toContain('formData.get("username")');
         expect(login).toContain('formData.get("password")');
         expect(login).toContain('name="username"');
         expect(login).toContain('name="password"');
         expect(login).toContain("disabled={submitting}");
+        expect(login).toContain("pc-auth-login-fields");
+        expect(login).not.toContain("pc-auth-credential-group");
     });
 
     test("contains guest hydration failures instead of leaking an unhandled rejection", async () => {
@@ -50,13 +54,15 @@ describe("auth login experience", () => {
 
         expect(styles).toContain("@media (max-width: 900px)");
         expect(styles).toContain(".pc-auth-atmosphere-media");
-        expect(styles).toContain("filter: blur(42px)");
+        expect(styles).toContain("filter: blur(38px)");
+        expect(styles).toContain(".pc-auth-feature-frame");
+        expect(styles).toContain(".pc-auth-feature-media");
         expect(styles).toContain(".pc-auth-workspace");
-        expect(styles).toContain(".pc-auth-credential-group");
+        expect(styles).toContain(".pc-auth-login-fields");
         expect(styles).toContain(".pc-auth-login-error");
         expect(styles).not.toContain(".pc-auth-card-footnote");
-        expect(styles).toContain("grid-template-columns: minmax(0, 1fr) minmax(430px, 500px)");
-        expect(styles).toContain("--auth-paper: rgba(250, 248, 243, 0.94)");
+        expect(styles).toContain("grid-template-columns: minmax(0, 1fr) minmax(400px, 430px)");
+        expect(styles).toContain("--auth-panel: rgba(248, 247, 243, 0.92)");
         expect(styles).toContain("var(--auth-brand)");
     });
 });

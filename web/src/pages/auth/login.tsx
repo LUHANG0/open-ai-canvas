@@ -56,7 +56,7 @@ export default function LoginPage() {
 
     return (
         <form onSubmit={submit} className="pc-auth-form space-y-5">
-            <div className="pc-auth-credential-group">
+            <div className="pc-auth-login-fields">
                 <AuthField label="用户名 / 邮箱">
                     <Input
                         size="large"
@@ -69,7 +69,6 @@ export default function LoginPage() {
                         }}
                         placeholder="用户名或邮箱"
                         autoComplete="username"
-                        autoFocus
                         spellCheck={false}
                         aria-invalid={Boolean(submitError)}
                         aria-describedby={submitError ? "login-error" : undefined}
