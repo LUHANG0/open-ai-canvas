@@ -30,7 +30,7 @@ export const DEFAULT_PUBLIC_SITE_CONFIG: PublicSiteConfig = {
         { id: "director-canvas", title: "导演台与自由画布", category: "视觉编排", description: "在镜头工作台与无限画布之间组织参考、提示词和生成结果。", coverUrl: "", videoUrl: "", externalUrl: "" },
         { id: "generation-delivery", title: "生成到交付", category: "成片制作", description: "统一跟踪图片、视频和音频任务，并把镜头结果整理为可交付文件。", coverUrl: "", videoUrl: "", externalUrl: "" },
     ],
-    links: { docsUrl: "", repositoryUrl: "https://github.com/ddcat-ai/open-ai-canvas", deploymentUrl: "/about#deployment", contactUrl: "", icpText: "" },
+    links: { docsUrl: "", repositoryUrl: "https://github.com/LUHANG0/open-ai-canvas", deploymentUrl: "/about#deployment", contactUrl: "", icpText: "" },
     seo: {
         homeTitle: "影策｜AI 影视与短剧创作工作台",
         homeDescription: "影策是一套从故事、角色、分镜到成片交付的 AI 影视创作工作台。",

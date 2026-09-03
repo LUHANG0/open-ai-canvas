@@ -11,7 +11,7 @@
 把下面这段发给 Codex：
 
 ```text
-请从 https://github.com/ddcat-ai/open-ai-canvas.git 安装影策 Codex 插件。
+请从 https://github.com/LUHANG0/open-ai-canvas.git 安装影策 Codex 插件。
 请 clone 仓库到 ~/plugins/open-ai-canvas，确认 .agents/plugins/marketplace.json 和
 plugins/yingce/.codex-plugin/plugin.json 都存在。然后运行
 codex plugin marketplace add ~/plugins/open-ai-canvas，
@@ -25,7 +25,7 @@ codex plugin marketplace add ~/plugins/open-ai-canvas，
 
 ```bash
 mkdir -p ~/plugins
-git clone https://github.com/ddcat-ai/open-ai-canvas.git ~/plugins/open-ai-canvas
+git clone https://github.com/LUHANG0/open-ai-canvas.git ~/plugins/open-ai-canvas
 ```
 
 注册仓库 marketplace 并安装插件；如果使用已有仓库，请把路径替换为仓库的绝对路径：

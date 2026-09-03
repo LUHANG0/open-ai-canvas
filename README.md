@@ -7,7 +7,7 @@
 <p align="center">让一个故事，从文字走向银幕</p>
 
 <p align="center">
-  <a href="https://github.com/ddcat-ai/open-ai-canvas">GitHub</a> ·
+  <a href="https://github.com/LUHANG0/open-ai-canvas">GitHub</a> ·
   <a href="docs/content/docs/overview/features.mdx">功能</a> ·
   <a href="docs/content/docs/backend/local-development.mdx">文档</a> ·
   <a href="SECURITY.md">安全策略</a>
@@ -15,12 +15,9 @@
 
 影策是一个开源的 AI 影视与短剧创作工作台。它把自由画布、结构化分镜、角色与风格资产、图片/视频/音频生成、异步任务和本地 Agent 放在同一条创作链路里，让创作者从文字 brief 走到可复用的镜头资产。
 
+> **维护声明：** `LUHANG0/open-ai-canvas` 的 `main` 是本项目唯一持续维护、测试和部署的代码基线。原作者仓库仅作为上游来源与版权归属记录，不会被安装脚本、自动更新器或日常开发任务自动同步、合并或部署。
+
 > 项目仍在快速开发，数据结构和外部接口可能直接调整。默认适合个人、本地或可信环境部署；未经安全配置，不要直接作为公网多人服务使用。
-
-演示环境：[https://ddcat.pronhubcn.com](https://ddcat.pronhubcn.com)
-
-- 账号：`test`
-- 密码：`test123456`
 
 ## 赞助商
 
@@ -106,7 +103,7 @@ Codex 插件（`plugins/yingce/`）负责把 MCP 接入 Codex App。
 ### 宿主机启动
 
 ```bash
-git clone https://github.com/ddcat-ai/open-ai-canvas.git
+git clone https://github.com/LUHANG0/open-ai-canvas.git
 cd open-ai-canvas
 
 # 开发数据必须使用 Git 忽略的目录，不要直接使用 backend/data
@@ -168,7 +165,7 @@ CANVAS_ALLOWED_PRIVATE_UPSTREAM_HOSTS=192.168.1.10
 适用于 Linux 云服务器。脚本会安装 Docker，拉取源码，生成受保护的 `.env`，构建网页/后端镜像并启动 PostgreSQL、Redis、后端和网页：
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/ddcat-ai/open-ai-canvas/main/scripts/install-server.sh | sudo bash
+curl -fsSL https://raw.githubusercontent.com/LUHANG0/open-ai-canvas/main/scripts/install-server.sh | sudo bash
 ```
 
 默认访问 `http://服务器IP:3000`。第一个注册账号会成为管理员；公开注册默认关闭。更新或排查：
@@ -186,7 +183,7 @@ sudo docker compose --env-file .env \
 服务器不需要源码时可使用镜像脚本：
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/ddcat-ai/open-ai-canvas/main/scripts/install-server-image.sh | sudo bash
+curl -fsSL https://raw.githubusercontent.com/LUHANG0/open-ai-canvas/main/scripts/install-server-image.sh | sudo bash
 ```
 
 容器包不可匿名拉取时，先通过 `GHCR_USERNAME` 和 `GHCR_TOKEN` 登录 GHCR。生产环境应在 `/opt/open-ai-canvas/.env` 中把 `CANVAS_IMAGE_TAG` 固定为具体 Release（不要使用 `latest`），端口由 `CANVAS_HTTP_PORT` 配置。
@@ -195,7 +192,7 @@ curl -fsSL https://raw.githubusercontent.com/ddcat-ai/open-ai-canvas/main/script
 
 ```bash
 cd /opt/open-ai-canvas
-curl -fsSL https://raw.githubusercontent.com/ddcat-ai/open-ai-canvas/main/scripts/install-host-updater.sh | sudo bash
+curl -fsSL https://raw.githubusercontent.com/LUHANG0/open-ai-canvas/main/scripts/install-host-updater.sh | sudo bash
 sudo docker compose --env-file .env -f docker-compose.deploy.yml up -d --force-recreate backend web --wait
 ```
 
@@ -265,6 +262,7 @@ cd web && bun test test/documentation-links.test.ts
 ## 文档导航
 
 - [功能介绍](docs/content/docs/overview/features.mdx)
+- [维护与分支策略](docs/content/docs/overview/maintenance-policy.mdx)
 - [本地开发](docs/content/docs/backend/local-development.mdx)
 - [数据库结构](docs/content/docs/backend/backend-database.mdx)
 - [插件系统](docs/content/docs/plugins/plugin-system.mdx)
@@ -276,4 +274,4 @@ cd web && bun test test/documentation-links.test.ts
 
 ## 许可证和上游
 
-本项目采用 [MIT](LICENSE) 协议。影策基于 [basketikun/infinite-canvas](https://github.com/basketikun/infinite-canvas) 的早期版本进行二次开发，上游作者和贡献者保留其对应代码的权利与署名。
+本项目采用 [MIT](LICENSE) 协议。本维护版本基于 [ddcat-ai/open-ai-canvas](https://github.com/ddcat-ai/open-ai-canvas) 继续开发；该项目又源自 [basketikun/infinite-canvas](https://github.com/basketikun/infinite-canvas) 的早期版本。上游作者和贡献者保留其对应代码的权利与署名；完整记录见 [NOTICE](NOTICE)。

@@ -1090,7 +1090,7 @@ function AgentConnectView({ theme, enabled, activity, connectError, onToggleEnab
                         type="link"
                         size="small"
                         className="!-mt-1 !h-6 shrink-0 !px-0"
-                        href="https://github.com/ddcat-ai/open-ai-canvas/tree/main/canvas-agent"
+                        href="https://github.com/LUHANG0/open-ai-canvas/tree/main/canvas-agent"
                         target="_blank"
                         rel="noreferrer"
                         icon={<ExternalLink className="size-3.5" />}

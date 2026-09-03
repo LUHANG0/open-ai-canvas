@@ -18,4 +18,27 @@ describe("入口文档链接", () => {
             expect(missing).toEqual([]);
         });
     }
+
+    test("安装、更新和部署默认使用当前维护仓库", () => {
+        const maintainedRepository = "LUHANG0/open-ai-canvas";
+        const deploymentSources = [
+            "scripts/install-server.sh",
+            "scripts/install-server-image.sh",
+            "scripts/install-host-updater.sh",
+            "docker-compose.deploy.yml",
+            "backend/cmd/host-updater/main.go",
+            "backend/internal/hostupdate/manager.go",
+            "web/src/lib/canvas/local-agent-setup.ts",
+        ];
+
+        for (const file of deploymentSources) {
+            const source = readFileSync(resolve(repositoryRoot, file), "utf8");
+            expect(source).not.toContain("ddcat-ai/open-ai-canvas");
+            expect(source.toLowerCase()).toContain(maintainedRepository.toLowerCase());
+        }
+
+        const readme = readFileSync(resolve(repositoryRoot, "README.md"), "utf8");
+        expect(readme).toContain("`main` 是本项目唯一持续维护、测试和部署的代码基线");
+        expect(readme).toContain("https://github.com/LUHANG0/open-ai-canvas.git");
+    });
 });

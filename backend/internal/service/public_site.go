@@ -128,7 +128,7 @@ func DefaultPublicSiteConfig() PublicSiteConfig {
 			{ID: "generation-delivery", Title: "生成到交付", Category: "成片制作", Description: "统一跟踪图片、视频和音频任务，并把镜头结果整理为可交付文件。"},
 		},
 		Links: PublicSiteLinks{
-			RepositoryURL: "https://github.com/ddcat-ai/open-ai-canvas",
+			RepositoryURL: "https://github.com/LUHANG0/open-ai-canvas",
 			DeploymentURL: "/about#deployment",
 		},
 		SEO: PublicSiteSEO{
