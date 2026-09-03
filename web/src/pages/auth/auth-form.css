@@ -139,6 +139,7 @@
 .pc-auth-form {
     display: grid;
     gap: 18px;
+    color-scheme: dark;
 }
 
 .pc-auth-register-form {
@@ -210,7 +211,7 @@
     background-image: none !important;
     caret-color: var(--auth-ink);
     box-shadow: 0 0 0 1000px #000 inset !important;
-    transition: background-color 600000s 0s;
+    transition: none !important;
 }
 
 .pc-auth-submit,

@@ -60,7 +60,7 @@ function AuthSceneContent() {
     return (
         <main className={`pc-auth-scene h-dvh min-h-0 overflow-hidden${authOpen ? " is-auth-open" : ""}`}>
             <AuthMedia />
-            <AnimatePresence mode="wait" initial={false}>
+            <AnimatePresence mode="sync" initial={false}>
                 {!authOpen ? (
                     <AuthEntry key="entry" reducedMotion={reducedMotion} onOpen={() => void openAuth()} />
                 ) : ActivePage ? (

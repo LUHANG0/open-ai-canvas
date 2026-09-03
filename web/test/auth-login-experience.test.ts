@@ -74,6 +74,19 @@ describe("auth login experience", () => {
         expect(provider).toContain("if (settingsRequest) return settingsRequest");
     });
 
+    test("reveals the form as one stable layer without nested input animations", async () => {
+        const [scene, entry, panel, styles] = await Promise.all([read("../src/pages/auth/auth-scene.tsx"), read("../src/pages/auth/auth-entry.tsx"), read("../src/pages/auth/auth-panel.tsx"), read("../src/pages/auth/auth-form.css")]);
+
+        expect(scene).toContain('<AnimatePresence mode="sync"');
+        expect(entry).toContain("exit={{ opacity: 0 }}");
+        expect(panel).not.toContain("scale: 0.975");
+        expect(panel).not.toContain("key={mode}");
+        expect(panel).toContain('<div className="pc-auth-form-slot">');
+        expect(styles).toContain("color-scheme: dark");
+        expect(styles).toContain("transition: none");
+        expect(styles).not.toContain("background-color 600000s");
+    });
+
     test("keeps the cinematic entry responsive without dropping dynamic theme tokens", async () => {
         const styles = [await read("../src/pages/auth/auth-scene.css"), await read("../src/pages/auth/auth-form.css")].join("\n");
 

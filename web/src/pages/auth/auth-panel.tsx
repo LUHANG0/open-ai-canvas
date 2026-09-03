@@ -31,14 +31,8 @@ export function AuthPanel({ mode, Page, reducedMotion, onClose }: { mode: AuthMo
     }, [settings]);
 
     return (
-        <motion.div key="auth" className="pc-auth-workspace" initial={reducedMotion ? false : { opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: reducedMotion ? 0 : 0.42, ease: aceternityMotion.easing.enter }}>
-            <motion.section
-                initial={reducedMotion ? false : { opacity: 0, y: 22, scale: 0.975 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                transition={{ duration: reducedMotion ? 0 : 0.5, ease: aceternityMotion.easing.enter }}
-                className="pc-auth-panel"
-                aria-label={`${branding.config.identity.displayName}账号入口`}
-            >
+        <motion.div key="auth" className="pc-auth-workspace" initial={reducedMotion ? false : { opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: reducedMotion ? 0 : 0.24, ease: aceternityMotion.easing.enter }}>
+            <section className="pc-auth-panel" aria-label={`${branding.config.identity.displayName}账号入口`}>
                 <button type="button" className="pc-auth-panel-close" onClick={onClose} aria-label="返回视频">
                     <span aria-hidden="true">×</span>
                 </button>
@@ -50,9 +44,9 @@ export function AuthPanel({ mode, Page, reducedMotion, onClose }: { mode: AuthMo
                         <h1>{settings?.firstUser ? "创建第一个管理员" : mode === "login" ? `登录${branding.config.identity.shortName}` : "创建账号"}</h1>
                     </header>
 
-                    <motion.div key={mode} initial={reducedMotion ? false : { opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: reducedMotion ? 0 : 0.2, ease: aceternityMotion.easing.enter }} className="pc-auth-form-slot">
+                    <div className="pc-auth-form-slot">
                         <Page />
-                    </motion.div>
+                    </div>
 
                     <footer className="pc-auth-panel-footer">
                         <span>{mode === "login" ? "还没有账号？" : "已经有账号？"}</span>
@@ -61,7 +55,7 @@ export function AuthPanel({ mode, Page, reducedMotion, onClose }: { mode: AuthMo
                         </div>
                     </footer>
                 </ConfigProvider>
-            </motion.section>
+            </section>
         </motion.div>
     );
 }
