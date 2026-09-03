@@ -5,7 +5,8 @@ import { useNavigate, useSearchParams } from "react-router";
 
 import { applyUserSession } from "@/lib/user-session";
 import { getAuthSession, linuxDOLoginURL, register, sendRegistrationEmailCode } from "@/services/api/auth";
-import { LinuxDOIcon, useAuthSettings } from "./auth-scene";
+import { AuthField, LinuxDOIcon } from "./auth-fields";
+import { useAuthSettings } from "./auth-settings-provider";
 
 export default function RegisterPage() {
     const navigate = useNavigate();
@@ -210,15 +211,6 @@ export default function RegisterPage() {
                 </>
             ) : null}
         </form>
-    );
-}
-
-function AuthField({ label, children }: { label: string; children: ReactNode }) {
-    return (
-        <label className="pc-auth-field block space-y-2">
-            <span className="pc-auth-field-label">{label}</span>
-            {children}
-        </label>
     );
 }
 

@@ -1,4 +1,4 @@
-import { type FormEvent, useEffect, useState, type ReactNode } from "react";
+import { type FormEvent, useEffect, useState } from "react";
 import { App, Button, Divider, Input } from "antd";
 import { ArrowRight, LockKeyhole, TriangleAlert, UserRound } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router";
@@ -6,7 +6,8 @@ import { useNavigate, useSearchParams } from "react-router";
 import { applyUserSession } from "@/lib/user-session";
 import { getAuthSession, linuxDOLoginURL, login } from "@/services/api/auth";
 import { useUserStore } from "@/stores/use-user-store";
-import { LinuxDOIcon, useAuthSettings } from "./auth-scene";
+import { AuthField, LinuxDOIcon } from "./auth-fields";
+import { useAuthSettings } from "./auth-settings-provider";
 
 export default function LoginPage() {
     const navigate = useNavigate();
@@ -113,15 +114,6 @@ export default function LoginPage() {
                 </>
             ) : null}
         </form>
-    );
-}
-
-function AuthField({ label, children }: { label: string; children: ReactNode }) {
-    return (
-        <label className="pc-auth-field block space-y-2">
-            <span className="pc-auth-field-label">{label}</span>
-            {children}
-        </label>
     );
 }
 

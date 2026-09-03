@@ -36,7 +36,14 @@ describe("PC detail polish regression gates", () => {
     });
 
     test("keeps ecosystem helper content responsive at compact breakpoints", async () => {
-        const [auth, plugins, settings, voice] = await Promise.all([read("../src/pages/auth/auth-pc.css"), read("../src/pages/plugins/plugins.css"), read("../src/pages/settings/settings.css"), read("../src/pages/voice-recording-pc.css")]);
+        const [authScene, authForm, plugins, settings, voice] = await Promise.all([
+            read("../src/pages/auth/auth-scene.css"),
+            read("../src/pages/auth/auth-form.css"),
+            read("../src/pages/plugins/plugins.css"),
+            read("../src/pages/settings/settings.css"),
+            read("../src/pages/voice-recording-pc.css"),
+        ]);
+        const auth = `${authScene}\n${authForm}`;
 
         expect(compact(auth)).toContain("@media (max-width: 560px)");
         expect(compact(auth)).toContain(".pc-auth-workspace { padding: 12px; }");

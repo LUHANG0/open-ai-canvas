@@ -4,32 +4,29 @@ const read = (path: string) => Bun.file(new URL(path, import.meta.url)).text();
 
 describe("auth login experience", () => {
     test("uses a full-screen video entry and reveals one centered auth panel", async () => {
-        const scene = await read("../src/pages/auth/auth-scene.tsx");
+        const [scene, entry, media, panel] = await Promise.all([read("../src/pages/auth/auth-scene.tsx"), read("../src/pages/auth/auth-entry.tsx"), read("../src/pages/auth/auth-media.tsx"), read("../src/pages/auth/auth-panel.tsx")]);
+        const experience = [scene, entry, media, panel].join("\n");
 
         expect(scene).toContain("authOpen");
-        expect(scene).toContain("pc-auth-entry-nav");
-        expect(scene).toContain("智能影像创作空间");
-        expect(scene).toContain("branding.config.auth.title");
-        expect(scene).toContain("branding.config.auth.description");
-        expect(scene).toContain("pc-auth-entry-button");
-        expect(scene).toContain("进入{branding.config.identity.shortName}");
-        expect(scene).toContain("pc-auth-brand-head");
-        expect(scene).toContain("pc-auth-atmosphere-media");
-        expect(scene).toContain("pc-auth-workspace");
-        expect(scene).toContain("pc-auth-panel");
-        expect(scene).toContain("pc-auth-panel-close");
-        expect(scene).not.toContain("pc-auth-brand-stage");
-        expect(scene).not.toContain("pc-auth-feature-media");
-        expect(scene).not.toContain("pc-auth-layout");
-        expect(scene).not.toContain("pc-auth-sheet");
-        expect(scene).not.toContain("pc-auth-card-footnote");
-        expect(scene).not.toContain("creativeCapabilities");
-        expect(scene).not.toContain('aria-label="影视创作流程"');
-        expect(scene).not.toContain("WELCOME BACK");
-        expect(scene).not.toContain("AUTHENTICATION");
-        expect(scene).not.toContain("pc-auth-media-layer");
-        expect(scene).not.toContain("返回首页");
-        expect(scene).not.toContain("hasHeroMedia");
+        expect(scene).toContain("<AuthSettingsProvider>");
+        expect(scene).toContain("<AuthMedia />");
+        expect(scene).toContain("<AuthEntry");
+        expect(scene).toContain("<AuthPanel");
+        expect(entry).toContain("pc-auth-entry-nav");
+        expect(entry).toContain("智能影像创作空间");
+        expect(entry).toContain("branding.config.auth.title");
+        expect(entry).toContain("branding.config.auth.description");
+        expect(entry).toContain("进入{branding.config.identity.shortName}");
+        expect(media).toContain("pc-auth-atmosphere-media");
+        expect(panel).toContain("pc-auth-brand-head");
+        expect(panel).toContain("pc-auth-workspace");
+        expect(panel).toContain("pc-auth-panel-close");
+        expect(experience).not.toContain("pc-auth-brand-stage");
+        expect(experience).not.toContain("pc-auth-feature-media");
+        expect(experience).not.toContain("pc-auth-layout");
+        expect(experience).not.toContain("pc-auth-sheet");
+        expect(experience).not.toContain("WELCOME BACK");
+        expect(experience).not.toContain("AUTHENTICATION");
     });
 
     test("provides local failure feedback and accessible login fields", async () => {
@@ -57,16 +54,24 @@ describe("auth login experience", () => {
         expect(session).toContain("channels: []");
     });
 
-    test("preloads both auth routes behind the video entry so opening and switching stay smooth", async () => {
-        const scene = await read("../src/pages/auth/auth-scene.tsx");
+    test("preloads auth forms without Suspense and keeps settings single-flight so switching stays smooth", async () => {
+        const [scene, loader, provider, router] = await Promise.all([read("../src/pages/auth/auth-scene.tsx"), read("../src/pages/auth/auth-route-loader.ts"), read("../src/pages/auth/auth-settings-provider.tsx"), read("../src/router.tsx")]);
 
-        expect(scene).toContain('const preloadAuthRoutes = () => Promise.all([import("./login"), import("./register")])');
-        expect(scene).toContain("await preloadAuthRoutes().catch(() => undefined)");
-        expect(scene).toContain("void preload.catch(() => undefined)");
+        expect(loader).toContain('login: () => import("./login")');
+        expect(loader).toContain('register: () => import("./register")');
+        expect(loader).toContain("if (pendingPage) return pendingPage");
+        expect(scene).toContain("void preloadAuthPages()");
+        expect(scene).toContain("await Promise.all([preloadAuthPages(), ensureReady().catch(() => null)])");
+        expect(scene).not.toContain("Suspense");
+        expect(scene).not.toContain("lazy(");
+        expect(router).not.toContain("fullScreenDeferred(<LoginPage />)");
+        expect(router).not.toContain("fullScreenDeferred(<RegisterPage />)");
+        expect(provider).toContain("let settingsRequest: Promise<PublicAuthSettings> | null = null");
+        expect(provider).toContain("if (settingsRequest) return settingsRequest");
     });
 
     test("keeps the cinematic entry responsive without dropping dynamic theme tokens", async () => {
-        const styles = await read("../src/pages/auth/auth-pc.css");
+        const styles = [await read("../src/pages/auth/auth-scene.css"), await read("../src/pages/auth/auth-form.css")].join("\n");
 
         expect(styles).toContain(".pc-auth-atmosphere-media");
         expect(styles).toContain(".pc-auth-scene.is-auth-open .pc-auth-atmosphere-media");
