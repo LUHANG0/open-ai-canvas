@@ -59,4 +59,22 @@ describe("UI stack convergence", () => {
 
         expect(nonAdminImports).toEqual([]);
     });
+
+    test("does not publish unused generic upload or media component families", async () => {
+        const [barrelSource, cssSource, uploadExists, mediaExists] = await Promise.all([
+            read("../src/components/ui/pc/index.ts"),
+            read("../src/components/ui/pc/pc-ui.css"),
+            Bun.file(new URL("../src/components/ui/pc/upload.tsx", import.meta.url)).exists(),
+            Bun.file(new URL("../src/components/ui/pc/media.tsx", import.meta.url)).exists(),
+        ]);
+
+        expect(uploadExists).toBeFalse();
+        expect(mediaExists).toBeFalse();
+        expect(barrelSource).not.toContain('from "./upload"');
+        expect(barrelSource).not.toContain('from "./media"');
+        expect(cssSource).not.toContain(".pc-upload-");
+        expect(cssSource).not.toContain(".pc-file-dropzone");
+        expect(cssSource).not.toContain(".pc-media-thumbnail");
+        expect(cssSource).not.toContain(".pc-media-fallback");
+    });
 });

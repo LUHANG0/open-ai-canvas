@@ -24,10 +24,6 @@ describe("PC UI primitive viewport contract", () => {
             ".pc-status-badge { --pc-status-bg: var(--app-surface-2, var(--surface-card, #f7f8fa)); --pc-status-border: var(--app-border-subtle, var(--border, rgba(17, 17, 17, 0.1))); --pc-status-fg: var(--app-text-secondary, var(--muted-foreground, rgba(17, 17, 17, 0.64))); display: inline-flex; min-height: 24px;",
         );
         expect(mobileContract).toContain("border-radius: var(--r-full, 9999px); font-size: var(--fs-caption, 12px); font-weight: 600;");
-        expect(mobileContract).toContain(".pc-upload-progress__bar { display: block; width: 100%; height: 4px;");
-        expect(mobileContract).toContain(
-            ".pc-media-thumbnail__overlay { position: absolute; inset: auto 0 0; z-index: 1; padding: var(--app-space-3, var(--space-3, 12px)); color: var(--app-text-inverse, #ffffff); background: linear-gradient(to top, rgba(0, 0, 0, 0.68), transparent);",
-        );
         expect(mobileContract).not.toContain(".pc-search-field:hover:not(.is-disabled)");
         expect(mobileContract).not.toContain("box-shadow: inset 3px 0 0 var(--app-action-primary-bg");
     });
@@ -39,10 +35,11 @@ describe("PC UI primitive viewport contract", () => {
         expect(brandDesktop).toContain("@media (min-width: 1024px)");
         expect(brandDesktop).toContain(".pc-search-field:hover:not(.is-disabled)");
         expect(brandDesktop).toContain(".pc-status-badge--running .pc-status-badge__dot");
-        expect(brandDesktop).toContain(".pc-file-dropzone:hover:not(.is-disabled) .pc-file-dropzone__icon");
-        expect(brandDesktop).toContain(".pc-media-thumbnail__overlay");
         expect(source).not.toContain(".pc-empty-state");
-        expect(source).toContain(".pc-media-thumbnail--interactive:hover");
+        expect(source).not.toContain(".pc-upload-");
+        expect(source).not.toContain(".pc-file-dropzone");
+        expect(source).not.toContain(".pc-media-thumbnail");
+        expect(source).not.toContain(".pc-media-fallback");
         expect(source).toContain("@media (prefers-reduced-motion: reduce)");
     });
 });
