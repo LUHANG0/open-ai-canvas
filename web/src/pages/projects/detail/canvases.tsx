@@ -4,7 +4,7 @@ import { App, Button, Popconfirm, Select, Tooltip } from "antd";
 import { Link2, Unlink, X } from "lucide-react";
 
 import { CanvasProjectCard } from "@/components/canvas/canvas-project-card";
-import { PaginationBar } from "@/components/layout/workspace-page";
+import { PaginationBar } from "@/components/ui/pc/page";
 import { WorkspaceState } from "@/components/ui/pc/workspace-state";
 import { SectionHeader, StatusBadge } from "@/components/ui/pc";
 import { linkCanvasUnit, listProjectCanvases, unlinkCanvasProject, unlinkCanvasUnit } from "@/services/api/projects";

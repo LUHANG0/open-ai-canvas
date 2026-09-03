@@ -4,7 +4,7 @@ import type { ColumnsType } from "antd/es/table";
 import { ArrowDownLeft, ArrowUpRight, CalendarCheck, Coins, RefreshCw, RotateCcw, ShieldCheck, SlidersHorizontal, Sparkles, TicketCheck } from "lucide-react";
 
 import { formatCredits } from "@/constant/credits";
-import { PageHeader, PaginationBar, TableSurface, WorkspacePage } from "@/components/layout/workspace-page";
+import { PageHeader, PaginationBar, TableSurface, WorkspacePage } from "@/components/ui/pc/page";
 import { WorkspaceState } from "@/components/ui/pc/workspace-state";
 import { SectionHeader, StatusBadge, Surface } from "@/components/ui/pc";
 import { usePcBrandViewport } from "@/hooks/use-pc-brand-viewport";

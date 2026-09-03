@@ -3,7 +3,7 @@ import { Boxes, Check, Clapperboard, Heart, Library, LoaderCircle, Megaphone, Mo
 import type { LucideIcon } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
 
-import { ListToolbar, PageHeader, PaginationBar, WorkspacePage } from "@/components/layout/workspace-page";
+import { ListToolbar, PageHeader, PaginationBar, WorkspacePage } from "@/components/ui/pc/page";
 import { WorkspaceErrorState, WorkspaceState } from "@/components/ui/pc/workspace-state";
 import { SearchField, SectionHeader, Surface, ViewToggle } from "@/components/ui/pc";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";

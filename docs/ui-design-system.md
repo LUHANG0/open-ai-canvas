@@ -98,6 +98,7 @@
 
 - Ant Design 负责表单、弹窗、抽屉、表格、分页等复杂交互控件；主题差异统一进入 `web/src/lib/app-theme.ts`。
 - `web/src/components/ui/pc` 负责无业务语义的项目公共组件；页面只负责组合，不再创建同职责的第二套公共组件。
+- 用户端页面骨架、工具栏、表格/网格容器和分页固定从 `ui/pc/page` 使用；这组含较重依赖且需要稳定共享分包的组件使用显式子路径，不进入 `ui/pc` 总 barrel，`layout/workspace-page` 只作为 Admin 兼容出口。
 - Tailwind 与页面 CSS 负责布局和局部编排，不复制公共组件的完整视觉合同，不通过全局选择器覆盖第三方组件内部实现。
 - 页面可保留具有明确业务语义的专属空态，例如画布引导和创作起步页；通用空、加载、错误状态统一使用 `WorkspaceState`、`WorkspaceLoadingState`、`WorkspaceErrorState`。
 

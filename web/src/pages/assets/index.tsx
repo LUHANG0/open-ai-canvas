@@ -5,7 +5,7 @@ import { App, Button, Dropdown, Form, Input, Progress, Select, Space, Tag, Typog
 import type { MenuProps } from "antd";
 import { useNavigate } from "react-router";
 
-import { CollectionGrid, ListToolbar, PageHeader, PaginationBar, WorkspacePage } from "@/components/layout/workspace-page";
+import { CollectionGrid, ListToolbar, PageHeader, PaginationBar, WorkspacePage } from "@/components/ui/pc/page";
 import { WorkspaceState } from "@/components/ui/pc/workspace-state";
 import { DialogFrame, DrawerFrame, SearchField, SelectionBar, Surface } from "@/components/ui/pc";
 import { AssetMediaPreview } from "@/components/asset-media-preview";

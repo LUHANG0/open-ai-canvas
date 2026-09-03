@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import { useNavigate, useSearchParams } from "react-router";
 
 import { MediaPreview } from "@/components/media-preview";
-import { ListToolbar, PageHeader, PaginationBar, WorkspacePage } from "@/components/layout/workspace-page";
+import { ListToolbar, PageHeader, PaginationBar, WorkspacePage } from "@/components/ui/pc/page";
 import { WorkspaceState } from "@/components/ui/pc/workspace-state";
 import { DialogFrame, DrawerFrame, SearchField, Surface, ViewToggle } from "@/components/ui/pc";
 import { usePcBrandViewport } from "@/hooks/use-pc-brand-viewport";

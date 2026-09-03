@@ -9,7 +9,7 @@ import { createEagleAssetSource, EAGLE_DEFAULT_BASE_URL, eagleAssetPlugin } from
 import type { ExternalAssetFolder, ExternalAssetItem } from "@/lib/plugins/plugin-types";
 import type { Asset } from "@/stores/use-asset-store";
 import { usePluginStore } from "@/stores/use-plugin-store";
-import { CollectionGrid, ListToolbar, PageHeader, PaginationBar, WorkspacePage } from "@/components/layout/workspace-page";
+import { CollectionGrid, ListToolbar, PageHeader, PaginationBar, WorkspacePage } from "@/components/ui/pc/page";
 import { WorkspaceErrorState, WorkspaceLoadingState, WorkspaceState } from "@/components/ui/pc/workspace-state";
 import { DrawerFrame, StatusBadge, Surface } from "@/components/ui/pc";
 import { AssetLibraryCard, AssetLibraryCardMedia } from "@/components/assets/asset-library-card";

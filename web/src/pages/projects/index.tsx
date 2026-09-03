@@ -4,7 +4,7 @@ import { App, Button, Form, Input, Select } from "antd";
 import { BookOpenText, ChevronDown, FileText, FolderKanban, Palette, Plus, Search, SlidersHorizontal, Sparkles } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router";
 
-import { CollectionGrid, ListToolbar, PageHeader, WorkspacePage } from "@/components/layout/workspace-page";
+import { CollectionGrid, ListToolbar, PageHeader, WorkspacePage } from "@/components/ui/pc/page";
 import { WorkspaceErrorState, WorkspaceLoadingState, WorkspaceState } from "@/components/ui/pc/workspace-state";
 import { DialogFrame, SearchField, SectionHeader, StatusBadge, Surface } from "@/components/ui/pc";
 import { CanvasStylePickerModal, resolveCanvasStylePreset, type CanvasStylePreset } from "@/components/canvas/canvas-style-picker-modal";

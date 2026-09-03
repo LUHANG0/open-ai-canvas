@@ -3,7 +3,7 @@ import { Input, Modal } from "antd";
 import { BookOpenText, ChevronDown, ChevronLeft, ChevronRight, Search } from "lucide-react";
 import { useNavigate } from "react-router";
 
-import { PaginationBar } from "@/components/layout/workspace-page";
+import { PaginationBar } from "@/components/ui/pc/page";
 import type { ProjectUnit } from "@/services/api/projects";
 
 type Props = {

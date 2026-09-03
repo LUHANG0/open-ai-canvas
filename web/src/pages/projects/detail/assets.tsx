@@ -4,7 +4,7 @@ import { Alert, App, Button, Dropdown, Form, Input, Modal, Popconfirm, Tabs, typ
 import { Box, Check, ChevronDown, Download, FileText, FolderOpen, FolderPlus, Image as ImageIcon, Link2, MoreHorizontal, MoveRight, Music2, Pencil, Plus, RefreshCw, Sparkles, Trash2, Upload, UserRound, Video, VolumeX } from "lucide-react";
 
 import { WorkspaceState } from "@/components/ui/pc/workspace-state";
-import { PaginationBar } from "@/components/layout/workspace-page";
+import { PaginationBar } from "@/components/ui/pc/page";
 import { SectionHeader, StatusBadge } from "@/components/ui/pc";
 import { AssetMediaPreview } from "@/components/asset-media-preview";
 import { CachedResourceImage } from "@/components/cached-resource-image";

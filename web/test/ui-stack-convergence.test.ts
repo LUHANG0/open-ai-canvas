@@ -34,4 +34,29 @@ describe("UI stack convergence", () => {
 
         expect(offenders).toEqual([]);
     });
+
+    test("keeps user page scaffolds in the neutral UI layer and the legacy path admin-only", async () => {
+        const [pageSource, compatibilitySource] = await Promise.all([read("../src/components/ui/pc/page.tsx"), read("../src/components/layout/workspace-page.tsx")]);
+
+        expect(pageSource).toContain("export function WorkspacePage");
+        expect(pageSource).toContain("export function PageHeader");
+        expect(pageSource).toContain("export function ListToolbar");
+        expect(pageSource).toContain("export function TableSurface");
+        expect(pageSource).toContain("export function CollectionGrid");
+        expect(pageSource).toContain("export function PaginationBar");
+        expect(compatibilitySource).toContain("Admin compatibility boundary");
+        expect(compatibilitySource).not.toContain("export function");
+
+        const sourceRoot = fileURLToPath(new URL("../src/", import.meta.url));
+        const glob = new Bun.Glob("**/*.{ts,tsx}");
+        const nonAdminImports: string[] = [];
+
+        for await (const path of glob.scan({ cwd: sourceRoot, absolute: true, onlyFiles: true })) {
+            const source = await Bun.file(path).text();
+            const relativePath = path.slice(sourceRoot.length);
+            if (source.includes("@/components/layout/workspace-page") && !relativePath.startsWith("pages/admin/")) nonAdminImports.push(relativePath);
+        }
+
+        expect(nonAdminImports).toEqual([]);
+    });
 });
