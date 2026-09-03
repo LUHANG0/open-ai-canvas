@@ -1,9 +1,9 @@
 /* Short-drama PC shell. Keep helpers inert below the PC breakpoint. */
 
-.pc-short-drama-metrics,
+.pc-short-drama-create-launcher,
 .pc-short-drama-story-label,
 .pc-short-drama-options-toggle,
-.pc-short-drama-card-description,
+.pc-short-drama-card-meta,
 .pc-short-drama-card-updated,
 .pc-project-dialog .app-story-source small,
 .pc-short-drama-project-kicker {
@@ -16,86 +16,40 @@
         margin-inline: auto;
     }
 
-    .pc-short-drama-metrics {
-        display: grid;
-        grid-template-columns: repeat(4, minmax(0, 1fr));
-        gap: 12px;
-    }
-
-    .pc-short-drama-metric {
+    .pc-short-drama-create-launcher {
         display: flex;
         min-width: 0;
         align-items: center;
-        gap: 12px;
-        padding: 14px 16px;
+        justify-content: space-between;
+        gap: 20px;
+        padding: 12px 14px;
         background: var(--app-surface-1);
         border: 1px solid var(--app-border-subtle);
         border-radius: var(--app-surface-radius, 12px);
-        box-shadow: var(--app-shadow-surface);
     }
 
-    .pc-short-drama-metric-icon {
-        display: grid;
-        width: 34px;
-        height: 34px;
-        flex: 0 0 auto;
-        place-items: center;
-        color: var(--app-text-secondary);
-        background: var(--app-surface-2);
-        border: 1px solid var(--app-border-subtle);
-        border-radius: var(--app-control-radius, 8px);
-    }
-
-    .pc-short-drama-metric-icon svg {
-        width: 15px;
-        height: 15px;
-    }
-
-    .pc-short-drama-metric.is-success .pc-short-drama-metric-icon {
-        color: var(--app-status-success-fg);
-        background: var(--app-status-success-bg);
-        border-color: color-mix(in srgb, var(--app-status-success-fg) 18%, transparent);
-    }
-
-    .pc-short-drama-metric.is-accent .pc-short-drama-metric-icon {
-        color: var(--app-selection-fg);
-        background: var(--app-selection-bg);
-        border-color: var(--app-selection-border);
-    }
-
-    .pc-short-drama-metric-copy {
+    .pc-short-drama-create-launcher > div:first-child {
         display: grid;
         min-width: 0;
-        grid-template-columns: minmax(0, 1fr) auto;
-        align-items: baseline;
-        gap: 2px 8px;
+        gap: 2px;
     }
 
-    .pc-short-drama-metric-copy > span {
-        overflow: hidden;
-        color: var(--app-text-secondary);
-        font-size: 12px;
-        font-weight: 560;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-    }
-
-    .pc-short-drama-metric-copy strong {
-        grid-row: 1 / span 2;
-        grid-column: 2;
+    .pc-short-drama-create-launcher strong {
         color: var(--app-text-primary);
-        font-size: 20px;
-        font-weight: 680;
-        font-variant-numeric: tabular-nums;
-        letter-spacing: -0.02em;
+        font-size: 13px;
+        font-weight: 650;
     }
 
-    .pc-short-drama-metric-copy small {
-        overflow: hidden;
+    .pc-short-drama-create-launcher span {
         color: var(--app-text-muted);
         font-size: 11px;
-        text-overflow: ellipsis;
-        white-space: nowrap;
+    }
+
+    .pc-short-drama-create-launcher > div:last-child {
+        display: flex;
+        flex: 0 0 auto;
+        align-items: center;
+        gap: 8px;
     }
 
     .pc-short-drama-hub .app-story-create-main::before {
@@ -245,15 +199,13 @@
         font-weight: 560;
     }
 
-    .pc-short-drama-card-description {
-        display: -webkit-box;
-        min-height: 38px;
-        overflow: hidden;
-        color: var(--app-text-secondary);
-        font-size: 12px;
-        line-height: 19px;
-        -webkit-box-orient: vertical;
-        -webkit-line-clamp: 2;
+    .pc-short-drama-card-meta {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        color: var(--app-text-muted);
+        font-size: 11px;
     }
 
     .pc-short-drama-card-updated {
@@ -266,11 +218,7 @@
     }
 
     .pc-short-drama-hub .project-library-body {
-        gap: 9px;
-    }
-
-    .pc-short-drama-hub .project-library-stats {
-        padding-top: 1px;
+        gap: 8px;
     }
 
     .pc-project-dialog .app-story-source {
@@ -363,8 +311,9 @@
 }
 
 @media (min-width: 1024px) and (max-width: 1199px) {
-    .pc-short-drama-metrics {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+    .pc-short-drama-create-launcher {
+        align-items: flex-start;
+        flex-direction: column;
     }
 
     .pc-short-drama-status-filter button {

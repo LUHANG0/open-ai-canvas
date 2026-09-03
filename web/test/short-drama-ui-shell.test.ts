@@ -29,9 +29,12 @@ describe("short-drama PC shell regression gates", () => {
         expect(detail).toContain("<ProjectAssetsView");
     });
 
-    test("exposes persistent selections and collapsible generation options accessibly", async () => {
+    test("keeps creation focused until the user explicitly expands AI ideation", async () => {
         const index = await read("../src/pages/projects/index.tsx");
 
+        expect(index).toContain('aria-controls="short-drama-ai-starter"');
+        expect(index).toContain("aria-expanded={starterOpen}");
+        expect(index).toContain('{starterOpen ? <Surface id="short-drama-ai-starter"');
         expect(index).toContain('aria-controls="short-drama-generation-options"');
         expect(index).toContain("aria-expanded={generationOptionsOpen}");
         expect(index).toContain("aria-pressed={status === item.value}");
@@ -47,11 +50,25 @@ describe("short-drama PC shell regression gates", () => {
         const beforeDesktop = compact(css.slice(0, css.indexOf("@media (min-width: 1024px)")));
         const desktop = compact(css.slice(css.indexOf("@media (min-width: 1024px)")));
 
-        expect(beforeDesktop).toContain(".pc-short-drama-metrics, .pc-short-drama-story-label, .pc-short-drama-options-toggle");
+        expect(beforeDesktop).toContain(".pc-short-drama-create-launcher, .pc-short-drama-story-label, .pc-short-drama-options-toggle");
         expect(beforeDesktop).toContain("display: none;");
-        expect(desktop).toContain(".pc-short-drama-metrics { display: grid;");
+        expect(desktop).toContain(".pc-short-drama-create-launcher { display: flex;");
         expect(desktop).toContain('.pc-short-drama-status-filter button[aria-pressed="true"]');
         expect(desktop).toContain("@media (min-width: 1024px) and (prefers-reduced-motion: reduce)");
+    });
+
+    test("reduces the overview to one current task and one compact production path", async () => {
+        const [overview, css] = await Promise.all([
+            read("../src/pages/projects/detail/overview.tsx"),
+            read("../src/pages/projects/projects.css"),
+        ]);
+
+        expect(overview).toContain('className="project-standard-flow is-compact"');
+        expect(overview).toContain('className="project-standard-flow-track is-compact"');
+        expect(overview).not.toContain("当前制作检查");
+        expect(overview).not.toContain("快速入口");
+        expect(overview).not.toContain("step.description");
+        expect(css).toContain(".pc-project-overview .project-standard-flow-track.is-compact");
     });
 
     test("keeps new visual rules isolated from Admin and global theme contracts", async () => {

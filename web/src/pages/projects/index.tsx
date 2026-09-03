@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { App, Button, Form, Input, Select } from "antd";
-import { Archive, BookOpenText, CheckCircle2, ChevronDown, FileText, FolderKanban, Layers3, Palette, Plus, Search, SlidersHorizontal, Sparkles } from "lucide-react";
+import { BookOpenText, ChevronDown, FileText, FolderKanban, Palette, Plus, Search, SlidersHorizontal, Sparkles } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router";
 
 import { CollectionGrid, ListToolbar, PageHeader, WorkspacePage } from "@/components/layout/workspace-page";
@@ -23,19 +23,6 @@ import "./projects.css";
 import "./short-drama-shell.css";
 
 type ProjectForm = { name: string; aspectRatio: string; sourceType: string };
-
-function ProjectMetric({ icon, label, value, detail, tone = "neutral" }: { icon: ReactNode; label: string; value: ReactNode; detail: string; tone?: "neutral" | "success" | "accent" }) {
-    return (
-        <div className={`pc-short-drama-metric is-${tone}`}>
-            <span className="pc-short-drama-metric-icon" aria-hidden="true">{icon}</span>
-            <span className="pc-short-drama-metric-copy">
-                <span>{label}</span>
-                <strong>{value}</strong>
-                <small>{detail}</small>
-            </span>
-        </div>
-    );
-}
 
 export default function ProjectsPage() {
     const navigate = useNavigate();
@@ -62,6 +49,7 @@ export default function ProjectsPage() {
     const [generating, setGenerating] = useState(false);
     const [generationStatus, setGenerationStatus] = useState("");
     const [generationPreview, setGenerationPreview] = useState("");
+    const [starterOpen, setStarterOpen] = useState(false);
     const [generationOptionsOpen, setGenerationOptionsOpen] = useState(false);
     const createOpen = searchParams.get("create") === "1";
     const setCreateOpen = (open: boolean) => {
@@ -218,8 +206,7 @@ export default function ProjectsPage() {
     const projectMetrics = useMemo(() => {
         const active = allProjects.filter(({ project }) => project.status === "active").length;
         const archived = allProjects.filter(({ project }) => project.status === "archived").length;
-        const averageCompletion = allProjects.length ? Math.round(allProjects.reduce((total, item) => total + projectSummaryCompletion(item), 0) / allProjects.length) : 0;
-        return { active, archived, averageCompletion };
+        return { active, archived };
     }, [allProjects]);
     useEffect(() => {
         const node = loadMoreRef.current;
@@ -252,13 +239,20 @@ export default function ProjectsPage() {
                     </Button>
                 }
             />
-            <section className="pc-short-drama-metrics" aria-label="已加载项目制作总览">
-                <ProjectMetric icon={<Layers3 />} label="已加载项目" value={allProjects.length} detail={`共 ${totalProjectCount} 个`} />
-                <ProjectMetric icon={<CheckCircle2 />} label="进行中" value={projectMetrics.active} detail="可继续制作" tone="success" />
-                <ProjectMetric icon={<Archive />} label="已归档" value={projectMetrics.archived} detail="可在设置中恢复" />
-                <ProjectMetric icon={<BookOpenText />} label="平均章节进度" value={`${projectMetrics.averageCompletion}%`} detail="基于已加载项目" tone="accent" />
+            <section className="pc-short-drama-create-launcher" aria-label="开始创作">
+                <div>
+                    <strong>开始创作</strong>
+                    <span>从一句灵感、已有文稿或空白项目开始</span>
+                </div>
+                <div>
+                    <Button aria-expanded={starterOpen} aria-controls="short-drama-ai-starter" icon={<Sparkles className="size-3.5" />} onClick={() => setStarterOpen((open) => !open)}>
+                        {starterOpen ? "收起 AI 构思" : "AI 构思"}
+                    </Button>
+                    <Button icon={<FileText className="size-3.5" />} onClick={() => openCreate("novel")}>导入文稿</Button>
+                    <Button type="primary" icon={<Plus className="size-3.5" />} onClick={() => openCreate("blank")}>空白项目</Button>
+                </div>
             </section>
-            <Surface className="app-story-create-panel pc-projects-starter" padding="none" aria-label="开始一部新短剧">
+            {starterOpen ? <Surface id="short-drama-ai-starter" className="app-story-create-panel pc-projects-starter" padding="none" aria-label="AI 构思短剧">
                 <div className="app-story-create-head">
                     <div className="app-story-create-title">
                         <span className="app-story-create-mark">
@@ -432,9 +426,9 @@ export default function ProjectsPage() {
                         />
                     </label>
                 </div>
-            </Surface>
+            </Surface> : null}
             <section className="pc-projects-library" aria-labelledby="pc-projects-library-title">
-                <SectionHeader titleId="pc-projects-library-title" title="我的项目" description="筛选只作用于当前已加载的项目；继续下滑会自动加载下一页。" meta={<span className="pc-projects-library-count">{rows.length} 个结果</span>} />
+                <SectionHeader titleId="pc-projects-library-title" title="我的项目" meta={<span className="pc-projects-library-count">{rows.length} 个结果</span>} />
                 <ListToolbar
                     className="library-toolbar pc-projects-toolbar"
                     active={Boolean(keyword || status !== "all" || sort !== "updated")}
