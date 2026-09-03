@@ -711,12 +711,15 @@ async function saveFailureCloseGuard(cdp, baseUrl) {
     const stayClicked = await cdp.clickText("留在导演台");
     if (!stayClicked) throw new Error("F: 留在导演台 button not clickable");
     const modalGone = await cdp.poll(
-        `![...document.querySelectorAll('.ant-modal-confirm')].some((modal) => {
-            const rect = modal.getBoundingClientRect();
-            const style = getComputedStyle(modal);
-            return rect.width > 0 && rect.height > 0 && style.display !== 'none' && style.visibility !== 'hidden' && Number(style.opacity) > 0;
+        `![...document.querySelectorAll('.ant-modal-confirm button')].some((button) => {
+            if ((button.textContent || '').trim() !== '留在导演台') return false;
+            const rect = button.getBoundingClientRect();
+            const style = getComputedStyle(button);
+            if (rect.width <= 0 || rect.height <= 0 || style.display === 'none' || style.visibility === 'hidden' || style.pointerEvents === 'none' || Number(style.opacity) <= 0) return false;
+            const hit = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
+            return !!hit && (hit === button || button.contains(hit));
         })`,
-        "modal dismissed",
+        "modal action no longer interactable",
         20000,
     );
     assert(modalGone, "F6 confirm dialog dismissed after choosing 留在导演台");
