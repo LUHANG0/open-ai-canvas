@@ -1,0 +1,49 @@
+# PC 短剧内容与资产 UI 审计
+
+## 范围与基线
+
+- 基线提交：`7f98cbb34a4e4ca53ccbfe02609bf18be07aa4a6`
+- 路由：`/projects/:projectId/chapters/:chapterId` 与 `/projects/:projectId/assets`
+- 改动边界：仅重组章节、导入、章节编辑、资产拆分与确认的 PC 端展示层；不改项目入口、路由、API、Store、后端和生成任务逻辑。
+- 明确不修改：`workflow-production*`、`workflow-stage-views.tsx`、`workflow.css`、`web/src/pages/projects/detail.tsx`、`web/src/router.tsx`。
+
+## 既有流程与不变合同
+
+### 章节与导入
+
+1. 手工新建通过 `createProjectUnit`，成功后刷新项目并跳转到新章节。
+2. TXT/Markdown 文件或粘贴文本经 `decodeNovelText` 与 `splitTextIntoChapters` 预览，最多 2,500 章，确认后通过 `importProjectUnits` 追加。
+3. 章节列表使用虚拟滚动，保留搜索、拖拽排序、定点移动、删除与当前章节定位。
+4. 编辑器保留 Tiptap 工具栏、字数统计、本机草稿恢复、未保存离开拦截和 `updateProjectUnit` 保存。
+5. 资产拆分与分镜生成保留原模型选择、前置校验、后台任务轮询、刷新后结果恢复、成功写入和失败反馈。
+
+### 项目资产与候选确认
+
+1. 已确认资产通过 `listProjectAssetsPage` 按目录、分类、页码和页容量读取。
+2. 待确认候选通过 `listProjectAssetCandidates` 独立分页；可通过 `confirmProjectAssetCandidate` 创建新资产，或归并到现有角色版本。
+3. 目录保留新建、重命名、移动、外观设置与空目录删除；资产保留引用、移动、分类、新版本、移出项目、预览与下载。
+4. 角色保留新建/编辑、三视图生成/绑定、声音绑定/解绑和个人素材投影同步。
+
+## UI/UX 问题
+
+- 章节栏顶部主要入口只有图标，导入与新建的优先级不清晰。
+- 章节列表、编辑器标题、制作动作之间缺少明确的信息层级，长时间编辑时状态不易扫读。
+- 导入弹窗的输入、拆分规则、预览与确认区过于密集，且文案仅覆盖“小说”。
+- 待确认资产与正式资产共用单一流式页面，不利于区分“待处理队列”和“可使用制作库”。
+- 资产列表加载只有文字空态，没有保持网格空间结构；候选卡的操作和来源信息视觉权重过低。
+- 页面局部间距、圆角和表面层级与 Admin 参照体系的节奏不完全一致。
+
+## 实施策略
+
+- 为本域新增独立、页面根类限定的样式文件，不写入 `globals.css` 或 workflow 样式。
+- 章节页采用“章节导航 / 章节编辑工作区”双栏结构，增强入口、当前状态和生产动作分组。
+- 导入弹窗调整为“文本来源 / 规则说明 / 拆分预览 / 固定操作区”，展示小说与章回式剧本共用能力。
+- 资产页采用“任务总览 / 待确认队列 / 资产库”三层结构，目录和分类仍使用原查询参数。
+- 用域内骨架卡、结构化空态、可操作错误态和 `aria-live` 完善反馈；不改业务成功/失败条件。
+
+## 预计验证
+
+- `bun run typecheck`
+- `bun test test/canvas-document.test.ts test/project-chapter-assets.test.ts test/project-delivery.test.ts`
+- `bun run build`
+- PC 端章节空态、长列表、导入预览、资产候选与正式资产页面截图检查。
