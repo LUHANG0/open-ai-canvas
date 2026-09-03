@@ -1,5 +1,7 @@
 import { AssetRecordType, createShapeId, createTLStore, type TLImageShape } from "tldraw";
 
+import { fetchBlob } from "@/services/fetch-blob";
+
 const INITIAL_DRAWING_SHAPE_MAX_DIMENSION = 1200;
 
 type DrawingImageSource = {
@@ -11,7 +13,7 @@ type DrawingImageSource = {
 };
 
 export async function createTldrawDrawingFromImage(source: DrawingImageSource) {
-    const sourceBlob = await fetch(source.dataUrl).then((response) => response.blob());
+    const sourceBlob = await fetchBlob(source.dataUrl, undefined, "绘图源图片读取");
     const store = createTLStore();
     const page = store.allRecords().find((record) => record.typeName === "page");
     if (!page) throw new Error("无法初始化 tldraw 绘图页面");

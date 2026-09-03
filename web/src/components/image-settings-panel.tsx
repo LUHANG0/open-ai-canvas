@@ -1,8 +1,8 @@
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import { ConfigProvider, Switch } from "antd";
 
 import { type CanvasTheme } from "@/lib/canvas-theme";
-import { buildImageResolutionOptions, formatImageResolutionSize, imageRatioForSize, imageResolutionChoices, imageResolutionOption, imageSizeForResolution, supportsImageResolutionPresets, type ImageResolutionChoice } from "@/lib/image-resolution-tiers";
+import { buildImageResolutionOptions, formatImageAspectRatio, formatImageResolutionSize, imageRatioForSize, imageResolutionChoices, imageResolutionOption, imageSizeForResolution, supportsImageResolutionPresets, type ImageResolutionChoice } from "@/lib/image-resolution-tiers";
 import { modelCapabilityConfigFor, normalizeImageValue, type ImageCapabilityConfig } from "@/lib/model-capabilities";
 import { mergedImageCapabilityConfig } from "@/lib/model-selection";
 import { modelOptionName, resolveModelChannel, type AiConfig } from "@/stores/use-config-store";
@@ -51,6 +51,11 @@ type ImageSettingsPanelProps = {
 
 export function ImageSettingsPanel({ config, onConfigChange, theme, showTitle = true, showCount = true, className = "w-[304px] space-y-3 rounded-2xl px-1 py-0.5", maxCount = 15, quickCount = 3 }: ImageSettingsPanelProps) {
     const [snapDimensionToStep, setSnapDimensionToStep] = useState(true);
+    const [guidedSection, setGuidedSection] = useState<"custom" | "aspect" | "exact" | null>(null);
+    const customSizeSectionRef = useRef<HTMLDivElement>(null);
+    const aspectSectionRef = useRef<HTMLDivElement>(null);
+    const exactSizeSectionRef = useRef<HTMLDivElement>(null);
+    const guideTimerRef = useRef<number | null>(null);
     const profile = mergedImageCapabilityConfig(config, config.model || config.imageModel);
     const normalized = normalizeImageValue(profile, config);
     const quality = normalized.quality;
@@ -73,6 +78,10 @@ export function ImageSettingsPanel({ config, onConfigChange, theme, showTitle = 
         ? resolutionOptions.filter((item) => item.tier === activeResolution.tier).map((item) => ({ value: item.ratio, label: item.ratio, size: item.size, width: item.width, height: item.height, icon: item.width === item.height ? "square" : item.width > item.height ? "landscape" : "portrait" }))
         : imageAspectOptions(profile);
     const selectedAspect = availableAspects.find((item) => imageOptionValue(profile, item) === activeSize || item.value === activeSize) || availableAspects.find((item) => item.label === activeRatio);
+    const visualAspects = compactAspectOptions(availableAspects, profile, activeSize);
+    const selectedVisualAspect = visualAspects.find((item) => imageOptionValue(profile, item) === activeSize || compactAspectLabel(item) === activeRatio);
+    const exactSizeOptions = Array.from(new Set(pixelSizeValues.filter((value) => /^\d+x\d+$/i.test(value))));
+    const selectedExactSize = exactSizeOptions.includes(activeSize) ? activeSize : "";
     const dimensions = readSizeDimensions(activeSize, selectedAspect || aspectOptions[0]);
 	const activeQualityOptions = profile.quality.values.map((value) => qualityOptions.find((item) => item.value === value) || { value, label: value });
 	const priceTiers = imageModelPriceTiers(config);
@@ -83,11 +92,41 @@ export function ImageSettingsPanel({ config, onConfigChange, theme, showTitle = 
     const selectResolution = (choice: ImageResolutionChoice) => {
         if (choice === "auto") {
             onConfigChange("size", "auto");
+            guideToSizeSelection();
             return;
         }
         const ratio = activeRatio || availableAspects[0]?.label;
         const size = imageSizeForResolution(resolutionOptions, choice, ratio) || resolutionOptions.find((item) => item.tier === choice)?.size;
-        if (size) onConfigChange("size", size);
+        if (size) {
+            onConfigChange("size", size);
+            guideToSizeSelection();
+        }
+    };
+    const guideToSizeSelection = () => {
+        window.requestAnimationFrame(() => {
+            window.requestAnimationFrame(() => {
+                const target = aspectSectionRef.current || exactSizeSectionRef.current || customSizeSectionRef.current;
+                if (!target) return;
+                const scroller = target.closest<HTMLElement>(".canvas-generation-settings-scroll");
+                const kind = target === aspectSectionRef.current ? "aspect" : target === exactSizeSectionRef.current ? "exact" : "custom";
+                setGuidedSection(kind);
+                if (scroller) {
+                    const scrollerRect = scroller.getBoundingClientRect();
+                    const targetRect = target.getBoundingClientRect();
+                    const fullyVisible = targetRect.top >= scrollerRect.top + 8 && targetRect.bottom <= scrollerRect.bottom - 8;
+                    if (!fullyVisible) {
+                        const top = scroller.scrollTop + targetRect.top - scrollerRect.top - 10;
+                        const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+                        scroller.scrollTo({ top: Math.max(0, top), behavior: reducedMotion ? "auto" : "smooth" });
+                    }
+                }
+                if (guideTimerRef.current !== null) window.clearTimeout(guideTimerRef.current);
+                guideTimerRef.current = window.setTimeout(() => {
+                    setGuidedSection(null);
+                    guideTimerRef.current = null;
+                }, 900);
+            });
+        });
     };
     const updateDimension = (key: "width" | "height", value: number | null) => {
         const next = Math.max(1, Math.floor(value || dimensions[key] || 1024));
@@ -96,10 +135,14 @@ export function ImageSettingsPanel({ config, onConfigChange, theme, showTitle = 
         onConfigChange("size", `${alignDimension(width, snapDimensionToStep)}x${alignDimension(height, snapDimensionToStep)}`);
     };
 
+    useEffect(() => () => {
+        if (guideTimerRef.current !== null) window.clearTimeout(guideTimerRef.current);
+    }, []);
+
     return (
         <ImageSettingsTheme theme={theme}>
             <div
-                className={className}
+                className={`${className} image-settings-panel`}
                 style={{ color: theme.node.text }}
                 onMouseDown={(event) => {
                     event.stopPropagation();
@@ -128,6 +171,7 @@ export function ImageSettingsPanel({ config, onConfigChange, theme, showTitle = 
                     <span title="是否支持透明背景由当前模型接口决定" onMouseDown={(event) => event.stopPropagation()}>
                         <Switch
                             size="small"
+                            aria-label="透明背景"
                             checked={transparentBackground}
                             onChange={(checked) => onConfigChange("transparentBackground", checked ? "true" : "false")}
                         />
@@ -143,7 +187,7 @@ export function ImageSettingsPanel({ config, onConfigChange, theme, showTitle = 
                         ))}
                     </div>
                 </div> : null}
-                {profile.size.allowCustom ? <div className="space-y-2">
+                {profile.size.allowCustom ? <div ref={customSizeSectionRef} className={`space-y-2 canvas-generation-settings-guide-target ${guidedSection === "custom" ? "is-guided" : ""}`}>
                     <div className="flex items-center justify-between gap-3">
                         <SettingTitle color={theme.node.muted}>尺寸</SettingTitle>
                         <div className="flex items-center gap-2">
@@ -151,7 +195,7 @@ export function ImageSettingsPanel({ config, onConfigChange, theme, showTitle = 
                                 16倍数对齐
                             </span>
                             <span title="输入完成后自动向上补成 16 的倍数" onMouseDown={(event) => event.stopPropagation()}>
-                                <Switch size="small" checked={snapDimensionToStep} onChange={setSnapDimensionToStep} />
+                                <Switch size="small" aria-label="尺寸按 16 倍数对齐" checked={snapDimensionToStep} onChange={setSnapDimensionToStep} />
                             </span>
                         </div>
                     </div>
@@ -161,23 +205,41 @@ export function ImageSettingsPanel({ config, onConfigChange, theme, showTitle = 
                         <DimensionInput prefix="H" value={dimensions.height} disabled={activeSize === "auto"} theme={theme} alignToStep={snapDimensionToStep} onChange={(value) => updateDimension("height", value)} />
                     </div>
                 </div> : null}
-                {availableAspects.length ? <div className="space-y-2">
-                    <SettingTitle color={theme.node.muted}>尺寸或比例</SettingTitle>
+                {visualAspects.length ? <div ref={aspectSectionRef} className={`space-y-2 canvas-generation-settings-guide-target ${guidedSection === "aspect" ? "is-guided" : ""}`}>
+                    <SettingTitle color={theme.node.muted}>画面比例</SettingTitle>
                     <div className="grid grid-cols-4 gap-1.5 min-[380px]:grid-cols-5">
-                        {availableAspects.map((item) => (
+                        {visualAspects.map((item) => (
                             <button
-                                key={item.value}
+                                key={`${compactAspectLabel(item)}-${item.value}`}
                                 type="button"
-                                className="flex h-[52px] cursor-pointer flex-col items-center justify-center gap-0.5 rounded-lg bg-transparent text-[var(--fs-label)] transition-colors hover:brightness-110 focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-1"
-                                style={{ background: selectedAspect?.value === item.value ? theme.toolbar.activeBg : "transparent", color: theme.node.text, outlineColor: theme.node.muted }}
+                                aria-pressed={selectedVisualAspect?.value === item.value}
+                                className="flex h-[54px] cursor-pointer flex-col items-center justify-center gap-0.5 rounded-lg bg-transparent text-[var(--fs-label)] transition-colors hover:brightness-110 focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-1"
+                                style={{ background: selectedVisualAspect?.value === item.value ? theme.toolbar.activeBg : "transparent", color: theme.node.text, outlineColor: theme.node.muted }}
                                 onMouseDown={(event) => event.stopPropagation()}
                                 onClick={() => selectAspect(item.value)}
                             >
                                 <AspectIcon type={item.icon} width={item.width} height={item.height} color={theme.node.text} />
-                                <span className="whitespace-nowrap">{item.label}</span>
+                                <span className="whitespace-nowrap">{compactAspectLabel(item)}</span>
                             </button>
                         ))}
                     </div>
+                </div> : null}
+                {exactSizeOptions.length > 1 ? <div ref={exactSizeSectionRef} className={`space-y-2 canvas-generation-settings-guide-target ${guidedSection === "exact" ? "is-guided" : ""}`}>
+                    <div className="flex items-end justify-between gap-3">
+                        <SettingTitle color={theme.node.muted}>精确尺寸</SettingTitle>
+                        <span className="text-[var(--fs-tiny)]" style={{ color: theme.node.muted }}>保留模型全部规格</span>
+                    </div>
+                    <select
+                        value={selectedExactSize}
+                        aria-label="精确图片尺寸"
+                        className="h-9 w-full cursor-pointer rounded-lg border bg-transparent px-3 text-[var(--fs-label)] font-medium outline-none focus-visible:ring-1"
+                        style={{ background: theme.toolbar.itemHover, borderColor: theme.toolbar.border, color: theme.node.text }}
+                        onMouseDown={(event) => event.stopPropagation()}
+                        onChange={(event) => onConfigChange("size", event.target.value)}
+                    >
+                        <option value="" disabled>按比例自动匹配</option>
+                        {exactSizeOptions.map((size) => <option key={size} value={size}>{formatExactImageSize(size)}</option>)}
+                    </select>
                 </div> : null}
                 {showCount && effectiveMaxCount > 1 ? (
                     <div className="space-y-2">
@@ -214,6 +276,31 @@ function imageAspectOptions(profile: ImageCapabilityConfig): AspectOption[] {
         const parts = ratioParts(value);
         return { value, label: value, size: value, width: parts?.width || 0, height: parts?.height || 0, icon: "custom" };
     });
+}
+
+function compactAspectOptions(options: AspectOption[], profile: ImageCapabilityConfig, activeSize: string) {
+    const groups = new Map<string, AspectOption>();
+    for (const option of options) {
+        const label = compactAspectLabel(option);
+        const current = groups.get(label);
+        const optionValue = imageOptionValue(profile, option);
+        const isActive = optionValue === activeSize || option.value === activeSize;
+        const isSemanticRatio = /^\d+:\d+$/.test(option.value);
+        const currentIsSemanticRatio = current ? /^\d+:\d+$/.test(current.value) : false;
+        if (!current || isActive || (isSemanticRatio && !currentIsSemanticRatio)) groups.set(label, option);
+    }
+    return Array.from(groups.values());
+}
+
+function compactAspectLabel(option: AspectOption) {
+    const value = option.size || option.value;
+    const label = formatImageAspectRatio(value);
+    return label !== value || /^\d+(?:x|:)\d+$/i.test(value) ? label : option.label.replace(/\s*\([^)]*\)\s*$/, "");
+}
+
+function formatExactImageSize(value: string) {
+    const match = value.match(/^(\d+)x(\d+)$/i);
+    return match ? `${match[1]} × ${match[2]}` : value;
 }
 
 function ratioParts(value: string) {
@@ -281,9 +368,10 @@ function OptionPill({ selected, disabled = false, theme, onClick, children }: { 
     return (
         <button
             type="button"
-			className="h-8 cursor-pointer rounded-full px-2 text-xs transition-colors hover:brightness-110 focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-1 disabled:cursor-not-allowed disabled:opacity-40"
+			className="h-8 cursor-pointer rounded-lg px-2 text-xs font-medium transition-colors hover:brightness-110 focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-1 disabled:cursor-not-allowed disabled:opacity-40"
 			style={{ background: selected ? theme.toolbar.activeBg : "transparent", color: theme.node.text, outlineColor: theme.node.muted }}
 			disabled={disabled}
+            aria-pressed={selected}
             onMouseDown={(event) => event.stopPropagation()}
             onClick={onClick}
         >
@@ -328,7 +416,7 @@ function CountInput({ value, quickCount, max, theme, onChange }: { value: number
         onChange(next);
     };
     return (
-        <label className="flex h-8 overflow-hidden rounded-full text-xs" style={{ background: theme.toolbar.itemHover, color: theme.node.text }}>
+        <label className="flex h-8 overflow-hidden rounded-lg text-xs" style={{ background: theme.toolbar.itemHover, color: theme.node.text }}>
             <input
                 key={value > quickCount ? `custom-${value}` : "quick"}
                 type="number"
@@ -363,7 +451,7 @@ function AspectIcon({ type, width, height, color }: { type: string; width: numbe
 
 function SettingTitle({ children, color }: { children: string; color: string }) {
     return (
-        <div className="text-xs font-medium" style={{ color }}>
+        <div className="text-[var(--fs-label)] font-semibold" style={{ color }}>
             {children}
         </div>
     );

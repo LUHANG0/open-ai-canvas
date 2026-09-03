@@ -1,6 +1,7 @@
 import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { Link, useLocation } from "react-router";
 
+import { useBranding } from "@/components/branding/branding-provider";
 import { SystemAnnouncementCenter } from "@/components/layout/system-announcement-center";
 import { WorkspaceAccountMenu } from "@/components/layout/workspace-account-menu";
 import { useWorkspaceTopBarContent } from "@/components/layout/workspace-top-bar-extension";
@@ -22,6 +23,7 @@ const PAGE_CONTEXT: Record<string, { section: string; title: string }> = {
 };
 
 export function WorkspaceTopBar({ sidebarOpen, onToggleSidebar }: { sidebarOpen: boolean; onToggleSidebar: () => void }) {
+    const { branding } = useBranding();
     const theme = useThemeStore((state) => state.theme);
     const setTheme = useThemeStore((state) => state.setTheme);
     const user = useUserStore((state) => state.user);
@@ -29,7 +31,10 @@ export function WorkspaceTopBar({ sidebarOpen, onToggleSidebar }: { sidebarOpen:
     const extension = useWorkspaceTopBarContent();
 
     const slug = pathname.split("/").filter(Boolean)[0];
-    const pageContext = (slug && PAGE_CONTEXT[slug]) || { section: "Yingce", title: "影策" };
+    const pageContext = (slug && PAGE_CONTEXT[slug]) || {
+        section: branding.config.identity.englishName || branding.config.identity.shortName,
+        title: branding.config.identity.displayName,
+    };
 
     return (
         <header className={`app-workspace-topbar flex shrink-0 items-center justify-between gap-2 px-3 sm:px-4 ${extension ? "has-extension" : ""}`} aria-label="工作区顶栏">

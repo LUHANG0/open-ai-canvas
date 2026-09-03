@@ -1,9 +1,9 @@
 import localforage from "localforage";
 
-import { nanoid } from "nanoid";
 import { readImageMeta } from "@/lib/image-utils";
 import { getActiveUserScope } from "@/lib/user-scope";
 import { importResourceFromUrl, isResourceUrl, resourceFileUrl, resourceIdFromStorageKey, resourceStorageKey, uploadResourceFile } from "@/services/api/resources";
+import { fetchBlob } from "@/services/fetch-blob";
 import { cacheResourceObjectUrl, getCachedResourceBlob, getCachedResourceObjectUrl, primeResourceBlobCache } from "@/services/resource-blob-cache";
 
 export type UploadedImage = {
@@ -34,13 +34,12 @@ export async function uploadImage(input: string | Blob): Promise<UploadedImage> 
             // Keep the browser-side path as a fallback for CORS-enabled HTTPS images.
         }
     }
-    const blob = typeof input === "string" ? await (await fetch(input)).blob() : input;
+    const blob = typeof input === "string" ? await fetchBlob(input, undefined, "图片读取") : input;
     const previewUrl = URL.createObjectURL(blob);
-    const meta = await readImageMeta(previewUrl);
     try {
+        const meta = await readImageMeta(previewUrl);
         const resource = await uploadResourceFile(blob, "image", { width: meta.width, height: meta.height, fileName: input instanceof File ? input.name : undefined });
         await primeResourceBlobCache(resourceStorageKey(resource.id), blob).catch(() => "");
-        URL.revokeObjectURL(previewUrl);
         return {
             url: resource.publicUrl || resourceFileUrl(resource.id),
             storageKey: resourceStorageKey(resource.id),
@@ -49,14 +48,11 @@ export async function uploadImage(input: string | Blob): Promise<UploadedImage> 
             bytes: resource.size || blob.size,
             mimeType: resource.mimeType || blob.type || meta.mimeType,
         };
-    } catch {
-        // OSS is optional during local/self-hosted setup. Keep the existing local fallback.
+    } catch (error) {
+        throw uploadPersistenceError("图片", error);
+    } finally {
+        URL.revokeObjectURL(previewUrl);
     }
-    const storageKey = `image:${getActiveUserScope()}:${nanoid()}`;
-    await store.setItem(storageKey, blob);
-    const url = previewUrl;
-    objectUrls.set(storageKey, url);
-    return { url, storageKey, width: meta.width, height: meta.height, bytes: blob.size, mimeType: blob.type || meta.mimeType };
 }
 
 function shouldImportRemoteImage(input: string) {
@@ -105,8 +101,8 @@ export async function imageToDataUrl(image: { url?: string; dataUrl?: string; st
     const url = image.dataUrl || (await resolveImageUrl(image.storageKey, image.url || ""));
     if (!url) return url;
     if (url.startsWith("data:image/")) return url;
-    if (url.startsWith("data:")) return blobToDataUrl(await normalizeImageBlob(await (await fetch(url)).blob(), image.name));
-    const blob = await (await fetch(url, { credentials: isResourceUrl(url) ? "include" : "same-origin" })).blob();
+    if (url.startsWith("data:")) return blobToDataUrl(await normalizeImageBlob(await fetchBlob(url, undefined, "参考图片读取"), image.name));
+    const blob = await fetchBlob(url, { credentials: isResourceUrl(url) ? "include" : "same-origin" }, "参考图片读取");
     return blobToDataUrl(await normalizeImageBlob(blob, image.name || url));
 }
 
@@ -173,4 +169,9 @@ function imageMimeTypeFromName(value: string) {
     if (path.endsWith(".gif")) return "image/gif";
     if (path.endsWith(".bmp")) return "image/bmp";
     return "";
+}
+
+function uploadPersistenceError(kind: string, error: unknown) {
+    const details = error instanceof Error && error.message ? `：${error.message}` : "";
+    return new Error(`${kind}上传失败，未保存到服务器${details}`);
 }

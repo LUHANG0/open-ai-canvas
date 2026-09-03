@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - main
+      - develop/yingce-platform
 
 permissions:
   contents: read
@@ -24,7 +25,13 @@ jobs:
           cache: true
       - name: Check formatting
         run: test -z "$(gofmt -l .)"
+      - name: Install delivery media tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes ffmpeg
       - name: Run Go tests
+        env:
+          CANVAS_DELIVERY_FFMPEG_INTEGRATION: "1"
         run: go test ./...
 
   web:
@@ -76,9 +83,32 @@ jobs:
         run: bun run typecheck
       - name: Run tests
         run: bun run test
+      - name: Build production bundle
+        run: bun run build
       # ubuntu-latest 预装 google-chrome；脚本的解析顺序已覆盖该路径，
       # 因此不引入第三方 setup action，也不需要任何 secret。
       - name: Director P0 Chrome E2E
         run: |
           google-chrome --version || chromium --version
           bun run test:director:e2e
+
+  canvas-agent:
+    name: Canvas Agent checks
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: canvas-agent
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.9
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      - name: Install Web dependencies for cross-runtime contracts
+        working-directory: web
+        run: bun install --frozen-lockfile
+      - name: Build
+        run: npm run build
+      - name: Run tests
+        run: npm test

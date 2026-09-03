@@ -45,7 +45,19 @@ export function imageSizeForResolution(options: ImageResolutionOption[], tier: I
 }
 
 export function imageRatioForSize(size: string) {
-    return parseImageResolutionOption(size)?.ratio || "";
+    const semanticRatio = size.trim().match(/^(\d+):(\d+)$/);
+    if (semanticRatio) return `${Number(semanticRatio[1])}:${Number(semanticRatio[2])}`;
+    const dimensions = parseDimensions(size);
+    return dimensions ? closestRatio(dimensions.width / dimensions.height) : "";
+}
+
+export function formatImageAspectRatio(size: string) {
+    const canonical = imageRatioForSize(size);
+    if (canonical) return canonical;
+    const dimensions = parseDimensions(size);
+    if (!dimensions) return size;
+    const divisor = gcd(dimensions.width, dimensions.height);
+    return `${dimensions.width / divisor}:${dimensions.height / divisor}`;
 }
 
 export function formatImageResolutionSize(size: string, options: ImageResolutionOption[]) {
@@ -55,16 +67,28 @@ export function formatImageResolutionSize(size: string, options: ImageResolution
 }
 
 function parseImageResolutionOption(value: string): ImageResolutionOption | null {
-    const match = value.trim().toLowerCase().match(/^(\d+)x(\d+)$/);
-    if (!match) return null;
-    const width = Number(match[1]);
-    const height = Number(match[2]);
+    const dimensions = parseDimensions(value);
+    if (!dimensions) return null;
+    const { width, height } = dimensions;
     const pixels = width * height;
     const tier: ImageResolutionTier | null = pixels <= 2_000_000 ? "1k" : pixels <= 4_300_000 ? "2k" : pixels <= 8_294_400 ? "4k" : null;
     if (!tier) return null;
     const ratio = closestRatio(width / height);
     if (!ratio) return null;
     return { size: `${width}x${height}`, tier, ratio, width, height };
+}
+
+function parseDimensions(value: string) {
+    const match = value.trim().toLowerCase().match(/^(\d+)x(\d+)$/);
+    if (!match) return null;
+    const width = Number(match[1]);
+    const height = Number(match[2]);
+    if (!width || !height) return null;
+    return { width, height };
+}
+
+function gcd(a: number, b: number): number {
+    return b ? gcd(b, a % b) : a;
 }
 
 function closestRatio(value: number) {

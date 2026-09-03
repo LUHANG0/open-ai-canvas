@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 
 import {
     buildImageResolutionOptions,
+    formatImageAspectRatio,
     formatImageResolutionSize,
     imageResolutionChoices,
     imageResolutionOption,
@@ -58,5 +59,13 @@ describe("image resolution tiers", () => {
 
         expect(options.map((item) => item.tier)).toEqual(["1k", "2k", "4k"]);
         expect(imageResolutionOption(options, "3840x1920")).toMatchObject({ tier: "4k", ratio: "2:1" });
+    });
+
+    test("精确像素在界面中映射为标准画幅比例", () => {
+        expect(formatImageAspectRatio("1360x1024")).toBe("4:3");
+        expect(formatImageAspectRatio("1024x1360")).toBe("3:4");
+        expect(formatImageAspectRatio("1824x1024")).toBe("16:9");
+        expect(formatImageAspectRatio("2048x878")).toBe("21:9");
+        expect(formatImageAspectRatio("4:3")).toBe("4:3");
     });
 });

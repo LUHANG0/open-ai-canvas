@@ -1,9 +1,17 @@
-import { CanvasNodeAnnotationDialog } from "@/components/canvas/canvas-node-annotation-dialog";
-import { CanvasNodeCropDialog, type CanvasImageCropRect } from "@/components/canvas/canvas-node-crop-dialog";
-import { CanvasNodeMaskEditDialog, type CanvasImageMaskEditPayload } from "@/components/canvas/canvas-node-mask-edit-dialog";
-import { CanvasNodeSplitDialog, type CanvasImageSplitParams } from "@/components/canvas/canvas-node-split-dialog";
-import { CanvasNodeUpscaleDialog, type CanvasImageUpscaleParams } from "@/components/canvas/canvas-node-upscale-dialog";
+import { lazy, Suspense } from "react";
+
+import type { CanvasImageCropRect } from "@/components/canvas/canvas-node-crop-dialog";
+import type { CanvasImageMaskEditPayload } from "@/components/canvas/canvas-node-mask-edit-dialog";
+import type { CanvasImageSplitParams } from "@/components/canvas/canvas-node-split-dialog";
+import type { CanvasImageUpscaleParams } from "@/components/canvas/canvas-node-upscale-dialog";
 import type { CanvasNodeData } from "@/types/canvas";
+import { CanvasDialogLoadingOverlay } from "./canvas-dialog-loading-overlay";
+
+const CanvasNodeAnnotationDialog = lazy(() => import("@/components/canvas/canvas-node-annotation-dialog").then((module) => ({ default: module.CanvasNodeAnnotationDialog })));
+const CanvasNodeCropDialog = lazy(() => import("@/components/canvas/canvas-node-crop-dialog").then((module) => ({ default: module.CanvasNodeCropDialog })));
+const CanvasNodeMaskEditDialog = lazy(() => import("@/components/canvas/canvas-node-mask-edit-dialog").then((module) => ({ default: module.CanvasNodeMaskEditDialog })));
+const CanvasNodeSplitDialog = lazy(() => import("@/components/canvas/canvas-node-split-dialog").then((module) => ({ default: module.CanvasNodeSplitDialog })));
+const CanvasNodeUpscaleDialog = lazy(() => import("@/components/canvas/canvas-node-upscale-dialog").then((module) => ({ default: module.CanvasNodeUpscaleDialog })));
 
 type CanvasProjectMediaDialogsProps = {
     cropNode: CanvasNodeData | null;
@@ -42,11 +50,11 @@ export function CanvasProjectMediaDialogs({
 }: CanvasProjectMediaDialogsProps) {
     return (
         <>
-            {cropNode?.metadata?.content ? <CanvasNodeCropDialog dataUrl={cropNode.metadata.content} open onClose={onCloseCrop} onConfirm={(crop) => onCrop(cropNode, crop)} /> : null}
-            {annotationNode?.metadata?.content ? <CanvasNodeAnnotationDialog image={{ url: annotationNode.metadata.content, storageKey: annotationNode.metadata.storageKey }} open onClose={onCloseAnnotation} onConfirm={(dataUrl) => onAnnotate(annotationNode, dataUrl)} /> : null}
-            {maskEditNode?.metadata?.content ? <CanvasNodeMaskEditDialog dataUrl={maskEditNode.metadata.content} open onClose={onCloseMaskEdit} onConfirm={(payload) => onMaskEdit(maskEditNode, payload)} /> : null}
-            {splitNode?.metadata?.content ? <CanvasNodeSplitDialog dataUrl={splitNode.metadata.content} open onClose={onCloseSplit} onConfirm={(params) => onSplit(splitNode, params)} /> : null}
-            {upscaleNode?.metadata?.content ? <CanvasNodeUpscaleDialog dataUrl={upscaleNode.metadata.content} open onClose={onCloseUpscale} onConfirm={(params) => onUpscale(upscaleNode, params)} /> : null}
+            {cropNode?.metadata?.content ? <Suspense fallback={<CanvasDialogLoadingOverlay label="正在加载图片工具…" />}><CanvasNodeCropDialog dataUrl={cropNode.metadata.content} open onClose={onCloseCrop} onConfirm={(crop) => onCrop(cropNode, crop)} /></Suspense> : null}
+            {annotationNode?.metadata?.content ? <Suspense fallback={<CanvasDialogLoadingOverlay label="正在加载图片工具…" />}><CanvasNodeAnnotationDialog image={{ url: annotationNode.metadata.content, storageKey: annotationNode.metadata.storageKey }} open onClose={onCloseAnnotation} onConfirm={(dataUrl) => onAnnotate(annotationNode, dataUrl)} /></Suspense> : null}
+            {maskEditNode?.metadata?.content ? <Suspense fallback={<CanvasDialogLoadingOverlay label="正在加载图片工具…" />}><CanvasNodeMaskEditDialog dataUrl={maskEditNode.metadata.content} open onClose={onCloseMaskEdit} onConfirm={(payload) => onMaskEdit(maskEditNode, payload)} /></Suspense> : null}
+            {splitNode?.metadata?.content ? <Suspense fallback={<CanvasDialogLoadingOverlay label="正在加载图片工具…" />}><CanvasNodeSplitDialog dataUrl={splitNode.metadata.content} open onClose={onCloseSplit} onConfirm={(params) => onSplit(splitNode, params)} /></Suspense> : null}
+            {upscaleNode?.metadata?.content ? <Suspense fallback={<CanvasDialogLoadingOverlay label="正在加载图片工具…" />}><CanvasNodeUpscaleDialog dataUrl={upscaleNode.metadata.content} open onClose={onCloseUpscale} onConfirm={(params) => onUpscale(upscaleNode, params)} /></Suspense> : null}
         </>
     );
 }

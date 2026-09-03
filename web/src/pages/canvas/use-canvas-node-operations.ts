@@ -8,6 +8,7 @@ import { FOLDER_COLLAPSED_HEIGHT, FOLDER_COLLAPSED_WIDTH, FRAME_HEADER_HEIGHT, g
 import { alignCanvasNodes, layoutCanvasFlow, layoutCanvasNodes, nextCanvasVersionLabel, type CanvasAlignmentMode } from "@/lib/canvas/canvas-layout";
 import { createCanvasNode, isHiddenBatchChild, removeCanvasNodes } from "@/lib/canvas/canvas-project-domain";
 import { isolateCopiedNodeMetadata, nextCopiedNodeTitle } from "@/lib/canvas/canvas-node-copy";
+import { placeCanvasNode } from "@/lib/canvas/canvas-node-placement";
 import { CanvasNodeType, type CanvasConnection, type CanvasFolderStyle, type CanvasFolderTheme, type CanvasNodeData, type CanvasNodeMetadata, type CanvasNodeTypeId, type ContextMenuState, type Position } from "@/types/canvas";
 import { cloneCanvasDrawing } from "@/lib/canvas/canvas-drawing-storage";
 import { isDrawingEngineAvailable, type CanvasDrawingEngine } from "@/lib/canvas/canvas-drawing-engine";
@@ -148,7 +149,8 @@ export function useCanvasNodeOperations({
                 : type === PORTRAIT_CLEARANCE_NODE_TYPE
                     ? { portraitClearance: createDefaultPortraitClearanceState() }
                     : undefined;
-        const node = createCanvasNode(type, position || getCanvasCenter(), metadata);
+        const center = position || getCanvasCenter();
+        const node = placeCanvasNode(createCanvasNode(type, center, metadata), nodesRef.current, center);
         if (workflowTitle) node.title = workflowTitle;
         commitNodes([...nodesRef.current, node]);
         selectNodes(new Set([node.id]));
@@ -156,7 +158,8 @@ export function useCanvasNodeOperations({
     }, [commitNodes, defaultDrawingEngine, effectiveConfig.comfyBridge.enabled, effectiveConfig.comfyBridge.workflows.length, effectiveConfig.runningHub.enabled, effectiveConfig.runningHub.workflows.length, getCanvasCenter, message, nodesRef, runtimeStatuses, selectNodes, setDialogNodeId, tldrawLicenseKey]);
 
     const createFolder = useCallback((position?: Position, linked?: { id: string; projectId: string; title: string; style: CanvasFolderStyle; theme: CanvasFolderTheme; createdAt: string }) => {
-        const folder = createCanvasNode(CanvasNodeType.Frame, position || getCanvasCenter(), {
+        const center = position || getCanvasCenter();
+        let folder = createCanvasNode(CanvasNodeType.Frame, center, {
             frame: {
                 collapsed: true,
                 expandedWidth: NODE_DEFAULT_SIZE[CanvasNodeType.Frame].width,
@@ -173,6 +176,7 @@ export function useCanvasNodeOperations({
         folder.title = linked?.title || "我的文件";
         folder.width = FOLDER_COLLAPSED_WIDTH;
         folder.height = FOLDER_COLLAPSED_HEIGHT;
+        folder = placeCanvasNode(folder, nodesRef.current, center);
         commitNodes([...nodesRef.current, folder]);
         selectNodes(new Set([folder.id]));
         message.success(linked ? "素材文件夹已放到画布，打开可浏览其中内容" : "文件夹已创建，可拖入任意非容器节点");

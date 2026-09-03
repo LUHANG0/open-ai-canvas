@@ -72,9 +72,12 @@ func RegisterModelCatalogRoutes(r *gin.RouterGroup, svc *service.Service) {
 			}
 			ok(c, gin.H{"quote": quote})
 		} else {
-			// 使用系统渠道模型报价
-			// TODO: 实现系统渠道模型报价逻辑
-			fail(c, http.StatusNotImplemented, errors.New("系统渠道模型报价功能尚未实现"))
+			quote, err := svc.QuoteSystemChannelModel(req.ModelID, req.Intent)
+			if err != nil {
+				failService(c, err)
+				return
+			}
+			ok(c, gin.H{"quote": quote})
 		}
 	})
 }

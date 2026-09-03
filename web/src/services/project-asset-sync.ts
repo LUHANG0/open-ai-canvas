@@ -4,6 +4,7 @@ import { parseBackendGenerationResult, type BackendGenerationResult } from "@/se
 import { linkProjectAsset, moveProjectAsset, updateProjectAssetCategory } from "@/services/api/projects";
 import type { GenerationTask, GenerationTaskOutput } from "@/services/api/task-center";
 import { getMediaBlob, resolveMediaUrl, setMediaBlob } from "@/services/file-storage";
+import { fetchBlob } from "@/services/fetch-blob";
 import { createGenerationTaskMaterializer, createIdempotentMaterializeOutput, materializeEffectKey, type MaterializeGenerationTaskOutput } from "@/services/generation-task-materializer";
 import { withGenerationArtifactCommitLock } from "@/services/generation-asset-repository";
 import { uploadGeneratedAssetToConfiguredSources } from "@/services/external-asset-sources";
@@ -179,7 +180,7 @@ async function storedGenerationImage(result: NonNullable<BackendGenerationResult
     const blob = await loadOrStoreGenerationArtifact({
         effectKey: storageKey,
         read: (key) => getImageBlob(key),
-        materialize: async () => (await fetch(result.dataUrl, { signal })).blob(),
+        materialize: () => fetchBlob(result.dataUrl, { signal }, "图片结果读取"),
         write: async (key, artifact) => {
             await setImageBlob(key, artifact);
         },
@@ -206,7 +207,7 @@ async function storedGenerationMedia(dataUrl: string, effectKey: string, mediaTy
     const blob = await loadOrStoreGenerationArtifact({
         effectKey: storageKey,
         read: (key) => getMediaBlob(key),
-        materialize: async () => (await fetch(dataUrl, { signal })).blob(),
+        materialize: () => fetchBlob(dataUrl, { signal }, `${mediaType === "video" ? "视频" : "音频"}结果读取`),
         write: async (key, artifact) => {
             await setMediaBlob(key, artifact);
         },

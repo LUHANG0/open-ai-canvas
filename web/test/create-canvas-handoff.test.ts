@@ -6,7 +6,7 @@ import { createGenerationTaskSubscriptionService, type GenerationTask } from "..
 import { removeCreationConversationSnapshot, updateCreationConversationSnapshot } from "../src/services/creation-conversation-store";
 
 test("Create exposes one accessible copy action beside each displayed user prompt", async () => {
-    const source = await Bun.file(new URL("../src/pages/create/index.tsx", import.meta.url)).text();
+    const source = await Bun.file(new URL("../src/pages/create/creation-storyboard-workbench.tsx", import.meta.url)).text();
     expect(source).toContain('aria-label="复制提示词"');
     expect(source).toContain('copyText(visiblePrompt, "提示词已复制")');
 });
@@ -96,13 +96,13 @@ test("Create refresh subscriptions share one durable scheduler observation witho
 });
 
 test("Create durably correlates failures that happen before the first Runtime response", async () => {
-    const source = await Bun.file(new URL("../src/pages/create/index.tsx", import.meta.url)).text();
+    const source = await Promise.all(["../src/pages/create/index.tsx", "../src/pages/create/creation-types.ts", "../src/pages/create/creation-submission-transaction.ts", "../src/pages/create/use-creation-submit-workflow.ts"].map((path) => Bun.file(new URL(path, import.meta.url)).text())).then((parts) => parts.join("\n"));
     expect(source).toContain("generationErrorCode?: string");
     expect(source).toContain("generationOperation?: string");
     expect(source).toContain("generationOperation: task.operation");
     expect(source).toContain("generationErrorCode: task.errorCode");
     expect(source).toContain("generationErrorCode(error)");
-    expect(source).toContain("createdAt: assistantMessage.createdAt");
+    expect(source).toContain("assistantCreatedAt: assistantMessage.createdAt");
 });
 
 test("creation results hand off exact asset ids to one new canvas and consume the route once", async () => {
@@ -351,9 +351,10 @@ test("creation result handoff falls back by stable result order only for a compl
 });
 
 test("Create forwards owned result assets through one new canvas and the project persists before clearing the handoff", () => {
-    const create = readFileSync(resolve(import.meta.dir, "../src/pages/create/index.tsx"), "utf8");
+    const create = ["../src/pages/create/index.tsx", "../src/pages/create/creation-message-view.tsx", "../src/pages/create/creation-storyboard-workbench.tsx"].map((path) => readFileSync(resolve(import.meta.dir, path), "utf8")).join("\n");
     const canvasIndex = readFileSync(resolve(import.meta.dir, "../src/pages/canvas/index.tsx"), "utf8");
     const canvasProject = readFileSync(resolve(import.meta.dir, "../src/pages/canvas/project.tsx"), "utf8");
+    const canvasHandoff = readFileSync(resolve(import.meta.dir, "../src/pages/canvas/use-canvas-asset-handoff.ts"), "utf8");
 
     expect(create).toContain('import { creationCanvasHandoffPath, creationResultAssetIds, creationResultMediaEntries, type CreationResultMediaEntry } from "@/lib/canvas/canvas-asset-handoff"');
     expect(create).toContain("const resultAssetIds = result && resultUrls.length ? creationResultAssetIds(assets, { messageId: result.id, taskIds: result.taskIds || [], resultUrls }) : [];");
@@ -361,14 +362,17 @@ test("Create forwards owned result assets through one new canvas and the project
     expect(create).toContain('entry.role === "last_frame" ? "尾帧"');
     expect(create).toContain('const canvasHandoffPath = result ? creationCanvasHandoffPath(resultAssetIds, resultUrls.length) : "";');
     expect(create).toContain('const canvasPath = canvasHandoffPath || "/canvas";');
-    expect(create).toContain('<Link to={canvasPath}>{canvasHandoffPath ? "添加到画布" : "打开画布"}</Link>');
+    expect(create).toContain('<Link className="storyboard-workbench-card-action" to={canvasPath}>');
+    expect(create).toContain('{canvasHandoffPath ? "添加到画布" : "打开画布"}');
     expect(canvasIndex).toContain('const handoffMode = mode === "handoff"');
     expect(canvasIndex).toContain('mode !== "new" && mode !== "recent" && mode !== "handoff"');
-    expect(canvasProject).toContain('import { canvasAssetHandoffAttempt, finalizeCanvasAssetHandoff, uninsertedCanvasAssetHandoffPayloads } from "@/lib/canvas/canvas-asset-handoff"');
-    expect(canvasProject).toContain('if (!projectLoaded || !assetsHydrated || searchParams.get("mode") !== "handoff") return');
-    expect(canvasProject).toContain("const pendingPayloads = uninsertedCanvasAssetHandoffPayloads(nodesRef.current, payloads)");
-    expect(canvasProject).toContain("await flushCanvasStorePersistence()");
-    expect(canvasProject.indexOf("await flushCanvasStorePersistence()")).toBeLessThan(canvasProject.indexOf("setSearchParams(finalized.searchParams"));
+    expect(canvasProject).toContain('import { useCanvasAssetHandoff } from "./use-canvas-asset-handoff"');
+    expect(canvasProject).toContain("useCanvasAssetHandoff({ assets, assetsHydrated, handleProjectAssetsInsert, nodesRef, projectId, projectLoaded, searchParams, setSearchParams, updateProject })");
+    expect(canvasHandoff).toContain('import { canvasAssetHandoffAttempt, finalizeCanvasAssetHandoff, uninsertedCanvasAssetHandoffPayloads } from "@/lib/canvas/canvas-asset-handoff"');
+    expect(canvasHandoff).toContain('if (!projectLoaded || !assetsHydrated || searchParams.get("mode") !== "handoff") return');
+    expect(canvasHandoff).toContain("const pendingPayloads = uninsertedCanvasAssetHandoffPayloads(nodesRef.current, payloads)");
+    expect(canvasHandoff).toContain("await flushCanvasStorePersistence()");
+    expect(canvasHandoff.indexOf("await flushCanvasStorePersistence()")).toBeLessThan(canvasHandoff.indexOf("setSearchParams(finalized.searchParams"));
 });
 
 test("Create image batch retry preserves per-index lineage under one attempt group", async () => {

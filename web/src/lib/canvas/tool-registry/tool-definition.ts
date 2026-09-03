@@ -57,7 +57,7 @@ export type ToolbarHandlers = {
     // 主工具栏——面板开关（组件内部状态，由组件实现）
     onToggleAddPanel: (event: MouseEvent<HTMLElement>) => void;
     onToggleAppearancePanel: (event: MouseEvent<HTMLElement>) => void;
-    onToggleSettingsPanel: () => void;
+    onToggleSettingsPanel: (event: MouseEvent<HTMLElement>) => void;
     // 主工具栏——删除选中
     onDeleteSelected: () => void;
     // 多选工具栏
@@ -105,6 +105,14 @@ export type ToolContext = {
     selectedCount: number;
     selectedNodeTypes: Set<CanvasNodeTypeId>;
     selectedVideoCount: number;
+    /** 真正可以参与对齐/排列的节点数量（排除锁定节点和背板）。 */
+    layoutEligibleCount?: number;
+    /** 真正可以创建分镜组的已有图片数量。 */
+    storyboardEligibleCount?: number;
+    /** 真正可以创建引用组的已有图片/视频数量。 */
+    referenceGroupEligibleCount?: number;
+    /** 真正可以作为批量连线起点的节点数量。 */
+    batchConnectEligibleCount?: number;
     canvasTool: CanvasToolMode;
     workspaceMode: CanvasWorkspaceMode;
     isProjectLinked: boolean;
@@ -164,10 +172,14 @@ export type ToolDefinition = {
     icon: ReactNode | ((ctx: ToolContext) => ReactNode);
     /** 用户默认可见（可被 prefs 覆盖） */
     defaultVisible: boolean;
+    /** false 时作为工具栏恢复入口固定保留，不能被用户隐藏。 */
+    hideable?: boolean;
     /** 默认排序权重，升序 */
     defaultOrder: number;
     active?: (ctx: ToolContext) => boolean;
     disabled?: (ctx: ToolContext) => boolean;
+    /** 禁用时给用户看的具体原因。 */
+    disabledReason?: (ctx: ToolContext) => string | undefined;
     /** 危险操作——渲染时隔离到独立分组 */
     danger?: boolean;
     /** 面板展开型工具——使用 aria-expanded 而非 aria-pressed */

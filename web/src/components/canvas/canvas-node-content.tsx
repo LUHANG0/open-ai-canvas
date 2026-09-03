@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from "react";
 import { AlertCircle, BookOpenCheck, Clock3, Download, FileText, Image as ImageIcon, LoaderCircle, Music2, Pencil, Play, RefreshCw, Video } from "lucide-react";
 
 import { VideoPlayer } from "@/components/video-player";
@@ -8,12 +8,14 @@ import { canvasRichTextHTML } from "@/lib/canvas/canvas-rich-text";
 import { fitNodeSize } from "@/lib/canvas/canvas-node-size";
 import { loadCanvasDrawingPreview } from "@/lib/canvas/canvas-drawing-storage";
 import { buildLibTVImagePreviewUrl } from "@/lib/canvas/libtv-import";
+import type { CanvasMediaRenderPolicy } from "@/lib/canvas/canvas-performance-mode";
 import type { CanvasResourceReference } from "@/lib/canvas/canvas-resource-references";
 import type { CanvasTheme } from "@/lib/canvas-theme";
 import { formatBytes } from "@/lib/image-utils";
 import { resourceIdFromStorageKey } from "@/services/api/resources";
 import type { GenerationTask } from "@/services/api/task-center";
 import { cacheResourceObjectUrl, getCachedResourceObjectUrl } from "@/services/resource-blob-cache";
+import { loadCanvasVideoPoster } from "@/services/canvas-video-poster-cache";
 import { CanvasNodeType, type CanvasNodeData } from "@/types/canvas";
 import { getNodeDefinition } from "@/lib/canvas/node-registry";
 import { PORTRAIT_CLEARANCE_NODE_TYPE } from "@/lib/portrait-clearance/contracts";
@@ -21,14 +23,15 @@ import { createDefaultSubtitleStyle } from "@/types/timeline";
 import { CanvasResourceMentionTextarea } from "./canvas-resource-mention-textarea";
 import { useCanvasNodeActions } from "./canvas-node-action-context";
 import { CanvasSubtitleOverlay } from "./canvas-subtitle-overlay";
-import { MarkdownNodeContent } from "./nodes/markdown-node";
-import { ChartNodeContent } from "./nodes/chart-node";
-import { CompareNodeContent } from "./nodes/compare-node";
-import { ColorGradeNodeContent } from "./nodes/color-grade-node";
-import { HtmlNodeContent } from "./nodes/html-node";
-import { PanoramaNodeContent } from "./nodes/panorama-node";
-import { SvgNodeContent } from "./nodes/svg-node";
-import { PortraitClearanceNodeContent } from "./nodes/portrait-clearance-node";
+
+const ChartNodeContent = lazy(() => import("./nodes/chart-node").then((module) => ({ default: module.ChartNodeContent })));
+const ColorGradeNodeContent = lazy(() => import("./nodes/color-grade-node").then((module) => ({ default: module.ColorGradeNodeContent })));
+const CompareNodeContent = lazy(() => import("./nodes/compare-node").then((module) => ({ default: module.CompareNodeContent })));
+const HtmlNodeContent = lazy(() => import("./nodes/html-node").then((module) => ({ default: module.HtmlNodeContent })));
+const MarkdownNodeContent = lazy(() => import("./nodes/markdown-node").then((module) => ({ default: module.MarkdownNodeContent })));
+const PanoramaNodeContent = lazy(() => import("./nodes/panorama-node").then((module) => ({ default: module.PanoramaNodeContent })));
+const PortraitClearanceNodeContent = lazy(() => import("./nodes/portrait-clearance-node").then((module) => ({ default: module.PortraitClearanceNodeContent })));
+const SvgNodeContent = lazy(() => import("./nodes/svg-node").then((module) => ({ default: module.SvgNodeContent })));
 
 export type CanvasNodeContentProps = {
     node: CanvasNodeData;
@@ -50,6 +53,8 @@ export type CanvasNodeContentProps = {
     onOpenTaskDetails?: (node: CanvasNodeData) => void;
     onToggleBatch?: () => void;
     reduceMediaEffects?: boolean;
+    mediaRenderPolicy?: CanvasMediaRenderPolicy;
+    videoPreviewOnly?: boolean;
 };
 
 export function CanvasNodeContent(props: CanvasNodeContentProps) {
@@ -60,13 +65,17 @@ export function CanvasNodeContent(props: CanvasNodeContentProps) {
         || (props.node.metadata?.workflowKind === "story_input" && !props.isEditingContent)
         || (props.node.metadata?.workflowKind === "styleboard" && !props.node.metadata.content);
     if (hasCustomContent && props.renderNodeContent) return props.renderNodeContent(props.node);
-    if (props.node.type === PORTRAIT_CLEARANCE_NODE_TYPE) return <PortraitClearanceNodeContent node={props.node} />;
+    if (props.node.type === PORTRAIT_CLEARANCE_NODE_TYPE) {
+        return <Suspense fallback={<DeferredNodeContentFallback theme={props.theme} />}><PortraitClearanceNodeContent node={props.node} /></Suspense>;
+    }
     if (props.isBatchRoot) return <ImageNodeContent {...props} />;
     if (props.node.metadata?.status === "loading") return <LoadingContent node={props.node} theme={props.theme} onOpenTaskDetails={props.onOpenTaskDetails} />;
     if (props.node.metadata?.status === "error") return <ErrorContent node={props.node} theme={props.theme} onRetry={props.onRetry} onReloadResource={props.onReloadResource} />;
 
     const pluginDefinition = getNodeDefinition(props.node.type)?.plugin;
     if (pluginDefinition) return <PluginCanvasNodeContent {...props} renderer={pluginDefinition.renderer} schema={pluginDefinition.schema} />;
+    const DeferredRenderer = deferredNodeContentRenderers[props.node.type];
+    if (DeferredRenderer) return <Suspense fallback={<DeferredNodeContentFallback theme={props.theme} />}><DeferredRenderer {...props} /></Suspense>;
     const Renderer = nodeContentRenderers[props.node.type];
     return Renderer ? <Renderer {...props} /> : <UnknownNodeContent theme={props.theme} />;
 }
@@ -102,6 +111,9 @@ const nodeContentRenderers: Partial<Record<string, (props: CanvasNodeContentProp
     [CanvasNodeType.Audio]: AudioNodeContent,
     [CanvasNodeType.Drawing]: DrawingContent,
     [CanvasNodeType.Frame]: UnknownNodeContent,
+};
+
+const deferredNodeContentRenderers: Partial<Record<string, (props: CanvasNodeContentProps) => ReactNode>> = {
     [CanvasNodeType.Markdown]: MarkdownNodeContent,
     [CanvasNodeType.Svg]: SvgNodeContent,
     [CanvasNodeType.Html]: HtmlNodeContent,
@@ -110,6 +122,14 @@ const nodeContentRenderers: Partial<Record<string, (props: CanvasNodeContentProp
     [CanvasNodeType.Chart]: ChartNodeContent,
     [CanvasNodeType.ColorGrade]: ColorGradeNodeContent,
 };
+
+function DeferredNodeContentFallback({ theme }: Pick<CanvasNodeContentProps, "theme">) {
+    return (
+        <div className="pointer-events-none h-full w-full overflow-hidden" style={{ background: theme.node.panel }} aria-hidden>
+            <div className="h-full w-full opacity-40" style={{ background: `linear-gradient(135deg, ${theme.node.fill}, ${theme.toolbar.itemHover})` }} />
+        </div>
+    );
+}
 
 function DrawingContent({ node, theme, drawingProjectId }: CanvasNodeContentProps) {
     const shapeCount = node.metadata?.drawingShapeCount || 0;
@@ -317,14 +337,16 @@ function TextContent({ node, theme, isEditingContent, textareaRef, mentionRefere
                 />
             ) : richTextHTML ? (
                 <div
-                    className="thin-scrollbar block h-full w-full select-text overflow-y-auto break-words bg-transparent px-4 pb-4 font-mono [&_a]:underline [&_blockquote]:my-2 [&_blockquote]:border-l-2 [&_blockquote]:pl-3 [&_blockquote]:opacity-70 [&_code]:rounded [&_code]:bg-black/6 [&_code]:px-1 dark:[&_code]:bg-white/8 [&_h1]:my-2 [&_h1]:text-[1.55em] [&_h1]:font-semibold [&_h2]:my-2 [&_h2]:text-[1.3em] [&_h2]:font-semibold [&_h3]:my-1.5 [&_h3]:text-[1.12em] [&_h3]:font-semibold [&_hr]:my-3 [&_li]:my-0.5 [&_ol]:my-2 [&_ol]:list-decimal [&_ol]:pl-5 [&_p]:my-1 [&_pre]:my-2 [&_pre]:overflow-x-auto [&_pre]:rounded-md [&_pre]:bg-black/90 [&_pre]:p-2 [&_pre]:text-white [&_ul]:my-2 [&_ul]:list-disc [&_ul]:pl-5"
+                    className="thin-scrollbar block h-full w-full cursor-grab select-none overflow-y-auto break-words bg-transparent px-4 pb-4 font-mono active:cursor-grabbing [&_a]:underline [&_blockquote]:my-2 [&_blockquote]:border-l-2 [&_blockquote]:pl-3 [&_blockquote]:opacity-70 [&_code]:rounded [&_code]:bg-black/6 [&_code]:px-1 dark:[&_code]:bg-white/8 [&_h1]:my-2 [&_h1]:text-[1.55em] [&_h1]:font-semibold [&_h2]:my-2 [&_h2]:text-[1.3em] [&_h2]:font-semibold [&_h3]:my-1.5 [&_h3]:text-[1.12em] [&_h3]:font-semibold [&_hr]:my-3 [&_li]:my-0.5 [&_ol]:my-2 [&_ol]:list-decimal [&_ol]:pl-5 [&_p]:my-1 [&_pre]:my-2 [&_pre]:overflow-x-auto [&_pre]:rounded-md [&_pre]:bg-black/90 [&_pre]:p-2 [&_pre]:text-white [&_ul]:my-2 [&_ul]:list-disc [&_ul]:pl-5"
                     style={textStyle}
-                    onMouseDown={(event) => event.stopPropagation()}
+                    onMouseDown={(event) => {
+                        if (event.target instanceof Element && event.target.closest("a,button")) event.stopPropagation();
+                    }}
                     onWheel={(event) => event.stopPropagation()}
                     dangerouslySetInnerHTML={{ __html: richTextHTML }}
                 />
             ) : (
-                <div className="thin-scrollbar block h-full w-full select-text overflow-y-auto whitespace-pre-wrap break-words bg-transparent px-4 pb-4 pt-0 font-mono" style={textStyle} onMouseDown={(event) => event.stopPropagation()} onWheel={(event) => event.stopPropagation()}>
+                <div className="thin-scrollbar block h-full w-full cursor-grab select-none overflow-y-auto whitespace-pre-wrap break-words bg-transparent px-4 pb-4 pt-0 font-mono active:cursor-grabbing" style={textStyle} onWheel={(event) => event.stopPropagation()}>
                     {node.metadata?.content || <span style={{ color: theme.node.placeholder }}>双击编辑文字</span>}
                 </div>
             )}
@@ -389,13 +411,13 @@ function ImageNodeContent(props: CanvasNodeContentProps) {
             : props.node.metadata?.status === "error"
                 ? <ErrorContent node={props.node} theme={props.theme} onRetry={props.onRetry} onReloadResource={props.onReloadResource} />
                 : <EmptyImageContent {...props} isBatchRoot={false} />;
-        return <BatchFrame batchCount={props.batchCount} batchExpanded={props.batchExpanded} batchOpening={props.batchOpening} batchRecovering={props.batchRecovering} theme={props.theme} onToggleBatch={props.onToggleBatch}>{content}</BatchFrame>;
+        return <BatchFrame batchCount={props.batchCount} batchExpanded={props.batchExpanded} batchOpening={props.batchOpening} batchRecovering={props.batchRecovering} reduceMediaEffects={props.reduceMediaEffects} theme={props.theme} onToggleBatch={props.onToggleBatch}>{content}</BatchFrame>;
     }
     if (!props.node.metadata?.content) return <EmptyImageContent {...props} />;
-    return <ImageContent node={props.node} theme={props.theme} isBatchRoot={props.isBatchRoot} batchCount={props.batchCount} batchExpanded={props.batchExpanded} batchOpening={props.batchOpening} batchRecovering={props.batchRecovering} onToggleBatch={props.onToggleBatch} />;
+    return <ImageContent node={props.node} theme={props.theme} isBatchRoot={props.isBatchRoot} batchCount={props.batchCount} batchExpanded={props.batchExpanded} batchOpening={props.batchOpening} batchRecovering={props.batchRecovering} reduceMediaEffects={props.reduceMediaEffects} onToggleBatch={props.onToggleBatch} />;
 }
 
-function EmptyImageContent({ node, theme, isBatchRoot, batchCount, batchExpanded, batchOpening, batchRecovering, onToggleBatch }: CanvasNodeContentProps) {
+function EmptyImageContent({ node, theme, isBatchRoot, batchCount, batchExpanded, batchOpening, batchRecovering, reduceMediaEffects, onToggleBatch }: CanvasNodeContentProps) {
     const isCharacterReference = node.metadata?.workflowKind === "character" && node.metadata?.characterView === "multi";
     const content = (
         <div className="flex h-full w-full flex-col items-center justify-center gap-3" style={{ color: theme.node.placeholder }}>
@@ -408,21 +430,41 @@ function EmptyImageContent({ node, theme, isBatchRoot, batchCount, batchExpanded
             ) : <span className="text-[var(--fs-tiny)] tracking-[0.18em] opacity-50">空图片节点</span>}
         </div>
     );
-    if (isBatchRoot) return <BatchFrame batchCount={batchCount} batchExpanded={batchExpanded} batchOpening={batchOpening} batchRecovering={batchRecovering} theme={theme} onToggleBatch={onToggleBatch}>{content}</BatchFrame>;
+    if (isBatchRoot) return <BatchFrame batchCount={batchCount} batchExpanded={batchExpanded} batchOpening={batchOpening} batchRecovering={batchRecovering} reduceMediaEffects={reduceMediaEffects} theme={theme} onToggleBatch={onToggleBatch}>{content}</BatchFrame>;
     return content;
 }
 
-function VideoNodeContent({ node, theme, reduceMediaEffects }: CanvasNodeContentProps) {
-    const playWhenReadyRef = useRef(false);
+const CANVAS_VIDEO_INTERACTIVE_CONTROL_SELECTOR = ".vds-menu-items,.vds-button,.vds-slider";
+
+function VideoNodeContent({ node, theme, reduceMediaEffects, mediaRenderPolicy, videoPreviewOnly }: CanvasNodeContentProps) {
     const playerBoxRef = useRef<HTMLDivElement>(null);
-    const { updateMetadata } = useCanvasNodeActions();
-    const { url, loading, load } = useNodeResourceUrl(node, false);
+    const pointerGestureRef = useRef<{ pointerId: number; startX: number; startY: number; moved: boolean } | null>(null);
+    const suppressSurfaceClickRef = useRef(false);
+    const { updateMetadata, selectVideoForPlayback } = useCanvasNodeActions();
+    const previewOnly = videoPreviewOnly ?? reduceMediaEffects;
+    // 画布只为唯一选中的视频准备完整资源。远程视频若等到播放按钮点击后才下载，
+    // 异步鉴权下载会越过浏览器的用户手势窗口，首击只能挂载播放器、需要再点一次。
+    // 选中后提前准备 Blob URL，既保留未选中视频的封面性能，也让中央按钮首击直接播放。
+    const { url, loading, load } = useNodeResourceUrl(node, !previewOnly);
+    const sourceIdentity = JSON.stringify([node.id, node.metadata?.storageKey, node.metadata?.content]);
+    const [playRequest, setPlayRequest] = useState<string | null>(null);
+    const playRequested = playRequest === sourceIdentity;
+    const requestPlayback = () => {
+        setPlayRequest(sourceIdentity);
+        selectVideoForPlayback?.(node.id);
+        void load();
+    };
+    useEffect(() => {
+        // 取消选中、进入多选或更换素材后，不保留稍后突然播放的意图。
+        setPlayRequest((current) => previewOnly || current !== sourceIdentity ? null : current);
+    }, [previewOnly, sourceIdentity]);
     const subtitleEntries = node.metadata?.subtitleEntries || [];
     const subtitleStyle = node.metadata?.subtitleStyle || createDefaultSubtitleStyle();
     const [currentTimeMs, setCurrentTimeMs] = useState(0);
     const [videoSize, setVideoSize] = useState<{ width: number; height: number } | null>(null);
 
     useEffect(() => {
+        if (reduceMediaEffects) return;
         const box = playerBoxRef.current;
         const video = box?.querySelector("video");
         if (!video) return;
@@ -442,10 +484,10 @@ function VideoNodeContent({ node, theme, reduceMediaEffects }: CanvasNodeContent
             video.removeEventListener("timeupdate", handleTimeUpdate);
             video.removeEventListener("loadedmetadata", handleLoadedMetadata);
         };
-    }, [node.id, node.metadata?.naturalHeight, node.metadata?.naturalWidth, subtitleEntries.length, updateMetadata, url]);
+    }, [node.id, node.metadata?.naturalHeight, node.metadata?.naturalWidth, reduceMediaEffects, subtitleEntries.length, updateMetadata, url]);
 
     if (!node.metadata?.content) return <EmptyMediaContent icon={<Video className="size-7 opacity-35" />} label="空视频节点" color={theme.node.placeholder} />;
-    if (!url) return <DeferredMediaLoad icon={loading ? <LoaderCircle className="size-5 animate-spin" /> : <Play className="size-5 fill-current" />} label={loading ? "正在缓存视频" : "加载并缓存视频"} disabled={loading} onClick={() => { playWhenReadyRef.current = true; void load(); }} />;
+    if (previewOnly || !url) return <VideoPosterPreview node={node} theme={theme} policy={mediaRenderPolicy} loadingPlayback={loading && (!previewOnly || playRequested)} onPlay={requestPlayback} />;
 
     const sourceRatio = (videoSize?.width || node.metadata?.naturalWidth || node.width) / Math.max(1, videoSize?.height || node.metadata?.naturalHeight || node.height);
     const fitHeight = Math.min(node.height, node.width / Math.max(0.01, sourceRatio));
@@ -454,30 +496,181 @@ function VideoNodeContent({ node, theme, reduceMediaEffects }: CanvasNodeContent
     const activeHighlight = activeEntry ? (node.metadata?.subtitleHighlights || []).find((item) => item.entryIndex === activeEntry.index) : undefined;
 
     return (
-        <div ref={playerBoxRef} className="relative flex h-full w-full items-center justify-center overflow-hidden rounded-[var(--node-radius)] bg-black">
+        <div
+            ref={playerBoxRef}
+            data-canvas-media-surface
+            className="relative flex h-full w-full cursor-grab items-center justify-center overflow-hidden rounded-[var(--node-radius)] bg-black active:cursor-grabbing"
+            onPointerDownCapture={(event) => {
+                if (event.target instanceof Element && event.target.closest(CANVAS_VIDEO_INTERACTIVE_CONTROL_SELECTOR)) return;
+                pointerGestureRef.current = { pointerId: event.pointerId, startX: event.clientX, startY: event.clientY, moved: false };
+                suppressSurfaceClickRef.current = false;
+            }}
+            onPointerMoveCapture={(event) => {
+                const gesture = pointerGestureRef.current;
+                if (!gesture || gesture.pointerId !== event.pointerId || gesture.moved) return;
+                if (Math.hypot(event.clientX - gesture.startX, event.clientY - gesture.startY) >= 6) gesture.moved = true;
+            }}
+            onPointerUpCapture={(event) => {
+                const gesture = pointerGestureRef.current;
+                if (!gesture || gesture.pointerId !== event.pointerId) return;
+                suppressSurfaceClickRef.current = gesture.moved;
+                pointerGestureRef.current = null;
+            }}
+            onPointerCancelCapture={() => {
+                suppressSurfaceClickRef.current = true;
+                pointerGestureRef.current = null;
+            }}
+            onClickCapture={(event) => {
+                if (event.target instanceof Element && event.target.closest(CANVAS_VIDEO_INTERACTIVE_CONTROL_SELECTOR)) return;
+                event.preventDefault();
+                event.stopPropagation();
+                const wasDrag = suppressSurfaceClickRef.current;
+                suppressSurfaceClickRef.current = false;
+                if (wasDrag) return;
+                const video = playerBoxRef.current?.querySelector("video");
+                if (video && !video.paused && !video.ended) video.pause();
+            }}
+        >
             <div className="relative" style={{ width: fitWidth, height: Math.round(fitHeight) }}>
-                <VideoPlayer src={url} mimeType={node.metadata?.mimeType} title={node.title || "视频"} preload={reduceMediaEffects ? "none" : "metadata"} autoPlay={playWhenReadyRef.current} onCanPlay={() => { playWhenReadyRef.current = false; }} brandColor={theme.accent.primary} className="h-full w-full rounded-[var(--node-radius)] bg-black" dataCanvasNoZoom compactControls />
+                <VideoPlayer src={url} mimeType={node.metadata?.mimeType} title={node.title || "视频"} preload={reduceMediaEffects ? "none" : "metadata"} autoPlay={playRequested} onPlay={() => setPlayRequest(null)} onAutoPlayFail={() => setPlayRequest(null)} brandColor={theme.accent.primary} className="h-full w-full rounded-[var(--node-radius)] bg-black" dataCanvasNoZoom compactControls />
                 {activeEntry && activeEntry.text.trim() ? <CanvasSubtitleOverlay text={activeEntry.text} highlight={activeHighlight} style={subtitleStyle} /> : null}
             </div>
         </div>
     );
 }
 
+function VideoPosterPreview({ node, theme, policy, loadingPlayback, onPlay }: Pick<CanvasNodeContentProps, "node" | "theme"> & { policy?: CanvasMediaRenderPolicy; loadingPlayback: boolean; onPlay: () => void }) {
+    const staticPosterUrl = staticVideoPosterUrl(node.metadata?.previewContent);
+    const [staticPosterFailed, setStaticPosterFailed] = useState(false);
+    const generatedPoster = useCanvasVideoPoster(node, policy, !staticPosterUrl || staticPosterFailed);
+    const posterUrl = staticPosterUrl && !staticPosterFailed ? staticPosterUrl : generatedPoster.url;
+    const isLoading = !posterUrl && generatedPoster.status === "loading";
+    const playGestureRef = useRef<{ x: number; y: number; cancelled: boolean } | null>(null);
+
+    useEffect(() => setStaticPosterFailed(false), [staticPosterUrl]);
+
+    return (
+        <div
+            data-canvas-media-surface
+            data-canvas-video-lod
+            data-canvas-video-poster-status={posterUrl ? "ready" : generatedPoster.status}
+            className="relative flex size-full cursor-grab items-center justify-center overflow-hidden rounded-[var(--node-radius)] active:cursor-grabbing"
+            style={{ background: `linear-gradient(145deg, ${theme.node.fill} 0%, ${theme.canvas.background} 100%)`, color: theme.node.text }}
+            aria-label={`${node.title || "视频"}，点击中央按钮播放`}
+        >
+            {posterUrl ? <>
+                {!policy?.reduceEffects ? <img src={posterUrl} alt="" aria-hidden loading="lazy" decoding="async" draggable={false} className="pointer-events-none absolute inset-[-8%] size-[116%] object-cover opacity-35 blur-xl" /> : null}
+                <img src={posterUrl} alt="" loading="lazy" decoding="async" draggable={false} onError={() => { if (posterUrl === staticPosterUrl) setStaticPosterFailed(true); }} className={`pointer-events-none absolute inset-0 size-full ${policy?.reduceEffects ? "object-cover" : "object-contain"}`} />
+            </> : (
+                <div className="pointer-events-none absolute inset-0 opacity-70" style={{ backgroundImage: `radial-gradient(circle at 25% 20%, ${theme.accent.primarySoft}, transparent 36%), linear-gradient(135deg, transparent, ${theme.node.stroke})` }} />
+            )}
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-black/5" />
+            <button
+                type="button"
+                data-canvas-no-zoom
+                data-canvas-video-poster-play
+                aria-label={loadingPlayback ? "正在加载视频" : "播放视频"}
+                disabled={loadingPlayback}
+                className={`relative z-20 grid size-11 cursor-pointer place-items-center rounded-full border shadow-sm transition-[filter,box-shadow] hover:brightness-110 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-wait ${policy?.reduceEffects ? "" : "backdrop-blur-sm"}`}
+                style={{
+                    transform: "scale(clamp(1, calc(var(--canvas-live-inverse-scale, 1) * 0.55), 10))",
+                    color: "#fff",
+                    backgroundColor: "rgba(0, 0, 0, 0.68)",
+                    borderColor: "rgba(255, 255, 255, 0.58)",
+                    boxShadow: "0 4px 16px rgba(0, 0, 0, 0.38), inset 0 0 0 1px rgba(0, 0, 0, 0.12)",
+                }}
+                onMouseDown={(event) => event.stopPropagation()}
+                onPointerDown={(event) => {
+                    event.stopPropagation();
+                    if (event.button !== 0) return;
+                    playGestureRef.current = { x: event.clientX, y: event.clientY, cancelled: false };
+                    event.currentTarget.setPointerCapture(event.pointerId);
+                }}
+                onPointerMove={(event) => {
+                    const gesture = playGestureRef.current;
+                    if (gesture && Math.hypot(event.clientX - gesture.x, event.clientY - gesture.y) >= 6) gesture.cancelled = true;
+                }}
+                onPointerUp={(event) => {
+                    const gesture = playGestureRef.current;
+                    if (gesture && Math.hypot(event.clientX - gesture.x, event.clientY - gesture.y) >= 6) gesture.cancelled = true;
+                }}
+                onPointerCancel={() => { if (playGestureRef.current) playGestureRef.current.cancelled = true; }}
+                onClick={(event) => {
+                    event.stopPropagation();
+                    if (event.detail !== 0 && playGestureRef.current?.cancelled) return;
+                    onPlay();
+                }}
+                onDoubleClick={(event) => event.stopPropagation()}
+            >
+                {loadingPlayback ? <LoaderCircle className="size-5 animate-spin" /> : <Play className="ml-0.5 size-5 fill-current" aria-hidden />}
+            </button>
+            <div className="pointer-events-none absolute inset-x-3 bottom-3 flex min-w-0 items-end justify-between gap-2 text-white">
+                <span className={`min-w-0 truncate rounded-md bg-black/48 px-2 py-1 text-[var(--fs-tiny)] font-medium ${policy?.reduceEffects ? "" : "backdrop-blur-sm"}`}>{node.title || "视频素材"}</span>
+                <span className={`shrink-0 rounded-md bg-black/48 px-2 py-1 text-[10px] ${policy?.reduceEffects ? "" : "backdrop-blur-sm"}`}>{loadingPlayback ? "正在加载视频" : isLoading ? "生成预览中 · 可播放" : "点击播放"}</span>
+            </div>
+        </div>
+    );
+}
+
+function useCanvasVideoPoster(node: CanvasNodeData, policy: CanvasMediaRenderPolicy | undefined, enabled: boolean) {
+    const [state, setState] = useState<{ url: string; status: "idle" | "loading" | "ready" | "error" }>({ url: "", status: "idle" });
+    const storageKey = node.metadata?.storageKey || "";
+    const sourceUrl = node.metadata?.content || "";
+    const maxWidth = policy?.posterMaxWidth || 640;
+    const quality = policy?.posterQuality || 0.78;
+    const concurrency = policy?.posterConcurrency || 1;
+    const cacheIdentity = storageKey || sourceUrl;
+
+    useEffect(() => {
+        let active = true;
+        const controller = new AbortController();
+        if (!enabled || !cacheIdentity) {
+            setState({ url: "", status: "idle" });
+            return () => { active = false; };
+        }
+        setState((current) => current.url ? current : { url: "", status: "loading" });
+        void loadCanvasVideoPoster({ cacheIdentity, storageKey, sourceUrl, maxWidth, quality, concurrency, signal: controller.signal }).then((url) => {
+            if (!active) return;
+            setState(url ? { url, status: "ready" } : { url: "", status: "error" });
+        }).catch(() => {
+            if (active) setState({ url: "", status: "error" });
+        });
+        return () => {
+            active = false;
+            controller.abort();
+        };
+    }, [cacheIdentity, concurrency, enabled, maxWidth, quality, sourceUrl, storageKey]);
+
+    return state;
+}
+
+function staticVideoPosterUrl(value?: string) {
+    const source = value?.trim() || "";
+    if (!source) return "";
+    if (/^data:image\//i.test(source)) return source;
+    return /\.(?:avif|gif|jpe?g|png|webp)(?:[?#]|$)/i.test(source) ? source : "";
+}
+
 function AudioNodeContent({ node, theme }: CanvasNodeContentProps) {
     const audioRef = useRef<HTMLAudioElement>(null);
-    const playWhenReadyRef = useRef(false);
     const { url, loading, load } = useNodeResourceUrl(node, false);
+    const sourceIdentity = JSON.stringify([node.id, node.metadata?.storageKey, node.metadata?.content]);
+    const [playRequest, setPlayRequest] = useState<string | null>(null);
+    const playRequested = playRequest === sourceIdentity;
     useEffect(() => {
-        if (!url || !playWhenReadyRef.current) return;
-        playWhenReadyRef.current = false;
-        void audioRef.current?.play().catch(() => undefined);
-    }, [url]);
+        setPlayRequest((current) => current === sourceIdentity ? current : null);
+    }, [sourceIdentity]);
+    useEffect(() => {
+        const audio = audioRef.current;
+        if (!url || !playRequested || !audio) return;
+        void audio.play().catch(() => undefined).finally(() => setPlayRequest(null));
+    }, [playRequested, url]);
     if (!node.metadata?.content) return <EmptyMediaContent icon={<Music2 className="size-7 opacity-35" />} label="空音频节点" color={theme.node.placeholder} />;
-    if (!url) return <DeferredMediaLoad icon={loading ? <LoaderCircle className="size-5 animate-spin" /> : <Play className="size-5 fill-current" />} label={loading ? "正在缓存音频" : "加载并缓存音频"} disabled={loading} onClick={() => { playWhenReadyRef.current = true; void load(); }} />;
+    if (!url) return <DeferredMediaLoad icon={loading ? <LoaderCircle className="size-5 animate-spin" /> : <Play className="size-5 fill-current" />} label={loading ? "正在加载音频" : "播放音频"} disabled={loading} onClick={() => { setPlayRequest(sourceIdentity); void load(); }} />;
     return (
-        <div className="flex h-full w-full flex-col justify-center gap-3 px-4" style={{ background: theme.node.fill, color: theme.node.text }}>
+        <div className="flex h-full w-full cursor-grab flex-col justify-center gap-3 px-4 active:cursor-grabbing" data-canvas-media-surface style={{ background: theme.node.fill, color: theme.node.text }}>
             <div className="flex min-w-0 items-center gap-2 text-sm opacity-70"><Music2 className="size-4 shrink-0" /><span className="min-w-0 truncate" title={node.title || "音频"}>{node.title || "音频"}</span></div>
-            <audio ref={audioRef} src={url} controls preload="metadata" className="w-full" data-canvas-no-zoom />
+            <audio ref={audioRef} src={url} controls preload="metadata" className="w-full cursor-default" data-canvas-no-zoom onMouseDown={(event) => event.stopPropagation()} onPointerDown={(event) => event.stopPropagation()} />
         </div>
     );
 }
@@ -486,10 +679,12 @@ function EmptyMediaContent({ icon, label, color }: { icon: ReactNode; label: str
     return <div className="flex h-full w-full flex-col items-center justify-center gap-3" style={{ color }}>{icon}<span className="text-sm">{label}</span></div>;
 }
 
-function ImageContent({ node, theme, isBatchRoot, batchCount, batchExpanded, batchOpening, batchRecovering, onToggleBatch }: Pick<CanvasNodeContentProps, "node" | "theme" | "isBatchRoot" | "batchCount" | "batchExpanded" | "batchOpening" | "batchRecovering" | "onToggleBatch">) {
+function ImageContent({ node, theme, isBatchRoot, batchCount, batchExpanded, batchOpening, batchRecovering, reduceMediaEffects, onToggleBatch }: Pick<CanvasNodeContentProps, "node" | "theme" | "isBatchRoot" | "batchCount" | "batchExpanded" | "batchOpening" | "batchRecovering" | "reduceMediaEffects" | "onToggleBatch">) {
     const imageContainerRef = useRef<HTMLDivElement>(null);
     const nearViewport = useNearViewport(imageContainerRef);
-    const { url, loading } = useNodeResourceUrl(node, nearViewport);
+    const lightweightPreviewUrl = reduceMediaEffects ? node.metadata?.previewContent || "" : "";
+    const { url, loading } = useNodeResourceUrl(node, nearViewport && !lightweightPreviewUrl);
+    const displayUrl = lightweightPreviewUrl || url;
     const importedFromLibTV = node.metadata?.importSource?.provider === "libtv";
     const { resizeNode, updateMetadata } = useCanvasNodeActions();
 
@@ -518,23 +713,24 @@ function ImageContent({ node, theme, isBatchRoot, batchCount, batchExpanded, bat
     };
 
     return (
-        <BatchFrame batchCount={isBatchRoot ? batchCount : 0} batchExpanded={batchExpanded} batchOpening={batchOpening} batchRecovering={batchRecovering} theme={theme} onToggleBatch={onToggleBatch}>
+        <BatchFrame batchCount={isBatchRoot ? batchCount : 0} batchExpanded={batchExpanded} batchOpening={batchOpening} batchRecovering={batchRecovering} reduceMediaEffects={reduceMediaEffects} theme={theme} onToggleBatch={onToggleBatch}>
             <div ref={imageContainerRef} className="h-full w-full overflow-hidden rounded-[var(--node-radius)]">
-                {url ? <img src={url} alt={node.title} loading={importedFromLibTV ? "eager" : "lazy"} decoding="async" draggable={false} onDragStart={(event) => event.preventDefault()} onLoad={(event) => fitToImage(event.currentTarget)} className={`pointer-events-none block h-full w-full select-none ${node.metadata?.freeResize ? "object-fill" : "object-contain"}`} /> : <div className="grid size-full place-items-center" style={{ color: theme.node.muted }}>{loading ? <LoaderCircle className="size-5 animate-spin" /> : <ImageIcon className="size-5 opacity-45" />}</div>}
+                {displayUrl ? <img src={displayUrl} alt={node.title} loading={importedFromLibTV && !reduceMediaEffects ? "eager" : "lazy"} decoding="async" draggable={false} onDragStart={(event) => event.preventDefault()} onLoad={(event) => { if (!lightweightPreviewUrl) fitToImage(event.currentTarget); }} className={`pointer-events-none block h-full w-full select-none ${node.metadata?.freeResize ? "object-fill" : "object-contain"}`} /> : <div className="grid size-full place-items-center" style={{ color: theme.node.muted }}>{loading ? <LoaderCircle className="size-5 animate-spin" /> : <ImageIcon className="size-5 opacity-45" />}</div>}
             </div>
         </BatchFrame>
     );
 }
 
 function DeferredMediaLoad({ icon, label, disabled, onClick }: { icon: ReactNode; label: string; disabled: boolean; onClick: () => void }) {
-    return <button type="button" data-canvas-no-zoom className="flex size-full flex-col items-center justify-center gap-2 rounded-[var(--node-radius)] bg-black text-white/75 transition-colors hover:text-white disabled:cursor-wait" disabled={disabled} onClick={(event) => { event.stopPropagation(); onClick(); }} onMouseDown={(event) => event.stopPropagation()} onPointerDown={(event) => event.stopPropagation()}><span className="grid size-10 place-items-center rounded-full bg-white/10">{icon}</span><span className="text-xs font-medium">{label}</span></button>;
+    return <div className="flex size-full cursor-grab items-center justify-center rounded-[var(--node-radius)] bg-black text-white/75 active:cursor-grabbing"><button type="button" data-canvas-no-zoom className="flex flex-col items-center justify-center gap-2 rounded-[var(--r-lg)] px-4 py-3 transition-colors hover:bg-white/5 hover:text-white disabled:cursor-wait" disabled={disabled} onClick={(event) => { event.stopPropagation(); onClick(); }} onMouseDown={(event) => event.stopPropagation()} onPointerDown={(event) => event.stopPropagation()}><span className="grid size-10 place-items-center rounded-full bg-white/10">{icon}</span><span className="text-xs font-medium">{label}</span></button></div>;
 }
 
 function useNodeResourceUrl(node: CanvasNodeData, eager: boolean) {
     const storageKey = node.metadata?.storageKey || "";
     const content = node.metadata?.content || "";
-    const fallback = node.metadata?.previewContent
-        || (node.type === CanvasNodeType.Image && node.metadata?.importSource?.provider === "libtv" ? buildLibTVImagePreviewUrl(content) : content);
+    const fallback = node.type === CanvasNodeType.Image
+        ? node.metadata?.previewContent || (node.metadata?.importSource?.provider === "libtv" ? buildLibTVImagePreviewUrl(content) : content)
+        : content;
     const isRemoteResource = Boolean(resourceIdFromStorageKey(storageKey));
     const [url, setUrl] = useState(isRemoteResource ? "" : fallback);
     const [loading, setLoading] = useState(isRemoteResource && eager);
@@ -604,22 +800,27 @@ export function CanvasNodeImageInfo({ node }: { node: CanvasNodeData }) {
     return <span className="ml-auto max-w-full shrink-0 truncate rounded-[var(--r-sm)] bg-black/55 px-2 py-1 text-[var(--fs-label)] font-medium leading-none text-white backdrop-blur-sm">{width} x {height}{size ? ` · ${size}` : ""}</span>;
 }
 
-function BatchFrame({ batchCount, batchExpanded, batchOpening, batchRecovering, theme, onToggleBatch, children }: { batchCount: number; batchExpanded: boolean; batchOpening: boolean; batchRecovering: boolean; theme: CanvasTheme; onToggleBatch?: () => void; children: ReactNode }) {
+function BatchFrame({ batchCount, batchExpanded, batchOpening, batchRecovering, reduceMediaEffects = false, theme, onToggleBatch, children }: { batchCount: number; batchExpanded: boolean; batchOpening: boolean; batchRecovering: boolean; reduceMediaEffects?: boolean; theme: CanvasTheme; onToggleBatch?: () => void; children: ReactNode }) {
     const isBatchRoot = batchCount > 1;
     return (
         <div className="group/batch relative h-full w-full overflow-visible" onDoubleClick={isBatchRoot ? (event) => { event.stopPropagation(); onToggleBatch?.(); } : undefined}>
             {isBatchRoot ? (
                 <div className="pointer-events-none absolute inset-0 overflow-visible">
-                    {Array.from({ length: Math.min(batchCount - 1, 5) }).map((_, index) => (
+                    {Array.from({ length: Math.min(batchCount - 1, reduceMediaEffects ? 1 : 5) }).map((_, index) => (
                         <div
                             key={index}
-                            className="absolute rounded-[inherit] transition-all duration-300 group-hover/batch:translate-x-2"
+                            className={`absolute rounded-[inherit] ${reduceMediaEffects ? "" : "transition-all duration-300 group-hover/batch:translate-x-2"}`}
                             style={{
                                 inset: 0,
                                 background: theme.node.panel,
-                                boxShadow: `inset 0 0 0 1px ${theme.node.stroke}`,
+                                boxShadow: reduceMediaEffects ? "none" : `inset 0 0 0 1px ${theme.node.stroke}`,
+                                border: reduceMediaEffects ? `1px solid ${theme.node.stroke}` : undefined,
                                 opacity: batchExpanded && !batchOpening ? 0.34 : 1,
-                                transform: batchOpening || batchRecovering ? `translate(${54 + index * 22}px, ${20 + index * 12}px) rotate(${8 + index * 5}deg) scale(.98)` : `translate(${34 + index * 18}px, ${14 + index * 10}px) rotate(${6 + index * 4}deg)`,
+                                transform: reduceMediaEffects
+                                    ? "translate(18px, 9px)"
+                                    : batchOpening || batchRecovering
+                                        ? `translate(${54 + index * 22}px, ${20 + index * 12}px) rotate(${8 + index * 5}deg) scale(.98)`
+                                        : `translate(${34 + index * 18}px, ${14 + index * 10}px) rotate(${6 + index * 4}deg)`,
                                 zIndex: -index - 1,
                             }}
                         />

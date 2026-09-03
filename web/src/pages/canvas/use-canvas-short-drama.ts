@@ -5,6 +5,7 @@ import { createShortDramaPipeline, deriveShortDramaProgress, persistShortDramaGu
 import type { CanvasConnection, CanvasNodeData, Position } from "@/types/canvas";
 
 type UseCanvasShortDramaOptions = {
+    guideEnabled: boolean;
     nodes: CanvasNodeData[];
     connections: CanvasConnection[];
     nodesRef: { current: CanvasNodeData[] };
@@ -21,7 +22,7 @@ type UseCanvasShortDramaOptions = {
     openTextEditor: (node: CanvasNodeData) => void;
 };
 
-export function useCanvasShortDrama({ nodes, connections, nodesRef, connectionsRef, selectedNodeIdsRef, getCanvasCenter, setNodes, setConnections, setSelectedNodeIds, setSelectedConnectionId, setStylePickerOpen, fitCanvasSelection, focusCanvasNode, openTextEditor }: UseCanvasShortDramaOptions) {
+export function useCanvasShortDrama({ guideEnabled, nodes, connections, nodesRef, connectionsRef, selectedNodeIdsRef, getCanvasCenter, setNodes, setConnections, setSelectedNodeIds, setSelectedConnectionId, setStylePickerOpen, fitCanvasSelection, focusCanvasNode, openTextEditor }: UseCanvasShortDramaOptions) {
     const { message } = App.useApp();
     const dismissedRef = useRef(readShortDramaGuideDismissed());
     const [guideCollapsed, setGuideCollapsed] = useState(dismissedRef.current);
@@ -79,6 +80,16 @@ export function useCanvasShortDrama({ nodes, connections, nodesRef, connectionsR
         setGuideCollapsed(true);
     }, []);
 
+    const toggleGuide = useCallback(() => {
+        setGuideCollapsed((value) => !value);
+    }, []);
+
+    const guide = useMemo(() => guideEnabled && progress.active ? {
+        progress,
+        collapsed: guideCollapsed,
+        onToggle: toggleGuide,
+    } : undefined, [guideCollapsed, guideEnabled, progress, toggleGuide]);
+
     useEffect(() => {
         const dismissed = readShortDramaGuideDismissed();
         dismissedRef.current = dismissed;
@@ -95,10 +106,8 @@ export function useCanvasShortDrama({ nodes, connections, nodesRef, connectionsR
     return {
         activateStep,
         createPipeline,
-        guideCollapsed,
+        guide,
         openStoryInput,
-        progress,
-        setGuideCollapsed,
         skipGuide,
     };
 }

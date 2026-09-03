@@ -1,10 +1,9 @@
-import { Button, Tooltip } from "antd";
-import { Eye, FileText, FolderKanban, Image as ImageIcon, RotateCcw, Sparkles, Video } from "lucide-react";
+import { FileText, FolderKanban, Image as ImageIcon, Sparkles, Video } from "lucide-react";
 
 import { MediaPreview } from "@/components/media-preview";
-import { CONTENT_MODERATION_ERROR_CODE, isContentModerationError } from "@/lib/generation-error";
 import { statusLabel } from "@/lib/generation-task-display";
 import type { GenerationTask } from "@/services/api/task-center";
+import { TaskActions } from "./task-actions";
 import { isTaskFailed, statusDotClassName, taskAttentionReason, TaskBilling, TaskDate } from "./task-shared";
 
 export function TaskGridCard({
@@ -28,7 +27,6 @@ export function TaskGridCard({
 }) {
     const isActive = task.status === "queued" || task.status === "running";
     const isFailed = isTaskFailed(task);
-    const retryDisabled = task.errorCode === CONTENT_MODERATION_ERROR_CODE || isContentModerationError(task.error);
     const isVideo = task.previewKind === "video";
     const fallbackVideo = task.type.includes("video");
     const Icon = fallbackVideo ? Video : task.type.includes("image") ? ImageIcon : FileText;
@@ -38,14 +36,7 @@ export function TaskGridCard({
                 {task.previewUrl ? <MediaPreview src={task.previewUrl} kind={isVideo ? "video" : "image"} loading="lazy" className="h-full w-full object-cover" /> : <Icon />}
                 <span className="task-grid-kind-badge hidden">{kind}</span>
                 <div className="task-grid-overlay">
-                    <Tooltip title="查看详情">
-                        <Button type="text" size="small" icon={<Eye className="size-3.5" />} aria-label="查看详情" onClick={onOpen} />
-                    </Tooltip>
-                    {isFailed ? (
-                        <Tooltip title={retryDisabled ? "内容审核未通过，请修改输入后新建任务" : "按原参数重试任务"}>
-                            <Button type="text" size="small" icon={<RotateCcw className="size-3.5" />} aria-label="重试任务" loading={actingId === task.id} disabled={retryDisabled} onClick={onRetry} />
-                        </Tooltip>
-                    ) : null}
+                    <TaskActions task={task} actingId={actingId} onOpen={onOpen} onRetry={onRetry} />
                 </div>
             </div>
             <div className="task-grid-body">

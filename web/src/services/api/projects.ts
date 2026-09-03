@@ -1,4 +1,4 @@
-import { apiClient, request } from "@/services/api/request";
+import { apiBaseURL, apiClient, request } from "@/services/api/request";
 import type { GenerationTask } from "@/services/api/task-center";
 
 const api = apiClient;
@@ -180,6 +180,24 @@ export type ShotArtifact = {
     updatedAt: string;
 };
 
+export type ProjectDeliveryJob = {
+    id: string;
+    userId: string;
+    projectId: string;
+    unitId: string;
+    status: "queued" | "running" | "succeeded" | "failed" | "expired" | string;
+    stage: string;
+    progress: number;
+    fileName: string;
+    resourceId?: string;
+    sourceBytes: number;
+    error?: string;
+    expiresAt?: string;
+    completedAt?: string;
+    createdAt: string;
+    updatedAt: string;
+};
+
 export type ShotRevisionInput = {
     plotDescription: string;
     action?: string;
@@ -320,6 +338,7 @@ export type ProjectAssetPage = {
 
 export type ProjectAssetCandidatePage = {
     candidates: ProjectAssetCandidate[];
+    categoryCounts: Record<string, number>;
     page: number;
     pageSize: number;
     total: number;
@@ -534,6 +553,23 @@ export function unbindProjectCharacterVoice(projectId: string, assetId: string) 
 
 export function createUnitWorkflow(projectId: string, unitId: string) {
     return request<{ workflow: ProjectWorkflow }>(api.post(`/projects/${encodeURIComponent(projectId)}/workflows`, { unitId }));
+}
+
+export function createProjectDeliveryJob(projectId: string, unitId: string) {
+    return request<{ job: ProjectDeliveryJob }>(api.post(`/projects/${encodeURIComponent(projectId)}/units/${encodeURIComponent(unitId)}/delivery-jobs`));
+}
+
+export function getLatestProjectDeliveryJob(projectId: string, unitId: string) {
+    return request<{ job: ProjectDeliveryJob | null }>(api.get(`/projects/${encodeURIComponent(projectId)}/units/${encodeURIComponent(unitId)}/delivery-jobs/latest`));
+}
+
+export function getProjectDeliveryJob(projectId: string, unitId: string, jobId: string) {
+    return request<{ job: ProjectDeliveryJob }>(api.get(`/projects/${encodeURIComponent(projectId)}/units/${encodeURIComponent(unitId)}/delivery-jobs/${encodeURIComponent(jobId)}`));
+}
+
+export function projectDeliveryJobFileUrl(projectId: string, unitId: string, jobId: string) {
+    const base = String(apiBaseURL).replace(/\/+$/, "");
+    return `${base}/projects/${encodeURIComponent(projectId)}/units/${encodeURIComponent(unitId)}/delivery-jobs/${encodeURIComponent(jobId)}/file`;
 }
 
 export function saveProjectShot(projectId: string, input: { id?: string; unitId?: string; title: string; description?: string; position?: number; durationMs?: number; status?: string; revision?: Partial<ShotRevisionInput> }) {

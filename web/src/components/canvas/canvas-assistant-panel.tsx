@@ -1,8 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { lazy, memo, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import copyToClipboard from "copy-to-clipboard";
 import { Copy, Cpu, Settings2, Trash2, X } from "lucide-react";
 import { Button, Modal, Segmented, Select, Tooltip } from "antd";
-import { motion } from "motion/react";
 
 import { modelDisplayName, modelIcon, normalizeModelOptionValue, resolveModelChannel, resolveModelRequestConfig, selectableModelsByCapability, useConfigStore, useEffectiveConfig, type AiConfig } from "@/stores/use-config-store";
 import { canvasThemes } from "@/lib/canvas-theme";
@@ -26,7 +25,6 @@ import { AgentChatComposer, AgentChatMessage, AgentWorkingMessage, type CanvasAg
 import { VoiceRecordingButton } from "@/components/conversation/voice-recording-button";
 import { ModelLogo } from "@/components/model-logo";
 import { AgentChatEmptyState, AgentPanelChrome } from "./canvas-agent-panel-chrome";
-import { CanvasLocalAgentPanel } from "./canvas-local-agent-panel";
 import { NODE_DEFAULT_SIZE } from "@/constant/canvas";
 import { CanvasNodeType, type CanvasAssistantMessage, type CanvasAssistantPendingBackendSession, type CanvasAssistantReference, type CanvasAssistantSession, type CanvasNodeData } from "@/types/canvas";
 import { useCanvasAgentStore } from "@/stores/canvas/use-canvas-agent-store";
@@ -38,8 +36,10 @@ import { buildCanvasWorkflowOps, looksLikeWorkflowRequest, type CanvasWorkflowIn
 import { listAddedSkills, type Skill } from "@/services/api/skills";
 import { buildSkillMentionReferences, SKILL_RUNTIME_AGENT_GUIDANCE, skillRuntime } from "@/services/skill-runtime";
 
-export const CANVAS_AGENT_PANEL_MOTION_MS = 500;
-const PANEL_MOTION_SECONDS = CANVAS_AGENT_PANEL_MOTION_MS / 1000;
+export const loadCanvasLocalAgentPanel = () => import("./canvas-local-agent-panel").then((module) => ({ default: module.CanvasLocalAgentPanel }));
+const CanvasLocalAgentPanel = lazy(loadCanvasLocalAgentPanel);
+
+export const CANVAS_AGENT_PANEL_MOTION_MS = 200;
 const ONLINE_AGENT_MAX_STEPS = 8;
 const ONLINE_AGENT_PROMPT =
     `你是影策网页内置在线画布助手。首轮必须先调用 canvas_get_context；涉及已有节点时用 canvas_find_nodes 获取真实 id，涉及媒体参考时用 canvas_get_resources。流水线、工作流、管线、节点图或用户要求连线时，必须使用 canvas_create_workflow：把需求拆成有语义的节点类型、真实内容/提示词、边和布局，禁止把业务阶段退化成几个空文本卡片；工具会自动分配 id、布局并建立连线。复杂写操作先 canvas_validate_ops，再执行 canvas_apply_ops。任何写入后都必须检查工具返回的真实节点类型、connectionCount、overlapWarnings 和 verification；没有真实连线时绝不能说已连线，没有生成资源时绝不能说已完成。不要输出 JSON ops、不要猜 id、不要把未就绪资源当作可用素材、不要编造执行结果。需要用户选择时，给出可点击的短选项，不要只让用户输入 1、2、3。${SKILL_RUNTIME_AGENT_GUIDANCE}`;
@@ -244,7 +244,7 @@ type OnlineToolResult = { ok: true; message: string; data?: unknown } | { ok: fa
 type OnlineExecutedToolCall = { toolCallId: string; name: string; result: OnlineToolResult };
 type PendingOnlineToolContext = { messages: ResponseInputMessage[]; toolCalls: ResponseToolCall[]; assistantId: string; step: number };
 
-type CanvasAssistantPanelProps = {
+export type CanvasAssistantPanelProps = {
     nodes: CanvasNodeData[];
     selectedNodeIds: Set<string>;
     snapshot: CanvasAgentSnapshot;
@@ -265,7 +265,6 @@ type CanvasAssistantPanelProps = {
     onCollapse: () => void;
     cinematicEntry?: boolean;
     onCinematicEntryConsumed?: () => void;
-    resizing?: boolean;
 };
 
 export type CinematicContinuationFailureDisposition = "abort" | "durable-ack" | "provider-failed";
@@ -335,7 +334,7 @@ export const canvasCinematicContinuationEntryAdapters = {
     "resume-cinematic": runCanvasCinematicContinuationBoundary,
 } as const;
 
-export function CanvasAssistantPanel({
+function CanvasAssistantPanelImpl({
     nodes,
     selectedNodeIds,
     snapshot,
@@ -356,7 +355,6 @@ export function CanvasAssistantPanel({
     onCollapse,
     cinematicEntry = false,
     onCinematicEntryConsumed,
-    resizing = false,
 }: CanvasAssistantPanelProps) {
     const theme = canvasThemes[useThemeStore((state) => state.theme)];
     const user = useUserStore((state) => state.user);
@@ -374,6 +372,7 @@ export function CanvasAssistantPanel({
     const [onlineLogs, setOnlineLogs] = useState<OnlineAgentLog[]>([]);
     const [composerSkills, setComposerSkills] = useState<Skill[]>([]);
     const [removedReferenceIds, setRemovedReferenceIds] = useState<Set<string>>(new Set());
+    const [localAgentMounted, setLocalAgentMounted] = useState(agentMode === "local");
     const [localSessions, setLocalSessions] = useState<CanvasAssistantSession[]>(() => (sessions.length ? sessions : [createSession()]));
     const localSessionsRef = useRef(localSessions);
     const [localActiveSessionId, setLocalActiveSessionIdState] = useState<string | null>(activeSessionId);
@@ -388,6 +387,15 @@ export function CanvasAssistantPanel({
     const pendingToolContextRef = useRef(new Map<string, PendingOnlineToolContext>());
     const cinematicSessionControllersRef = useRef(new Map<string, AbortController>());
     const generationConsumerControllerRef = useRef(new AbortController());
+    // 父级传入的快照在 viewport-only 变化时保持身份，getter 仍会返回最新 viewport。
+    // 同步更新 ref，避免用户立即发送指令时读到 effect 之前的快照。
+    snapshotRef.current = snapshot;
+
+    useEffect(() => {
+        // 除面板内切换外，URL/项目入口也可能直接以本机模式重开已挂载面板。
+        // 只在真正进入本机模式时挂载，网站模式首开仍保持懒加载。
+        if (agentMode === "local") setLocalAgentMounted(true);
+    }, [agentMode]);
 
     useEffect(() => {
         let cancelled = false;
@@ -411,10 +419,6 @@ export function CanvasAssistantPanel({
         setLocalSessions(sessions);
         setLocalActiveSessionId(activeSessionId);
     }, [activeSessionId, sessions]);
-
-    useEffect(() => {
-        snapshotRef.current = snapshot;
-    }, [snapshot]);
 
     useEffect(() => {
         generationConsumerControllerRef.current = activeGenerationConsumerController(generationConsumerControllerRef.current);
@@ -1169,16 +1173,18 @@ export function CanvasAssistantPanel({
     );
 
     return (
-        <motion.aside
+        <aside
             className="pc-canvas-assistant-panel pointer-events-auto relative flex h-full w-full flex-col overflow-hidden rounded-[var(--panel-radius)]"
-            initial={{ x: 48, opacity: 0 }}
-            animate={{ x: closing ? 28 : 0, opacity: closing ? 0 : 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: resizing ? 0 : PANEL_MOTION_SECONDS, ease: [0.22, 1, 0.36, 1] }}
+            aria-hidden={closing}
             style={{
-                background: theme.spatial.elevated,
+                // 覆盖式抽屉必须使用不透明表面，避免画布素材透出干扰消息阅读；
+                // 同时不启用 backdrop-filter，防止大面积实时模糊拖慢呼出和缩放。
+                background: theme.node.panel,
                 color: theme.node.text,
-                boxShadow: `-18px 0 48px ${theme.spatial.shadow}, 0 24px 72px ${theme.spatial.shadow}`,
+                borderLeft: `1px solid ${theme.node.stroke}`,
+                boxShadow: `-10px 0 30px ${theme.spatial.shadow}`,
+                contain: "layout paint",
+                pointerEvents: closing ? "none" : "auto",
             }}
         >
             <AgentPanelChrome
@@ -1189,7 +1195,10 @@ export function CanvasAssistantPanel({
                 confirmTools={confirmTools}
                 canUndo={agentMode === "online" ? canUndoOps : false}
                 undoCount={agentMode === "online" ? undoOpsCount : 0}
-                onModeChange={onAgentModeChange}
+                onModeChange={(mode) => {
+                    if (mode === "local") setLocalAgentMounted(true);
+                    onAgentModeChange(mode);
+                }}
                 onConfirmToolsChange={(confirmTools) => setAgentState({ confirmTools })}
                 onUndo={undoLastOnlineBatch}
                 onCollapse={collapse}
@@ -1199,10 +1208,34 @@ export function CanvasAssistantPanel({
                 onNewChat={agentMode === "online" ? () => { startChatSession(); setView("chat"); } : undefined}
                 newChatDisabled={false}
             />
-            {agentMode === "local" ? <CanvasLocalAgentPanel embedded snapshot={snapshot} canUndoOps={canUndoOps} undoOpsCount={undoOpsCount} onApplyOps={onApplyOps} onUndoOps={onUndoOps} autoConnect={autoConnectLocal} /> : onlineContent}
-        </motion.aside>
+            <div data-canvas-agent-mode="online" className={agentMode === "online" ? "flex min-h-0 flex-1 flex-col" : "hidden"} aria-hidden={agentMode !== "online"}>
+                {onlineContent}
+            </div>
+            {localAgentMounted ? (
+                <div data-canvas-agent-mode="local" className={agentMode === "local" ? "flex min-h-0 flex-1 flex-col" : "hidden"} aria-hidden={agentMode !== "local"}>
+                    <Suspense
+                        fallback={(
+                            <div className="flex min-h-0 flex-1 items-center justify-center px-6 text-sm" style={{ color: theme.node.muted }} role="status" aria-live="polite">
+                                正在准备本机 Agent…
+                            </div>
+                        )}
+                    >
+                        <CanvasLocalAgentPanel embedded snapshot={snapshot} canUndoOps={canUndoOps} undoOpsCount={undoOpsCount} onApplyOps={onApplyOps} onUndoOps={onUndoOps} autoConnect={autoConnectLocal && agentMode === "local"} />
+                    </Suspense>
+                </div>
+            ) : agentMode === "local" ? (
+                <div className="flex min-h-0 flex-1 items-center justify-center px-6 text-sm" style={{ color: theme.node.muted }} role="status" aria-live="polite">
+                    正在准备本机 Agent…
+                </div>
+            ) : null}
+        </aside>
     );
 }
+
+// 画布拖动与缩放会让 Project 高频重渲染。面板 props 没有语义变化时保持整棵 Agent UI，
+// 避免消息列表、技能和本机 Runtime 视图被无关 viewport 更新反复计算。
+export const CanvasAssistantPanel = memo(CanvasAssistantPanelImpl);
+CanvasAssistantPanel.displayName = "CanvasAssistantPanel";
 
 function AgentTextModelPicker({ config, value, onChange }: { config: AiConfig; value: string; onChange: (model: string) => void }) {
     const options = useMemo(() => Array.from(new Set([value, ...selectableModelsByCapability(config, "text")].filter(Boolean))), [config, value]);

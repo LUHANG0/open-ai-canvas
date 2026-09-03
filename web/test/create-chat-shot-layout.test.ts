@@ -54,7 +54,7 @@ function sourceSection(source: string, startMarker: string, endMarker: string) {
 
 describe("PC creation chat and storyboard director workbench regression gates", () => {
     test("keeps the director workbench PC-only and exposes the fixed mode toolbar in the empty state", async () => {
-        const [source, styles] = await Promise.all([read("../src/pages/create/index.tsx"), read("../src/pages/create/creation-workspace.css")]);
+        const [source, toolbarSource, styles] = await Promise.all([read("../src/pages/create/index.tsx"), read("../src/pages/create/creation-workspace-toolbar.tsx"), read("../src/pages/create/creation-workspace.css")]);
         const desktopStart = styles.indexOf("@media (min-width: 1024px)");
         expect(desktopStart).toBeGreaterThanOrEqual(0);
         const preDesktopStyles = styles.slice(0, desktopStart);
@@ -70,19 +70,31 @@ describe("PC creation chat and storyboard director workbench regression gates", 
         expect(emptyRender).toContain('viewMode === "storyboard"');
         expect(emptyRender).toContain('className="creation-empty-workspace creation-scrollbar"');
         expect((source.match(/<CreationWorkspaceToolbar/g) || []).length).toBeGreaterThanOrEqual(3);
+        expect(source).toContain('from "./creation-workspace-toolbar"');
+        expect(source).not.toContain("function CreationWorkspaceToolbar");
+        expect(toolbarSource).toContain("export function CreationHistoryDrawer");
+        expect(toolbarSource).toContain("export function CreationWorkspaceToolbar");
         expectRuleWith(desktopStyles, ".creation-home .creation-workspace-toolbar", [/display:\s*grid/, /height:\s*52px/, /grid-template-columns:\s*minmax\([^;]+,\s*1fr\)\s+248px\s+minmax\([^;]+,\s*1fr\)/]);
         expectRuleWith(desktopStyles, ".creation-home > .creation-workspace-toolbar + .creation-empty-workspace", [/min-height:\s*0/, /flex:\s*1\s+1\s+auto/]);
     });
 
     test("uses stable message-backed shot ids for selection instead of array indexes", async () => {
-        const source = await read("../src/pages/create/index.tsx");
-        const projection = sourceSection(source, "type CreationShot", "function completedCreationGenerationTask");
-        const selection = sourceSection(source, "const shots = useMemo", "useEffect(() => {");
-        const selectShot = sourceSection(source, "const selectStoryboardShot", "const beginVariantFromShot");
-        const rail = sourceSection(source, "function StoryboardShotRail", "function StoryboardComposerContext");
-        const submit = sourceSection(source, "const submit = async", "useEffect(() => {");
+        const [source, draftSource, typesSource, storyboardSource, transactionSource, submitSource] = await Promise.all([
+            read("../src/pages/create/index.tsx"),
+            read("../src/pages/create/use-creation-draft-workflow.ts"),
+            read("../src/pages/create/creation-types.ts"),
+            read("../src/pages/create/creation-storyboard-workbench.tsx"),
+            read("../src/pages/create/creation-submission-transaction.ts"),
+            read("../src/pages/create/use-creation-submit-workflow.ts"),
+        ]);
+        const projection = sourceSection(source, "function shotsFromMessages", "export default function CreatePage");
+        const selection = sourceSection(source, "const shots = useMemo", "const visibleShotIndex");
+        const selectShot = sourceSection(draftSource, "const selectStoryboardShot", "const beginVariantFromShot");
+        const rail = sourceSection(storyboardSource, "function StoryboardShotRail", "function StoryboardComposerContext");
+        const submit = sourceSection(submitSource, "const submit = async", "useEffect(() => {");
 
-        expect(projection).toContain("type CreationShot = { id: string;");
+        expect(typesSource).toContain("export type CreationShot = {");
+        expect(typesSource).toContain("id: string;");
         expect(projection).toContain("shots.push({ id: message.id, user: message })");
         expect(projection).toContain("shots.push({ id: message.id, result: message })");
         expect(projection).toContain("!shots[shots.length - 1].result");
@@ -93,15 +105,17 @@ describe("PC creation chat and storyboard director workbench regression gates", 
         expect(rail).toContain("const active = shot.id === activeShotId && !composing");
         expect(rail).toContain("onClick={() => onSelect(shot.id)}");
         expect(rail).toContain("activeItemRef.current?.scrollIntoView");
-        expect(submit).toContain("...(retryTarget ? { id: retryTarget.shotId } : {})");
-        expect(submit).toContain("setSelectedShotId(userMessage.id)");
+        expect(transactionSource).toContain("...(input.retryTarget ? { id: input.retryTarget.shotId } : {})");
+        expect(submit).toContain("selectSubmittedShot(userMessage.id)");
     });
 
     test("renders a vertical shot rail, central preview, right inspector, and bottom composer context", async () => {
-        const [source, styles] = await Promise.all([read("../src/pages/create/index.tsx"), read("../src/pages/create/creation-workspace.css")]);
+        const [source, storyboardSource, styles] = await Promise.all([read("../src/pages/create/index.tsx"), read("../src/pages/create/creation-storyboard-workbench.tsx"), read("../src/pages/create/creation-workspace.css")]);
         const desktopStyles = styles.slice(styles.indexOf("@media (min-width: 1024px)"));
         const storyboardRender = sourceSection(source, '<div className="storyboard-workbench">', "<CreationHistoryDrawer");
-        const shotCard = sourceSection(source, "function StoryboardShotCard", "function StoryboardNextShotCard");
+        const rail = sourceSection(storyboardSource, "function StoryboardShotRail", "function StoryboardComposerContext");
+        const shotCard = sourceSection(storyboardSource, "function StoryboardShotCard", "function StoryboardNextShotCard");
+        const nextCard = sourceSection(storyboardSource, "function StoryboardNextShotCard", "function StoryboardBriefAttachments");
 
         const railPosition = storyboardRender.indexOf("<StoryboardShotRail");
         const stagePosition = storyboardRender.indexOf('className="storyboard-workbench-stage"');
@@ -120,6 +134,16 @@ describe("PC creation chat and storyboard director workbench regression gates", 
         expect(shotCard).toContain('className="storyboard-editor-inspector creation-scrollbar"');
         expect(shotCard).toContain('className="storyboard-editor-inspector-section is-script"');
         expect(shotCard).toContain('className="storyboard-editor-inspector-section is-settings"');
+        expect(shotCard).toContain('className="storyboard-workbench-card-summary"');
+        expect(shotCard).toContain('className="storyboard-workbench-card-meta"');
+        expect(shotCard).toContain('className="storyboard-workbench-card-title"');
+        expect(shotCard).toContain("创作内容");
+        expect(rail).toContain('storyboard-editor-shot-thumb-state is-${status}');
+        expect(nextCard).toContain('className="storyboard-workbench-next-kicker"');
+        expect(nextCard).toContain('aria-label="镜头描述建议"');
+        expect(nextCard).toContain("主体与动作");
+        expect(nextCard).toContain("景别与运镜");
+        expect(nextCard).toContain("场景与氛围");
 
         expectRuleWith(desktopStyles, ".creation-home .storyboard-editor-body", [/display:\s*grid/, /min-height:\s*0/, /overflow:\s*hidden/]);
         expectRuleWith(desktopStyles, ".creation-home .storyboard-editor-main", [/display:\s*grid/, /grid-template-rows:\s*minmax\(0,\s*1fr\)\s+auto/, /overflow:\s*hidden/]);
@@ -127,9 +151,11 @@ describe("PC creation chat and storyboard director workbench regression gates", 
         expectRuleWith(desktopStyles, ".creation-home .storyboard-editor-rail-list", [/overflow-x:\s*hidden/, /overflow-y:\s*auto/]);
         expectRuleWith(desktopStyles, ".creation-home .storyboard-editor-preview-pane", [/grid-template-rows:\s*38px\s+minmax\(0,\s*1fr\)/, /overflow:\s*hidden/]);
         expectRuleWith(desktopStyles, ".creation-home .storyboard-editor-preview-canvas", [/overflow:\s*auto/]);
+        expectRuleWith(desktopStyles, ".creation-home .storyboard-editor-preview-content .creation-video-result", [/width:\s*auto/, /max-width:\s*100%/, /background:\s*transparent/]);
         expectRuleWith(desktopStyles, ".creation-home .storyboard-editor-inspector", [/overflow-y:\s*auto/]);
         expectRuleWith(desktopStyles, ".creation-home .storyboard-workbench-composer", [/grid-template-rows:\s*38px\s+auto/, /overflow:\s*hidden/]);
         expectRuleWith(desktopStyles, ".creation-home .storyboard-editor-composer-context", [/display:\s*grid/, /grid-template-columns:\s*24px\s+minmax\(0,\s*1fr\)\s+auto/]);
+        expectRuleWith(desktopStyles, ".creation-home .storyboard-workbench-next-guide", [/display:\s*flex/, /flex-wrap:\s*wrap/]);
     });
 
     test("locks the compact 1024 rail and the 1280 and 1360 director column widths", async () => {
@@ -163,12 +189,11 @@ describe("PC creation chat and storyboard director workbench regression gates", 
     });
 
     test("uses ordered-list and button semantics with aria-current instead of a fake listbox", async () => {
-        const source = await read("../src/pages/create/index.tsx");
-        const rail = sourceSection(source, "function StoryboardShotRail", "function StoryboardComposerContext");
-        const toolbar = sourceSection(source, "function CreationWorkspaceToolbar", "function CreationMessageView");
+        const [storyboardSource, toolbar] = await Promise.all([read("../src/pages/create/creation-storyboard-workbench.tsx"), read("../src/pages/create/creation-workspace-toolbar.tsx")]);
+        const rail = sourceSection(storyboardSource, "function StoryboardShotRail", "function StoryboardComposerContext");
 
         expect(rail).toContain('<ol className="storyboard-editor-rail-list creation-scrollbar" aria-label="镜头列表">');
-        expect(rail).toContain('type="button" aria-current={active ? "true" : undefined}');
+        expect(rail).toContain('aria-current={active ? "true" : undefined}');
         expect(rail).toContain('type="button" aria-current="true" className="storyboard-editor-shot is-draft is-active"');
         expect(rail).not.toContain('role="listbox"');
         expect(rail).not.toContain('role="option"');
@@ -180,10 +205,10 @@ describe("PC creation chat and storyboard director workbench regression gates", 
     });
 
     test("maps streaming and cancelled states consistently in the rail, card, and result", async () => {
-        const [source, styles] = await Promise.all([read("../src/pages/create/index.tsx"), read("../src/pages/create/creation-workspace.css")]);
-        const stateContract = sourceSection(source, "type StoryboardShotState", "function storyboardShotTitle");
-        const shotCard = sourceSection(source, "function StoryboardShotCard", "function StoryboardNextShotCard");
-        const result = sourceSection(source, "function StoryboardShotResult", "function formatMessageTime");
+        const [storyboardSource, styles] = await Promise.all([read("../src/pages/create/creation-storyboard-workbench.tsx"), read("../src/pages/create/creation-workspace.css")]);
+        const stateContract = sourceSection(storyboardSource, "type StoryboardShotState", "function storyboardShotTitle");
+        const shotCard = sourceSection(storyboardSource, "function StoryboardShotCard", "function StoryboardNextShotCard");
+        const result = storyboardSource.slice(storyboardSource.indexOf("function StoryboardShotResult"));
         const desktopStyles = styles.slice(styles.indexOf("@media (min-width: 1024px)"));
 
         expect(stateContract).toContain('cancelled: "已停止"');
@@ -200,14 +225,14 @@ describe("PC creation chat and storyboard director workbench regression gates", 
     });
 
     test("presents variants as a new-shot flow and never as an in-place mutation", async () => {
-        const source = await read("../src/pages/create/index.tsx");
-        const variant = sourceSection(source, "const beginVariantFromShot", "const updateComposerPrompt");
-        const context = sourceSection(source, "function StoryboardComposerContext", "function StoryboardToolbar");
-        const shotCard = sourceSection(source, "function StoryboardShotCard", "function StoryboardNextShotCard");
+        const [source, draftSource, storyboardSource] = await Promise.all([read("../src/pages/create/index.tsx"), read("../src/pages/create/use-creation-draft-workflow.ts"), read("../src/pages/create/creation-storyboard-workbench.tsx")]);
+        const variant = sourceSection(draftSource, "const beginVariantFromShot", "const updateComposerPrompt");
+        const context = sourceSection(storyboardSource, "function StoryboardComposerContext", "function StoryboardToolbar");
+        const shotCard = sourceSection(storyboardSource, "function StoryboardShotCard", "function StoryboardNextShotCard");
         const stage = sourceSection(source, "const storyboardStageContent", "return (");
-        const nextCard = sourceSection(source, "function StoryboardNextShotCard", "function StoryboardBriefAttachments");
-        const promptUpdate = sourceSection(source, "const updateComposerPrompt", "const composerProps");
-        const composeControls = sourceSection(source, "const cancelComposeNextShot", "const selectStoryboardShot");
+        const nextCard = sourceSection(storyboardSource, "function StoryboardNextShotCard", "function StoryboardBriefAttachments");
+        const promptUpdate = sourceSection(draftSource, "const updateComposerPrompt", "const resetStoryboardDraftState");
+        const composeControls = sourceSection(draftSource, "const cancelComposeNextShot", "const selectStoryboardShot");
 
         expect(variant).toContain("createVariant(shot.result, resultIndex)");
         expect(variant).toContain("setVariantSourceShotId(shot.id)");
@@ -226,50 +251,66 @@ describe("PC creation chat and storyboard director workbench regression gates", 
     });
 
     test("keeps failed-shot retry non-destructive until validation and guards conversation changes", async () => {
-        const source = await read("../src/pages/create/index.tsx");
-        const submit = sourceSection(source, "const submit = async", "useEffect(() => {");
-        const retry = sourceSection(source, "const retryFailedMessage", "const createVariant");
-        const retryEffect = sourceSection(source, "if (!retrySequence) return", "const startNewConversation");
+        const [source, draftSource, preparationSource, transactionSource, submitSource] = await Promise.all([
+            read("../src/pages/create/index.tsx"),
+            read("../src/pages/create/use-creation-draft-workflow.ts"),
+            read("../src/pages/create/creation-submit-preparation.ts"),
+            read("../src/pages/create/creation-submission-transaction.ts"),
+            read("../src/pages/create/use-creation-submit-workflow.ts"),
+        ]);
+        const submit = sourceSection(submitSource, "const submit = async", "useEffect(() => {");
+        const guard = sourceSection(submitSource, "export function creationSubmissionStartGuard", "export function useCreationSubmitWorkflow");
+        const retry = sourceSection(draftSource, "const retryFailedMessage", "const createVariant");
+        const retryEffect = sourceSection(submitSource, "if (!pendingRetry) return", "return { submit }");
 
         expect(retry).not.toContain("updateActive(");
         expect(retry).not.toContain("removedIds");
         expect(retry).not.toContain("messages.filter");
         expect(retry).toContain("原镜头已保留，请确认草稿后再次生成");
         expect(retry).toContain("conversationId: activeConversation.id");
-        expect(retry).toContain("userMessageId: previous.id");
-        expect(retry).toContain("assistantMessageId: assistant.id");
-        expect(retryEffect).toContain("void submit(pending.context, pending.lockKey, pending.target)");
+        expect(retry).toContain("userMessageId: pair.userMessage.id");
+        expect(retry).toContain("assistantMessageId: pair.assistantMessage.id");
+        expect(retryEffect).toContain("void submit(pendingRetry.context, pendingRetry.lockKey, pendingRetry.target)");
 
-        const guardPosition = submit.indexOf("if (retryTarget && activeConversation.id !== retryTarget.conversationId)");
-        const compatibilityPosition = submit.indexOf("const compatibilityError = modelCompatibilityError");
+        const guardPosition = submit.indexOf("const guard = creationSubmissionStartGuard");
+        const validationPosition = submit.indexOf("const preparation = prepareCreationSubmission");
         const preparePosition = submit.indexOf("skillExecution = await skillRuntime.prepare");
-        const replacementPosition = submit.indexOf("const replacedIds = new Set");
+        const replacementPosition = submit.indexOf("applyCreationSubmissionToConversation");
         expect(guardPosition).toBeGreaterThanOrEqual(0);
-        expect(compatibilityPosition).toBeGreaterThan(guardPosition);
-        expect(preparePosition).toBeGreaterThan(compatibilityPosition);
+        expect(validationPosition).toBeGreaterThan(guardPosition);
+        expect(preparePosition).toBeGreaterThan(validationPosition);
         expect(replacementPosition).toBeGreaterThan(preparePosition);
-        expect(submit).toContain('toast.warning("已切换到其他创作，本次重试未执行")');
-        expect(submit).toContain("if (retryTarget && conversation.id === retryTarget.conversationId)");
-        expect(submit).toContain("retained.splice(insertAt >= 0 ? insertAt : retained.length, 0, userMessage, assistantMessage)");
-        expect(submit).toContain("setSelectedShotId(userMessage.id)");
+        expect(guard.indexOf("if (input.retryConversationId")).toBeLessThan(guard.indexOf("if (!input.selectedModel)"));
+        expect(preparationSource).toContain("const compatibilityError = modelCompatibilityError");
+        expect(preparationSource).toContain("reconcileCreationAttachmentLimits(submissionAttachments, mode, referenceLimits)");
+        expect(guard).toContain('message: "已切换到其他创作，本次重试未执行"');
+        expect(transactionSource).toContain("if (retryTarget && conversation.id === retryTarget.conversationId)");
+        expect(transactionSource).toContain("retained.splice(insertAt >= 0 ? insertAt : retained.length, 0, userMessage, assistantMessage)");
+        expect(submit).toContain("selectSubmittedShot(userMessage.id)");
     });
 
     test("retains preview, download, retry, canvas handoff, upload, and generation fingerprints", async () => {
-        const source = await read("../src/pages/create/index.tsx");
-        const shotCard = sourceSection(source, "function StoryboardShotCard", "function StoryboardNextShotCard");
-        const result = sourceSection(source, "function StoryboardShotResult", "function formatMessageTime");
-        const downloads = sourceSection(source, "function CreationResultDownloads", "function CreationMediaPending");
-        const composer = sourceSection(source, "function CreationComposer", "function ModePicker");
+        const [source, executorSource, messageSource, composerSource, storyboardSource, submitSource] = await Promise.all([read("../src/pages/create/index.tsx"), read("../src/pages/create/creation-generation-executor.ts"), read("../src/pages/create/creation-message-view.tsx"), read("../src/pages/create/creation-composer.tsx"), read("../src/pages/create/creation-storyboard-workbench.tsx"), read("../src/pages/create/use-creation-submit-workflow.ts")]);
+        const shotCard = sourceSection(storyboardSource, "function StoryboardShotCard", "function StoryboardNextShotCard");
+        const result = storyboardSource.slice(storyboardSource.indexOf("function StoryboardShotResult"));
+        const downloads = sourceSection(messageSource, "export function CreationResultDownloads", "function CreationMediaPending");
+        const composer = sourceSection(composerSource, "function CreationComposer", "function ModePicker");
 
-        expect(source).toContain("creationCanvasHandoffPath(resultAssetIds, resultUrls.length)");
-        expect(source).toContain("runBackendGenerationTask(");
-        expect(source).toContain("runBackendGenerationTaskBatch(");
+        expect(storyboardSource).toContain("creationCanvasHandoffPath(resultAssetIds, resultUrls.length)");
+        expect(executorSource).toContain("runBackendGenerationTask(");
+        expect(executorSource).toContain("runBackendGenerationTaskBatch(");
+        expect(submitSource).toContain("executeCreationGeneration({");
+        expect((submitSource.match(/requestLifecycle\.release\(\)/g) || []).length).toBe(1);
+        expect(submitSource).toContain("useEffect(() => () => abortRef.current?.abort(), [])");
         expect(source).toContain("onSubmit: () => void submit()");
         expect(shotCard).toContain("onRetryFailure");
-        expect(shotCard).toContain("<Link to={canvasPath}>");
+        expect(shotCard).toContain('<Link className="storyboard-workbench-card-action" to={canvasPath}>');
         expect(shotCard).toContain("<CreationResultDownloads results={resultMedia} />");
         expect(result).toContain('aria-label="预览生成视频"');
+        expect(result).toContain('style={{ aspectRatio: creationMediaAspectRatio(result.settings?.ratio, "video") }}');
         expect(result).toContain('aria-label="预览生成图片"');
+        expect(result).toContain("{!compactLayout ? (");
+        expect(result).not.toContain('className="storyboard-workbench-result-details"');
         expect(result).toContain('<CreationMediaPreviewModal url={previewUrl} type={previewType} onClose={() => setPreviewUrl("")} />');
         expect(downloads).toContain("href={entry.url} download");
         expect(composer).toContain('type="file" hidden');
@@ -278,5 +319,17 @@ describe("PC creation chat and storyboard director workbench regression gates", 
         expect(composer).toContain("props.fileInputRef.current?.click()");
         expect(composer).toContain("props.onOpenLibrary");
         expect(composer).toContain('aria-label="打开素材库上传或选择素材"');
+    });
+
+    test("treats expected materialization cancellation as lifecycle cleanup instead of a generation failure", async () => {
+        const source = await read("../src/pages/create/creation-task-lifecycle.ts");
+        const materialization = sourceSection(source, "async function materializeCreationTaskResults", "function reconcileCreationTaskMessages");
+        const cancellationPosition = materialization.indexOf("if (isGenerationTaskCancelled(error, signal)) return task");
+        const warningPosition = materialization.indexOf("创作生成结果资源化失败");
+        const failurePosition = materialization.indexOf("creationError:");
+
+        expect(cancellationPosition).toBeGreaterThanOrEqual(0);
+        expect(warningPosition).toBeGreaterThan(cancellationPosition);
+        expect(failurePosition).toBeGreaterThan(cancellationPosition);
     });
 });

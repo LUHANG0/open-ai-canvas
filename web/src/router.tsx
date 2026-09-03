@@ -29,11 +29,10 @@ const ArkPrivateAssetsSettingsPage = lazy(() => import("@/pages/admin/settings/a
 const ResponseInterceptionSettingsPage = lazy(() => import("@/pages/admin/settings/response-interception-settings-page"));
 const ThirdPartySettingsPage = lazy(() => import("@/pages/admin/settings/libtv-settings-page"));
 const SystemUpdatePage = lazy(() => import("@/pages/admin/settings/system-update-page"));
+const BrandingSettingsPage = lazy(() => import("@/pages/admin/settings/branding-settings-page"));
 const StoryboardPromptsPage = lazy(() => import("@/pages/admin/storyboard-prompts/storyboard-prompts-page"));
 const UsersPage = lazy(() => import("@/pages/admin/users/users-page"));
 const AssetsPage = lazy(loadAssetsPage);
-const LoginPage = lazy(() => import("@/pages/auth/login"));
-const RegisterPage = lazy(() => import("@/pages/auth/register"));
 const CanvasPage = lazy(loadCanvasPage);
 const CanvasProjectPage = lazy(() => import("@/pages/canvas/project"));
 const SharedCanvasPage = lazy(() => import("@/pages/canvas/shared"));
@@ -69,19 +68,27 @@ function fullScreenDeferred(element: ReactNode) {
 function devRoutes() {
     const FolderPreviewLab = lazy(() => import("@/pages/dev/folder-preview-lab"));
     const DirectorReproLab = lazy(() => import("@/pages/dev/director-repro-lab"));
+    const CanvasReproLab = lazy(() => import("@/pages/dev/canvas-repro-lab"));
+    const ProjectDeliveryReproLab = lazy(() => import("@/pages/dev/project-delivery-repro-lab"));
     return [
         { path: "/dev/folders", element: fullScreenDeferred(<FolderPreviewLab />), errorElement: <RouteErrorPage /> },
         { path: "/dev/director-repro", element: fullScreenDeferred(<DirectorReproLab />), errorElement: <RouteErrorPage /> },
+        { path: "/dev/canvas-repro/:id", element: fullScreenDeferred(<CanvasReproLab />), errorElement: <RouteErrorPage /> },
+        { path: "/dev/project-delivery-repro", element: fullScreenDeferred(<ProjectDeliveryReproLab />), errorElement: <RouteErrorPage /> },
     ];
 }
 
 export const router = createBrowserRouter([
+    { path: "/", element: <Navigate to="/login" replace /> },
+    { path: "/product", element: <Navigate to="/login" replace /> },
+    { path: "/showcase", element: <Navigate to="/login" replace /> },
+    { path: "/about", element: <Navigate to="/login" replace /> },
     {
         element: <AuthScene />,
         errorElement: <RouteErrorPage />,
         children: [
-            { path: "/login", element: fullScreenDeferred(<LoginPage />) },
-            { path: "/register", element: fullScreenDeferred(<RegisterPage />) },
+            { path: "/login", element: <></> },
+            { path: "/register", element: <></> },
         ],
     },
     { path: "/share/canvas/:token", element: fullScreenDeferred(<SharedCanvasPage />), errorElement: <RouteErrorPage /> },
@@ -94,9 +101,8 @@ export const router = createBrowserRouter([
         ),
         errorElement: <RouteErrorPage />,
         children: [
-            { path: "/", element: <Navigate to="/create" replace /> },
             { path: "/create", element: <RequireAuth>{deferred(<CreatePage />)}</RequireAuth> },
-            { path: "/home", element: deferred(<HomePage />) },
+            { path: "/home", element: <RequireAuth>{deferred(<HomePage />)}</RequireAuth> },
             {
                 path: "/tasks",
                 element: (
@@ -107,8 +113,22 @@ export const router = createBrowserRouter([
             },
             { path: "/assets", element: <RequireAuth>{deferred(<AssetsPage />)}</RequireAuth> },
             { path: "/skills", element: <RequireAuth>{deferred(<SkillsPage />)}</RequireAuth> },
-            { path: "/plugins", element: <RequireAuth><RequireFeature feature="pluginCenterEnabled">{deferred(<PluginsPage />)}</RequireFeature></RequireAuth> },
-            { path: "/plugins/eagle", element: <RequireAuth><RequireFeature feature="pluginCenterEnabled">{deferred(<EagleLibraryPage />)}</RequireFeature></RequireAuth> },
+            {
+                path: "/plugins",
+                element: (
+                    <RequireAuth>
+                        <RequireFeature feature="pluginCenterEnabled">{deferred(<PluginsPage />)}</RequireFeature>
+                    </RequireAuth>
+                ),
+            },
+            {
+                path: "/plugins/eagle",
+                element: (
+                    <RequireAuth>
+                        <RequireFeature feature="pluginCenterEnabled">{deferred(<EagleLibraryPage />)}</RequireFeature>
+                    </RequireAuth>
+                ),
+            },
             {
                 path: "/wallet",
                 element: (
@@ -178,6 +198,8 @@ export const router = createBrowserRouter([
                     { path: "redemption-codes", element: deferred(<RedemptionCodesPage />) },
                     { path: "logs", element: deferred(<LogsPage />) },
                     { path: "settings", element: <Navigate to="runtime-policy" replace /> },
+                    { path: "settings/branding", element: deferred(<BrandingSettingsPage />) },
+                    { path: "settings/public-site", element: <Navigate to="/admin/settings/branding" replace /> },
                     { path: "settings/drawing-engine", element: deferred(<DrawingEngineSettingsPage />) },
                     { path: "settings/concurrency", element: <Navigate to="/admin/settings/runtime-policy" replace /> },
                     { path: "settings/runtime-policy", element: deferred(<RuntimePolicySettingsPage />) },

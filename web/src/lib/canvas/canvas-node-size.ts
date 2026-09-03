@@ -7,10 +7,14 @@ export const VIDEO_NODE_MAX_SIZE = { width: 720, height: 520 } as const;
 export function fitNodeSize(width: number, height: number, maxWidth = 720, maxHeight = 520, minWidth = MEDIA_NODE_MIN_SIZE.width, minHeight = MEDIA_NODE_MIN_SIZE.height) {
     const w = Math.max(1, width);
     const h = Math.max(1, height);
-    // 媒体节点既要保留原始比例，也要给生成状态、操作按钮留下稳定的可读空间。
-    const preferredScale = Math.min(1, maxWidth / w, maxHeight / h);
-    const minimumScale = Math.max(minWidth / w, minHeight / h);
-    const scale = Math.max(preferredScale, minimumScale);
+    const boundedMaxWidth = Math.max(1, maxWidth);
+    const boundedMaxHeight = Math.max(1, maxHeight);
+    const maxScale = Math.min(boundedMaxWidth / w, boundedMaxHeight / h);
+    const naturalScale = Math.min(1, maxScale);
+    const readableScale = Math.max(minWidth / w, minHeight / h);
+    // 极端横竖比无法同时满足最小宽高与最大宽高。此时优先保留原始比例和最大边界，
+    // 避免超宽、超高素材突破统一预览占位并挤乱画布。
+    const scale = Math.min(maxScale, Math.max(naturalScale, readableScale));
     return { width: w * scale, height: h * scale };
 }
 
@@ -57,10 +61,10 @@ export function ensureMediaNodeMinimumSize(node: CanvasNodeData) {
         width = alignedSize.width;
         height = alignedSize.height;
     }
-    if (width < MEDIA_NODE_MIN_SIZE.width || height < MEDIA_NODE_MIN_SIZE.height) {
-        const scale = Math.max(1, MEDIA_NODE_MIN_SIZE.width / Math.max(1, width), MEDIA_NODE_MIN_SIZE.height / Math.max(1, height));
-        width *= scale;
-        height *= scale;
+    if (width < MEDIA_NODE_MIN_SIZE.width || height < MEDIA_NODE_MIN_SIZE.height || width > VIDEO_NODE_MAX_SIZE.width || height > VIDEO_NODE_MAX_SIZE.height) {
+        const fitted = fitNodeSize(width, height, VIDEO_NODE_MAX_SIZE.width, VIDEO_NODE_MAX_SIZE.height);
+        width = fitted.width;
+        height = fitted.height;
     }
     if (width === node.width && height === node.height && title === node.title) return node;
     return {

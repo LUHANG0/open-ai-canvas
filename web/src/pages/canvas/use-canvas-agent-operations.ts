@@ -35,7 +35,7 @@ type UseCanvasAgentOperationsOptions = {
     connectionsRef: { current: CanvasConnection[] };
     selectedNodeIdsRef: { current: Set<string> };
     viewportRef: { current: ViewportTransform };
-    generateNodeRef: { current: ((nodeId: string, mode: CanvasNodeGenerationMode, prompt: string, options?: CanvasAgentGenerationOptions) => Promise<void>) | null };
+    generateNode: (nodeId: string, mode: CanvasNodeGenerationMode, prompt: string, options?: CanvasAgentGenerationOptions) => Promise<void>;
     setNodes: Dispatch<SetStateAction<CanvasNodeData[]>>;
     setConnections: Dispatch<SetStateAction<CanvasConnection[]>>;
     setSelectedNodeIds: Dispatch<SetStateAction<Set<string>>>;
@@ -53,6 +53,36 @@ export type CanvasAgentChange = {
 };
 
 type CanvasAgentUndoBatch = { snapshot: CanvasAgentSnapshot; afterNodes: CanvasNodeData[]; afterConnections: CanvasConnection[]; change: Omit<CanvasAgentChange, "undoCount"> };
+
+export function createCanvasAssistantSnapshotView(snapshot: CanvasAgentSnapshot, selectedNodeIds: string[], viewportRef: { current: ViewportTransform }, liveSnapshotRef: { current: CanvasAgentSnapshot }): CanvasAgentSnapshot {
+    return {
+        projectId: snapshot.projectId,
+        domainProjectId: snapshot.domainProjectId,
+        title: snapshot.title,
+        nodes: snapshot.nodes,
+        connections: snapshot.connections,
+        selectedNodeIds,
+        get viewport() {
+            return viewportRef.current;
+        },
+        get revision() {
+            return liveSnapshotRef.current.revision;
+        },
+        get stateHash() {
+            return liveSnapshotRef.current.stateHash;
+        },
+    };
+}
+
+export function useCanvasAssistantSnapshot(snapshot: CanvasAgentSnapshot, selectedNodeIds: Set<string>, viewportRef: { current: ViewportTransform }) {
+    const liveSnapshotRef = useRef(snapshot);
+    liveSnapshotRef.current = snapshot;
+    const selectedNodeIdList = useMemo(() => Array.from(selectedNodeIds), [selectedNodeIds]);
+    return useMemo(
+        () => createCanvasAssistantSnapshotView(snapshot, selectedNodeIdList, viewportRef, liveSnapshotRef),
+        [selectedNodeIdList, snapshot.connections, snapshot.domainProjectId, snapshot.nodes, snapshot.projectId, snapshot.title, viewportRef],
+    );
+}
 
 type RunCanvasAgentGenerationOpsInput = {
     generationOps: Array<Extract<CanvasAgentOp, { type: "run_generation" }>>;
@@ -220,7 +250,7 @@ export function useCanvasAgentOperations({
     connectionsRef,
     selectedNodeIdsRef,
     viewportRef,
-    generateNodeRef,
+    generateNode,
     setNodes,
     setConnections,
     setSelectedNodeIds,
@@ -286,46 +316,44 @@ export function useCanvasAgentOperations({
             }
             if (focusNodeIds.length) queueMicrotask(() => focusSelection());
             if (generationOps.length) {
-                const generate = generateNodeRef.current;
-                if (generate)
-                    await runCanvasAgentGenerationOps({
-                        generationOps,
-                        nodes: nodesRef.current,
-                        generate,
-                        context: generationContext,
-                        onContinuation: async (nodeId, continuation) => {
-                            if (continuation.status === "completed" && continuation.effectKey) {
-                                await persistCanvasAgentGenerationContinuationEffect({
-                                    projectId,
-                                    nodeId,
-                                    continuation,
-                                    effectKey: continuation.effectKey,
-                                    nodesRef,
-                                    setNodes,
-                                });
-                                return;
-                            }
-                            setNodes((current) => {
-                                const updated = current.map((node) =>
-                                    node.id === nodeId
-                                        ? {
-                                              ...node,
-                                              metadata: {
-                                                  ...node.metadata,
-                                                  agentGenerationContinuation: continuation,
-                                              },
-                                          }
-                                        : node,
-                                );
-                                nodesRef.current = updated;
-                                return updated;
+                await runCanvasAgentGenerationOps({
+                    generationOps,
+                    nodes: nodesRef.current,
+                    generate: generateNode,
+                    context: generationContext,
+                    onContinuation: async (nodeId, continuation) => {
+                        if (continuation.status === "completed" && continuation.effectKey) {
+                            await persistCanvasAgentGenerationContinuationEffect({
+                                projectId,
+                                nodeId,
+                                continuation,
+                                effectKey: continuation.effectKey,
+                                nodesRef,
+                                setNodes,
                             });
-                        },
-                    });
+                            return;
+                        }
+                        setNodes((current) => {
+                            const updated = current.map((node) =>
+                                node.id === nodeId
+                                    ? {
+                                          ...node,
+                                          metadata: {
+                                              ...node.metadata,
+                                              agentGenerationContinuation: continuation,
+                                          },
+                                      }
+                                    : node,
+                            );
+                            nodesRef.current = updated;
+                            return updated;
+                        });
+                    },
+                });
             }
             return { ...next, nodes: nodesRef.current, connections: connectionsRef.current, projectId, title: projectTitle, selectedNodeIds: nextSelectedNodeIds };
         },
-        [connectionsRef, domainProjectId, focusSelection, generateNodeRef, nodesRef, projectId, projectTitle, selectedNodeIdsRef, setConnections, setContextMenu, setNodes, setSelectedConnectionId, setSelectedNodeIds, setViewport, viewportRef],
+        [connectionsRef, domainProjectId, focusSelection, generateNode, nodesRef, projectId, projectTitle, selectedNodeIdsRef, setConnections, setContextMenu, setNodes, setSelectedConnectionId, setSelectedNodeIds, setViewport, viewportRef],
     );
 
     const undoOps = useCallback(() => {

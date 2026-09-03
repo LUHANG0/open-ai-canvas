@@ -13,6 +13,8 @@ type ChannelScope string
 type ChannelInterfaceType string
 type ApiCallStatus string
 type ResourceStatus string
+
+type ProjectDeliveryJobStatus string
 type ResourceDeletionStatus string
 type BillingStatus string
 type CreditLedgerType string
@@ -97,6 +99,12 @@ const (
 	ResourceStatusReady   ResourceStatus = "ready"
 	ResourceStatusFailed  ResourceStatus = "failed"
 	ResourceStatusDeleted ResourceStatus = "deleted"
+
+	ProjectDeliveryJobStatusQueued    ProjectDeliveryJobStatus = "queued"
+	ProjectDeliveryJobStatusRunning   ProjectDeliveryJobStatus = "running"
+	ProjectDeliveryJobStatusSucceeded ProjectDeliveryJobStatus = "succeeded"
+	ProjectDeliveryJobStatusFailed    ProjectDeliveryJobStatus = "failed"
+	ProjectDeliveryJobStatusExpired   ProjectDeliveryJobStatus = "expired"
 
 	ResourceDeletionStatusPending    ResourceDeletionStatus = "pending"
 	ResourceDeletionStatusProcessing ResourceDeletionStatus = "processing"

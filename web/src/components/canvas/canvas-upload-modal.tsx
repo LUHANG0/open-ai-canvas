@@ -3,13 +3,14 @@ import { App, Button, Modal, Upload, type UploadFile } from "antd";
 import { FileImage, Film, Music2, UploadCloud, X } from "lucide-react";
 
 import { isAudioFile } from "@/lib/canvas/canvas-project-generation";
+import { isSupportedCanvasUploadFile, type CanvasUploadBatchResult } from "@/lib/canvas/canvas-upload-batch";
 
 const CANVAS_UPLOAD_ACCEPT = "image/*,video/*,audio/mpeg,audio/wav,audio/x-wav,.mp3,.wav";
 
 type CanvasUploadModalProps = {
     open: boolean;
     onClose: () => void;
-    onUpload: (files: File[]) => Promise<boolean>;
+    onUpload: (files: File[]) => Promise<CanvasUploadBatchResult>;
 };
 
 export function CanvasUploadModal({ open, onClose, onUpload }: CanvasUploadModalProps) {
@@ -29,7 +30,13 @@ export function CanvasUploadModal({ open, onClose, onUpload }: CanvasUploadModal
         if (!files.length) return;
         setUploading(true);
         try {
-            if (await onUpload(files)) onClose();
+            const result = await onUpload(files);
+            const retryFiles = new Set([...result.failedFiles, ...result.rejectedFiles]);
+            if (!retryFiles.size && result.createdIds.length) {
+                onClose();
+                return;
+            }
+            setFileList((current) => current.filter((item) => item.originFileObj && retryFiles.has(item.originFileObj)));
         } catch (error) {
             message.error(error instanceof Error ? error.message : "文件上传失败，请稍后重试");
         } finally {
@@ -47,7 +54,7 @@ export function CanvasUploadModal({ open, onClose, onUpload }: CanvasUploadModal
             destroyOnHidden
             closable={!uploading}
             keyboard={!uploading}
-            maskClosable={!uploading}
+            mask={{ closable: !uploading }}
             onCancel={onClose}
             styles={{ container: { padding: 0, overflow: "hidden" }, body: { padding: 0 } }}
         >
@@ -67,7 +74,7 @@ export function CanvasUploadModal({ open, onClose, onUpload }: CanvasUploadModal
                         disabled={uploading}
                         fileList={fileList}
                         beforeUpload={(file) => {
-                            if (isCanvasUploadFile(file)) return false;
+                            if (isSupportedCanvasUploadFile(file)) return false;
                             message.warning(`“${file.name}”不是支持的图片、视频或音频文件`);
                             return Upload.LIST_IGNORE;
                         }}
@@ -152,8 +159,4 @@ function CanvasUploadFilePreview({ file }: { file: UploadFile }) {
             {source && isAudioFile(source) ? <Music2 className="size-7" aria-hidden="true" /> : <FileImage className="size-7" aria-hidden="true" />}
         </div>
     );
-}
-
-function isCanvasUploadFile(file: File) {
-    return file.type.startsWith("image/") || file.type.startsWith("video/") || isAudioFile(file);
 }

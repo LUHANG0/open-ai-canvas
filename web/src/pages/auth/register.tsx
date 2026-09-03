@@ -4,16 +4,15 @@ import { ArrowRight, Info, LockKeyhole, Mail, ShieldCheck, TriangleAlert, UserRo
 import { useNavigate, useSearchParams } from "react-router";
 
 import { applyUserSession } from "@/lib/user-session";
-import { getAuthSession, getAuthSettings, linuxDOLoginURL, register, sendRegistrationEmailCode } from "@/services/api/auth";
-import { LinuxDOIcon } from "./auth-scene";
-
-type AuthSettings = Awaited<ReturnType<typeof getAuthSettings>>;
+import { getAuthSession, linuxDOLoginURL, register, sendRegistrationEmailCode } from "@/services/api/auth";
+import { AuthField, LinuxDOIcon } from "./auth-fields";
+import { useAuthSettings } from "./auth-settings-provider";
 
 export default function RegisterPage() {
     const navigate = useNavigate();
     const [params] = useSearchParams();
     const { message } = App.useApp();
-    const [settings, setSettings] = useState<AuthSettings | null>(null);
+    const { settings, loading: settingsLoading, error: settingsError, refresh } = useAuthSettings();
     const [username, setUsername] = useState("");
     const [email, setEmail] = useState("");
     const [emailCode, setEmailCode] = useState("");
@@ -24,16 +23,6 @@ export default function RegisterPage() {
     const [sendingCode, setSendingCode] = useState(false);
     const [countdown, setCountdown] = useState(0);
     const next = safeNext(params.get("next"));
-
-    useEffect(() => {
-        let cancelled = false;
-        void getAuthSettings()
-            .then((value) => !cancelled && setSettings(value))
-            .catch((error) => !cancelled && message.error(error instanceof Error ? error.message : "读取注册设置失败"));
-        return () => {
-            cancelled = true;
-        };
-    }, [message]);
 
     useEffect(() => {
         if (countdown <= 0) return;
@@ -80,8 +69,51 @@ export default function RegisterPage() {
 
     const registrationClosed = settings?.registrationEnabled === false;
     const mailUnavailable = Boolean(settings && !settings.firstUser && settings.emailCodeRequired && !settings.emailEnabled);
-    const disabled = registrationClosed || mailUnavailable;
+    const disabled = settingsLoading || registrationClosed || mailUnavailable || !settings;
     const requireCode = Boolean(settings && !settings.firstUser && settings.emailCodeRequired);
+    const goToLogin = () => {
+        const query = params.toString();
+        navigate(`/login${query ? `?${query}` : ""}`);
+    };
+
+    if (settingsLoading && !settings) {
+        return (
+            <div className="pc-auth-state-panel" aria-busy="true" aria-live="polite">
+                <span className="pc-auth-state-spinner" aria-hidden="true" />
+                <h3>正在准备注册空间</h3>
+                <p>正在读取账号创建与邮箱验证设置。</p>
+            </div>
+        );
+    }
+
+    if (settingsError && !settings) {
+        return (
+            <div className="pc-auth-state-panel" role="alert">
+                <TriangleAlert aria-hidden="true" />
+                <h3>暂时无法读取注册设置</h3>
+                <p>本地服务可能尚未就绪，请重试；现有账号仍可返回登录。</p>
+                <div className="flex flex-wrap justify-center gap-2">
+                    <Button onClick={() => void refresh()}>重新读取</Button>
+                    <Button type="primary" onClick={goToLogin}>
+                        返回登录
+                    </Button>
+                </div>
+            </div>
+        );
+    }
+
+    if (registrationClosed || mailUnavailable) {
+        return (
+            <div className="pc-auth-state-panel" role="status">
+                <TriangleAlert aria-hidden="true" />
+                <h3>{registrationClosed ? "当前未开放注册" : "邮箱注册暂不可用"}</h3>
+                <p>{registrationClosed ? "管理员已关闭普通账号注册，请使用已有账号登录。" : "管理员尚未配置注册邮件，请先使用已有账号登录，或联系管理员完善邮件服务。"}</p>
+                <Button className="pc-auth-submit" type="primary" icon={<ArrowRight className="size-4" />} iconPlacement="end" onClick={goToLogin}>
+                    返回登录
+                </Button>
+            </div>
+        );
+    }
 
     return (
         <form onSubmit={submit} className="pc-auth-form pc-auth-register-form space-y-4">
@@ -90,29 +122,9 @@ export default function RegisterPage() {
                     首个账号自动成为管理员，邮箱验证码暂不要求。
                 </Notice>
             ) : null}
-            {registrationClosed ? (
-                <Notice icon={<TriangleAlert className="size-3.5" />} tone="amber">
-                    当前已关闭普通注册，请联系管理员创建账号。
-                </Notice>
-            ) : null}
-            {mailUnavailable ? (
-                <Notice icon={<TriangleAlert className="size-3.5" />} tone="amber">
-                    管理员尚未配置注册邮件，普通邮箱注册暂不可用。
-                </Notice>
-            ) : null}
-
             <div className="grid gap-4 sm:grid-cols-2">
                 <AuthField label="用户名">
-                    <Input
-                        size="large"
-                        prefix={<UserRound className="pc-auth-field-icon size-4 text-white/35" />}
-                        value={username}
-                        onChange={(event) => setUsername(event.target.value)}
-                        placeholder="3-32 位字符"
-                        autoComplete="username"
-                        required
-                        disabled={disabled}
-                    />
+                    <Input size="large" prefix={<UserRound className="pc-auth-field-icon size-4" />} value={username} onChange={(event) => setUsername(event.target.value)} placeholder="3-32 位字符" autoComplete="username" required disabled={disabled} />
                 </AuthField>
                 <AuthField label="显示名称">
                     <Input size="large" value={displayName} onChange={(event) => setDisplayName(event.target.value)} placeholder="不填则使用用户名" disabled={disabled} />
@@ -122,7 +134,7 @@ export default function RegisterPage() {
             <AuthField label="邮箱">
                 <Input
                     size="large"
-                    prefix={<Mail className="pc-auth-field-icon size-4 text-white/35" />}
+                    prefix={<Mail className="pc-auth-field-icon size-4" />}
                     value={email}
                     onChange={(event) => setEmail(event.target.value)}
                     placeholder="用于登录与安全验证"
@@ -137,7 +149,7 @@ export default function RegisterPage() {
                     <div className="grid grid-cols-[minmax(0,1fr)_116px] gap-2">
                         <Input
                             size="large"
-                            prefix={<ShieldCheck className="pc-auth-field-icon size-4 text-white/35" />}
+                            prefix={<ShieldCheck className="pc-auth-field-icon size-4" />}
                             value={emailCode}
                             onChange={(event) => setEmailCode(event.target.value.replace(/\D/g, "").slice(0, 6))}
                             placeholder="6 位验证码"
@@ -157,7 +169,7 @@ export default function RegisterPage() {
                 <AuthField label="密码">
                     <Input.Password
                         size="large"
-                        prefix={<LockKeyhole className="pc-auth-field-icon size-4 text-white/35" />}
+                        prefix={<LockKeyhole className="pc-auth-field-icon size-4" />}
                         value={password}
                         onChange={(event) => setPassword(event.target.value)}
                         placeholder="至少 8 位"
@@ -169,7 +181,7 @@ export default function RegisterPage() {
                 <AuthField label="确认密码">
                     <Input.Password
                         size="large"
-                        prefix={<LockKeyhole className="pc-auth-field-icon size-4 text-white/35" />}
+                        prefix={<LockKeyhole className="pc-auth-field-icon size-4" />}
                         value={confirmPassword}
                         onChange={(event) => setConfirmPassword(event.target.value)}
                         placeholder="再次输入密码"
@@ -190,7 +202,7 @@ export default function RegisterPage() {
             </Button>
             {settings?.linuxdoEnabled ? (
                 <>
-                    <Divider plain className="pc-auth-divider !border-white/10 !text-white/30">
+                    <Divider plain className="pc-auth-divider">
                         或
                     </Divider>
                     <Button className="pc-auth-oauth" size="large" block icon={<LinuxDOIcon />} href={linuxDOLoginURL(next)}>
@@ -199,15 +211,6 @@ export default function RegisterPage() {
                 </>
             ) : null}
         </form>
-    );
-}
-
-function AuthField({ label, children }: { label: string; children: ReactNode }) {
-    return (
-        <label className="pc-auth-field block space-y-2">
-            <span className="pc-auth-field-label text-xs font-medium text-white/62">{label}</span>
-            {children}
-        </label>
     );
 }
 

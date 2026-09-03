@@ -10,7 +10,23 @@ import { flushCanvasStorePersistence, useCanvasStore } from "@/stores/canvas/use
 let activeRemoteUserId = "";
 type RemoteUserDataPhase = "inactive" | "hydrating" | "ready" | "failed";
 
+export type RemoteUserDataSyncStatus = {
+    phase: "inactive" | "hydrating" | "ready" | "syncing" | "failed";
+    pending: boolean;
+    lastSyncedAt: number | null;
+    error: string | null;
+    failureKind: "hydrate" | "sync" | null;
+};
+
 let remoteUserDataPhase: RemoteUserDataPhase = "inactive";
+let remoteUserDataSyncStatus: RemoteUserDataSyncStatus = {
+    phase: "inactive",
+    pending: false,
+    lastSyncedAt: null,
+    error: null,
+    failureKind: null,
+};
+const remoteUserDataSyncListeners = new Set<() => void>();
 let syncTimer: number | null = null;
 let syncPromise: Promise<void> | null = null;
 let syncQueued = false;
@@ -19,7 +35,25 @@ let subscriptionsInstalled = false;
 let acknowledgedAssets = new Map<string, Asset>();
 let acknowledgedProjects = new Map<string, CanvasProject>();
 
-const LOCAL_STORAGE_KEY_PATTERN = /^(image|video|audio|file|video-reference|audio-reference):/;
+const LOCAL_STORAGE_KEY_PATTERN = /^(image|generation-image|video|audio|file|video-reference|audio-reference):/;
+
+export function getRemoteUserDataSyncStatus() {
+    return remoteUserDataSyncStatus;
+}
+
+export function subscribeRemoteUserDataSyncStatus(listener: () => void) {
+    remoteUserDataSyncListeners.add(listener);
+    return () => remoteUserDataSyncListeners.delete(listener);
+}
+
+function publishRemoteUserDataSyncStatus(patch: Partial<RemoteUserDataSyncStatus>) {
+    remoteUserDataSyncStatus = { ...remoteUserDataSyncStatus, ...patch };
+    remoteUserDataSyncListeners.forEach((listener) => listener());
+}
+
+function syncErrorMessage(error: unknown) {
+    return error instanceof Error ? error.message : "未知错误";
+}
 
 export async function syncRemoteUserData(userId?: string | null) {
     await withRemoteUserDataSyncExclusive(async () => {
@@ -28,9 +62,11 @@ export async function syncRemoteUserData(userId?: string | null) {
         acknowledgedAssets.clear();
         if (!activeRemoteUserId) {
             remoteUserDataPhase = "inactive";
+            publishRemoteUserDataSyncStatus({ phase: "inactive", pending: false, error: null, failureKind: null });
             return;
         }
         remoteUserDataPhase = "hydrating";
+        publishRemoteUserDataSyncStatus({ phase: "hydrating", pending: false, error: null, failureKind: null });
         try {
             // 登录只拉一次聚合快照。摘要列表再逐条请求详情会把 N 条数据放大成 2N+2 个请求，
             // 并且会在登录阶段同时触发大量媒体解析，任何一项失败都会污染登录结果。
@@ -43,8 +79,10 @@ export async function syncRemoteUserData(userId?: string | null) {
             acknowledgedProjects = new Map(snapshot.projects.map((project) => [project.id, project]));
             acknowledgedAssets = new Map(snapshot.assets.map((asset) => [asset.id, asset]));
             remoteUserDataPhase = "ready";
+            publishRemoteUserDataSyncStatus({ phase: "ready", pending: false, lastSyncedAt: Date.now(), error: null, failureKind: null });
         } catch (error) {
             remoteUserDataPhase = "failed";
+            publishRemoteUserDataSyncStatus({ phase: "failed", pending: false, error: syncErrorMessage(error), failureKind: "hydrate" });
             throw error;
         }
     });
@@ -71,6 +109,7 @@ export function resetRemoteUserDataSync() {
         syncTimer = null;
     }
     syncQueued = false;
+    publishRemoteUserDataSyncStatus({ phase: "inactive", pending: false, lastSyncedAt: null, error: null, failureKind: null });
 }
 
 export function withRemoteUserDataSyncExclusive<T>(operation: () => Promise<T>): Promise<T> {
@@ -84,6 +123,7 @@ export function withRemoteUserDataSyncExclusive<T>(operation: () => Promise<T>):
 
 export function scheduleRemoteUserDataSync() {
     if (!activeRemoteUserId || remoteUserDataPhase !== "ready") return;
+    publishRemoteUserDataSyncStatus({ phase: "ready", pending: true, error: null, failureKind: null });
     if (syncPromise) {
         syncQueued = true;
         return;
@@ -140,18 +180,26 @@ export async function deleteCanvasProjectsWithRemoteSync(ids: string[]) {
 }
 
 export async function saveRemoteUserDataNow() {
-    if (!activeRemoteUserId) return;
+    if (!activeRemoteUserId) {
+        publishRemoteUserDataSyncStatus({ phase: "inactive", pending: false, error: null, failureKind: null });
+        return;
+    }
     requireRemoteUserDataBaseline();
     if (syncPromise) {
         syncQueued = true;
         return syncPromise;
     }
+    publishRemoteUserDataSyncStatus({ phase: "syncing", pending: true, error: null, failureKind: null });
     syncPromise = withRemoteUserDataSyncExclusive(async () => {
         requireRemoteUserDataBaseline();
         await drainRemoteUserDataChanges();
     });
     try {
         await syncPromise;
+        publishRemoteUserDataSyncStatus({ phase: "ready", pending: false, lastSyncedAt: Date.now(), error: null, failureKind: null });
+    } catch (error) {
+        publishRemoteUserDataSyncStatus({ phase: "failed", pending: true, error: syncErrorMessage(error), failureKind: "sync" });
+        throw error;
     } finally {
         syncPromise = null;
     }
@@ -198,7 +246,7 @@ async function saveRemoteUserDataBatch() {
     }
 }
 
-async function ensureRemoteResourceReferences<T>(value: T, uploaded = new Map<string, string>()): Promise<T> {
+export async function ensureRemoteResourceReferences<T>(value: T, uploaded = new Map<string, string>()): Promise<T> {
     if (!value || typeof value !== "object") return value;
     if (Array.isArray(value)) {
         const result: unknown[] = [];
@@ -231,7 +279,7 @@ async function ensureRemoteResourceReferences<T>(value: T, uploaded = new Map<st
 function applyResourceReference(payload: Record<string, unknown>, storageKey: string) {
     const url = resourceFileUrl(storageKey.slice("resource:".length));
     payload.storageKey = storageKey;
-    for (const key of ["content", "dataUrl", "url", "coverUrl"]) {
+    for (const key of ["content", "dataUrl", "url", "coverUrl", "previewUrl"]) {
         if (typeof payload[key] === "string") payload[key] = url;
     }
     return payload;
@@ -255,7 +303,7 @@ async function uploadInlineDataUrl(dataUrl: string) {
 }
 
 async function uploadLocalStorageKey(storageKey: string, payload: Record<string, unknown>) {
-    const blob = storageKey.startsWith("image:") ? await getImageBlob(storageKey) : await getMediaBlob(storageKey);
+    const blob = storageKey.startsWith("image:") || storageKey.startsWith("generation-image:") ? await getImageBlob(storageKey) : await getMediaBlob(storageKey);
     if (!blob) throw new Error(`本地媒体不存在：${storageKey}`);
     const kind = blob.type.startsWith("image/") ? "image" : blob.type.startsWith("video/") ? "video" : blob.type.startsWith("audio/") ? "audio" : "file";
     const resource = await uploadResourceFile(blob, kind, {

@@ -143,7 +143,7 @@ export function CanvasZoomControls({ scale, onScaleChange, onFitContent, onAutoA
                 ) : null}
             </AnimatePresence>
 
-            <FloatingDock items={items} className="canvas-floating-dock" style={canvasDockStyle(theme)} ariaLabel="画布视图控制" />
+            <FloatingDock items={items} magnify={false} className="canvas-floating-dock" style={canvasDockStyle(theme)} ariaLabel="画布视图控制" />
         </div>
     );
 }

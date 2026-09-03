@@ -49,7 +49,14 @@ type UseCanvasHistoryOptions = CanvasHistorySnapshot & {
     setSelectedNodeIds: Dispatch<SetStateAction<Set<string>>>;
     setSelectedConnectionId: Dispatch<SetStateAction<string | null>>;
     setContextMenu: Dispatch<SetStateAction<ContextMenuState | null>>;
+    /** 撤销/重做前关闭节点编辑器等瞬时 UI，避免恢复后残留幽灵面板。 */
+    onApplySnapshot?: () => void;
+    cleanupAssetImages: (options?: unknown) => void;
 };
+
+export function buildCanvasHistoryCleanupOptions(extra: unknown, history: unknown, lastHistory: CanvasHistorySnapshot | null) {
+    return { extra, history, lastHistory };
+}
 
 export function useCanvasHistory({
     projectLoaded,
@@ -68,6 +75,8 @@ export function useCanvasHistory({
     setSelectedNodeIds,
     setSelectedConnectionId,
     setContextMenu,
+    onApplySnapshot,
+    cleanupAssetImages,
 }: UseCanvasHistoryOptions) {
     const historyRef = useRef<{ past: CanvasHistoryPatch[]; future: CanvasHistoryPatch[] }>({ past: [], future: [] });
     const lastHistoryRef = useRef<CanvasHistorySnapshot | null>(null);
@@ -75,12 +84,11 @@ export function useCanvasHistory({
     const applyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const applyingHistoryRef = useRef(false);
     const historyPausedRef = useRef(false);
+    const externalSnapshotPendingRef = useRef(false);
     const [historyState, setHistoryState] = useState({ canUndo: false, canRedo: false });
-
-    const createHistorySnapshot = useCallback(
-        (): CanvasHistorySnapshot => ({ nodes, connections, chatSessions, activeChatId, backgroundMode, showImageInfo }),
-        [activeChatId, backgroundMode, chatSessions, connections, nodes, showImageInfo],
-    );
+    const latestSnapshotRef = useRef<CanvasHistorySnapshot>({ nodes, connections, chatSessions, activeChatId, backgroundMode, showImageInfo });
+    // 事件可能发生在 180ms 合并窗口内；渲染期同步最新引用，撤销时即可先落盘再回退。
+    latestSnapshotRef.current = { nodes, connections, chatSessions, activeChatId, backgroundMode, showImageInfo };
 
     const clearCommitTimer = useCallback(() => {
         if (!historyCommitTimerRef.current) return;
@@ -96,8 +104,10 @@ export function useCanvasHistory({
         }
         historyRef.current = { past: [], future: [] };
         lastHistoryRef.current = snapshot;
+        latestSnapshotRef.current = snapshot;
         applyingHistoryRef.current = false;
         historyPausedRef.current = false;
+        externalSnapshotPendingRef.current = false;
         setHistoryState({ canUndo: false, canRedo: false });
     }, [clearCommitTimer]);
 
@@ -105,6 +115,8 @@ export function useCanvasHistory({
         clearCommitTimer();
         applyingHistoryRef.current = true;
         lastHistoryRef.current = snapshot;
+        latestSnapshotRef.current = snapshot;
+        onApplySnapshot?.();
         setNodes(snapshot.nodes);
         setConnections(snapshot.connections);
         setChatSessions(snapshot.chatSessions);
@@ -120,15 +132,40 @@ export function useCanvasHistory({
             applyTimerRef.current = null;
             setHistoryState({ canUndo: historyRef.current.past.length > 0, canRedo: historyRef.current.future.length > 0 });
         });
-    }, [clearCommitTimer, setActiveChatId, setBackgroundMode, setChatSessions, setConnections, setContextMenu, setNodes, setSelectedConnectionId, setSelectedNodeIds, setShowImageInfo]);
+    }, [clearCommitTimer, onApplySnapshot, setActiveChatId, setBackgroundMode, setChatSessions, setConnections, setContextMenu, setNodes, setSelectedConnectionId, setSelectedNodeIds, setShowImageInfo]);
+
+    const commitPendingHistory = useCallback(() => {
+        clearCommitTimer();
+        if (!projectLoaded || applyingHistoryRef.current || historyPausedRef.current) return false;
+        const current = latestSnapshotRef.current;
+        const last = lastHistoryRef.current;
+        if (!last || snapshotsShareReferences(last, current)) return false;
+        const patch = createCanvasHistoryPatch(last, current);
+        lastHistoryRef.current = current;
+        if (!patch) return false;
+        historyRef.current.past = [...historyRef.current.past.slice(-49), patch];
+        historyRef.current.future = [];
+        setHistoryState({ canUndo: true, canRedo: false });
+        return true;
+    }, [clearCommitTimer, projectLoaded]);
+
+    /**
+     * 媒体 URL 恢复等非用户写入会改变节点引用，但不应该生成“撤销”步骤。
+     * 先提交真实用户的待合并编辑，再让下一批外部恢复状态只更新历史基线。
+     */
+    const prepareExternalHistoryUpdate = useCallback(() => {
+        commitPendingHistory();
+        externalSnapshotPendingRef.current = true;
+    }, [commitPendingHistory]);
 
     const undoCanvas = useCallback(() => {
+        commitPendingHistory();
         const patch = historyRef.current.past.pop();
         const current = lastHistoryRef.current;
         if (!patch || !current) return;
         historyRef.current.future.push(patch);
         applyHistorySnapshot(applyCanvasHistoryPatch(current, patch, "before"));
-    }, [applyHistorySnapshot]);
+    }, [applyHistorySnapshot, commitPendingHistory]);
 
     const redoCanvas = useCallback(() => {
         const patch = historyRef.current.future.pop();
@@ -139,36 +176,49 @@ export function useCanvasHistory({
     }, [applyHistorySnapshot]);
 
     const getHistoryCleanupContext = useCallback(() => ({ history: historyRef.current, lastHistory: lastHistoryRef.current }), []);
+    const cleanupCanvasFiles = useCallback(
+        (extra?: unknown) => {
+            const { history, lastHistory } = getHistoryCleanupContext();
+            cleanupAssetImages(buildCanvasHistoryCleanupOptions(extra, history, lastHistory));
+        },
+        [cleanupAssetImages, getHistoryCleanupContext],
+    );
 
     useEffect(() => {
         if (!projectLoaded || applyingHistoryRef.current || historyPausedRef.current) return;
-        const next = createHistorySnapshot();
+        const next = latestSnapshotRef.current;
         const previous = lastHistoryRef.current;
         if (!previous || snapshotsShareReferences(previous, next)) return;
 
+        if (externalSnapshotPendingRef.current) {
+            externalSnapshotPendingRef.current = false;
+            clearCommitTimer();
+            lastHistoryRef.current = next;
+            setHistoryState({ canUndo: historyRef.current.past.length > 0, canRedo: historyRef.current.future.length > 0 });
+            return;
+        }
+
+        // 新数组但内容引用和顺序均未变化时直接更新基线，避免出现点亮后无法撤销的假步骤。
+        if (!createCanvasHistoryPatch(previous, next)) {
+            lastHistoryRef.current = next;
+            setHistoryState({ canUndo: historyRef.current.past.length > 0, canRedo: historyRef.current.future.length > 0 });
+            return;
+        }
+
         clearCommitTimer();
-        historyCommitTimerRef.current = setTimeout(() => {
-            const current = createHistorySnapshot();
-            const last = lastHistoryRef.current;
-            if (!last) return;
-            const patch = createCanvasHistoryPatch(last, current);
-            historyCommitTimerRef.current = null;
-            lastHistoryRef.current = current;
-            if (!patch) return;
-            historyRef.current.past = [...historyRef.current.past.slice(-49), patch];
-            historyRef.current.future = [];
-            setHistoryState({ canUndo: true, canRedo: false });
-        }, 180);
+        // 立即让按钮可用；实际补丁仍在短窗口内合并，连续拖动只占一个历史步骤。
+        setHistoryState({ canUndo: true, canRedo: false });
+        historyCommitTimerRef.current = setTimeout(() => void commitPendingHistory(), 180);
 
         return clearCommitTimer;
-    }, [clearCommitTimer, createHistorySnapshot, projectLoaded]);
+    }, [activeChatId, backgroundMode, chatSessions, clearCommitTimer, commitPendingHistory, connections, nodes, projectLoaded, showImageInfo]);
 
     useEffect(() => () => {
         clearCommitTimer();
         if (applyTimerRef.current) clearTimeout(applyTimerRef.current);
     }, [clearCommitTimer]);
 
-    return { getHistoryCleanupContext, historyPausedRef, historyState, redoCanvas, resetHistory, undoCanvas };
+    return { cleanupCanvasFiles, historyPausedRef, historyState, prepareExternalHistoryUpdate, redoCanvas, resetHistory, undoCanvas };
 }
 
 function snapshotsShareReferences(before: CanvasHistorySnapshot, after: CanvasHistorySnapshot) {
@@ -180,7 +230,7 @@ function snapshotsShareReferences(before: CanvasHistorySnapshot, after: CanvasHi
         && before.showImageInfo === after.showImageInfo;
 }
 
-function createCanvasHistoryPatch(before: CanvasHistorySnapshot, after: CanvasHistorySnapshot): CanvasHistoryPatch | null {
+export function createCanvasHistoryPatch(before: CanvasHistorySnapshot, after: CanvasHistorySnapshot): CanvasHistoryPatch | null {
     const patch: CanvasHistoryPatch = {};
     patch.nodes = createEntityPatch(before.nodes, after.nodes);
     patch.connections = createEntityPatch(before.connections, after.connections);
@@ -213,7 +263,7 @@ function createEntityPatch<T extends { id: string }>(before: T[], after: T[]): E
     };
 }
 
-function applyCanvasHistoryPatch(snapshot: CanvasHistorySnapshot, patch: CanvasHistoryPatch, side: "before" | "after"): CanvasHistorySnapshot {
+export function applyCanvasHistoryPatch(snapshot: CanvasHistorySnapshot, patch: CanvasHistoryPatch, side: "before" | "after"): CanvasHistorySnapshot {
     return {
         nodes: patch.nodes ? applyEntityPatch(snapshot.nodes, patch.nodes, side) : snapshot.nodes,
         connections: patch.connections ? applyEntityPatch(snapshot.connections, patch.connections, side) : snapshot.connections,

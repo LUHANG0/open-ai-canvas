@@ -53,6 +53,7 @@ type Service struct {
 	routeHealthBlocked         map[string]time.Time
 	workers                    *workerRuntime
 	updateManager              UpdateManager
+	deliveryFFmpegPath         string
 }
 
 const taskWorkerConcurrency = 3
@@ -135,6 +136,7 @@ func (s *Service) StartWorker() {
 	}
 	s.taskWorker().start(ctx)
 	s.startResourceDeletionWorker(ctx)
+	s.startProjectDeliveryWorker(ctx)
 	s.startSkillSyncWorker(ctx)
 }
 

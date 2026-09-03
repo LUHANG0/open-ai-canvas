@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 
 import { canvasNodeMaterialSummary, canvasNodeSearchContext, canvasNodeSearchTimes, searchCanvasNodes } from "@/lib/canvas/canvas-node-search";
 import { normalizeCanvasNodeTimestamps, stampCanvasNodeChanges } from "@/lib/canvas/canvas-node-timestamps";
+import { resolveCanvasNodeStateUpdate } from "@/pages/canvas/use-canvas-node-state";
 import { CanvasNodeType, type CanvasNodeData } from "@/types/canvas";
 
 function node(id: string, patch: Partial<CanvasNodeData> = {}): CanvasNodeData {
@@ -47,6 +48,15 @@ describe("canvas node timestamps", () => {
         const hydrated = { ...previous, metadata: { ...previous.metadata, content: "blob:preview", naturalWidth: 1920, naturalHeight: 1080 } };
         const updated = stampCanvasNodeChanges([previous], [hydrated], "2026-08-28T02:00:00.000Z");
         expect(updated[0]?.updatedAt).toBe("2026-08-28T01:00:00.000Z");
+    });
+
+    test("node state applies direct and functional updates against the latest snapshot", () => {
+        const previous = stampCanvasNodeChanges([], [node("image")], "2026-08-28T01:00:00.000Z");
+        const direct = resolveCanvasNodeStateUpdate(previous, [{ ...previous[0]!, title: "直接更新" }], "2026-08-28T02:00:00.000Z");
+        const functional = resolveCanvasNodeStateUpdate(direct, (current) => [{ ...current[0]!, title: "函数更新" }], "2026-08-28T03:00:00.000Z");
+
+        expect(direct[0]).toMatchObject({ title: "直接更新", updatedAt: "2026-08-28T02:00:00.000Z" });
+        expect(functional[0]).toMatchObject({ title: "函数更新", updatedAt: "2026-08-28T03:00:00.000Z" });
     });
 });
 

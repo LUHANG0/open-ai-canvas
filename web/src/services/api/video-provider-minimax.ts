@@ -1,5 +1,6 @@
 import { getMediaBlob } from "@/services/file-storage";
 import { imageToDataUrl } from "@/services/image-storage";
+import { fetchBlob } from "@/services/fetch-blob";
 import { boolConfig } from "@/lib/seedance-video";
 import { modelOptionName } from "@/stores/use-config-store";
 import { isPublicMediaUrl } from "./video-validation";
@@ -95,7 +96,7 @@ async function resolveMiniMaxMediaUrl(media: ReferenceVideo | ReferenceAudio, la
     if (isPublicMediaUrl(media.url) || media.url?.startsWith("data:")) return media.url;
     let blob: Blob | null = null;
     if (media.storageKey) blob = await getMediaBlob(media.storageKey);
-    if (!blob && media.url?.startsWith("blob:")) blob = await (await fetch(media.url)).blob();
+    if (!blob && media.url?.startsWith("blob:")) blob = await fetchBlob(media.url, undefined, `MiniMax ${label}读取`);
     if (!blob) throw new Error(`MiniMax ${label}必须是公网 URL 或本地已保存素材`);
     return blobToDataUrl(blob);
 }

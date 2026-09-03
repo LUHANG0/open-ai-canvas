@@ -13,8 +13,8 @@ import { getEagleLibrary, type EagleFolder } from "@/services/api/eagle";
 import { fetchPlugins, setUserPluginEnabled, type BackendPlugin, type PluginState } from "@/services/api/plugins";
 import { usePluginStore } from "@/stores/use-plugin-store";
 import { useUserStore } from "@/stores/use-user-store";
-import { PageHeader, WorkspacePage } from "@/components/layout/workspace-page";
-import { WorkspaceErrorState, WorkspaceLoadingState } from "@/components/layout/workspace-state";
+import { PageHeader, WorkspacePage } from "@/components/ui/pc/page";
+import { WorkspaceErrorState, WorkspaceLoadingState } from "@/components/ui/pc/workspace-state";
 import { DialogFrame, SearchField, StatusBadge, SubnavLayout } from "@/components/ui/pc";
 
 import { PluginDetailsDialog } from "./plugin-details-dialog";

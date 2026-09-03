@@ -150,6 +150,14 @@
         padding-inline: 132px;
     }
 
+    /* Agent 展开时将主 Dock 上移一行，避免在同一水平线同时挤压左侧视图控制和右侧 Agent。 */
+    .pc-canvas-workspace[data-assistant-open="true"] .pc-canvas-toolbar {
+        bottom: calc(var(--canvas-inset-y) + var(--space-12));
+        left: var(--canvas-inset-x);
+        min-width: 0;
+        padding-inline: 0;
+    }
+
     .pc-canvas-workspace .pc-canvas-toolbar > .canvas-floating-dock,
     .pc-canvas-workspace .pc-canvas-zoom > .canvas-floating-dock,
     .pc-canvas-workspace .pc-canvas-workspace__mode-switch .canvas-mode-switch-trigger {
@@ -158,6 +166,11 @@
 
     .pc-canvas-workspace .pc-canvas-toolbar > .canvas-floating-dock {
         max-width: min(760px, calc(100vw - 460px));
+    }
+
+    .pc-canvas-workspace[data-assistant-open="true"] .pc-canvas-toolbar > .canvas-floating-dock {
+        min-width: 0;
+        max-width: 100%;
     }
 
     .pc-canvas-workspace .pc-canvas-toolbar__popover,
@@ -234,8 +247,9 @@
     }
 
     .pc-canvas-workspace .pc-canvas-assistant-column {
-        border-inline-start: 1px solid var(--pc-canvas-panel-border);
-        background: var(--pc-canvas-panel-surface);
+        /* 覆盖式抽屉外层包含顶栏避让区，必须保持透明；面板表面与边线由内层负责。 */
+        border-inline-start: 0;
+        background: transparent;
     }
 
     .pc-canvas-workspace .pc-canvas-assistant-column__resize::after {
@@ -371,6 +385,15 @@
 
     .pc-canvas-workspace .pc-canvas-node {
         background-clip: padding-box;
+    }
+
+    /* 节点坐标层保持不动，只轻微放大视觉外壳；连线、拖动和媒体控件的命中逻辑不受影响。 */
+    .pc-canvas-workspace .node-element:not([data-canvas-node-interacting="true"]):hover > .canvas-node-shell {
+        transform: scale(1.012);
+    }
+
+    .pc-canvas-workspace .node-element[data-canvas-node-interacting="true"] > .canvas-node-shell {
+        transform: none;
     }
 
     .pc-canvas-workspace .pc-canvas-node:hover,
@@ -1010,6 +1033,19 @@
 
     .pc-canvas-workspace .pc-canvas-toolbar > .canvas-floating-dock {
         max-width: min(620px, calc(100vw - 380px));
+    }
+
+    .pc-canvas-workspace[data-assistant-open="true"] .pc-canvas-toolbar > .canvas-floating-dock {
+        min-width: 0;
+        max-width: 100%;
+        overflow-x: auto;
+        overflow-y: hidden;
+        overscroll-behavior-inline: contain;
+        scrollbar-width: none;
+    }
+
+    .pc-canvas-workspace[data-assistant-open="true"] .pc-canvas-toolbar > .canvas-floating-dock::-webkit-scrollbar {
+        display: none;
     }
 
     .pc-canvas-workspace .pc-canvas-active-tasks {

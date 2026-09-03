@@ -51,6 +51,7 @@ export const CanvasFrameNode = React.memo(function CanvasFrameNode({
     const folder = isCanvasFolderNode(data);
     const [editing, setEditing] = useState(false);
     const [title, setTitle] = useState(data.title);
+    const titleInputRef = useRef<HTMLInputElement>(null);
     const resizeRef = useRef({
         active: false,
         corner: "bottom-right" as ResizeCorner,
@@ -67,6 +68,19 @@ export const CanvasFrameNode = React.memo(function CanvasFrameNode({
     });
 
     useEffect(() => setTitle(data.title), [data.title]);
+
+    useEffect(() => {
+        if (!editing) return;
+
+        const handleOutsidePointerDown = (event: PointerEvent) => {
+            const target = event.target;
+            if (!(target instanceof Node) || titleInputRef.current?.contains(target)) return;
+            titleInputRef.current?.blur();
+        };
+
+        window.addEventListener("pointerdown", handleOutsidePointerDown, true);
+        return () => window.removeEventListener("pointerdown", handleOutsidePointerDown, true);
+    }, [editing]);
 
     const commitTitle = () => {
         const next = title.trim() || (folder ? "未命名文件夹" : "未命名背板");
@@ -216,6 +230,8 @@ export const CanvasFrameNode = React.memo(function CanvasFrameNode({
                     </button>
                     {editing ? (
                         <input
+                            ref={titleInputRef}
+                            data-canvas-node-title-input
                             autoFocus
                             className="h-7 min-w-0 flex-1 rounded border bg-transparent px-1.5 text-sm font-semibold outline-none"
                             style={{ borderColor: theme.frame.activeStroke, color: theme.node.text }}

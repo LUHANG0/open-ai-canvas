@@ -1,0 +1,328 @@
+/* Short-drama PC shell. Keep helpers inert below the PC breakpoint. */
+
+.pc-short-drama-create-launcher,
+.pc-short-drama-story-label,
+.pc-short-drama-options-toggle,
+.pc-short-drama-card-meta,
+.pc-short-drama-card-updated,
+.pc-project-dialog .app-story-source small,
+.pc-short-drama-project-kicker {
+    display: none;
+}
+
+@media (min-width: 1024px) {
+    .pc-short-drama-hub .app-workspace-page-content {
+        max-width: var(--app-page-max-width, 1440px);
+        margin-inline: auto;
+    }
+
+    .pc-short-drama-create-launcher {
+        display: flex;
+        min-width: 0;
+        align-items: center;
+        justify-content: space-between;
+        gap: 20px;
+        padding: 12px 14px;
+        background: var(--app-surface-1);
+        border: 1px solid var(--app-border-subtle);
+        border-radius: var(--app-surface-radius, 12px);
+    }
+
+    .pc-short-drama-create-launcher > div:first-child {
+        display: grid;
+        min-width: 0;
+        gap: 2px;
+    }
+
+    .pc-short-drama-create-launcher strong {
+        color: var(--app-text-primary);
+        font-size: 13px;
+        font-weight: 650;
+    }
+
+    .pc-short-drama-create-launcher span {
+        color: var(--app-text-muted);
+        font-size: 11px;
+    }
+
+    .pc-short-drama-create-launcher > div:last-child {
+        display: flex;
+        flex: 0 0 auto;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .pc-short-drama-hub .app-story-create-main::before {
+        content: none;
+    }
+
+    .pc-short-drama-story-label {
+        position: absolute;
+        z-index: 1;
+        top: 13px;
+        left: 18px;
+        display: inline-flex;
+        color: var(--app-text-muted);
+        font-family: var(--app-font-mono);
+        font-size: 9px;
+        font-weight: 680;
+        letter-spacing: 0.1em;
+    }
+
+    .pc-short-drama-options-toggle {
+        display: grid;
+        width: 100%;
+        min-height: 42px;
+        grid-template-columns: auto minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 12px;
+        padding: 0 22px;
+        color: var(--app-text-secondary);
+        text-align: left;
+        background: color-mix(in srgb, var(--app-surface-2) 70%, transparent);
+        border: 0;
+        border-top: 1px solid color-mix(in srgb, var(--app-border-subtle) 70%, transparent);
+        cursor: pointer;
+    }
+
+    .pc-short-drama-options-toggle:hover {
+        color: var(--app-text-primary);
+        background: var(--app-action-secondary-hover);
+    }
+
+    .pc-short-drama-options-toggle:focus-visible {
+        outline: 0;
+        box-shadow: inset 0 0 0 2px var(--app-focus-ring);
+    }
+
+    .pc-short-drama-options-toggle > span:first-child {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        font-size: 12px;
+        font-weight: 620;
+    }
+
+    .pc-short-drama-options-summary {
+        overflow: hidden;
+        color: var(--app-text-muted);
+        font-size: 11px;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .pc-short-drama-options-toggle > svg {
+        transition: transform var(--app-duration-fast, 120ms) var(--app-ease-standard);
+    }
+
+    .pc-short-drama-options-toggle > svg.is-open {
+        transform: rotate(180deg);
+    }
+
+    .pc-short-drama-hub .app-story-create-controls {
+        display: none;
+        margin: 0;
+        border-top: 1px solid var(--app-border-subtle);
+    }
+
+    .pc-short-drama-hub .app-story-create-controls.is-open {
+        display: grid;
+    }
+
+    .pc-short-drama-status-filter {
+        display: inline-flex;
+        min-height: 36px;
+        align-items: center;
+        gap: 3px;
+        padding: 3px;
+        background: var(--app-surface-2);
+        border: 1px solid var(--app-border-subtle);
+        border-radius: var(--app-control-radius, 8px);
+    }
+
+    .pc-short-drama-status-filter button {
+        display: inline-flex;
+        height: 28px;
+        align-items: center;
+        gap: 7px;
+        padding-inline: 9px;
+        color: var(--app-text-secondary);
+        font-size: 12px;
+        font-weight: 540;
+        background: transparent;
+        border: 0;
+        border-radius: 6px;
+        cursor: pointer;
+    }
+
+    .pc-short-drama-status-filter button:hover {
+        color: var(--app-text-primary);
+        background: var(--app-action-secondary-hover);
+    }
+
+    .pc-short-drama-status-filter button[aria-pressed="true"] {
+        color: var(--app-selection-fg);
+        font-weight: 650;
+        background: var(--app-selection-bg);
+        box-shadow: inset 0 0 0 1px var(--app-selection-border);
+    }
+
+    .pc-short-drama-status-filter button:focus-visible {
+        outline: 0;
+        box-shadow: var(--app-focus-shadow);
+    }
+
+    .pc-short-drama-status-filter em {
+        min-width: 18px;
+        padding-inline: 5px;
+        color: var(--app-text-muted);
+        font-size: 10px;
+        font-style: normal;
+        font-variant-numeric: tabular-nums;
+        line-height: 18px;
+        text-align: center;
+        background: color-mix(in srgb, var(--app-surface-3) 78%, transparent);
+        border-radius: 999px;
+    }
+
+    .pc-short-drama-status-filter button[aria-pressed="true"] em {
+        color: var(--app-selection-fg);
+        background: color-mix(in srgb, var(--app-selection-border) 22%, transparent);
+    }
+
+    .pc-short-drama-sort {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        color: var(--app-text-muted);
+        font-size: 11px;
+        font-weight: 560;
+    }
+
+    .pc-short-drama-card-meta {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        color: var(--app-text-muted);
+        font-size: 11px;
+    }
+
+    .pc-short-drama-card-updated {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        color: var(--app-text-muted);
+        font-size: 11px;
+        font-variant-numeric: tabular-nums;
+    }
+
+    .pc-short-drama-hub .project-library-body {
+        gap: 8px;
+    }
+
+    .pc-project-dialog .app-story-source {
+        min-height: 64px;
+        align-items: center;
+        justify-content: flex-start;
+        gap: 10px;
+        padding: 10px 12px;
+        text-align: left;
+    }
+
+    .pc-project-dialog .app-story-source > span {
+        display: grid;
+        gap: 2px;
+        font-size: 12px;
+        font-weight: 620;
+    }
+
+    .pc-project-dialog .app-story-source small {
+        display: block;
+        color: var(--app-text-muted);
+        font-size: 10px;
+        font-weight: 440;
+        line-height: 1.35;
+    }
+
+    .pc-project-dialog .app-story-source.is-active small {
+        color: color-mix(in srgb, var(--app-selection-fg) 70%, var(--app-text-muted));
+    }
+
+    .pc-short-drama-workbench .pc-project-topbar {
+        gap: 10px;
+    }
+
+    .pc-short-drama-workbench .pc-project-topbar-identity {
+        min-height: 38px;
+        gap: 9px;
+    }
+
+    .pc-short-drama-project-mark {
+        display: grid;
+        width: 30px;
+        height: 30px;
+        flex: 0 0 auto;
+        place-items: center;
+        color: var(--app-selection-fg);
+        background: var(--app-selection-bg);
+        border: 1px solid var(--app-selection-border);
+        border-radius: var(--app-control-radius, 8px);
+    }
+
+    .pc-short-drama-project-copy {
+        display: grid;
+        min-width: 0;
+        gap: 1px;
+    }
+
+    .pc-short-drama-project-kicker {
+        display: block;
+        color: var(--app-text-muted);
+        font-family: var(--app-font-mono);
+        font-size: 8px;
+        font-weight: 680;
+        letter-spacing: 0.08em;
+        line-height: 1.2;
+    }
+
+    .pc-short-drama-project-title-row {
+        display: flex;
+        min-width: 0;
+        align-items: center;
+        gap: 7px;
+    }
+
+    .pc-short-drama-workbench .pc-project-topbar-nav {
+        gap: 3px;
+        padding: 3px;
+        background: color-mix(in srgb, var(--app-surface-2) 76%, transparent);
+        border: 1px solid var(--app-border-subtle);
+        border-radius: var(--app-control-radius, 8px);
+    }
+
+    .pc-short-drama-workbench .pc-project-topbar-link {
+        height: 30px;
+    }
+
+    .pc-short-drama-workbench .pc-project-topbar-link.is-active::after {
+        content: none;
+    }
+}
+
+@media (min-width: 1024px) and (max-width: 1199px) {
+    .pc-short-drama-create-launcher {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .pc-short-drama-status-filter button {
+        padding-inline: 7px;
+    }
+}
+
+@media (min-width: 1024px) and (prefers-reduced-motion: reduce) {
+    .pc-short-drama-options-toggle > svg {
+        transition: none;
+    }
+}

@@ -4,14 +4,15 @@ export const CANVAS_VIEWPORT_PREVIEW_EVENT = "canvas:viewport-preview";
 export const CANVAS_GRAPHICS_VIEWPORT_PREVIEW_EVENT = "canvas:graphics-viewport-preview";
 export const CANVAS_SELECTION_PREVIEW_EVENT = "canvas:selection-preview";
 
-// 空间网格点模式的点半径（像素单位）。远距时使用更小半径，避免点阵糊成一团。
+// 点阵始终保持可见：近景略微增大，远景收小但不低于可辨识阈值。
 export function canvasDotPx(scale: number): string {
-    return scale < 0.12 ? "0.6px" : "0.8px";
+    if (scale < 0.12) return "0.7px";
+    return scale >= 1.25 ? "1.2px" : "1px";
 }
 
-// 点阵在缩小时不再无限压缩到屏幕像素，避免密集视觉噪声。
+// 点阵使用 24px 基准间距，缩小时限制最小屏幕间距，兼顾可见性与视觉噪声。
 export function canvasDotGridPx(scale: number): number {
-    return Math.max(48 * scale, 32);
+    return Math.max(24 * scale, 20);
 }
 
 export function applyCanvasLiveViewport(container: HTMLDivElement | null, viewport: ViewportTransform, notify = true) {

@@ -4,16 +4,18 @@ import { Clapperboard, Eye, FileText, Image as ImageIcon, LockKeyhole, LogIn, Se
 import { Link, useParams } from "react-router";
 import { nanoid } from "nanoid";
 
+import { useBranding } from "@/components/branding/branding-provider";
 import { ConnectionPath } from "@/components/canvas/canvas-connections";
-import { CanvasNodeToolbar, CanvasNodeInfoModal } from "@/components/canvas/canvas-node-toolbar";
+import { CanvasNodeInfoModal } from "@/components/canvas/canvas-node-info-modal";
+import { CanvasNodeToolbar } from "@/components/canvas/canvas-node-toolbar";
 import { CanvasFrameNode } from "@/components/canvas/canvas-frame-node";
 import { CanvasNode } from "@/components/canvas/canvas-node";
 import { CanvasZoomControls } from "@/components/canvas/canvas-zoom-controls";
 import { InfiniteCanvas } from "@/components/canvas/infinite-canvas";
 import { FullScreenLoader } from "@/components/ui/aceternity/full-screen-loader";
-import { WorkspaceState } from "@/components/layout/workspace-state";
+import { WorkspaceState } from "@/components/ui/pc/workspace-state";
 import { NODE_DEFAULT_SIZE } from "@/constant/canvas";
-import { canvasThemes } from "@/lib/canvas-theme";
+import { canvasThemes, normalizeCanvasBackgroundMode, type CanvasBackgroundMode } from "@/lib/canvas-theme";
 import { FOLDER_COLLAPSED_HEIGHT, FOLDER_COLLAPSED_WIDTH, isCanvasFolderNode, isFrameNode, isNodeHiddenByCollapsedFrame, resolveFrameConnection } from "@/lib/canvas/canvas-frame";
 import { ensureMediaNodeMinimumSize } from "@/lib/canvas/canvas-node-size";
 import { getPublicCanvasShare } from "@/services/api/canvas-share";
@@ -25,6 +27,7 @@ type ContextMenu = { x: number; y: number; world: Position; nodeId?: string };
 type DragState = { primaryId: string; nodeIds: string[]; startX: number; startY: number; origins: Map<string, Position>; moved: boolean };
 
 export default function SharedCanvasPage() {
+    const { branding } = useBranding();
     const { token = "" } = useParams();
     const { message } = App.useApp();
     const theme = canvasThemes[useThemeStore((state) => state.theme)];
@@ -35,7 +38,7 @@ export default function SharedCanvasPage() {
     const [title, setTitle] = useState("共享画布");
     const [nodes, setNodes] = useState<CanvasNodeData[]>([]);
     const [connections, setConnections] = useState<Awaited<ReturnType<typeof getPublicCanvasShare>>["project"]["connections"]>([]);
-    const [backgroundMode, setBackgroundMode] = useState<"lines" | "dots" | "blank">("lines");
+    const [backgroundMode, setBackgroundMode] = useState<CanvasBackgroundMode>("lines");
     const [viewport, setViewport] = useState<ViewportTransform>({ x: 0, y: 0, k: 1 });
     const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
     const [infoNodeId, setInfoNodeId] = useState<string | null>(null);
@@ -81,7 +84,7 @@ export default function SharedCanvasPage() {
             setTitle(project.title || "共享画布");
             setNodes((project.nodes || []).map(ensureMediaNodeMinimumSize));
             setConnections(project.connections || []);
-            setBackgroundMode(project.backgroundMode || "lines");
+            setBackgroundMode(normalizeCanvasBackgroundMode(project.backgroundMode));
             const initial = project.viewport || { x: 0, y: 0, k: 1 };
             viewportRef.current = initial;
             setViewport(initial);
@@ -230,15 +233,15 @@ export default function SharedCanvasPage() {
         return (
             <main className="pc-canvas-share pc-canvas-share--state grid h-screen place-items-center px-5" style={{ background: theme.canvas.background, color: theme.node.text }}>
                 <section className="pc-canvas-share__state-card" aria-label="分享画布加载失败">
-                    <div className="pc-canvas-share__state-brand hidden"><Share2 className="size-4" />影策共享画布</div>
+                    <div className="pc-canvas-share__state-brand hidden"><Share2 className="size-4" />{branding.config.identity.shortName}共享画布</div>
                     <WorkspaceState
                         icon="error"
                         title="分享链接不可用"
                         description={loadError}
                         action={
                             <>
-                                <Link to="/"><Button>返回首页</Button></Link>
-                                <Link className="pc-canvas-share__state-login hidden" to="/login"><Button type="primary" icon={<LogIn className="size-4" />}>登录影策</Button></Link>
+                                <Link to="/"><Button>进入工作台</Button></Link>
+                                <Link className="pc-canvas-share__state-login hidden" to="/login"><Button type="primary" icon={<LogIn className="size-4" />}>登录{branding.config.identity.shortName}</Button></Link>
                             </>
                         }
                     />

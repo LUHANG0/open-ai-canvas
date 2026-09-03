@@ -51,31 +51,6 @@ export function StatTile({ label, value, detail, icon, trend, trendTone = "neutr
     );
 }
 
-export type EmptyStateProps = HTMLAttributes<HTMLDivElement> & {
-    title: ReactNode;
-    description?: ReactNode;
-    icon?: ReactNode;
-    actions?: ReactNode;
-    compact?: boolean;
-};
-
-export function EmptyState({ title, description, icon, actions, compact = false, className, ...props }: EmptyStateProps) {
-    return (
-        <div className={cn("pc-empty-state", compact && "pc-empty-state--compact", className)} {...props}>
-            {icon ? (
-                <span className="pc-empty-state__visual" aria-hidden="true">
-                    <span className="pc-empty-state__icon">{icon}</span>
-                </span>
-            ) : null}
-            <div className="pc-empty-state__copy">
-                <div className="pc-empty-state__title">{title}</div>
-                {description ? <div className="pc-empty-state__description">{description}</div> : null}
-            </div>
-            {actions ? <div className="pc-empty-state__actions">{actions}</div> : null}
-        </div>
-    );
-}
-
 export type SelectionBarProps = Omit<HTMLAttributes<HTMLDivElement>, "children"> & {
     count: number;
     itemLabel?: string;

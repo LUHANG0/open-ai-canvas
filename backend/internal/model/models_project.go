@@ -289,6 +289,31 @@ type ShotAssetReference struct {
 	CreatedAt      time.Time `json:"createdAt"`
 }
 
+// ProjectDeliveryJob is a non-billing background job. SnapshotJSON freezes the
+// selected shot revisions and video resource IDs so an in-flight delivery does
+// not silently change when the project is edited.
+type ProjectDeliveryJob struct {
+	ID             string                   `json:"id" gorm:"primaryKey;size:36"`
+	UserID         string                   `json:"userId" gorm:"index;size:36"`
+	ProjectID      string                   `json:"projectId" gorm:"index:idx_project_delivery_scope_created,priority:1;size:36"`
+	UnitID         string                   `json:"unitId" gorm:"index:idx_project_delivery_scope_created,priority:2;size:36"`
+	Status         ProjectDeliveryJobStatus `json:"status" gorm:"index:idx_project_delivery_claim,priority:1;size:24"`
+	Stage          string                   `json:"stage" gorm:"size:160"`
+	Progress       int                      `json:"progress"`
+	FileName       string                   `json:"fileName" gorm:"size:500"`
+	ResourceID     string                   `json:"resourceId,omitempty" gorm:"index;size:36"`
+	SourceBytes    int64                    `json:"sourceBytes"`
+	SnapshotJSON   string                   `json:"-" gorm:"type:text"`
+	Error          string                   `json:"error,omitempty" gorm:"type:text"`
+	ActiveKey      *string                  `json:"-" gorm:"uniqueIndex;size:160"`
+	LeaseOwner     string                   `json:"-" gorm:"index;size:120"`
+	LeaseExpiresAt *time.Time               `json:"-" gorm:"index"`
+	ExpiresAt      *time.Time               `json:"expiresAt,omitempty" gorm:"index"`
+	CompletedAt    *time.Time               `json:"completedAt,omitempty"`
+	CreatedAt      time.Time                `json:"createdAt" gorm:"index:idx_project_delivery_scope_created,priority:3;index:idx_project_delivery_claim,priority:2"`
+	UpdatedAt      time.Time                `json:"updatedAt"`
+}
+
 type WorkflowTemplateVersion struct {
 	ID             string    `json:"id" gorm:"primaryKey;size:36"`
 	TemplateKey    string    `json:"templateKey" gorm:"size:80;uniqueIndex:idx_workflow_template_version,priority:1"`

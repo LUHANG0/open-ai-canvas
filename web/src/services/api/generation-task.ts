@@ -1,5 +1,6 @@
 import { getMediaBlob } from "@/services/file-storage";
 import { getImageBlob } from "@/services/image-storage";
+import { fetchBlob } from "@/services/fetch-blob";
 import { resourceIdFromStorageKey, resourceStorageKey, uploadResourceFile } from "@/services/api/resources";
 import { createGenerationTask, waitForGenerationTask, type GenerationTask } from "@/services/api/task-center";
 import { LOCAL_DREAMINA_WAIT_STOPPED_CODE, LocalDreaminaGenerationClientError, runLocalDreaminaGenerationTask, type LocalDreaminaGenerationInput, type LocalDreaminaGenerationTask } from "@/services/local-dreamina-generation";
@@ -323,7 +324,7 @@ async function localGenerationReferences(images: ReferenceImage[], videos: Refer
         images.map(async (image) => {
             const source = image.dataUrl || image.url;
             if (!source && !image.storageKey) throw new LocalDreaminaGenerationClientError("dreamina_reference_invalid", "即梦图片参考素材不可用", 400);
-            const blob = image.storageKey ? await getImageBlob(image.storageKey) : await (await fetch(source!)).blob();
+            const blob = image.storageKey ? await getImageBlob(image.storageKey) : await fetchBlob(source!, undefined, "即梦图片参考素材读取");
             if (!blob || !["image/png", "image/jpeg", "image/webp"].includes(blob.type)) throw invalidLocalReference();
             return {
                 kind: "image" as const,
@@ -337,7 +338,7 @@ async function localGenerationReferences(images: ReferenceImage[], videos: Refer
         Promise.all(
             items.map(async (media) => {
                 const source = media.url || "";
-                const blob = media.storageKey ? await getMediaBlob(media.storageKey) : source ? await (await fetch(source)).blob() : null;
+                const blob = media.storageKey ? await getMediaBlob(media.storageKey) : source ? await fetchBlob(source, undefined, `即梦${kind === "video" ? "视频" : "音频"}参考素材读取`) : null;
                 const allowed = kind === "video" ? ["video/mp4", "video/quicktime", "video/webm"] : ["audio/mpeg", "audio/wav", "audio/mp4", "audio/aac", "audio/flac"];
                 if (!blob || !allowed.includes(blob.type)) throw invalidLocalReference();
                 return {
@@ -466,7 +467,7 @@ async function prepareBackendMediaReference(media: ReferenceVideo | ReferenceAud
     if (/^https?:\/\//i.test(url)) return backendMediaReference(media, { url });
     let blob: Blob | null = null;
     if (media.storageKey) blob = await getMediaBlob(media.storageKey);
-    if (!blob && (url.startsWith("blob:") || url.startsWith("data:"))) blob = await (await fetch(url)).blob();
+    if (!blob && (url.startsWith("blob:") || url.startsWith("data:"))) blob = await fetchBlob(url, undefined, "参考媒体读取");
     if (!blob) throw new Error("参考媒体尚未保存，请重新上传后再生成");
     try {
         const kind: "video" | "audio" | "file" = blob.type.startsWith("video/") ? "video" : blob.type.startsWith("audio/") ? "audio" : "file";
@@ -481,7 +482,7 @@ async function prepareBackendImageReference(image: ReferenceImage) {
     if (resourceIdFromStorageKey(image.storageKey)) return backendImageReference(image, { storageKey: image.storageKey });
     const sourceUrl = image.url || image.dataUrl;
     if (/^https?:\/\//i.test(sourceUrl)) return backendImageReference(image, { url: sourceUrl });
-    const blob = image.storageKey ? await getImageBlob(image.storageKey) : sourceUrl ? await (await fetch(sourceUrl)).blob() : null;
+    const blob = image.storageKey ? await getImageBlob(image.storageKey) : sourceUrl ? await fetchBlob(sourceUrl, undefined, "参考图片读取") : null;
     if (!blob) throw new Error("参考图片尚未保存，请重新上传后再生成");
     try {
         const resource = await uploadResourceFile(blob, "image", { fileName: image.name });

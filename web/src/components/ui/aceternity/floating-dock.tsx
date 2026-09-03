@@ -13,8 +13,11 @@ export type FloatingDockCommand = {
     wide?: boolean;
     quiet?: boolean;
     onClick?: (event: MouseEvent<HTMLButtonElement>) => void;
+    onMouseEnter?: (event: MouseEvent<HTMLButtonElement>) => void;
+    onMouseLeave?: (event: MouseEvent<HTMLButtonElement>) => void;
     active?: boolean;
     disabled?: boolean;
+    disabledReason?: string;
     danger?: boolean;
     /** 面板展开型工具——使用 aria-expanded 而非 aria-pressed */
     expands?: boolean;
@@ -30,6 +33,8 @@ type FloatingDockProps = {
     style?: CSSProperties;
     ariaLabel?: string;
     showLabels?: boolean;
+    /** 画布等高频操作区可关闭邻项放大，减少布局抖动与逐帧弹簧计算。 */
+    magnify?: boolean;
 };
 
 type DockMetrics = {
@@ -52,7 +57,7 @@ const TOUCH_DOCK_METRICS: Record<NonNullable<FloatingDockProps["size"]>, DockMet
     compact: { base: 36, magnified: 36, icon: 16, iconMagnified: 16, distance: 0 },
 };
 
-export const FloatingDock = forwardRef<HTMLDivElement, FloatingDockProps>(function FloatingDock({ items, size = "default", embedded = false, className, style, ariaLabel = "画布工具", showLabels = false }, forwardedRef) {
+export const FloatingDock = forwardRef<HTMLDivElement, FloatingDockProps>(function FloatingDock({ items, size = "default", embedded = false, className, style, ariaLabel = "画布工具", showLabels = false, magnify = true }, forwardedRef) {
     const mouseX = useMotionValue(Number.POSITIVE_INFINITY);
     const reducedMotion = useReducedMotion();
     const [coarsePointer, setCoarsePointer] = useState(() => typeof window !== "undefined" && window.matchMedia("(pointer: coarse)").matches);
@@ -75,7 +80,7 @@ export const FloatingDock = forwardRef<HTMLDivElement, FloatingDockProps>(functi
 
     // scrollable 场景（触屏或窄屏）禁用放大并允许横向滚动，保证按钮始终可达
     const scrollable = coarsePointer || narrow;
-    const motionEnabled = !reducedMotion && !scrollable;
+    const motionEnabled = magnify && !reducedMotion && !scrollable;
     const metrics = coarsePointer ? TOUCH_DOCK_METRICS[size] : DOCK_METRICS[size];
 
     return (
@@ -187,9 +192,9 @@ function DockCommandButton({ command, mouseX, metrics, motionEnabled, compact, s
     const itemSize = useSpring(itemTarget, aceternityMotion.spring.dock);
     const iconSize = useSpring(iconTarget, aceternityMotion.spring.dock);
     // 鼠标点击产生的 focus 不能阻塞提示收起，只有键盘可见焦点才持续显示提示。
-    const showTooltip = !showLabel && (hovered || focused) && !command.disabled;
+    const showTooltip = !showLabel && (hovered || focused);
     // scrollable 场景自定义 tooltip 会被 overflow 裁剪，用原生 title 兜底
-    const nativeTitle = !motionEnabled ? command.label : undefined;
+    const nativeTitle = !motionEnabled || command.disabled ? command.disabledReason || command.label : undefined;
 
     if (showLabel) {
         return (
@@ -200,6 +205,7 @@ function DockCommandButton({ command, mouseX, metrics, motionEnabled, compact, s
                     aria-expanded={command.expands ? command.active || undefined : undefined}
                     aria-pressed={command.expands ? undefined : command.active || undefined}
                     disabled={command.disabled}
+                    title={command.disabledReason}
                     className={cn(
                         "aceternity-dock-command is-labeled group inline-flex h-8 items-center justify-center gap-1.5 whitespace-nowrap rounded-[var(--dock-item-radius)] border-0 px-2.5 outline-none",
                         command.active && "is-active",
@@ -207,8 +213,8 @@ function DockCommandButton({ command, mouseX, metrics, motionEnabled, compact, s
                     )}
                     whileTap={!command.disabled ? { scale: 0.96 } : undefined}
                     transition={aceternityMotion.spring.dock}
-                    onMouseEnter={() => setHovered(true)}
-                    onMouseLeave={() => setHovered(false)}
+                    onMouseEnter={(event) => { setHovered(true); command.onMouseEnter?.(event); }}
+                    onMouseLeave={(event) => { setHovered(false); command.onMouseLeave?.(event); }}
                     onFocus={() => setFocused(true)}
                     onBlur={() => setFocused(false)}
                     onClick={command.onClick}
@@ -233,8 +239,8 @@ function DockCommandButton({ command, mouseX, metrics, motionEnabled, compact, s
                 className={cn("aceternity-dock-command group relative grid size-full place-items-center rounded-[var(--dock-item-radius)] border outline-none", command.quiet && "is-quiet", command.active && "is-active", command.danger && "is-danger")}
                 whileTap={motionEnabled && !command.disabled ? { scale: 0.92 } : undefined}
                 transition={aceternityMotion.spring.dock}
-                onMouseEnter={() => setHovered(true)}
-                onMouseLeave={() => setHovered(false)}
+                onMouseEnter={(event) => { setHovered(true); command.onMouseEnter?.(event); }}
+                onMouseLeave={(event) => { setHovered(false); command.onMouseLeave?.(event); }}
                 onFocus={(event) => setFocused(event.currentTarget.matches(":focus-visible"))}
                 onBlur={() => setFocused(false)}
                 onMouseDown={() => setFocused(false)}
@@ -255,7 +261,7 @@ function DockCommandButton({ command, mouseX, metrics, motionEnabled, compact, s
                                 compact ? "-top-7 rounded-md px-1.5 py-0.5 text-[var(--fs-micro)]" : "-top-8 rounded-md px-2 py-1 text-[var(--fs-tiny)]",
                             )}
                         >
-                            {command.label}
+                            {command.disabledReason || command.label}
                         </motion.span>
                     ) : null}
                 </AnimatePresence>

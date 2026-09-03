@@ -1,5 +1,21 @@
 export type CanvasColorTheme = "light" | "dark";
-export type CanvasBackgroundMode = "dots" | "lines" | "blank";
+export type CanvasBackgroundMode = "dots" | "lines" | "fine-grid" | "paper" | "blueprint" | "blank";
+
+export const canvasBackgroundModes: CanvasBackgroundMode[] = ["dots", "lines", "fine-grid", "paper", "blueprint", "blank"];
+
+export const canvasBackgroundPresets = {
+    dots: { label: "点阵", description: "轻量自由布局", surface: { light: "#e6e6e6", dark: "#0b0b0b" }, line: { light: "rgba(15,23,42,.34)", dark: "rgba(203,213,225,.30)" } },
+    lines: { label: "方格", description: "常规对齐参考", surface: { light: "#e6e6e6", dark: "#0b0b0b" }, line: { light: "rgba(15,23,42,.15)", dark: "rgba(178,178,178,.14)" } },
+    "fine-grid": { label: "细网格", description: "精细排版参考", surface: { light: "#eceef1", dark: "#0d0e10" }, line: { light: "rgba(30,41,59,.12)", dark: "rgba(203,213,225,.12)" } },
+    paper: { label: "稿纸", description: "脚本与文字整理", surface: { light: "#f2eee5", dark: "#1d1b17" }, line: { light: "rgba(120,101,74,.16)", dark: "rgba(224,204,172,.13)" } },
+    blueprint: { label: "蓝图", description: "结构与流程规划", surface: { light: "#dfeaf4", dark: "#0b1b29" }, line: { light: "rgba(43,96,140,.19)", dark: "rgba(125,188,236,.18)" } },
+    blank: { label: "纯色", description: "专注内容预览", surface: { light: "#e6e6e6", dark: "#0b0b0b" }, line: { light: "transparent", dark: "transparent" } },
+} as const satisfies Record<CanvasBackgroundMode, { label: string; description: string; surface: Record<CanvasColorTheme, string>; line: Record<CanvasColorTheme, string> }>;
+
+export function normalizeCanvasBackgroundMode(value: unknown): CanvasBackgroundMode {
+    if (value === "solid") return "blank";
+    return typeof value === "string" && canvasBackgroundModes.includes(value as CanvasBackgroundMode) ? value as CanvasBackgroundMode : "dots";
+}
 
 export const canvasThemes = {
     light: {

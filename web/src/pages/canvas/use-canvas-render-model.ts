@@ -1,12 +1,17 @@
 import { useMemo, useRef } from "react";
 
 import { buildNodeGenerationInputs, type NodeGenerationInput } from "@/components/canvas/canvas-node-generation";
+import { createCanvasNodeGraphContextValue } from "@/components/canvas/canvas-node-graph-context";
 import { isFrameNode } from "@/lib/canvas/canvas-frame";
+import { summarizeCanvasContext } from "@/lib/canvas/canvas-context-summary";
 import { sameNodeSemanticData } from "@/lib/canvas/canvas-project-domain";
-import { shouldReduceCanvasMediaEffects } from "@/lib/canvas/canvas-performance-mode";
-import { buildCanvasResourceReferences, buildNodeMentionReferences } from "@/lib/canvas/canvas-resource-references";
+import { resolveCanvasMediaRenderPolicy } from "@/lib/canvas/canvas-performance-mode";
+import { getCanvasSelectionCapabilities } from "@/lib/canvas/canvas-selection-capabilities";
+import { canvasNodeIntersectsRenderBounds } from "@/lib/canvas/canvas-render-culling";
+import { buildCanvasResourceReferences, buildNodeMentionReferences, createCanvasResourceGraphIndex } from "@/lib/canvas/canvas-resource-references";
 import { buildSkillMentionReferences } from "@/lib/canvas/canvas-skill-mentions";
 import type { Skill } from "@/services/api/skills";
+import type { ProjectUnit } from "@/services/api/projects";
 import type { Asset, ImageAsset } from "@/stores/use-asset-store";
 import type { DirectorScene } from "@/types/director";
 import { CanvasNodeType, type CanvasConnection, type CanvasMediaPerformanceMode, type CanvasNodeData, type ContextMenuState, type ViewportTransform } from "@/types/canvas";
@@ -26,6 +31,7 @@ type UseCanvasRenderModelOptions = {
     collapsingBatchIds: Set<string>;
     addedSkills: Skill[];
     directorScenes?: DirectorScene[];
+    projectUnits?: ProjectUnit[];
     infoNodeId: string | null;
     cropNodeId: string | null;
     maskEditNodeId: string | null;
@@ -56,6 +62,7 @@ export function useCanvasRenderModel({
     collapsingBatchIds,
     addedSkills,
     directorScenes,
+    projectUnits,
     infoNodeId,
     cropNodeId,
     maskEditNodeId,
@@ -72,8 +79,17 @@ export function useCanvasRenderModel({
     scriptEditorNodeId,
     dialogNodeId,
 }: UseCanvasRenderModelOptions) {
-    const reduceMediaEffects = useMemo(() => shouldReduceCanvasMediaEffects(mediaPerformanceMode, nodes), [mediaPerformanceMode, nodes]);
     const nodeById = useMemo(() => new Map(nodes.map((node) => [node.id, node])), [nodes]);
+    const canvasContext = useMemo(() => summarizeCanvasContext(nodes, selectedNodeIds, projectUnits), [nodes, projectUnits, selectedNodeIds]);
+    const semanticNodesRef = useRef(nodes);
+    const semanticNodes = useMemo(() => {
+        const previous = semanticNodesRef.current;
+        const positionOnlyChange = previous.length === nodes.length && nodes.every((node, index) => sameNodeSemanticData(node, previous[index]));
+        if (!positionOnlyChange) semanticNodesRef.current = nodes;
+        return semanticNodesRef.current;
+    }, [nodes]);
+    const resourceGraphIndex = useMemo(() => createCanvasResourceGraphIndex(semanticNodes, connections), [connections, semanticNodes]);
+    const nodeGraphContext = useMemo(() => createCanvasNodeGraphContextValue(resourceGraphIndex), [resourceGraphIndex]);
     const collapsedBatchChildIds = useMemo(() => {
         const hidden = new Set<string>();
         nodes.forEach((node) => {
@@ -94,6 +110,25 @@ export function useCanvasRenderModel({
         });
         return hidden;
     }, [collapsedBatchChildIds, collapsingBatchIds, nodeById, nodes]);
+    const visibleNodesForPerformance = useMemo(() => {
+        const scale = Math.max(viewport.k, 0.05);
+        const left = -viewport.x / scale;
+        const top = -viewport.y / scale;
+        const right = left + viewportSize.width / scale;
+        const bottom = top + viewportSize.height / scale;
+        return nodes.filter((node) => {
+            if (renderHiddenNodeIds.has(node.id)) return false;
+            return node.position.x + node.width > left
+                && node.position.x < right
+                && node.position.y + node.height > top
+                && node.position.y < bottom;
+        });
+    }, [nodes, renderHiddenNodeIds, viewport.k, viewport.x, viewport.y, viewportSize.height, viewportSize.width]);
+    const mediaRenderPolicy = useMemo(
+        () => resolveCanvasMediaRenderPolicy(mediaPerformanceMode, nodes, { viewportScale: viewport.k, visibleNodes: visibleNodesForPerformance }),
+        [mediaPerformanceMode, nodes, viewport.k, visibleNodesForPerformance],
+    );
+    const reduceMediaEffects = mediaRenderPolicy.reduceEffects;
     const connectionLayerBounds = useMemo(() => {
         const padding = (reduceMediaEffects ? 96 : 144) / Math.max(viewport.k, 0.05);
         const left = -viewport.x / viewport.k - padding;
@@ -113,24 +148,21 @@ export function useCanvasRenderModel({
     const visibleNodes = useMemo(() => {
         const frames: CanvasNodeData[] = [];
         const regular: CanvasNodeData[] = [];
+        const editorNodeIds = new Set([dialogNodeId, directorNodeId, scriptEditorNodeId, infoNodeId, cropNodeId, maskEditNodeId, annotationNodeId, splitNodeId, upscaleNodeId, superResolveNodeId, angleNodeId, emotionNodeId, previewNodeId].filter((id): id is string => Boolean(id)));
         nodes.forEach((node) => {
             if (renderHiddenNodeIds.has(node.id)) return;
-            const retained = selectedNodeIds.has(node.id) || Boolean(dragPreview?.nodeIds.has(node.id));
-            if (!retained && (node.position.x + node.width <= renderBounds.left || node.position.x >= renderBounds.right || node.position.y + node.height <= renderBounds.top || node.position.y >= renderBounds.bottom)) return;
+            const dragOffset = dragPreview?.nodeIds.has(node.id) ? dragPreview : null;
+            if (!editorNodeIds.has(node.id) && !canvasNodeIntersectsRenderBounds(node, renderBounds, dragOffset)) return;
             (isFrameNode(node) ? frames : regular).push(node);
         });
         return [...frames, ...regular];
-    }, [dragPreview, nodes, renderBounds, renderHiddenNodeIds, selectedNodeIds]);
+    }, [angleNodeId, annotationNodeId, cropNodeId, dialogNodeId, directorNodeId, dragPreview, emotionNodeId, infoNodeId, maskEditNodeId, nodes, previewNodeId, renderBounds, renderHiddenNodeIds, scriptEditorNodeId, splitNodeId, superResolveNodeId, upscaleNodeId]);
 
     const imageAssets = useMemo(() => assets.filter((asset): asset is ImageAsset => asset.kind === "image"), [assets]);
-    const canvasImageNodes = useMemo(() => nodes.filter((node) => node.type === CanvasNodeType.Image && Boolean(node.metadata?.content) && !collapsedBatchChildIds.has(node.id) && !(node.parentId && nodeById.get(node.parentId)?.metadata?.frame?.collapsed)), [collapsedBatchChildIds, nodeById, nodes]);
-    const semanticNodesRef = useRef(nodes);
-    const semanticNodes = useMemo(() => {
-        const previous = semanticNodesRef.current;
-        const positionOnlyChange = previous.length === nodes.length && nodes.every((node, index) => sameNodeSemanticData(node, previous[index]));
-        if (!positionOnlyChange) semanticNodesRef.current = nodes;
-        return semanticNodesRef.current;
-    }, [nodes]);
+    const canvasImageNodes = useMemo(
+        () => nodes.filter((node) => node.type === CanvasNodeType.Image && Boolean(node.metadata?.content) && !collapsedBatchChildIds.has(node.id) && !(node.parentId && nodeById.get(node.parentId)?.metadata?.frame?.collapsed)),
+        [collapsedBatchChildIds, nodeById, nodes],
+    );
     const versionCompareNodes = useMemo(() => {
         if (!versionCompareRootId) return [];
         return nodes.filter((node) => (node.metadata?.versionOfNodeId || node.id) === versionCompareRootId).sort((a, b) => (a.metadata?.versionLabel || "").localeCompare(b.metadata?.versionLabel || ""));
@@ -162,13 +194,18 @@ export function useCanvasRenderModel({
         const bottom = Math.max(...selectedNodes.map((node) => node.position.y + node.height));
         return { left, top, width: right - left, height: bottom - top, count: selectedNodes.length };
     }, [nodes, renderHiddenNodeIds, selectedNodeIds]);
-    const selectedVideoNodes = useMemo(() => nodes
-        .filter((node) => selectedNodeIds.has(node.id) && node.type === CanvasNodeType.Video && Boolean(node.metadata?.content) && !renderHiddenNodeIds.has(node.id))
-        .sort((a, b) => {
-            const shotA = a.metadata?.shotIndex ?? Number.MAX_SAFE_INTEGER;
-            const shotB = b.metadata?.shotIndex ?? Number.MAX_SAFE_INTEGER;
-            return shotA - shotB || a.position.y - b.position.y || a.position.x - b.position.x;
-        }), [nodes, renderHiddenNodeIds, selectedNodeIds]);
+    const selectedVideoNodes = useMemo(
+        () =>
+            nodes
+                .filter((node) => selectedNodeIds.has(node.id) && node.type === CanvasNodeType.Video && Boolean(node.metadata?.content) && !renderHiddenNodeIds.has(node.id))
+                .sort((a, b) => {
+                    const shotA = a.metadata?.shotIndex ?? Number.MAX_SAFE_INTEGER;
+                    const shotB = b.metadata?.shotIndex ?? Number.MAX_SAFE_INTEGER;
+                    return shotA - shotB || a.position.y - b.position.y || a.position.x - b.position.x;
+                }),
+        [nodes, renderHiddenNodeIds, selectedNodeIds],
+    );
+    const selectionCapabilities = useMemo(() => getCanvasSelectionCapabilities(nodes, selectedNodeIds), [nodes, selectedNodeIds]);
     const batchChildCountById = useMemo(() => {
         const map = new Map<string, number>();
         nodes.forEach((node) => {
@@ -214,45 +251,49 @@ export function useCanvasRenderModel({
         });
         return { nodeIds, connectionIds };
     }, [activeNodeId, connections]);
-    const displayConnections = useMemo(() => connections.flatMap((connection) => {
-        if (collapsedBatchChildIds.has(connection.fromNodeId) || collapsedBatchChildIds.has(connection.toNodeId)) return [];
-        const fromNode = nodeById.get(connection.fromNodeId);
-        const toNode = nodeById.get(connection.toNodeId);
-        if (!fromNode || !toNode) return [];
-        const fromParent = fromNode.parentId ? nodeById.get(fromNode.parentId) : null;
-        const toParent = toNode.parentId ? nodeById.get(toNode.parentId) : null;
-        const displayFrom = fromParent && isFrameNode(fromParent) && fromParent.metadata?.frame?.collapsed ? fromParent : fromNode;
-        const displayTo = toParent && isFrameNode(toParent) && toParent.metadata?.frame?.collapsed ? toParent : toNode;
-        if (displayFrom.id === displayTo.id) return [];
-        const from = dragPreview?.nodeIds.has(displayFrom.id) ? { ...displayFrom, position: { x: displayFrom.position.x + dragPreview.x, y: displayFrom.position.y + dragPreview.y } } : displayFrom;
-        const to = dragPreview?.nodeIds.has(displayTo.id) ? { ...displayTo, position: { x: displayTo.position.x + dragPreview.x, y: displayTo.position.y + dragPreview.y } } : displayTo;
-        const connectionLeft = Math.min(from.position.x, to.position.x);
-        const connectionTop = Math.min(from.position.y, to.position.y);
-        const connectionRight = Math.max(from.position.x + from.width, to.position.x + to.width);
-        const connectionBottom = Math.max(from.position.y + from.height, to.position.y + to.height);
-        if (connectionRight <= renderBounds.left || connectionLeft >= renderBounds.right || connectionBottom <= renderBounds.top || connectionTop >= renderBounds.bottom) return [];
-        return [{ connection, from, to }];
-    }), [collapsedBatchChildIds, connections, dragPreview, nodeById, renderBounds]);
+    const displayConnections = useMemo(
+        () =>
+            connections.flatMap((connection) => {
+                if (collapsedBatchChildIds.has(connection.fromNodeId) || collapsedBatchChildIds.has(connection.toNodeId)) return [];
+                const fromNode = nodeById.get(connection.fromNodeId);
+                const toNode = nodeById.get(connection.toNodeId);
+                if (!fromNode || !toNode) return [];
+                const fromParent = fromNode.parentId ? nodeById.get(fromNode.parentId) : null;
+                const toParent = toNode.parentId ? nodeById.get(toNode.parentId) : null;
+                const displayFrom = fromParent && isFrameNode(fromParent) && fromParent.metadata?.frame?.collapsed ? fromParent : fromNode;
+                const displayTo = toParent && isFrameNode(toParent) && toParent.metadata?.frame?.collapsed ? toParent : toNode;
+                if (displayFrom.id === displayTo.id) return [];
+                const from = dragPreview?.nodeIds.has(displayFrom.id) ? { ...displayFrom, position: { x: displayFrom.position.x + dragPreview.x, y: displayFrom.position.y + dragPreview.y } } : displayFrom;
+                const to = dragPreview?.nodeIds.has(displayTo.id) ? { ...displayTo, position: { x: displayTo.position.x + dragPreview.x, y: displayTo.position.y + dragPreview.y } } : displayTo;
+                const connectionLeft = Math.min(from.position.x, to.position.x);
+                const connectionTop = Math.min(from.position.y, to.position.y);
+                const connectionRight = Math.max(from.position.x + from.width, to.position.x + to.width);
+                const connectionBottom = Math.max(from.position.y + from.height, to.position.y + to.height);
+                if (connectionRight <= renderBounds.left || connectionLeft >= renderBounds.right || connectionBottom <= renderBounds.top || connectionTop >= renderBounds.bottom) return [];
+                return [{ connection, from, to }];
+            }),
+        [collapsedBatchChildIds, connections, dragPreview, nodeById, renderBounds],
+    );
 
     const configInputsById = useMemo(() => {
         const map = new Map<string, NodeGenerationInput[]>();
         semanticNodes.forEach((node) => {
-            if (node.type === CanvasNodeType.Config) map.set(node.id, buildNodeGenerationInputs(node.id, semanticNodes, connections));
+            if (node.type === CanvasNodeType.Config) map.set(node.id, buildNodeGenerationInputs(node.id, semanticNodes, connections, resourceGraphIndex));
         });
         return map;
-    }, [connections, semanticNodes]);
+    }, [connections, resourceGraphIndex, semanticNodes]);
     const activeDirectorNode = useMemo(() => semanticNodes.find((node) => node.id === directorNodeId) || null, [directorNodeId, semanticNodes]);
     const activeStylePresetId = useMemo(() => semanticNodes.find((node) => node.metadata?.workflowKind === "styleboard")?.metadata?.stylePresetId, [semanticNodes]);
     const activeScriptNode = useMemo(() => semanticNodes.find((node) => node.id === scriptEditorNodeId && node.type === CanvasNodeType.Script) || null, [scriptEditorNodeId, semanticNodes]);
     const activeDirectorScene = useMemo(() => directorScenes?.find((scene) => scene.id === activeDirectorNode?.metadata?.directorSceneId) || null, [activeDirectorNode?.metadata?.directorSceneId, directorScenes]);
-    const canvasResourceReferences = useMemo(() => buildCanvasResourceReferences(semanticNodes, connections, dialogNodeId || activeNodeId), [activeNodeId, connections, dialogNodeId, semanticNodes]);
+    const canvasResourceReferences = useMemo(() => buildCanvasResourceReferences(semanticNodes, connections, dialogNodeId || activeNodeId, resourceGraphIndex), [activeNodeId, connections, dialogNodeId, resourceGraphIndex, semanticNodes]);
     const resourceReferenceByNodeId = useMemo(() => new Map(canvasResourceReferences.map((reference) => [reference.nodeId, reference])), [canvasResourceReferences]);
     const skillMentionReferences = useMemo(() => buildSkillMentionReferences(addedSkills), [addedSkills]);
     const mentionReferencesByNodeId = useMemo(() => {
         const map = new Map<string, ReturnType<typeof buildNodeMentionReferences>>();
-        semanticNodes.forEach((node) => map.set(node.id, [...buildNodeMentionReferences(node, semanticNodes, connections), ...skillMentionReferences]));
+        semanticNodes.forEach((node) => map.set(node.id, [...buildNodeMentionReferences(node, semanticNodes, connections, resourceGraphIndex), ...skillMentionReferences]));
         return map;
-    }, [connections, semanticNodes, skillMentionReferences]);
+    }, [connections, resourceGraphIndex, semanticNodes, skillMentionReferences]);
 
     return {
         activeDirectorNode,
@@ -265,6 +306,7 @@ export function useCanvasRenderModel({
         annotationNode,
         batchChildCountById,
         batchMotionById,
+        canvasContext,
         canvasImageNodes,
         configInputsById,
         connectionLayerBounds,
@@ -276,6 +318,8 @@ export function useCanvasRenderModel({
         infoNode,
         maskEditNode,
         mentionReferencesByNodeId,
+        mediaRenderPolicy,
+        nodeGraphContext,
         nodeById,
         previewNode,
         reduceMediaEffects,
@@ -283,6 +327,7 @@ export function useCanvasRenderModel({
         resourceReferenceByNodeId,
         selectedNodeBounds,
         selectedVideoNodes,
+        selectionCapabilities,
         semanticNodes,
         skillMentionReferences,
         splitNode,

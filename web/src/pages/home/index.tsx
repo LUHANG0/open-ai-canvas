@@ -6,8 +6,9 @@ import { Link, useNavigate } from "react-router";
 import { Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip as ChartTooltip, XAxis, YAxis } from "recharts";
 
 import { resolveCanvasStylePreset, resolveProjectCanvasStyle } from "@/components/canvas/canvas-style-picker-modal";
-import { PageHeader, WorkspacePage } from "@/components/layout/workspace-page";
-import { WorkspaceErrorState, WorkspaceLoadingState } from "@/components/layout/workspace-state";
+import { useBranding } from "@/components/branding/branding-provider";
+import { PageHeader, WorkspacePage } from "@/components/ui/pc/page";
+import { WorkspaceErrorState, WorkspaceLoadingState } from "@/components/ui/pc/workspace-state";
 import { SearchField, StatTile, Surface } from "@/components/ui/pc";
 import { parseStyleProfile } from "@/lib/canvas/style-profile";
 import { projectSummaryCompletion, projectSummaryStage } from "@/lib/project-workbench";
@@ -126,6 +127,7 @@ function HomeDashboard({
     canvasHydrated: boolean;
     onCreateIndependentCanvas: () => void;
 }) {
+    const { branding } = useBranding();
     const hasProjects = Boolean(domainProjects.length);
     const displayName = user?.displayName || user?.username || "创作者";
 
@@ -198,7 +200,7 @@ function HomeDashboard({
                             <span className="home-brand-kicker-mobile">创作工作台</span>
                         </>
                     }
-                    title={hasProjects ? `欢迎回来，${displayName}` : `欢迎使用影策，${displayName}`}
+                    title={hasProjects ? `欢迎回来，${displayName}` : `欢迎使用${branding.config.identity.shortName}，${displayName}`}
                     description={hasProjects ? "回到最近制作，或从一句话故事开始一部新的短剧。" : "从一个故事开始：整理章节、确认设定、制作镜头，直到可交付的结果。"}
                     meta={
                         activeProject ? (

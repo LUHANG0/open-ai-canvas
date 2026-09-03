@@ -27,6 +27,8 @@ type ImageToolDefinition = {
     label: string | ((node: CanvasNodeData) => string);
     icon: (node: CanvasNodeData) => ReactNode;
     run: (node: CanvasNodeData, handlers: ImageToolHandlers) => void;
+    disabled?: boolean;
+    disabledReason?: string;
 };
 
 const imageToolDefinitions: ImageToolDefinition[] = [
@@ -98,9 +100,11 @@ const imageToolDefinitions: ImageToolDefinition[] = [
     },
     {
         id: "superResolve",
-        label: "超分",
+        label: "超分（暂未开放）",
         icon: () => <Sparkles className="size-3.5" />,
         run: (node, handlers) => handlers.onSuperResolve(node),
+        disabled: true,
+        disabledReason: "AI 超分暂未开放",
     },
     {
         id: "angle",
@@ -121,6 +125,8 @@ export function buildImageToolbarTools(node: CanvasNodeData, handlers: ImageTool
         id: tool.id,
         label: resolveToolText(tool.label, node),
         icon: tool.icon(node),
+        disabled: tool.disabled,
+        disabledReason: tool.disabledReason,
         onClick: () => tool.run(node, handlers),
     }));
 }

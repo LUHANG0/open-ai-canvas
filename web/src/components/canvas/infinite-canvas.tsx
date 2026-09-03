@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 
-import { canvasThemes, type CanvasBackgroundMode } from "@/lib/canvas-theme";
+import { canvasBackgroundPresets, normalizeCanvasBackgroundMode, type CanvasBackgroundMode } from "@/lib/canvas-theme";
 import { applyCanvasLiveViewport, canvasDotGridPx, canvasDotPx, subscribeCanvasViewportPreview } from "@/lib/canvas/canvas-live-viewport";
 import { useThemeStore } from "@/stores/use-theme-store";
 import type { ViewportTransform } from "@/types/canvas";
@@ -42,8 +42,9 @@ type PinchState = {
 
 export function InfiniteCanvas({ containerRef, viewport, backgroundMode = "lines", onViewportChange, onViewportPreviewChange, onCanvasMouseDown, boxSelectEnabled = false, onCanvasDoubleClick, onCanvasDeselect, onContextMenu, onDrop, onFileDragEnter, onFileDragLeave, onFileDragOver, graphicsLayer, children }: InfiniteCanvasProps) {
     const colorTheme = useThemeStore((state) => state.theme);
-    const theme = canvasThemes[colorTheme];
-    const canvasBackground = colorTheme === "light" ? "#e6e6e6" : theme.canvas.background;
+    const normalizedBackgroundMode = normalizeCanvasBackgroundMode(backgroundMode);
+    const backgroundPreset = canvasBackgroundPresets[normalizedBackgroundMode];
+    const canvasBackground = backgroundPreset.surface[colorTheme];
     const panState = useRef({
         isPanning: false,
         pointerId: -1,
@@ -194,6 +195,11 @@ export function InfiniteCanvas({ containerRef, viewport, backgroundMode = "lines
 
     const handlePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
         const target = event.target instanceof Element ? event.target : null;
+        const activeElement = document.activeElement;
+        if (activeElement instanceof HTMLInputElement && activeElement.matches("[data-canvas-node-title-input]") && activeElement !== target) {
+            // 背景平移会 preventDefault 并捕获指针，浏览器不会自然转移焦点；先显式提交标题编辑。
+            activeElement.blur();
+        }
         // AntD 浮层通过 Portal 渲染到节点 DOM 之外；若不统一排除，会被误判为画布空白并捕获指针。
         if (target?.closest(CANVAS_POINTER_IGNORE_SELECTOR)) return;
         const isBackgroundClick = !target?.closest("[data-node-id],[data-connection-id]");
@@ -404,7 +410,7 @@ export function InfiniteCanvas({ containerRef, viewport, backgroundMode = "lines
             }}
             onDrop={onDrop}
         >
-            <CanvasGrid mode={backgroundMode} />
+            <CanvasGrid mode={normalizedBackgroundMode} />
             {graphicsLayer}
             <div
                 data-canvas-world-layer
@@ -419,20 +425,38 @@ export function InfiniteCanvas({ containerRef, viewport, backgroundMode = "lines
 }
 
 function CanvasGrid({ mode }: { mode: CanvasBackgroundMode }) {
-    const theme = canvasThemes[useThemeStore((state) => state.theme)];
-    const backgroundImage = mode === "dots" ? `radial-gradient(circle, ${theme.canvas.dot} var(--canvas-dot-size), transparent calc(var(--canvas-dot-size) + 0.2px))` : `linear-gradient(${theme.canvas.line} 1px, transparent 1px), linear-gradient(90deg, ${theme.canvas.line} 1px, transparent 1px)`;
+    const colorTheme = useThemeStore((state) => state.theme);
+    const line = canvasBackgroundPresets[mode].line[colorTheme];
     if (mode === "blank") return null;
+
+    const isDots = mode === "dots";
+    const isFineGrid = mode === "fine-grid" || mode === "blueprint";
+    const isPaper = mode === "paper";
+    const backgroundImage = isDots
+        ? `radial-gradient(circle, ${line} var(--canvas-dot-size), transparent calc(var(--canvas-dot-size) + 0.2px))`
+        : isPaper
+            ? `linear-gradient(${line} 1px, transparent 1px)`
+            : isFineGrid
+                ? `linear-gradient(${line} 1px, transparent 1px), linear-gradient(90deg, ${line} 1px, transparent 1px)`
+                : `linear-gradient(${line} 1px, transparent 1px), linear-gradient(90deg, ${line} 1px, transparent 1px)`;
+    const gridSize = isDots
+        ? "var(--canvas-dot-grid-size) var(--canvas-dot-grid-size)"
+        : isFineGrid
+            ? "calc(var(--canvas-grid-size) / 2) calc(var(--canvas-grid-size) / 2)"
+            : isPaper
+                ? "var(--canvas-grid-size) calc(var(--canvas-grid-size) / 2)"
+                : "var(--canvas-grid-size) var(--canvas-grid-size)";
 
     return (
         <div
             data-canvas-grid-layer
             className="pointer-events-none absolute"
             style={{
-                inset: mode === "dots" ? "calc(-1 * var(--canvas-dot-grid-size))" : "calc(-1 * var(--canvas-grid-size))",
+                inset: isDots ? "calc(-1 * var(--canvas-dot-grid-size))" : "calc(-1 * var(--canvas-grid-size))",
                 backgroundImage,
-                backgroundSize: mode === "dots" ? "var(--canvas-dot-grid-size) var(--canvas-dot-grid-size)" : "var(--canvas-grid-size) var(--canvas-grid-size)",
-                transform: mode === "dots" ? "translate3d(var(--canvas-dot-grid-x), var(--canvas-dot-grid-y), 0)" : "translate3d(var(--canvas-grid-x), var(--canvas-grid-y), 0)",
-                opacity: mode === "dots" ? 0.34 : 0.46,
+                backgroundSize: gridSize,
+                transform: isDots ? "translate3d(var(--canvas-dot-grid-x), var(--canvas-dot-grid-y), 0)" : "translate3d(var(--canvas-grid-x), var(--canvas-grid-y), 0)",
+                opacity: isDots ? 0.62 : isFineGrid ? 0.52 : 0.46,
                 willChange: "transform",
             }}
         />

@@ -4,8 +4,8 @@ import { App, Button, Popconfirm, Select, Tooltip } from "antd";
 import { Link2, Unlink, X } from "lucide-react";
 
 import { CanvasProjectCard } from "@/components/canvas/canvas-project-card";
-import { PaginationBar } from "@/components/layout/workspace-page";
-import { WorkspaceState } from "@/components/layout/workspace-state";
+import { PaginationBar } from "@/components/ui/pc/page";
+import { WorkspaceState } from "@/components/ui/pc/workspace-state";
 import { SectionHeader, StatusBadge } from "@/components/ui/pc";
 import { linkCanvasUnit, listProjectCanvases, unlinkCanvasProject, unlinkCanvasUnit } from "@/services/api/projects";
 import { useCanvasStore, type CanvasProject } from "@/stores/canvas/use-canvas-store";
@@ -80,6 +80,8 @@ export default function ProjectCanvasesView({ detail, refreshProject, onCreateCa
             <SectionHeader title="项目画布" description="按服务端分页读取项目画布，并在每张卡片中维护章节关联。" meta={<StatusBadge tone="neutral">{canvasesQuery.isLoading ? "正在读取" : `${canvasesQuery.data?.total || 0} 张画布`}</StatusBadge>} />
             {canvasesQuery.isLoading ? (
                 <WorkspaceState role="status" icon="canvas" className="pc-project-detail-state" title="正在读取项目画布" description="按页加载画布摘要与章节关联。" />
+            ) : canvasesQuery.isError ? (
+                <WorkspaceState role="alert" icon="error" className="pc-project-detail-state" title="项目画布读取失败" description={canvasesQuery.error instanceof Error ? canvasesQuery.error.message : "请检查网络连接后重试，已有画布不会被修改。"} action={<Button onClick={() => void canvasesQuery.refetch()}>重新读取</Button>} />
             ) : canvases.length ? (
                 <>
                     <div className="project-library-grid library-grid pc-project-canvases-grid">

@@ -4,6 +4,7 @@ import { audioMimeType, normalizeAudioFormatValue, normalizeAudioSpeedValue, nor
 import { createClientId } from "@/lib/client-id";
 import { channelRequest } from "@/services/api/custom-channel-relay";
 import { uploadMediaFile, type UploadedFile } from "@/services/file-storage";
+import { fetchBlob } from "@/services/fetch-blob";
 import { buildApiUrl, isSystemProxyBaseUrl, resolveModelRequestConfig, type AiConfig } from "@/stores/use-config-store";
 
 type RequestOptions = { signal?: AbortSignal };
@@ -107,7 +108,7 @@ async function downloadAsyncAudio(config: AiConfig, taskId: string, state: Recor
     const resultUrl = asyncAudioResultUrl(state);
     let blob: Blob;
     if (resultUrl.startsWith("data:audio/")) {
-        blob = await (await fetch(resultUrl, { signal: options?.signal })).blob();
+        blob = await fetchBlob(resultUrl, { signal: options?.signal }, "音频结果读取");
     } else if (/^https?:\/\//i.test(resultUrl)) {
         blob = (await axios.get<Blob>(resultUrl, { responseType: "blob", signal: options?.signal })).data;
     } else {
@@ -148,7 +149,7 @@ function waitForAudioPoll(signal?: AbortSignal) {
 
 export async function storeGeneratedAudio(blob: Blob, format = "mp3"): Promise<UploadedFile> {
     const audio = blob.type.startsWith("audio/") ? blob : new Blob([blob], { type: audioMimeType(format) });
-    return uploadMediaFile(audio, "audio");
+    return uploadMediaFile(audio);
 }
 
 function assertAudioConfig(config: AiConfig, model: string) {
@@ -160,7 +161,7 @@ function assertAudioConfig(config: AiConfig, model: string) {
 
 async function assertAudioBlob(blob: Blob) {
     const mimeType = blob.type.toLowerCase();
-    if (mimeType.startsWith("image/") || mimeType.startsWith("video/") || mimeType.startsWith("text/")) throw new Error(`上游返回了非音频内容：${mimeType}`);
+    if (mimeType.startsWith("image/") || mimeType.startsWith("video/") || mimeType.startsWith("text/")) throw new Error(`模型服务返回了非音频内容：${mimeType}`);
     if (!mimeType.includes("json")) return;
     let payload: { code?: number; msg?: string; error?: { message?: string } };
     try {

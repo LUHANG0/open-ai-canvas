@@ -105,7 +105,7 @@ export function SkillInstallModal({ open, onClose, onInstalled, onManualCreate }
             frameSize="md"
             open={open}
             destroyOnHidden
-            maskClosable={!installing}
+            mask={{ closable: !installing }}
             title="安装技能"
             subtitle="导入标准技能文件、多文件包或 GitHub 仓库"
             onCancel={onClose}

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useAssetStore } from "@/stores/use-asset-store";
 import { useCanvasUiStore } from "@/stores/canvas/use-canvas-ui-store";
 import { deleteCanvasProjectsWithRemoteSync } from "@/services/user-data-sync";
+import { removeCanvasProjectDrawings } from "@/lib/canvas/canvas-drawing-storage";
 
 export function CanvasDeleteProjectsDialog() {
     const { message } = App.useApp();
@@ -16,6 +17,7 @@ export function CanvasDeleteProjectsDialog() {
         setDeleting(true);
         try {
             await deleteCanvasProjectsWithRemoteSync(ids);
+            await Promise.all(ids.map((id) => removeCanvasProjectDrawings(id))).catch(() => message.warning("画布已删除，但部分本地绘图缓存清理失败"));
             void cleanupImages();
             removeSelectedIds(ids);
             setDeleteIds([]);

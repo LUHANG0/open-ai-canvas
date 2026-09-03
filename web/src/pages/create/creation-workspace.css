@@ -55,6 +55,40 @@
     backdrop-filter: none;
 }
 
+.creation-home .creation-cloud-sync {
+    display: inline-flex;
+    min-width: 0;
+    height: 28px;
+    align-items: center;
+    gap: 5px;
+    border: 0;
+    border-radius: 999px;
+    padding: 0 9px;
+    background: color-mix(in srgb, var(--app-text-primary, #171717) 7%, transparent);
+    color: var(--app-text-muted, #71717a);
+    font-size: 11px;
+    line-height: 1;
+}
+
+.creation-home .creation-cloud-sync svg {
+    width: 13px;
+    height: 13px;
+}
+
+.creation-home .creation-cloud-sync.is-synced {
+    color: var(--app-success, #15803d);
+}
+
+.creation-home .creation-cloud-sync.is-failed,
+.creation-home .creation-cloud-sync.is-conflict {
+    color: var(--app-danger, #dc2626);
+    cursor: pointer;
+}
+
+.creation-home .creation-cloud-sync.is-pending {
+    cursor: pointer;
+}
+
 .creation-home .creation-top-action:hover,
 .creation-home .creation-top-action[aria-expanded="true"] {
     border-color: var(--creation-border);
@@ -2971,6 +3005,7 @@ html:not(.dark) .creation-media-preview-modal.is-video .ant-modal-container {
         display: flex;
         min-width: 120px;
         align-items: center;
+        gap: 8px;
         justify-self: start;
     }
 
@@ -3624,6 +3659,10 @@ html:not(.dark) .creation-media-preview-modal.is-video .ant-modal-container {
         color: var(--app-text-secondary, var(--creation-muted));
         text-align: left;
         cursor: pointer;
+        transition:
+            border-color 140ms ease,
+            background-color 140ms ease,
+            transform 140ms ease;
     }
 
     .creation-home .storyboard-editor-shot::before {
@@ -3641,6 +3680,7 @@ html:not(.dark) .creation-media-preview-modal.is-video .ant-modal-container {
     .creation-home .storyboard-editor-shot:hover {
         border-color: var(--app-border-subtle, var(--creation-border));
         background: var(--app-action-secondary-hover, var(--creation-surface-hover));
+        transform: translateY(-1px);
     }
 
     .creation-home .storyboard-editor-shot.is-active {
@@ -3700,6 +3740,51 @@ html:not(.dark) .creation-media-preview-modal.is-video .ant-modal-container {
         line-height: 1;
     }
 
+    .creation-home .storyboard-editor-shot-thumb-state {
+        position: absolute;
+        top: 4px;
+        right: 4px;
+        display: inline-flex;
+        min-width: 18px;
+        height: 18px;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+        border: 1px solid color-mix(in srgb, #fff 28%, transparent);
+        border-radius: 999px;
+        background: color-mix(in srgb, var(--app-overlay-scrim, #111827) 76%, transparent);
+        color: #fff;
+        padding: 0 5px;
+        font-size: 8px;
+        line-height: 1;
+        backdrop-filter: blur(8px);
+    }
+
+    .creation-home .storyboard-editor-shot-thumb-state > i {
+        width: 5px;
+        height: 5px;
+        flex: 0 0 auto;
+        border-radius: 50%;
+        background: currentColor;
+    }
+
+    .creation-home .storyboard-editor-shot-thumb-state > span {
+        display: none;
+        white-space: nowrap;
+    }
+
+    .creation-home .storyboard-editor-shot-thumb-state.is-done {
+        color: var(--app-status-success-fg, #d1fae5);
+    }
+
+    .creation-home .storyboard-editor-shot-thumb-state.is-error {
+        color: var(--app-status-error-fg, #fecaca);
+    }
+
+    .creation-home .storyboard-editor-shot-thumb-state.is-pending {
+        color: var(--app-status-running-fg, #dbeafe);
+    }
+
     .creation-home .storyboard-editor-shot-info {
         display: none;
         min-width: 0;
@@ -3711,18 +3796,23 @@ html:not(.dark) .creation-media-preview-modal.is-video .ant-modal-container {
     .creation-home .storyboard-editor-shot-info small {
         overflow: hidden;
         text-overflow: ellipsis;
-        white-space: nowrap;
     }
 
     .creation-home .storyboard-editor-shot-info strong {
+        display: -webkit-box;
+        min-height: 2.8em;
         color: var(--app-text-primary, var(--creation-text));
         font-size: 11px;
         font-weight: 620;
+        line-height: 1.4;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 2;
     }
 
     .creation-home .storyboard-editor-shot-info small {
         color: var(--app-text-muted, var(--creation-faint));
         font-size: 9px;
+        white-space: nowrap;
     }
 
     .creation-home .storyboard-editor-shot-meta {
@@ -3868,6 +3958,65 @@ html:not(.dark) .creation-media-preview-modal.is-video .ant-modal-container {
         flex-wrap: nowrap;
     }
 
+    .creation-home .storyboard-editor-shot-card .storyboard-workbench-card-heading {
+        flex: 1 1 auto;
+        overflow: hidden;
+    }
+
+    .creation-home .storyboard-editor-shot-card .storyboard-workbench-card-shot {
+        display: flex;
+        flex: 1 1 auto;
+        min-width: 0;
+        max-width: min(38vw, 420px);
+        align-items: center;
+        gap: 8px;
+    }
+
+    .creation-home .storyboard-editor-shot-card .storyboard-workbench-card-shot-index {
+        flex: 0 0 auto;
+    }
+
+    .creation-home .storyboard-workbench-card-summary {
+        display: flex;
+        min-width: 0;
+        flex: 1 1 auto;
+        flex-direction: column;
+        gap: 2px;
+    }
+
+    .creation-home .storyboard-workbench-card-title {
+        display: block;
+        min-width: 0;
+        overflow: hidden;
+        color: var(--app-text-primary, var(--creation-text));
+        font-size: 12.5px;
+        font-weight: 650;
+        line-height: 1.35;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .creation-home .storyboard-workbench-card-meta {
+        display: flex;
+        min-width: 0;
+        align-items: center;
+        gap: 8px;
+        color: var(--app-text-muted, var(--creation-faint));
+        font-size: 9px;
+        line-height: 1.3;
+    }
+
+    .creation-home .storyboard-workbench-card-meta .storyboard-workbench-card-mode,
+    .creation-home .storyboard-workbench-card-meta .storyboard-workbench-card-model {
+        color: inherit;
+        font-size: inherit;
+    }
+
+    .creation-home .storyboard-workbench-card-meta .storyboard-workbench-card-mode svg {
+        width: 11px;
+        height: 11px;
+    }
+
     .creation-home .storyboard-editor-shot-card .storyboard-workbench-card-model {
         max-width: 180px;
         overflow: hidden;
@@ -3876,6 +4025,7 @@ html:not(.dark) .creation-media-preview-modal.is-video .ant-modal-container {
     }
 
     .creation-home .storyboard-editor-shot-card .storyboard-workbench-card-actions {
+        margin-left: auto;
         overflow: visible;
     }
 
@@ -3883,6 +4033,18 @@ html:not(.dark) .creation-media-preview-modal.is-video .ant-modal-container {
     .creation-home .storyboard-editor-shot-card .storyboard-workbench-card-actions > a {
         flex: 0 0 auto;
         white-space: nowrap;
+    }
+
+    .creation-home .storyboard-editor-shot-card .storyboard-workbench-card-action.is-emphasis {
+        border: 1px solid var(--app-selection-border, var(--creation-border-strong));
+        background: var(--app-selection-bg, var(--creation-surface-selected));
+        color: var(--app-selection-fg, var(--creation-text));
+        font-weight: 620;
+    }
+
+    .creation-home .storyboard-editor-shot-card .storyboard-workbench-card-action.is-emphasis:hover {
+        border-color: var(--app-border-strong, var(--creation-border-strong));
+        background: var(--app-action-secondary-hover, var(--creation-surface-hover));
     }
 
     .creation-home .storyboard-editor-shot-card .storyboard-workbench-card-body {
@@ -3956,8 +4118,7 @@ html:not(.dark) .creation-media-preview-modal.is-video .ant-modal-container {
         overflow: auto;
         padding: 12px;
         background:
-            linear-gradient(45deg, color-mix(in srgb, var(--app-border-subtle, var(--creation-border)) 34%, transparent) 25%, transparent 25%) 0 0 / 20px 20px,
-            linear-gradient(-45deg, color-mix(in srgb, var(--app-border-subtle, var(--creation-border)) 34%, transparent) 25%, transparent 25%) 0 10px / 20px 20px,
+            radial-gradient(circle at 50% 42%, color-mix(in srgb, var(--app-selection-bg, var(--creation-surface-selected)) 72%, transparent), transparent 68%),
             var(--app-surface-2, var(--creation-surface-muted));
     }
 
@@ -3973,17 +4134,19 @@ html:not(.dark) .creation-media-preview-modal.is-video .ant-modal-container {
     }
 
     .creation-home .storyboard-editor-preview-content .creation-video-result {
-        width: min(720px, 100%);
+        width: auto;
+        max-width: 100%;
         height: clamp(160px, calc(100vh - 522px), 480px);
         max-height: clamp(160px, calc(100vh - 522px), 480px);
         border-radius: var(--app-radius-media, 12px);
-        background: #0b0c0f;
+        background: transparent;
+        box-shadow: var(--app-shadow-raised, 0 16px 36px rgba(15, 23, 42, 0.14));
     }
 
     .creation-home .storyboard-editor-preview-content .creation-video-result video {
         height: 100%;
         max-height: 100%;
-        background: #0b0c0f;
+        background: transparent;
         object-fit: contain;
     }
 
@@ -4128,7 +4291,7 @@ html:not(.dark) .creation-media-preview-modal.is-video .ant-modal-container {
     }
 
     .creation-home .storyboard-editor-inspector-section {
-        padding: 14px;
+        padding: 10px 14px;
     }
 
     .creation-home .storyboard-editor-inspector-section + .storyboard-editor-inspector-section {
@@ -4140,12 +4303,11 @@ html:not(.dark) .creation-media-preview-modal.is-video .ant-modal-container {
         min-width: 0;
         align-items: center;
         gap: 8px;
-        margin-bottom: 9px;
+        margin-bottom: 7px;
         color: var(--app-text-secondary, var(--creation-muted));
         font-size: 10px;
         font-weight: 660;
-        letter-spacing: 0.04em;
-        text-transform: uppercase;
+        letter-spacing: 0;
     }
 
     .creation-home .storyboard-editor-inspector-section > header > span {
@@ -4182,7 +4344,9 @@ html:not(.dark) .creation-media-preview-modal.is-video .ant-modal-container {
 
     .creation-home .storyboard-editor-inspector-section.is-script > p {
         margin: 0;
+        border-left: 2px solid var(--app-selection-border, var(--creation-border-strong));
         color: var(--app-text-primary, var(--creation-text));
+        padding: 2px 0 2px 10px;
         font-size: 12px;
         line-height: 1.7;
         white-space: pre-wrap;
@@ -4210,18 +4374,23 @@ html:not(.dark) .creation-media-preview-modal.is-video .ant-modal-container {
         display: grid;
         min-width: 0;
         grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 8px;
+        gap: 0 14px;
         margin: 0;
+        border-top: 1px solid var(--app-border-subtle, var(--creation-border));
     }
 
     .creation-home .storyboard-editor-inspector-section dl > div {
-        display: flex;
+        display: grid;
         min-width: 0;
-        flex-direction: column;
-        gap: 3px;
-        border-radius: var(--app-control-radius, 8px);
-        background: var(--app-surface-2, var(--creation-surface-muted));
-        padding: 8px 9px;
+        min-height: 30px;
+        grid-template-columns: minmax(48px, auto) minmax(0, 1fr);
+        align-items: center;
+        gap: 8px;
+        border: 0;
+        border-bottom: 1px solid var(--app-border-subtle, var(--creation-border));
+        border-radius: 0;
+        background: transparent;
+        padding: 4px 0;
     }
 
     .creation-home .storyboard-editor-inspector-section dt {
@@ -4235,6 +4404,7 @@ html:not(.dark) .creation-media-preview-modal.is-video .ant-modal-container {
         color: var(--app-text-primary, var(--creation-text));
         font-size: 11px;
         font-weight: 620;
+        text-align: right;
         text-overflow: ellipsis;
         white-space: nowrap;
     }
@@ -4332,10 +4502,67 @@ html:not(.dark) .creation-media-preview-modal.is-video .ant-modal-container {
     }
 
     .creation-home .storyboard-workbench-next-panel {
-        width: min(560px, 100%);
-        border: 0;
-        background: var(--app-surface-1, var(--creation-surface));
-        box-shadow: none;
+        position: relative;
+        width: min(600px, 100%);
+        align-items: center;
+        border: 1px solid var(--app-border-subtle, var(--creation-border));
+        background:
+            radial-gradient(circle at 0 0, color-mix(in srgb, var(--app-selection-bg, var(--creation-surface-selected)) 72%, transparent), transparent 48%),
+            var(--app-surface-1, var(--creation-surface));
+        padding: 22px 24px;
+        box-shadow: var(--app-shadow-surface, 0 12px 32px rgba(15, 23, 42, 0.06));
+    }
+
+    .creation-home .storyboard-workbench-next-panel-icon {
+        width: 48px;
+        height: 48px;
+        border: 1px solid var(--app-border-subtle, var(--creation-border));
+        background: var(--app-surface-2, var(--creation-surface-muted));
+        color: var(--app-text-secondary, var(--creation-muted));
+    }
+
+    .creation-home .storyboard-workbench-next-panel-copy {
+        min-width: 0;
+    }
+
+    .creation-home .storyboard-workbench-next-panel-copy .storyboard-workbench-next-kicker {
+        margin: 0 0 3px;
+        color: var(--app-text-muted, var(--creation-faint));
+        font-family: var(--app-font-mono, ui-monospace);
+        font-size: 9px;
+        font-weight: 650;
+        letter-spacing: 0.08em;
+        line-height: 1.4;
+        text-transform: uppercase;
+    }
+
+    .creation-home .storyboard-workbench-next-panel-copy > strong {
+        font-size: 14px;
+        line-height: 1.5;
+    }
+
+    .creation-home .storyboard-workbench-next-panel-copy > span:not(.storyboard-workbench-next-kicker) {
+        margin-top: 5px;
+        line-height: 1.65;
+    }
+
+    .creation-home .storyboard-workbench-next-guide {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-top: 13px;
+    }
+
+    .creation-home .storyboard-workbench-next-guide > span {
+        display: inline-flex;
+        min-height: 26px;
+        align-items: center;
+        border: 1px solid var(--app-border-subtle, var(--creation-border));
+        border-radius: 999px;
+        background: var(--app-surface-2, var(--creation-surface-muted));
+        color: var(--app-text-secondary, var(--creation-muted));
+        padding: 0 9px;
+        font-size: 10px;
     }
 
     .creation-home .storyboard-workbench-composer {
@@ -4389,6 +4616,7 @@ html:not(.dark) .creation-media-preview-modal.is-video .ant-modal-container {
 
     .creation-home .storyboard-editor-composer-context {
         display: grid;
+        min-height: 38px;
         min-width: 0;
         grid-template-columns: 24px minmax(0, 1fr) auto;
         align-items: center;
@@ -4680,6 +4908,10 @@ html:not(.dark) .creation-media-preview-modal.is-video .ant-modal-container {
     .creation-home .storyboard-editor-inspector-toggle {
         display: none !important;
     }
+
+    .creation-home .storyboard-editor-inspector-section dl {
+        grid-template-columns: minmax(0, 1fr);
+    }
 }
 
 @media (min-width: 1280px) and (max-width: 1359px) {
@@ -4815,6 +5047,7 @@ html:not(.dark) .creation-media-preview-modal.is-video .ant-modal-container {
     .creation-home .creation-empty-suggest .suggest-card,
     .creation-home .creation-entry-button,
     .creation-home .creation-reference-action,
+    .creation-home .storyboard-editor-shot,
     .creation-home .suggest-card-arrow {
         transition: none;
     }

@@ -382,6 +382,9 @@ func validatePromptTemplateResult(operation string, result map[string]interface{
 	if err != nil {
 		return fmt.Errorf("%s 返回内容不符合受保护 JSON 契约：%w", definition.Label, err)
 	}
+	if operation == promptOperationProjectAssetExtract {
+		return validateProjectAssetBreakdownResult(jsonText)
+	}
 	if operation != promptOperationCharacterExtract {
 		return nil
 	}
@@ -399,6 +402,51 @@ func validatePromptTemplateResult(operation string, result map[string]interface{
 		for _, field := range required {
 			if _, exists := character[field]; !exists {
 				return fmt.Errorf("角色卡提取结果中第 %d 个角色缺少字段 %s", index+1, field)
+			}
+		}
+	}
+	return nil
+}
+
+func validateProjectAssetBreakdownResult(jsonText string) error {
+	var payload struct {
+		Assets *[]map[string]interface{} `json:"assets"`
+	}
+	if err := json.Unmarshal([]byte(jsonText), &payload); err != nil {
+		return fmt.Errorf("章节资产拆分返回的 JSON 无法解析：%w", err)
+	}
+	if payload.Assets == nil {
+		return errors.New("章节资产拆分结果缺少 assets 数组")
+	}
+	if len(*payload.Assets) > 100 {
+		return errors.New("章节资产拆分结果超过 100 项")
+	}
+	required := []string{"name", "aliases", "category", "description", "visualPrompt", "continuityNotes", "sourceEvidence", "character"}
+	characterRequired := []string{"role", "appearance", "clothing", "physique", "personality", "props", "consistencyPrompt", "multiViewPrompt", "voiceLanguage", "voiceAge", "voiceTimbre"}
+	validCategories := map[string]bool{"character": true, "environment": true, "wardrobe": true, "prop": true, "weapon": true}
+	for index, asset := range *payload.Assets {
+		for _, field := range required {
+			if _, exists := asset[field]; !exists {
+				return fmt.Errorf("章节资产拆分结果中第 %d 项缺少字段 %s", index+1, field)
+			}
+		}
+		category, _ := asset["category"].(string)
+		if !validCategories[category] {
+			return fmt.Errorf("章节资产拆分结果中第 %d 项分类无效", index+1)
+		}
+		if category != "character" {
+			if asset["character"] != nil {
+				return fmt.Errorf("章节资产拆分结果中第 %d 项不是角色，character 必须为 null", index+1)
+			}
+			continue
+		}
+		character, ok := asset["character"].(map[string]interface{})
+		if !ok {
+			return fmt.Errorf("章节资产拆分结果中第 %d 个角色缺少完整 character 对象", index+1)
+		}
+		for _, field := range characterRequired {
+			if _, exists := character[field]; !exists {
+				return fmt.Errorf("章节资产拆分结果中第 %d 个角色缺少字段 %s", index+1, field)
 			}
 		}
 	}

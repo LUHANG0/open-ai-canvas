@@ -89,7 +89,7 @@ export function DrawerFrame({ title, subtitle, frameSize = "md", rootClassName, 
         <Drawer
             {...props}
             placement={placement}
-            width={DRAWER_WIDTHS[frameSize]}
+            size={DRAWER_WIDTHS[frameSize]}
             rootClassName={cn("pc-drawer-root", rootClassName)}
             className={cn("pc-drawer", `pc-drawer--${frameSize}`, className)}
             title={

@@ -9,47 +9,12 @@ import (
 	"time"
 
 	"infinite-canvas/backend/internal/model"
+
+	"gorm.io/gorm"
 )
 
 func TestPostgresAssetIDMigration(t *testing.T) {
-	dsn := strings.TrimSpace(os.Getenv("CANVAS_TEST_POSTGRES_DSN"))
-	if dsn == "" {
-		t.Skip("CANVAS_TEST_POSTGRES_DSN is not configured")
-	}
-
-	base, err := Open(Config{Driver: "postgres", DSN: dsn})
-	if err != nil {
-		t.Fatalf("open postgres: %v", err)
-	}
-	baseSQL, err := base.DB()
-	if err != nil {
-		t.Fatalf("postgres sql db: %v", err)
-	}
-	defer baseSQL.Close()
-
-	schemaName := fmt.Sprintf("asset_id_migration_%d", time.Now().UnixNano())
-	if err := base.Exec(`CREATE SCHEMA "` + schemaName + `"`).Error; err != nil {
-		t.Fatalf("create test schema: %v", err)
-	}
-	defer func() {
-		if err := base.Exec(`DROP SCHEMA IF EXISTS "` + schemaName + `" CASCADE`).Error; err != nil {
-			t.Errorf("drop test schema: %v", err)
-		}
-	}()
-
-	testDSN, err := postgresDSNWithSearchPath(dsn, schemaName)
-	if err != nil {
-		t.Fatalf("test postgres dsn: %v", err)
-	}
-	db, err := Open(Config{Driver: "postgres", DSN: testDSN})
-	if err != nil {
-		t.Fatalf("open test schema: %v", err)
-	}
-	dbSQL, err := db.DB()
-	if err != nil {
-		t.Fatalf("test schema sql db: %v", err)
-	}
-	defer dbSQL.Close()
+	db := openPostgresMigrationTestDB(t, "asset_id_migration")
 
 	for _, statement := range []string{
 		`CREATE TABLE assets (id varchar(36) PRIMARY KEY)`,
@@ -92,6 +57,88 @@ func TestPostgresAssetIDMigration(t *testing.T) {
 	if err := db.Create(&model.AssetVersion{ID: "version-1", AssetID: assetID, Version: 1}).Error; err != nil {
 		t.Fatalf("insert asset version: %v", err)
 	}
+}
+
+func TestPostgresProjectDeliveryMigrationUpgradesV4(t *testing.T) {
+	db := openPostgresMigrationTestDB(t, "project_delivery_migration")
+	if err := db.AutoMigrate(&schemaMigration{}); err != nil {
+		t.Fatal(err)
+	}
+	for _, item := range schemaMigrations[:4] {
+		record := schemaMigration{Version: item.version, Name: item.name, Checksum: item.checksum, AppliedAt: time.Now().UTC()}
+		if err := db.Create(&record).Error; err != nil {
+			t.Fatal(err)
+		}
+	}
+	if db.Migrator().HasTable(&model.ProjectDeliveryJob{}) {
+		t.Fatal("v4 fixture unexpectedly contains project delivery jobs")
+	}
+
+	if err := MigrateSchema(db); err != nil {
+		t.Fatalf("upgrade postgres v4 database: %v", err)
+	}
+	if !db.Migrator().HasTable(&model.ProjectDeliveryJob{}) {
+		t.Fatal("v5 upgrade did not create postgres project delivery jobs")
+	}
+	for _, index := range []string{"idx_project_delivery_claim", "idx_project_delivery_scope_created", "idx_project_delivery_jobs_active_key"} {
+		if !db.Migrator().HasIndex(&model.ProjectDeliveryJob{}, index) {
+			t.Fatalf("v5 postgres upgrade did not create %s", index)
+		}
+	}
+	status, err := ReadSchemaStatus(db)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !status.Ready || status.Current != CurrentSchemaVersion {
+		t.Fatalf("post-upgrade postgres schema status = %#v", status)
+	}
+}
+
+func openPostgresMigrationTestDB(t *testing.T, prefix string) *gorm.DB {
+	t.Helper()
+	dsn := strings.TrimSpace(os.Getenv("CANVAS_TEST_POSTGRES_DSN"))
+	if dsn == "" {
+		t.Skip("CANVAS_TEST_POSTGRES_DSN is not configured")
+	}
+	base, err := Open(Config{Driver: "postgres", DSN: dsn})
+	if err != nil {
+		t.Fatalf("open postgres: %v", err)
+	}
+	baseSQL, err := base.DB()
+	if err != nil {
+		t.Fatalf("postgres sql db: %v", err)
+	}
+	schemaName := fmt.Sprintf("%s_%d", prefix, time.Now().UnixNano())
+	if err := base.Exec(`CREATE SCHEMA "` + schemaName + `"`).Error; err != nil {
+		_ = baseSQL.Close()
+		t.Fatalf("create test schema: %v", err)
+	}
+	testDSN, err := postgresDSNWithSearchPath(dsn, schemaName)
+	if err != nil {
+		_ = base.Exec(`DROP SCHEMA IF EXISTS "` + schemaName + `" CASCADE`).Error
+		_ = baseSQL.Close()
+		t.Fatalf("test postgres dsn: %v", err)
+	}
+	db, err := Open(Config{Driver: "postgres", DSN: testDSN})
+	if err != nil {
+		_ = base.Exec(`DROP SCHEMA IF EXISTS "` + schemaName + `" CASCADE`).Error
+		_ = baseSQL.Close()
+		t.Fatalf("open test schema: %v", err)
+	}
+	dbSQL, err := db.DB()
+	if err != nil {
+		_ = base.Exec(`DROP SCHEMA IF EXISTS "` + schemaName + `" CASCADE`).Error
+		_ = baseSQL.Close()
+		t.Fatalf("test schema sql db: %v", err)
+	}
+	t.Cleanup(func() {
+		_ = dbSQL.Close()
+		if err := base.Exec(`DROP SCHEMA IF EXISTS "` + schemaName + `" CASCADE`).Error; err != nil {
+			t.Errorf("drop test schema: %v", err)
+		}
+		_ = baseSQL.Close()
+	})
+	return db
 }
 
 func postgresDSNWithSearchPath(dsn string, schemaName string) (string, error) {

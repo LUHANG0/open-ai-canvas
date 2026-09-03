@@ -8,12 +8,13 @@ import { useWalletBalance } from "@/hooks/use-wallet-balance";
 import { aceternityMotion } from "@/lib/aceternity-motion";
 import { canvasDockStyle } from "@/lib/canvas/canvas-aceternity-style";
 import type { CanvasContextSummary } from "@/lib/canvas/canvas-context-summary";
+import { CANVAS_MEDIA_MODE_PRESENTATION, CANVAS_MEDIA_TIER_LABEL, type CanvasMediaRenderTier } from "@/lib/canvas/canvas-performance-mode";
+import { canvasSaveStatusPresentation, type CanvasSaveStatus } from "@/lib/canvas/canvas-save-status";
 import type { CanvasShortDramaProgress } from "@/lib/canvas/canvas-short-drama";
 import { canvasThemes } from "@/lib/canvas-theme";
 import { useThemeStore } from "@/stores/use-theme-store";
 import { useUserStore } from "@/stores/use-user-store";
 import type { CanvasMediaPerformanceMode, CanvasWorkspaceMode } from "@/types/canvas";
-import { CanvasShortcutsModal } from "./canvas-shortcuts-modal";
 
 type CanvasTopBarProps = {
     title: string;
@@ -36,10 +37,12 @@ type CanvasTopBarProps = {
     agentOpen: boolean;
     compactAgentStatus?: { connected: boolean; enabled: boolean; activity: string };
     onToggleAgent: () => void;
-    shortcutRequestNonce: number;
     mediaPerformanceMode: CanvasMediaPerformanceMode;
+    mediaRenderTier: CanvasMediaRenderTier;
     onMediaPerformanceModeChange: (mode: CanvasMediaPerformanceMode) => void;
     onOpenSearch: () => void;
+    saveStatus: CanvasSaveStatus;
+    onRetrySave: () => void;
     projectContext?: CanvasContextSummary & { projectId: string; projectName: string };
     onEnterFocusMode: () => void;
     shortDramaGuide?: { progress: CanvasShortDramaProgress; collapsed: boolean; onToggle: () => void };
@@ -66,10 +69,12 @@ export function CanvasTopBar({
     agentOpen,
     compactAgentStatus,
     onToggleAgent,
-    shortcutRequestNonce,
     mediaPerformanceMode,
+    mediaRenderTier,
     onMediaPerformanceModeChange,
     onOpenSearch,
+    saveStatus,
+    onRetrySave,
     projectContext,
     onEnterFocusMode,
     shortDramaGuide,
@@ -80,15 +85,11 @@ export function CanvasTopBar({
     const creditsEnabled = useUserStore((state) => state.features.creditsEnabled);
     const { availableMicrocredits, refreshing } = useWalletBalance(user?.id, creditsEnabled);
     const titleRef = useRef<HTMLDivElement>(null);
-    const [shortcutsOpen, setShortcutsOpen] = useState(false);
+    const [mediaModeOpen, setMediaModeOpen] = useState(false);
 
     const handleShortDramaGuideToggle = () => {
         shortDramaGuide?.onToggle();
     };
-
-    useEffect(() => {
-        if (shortcutRequestNonce > 0) setShortcutsOpen(true);
-    }, [shortcutRequestNonce]);
 
     useEffect(() => {
         if (!isTitleEditing) return;
@@ -103,6 +104,11 @@ export function CanvasTopBar({
         <>
             <div className="canvas-topbar pc-canvas-topbar pointer-events-none absolute left-0 right-0 top-0 z-[var(--z-toolbar)] flex h-[var(--canvas-topbar-h)] items-center justify-between px-4 sm:px-5" role="toolbar" aria-label="画布项目操作">
                 <div className="canvas-topbar-cluster canvas-topbar-project-cluster pc-canvas-topbar__project pointer-events-auto flex min-w-0 items-center gap-2" style={dockStyle} role="group" aria-label="画布与项目">
+                    <CanvasTopBarTooltip label="返回画布列表">
+                        <Link to="/canvas" className="canvas-topbar-action grid size-9 shrink-0 place-items-center rounded-full" style={{ color: theme.node.text }} aria-label="返回画布列表">
+                            <LayoutGrid className="size-4.5" />
+                        </Link>
+                    </CanvasTopBarTooltip>
                     <CanvasTopBarTooltip label="打开画布菜单">
                         <Dropdown
                             trigger={["click"]}
@@ -120,11 +126,11 @@ export function CanvasTopBar({
                                     {
                                         key: "performance",
                                         icon: <Gauge className="size-4" />,
-                                        label: "媒体性能",
+                                        label: "媒体显示",
                                         children: [
-                                            { key: "performance-auto", label: "自动性能", onClick: () => onMediaPerformanceModeChange("auto") },
-                                            { key: "performance-quality", label: "画质优先", onClick: () => onMediaPerformanceModeChange("quality") },
-                                            { key: "performance-fast", label: "性能优先", onClick: () => onMediaPerformanceModeChange("performance") },
+                                            { key: "performance-auto", label: <MediaModeMenuLabel mode="auto" active={mediaPerformanceMode === "auto"} />, onClick: () => onMediaPerformanceModeChange("auto") },
+                                            { key: "performance-quality", label: <MediaModeMenuLabel mode="quality" active={mediaPerformanceMode === "quality"} />, onClick: () => onMediaPerformanceModeChange("quality") },
+                                            { key: "performance-fast", label: <MediaModeMenuLabel mode="performance" active={mediaPerformanceMode === "performance"} />, onClick: () => onMediaPerformanceModeChange("performance") },
                                         ],
                                     },
                                     { type: "divider" },
@@ -218,24 +224,30 @@ export function CanvasTopBar({
                             </Button>
                         </Dropdown>
                     </CanvasTopBarTooltip>
-                    <CanvasTopBarTooltip label="媒体性能模式">
+                    <CanvasTopBarTooltip label={`媒体模式：${CANVAS_MEDIA_MODE_PRESENTATION[mediaPerformanceMode].label} · ${CANVAS_MEDIA_TIER_LABEL[mediaRenderTier]}`} disabled={mediaModeOpen}>
                         <Dropdown
                             trigger={["click"]}
+                            open={mediaModeOpen}
+                            onOpenChange={setMediaModeOpen}
                             classNames={{ root: "pc-canvas-overlay pc-canvas-menu-overlay" }}
                             menu={{
                                 selectable: true,
                                 selectedKeys: [mediaPerformanceMode],
                                 onClick: ({ key }) => onMediaPerformanceModeChange(key as CanvasMediaPerformanceMode),
                                 items: [
-                                    { key: "auto", label: "自动性能" },
-                                    { key: "quality", label: "画质优先" },
-                                    { key: "performance", label: "性能优先" },
+                                    { key: "auto", label: <MediaModeMenuLabel mode="auto" active={mediaPerformanceMode === "auto"} /> },
+                                    { key: "quality", label: <MediaModeMenuLabel mode="quality" active={mediaPerformanceMode === "quality"} /> },
+                                    { key: "performance", label: <MediaModeMenuLabel mode="performance" active={mediaPerformanceMode === "performance"} /> },
                                 ],
                             }}
                         >
-                            <Button type="text" className="canvas-topbar-action !hidden !h-10 !w-10 !min-w-10 !rounded-xl !p-0 xl:!inline-flex" style={{ color: theme.node.text }} icon={<Gauge className="size-4" />} aria-label="媒体性能模式" />
+                            <Button type="text" className="canvas-topbar-action !relative !hidden !h-10 !min-w-10 !rounded-xl !px-2.5 xl:!inline-flex" style={{ color: theme.node.text }} icon={<Gauge className="size-4" />} aria-label="媒体性能模式">
+                                <span className="hidden text-xs font-medium 2xl:inline">{CANVAS_MEDIA_MODE_PRESENTATION[mediaPerformanceMode].shortLabel}</span>
+                                <span className="absolute right-1.5 top-1.5 size-1.5 rounded-full" style={{ background: mediaRenderTier === "lightweight" ? "#f59e0b" : mediaRenderTier === "quality" ? "#22c55e" : theme.accent.primary }} aria-hidden />
+                            </Button>
                         </Dropdown>
                     </CanvasTopBarTooltip>
+                    <CanvasSaveStatusButton status={saveStatus} onRetry={onRetrySave} />
                     {compactAgentStatus ? <CompactAgentStatus status={compactAgentStatus} onClick={onToggleAgent} /> : null}
                     {user && creditsEnabled ? (
                         <CanvasTopBarTooltip label="查看积分明细">
@@ -284,7 +296,6 @@ export function CanvasTopBar({
                     </Button>
                 </div>
             </div>
-            <CanvasShortcutsModal open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
         </>
     );
 }
@@ -365,16 +376,31 @@ export function CanvasWorkspaceModeSwitch({ mode, onChange }: { mode: CanvasWork
 
 type CanvasTheme = (typeof canvasThemes)[keyof typeof canvasThemes];
 
-function CanvasTopBarTooltip({ label, children }: { label: string; children: ReactNode }) {
+function CanvasTopBarTooltip({ label, children, disabled = false }: { label: string; children: ReactNode; disabled?: boolean }) {
     return (
-        <span className="group relative inline-flex">
+        <span className={`${disabled ? "" : "group"} relative inline-flex`}>
             {children}
-            <span
-                role="tooltip"
-                className="aceternity-dock-tooltip pointer-events-none absolute left-1/2 top-[calc(100%+8px)] z-[var(--dock-tooltip-z)] -translate-x-1/2 translate-y-1 whitespace-nowrap rounded-md border px-2 py-1 text-[var(--fs-tiny)] font-medium opacity-0 shadow-xl backdrop-blur-xl transition-all duration-150 motion-reduce:transition-none group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:translate-y-0 group-focus-within:opacity-100"
-            >
-                {label}
+            {!disabled ? (
+                <span
+                    role="tooltip"
+                    className="aceternity-dock-tooltip pointer-events-none absolute left-1/2 top-[calc(100%+8px)] z-[var(--dock-tooltip-z)] -translate-x-1/2 translate-y-1 whitespace-nowrap rounded-md border px-2 py-1 text-[var(--fs-tiny)] font-medium opacity-0 shadow-xl backdrop-blur-xl transition-all duration-150 motion-reduce:transition-none group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:translate-y-0 group-focus-within:opacity-100"
+                >
+                    {label}
+                </span>
+            ) : null}
+        </span>
+    );
+}
+
+function MediaModeMenuLabel({ mode, active }: { mode: CanvasMediaPerformanceMode; active: boolean }) {
+    const presentation = CANVAS_MEDIA_MODE_PRESENTATION[mode];
+    return (
+        <span className="flex min-w-60 items-start gap-2 py-1">
+            <span className="min-w-0 flex-1">
+                <span className="block text-sm font-semibold leading-5">{presentation.label}</span>
+                <span className="mt-0.5 block whitespace-normal text-xs leading-4 opacity-55">{presentation.description}</span>
             </span>
+            <Check className={`mt-1 size-3.5 shrink-0 ${active ? "opacity-100" : "opacity-0"}`} aria-hidden />
         </span>
     );
 }
@@ -436,6 +462,34 @@ function CompactAgentStatus({ status, onClick }: { status: { connected: boolean;
             >
                 <span className="pc-canvas-agent-status__dot size-2 rounded-full" style={{ background: dotColor }} />
                 <span className="pc-canvas-agent-status__label max-w-[180px] truncate">{label}</span>
+            </button>
+        </CanvasTopBarTooltip>
+    );
+}
+
+function CanvasSaveStatusButton({ status, onRetry }: { status: CanvasSaveStatus; onRetry: () => void }) {
+    const theme = canvasThemes[useThemeStore((state) => state.theme)];
+    const presentation = canvasSaveStatusPresentation(status);
+    const toneColor = presentation.tone === "danger" ? "#ef4444" : presentation.tone === "warning" ? "#f59e0b" : presentation.tone === "success" ? "#22c55e" : theme.node.muted;
+    return (
+        <CanvasTopBarTooltip label={`${presentation.detail}${presentation.retryable ? "，点击重试" : ""}`}>
+            <button
+                type="button"
+                className="canvas-topbar-action pc-canvas-save-status inline-flex h-10 min-w-10 items-center justify-center gap-1.5 rounded-xl px-2 text-[var(--fs-caption)] font-medium"
+                style={{ color: theme.node.text }}
+                onClick={presentation.retryable ? onRetry : undefined}
+                aria-label={`${presentation.label}。${presentation.detail}${presentation.retryable ? "。点击重试" : ""}`}
+                aria-live="polite"
+                disabled={!presentation.retryable}
+            >
+                {presentation.busy ? (
+                    <LoaderCircle className="size-3.5 animate-spin" style={{ color: toneColor }} />
+                ) : presentation.retryable ? (
+                    <Redo2 className="size-3.5" style={{ color: toneColor }} />
+                ) : (
+                    <Check className="size-3.5" style={{ color: toneColor }} />
+                )}
+                <span className="hidden whitespace-nowrap 2xl:inline">{presentation.label}</span>
             </button>
         </CanvasTopBarTooltip>
     );

@@ -230,6 +230,13 @@ test("Canvas launch mode auto-connects after rejected legacy deep-link secrets a
     expect(shouldAutoConnect(new URLSearchParams("agentUrl=http://127.0.0.1:17371"))).toBe(false);
 });
 
+test("Canvas local Agent entry only uses compact mode for rejected legacy links with an explicit launch mode", async () => {
+    const { resolveCanvasLocalAgentEntry } = await import("../src/pages/canvas/canvas-local-agent-entry");
+    expect(resolveCanvasLocalAgentEntry(new URLSearchParams("mode=new"), { legacyDeepLinkRejected: true })).toEqual({ autoConnect: true, compactAgent: true });
+    expect(resolveCanvasLocalAgentEntry(new URLSearchParams("mode=recent"), { legacyDeepLinkRejected: false })).toEqual({ autoConnect: true, compactAgent: false });
+    expect(resolveCanvasLocalAgentEntry(new URLSearchParams("agentUrl=http://127.0.0.1:17371"), { legacyDeepLinkRejected: true })).toEqual({ autoConnect: false, compactAgent: false });
+});
+
 test("Canvas local Agent setup generates exact-origin commands for Unix and Windows", async () => {
     const module = await import("../src/lib/canvas/local-agent-setup");
     const unix = module.buildLocalAgentSetupCommands("https://ddcat.pronhubcn.com", "unix");

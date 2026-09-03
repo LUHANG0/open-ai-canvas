@@ -8,6 +8,7 @@ import { skillRuntime } from "@/services/skill-runtime";
 import { logicalModelIDForConfig, type AiConfig } from "@/stores/use-config-store";
 
 import type { ChapterStoryboardAsset, ChapterStoryboardCharacter } from "./chapter-storyboard-production";
+import { parseChapterAssetBreakdown } from "./project-chapter-assets";
 
 type ChapterAnalysisInput = {
     projectId: string;
@@ -23,16 +24,17 @@ type ChapterTaskOptions = {
     onTaskUpdate?: (task: GenerationTask) => void;
 };
 
-export type ChapterTaskKind = "characters" | "storyboard";
+export type ChapterTaskKind = "assets" | "characters" | "storyboard";
 
 export function chapterTaskIdentity(task: GenerationTask): { chapterId: string; kind: ChapterTaskKind } | null {
     const context = task.clientContext;
-    if (context?.chapterId && (context.chapterOperation === "characters" || context.chapterOperation === "storyboard")) {
+    if (context?.chapterId && (context.chapterOperation === "assets" || context.chapterOperation === "characters" || context.chapterOperation === "storyboard")) {
         return { chapterId: context.chapterId, kind: context.chapterOperation };
     }
     const metadata = generationTaskMetadata(task.inputJson);
     const chapterId = typeof metadata.chapterId === "string" ? metadata.chapterId : "";
     if (!chapterId) return null;
+    if (metadata.operation === "chapter_asset_breakdown") return { chapterId, kind: "assets" };
     if (metadata.operation === "chapter_character_breakdown") return { chapterId, kind: "characters" };
     if (metadata.source === "short-drama-chapter-storyboard") return { chapterId, kind: "storyboard" };
     return null;
@@ -44,18 +46,34 @@ export function chapterCharactersFromGenerationTask(task: GenerationTask) {
     return parseCharacterBreakdown(result.text);
 }
 
+export function chapterAssetsFromGenerationTask(task: GenerationTask) {
+    const result = parseBackendGenerationResult(task);
+    if (!result.text?.trim()) throw new Error("模型没有返回可用的资产拆分结果");
+    return parseChapterAssetBreakdown(result.text);
+}
+
 export function chapterStoryboardFromGenerationTask(task: GenerationTask) {
     return storyboardRowsFromTask(task);
 }
 
 export async function extractChapterCharacters(input: ChapterAnalysisInput, options?: ChapterTaskOptions): Promise<CharacterBreakdown[]> {
-    const result = await runProjectTextTask(input, "chapter_character_breakdown", {
+    const result = await runProjectTextTask(input, "chapter_character_breakdown", "character_extract", "使用当前启用的角色卡提取模板。", {
         项目名称: input.projectName,
         章节名称: input.chapterTitle,
         项目画风: input.projectStyle || "项目尚未指定画风，保持视觉描述中性、可执行。",
         章节正文: input.sourceText,
     }, options);
     return parseCharacterBreakdown(result);
+}
+
+export async function extractChapterAssets(input: ChapterAnalysisInput, options?: ChapterTaskOptions) {
+    const result = await runProjectTextTask(input, "chapter_asset_breakdown", "project_asset_extract", "使用当前启用的章节资产拆分模板。", {
+        项目名称: input.projectName,
+        章节名称: input.chapterTitle,
+        项目画风: input.projectStyle || "项目尚未指定画风，保持视觉描述中性、可执行。",
+        章节正文: input.sourceText,
+    }, options);
+    return parseChapterAssetBreakdown(result);
 }
 
 type ChapterStoryboardGenerationInput = {
@@ -112,15 +130,15 @@ export async function generateChapterStoryboard(input: ChapterStoryboardGenerati
     return { ...storyboardRowsFromTask(completed), skillCount: skillExecution.selectedSkills.length };
 }
 
-async function runProjectTextTask(input: ChapterAnalysisInput, operation: string, promptTemplateVariables: Record<string, string>, options?: ChapterTaskOptions) {
+async function runProjectTextTask(input: ChapterAnalysisInput, operation: string, promptTemplateOperation: string, prompt: string, promptTemplateVariables: Record<string, string>, options?: ChapterTaskOptions) {
     const model = input.config.textModel || input.config.model;
     const result = await runBackendCanvasGenerationTask({
         projectId: input.projectId,
         nodeId: `${operation}:${input.chapterId}`,
         mode: "text",
-        prompt: "使用当前启用的角色卡提取模板。",
+        prompt,
         config: { ...input.config, model },
-        metadata: { domainProjectId: input.projectId, chapterId: input.chapterId, operation, promptTemplateOperation: "character_extract", promptTemplateVariables },
+        metadata: { domainProjectId: input.projectId, chapterId: input.chapterId, operation, promptTemplateOperation, promptTemplateVariables },
         onTaskCreated: options?.onTaskUpdate,
     });
     if (!result.text?.trim()) throw new Error("模型没有返回可用结果");

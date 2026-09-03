@@ -1,7 +1,8 @@
 import { useMemo } from "react";
 import type { ComponentProps } from "react";
-import { MediaPlayer, MediaProvider, type VideoMimeType } from "@vidstack/react";
+import { MediaPlayer, MediaProvider, PlayButton, type VideoMimeType } from "@vidstack/react";
 import { DefaultVideoLayout, defaultLayoutIcons, type DefaultLayoutTranslations } from "@vidstack/react/player/layouts/default";
+import { Pause, Play } from "lucide-react";
 import "@vidstack/react/player/styles/base.css";
 import "@vidstack/react/player/styles/default/theme.css";
 import "@vidstack/react/player/styles/default/layouts/video.css";
@@ -20,6 +21,8 @@ type VideoPlayerProps = {
     dataCanvasNoZoom?: boolean;
     compactControls?: boolean;
     onCanPlay?: MediaPlayerProps["onCanPlay"];
+    onPlay?: MediaPlayerProps["onPlay"];
+    onAutoPlayFail?: MediaPlayerProps["onAutoPlayFail"];
 };
 
 const zhCNTranslations = {
@@ -70,10 +73,10 @@ const supportedVideoMimeTypes = new Set<VideoMimeType>(["video/mp4", "video/webm
  * 统一视频播放表面，保留原生媒体 URL 契约，同时提供可访问的完整控件布局。
  * 画布节点需要隔离播放器手势，避免拖动进度条时被误判为拖动画布。
  */
-export function VideoPlayer({ src, mimeType, title = "视频", className, brandColor = "#f5f5f5", preload = "metadata", autoPlay = false, dataCanvasNoZoom = false, compactControls = false, onCanPlay }: VideoPlayerProps) {
+export function VideoPlayer({ src, mimeType, title = "视频", className, brandColor = "#f5f5f5", preload = "metadata", autoPlay = false, dataCanvasNoZoom = false, compactControls = false, onCanPlay, onPlay, onAutoPlayFail }: VideoPlayerProps) {
     const stopCanvasControlInteraction = (event: { target: EventTarget | null; stopPropagation: () => void }) => {
         if (!dataCanvasNoZoom || !(event.target instanceof Element)) return;
-        if (event.target.closest(".vds-controls,.vds-menu-items")) event.stopPropagation();
+        if (event.target.closest(".vds-controls,.vds-menu-items,.vds-button,.vds-slider")) event.stopPropagation();
     };
     const type = mimeType && supportedVideoMimeTypes.has(mimeType as VideoMimeType) ? (mimeType as VideoMimeType) : "video/mp4";
     const mediaSource = useMemo(() => ({ src, type }), [src, type]);
@@ -92,11 +95,23 @@ export function VideoPlayer({ src, mimeType, title = "视频", className, brandC
             data-canvas-no-zoom={dataCanvasNoZoom ? "true" : undefined}
             style={{ "--video-brand": brandColor }}
             onCanPlay={onCanPlay}
+            onPlay={onPlay}
+            onAutoPlayFail={onAutoPlayFail}
             onPointerDown={stopCanvasControlInteraction}
             onMouseDown={stopCanvasControlInteraction}
         >
             <MediaProvider />
-            <DefaultVideoLayout icons={defaultLayoutIcons} translations={zhCNTranslations} />
+            {dataCanvasNoZoom ? (
+                <>
+                    <PlayButton className="canvas-video-center-play vds-button" aria-label="播放视频">
+                        <Play className="vds-icon fill-current" />
+                    </PlayButton>
+                    <span className="canvas-video-center-pause-hint" aria-hidden>
+                        <Pause className="vds-icon fill-current" />
+                    </span>
+                </>
+            ) : null}
+            <DefaultVideoLayout icons={defaultLayoutIcons} translations={zhCNTranslations} noGestures={dataCanvasNoZoom} />
         </MediaPlayer>
     );
 }

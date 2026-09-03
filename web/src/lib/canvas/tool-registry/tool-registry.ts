@@ -37,6 +37,16 @@ export function defaultToolbarPrefs(toolbar: ToolbarId): ToolbarPrefs {
     return { order: tools.map((tool) => tool.id), hidden: [] };
 }
 
+/** 清理旧偏好，保证固定入口不会因历史设置继续消失。 */
+export function normalizeToolbarPrefs(toolbar: ToolbarId, prefs: ToolbarPrefs | null): ToolbarPrefs {
+    const fallback = prefs ?? defaultToolbarPrefs(toolbar);
+    const protectedIds = new Set(getToolbarTools(toolbar).filter((tool) => tool.hideable === false).map((tool) => tool.id));
+    return {
+        order: fallback.order,
+        hidden: fallback.hidden.filter((id) => !protectedIds.has(id)),
+    };
+}
+
 /**
  * 解析工具栏条目——核心函数
  *
@@ -54,7 +64,7 @@ export function resolveToolbarEntries(toolbar: ToolbarId, ctx: ToolContext, pref
 export function resolveToolbarTools(toolbar: ToolbarId, ctx: ToolContext, prefs: ToolbarPrefs | null): ToolDefinition[] {
     const allTools = getToolbarTools(toolbar);
     const applicableTools = allTools.filter((tool) => !tool.applicable || tool.applicable(ctx));
-    const effectivePrefs = prefs ?? defaultToolbarPrefs(toolbar);
+    const effectivePrefs = normalizeToolbarPrefs(toolbar, prefs);
     const hiddenSet = new Set(effectivePrefs.hidden);
     const visibleTools = applicableTools.filter((tool) => !hiddenSet.has(tool.id));
     const orderIndex = new Map(effectivePrefs.order.map((id, index) => [id, index]));
@@ -99,6 +109,7 @@ function toolToEntry(tool: ToolDefinition, ctx: ToolContext): FloatingDockEntry 
         icon: resolveIcon(tool.icon, ctx),
         active: tool.active?.(ctx),
         disabled: tool.disabled?.(ctx),
+        disabledReason: tool.disabledReason?.(ctx),
         danger: tool.danger,
         expands: tool.expands,
         onClick: (event) => tool.run(ctx, event),

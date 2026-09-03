@@ -1,5 +1,6 @@
 import { createContext, useContext } from "react";
 
+import { getContextResourceNodesFromIndex, type CanvasResourceGraphIndex } from "@/lib/canvas/canvas-resource-references";
 import type { CanvasNodeData } from "@/types/canvas";
 
 // 扩展节点（对比/图表/调色等）要读自己的上游才能工作，但节点经 CanvasProjectWorldLayers
@@ -11,6 +12,10 @@ export type CanvasNodeGraphContextValue = {
 };
 
 export const CanvasNodeGraphContext = createContext<CanvasNodeGraphContextValue>({});
+
+export function createCanvasNodeGraphContextValue(graphIndex: CanvasResourceGraphIndex): CanvasNodeGraphContextValue {
+    return { getUpstreamNodes: (nodeId) => getContextResourceNodesFromIndex(nodeId, graphIndex) };
+}
 
 /** 取该节点的直接上游素材节点；无 Provider 或无上游时返回空数组。 */
 export function useUpstreamNodes(nodeId: string) {

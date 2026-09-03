@@ -2,25 +2,33 @@ import { expect, test } from "bun:test";
 
 test("章节页直接生成到分镜制作，并通过共享选择器执行技能", async () => {
     const source = await Bun.file(new URL("../src/pages/projects/detail/chapters.tsx", import.meta.url)).text();
+    const dialogs = await Bun.file(new URL("../src/pages/projects/detail/chapter-generation-dialogs.tsx", import.meta.url)).text();
     expect(source).not.toContain("导入分镜");
     expect(source).not.toContain("importStoryboardToCanvas");
     expect(source).not.toContain("在画布中分镜");
     expect(source).toContain("生成到分镜制作");
     expect(source).toContain("replaceProjectUnitShots");
     expect(source).toContain("/storyboard`");
-    expect(source).toContain('<SkillRuntimePicker profile="shortDrama"');
-    expect(source.match(/<ModelPicker config=\{effectiveConfig\} capability="text"/g)).toHaveLength(2);
+    expect(dialogs).toContain('<SkillRuntimePicker profile="shortDrama"');
+    const modelPickers = dialogs.match(/<ModelPicker\b[\s\S]*?\/>/g) ?? [];
+    expect(modelPickers).toHaveLength(2);
+    for (const picker of modelPickers) {
+        expect(picker).toContain("config={effectiveConfig}");
+        expect(picker).toContain('capability="text"');
+    }
     expect(source).toContain("chapterAnalysisInput(selectedTextModel)");
     expect(source).toContain("const textModel = selectedTextModel");
     expect(source).toContain("generateChapterStoryboard");
 });
 
 test("镜头画面使用已绑定资产的 @ 引用编辑器", async () => {
-    const source = await Bun.file(new URL("../src/pages/projects/detail/workflow-production-workbench.tsx", import.meta.url)).text();
-    expect(source).toContain('name="plotDescription"');
-    expect(source).toContain('<ShotAssetMentionTextarea variant="scene"');
-    expect(source).toContain("resolveShotAssetMentionPrompt(basePrompt, shotAssetReferenceContext)");
-    expect(source).toContain("<Image.PreviewGroup>");
+    const workbench = await Bun.file(new URL("../src/pages/projects/detail/workflow-production-workbench.tsx", import.meta.url)).text();
+    const settings = await Bun.file(new URL("../src/pages/projects/detail/workflow-production-settings.tsx", import.meta.url)).text();
+    const assets = await Bun.file(new URL("../src/pages/projects/detail/workflow-production-assets.tsx", import.meta.url)).text();
+    expect(settings).toContain('name="plotDescription"');
+    expect(settings).toContain('<ShotAssetMentionTextarea variant="scene"');
+    expect(workbench).toContain("resolveShotAssetMentionPrompt(basePrompt, shotAssetReferenceContext, { dialogue: values.dialogue })");
+    expect(assets).toContain("<Image.PreviewGroup>");
 });
 
 test("技能选择器占满表单宽度", async () => {

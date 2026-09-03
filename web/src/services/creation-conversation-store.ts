@@ -2,6 +2,7 @@ import { localForageStorageForScope } from "@/lib/localforage-storage";
 import { getActiveUserScope } from "@/lib/user-scope";
 
 export const CREATION_CONVERSATIONS_KEY = "creation-conversations-v1";
+export const CREATION_CONVERSATION_SYNC_KEY = "creation-conversations-cloud-sync-v1";
 
 type PendingCreationMessage = {
     id: string;
@@ -15,6 +16,14 @@ export type StoredCreationConversation = {
     id: string;
     messages: PendingCreationMessage[];
 };
+
+export type CreationConversationSyncManifest = {
+    hydrated: boolean;
+    revisions: Record<string, number>;
+    pendingIds: string[];
+};
+
+export const emptyCreationConversationSyncManifest = (): CreationConversationSyncManifest => ({ hydrated: false, revisions: {}, pendingIds: [] });
 
 export function updateCreationConversationSnapshot<T extends { id: string }>(conversations: T[], conversationId: string, updater: (conversation: T) => T) {
     return conversations.map((conversation) => (conversation.id === conversationId ? updater(conversation) : conversation));
@@ -51,8 +60,8 @@ export function pendingCreationTaskIds(conversations: StoredCreationConversation
     return Array.from(new Set(taskIds));
 }
 
-export async function loadCreationConversations<T extends StoredCreationConversation>() {
-    const storage = localForageStorageForScope(getActiveUserScope());
+export async function loadCreationConversations<T extends StoredCreationConversation>(scope = getActiveUserScope()) {
+    const storage = localForageStorageForScope(scope);
     const value = await storage.getItem(CREATION_CONVERSATIONS_KEY);
     if (!value) return null;
     let parsed: unknown;
@@ -65,7 +74,26 @@ export async function loadCreationConversations<T extends StoredCreationConversa
     return parsed as T[];
 }
 
-export async function saveCreationConversations<T extends StoredCreationConversation>(conversations: T[]) {
-    const storage = localForageStorageForScope(getActiveUserScope());
+export async function saveCreationConversations<T extends StoredCreationConversation>(conversations: T[], scope = getActiveUserScope()) {
+    const storage = localForageStorageForScope(scope);
     await storage.setItem(CREATION_CONVERSATIONS_KEY, JSON.stringify(conversations));
+}
+
+export async function loadCreationConversationSyncManifest(scope = getActiveUserScope()) {
+    const storage = localForageStorageForScope(scope);
+    const value = await storage.getItem(CREATION_CONVERSATION_SYNC_KEY);
+    if (!value) return emptyCreationConversationSyncManifest();
+    try {
+        const parsed = JSON.parse(value) as Partial<CreationConversationSyncManifest>;
+        const revisions = Object.fromEntries(Object.entries(parsed.revisions || {}).filter(([id, revision]) => id && Number.isInteger(revision) && Number(revision) > 0).map(([id, revision]) => [id, Number(revision)]));
+        const pendingIds = Array.from(new Set((Array.isArray(parsed.pendingIds) ? parsed.pendingIds : []).filter((id): id is string => typeof id === "string" && Boolean(id.trim()))));
+        return { hydrated: parsed.hydrated === true, revisions, pendingIds };
+    } catch {
+        return emptyCreationConversationSyncManifest();
+    }
+}
+
+export async function saveCreationConversationSyncManifest(manifest: CreationConversationSyncManifest, scope = getActiveUserScope()) {
+    const storage = localForageStorageForScope(scope);
+    await storage.setItem(CREATION_CONVERSATION_SYNC_KEY, JSON.stringify(manifest));
 }

@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { App } from "antd";
+import { App, Modal } from "antd";
 
 import { applyGenerationTaskResultToNodes, generationTaskCanReloadResource, generationTaskNodeId } from "@/lib/canvas/canvas-generation-task-sync";
 import { applyCanvasGenerationTaskNodeEffect, isCanvasGenerationDurableAckError } from "@/services/canvas-generation-consumer";
 import { consumeGenerationTaskNode, ensureCanvasNodeAsset } from "@/services/project-asset-sync";
-import { listGenerationTasks, listTaskLogs, queryGenerationTask, subscribeGenerationTasks, type GenerationTask, type TaskLog } from "@/services/api/task-center";
+import { cancelGenerationTask, listGenerationTasks, listTaskLogs, queryGenerationTask, subscribeGenerationTasks, type GenerationTask, type TaskLog } from "@/services/api/task-center";
 import { CanvasNodeType, type CanvasNodeData } from "@/types/canvas";
 import { useCanvasStore } from "@/stores/canvas/use-canvas-store";
 import { cinematicStoryboardColumns, storyboardRowsFromTask } from "@/lib/canvas/canvas-project-domain";
@@ -33,6 +33,10 @@ type UseCanvasGenerationOptions = {
 const NODE_STATUS_LOADING = "loading" as const;
 const NODE_STATUS_SUCCESS = "success" as const;
 const NODE_STATUS_ERROR = "error" as const;
+
+export function canReloadCanvasNodeResource(node: CanvasNodeData) {
+    return Boolean(node.metadata?.taskId && node.metadata.resourceReloadAvailable);
+}
 
 export function subscribeCanvasGenerationRecoveryTasks(ids: readonly string[], listener: (task: GenerationTask) => void, subscribe: (ids: readonly string[], listener: (task: GenerationTask) => void) => () => void = subscribeGenerationTasks) {
     return subscribe(Array.from(new Set(ids)), listener);
@@ -271,6 +275,35 @@ export function useCanvasGeneration({ projectId, domainProjectId, projectLoaded,
         [setNodes],
     );
 
+    const cancelCanvasTask = useCallback(
+        (task: GenerationTask) => {
+            if (task.provider === "dreamina-cli") {
+                message.warning("官方即梦 CLI 当前不支持可靠取消，请等待官方状态同步");
+                return;
+            }
+            Modal.confirm({
+                title: "取消生成任务？",
+                content: "任务会立即停止本地执行；如果已经提交到生成服务，系统会继续核对取消结果和积分状态。",
+                okText: "取消任务",
+                okButtonProps: { danger: true },
+                cancelText: "继续等待",
+                onOk: async () => {
+                    try {
+                        const next = await cancelGenerationTask(task.id);
+                        const node = nodesRef.current.find((item) => item.metadata?.taskId === task.id);
+                        if (node) bindGenerationTask(node.id, next);
+                        setTaskDetail((current) => (current?.id === task.id ? next : current));
+                        await queryClient.invalidateQueries({ queryKey: ["canvas-active-tasks", projectId] });
+                        message.success("任务已取消");
+                    } catch (error) {
+                        message.error(error instanceof Error ? error.message : "取消任务失败");
+                    }
+                },
+            });
+        },
+        [bindGenerationTask, message, nodesRef, projectId, queryClient],
+    );
+
     const saveGeneratedAsset = useCallback(
         async (node: CanvasNodeData, taskId: string, signal?: AbortSignal) => {
             const result = await ensureCanvasNodeAsset({ canvasId: projectId, domainProjectId, node, source: "canvas-generation", taskId, signal });
@@ -334,6 +367,33 @@ export function useCanvasGeneration({ projectId, domainProjectId, projectLoaded,
         [nodesRef, projectId, setNodes],
     );
 
+    const reloadCanvasNodeResource = useCallback(
+        async (node: CanvasNodeData) => {
+            const taskId = node.metadata?.taskId;
+            if (!taskId || !canReloadCanvasNodeResource(node)) return;
+            setNodes((current) => current.map((item) => (item.id === node.id ? { ...item, metadata: { ...item.metadata, status: NODE_STATUS_LOADING, taskStage: "正在重新加载资源", errorDetails: undefined } } : item)));
+            try {
+                const task = await queryGenerationTask(taskId);
+                if (task.status !== "succeeded") throw new Error("原生成任务尚未成功，无法重新加载资源");
+                await applyGenerationTaskResult(node.id, task);
+            } catch (error) {
+                setNodes((current) =>
+                    current.map((item) =>
+                        item.id === node.id ? { ...item, metadata: { ...item.metadata, status: NODE_STATUS_ERROR, errorDetails: error instanceof Error ? error.message : "资源重新加载失败", resourceReloadAvailable: true } } : item,
+                    ),
+                );
+            }
+        },
+        [applyGenerationTaskResult, setNodes],
+    );
+
+    const openCanvasNodeTaskDetails = useCallback(
+        (node: CanvasNodeData) => {
+            void openNodeTaskDetails(node);
+        },
+        [openNodeTaskDetails],
+    );
+
     const observeSubscribedGenerationTask = useCallback(
         (taskId: string, signal: AbortSignal, onUpdate?: (task: GenerationTask) => void) =>
             new Promise<GenerationTask>((resolve, reject) => {
@@ -364,6 +424,40 @@ export function useCanvasGeneration({ projectId, domainProjectId, projectLoaded,
             }),
         [],
     );
+
+    useEffect(() => {
+        const taskId = taskDetail?.id;
+        if (!taskId || taskDetail.status === "succeeded" || taskDetail.status === "failed" || taskDetail.status === "cancelled") return;
+
+        let disposed = false;
+        let logRefreshTimer: ReturnType<typeof setTimeout> | undefined;
+        let logRefreshVersion = 0;
+        const refreshLogs = () => {
+            if (logRefreshTimer) clearTimeout(logRefreshTimer);
+            const version = ++logRefreshVersion;
+            logRefreshTimer = setTimeout(() => {
+                void listTaskLogs(taskId)
+                    .then((logs) => {
+                        if (!disposed && version === logRefreshVersion) setTaskDetailLogs(logs);
+                    })
+                    .catch(() => undefined);
+            }, 250);
+        };
+        const unsubscribe = subscribeCanvasGenerationRecoveryTasks([taskId], (task) => {
+            if (disposed || task.id !== taskId) return;
+            setTaskDetail((current) => (current?.id === taskId ? task : current));
+            refreshLogs();
+        });
+
+        return () => {
+            disposed = true;
+            logRefreshVersion += 1;
+            if (logRefreshTimer) clearTimeout(logRefreshTimer);
+            unsubscribe();
+        };
+        // 订阅跟随当前详情任务，不随阶段更新重建；终态日志由同一订阅完成最后一次刷新。
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [taskDetail?.id]);
 
     const recoverInterruptedGenerationTasks = useCallback(
         async (startedProjectId: string, signal: AbortSignal, isCurrentProject: () => boolean) => {
@@ -529,8 +623,10 @@ export function useCanvasGeneration({ projectId, domainProjectId, projectLoaded,
     return {
         applyGenerationTaskResult,
         bindGenerationTask,
+        cancelCanvasTask,
         finishGenerationRequest,
-        openNodeTaskDetails,
+        openCanvasNodeTaskDetails,
+        reloadCanvasNodeResource,
         runningNodeId,
         setRunningNodeId,
         setTaskDetail,

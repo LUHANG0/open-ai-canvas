@@ -7,7 +7,8 @@ import { CanvasNode } from "@/components/canvas/canvas-node";
 import type { CanvasBatchConnectionPreview } from "@/lib/canvas/canvas-batch-connection";
 import type { CanvasResourceReference } from "@/lib/canvas/canvas-resource-references";
 import { isFrameNode } from "@/lib/canvas/canvas-frame";
-import type { CanvasDisplayConnection, CanvasFolderStyle, CanvasFolderTheme, CanvasNodeData, ConnectionHandle, Position, SelectionBox } from "@/types/canvas";
+import { shouldMountCanvasVideoPlayer, shouldReduceCanvasNodeMediaEffects, type CanvasMediaRenderPolicy } from "@/lib/canvas/canvas-performance-mode";
+import { CanvasNodeType, type CanvasDisplayConnection, type CanvasFolderStyle, type CanvasFolderTheme, type CanvasNodeData, type ConnectionHandle, type Position, type SelectionBox } from "@/types/canvas";
 
 type DragPreview = { x: number; y: number; nodeIds: Set<string> } | null;
 type NodeBounds = { left: number; top: number; width: number; height: number; count: number } | null;
@@ -39,6 +40,7 @@ type CanvasProjectWorldLayersProps = {
     batchMotionById: Map<string, { x: number; y: number; index: number }>;
     showImageInfo: boolean;
     reduceMediaEffects: boolean;
+    mediaRenderPolicy: CanvasMediaRenderPolicy;
     resourceReferenceByNodeId: Map<string, CanvasResourceReference>;
     mentionReferencesByNodeId: Map<string, CanvasResourceReference[]>;
     mediaEffectsDisabledNodeId?: string | null;
@@ -147,7 +149,17 @@ export const CanvasProjectWorldLayers = memo(function CanvasProjectWorldLayers(p
                         batchPrimary={Boolean(node.metadata?.batchRootId && props.nodeById.get(node.metadata.batchRootId)?.metadata?.primaryImageId === node.id)}
                         batchMotion={props.batchMotionById.get(node.id)}
                         showImageInfo={props.showImageInfo}
-                        reduceMediaEffects={props.reduceMediaEffects || props.mediaEffectsDisabledNodeId === node.id}
+                        reduceMediaEffects={shouldReduceCanvasNodeMediaEffects(props.reduceMediaEffects, {
+                            selected: props.selectedNodeIds.has(node.id),
+                            selectionSize: props.selectedNodeIds.size,
+                            forced: props.mediaEffectsDisabledNodeId === node.id,
+                        })}
+                        mediaRenderPolicy={props.mediaRenderPolicy}
+                        videoPreviewOnly={node.type === CanvasNodeType.Video && !shouldMountCanvasVideoPlayer({
+                            selected: props.selectedNodeIds.has(node.id),
+                            selectionSize: props.selectedNodeIds.size,
+                            forced: props.mediaEffectsDisabledNodeId === node.id,
+                        })}
                         resourceLabel={props.resourceReferenceByNodeId.get(node.id)}
                         mentionReferences={props.mentionReferencesByNodeId.get(node.id) || EMPTY_RESOURCE_REFERENCES}
                         renderNodeContent={props.renderCanvasNodeContent}

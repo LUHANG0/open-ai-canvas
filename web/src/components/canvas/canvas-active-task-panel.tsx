@@ -11,7 +11,7 @@ import { useThemeStore } from "@/stores/use-theme-store";
 import { useUserStore } from "@/stores/use-user-store";
 
 // 顶栏是绝对定位浮层，面板必须按调用方传入的 topInset 避让；专注模式隐藏顶栏时传小间距。
-export function CanvasActiveTaskPanel({ tasks, align = "right", topInset = "var(--canvas-topbar-offset)", onCancelTask }: { tasks: GenerationTask[]; align?: "left" | "right"; topInset?: string; onCancelTask?: (task: GenerationTask) => void }) {
+export function CanvasActiveTaskPanel({ tasks, align = "right", topInset = "var(--canvas-topbar-offset)", rightInset = "var(--space-3)", onCancelTask }: { tasks: GenerationTask[]; align?: "left" | "right"; topInset?: string; rightInset?: string | number; onCancelTask?: (task: GenerationTask) => void }) {
     const theme = canvasThemes[useThemeStore((state) => state.theme)];
     const creditsEnabled = useUserStore((state) => state.features.creditsEnabled);
     const reducedMotion = useReducedMotion();
@@ -42,8 +42,8 @@ export function CanvasActiveTaskPanel({ tasks, align = "right", topInset = "var(
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: -8, scale: 0.98 }}
                 transition={motionTransition}
-                className={`pc-canvas-active-tasks pointer-events-none absolute z-[var(--z-panel-floating)] w-[var(--canvas-panel-width)] ${align === "left" ? "left-3" : "right-3"}`}
-                style={{ top: topInset }}
+                className={`pc-canvas-active-tasks pointer-events-none absolute z-[var(--z-panel-floating)] w-[var(--canvas-panel-width)] transition-[right] duration-200 ${align === "left" ? "left-3" : ""}`}
+                style={{ top: topInset, right: align === "right" ? rightInset : undefined }}
             >
                 <LayoutGroup id="canvas-active-tasks">
                     <motion.section

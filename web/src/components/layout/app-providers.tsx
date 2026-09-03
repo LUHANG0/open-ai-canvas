@@ -14,6 +14,7 @@ import { listRegisteredPlugins } from "@/lib/plugins/plugin-registry";
 import { usePluginStore } from "@/stores/use-plugin-store";
 import { fetchPluginRuntimeState, setUserPluginEnabled } from "@/services/api/plugins";
 import { useUserStore } from "@/stores/use-user-store";
+import { useBranding } from "@/components/branding/branding-provider";
 
 export function AppProviders({ children, router }: { children: ReactNode; router: AppThemeRouter }) {
     const theme = useThemeStore((state) => state.theme);
@@ -21,7 +22,8 @@ export function AppProviders({ children, router }: { children: ReactNode; router
     const pcBrandV2 = usePcBrandViewport();
     const pathnameStore = useMemo(() => createAppThemePathnameStore(router), [router]);
     const pathname = useSyncExternalStore(pathnameStore.subscribe, pathnameStore.getSnapshot, pathnameStore.getSnapshot);
-    const antTheme = useMemo(() => getAntThemeConfigForPathname(dark, pcBrandV2, pathname), [dark, pathname, pcBrandV2]);
+    const { branding } = useBranding();
+    const antTheme = useMemo(() => getAntThemeConfigForPathname(dark, pcBrandV2, pathname, branding.config.theme.primaryColor), [branding.config.theme.primaryColor, dark, pathname, pcBrandV2]);
     const ensurePlugin = usePluginStore((state) => state.ensurePlugin);
     const setRuntimeStatuses = usePluginStore((state) => state.setRuntimeStatuses);
     const setPluginStates = usePluginStore((state) => state.setPluginStates);
@@ -78,9 +80,9 @@ export function AppProviders({ children, router }: { children: ReactNode; router
     }, [dark, theme]);
 
     // DEV 复现台必须是同源本地确定性场景：AuthSessionHydrator 会打 /api/auth/session，
-    // ClientRootInit 会打 /api/model-catalog，没有后端时产生真实 502，与导演台无关却会污染判据。
-    // 只精确匹配该路径；生产构建中 import.meta.env.DEV 为 false，本分支被摇树删除。
-    const isolateDevRepro = import.meta.env.DEV && typeof window !== "undefined" && window.location.pathname === "/dev/director-repro";
+    // ClientRootInit 会打 /api/model-catalog；没有后端时产生的错误会污染导演台和画布的验收判据。
+    // 只匹配显式的 DEV 复现路由；生产构建中 import.meta.env.DEV 为 false，本分支被摇树删除。
+    const isolateDevRepro = import.meta.env.DEV && typeof window !== "undefined" && (window.location.pathname === "/dev/director-repro" || window.location.pathname.startsWith("/dev/canvas-repro/") || window.location.pathname === "/dev/project-delivery-repro");
 
     return (
         <ConfigProvider locale={zhCN} theme={antTheme}>

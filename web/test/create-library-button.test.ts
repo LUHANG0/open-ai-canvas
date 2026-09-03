@@ -8,11 +8,35 @@ function compactSource(source: string) {
     return source.replace(/\s+/g, " ").trim();
 }
 
+function readCreateSource() {
+    return [
+        "../src/pages/create/index.tsx",
+        "../src/pages/create/creation-composer.tsx",
+        "../src/pages/create/use-creation-asset-workflow.ts",
+        "../src/pages/create/use-creation-conversation-workflow.ts",
+        "../src/pages/create/use-creation-draft-workflow.ts",
+        "../src/pages/create/use-creation-mode-workflow.ts",
+        "../src/pages/create/use-creation-model-workflow.ts",
+        "../src/pages/create/use-creation-reference-workflow.ts",
+        "../src/pages/create/use-creation-submit-workflow.ts",
+        "../src/pages/create/use-creation-workspace-actions.ts",
+        "../src/pages/create/creation-submit-preparation.ts",
+        "../src/pages/create/creation-submission-transaction.ts",
+        "../src/pages/create/creation-generation-executor.ts",
+    ]
+        .map((relativePath) => readFileSync(resolve(import.meta.dir, relativePath), "utf8"))
+        .join("\n");
+}
+
+function readCreationAssetWorkflowSource() {
+    return readFileSync(resolve(import.meta.dir, "../src/pages/create/use-creation-asset-workflow.ts"), "utf8");
+}
+
 describe("creation library button", () => {
     test("PC Brand V2 空白创作工作区从顶部展示，移动端保留原跟随逻辑", () => {
-        const source = compactSource(readFileSync(resolve(import.meta.dir, "../src/pages/create/index.tsx"), "utf8"));
+        const source = compactSource(readCreateSource());
         const scrollEffectStart = source.indexOf("if (pcBrandV2 && !activeConversation?.messages.length)");
-        const scrollEffectEnd = source.indexOf("const updateActive", scrollEffectStart);
+        const scrollEffectEnd = source.indexOf("const { promptRef, attachmentsRef", scrollEffectStart);
 
         expect(source).toContain('import { usePcBrandViewport } from "@/hooks/use-pc-brand-viewport"');
         expect(source).toContain("const pcBrandV2 = usePcBrandViewport()");
@@ -29,7 +53,7 @@ describe("creation library button", () => {
     });
 
     test("本机上传和素材库入口长期显示在参考素材区域，底栏不重复", () => {
-        const source = readFileSync(resolve(import.meta.dir, "../src/pages/create/index.tsx"), "utf8");
+        const source = readCreateSource();
         const dockStart = source.indexOf('<footer className="creation-chat-dock">');
         const dockEnd = source.indexOf("</footer>", dockStart);
 
@@ -51,14 +75,15 @@ describe("creation library button", () => {
     });
 
     test("素材库上传只入库，不静默勾选或加入当前创作", () => {
-        const source = readFileSync(resolve(import.meta.dir, "../src/pages/create/index.tsx"), "utf8");
+        const source = readCreateSource();
+        const workflowSource = readCreationAssetWorkflowSource();
         const pickerSource = readFileSync(resolve(import.meta.dir, "../src/components/assets/asset-library-picker-modal.tsx"), "utf8");
-        const uploadStart = source.indexOf("const uploadLibraryAssets = async");
-        const uploadEnd = source.indexOf("const handleFileChange", uploadStart);
+        const uploadStart = workflowSource.indexOf("const uploadLibraryAssets = async");
+        const uploadEnd = workflowSource.indexOf("const hasReferenceCapacity", uploadStart);
 
         expect(uploadStart).toBeGreaterThanOrEqual(0);
         expect(uploadEnd).toBeGreaterThan(uploadStart);
-        expect(source.slice(uploadStart, uploadEnd)).not.toContain("setAttachments");
+        expect(workflowSource.slice(uploadStart, uploadEnd)).not.toContain("setAttachments");
         expect(source).toContain("onUpload: uploadLibraryAssets");
         expect(source).not.toContain("onUpload={() => fileInputRef.current?.click()}");
         expect(source).toContain("先保存到素材库，确认后再加入本次创作");
@@ -70,7 +95,7 @@ describe("creation library button", () => {
     });
 
     test("上传期间锁定提交与创作配置，并持久展示失败状态", () => {
-        const source = compactSource(readFileSync(resolve(import.meta.dir, "../src/pages/create/index.tsx"), "utf8"));
+        const source = compactSource(readCreateSource());
         const pickerSource = compactSource(readFileSync(resolve(import.meta.dir, "../src/components/model-picker.tsx"), "utf8"));
 
         expect(source).toContain("const pendingUploadCountRef = useRef(0)");
@@ -88,7 +113,7 @@ describe("creation library button", () => {
     });
 
     test("Token 计费展示当前精确档位与 usage 结算说明，不展示伪固定总价", () => {
-        const source = compactSource(readFileSync(resolve(import.meta.dir, "../src/pages/create/index.tsx"), "utf8"));
+        const source = compactSource(readCreateSource());
         const pickerSource = compactSource(readFileSync(resolve(import.meta.dir, "../src/components/model-picker.tsx"), "utf8"));
         const workspaceStyles = compactSource(readFileSync(resolve(import.meta.dir, "../src/pages/create/creation-workspace.css"), "utf8"));
         const pricingStart = source.indexOf("const pricingRequest = {");
@@ -113,7 +138,7 @@ describe("creation library button", () => {
     });
 
     test("previews prompt reference images without removing them", () => {
-        const createSource = readFileSync(resolve(import.meta.dir, "../src/pages/create/index.tsx"), "utf8");
+        const createSource = readFileSync(resolve(import.meta.dir, "../src/pages/create/creation-message-view.tsx"), "utf8");
         const canvasSource = readFileSync(resolve(import.meta.dir, "../src/components/canvas/canvas-node-prompt-panel.tsx"), "utf8");
 
         expect(createSource).toContain('className="creation-user-message-attachments"');
@@ -125,7 +150,7 @@ describe("creation library button", () => {
     });
 
     test("参考内容轨道始终展开并支持 Reorder 排序", () => {
-        const source = compactSource(readFileSync(resolve(import.meta.dir, "../src/pages/create/index.tsx"), "utf8"));
+        const source = compactSource(readCreateSource());
         const styles = readFileSync(resolve(import.meta.dir, "../src/styles/globals.css"), "utf8");
         const workspaceStyles = readFileSync(resolve(import.meta.dir, "../src/pages/create/creation-workspace.css"), "utf8");
 
@@ -210,7 +235,7 @@ describe("creation library button", () => {
     });
 
     test("无素材时参考卡片作为编辑器外的独立顶部工具栏", () => {
-        const source = compactSource(readFileSync(resolve(import.meta.dir, "../src/pages/create/index.tsx"), "utf8"));
+        const source = compactSource(readCreateSource());
         const editorSource = compactSource(readFileSync(resolve(import.meta.dir, "../src/components/canvas/canvas-resource-mention-textarea.tsx"), "utf8"));
         const workspaceStyles = readFileSync(resolve(import.meta.dir, "../src/pages/create/creation-workspace.css"), "utf8");
 
@@ -234,7 +259,7 @@ describe("creation library button", () => {
     });
 
     test("删除按钮隔离拖拽，顶部与已有素材面板都可继续上传", () => {
-        const source = compactSource(readFileSync(resolve(import.meta.dir, "../src/pages/create/index.tsx"), "utf8"));
+        const source = compactSource(readCreateSource());
 
         expect(source).toContain("onPointerDownCapture={(event) => event.stopPropagation()}");
         expect(source).toContain("onRemove(item.id)");
@@ -243,7 +268,7 @@ describe("creation library button", () => {
     });
 
     test("视频创作的声音开关会更新生成配置并反馈当前状态", () => {
-        const source = compactSource(readFileSync(resolve(import.meta.dir, "../src/pages/create/index.tsx"), "utf8"));
+        const source = compactSource(readCreateSource());
 
         expect(source).toContain('onGenerateAudioChange: (enabled: boolean) => updateConfig("videoGenerateAudio", String(enabled))');
         expect(source).toContain('className="creation-chat-control creation-entry-button creation-sound-toggle"');
@@ -253,17 +278,17 @@ describe("creation library button", () => {
     });
 
     test("生成同款恢复参数时不会被模型默认值覆盖或污染非视频配置", () => {
-        const source = compactSource(readFileSync(resolve(import.meta.dir, "../src/pages/create/index.tsx"), "utf8"));
+        const source = compactSource(readCreateSource());
 
         expect(source).toContain("draftSettingsRestoreRef");
         expect(source).toContain('pendingRestore?.mode === "video"');
-        expect(source).toContain('nextMode === "video" && nextSettings.generateAudio !== undefined');
-        expect(source).toContain('nextMode === "video" && nextSettings.watermark !== undefined');
+        expect(source).toContain('draft.mode === "video" && draft.settings.generateAudio !== undefined');
+        expect(source).toContain('draft.mode === "video" && draft.settings.watermark !== undefined');
         expect(source).toContain('setVideoOperationChoice("auto")');
     });
 
     test("视频生成方式、首尾帧角色和分类限制会进入提交链路", () => {
-        const source = compactSource(readFileSync(resolve(import.meta.dir, "../src/pages/create/index.tsx"), "utf8"));
+        const source = compactSource(readCreateSource());
         const workspaceStyles = readFileSync(resolve(import.meta.dir, "../src/pages/create/creation-workspace.css"), "utf8");
 
         expect(source).toContain("<VideoOperationPicker value={props.videoOperationChoice}");
@@ -286,19 +311,19 @@ describe("creation library button", () => {
     });
 
     test("无可用模型时发送按钮硬禁用并提供明确恢复入口", () => {
-        const source = compactSource(readFileSync(resolve(import.meta.dir, "../src/pages/create/index.tsx"), "utf8"));
+        const source = compactSource(readCreateSource());
 
         expect(source).toContain("const canSubmit = Boolean(props.model) && Boolean(props.prompt.trim()) && invalidReferenceCount === 0 && !interactionBusy");
         expect(source).toContain("disabled={interactionBusy || !canSubmit}");
         expect(source).toContain("请先选择${modeLabels[props.mode]}模型");
         expect(source).toContain('to={settingsPath("models", true)}');
-        expect(source).toContain("if (!selectedModel) {");
+        expect(source).toContain("if (!input.selectedModel) return");
     });
 
     test("素材库批量选择超限时原子拒绝，不静默裁剪或关闭弹窗", () => {
-        const source = readFileSync(resolve(import.meta.dir, "../src/pages/create/index.tsx"), "utf8");
+        const source = readCreationAssetWorkflowSource();
         const start = source.indexOf("const handleLibrarySelect");
-        const end = source.indexOf("const removeAttachment", start);
+        const end = source.indexOf("const replaceReferenceFromFiles", start);
         const selection = source.slice(start, end);
 
         expect(start).toBeGreaterThanOrEqual(0);
@@ -314,7 +339,7 @@ describe("creation library button", () => {
     });
 
     test("素材库满额时仍可替换已有素材，无模型时文件选择器只展示可入库媒体", () => {
-        const source = compactSource(readFileSync(resolve(import.meta.dir, "../src/pages/create/index.tsx"), "utf8"));
+        const source = compactSource(readCreateSource());
 
         expect(source).toContain("ignoreCapacity = false");
         expect(source).toContain("!ignoreCapacity && referenceCounts[kind] >= limit");
@@ -324,7 +349,7 @@ describe("creation library button", () => {
     });
 
     test("不兼容素材会保留并标记，手机端生成配置完整换行展示", () => {
-        const source = compactSource(readFileSync(resolve(import.meta.dir, "../src/pages/create/index.tsx"), "utf8"));
+        const source = compactSource(readCreateSource());
         const workspaceStyles = readFileSync(resolve(import.meta.dir, "../src/pages/create/creation-workspace.css"), "utf8");
 
         expect(source).toContain("const invalidReferenceReasons = useMemo");
@@ -338,7 +363,7 @@ describe("creation library button", () => {
     });
 
     test("全部创作入口按配置与输入素材分组并共用按钮外壳", () => {
-        const source = compactSource(readFileSync(resolve(import.meta.dir, "../src/pages/create/index.tsx"), "utf8"));
+        const source = compactSource(readCreateSource());
         const workspaceStyles = readFileSync(resolve(import.meta.dir, "../src/pages/create/creation-workspace.css"), "utf8");
 
         expect(source).toContain('className="creation-entry-group is-config" role="group" aria-label="生成配置"');
@@ -363,7 +388,7 @@ describe("creation library button", () => {
     });
 
     test("画幅与清晰度使用带说明和选中反馈的参数卡片", () => {
-        const source = compactSource(readFileSync(resolve(import.meta.dir, "../src/pages/create/index.tsx"), "utf8"));
+        const source = compactSource(readCreateSource());
         const workspaceStyles = readFileSync(resolve(import.meta.dir, "../src/pages/create/creation-workspace.css"), "utf8");
 
         expect(source).toContain('className="creation-choice-copy"');
@@ -380,7 +405,12 @@ describe("creation library button", () => {
     });
 
     test("对话消息、生成明细与媒体预览采用统一结果卡设计", () => {
-        const source = compactSource(readFileSync(resolve(import.meta.dir, "../src/pages/create/index.tsx"), "utf8"));
+        const entrySource = readCreateSource();
+        const source = compactSource(
+            ["../src/pages/create/creation-message-view.tsx", "../src/pages/create/creation-types.ts"]
+                .map((path) => readFileSync(resolve(import.meta.dir, path), "utf8"))
+                .join("\n"),
+        );
         const workspaceStyles = readFileSync(resolve(import.meta.dir, "../src/pages/create/creation-workspace.css"), "utf8");
 
         expect(source).toContain("completedAt?: string");
@@ -391,6 +421,9 @@ describe("creation library button", () => {
         expect(source).toContain("image.naturalWidth");
         expect(source).toContain('width="fit-content"');
         expect(source).toContain('playsInline preload="metadata"');
+        expect(entrySource).toContain('from "./creation-message-view"');
+        expect(entrySource).toContain('from "./creation-types"');
+        expect(entrySource).not.toContain("function CreationMessageView");
         expect(workspaceStyles).toContain(".creation-home .creation-user-message {");
         expect(workspaceStyles).toContain(".creation-home .creation-assistant-message {");
         expect(workspaceStyles).toContain(".creation-home .creation-media-details {");

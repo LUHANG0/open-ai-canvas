@@ -81,11 +81,12 @@ type ProjectCanvasPage struct {
 }
 
 type ProjectAssetCandidatePage struct {
-	Candidates []model.ProjectAssetCandidate `json:"candidates"`
-	Page       int                           `json:"page"`
-	PageSize   int                           `json:"pageSize"`
-	Total      int64                         `json:"total"`
-	HasMore    bool                          `json:"hasMore"`
+	Candidates     []model.ProjectAssetCandidate `json:"candidates"`
+	CategoryCounts map[string]int64              `json:"categoryCounts"`
+	Page           int                           `json:"page"`
+	PageSize       int                           `json:"pageSize"`
+	Total          int64                         `json:"total"`
+	HasMore        bool                          `json:"hasMore"`
 }
 
 type ProjectAssetPage struct {
@@ -363,7 +364,11 @@ func (s *Service) ProjectAssetCandidatesPage(userID string, projectID string, pa
 	if err != nil {
 		return ProjectAssetCandidatePage{}, err
 	}
-	return ProjectAssetCandidatePage{Candidates: candidates, Page: page, PageSize: pageSize, Total: total, HasMore: int64(page*pageSize) < total}, nil
+	categoryCounts, err := s.repo.ProjectAssetCandidateCategoryCounts(projectID, unitID, status)
+	if err != nil {
+		return ProjectAssetCandidatePage{}, err
+	}
+	return ProjectAssetCandidatePage{Candidates: candidates, CategoryCounts: categoryCounts, Page: page, PageSize: pageSize, Total: total, HasMore: int64(page*pageSize) < total}, nil
 }
 
 func (s *Service) ProjectAssetsPage(userID string, projectID string, page int, pageSize int, category string, mediaType string, status string, folderID *string, query string) (ProjectAssetPage, error) {

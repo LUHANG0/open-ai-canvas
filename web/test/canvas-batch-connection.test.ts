@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
 
-import { buildBatchConnectionCreateRequest, hasBatchConnectionCandidate, planBatchConnections } from "@/lib/canvas/canvas-batch-connection";
+import { buildBatchConnectionCreateRequest, hasBatchConnectionCandidate, planBatchConnections, selectBatchConnectionSourceNodeIds } from "@/lib/canvas/canvas-batch-connection";
 import { defaultConfig } from "@/stores/use-config-store";
 import { CanvasNodeType, type CanvasConnection, type CanvasNodeData } from "@/types/canvas";
 
@@ -111,5 +111,12 @@ describe("buildBatchConnectionCreateRequest", () => {
 describe("hasBatchConnectionCandidate", () => {
     it("accepts a target when another selected source is legal even if the target itself is selected first", () => {
         expect(hasBatchConnectionCandidate(["config", "text-a"], "config", nodes)).toBe(true);
+    });
+});
+
+describe("selectBatchConnectionSourceNodeIds", () => {
+    it("keeps selected eligible nodes in canvas order", () => {
+        const selected = new Set(["config", "text-b", "frame", "image-a"]);
+        expect(selectBatchConnectionSourceNodeIds(nodes, selected)).toEqual(["text-b", "image-a"]);
     });
 });

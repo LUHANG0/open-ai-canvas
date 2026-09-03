@@ -302,7 +302,7 @@ export function useCanvasMediaTools({
                 progress.update(status.phase === "loading" ? "加载 FFmpeg" : status.phase === "reading" ? "读取视频资源" : "正在提取音频", status.phase === "encoding" ? 3 : 2);
             });
             progress.update("上传音频到服务器", 4);
-            const uploaded = await uploadMediaFile(mp3, "audio");
+            const uploaded = await uploadMediaFile(mp3);
             const spec = NODE_DEFAULT_SIZE[CanvasNodeType.Audio];
             const audioNode = createCanvasNode(
                 CanvasNodeType.Audio,
@@ -369,7 +369,7 @@ export function useCanvasMediaTools({
                         progress.update(status.phase === "loading" ? `加载 FFmpeg（${index + 1}/${segments.length}）` : status.phase === "reading" ? `读取视频资源（${index + 1}/${segments.length}）` : `正在截取片段（${index + 1}/${segments.length}）`, status.phase === "encoding" ? index * 4 + 3 : index * 4 + 2);
                     });
                     progress.update(`上传片段到服务器（${index + 1}/${segments.length}）`, index * 4 + 3);
-                    const uploaded = await uploadMediaFile(mp4, "video");
+                    const uploaded = await uploadMediaFile(mp4);
                     const size = fitNodeSize(uploaded.width || 1280, uploaded.height || 720, VIDEO_NODE_MAX_SIZE.width, VIDEO_NODE_MAX_SIZE.height);
                     const segmentId = nanoid();
                     const segmentNode: CanvasNodeData = {

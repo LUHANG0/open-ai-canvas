@@ -5,10 +5,8 @@ import { ArrowUpRight, BookOpenText, ChevronLeft, ChevronRight, Crosshair, Folde
 import { Link } from "react-router";
 
 import { resolveProjectCanvasStyle } from "@/components/canvas/canvas-style-picker-modal";
+import { CANVAS_PROJECT_CHAPTER_DND_TYPE, type CanvasProjectChapterPayload } from "@/lib/canvas/canvas-project-chapter-dnd";
 import { getProject, getProjectUnit, type ProjectDetail, type ProjectUnit } from "@/services/api/projects";
-
-export const CANVAS_PROJECT_CHAPTER_DND_TYPE = "application/x-infinite-canvas-project-chapter";
-export type CanvasProjectChapterPayload = Pick<ProjectUnit, "id" | "title" | "position"> & { projectId: string; sourceText?: string };
 
 const CHAPTER_ROW_HEIGHT = 36;
 

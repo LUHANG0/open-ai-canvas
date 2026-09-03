@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 
 import { UserOSSSettingsForm } from "@/components/layout/user-oss-settings-form";
-import { PageHeader, WorkspacePage } from "@/components/layout/workspace-page";
+import { PageHeader, WorkspacePage } from "@/components/ui/pc/page";
 import { SubnavLayout } from "@/components/ui/pc";
 import { audioFormatOptions, audioVoiceOptions, normalizeAudioSpeedValue } from "@/lib/audio-generation";
 import { refreshSystemChannels } from "@/lib/user-session";

@@ -1,11 +1,12 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
-import { AlertCircle, BookOpenCheck, CheckCircle2, ChevronRight, Clapperboard, Copy, Download, Image as ImageIcon, Lock, Maximize2, Music2, Pencil, Plus, RefreshCw, Settings2, Star, Trash2, Type, Video } from "lucide-react";
+import { AlertCircle, BookOpenCheck, CheckCircle2, ChevronRight, Clapperboard, Copy, Download, GripVertical, Image as ImageIcon, Lock, Maximize2, Music2, Pencil, Plus, RefreshCw, Settings2, Star, Trash2, Type, Video } from "lucide-react";
 
 import { useCanvasNodeActions } from "./canvas-node-action-context";
 
 import { canvasThemes } from "@/lib/canvas-theme";
 import { storyboardMinNodeHeight } from "@/lib/canvas/canvas-storyboard-layout";
+import type { CanvasMediaRenderPolicy } from "@/lib/canvas/canvas-performance-mode";
 import { resourceStorageLabel, resourceStorageLocation, resourceStorageTitle } from "@/lib/canvas/resource-storage-status";
 import { useThemeStore } from "@/stores/use-theme-store";
 import { CanvasNodeType, type CanvasNodeData, type CanvasNodeTypeId, type Position } from "@/types/canvas";
@@ -29,6 +30,8 @@ type CanvasNodeProps = {
     forceInputVisible?: boolean;
     showImageInfo: boolean;
     reduceMediaEffects?: boolean;
+    mediaRenderPolicy?: CanvasMediaRenderPolicy;
+    videoPreviewOnly?: boolean;
     readOnly?: boolean;
     resourceLabel?: CanvasResourceReference;
     mentionReferences?: CanvasResourceReference[];
@@ -73,6 +76,8 @@ export const CanvasNode = React.memo(function CanvasNode({
     forceInputVisible = false,
     showImageInfo,
     reduceMediaEffects = false,
+    mediaRenderPolicy,
+    videoPreviewOnly = false,
     readOnly = false,
     resourceLabel,
     mentionReferences = [],
@@ -108,6 +113,7 @@ export const CanvasNode = React.memo(function CanvasNode({
     const [hovered, setHovered] = useState(false);
     const [isEditingContent, setIsEditingContent] = useState(false);
     const [isEditingTitle, setIsEditingTitle] = useState(false);
+    const [isResizing, setIsResizing] = useState(false);
     const [titleDraft, setTitleDraft] = useState(data.title);
     const { download: downloadNode, duplicate: duplicateNode, deleteNode } = useCanvasNodeActions();
     const hasImageContent = data.type === CanvasNodeType.Image && Boolean(data.metadata?.content);
@@ -218,6 +224,7 @@ export const CanvasNode = React.memo(function CanvasNode({
 
     const handleResizeUp = useCallback(() => {
         resizeRef.current.isResizing = false;
+        setIsResizing(false);
         window.removeEventListener("mousemove", handleResizeMove);
         window.removeEventListener("mouseup", handleResizeUp);
     }, [handleResizeMove]);
@@ -225,6 +232,7 @@ export const CanvasNode = React.memo(function CanvasNode({
     const handleResizeMouseDown = (event: React.MouseEvent, corner: ResizeCorner) => {
         event.stopPropagation();
         event.preventDefault();
+        setIsResizing(true);
         resizeRef.current = {
             isResizing: true,
             corner,
@@ -261,6 +269,7 @@ export const CanvasNode = React.memo(function CanvasNode({
     return (
         <div
             data-node-id={data.id}
+            data-canvas-node-interacting={dragOffset || isEditingContent || isEditingTitle || isResizing ? "true" : undefined}
             className={`node-element absolute flex select-none flex-col ${dragOffset ? "cursor-grabbing" : data.type === CanvasNodeType.Drawing ? "cursor-pointer" : "cursor-default"} ${isSelected ? "z-[var(--z-node-active)]" : "z-[var(--z-node)]"}`}
             style={{
                 transform: `translate(${data.position.x + (dragOffset?.x || 0)}px, ${data.position.y + (dragOffset?.y || 0)}px)`,
@@ -291,16 +300,19 @@ export const CanvasNode = React.memo(function CanvasNode({
                 onEdit={() => setIsEditingTitle(true)}
                 onCommit={commitTitle}
                 onCancel={() => { setTitleDraft(data.title); setIsEditingTitle(false); }}
+                draggable={!readOnly && !data.metadata?.locked}
+                onDragStart={(event) => onMouseDown(event, data.id)}
             />
             <div
-                className="pc-canvas-node canvas-node-shell relative h-full w-full overflow-visible rounded-[var(--node-radius)]"
+                className="pc-canvas-node canvas-node-shell relative h-full w-full cursor-grab overflow-visible rounded-[var(--node-radius)] active:cursor-grabbing"
                 data-node-state={nodeState}
                 data-state={data.metadata?.status || (isActive ? "active" : isRelated ? "related" : "idle")}
+                data-canvas-media-effects={reduceMediaEffects ? "reduced" : "full"}
                 style={{
                     background: hasImageContent || hasVideoContent ? "transparent" : theme.node.fill,
                     // 固定占位但不绘制描边，避免聚焦切换时边框宽度变化造成白边跳动。
                     border: isComposerNode ? "0" : "1px solid transparent",
-                    boxShadow: isComposerNode ? "none" : isSelected || hovered ? theme.node.hoverShadow : theme.node.shadow,
+                    boxShadow: isComposerNode || reduceMediaEffects ? "none" : isSelected || hovered ? theme.node.hoverShadow : theme.node.shadow,
                 }}
                 onMouseDown={(event) => onMouseDown(event, data.id)}
                 onDoubleClick={(event) => {
@@ -371,6 +383,8 @@ export const CanvasNode = React.memo(function CanvasNode({
                         onOpenTaskDetails={onOpenTaskDetails}
                         onToggleBatch={() => onToggleBatch?.(data.id)}
                         reduceMediaEffects={reduceMediaEffects}
+                        mediaRenderPolicy={mediaRenderPolicy}
+                        videoPreviewOnly={videoPreviewOnly}
                     />
                 </div>
 
@@ -480,6 +494,8 @@ function areCanvasNodePropsEqual(previous: CanvasNodeProps, next: CanvasNodeProp
         previous.forceInputVisible === next.forceInputVisible &&
         previous.showImageInfo === next.showImageInfo &&
         previous.reduceMediaEffects === next.reduceMediaEffects &&
+        previous.mediaRenderPolicy === next.mediaRenderPolicy &&
+        previous.videoPreviewOnly === next.videoPreviewOnly &&
         previous.readOnly === next.readOnly &&
         previous.resourceLabel === next.resourceLabel &&
         previous.mentionReferences === next.mentionReferences &&
@@ -610,7 +626,7 @@ function formatMediaDimensionLabel(node: CanvasNodeData, hasVisualMediaContent: 
     return `${Math.round(width)}*${Math.round(height)}`;
 }
 
-function NodeExternalHeader({ node, scale, dimensionLabel, active, editable, editing, draft, theme, onDraftChange, onEdit, onCommit, onCancel }: {
+function NodeExternalHeader({ node, scale, dimensionLabel, active, editable, editing, draft, theme, draggable, onDraftChange, onEdit, onCommit, onCancel, onDragStart }: {
     node: CanvasNodeData;
     scale: number;
     dimensionLabel: string | null;
@@ -619,11 +635,30 @@ function NodeExternalHeader({ node, scale, dimensionLabel, active, editable, edi
     editing: boolean;
     draft: string;
     theme: CanvasTheme;
+    draggable: boolean;
     onDraftChange: (value: string) => void;
     onEdit: () => void;
     onCommit: () => void;
     onCancel: () => void;
+    onDragStart: (event: React.MouseEvent) => void;
 }) {
+    const titleInputRef = useRef<HTMLInputElement>(null);
+
+    useEffect(() => {
+        if (!editing) return;
+
+        // 画布空白区会在 pointerdown 阶段 preventDefault 以启动平移，浏览器因此不会
+        // 自动转移焦点。用捕获阶段主动 blur，确保“点击任意空白处完成改名”稳定生效。
+        const handleOutsidePointerDown = (event: PointerEvent) => {
+            const target = event.target;
+            if (!(target instanceof Node) || titleInputRef.current?.contains(target)) return;
+            titleInputRef.current?.blur();
+        };
+
+        window.addEventListener("pointerdown", handleOutsidePointerDown, true);
+        return () => window.removeEventListener("pointerdown", handleOutsidePointerDown, true);
+    }, [editing]);
+
     // 标题保持屏幕尺寸只适用于近景；远景继续反向缩放会遮住节点和连线。
     if (scale < NODE_EXTERNAL_HEADER_MIN_SCALE && !editing) return null;
     const inverseScale = 1 / Math.max(scale, 0.05);
@@ -633,47 +668,85 @@ function NodeExternalHeader({ node, scale, dimensionLabel, active, editable, edi
 
     return (
         <div
-            className="canvas-node-external-header absolute bottom-full left-0 z-[var(--node-z-overlay)] flex h-6 items-center gap-1 overflow-hidden"
+            className="canvas-node-external-header absolute bottom-full left-0 z-[var(--node-z-overlay)] flex h-7 items-center justify-between gap-1.5 overflow-visible"
             style={{
                 width: dimensionLabel ? externalHeaderWidth : undefined,
                 maxWidth: dimensionLabel ? undefined : maxHeaderWidth,
-                borderRadius: "var(--r-sm)",
-                background: "transparent",
-                paddingInline: "var(--space-1-half)",
                 color: active ? theme.node.text : theme.node.label,
                 transform: `scale(var(--canvas-live-inverse-scale, ${inverseScale}))`,
                 transformOrigin: "left bottom",
             }}
-            onMouseDown={(event) => event.stopPropagation()}
+            onMouseDown={(event) => {
+                if (event.target instanceof Element && event.target.closest("button,input,textarea,select,a,[contenteditable='true']")) {
+                    event.stopPropagation();
+                    return;
+                }
+                onDragStart(event);
+            }}
             onPointerDown={(event) => event.stopPropagation()}
         >
-            <div className="flex min-w-0 items-center gap-1" style={{ maxWidth: maxHeaderWidth }}>
-                <Icon className="size-3 shrink-0" strokeWidth={1.8} />
-                {editing ? (
-                    <input
-                        autoFocus
-                        value={draft}
-                        className="h-6 min-w-20 max-w-[190px] flex-1 truncate rounded bg-transparent px-1.5 text-xs font-medium outline-none"
-                        style={{ background: "transparent", color: theme.node.text }}
-                        onChange={(event) => onDraftChange(event.target.value)}
-                        onFocus={(event) => event.currentTarget.select()}
-                        onBlur={onCommit}
-                        onKeyDown={(event) => {
-                            if (event.key === "Enter") event.currentTarget.blur();
-                            if (event.key === "Escape") onCancel();
+            <div
+                className="canvas-node-title-chip flex h-6 min-w-0 items-center gap-1 rounded-[var(--r-sm)] border px-1 shadow-sm backdrop-blur-md transition-[border-color,box-shadow]"
+                style={{
+                    maxWidth: maxHeaderWidth,
+                    background: theme.spatial.elevated,
+                    borderColor: active ? theme.node.activeStroke : theme.toolbar.border,
+                    boxShadow: active ? `0 4px 14px ${theme.spatial.shadow}` : `0 2px 8px ${theme.spatial.shadow}`,
+                }}
+            >
+                {draggable ? (
+                    <button
+                        type="button"
+                        data-canvas-node-drag-handle
+                        className="grid size-5 shrink-0 cursor-grab place-items-center rounded-[var(--r-xs)] opacity-55 transition-[background,opacity] hover:opacity-100 active:cursor-grabbing focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-1"
+                        style={{ outlineColor: theme.node.muted }}
+                        aria-label={`拖动节点：${node.title}`}
+                        title="拖动节点"
+                        onMouseDown={(event) => {
+                            event.preventDefault();
+                            onDragStart(event);
                         }}
-                        aria-label="节点名称"
-                    />
-                ) : editable ? (
-                    <button type="button" className="group flex min-w-0 flex-1 items-center gap-1 rounded px-0.5 text-xs font-medium outline-none transition-opacity hover:opacity-100 focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-1" style={{ opacity: active ? 1 : 0.78, outlineColor: theme.node.muted }} onClick={onEdit} aria-label={`编辑节点名称：${node.title}`}>
-                        <span className="min-w-0 flex-1 truncate" title={node.title}>{node.title}</span>
-                        <Pencil className="size-2.5 shrink-0 opacity-55 transition-opacity group-hover:opacity-100" />
+                    >
+                        <GripVertical className="size-3" strokeWidth={1.8} />
                     </button>
-                ) : (
-                    <span className="min-w-0 flex-1 truncate text-xs font-medium" title={node.title} style={{ opacity: active ? 1 : 0.78 }}>{node.title}</span>
-                )}
+                ) : null}
+                <div className="flex min-w-0 flex-1 items-center gap-1">
+                    <Icon className="size-3 shrink-0" strokeWidth={1.8} />
+                    {editing ? (
+                        <input
+                            ref={titleInputRef}
+                            data-canvas-node-title-input
+                            autoFocus
+                            value={draft}
+                            className="h-5 min-w-20 max-w-[190px] flex-1 truncate rounded px-1.5 text-xs font-medium outline-none"
+                            style={{ background: theme.toolbar.itemHover, color: theme.node.text }}
+                            onChange={(event) => onDraftChange(event.target.value)}
+                            onFocus={(event) => event.currentTarget.select()}
+                            onBlur={onCommit}
+                            onKeyDown={(event) => {
+                                if (event.key === "Enter") event.currentTarget.blur();
+                                if (event.key === "Escape") onCancel();
+                            }}
+                            aria-label="节点名称"
+                        />
+                    ) : editable ? (
+                        <button type="button" className="group flex min-w-0 flex-1 items-center gap-1 rounded px-0.5 text-xs font-medium outline-none transition-opacity hover:opacity-100 focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-1" style={{ opacity: active ? 1 : 0.88, outlineColor: theme.node.muted }} onClick={onEdit} aria-label={`编辑节点名称：${node.title}`}>
+                            <span className="min-w-0 flex-1 truncate" title={node.title}>{node.title}</span>
+                            <Pencil className="size-2.5 shrink-0 opacity-55 transition-opacity group-hover:opacity-100" />
+                        </button>
+                    ) : (
+                        <span className="min-w-0 flex-1 truncate text-xs font-medium" title={node.title} style={{ opacity: active ? 1 : 0.88 }}>{node.title}</span>
+                    )}
+                </div>
             </div>
-            {dimensionLabel ? <span className="ml-auto shrink-0 whitespace-nowrap text-[var(--fs-micro)] font-medium leading-none tabular-nums" style={{ color: theme.node.muted }}>{dimensionLabel}</span> : null}
+            {dimensionLabel ? (
+                <span
+                    className="canvas-node-dimension-chip ml-auto inline-flex h-6 shrink-0 items-center whitespace-nowrap rounded-[var(--r-sm)] border px-2 text-[var(--fs-micro)] font-semibold leading-none tabular-nums shadow-sm backdrop-blur-md"
+                    style={{ background: theme.spatial.elevated, borderColor: active ? theme.node.activeStroke : theme.toolbar.border, color: theme.node.muted, boxShadow: `0 2px 8px ${theme.spatial.shadow}` }}
+                >
+                    {dimensionLabel}
+                </span>
+            ) : null}
         </div>
     );
 }

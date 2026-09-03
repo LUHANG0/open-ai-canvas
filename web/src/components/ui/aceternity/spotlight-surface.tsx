@@ -7,11 +7,12 @@ type SpotlightSurfaceProps = Omit<HTMLMotionProps<"div">, "children"> & {
     children?: ReactNode;
     spotlightColor: string;
     spotlightRadius?: number;
+    enabled?: boolean;
 };
 
 // 基于 Aceternity Card Spotlight 改造：只保留中性指针高光，避免高频工具面板持续动画。
 export const SpotlightSurface = forwardRef<HTMLDivElement, SpotlightSurfaceProps>(function SpotlightSurface(
-    { children, className, spotlightColor, spotlightRadius = 220, onPointerEnter, onPointerLeave, onPointerMove, ...props },
+    { children, className, spotlightColor, spotlightRadius = 220, enabled = true, onPointerEnter, onPointerLeave, onPointerMove, ...props },
     ref,
 ) {
     const mouseX = useMotionValue(0);
@@ -20,6 +21,7 @@ export const SpotlightSurface = forwardRef<HTMLDivElement, SpotlightSurfaceProps
     const maskImage = useMotionTemplate`radial-gradient(${spotlightRadius}px circle at ${mouseX}px ${mouseY}px, black, transparent 78%)`;
 
     const updatePointer = (event: ReactPointerEvent<HTMLDivElement>) => {
+        if (!enabled || reducedMotion) return;
         const bounds = event.currentTarget.getBoundingClientRect();
         mouseX.set(event.clientX - bounds.left);
         mouseY.set(event.clientY - bounds.top);
@@ -40,11 +42,11 @@ export const SpotlightSurface = forwardRef<HTMLDivElement, SpotlightSurfaceProps
             onPointerLeave={(event) => onPointerLeave?.(event)}
             {...props}
         >
-            <motion.span
+            {enabled && !reducedMotion ? <motion.span
                 aria-hidden
                 className="pointer-events-none absolute -inset-px z-0 rounded-[inherit] opacity-0 transition-opacity duration-150 group-hover/spotlight:opacity-100"
-                style={{ backgroundColor: spotlightColor, maskImage, WebkitMaskImage: maskImage, opacity: reducedMotion ? 0 : undefined }}
-            />
+                style={{ backgroundColor: spotlightColor, maskImage, WebkitMaskImage: maskImage }}
+            /> : null}
             <div className="relative z-[1] flex min-h-0 flex-1 flex-col">{children}</div>
         </motion.div>
     );

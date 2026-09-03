@@ -5,8 +5,9 @@ import { App, Button, Dropdown, Form, Input, Progress, Select, Space, Tag, Typog
 import type { MenuProps } from "antd";
 import { useNavigate } from "react-router";
 
-import { CollectionGrid, ListToolbar, PageHeader, PaginationBar, WorkspacePage } from "@/components/layout/workspace-page";
-import { WorkspaceState } from "@/components/layout/workspace-state";
+import { CollectionGrid, ListToolbar, PageHeader, PaginationBar, WorkspacePage } from "@/components/ui/pc/page";
+import { WorkspaceState } from "@/components/ui/pc/workspace-state";
+import { LibraryCreateCard } from "@/components/ui/pc/library-create-card";
 import { DialogFrame, DrawerFrame, SearchField, SelectionBar, Surface } from "@/components/ui/pc";
 import { AssetMediaPreview } from "@/components/asset-media-preview";
 import { AssetLibraryCard, AssetLibraryCardMedia } from "@/components/assets/asset-library-card";
@@ -250,7 +251,7 @@ export default function AssetsPage() {
         if (!file || !/\.(glb|gltf)$/i.test(file.name) || (isPcBrandViewport && Boolean(transferBusy))) return;
         if (isPcBrandViewport) setTransferBusy("model");
         try {
-            const uploaded = await uploadMediaFile(file, "model");
+            const uploaded = await uploadMediaFile(file);
             void queryClient.invalidateQueries({ queryKey: assetStorageUsageQueryKey });
             addAsset({
                 kind: "model",
@@ -507,15 +508,7 @@ export default function AssetsPage() {
                                         <WorkspaceState icon="assets" compact title="没有匹配的素材" description="调整关键词或左侧分类后再试。" action={isPcBrandViewport ? <Button onClick={resetFilters}>清除筛选</Button> : undefined} />
                                     ) : (
                                         <CollectionGrid className="library-grid assets-library-grid">
-                                            {canCreateAsset ? (
-                                                <button type="button" className="library-create-card" onClick={openCreate}>
-                                                    <span className="library-create-cover">
-                                                        <Plus className="size-8" />
-                                                    </span>
-                                                    <span className="library-create-title">新增素材</span>
-                                                    <span className="library-create-meta">文本、图片、音视频或模型</span>
-                                                </button>
-                                            ) : null}
+                                            {canCreateAsset ? <LibraryCreateCard label="新增素材" description="文本、图片、音视频或模型" icon={<Plus className="size-8" />} onClick={openCreate} /> : null}
                                             {visibleAssets.map((asset) => (
                                                 <AssetCard
                                                     key={asset.id}

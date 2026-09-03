@@ -381,9 +381,19 @@ func (s *Service) DeleteProject(userID string, id string) error {
 	if activeTaskCount > 0 {
 		return BadAuthRequest("项目仍有进行中的生成任务，请等待任务完成或取消后再删除")
 	}
+	activeDeliveryCount, err := s.repo.ActiveProjectDeliveryJobCount(userID, id, "")
+	if err != nil {
+		return err
+	}
+	if activeDeliveryCount > 0 {
+		return BadAuthRequest("项目仍有进行中的交付任务，请等待交付包完成后再删除")
+	}
 	if err := s.repo.DeleteProject(userID, id, canvasUpdates); err != nil {
 		if errors.Is(err, repository.ErrProjectHasActiveTasks) {
 			return BadAuthRequest("项目仍有进行中的生成任务，请等待任务完成或取消后再删除")
+		}
+		if errors.Is(err, repository.ErrProjectHasActiveDeliveryJobs) {
+			return BadAuthRequest("项目仍有进行中的交付任务，请等待交付包完成后再删除")
 		}
 		return err
 	}
@@ -492,7 +502,20 @@ func (s *Service) DeleteProjectUnit(userID string, projectID string, unitID stri
 	if _, err := s.repo.ProjectUnit(projectID, unitID); err != nil {
 		return err
 	}
-	return s.repo.DeleteProjectUnit(projectID, unitID)
+	activeDeliveryCount, err := s.repo.ActiveProjectDeliveryJobCount(userID, projectID, unitID)
+	if err != nil {
+		return err
+	}
+	if activeDeliveryCount > 0 {
+		return BadAuthRequest("章节仍有进行中的交付任务，请等待交付包完成后再删除")
+	}
+	if err := s.repo.DeleteProjectUnit(projectID, unitID); err != nil {
+		if errors.Is(err, repository.ErrProjectHasActiveDeliveryJobs) {
+			return BadAuthRequest("章节仍有进行中的交付任务，请等待交付包完成后再删除")
+		}
+		return err
+	}
+	return nil
 }
 
 func newProjectUnit(projectID string, req CreateProjectUnitRequest, position int) (model.ProjectUnit, error) {

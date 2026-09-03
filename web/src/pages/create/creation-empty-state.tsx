@@ -1,5 +1,7 @@
 import { ArrowRight, Clapperboard, FileText, Image as ImageIcon, type LucideIcon } from "lucide-react";
 
+import { useBranding } from "@/components/branding/branding-provider";
+
 export type CreationMode = "text" | "image" | "video";
 
 type EmptyStateAction = {
@@ -45,6 +47,8 @@ const modeHeadline: Record<CreationMode, string> = {
 };
 
 export function CreationEmptyIntro({ mode }: { mode: CreationMode }) {
+    const { branding } = useBranding();
+
     return (
         <header className="creation-empty-intro">
             <span className="creation-empty-kicker">
@@ -58,7 +62,9 @@ export function CreationEmptyIntro({ mode }: { mode: CreationMode }) {
                     把灵感推进到可制作的<strong>{modeHeadline[mode]}</strong>
                 </span>
             </h1>
-            <p className="creation-empty-description-mobile">从一个想法开始，和影策一起完成你的{modeHeadline[mode]}。</p>
+            <p className="creation-empty-description-mobile">
+                从一个想法开始，和{branding.config.identity.shortName}一起完成你的{modeHeadline[mode]}。
+            </p>
             <p className="creation-empty-description-pc">组合提示词、参考素材与模型配置，在同一导演台里完成你的{modeHeadline[mode]}。</p>
         </header>
     );

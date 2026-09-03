@@ -1,25 +1,26 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { App, Button, Form, Input, Select } from "antd";
-import { ArrowRight, BookOpenText, FileText, FolderKanban, Images, LayoutGrid, Palette, Plus, Search, Sparkles, Trash2 } from "lucide-react";
-import { Link, useNavigate, useSearchParams } from "react-router";
+import { BookOpenText, ChevronDown, FileText, FolderKanban, Palette, Plus, Search, SlidersHorizontal, Sparkles } from "lucide-react";
+import { useNavigate, useSearchParams } from "react-router";
 
-import { CollectionGrid, ListToolbar, PageHeader, WorkspacePage } from "@/components/layout/workspace-page";
-import { WorkspaceErrorState, WorkspaceLoadingState, WorkspaceState } from "@/components/layout/workspace-state";
+import { CollectionGrid, ListToolbar, PageHeader, WorkspacePage } from "@/components/ui/pc/page";
+import { WorkspaceErrorState, WorkspaceLoadingState, WorkspaceState } from "@/components/ui/pc/workspace-state";
 import { DialogFrame, SearchField, SectionHeader, StatusBadge, Surface } from "@/components/ui/pc";
-import { CanvasStylePickerModal, resolveCanvasStylePreset, resolveProjectCanvasStyle, type CanvasStylePreset } from "@/components/canvas/canvas-style-picker-modal";
-import { resourceFileUrl } from "@/services/api/resources";
+import { CanvasStylePickerModal, resolveCanvasStylePreset, type CanvasStylePreset } from "@/components/canvas/canvas-style-picker-modal";
 import { ModelPicker } from "@/components/model-picker";
 import { createStyleProfileSnapshot, parseStyleProfile, serializeStyleProfile } from "@/lib/canvas/style-profile";
-import { projectSummaryCompletion, projectSummaryStage } from "@/lib/project-workbench";
+import { projectSummaryCompletion } from "@/lib/project-workbench";
 import { settingsPath } from "@/lib/settings-navigation";
 import { requestImageQuestion } from "@/services/api/image";
-import { createProject, deleteProject, importProjectUnits, listProjects, type ProjectSummary } from "@/services/api/projects";
+import { createProject, deleteProject, importProjectUnits, listProjects } from "@/services/api/projects";
 import { modelDisplayName, useEffectiveConfig } from "@/stores/use-config-store";
 
-import { sourceTypeLabel } from "./detail/shared";
+import { ProjectListCard } from "./project-list-card";
+import { generationStepDone, generationSteps, isProjectNameConflict, parseGeneratedStory, projectNameCandidates } from "./project-story-generation";
 
 import "./projects.css";
+import "./short-drama-shell.css";
 
 type ProjectForm = { name: string; aspectRatio: string; sourceType: string };
 
@@ -48,6 +49,8 @@ export default function ProjectsPage() {
     const [generating, setGenerating] = useState(false);
     const [generationStatus, setGenerationStatus] = useState("");
     const [generationPreview, setGenerationPreview] = useState("");
+    const [starterOpen, setStarterOpen] = useState(false);
+    const [generationOptionsOpen, setGenerationOptionsOpen] = useState(false);
     const createOpen = searchParams.get("create") === "1";
     const setCreateOpen = (open: boolean) => {
         const next = new URLSearchParams(searchParams);
@@ -87,11 +90,10 @@ export default function ProjectsPage() {
             return;
         }
         setGenerating(true);
-        setGenerationStatus("正在创建项目…");
+        setGenerationStatus("AI 正在生成故事大纲与章节…");
         setGenerationPreview("");
+        let createdProjectId = "";
         try {
-            const project = await createUniqueProjectName(story, selectedStyle);
-            setGenerationStatus("AI 正在生成故事大纲与章节…");
             const answer = await requestImageQuestion(
                 { ...effectiveConfig, model: textModel, imageModel: textModel, videoModel: textModel, textModel },
                 [
@@ -107,6 +109,26 @@ export default function ProjectsPage() {
             );
             const parsed = parseGeneratedStory(answer);
             if (!parsed.chapters.length) throw new Error("AI 没有返回有效的章节内容，请重试");
+            setGenerationStatus("正在创建项目…");
+            const projectNames = projectNameCandidates(parsed.title);
+            let project: Awaited<ReturnType<typeof createProject>> | undefined;
+            for (const [index, name] of projectNames.entries()) {
+                try {
+                    project = await createProject({
+                        name,
+                        type: "short-drama",
+                        aspectRatio: "9:16",
+                        sourceType: "blank",
+                        description: (parsed.synopsis || story).trim(),
+                        ...(selectedStyle ? { stylePresetId: selectedStyle.id, styleProfileJson: serializeStyleProfile(selectedStyle.profile || createStyleProfileSnapshot(selectedStyle)) } : {}),
+                    });
+                    break;
+                } catch (error) {
+                    if (!isProjectNameConflict(error) || index === projectNames.length - 1) throw error;
+                }
+            }
+            if (!project) throw new Error("项目创建失败，请重试");
+            createdProjectId = project.project.id;
             setGenerationStatus(`正在导入 ${parsed.chapters.length} 个章节…`);
             await importProjectUnits(
                 project.project.id,
@@ -115,7 +137,14 @@ export default function ProjectsPage() {
             await queryClient.invalidateQueries({ queryKey: ["projects"] });
             navigate(`/projects/${project.project.id}/overview`);
         } catch (error) {
-            message.error(error instanceof Error ? error.message : "AI 生成失败，请重试");
+            const detail = error instanceof Error ? error.message : "AI 生成失败，请重试";
+            if (createdProjectId) {
+                await queryClient.invalidateQueries({ queryKey: ["projects"] });
+                message.warning(`项目已创建，但章节导入失败：${detail}。可以在项目中重新导入或手动添加章节。`);
+                navigate(`/projects/${createdProjectId}/overview`);
+            } else {
+                message.error(detail);
+            }
         } finally {
             setGenerating(false);
             setGenerationStatus("");
@@ -132,10 +161,10 @@ export default function ProjectsPage() {
     });
     const mutation = useMutation({
         mutationFn: createProject,
-        onSuccess: ({ project }) => {
+        onSuccess: ({ project }, input) => {
             setCreateOpen(false);
             void queryClient.invalidateQueries({ queryKey: ["projects"] });
-            navigate(`/projects/${project.id}/overview`);
+            navigate(input.sourceType === "novel" || input.sourceType === "text" ? `/projects/${project.id}/chapters?import=1` : `/projects/${project.id}/overview`);
         },
         onError: (error) => message.error(error instanceof Error ? error.message : "项目创建失败"),
     });
@@ -174,6 +203,11 @@ export default function ProjectsPage() {
             });
     }, [allProjects, keyword, sort, status]);
     const totalProjectCount = query.data?.pages[0]?.total ?? allProjects.length;
+    const projectMetrics = useMemo(() => {
+        const active = allProjects.filter(({ project }) => project.status === "active").length;
+        const archived = allProjects.filter(({ project }) => project.status === "archived").length;
+        return { active, archived };
+    }, [allProjects]);
     useEffect(() => {
         const node = loadMoreRef.current;
         if (!node || !query.hasNextPage || query.isError) return;
@@ -188,7 +222,7 @@ export default function ProjectsPage() {
     }, [query.fetchNextPage, query.hasNextPage, query.isError, query.isFetchingNextPage]);
     const hasInitialError = query.isError && !query.data;
     return (
-        <WorkspacePage className="library-page pc-projects-page" grid>
+        <WorkspacePage className="library-page pc-projects-page pc-short-drama-shell pc-short-drama-hub" grid>
             <PageHeader
                 className="pc-projects-page-header"
                 eyebrow="STORY PRODUCTION"
@@ -205,7 +239,20 @@ export default function ProjectsPage() {
                     </Button>
                 }
             />
-            <Surface className="app-story-create-panel pc-projects-starter" padding="none" aria-label="开始一部新短剧">
+            <section className="pc-short-drama-create-launcher" aria-label="开始创作">
+                <div>
+                    <strong>开始创作</strong>
+                    <span>从一句灵感、已有文稿或空白项目开始</span>
+                </div>
+                <div>
+                    <Button aria-expanded={starterOpen} aria-controls="short-drama-ai-starter" icon={<Sparkles className="size-3.5" />} onClick={() => setStarterOpen((open) => !open)}>
+                        {starterOpen ? "收起 AI 构思" : "AI 构思"}
+                    </Button>
+                    <Button icon={<FileText className="size-3.5" />} onClick={() => openCreate("novel")}>导入文稿</Button>
+                    <Button type="primary" icon={<Plus className="size-3.5" />} onClick={() => openCreate("blank")}>空白项目</Button>
+                </div>
+            </section>
+            {starterOpen ? <Surface id="short-drama-ai-starter" className="app-story-create-panel pc-projects-starter" padding="none" aria-label="AI 构思短剧">
                 <div className="app-story-create-head">
                     <div className="app-story-create-title">
                         <span className="app-story-create-mark">
@@ -244,13 +291,14 @@ export default function ProjectsPage() {
                     </div>
                 </div>
                 <div className="app-story-create-main">
+                    <label className="pc-short-drama-story-label" htmlFor="short-drama-story-draft">一句话故事</label>
                     <Input.TextArea
+                        id="short-drama-story-draft"
                         className="app-story-create-input"
                         value={storyDraft}
                         onChange={(event) => setStoryDraft(event.target.value)}
                         placeholder="例如：一个失忆的快递员，每天收到十年前寄出的信件……"
                         autoSize={{ minRows: 1, maxRows: 3 }}
-                        aria-label="一句话故事"
                     />
                     {selectedStyle ? (
                         <button type="button" className="app-story-create-style-chip" onClick={() => setStylePickerOpen(true)} title={selectedStyle.title}>
@@ -262,7 +310,18 @@ export default function ProjectsPage() {
                         {storyDraft.trim() ? `${storyDraft.trim().length} 字 · 已可生成，也可以继续补充人物、冲突或结局` : "先输入一句话故事，再选择模型生成章节"}
                     </span>
                 </div>
-                <div className="app-story-create-controls">
+                <button
+                    type="button"
+                    className="pc-short-drama-options-toggle"
+                    aria-expanded={generationOptionsOpen}
+                    aria-controls="short-drama-generation-options"
+                    onClick={() => setGenerationOptionsOpen((open) => !open)}
+                >
+                    <span><SlidersHorizontal className="size-3.5" />生成参数</span>
+                    <span className="pc-short-drama-options-summary">{generateChapterCount} 章 · {generateStructure} · {generateWordCount} 字/章</span>
+                    <ChevronDown className={`size-3.5${generationOptionsOpen ? " is-open" : ""}`} />
+                </button>
+                <div id="short-drama-generation-options" className={`app-story-create-controls${generationOptionsOpen ? " is-open" : ""}`}>
                     <label>
                         <span>章节数量</span>
                         <Select
@@ -367,9 +426,9 @@ export default function ProjectsPage() {
                         />
                     </label>
                 </div>
-            </Surface>
+            </Surface> : null}
             <section className="pc-projects-library" aria-labelledby="pc-projects-library-title">
-                <SectionHeader titleId="pc-projects-library-title" title="我的项目" description="筛选只作用于当前已加载的项目；继续下滑会自动加载下一页。" meta={<span className="pc-projects-library-count">{rows.length} 个结果</span>} />
+                <SectionHeader titleId="pc-projects-library-title" title="我的项目" meta={<span className="pc-projects-library-count">{rows.length} 个结果</span>} />
                 <ListToolbar
                     className="library-toolbar pc-projects-toolbar"
                     active={Boolean(keyword || status !== "all" || sort !== "updated")}
@@ -388,26 +447,30 @@ export default function ProjectsPage() {
                         onChange={(event) => setKeyword(event.target.value)}
                     />
                     <SearchField containerClassName="pc-projects-search" value={keyword} placeholder="搜索项目、简介或画风" onChange={(event) => setKeyword(event.target.value)} onClear={() => setKeyword("")} />
-                    <Select
-                        className="w-32"
-                        value={status}
-                        onChange={setStatus}
-                        options={[
-                            { label: "全部状态", value: "all" },
-                            { label: "进行中", value: "active" },
-                            { label: "已归档", value: "archived" },
-                        ]}
-                    />
-                    <Select
-                        className="w-32"
-                        value={sort}
-                        onChange={setSort}
-                        options={[
-                            { label: "最近更新", value: "updated" },
-                            { label: "章节进度", value: "progress" },
-                            { label: "项目名称", value: "name" },
-                        ]}
-                    />
+                    <div className="pc-short-drama-status-filter" aria-label="项目状态筛选">
+                        {([
+                            { value: "all", label: "全部", count: allProjects.length },
+                            { value: "active", label: "进行中", count: projectMetrics.active },
+                            { value: "archived", label: "已归档", count: projectMetrics.archived },
+                        ] as const).map((item) => (
+                            <button key={item.value} type="button" aria-pressed={status === item.value} onClick={() => setStatus(item.value)}>
+                                <span>{item.label}</span><em>{item.count}</em>
+                            </button>
+                        ))}
+                    </div>
+                    <label className="pc-short-drama-sort">
+                        <span>排序</span>
+                        <Select
+                            className="w-32"
+                            value={sort}
+                            onChange={setSort}
+                            options={[
+                                { label: "最近更新", value: "updated" },
+                                { label: "章节进度", value: "progress" },
+                                { label: "项目名称", value: "name" },
+                            ]}
+                        />
+                    </label>
                 </ListToolbar>
 
                 {hasInitialError ? <WorkspaceErrorState description={query.error instanceof Error ? query.error.message : "项目列表加载失败"} onRetry={() => void query.refetch()} /> : null}
@@ -415,7 +478,7 @@ export default function ProjectsPage() {
                 {!query.isLoading && !hasInitialError && rows.length ? (
                     <CollectionGrid className="library-grid project-library-grid">
                         {rows.map((row) => (
-                            <ProjectRow key={row.project.id} row={row} onDelete={() => confirmDeleteProject(row.project.id, row.project.name)} />
+                            <ProjectListCard key={row.project.id} row={row} onDelete={() => confirmDeleteProject(row.project.id, row.project.name)} />
                         ))}
                     </CollectionGrid>
                 ) : null}
@@ -483,35 +546,38 @@ export default function ProjectsPage() {
                         <button
                             type="button"
                             className={createSource === "blank" ? "app-story-source is-active" : "app-story-source"}
+                            aria-pressed={createSource === "blank"}
                             onClick={() => {
                                 setCreateSource("blank");
                                 createForm.setFieldValue("sourceType", "blank");
                             }}
                         >
                             <FolderKanban className="size-4" />
-                            <span>空白开始</span>
+                            <span>空白开始<small>从项目概览建立内容</small></span>
                         </button>
                         <button
                             type="button"
                             className={createSource === "novel" ? "app-story-source is-active" : "app-story-source"}
+                            aria-pressed={createSource === "novel"}
                             onClick={() => {
                                 setCreateSource("novel");
                                 createForm.setFieldValue("sourceType", "novel");
                             }}
                         >
                             <FileText className="size-4" />
-                            <span>导入小说</span>
+                            <span>导入小说<small>创建后继续拆分章节</small></span>
                         </button>
                         <button
                             type="button"
                             className={createSource === "text" ? "app-story-source is-active" : "app-story-source"}
+                            aria-pressed={createSource === "text"}
                             onClick={() => {
                                 setCreateSource("text");
                                 createForm.setFieldValue("sourceType", "text");
                             }}
                         >
                             <BookOpenText className="size-4" />
-                            <span>粘贴文本</span>
+                            <span>粘贴文本<small>从已有故事继续整理</small></span>
                         </button>
                     </div>
                     <Form.Item name="name" label="项目名称" rules={[{ required: true, whitespace: true, message: "请输入项目名称" }]}>
@@ -529,6 +595,7 @@ export default function ProjectsPage() {
                         </Form.Item>
                         <Form.Item name="sourceType" label="内容来源">
                             <Select
+                                onChange={(value) => setCreateSource(value as typeof createSource)}
                                 options={[
                                     { label: "空白开始", value: "blank" },
                                     { label: "导入小说", value: "novel" },
@@ -578,7 +645,7 @@ export default function ProjectsPage() {
                 open={generating}
                 footer={null}
                 closable={false}
-                maskClosable={false}
+                mask={{ closable: false }}
                 keyboard={false}
                 frameSize="lg"
             >
@@ -632,135 +699,5 @@ export default function ProjectsPage() {
                 </div>
             </DialogFrame>
         </WorkspacePage>
-    );
-}
-
-function parseGeneratedStory(answer: string) {
-    const cleaned = answer
-        .replace(/```json/gi, "")
-        .replace(/```/g, "")
-        .trim();
-    const match = cleaned.match(/\{[\s\S]*\}/);
-    const payload = match ? JSON.parse(match[0]) : {};
-    const title = String(payload.title || "").trim();
-    const synopsis = String(payload.synopsis || "").trim();
-    const chapters = Array.isArray(payload.chapters)
-        ? payload.chapters
-              .map((chapter: unknown) => {
-                  const item = typeof chapter === "object" && chapter ? (chapter as Record<string, unknown>) : {};
-                  return { title: String(item.title || "").trim(), content: String(item.content || "").trim() };
-              })
-              .filter((chapter: { title: string; content: string }) => chapter.title && chapter.content)
-        : [];
-    return { title: title || storyTitleFromAnswer(answer), synopsis, chapters };
-}
-
-async function createUniqueProjectName(story: string, selectedStyle: CanvasStylePreset | null) {
-    const base = story.trim().slice(0, 24);
-    const buildInput = (name: string) => ({
-        name,
-        type: "short-drama" as const,
-        aspectRatio: "9:16",
-        sourceType: "blank",
-        description: story.trim(),
-        ...(selectedStyle ? { stylePresetId: selectedStyle.id, styleProfileJson: serializeStyleProfile(selectedStyle.profile || createStyleProfileSnapshot(selectedStyle)) } : {}),
-    });
-    let attempt = 0;
-    for (;;) {
-        try {
-            return await createProject(buildInput(attempt === 0 ? base : `${base}（${attempt + 1}）`));
-        } catch (error) {
-            const message = error instanceof Error ? error.message : "";
-            const uniqueConflict = message.includes("UNIQUE") || message.includes("projects.user_id") || message.includes("projects.name");
-            if (!uniqueConflict || attempt >= 5) throw error;
-            attempt += 1;
-        }
-    }
-}
-
-function storyTitleFromAnswer(answer: string) {
-    const line = answer.split(/\r?\n/).find((item) => item.trim());
-    return line ? line.trim().slice(0, 24) : "AI 生成短剧";
-}
-
-const generationSteps = [{ label: "正在创建项目" }, { label: "AI 正在生成故事大纲与章节" }, { label: "正在导入章节" }];
-
-function generationStepDone(label: string, status: string) {
-    if (label === "正在创建项目") return status.startsWith("AI 正在生成") || status.startsWith("正在导入");
-    if (label === "AI 正在生成故事大纲与章节") return status.startsWith("正在导入");
-    return false;
-}
-
-function ProjectRow({ row, onDelete }: { row: ProjectSummary; onDelete: () => void }) {
-    const completion = projectSummaryCompletion(row);
-    const stage = projectSummaryStage(row);
-    const projectStyle = resolveProjectCanvasStyle(row.project.stylePresetId, row.project.styleProfileJson);
-    const styleTitle = projectStyle?.title || parseStyleProfile(row.project.styleProfileJson)?.title || resolveCanvasStylePreset(row.project.stylePresetId)?.title || (row.project.stylePresetId ? "自定义画风" : "未设置画风");
-    const coverUrl = row.project.coverResourceId ? resourceFileUrl(row.project.coverResourceId) : projectStyle?.imageUrl;
-    return (
-        <Link to={`/projects/${row.project.id}/overview`} className="library-card project-library-card group">
-            <span className="project-library-cover">
-                {coverUrl ? (
-                    <img className="project-library-cover-art" src={coverUrl} alt="" />
-                ) : (
-                    <span className="project-library-cover-icon">
-                        <FolderKanban className="size-7" />
-                    </span>
-                )}
-                <span className="project-library-cover-scrim" />
-                <span className="project-library-cover-ratio">{row.project.aspectRatio}</span>
-                <span className="project-library-cover-stage">{stage.label}</span>
-                <button
-                    type="button"
-                    className="project-library-cover-delete"
-                    title="删除项目"
-                    aria-label={`删除项目 ${row.project.name}`}
-                    onClick={(event) => {
-                        event.preventDefault();
-                        event.stopPropagation();
-                        onDelete();
-                    }}
-                >
-                    <Trash2 className="size-3.5" />
-                </button>
-            </span>
-            <span className="project-library-body">
-                <span className="project-library-heading">
-                    <strong title={row.project.name}>{row.project.name}</strong>
-                    {row.project.status === "archived" ? <em>已归档</em> : null}
-                    <ArrowRight className="project-library-arrow size-4" />
-                </span>
-                <span className="project-library-subtitle">
-                    {styleTitle} · {sourceTypeLabel(row.project.sourceType)}
-                </span>
-                <span className="project-library-progress">
-                    <span>
-                        <span>
-                            {row.completedUnitCount}/{row.unitCount} 章
-                        </span>
-                        <span>{completion}%</span>
-                    </span>
-                    <i className="pc-project-progress-legacy" aria-hidden="true">
-                        <b style={{ width: `${completion}%` }} />
-                    </i>
-                    <progress className="pc-project-progress-pc" max={100} value={completion} aria-label={`${row.project.name}章节完成度 ${completion}%`} />
-                </span>
-                <span className="project-library-stats">
-                    <ProjectCount icon={<BookOpenText className="size-3.5" />} label="章节" value={row.unitCount} />
-                    <ProjectCount icon={<LayoutGrid className="size-3.5" />} label="画布" value={row.canvasCount} />
-                    <ProjectCount icon={<Images className="size-3.5" />} label="资产" value={row.assetCount} />
-                </span>
-            </span>
-        </Link>
-    );
-}
-
-function ProjectCount({ icon, label, value }: { icon: ReactNode; label: string; value: number }) {
-    return (
-        <span className="inline-flex items-center gap-1.5" title={`${value} ${label}`}>
-            <span className="text-foreground/32">{icon}</span>
-            <strong className="font-medium tabular-nums text-foreground/65">{value}</strong>
-            <span>{label}</span>
-        </span>
     );
 }

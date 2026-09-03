@@ -3,6 +3,7 @@ import { boolConfig, buildSeedancePromptText, isArkPlanBaseUrl, isSeedanceVideoC
 import { getResourceOSSUrl } from "@/services/api/resources";
 import { getMediaBlob } from "@/services/file-storage";
 import { imageToDataUrl } from "@/services/image-storage";
+import { fetchBlob } from "@/services/fetch-blob";
 import { buildApiUrl, modelOptionName, type AiConfig } from "@/stores/use-config-store";
 import type { ReferenceImage } from "@/types/image";
 import type { ReferenceAudio, ReferenceVideo } from "@/types/media";
@@ -197,7 +198,7 @@ async function resolveSeedanceMediaUrl(media: ReferenceVideo | ReferenceAudio, d
     if (isPublicMediaUrl(media.url) || media.url.startsWith("asset://")) return media.url;
     let blob: Blob | null = null;
     if (media.storageKey) blob = await getMediaBlob(media.storageKey);
-    if (!blob && media.url?.startsWith("blob:")) blob = await (await fetch(media.url)).blob();
+    if (!blob && media.url?.startsWith("blob:")) blob = await fetchBlob(media.url, undefined, `${label}读取`);
     if (!blob) throw new Error(`${label}必须是公网 URL、素材 ID，或本地已保存素材`);
     return deps.response.blobToDataUrl(blob);
 }
@@ -206,7 +207,7 @@ async function resolveSeedanceVideosMediaUrl(media: ReferenceVideo | ReferenceAu
     if (isPublicMediaUrl(media.url) || media.url?.startsWith("data:")) return media.url;
     let blob: Blob | null = null;
     if (media.storageKey) blob = await getMediaBlob(media.storageKey);
-    if (!blob && media.url?.startsWith("blob:")) blob = await (await fetch(media.url)).blob();
+    if (!blob && media.url?.startsWith("blob:")) blob = await fetchBlob(media.url, undefined, "Seedance /videos 参考素材读取");
     if (!blob) throw new Error("Seedance /videos 参考素材必须是公网 URL、data URL，或本地已保存素材");
     return deps.response.blobToDataUrl(blob);
 }

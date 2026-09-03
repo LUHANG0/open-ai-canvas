@@ -94,12 +94,21 @@
 
 优先升级并复用：`WorkspacePage`、`PageHeader`、`ListToolbar`、`TableSurface`、`CollectionGrid`、`PaginationBar`、`WorkspaceState`。
 
+技术边界固定如下：
+
+- Ant Design 负责表单、弹窗、抽屉、表格、分页等复杂交互控件；主题差异统一进入 `web/src/lib/app-theme.ts`。
+- `web/src/components/ui/pc` 负责无业务语义的项目公共组件；页面只负责组合，不再创建同职责的第二套公共组件。
+- 用户端页面骨架、工具栏、表格/网格容器和分页固定从 `ui/pc/page` 使用；这组含较重依赖且需要稳定共享分包的组件使用显式子路径，不进入 `ui/pc` 总 barrel，`layout/workspace-page` 只作为 Admin 兼容出口。
+- Tailwind 与页面 CSS 负责布局和局部编排，不复制公共组件的完整视觉合同，不通过全局选择器覆盖第三方组件内部实现。
+- 页面可保留具有明确业务语义的专属空态，例如画布引导和创作起步页；通用空、加载、错误状态统一使用 `WorkspaceState`、`WorkspaceLoadingState`、`WorkspaceErrorState`。
+- 普通业务操作直接使用 Ant Design `Button`；完全相同的业务操作组合应在所属领域内提取，例如任务查看/重试，不再额外包装一套全局 Button。原生 `button` 只用于卡片点击面、媒体预览、编辑器和画布工具等需要专属命中区或交互语义的场景。
+
 允许新增的中性组件：
 
-- 页面：`PageScaffold`、`SectionHeader`、`Surface`、`SubnavLayout`。
+- 页面：`PageScaffold`、`SectionHeader`、`Surface`、`SubnavLayout`、`PathBreadcrumb`。
 - 筛选：`SearchField`、`FilterBar`、`FilterChip`、`ViewToggle`。
-- 数据：`DataTable`、`SelectionBar`、`RowActions`、`StatusBadge`、`StatTile`。
-- 状态：`EmptyState`、`LoadingState`、`ErrorState`、`FullScreenState`。
+- 数据：`DataTable`、`SelectionBar`、`RowActions`、`StatusBadge`、`StatTile`、`LibraryCreateCard`。
+- 状态：`WorkspaceState`、`WorkspaceLoadingState`、`WorkspaceErrorState`、`FullScreenState`。
 - 表单：`FormSection`、`DialogFrame`、`DrawerFrame`、`ConfirmDialog`。
 - 上传：`UploadField`、`FileDropzone`、`UploadQueue`、`UploadProgress`。
 - 媒体：`MediaThumbnail`、`MediaPreviewDialog`、`MediaFallback`。

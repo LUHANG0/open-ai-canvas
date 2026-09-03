@@ -2,8 +2,8 @@ import { useEffect, useState, type ReactNode } from "react";
 import { Button } from "antd";
 import { useNavigate } from "react-router";
 
-import { WorkspacePage } from "@/components/layout/workspace-page";
-import { WorkspaceErrorState, WorkspaceLoadingState, WorkspaceState } from "@/components/layout/workspace-state";
+import { WorkspacePage } from "@/components/ui/pc/page";
+import { WorkspaceErrorState, WorkspaceLoadingState, WorkspaceState } from "@/components/ui/pc/workspace-state";
 import { refreshFeatureAvailability } from "@/lib/user-session";
 import { useUserStore } from "@/stores/use-user-store";
 
