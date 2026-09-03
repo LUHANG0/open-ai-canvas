@@ -5,6 +5,7 @@ import type { CanvasImageMaskEditPayload } from "@/components/canvas/canvas-node
 import type { CanvasImageSplitParams } from "@/components/canvas/canvas-node-split-dialog";
 import type { CanvasImageUpscaleParams } from "@/components/canvas/canvas-node-upscale-dialog";
 import type { CanvasNodeData } from "@/types/canvas";
+import { CanvasDialogLoadingOverlay } from "./canvas-dialog-loading-overlay";
 
 const CanvasNodeAnnotationDialog = lazy(() => import("@/components/canvas/canvas-node-annotation-dialog").then((module) => ({ default: module.CanvasNodeAnnotationDialog })));
 const CanvasNodeCropDialog = lazy(() => import("@/components/canvas/canvas-node-crop-dialog").then((module) => ({ default: module.CanvasNodeCropDialog })));
@@ -49,19 +50,11 @@ export function CanvasProjectMediaDialogs({
 }: CanvasProjectMediaDialogsProps) {
     return (
         <>
-            {cropNode?.metadata?.content ? <Suspense fallback={<CanvasMediaDialogLoading />}><CanvasNodeCropDialog dataUrl={cropNode.metadata.content} open onClose={onCloseCrop} onConfirm={(crop) => onCrop(cropNode, crop)} /></Suspense> : null}
-            {annotationNode?.metadata?.content ? <Suspense fallback={<CanvasMediaDialogLoading />}><CanvasNodeAnnotationDialog image={{ url: annotationNode.metadata.content, storageKey: annotationNode.metadata.storageKey }} open onClose={onCloseAnnotation} onConfirm={(dataUrl) => onAnnotate(annotationNode, dataUrl)} /></Suspense> : null}
-            {maskEditNode?.metadata?.content ? <Suspense fallback={<CanvasMediaDialogLoading />}><CanvasNodeMaskEditDialog dataUrl={maskEditNode.metadata.content} open onClose={onCloseMaskEdit} onConfirm={(payload) => onMaskEdit(maskEditNode, payload)} /></Suspense> : null}
-            {splitNode?.metadata?.content ? <Suspense fallback={<CanvasMediaDialogLoading />}><CanvasNodeSplitDialog dataUrl={splitNode.metadata.content} open onClose={onCloseSplit} onConfirm={(params) => onSplit(splitNode, params)} /></Suspense> : null}
-            {upscaleNode?.metadata?.content ? <Suspense fallback={<CanvasMediaDialogLoading />}><CanvasNodeUpscaleDialog dataUrl={upscaleNode.metadata.content} open onClose={onCloseUpscale} onConfirm={(params) => onUpscale(upscaleNode, params)} /></Suspense> : null}
+            {cropNode?.metadata?.content ? <Suspense fallback={<CanvasDialogLoadingOverlay label="正在加载图片工具…" />}><CanvasNodeCropDialog dataUrl={cropNode.metadata.content} open onClose={onCloseCrop} onConfirm={(crop) => onCrop(cropNode, crop)} /></Suspense> : null}
+            {annotationNode?.metadata?.content ? <Suspense fallback={<CanvasDialogLoadingOverlay label="正在加载图片工具…" />}><CanvasNodeAnnotationDialog image={{ url: annotationNode.metadata.content, storageKey: annotationNode.metadata.storageKey }} open onClose={onCloseAnnotation} onConfirm={(dataUrl) => onAnnotate(annotationNode, dataUrl)} /></Suspense> : null}
+            {maskEditNode?.metadata?.content ? <Suspense fallback={<CanvasDialogLoadingOverlay label="正在加载图片工具…" />}><CanvasNodeMaskEditDialog dataUrl={maskEditNode.metadata.content} open onClose={onCloseMaskEdit} onConfirm={(payload) => onMaskEdit(maskEditNode, payload)} /></Suspense> : null}
+            {splitNode?.metadata?.content ? <Suspense fallback={<CanvasDialogLoadingOverlay label="正在加载图片工具…" />}><CanvasNodeSplitDialog dataUrl={splitNode.metadata.content} open onClose={onCloseSplit} onConfirm={(params) => onSplit(splitNode, params)} /></Suspense> : null}
+            {upscaleNode?.metadata?.content ? <Suspense fallback={<CanvasDialogLoadingOverlay label="正在加载图片工具…" />}><CanvasNodeUpscaleDialog dataUrl={upscaleNode.metadata.content} open onClose={onCloseUpscale} onConfirm={(params) => onUpscale(upscaleNode, params)} /></Suspense> : null}
         </>
-    );
-}
-
-function CanvasMediaDialogLoading() {
-    return (
-        <div className="fixed inset-0 z-[var(--z-toast)] grid place-items-center bg-black/20 px-5 backdrop-blur-sm" role="status" aria-live="polite">
-            <div className="rounded-xl border bg-background px-5 py-3 text-sm font-medium text-foreground shadow-xl">正在加载图片工具…</div>
-        </div>
     );
 }

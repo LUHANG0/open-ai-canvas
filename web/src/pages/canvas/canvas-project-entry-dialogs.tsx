@@ -6,6 +6,7 @@ import type { DirectorTemplateId } from "@/lib/canvas/director/director-template
 import type { Position } from "@/types/canvas";
 import type { LibTVImportDialog as LibTVImportDialogComponent } from "./components/libtv-import-dialog";
 import type { TapNowImportDialog as TapNowImportDialogComponent } from "./components/tapnow-import-dialog";
+import { CanvasDialogLoadingOverlay } from "./canvas-dialog-loading-overlay";
 import { resolveCanvasDirectorTemplateSelection } from "./canvas-project-entry-dialog-routing";
 
 const CanvasShareModal = lazy(() => import("@/components/canvas/canvas-share-modal").then((module) => ({ default: module.CanvasShareModal })));
@@ -69,12 +70,12 @@ export function CanvasProjectEntryDialogs({
 }: CanvasProjectEntryDialogsProps) {
     return (
         <>
-            {shareOpen ? <Suspense fallback={<CanvasEntryDialogLoading label="正在加载分享设置…" />}><CanvasShareModal projectId={projectId} open onClose={onCloseShare} beforeCreate={beforeCreateShare} /></Suspense> : null}
-            {libTVImportOpen ? <Suspense fallback={<CanvasEntryDialogLoading label="正在加载 LibTV 导入…" />}><LibTVImportDialog open projectId={projectId} viewport={viewport} viewportSize={viewportSize} onClose={onCloseLibTVImport} onApply={onApplyLibTVImport} /></Suspense> : null}
-            {tapNowImportOpen ? <Suspense fallback={<CanvasEntryDialogLoading label="正在加载 TapNow 导入…" />}><TapNowImportDialog open projectId={projectId} viewport={viewport} viewportSize={viewportSize} onClose={onCloseTapNowImport} onApply={onApplyTapNowImport} /></Suspense> : null}
-            {stylePickerOpen ? <Suspense fallback={<CanvasEntryDialogLoading label="正在加载画风选择…" />}><CanvasStylePickerModal open value={styleValue} applying={styleApplying} onClose={onCloseStylePicker} onSelect={onSelectStyle} /></Suspense> : null}
+            {shareOpen ? <Suspense fallback={<CanvasDialogLoadingOverlay label="正在加载分享设置…" />}><CanvasShareModal projectId={projectId} open onClose={onCloseShare} beforeCreate={beforeCreateShare} /></Suspense> : null}
+            {libTVImportOpen ? <Suspense fallback={<CanvasDialogLoadingOverlay label="正在加载 LibTV 导入…" />}><LibTVImportDialog open projectId={projectId} viewport={viewport} viewportSize={viewportSize} onClose={onCloseLibTVImport} onApply={onApplyLibTVImport} /></Suspense> : null}
+            {tapNowImportOpen ? <Suspense fallback={<CanvasDialogLoadingOverlay label="正在加载 TapNow 导入…" />}><TapNowImportDialog open projectId={projectId} viewport={viewport} viewportSize={viewportSize} onClose={onCloseTapNowImport} onApply={onApplyTapNowImport} /></Suspense> : null}
+            {stylePickerOpen ? <Suspense fallback={<CanvasDialogLoadingOverlay label="正在加载画风选择…" />}><CanvasStylePickerModal open value={styleValue} applying={styleApplying} onClose={onCloseStylePicker} onSelect={onSelectStyle} /></Suspense> : null}
             {directorTemplateRequest ? (
-                <Suspense fallback={<CanvasEntryDialogLoading label="正在加载导演模板…" />}>
+                <Suspense fallback={<CanvasDialogLoadingOverlay label="正在加载导演模板…" />}>
                     <CanvasDirectorTemplateModal
                         open
                         onClose={onCloseDirectorTemplate}
@@ -86,13 +87,5 @@ export function CanvasProjectEntryDialogs({
                 </Suspense>
             ) : null}
         </>
-    );
-}
-
-function CanvasEntryDialogLoading({ label }: { label: string }) {
-    return (
-        <div className="fixed inset-0 z-[var(--z-toast)] grid place-items-center bg-black/20 px-5 backdrop-blur-sm" role="status" aria-live="polite">
-            <div className="rounded-xl border bg-background px-5 py-3 text-sm font-medium text-foreground shadow-xl">{label}</div>
-        </div>
     );
 }

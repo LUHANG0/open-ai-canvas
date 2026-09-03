@@ -1,6 +1,7 @@
 import { lazy, Suspense, type Dispatch, type MutableRefObject, type SetStateAction } from "react";
 
 import type { CanvasNodeData } from "@/types/canvas";
+import { CanvasDialogLoadingOverlay } from "./canvas-dialog-loading-overlay";
 import { resolveCanvasNodeSearchRevealTargets } from "./canvas-node-search-routing";
 
 const CanvasNodeSearchModal = lazy(() => import("@/components/canvas/canvas-node-search-modal").then((module) => ({ default: module.CanvasNodeSearchModal })));
@@ -22,7 +23,7 @@ export function CanvasProjectNodeSearch({ open, nodes, nodeById, selectedNodeIds
     if (!open) return null;
 
     return (
-        <Suspense fallback={<CanvasSecondaryEditorLoading label="正在加载节点搜索…" onClose={onClose} />}>
+        <Suspense fallback={<CanvasDialogLoadingOverlay label="正在加载节点搜索…" onClose={onClose} />}>
             <CanvasNodeSearchModal
                 open
                 nodes={nodes}
@@ -39,18 +40,5 @@ export function CanvasProjectNodeSearch({ open, nodes, nodeById, selectedNodeIds
                 }}
             />
         </Suspense>
-    );
-}
-
-function CanvasSecondaryEditorLoading({ label, onClose }: { label: string; onClose: () => void }) {
-    return (
-        <div className="fixed inset-0 z-[var(--z-toast)] grid place-items-center bg-black/20 px-5 backdrop-blur-sm" role="status" aria-live="polite">
-            <div className="flex items-center gap-3 rounded-xl border bg-background px-5 py-3 text-sm font-medium text-foreground shadow-xl">
-                <span>{label}</span>
-                <button type="button" className="rounded-md px-2 py-1 text-xs text-foreground/60 transition-colors hover:bg-foreground/5 hover:text-foreground" onClick={onClose}>
-                    关闭
-                </button>
-            </div>
-        </div>
     );
 }

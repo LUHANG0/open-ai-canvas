@@ -3,6 +3,7 @@ import { lazy, Suspense, type ComponentProps } from "react";
 import type { AssetPickerModal as AssetPickerModalComponent } from "@/components/canvas/asset-picker-modal";
 import type { CanvasProjectAssetModal as CanvasProjectAssetModalComponent } from "@/components/canvas/canvas-project-asset-modal";
 import type { CanvasNodeData } from "@/types/canvas";
+import { CanvasDialogLoadingOverlay } from "./canvas-dialog-loading-overlay";
 import { focusCanvasVersionFromCompare, resolveCanvasProjectFolderInsertHandler } from "./canvas-project-library-routing";
 
 const AssetPickerModal = lazy(() => import("@/components/canvas/asset-picker-modal").then((module) => ({ default: module.AssetPickerModal })));
@@ -29,7 +30,7 @@ export function CanvasProjectVersionCompareDialog({
 }) {
     if (!open) return null;
     return (
-        <Suspense fallback={<CanvasLibraryDialogLoading label="正在加载版本对比…" />}>
+        <Suspense fallback={<CanvasDialogLoadingOverlay label="正在加载版本对比…" />}>
             <CanvasVersionCompareModal open versions={versions} onClose={onClose} onSetPrimary={onSetPrimary} onFocus={(nodeId) => focusCanvasVersionFromCompare(nodeId, onClose, onFocus)} />
         </Suspense>
     );
@@ -65,12 +66,12 @@ export function CanvasProjectAssetDialogs({
     return (
         <>
             {assetPickerOpen ? (
-                <Suspense fallback={<CanvasLibraryDialogLoading label="正在加载素材库…" />}>
+                <Suspense fallback={<CanvasDialogLoadingOverlay label="正在加载素材库…" />}>
                     <AssetPickerModal open multiple={assetInsertScope === "canvas"} onInsert={onInsertLibraryAssets} onClose={onCloseAssetPicker} />
                 </Suspense>
             ) : null}
             {projectAssetOpen ? (
-                <Suspense fallback={<CanvasLibraryDialogLoading label="正在加载项目素材…" />}>
+                <Suspense fallback={<CanvasDialogLoadingOverlay label="正在加载项目素材…" />}>
                     <CanvasProjectAssetModal
                         open
                         detail={projectDetail}
@@ -83,13 +84,5 @@ export function CanvasProjectAssetDialogs({
                 </Suspense>
             ) : null}
         </>
-    );
-}
-
-function CanvasLibraryDialogLoading({ label }: { label: string }) {
-    return (
-        <div className="fixed inset-0 z-[var(--z-toast)] grid place-items-center bg-black/20 px-5 backdrop-blur-sm" role="status" aria-live="polite">
-            <div className="rounded-xl border bg-background px-5 py-3 text-sm font-medium text-foreground shadow-xl">{label}</div>
-        </div>
     );
 }

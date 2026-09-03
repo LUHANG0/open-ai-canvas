@@ -149,7 +149,7 @@ test("heavy canvas media dialogs load only when their tool opens", async () => {
     expect(dialogsSource).toContain('lazy(() => import("@/components/canvas/canvas-node-mask-edit-dialog")');
     expect(dialogsSource).toContain('lazy(() => import("@/components/canvas/canvas-node-split-dialog")');
     expect(dialogsSource).toContain('lazy(() => import("@/components/canvas/canvas-node-upscale-dialog")');
-    expect(dialogsSource).toContain("<Suspense fallback={<CanvasMediaDialogLoading />}>");
+    expect(dialogsSource).toContain('<Suspense fallback={<CanvasDialogLoadingOverlay label="正在加载图片工具…" />}>');
 });
 
 test("canvas node editors load only after an editor target is selected", async () => {

@@ -1,6 +1,7 @@
 import { lazy, Suspense, type Dispatch, type SetStateAction } from "react";
 
 import type { CanvasNodeData, StoryboardRow, StoryboardVideoInputMode } from "@/types/canvas";
+import { CanvasDialogLoadingOverlay } from "./canvas-dialog-loading-overlay";
 import { canvasScriptUsesKeyframeVideos, updateCanvasScriptVisibleColumns } from "./canvas-script-editor-updates";
 
 const CanvasScriptEditor = lazy(() => import("@/components/canvas/canvas-script-node").then((module) => ({ default: module.CanvasScriptEditor })));
@@ -21,7 +22,7 @@ export function CanvasProjectScriptEditor({ node, nodes, setNodes, onClose, onUp
     if (!node) return null;
 
     return (
-        <Suspense fallback={<CanvasSecondaryEditorLoading label="正在加载分镜脚本编辑器…" onClose={onClose} />}>
+        <Suspense fallback={<CanvasDialogLoadingOverlay label="正在加载分镜脚本编辑器…" onClose={onClose} />}>
             <CanvasScriptEditor
                 node={node}
                 nodes={nodes}
@@ -40,18 +41,5 @@ export function CanvasProjectScriptEditor({ node, nodes, setNodes, onClose, onUp
                 onVideoInputModeChange={(mode) => onVideoInputModeChange(node.id, mode)}
             />
         </Suspense>
-    );
-}
-
-function CanvasSecondaryEditorLoading({ label, onClose }: { label: string; onClose: () => void }) {
-    return (
-        <div className="fixed inset-0 z-[var(--z-toast)] grid place-items-center bg-black/20 px-5 backdrop-blur-sm" role="status" aria-live="polite">
-            <div className="flex items-center gap-3 rounded-xl border bg-background px-5 py-3 text-sm font-medium text-foreground shadow-xl">
-                <span>{label}</span>
-                <button type="button" className="rounded-md px-2 py-1 text-xs text-foreground/60 transition-colors hover:bg-foreground/5 hover:text-foreground" onClick={onClose}>
-                    关闭
-                </button>
-            </div>
-        </div>
     );
 }

@@ -4,6 +4,7 @@ import { Sparkles } from "lucide-react";
 
 import type { GenerationTask, TaskLog } from "@/services/api/task-center";
 import type { CanvasNodeData } from "@/types/canvas";
+import { CanvasDialogLoadingOverlay } from "./canvas-dialog-loading-overlay";
 import type { CanvasStatusDialogTheme } from "./canvas-project-task-detail-dialog";
 
 const CanvasProjectTaskDetailDialog = lazy(() => import("./canvas-project-task-detail-dialog").then((module) => ({ default: module.CanvasProjectTaskDetailDialog })));
@@ -42,7 +43,7 @@ export function CanvasProjectStatusDialogs({
 }: CanvasProjectStatusDialogsProps) {
     return (
         <>
-            {task ? <Suspense fallback={<CanvasStatusDialogLoading label="正在加载任务详情…" />}><CanvasProjectTaskDetailDialog theme={theme} task={task} taskLogs={taskLogs} taskLoading={taskLoading} onClose={onCloseTask} onCancel={onCancelTask} /></Suspense> : null}
+            {task ? <Suspense fallback={<CanvasDialogLoadingOverlay label="正在加载任务详情…" />}><CanvasProjectTaskDetailDialog theme={theme} task={task} taskLogs={taskLogs} taskLoading={taskLoading} onClose={onCloseTask} onCancel={onCancelTask} /></Suspense> : null}
 
             <Modal rootClassName="pc-canvas-overlay pc-canvas-modal pc-canvas-media-modal" title="AI 超分" open={Boolean(superResolveNode?.metadata?.content)} centered footer={null} onCancel={onCloseSuperResolve}>
                 <div className="pc-canvas-unavailable-state-mobile py-8 text-center text-base font-medium">暂未实现</div>
@@ -56,7 +57,7 @@ export function CanvasProjectStatusDialogs({
             </Modal>
 
             {previewNode?.metadata?.content ? (
-                <Suspense fallback={<CanvasStatusDialogLoading label="正在加载媒体预览…" />}>
+                <Suspense fallback={<CanvasDialogLoadingOverlay label="正在加载媒体预览…" />}>
                     <CanvasProjectMediaPreview node={previewNode} onClose={onClosePreview} />
                 </Suspense>
             ) : null}
@@ -79,13 +80,5 @@ export function CanvasProjectStatusDialogs({
                 <p className="pc-canvas-confirm-copy text-sm opacity-60">这会删除当前画布上的所有节点和连线。</p>
             </Modal>
         </>
-    );
-}
-
-function CanvasStatusDialogLoading({ label }: { label: string }) {
-    return (
-        <div className="fixed inset-0 z-[var(--z-toast)] grid place-items-center bg-black/20 px-5 backdrop-blur-sm" role="status" aria-live="polite">
-            <div className="rounded-xl border bg-background px-5 py-3 text-sm font-medium text-foreground shadow-xl">{label}</div>
-        </div>
     );
 }

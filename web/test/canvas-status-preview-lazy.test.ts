@@ -10,7 +10,7 @@ describe("canvas status media preview lazy loading", () => {
 
         expect(statusSource).toContain('lazy(() => import("./canvas-project-media-preview")');
         expect(statusSource).toContain("previewNode?.metadata?.content ? (");
-        expect(statusSource).toContain('<Suspense fallback={<CanvasStatusDialogLoading label="正在加载媒体预览…" />}>');
+        expect(statusSource).toContain('<Suspense fallback={<CanvasDialogLoadingOverlay label="正在加载媒体预览…" />}>');
         expect(statusSource).toContain("<CanvasProjectMediaPreview node={previewNode} onClose={onClosePreview} />");
         expect(statusSource).not.toContain('from "@/components/video-player"');
         expect(statusSource).not.toContain("<Image");
