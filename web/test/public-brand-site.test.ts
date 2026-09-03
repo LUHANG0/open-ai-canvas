@@ -33,3 +33,19 @@ test("homepage reuses brand hero media with resilient fallbacks", async () => {
     expect(home).toContain("desktop && !reducedMotion && !videoFailed");
     expect(home).toContain("onError={() => setVideoFailed(true)}");
 });
+
+test("homepage interactions cover motion, keyboard focus and reduced motion", async () => {
+    const [home, css] = await Promise.all([
+        Bun.file(new URL("../src/pages/public-site/home.tsx", import.meta.url)).text(),
+        Bun.file(new URL("../src/pages/public-site/public-site.css", import.meta.url)).text(),
+    ]);
+    expect(home).toContain("staggerChildren");
+    expect(home).toContain("whileInView");
+    expect(home).toContain("whileHover");
+    expect(home).toContain("reducedMotion ? undefined");
+    expect(css).toContain(":focus-visible");
+    expect(css).toContain(".public-button:active");
+    expect(css).toContain(".public-button:hover:before");
+    expect(css).toContain("@media (prefers-reduced-motion: reduce)");
+    expect(css).toContain("animation: none !important");
+});
