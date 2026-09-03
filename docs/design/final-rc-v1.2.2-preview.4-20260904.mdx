@@ -7,13 +7,13 @@ description: 2026-09-04 独立候选分支的集成清单、P0 修复、测试�
 
 ## 最终结论
 
-**技术候选通过，真实业务验收 No-Go。** 当前分支已达到隔离 staging 技术验收标准：前端、Backend、Canvas Agent、生产构建、候选镜像、PostgreSQL/Redis Compose、健康检查与主要真实浏览器链路均通过。测试期间发现的两个阻断问题已经在本分支修复并回归：Host Updater 未恢复 Backend `/data`，以及导演台 E2E 夹具未模拟新增公开站点接口。
+**技术候选通过，真实业务验收 No-Go。** 当前分支已达到隔离 staging 技术验收标准：前端、Backend、Canvas Agent、生产构建、候选镜像、PostgreSQL/Redis Compose、健康检查、主要真实浏览器链路，以及 Host Updater 端到端失败回退演练均通过。测试期间发现的两个阻断问题已经在本分支修复并回归：Host Updater 未恢复 Backend `/data`，以及导演台 E2E 夹具未模拟新增公开站点接口。
 
-真实业务验收仍不得开始，原因不是已知代码失败，而是上线手册要求的三个外部/运维门禁尚未闭环：
+Host Updater 完整回退演练这一技术阻塞已经解除。真实业务验收仍不得开始，原因不是已知代码失败，而是以下外部、人员和制品门禁尚未闭环：
 
 1. 发布负责人、监控值守、回退执行和客户沟通角色尚未实名确认。
-2. 尚未在隔离的 PostgreSQL + Backend 数据卷上通过真实 Host Updater 完成一次端到端“升级失败 → 自动回退 → 业务抽样”演练；本轮只完成了停止服务后的真实数据卷归档演练和恢复脚本测试。
-3. 外部 OSS/COS 等不在 Backend `/data` 内的对象仍属于人工恢复边界，尚未登记恢复来源、校验口径与责任人。
+2. 外部 OSS/COS 等不在 Backend `/data` 内的对象仍属于人工恢复边界，尚未登记恢复来源、校验口径与责任人。
+3. 因本轮禁止推送与发布，最终提交上的 required CI 和 GHCR 不可变 digest 尚无远端证据。
 
 以上三项清零，并在 GitHub Actions 与 GHCR 上确认最终提交对应的不可变制品后，可重新判定 Go。健康接口返回 `200` 不能替代这些门禁。
 
@@ -64,6 +64,21 @@ description: 2026-09-04 独立候选分支的集成清单、P0 修复、测试�
 
 验证包含 5 个定向恢复测试全部通过，覆盖隐藏文件替换、无效归档保护、残留现场拒绝、归档标准输入流和停止服务后的 root 数据卷读取。另在隔离 Compose 的真实 Backend 卷中写入标记、停止 Web/Backend、用新命令归档并确认标记存在，随后服务恢复健康。
 
+### Host Updater 端到端失败回退演练
+
+提交 `43be8c6b87d8906c4e15aa123ae528f2ecae48eb` 固化了可重复的 Docker 集成测试。演练通过 Host Updater 的真实 HTTP handler、Manager 状态机、`docker compose`、PostgreSQL 和 Backend 数据卷执行；仅对禁止访问的远端 Release Compose 下载、registry pull 和 RepoDigest 查询使用确定性本地替身。
+
+演练从构建元数据为 `v1.2.2-preview.3` 的旧 Backend 启动，在失败前记录数据库值、媒体 SHA-256 和隐藏文件。目标迁移在备份完成后将数据库值从 `before` 改为 `after`，覆盖媒体文件、写入 target-only 文件，然后以状态 42 失败。结果如下：
+
+- 自动回退进入 `rolled_back`，`automaticRollback=true`。
+- PostgreSQL 行恢复为 `before`；健康接口 schema 恢复为 `6/6` 且 database/runtime/schema 全部 ready。
+- `/data/media/probe.bin` 恢复到失败前 SHA-256 `6db7d803e74f1ffa7d8f5adc0bf95b3e15bf4c8373fffadf546227cc6c6742cb`。
+- 隐藏文件恢复，target-only 文件消失；已校验 ZIP 同时包含 `database.dump` 与 `backend-data.tar`。
+- 对同一备份再次发起人工回退仍为 `rolled_back`，数据库、媒体和 schema 保持一致，验证重复执行。
+- 人为创建 `.canvas-updater-previous` 残留现场后再次回退，状态转为 `manual_intervention`，残留证据不被覆盖，Web/Backend 均未重启，验证 fail-closed 停止条件。
+
+测试结束后独立容器、网络、PostgreSQL/Redis/Backend 卷与临时备份均由测试清理，不接触生产资源。
+
 ### 门禁可靠性：导演台公开站点夹具
 
 提交 `1971fcfa` 为导演台 Chrome E2E 的同源 API stub 补充 `/api/public/site`。首次运行时 52 个功能断言全部通过，但新增公开站点请求产生重复 404，导致 6 个“无浏览器问题”断言失败；修复后重跑为 `58/58`，浏览器问题列表均为空。此修复只改变测试夹具，不放宽错误 allowlist。
@@ -77,6 +92,7 @@ description: 2026-09-04 独立候选分支的集成清单、P0 修复、测试�
 | Web 生产构建 | 注入 `v1.2.2-preview.4` 与完整提交后执行 `bun run build` | 通过；13,668 modules；全部 7 个体积预算通过 |
 | Backend | `cd backend && go test ./...` | 全部包通过 |
 | Host Updater 恢复定向测试 | `go test -v ./internal/hostupdate -run ...` | `5/5` 通过 |
+| Host Updater Docker 端到端回退 | `go test -tags integration -v ./internal/hostupdate -run '^TestHostUpdaterDockerRollbackRestoresDatabaseAndBackendData$'` | 自动回退、重复人工回退和 fail-closed 三阶段通过 |
 | Canvas Agent | `npm test && npm run build` | `316 passed / 5 skipped / 0 failed`；TypeScript 构建通过 |
 | Compose | deploy、deploy+build、local 三种 `config` | 均通过；缺少 `CANVAS_IMAGE_TAG` 按设计失败 |
 | 候选镜像 | Backend + Web 本地构建并检查 OCI labels | 通过；version 为 `v1.2.2-preview.4`，revision 为构建提交 |
@@ -129,7 +145,7 @@ Canvas Agent 的 5 个 skip 为套件既有的平台/条件跳过，不是本轮
 | --- | --- | --- |
 | GitHub Actions | 未执行 | 推送批准分支后观察全部 required checks，失败即停止 |
 | GHCR 发布与 digest 核对 | 未执行 | 由最终批准提交构建；记录 version tag 与 digest，不得覆盖或使用 `latest` |
-| 真实 Host Updater 全链回退 | 未执行 | 在隔离 PostgreSQL、Redis、Backend `/data` 和同源 Compose 上注入失败并验证业务抽样 |
+| 真实 Host Updater 全链回退 | 已通过 | 隔离 PostgreSQL、Redis、Backend `/data`；自动、重复人工与失败停机三阶段均通过 |
 | 外部 OSS/COS 恢复 | 未执行 | 登记对象清单、版本/快照、校验方法、恢复时限和实名负责人 |
 | 实名值守与告警入口 | 未完成 | 按上线手册填满角色、替补和唯一告警入口 |
 | 真实生成、计费、邮件、公开注册 | 未触发 | 继续保持关闭；只在获批的隔离验收账号与预算内验证 |
@@ -142,28 +158,28 @@ Canvas Agent 的 5 个 skip 为套件既有的平台/条件跳过，不是本轮
 
 仅允许在独立分支使用 `git revert` 保留审计链；整组撤销按下列逆序执行。每一步都先复核提交只触及表中声明的边界，再运行对应测试。最终验收记录提交本身可单独撤销，不影响运行时。
 
-1. `git revert --no-edit 1971fcfa`：撤销导演台公开站点测试夹具。
-2. `git revert --no-edit e8992642`：撤销 Host Updater 完整 `/data` 恢复。**不建议单独执行**；这会重新引入数据回退 P0，执行后候选必须 No-Go。
-3. `git revert --no-edit 688cb97b`：撤销上线手册交付证据。
-4. `git revert --no-edit ed2e3da7`：撤销上线监控与回退手册。
-5. `git revert --no-edit 5cabce6d`：撤销前端验收记录与证据。
-6. `git revert --no-edit 8ea64d9b`：撤销插件中心客户化文案。
-7. `git revert --no-edit 57e68499`：撤销视频素材元数据回填。
-8. `git revert --no-edit 72bb19de`：撤销大画布远景键盘焦点收敛。
-9. `git revert --no-edit 8d2e7520`：撤销移动端低缩放安全适配。
-10. `git revert --no-edit 02b53541`：撤销邀请制入口文案。
-11. `git revert --no-edit 0cff2640`：撤销发布工程记录。
-12. `git revert --no-edit b460f85d`：撤销 Nginx 缓存与安全响应头。
-13. `git revert --no-edit cb27cdb0`：撤销候选版本、镜像来源和元数据基线。
-14. `git revert --no-edit 815e826f`：撤销 Canvas Agent 可复现安装基线。
+1. `git revert --no-edit 43be8c6b`：撤销 Host Updater Docker 集成回退测试。
+2. `git revert --no-edit 1971fcfa`：撤销导演台公开站点测试夹具。
+3. `git revert --no-edit e8992642`：撤销 Host Updater 完整 `/data` 恢复。**不建议单独执行**；这会重新引入数据回退 P0，执行后候选必须 No-Go。
+4. `git revert --no-edit 688cb97b`：撤销上线手册交付证据。
+5. `git revert --no-edit ed2e3da7`：撤销上线监控与回退手册。
+6. `git revert --no-edit 5cabce6d`：撤销前端验收记录与证据。
+7. `git revert --no-edit 8ea64d9b`：撤销插件中心客户化文案。
+8. `git revert --no-edit 57e68499`：撤销视频素材元数据回填。
+9. `git revert --no-edit 72bb19de`：撤销大画布远景键盘焦点收敛。
+10. `git revert --no-edit 8d2e7520`：撤销移动端低缩放安全适配。
+11. `git revert --no-edit 02b53541`：撤销邀请制入口文案。
+12. `git revert --no-edit 0cff2640`：撤销发布工程记录。
+13. `git revert --no-edit b460f85d`：撤销 Nginx 缓存与安全响应头。
+14. `git revert --no-edit cb27cdb0`：撤销候选版本、镜像来源和元数据基线。
+15. `git revert --no-edit 815e826f`：撤销 Canvas Agent 可复现安装基线。
 
 数据回退不等同于 Git 回退。已经运行过迁移或接受写入时，必须按上线手册和 Host Updater 的已校验备份恢复 PostgreSQL 与 Backend `/data`，再恢复旧镜像标签并验活；外部对象存储仍按人工清单处理。
 
 ## 重新申请 Go 的最小证据
 
 1. 四类角色、替补和告警入口实名登记。
-2. 隔离环境真实 Host Updater 失败注入与完整回退记录，包含数据库、隐藏文件、媒体/素材抽样和校验值。
-3. 外部对象存储恢复清单与演练结果。
-4. 最终提交上的 required CI 全绿。
-5. GHCR version tag、SHA tag、OCI revision 与镜像 digest 四者一致。
-6. 固定版本 Compose 启动后，代理/直连 readiness、Redis PING、登录、素材、画布保存刷新、生成与播放小样均通过。
+2. 外部对象存储恢复清单与演练结果。
+3. 最终提交上的 required CI 全绿。
+4. GHCR version tag、SHA tag、OCI revision 与镜像 digest 四者一致。
+5. 固定版本 Compose 启动后，代理/直连 readiness、Redis PING、登录、素材、画布保存刷新、生成与播放小样均通过。
