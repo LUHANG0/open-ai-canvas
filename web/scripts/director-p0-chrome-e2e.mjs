@@ -93,10 +93,25 @@ async function launchApiStub(port) {
         },
         msg: "ok",
     };
+    const publicSite = {
+        code: 0,
+        data: {
+            revision: 0,
+            config: {
+                hero: { title: "让一个故事，从文字走向银幕。" },
+            },
+        },
+        msg: "ok",
+    };
     const server = createHttpServer((request, response) => {
         if (request.method === "GET" && request.url === "/api/public/branding") {
             response.writeHead(200, { "content-type": "application/json; charset=utf-8" });
             response.end(JSON.stringify(branding));
+            return;
+        }
+        if (request.method === "GET" && request.url === "/api/public/site") {
+            response.writeHead(200, { "content-type": "application/json; charset=utf-8" });
+            response.end(JSON.stringify(publicSite));
             return;
         }
         response.writeHead(404, { "content-type": "application/json; charset=utf-8" });
