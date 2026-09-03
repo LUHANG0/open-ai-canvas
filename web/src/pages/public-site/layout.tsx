@@ -1,5 +1,5 @@
 import { ArrowRight, GitFork, Menu, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, NavLink, Outlet, useLocation } from "react-router";
 
 import { BrandMark } from "@/components/branding/brand-mark";
@@ -22,20 +22,34 @@ export default function PublicSiteLayout() {
     const { branding } = useBranding();
     const { site } = usePublicSite();
     const user = useUserStore((state) => state.user);
+    const shellRef = useRef<HTMLDivElement>(null);
     const [menuOpen, setMenuOpen] = useState(false);
     const appHref = user ? "/create" : `/login?next=${encodeURIComponent("/create")}`;
+    const accountHref = user ? "/settings" : "/login";
+    const accountLabel = user ? "账号设置" : "登录";
 
     useEffect(() => {
         setMenuOpen(false);
-        window.scrollTo({ top: 0, behavior: "auto" });
+        shellRef.current?.scrollTo({ top: 0, behavior: "auto" });
     }, [location.pathname]);
 
+    useEffect(() => {
+        if (!menuOpen) return;
+        const closeOnEscape = (event: KeyboardEvent) => {
+            if (event.key === "Escape") setMenuOpen(false);
+        };
+        window.addEventListener("keydown", closeOnEscape);
+        return () => window.removeEventListener("keydown", closeOnEscape);
+    }, [menuOpen]);
+
     return (
-        <div className="public-site-shell">
+        <div ref={shellRef} className={cn("public-site-shell", menuOpen && "is-menu-open")}>
             <header className="public-site-header">
                 <Link to="/" className="public-site-brand" aria-label={`${branding.config.identity.displayName}官网首页`}>
-                    <BrandMark className="public-site-brand-mark" />
-                    <span>
+                    <span className="public-site-brand-symbol">
+                        <BrandMark className="public-site-brand-mark" />
+                    </span>
+                    <span className="public-site-brand-copy">
                         <strong>{branding.config.identity.displayName}</strong>
                         <small>{branding.config.identity.englishName || branding.config.identity.workspaceLabel}</small>
                     </span>
@@ -48,7 +62,7 @@ export default function PublicSiteLayout() {
                         </NavLink>
                     ))}
                     <div className="public-site-mobile-actions">
-                        <Link to="/login">登录</Link>
+                        <Link to={accountHref}>{accountLabel}</Link>
                         <Link className="is-primary" to={appHref}>
                             {user ? "进入工作台" : site.config.hero.primaryCta}
                         </Link>
@@ -56,8 +70,8 @@ export default function PublicSiteLayout() {
                 </nav>
 
                 <div className="public-site-header-actions">
-                    <Link to="/login" className="public-site-login-link">
-                        {user ? "账号" : "登录"}
+                    <Link to={accountHref} className="public-site-login-link">
+                        {accountLabel}
                     </Link>
                     <Link to={appHref} className="public-site-enter-link">
                         {user ? "进入工作台" : site.config.hero.primaryCta}
@@ -73,7 +87,9 @@ export default function PublicSiteLayout() {
 
             <footer className="public-site-footer">
                 <div className="public-site-footer-brand">
-                    <BrandMark />
+                    <span className="public-site-footer-symbol">
+                        <BrandMark />
+                    </span>
                     <div>
                         <strong>{branding.config.identity.displayName}</strong>
                         <p>{branding.config.identity.slogan || branding.config.identity.description}</p>
@@ -96,7 +112,7 @@ export default function PublicSiteLayout() {
                         </a>
                     ) : null}
                     {site.config.links.repositoryUrl ? (
-                        <a href={site.config.links.repositoryUrl} target="_blank" rel="noreferrer">
+                        <a href={site.config.links.repositoryUrl} target="_blank" rel="noreferrer" aria-label="在新窗口打开 GitHub">
                             <GitFork aria-hidden="true" />
                             GitHub
                         </a>

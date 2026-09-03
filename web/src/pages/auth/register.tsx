@@ -70,6 +70,49 @@ export default function RegisterPage() {
     const mailUnavailable = Boolean(settings && !settings.firstUser && settings.emailCodeRequired && !settings.emailEnabled);
     const disabled = settingsLoading || registrationClosed || mailUnavailable || !settings;
     const requireCode = Boolean(settings && !settings.firstUser && settings.emailCodeRequired);
+    const goToLogin = () => {
+        const query = params.toString();
+        navigate(`/login${query ? `?${query}` : ""}`);
+    };
+
+    if (settingsLoading && !settings) {
+        return (
+            <div className="pc-auth-state-panel" aria-busy="true" aria-live="polite">
+                <span className="pc-auth-state-spinner" aria-hidden="true" />
+                <h3>正在准备注册空间</h3>
+                <p>正在读取账号创建与邮箱验证设置。</p>
+            </div>
+        );
+    }
+
+    if (settingsError && !settings) {
+        return (
+            <div className="pc-auth-state-panel" role="alert">
+                <TriangleAlert aria-hidden="true" />
+                <h3>暂时无法读取注册设置</h3>
+                <p>本地服务可能尚未就绪，请重试；现有账号仍可返回登录。</p>
+                <div className="flex flex-wrap justify-center gap-2">
+                    <Button onClick={() => void refresh()}>重新读取</Button>
+                    <Button type="primary" onClick={goToLogin}>
+                        返回登录
+                    </Button>
+                </div>
+            </div>
+        );
+    }
+
+    if (registrationClosed || mailUnavailable) {
+        return (
+            <div className="pc-auth-state-panel" role="status">
+                <TriangleAlert aria-hidden="true" />
+                <h3>{registrationClosed ? "当前未开放注册" : "邮箱注册暂不可用"}</h3>
+                <p>{registrationClosed ? "管理员已关闭普通账号注册，请使用已有账号登录。" : "管理员尚未配置注册邮件，请先使用已有账号登录，或联系管理员完善邮件服务。"}</p>
+                <Button className="pc-auth-submit" type="primary" icon={<ArrowRight className="size-4" />} iconPlacement="end" onClick={goToLogin}>
+                    返回登录
+                </Button>
+            </div>
+        );
+    }
 
     return (
         <form onSubmit={submit} className="pc-auth-form pc-auth-register-form space-y-4">
@@ -78,22 +121,6 @@ export default function RegisterPage() {
                     首个账号自动成为管理员，邮箱验证码暂不要求。
                 </Notice>
             ) : null}
-            {registrationClosed ? (
-                <Notice icon={<TriangleAlert className="size-3.5" />} tone="amber">
-                    当前已关闭普通注册，请联系管理员创建账号。
-                </Notice>
-            ) : null}
-            {mailUnavailable ? (
-                <Notice icon={<TriangleAlert className="size-3.5" />} tone="amber">
-                    管理员尚未配置注册邮件，普通邮箱注册暂不可用。
-                </Notice>
-            ) : null}
-            {settingsError && !settings ? (
-                <button type="button" className="pc-auth-settings-retry" onClick={() => void refresh()}>
-                    无法读取注册设置，点击重试
-                </button>
-            ) : null}
-
             <div className="grid gap-4 sm:grid-cols-2">
                 <AuthField label="用户名">
                     <Input

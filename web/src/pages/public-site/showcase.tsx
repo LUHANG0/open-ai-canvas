@@ -1,10 +1,13 @@
 import { ArrowRight } from "lucide-react";
 import { Link } from "react-router";
 import { usePublicSite } from "@/components/public-site/public-site-provider";
+import { useUserStore } from "@/stores/use-user-store";
 import { PublicPageIntro, ShowcaseCard, usePublicPageMeta } from "./shared";
 
 export default function PublicShowcasePage() {
     const { site } = usePublicSite();
+    const user = useUserStore((state) => state.user);
+    const appHref = user ? "/create" : "/login?next=%2Fcreate";
     usePublicPageMeta(site.config.seo.showcaseTitle, site.config.sections.showcaseDescription);
     return (
         <main className="public-site-main public-inner-page">
@@ -25,8 +28,8 @@ export default function PublicShowcasePage() {
                     <small>YOUR STORY NEXT</small>
                     <h2>在这里制作你的下一部作品。</h2>
                 </div>
-                <Link to="/login?next=%2Fcreate" className="public-button is-dark">
-                    进入创作台
+                <Link to={appHref} className="public-button is-dark">
+                    {user ? "进入工作台" : "进入创作台"}
                     <ArrowRight aria-hidden="true" />
                 </Link>
             </section>

@@ -52,7 +52,7 @@ export function ShowcaseCard({ item, index, large = false }: { item: PublicSiteS
         </article>
     );
     return item.externalUrl ? (
-        <a className="public-showcase-link" href={item.externalUrl} target="_blank" rel="noreferrer">
+        <a className="public-showcase-link" href={item.externalUrl} target="_blank" rel="noreferrer" aria-label={`${item.title}（在新窗口打开）`}>
             {content}
         </a>
     ) : (

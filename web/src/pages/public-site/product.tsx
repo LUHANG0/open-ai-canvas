@@ -1,6 +1,7 @@
 import { ArrowRight, Bot, Cloud, FolderKanban, Layers3, MonitorPlay, Network } from "lucide-react";
 import { Link } from "react-router";
 import { usePublicSite } from "@/components/public-site/public-site-provider";
+import { useUserStore } from "@/stores/use-user-store";
 import { productionStages, PublicPageIntro, usePublicPageMeta } from "./shared";
 
 const capabilities = [
@@ -24,6 +25,8 @@ const capabilities = [
 
 export default function PublicProductPage() {
     const { site } = usePublicSite();
+    const user = useUserStore((state) => state.user);
+    const appHref = user ? "/create" : "/login?next=%2Fcreate";
     usePublicPageMeta(site.config.seo.productTitle, site.config.sections.productDescription);
     return (
         <main className="public-site-main public-inner-page">
@@ -93,8 +96,8 @@ export default function PublicProductPage() {
                     <small>START A PROJECT</small>
                     <h2>让创意进入生产。</h2>
                 </div>
-                <Link to="/login?next=%2Fcreate" className="public-button is-dark">
-                    开始创作
+                <Link to={appHref} className="public-button is-dark">
+                    {user ? "进入工作台" : "开始创作"}
                     <ArrowRight aria-hidden="true" />
                 </Link>
             </section>

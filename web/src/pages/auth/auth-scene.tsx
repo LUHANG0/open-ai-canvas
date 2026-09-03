@@ -1,8 +1,8 @@
 import { motion, useReducedMotion } from "motion/react";
 import { ConfigProvider, Tabs } from "antd";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import { Clapperboard, Film, Layers3, Play, ShieldCheck, Sparkles } from "lucide-react";
-import { Outlet, useLocation, useNavigate } from "react-router";
+import { ArrowLeft, Clapperboard, Film, Layers3, Play, ShieldCheck, Sparkles } from "lucide-react";
+import { Link, Outlet, useLocation, useNavigate } from "react-router";
 
 import { BrandMark } from "@/components/branding/brand-mark";
 import { useBranding } from "@/components/branding/branding-provider";
@@ -130,13 +130,15 @@ export function AuthScene() {
                 <div className="pc-auth-layout grid min-h-full lg:h-full">
                     <section className="pc-auth-brand relative min-h-[250px] overflow-hidden sm:min-h-[320px] lg:min-h-0" aria-label={`${branding.config.identity.displayName}品牌介绍`}>
                         <div className="pc-auth-brand-nav absolute inset-x-0 top-0 flex items-center justify-between gap-4 p-5 sm:p-7">
-                            <div className="pc-auth-brand-link inline-flex items-center gap-3 text-sm font-semibold text-white drop-shadow-sm">
-                                <BrandMark className="pc-auth-brand-logo size-7" />
+                            <Link to="/" className="pc-auth-brand-link inline-flex items-center gap-3 text-sm font-semibold text-white drop-shadow-sm" aria-label={`${branding.config.identity.displayName}官网首页`}>
+                                <span className="pc-auth-brand-symbol">
+                                    <BrandMark className="pc-auth-brand-logo size-7" />
+                                </span>
                                 <span className="pc-auth-brand-wordmark">
                                     <strong>{branding.config.identity.displayName}</strong>
                                     <small>{branding.config.identity.englishName || branding.config.identity.workspaceLabel}</small>
                                 </span>
-                            </div>
+                            </Link>
                             <div className="pc-auth-brand-nav-meta">
                                 <span className="pc-auth-workspace-badge">
                                     <Clapperboard aria-hidden="true" />
@@ -185,9 +187,15 @@ export function AuthScene() {
 
                     <section className="pc-auth-panel relative flex min-h-[620px] items-start justify-center overflow-y-auto px-4 pb-8 pt-16 sm:px-8 lg:min-h-0">
                         <div className="pc-auth-panel-glow" aria-hidden="true" />
-                        <div className="pc-auth-security-badge absolute right-5 top-5 inline-flex items-center gap-2 text-xs text-white/46">
-                            <ShieldCheck className="size-3.5" aria-hidden="true" />
-                            PRIVATE WORKSPACE · 安全登录
+                        <div className="pc-auth-panel-nav absolute inset-x-5 top-5 flex items-center justify-between gap-4">
+                            <Link to="/" className="pc-auth-back-link inline-flex items-center gap-1.5 text-xs">
+                                <ArrowLeft className="size-3.5" aria-hidden="true" />
+                                返回官网
+                            </Link>
+                            <div className="pc-auth-security-badge inline-flex items-center gap-2 text-xs text-white/46">
+                                <ShieldCheck className="size-3.5" aria-hidden="true" />
+                                PRIVATE WORKSPACE · 安全登录
+                            </div>
                         </div>
                         <motion.div
                             initial={reducedMotion ? false : { opacity: 0, y: 14 }}

@@ -64,7 +64,7 @@ export default function PublicAboutPage() {
                     <p>查看代码、部署自己的创作工作台，或参与产品能力建设。</p>
                 </div>
                 {site.config.links.repositoryUrl ? (
-                    <a href={site.config.links.repositoryUrl} target="_blank" rel="noreferrer">
+                    <a href={site.config.links.repositoryUrl} target="_blank" rel="noreferrer" aria-label="在新窗口访问 GitHub">
                         访问 GitHub
                         <ArrowUpRight aria-hidden="true" />
                     </a>

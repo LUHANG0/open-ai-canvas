@@ -48,13 +48,13 @@ export default function PublicHomePage() {
                     <div className="public-hero-gradient" />
                     <div className="public-film-grain" />
                 </div>
-                <motion.div className="public-hero-content" variants={{ hidden: {}, visible: { transition: { staggerChildren: reducedMotion ? 0 : 0.09, delayChildren: reducedMotion ? 0 : 0.16 } } }}>
-                    <motion.span className="public-section-eyebrow" variants={{ hidden: { opacity: 0, y: 14 }, visible: { opacity: 1, y: 0, transition: { duration: 0.55 } } }}>
+                <motion.div className="public-hero-content" variants={{ hidden: {}, visible: { transition: { staggerChildren: reducedMotion ? 0 : 0.07, delayChildren: reducedMotion ? 0 : 0.08 } } }}>
+                    <motion.span className="public-section-eyebrow" variants={{ hidden: { opacity: 0.45, y: 10 }, visible: { opacity: 1, y: 0, transition: { duration: 0.42 } } }}>
                         {hero.eyebrow}
                     </motion.span>
-                    <motion.h1 variants={{ hidden: { opacity: 0, y: 30 }, visible: { opacity: 1, y: 0, transition: { duration: 0.9, ease: [0.22, 1, 0.36, 1] } } }}>{hero.title}</motion.h1>
-                    <motion.p variants={{ hidden: { opacity: 0, y: 18 }, visible: { opacity: 1, y: 0, transition: { duration: 0.62 } } }}>{hero.description}</motion.p>
-                    <motion.div className="public-hero-actions" variants={{ hidden: { opacity: 0, y: 16 }, visible: { opacity: 1, y: 0, transition: { duration: 0.58 } } }}>
+                    <motion.h1 variants={{ hidden: { opacity: 0.3, y: 22 }, visible: { opacity: 1, y: 0, transition: { duration: 0.7, ease: [0.22, 1, 0.36, 1] } } }}>{hero.title}</motion.h1>
+                    <motion.p variants={{ hidden: { opacity: 0.42, y: 12 }, visible: { opacity: 1, y: 0, transition: { duration: 0.48 } } }}>{hero.description}</motion.p>
+                    <motion.div className="public-hero-actions" variants={{ hidden: { opacity: 0.5, y: 10 }, visible: { opacity: 1, y: 0, transition: { duration: 0.46 } } }}>
                         <Link to={appHref} className="public-button is-light">
                             {user ? "进入工作台" : hero.primaryCta}
                             <ArrowRight aria-hidden="true" />
@@ -84,7 +84,8 @@ export default function PublicHomePage() {
                 ))}
             </motion.section>
 
-            <motion.section className="public-section public-product-section" id="product" {...reveal}>
+            <span id="product" className="public-scroll-anchor" aria-hidden="true" />
+            <motion.section className="public-section public-product-section" {...reveal}>
                 <header className="public-section-heading">
                     <span className="public-section-eyebrow">01 / THE PRODUCT</span>
                     <h2>{site.config.sections.productTitle}</h2>
@@ -122,7 +123,7 @@ export default function PublicHomePage() {
                 </header>
                 <div className="public-workflow-list">
                     {productionStages.map((stage) => (
-                        <motion.article key={stage.index} whileHover={reducedMotion ? undefined : { x: 8 }} transition={{ duration: 0.24 }}>
+                        <Link key={stage.index} className="public-workflow-item" to="/product" aria-label={`查看${stage.title}的产品能力`}>
                             <span>{stage.index}</span>
                             <div>
                                 <small>{stage.english}</small>
@@ -130,7 +131,7 @@ export default function PublicHomePage() {
                             </div>
                             <p>{stage.description}</p>
                             <ArrowRight aria-hidden="true" />
-                        </motion.article>
+                        </Link>
                     ))}
                 </div>
             </motion.section>
