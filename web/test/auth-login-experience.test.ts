@@ -7,6 +7,10 @@ describe("auth login experience", () => {
         const scene = await read("../src/pages/auth/auth-scene.tsx");
 
         expect(scene).toContain("authOpen");
+        expect(scene).toContain("pc-auth-entry-nav");
+        expect(scene).toContain("智能影像创作空间");
+        expect(scene).toContain("branding.config.auth.title");
+        expect(scene).toContain("branding.config.auth.description");
         expect(scene).toContain("pc-auth-entry-button");
         expect(scene).toContain("进入{branding.config.identity.shortName}");
         expect(scene).toContain("pc-auth-brand-head");
@@ -74,7 +78,10 @@ describe("auth login experience", () => {
         expect(styles).not.toContain(".pc-auth-card-footnote");
         expect(styles).not.toContain(".pc-auth-brand-stage");
         expect(styles).toContain(".pc-auth-panel-footer");
-        expect(styles).toContain("--auth-panel: rgba(248, 247, 243, 0.94)");
+        expect(styles).toContain("--auth-panel: rgba(15, 16, 17, 0.96)");
+        expect(styles).toContain("font-family: ui-serif");
+        expect(styles).toContain("border-radius: 8px");
+        expect(styles).not.toContain("rgba(248, 247, 243, 0.94)");
         expect(styles).toContain("var(--auth-brand)");
     });
 });

@@ -128,9 +128,23 @@ export function AuthScene() {
                             exit={reducedMotion ? { opacity: 0 } : { opacity: 0, scale: 0.96 }}
                             transition={{ duration: reducedMotion ? 0 : 0.38, ease: aceternityMotion.easing.enter }}
                         >
-                            <motion.button type="button" className="pc-auth-entry-button" onClick={() => void openAuth()} whileHover={reducedMotion ? undefined : { scale: 1.035 }} whileTap={reducedMotion ? undefined : { scale: 0.98 }}>
-                                进入{branding.config.identity.shortName}
-                            </motion.button>
+                            <header className="pc-auth-entry-nav">
+                                <span className="pc-auth-entry-brand" aria-label={branding.config.identity.displayName}>
+                                    <BrandMark className="pc-auth-entry-logo" />
+                                </span>
+                                <button type="button" className="pc-auth-entry-login" onClick={() => void openAuth()}>
+                                    登录
+                                </button>
+                            </header>
+                            <div className="pc-auth-entry-content">
+                                <p className="pc-auth-entry-eyebrow">智能影像创作空间</p>
+                                <h1>{branding.config.auth.title}</h1>
+                                {branding.config.auth.description ? <p className="pc-auth-entry-description">{branding.config.auth.description}</p> : null}
+                                <motion.button type="button" className="pc-auth-entry-button" onClick={() => void openAuth()} whileHover={reducedMotion ? undefined : { y: -2 }} whileTap={reducedMotion ? undefined : { scale: 0.985 }}>
+                                    <span>进入{branding.config.identity.shortName}</span>
+                                    <span aria-hidden="true">→</span>
+                                </motion.button>
+                            </div>
                         </motion.div>
                     ) : (
                         <motion.div
@@ -151,7 +165,7 @@ export function AuthScene() {
                                 <button type="button" className="pc-auth-panel-close" onClick={() => setAuthOpen(false)} aria-label="返回视频">
                                     <span aria-hidden="true">×</span>
                                 </button>
-                                <ConfigProvider theme={withBrandingAntTheme(getAntThemeConfig(false, desktop), branding.config.theme.primaryColor, false)}>
+                                <ConfigProvider theme={withBrandingAntTheme(getAntThemeConfig(true, desktop), branding.config.theme.primaryColor, true)}>
                                     <header className="pc-auth-brand-head">
                                         <span className="pc-auth-brand-symbol">
                                             <BrandMark className="pc-auth-brand-logo" />
