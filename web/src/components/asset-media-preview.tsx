@@ -2,15 +2,17 @@ import type { ReactNode } from "react";
 
 import { CachedResourceImage } from "@/components/cached-resource-image";
 import type { Asset } from "@/stores/use-asset-store";
+import type { LoadedVideoMetadata } from "@/pages/assets/video-metadata";
 
 type AssetMediaPreviewProps = {
     asset?: Asset | null;
     alt: string;
     className?: string;
     fallback?: ReactNode;
+    onVideoMetadata?: (metadata: LoadedVideoMetadata) => void;
 };
 
-export function AssetMediaPreview({ asset, alt, className = "", fallback = null }: AssetMediaPreviewProps) {
+export function AssetMediaPreview({ asset, alt, className = "", fallback = null, onVideoMetadata }: AssetMediaPreviewProps) {
     if (!asset) return fallback;
 
     if (asset.kind === "video" && asset.data.url) {
@@ -27,6 +29,13 @@ export function AssetMediaPreview({ asset, alt, className = "", fallback = null 
                 onLoadedMetadata={(event) => {
                     // 主动触发首帧附近的解码，避免只有 metadata 时长期停留在空白画面。
                     const video = event.currentTarget;
+                    if (video.videoWidth > 0 && video.videoHeight > 0) {
+                        onVideoMetadata?.({
+                            width: video.videoWidth,
+                            height: video.videoHeight,
+                            ...(Number.isFinite(video.duration) && video.duration > 0 ? { durationMs: Math.round(video.duration * 1000) } : {}),
+                        });
+                    }
                     if (!poster && video.currentTime === 0 && video.duration > 0) video.currentTime = Math.min(0.001, video.duration);
                 }}
             />

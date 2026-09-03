@@ -22,6 +22,7 @@ import { uploadMediaFile } from "@/services/file-storage";
 import { useAssetStore, type Asset, type AssetCategory, type AssetKind, type ImageAsset } from "@/stores/use-asset-store";
 import { exportAssets, readAssetPackage } from "./asset-transfer";
 import { AssetStorageUsage, assetStorageUsageQueryKey } from "./asset-storage-usage";
+import { formatAssetDimensions, mergeLoadedVideoMetadata, type LoadedVideoMetadata } from "./video-metadata";
 import { deleteAssetWithRemoteSync } from "@/services/user-data-sync";
 
 import "./assets-pc.css";
@@ -520,6 +521,11 @@ export default function AssetsPage() {
                                                     onCopy={copyAssetText}
                                                     onDownload={downloadImage}
                                                     onDelete={() => setDeletingAsset(asset)}
+                                                    onVideoMetadata={(metadata) => {
+                                                        if (asset.kind !== "video") return;
+                                                        const data = mergeLoadedVideoMetadata(asset.data, metadata);
+                                                        if (data) updateAsset(asset.id, { data });
+                                                    }}
                                                 />
                                             ))}
                                         </CollectionGrid>
@@ -750,6 +756,7 @@ function AssetCard({
     onCopy,
     onDownload,
     onDelete,
+    onVideoMetadata,
 }: {
     asset: LibraryAsset;
     selected: boolean;
@@ -759,6 +766,7 @@ function AssetCard({
     onCopy: (asset: LibraryAsset) => void;
     onDownload: (asset: LibraryAsset) => void;
     onDelete: () => void;
+    onVideoMetadata: (metadata: LoadedVideoMetadata) => void;
 }) {
     const summary = assetSummary(asset);
     const menuItems: MenuProps["items"] = [
@@ -770,7 +778,7 @@ function AssetCard({
     ];
     return (
         <AssetLibraryCard selected={selected}>
-            <AssetCover asset={asset} selected={selected} onSelect={onSelect} onOpen={onOpen} menuItems={menuItems} />
+            <AssetCover asset={asset} selected={selected} onSelect={onSelect} onOpen={onOpen} menuItems={menuItems} onVideoMetadata={onVideoMetadata} />
             <button type="button" className="assets-card-copy block w-full px-2.5 py-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--workspace-accent)]" onClick={onOpen}>
                 <div className="assets-card-title-row flex min-w-0 items-center justify-between gap-2">
                     <h2 className="assets-card-title truncate text-[var(--fs-body)] font-semibold text-foreground" title={asset.title}>
@@ -791,7 +799,7 @@ function AssetCard({
     );
 }
 
-function AssetCover({ asset, selected, onSelect, onOpen, menuItems }: { asset: LibraryAsset; selected: boolean; onSelect: (selected: boolean) => void; onOpen: () => void; menuItems: MenuProps["items"] }) {
+function AssetCover({ asset, selected, onSelect, onOpen, menuItems, onVideoMetadata }: { asset: LibraryAsset; selected: boolean; onSelect: (selected: boolean) => void; onOpen: () => void; menuItems: MenuProps["items"]; onVideoMetadata: (metadata: LoadedVideoMetadata) => void }) {
     const KindIcon = assetKindIcons[asset.kind];
     const clock = asset.kind === "video" || asset.kind === "audio" ? formatAssetClock(asset.data.durationMs) : null;
     const showPlay = asset.kind === "video";
@@ -810,6 +818,7 @@ function AssetCover({ asset, selected, onSelect, onOpen, menuItems }: { asset: L
                         asset={asset}
                         alt={asset.title}
                         className="assets-cover-media"
+                        onVideoMetadata={onVideoMetadata}
                         fallback={
                             <div className="assets-cover-fallback">
                                 <KindIcon className="size-7" />
@@ -1090,7 +1099,7 @@ function assetArchiveFacts(asset: LibraryAsset) {
         { label: "分类", value: assetCategoryLabel(asset.category) },
     ];
     if (asset.kind === "image" || asset.kind === "video") {
-        facts.push({ label: "尺寸", value: `${asset.data.width}x${asset.data.height}` });
+        facts.push({ label: "尺寸", value: formatAssetDimensions(asset.data.width, asset.data.height) });
     }
     if (asset.kind === "video" || asset.kind === "audio") {
         facts.push({ label: "时长", value: formatAssetClock(asset.data.durationMs) || "未知" });
@@ -1110,7 +1119,7 @@ function assetSummary(asset: LibraryAsset) {
     if (asset.kind === "text") return asset.data.content;
     if (asset.kind === "audio") return `${formatAssetDuration(asset.data.durationMs)} · ${formatBytes(asset.data.bytes)} · ${asset.data.mimeType}`;
     if (asset.kind === "model") return `${asset.data.fileName} · ${formatBytes(asset.data.bytes)} · ${asset.data.mimeType}`;
-    return `${asset.data.width}x${asset.data.height} · ${formatBytes(asset.data.bytes)} · ${asset.data.mimeType}`;
+    return `${formatAssetDimensions(asset.data.width, asset.data.height)} · ${formatBytes(asset.data.bytes)} · ${asset.data.mimeType}`;
 }
 
 function StorageTag({ asset }: { asset: LibraryAsset }) {
