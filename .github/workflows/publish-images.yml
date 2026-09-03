@@ -15,6 +15,7 @@ permissions:
 jobs:
   publish:
     name: Publish ${{ matrix.image }}
+    if: github.repository == 'LUHANG0/open-ai-canvas'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -58,9 +59,8 @@ jobs:
         id: metadata
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/${{ github.repository_owner }}/${{ matrix.image }}
+          images: ghcr.io/luhang0/${{ matrix.image }}
           tags: |
-            type=raw,value=latest,enable=${{ github.ref == format('refs/heads/{0}', github.event.repository.default_branch) }}
             type=semver,pattern={{version}}
             type=sha,prefix=sha-
 
@@ -82,7 +82,7 @@ jobs:
 
   release:
     name: Publish release assets
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: github.repository == 'LUHANG0/open-ai-canvas' && startsWith(github.ref, 'refs/tags/v')
     needs: publish
     runs-on: ubuntu-latest
     steps:

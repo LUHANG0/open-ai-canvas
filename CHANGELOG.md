@@ -2,7 +2,11 @@
 
 ## Unreleased
 
+## v1.2.2-preview.4
+
 - 新增 schema v5 升级迁移，为已有部署创建短剧后台交付任务表及租约、作用域和活动任务唯一索引，避免仅在全新数据库中可用。
+- 统一 Canvas Agent 的 Bun 锁文件安装基线，并修复 `zod` 直接依赖与 override 规格不一致导致的 npm `EOVERRIDE`。
+- 源码镜像构建注入版本、提交与构建时间；生产 Compose 强制使用固定镜像标签，发布工作流不再生成 `latest`。
 
 ## v1.2.2-preview.3
 

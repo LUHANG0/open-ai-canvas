@@ -24,6 +24,11 @@ RUN --mount=type=cache,target=/root/.cache/go-build set -eu; \
 
 FROM alpine:3.22
 
+ARG BUILD_VERSION=dev
+ARG BUILD_COMMIT=unknown
+LABEL org.opencontainers.image.version=${BUILD_VERSION}
+LABEL org.opencontainers.image.revision=${BUILD_COMMIT}
+
 RUN apk add --no-cache ca-certificates tzdata wget ffmpeg \
     && ffmpeg -version >/dev/null \
     && ffprobe -version >/dev/null \

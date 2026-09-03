@@ -6,7 +6,7 @@ REPOSITORY_REF="${REPOSITORY_REF:-main}"
 INSTALL_DIR="${INSTALL_DIR:-/opt/open-ai-canvas}"
 CANVAS_HTTP_PORT="${CANVAS_HTTP_PORT:-3000}"
 REQUESTED_IMAGE_TAG="${CANVAS_IMAGE_TAG:-}"
-CANVAS_IMAGE_TAG="${REQUESTED_IMAGE_TAG:-latest}"
+CANVAS_IMAGE_TAG="${REQUESTED_IMAGE_TAG}"
 CANVAS_IMAGE_TAG="${CANVAS_IMAGE_TAG#v}"
 COMPOSE_FILE="docker-compose.deploy.yml"
 COMPOSE_URL="${COMPOSE_URL:-https://raw.githubusercontent.com/LUHANG0/open-ai-canvas/${REPOSITORY_REF}/${COMPOSE_FILE}}"
@@ -21,6 +21,12 @@ fail() {
     exit 1
 }
 
+validate_image_tag() {
+    [[ -n "$CANVAS_IMAGE_TAG" ]] || fail "请显式设置 CANVAS_IMAGE_TAG 为已发布版本"
+    [[ "$CANVAS_IMAGE_TAG" =~ ^[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}$ ]] || fail "CANVAS_IMAGE_TAG 不是有效的 Docker 镜像标签"
+    [[ "$CANVAS_IMAGE_TAG" != "latest" ]] || fail "CANVAS_IMAGE_TAG 必须固定为已发布版本，不能使用 latest"
+}
+
 require_root() {
     if [[ "${EUID}" -ne 0 ]]; then
         fail "请使用 README 中带 sudo 的一键安装命令"
@@ -28,7 +34,11 @@ require_root() {
     [[ "$(uname -s)" == "Linux" ]] || fail "一键部署脚本仅支持 Linux 服务器"
     [[ "$CANVAS_HTTP_PORT" =~ ^[0-9]+$ ]] || fail "CANVAS_HTTP_PORT 必须是 1 到 65535 的数字"
     ((CANVAS_HTTP_PORT >= 1 && CANVAS_HTTP_PORT <= 65535)) || fail "CANVAS_HTTP_PORT 必须是 1 到 65535 的数字"
-    [[ "$CANVAS_IMAGE_TAG" =~ ^[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}$ ]] || fail "CANVAS_IMAGE_TAG 不是有效的 Docker 镜像标签"
+    if [[ -n "$CANVAS_IMAGE_TAG" ]]; then
+        validate_image_tag
+    elif [[ ! -f "${INSTALL_DIR}/.env" ]]; then
+        fail "首次安装请显式设置 CANVAS_IMAGE_TAG 为已发布版本"
+    fi
 }
 
 install_packages() {
@@ -106,12 +116,13 @@ prepare_environment() {
             chmod --reference=.env "$temporary_env"
             mv "$temporary_env" .env
         elif [[ -n "$configured_image_tag" ]]; then
-            [[ "$configured_image_tag" =~ ^[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}$ ]] || fail ".env 中的 CANVAS_IMAGE_TAG 无效"
             CANVAS_IMAGE_TAG="${configured_image_tag#v}"
         fi
+        validate_image_tag
         return
     fi
 
+    validate_image_tag
     step "生成 PostgreSQL 随机密码和部署配置"
     local database_password
     database_password="$(openssl rand -hex 32)"
@@ -139,10 +150,6 @@ download_compose() {
 }
 
 install_host_updater() {
-    if [[ "$CANVAS_IMAGE_TAG" == "latest" ]]; then
-        printf '\n提示：CANVAS_IMAGE_TAG=latest，已跳过在线更新器安装。固定到具体发布版本后可再次运行本脚本。\n'
-        return
-    fi
     step "安装宿主机在线更新服务"
     local installer
     installer="$(mktemp)"

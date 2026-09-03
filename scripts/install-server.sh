@@ -18,6 +18,21 @@ fail() {
     exit 1
 }
 
+set_env_value() {
+    local key="$1"
+    local value="$2"
+    local temporary_env
+    temporary_env="$(mktemp "${INSTALL_DIR}/.env.XXXXXX")"
+    awk -v key="$key" -v value="$value" '
+        BEGIN { updated=0 }
+        index($0, key "=") == 1 { print key "=" value; updated=1; next }
+        { print }
+        END { if (!updated) print key "=" value }
+    ' .env > "$temporary_env"
+    chmod --reference=.env "$temporary_env"
+    mv "$temporary_env" .env
+}
+
 require_root() {
     if [[ "${EUID}" -ne 0 ]]; then
         fail "请使用 README 中带 sudo 的一键安装命令"
@@ -91,14 +106,12 @@ prepare_environment() {
             ((configured_http_port >= 1 && configured_http_port <= 65535)) || fail ".env 中的 CANVAS_HTTP_PORT 无效"
             CANVAS_HTTP_PORT="$configured_http_port"
         fi
-        return
-    fi
-
-    step "生成 PostgreSQL 随机密码和部署配置"
-    local database_password
-    database_password="$(openssl rand -hex 32)"
-    umask 077
-    cat >.env <<EOF
+    else
+        step "生成 PostgreSQL 随机密码和部署配置"
+        local database_password
+        database_password="$(openssl rand -hex 32)"
+        umask 077
+        cat >.env <<EOF
 POSTGRES_DB=open_ai_canvas
 POSTGRES_USER=open_ai_canvas
 POSTGRES_PASSWORD=${database_password}
@@ -109,6 +122,18 @@ CANVAS_ALLOW_PRIVATE_UPSTREAMS=false
 CANVAS_ALLOWED_PRIVATE_UPSTREAM_HOSTS=
 CANVAS_CORS_ORIGINS=
 EOF
+    fi
+
+    local build_version build_commit build_time
+    build_version="$(tr -d '\r\n' < VERSION)"
+    build_commit="$(git rev-parse --verify 'HEAD^{commit}')"
+    build_time="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+    [[ "$build_version" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([-.][A-Za-z0-9.-]+)?$ ]] || fail "VERSION 不是有效的发布版本"
+    set_env_value CANVAS_IMAGE_TAG "${build_version#v}"
+    set_env_value BUILD_VERSION "$build_version"
+    set_env_value BUILD_COMMIT "$build_commit"
+    set_env_value BUILD_TIME "$build_time"
+    set_env_value BUILD_IMAGE_TAG "${build_version#v}-${build_commit:0:12}"
 }
 
 start_services() {

@@ -1,24 +1,32 @@
 services:
   migrate:
-    image: open-ai-canvas-backend:server
+    image: open-ai-canvas-backend:${BUILD_IMAGE_TAG:?源码构建必须设置 BUILD_IMAGE_TAG}
     build:
       context: .
       dockerfile: backend/Dockerfile
       args:
         GOPROXY: ${GOPROXY:-https://proxy.golang.org,direct}
+        BUILD_VERSION: ${BUILD_VERSION:?源码构建必须设置 BUILD_VERSION}
+        BUILD_COMMIT: ${BUILD_COMMIT:?源码构建必须设置 BUILD_COMMIT}
+        BUILD_TIME: ${BUILD_TIME:-unknown}
 
   backend:
-    image: open-ai-canvas-backend:server
+    image: open-ai-canvas-backend:${BUILD_IMAGE_TAG:?源码构建必须设置 BUILD_IMAGE_TAG}
     build:
       context: .
       dockerfile: backend/Dockerfile
       args:
         GOPROXY: ${GOPROXY:-https://proxy.golang.org,direct}
+        BUILD_VERSION: ${BUILD_VERSION:?源码构建必须设置 BUILD_VERSION}
+        BUILD_COMMIT: ${BUILD_COMMIT:?源码构建必须设置 BUILD_COMMIT}
+        BUILD_TIME: ${BUILD_TIME:-unknown}
 
   web:
-    image: open-ai-canvas-web:server
+    image: open-ai-canvas-web:${BUILD_IMAGE_TAG:?源码构建必须设置 BUILD_IMAGE_TAG}
     build:
       context: .
       dockerfile: Dockerfile
       args:
         VITE_TLDRAW_LICENSE_KEY: ${VITE_TLDRAW_LICENSE_KEY:-}
+        BUILD_VERSION: ${BUILD_VERSION:?源码构建必须设置 BUILD_VERSION}
+        BUILD_COMMIT: ${BUILD_COMMIT:?源码构建必须设置 BUILD_COMMIT}

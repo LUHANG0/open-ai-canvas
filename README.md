@@ -137,6 +137,9 @@ LOCAL_UID=$(id -u) LOCAL_GID=$(id -g) \
 本地构建 release 镜像：
 
 ```bash
+BUILD_VERSION="$(tr -d '\r\n' < VERSION)" \
+BUILD_COMMIT="$(git rev-parse HEAD)" \
+BUILD_TIME="$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
 docker compose -f docker-compose.local.yml up -d --build
 ```
 
@@ -164,6 +167,8 @@ curl -fsSL https://raw.githubusercontent.com/LUHANG0/open-ai-canvas/main/scripts
 
 脚本会安装并配置 Docker，生成受保护的 `.env`，构建前后端镜像，并启动 PostgreSQL、Redis、后端和 Web 服务。默认访问地址为 `http://服务器IP:3000`。
 
+源码安装脚本会从 `VERSION` 和当前 Git 提交生成 `BUILD_VERSION`、`BUILD_COMMIT`、`BUILD_TIME` 与唯一的本地镜像标签，并写入受保护的 `.env`。部署后应通过 `/api/health/ready` 核对版本和完整提交 SHA。
+
 查看状态与日志：
 
 ```bash
@@ -179,10 +184,11 @@ sudo docker compose --env-file .env \
 只有确认 GHCR 中存在与当前维护版本匹配的 `LUHANG0` 镜像时，才使用镜像安装方式：
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/LUHANG0/open-ai-canvas/main/scripts/install-server-image.sh | sudo bash
+curl -fsSL https://raw.githubusercontent.com/LUHANG0/open-ai-canvas/main/scripts/install-server-image.sh \
+  | sudo env CANVAS_IMAGE_TAG=1.2.2-preview.4 bash
 ```
 
-生产环境应将 `CANVAS_IMAGE_TAG` 固定为明确的 Release，不要长期使用 `latest`。系统更新、备份验证和异常回退流程见[系统更新文档](docs/content/docs/backend/system-update.mdx)。
+生产环境必须将 `CANVAS_IMAGE_TAG` 固定为明确的 Release；安装脚本和 Compose 都会拒绝空值或 `latest`。系统更新、备份验证和异常回退流程见[系统更新文档](docs/content/docs/backend/system-update.mdx)。
 
 ### 上线前检查
 

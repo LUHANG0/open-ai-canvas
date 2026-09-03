@@ -15,8 +15,10 @@ FROM oven/bun:1.3.13 AS web-build
 WORKDIR /app/web
 ARG VITE_TLDRAW_LICENSE_KEY
 ARG BUILD_VERSION
+ARG BUILD_COMMIT=unknown
 ENV VITE_TLDRAW_LICENSE_KEY=${VITE_TLDRAW_LICENSE_KEY}
 ENV CANVAS_BUILD_VERSION=${BUILD_VERSION}
+ENV VITE_BUILD_COMMIT=${BUILD_COMMIT}
 COPY web/package.json web/bun.lock ./
 RUN --mount=type=cache,target=/root/.bun/install/cache bun install --frozen-lockfile --cache-dir=/root/.bun/install/cache
 COPY VERSION /app/VERSION
@@ -33,6 +35,11 @@ RUN CANVAS_PREBUILT_BRIDGE=1 bun run build:bridge \
 
 # 运行镜像：nginx 托管静态前端，并在 Compose 中把 /api 转发到后端服务。
 FROM nginx:1.27-alpine
+
+ARG BUILD_VERSION=dev
+ARG BUILD_COMMIT=unknown
+LABEL org.opencontainers.image.version=${BUILD_VERSION}
+LABEL org.opencontainers.image.revision=${BUILD_COMMIT}
 
 COPY --from=web-build /app/web/dist /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/conf.d/default.conf
