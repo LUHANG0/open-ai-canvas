@@ -54,10 +54,10 @@ const permissionLabels: Record<string, string> = {
 const pluginDateFormatter = new Intl.DateTimeFormat("zh-CN", { year: "numeric", month: "short", day: "numeric" });
 
 const protocolSectionMeta = [
-    { key: "text", label: "文本协议", description: "对话、推理与流式响应", icon: MessageSquareText },
-    { key: "image", label: "图片协议", description: "生成、编辑与参考图", icon: ImageIcon },
-    { key: "video", label: "视频协议", description: "创建任务、轮询与媒体结果", icon: Film },
-    { key: "audio", label: "音频协议", description: "语音与异步音频任务", icon: AudioLines },
+    { key: "text", label: "文本能力", description: "对话、推理与长文本响应", icon: MessageSquareText },
+    { key: "image", label: "图片能力", description: "图片生成、编辑与参考", icon: ImageIcon },
+    { key: "video", label: "视频能力", description: "视频生成、进度与成片", icon: Film },
+    { key: "audio", label: "音频能力", description: "语音合成与音频生成", icon: AudioLines },
 ] as const;
 
 export default function PluginsPage() {
@@ -269,7 +269,7 @@ export default function PluginsPage() {
             <PageHeader
                 eyebrow="PLUGIN CENTER"
                 title="插件中心"
-                description="统一管理模型协议、工作流、画布节点与素材扩展能力。"
+                description="统一管理模型、工作流、画布节点与素材扩展能力。"
                 meta={<span className="plugins-page-count">{categoryCounts.all} 个可见插件</span>}
                 actions={
                     <>
@@ -448,7 +448,7 @@ export default function PluginsPage() {
                                                             {providerCapabilitiesFor(plugin.manifest).map((capability) => (
                                                                 <span key={capability}>{capabilityLabel(capability)}</span>
                                                             ))}
-                                                            {plugin.manifest.contributes.providers?.some((provider) => provider.poll) ? <span>异步轮询</span> : null}
+                                                            {plugin.manifest.contributes.providers?.some((provider) => provider.poll) ? <span>后台处理</span> : null}
                                                             <span>{plugin.manifest.permissions.length} 项能力</span>
                                                         </div>
                                                         <span className="plugin-card-open-hint">
@@ -613,11 +613,11 @@ export default function PluginsPage() {
                                 </div>
                             ) : (
                                 <div className="plugin-settings-empty">
-                                    {`贡献能力：${
+                                    {`提供能力：${
                                         contributionKindsFor(settingsPlugin.manifest)
                                             .map((kind) => categoryLabels[kind] || kind)
                                             .join("、") || "未声明"
-                                    }。当前接入位置和权限会根据插件清单自动生效。`}
+                                    }。当前接入位置和权限会根据插件配置自动生效。`}
                                 </div>
                             )}
 
