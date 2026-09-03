@@ -1,10 +1,10 @@
 import { lazy, Suspense } from "react";
 
-import { WorkspaceState } from "@/components/ui/pc/workspace-state";
 import type { CanvasTheme } from "@/lib/canvas-theme";
 import type { CanvasNodeData } from "@/types/canvas";
 import type { DirectorScene, DirectorSceneOutput } from "@/types/director";
 import { selectCanvasDirectorImageNodes } from "./canvas-director-workbench-inputs";
+import { CanvasWorkspaceLoadingOverlay } from "./canvas-workspace-loading-overlay";
 
 const CanvasDirectorWorkbench = lazy(() => import("@/components/canvas/director/canvas-director-workbench").then((module) => ({ default: module.CanvasDirectorWorkbench })));
 
@@ -26,9 +26,7 @@ export function CanvasProjectDirectorWorkbench({ open, scene, nodes, theme, onbo
     return (
         <Suspense
             fallback={
-                <div className="fixed inset-0 z-[var(--z-toast)] grid place-items-center px-5" style={{ background: theme.canvas.background, color: theme.node.text }}>
-                    <WorkspaceState icon="loading" title="正在加载 3D 导演台" description="准备场景、镜头与空间控制。" />
-                </div>
+                <CanvasWorkspaceLoadingOverlay theme={theme} title="正在加载 3D 导演台" description="准备场景、镜头与空间控制。" />
             }
         >
             <CanvasDirectorWorkbench

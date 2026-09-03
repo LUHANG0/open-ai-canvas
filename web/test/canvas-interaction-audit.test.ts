@@ -160,7 +160,7 @@ test("canvas node editors load only after an editor target is selected", async (
     expect(editorsSource).toContain("characterReferenceNode ? (");
     expect(editorsSource).toContain("textEditorNode ? (");
     expect(editorsSource).toContain("portraitClearanceNode ? (");
-    expect(editorsSource).toContain("<CanvasNodeEditorLoading");
+    expect(editorsSource).toContain("<CanvasWorkspaceLoadingOverlay");
 });
 
 test("canvas timeline tools load only after their dialog target is selected", async () => {
@@ -169,7 +169,7 @@ test("canvas timeline tools load only after their dialog target is selected", as
     expect(timelineSource).toContain('lazy(() => import("@/components/canvas/canvas-timeline-dialog")');
     expect(timelineSource).toContain('lazy(() => import("@/components/canvas/canvas-video-frame-dialog")');
     expect(timelineSource).toContain('lazy(() => import("@/components/canvas/canvas-video-segment-dialog")');
-    expect(timelineSource).toContain("<Suspense fallback={<CanvasTimelineDialogLoading");
+    expect(timelineSource).toContain("<Suspense fallback={<CanvasWorkspaceLoadingOverlay");
 });
 
 test("canvas asset and version dialogs load only when opened", async () => {

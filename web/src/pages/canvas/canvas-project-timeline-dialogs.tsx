@@ -2,11 +2,11 @@ import { lazy, Suspense, type MutableRefObject } from "react";
 
 import type { CanvasVideoFrameParams } from "@/components/canvas/canvas-video-frame-dialog";
 import type { CanvasVideoSegmentParams } from "@/components/canvas/canvas-video-segment-dialog";
-import { WorkspaceState } from "@/components/ui/pc/workspace-state";
 import type { AiConfig } from "@/stores/use-config-store";
 import type { CanvasConnection, CanvasNodeData, CanvasNodeMetadata } from "@/types/canvas";
 import type { TimelineDirectMedia, TimelineProject } from "@/types/timeline";
 import { syncSavedCanvasSubtitles } from "./canvas-timeline-dialog-updates";
+import { CanvasWorkspaceLoadingOverlay } from "./canvas-workspace-loading-overlay";
 
 const CanvasSubtitleDialog = lazy(() => import("@/components/canvas/canvas-subtitle-dialog").then((module) => ({ default: module.CanvasSubtitleDialog })));
 const CanvasTimelineDialog = lazy(() => import("@/components/canvas/canvas-timeline-dialog").then((module) => ({ default: module.CanvasTimelineDialog })));
@@ -71,7 +71,7 @@ export function CanvasProjectTimelineDialogs({
     return (
         <>
             {subtitleNode ? (
-                <Suspense fallback={<CanvasTimelineDialogLoading title="正在加载字幕编辑" description="正在准备字幕与语音识别工具。" />}>
+                <Suspense fallback={<CanvasWorkspaceLoadingOverlay title="正在加载字幕编辑" description="正在准备字幕与语音识别工具。" />}>
                     <CanvasSubtitleDialog
                         node={subtitleNode}
                         open
@@ -88,13 +88,13 @@ export function CanvasProjectTimelineDialogs({
             ) : null}
 
             {frameNode ? (
-                <Suspense fallback={<CanvasTimelineDialogLoading title="正在加载视频抽帧" description="正在准备帧提取工具。" />}>
+                <Suspense fallback={<CanvasWorkspaceLoadingOverlay title="正在加载视频抽帧" description="正在准备帧提取工具。" />}>
                     <CanvasVideoFrameDialog node={frameNode} open onClose={onCloseFrame} onConfirm={(params) => void onExtractVideoFrames(frameNode, params)} />
                 </Suspense>
             ) : null}
 
             {segmentNode && segmentDialogMode ? (
-                <Suspense fallback={<CanvasTimelineDialogLoading title="正在加载视频分段" description="正在准备片段选择与处理工具。" />}>
+                <Suspense fallback={<CanvasWorkspaceLoadingOverlay title="正在加载视频分段" description="正在准备片段选择与处理工具。" />}>
                     <CanvasVideoSegmentDialog
                         node={segmentNode}
                         nodes={nodes}
@@ -110,7 +110,7 @@ export function CanvasProjectTimelineDialogs({
             ) : null}
 
             {timelineNode ? (
-                <Suspense fallback={<CanvasTimelineDialogLoading title="正在加载视频时间线" description="正在准备剪辑轨道与素材。" />}>
+                <Suspense fallback={<CanvasWorkspaceLoadingOverlay title="正在加载视频时间线" description="正在准备剪辑轨道与素材。" />}>
                     <CanvasTimelineDialog
                         node={timelineNode}
                         open
@@ -139,13 +139,5 @@ export function CanvasProjectTimelineDialogs({
                 </Suspense>
             ) : null}
         </>
-    );
-}
-
-function CanvasTimelineDialogLoading({ title, description }: { title: string; description: string }) {
-    return (
-        <div className="fixed inset-0 z-[var(--z-toast)] grid place-items-center bg-background px-5 text-foreground" role="status" aria-live="polite">
-            <WorkspaceState icon="loading" title={title} description={description} />
-        </div>
     );
 }
