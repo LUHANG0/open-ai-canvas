@@ -1,6 +1,6 @@
 import { type FormEvent, useEffect, useState, type ReactNode } from "react";
 import { App, Button, Divider, Input } from "antd";
-import { ArrowRight, LockKeyhole, ShieldCheck, UserRound } from "lucide-react";
+import { ArrowRight, LockKeyhole, ShieldCheck, TriangleAlert, UserRound } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router";
 
 import { applyUserSession } from "@/lib/user-session";
@@ -16,6 +16,7 @@ export default function LoginPage() {
     const [username, setUsername] = useState("");
     const [password, setPassword] = useState("");
     const [submitting, setSubmitting] = useState(false);
+    const [submitError, setSubmitError] = useState("");
     const { settings } = useAuthSettings();
     const { branding } = useBranding();
     const next = safeNext(params.get("next"));
@@ -36,14 +37,17 @@ export default function LoginPage() {
 
     const submit = async (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault();
+        setSubmitError("");
         setSubmitting(true);
         try {
-            await login({ username, password });
+            await login({ username: username.trim(), password });
             await applyUserSession(await getAuthSession());
             message.success("登录成功");
             navigate(next, { replace: true });
         } catch (error) {
-            message.error(error instanceof Error ? error.message : "登录失败");
+            const reason = error instanceof Error ? error.message : "登录失败，请稍后重试";
+            setSubmitError(reason);
+            message.error(reason);
         } finally {
             setSubmitting(false);
         }
@@ -52,20 +56,46 @@ export default function LoginPage() {
     return (
         <form onSubmit={submit} className="pc-auth-form space-y-5">
             <AuthField label="用户名 / 邮箱">
-                <Input size="large" prefix={<UserRound className="pc-auth-field-icon size-4 text-white/35" />} value={username} onChange={(event) => setUsername(event.target.value)} placeholder="用户名或邮箱" autoComplete="username" required />
+                <Input
+                    size="large"
+                    prefix={<UserRound className="pc-auth-field-icon size-4 text-white/35" />}
+                    value={username}
+                    onChange={(event) => {
+                        setUsername(event.target.value);
+                        if (submitError) setSubmitError("");
+                    }}
+                    placeholder="用户名或邮箱"
+                    autoComplete="username"
+                    autoFocus
+                    spellCheck={false}
+                    aria-invalid={Boolean(submitError)}
+                    aria-describedby={submitError ? "login-error" : undefined}
+                    required
+                />
             </AuthField>
             <AuthField label="密码">
                 <Input.Password
                     size="large"
                     prefix={<LockKeyhole className="pc-auth-field-icon size-4 text-white/35" />}
                     value={password}
-                    onChange={(event) => setPassword(event.target.value)}
+                    onChange={(event) => {
+                        setPassword(event.target.value);
+                        if (submitError) setSubmitError("");
+                    }}
                     placeholder="请输入密码"
                     autoComplete="current-password"
+                    aria-invalid={Boolean(submitError)}
+                    aria-describedby={submitError ? "login-error" : undefined}
                     required
                 />
             </AuthField>
-            <Button className="pc-auth-submit" type="primary" htmlType="submit" size="large" block loading={submitting} icon={<ArrowRight className="size-4" />} iconPlacement="end">
+            {submitError ? (
+                <div id="login-error" className="pc-auth-login-error" role="alert">
+                    <TriangleAlert className="size-4" aria-hidden="true" />
+                    <span>{submitError}</span>
+                </div>
+            ) : null}
+            <Button className="pc-auth-submit" type="primary" htmlType="submit" size="large" block loading={submitting} disabled={!username.trim() || !password} icon={<ArrowRight className="size-4" />} iconPlacement="end">
                 登录
             </Button>
             <div className="pc-auth-form-assurance">

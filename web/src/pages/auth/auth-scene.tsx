@@ -1,7 +1,7 @@
 import { motion, useReducedMotion } from "motion/react";
 import { ConfigProvider, Tabs } from "antd";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import { Play, ShieldCheck } from "lucide-react";
+import { Clapperboard, Layers3, Play, ShieldCheck, Sparkles } from "lucide-react";
 import { Outlet, useLocation, useNavigate } from "react-router";
 
 import { BrandMark } from "@/components/branding/brand-mark";
@@ -35,6 +35,12 @@ const authCopy = {
         description: "一个账号管理画布、素材、技能和模型偏好。",
     },
 } as const;
+
+const creativeCapabilities = [
+    { label: "素材管理", icon: Layers3 },
+    { label: "生成任务", icon: Sparkles },
+    { label: "画布编排", icon: Clapperboard },
+] as const;
 
 export function LinuxDOIcon() {
     return (
@@ -148,18 +154,26 @@ export function AuthScene() {
                             transition={{ duration: aceternityMotion.duration.panel, ease: aceternityMotion.easing.enter }}
                             className="pc-auth-brand-copy absolute inset-x-0 bottom-0 max-w-2xl p-5 sm:p-7 lg:p-10"
                         >
+                            <div className="pc-auth-brand-rule" aria-hidden="true">
+                                <span />
+                                STORY TO SCREEN
+                            </div>
                             {branding.config.auth.eyebrow ? <p className="pc-auth-brand-eyebrow">{branding.config.auth.eyebrow}</p> : null}
                             <h1 className="pc-auth-brand-title">{branding.config.auth.title}</h1>
                             {branding.config.auth.description ? <p className="pc-auth-brand-summary">{branding.config.auth.description}</p> : null}
                             <div className="pc-auth-brand-capabilities" aria-label="核心创作能力">
-                                <span>素材管理</span>
-                                <span>生成任务</span>
-                                <span>画布编排</span>
+                                {creativeCapabilities.map(({ label, icon: Icon }) => (
+                                    <span key={label}>
+                                        <Icon aria-hidden="true" />
+                                        {label}
+                                    </span>
+                                ))}
                             </div>
                         </motion.div>
                     </section>
 
                     <section className="pc-auth-panel relative flex min-h-[620px] items-start justify-center overflow-y-auto px-4 pb-8 pt-16 sm:px-8 lg:min-h-0 lg:px-10 lg:pb-10 lg:pt-20">
+                        <div className="pc-auth-panel-glow" aria-hidden="true" />
                         <div className="pc-auth-security-badge absolute right-5 top-5 inline-flex items-center gap-2 text-xs text-white/46 lg:right-8 lg:top-8">
                             <ShieldCheck className="size-3.5" aria-hidden="true" />
                             安全登录

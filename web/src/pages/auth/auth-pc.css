@@ -1,7 +1,8 @@
 .pc-auth-brand-summary,
 .pc-auth-brand-capabilities,
 .pc-auth-form-assurance,
-.pc-auth-password-status {
+.pc-auth-password-status,
+.pc-auth-brand-rule {
     display: none;
 }
 
@@ -17,6 +18,18 @@
 
 .pc-auth-brand {
     background: #0a0c13;
+}
+
+.pc-auth-brand::before {
+    position: absolute;
+    z-index: 1;
+    inset: 0;
+    background-image: radial-gradient(rgba(255, 255, 255, 0.12) 0.65px, transparent 0.65px);
+    background-size: 18px 18px;
+    content: "";
+    mask-image: linear-gradient(130deg, rgba(0, 0, 0, 0.34), transparent 58%);
+    opacity: 0.22;
+    pointer-events: none;
 }
 
 .pc-auth-brand-ambient {
@@ -63,6 +76,19 @@
     white-space: pre-line;
 }
 
+.pc-auth-panel-glow {
+    position: absolute;
+    top: -180px;
+    left: 50%;
+    width: 520px;
+    height: 360px;
+    border-radius: 50%;
+    background: color-mix(in srgb, var(--auth-brand-strong) 12%, transparent);
+    filter: blur(90px);
+    pointer-events: none;
+    transform: translateX(-50%);
+}
+
 .pc-auth-panel {
     background: radial-gradient(circle at 50% 4%, rgba(255, 255, 255, 0.045), transparent 30%), #0e1018;
 }
@@ -95,6 +121,97 @@
 
 .pc-auth-form-slot {
     padding: 22px 24px 26px;
+}
+
+.pc-auth-tabs {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.pc-auth-tabs .ant-tabs-nav {
+    margin-bottom: 0;
+}
+
+.pc-auth-tabs .ant-tabs-nav-list {
+    width: 100%;
+}
+
+.pc-auth-tabs .ant-tabs-tab {
+    flex: 1;
+    justify-content: center;
+    min-height: 40px;
+    padding-block: 8px 12px;
+}
+
+.pc-auth-form {
+    display: grid;
+    gap: 18px;
+}
+
+.pc-auth-field {
+    display: grid;
+    gap: 8px;
+}
+
+.pc-auth-card :where(.pc-auth-field .ant-input, .pc-auth-field .ant-input-affix-wrapper) {
+    min-height: 46px;
+    border-radius: var(--app-control-radius, 8px);
+}
+
+.pc-auth-card :where(.pc-auth-field .ant-input, .pc-auth-field .ant-input-affix-wrapper):focus-within {
+    border-color: color-mix(in srgb, var(--auth-brand) 72%, transparent);
+    box-shadow: 0 0 0 3px var(--auth-brand-soft);
+}
+
+.pc-auth-submit,
+.pc-auth-oauth {
+    min-height: 46px;
+    border-radius: var(--app-control-radius, 8px);
+    font-size: 13px;
+    font-weight: 620;
+}
+
+.pc-auth-login-error {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    margin-top: -4px;
+    border: 1px solid rgba(248, 113, 113, 0.2);
+    border-radius: var(--app-control-radius, 8px);
+    background: rgba(248, 113, 113, 0.07);
+    padding: 9px 11px;
+    color: rgba(254, 202, 202, 0.88);
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+.pc-auth-login-error svg {
+    flex: none;
+    margin-top: 1px;
+    color: rgba(252, 165, 165, 0.9);
+}
+
+@media (max-width: 1023px) {
+    .pc-auth-brand {
+        min-height: 280px;
+    }
+
+    .pc-auth-brand-copy {
+        padding-bottom: 28px;
+    }
+
+    .pc-auth-panel {
+        min-height: 600px;
+        border-top: 1px solid rgba(255, 255, 255, 0.08);
+        padding-top: 62px;
+    }
+
+    .pc-auth-card-wrap {
+        max-width: 520px;
+    }
+
+    .pc-auth-card-header {
+        padding-inline: 24px;
+    }
 }
 
 .pc-auth-settings-retry {
@@ -131,7 +248,7 @@
     }
 
     .pc-auth-layout {
-        grid-template-columns: minmax(0, 1fr) clamp(500px, 38vw, 590px);
+        grid-template-columns: minmax(0, 1fr) clamp(520px, 39vw, 620px);
     }
 
     .pc-auth-brand {
@@ -193,8 +310,25 @@
 
     .pc-auth-brand-copy {
         z-index: 2;
-        max-width: 760px;
-        padding: 44px 48px 52px;
+        max-width: 800px;
+        padding: 44px clamp(44px, 4vw, 68px) 58px;
+    }
+
+    .pc-auth-brand-rule {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 18px;
+        color: rgba(255, 255, 255, 0.36);
+        font-size: 10px;
+        font-weight: 650;
+        letter-spacing: 0.18em;
+    }
+
+    .pc-auth-brand-rule span {
+        width: 34px;
+        height: 1px;
+        background: linear-gradient(90deg, var(--auth-brand), transparent);
     }
 
     .pc-auth-brand-eyebrow,
@@ -206,13 +340,13 @@
     }
 
     .pc-auth-brand-title {
-        max-width: 650px;
+        max-width: 700px;
         margin-top: 12px;
         color: var(--auth-text);
-        font-size: clamp(36px, 3.2vw, 40px);
+        font-size: clamp(42px, 4vw, 62px);
         font-weight: 700;
-        letter-spacing: -0.035em;
-        line-height: 1.08;
+        letter-spacing: -0.045em;
+        line-height: 1.03;
         text-wrap: balance;
     }
 
@@ -228,24 +362,29 @@
     .pc-auth-brand-capabilities {
         display: flex;
         align-items: center;
-        gap: 0;
-        margin-top: 20px;
-        color: var(--auth-text-muted);
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 22px;
+        color: var(--auth-text-secondary);
         font-size: 12px;
     }
 
     .pc-auth-brand-capabilities span {
         display: inline-flex;
         align-items: center;
+        gap: 7px;
+        min-height: 32px;
+        border: 1px solid rgba(255, 255, 255, 0.09);
+        border-radius: 999px;
+        background: rgba(10, 12, 19, 0.28);
+        padding: 0 11px;
+        backdrop-filter: blur(10px);
     }
 
-    .pc-auth-brand-capabilities span + span::before {
-        width: 3px;
-        height: 3px;
-        margin: 0 12px;
-        border-radius: 50%;
-        background: currentColor;
-        content: "";
+    .pc-auth-brand-capabilities svg {
+        width: 13px;
+        height: 13px;
+        color: var(--auth-brand);
     }
 
     .pc-auth-panel {
@@ -272,7 +411,7 @@
     }
 
     .pc-auth-card-wrap {
-        max-width: 456px;
+        max-width: 468px;
     }
 
     .pc-auth-card {
@@ -295,7 +434,7 @@
     }
 
     .pc-auth-card-content.is-login {
-        min-height: 500px;
+        min-height: 486px;
     }
 
     .pc-auth-card-header {

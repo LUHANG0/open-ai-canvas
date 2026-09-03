@@ -42,7 +42,11 @@ export async function applyUserSession(payload: AuthSessionPayload) {
         if (!persistedCanvas) useCanvasStore.setState({ projects: [] });
         if (!persistedAssets) useAssetStore.setState({ assets: [] });
         if (!persistedPlugins) usePluginStore.setState({ installations: [], runtimeStatuses: {}, pluginStates: {} });
-        if (!persistedConfig) {
+        if (!payload.user?.id) {
+            // 登录页只恢复访客作用域，不请求受身份保护的模型目录；登录成功后会在用户作用域重新加载。
+            if (!persistedConfig) useConfigStore.getState().replaceConfig(normalizeConfigSnapshot({ config: { ...defaultConfig, channels: [] } }).config);
+            else useConfigStore.getState().mergeSystemChannels([]);
+        } else if (!persistedConfig) {
             // 只有首次配置缺失时才生成能力推荐；已有配置中的空数组代表用户明确清空。
             // 使用统一模型目录接口
             const catalog = await getModelCatalog();
