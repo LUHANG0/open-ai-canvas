@@ -3,17 +3,15 @@ import { describe, expect, test } from "bun:test";
 const read = (path: string) => Bun.file(new URL(path, import.meta.url)).text();
 
 describe("auth login experience", () => {
-    test("keeps the brand-driven hero while exposing the creative workflow", async () => {
+    test("keeps a focused brand hero and a single authentication card", async () => {
         const scene = await read("../src/pages/auth/auth-scene.tsx");
 
         expect(scene).toContain("branding.config.auth.title");
-        expect(scene).toContain("creativeCapabilities.map");
-        expect(scene).toContain("从故事到成片");
-        expect(scene).toContain('aria-label="影视创作流程"');
-        expect(scene).toContain("创作空间");
-        expect(scene).toContain("私有工作区 · 安全登录");
-        expect(scene).toContain("登录入口");
-        expect(scene).toContain("身份验证");
+        expect(scene).toContain("pc-auth-brand-kicker");
+        expect(scene).toContain("pc-auth-card-footnote");
+        expect(scene).toContain("账号与项目数据受当前工作区保护");
+        expect(scene).not.toContain("creativeCapabilities");
+        expect(scene).not.toContain('aria-label="影视创作流程"');
         expect(scene).not.toContain("WELCOME BACK");
         expect(scene).not.toContain("AUTHENTICATION");
         expect(scene).toContain("pc-auth-media-layer");
@@ -26,8 +24,11 @@ describe("auth login experience", () => {
         expect(login).toContain('role="alert"');
         expect(login).toContain('aria-describedby={submitError ? "login-error" : undefined}');
         expect(login).toContain("autoFocus");
-        expect(login).toContain("disabled={!username.trim() || !password}");
-        expect(login).toContain("username: username.trim()");
+        expect(login).toContain('formData.get("username")');
+        expect(login).toContain('formData.get("password")');
+        expect(login).toContain('name="username"');
+        expect(login).toContain('name="password"');
+        expect(login).toContain("disabled={submitting}");
     });
 
     test("contains guest hydration failures instead of leaking an unhandled rejection", async () => {
@@ -44,11 +45,10 @@ describe("auth login experience", () => {
         const styles = await read("../src/pages/auth/auth-pc.css");
 
         expect(styles).toContain("@media (max-width: 1023px)");
-        expect(styles).toContain(".pc-auth-panel-glow");
+        expect(styles).toContain(".pc-auth-topbar");
         expect(styles).toContain(".pc-auth-login-error");
-        expect(styles).toContain(".pc-auth-scene.has-auth-media .pc-auth-brand");
-        expect(styles).toContain(".pc-auth-showcase-caption");
-        expect(styles).toContain("grid-template-columns: repeat(4, minmax(0, 1fr))");
+        expect(styles).toContain(".pc-auth-card-footnote");
+        expect(styles).toContain("grid-template-columns: minmax(0, 1fr) minmax(390px, 438px)");
         expect(styles).toContain("var(--auth-brand)");
     });
 });

@@ -35,10 +35,13 @@ describe("PC detail polish regression gates", () => {
         expect(wallet).not.toContain("screens.lg &&");
     });
 
-    test("keeps ecosystem helper content hidden until the PC breakpoint", async () => {
+    test("keeps ecosystem helper content responsive at compact breakpoints", async () => {
         const [auth, plugins, settings, voice] = await Promise.all([read("../src/pages/auth/auth-pc.css"), read("../src/pages/plugins/plugins.css"), read("../src/pages/settings/settings.css"), read("../src/pages/voice-recording-pc.css")]);
 
-        expect(compact(auth.slice(0, auth.indexOf("@media (min-width: 1024px)")))).toContain(".pc-auth-brand-summary, .pc-auth-brand-capabilities, .pc-auth-form-assurance, .pc-auth-password-status, .pc-auth-brand-rule { display: none; }");
+        expect(compact(auth)).toContain("@media (max-width: 1023px)");
+        expect(compact(auth)).toContain(".pc-auth-brand-summary { display: none; }");
+        expect(compact(auth)).toContain(".pc-auth-form-assurance, .pc-auth-password-status { display: flex;");
+        expect(auth).not.toContain(".pc-auth-brand-capabilities");
         expect(compact(plugins.slice(0, plugins.indexOf("@media (min-width: 1024px)")))).toContain(".plugins-overview, .plugin-card-open-hint, .plugin-section-card-icon { display: none; }");
         expect(compact(settings.slice(0, settings.indexOf("@media (min-width: 1024px)")))).toContain(".settings-section-context { display: none; } .settings-diagnostics-preview-error { display: none; }");
         expect(compact(voice.slice(0, voice.indexOf("@media (min-width: 1024px)")))).toContain(".pc-voice-count, .pc-voice-status-strip { display: none; }");

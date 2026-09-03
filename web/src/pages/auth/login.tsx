@@ -37,10 +37,13 @@ export default function LoginPage() {
 
     const submit = async (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault();
+        const formData = new FormData(event.currentTarget);
+        const submittedUsername = String(formData.get("username") ?? username).trim();
+        const submittedPassword = String(formData.get("password") ?? password);
         setSubmitError("");
         setSubmitting(true);
         try {
-            await login({ username: username.trim(), password });
+            await login({ username: submittedUsername, password: submittedPassword });
             await applyUserSession(await getAuthSession());
             message.success("登录成功");
             navigate(next, { replace: true });
@@ -60,6 +63,7 @@ export default function LoginPage() {
                     size="large"
                     prefix={<UserRound className="pc-auth-field-icon size-4 text-white/35" />}
                     value={username}
+                    name="username"
                     onChange={(event) => {
                         setUsername(event.target.value);
                         if (submitError) setSubmitError("");
@@ -78,6 +82,7 @@ export default function LoginPage() {
                     size="large"
                     prefix={<LockKeyhole className="pc-auth-field-icon size-4 text-white/35" />}
                     value={password}
+                    name="password"
                     onChange={(event) => {
                         setPassword(event.target.value);
                         if (submitError) setSubmitError("");
@@ -95,7 +100,7 @@ export default function LoginPage() {
                     <span>{submitError}</span>
                 </div>
             ) : null}
-            <Button className="pc-auth-submit" type="primary" htmlType="submit" size="large" block loading={submitting} disabled={!username.trim() || !password} icon={<ArrowRight className="size-4" />} iconPlacement="end">
+            <Button className="pc-auth-submit" type="primary" htmlType="submit" size="large" block loading={submitting} disabled={submitting} icon={<ArrowRight className="size-4" />} iconPlacement="end">
                 登录
             </Button>
             <div className="pc-auth-form-assurance">

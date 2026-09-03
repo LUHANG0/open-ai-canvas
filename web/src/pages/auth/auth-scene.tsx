@@ -1,7 +1,7 @@
 import { motion, useReducedMotion } from "motion/react";
 import { ConfigProvider, Tabs } from "antd";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import { ArrowLeft, Clapperboard, Film, Layers3, ShieldCheck, Sparkles } from "lucide-react";
+import { ArrowLeft, ShieldCheck } from "lucide-react";
 import { Link, Outlet, useLocation, useNavigate } from "react-router";
 
 import { BrandMark } from "@/components/branding/brand-mark";
@@ -33,13 +33,6 @@ const authCopy = {
         description: "从故事开始，建立属于你的数字片场。",
     },
 } as const;
-
-const creativeCapabilities = [
-    { label: "故事", icon: Sparkles },
-    { label: "角色", icon: Layers3 },
-    { label: "分镜", icon: Clapperboard },
-    { label: "成片", icon: Film },
-] as const;
 
 export function LinuxDOIcon() {
     return (
@@ -125,98 +118,64 @@ export function AuthScene() {
                     )}
                     <div className="pc-auth-media-grade" />
                 </div>
-                <div className="pc-auth-layout grid min-h-full lg:h-full">
-                    <section className="pc-auth-brand relative min-h-[250px] overflow-hidden sm:min-h-[320px] lg:min-h-0" aria-label={`${branding.config.identity.displayName}品牌介绍`}>
-                        <div className="pc-auth-brand-nav absolute inset-x-0 top-0 flex items-center justify-between gap-4 p-5 sm:p-7">
-                            <Link to="/" className="pc-auth-brand-link inline-flex items-center gap-3 text-sm font-semibold text-white drop-shadow-sm" aria-label={`${branding.config.identity.displayName}官网首页`}>
-                                <span className="pc-auth-brand-symbol">
-                                    <BrandMark className="pc-auth-brand-logo size-7" />
-                                </span>
-                                <span className="pc-auth-brand-wordmark">
-                                    <strong>{branding.config.identity.displayName}</strong>
-                                    <small>{branding.config.identity.workspaceLabel}</small>
-                                </span>
-                            </Link>
-                            <div className="pc-auth-brand-nav-meta">
-                                <span className="pc-auth-workspace-badge">
-                                    <Clapperboard aria-hidden="true" />
-                                    {branding.config.identity.workspaceLabel}
-                                </span>
-                            </div>
-                        </div>
-                        <motion.div
-                            initial={reducedMotion ? false : { opacity: 0, y: 18 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ duration: aceternityMotion.duration.panel, ease: aceternityMotion.easing.enter }}
-                            className="pc-auth-brand-copy absolute inset-x-0 bottom-0 max-w-2xl p-5 sm:p-7 lg:p-10"
-                        >
-                            <div className="pc-auth-brand-rule" aria-hidden="true">
-                                <span />
-                                从故事到成片
-                            </div>
-                            <h1 className="pc-auth-brand-title">{branding.config.auth.title}</h1>
-                            {branding.config.auth.description ? <p className="pc-auth-brand-summary">{branding.config.auth.description}</p> : null}
-                            <div className="pc-auth-brand-capabilities" aria-label="影视创作流程">
-                                {creativeCapabilities.map(({ label, icon: Icon }, index) => (
-                                    <span key={label}>
-                                        <i>{String(index + 1).padStart(2, "0")}</i>
-                                        <Icon aria-hidden="true" />
-                                        <b>{label}</b>
-                                    </span>
-                                ))}
-                            </div>
-                            <div className="pc-auth-showcase-caption">
-                                <span>创作空间</span>
-                                <div>
-                                    <strong>{branding.config.identity.workspaceLabel}</strong>
-                                    <small>{branding.config.identity.slogan || branding.config.identity.description}</small>
-                                </div>
-                            </div>
-                        </motion.div>
-                    </section>
+                <header className="pc-auth-topbar">
+                    <Link to="/" className="pc-auth-brand-link" aria-label={`${branding.config.identity.displayName}官网首页`}>
+                        <span className="pc-auth-brand-symbol">
+                            <BrandMark className="pc-auth-brand-logo" />
+                        </span>
+                        <span className="pc-auth-brand-wordmark">
+                            <strong>{branding.config.identity.displayName}</strong>
+                            <small>{branding.config.identity.workspaceLabel}</small>
+                        </span>
+                    </Link>
+                    <Link to="/" className="pc-auth-back-link">
+                        <ArrowLeft aria-hidden="true" />
+                        返回首页
+                    </Link>
+                </header>
 
-                    <section className="pc-auth-panel relative flex min-h-[620px] items-start justify-center overflow-y-auto px-4 pb-8 pt-16 sm:px-8 lg:min-h-0">
-                        <div className="pc-auth-panel-glow" aria-hidden="true" />
-                        <div className="pc-auth-panel-nav absolute inset-x-5 top-5 flex items-center justify-between gap-4">
-                            <Link to="/" className="pc-auth-back-link inline-flex items-center gap-1.5 text-xs">
-                                <ArrowLeft className="size-3.5" aria-hidden="true" />
-                                返回官网
-                            </Link>
-                            <div className="pc-auth-security-badge inline-flex items-center gap-2 text-xs text-white/46">
-                                <ShieldCheck className="size-3.5" aria-hidden="true" />
-                                私有工作区 · 安全登录
+                <div className="pc-auth-layout">
+                    <motion.section
+                        initial={reducedMotion ? false : { opacity: 0, y: 18 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: aceternityMotion.duration.panel, ease: aceternityMotion.easing.enter }}
+                        className="pc-auth-brand-copy"
+                        aria-label={`${branding.config.identity.displayName}品牌介绍`}
+                    >
+                        <span className="pc-auth-brand-kicker">{branding.config.identity.slogan || branding.config.identity.workspaceLabel}</span>
+                        <h1 className="pc-auth-brand-title">{branding.config.auth.title}</h1>
+                        {branding.config.auth.description ? <p className="pc-auth-brand-summary">{branding.config.auth.description}</p> : null}
+                    </motion.section>
+
+                    <motion.div
+                        initial={reducedMotion ? false : { opacity: 0, y: 14 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        layout={!reducedMotion}
+                        transition={{ duration: aceternityMotion.duration.panel, ease: aceternityMotion.easing.enter }}
+                        className="pc-auth-card-wrap"
+                    >
+                        <ConfigProvider theme={withBrandingAntTheme(getAntThemeConfig(true, desktop), branding.config.theme.primaryColor, true)}>
+                            <div className="auth-card-dark pc-auth-card">
+                                <section aria-label={copy.title} className={`pc-auth-card-content ${activeTab === "login" ? "is-login" : "is-register"}`}>
+                                    <header className="pc-auth-card-header">
+                                        <p className="pc-auth-card-eyebrow">{settings?.firstUser ? "首次设置" : activeTab === "login" ? "账号登录" : "创建账号"}</p>
+                                        <h2 className="pc-auth-card-title">{settings?.firstUser ? "创建第一个管理员" : copy.title}</h2>
+                                        <p className="pc-auth-card-description">{settings?.firstUser ? `完成 ${branding.config.identity.displayName} 的首次初始化。` : copy.description}</p>
+                                    </header>
+                                    <div className="pc-auth-tabs-wrap">
+                                        <Tabs className="auth-card-tabs pc-auth-tabs" activeKey={activeTab} items={tabs} onChange={(key) => navigate({ pathname: key === "register" ? "/register" : "/login", search: location.search })} />
+                                    </div>
+                                    <div key={location.pathname} className="pc-auth-form-slot">
+                                        <Outlet />
+                                    </div>
+                                </section>
                             </div>
-                        </div>
-                        <motion.div
-                            initial={reducedMotion ? false : { opacity: 0, y: 14 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            layout={!reducedMotion}
-                            transition={{ duration: aceternityMotion.duration.panel, ease: aceternityMotion.easing.enter }}
-                            className="pc-auth-card-wrap my-auto w-full"
-                        >
-                            <div className="pc-auth-entry-label" aria-hidden="true">
-                                <span>{activeTab === "login" ? "登录入口" : "注册入口"}</span>
-                                <span>身份验证</span>
-                            </div>
-                            <ConfigProvider theme={withBrandingAntTheme(getAntThemeConfig(true, desktop), branding.config.theme.primaryColor, true)}>
-                                <div className="auth-card-dark pc-auth-card h-auto overflow-hidden backdrop-blur-2xl">
-                                    <section aria-label={copy.title} className={`pc-auth-card-content flex flex-col ${activeTab === "login" ? "is-login" : "is-register"}`}>
-                                        <header className="pc-auth-card-header">
-                                            <p className="pc-auth-card-eyebrow">{settings?.firstUser ? "首次设置" : activeTab === "login" ? "欢迎回来" : "创建账号"}</p>
-                                            <h2 className="pc-auth-card-title">{settings?.firstUser ? "创建第一个管理员" : copy.title}</h2>
-                                            <p className="pc-auth-card-description">{settings?.firstUser ? `完成 ${branding.config.identity.displayName} 的首次初始化。` : copy.description}</p>
-                                        </header>
-                                        <div className="px-6 sm:px-8">
-                                            <Tabs className="auth-card-tabs pc-auth-tabs" activeKey={activeTab} items={tabs} onChange={(key) => navigate({ pathname: key === "register" ? "/register" : "/login", search: location.search })} />
-                                        </div>
-                                        <div key={location.pathname} className="pc-auth-form-slot flex-1">
-                                            <Outlet />
-                                        </div>
-                                    </section>
-                                </div>
-                            </ConfigProvider>
-                        </motion.div>
-                    </section>
+                        </ConfigProvider>
+                        <p className="pc-auth-card-footnote">
+                            <ShieldCheck aria-hidden="true" />
+                            账号与项目数据受当前工作区保护
+                        </p>
+                    </motion.div>
                 </div>
             </main>
         </AuthSettingsContext.Provider>

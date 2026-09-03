@@ -35,10 +35,7 @@ test("homepage reuses brand hero media with resilient fallbacks", async () => {
 });
 
 test("homepage interactions cover motion, keyboard focus and reduced motion", async () => {
-    const [home, css] = await Promise.all([
-        Bun.file(new URL("../src/pages/public-site/home.tsx", import.meta.url)).text(),
-        Bun.file(new URL("../src/pages/public-site/public-site.css", import.meta.url)).text(),
-    ]);
+    const [home, css] = await Promise.all([Bun.file(new URL("../src/pages/public-site/home.tsx", import.meta.url)).text(), Bun.file(new URL("../src/pages/public-site/public-site.css", import.meta.url)).text()]);
     expect(home).toContain("staggerChildren");
     expect(home).toContain("whileInView");
     expect(home).toContain("whileHover");
@@ -51,11 +48,8 @@ test("homepage interactions cover motion, keyboard focus and reduced motion", as
 });
 
 test("public site remains scrollable inside the application shell and resets on route changes", async () => {
-    const [layout, css] = await Promise.all([
-        Bun.file(new URL("../src/pages/public-site/layout.tsx", import.meta.url)).text(),
-        Bun.file(new URL("../src/pages/public-site/public-site.css", import.meta.url)).text(),
-    ]);
-    expect(layout).toContain('ref={shellRef}');
+    const [layout, css] = await Promise.all([Bun.file(new URL("../src/pages/public-site/layout.tsx", import.meta.url)).text(), Bun.file(new URL("../src/pages/public-site/public-site.css", import.meta.url)).text()]);
+    expect(layout).toContain("ref={shellRef}");
     expect(layout).toContain('shellRef.current?.scrollTo({ top: 0, behavior: "auto" })');
     expect(css).toContain("height: 100%;");
     expect(css).toContain("overflow-y: auto;");
@@ -73,7 +67,7 @@ test("public navigation and auth entry keep account and recovery actions explici
     expect(layout).toContain('const accountLabel = user ? "账号设置" : "登录"');
     expect(layout).toContain('event.key === "Escape"');
     expect(auth).toContain('className="pc-auth-back-link');
-    expect(auth).toContain("返回官网");
+    expect(auth).toContain("返回首页");
     expect(register).toContain("邮箱注册暂不可用");
     expect(register).toContain("返回登录");
 });
