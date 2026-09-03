@@ -107,7 +107,7 @@
 
 - 页面：`PageScaffold`、`SectionHeader`、`Surface`、`SubnavLayout`、`PathBreadcrumb`。
 - 筛选：`SearchField`、`FilterBar`、`FilterChip`、`ViewToggle`。
-- 数据：`DataTable`、`SelectionBar`、`RowActions`、`StatusBadge`、`StatTile`。
+- 数据：`DataTable`、`SelectionBar`、`RowActions`、`StatusBadge`、`StatTile`、`LibraryCreateCard`。
 - 状态：`WorkspaceState`、`WorkspaceLoadingState`、`WorkspaceErrorState`、`FullScreenState`。
 - 表单：`FormSection`、`DialogFrame`、`DrawerFrame`、`ConfirmDialog`。
 - 上传：`UploadField`、`FileDropzone`、`UploadQueue`、`UploadProgress`。

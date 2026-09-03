@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "r
 
 import { ListToolbar, PageHeader, PaginationBar, WorkspacePage } from "@/components/ui/pc/page";
 import { WorkspaceErrorState, WorkspaceState } from "@/components/ui/pc/workspace-state";
+import { LibraryCreateCard } from "@/components/ui/pc/library-create-card";
 import { SearchField, SectionHeader, Surface, ViewToggle } from "@/components/ui/pc";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { fallbackSkillCategories, formatSkillCount, groupSkills, skillCategoryLabel } from "@/pages/skills/skill-catalog";
@@ -305,15 +306,7 @@ export default function SkillsPage() {
                                             }
                                         />
                                         <div className="library-grid skill-library-grid">
-                                            {groupedSkills[0] === group ? (
-                                                <button type="button" className="library-create-card" onClick={() => setInstallOpen(true)}>
-                                                    <span className="library-create-cover">
-                                                        <Plus className="size-8" />
-                                                    </span>
-                                                    <span className="library-create-title">安装技能</span>
-                                                    <span className="library-create-meta">上传 MD / ZIP 或连接 GitHub</span>
-                                                </button>
-                                            ) : null}
+                                            {groupedSkills[0] === group ? <LibraryCreateCard label="安装技能" description="上传 MD / ZIP 或连接 GitHub" icon={<Plus className="size-8" />} onClick={() => setInstallOpen(true)} /> : null}
                                             {group.skills.map((skill, index) => (
                                                 <SkillCard
                                                     key={skill.skill_id}
