@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { App, Button, Empty, Form, Input, Segmented } from "antd";
-import { ChevronLeft, ChevronRight, Play, Plus, Save, Trash2 } from "lucide-react";
+import { Activity, CheckCircle2, ChevronLeft, ChevronRight, CircleDashed, Clapperboard, Play, Plus, Save, Trash2 } from "lucide-react";
 
 import { CreditSymbol, requestCreditCost } from "@/constant/credits";
 import { modelCapabilityConfigFor, normalizeImageValue, normalizeVideoValue } from "@/lib/model-capabilities";
@@ -69,6 +69,7 @@ export default function WorkflowProductionWorkbench(props: Props) {
     const shotIndex = selectedShot ? shots.findIndex((item) => item.id === selectedShot.id) : -1;
     const revision = currentRevision(detail, selectedShot);
     const artifactType = artifactTypeForStage(activeStage);
+    const stageCopy = productionStageCopy[activeStage as "storyboard" | "previz" | "video"];
     const artifacts = useMemo(
         () =>
             selectedShot
@@ -90,6 +91,22 @@ export default function WorkflowProductionWorkbench(props: Props) {
     const shotTaskElapsed = shotTask ? formatTaskElapsed(Date.parse(shotTask.startedAt || shotTask.createdAt), taskClock) : "";
     const newestArtifact = artifacts.find((item) => item.selected) || artifacts[0];
     const previewArtifact = artifacts.find((item) => item.id === previewArtifactId) || newestArtifact;
+    const productionSummary = useMemo(() => {
+        const shotIds = new Set(shots.map((shot) => shot.id));
+        const readyShotIds = new Set((detail.shotArtifacts || []).filter((artifact) => shotIds.has(artifact.shotId) && artifact.type === artifactType && artifact.selected && artifact.status === "ready").map((artifact) => artifact.shotId));
+        const activeShotIds = new Set([
+            ...(detail.tasks || [])
+                .filter((task) => shotIds.has(task.clientContext?.shotId || "") && task.clientContext?.artifactType === artifactType && (task.status === "queued" || task.status === "running"))
+                .flatMap((task) => (task.clientContext?.shotId ? [task.clientContext.shotId] : [])),
+            ...submittingShotIds,
+        ]);
+        readyShotIds.forEach((shotId) => activeShotIds.delete(shotId));
+        return {
+            ready: readyShotIds.size,
+            active: activeShotIds.size,
+            pending: Math.max(0, shots.length - readyShotIds.size - activeShotIds.size),
+        };
+    }, [artifactType, detail.shotArtifacts, detail.tasks, shots, submittingShotIds]);
     const generationCapability = activeStage === "video" ? ("video" as const) : ("image" as const);
     const modelOptions = useMemo(() => selectableModelsByCapability(effectiveConfig, generationCapability), [effectiveConfig, generationCapability]);
     const projectDefaultModel = generationCapability === "video" ? detail.project.defaultVideoModel : detail.project.defaultImageModel;
@@ -385,7 +402,6 @@ export default function WorkflowProductionWorkbench(props: Props) {
         }
     };
 
-    const stageCopy = productionStageCopy[activeStage as "storyboard" | "previz" | "video"];
     const selectedShotSubmitting = submittingShotIds.has(selectedShot?.id || "");
     const BatchArtifactButton = activeStage === "video" ? WorkflowBatchVideoButton : activeStage === "previz" ? WorkflowBatchPrevizButton : null;
 
@@ -456,8 +472,43 @@ export default function WorkflowProductionWorkbench(props: Props) {
 
     return (
         <div className="workflow-production-shell">
+            <header className="workflow-production-statusbar" aria-label="当前制作进度">
+                <div className="workflow-production-statusbar-title">
+                    <span className="workflow-production-statusbar-icon">
+                        <Clapperboard aria-hidden />
+                    </span>
+                    <span>
+                        <small>{stageCopy.label}</small>
+                        <strong>{detail.units.find((item) => item.id === unitId)?.title || "当前章节"}</strong>
+                    </span>
+                </div>
+                <div className="workflow-production-statusbar-metrics" aria-live="polite">
+                    <span>
+                        <CheckCircle2 aria-hidden />
+                        已就绪 <strong>{productionSummary.ready}</strong>
+                    </span>
+                    <span className={productionSummary.active ? "is-active" : ""}>
+                        <Activity aria-hidden />
+                        生成中 <strong>{productionSummary.active}</strong>
+                    </span>
+                    <span>
+                        <CircleDashed aria-hidden />
+                        待处理 <strong>{productionSummary.pending}</strong>
+                    </span>
+                </div>
+                <div className="workflow-production-statusbar-current">
+                    <span>当前镜头</span>
+                    <strong>
+                        SC.{String(shotIndex + 1).padStart(2, "0")} / {String(shots.length).padStart(2, "0")}
+                    </strong>
+                </div>
+            </header>
             <div className="workflow-production-main">
                 <aside className="workflow-library-panel">
+                    <div className="workflow-library-heading">
+                        <span>制作资源</span>
+                        <small>绑定到当前镜头</small>
+                    </div>
                     <Segmented
                         block
                         size="small"
@@ -497,8 +548,11 @@ export default function WorkflowProductionWorkbench(props: Props) {
                 <section className="workflow-shot-editor">
                     <header className="workflow-panel-header">
                         <div className="workflow-shot-heading">
-                            <span className="workflow-shot-number">SC.{String(shotIndex + 1).padStart(2, "0")}</span>
-                            <h2>{watchedTitle || selectedShot.title || "未命名镜头"}</h2>
+                            <span className="workflow-shot-kicker">镜头检查器</span>
+                            <span className="workflow-shot-heading-main">
+                                <span className="workflow-shot-number">SC.{String(shotIndex + 1).padStart(2, "0")}</span>
+                                <h2>{watchedTitle || selectedShot.title || "未命名镜头"}</h2>
+                            </span>
                             <StatusBadge className="workflow-save-status" tone={saveShot.isPending ? "running" : editorDirty ? "warning" : revision ? "success" : "neutral"} live={saveShot.isPending}>
                                 {saveShot.isPending ? "保存中" : editorDirty ? "有未保存修改" : revision ? "已保存" : "草稿"}
                             </StatusBadge>
@@ -514,7 +568,7 @@ export default function WorkflowProductionWorkbench(props: Props) {
                     <Form form={form} layout="vertical" className="workflow-shot-form" onValuesChange={markEditorChanged} onFinish={(values) => saveShot.mutate(values)}>
                         <div className="workflow-shot-form-scroll thin-scrollbar">
                             <div className="workflow-form-section-heading">
-                                <span>镜头脚本</span>
+                                <span>脚本与表演</span>
                                 <small>先写清镜头里发生什么，再调整生成参数</small>
                             </div>
                             <Form.Item name="title" label="镜头名称" rules={[{ required: true, message: "请输入镜头名称" }]}>
@@ -559,15 +613,18 @@ export default function WorkflowProductionWorkbench(props: Props) {
                         </div>
                         <footer className="workflow-editor-actions">
                             <div className="workflow-editor-actions-meta">
-                                <div className="workflow-generation-cost" aria-live="polite">
-                                    {creditsEnabled && formattedGenerationCredits ? (
-                                        <>
-                                            <CreditSymbol />
-                                            <span>本次预计 {formattedGenerationCredits} 积分</span>
-                                        </>
-                                    ) : creditsEnabled && routedModel ? (
-                                        <span>本次费用将在提交时按实际规格计算</span>
-                                    ) : null}
+                                <div className="workflow-generation-summary" aria-live="polite">
+                                    <span className="workflow-generation-target">生成目标 · {stageCopy.label}</span>
+                                    <span className="workflow-generation-cost">
+                                        {creditsEnabled && formattedGenerationCredits ? (
+                                            <>
+                                                <CreditSymbol />
+                                                <span>预计 {formattedGenerationCredits} 积分</span>
+                                            </>
+                                        ) : creditsEnabled && routedModel ? (
+                                            <span>费用提交时确认</span>
+                                        ) : null}
+                                    </span>
                                 </div>
                                 <Button
                                     type="text"

@@ -1,5 +1,5 @@
 import { Alert, App, Button, Empty, Segmented } from "antd";
-import { Download, Film, Layers3, Play, RefreshCcw } from "lucide-react";
+import { Download, Film, Layers3, Play, RefreshCcw, ScanLine } from "lucide-react";
 import { useNavigate } from "react-router";
 
 import { generationErrorMessage } from "@/lib/generation-error";
@@ -49,28 +49,33 @@ export function WorkflowArtifactPreviewPanel({
     const navigate = useNavigate();
     const { message } = App.useApp();
     const stageCopy = productionStageCopy[activeStage as keyof typeof productionStageCopy];
+    const taskState =
+        shotTask?.status === "queued" ? "排队中" : shotTask?.status === "running" ? "生成中" : shotTask?.status === "failed" ? "生成失败" : shotTask?.status === "cancelled" ? "已取消" : newestArtifact ? `产物 v${newestArtifact.version}` : "待生成";
     return (
         <section className="workflow-preview-panel" aria-label="画面监看">
             <header className="workflow-preview-header">
                 <div className="workflow-preview-header-row">
                     <div className="workflow-preview-title">
-                        <Film className="size-4 shrink-0" />
+                        <ScanLine className="size-4 shrink-0" />
                         <span>
-                            <strong>画面监看</strong>
+                            <strong>中央监看</strong>
                             <small>
                                 {selectedShot.title || "未命名镜头"} · {formatDuration(selectedShot.durationMs)}
                             </small>
                         </span>
                     </div>
-                    <Segmented
-                        size="small"
-                        value={previewTab}
-                        onChange={(value) => onPreviewTabChange(value as typeof previewTab)}
-                        options={[
-                            { value: "latest", label: "最新" },
-                            { value: "history", label: `历史 ${artifacts.length}` },
-                        ]}
-                    />
+                    <div className="workflow-preview-header-actions">
+                        <span className={`workflow-preview-task-state is-${shotTask?.status || (newestArtifact ? "ready" : "idle")}`}>{taskState}</span>
+                        <Segmented
+                            size="small"
+                            value={previewTab}
+                            onChange={(value) => onPreviewTabChange(value as typeof previewTab)}
+                            options={[
+                                { value: "latest", label: "最新" },
+                                { value: "history", label: `历史 ${artifacts.length}` },
+                            ]}
+                        />
+                    </div>
                 </div>
                 <Segmented
                     block
@@ -85,7 +90,7 @@ export function WorkflowArtifactPreviewPanel({
                     onChange={(nextStage) => navigate(`/projects/${projectId}/workflow/${unitId}/${nextStage}`)}
                 />
             </header>
-            <div className={`workflow-preview-scroll thin-scrollbar ${previewTab === "history" ? "is-history" : ""}`}>
+            <div className={`workflow-preview-scroll thin-scrollbar ${previewTab === "history" ? "is-history" : ""}`} aria-live="polite">
                 {shotTask?.status === "failed" || shotTask?.status === "cancelled" ? (
                     <Alert
                         className="mb-3"
@@ -102,6 +107,10 @@ export function WorkflowArtifactPreviewPanel({
                 ) : null}
                 {previewTab === "latest" ? (
                     <div className="workflow-monitor-stage">
+                        <div className="workflow-monitor-stage-label">
+                            <span>{stageCopy.label}</span>
+                            <small>{workflowArtifactSpecificationLabel(activeStage, resolution, imageQuality)}</small>
+                        </div>
                         <LatestPreview artifact={previewArtifact} emptyText={stageCopy.empty} />
                     </div>
                 ) : (
@@ -117,10 +126,10 @@ export function WorkflowArtifactPreviewPanel({
                 <div className="workflow-preview-details">
                     <div className="workflow-preview-summary">
                         <div className="flex items-center justify-between gap-2">
-                            <span className="text-xs font-medium">当前产物</span>
+                            <span className="workflow-preview-summary-title">当前产物</span>
                             <ArtifactStatus artifact={newestArtifact} compact />
                         </div>
-                        <div className="mt-1 text-[var(--fs-micro)] text-foreground/45">
+                        <div className="workflow-preview-summary-meta">
                             {newestArtifact ? `${formatDuration(selectedShot.durationMs)} · ${workflowArtifactSpecificationLabel(activeStage, resolution, imageQuality)} · v${newestArtifact.version}` : "当前镜头还没有生成产物"}
                         </div>
                     </div>
@@ -150,8 +159,15 @@ function LatestPreview({ artifact, emptyText }: { artifact?: ShotArtifact; empty
             </div>
         );
     const src = resourceFileUrl(artifact.resourceId);
-    if (artifact.type === "video") return <video className="workflow-preview-media" src={src} controls preload="metadata" />;
-    return <img className={`workflow-preview-media ${artifact.type === "action_board" ? "grayscale" : ""}`} src={src} alt="镜头生成预览" loading="eager" />;
+    return (
+        <div className="workflow-preview-media-frame">
+            {artifact.type === "video" ? (
+                <video className="workflow-preview-media" src={src} controls preload="metadata" />
+            ) : (
+                <img className={`workflow-preview-media ${artifact.type === "action_board" ? "grayscale" : ""}`} src={src} alt="镜头生成预览" loading="eager" />
+            )}
+        </div>
+    );
 }
 
 function ArtifactHistory({ artifacts, activeId, onSelect, compact = false }: { artifacts: ShotArtifact[]; activeId?: string; onSelect: (artifact: ShotArtifact) => void; compact?: boolean }) {
