@@ -5,6 +5,7 @@ import { useFocusMode } from "@/hooks/use-focus-mode";
 import { CanvasOverlayLayerProvider } from "@/components/canvas/canvas-overlay-layer";
 import { CanvasProjectFeedbackLayer } from "./canvas-project-feedback";
 import { backendProviderConfig } from "@/lib/canvas/canvas-project-generation";
+import { CANVAS_NODE_DETAIL_MIN_SCALE } from "@/lib/canvas/canvas-keyboard-access";
 import { CanvasProjectHeader, CanvasProjectNavigationSidebar } from "./canvas-project-chrome";
 import { CanvasProjectContextMenu } from "./canvas-project-context-menu";
 import { CanvasProjectMediaDialogs } from "./canvas-project-media-dialogs";
@@ -86,12 +87,7 @@ import { useCanvasViewportState } from "./use-canvas-viewport-state";
 import { useCanvasWorkspaceUiState } from "./use-canvas-workspace-ui-state";
 import { useCanvasPortraitClearance } from "./use-canvas-portrait-clearance";
 import "./canvas-editor-pc.css";
-import {
-    CanvasNodeType,
-    type CanvasNodeData,
-    type CanvasWorkflowKind,
-    type Position,
-} from "@/types/canvas";
+import { CanvasNodeType, type CanvasNodeData, type CanvasWorkflowKind, type Position } from "@/types/canvas";
 import type { ReferenceImage } from "@/types/image";
 
 export default function CanvasPage() {
@@ -105,15 +101,64 @@ export default function CanvasPage() {
 function InfiniteCanvasPage() {
     const { autoConnect: codexAutoConnect, compactAgent: codexCompactAgent, projectId, searchParams, setSearchParams } = useCanvasProjectRoute();
     const containerRef = useRef<HTMLDivElement>(null);
-    const { assets, assetsHydrated, cleanupAssetImages, config, defaultDrawingEngine, directorOnboardingScope, effectiveConfig, isAiConfigReady, localAgentActivity, localAgentConnected, localAgentEnabled, shortDramaEnabled, theme } = useCanvasProjectEnvironment();
+    const { assets, assetsHydrated, cleanupAssetImages, config, defaultDrawingEngine, directorOnboardingScope, effectiveConfig, isAiConfigReady, localAgentActivity, localAgentConnected, localAgentEnabled, shortDramaEnabled, theme } =
+        useCanvasProjectEnvironment();
     const { nodes, nodesRef, setNodes } = useCanvasNodeState();
     const { activeChatId, chatSessions, connections, setActiveChatId, setChatSessions, setConnections } = useCanvasProjectContentState();
     const { setViewport, viewport } = useCanvasViewportState();
     const { batchSourceNodeIds, selectedConnectionId, selectedNodeIds, setSelectedConnectionId, setSelectedNodeIds } = useCanvasSelectionState(nodes);
     const { backgroundMode, canvasTool, contextMenu, hoveredNodeId, isMiniMapOpen, setBackgroundMode, setCanvasTool, setContextMenu, setHoveredNodeId, setIsMiniMapOpen, setShowImageInfo, showImageInfo } = useCanvasWorkspaceUiState();
     const [projectLoaded, setProjectLoaded] = useState(false);
-    const { clearConfirmOpen, directorTemplateRequest, libTVImportOpen, nodeSearchOpen, setClearConfirmOpen, setDirectorTemplateRequest, setLibTVImportOpen, setNodeSearchOpen, setShareModalOpen, setShortcutsOpen, setStylePickerOpen, setTapNowImportOpen, shareModalOpen, shortcutsOpen, stylePickerOpen, tapNowImportOpen } = useCanvasProjectDialogState();
-    const { characterReferenceNodeId, dialogNodeId, directorNodeId, drawingNodeId, infoNodeId, portraitClearanceNodeId, previewNodeId, scriptEditorNodeId, scriptScrollTopById, setCharacterReferenceNodeId, setDialogNodeId, setDirectorNodeId, setDrawingNodeId, setInfoNodeId, setPortraitClearanceNodeId, setPreviewNodeId, setScriptEditorNodeId, setScriptScrollTopById, setSubtitleNodeId, setSuperResolveNodeId, setTextEditorNodeId, setTimelineNodeId, setToolbarNodeId, setVersionCompareRootId, subtitleNodeId, superResolveNodeId, textEditorNodeId, timelineNodeId, toolbarNodeId, versionCompareRootId } = useCanvasNodePanelState();
+    const {
+        clearConfirmOpen,
+        directorTemplateRequest,
+        libTVImportOpen,
+        nodeSearchOpen,
+        setClearConfirmOpen,
+        setDirectorTemplateRequest,
+        setLibTVImportOpen,
+        setNodeSearchOpen,
+        setShareModalOpen,
+        setShortcutsOpen,
+        setStylePickerOpen,
+        setTapNowImportOpen,
+        shareModalOpen,
+        shortcutsOpen,
+        stylePickerOpen,
+        tapNowImportOpen,
+    } = useCanvasProjectDialogState();
+    const {
+        characterReferenceNodeId,
+        dialogNodeId,
+        directorNodeId,
+        drawingNodeId,
+        infoNodeId,
+        portraitClearanceNodeId,
+        previewNodeId,
+        scriptEditorNodeId,
+        scriptScrollTopById,
+        setCharacterReferenceNodeId,
+        setDialogNodeId,
+        setDirectorNodeId,
+        setDrawingNodeId,
+        setInfoNodeId,
+        setPortraitClearanceNodeId,
+        setPreviewNodeId,
+        setScriptEditorNodeId,
+        setScriptScrollTopById,
+        setSubtitleNodeId,
+        setSuperResolveNodeId,
+        setTextEditorNodeId,
+        setTimelineNodeId,
+        setToolbarNodeId,
+        setVersionCompareRootId,
+        subtitleNodeId,
+        superResolveNodeId,
+        textEditorNodeId,
+        timelineNodeId,
+        toolbarNodeId,
+        versionCompareRootId,
+    } = useCanvasNodePanelState();
     const { assistantWidth, focusDockRevealed, mediaPerformanceMode, setAssistantWidth, setFocusDockRevealed, setMediaPerformanceMode, setWorkspaceMode, workspaceMode } = useCanvasWorkspacePreferences({
         preloadAssistant: loadCanvasAssistantPanel,
     });
@@ -509,10 +554,7 @@ function InfiniteCanvasPage() {
         onSelectionBoxEnd: () => setCanvasTool((tool) => (tool === "box-select" ? "move" : tool)),
     });
 
-    const handleCanvasBlankClick = useCallback(
-        () => applyCanvasBlankClick(deselectCanvas, closeAgent),
-        [closeAgent, deselectCanvas],
-    );
+    const handleCanvasBlankClick = useCallback(() => applyCanvasBlankClick(deselectCanvas, closeAgent), [closeAgent, deselectCanvas]);
 
     const { handleCanvasNodeHoverEnd, handleCanvasNodeHoverStart, handleNodeImageSettingsOpenChange, hideNodeToolbar, keepNodeToolbar, nodeImageSettingsOpen, resetNodeHoverToolbar } = useCanvasNodeHoverToolbar({
         dialogNodeId,
@@ -994,7 +1036,13 @@ function InfiniteCanvasPage() {
                 data-workspace-mode={workspaceMode}
                 style={{ background: theme.canvas.background, color: theme.node.text }}
                 aria-label="画布编辑工作台"
+                aria-describedby={viewport.k < CANVAS_NODE_DETAIL_MIN_SCALE ? "canvas-keyboard-overview-hint" : undefined}
             >
+                {viewport.k < CANVAS_NODE_DETAIL_MIN_SCALE ? (
+                    <p id="canvas-keyboard-overview-hint" className="sr-only">
+                        当前为远景视图，未选中节点的内部控件已从 Tab 顺序收起。请使用节点搜索定位并选中节点，或放大画布后继续操作。
+                    </p>
+                ) : null}
                 <CanvasProjectNavigationSidebar
                     focusMode={focusMode}
                     shortDramaEnabled={shortDramaEnabled}
@@ -1044,13 +1092,7 @@ function InfiniteCanvasPage() {
                             }}
                         />
 
-                        <CanvasProjectWorkspaceModeSwitch
-                            focusMode={focusMode}
-                            assistantOpen={assistantOpen}
-                            assistantWidth={assistantWidth}
-                            workspaceMode={workspaceMode}
-                            onWorkspaceModeChange={setWorkspaceMode}
-                        />
+                        <CanvasProjectWorkspaceModeSwitch focusMode={focusMode} assistantOpen={assistantOpen} assistantWidth={assistantWidth} workspaceMode={workspaceMode} onWorkspaceModeChange={setWorkspaceMode} />
 
                         <CanvasProjectNodeSearch
                             open={nodeSearchOpen}
@@ -1065,12 +1107,7 @@ function InfiniteCanvasPage() {
                             onFocusNode={focusCanvasNode}
                         />
 
-                        <CanvasProjectShortDramaGuide
-                            focusMode={focusMode}
-                            guide={shortDramaGuide}
-                            onSkip={skipShortDramaGuide}
-                            onStepClick={activateShortDramaStep}
-                        />
+                        <CanvasProjectShortDramaGuide focusMode={focusMode} guide={shortDramaGuide} onSkip={skipShortDramaGuide} onStepClick={activateShortDramaStep} />
 
                         <CanvasProjectEntryDialogs
                             projectId={projectId}
@@ -1516,13 +1553,7 @@ function InfiniteCanvasPage() {
                             onFlush={() => flushCanvasStorePersistence()}
                         />
 
-                        <CanvasProjectVersionCompareDialog
-                            open={Boolean(versionCompareRootId)}
-                            versions={versionCompareNodes}
-                            onClose={() => setVersionCompareRootId(null)}
-                            onSetPrimary={setPrimaryVersion}
-                            onFocus={focusCanvasNode}
-                        />
+                        <CanvasProjectVersionCompareDialog open={Boolean(versionCompareRootId)} versions={versionCompareNodes} onClose={() => setVersionCompareRootId(null)} onSetPrimary={setPrimaryVersion} onFocus={focusCanvasNode} />
 
                         <CanvasProjectMediaDialogs
                             cropNode={cropNode}
