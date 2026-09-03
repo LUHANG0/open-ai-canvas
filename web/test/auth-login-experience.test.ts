@@ -49,6 +49,13 @@ describe("auth login experience", () => {
         expect(session).toContain("channels: []");
     });
 
+    test("preloads the opposite auth route so the bottom switch stays smooth", async () => {
+        const scene = await read("../src/pages/auth/auth-scene.tsx");
+
+        expect(scene).toContain('activeTab === "login" ? import("./register") : import("./login")');
+        expect(scene).toContain("void preload.catch(() => undefined)");
+    });
+
     test("covers compact and desktop layouts without dropping dynamic theme tokens", async () => {
         const styles = await read("../src/pages/auth/auth-pc.css");
 
@@ -61,7 +68,8 @@ describe("auth login experience", () => {
         expect(styles).toContain(".pc-auth-login-fields");
         expect(styles).toContain(".pc-auth-login-error");
         expect(styles).not.toContain(".pc-auth-card-footnote");
-        expect(styles).toContain("grid-template-columns: minmax(0, 1fr) minmax(400px, 430px)");
+        expect(styles).toContain("grid-template-columns: repeat(2, minmax(0, 1fr))");
+        expect(styles).toContain(".pc-auth-panel-footer");
         expect(styles).toContain("--auth-panel: rgba(248, 247, 243, 0.92)");
         expect(styles).toContain("var(--auth-brand)");
     });

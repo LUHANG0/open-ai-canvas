@@ -88,6 +88,11 @@ export function AuthScene() {
 
     useEffect(() => setHeroFailed(false), [branding.assets.authHeroUrl]);
 
+    useEffect(() => {
+        const preload = activeTab === "login" ? import("./register") : import("./login");
+        void preload.catch(() => undefined);
+    }, [activeTab]);
+
     const tabs = useMemo(() => {
         if (settings?.firstUser) return [{ key: "register", label: "创建管理员" }];
         if (settings && !settings.registrationEnabled) return [{ key: "login", label: "登录" }];
@@ -155,9 +160,6 @@ export function AuthScene() {
                                             <small>{branding.config.identity.workspaceLabel}</small>
                                         </span>
                                     </span>
-                                    <div className="pc-auth-tabs-wrap">
-                                        <Tabs className="pc-auth-tabs" activeKey={activeTab} items={tabs} onChange={(key) => navigate({ pathname: key === "register" ? "/register" : "/login", search: location.search })} />
-                                    </div>
                                 </header>
 
                                 <section aria-label={copy.title} className={`pc-auth-card-content ${activeTab === "login" ? "is-login" : "is-register"}`}>
@@ -166,10 +168,23 @@ export function AuthScene() {
                                         <h1 className="pc-auth-card-title">{settings?.firstUser ? "创建第一个管理员" : copy.title}</h1>
                                         <p className="pc-auth-card-description">{settings?.firstUser ? `完成 ${branding.config.identity.displayName} 的首次初始化。` : activeTab === "login" ? "登录后继续上次的创作。" : copy.description}</p>
                                     </header>
-                                    <div key={location.pathname} className="pc-auth-form-slot">
+                                    <motion.div
+                                        key={location.pathname}
+                                        initial={reducedMotion ? false : { opacity: 0, y: 8 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        transition={{ duration: 0.2, ease: aceternityMotion.easing.enter }}
+                                        className="pc-auth-form-slot"
+                                    >
                                         <Outlet />
-                                    </div>
+                                    </motion.div>
                                 </section>
+
+                                <footer className="pc-auth-panel-footer">
+                                    <span>{activeTab === "login" ? "还没有账号？" : "已经有账号？"}</span>
+                                    <div className="pc-auth-tabs-wrap">
+                                        <Tabs className="pc-auth-tabs" activeKey={activeTab} items={tabs} onChange={(key) => navigate({ pathname: key === "register" ? "/register" : "/login", search: location.search })} />
+                                    </div>
+                                </footer>
                             </ConfigProvider>
                         </div>
                     </motion.section>
