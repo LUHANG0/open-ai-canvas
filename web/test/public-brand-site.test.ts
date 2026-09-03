@@ -1,0 +1,35 @@
+import { expect, test } from "bun:test";
+
+test("public brand site owns root routes while workspace remains authenticated", async () => {
+    const router = await Bun.file(new URL("../src/router.tsx", import.meta.url)).text();
+    for (const path of ['path: "/"', 'path: "/product"', 'path: "/showcase"', 'path: "/about"']) {
+        expect(router).toContain(path);
+    }
+    expect(router).toContain("<PublicSiteLayout />");
+    expect(router).not.toContain('{ path: "/", element: <Navigate to="/create" replace /> }');
+    expect(router).toContain('{ path: "/home", element: <RequireAuth>');
+    expect(router).toContain('path: "settings/public-site"');
+});
+
+test("public content keeps draft and published states separate", async () => {
+    const [api, admin, provider] = await Promise.all([
+        Bun.file(new URL("../src/services/api/public-site.ts", import.meta.url)).text(),
+        Bun.file(new URL("../src/pages/admin/settings/public-site-settings-page.tsx", import.meta.url)).text(),
+        Bun.file(new URL("../src/components/public-site/public-site-provider.tsx", import.meta.url)).text(),
+    ]);
+    expect(api).toContain('patch("/admin/settings/public-site"');
+    expect(api).toContain('post("/admin/settings/public-site/publish"');
+    expect(api).toContain('post("/admin/settings/public-site/reset"');
+    expect(admin).toContain("保存草稿不会影响公开官网");
+    expect(admin).toContain("localDirty || !setting.dirty");
+    expect(provider).toContain("PUBLIC_SITE_CACHE_KEY");
+    expect(provider).toContain("Public marketing content must not block login");
+});
+
+test("homepage reuses brand hero media with resilient fallbacks", async () => {
+    const home = await Bun.file(new URL("../src/pages/public-site/home.tsx", import.meta.url)).text();
+    expect(home).toContain("hero.showreelUrl || branding.assets.authHeroUrl");
+    expect(home).toContain("hero.posterUrl || branding.assets.authHeroPosterUrl");
+    expect(home).toContain("desktop && !reducedMotion && !videoFailed");
+    expect(home).toContain("onError={() => setVideoFailed(true)}");
+});

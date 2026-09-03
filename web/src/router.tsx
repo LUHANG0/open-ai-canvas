@@ -30,6 +30,7 @@ const ResponseInterceptionSettingsPage = lazy(() => import("@/pages/admin/settin
 const ThirdPartySettingsPage = lazy(() => import("@/pages/admin/settings/libtv-settings-page"));
 const SystemUpdatePage = lazy(() => import("@/pages/admin/settings/system-update-page"));
 const BrandingSettingsPage = lazy(() => import("@/pages/admin/settings/branding-settings-page"));
+const PublicSiteSettingsPage = lazy(() => import("@/pages/admin/settings/public-site-settings-page"));
 const StoryboardPromptsPage = lazy(() => import("@/pages/admin/storyboard-prompts/storyboard-prompts-page"));
 const UsersPage = lazy(() => import("@/pages/admin/users/users-page"));
 const AssetsPage = lazy(loadAssetsPage);
@@ -50,6 +51,11 @@ const ProjectsPage = lazy(loadProjectsPage);
 const ProjectDetailPage = lazy(() => import("@/pages/projects/detail"));
 const SettingsPage = lazy(() => import("@/pages/settings"));
 const TestVoiceRecording = lazy(() => import("@/pages/test-voice-recording"));
+const PublicSiteLayout = lazy(() => import("@/pages/public-site/layout"));
+const PublicHomePage = lazy(() => import("@/pages/public-site/home"));
+const PublicProductPage = lazy(() => import("@/pages/public-site/product"));
+const PublicShowcasePage = lazy(() => import("@/pages/public-site/showcase"));
+const PublicAboutPage = lazy(() => import("@/pages/public-site/about"));
 
 function deferred(element: ReactNode) {
     return <Suspense fallback={<WorkspaceRouteLoader />}>{element}</Suspense>;
@@ -82,6 +88,16 @@ function devRoutes() {
 
 export const router = createBrowserRouter([
     {
+        element: fullScreenDeferred(<PublicSiteLayout />),
+        errorElement: <RouteErrorPage />,
+        children: [
+            { path: "/", element: fullScreenDeferred(<PublicHomePage />) },
+            { path: "/product", element: fullScreenDeferred(<PublicProductPage />) },
+            { path: "/showcase", element: fullScreenDeferred(<PublicShowcasePage />) },
+            { path: "/about", element: fullScreenDeferred(<PublicAboutPage />) },
+        ],
+    },
+    {
         element: <AuthScene />,
         errorElement: <RouteErrorPage />,
         children: [
@@ -99,9 +115,8 @@ export const router = createBrowserRouter([
         ),
         errorElement: <RouteErrorPage />,
         children: [
-            { path: "/", element: <Navigate to="/create" replace /> },
             { path: "/create", element: <RequireAuth>{deferred(<CreatePage />)}</RequireAuth> },
-            { path: "/home", element: deferred(<HomePage />) },
+            { path: "/home", element: <RequireAuth>{deferred(<HomePage />)}</RequireAuth> },
             {
                 path: "/tasks",
                 element: (
@@ -112,8 +127,22 @@ export const router = createBrowserRouter([
             },
             { path: "/assets", element: <RequireAuth>{deferred(<AssetsPage />)}</RequireAuth> },
             { path: "/skills", element: <RequireAuth>{deferred(<SkillsPage />)}</RequireAuth> },
-            { path: "/plugins", element: <RequireAuth><RequireFeature feature="pluginCenterEnabled">{deferred(<PluginsPage />)}</RequireFeature></RequireAuth> },
-            { path: "/plugins/eagle", element: <RequireAuth><RequireFeature feature="pluginCenterEnabled">{deferred(<EagleLibraryPage />)}</RequireFeature></RequireAuth> },
+            {
+                path: "/plugins",
+                element: (
+                    <RequireAuth>
+                        <RequireFeature feature="pluginCenterEnabled">{deferred(<PluginsPage />)}</RequireFeature>
+                    </RequireAuth>
+                ),
+            },
+            {
+                path: "/plugins/eagle",
+                element: (
+                    <RequireAuth>
+                        <RequireFeature feature="pluginCenterEnabled">{deferred(<EagleLibraryPage />)}</RequireFeature>
+                    </RequireAuth>
+                ),
+            },
             {
                 path: "/wallet",
                 element: (
@@ -184,6 +213,7 @@ export const router = createBrowserRouter([
                     { path: "logs", element: deferred(<LogsPage />) },
                     { path: "settings", element: <Navigate to="runtime-policy" replace /> },
                     { path: "settings/branding", element: deferred(<BrandingSettingsPage />) },
+                    { path: "settings/public-site", element: deferred(<PublicSiteSettingsPage />) },
                     { path: "settings/drawing-engine", element: deferred(<DrawingEngineSettingsPage />) },
                     { path: "settings/concurrency", element: <Navigate to="/admin/settings/runtime-policy" replace /> },
                     { path: "settings/runtime-policy", element: deferred(<RuntimePolicySettingsPage />) },
