@@ -1,0 +1,169 @@
+---
+title: v1.2.2-preview.4 最终 RC 集成与上线前验收
+description: 2026-09-04 独立候选分支的集成清单、P0 修复、测试证据、Go/No-Go 与逐项回退表。
+---
+
+# v1.2.2-preview.4 最终 RC 集成与上线前验收
+
+## 最终结论
+
+**技术候选通过，真实业务验收 No-Go。** 当前分支已达到隔离 staging 技术验收标准：前端、Backend、Canvas Agent、生产构建、候选镜像、PostgreSQL/Redis Compose、健康检查与主要真实浏览器链路均通过。测试期间发现的两个阻断问题已经在本分支修复并回归：Host Updater 未恢复 Backend `/data`，以及导演台 E2E 夹具未模拟新增公开站点接口。
+
+真实业务验收仍不得开始，原因不是已知代码失败，而是上线手册要求的三个外部/运维门禁尚未闭环：
+
+1. 发布负责人、监控值守、回退执行和客户沟通角色尚未实名确认。
+2. 尚未在隔离的 PostgreSQL + Backend 数据卷上通过真实 Host Updater 完成一次端到端“升级失败 → 自动回退 → 业务抽样”演练；本轮只完成了停止服务后的真实数据卷归档演练和恢复脚本测试。
+3. 外部 OSS/COS 等不在 Backend `/data` 内的对象仍属于人工恢复边界，尚未登记恢复来源、校验口径与责任人。
+
+以上三项清零，并在 GitHub Actions 与 GHCR 上确认最终提交对应的不可变制品后，可重新判定 Go。健康接口返回 `200` 不能替代这些门禁。
+
+## 候选身份与边界
+
+| 项目 | 记录 |
+| --- | --- |
+| 上游基线 | `main` / `origin/main` = `2d9078a150608d370eeae7ba5f3ea5584cd0d8b1` |
+| 最终 RC 分支 | `fix/final-rc-v1.2.2-preview.4` |
+| 独立 worktree | `/Users/hanglu/Documents/影策/.worktrees/final-rc-v1.2.2-preview.4` |
+| 推荐版本 | `v1.2.2-preview.4`；本地与远端均未发现同名标签，因此无需人为制造 `preview.5` |
+| 制品策略 | 正式发布只能由最终批准提交构建并使用不可变版本标签；禁止回退到 `latest` |
+| 本轮边界 | 未修改主工作区，未推送、未合并、未打标签、未发布 GHCR、未部署环境、未读取或写入生产数据 |
+
+若在审批完成前任何外部系统已经发布同名 `v1.2.2-preview.4` 制品，则不可覆盖原标签，应改用 `v1.2.2-preview.5`。
+
+## 三个工作包集成清单
+
+所有提交均从指定工作包分支按原提交边界 cherry-pick 到最终 RC；无冲突，未做 squash。
+
+| 来源工作包 | 来源提交 | RC 提交 | 内容 |
+| --- | --- | --- | --- |
+| 发布工程 | `48129703` | `815e826f` | Canvas Agent 的 Bun 可复现安装基线 |
+| 发布工程 | `a4aab9d8` | `cb27cdb0` | 固定候选版本、镜像来源和构建元数据 |
+| 发布工程 | `a6694691` | `b460f85d` | Nginx 缓存与安全响应头 |
+| 发布工程 | `43796b06` | `0cff2640` | 发布工程交付记录 |
+| 前端收口 | `cf0e1710` | `02b53541` | 邀请制入口文案与内部状态隐藏 |
+| 前端收口 | `b7864df0` | `8d2e7520` | 移动端低缩放空白画布安全适配 |
+| 前端收口 | `908b65b2` | `72bb19de` | 大画布远景节点键盘焦点收敛 |
+| 前端收口 | `4120cadf` | `57e68499` | 视频素材缺失元数据回填 |
+| 前端收口 | `466aebfc` | `8ea64d9b` | 插件中心客户化文案 |
+| 前端收口 | `f4186dec` | `5cabce6d` | 前端验收记录与截图 |
+| 上线手册 | `a33d8485` | `ed2e3da7` | 周日上线监控、值守和回退手册 |
+| 上线手册 | `bb2e38b` | `688cb97b` | 手册交付证据 |
+
+## 最终 RC 新增修复
+
+### P0：完整恢复 Backend 数据目录
+
+提交 `e8992642784d182fdc5620e47b3e90c6dc76c45b` 修复了原 Host Updater 只恢复 PostgreSQL、却不恢复已备份 `backend-data.tar` 的问题，并收紧停写与失败策略：
+
+- 目标镜像先拉取和校验，再进入停机窗口。
+- 先停止 Web/Backend，确认停写后再备份 PostgreSQL 和 `/data`。
+- 停止的 Backend 通过一次性 root 容器读取数据卷，不依赖已经停止的服务容器。
+- 回退必须按“停服务 → 恢复旧 Compose → 恢复数据库 → 恢复 `/data` → 恢复旧标签 → 启动并验活”执行。
+- 任一恢复步骤失败即保持停止并进入人工介入，不允许带着部分恢复的数据启动。
+- `/data` 激活前保留当前内容；无效 tar 不触碰在线数据；检测到未清理的上次恢复现场时拒绝覆盖。
+
+验证包含 5 个定向恢复测试全部通过，覆盖隐藏文件替换、无效归档保护、残留现场拒绝、归档标准输入流和停止服务后的 root 数据卷读取。另在隔离 Compose 的真实 Backend 卷中写入标记、停止 Web/Backend、用新命令归档并确认标记存在，随后服务恢复健康。
+
+### 门禁可靠性：导演台公开站点夹具
+
+提交 `1971fcfa` 为导演台 Chrome E2E 的同源 API stub 补充 `/api/public/site`。首次运行时 52 个功能断言全部通过，但新增公开站点请求产生重复 404，导致 6 个“无浏览器问题”断言失败；修复后重跑为 `58/58`，浏览器问题列表均为空。此修复只改变测试夹具，不放宽错误 allowlist。
+
+## 验证矩阵
+
+| 层级 | 命令或场景 | 结果 |
+| --- | --- | --- |
+| Web 单元/合同测试 | `cd web && bun test` | `1683 passed / 0 failed`，244 个文件，9747 个断言 |
+| Web 类型检查 | `cd web && bun run typecheck` | 通过 |
+| Web 生产构建 | 注入 `v1.2.2-preview.4` 与完整提交后执行 `bun run build` | 通过；13,668 modules；全部 7 个体积预算通过 |
+| Backend | `cd backend && go test ./...` | 全部包通过 |
+| Host Updater 恢复定向测试 | `go test -v ./internal/hostupdate -run ...` | `5/5` 通过 |
+| Canvas Agent | `npm test && npm run build` | `316 passed / 5 skipped / 0 failed`；TypeScript 构建通过 |
+| Compose | deploy、deploy+build、local 三种 `config` | 均通过；缺少 `CANVAS_IMAGE_TAG` 按设计失败 |
+| 候选镜像 | Backend + Web 本地构建并检查 OCI labels | 通过；version 为 `v1.2.2-preview.4`，revision 为构建提交 |
+| PostgreSQL/Redis 集成 | 独立项目 `canvasrcpreview4`，独立网络与三个独立卷 | migrate 退出 0；PostgreSQL、Redis、Backend、Web 均 healthy |
+| 健康接口 | Web 代理与 Backend 直连 `/api/health/ready` | JSON 一致；`ready=true`，schema `6/6`，database/runtime/schema 全为 true |
+| Canvas Chrome E2E | 真实 Chrome/CDP，拖拽、撤销重做、保存刷新、搜索、键盘、专注、Agent、大画布 | `76/76` 通过；无浏览器/网络错误 |
+| 导演台 Chrome E2E | 模型成功/失败重试、加载中删除、WebGL 丢失恢复、保存失败关闭守卫 | 修复夹具后 `58/58` 通过 |
+| 项目交付 Chrome E2E | 真实指针、FFmpeg、ZIP、SRT、manifest、下载 | `11/11` 通过；无浏览器错误 |
+| 响应式视觉 | 390×844、1366×768、1600×1000 | 登录、素材、插件、标准画布和大画布均无页面级横向溢出 |
+
+Canvas Agent 的 5 个 skip 为套件既有的平台/条件跳过，不是本轮失败。GitHub Actions 未实际运行，因为本轮明确禁止推送；本地使用同类构建参数完成了替代验证。
+
+### 前台关键状态
+
+- 登录页：实际候选环境在关闭注册时仅显示“仅限受邀成员使用，需要账号请联系团队管理员”，不暴露邮件或后台配置状态。
+- 素材页：测试账号下空目录显示 `0 个素材`，新增、外部素材和导入入口可达；视频缺失尺寸的合同测试通过。
+- 插件中心：实际候选环境显示客户可理解的能力文案；真实键盘 Tab 路径可到达侧栏与主内容，无焦点陷阱。
+- 画布恢复：标准夹具完整刷新后 4/4 节点恢复；390×844 下仍有可见节点且页面无横向溢出。
+- 大画布：324 节点/612 连线夹具只挂载 25 节点/50 连线，2.291 秒内可交互；1600×1000 视觉抽查无横向溢出。
+- loading / empty / error / keyboard：全量测试覆盖 workspace 静默骨架、共享 loading overlay、Canvas 空态路由、媒体错误降级、导演台失败重试与关闭守卫、远景 `inert`、搜索/缩放/复制粘贴快捷键。
+
+## 构建体积与性能
+
+| 预算 | 实测 | 上限 |
+| --- | ---: | ---: |
+| 启动壳 JS（含静态依赖） | 592.1 KiB | 610.4 KiB |
+| 启动壳 CSS | 120.6 KiB | 125.0 KiB |
+| 画布首次进入新增 JS | 834.0 KiB | 859.4 KiB |
+| 创作页首次进入新增 JS | 400.0 KiB | 415.0 KiB |
+| 最大业务入口 | 180.2 KiB | 187.5 KiB |
+| 最大 JS 单文件 | 725.8 KiB | 761.7 KiB |
+| 最大 CSS 单文件 | 119.4 KiB | 123.0 KiB |
+
+全部通过，但启动壳 CSS 和最大 CSS 单文件只剩约 3.5–3.6 KiB 余量，后续新增全局样式前必须继续执行预算门禁。
+
+## 浏览器证据
+
+- [邀请制登录页，390×844](evidence/final-rc-v1.2.2-preview.4/login-invitation-390x844.png)
+- [素材空目录，390×844](evidence/final-rc-v1.2.2-preview.4/assets-empty-390x844.png)
+- [插件中心客户化文案，1366×768](evidence/final-rc-v1.2.2-preview.4/plugins-customer-copy-1366x768.png)
+- [标准画布恢复，1366×768](evidence/final-rc-v1.2.2-preview.4/canvas-restored-1366x768.png)
+- [移动端画布恢复，390×844](evidence/final-rc-v1.2.2-preview.4/canvas-mobile-restored-390x844.png)
+- [大画布，1600×1000](evidence/final-rc-v1.2.2-preview.4/canvas-large-1600x1000.png)
+
+截图仅使用隔离本地候选环境、临时测试账号或仓库确定性复现夹具，不包含生产账号或生产数据。
+
+## 未执行项与剩余风险
+
+| 项目 | 状态 | 风险/下一步 |
+| --- | --- | --- |
+| GitHub Actions | 未执行 | 推送批准分支后观察全部 required checks，失败即停止 |
+| GHCR 发布与 digest 核对 | 未执行 | 由最终批准提交构建；记录 version tag 与 digest，不得覆盖或使用 `latest` |
+| 真实 Host Updater 全链回退 | 未执行 | 在隔离 PostgreSQL、Redis、Backend `/data` 和同源 Compose 上注入失败并验证业务抽样 |
+| 外部 OSS/COS 恢复 | 未执行 | 登记对象清单、版本/快照、校验方法、恢复时限和实名负责人 |
+| 实名值守与告警入口 | 未完成 | 按上线手册填满角色、替补和唯一告警入口 |
+| 真实生成、计费、邮件、公开注册 | 未触发 | 继续保持关闭；只在获批的隔离验收账号与预算内验证 |
+
+## 发布前停止条件
+
+以下任一成立立即 No-Go 或停止灰度：候选标签与最终提交不一致；数据库/schema/Redis 任一不健康；备份校验或恢复演练失败；邀请制边界失效；保存/加载/播放错误超过手册阈值；无法确认值守或回退负责人；外部对象恢复来源不明确。
+
+## 逐项回滚清单
+
+仅允许在独立分支使用 `git revert` 保留审计链；整组撤销按下列逆序执行。每一步都先复核提交只触及表中声明的边界，再运行对应测试。最终验收记录提交本身可单独撤销，不影响运行时。
+
+1. `git revert --no-edit 1971fcfa`：撤销导演台公开站点测试夹具。
+2. `git revert --no-edit e8992642`：撤销 Host Updater 完整 `/data` 恢复。**不建议单独执行**；这会重新引入数据回退 P0，执行后候选必须 No-Go。
+3. `git revert --no-edit 688cb97b`：撤销上线手册交付证据。
+4. `git revert --no-edit ed2e3da7`：撤销上线监控与回退手册。
+5. `git revert --no-edit 5cabce6d`：撤销前端验收记录与证据。
+6. `git revert --no-edit 8ea64d9b`：撤销插件中心客户化文案。
+7. `git revert --no-edit 57e68499`：撤销视频素材元数据回填。
+8. `git revert --no-edit 72bb19de`：撤销大画布远景键盘焦点收敛。
+9. `git revert --no-edit 8d2e7520`：撤销移动端低缩放安全适配。
+10. `git revert --no-edit 02b53541`：撤销邀请制入口文案。
+11. `git revert --no-edit 0cff2640`：撤销发布工程记录。
+12. `git revert --no-edit b460f85d`：撤销 Nginx 缓存与安全响应头。
+13. `git revert --no-edit cb27cdb0`：撤销候选版本、镜像来源和元数据基线。
+14. `git revert --no-edit 815e826f`：撤销 Canvas Agent 可复现安装基线。
+
+数据回退不等同于 Git 回退。已经运行过迁移或接受写入时，必须按上线手册和 Host Updater 的已校验备份恢复 PostgreSQL 与 Backend `/data`，再恢复旧镜像标签并验活；外部对象存储仍按人工清单处理。
+
+## 重新申请 Go 的最小证据
+
+1. 四类角色、替补和告警入口实名登记。
+2. 隔离环境真实 Host Updater 失败注入与完整回退记录，包含数据库、隐藏文件、媒体/素材抽样和校验值。
+3. 外部对象存储恢复清单与演练结果。
+4. 最终提交上的 required CI 全绿。
+5. GHCR version tag、SHA tag、OCI revision 与镜像 digest 四者一致。
+6. 固定版本 Compose 启动后，代理/直连 readiness、Redis PING、登录、素材、画布保存刷新、生成与播放小样均通过。
