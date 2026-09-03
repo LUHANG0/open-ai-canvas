@@ -22,8 +22,8 @@ describe("canvas node settings panels lazy loading", () => {
         const rendererSource = await source("../src/pages/canvas/use-canvas-node-panel-renderer.tsx");
 
         expect(rendererSource).toContain('if (kind === "config")');
-        expect(rendererSource).toContain('fallback={<CanvasNodePanelLoading label="正在加载配置编排器…" onClose={() => setDialogNodeId(null)} />}');
-        expect(rendererSource).toContain('fallback={<CanvasNodePanelLoading label="正在加载节点设置…" onClose={() => setDialogNodeId(null)} />}');
+        expect(rendererSource).toContain('fallback={<CanvasInlinePanelLoading label="正在加载配置编排器…" minHeight={190} onClose={() => setDialogNodeId(null)} closeLabel="关闭节点设置" />}');
+        expect(rendererSource).toContain('fallback={<CanvasInlinePanelLoading label="正在加载节点设置…" minHeight={190} onClose={() => setDialogNodeId(null)} closeLabel="关闭节点设置" />}');
         for (const callback of [
             "onChange={(composerContent) => onConfigChange(panelNode.id, { composerContent })}",
             "onMetadataChange={(patch) => onConfigChange(panelNode.id, patch)}",
@@ -38,11 +38,16 @@ describe("canvas node settings panels lazy loading", () => {
     });
 
     test("keeps the closable fallback inside the existing overlay content flow", async () => {
-        const rendererSource = await source("../src/pages/canvas/use-canvas-node-panel-renderer.tsx");
+        const [rendererSource, loadingSource] = await Promise.all([
+            source("../src/pages/canvas/use-canvas-node-panel-renderer.tsx"),
+            source("../src/pages/canvas/canvas-inline-panel-loading.tsx"),
+        ]);
 
-        expect(rendererSource).toContain('className="flex min-h-[190px] w-full');
-        expect(rendererSource).not.toContain("fixed inset-0");
-        expect(rendererSource).toContain('role="status" aria-live="polite"');
-        expect(rendererSource).toContain('aria-label="关闭节点设置"');
+        expect(rendererSource).toContain("minHeight={190}");
+        expect(loadingSource).toContain('className="flex w-full');
+        expect(loadingSource).not.toContain("fixed inset-0");
+        expect(loadingSource).toContain('role="status"');
+        expect(loadingSource).toContain('aria-live="polite"');
+        expect(loadingSource).toContain("aria-label={closeLabel}");
     });
 });

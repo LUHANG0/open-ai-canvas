@@ -14,7 +14,10 @@ test("special node overlays defer angle and emotion workspaces until a target op
 });
 
 test("special node overlay lazy boundaries retain drag, close, and generation routing", async () => {
-    const source = await Bun.file(new URL("../src/pages/canvas/canvas-project-node-overlays.tsx", import.meta.url)).text();
+    const [source, loadingSource] = await Promise.all([
+        Bun.file(new URL("../src/pages/canvas/canvas-project-node-overlays.tsx", import.meta.url)).text(),
+        Bun.file(new URL("../src/pages/canvas/canvas-inline-panel-loading.tsx", import.meta.url)).text(),
+    ]);
 
     expect(source).toContain('label="正在加载多角度编辑器…" onClose={onCloseAngle}');
     expect(source).toContain('label="正在加载表情工作区…" onClose={onCloseEmotion}');
@@ -22,8 +25,9 @@ test("special node overlay lazy boundaries retain drag, close, and generation ro
     expect(source).toContain("dragOffset={emotionDrag?.dragOffset}");
     expect(source).toContain("onConfirm={(params) => void onGenerateAngle(angleNode, params)}");
     expect(source).toContain("onConfirm={(payload) => void onGenerateEmotion(emotionNode, payload)}");
-    expect(source).toContain("onClick={onClose}");
-    expect(source).toContain('role="status" aria-live="polite"');
+    expect(loadingSource).toContain("onClick={onClose}");
+    expect(loadingSource).toContain('role="status"');
+    expect(loadingSource).toContain('aria-live="polite"');
 });
 
 test("always-available node panels and the connection menu stay on the eager path", async () => {

@@ -3,6 +3,7 @@ import { lazy, Suspense, useCallback, type ComponentProps, type Dispatch, type S
 import type { CanvasConfigComposer as CanvasConfigComposerComponent } from "@/components/canvas/canvas-config-composer";
 import type { CanvasNodePromptPanel as CanvasNodePromptPanelComponent } from "@/components/canvas/canvas-node-prompt-panel";
 import type { CanvasNodeData, CanvasWorkspaceMode } from "@/types/canvas";
+import { CanvasInlinePanelLoading } from "./canvas-inline-panel-loading";
 import { canvasNodePanelKind } from "./canvas-node-panel-routing";
 
 const CanvasConfigComposer = lazy(() => import("@/components/canvas/canvas-config-composer").then((module) => ({ default: module.CanvasConfigComposer })));
@@ -46,7 +47,7 @@ export function useCanvasNodePanelRenderer({
             if (!kind) return null;
             if (kind === "config") {
                 return (
-                    <Suspense fallback={<CanvasNodePanelLoading label="正在加载配置编排器…" onClose={() => setDialogNodeId(null)} />}>
+                    <Suspense fallback={<CanvasInlinePanelLoading label="正在加载配置编排器…" minHeight={190} onClose={() => setDialogNodeId(null)} closeLabel="关闭节点设置" />}>
                         <CanvasConfigComposer
                             value={panelNode.metadata?.composerContent ?? panelNode.metadata?.prompt ?? ""}
                             inputs={configInputsById.get(panelNode.id) || []}
@@ -62,7 +63,7 @@ export function useCanvasNodePanelRenderer({
                 );
             }
             return (
-                <Suspense fallback={<CanvasNodePanelLoading label="正在加载节点设置…" onClose={() => setDialogNodeId(null)} />}>
+                <Suspense fallback={<CanvasInlinePanelLoading label="正在加载节点设置…" minHeight={190} onClose={() => setDialogNodeId(null)} closeLabel="关闭节点设置" />}>
                     <CanvasNodePromptPanel
                         node={panelNode}
                         isRunning={runningNodeId === panelNode.id}
@@ -80,16 +81,5 @@ export function useCanvasNodePanelRenderer({
             );
         },
         [configInputsById, mentionReferencesByNodeId, onConfigChange, onGenerate, onImageSettingsOpenChange, onNodeMouseDown, onPromptChange, onRemoveReference, runningNodeId, setDialogNodeId, skillMentionReferences, workspaceMode],
-    );
-}
-
-function CanvasNodePanelLoading({ label, onClose }: { label: string; onClose: () => void }) {
-    return (
-        <div data-canvas-no-zoom className="flex min-h-[190px] w-full items-start justify-between gap-3 rounded-[var(--r-2xl)] border bg-background/95 px-4 py-3 text-sm text-foreground shadow-xl backdrop-blur-xl" role="status" aria-live="polite">
-            <span className="pt-1 font-medium">{label}</span>
-            <button type="button" className="shrink-0 rounded-md px-2 py-1 text-xs text-foreground/60 transition-colors hover:bg-foreground/5 hover:text-foreground" onClick={onClose} aria-label="关闭节点设置">
-                关闭
-            </button>
-        </div>
     );
 }
