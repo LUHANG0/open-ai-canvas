@@ -20,6 +20,7 @@ import ProjectWorkflowView from "./detail/workflow";
 import { WorkflowChapterNavigator } from "./detail/workflow-chapter-navigator";
 
 import "./projects.css";
+import "./short-drama-shell.css";
 
 type DetailView = "overview" | "chapters" | "workflow" | "canvases" | "assets" | "settings";
 
@@ -127,7 +128,7 @@ export default function ProjectDetailPage() {
     if (unitId && !units.some((unit) => unit.id === unitId)) return <Navigate to={firstUnitId ? `/projects/${projectId}/workflow/${firstUnitId}/${stage || "video"}` : `/projects/${projectId}/workflow`} replace />;
     if (activeView === "workflow" && !unitId && detail.units.length) return <Navigate to={`/projects/${projectId}/workflow/${detail.units.slice().sort((left, right) => left.position - right.position)[0].id}/video`} replace />;
     return (
-        <WorkspacePage className="project-workbench-page pc-project-workbench !overflow-hidden" fluid>
+        <WorkspacePage className="project-workbench-page pc-project-workbench pc-short-drama-shell pc-short-drama-workbench !overflow-hidden" fluid>
             <div className="pc-project-workbench-frame flex h-full min-h-0 flex-col">
                 {detail.project.status === "archived" ? <Alert type="warning" showIcon banner message="项目已归档，恢复后才能创建画布和生成任务" className="pc-project-archive-alert !border-x-0 !border-t-0" /> : null}
                 <main className="pc-project-workbench-main flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
@@ -153,12 +154,18 @@ function ProjectWorkspaceTopBar({ detail, projectId, activeView, unitId, stage, 
         <div className="project-workspace-topbar pc-project-topbar flex min-w-0 items-center gap-2">
             <button type="button" onClick={() => navigate("/projects")} className="pc-project-topbar-back grid size-8 shrink-0 place-items-center rounded-md text-foreground/42 transition-colors hover:bg-surface-hover hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" aria-label="返回项目列表" title="返回项目列表"><ArrowLeft className="size-4" /></button>
             <div className="pc-project-topbar-identity hidden min-w-0 items-center gap-2 md:flex lg:w-44 xl:w-56">
-                <h1 className="min-w-0 truncate text-[var(--fs-caption)] font-semibold text-foreground/90">{detail.project.name}</h1>
-                <span className={`pc-project-status-dot size-1.5 shrink-0 rounded-full ${detail.project.status === "archived" ? "is-archived bg-foreground/30" : "is-active bg-[var(--workspace-accent)]"}`} aria-hidden="true" />
-                <span className="pc-project-topbar-status hidden shrink-0 text-[var(--fs-tiny)] text-foreground/42 xl:inline">{detail.project.status === "archived" ? "已归档" : "进行中"}</span>
+                <span className="pc-short-drama-project-mark" aria-hidden="true"><Clapperboard className="size-3.5" /></span>
+                <div className="pc-short-drama-project-copy min-w-0">
+                    <span className="pc-short-drama-project-kicker">SHORT DRAMA</span>
+                    <div className="pc-short-drama-project-title-row">
+                        <h1 className="min-w-0 truncate text-[var(--fs-caption)] font-semibold text-foreground/90">{detail.project.name}</h1>
+                        <span className={`pc-project-status-dot size-1.5 shrink-0 rounded-full ${detail.project.status === "archived" ? "is-archived bg-foreground/30" : "is-active bg-[var(--workspace-accent)]"}`} aria-hidden="true" />
+                        <span className="pc-project-topbar-status hidden shrink-0 text-[var(--fs-tiny)] text-foreground/42 xl:inline">{detail.project.status === "archived" ? "已归档" : "进行中"}</span>
+                    </div>
+                </div>
             </div>
             <nav className="pc-project-topbar-nav thin-scrollbar flex h-11 min-w-0 flex-1 items-center gap-0.5 overflow-x-auto" aria-label="项目导航">
-                {views.map((item) => { const Icon = item.icon; const active = item.key === activeView; const href = item.key === "chapters" ? chapterHref : item.key === "workflow" ? workflowHref : `/projects/${projectId}/${item.key}`; return <Link key={item.key} to={href} className={`pc-project-topbar-link relative flex h-8 shrink-0 items-center gap-1.5 rounded-md px-2 text-[var(--fs-caption)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring xl:px-2.5 ${active ? "is-active bg-[var(--workspace-accent-soft)] font-medium text-foreground after:absolute after:inset-x-2.5 after:bottom-0 after:h-0.5 after:rounded-full after:bg-[var(--workspace-accent)]" : "text-foreground/52 hover:bg-surface-hover hover:text-foreground"}`} aria-current={active ? "page" : undefined}><Icon className={`size-3.5 shrink-0 ${active ? "text-[var(--workspace-accent)]" : "text-foreground/45"}`} /><span className="xl:hidden">{item.shortLabel}</span><span className="hidden xl:inline">{item.label}</span></Link>; })}
+                {views.map((item) => { const Icon = item.icon; const active = item.key === activeView; const href = item.key === "chapters" ? chapterHref : item.key === "workflow" ? workflowHref : `/projects/${projectId}/${item.key}`; return <Link key={item.key} to={href} className={`pc-project-topbar-link relative flex h-8 shrink-0 items-center gap-1.5 rounded-md px-2 text-[var(--fs-caption)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring 2xl:px-2.5 ${active ? "is-active bg-[var(--workspace-accent-soft)] font-medium text-foreground after:absolute after:inset-x-2.5 after:bottom-0 after:h-0.5 after:rounded-full after:bg-[var(--workspace-accent)]" : "text-foreground/52 hover:bg-surface-hover hover:text-foreground"}`} aria-current={active ? "page" : undefined}><Icon className={`size-3.5 shrink-0 ${active ? "text-[var(--workspace-accent)]" : "text-foreground/45"}`} /><span className="2xl:hidden">{item.shortLabel}</span><span className="hidden 2xl:inline">{item.label}</span></Link>; })}
             </nav>
             {activeView === "workflow" ? (
                 <WorkflowChapterNavigator projectId={projectId} units={detail.units} unitId={unitId} stage={stage} />

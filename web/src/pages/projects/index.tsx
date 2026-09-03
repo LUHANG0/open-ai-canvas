@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { App, Button, Form, Input, Select } from "antd";
-import { BookOpenText, FileText, FolderKanban, Palette, Plus, Search, Sparkles } from "lucide-react";
+import { Archive, BookOpenText, CheckCircle2, ChevronDown, FileText, FolderKanban, Layers3, Palette, Plus, Search, SlidersHorizontal, Sparkles } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router";
 
 import { CollectionGrid, ListToolbar, PageHeader, WorkspacePage } from "@/components/layout/workspace-page";
@@ -20,8 +20,22 @@ import { ProjectListCard } from "./project-list-card";
 import { generationStepDone, generationSteps, isProjectNameConflict, parseGeneratedStory, projectNameCandidates } from "./project-story-generation";
 
 import "./projects.css";
+import "./short-drama-shell.css";
 
 type ProjectForm = { name: string; aspectRatio: string; sourceType: string };
+
+function ProjectMetric({ icon, label, value, detail, tone = "neutral" }: { icon: ReactNode; label: string; value: ReactNode; detail: string; tone?: "neutral" | "success" | "accent" }) {
+    return (
+        <div className={`pc-short-drama-metric is-${tone}`}>
+            <span className="pc-short-drama-metric-icon" aria-hidden="true">{icon}</span>
+            <span className="pc-short-drama-metric-copy">
+                <span>{label}</span>
+                <strong>{value}</strong>
+                <small>{detail}</small>
+            </span>
+        </div>
+    );
+}
 
 export default function ProjectsPage() {
     const navigate = useNavigate();
@@ -48,6 +62,7 @@ export default function ProjectsPage() {
     const [generating, setGenerating] = useState(false);
     const [generationStatus, setGenerationStatus] = useState("");
     const [generationPreview, setGenerationPreview] = useState("");
+    const [generationOptionsOpen, setGenerationOptionsOpen] = useState(false);
     const createOpen = searchParams.get("create") === "1";
     const setCreateOpen = (open: boolean) => {
         const next = new URLSearchParams(searchParams);
@@ -200,6 +215,12 @@ export default function ProjectsPage() {
             });
     }, [allProjects, keyword, sort, status]);
     const totalProjectCount = query.data?.pages[0]?.total ?? allProjects.length;
+    const projectMetrics = useMemo(() => {
+        const active = allProjects.filter(({ project }) => project.status === "active").length;
+        const archived = allProjects.filter(({ project }) => project.status === "archived").length;
+        const averageCompletion = allProjects.length ? Math.round(allProjects.reduce((total, item) => total + projectSummaryCompletion(item), 0) / allProjects.length) : 0;
+        return { active, archived, averageCompletion };
+    }, [allProjects]);
     useEffect(() => {
         const node = loadMoreRef.current;
         if (!node || !query.hasNextPage || query.isError) return;
@@ -214,7 +235,7 @@ export default function ProjectsPage() {
     }, [query.fetchNextPage, query.hasNextPage, query.isError, query.isFetchingNextPage]);
     const hasInitialError = query.isError && !query.data;
     return (
-        <WorkspacePage className="library-page pc-projects-page" grid>
+        <WorkspacePage className="library-page pc-projects-page pc-short-drama-shell pc-short-drama-hub" grid>
             <PageHeader
                 className="pc-projects-page-header"
                 eyebrow="STORY PRODUCTION"
@@ -231,6 +252,12 @@ export default function ProjectsPage() {
                     </Button>
                 }
             />
+            <section className="pc-short-drama-metrics" aria-label="已加载项目制作总览">
+                <ProjectMetric icon={<Layers3 />} label="已加载项目" value={allProjects.length} detail={`共 ${totalProjectCount} 个`} />
+                <ProjectMetric icon={<CheckCircle2 />} label="进行中" value={projectMetrics.active} detail="可继续制作" tone="success" />
+                <ProjectMetric icon={<Archive />} label="已归档" value={projectMetrics.archived} detail="可在设置中恢复" />
+                <ProjectMetric icon={<BookOpenText />} label="平均章节进度" value={`${projectMetrics.averageCompletion}%`} detail="基于已加载项目" tone="accent" />
+            </section>
             <Surface className="app-story-create-panel pc-projects-starter" padding="none" aria-label="开始一部新短剧">
                 <div className="app-story-create-head">
                     <div className="app-story-create-title">
@@ -270,13 +297,14 @@ export default function ProjectsPage() {
                     </div>
                 </div>
                 <div className="app-story-create-main">
+                    <label className="pc-short-drama-story-label" htmlFor="short-drama-story-draft">一句话故事</label>
                     <Input.TextArea
+                        id="short-drama-story-draft"
                         className="app-story-create-input"
                         value={storyDraft}
                         onChange={(event) => setStoryDraft(event.target.value)}
                         placeholder="例如：一个失忆的快递员，每天收到十年前寄出的信件……"
                         autoSize={{ minRows: 1, maxRows: 3 }}
-                        aria-label="一句话故事"
                     />
                     {selectedStyle ? (
                         <button type="button" className="app-story-create-style-chip" onClick={() => setStylePickerOpen(true)} title={selectedStyle.title}>
@@ -288,7 +316,18 @@ export default function ProjectsPage() {
                         {storyDraft.trim() ? `${storyDraft.trim().length} 字 · 已可生成，也可以继续补充人物、冲突或结局` : "先输入一句话故事，再选择模型生成章节"}
                     </span>
                 </div>
-                <div className="app-story-create-controls">
+                <button
+                    type="button"
+                    className="pc-short-drama-options-toggle"
+                    aria-expanded={generationOptionsOpen}
+                    aria-controls="short-drama-generation-options"
+                    onClick={() => setGenerationOptionsOpen((open) => !open)}
+                >
+                    <span><SlidersHorizontal className="size-3.5" />生成参数</span>
+                    <span className="pc-short-drama-options-summary">{generateChapterCount} 章 · {generateStructure} · {generateWordCount} 字/章</span>
+                    <ChevronDown className={`size-3.5${generationOptionsOpen ? " is-open" : ""}`} />
+                </button>
+                <div id="short-drama-generation-options" className={`app-story-create-controls${generationOptionsOpen ? " is-open" : ""}`}>
                     <label>
                         <span>章节数量</span>
                         <Select
@@ -414,26 +453,30 @@ export default function ProjectsPage() {
                         onChange={(event) => setKeyword(event.target.value)}
                     />
                     <SearchField containerClassName="pc-projects-search" value={keyword} placeholder="搜索项目、简介或画风" onChange={(event) => setKeyword(event.target.value)} onClear={() => setKeyword("")} />
-                    <Select
-                        className="w-32"
-                        value={status}
-                        onChange={setStatus}
-                        options={[
-                            { label: "全部状态", value: "all" },
-                            { label: "进行中", value: "active" },
-                            { label: "已归档", value: "archived" },
-                        ]}
-                    />
-                    <Select
-                        className="w-32"
-                        value={sort}
-                        onChange={setSort}
-                        options={[
-                            { label: "最近更新", value: "updated" },
-                            { label: "章节进度", value: "progress" },
-                            { label: "项目名称", value: "name" },
-                        ]}
-                    />
+                    <div className="pc-short-drama-status-filter" aria-label="项目状态筛选">
+                        {([
+                            { value: "all", label: "全部", count: allProjects.length },
+                            { value: "active", label: "进行中", count: projectMetrics.active },
+                            { value: "archived", label: "已归档", count: projectMetrics.archived },
+                        ] as const).map((item) => (
+                            <button key={item.value} type="button" aria-pressed={status === item.value} onClick={() => setStatus(item.value)}>
+                                <span>{item.label}</span><em>{item.count}</em>
+                            </button>
+                        ))}
+                    </div>
+                    <label className="pc-short-drama-sort">
+                        <span>排序</span>
+                        <Select
+                            className="w-32"
+                            value={sort}
+                            onChange={setSort}
+                            options={[
+                                { label: "最近更新", value: "updated" },
+                                { label: "章节进度", value: "progress" },
+                                { label: "项目名称", value: "name" },
+                            ]}
+                        />
+                    </label>
                 </ListToolbar>
 
                 {hasInitialError ? <WorkspaceErrorState description={query.error instanceof Error ? query.error.message : "项目列表加载失败"} onRetry={() => void query.refetch()} /> : null}
@@ -509,35 +552,38 @@ export default function ProjectsPage() {
                         <button
                             type="button"
                             className={createSource === "blank" ? "app-story-source is-active" : "app-story-source"}
+                            aria-pressed={createSource === "blank"}
                             onClick={() => {
                                 setCreateSource("blank");
                                 createForm.setFieldValue("sourceType", "blank");
                             }}
                         >
                             <FolderKanban className="size-4" />
-                            <span>空白开始</span>
+                            <span>空白开始<small>从项目概览建立内容</small></span>
                         </button>
                         <button
                             type="button"
                             className={createSource === "novel" ? "app-story-source is-active" : "app-story-source"}
+                            aria-pressed={createSource === "novel"}
                             onClick={() => {
                                 setCreateSource("novel");
                                 createForm.setFieldValue("sourceType", "novel");
                             }}
                         >
                             <FileText className="size-4" />
-                            <span>导入小说</span>
+                            <span>导入小说<small>创建后继续拆分章节</small></span>
                         </button>
                         <button
                             type="button"
                             className={createSource === "text" ? "app-story-source is-active" : "app-story-source"}
+                            aria-pressed={createSource === "text"}
                             onClick={() => {
                                 setCreateSource("text");
                                 createForm.setFieldValue("sourceType", "text");
                             }}
                         >
                             <BookOpenText className="size-4" />
-                            <span>粘贴文本</span>
+                            <span>粘贴文本<small>从已有故事继续整理</small></span>
                         </button>
                     </div>
                     <Form.Item name="name" label="项目名称" rules={[{ required: true, whitespace: true, message: "请输入项目名称" }]}>

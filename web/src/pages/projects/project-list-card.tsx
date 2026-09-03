@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { ArrowRight, BookOpenText, FolderKanban, Images, LayoutGrid, Trash2 } from "lucide-react";
+import { ArrowRight, BookOpenText, Clock3, FolderKanban, Images, LayoutGrid, Trash2 } from "lucide-react";
 import { Link } from "react-router";
 
 import { resolveCanvasStylePreset, resolveProjectCanvasStyle } from "@/components/canvas/canvas-style-picker-modal";
@@ -16,6 +16,7 @@ export function ProjectListCard({ row, onDelete }: { row: ProjectSummary; onDele
     const projectStyle = resolveProjectCanvasStyle(row.project.stylePresetId, row.project.styleProfileJson);
     const styleTitle = projectStyle?.title || parseStyleProfile(row.project.styleProfileJson)?.title || resolveCanvasStylePreset(row.project.stylePresetId)?.title || (row.project.stylePresetId ? "自定义画风" : "未设置画风");
     const coverUrl = row.project.coverResourceId ? resourceFileUrl(row.project.coverResourceId) : projectStyle?.imageUrl;
+    const description = row.project.description.trim() || stage.detail;
     return (
         <Link to={`/projects/${row.project.id}/overview`} className="library-card project-library-card group">
             <span className="project-library-cover">
@@ -52,6 +53,7 @@ export function ProjectListCard({ row, onDelete }: { row: ProjectSummary; onDele
                 <span className="project-library-subtitle">
                     {styleTitle} · {sourceTypeLabel(row.project.sourceType)}
                 </span>
+                <span className="pc-short-drama-card-description">{description}</span>
                 <span className="project-library-progress">
                     <span>
                         <span>
@@ -69,9 +71,19 @@ export function ProjectListCard({ row, onDelete }: { row: ProjectSummary; onDele
                     <ProjectCount icon={<LayoutGrid className="size-3.5" />} label="画布" value={row.canvasCount} />
                     <ProjectCount icon={<Images className="size-3.5" />} label="资产" value={row.assetCount} />
                 </span>
+                <span className="pc-short-drama-card-updated">
+                    <Clock3 className="size-3.5" aria-hidden="true" />
+                    <time dateTime={row.project.updatedAt}>{formatProjectUpdatedAt(row.project.updatedAt)}</time>
+                </span>
             </span>
         </Link>
     );
+}
+
+function formatProjectUpdatedAt(value: string) {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "更新时间未知";
+    return `${new Intl.DateTimeFormat("zh-CN", { month: "numeric", day: "numeric" }).format(date)} 更新`;
 }
 
 function ProjectCount({ icon, label, value }: { icon: ReactNode; label: string; value: number }) {
