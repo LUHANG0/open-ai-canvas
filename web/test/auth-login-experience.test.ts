@@ -3,16 +3,20 @@ import { describe, expect, test } from "bun:test";
 const read = (path: string) => Bun.file(new URL(path, import.meta.url)).text();
 
 describe("auth login experience", () => {
-    test("uses blurred ambient video, a clear feature frame and a compact auth panel", async () => {
+    test("uses a full-screen video entry and reveals one centered auth panel", async () => {
         const scene = await read("../src/pages/auth/auth-scene.tsx");
 
-        expect(scene).toContain("branding.config.auth.title");
+        expect(scene).toContain("authOpen");
+        expect(scene).toContain("pc-auth-entry-button");
+        expect(scene).toContain("进入{branding.config.identity.shortName}");
         expect(scene).toContain("pc-auth-brand-head");
         expect(scene).toContain("pc-auth-atmosphere-media");
-        expect(scene).toContain("pc-auth-brand-stage");
-        expect(scene).toContain("pc-auth-feature-media");
         expect(scene).toContain("pc-auth-workspace");
         expect(scene).toContain("pc-auth-panel");
+        expect(scene).toContain("pc-auth-panel-close");
+        expect(scene).not.toContain("pc-auth-brand-stage");
+        expect(scene).not.toContain("pc-auth-feature-media");
+        expect(scene).not.toContain("pc-auth-layout");
         expect(scene).not.toContain("pc-auth-sheet");
         expect(scene).not.toContain("pc-auth-card-footnote");
         expect(scene).not.toContain("creativeCapabilities");
@@ -49,28 +53,28 @@ describe("auth login experience", () => {
         expect(session).toContain("channels: []");
     });
 
-    test("preloads the opposite auth route so the bottom switch stays smooth", async () => {
+    test("preloads both auth routes behind the video entry so opening and switching stay smooth", async () => {
         const scene = await read("../src/pages/auth/auth-scene.tsx");
 
-        expect(scene).toContain('activeTab === "login" ? import("./register") : import("./login")');
+        expect(scene).toContain('const preloadAuthRoutes = () => Promise.all([import("./login"), import("./register")])');
+        expect(scene).toContain("await preloadAuthRoutes().catch(() => undefined)");
         expect(scene).toContain("void preload.catch(() => undefined)");
     });
 
-    test("covers compact and desktop layouts without dropping dynamic theme tokens", async () => {
+    test("keeps the cinematic entry responsive without dropping dynamic theme tokens", async () => {
         const styles = await read("../src/pages/auth/auth-pc.css");
 
-        expect(styles).toContain("@media (max-width: 900px)");
         expect(styles).toContain(".pc-auth-atmosphere-media");
-        expect(styles).toContain("filter: blur(38px)");
-        expect(styles).toContain(".pc-auth-feature-frame");
-        expect(styles).toContain(".pc-auth-feature-media");
+        expect(styles).toContain(".pc-auth-scene.is-auth-open .pc-auth-atmosphere-media");
+        expect(styles).toContain("filter: blur(14px)");
+        expect(styles).toContain(".pc-auth-entry-button");
         expect(styles).toContain(".pc-auth-workspace");
         expect(styles).toContain(".pc-auth-login-fields");
         expect(styles).toContain(".pc-auth-login-error");
         expect(styles).not.toContain(".pc-auth-card-footnote");
-        expect(styles).toContain("grid-template-columns: repeat(2, minmax(0, 1fr))");
+        expect(styles).not.toContain(".pc-auth-brand-stage");
         expect(styles).toContain(".pc-auth-panel-footer");
-        expect(styles).toContain("--auth-panel: rgba(248, 247, 243, 0.92)");
+        expect(styles).toContain("--auth-panel: rgba(248, 247, 243, 0.94)");
         expect(styles).toContain("var(--auth-brand)");
     });
 });

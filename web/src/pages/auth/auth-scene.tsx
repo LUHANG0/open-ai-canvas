@@ -1,4 +1,4 @@
-import { motion, useReducedMotion } from "motion/react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { ConfigProvider, Tabs } from "antd";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router";
@@ -22,16 +22,7 @@ type AuthSettingsContextValue = {
 
 const AuthSettingsContext = createContext<AuthSettingsContextValue | null>(null);
 
-const authCopy = {
-    login: {
-        title: "欢迎回来",
-        description: "继续你的创作旅程。",
-    },
-    register: {
-        title: "创建账号",
-        description: "从这里开始你的创作旅程。",
-    },
-} as const;
+const preloadAuthRoutes = () => Promise.all([import("./login"), import("./register")]);
 
 export function LinuxDOIcon() {
     return (
@@ -56,8 +47,8 @@ export function AuthScene() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
     const [heroFailed, setHeroFailed] = useState(false);
+    const [authOpen, setAuthOpen] = useState(false);
     const activeTab = location.pathname === "/register" ? "register" : "login";
-    const copy = activeTab === "register" ? authCopy.register : authCopy.login;
 
     const refresh = useCallback(async () => {
         setLoading(true);
@@ -89,9 +80,14 @@ export function AuthScene() {
     useEffect(() => setHeroFailed(false), [branding.assets.authHeroUrl]);
 
     useEffect(() => {
-        const preload = activeTab === "login" ? import("./register") : import("./login");
+        const preload = preloadAuthRoutes();
         void preload.catch(() => undefined);
-    }, [activeTab]);
+    }, []);
+
+    const openAuth = useCallback(async () => {
+        await preloadAuthRoutes().catch(() => undefined);
+        setAuthOpen(true);
+    }, []);
 
     const tabs = useMemo(() => {
         if (settings?.firstUser) return [{ key: "register", label: "创建管理员" }];
@@ -103,14 +99,14 @@ export function AuthScene() {
     }, [settings]);
 
     const hero = branding.assets;
-    const showVideo = Boolean(desktop && !reducedMotion && hero.authHeroKind === "video" && hero.authHeroUrl && !heroFailed);
+    const showVideo = Boolean(!reducedMotion && hero.authHeroKind === "video" && hero.authHeroUrl && !heroFailed);
     const showImage = Boolean(hero.authHeroKind === "image" && hero.authHeroUrl && !heroFailed);
     const showPoster = Boolean(hero.authHeroKind === "video" && hero.authHeroPosterUrl && !showVideo);
     const context = useMemo<AuthSettingsContextValue>(() => ({ settings, loading, error, refresh }), [error, loading, refresh, settings]);
 
     return (
         <AuthSettingsContext.Provider value={context}>
-            <main className="pc-auth-scene h-dvh min-h-0 overflow-y-auto">
+            <main className={`pc-auth-scene h-dvh min-h-0 overflow-hidden${authOpen ? " is-auth-open" : ""}`}>
                 <div className="pc-auth-atmosphere" aria-hidden="true">
                     {showVideo ? (
                         <video className="pc-auth-atmosphere-media" src={hero.authHeroUrl} poster={hero.authHeroPosterUrl || undefined} autoPlay muted loop playsInline preload="metadata" onError={() => setHeroFailed(true)} />
@@ -122,52 +118,47 @@ export function AuthScene() {
                     <div className="pc-auth-atmosphere-grade" />
                 </div>
 
-                <div className="pc-auth-layout">
-                    <motion.section
-                        initial={reducedMotion ? false : { opacity: 0, x: -18 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ duration: aceternityMotion.duration.panel, ease: aceternityMotion.easing.enter }}
-                        className="pc-auth-brand-stage"
-                        aria-label={`${branding.config.identity.displayName}品牌介绍`}
-                    >
-                        <div className="pc-auth-feature-frame">
-                            {showVideo ? (
-                                <video className="pc-auth-feature-media" src={hero.authHeroUrl} poster={hero.authHeroPosterUrl || undefined} autoPlay muted loop playsInline preload="metadata" onError={() => setHeroFailed(true)} />
-                            ) : showImage || showPoster ? (
-                                <img className="pc-auth-feature-media" src={showImage ? hero.authHeroUrl : hero.authHeroPosterUrl} alt="" referrerPolicy="no-referrer" onError={() => setHeroFailed(true)} />
-                            ) : (
-                                <div className="pc-auth-brand-ambient" />
-                            )}
-                            <div className="pc-auth-feature-grade" />
-                            <div className="pc-auth-stage-copy">
-                                <p>{branding.config.identity.slogan}</p>
-                                <h2>{branding.config.auth.title}</h2>
-                                {branding.config.auth.description ? <span>{branding.config.auth.description}</span> : null}
-                            </div>
-                        </div>
-                    </motion.section>
-
-                    <motion.section initial={reducedMotion ? false : { opacity: 0, x: 18 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: aceternityMotion.duration.panel, ease: aceternityMotion.easing.enter }} className="pc-auth-workspace">
-                        <div className="pc-auth-panel">
-                            <ConfigProvider theme={withBrandingAntTheme(getAntThemeConfig(false, desktop), branding.config.theme.primaryColor, false)}>
-                                <header className="pc-auth-brand-head" aria-label={`${branding.config.identity.displayName}登录入口`}>
-                                    <span className="pc-auth-brand-link">
+                <AnimatePresence mode="wait" initial={false}>
+                    {!authOpen ? (
+                        <motion.div
+                            key="entry"
+                            className="pc-auth-entry"
+                            initial={reducedMotion ? false : { opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={reducedMotion ? { opacity: 0 } : { opacity: 0, scale: 0.96 }}
+                            transition={{ duration: reducedMotion ? 0 : 0.38, ease: aceternityMotion.easing.enter }}
+                        >
+                            <motion.button type="button" className="pc-auth-entry-button" onClick={() => void openAuth()} whileHover={reducedMotion ? undefined : { scale: 1.035 }} whileTap={reducedMotion ? undefined : { scale: 0.98 }}>
+                                进入{branding.config.identity.shortName}
+                            </motion.button>
+                        </motion.div>
+                    ) : (
+                        <motion.div
+                            key="auth"
+                            className="pc-auth-workspace"
+                            initial={reducedMotion ? false : { opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            transition={{ duration: reducedMotion ? 0 : 0.42, ease: aceternityMotion.easing.enter }}
+                        >
+                            <motion.section
+                                initial={reducedMotion ? false : { opacity: 0, y: 22, scale: 0.975 }}
+                                animate={{ opacity: 1, y: 0, scale: 1 }}
+                                transition={{ duration: reducedMotion ? 0 : 0.5, ease: aceternityMotion.easing.enter }}
+                                className="pc-auth-panel"
+                                aria-label={`${branding.config.identity.displayName}账号入口`}
+                            >
+                                <button type="button" className="pc-auth-panel-close" onClick={() => setAuthOpen(false)} aria-label="返回视频">
+                                    <span aria-hidden="true">×</span>
+                                </button>
+                                <ConfigProvider theme={withBrandingAntTheme(getAntThemeConfig(false, desktop), branding.config.theme.primaryColor, false)}>
+                                    <header className="pc-auth-brand-head">
                                         <span className="pc-auth-brand-symbol">
                                             <BrandMark className="pc-auth-brand-logo" />
                                         </span>
-                                        <span className="pc-auth-brand-wordmark">
-                                            <strong>{branding.config.identity.displayName}</strong>
-                                            <small>{branding.config.identity.workspaceLabel}</small>
-                                        </span>
-                                    </span>
-                                </header>
-
-                                <section aria-label={copy.title} className={`pc-auth-card-content ${activeTab === "login" ? "is-login" : "is-register"}`}>
-                                    <header className="pc-auth-card-header">
-                                        <p className="pc-auth-card-eyebrow">{settings?.firstUser ? "首次设置" : activeTab === "login" ? `${branding.config.identity.shortName}账号` : "新账号"}</p>
-                                        <h1 className="pc-auth-card-title">{settings?.firstUser ? "创建第一个管理员" : copy.title}</h1>
-                                        <p className="pc-auth-card-description">{settings?.firstUser ? `完成 ${branding.config.identity.displayName} 的首次初始化。` : activeTab === "login" ? "登录后继续上次的创作。" : copy.description}</p>
+                                        <h1>{settings?.firstUser ? "创建第一个管理员" : activeTab === "login" ? `登录${branding.config.identity.shortName}` : "创建账号"}</h1>
                                     </header>
+
                                     <motion.div
                                         key={location.pathname}
                                         initial={reducedMotion ? false : { opacity: 0, y: 8 }}
@@ -177,18 +168,18 @@ export function AuthScene() {
                                     >
                                         <Outlet />
                                     </motion.div>
-                                </section>
 
-                                <footer className="pc-auth-panel-footer">
-                                    <span>{activeTab === "login" ? "还没有账号？" : "已经有账号？"}</span>
-                                    <div className="pc-auth-tabs-wrap">
-                                        <Tabs className="pc-auth-tabs" activeKey={activeTab} items={tabs} onChange={(key) => navigate({ pathname: key === "register" ? "/register" : "/login", search: location.search })} />
-                                    </div>
-                                </footer>
-                            </ConfigProvider>
-                        </div>
-                    </motion.section>
-                </div>
+                                    <footer className="pc-auth-panel-footer">
+                                        <span>{activeTab === "login" ? "还没有账号？" : "已经有账号？"}</span>
+                                        <div className="pc-auth-tabs-wrap">
+                                            <Tabs className="pc-auth-tabs" activeKey={activeTab} items={tabs} onChange={(key) => navigate({ pathname: key === "register" ? "/register" : "/login", search: location.search })} />
+                                        </div>
+                                    </footer>
+                                </ConfigProvider>
+                            </motion.section>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
             </main>
         </AuthSettingsContext.Provider>
     );
