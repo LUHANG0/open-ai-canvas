@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { Drawer, Tooltip } from "antd";
-import { ChevronDown, Clapperboard, Film, History, MessageSquareText, Plus, Search, Trash2, X } from "lucide-react";
+import { Check, ChevronDown, Clapperboard, Cloud, CloudOff, Film, History, LoaderCircle, MessageSquareText, Plus, RefreshCw, Search, Trash2, X } from "lucide-react";
 
+import type { CreationConversationCloudSyncStatus } from "@/services/creation-conversation-cloud-sync";
 import { displayCreationPrompt } from "./creation-references";
 import type { CreationConversation, CreationMessage, CreationViewMode } from "./creation-types";
 import type { CreationMode } from "./creation-empty-state";
@@ -143,22 +144,51 @@ type CreationWorkspaceStoryboardControls = {
     onCancelCompose: () => void;
 };
 
+const creationCloudSyncCopy: Record<CreationConversationCloudSyncStatus, { label: string; title: string }> = {
+    hydrating: { label: "正在读取云端", title: "正在读取账号创作历史" },
+    pending: { label: "等待同步", title: "修改已保存在本机，正在等待上传" },
+    syncing: { label: "正在同步", title: "正在将创作历史写入账号" },
+    synced: { label: "已同步", title: "创作历史已同步到当前账号" },
+    failed: { label: "同步失败", title: "云同步失败，点击重试；本机副本仍保留" },
+    conflict: { label: "需要合并", title: "其他页面同时修改了该对话，点击重新合并" },
+};
+
+export function CreationCloudSyncButton({ status, onRetry }: { status: CreationConversationCloudSyncStatus; onRetry: () => void }) {
+    const copy = creationCloudSyncCopy[status];
+    const busy = status === "hydrating" || status === "syncing";
+    const retryable = status === "failed" || status === "conflict" || status === "pending";
+    const Icon = busy ? LoaderCircle : status === "synced" ? Check : status === "failed" ? CloudOff : status === "conflict" ? RefreshCw : Cloud;
+    return (
+        <Tooltip title={copy.title}>
+            <button type="button" className={`creation-cloud-sync is-${status}`} aria-label={copy.title} disabled={!retryable} onClick={retryable ? onRetry : undefined}>
+                <Icon aria-hidden="true" className={busy ? "animate-spin" : undefined} />
+                <span>{copy.label}</span>
+            </button>
+        </Tooltip>
+    );
+}
+
 export function CreationWorkspaceToolbar({
     viewMode,
     onViewModeChange,
     onNewConversation,
     onOpenHistory,
+    cloudSyncStatus,
+    onRetryCloudSync,
     storyboard,
 }: {
     viewMode: CreationViewMode;
     onViewModeChange: (mode: CreationViewMode) => void;
     onNewConversation: () => void;
     onOpenHistory: () => void;
+    cloudSyncStatus: CreationConversationCloudSyncStatus;
+    onRetryCloudSync: () => void;
     storyboard?: CreationWorkspaceStoryboardControls;
 }) {
     return (
         <header className="creation-thread-toolbar creation-workspace-toolbar" aria-label={storyboard ? "镜头工具条" : "对话工具条"}>
             <div className="creation-workspace-toolbar-leading">
+                <CreationCloudSyncButton status={cloudSyncStatus} onRetry={onRetryCloudSync} />
                 {storyboard ? (
                     <Tooltip title={storyboard.timelineOpen ? "收起镜头轨道" : "展开镜头轨道"}>
                         <button

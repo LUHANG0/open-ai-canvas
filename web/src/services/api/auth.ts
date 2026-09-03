@@ -45,6 +45,14 @@ export type AuthSessionPayload = {
     features?: FeatureAvailability;
 };
 
+export type PublicAuthSettings = {
+    firstUser: boolean;
+    registrationEnabled: boolean;
+    linuxdoEnabled: boolean;
+    emailEnabled: boolean;
+    emailCodeRequired: boolean;
+};
+
 export type RuntimeLimits = {
     activeTaskLimit: number;
     resourceUploadMB: number;
@@ -367,7 +375,7 @@ export type RuntimePolicySetting = {
 };
 
 export function getAuthSettings() {
-    return request<{ firstUser: boolean; registrationEnabled: boolean; linuxdoEnabled: boolean; emailEnabled: boolean; emailCodeRequired: boolean }>(api.get("/auth/settings"));
+    return request<PublicAuthSettings>(api.get("/auth/settings"));
 }
 
 export function linuxDOLoginURL(next: string) {

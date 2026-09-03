@@ -7,12 +7,15 @@ import { RouterProvider } from "react-router";
 import "@/lib/plugins/builtin";
 
 import { AppProviders } from "@/components/layout/app-providers";
+import { BrandingProvider } from "@/components/branding/branding-provider";
 import { router } from "@/router";
 
 createRoot(document.getElementById("root")!).render(
     <React.StrictMode>
-        <AppProviders router={router}>
-            <RouterProvider router={router} />
-        </AppProviders>
+        <BrandingProvider>
+            <AppProviders router={router}>
+                <RouterProvider router={router} />
+            </AppProviders>
+        </BrandingProvider>
     </React.StrictMode>,
 );

@@ -35,4 +35,8 @@ export default defineConfig({
             "@": resolve(webDir, "src"),
         },
     },
+    build: {
+        // 体积预算按 manifest 的静态依赖闭包计算，不依赖带 hash 的产物文件名。
+        manifest: true,
+    },
 });

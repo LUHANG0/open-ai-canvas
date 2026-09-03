@@ -39,15 +39,17 @@ type Repository struct {
 }
 
 type UserStorageUsage struct {
-	AssetCount   int64 `json:"assetCount"`
-	AssetBytes   int64 `json:"assetBytes"`
-	CanvasCount  int64 `json:"canvasCount"`
-	CanvasBytes  int64 `json:"canvasBytes"`
-	SessionCount int64 `json:"sessionCount"`
-	SessionBytes int64 `json:"sessionBytes"`
-	TaskCount    int64 `json:"taskCount"`
-	TaskBytes    int64 `json:"taskBytes"`
-	APICallCount int64 `json:"apiCallCount"`
+	AssetCount                int64 `json:"assetCount"`
+	AssetBytes                int64 `json:"assetBytes"`
+	CanvasCount               int64 `json:"canvasCount"`
+	CanvasBytes               int64 `json:"canvasBytes"`
+	SessionCount              int64 `json:"sessionCount"`
+	SessionBytes              int64 `json:"sessionBytes"`
+	CreationConversationCount int64 `json:"creationConversationCount"`
+	CreationConversationBytes int64 `json:"creationConversationBytes"`
+	TaskCount                 int64 `json:"taskCount"`
+	TaskBytes                 int64 `json:"taskBytes"`
+	APICallCount              int64 `json:"apiCallCount"`
 }
 
 func New(db *gorm.DB) *Repository {
@@ -118,8 +120,23 @@ func (r *Repository) UserStorageUsage(userID string) (UserStorageUsage, error) {
 		query = strings.ReplaceAll(query, "length(CAST(COALESCE(", "octet_length(COALESCE(")
 		query = strings.ReplaceAll(query, ", '') AS BLOB))", ", ''))")
 	}
-	err := r.db.Raw(query, userID, userID, userID, userID, userID, userID, userID, userID, userID, userID, userID, userID, userID, userID).Scan(&usage).Error
-	return usage, err
+	if err := r.db.Raw(query, userID, userID, userID, userID, userID, userID, userID, userID, userID, userID, userID, userID, userID, userID).Scan(&usage).Error; err != nil {
+		return usage, err
+	}
+	// 局部服务测试和迁移前诊断可能只挂载旧表；新表存在时再计入统一结构化配额。
+	if r.db.Migrator().HasTable(&model.CreationConversation{}) {
+		bytesExpression := "COALESCE(SUM(length(CAST(COALESCE(payload_json, '') AS BLOB))), 0)"
+		if r.Dialect() == "postgres" {
+			bytesExpression = "COALESCE(SUM(octet_length(COALESCE(payload_json, ''))), 0)"
+		}
+		if err := r.db.Model(&model.CreationConversation{}).Where("user_id = ?", userID).Count(&usage.CreationConversationCount).Error; err != nil {
+			return usage, err
+		}
+		if err := r.db.Model(&model.CreationConversation{}).Select(bytesExpression).Where("user_id = ?", userID).Scan(&usage.CreationConversationBytes).Error; err != nil {
+			return usage, err
+		}
+	}
+	return usage, nil
 }
 
 // Create 是低层兼容入口；业务写路径应优先使用带领域约束的显式方法。
@@ -825,6 +842,43 @@ func (r *Repository) SaveSystemSettings(settings ...*model.SystemSetting) error 
 		}
 		return nil
 	})
+}
+
+// CompareAndSwapSystemSetting keeps public runtime configuration updates safe
+// across multiple backend replicas without adding a version column to the
+// generic system_settings table. A nil expected value creates the first row;
+// otherwise the previous JSON document is the compare-and-swap cursor.
+func (r *Repository) CompareAndSwapSystemSetting(setting *model.SystemSetting, expectedValueJSON *string, audit *model.AdminAuditEvent) (bool, error) {
+	if setting == nil {
+		return false, errors.New("system setting is required")
+	}
+	updated := false
+	err := r.db.Transaction(func(tx *gorm.DB) error {
+		if expectedValueJSON == nil {
+			result := tx.Clauses(clause.OnConflict{DoNothing: true}).Create(setting)
+			if result.Error != nil {
+				return result.Error
+			}
+			updated = result.RowsAffected == 1
+		} else {
+			result := tx.Model(&model.SystemSetting{}).
+				Where("key = ? AND value_json = ?", setting.Key, *expectedValueJSON).
+				Updates(map[string]any{
+					"value_json": setting.ValueJSON,
+					"updated_by": setting.UpdatedBy,
+					"updated_at": setting.UpdatedAt,
+				})
+			if result.Error != nil {
+				return result.Error
+			}
+			updated = result.RowsAffected == 1
+		}
+		if !updated || audit == nil {
+			return nil
+		}
+		return tx.Create(audit).Error
+	})
+	return updated, err
 }
 
 func (r *Repository) ArkPrivateAssetBinding(resourceID string, projectName string) (*model.ArkPrivateAssetBinding, error) {

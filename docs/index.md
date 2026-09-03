@@ -18,7 +18,7 @@
 
 ## 本地协作文档（不随仓库分发）
 
-- [beautifului 创作设计](beautifului-creation-design.md)：本地设计参考，未纳入版本控制。
+`beautifului-creation-design.md` 属于本地设计参考，未纳入版本控制，因此不提供可点击的仓库链接。
 
 ## 按约定维护的文档（`docs/content/docs/`）
 

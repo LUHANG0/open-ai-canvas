@@ -416,7 +416,7 @@ export function CanvasDirectorWorkbench({ open, scene, imageNodes, onboardingSco
 
     const uploadModel = async (file?: File) => {
         if (!file || !/\.(glb|gltf)$/i.test(file.name)) return;
-        const uploaded = await uploadMediaFile(file, "model");
+        const uploaded = await uploadMediaFile(file);
         const assetId = addAsset({ kind: "model", title: file.name.replace(/\.(glb|gltf)$/i, ""), coverUrl: "", tags: ["3D模型"], source: "导演台", data: { url: uploaded.url, storageKey: uploaded.storageKey, bytes: uploaded.bytes, mimeType: uploaded.mimeType, fileName: file.name }, metadata: { source: "director" } });
         const asset = useAssetStore.getState().assets.find((item): item is ModelAsset => item.id === assetId && item.kind === "model");
         if (asset) addModelAsset(asset);

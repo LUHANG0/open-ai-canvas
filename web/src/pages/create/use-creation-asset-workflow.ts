@@ -135,21 +135,21 @@ export function useCreationAssetWorkflow(options: CreationAssetWorkflowOptions) 
 
     const uploadCreationAsset = async (file: File) => {
         if (file.type.startsWith("video/")) {
-            const uploaded = await uploadMediaFile(file, "create-upload");
+            const uploaded = await uploadMediaFile(file);
             return {
                 asset: creationVideoAsset({ title: file.name, uploaded, metadata: { source: "create-upload", fileName: file.name } }),
                 attachment: creationAttachmentFromVideo(file, uploaded),
             };
         }
         if (file.type.startsWith("audio/")) {
-            const uploaded = await uploadMediaFile(file, "create-upload");
+            const uploaded = await uploadMediaFile(file);
             return {
                 asset: creationAudioAsset({ title: file.name, uploaded, metadata: { source: "create-upload", fileName: file.name } }),
                 attachment: creationAttachmentFromAudio(file, uploaded),
             };
         }
         if (!file.type.startsWith("image/")) {
-            const uploaded = await uploadMediaFile(file, "create-upload");
+            const uploaded = await uploadMediaFile(file);
             return { attachment: creationAttachmentFromDocument(file, uploaded) };
         }
         const uploaded = await uploadImage(file);

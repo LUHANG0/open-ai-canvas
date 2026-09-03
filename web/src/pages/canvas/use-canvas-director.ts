@@ -126,7 +126,7 @@ export function useCanvasDirector({
         const sourceNodeId = sourceNodeAtStart.id;
         const [image, videoUpload] = await Promise.all([
             uploadImage(output.beauty),
-            output.clayVideo ? uploadMediaFile(output.clayVideo, "director-clay") : Promise.resolve(null),
+            output.clayVideo ? uploadMediaFile(output.clayVideo) : Promise.resolve(null),
         ]);
         // 上传期间项目、节点和镜头都可能变化。以当前权威状态重新核验并合并，
         // 不允许旧输出写入另一项目，也不允许旧 scene 快照覆盖并发编辑。

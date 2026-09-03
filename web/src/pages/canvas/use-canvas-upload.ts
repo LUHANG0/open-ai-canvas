@@ -196,7 +196,7 @@ export function useCanvasUpload({
         const progress = startUploadStatus("上传视频", "读取视频文件", domainProjectId ? 4 : 3);
         try {
             progress.update("上传到服务器并同步资源", 2);
-            const video = await uploadMediaFile(file, "video");
+            const video = await uploadMediaFile(file);
             progress.update("更新画布节点", 3);
             const size = fitNodeSize(video.width || 1280, video.height || 720, VIDEO_NODE_MAX_SIZE.width, VIDEO_NODE_MAX_SIZE.height);
             const id = `video-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
@@ -218,7 +218,7 @@ export function useCanvasUpload({
         const progress = startUploadStatus("上传音频", "读取音频文件", domainProjectId ? 4 : 3);
         try {
             progress.update("上传到服务器并同步资源", 2);
-            const audio = await uploadMediaFile(file, "audio");
+            const audio = await uploadMediaFile(file);
             progress.update("更新画布节点", 3);
             const size = NODE_DEFAULT_SIZE[CanvasNodeType.Audio];
             const id = `audio-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
@@ -356,7 +356,7 @@ export function useCanvasUpload({
         for (const file of supportedFiles) {
             try {
                 if (isAudioFile(file)) {
-                    const audio = await uploadMediaFile(file, "audio");
+                    const audio = await uploadMediaFile(file);
                     created.push({
                         id: `audio-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
                         kind: "audio",
@@ -368,7 +368,7 @@ export function useCanvasUpload({
                         mimeType: audio.mimeType,
                     });
                 } else {
-                    const video = await uploadMediaFile(file, "video");
+                    const video = await uploadMediaFile(file);
                     created.push({
                         id: `video-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
                         kind: "video",
@@ -396,7 +396,7 @@ export function useCanvasUpload({
         const progress = startUploadStatus("合成视频片段", "上传合成结果", domainProjectId ? 4 : 3);
         try {
             progress.update("上传到服务器并同步资源", 2);
-            const video = await uploadMediaFile(blob, "video");
+            const video = await uploadMediaFile(blob);
             progress.update("更新画布节点", 3);
             const size = fitNodeSize(video.width || 1280, video.height || 720, VIDEO_NODE_MAX_SIZE.width, VIDEO_NODE_MAX_SIZE.height);
             const center = getCanvasCenter();
@@ -430,7 +430,7 @@ export function useCanvasUpload({
             const progress = startUploadStatus("替换音频", "读取音频文件");
             try {
                 progress.update("上传到服务器并同步资源", 2);
-                const audio = await uploadMediaFile(file, "audio");
+                const audio = await uploadMediaFile(file);
                 progress.update("更新画布节点", 3);
                 const node = { ...currentNode, type: CanvasNodeType.Audio, title: file.name, metadata: { ...currentNode.metadata, ...audioMetadata(audio), assetId: undefined, taskId: undefined, errorDetails: undefined } } satisfies CanvasNodeData;
                 setNodes((current) => current.map((item) => item.id === nodeId ? node : item));
@@ -449,7 +449,7 @@ export function useCanvasUpload({
             const progress = startUploadStatus("替换视频", "读取视频文件");
             try {
                 progress.update("上传到服务器并同步资源", 2);
-                const video = await uploadMediaFile(file, "video");
+                const video = await uploadMediaFile(file);
                 progress.update("更新画布节点", 3);
                 const node = { ...currentNode, type: CanvasNodeType.Video, title: file.name, metadata: { ...currentNode.metadata, ...videoMetadata(video), assetId: undefined, taskId: undefined, errorDetails: undefined } } satisfies CanvasNodeData;
                 setNodes((current) => current.map((item) => item.id === nodeId ? node : item));

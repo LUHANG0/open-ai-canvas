@@ -7,6 +7,7 @@ import { parseBackendGenerationResult } from "@/services/api/generation-task";
 import type { GenerationTask, GenerationTaskOutput } from "@/services/api/task-center";
 import { resolveMediaUrl, type UploadedFile } from "@/services/file-storage";
 import { resolveImageUrl, uploadImage, type UploadedImage } from "@/services/image-storage";
+import { fetchBlob } from "@/services/fetch-blob";
 import { useCanvasStore } from "@/stores/canvas/use-canvas-store";
 import { useAssetStore } from "@/stores/use-asset-store";
 import { applyGenerationConsumerEffect, generationEffectApplied } from "@/services/generation-consumer-dedupe";
@@ -172,7 +173,7 @@ export async function buildGenerationTaskNodeResult(node: CanvasNodeData, task: 
         if (!result.audio?.dataUrl) throw new Error("后端任务没有返回音频");
         const audio = result.audio.storageKey
             ? { url: await resolveMediaUrl(result.audio.storageKey, result.audio.dataUrl), storageKey: result.audio.storageKey, durationMs: result.audio.durationMs, bytes: result.audio.bytes || 0, mimeType: result.audio.mimeType || "audio/mpeg" }
-            : await storeGeneratedAudio(await (await fetch(result.audio.dataUrl)).blob(), result.audio.format || "mp3");
+            : await storeGeneratedAudio(await fetchBlob(result.audio.dataUrl, undefined, "音频结果读取"), result.audio.format || "mp3");
         return { ...node, type: CanvasNodeType.Audio, metadata: { ...node.metadata, ...workflowMetadataForResultNode(), ...audioMetadata(audio), prompt, ...completedTaskMetadata(task), errorDetails: undefined } };
     }
 

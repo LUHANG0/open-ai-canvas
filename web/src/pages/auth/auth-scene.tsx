@@ -1,20 +1,27 @@
 import { motion, useReducedMotion } from "motion/react";
 import { ConfigProvider, Tabs } from "antd";
-import { ArrowLeft, Play } from "lucide-react";
-import { Link, Outlet, useLocation, useNavigate } from "react-router";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { Play, ShieldCheck } from "lucide-react";
+import { Outlet, useLocation, useNavigate } from "react-router";
 
+import { BrandMark } from "@/components/branding/brand-mark";
+import { useBranding } from "@/components/branding/branding-provider";
 import { usePcBrandViewport } from "@/hooks/use-pc-brand-viewport";
 import { aceternityMotion } from "@/lib/aceternity-motion";
 import { getAntThemeConfig } from "@/lib/app-theme";
+import { withBrandingAntTheme } from "@/lib/branding-theme";
+import { getAuthSettings, type PublicAuthSettings } from "@/services/api/auth";
 
 import "./auth-pc.css";
 
-const AUTH_VIDEO_URL = "https://boss-shjd.biliapi.net/updream/aniforge/video/video_bbcb00bd-650d-4249-9346-5cd21fd2484c_m1hc-u0-1pu13x-3v1s.mp4";
-const AUTH_VIDEO_POSTER = "https://i0.hdslb.com/bfs/aitool/aniforge/image/02933f26-5f1b-49ff-a811-b7f95ee5e5b8_m1hc-u0-sau.jpg";
-const AUTH_TABS = [
-    { key: "login", label: "登录" },
-    { key: "register", label: "注册" },
-];
+type AuthSettingsContextValue = {
+    settings: PublicAuthSettings | null;
+    loading: boolean;
+    error: string;
+    refresh: () => Promise<void>;
+};
+
+const AuthSettingsContext = createContext<AuthSettingsContextValue | null>(null);
 
 const authCopy = {
     login: {
@@ -46,84 +53,151 @@ export function AuthScene() {
     const location = useLocation();
     const navigate = useNavigate();
     const reducedMotion = useReducedMotion();
-    const pcBrandV2 = usePcBrandViewport();
+    const desktop = usePcBrandViewport();
+    const { branding } = useBranding();
+    const [settings, setSettings] = useState<PublicAuthSettings | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState("");
+    const [heroFailed, setHeroFailed] = useState(false);
     const activeTab = location.pathname === "/register" ? "register" : "login";
     const copy = activeTab === "register" ? authCopy.register : authCopy.login;
 
+    const refresh = useCallback(async () => {
+        setLoading(true);
+        setError("");
+        try {
+            setSettings(await getAuthSettings());
+        } catch (loadError) {
+            setError(loadError instanceof Error ? loadError.message : "无法读取登录与注册设置");
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        void refresh();
+    }, [refresh]);
+
+    useEffect(() => {
+        if (!settings) return;
+        if (settings.firstUser && activeTab !== "register") {
+            navigate({ pathname: "/register", search: location.search }, { replace: true });
+            return;
+        }
+        if (!settings.firstUser && !settings.registrationEnabled && activeTab === "register") {
+            navigate({ pathname: "/login", search: location.search }, { replace: true });
+        }
+    }, [activeTab, location.search, navigate, settings]);
+
+    useEffect(() => setHeroFailed(false), [branding.assets.authHeroUrl]);
+
+    const tabs = useMemo(() => {
+        if (settings?.firstUser) return [{ key: "register", label: "创建管理员" }];
+        if (settings && !settings.registrationEnabled) return [{ key: "login", label: "登录" }];
+        return [
+            { key: "login", label: "登录" },
+            { key: "register", label: "注册" },
+        ];
+    }, [settings]);
+
+    const hero = branding.assets;
+    const showVideo = Boolean(desktop && !reducedMotion && hero.authHeroKind === "video" && hero.authHeroUrl && !heroFailed);
+    const showImage = Boolean(hero.authHeroKind === "image" && hero.authHeroUrl && !heroFailed);
+    const showPoster = Boolean(hero.authHeroKind === "video" && hero.authHeroPosterUrl && !showVideo);
+    const context = useMemo<AuthSettingsContextValue>(() => ({ settings, loading, error, refresh }), [error, loading, refresh, settings]);
+
     return (
-        <main className="pc-auth-scene h-dvh min-h-0 overflow-y-auto bg-[#08090c] text-white lg:overflow-hidden">
-            <div className="pc-auth-layout grid min-h-full lg:h-full lg:grid-cols-[minmax(0,1.32fr)_minmax(520px,1fr)]">
-                <section className="pc-auth-brand relative min-h-[250px] overflow-hidden sm:min-h-[320px] lg:min-h-0" aria-label="影策品牌影片">
-                    <video className="pc-auth-brand-video absolute inset-0 size-full object-cover" src={AUTH_VIDEO_URL} poster={AUTH_VIDEO_POSTER} autoPlay muted loop playsInline preload="metadata" />
-                    <div aria-hidden className="pc-auth-brand-shade absolute inset-0 bg-[linear-gradient(180deg,rgba(4,5,8,.58),transparent_42%,rgba(4,5,8,.74))]" />
-                    <div aria-hidden className="pc-auth-brand-fade absolute inset-y-0 right-0 hidden w-[clamp(120px,14vw,240px)] bg-[linear-gradient(90deg,transparent_0%,rgba(11,12,16,.68)_58%,#0b0c10_100%)] lg:block" />
-                    <div className="pc-auth-brand-nav absolute inset-x-0 top-0 flex items-center justify-between gap-4 p-5 sm:p-7 lg:p-9">
-                        <Link to="/" className="pc-auth-brand-link inline-flex items-center gap-2.5 text-sm font-semibold text-white drop-shadow-sm transition-opacity hover:opacity-80">
-                            <span className="pc-auth-brand-logo size-7 bg-current" style={{ mask: "url(/logo.svg) center / contain no-repeat", WebkitMask: "url(/logo.svg) center / contain no-repeat" }} />
-                            影策
-                        </Link>
-                        <span className="pc-auth-live-badge inline-flex items-center gap-2 rounded-full border border-white/16 bg-black/20 px-3 py-1.5 text-[var(--fs-label)] text-white/76 backdrop-blur-xl">
-                            <Play className="size-3 fill-current" />
-                            创作正在发生
-                        </span>
-                    </div>
-                    <motion.div
-                        initial={reducedMotion ? false : { opacity: 0, y: 18 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: aceternityMotion.duration.panel, ease: aceternityMotion.easing.enter }}
-                        className="pc-auth-brand-copy absolute inset-x-0 bottom-0 max-w-2xl p-5 sm:p-7 lg:p-10"
-                    >
-                        <p className="pc-auth-brand-eyebrow text-xs font-semibold tracking-[0.18em] text-white/58">YINGCE STUDIO</p>
-                        <h1 className="pc-auth-brand-title mt-3 max-w-xl text-3xl font-semibold leading-tight sm:text-4xl lg:text-5xl">
-                            让一个故事，
-                            <br className="hidden sm:inline" />
-                            从文字走向银幕。
-                        </h1>
-                        <p className="pc-auth-brand-summary">在同一个创作空间里组织素材、生成内容并完成画布编排。</p>
-                        <div className="pc-auth-brand-capabilities" aria-label="核心创作能力">
-                            <span>素材管理</span>
-                            <span>生成任务</span>
-                            <span>画布编排</span>
-                        </div>
-                    </motion.div>
-                </section>
-
-                <section className="pc-auth-panel relative flex min-h-[620px] items-start justify-center overflow-y-auto bg-[#0b0c10] px-4 pb-8 pt-20 sm:px-8 lg:min-h-0 lg:px-10 lg:pb-10 lg:pt-20">
-                    <Link
-                        to="/"
-                        className="pc-auth-back absolute right-5 top-5 z-20 inline-flex h-9 items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 text-xs text-white/58 backdrop-blur-xl transition hover:border-white/20 hover:bg-white/[0.08] hover:text-white lg:right-8 lg:top-8"
-                    >
-                        <ArrowLeft className="size-3.5" />
-                        返回首页
-                    </Link>
-
-                    <motion.div
-                        initial={reducedMotion ? false : { opacity: 0, y: 14 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        layout={!reducedMotion}
-                        transition={{ duration: aceternityMotion.duration.panel, ease: aceternityMotion.easing.enter }}
-                        className="pc-auth-card-wrap my-auto w-full max-w-[460px]"
-                    >
-                        <ConfigProvider theme={getAntThemeConfig(true, pcBrandV2)}>
-                            <div className="auth-card-dark pc-auth-card h-auto overflow-hidden rounded-lg bg-[#121318]/94 shadow-[0_28px_80px_rgba(0,0,0,.34)] backdrop-blur-2xl">
-                                <section aria-label={copy.title} className={`pc-auth-card-content flex flex-col ${activeTab === "login" ? "min-h-[500px]" : "min-h-[620px] sm:min-h-[640px]"}`}>
-                                    <header className="pc-auth-card-header px-6 pb-5 pt-6 sm:px-8 sm:pt-7">
-                                        <p className="pc-auth-card-eyebrow text-xs font-semibold tracking-[0.18em] text-blue-300/80">{copy.eyebrow}</p>
-                                        <h2 className="pc-auth-card-title mt-2 text-3xl font-semibold">{copy.title}</h2>
-                                        <p className="pc-auth-card-description mt-2 text-sm leading-6 text-white/45">{copy.description}</p>
-                                    </header>
-                                    <div className="px-6 sm:px-8">
-                                        <Tabs className="auth-card-tabs pc-auth-tabs" activeKey={activeTab} items={AUTH_TABS} onChange={(key) => navigate({ pathname: key === "register" ? "/register" : "/login", search: location.search })} />
-                                    </div>
-                                    <div key={location.pathname} className="pc-auth-form-slot flex-1 px-6 py-6 sm:px-8 sm:py-7">
-                                        <Outlet />
-                                    </div>
-                                </section>
+        <AuthSettingsContext.Provider value={context}>
+            <main className="pc-auth-scene h-dvh min-h-0 overflow-y-auto text-white lg:overflow-hidden">
+                <div className="pc-auth-layout grid min-h-full lg:h-full lg:grid-cols-[minmax(0,1.32fr)_minmax(520px,1fr)]">
+                    <section className="pc-auth-brand relative min-h-[250px] overflow-hidden sm:min-h-[320px] lg:min-h-0" aria-label={`${branding.config.identity.displayName}品牌介绍`}>
+                        {showVideo ? (
+                            <video
+                                className="pc-auth-brand-video absolute inset-0 size-full object-cover"
+                                src={hero.authHeroUrl}
+                                poster={hero.authHeroPosterUrl || undefined}
+                                autoPlay
+                                muted
+                                loop
+                                playsInline
+                                preload="metadata"
+                                aria-hidden="true"
+                                onError={() => setHeroFailed(true)}
+                            />
+                        ) : showImage || showPoster ? (
+                            <img className="pc-auth-brand-video absolute inset-0 size-full object-cover" src={showImage ? hero.authHeroUrl : hero.authHeroPosterUrl} alt="" aria-hidden="true" onError={() => setHeroFailed(true)} />
+                        ) : null}
+                        {!showVideo && !showImage && !showPoster ? <div aria-hidden className="pc-auth-brand-ambient absolute inset-0" /> : null}
+                        <div aria-hidden className="pc-auth-brand-shade absolute inset-0" />
+                        <div aria-hidden className="pc-auth-brand-fade absolute inset-y-0 right-0 hidden lg:block" />
+                        <div className="pc-auth-brand-nav absolute inset-x-0 top-0 flex items-center justify-between gap-4 p-5 sm:p-7 lg:p-9">
+                            <div className="pc-auth-brand-link inline-flex items-center gap-2.5 text-sm font-semibold text-white drop-shadow-sm">
+                                <BrandMark className="pc-auth-brand-logo size-7" />
+                                <span>{branding.config.identity.displayName}</span>
                             </div>
-                        </ConfigProvider>
-                    </motion.div>
-                </section>
-            </div>
-        </main>
+                            {branding.config.auth.liveBadge ? (
+                                <span className="pc-auth-live-badge inline-flex items-center gap-2 border px-3 py-1.5 text-[var(--fs-label)] backdrop-blur-xl">
+                                    <Play className="size-3 fill-current" />
+                                    {branding.config.auth.liveBadge}
+                                </span>
+                            ) : null}
+                        </div>
+                        <motion.div
+                            initial={reducedMotion ? false : { opacity: 0, y: 18 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: aceternityMotion.duration.panel, ease: aceternityMotion.easing.enter }}
+                            className="pc-auth-brand-copy absolute inset-x-0 bottom-0 max-w-2xl p-5 sm:p-7 lg:p-10"
+                        >
+                            {branding.config.auth.eyebrow ? <p className="pc-auth-brand-eyebrow">{branding.config.auth.eyebrow}</p> : null}
+                            <h1 className="pc-auth-brand-title">{branding.config.auth.title}</h1>
+                            {branding.config.auth.description ? <p className="pc-auth-brand-summary">{branding.config.auth.description}</p> : null}
+                            <div className="pc-auth-brand-capabilities" aria-label="核心创作能力">
+                                <span>素材管理</span>
+                                <span>生成任务</span>
+                                <span>画布编排</span>
+                            </div>
+                        </motion.div>
+                    </section>
+
+                    <section className="pc-auth-panel relative flex min-h-[620px] items-start justify-center overflow-y-auto px-4 pb-8 pt-16 sm:px-8 lg:min-h-0 lg:px-10 lg:pb-10 lg:pt-20">
+                        <div className="pc-auth-security-badge absolute right-5 top-5 inline-flex items-center gap-2 text-xs text-white/46 lg:right-8 lg:top-8">
+                            <ShieldCheck className="size-3.5" aria-hidden="true" />
+                            安全登录
+                        </div>
+                        <motion.div
+                            initial={reducedMotion ? false : { opacity: 0, y: 14 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            layout={!reducedMotion}
+                            transition={{ duration: aceternityMotion.duration.panel, ease: aceternityMotion.easing.enter }}
+                            className="pc-auth-card-wrap my-auto w-full max-w-[460px]"
+                        >
+                            <ConfigProvider theme={withBrandingAntTheme(getAntThemeConfig(true, desktop), branding.config.theme.primaryColor, true)}>
+                                <div className="auth-card-dark pc-auth-card h-auto overflow-hidden backdrop-blur-2xl">
+                                    <section aria-label={copy.title} className={`pc-auth-card-content flex flex-col ${activeTab === "login" ? "is-login" : "is-register"}`}>
+                                        <header className="pc-auth-card-header">
+                                            <p className="pc-auth-card-eyebrow">{settings?.firstUser ? "INITIAL SETUP" : copy.eyebrow}</p>
+                                            <h2 className="pc-auth-card-title">{settings?.firstUser ? "创建第一个管理员" : copy.title}</h2>
+                                            <p className="pc-auth-card-description">{settings?.firstUser ? `完成 ${branding.config.identity.displayName} 的首次初始化。` : copy.description}</p>
+                                        </header>
+                                        <div className="px-6 sm:px-8">
+                                            <Tabs className="auth-card-tabs pc-auth-tabs" activeKey={activeTab} items={tabs} onChange={(key) => navigate({ pathname: key === "register" ? "/register" : "/login", search: location.search })} />
+                                        </div>
+                                        <div key={location.pathname} className="pc-auth-form-slot flex-1">
+                                            <Outlet />
+                                        </div>
+                                    </section>
+                                </div>
+                            </ConfigProvider>
+                        </motion.div>
+                    </section>
+                </div>
+            </main>
+        </AuthSettingsContext.Provider>
     );
+}
+
+export function useAuthSettings() {
+    const value = useContext(AuthSettingsContext);
+    if (!value) throw new Error("useAuthSettings must be used within AuthScene");
+    return value;
 }

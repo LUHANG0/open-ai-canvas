@@ -16,6 +16,7 @@ import (
 )
 
 func RegisterUserDataRoutes(r *gin.RouterGroup, svc *service.Service) {
+	registerCreationConversationRoutes(r, svc)
 	r.GET("/settings/prompt-templates", func(c *gin.Context) {
 		user, err := currentUser(c, svc)
 		if err != nil {

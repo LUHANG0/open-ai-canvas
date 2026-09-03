@@ -11,7 +11,8 @@ describe("短剧镜头生成提示与规格", () => {
 
     test("动作预演明确使用黑白节拍约束", () => {
         const prompt = buildWorkflowArtifactPrompt("previz", { imagePrompt: "雨夜街口", action: "主角回头" });
-        expect(prompt).toContain("黑白动作预演");
+        expect(prompt).toContain("黑白分镜草图");
+        expect(prompt).toContain("动作节拍");
         expect(prompt).toContain("人物走位");
     });
 

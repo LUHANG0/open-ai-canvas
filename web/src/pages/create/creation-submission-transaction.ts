@@ -87,7 +87,7 @@ export function applyCreationSubmissionToConversation(input: {
         const replacedIds = new Set([retryTarget.userMessageId, retryTarget.assistantMessageId]);
         const retained = messages.filter((message) => !replacedIds.has(message.id));
         retained.splice(insertAt >= 0 ? insertAt : retained.length, 0, userMessage, assistantMessage);
-        return { ...conversation, updatedAt, messages: retained };
+        return { ...conversation, updatedAt, messages: retained, deletedMessageIds: Array.from(new Set([...(conversation.deletedMessageIds || []), ...replacedIds])) };
     }
     return {
         ...conversation,

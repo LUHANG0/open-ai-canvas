@@ -1,6 +1,13 @@
 package service
 
-import "infinite-canvas/backend/internal/model"
+import (
+	"errors"
+	"strings"
+
+	"infinite-canvas/backend/internal/model"
+
+	"gorm.io/gorm"
+)
 
 // LogicalModelQuote 是创作端当前参数命中的实际供应线路报价。
 // Token 视频在上游返回真实 usage 前只能预估，创建任务仍以账务预留逻辑为准。
@@ -10,6 +17,62 @@ type LogicalModelQuote struct {
 	Quantity           int64  `json:"quantity"`
 	AmountMicrocredits int64  `json:"amountMicrocredits"`
 	Estimated          bool   `json:"estimated"`
+}
+
+// SystemChannelModelQuote 是系统渠道模型在当前请求规格下的用户侧报价。
+// 它只返回公开模型标识和账务结果，不暴露渠道配置或上游信息。
+type SystemChannelModelQuote struct {
+	ChannelModelID     string `json:"channelModelId"`
+	BillingMode        string `json:"billingMode"`
+	Quantity           int64  `json:"quantity"`
+	AmountMicrocredits int64  `json:"amountMicrocredits"`
+	Estimated          bool   `json:"estimated"`
+}
+
+func (s *Service) QuoteSystemChannelModel(channelModelID string, intent ModelRequestIntent) (*SystemChannelModelQuote, error) {
+	capability := normalizeCapability(intent.Capability)
+	if capability == "" {
+		return nil, BadAuthRequest("报价请求缺少模型能力类型")
+	}
+	channelModelID = strings.TrimSpace(channelModelID)
+	if channelModelID == "" {
+		return nil, BadAuthRequest("报价请求缺少模型标识")
+	}
+	channelModel, err := s.repo.ChannelModel(channelModelID)
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, BadAuthRequest("当前模型暂时不可用，请重新选择")
+	}
+	if err != nil {
+		return nil, err
+	}
+	if !channelModel.Enabled || normalizeCapability(channelModel.Capability) != capability {
+		return nil, BadAuthRequest("当前模型暂时不可用，请重新选择")
+	}
+	if _, err := s.repo.SystemChannel(channelModel.ChannelID); errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, BadAuthRequest("当前模型暂时不可用，请重新选择")
+	} else if err != nil {
+		return nil, err
+	}
+
+	input := quoteInput(intent, channelModel.ModelKey)
+	quantity := billingQuantity(capability, inputConfigValue(input, "videoSeconds"))
+	if capability != "video" {
+		quantity = 1
+	}
+	order, err := s.newBillingOrderWithPriceTier(
+		"", "", "quote", channelModel.ChannelID, channelModel.ModelKey, capability, "model_quote",
+		quantity, estimateTaskBillingTokens(input, capability), "", intent,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return &SystemChannelModelQuote{
+		ChannelModelID:     channelModel.ID,
+		BillingMode:        order.BillingMode,
+		Quantity:           order.Quantity,
+		AmountMicrocredits: order.AmountMicrocredits,
+		Estimated:          order.BillingMode == "token",
+	}, nil
 }
 
 func (s *Service) QuoteLogicalModel(logicalModelID string, intent ModelRequestIntent) (*LogicalModelQuote, error) {

@@ -10,7 +10,12 @@ test("章节页直接生成到分镜制作，并通过共享选择器执行技�
     expect(source).toContain("replaceProjectUnitShots");
     expect(source).toContain("/storyboard`");
     expect(dialogs).toContain('<SkillRuntimePicker profile="shortDrama"');
-    expect(dialogs.match(/<ModelPicker config=\{effectiveConfig\} capability="text"/g)).toHaveLength(2);
+    const modelPickers = dialogs.match(/<ModelPicker\b[\s\S]*?\/>/g) ?? [];
+    expect(modelPickers).toHaveLength(2);
+    for (const picker of modelPickers) {
+        expect(picker).toContain("config={effectiveConfig}");
+        expect(picker).toContain('capability="text"');
+    }
     expect(source).toContain("chapterAnalysisInput(selectedTextModel)");
     expect(source).toContain("const textModel = selectedTextModel");
     expect(source).toContain("generateChapterStoryboard");

@@ -552,13 +552,17 @@ describe("引导浮层契约", () => {
 
 describe("引导产品接线", () => {
     const projectCode = stripComments(readFileSync(resolve(import.meta.dir, "../src/pages/canvas/project.tsx"), "utf8"));
+    const environmentCode = stripComments(readFileSync(resolve(import.meta.dir, "../src/pages/canvas/use-canvas-project-environment.ts"), "utf8"));
     const workbenchCode = stripComments(readFileSync(resolve(import.meta.dir, "../src/components/canvas/director/canvas-director-workbench.tsx"), "utf8"));
 
     test("页面只把已认证用户 id 传给引导，不使用 guest fallback 或未定义变量", () => {
-        expect(projectCode).toContain('const directorOnboardingScope = useUserStore((state) => state.user?.id?.trim() || "")');
+        expect(environmentCode).toContain('const directorOnboardingScope = useUserStore((state) => state.user?.id?.trim() || "")');
+        expect(projectCode).toMatch(/const\s*\{[^}]*\bdirectorOnboardingScope\b[^}]*\}\s*=\s*useCanvasProjectEnvironment\(\)/);
         expect(projectCode).toContain("onboardingScope={directorOnboardingScope}");
-        expect(projectCode).not.toContain("trimmedUserId");
-        expect(projectCode).not.toContain("onboardingScope={canvasStorageScope}");
+        for (const code of [environmentCode, projectCode]) {
+            expect(code).not.toContain("trimmedUserId");
+            expect(code).not.toContain("onboardingScope={canvasStorageScope}");
+        }
     });
 
     test("工作台渲染非模态引导，并提供可发现的重新开始入口", () => {

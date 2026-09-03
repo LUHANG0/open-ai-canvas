@@ -166,7 +166,7 @@ test("dispose aborts a poll-heartbeat state-lock waiter before it can renew", as
         await reconciler.start();
         await observing;
         releaseExternalLock = await acquireStateLock(box.stateFile);
-        await renewing;
+        await waitForPromise(renewing, "poll heartbeat to enter the state-lock wait");
         releaseObserve();
         await committingSyncError;
 
@@ -478,5 +478,19 @@ async function waitFor(condition: () => boolean) {
     while (!condition()) {
         if (Date.now() >= deadline) throw new Error("timed out waiting for reconciler fixture");
         await new Promise((resolve) => setTimeout(resolve, 5));
+    }
+}
+
+async function waitForPromise<T>(promise: Promise<T>, label: string, timeoutMs = 2_000): Promise<T> {
+    let timer: NodeJS.Timeout | undefined;
+    try {
+        return await Promise.race([
+            promise,
+            new Promise<never>((_resolve, reject) => {
+                timer = setTimeout(() => reject(new Error(`timed out waiting for ${label}`)), timeoutMs);
+            }),
+        ]);
+    } finally {
+        if (timer) clearTimeout(timer);
     }
 }

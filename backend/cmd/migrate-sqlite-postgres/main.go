@@ -274,6 +274,7 @@ func migrations() []tableMigration {
 		migrateTable[model.WorkflowStepTask]("workflow_step_tasks"),
 		migrateTable[model.ProductionTaskLink]("production_task_links"),
 		migrateTable[model.CanvasProject]("canvas_projects"),
+		migrateTable[model.CreationConversation]("creation_conversations"),
 		migrateTable[model.CanvasShare]("canvas_shares"),
 		migrateTable[model.PromptTemplate]("prompt_templates"),
 		migrateTable[model.UserPromptCustomization]("user_prompt_customizations"),

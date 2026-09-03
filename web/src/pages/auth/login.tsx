@@ -4,9 +4,10 @@ import { ArrowRight, LockKeyhole, ShieldCheck, UserRound } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router";
 
 import { applyUserSession } from "@/lib/user-session";
-import { getAuthSession, getAuthSettings, linuxDOLoginURL, login } from "@/services/api/auth";
+import { getAuthSession, linuxDOLoginURL, login } from "@/services/api/auth";
 import { useUserStore } from "@/stores/use-user-store";
-import { LinuxDOIcon } from "./auth-scene";
+import { useBranding } from "@/components/branding/branding-provider";
+import { LinuxDOIcon, useAuthSettings } from "./auth-scene";
 
 export default function LoginPage() {
     const navigate = useNavigate();
@@ -15,7 +16,8 @@ export default function LoginPage() {
     const [username, setUsername] = useState("");
     const [password, setPassword] = useState("");
     const [submitting, setSubmitting] = useState(false);
-    const [linuxdoEnabled, setLinuxdoEnabled] = useState(false);
+    const { settings } = useAuthSettings();
+    const { branding } = useBranding();
     const next = safeNext(params.get("next"));
     const user = useUserStore((state) => state.user);
     const hydrated = useUserStore((state) => state.hydrated);
@@ -28,9 +30,6 @@ export default function LoginPage() {
     }, [hydrated, user, next, navigate]);
 
     useEffect(() => {
-        void getAuthSettings()
-            .then((settings) => setLinuxdoEnabled(settings.linuxdoEnabled))
-            .catch(() => undefined);
         const oauthError = params.get("oauth_error");
         if (oauthError) message.error(oauthError);
     }, [message, params]);
@@ -71,9 +70,9 @@ export default function LoginPage() {
             </Button>
             <div className="pc-auth-form-assurance">
                 <ShieldCheck className="size-3.5" aria-hidden="true" />
-                <span>登录凭据只用于当前影策服务的身份验证</span>
+                <span>登录凭据只用于当前{branding.config.identity.shortName}服务的身份验证</span>
             </div>
-            {linuxdoEnabled ? (
+            {settings?.linuxdoEnabled ? (
                 <>
                     <Divider plain className="pc-auth-divider !border-white/10 !text-white/30">
                         或

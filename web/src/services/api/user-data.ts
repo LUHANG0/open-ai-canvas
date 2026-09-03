@@ -1,5 +1,6 @@
 import type { Asset } from "@/stores/use-asset-store";
 import type { CanvasProject } from "@/stores/canvas/use-canvas-store";
+import type { CreationConversation } from "@/pages/create/creation-types";
 import { apiClient, request } from "@/services/api/request";
 
 const api = apiClient;
@@ -15,6 +16,11 @@ export type RemoteUserDataSummary = {
 export type RemoteUserDataSnapshot = {
     assets: Asset[];
     projects: CanvasProject[];
+};
+
+export type RemoteCreationConversationRecord = {
+    conversation: CreationConversation;
+    revision: number;
 };
 
 export function getRemoteUserDataSnapshot() {
@@ -51,4 +57,16 @@ export function upsertRemoteCanvasProject(project: CanvasProject) {
 
 export function deleteRemoteCanvasProject(id: string) {
     return request<{ id: string }>(api.delete(`/canvas-projects/${encodeURIComponent(id)}`));
+}
+
+export function listRemoteCreationConversations() {
+    return request<{ conversations: RemoteCreationConversationRecord[] }>(api.get("/creation-conversations", { timeout: 10_000 }));
+}
+
+export function upsertRemoteCreationConversation(conversation: CreationConversation, expectedRevision: number) {
+    return request<{ record: RemoteCreationConversationRecord }>(api.put(`/creation-conversations/${encodeURIComponent(conversation.id)}`, { conversation, expectedRevision }, { timeout: 10_000 }));
+}
+
+export function deleteRemoteCreationConversation(id: string, revision: number) {
+    return request<{ id: string }>(api.delete(`/creation-conversations/${encodeURIComponent(id)}`, { params: { revision }, timeout: 10_000 }));
 }

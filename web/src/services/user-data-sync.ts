@@ -35,7 +35,7 @@ let subscriptionsInstalled = false;
 let acknowledgedAssets = new Map<string, Asset>();
 let acknowledgedProjects = new Map<string, CanvasProject>();
 
-const LOCAL_STORAGE_KEY_PATTERN = /^(image|video|audio|file|video-reference|audio-reference):/;
+const LOCAL_STORAGE_KEY_PATTERN = /^(image|generation-image|video|audio|file|video-reference|audio-reference):/;
 
 export function getRemoteUserDataSyncStatus() {
     return remoteUserDataSyncStatus;
@@ -246,7 +246,7 @@ async function saveRemoteUserDataBatch() {
     }
 }
 
-async function ensureRemoteResourceReferences<T>(value: T, uploaded = new Map<string, string>()): Promise<T> {
+export async function ensureRemoteResourceReferences<T>(value: T, uploaded = new Map<string, string>()): Promise<T> {
     if (!value || typeof value !== "object") return value;
     if (Array.isArray(value)) {
         const result: unknown[] = [];
@@ -279,7 +279,7 @@ async function ensureRemoteResourceReferences<T>(value: T, uploaded = new Map<st
 function applyResourceReference(payload: Record<string, unknown>, storageKey: string) {
     const url = resourceFileUrl(storageKey.slice("resource:".length));
     payload.storageKey = storageKey;
-    for (const key of ["content", "dataUrl", "url", "coverUrl"]) {
+    for (const key of ["content", "dataUrl", "url", "coverUrl", "previewUrl"]) {
         if (typeof payload[key] === "string") payload[key] = url;
     }
     return payload;
@@ -303,7 +303,7 @@ async function uploadInlineDataUrl(dataUrl: string) {
 }
 
 async function uploadLocalStorageKey(storageKey: string, payload: Record<string, unknown>) {
-    const blob = storageKey.startsWith("image:") ? await getImageBlob(storageKey) : await getMediaBlob(storageKey);
+    const blob = storageKey.startsWith("image:") || storageKey.startsWith("generation-image:") ? await getImageBlob(storageKey) : await getMediaBlob(storageKey);
     if (!blob) throw new Error(`本地媒体不存在：${storageKey}`);
     const kind = blob.type.startsWith("image/") ? "image" : blob.type.startsWith("video/") ? "video" : blob.type.startsWith("audio/") ? "audio" : "file";
     const resource = await uploadResourceFile(blob, kind, {

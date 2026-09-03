@@ -867,7 +867,7 @@ export default function ProjectAssetsView({ detail, refreshProject }: ProjectDet
                         const ids: string[] = [];
                         for (const file of Array.from(files)) {
                             if (!isSupportedCharacterVoiceFile(file)) throw new Error(`声音素材支持 ${CHARACTER_VOICE_FORMAT_LABEL}`);
-                            const uploaded = await uploadMediaFile(file, "character-voice");
+                            const uploaded = await uploadMediaFile(file);
                             const resourceId = resourceIdFromStorageKey(uploaded.storageKey);
                             if (!resourceId) throw new Error("声音上传未同步到服务端资源库，请检查后端连接");
                             ids.push(

@@ -29,7 +29,7 @@ func (s *Service) AccountFileStorageUsage(userID string) (*AccountFileStorageUsa
 }
 
 func structuredBytes(usage repository.UserStorageUsage) int64 {
-	return usage.AssetBytes + usage.CanvasBytes + usage.SessionBytes
+	return usage.AssetBytes + usage.CanvasBytes + usage.SessionBytes + usage.CreationConversationBytes
 }
 
 func validateStructuredStorageQuotaWithPolicy(usage repository.UserStorageUsage, kind string, creating bool, deltaBytes int64, policy RuntimeResourcePolicy) error {
@@ -49,8 +49,12 @@ func validateStructuredStorageQuotaWithPolicy(usage repository.UserStorageUsage,
 			return BadAuthRequest(fmt.Sprintf("账号画布数量已达到 %d 个上限", policy.CanvasCount))
 		}
 	case "session":
-		if usage.SessionCount >= policy.SessionCount {
-			return BadAuthRequest(fmt.Sprintf("账号 Agent 会话数量已达到 %d 个上限", policy.SessionCount))
+		if usage.SessionCount+usage.CreationConversationCount >= policy.SessionCount {
+			return BadAuthRequest(fmt.Sprintf("账号会话数量已达到 %d 个上限", policy.SessionCount))
+		}
+	case "creation_conversation":
+		if usage.SessionCount+usage.CreationConversationCount >= policy.SessionCount {
+			return BadAuthRequest(fmt.Sprintf("账号会话数量已达到 %d 个上限", policy.SessionCount))
 		}
 	}
 	return nil

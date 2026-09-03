@@ -10,13 +10,14 @@ import (
 	"gorm.io/gorm"
 )
 
-const CurrentSchemaVersion int64 = 5
+const CurrentSchemaVersion int64 = 6
 
 const baselineSchemaChecksum = "sha256:open-ai-canvas-schema-v1-20260830"
 const schemaMigrationAppliedAtIndexChecksum = "sha256:schema-migrations-applied-at-index-v2-20260830"
 const channelModelPricingHistoryChecksum = "sha256:channel-model-pricing-history-v3-20260901"
 const taskCreationIdempotencyChecksum = "sha256:task-creation-idempotency-v4-20260901"
 const projectDeliveryJobsChecksum = "sha256:project-delivery-jobs-v5-20260903"
+const creationConversationSyncChecksum = "sha256:creation-conversation-sync-v6-20260903"
 
 const postgresSchemaMigrationLockID int64 = 73123910420260830
 
@@ -48,6 +49,7 @@ var schemaMigrations = []migration{
 	{version: 3, name: "channel_model_pricing_history", checksum: channelModelPricingHistoryChecksum, apply: migrateSchemaV3},
 	{version: 4, name: "task_creation_idempotency", checksum: taskCreationIdempotencyChecksum, apply: migrateSchemaV4},
 	{version: 5, name: "project_delivery_jobs", checksum: projectDeliveryJobsChecksum, apply: migrateSchemaV5},
+	{version: 6, name: "creation_conversation_sync", checksum: creationConversationSyncChecksum, apply: migrateSchemaV6},
 }
 
 func migrateSchemaV2(tx *gorm.DB) error {
@@ -66,6 +68,10 @@ func migrateSchemaV4(tx *gorm.DB) error {
 
 func migrateSchemaV5(tx *gorm.DB) error {
 	return tx.AutoMigrate(&model.ProjectDeliveryJob{})
+}
+
+func migrateSchemaV6(tx *gorm.DB) error {
+	return tx.AutoMigrate(&model.CreationConversation{})
 }
 
 func MigrateSchema(db *gorm.DB) error {

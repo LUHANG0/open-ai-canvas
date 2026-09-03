@@ -1,4 +1,4 @@
-import { ChevronDown, ChevronRight, Home, Infinity as InfinityIcon, LogOut, PanelLeftOpen, Plus, Search, ShieldCheck } from "lucide-react";
+import { ChevronDown, ChevronRight, Home, LogOut, PanelLeftOpen, Plus, Search, ShieldCheck } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type ComponentType, type CSSProperties } from "react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router";
 
@@ -9,6 +9,8 @@ import { useWorkspaceLogout } from "@/hooks/use-workspace-logout";
 import { cn } from "@/lib/utils";
 import { preloadWorkspaceRoute } from "@/lib/workspace-route-modules";
 import { useUserStore, type FeatureAvailability } from "@/stores/use-user-store";
+import { BrandMark } from "@/components/branding/brand-mark";
+import { useBranding } from "@/components/branding/branding-provider";
 
 export type WorkspaceNavItem = {
     id: string;
@@ -83,6 +85,7 @@ function buildNav(features: FeatureAvailability, balance: string, isAdmin: boole
 function WorkspaceSwitcher({ collapsed, onNavigate, onExpand }: { collapsed: boolean; onNavigate: () => void; onExpand: () => void }) {
     const [isOpen, setIsOpen] = useState(false);
     const navigate = useNavigate();
+    const { branding } = useBranding();
 
     const go = (to: string) => {
         setIsOpen(false);
@@ -111,11 +114,11 @@ function WorkspaceSwitcher({ collapsed, onNavigate, onExpand }: { collapsed: boo
             >
                 <span className="flex min-w-0 items-center gap-3">
                     <span className="app-workspace-brand-mark grid size-8 shrink-0 place-items-center rounded-[var(--r-sm)] shadow-sm">
-                        <InfinityIcon className="size-4" strokeWidth={2} />
+                        <BrandMark className="size-5" />
                     </span>
                     <span className="flex min-w-0 flex-col">
-                        <span className="app-workspace-brand-wordmark truncate text-[var(--fs-body)] leading-none font-medium">影策</span>
-                        <span className="app-workspace-brand-kicker mt-1 truncate text-[var(--fs-label)] leading-none text-foreground/42">创作工作台</span>
+                        <span className="app-workspace-brand-wordmark truncate text-[var(--fs-body)] leading-none font-medium">{branding.config.identity.displayName}</span>
+                        <span className="app-workspace-brand-kicker mt-1 truncate text-[var(--fs-label)] leading-none text-foreground/42">{branding.config.identity.workspaceLabel}</span>
                     </span>
                 </span>
                 <ChevronDown className="size-4 shrink-0 text-foreground/40 transition-colors group-hover:text-foreground/70" strokeWidth={1.5} />
@@ -130,8 +133,8 @@ function WorkspaceSwitcher({ collapsed, onNavigate, onExpand }: { collapsed: boo
                         aria-label="工作区快捷入口"
                     >
                         <div className="px-3 py-2.5">
-                            <div className="truncate text-[var(--fs-body)] font-semibold">影策</div>
-                            <div className="mt-0.5 truncate text-[var(--fs-label)] text-foreground/45">创作工作台</div>
+                            <div className="truncate text-[var(--fs-body)] font-semibold">{branding.config.identity.displayName}</div>
+                            <div className="mt-0.5 truncate text-[var(--fs-label)] text-foreground/45">{branding.config.identity.workspaceLabel}</div>
                         </div>
                         <div className="mx-2 my-1 h-px bg-[var(--workspace-border)]" />
                         {[

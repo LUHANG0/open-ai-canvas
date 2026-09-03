@@ -27,7 +27,7 @@ import { useCreationModelWorkflow } from "./use-creation-model-workflow";
 import { useCreationReferenceWorkflow } from "./use-creation-reference-workflow";
 import { useCreationSubmitWorkflow } from "./use-creation-submit-workflow";
 import { useCreationWorkspaceActions } from "./use-creation-workspace-actions";
-import { CreationHistoryDrawer, CreationWorkspaceToolbar } from "./creation-workspace-toolbar";
+import { CreationCloudSyncButton, CreationHistoryDrawer, CreationWorkspaceToolbar } from "./creation-workspace-toolbar";
 import "./creation-workspace.css";
 
 function shotsFromMessages(messages: CreationMessage[]): CreationShot[] {
@@ -58,7 +58,7 @@ export default function CreatePage() {
     const assets = useAssetStore((state) => state.assets);
     const assetsHydrated = useAssetStore((state) => state.hydrated);
     const addAsset = useAssetStore((state) => state.addAsset);
-    const { activeConversation, historyConversations, hydrated, updateActive, updateConversationMessage, createConversation, activateConversation, deleteConversation } = useCreationConversationWorkflow({
+    const { activeConversation, historyConversations, hydrated, updateActive, updateConversationMessage, createConversation, activateConversation, deleteConversation, cloudSyncStatus, retryCloudSync } = useCreationConversationWorkflow({
         assetsHydrated,
         toast,
     });
@@ -380,6 +380,8 @@ export default function CreatePage() {
                                 onViewModeChange={setViewMode}
                                 onNewConversation={startNewConversation}
                                 onOpenHistory={openHistory}
+                                cloudSyncStatus={cloudSyncStatus}
+                                onRetryCloudSync={() => void retryCloudSync()}
                                 storyboard={
                                     viewMode === "storyboard"
                                         ? {
@@ -395,6 +397,7 @@ export default function CreatePage() {
                             />
                         ) : (
                             <div className="creation-top-actions">
+                                <CreationCloudSyncButton status={cloudSyncStatus} onRetry={() => void retryCloudSync()} />
                                 <Tooltip title="历史对话">
                                     <button type="button" aria-label="查看历史对话" aria-expanded={historyOpen} className="creation-top-action" onClick={openHistory}>
                                         <History />
@@ -423,7 +426,7 @@ export default function CreatePage() {
                     </>
                 ) : viewMode === "chat" ? (
                     <div className="creation-thread-workbench">
-                        <CreationWorkspaceToolbar viewMode={viewMode} onViewModeChange={setViewMode} onNewConversation={startNewConversation} onOpenHistory={openHistory} />
+                        <CreationWorkspaceToolbar viewMode={viewMode} onViewModeChange={setViewMode} onNewConversation={startNewConversation} onOpenHistory={openHistory} cloudSyncStatus={cloudSyncStatus} onRetryCloudSync={() => void retryCloudSync()} />
                         <main ref={threadScrollRef} onScroll={handleThreadScroll} className="creation-thread-scroll creation-scrollbar" aria-label="连续对话" tabIndex={0}>
                             <section className="creation-thread-stage">
                                 <div className="creation-results" role="log" aria-live="polite" aria-relevant="additions text">
@@ -452,6 +455,8 @@ export default function CreatePage() {
                                 onViewModeChange={setViewMode}
                                 onNewConversation={startNewConversation}
                                 onOpenHistory={openHistory}
+                                cloudSyncStatus={cloudSyncStatus}
+                                onRetryCloudSync={() => void retryCloudSync()}
                                 storyboard={{
                                     timelineOpen: storyboardTimelineOpen,
                                     count: shots.length,

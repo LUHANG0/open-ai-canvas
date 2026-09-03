@@ -145,6 +145,14 @@ func (s *Service) SendRegistrationEmailCode(rawEmail string) error {
 	if err != nil {
 		return err
 	}
+	_, branding, err := s.readBrandingSetting()
+	if err != nil {
+		return err
+	}
+	brandName := branding.Config.Identity.DisplayName
+	if setting.FromName == "影策" {
+		setting.FromName = brandName
+	}
 	if !setting.Enabled {
 		return Forbidden("平台尚未启用注册邮件，请联系管理员")
 	}
@@ -168,7 +176,7 @@ func (s *Service) SendRegistrationEmailCode(rawEmail string) error {
 	if err := s.repo.Create(&record); err != nil {
 		return err
 	}
-	if err := sendSMTPMail(setting, email, "影策注册验证码", registrationEmailBody(code)); err != nil {
+	if err := sendSMTPMail(setting, email, brandName+"注册验证码", registrationEmailBody(brandName, code)); err != nil {
 		cleanupErr := s.repo.DeleteEmailVerificationCode(record.ID)
 		if cleanupErr != nil {
 			return errors.Join(
@@ -356,6 +364,6 @@ func randomNumericCode(length int) (string, error) {
 	return fmt.Sprintf("%0*d", length, value.Int64()), nil
 }
 
-func registrationEmailBody(code string) string {
-	return "你正在注册影策。\n\n验证码：" + code + "\n\n验证码 10 分钟内有效。若非本人操作，请忽略本邮件。"
+func registrationEmailBody(brandName string, code string) string {
+	return "你正在注册" + brandName + "。\n\n验证码：" + code + "\n\n验证码 10 分钟内有效。若非本人操作，请忽略本邮件。"
 }

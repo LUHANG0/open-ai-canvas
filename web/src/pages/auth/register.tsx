@@ -4,16 +4,14 @@ import { ArrowRight, Info, LockKeyhole, Mail, ShieldCheck, TriangleAlert, UserRo
 import { useNavigate, useSearchParams } from "react-router";
 
 import { applyUserSession } from "@/lib/user-session";
-import { getAuthSession, getAuthSettings, linuxDOLoginURL, register, sendRegistrationEmailCode } from "@/services/api/auth";
-import { LinuxDOIcon } from "./auth-scene";
-
-type AuthSettings = Awaited<ReturnType<typeof getAuthSettings>>;
+import { getAuthSession, linuxDOLoginURL, register, sendRegistrationEmailCode } from "@/services/api/auth";
+import { LinuxDOIcon, useAuthSettings } from "./auth-scene";
 
 export default function RegisterPage() {
     const navigate = useNavigate();
     const [params] = useSearchParams();
     const { message } = App.useApp();
-    const [settings, setSettings] = useState<AuthSettings | null>(null);
+    const { settings, loading: settingsLoading, error: settingsError, refresh } = useAuthSettings();
     const [username, setUsername] = useState("");
     const [email, setEmail] = useState("");
     const [emailCode, setEmailCode] = useState("");
@@ -24,16 +22,6 @@ export default function RegisterPage() {
     const [sendingCode, setSendingCode] = useState(false);
     const [countdown, setCountdown] = useState(0);
     const next = safeNext(params.get("next"));
-
-    useEffect(() => {
-        let cancelled = false;
-        void getAuthSettings()
-            .then((value) => !cancelled && setSettings(value))
-            .catch((error) => !cancelled && message.error(error instanceof Error ? error.message : "读取注册设置失败"));
-        return () => {
-            cancelled = true;
-        };
-    }, [message]);
 
     useEffect(() => {
         if (countdown <= 0) return;
@@ -80,7 +68,7 @@ export default function RegisterPage() {
 
     const registrationClosed = settings?.registrationEnabled === false;
     const mailUnavailable = Boolean(settings && !settings.firstUser && settings.emailCodeRequired && !settings.emailEnabled);
-    const disabled = registrationClosed || mailUnavailable;
+    const disabled = settingsLoading || registrationClosed || mailUnavailable || !settings;
     const requireCode = Boolean(settings && !settings.firstUser && settings.emailCodeRequired);
 
     return (
@@ -99,6 +87,11 @@ export default function RegisterPage() {
                 <Notice icon={<TriangleAlert className="size-3.5" />} tone="amber">
                     管理员尚未配置注册邮件，普通邮箱注册暂不可用。
                 </Notice>
+            ) : null}
+            {settingsError && !settings ? (
+                <button type="button" className="pc-auth-settings-retry" onClick={() => void refresh()}>
+                    无法读取注册设置，点击重试
+                </button>
             ) : null}
 
             <div className="grid gap-4 sm:grid-cols-2">

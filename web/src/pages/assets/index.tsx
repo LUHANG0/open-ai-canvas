@@ -250,7 +250,7 @@ export default function AssetsPage() {
         if (!file || !/\.(glb|gltf)$/i.test(file.name) || (isPcBrandViewport && Boolean(transferBusy))) return;
         if (isPcBrandViewport) setTransferBusy("model");
         try {
-            const uploaded = await uploadMediaFile(file, "model");
+            const uploaded = await uploadMediaFile(file);
             void queryClient.invalidateQueries({ queryKey: assetStorageUsageQueryKey });
             addAsset({
                 kind: "model",

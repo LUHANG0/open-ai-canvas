@@ -29,6 +29,7 @@ const ArkPrivateAssetsSettingsPage = lazy(() => import("@/pages/admin/settings/a
 const ResponseInterceptionSettingsPage = lazy(() => import("@/pages/admin/settings/response-interception-settings-page"));
 const ThirdPartySettingsPage = lazy(() => import("@/pages/admin/settings/libtv-settings-page"));
 const SystemUpdatePage = lazy(() => import("@/pages/admin/settings/system-update-page"));
+const BrandingSettingsPage = lazy(() => import("@/pages/admin/settings/branding-settings-page"));
 const StoryboardPromptsPage = lazy(() => import("@/pages/admin/storyboard-prompts/storyboard-prompts-page"));
 const UsersPage = lazy(() => import("@/pages/admin/users/users-page"));
 const AssetsPage = lazy(loadAssetsPage);
@@ -182,6 +183,7 @@ export const router = createBrowserRouter([
                     { path: "redemption-codes", element: deferred(<RedemptionCodesPage />) },
                     { path: "logs", element: deferred(<LogsPage />) },
                     { path: "settings", element: <Navigate to="runtime-policy" replace /> },
+                    { path: "settings/branding", element: deferred(<BrandingSettingsPage />) },
                     { path: "settings/drawing-engine", element: deferred(<DrawingEngineSettingsPage />) },
                     { path: "settings/concurrency", element: <Navigate to="/admin/settings/runtime-policy" replace /> },
                     { path: "settings/runtime-policy", element: deferred(<RuntimePolicySettingsPage />) },

@@ -2,6 +2,7 @@ import { Streamdown, type Components } from "streamdown";
 import { code as streamdownCode } from "@streamdown/code";
 
 import "streamdown/styles.css";
+import "./ai-message-markdown.css";
 
 type AIMessageMarkdownProps = {
     children: string;

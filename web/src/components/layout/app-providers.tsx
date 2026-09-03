@@ -14,6 +14,7 @@ import { listRegisteredPlugins } from "@/lib/plugins/plugin-registry";
 import { usePluginStore } from "@/stores/use-plugin-store";
 import { fetchPluginRuntimeState, setUserPluginEnabled } from "@/services/api/plugins";
 import { useUserStore } from "@/stores/use-user-store";
+import { useBranding } from "@/components/branding/branding-provider";
 
 export function AppProviders({ children, router }: { children: ReactNode; router: AppThemeRouter }) {
     const theme = useThemeStore((state) => state.theme);
@@ -21,7 +22,8 @@ export function AppProviders({ children, router }: { children: ReactNode; router
     const pcBrandV2 = usePcBrandViewport();
     const pathnameStore = useMemo(() => createAppThemePathnameStore(router), [router]);
     const pathname = useSyncExternalStore(pathnameStore.subscribe, pathnameStore.getSnapshot, pathnameStore.getSnapshot);
-    const antTheme = useMemo(() => getAntThemeConfigForPathname(dark, pcBrandV2, pathname), [dark, pathname, pcBrandV2]);
+    const { branding } = useBranding();
+    const antTheme = useMemo(() => getAntThemeConfigForPathname(dark, pcBrandV2, pathname, branding.config.theme.primaryColor), [branding.config.theme.primaryColor, dark, pathname, pcBrandV2]);
     const ensurePlugin = usePluginStore((state) => state.ensurePlugin);
     const setRuntimeStatuses = usePluginStore((state) => state.setRuntimeStatuses);
     const setPluginStates = usePluginStore((state) => state.setPluginStates);

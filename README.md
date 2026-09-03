@@ -9,7 +9,7 @@
 <p align="center">
   <a href="https://github.com/ddcat-ai/open-ai-canvas">GitHub</a> ·
   <a href="docs/content/docs/overview/features.mdx">功能</a> ·
-  <a href="docs/content/docs/overview/quick-start.mdx">文档</a> ·
+  <a href="docs/content/docs/backend/local-development.mdx">文档</a> ·
   <a href="SECURITY.md">安全策略</a>
 </p>
 
@@ -26,32 +26,32 @@
 
 感谢以下赞助商对影策项目的支持：
 
-| LOGO | 类型 | 赞助商名称 | 说明 | 网站 |
-| --- | --- | --- | --- | --- |
-| <img src="assets/artdance.png" alt="ArtDance" width="160"> | 商业 | ArtDance | 本项目 Seedance 模型的天使投资人。 | [artbox.top](https://artbox.top) |
-| <img src="assets/sponsor1.svg" alt="快乐机艺术小组" width="160"> | 团队 | 快乐机艺术小组 | 一支跨学科的艺术创作团队，持续探索数字与艺术的全新表达形式。 | 暂无 |
-| <img src="assets/metaso.png" alt="秘塔" width="160"> | 企业 | 秘塔 | 提供 MiniMax H3 视频生成 API，支持原生 2K、音画同步和 OpenAI 兼容协议。 | [metaso.cn](https://metaso.cn/minimax-h3/?s=dd) |
-| <img src="assets/fruivision.png" alt="浮瑞万相AI" width="160"> | 企业 | 浮瑞万相AI | 一家专注于AI视听的AI Native公司 | 暂无 |
-| <img src="assets/xmzm.png" alt="喜马抓马" width="160"> | 团队 | 喜马抓马 | 中国AI视听先锋厂牌/AI 视听全链路综合服务平台 | [himadrama.com](https://himadrama.com) |
+| LOGO                                                             | 类型 | 赞助商名称     | 说明                                                                    | 网站                                            |
+| ---------------------------------------------------------------- | ---- | -------------- | ----------------------------------------------------------------------- | ----------------------------------------------- |
+| <img src="assets/artdance.png" alt="ArtDance" width="160">       | 商业 | ArtDance       | 本项目 Seedance 模型的天使投资人。                                      | [artbox.top](https://artbox.top)                |
+| <img src="assets/sponsor1.svg" alt="快乐机艺术小组" width="160"> | 团队 | 快乐机艺术小组 | 一支跨学科的艺术创作团队，持续探索数字与艺术的全新表达形式。            | 暂无                                            |
+| <img src="assets/metaso.png" alt="秘塔" width="160">             | 企业 | 秘塔           | 提供 MiniMax H3 视频生成 API，支持原生 2K、音画同步和 OpenAI 兼容协议。 | [metaso.cn](https://metaso.cn/minimax-h3/?s=dd) |
+| <img src="assets/fruivision.png" alt="浮瑞万相AI" width="160">   | 企业 | 浮瑞万相AI     | 一家专注于AI视听的AI Native公司                                         | 暂无                                            |
+| <img src="assets/xmzm.png" alt="喜马抓马" width="160">           | 团队 | 喜马抓马       | 中国AI视听先锋厂牌/AI 视听全链路综合服务平台                            | [himadrama.com](https://himadrama.com)          |
 
 ## 贡献者与团队
 
 感谢参与产品设计、开发、测试、内容和社区建设的成员：
 
-| 头像 | 昵称 | 邮箱 | 个性签名 |
-| --- | --- | --- | --- |
-| <img src="assets/user-sikongyue.png" alt="爱笑的毛毛虫" width="80"> | 爱笑的毛毛虫<br><sub>用户名：sikongyue</sub> | [315515767@qq.com](mailto:315515767@qq.com) | 正在啃 main 分支，争取下次 merge 的时候变成蝴蝶 |
-| <img src="assets/user-delve.jpg" alt="delve-s" width="80"> | delve-s | [3013141136@qq.com](mailto:3013141136@qq.com) | 我亦无他，惟手熟尔 |
-| <img src="assets/user-CyrusAuyeung.jpg" alt="CyrusAuyeung" width="80"> | CyrusAuyeung | [cyrusauyeungho@gmail.com](mailto:cyrusauyeungho@gmail.com) | HKUST(GZ) UG |
-| <img src="assets/user-nz.jpg" alt="奶大佬" width="80"> | 奶大佬 | [1304634970@qq.com](mailto:1304634970@qq.com) | 人生就是要不断的探索 |
-| <img src="assets/user-dyh.jpg" alt="dyh" width="80"> | dyh | [1613203335@qq.com](mailto:1613203335@qq.com) | 无 |
-| <img src="assets/user-kyori.jpg" alt="kyori" width="80"> | kyori | [1771634408@qq.com](mailto:1771634408@qq.com) | 励志成为未来最好用的画布仓库的贡献者 |
-| <img src="assets/user-bowen.jpg" alt="Bowen" width="80"> | Bowen | [admin@bowen.games](mailto:admin@bowen.games) | 剑走偏峰，雷厉风行。 |
-| <img src="assets/user-ken.jpg" alt="ken" width="80"> | ken | [2506802@qq.com](mailto:2506802@qq.com) | 走自己的路 |
-| <img src="assets/user-fish.png.jpg" alt="fish" width="80"> | fish | [cihai.sea@gmail.com](mailto:cihai.sea@gmail.com) | AI 界热于助人的拖油瓶 |
-| <img src="assets/user-QAyong.jpg" alt="QAyong" width="80"> | QAyong<br><sub>ID：QAyong<br>B站：QAyong</sub> | [2110491559@qq.com](mailto:2110491559@qq.com) | AI 短剧合规，资产确权 |
-| <img src="assets/user-K37ix.jpg" alt="_K37ix." width="80"> | _K37ix. | [2773843782@qq.com](mailto:2773843782@qq.com) | Making things that think |
-| <img src="assets/user-rou.jpg" alt="Rou" width="80"> | Rou | [rou325089@163.com](mailto:rou325089@163.com) | 上善若水 |
+| 头像                                                                   | 昵称                                           | 邮箱                                                        | 个性签名                                        |
+| ---------------------------------------------------------------------- | ---------------------------------------------- | ----------------------------------------------------------- | ----------------------------------------------- |
+| <img src="assets/user-sikongyue.png" alt="爱笑的毛毛虫" width="80">    | 爱笑的毛毛虫<br><sub>用户名：sikongyue</sub>   | [315515767@qq.com](mailto:315515767@qq.com)                 | 正在啃 main 分支，争取下次 merge 的时候变成蝴蝶 |
+| <img src="assets/user-delve.jpg" alt="delve-s" width="80">             | delve-s                                        | [3013141136@qq.com](mailto:3013141136@qq.com)               | 我亦无他，惟手熟尔                              |
+| <img src="assets/user-CyrusAuyeung.jpg" alt="CyrusAuyeung" width="80"> | CyrusAuyeung                                   | [cyrusauyeungho@gmail.com](mailto:cyrusauyeungho@gmail.com) | HKUST(GZ) UG                                    |
+| <img src="assets/user-nz.jpg" alt="奶大佬" width="80">                 | 奶大佬                                         | [1304634970@qq.com](mailto:1304634970@qq.com)               | 人生就是要不断的探索                            |
+| <img src="assets/user-dyh.jpg" alt="dyh" width="80">                   | dyh                                            | [1613203335@qq.com](mailto:1613203335@qq.com)               | 无                                              |
+| <img src="assets/user-kyori.jpg" alt="kyori" width="80">               | kyori                                          | [1771634408@qq.com](mailto:1771634408@qq.com)               | 励志成为未来最好用的画布仓库的贡献者            |
+| <img src="assets/user-bowen.jpg" alt="Bowen" width="80">               | Bowen                                          | [admin@bowen.games](mailto:admin@bowen.games)               | 剑走偏峰，雷厉风行。                            |
+| <img src="assets/user-ken.jpg" alt="ken" width="80">                   | ken                                            | [2506802@qq.com](mailto:2506802@qq.com)                     | 走自己的路                                      |
+| <img src="assets/user-fish.png.jpg" alt="fish" width="80">             | fish                                           | [cihai.sea@gmail.com](mailto:cihai.sea@gmail.com)           | AI 界热于助人的拖油瓶                           |
+| <img src="assets/user-QAyong.jpg" alt="QAyong" width="80">             | QAyong<br><sub>ID：QAyong<br>B站：QAyong</sub> | [2110491559@qq.com](mailto:2110491559@qq.com)               | AI 短剧合规，资产确权                           |
+| <img src="assets/user-K37ix.jpg" alt="_K37ix." width="80">             | _K37ix.                                        | [2773843782@qq.com](mailto:2773843782@qq.com)               | Making things that think                        |
+| <img src="assets/user-rou.jpg" alt="Rou" width="80">                   | Rou                                            | [rou325089@163.com](mailto:rou325089@163.com)               | 上善若水                                        |
 
 ## 交流与反馈
 
@@ -71,14 +71,14 @@ Issue 反馈、技术讨论和产品升级建议都可以在 QQ 群中沟通。�
 - **Agent 协作**：画布助手、本地 Canvas Agent、MCP 工具、Codex App 插件和技能库。
 - **管理与渠道**：系统渠道、逻辑模型、用量/积分、功能开关、对象存储、响应拦截和管理后台。
 
-详细功能清单见 [`docs/content/docs/overview/features.mdx`](docs/content/docs/overview/features.mdx)，实现入口见 [`docs/content/docs/backend/code-map.mdx`](docs/content/docs/backend/code-map.mdx)。
+详细功能清单见 [`docs/content/docs/overview/features.mdx`](docs/content/docs/overview/features.mdx)，已维护文档和设计沉淀的入口见 [`docs/index.md`](docs/index.md)。
 
 ## 架构概览
 
 ```text
 浏览器（web/）
   ├─ React 工作区、画布、任务中心、素材库
-  ├─ localForage/Zustand 本地状态与降级缓存
+  ├─ localForage/Zustand 本地状态、读缓存与历史媒体迁移
   └─ request.ts / channel relay
           │ 登录态 JSON、SSE、资源请求
           ▼
@@ -92,7 +92,7 @@ Issue 反馈、技术讨论和产品升级建议都可以在 QQ 群中沟通。�
 Codex 插件（`plugins/yingce/`）负责把 MCP 接入 Codex App。
 ```
 
-前端默认把 `/api` 代理到 `http://127.0.0.1:8080`；生产环境由网页容器的 Nginx 代理到后端，只有 web 的 `3000` 端口需要对外暴露。系统模型和文本任务的 SSE 只在明确的流式路径关闭代理缓冲，详见 [`nginx.conf`](nginx.conf) 和 [SSE 文档](docs/content/docs/overview/docker.mdx)。
+前端默认把 `/api` 代理到 `http://127.0.0.1:8080`；生产环境由网页容器的 Nginx 代理到后端，只有 web 的 `3000` 端口需要对外暴露。系统模型和文本任务的 SSE 只在明确的流式路径关闭代理缓冲，路由边界和超时配置以 [`nginx.conf`](nginx.conf) 为准。
 
 ## 本地开发
 
@@ -210,11 +210,11 @@ sudo docker compose --env-file .env -f docker-compose.deploy.yml up -d --force-r
 - 限制 `.env`、数据库、PostgreSQL/Redis 数据卷、上传目录、备份和 `.settings-key` 的权限；数据卷不等于备份。
 - 后端 `8080` 留在 Compose 网络内，不要直接暴露到公网。
 
-具体 Nginx/Caddy 示例和断线恢复方式见 [`docs/content/docs/overview/docker.mdx`](docs/content/docs/overview/docker.mdx)。
+仓库内的 Nginx 反向代理、SSE 断线恢复与资源流式路由示例见 [`nginx.conf`](nginx.conf)；版本更新与回退见 [`docs/content/docs/backend/system-update.mdx`](docs/content/docs/backend/system-update.mdx)。
 
 ## 数据和安全边界
 
-- 画布、项目、任务和素材登录后同步到后端；浏览器 `localForage` 仍承担缓存和后端不可用时的降级存储。
+- 画布、项目、任务和素材登录后同步到后端；浏览器 `localForage` 保留本地状态、读缓存和历史媒体迁移能力。新媒体上传必须在后端资源持久化成功后才返回，后端失败不会伪装成本地上传成功。
 - 本地默认使用 SQLite；部署 Compose 使用 PostgreSQL 和 Redis。多实例 PostgreSQL 模式需要 `REDIS_URL` 用于限流、并发和熔断协调。
 - 生产环境用 `CANVAS_BILLING_TOKEN_SUPPLEMENT_MAX_BPS` 限制 Token 实际费用超出预授权时的自动补扣，默认 `10000`（差额最多等于原预授权）；余额不足或越过上限会保留真实 usage 并转人工核对，不会自动产生负余额。
 - 媒体资源可使用后端数据目录、阿里云 OSS 或腾讯云 COS。资源长期引用使用 `resource:<id>`，删除素材前会检查业务引用。
@@ -248,7 +248,7 @@ node dist/index.js
 
 ```bash
 # 前端
-cd web && bun run build
+cd web && bun test && bun run build
 
 # 后端
 cd backend && go test ./...
@@ -256,22 +256,20 @@ cd backend && go test ./...
 # Canvas Agent
 cd canvas-agent && npm test && npm run build
 
-# 文档站
-cd docs && bun run types:check
+# 入口文档链接（已包含在前端全量测试中）
+cd web && bun test test/documentation-links.test.ts
 ```
 
-前端专项测试和后端集成测试较多，优先运行与改动模块相关的测试；UI 改动还应在浏览器检查关键路由、主题、弹窗、滚动和空态。验证结果必须在提交或交付说明中如实记录。
+前端 `bun test` 会自动发现全部测试；`bun run build` 会依次执行 Canvas Agent 桥接构建、TypeScript 检查、Vite 生产构建和体积预算。优先在开发中运行与改动模块相关的专项测试，交付前再运行全量测试与构建；UI 改动还应在浏览器检查关键路由、主题、弹窗、滚动和空态。
 
 ## 文档导航
 
-- [快速开始](docs/content/docs/overview/quick-start.mdx)
 - [功能介绍](docs/content/docs/overview/features.mdx)
-- [代码功能地图](docs/content/docs/backend/code-map.mdx)
 - [本地开发](docs/content/docs/backend/local-development.mdx)
 - [数据库结构](docs/content/docs/backend/backend-database.mdx)
-- [画布操作手册](docs/content/docs/canvas/canvas-node-manual.mdx)
 - [插件系统](docs/content/docs/plugins/plugin-system.mdx)
-- [待办与待测试](docs/content/docs/progress/todo.mdx) · [待测试清单](docs/content/docs/progress/pending-test.mdx)
+- [插件显示形态](docs/content/docs/plugins/plugin-surfaces.mdx)
+- [待测试清单](docs/content/docs/progress/pending-test.mdx)
 - [更新日志](CHANGELOG.md) · [贡献指南](CONTRIBUTING.md) · [上游声明](NOTICE)
 
 根目录 [`AGENTS.md`](AGENTS.md) 约束协作方式；`docs/index.md` 是面向 AI 的文档索引。

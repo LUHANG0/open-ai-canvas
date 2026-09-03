@@ -76,6 +76,7 @@ func Models() []any {
 		&model.WorkflowStepTask{},
 		&model.ProductionTaskLink{},
 		&model.CanvasProject{},
+		&model.CreationConversation{},
 		&model.CanvasShare{},
 		&model.PromptTemplate{},
 		&model.UserPromptCustomization{},

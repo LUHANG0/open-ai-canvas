@@ -53,4 +53,5 @@ export type CreationConversation = {
     title: string;
     updatedAt: string;
     messages: CreationMessage[];
+    deletedMessageIds?: string[];
 };

@@ -168,7 +168,7 @@ async function importEagleAsset(item: ExternalAssetItem, baseUrl: string, signal
             data: { dataUrl: uploaded.url, storageKey: uploaded.storageKey, width: item.width || uploaded.width, height: item.height || uploaded.height, bytes: uploaded.bytes, mimeType: uploaded.mimeType },
         };
     }
-    const uploaded = await uploadMediaFile(blob, `eagle-${kind}`);
+    const uploaded = await uploadMediaFile(blob);
     if (kind === "video") {
         return {
             id: nanoid(), kind, title: item.title, coverUrl: "", tags: item.tags || [], source: "Eagle 素材库", createdAt: now, updatedAt: now, metadata,

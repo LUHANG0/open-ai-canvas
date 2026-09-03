@@ -52,6 +52,9 @@ func TestMigrateSchemaRecordsAndValidatesVersion(t *testing.T) {
 	if !db.Migrator().HasTable(&model.ProjectDeliveryJob{}) {
 		t.Fatal("schema migration v5 did not create project delivery jobs")
 	}
+	if !db.Migrator().HasTable(&model.CreationConversation{}) {
+		t.Fatal("schema migration v6 did not create creation conversations")
+	}
 	for _, index := range []string{"idx_project_delivery_claim", "idx_project_delivery_scope_created", "idx_project_delivery_jobs_active_key"} {
 		if !db.Migrator().HasIndex(&model.ProjectDeliveryJob{}, index) {
 			t.Fatalf("schema migration v5 did not create %s", index)
@@ -89,7 +92,10 @@ func TestMigrateSchemaUpgradesV4DatabaseWithProjectDeliveryJobs(t *testing.T) {
 	if err := db.Migrator().DropTable(&model.ProjectDeliveryJob{}); err != nil {
 		t.Fatal(err)
 	}
-	if err := db.Delete(&schemaMigration{}, "version = ?", 5).Error; err != nil {
+	if err := db.Migrator().DropTable(&model.CreationConversation{}); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Delete(&schemaMigration{}, "version >= ?", 5).Error; err != nil {
 		t.Fatal(err)
 	}
 	status, err := ReadSchemaStatus(db)
@@ -113,8 +119,11 @@ func TestMigrateSchemaUpgradesV4DatabaseWithProjectDeliveryJobs(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !status.Ready || status.Current != 5 {
+	if !status.Ready || status.Current != CurrentSchemaVersion {
 		t.Fatalf("post-upgrade schema status = %#v", status)
+	}
+	if !db.Migrator().HasTable(&model.CreationConversation{}) {
+		t.Fatal("v6 upgrade did not create creation conversations")
 	}
 }
 
