@@ -13,14 +13,14 @@ export const DEFAULT_PUBLIC_BRANDING: PublicBrandingSetting = {
             shortName: "影策",
             englishName: "YINGCE STUDIO",
             workspaceLabel: "创作工作台",
-            slogan: "让一个故事，从文字走向银幕。",
+            slogan: "让故事开机。",
             description: "面向 AI 影视与短剧创作的开源工作台。",
         },
         theme: { primaryColor: DEFAULT_BRAND_PRIMARY },
         auth: {
             eyebrow: "YINGCE STUDIO",
-            title: "让一个故事，\n从文字走向银幕。",
-            description: "在同一个创作空间里组织素材、生成内容并完成画布编排。",
+            title: "让故事开机。",
+            description: "从剧本、角色、分镜到成片，在一个工作台完成。",
             liveBadge: "创作正在发生",
             heroUrl: "",
             heroKind: "",
@@ -28,7 +28,7 @@ export const DEFAULT_PUBLIC_BRANDING: PublicBrandingSetting = {
         },
         browser: {
             title: "影策",
-            metaDescription: "影策，让一个故事从文字走向银幕。面向 AI 影视与短剧创作的开源工作台。",
+            metaDescription: "影策，让故事开机。面向 AI 影视与短剧创作的开源工作台。",
         },
     },
     assets: {

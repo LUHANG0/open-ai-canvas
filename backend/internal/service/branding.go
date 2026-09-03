@@ -119,19 +119,19 @@ func DefaultBrandingConfig() BrandingConfig {
 			ShortName:      "影策",
 			EnglishName:    "YINGCE STUDIO",
 			WorkspaceLabel: "创作工作台",
-			Slogan:         "让一个故事，从文字走向银幕。",
+			Slogan:         "让故事开机。",
 			Description:    "面向 AI 影视与短剧创作的开源工作台。",
 		},
 		Theme: BrandingTheme{PrimaryColor: "#8B7CF6"},
 		Auth: BrandingAuth{
 			Eyebrow:     "YINGCE STUDIO",
-			Title:       "让一个故事，\n从文字走向银幕。",
-			Description: "在同一个创作空间里组织素材、生成内容并完成画布编排。",
+			Title:       "让故事开机。",
+			Description: "从剧本、角色、分镜到成片，在一个工作台完成。",
 			LiveBadge:   "创作正在发生",
 		},
 		Browser: BrandingBrowser{
 			Title:           "影策",
-			MetaDescription: "影策，让一个故事从文字走向银幕。面向 AI 影视与短剧创作的开源工作台。",
+			MetaDescription: "影策，让故事开机。面向 AI 影视与短剧创作的开源工作台。",
 		},
 	}
 }

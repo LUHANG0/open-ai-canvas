@@ -1,7 +1,7 @@
 import { motion, useReducedMotion } from "motion/react";
 import { ConfigProvider, Tabs } from "antd";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import { Clapperboard, Layers3, Play, ShieldCheck, Sparkles } from "lucide-react";
+import { Clapperboard, Film, Layers3, Play, ShieldCheck, Sparkles } from "lucide-react";
 import { Outlet, useLocation, useNavigate } from "react-router";
 
 import { BrandMark } from "@/components/branding/brand-mark";
@@ -26,20 +26,21 @@ const AuthSettingsContext = createContext<AuthSettingsContextValue | null>(null)
 const authCopy = {
     login: {
         eyebrow: "WELCOME BACK",
-        title: "进入创作现场",
-        description: "继续编辑你的画布、素材与生成任务。",
+        title: "继续你的创作",
+        description: "回到你的项目、素材与生成现场。",
     },
     register: {
         eyebrow: "CREATE ACCOUNT",
         title: "建立你的创作空间",
-        description: "一个账号管理画布、素材、技能和模型偏好。",
+        description: "从故事开始，建立属于你的数字片场。",
     },
 } as const;
 
 const creativeCapabilities = [
-    { label: "素材管理", icon: Layers3 },
-    { label: "生成任务", icon: Sparkles },
-    { label: "画布编排", icon: Clapperboard },
+    { label: "故事", detail: "STORY", icon: Sparkles },
+    { label: "角色", detail: "CAST", icon: Layers3 },
+    { label: "分镜", detail: "SHOT", icon: Clapperboard },
+    { label: "成片", detail: "FILM", icon: Film },
 ] as const;
 
 export function LinuxDOIcon() {
@@ -126,19 +127,28 @@ export function AuthScene() {
                     )}
                     <div className="pc-auth-media-grade" />
                 </div>
-                <div className="pc-auth-layout grid min-h-full lg:h-full lg:grid-cols-[minmax(0,1.32fr)_minmax(520px,1fr)]">
+                <div className="pc-auth-layout grid min-h-full lg:h-full">
                     <section className="pc-auth-brand relative min-h-[250px] overflow-hidden sm:min-h-[320px] lg:min-h-0" aria-label={`${branding.config.identity.displayName}品牌介绍`}>
-                        <div className="pc-auth-brand-nav absolute inset-x-0 top-0 flex items-center justify-between gap-4 p-5 sm:p-7 lg:p-9">
-                            <div className="pc-auth-brand-link inline-flex items-center gap-2.5 text-sm font-semibold text-white drop-shadow-sm">
+                        <div className="pc-auth-brand-nav absolute inset-x-0 top-0 flex items-center justify-between gap-4 p-5 sm:p-7">
+                            <div className="pc-auth-brand-link inline-flex items-center gap-3 text-sm font-semibold text-white drop-shadow-sm">
                                 <BrandMark className="pc-auth-brand-logo size-7" />
-                                <span>{branding.config.identity.displayName}</span>
-                            </div>
-                            {branding.config.auth.liveBadge ? (
-                                <span className="pc-auth-live-badge inline-flex items-center gap-2 border px-3 py-1.5 text-[var(--fs-label)] backdrop-blur-xl">
-                                    <Play className="size-3 fill-current" />
-                                    {branding.config.auth.liveBadge}
+                                <span className="pc-auth-brand-wordmark">
+                                    <strong>{branding.config.identity.displayName}</strong>
+                                    <small>{branding.config.identity.englishName || branding.config.identity.workspaceLabel}</small>
                                 </span>
-                            ) : null}
+                            </div>
+                            <div className="pc-auth-brand-nav-meta">
+                                <span className="pc-auth-workspace-badge">
+                                    <Clapperboard aria-hidden="true" />
+                                    {branding.config.identity.workspaceLabel}
+                                </span>
+                                {branding.config.auth.liveBadge ? (
+                                    <span className="pc-auth-live-badge inline-flex items-center gap-2 border px-3 py-1.5 text-[var(--fs-label)] backdrop-blur-xl">
+                                        <Play className="size-3 fill-current" />
+                                        {branding.config.auth.liveBadge}
+                                    </span>
+                                ) : null}
+                            </div>
                         </div>
                         <motion.div
                             initial={reducedMotion ? false : { opacity: 0, y: 18 }}
@@ -148,35 +158,48 @@ export function AuthScene() {
                         >
                             <div className="pc-auth-brand-rule" aria-hidden="true">
                                 <span />
-                                STORY TO SCREEN
+                                STORY TO SCREEN · 01
                             </div>
                             {branding.config.auth.eyebrow ? <p className="pc-auth-brand-eyebrow">{branding.config.auth.eyebrow}</p> : null}
                             <h1 className="pc-auth-brand-title">{branding.config.auth.title}</h1>
                             {branding.config.auth.description ? <p className="pc-auth-brand-summary">{branding.config.auth.description}</p> : null}
-                            <div className="pc-auth-brand-capabilities" aria-label="核心创作能力">
-                                {creativeCapabilities.map(({ label, icon: Icon }) => (
+                            <div className="pc-auth-brand-capabilities" aria-label="影视创作流程">
+                                {creativeCapabilities.map(({ label, detail, icon: Icon }, index) => (
                                     <span key={label}>
+                                        <i>{String(index + 1).padStart(2, "0")}</i>
                                         <Icon aria-hidden="true" />
-                                        {label}
+                                        <b>{label}</b>
+                                        <small>{detail}</small>
                                     </span>
                                 ))}
+                            </div>
+                            <div className="pc-auth-showcase-caption">
+                                <span>NOW SHOWING</span>
+                                <div>
+                                    <strong>{branding.config.identity.workspaceLabel}</strong>
+                                    <small>{branding.config.identity.slogan || branding.config.identity.description}</small>
+                                </div>
                             </div>
                         </motion.div>
                     </section>
 
-                    <section className="pc-auth-panel relative flex min-h-[620px] items-start justify-center overflow-y-auto px-4 pb-8 pt-16 sm:px-8 lg:min-h-0 lg:px-10 lg:pb-10 lg:pt-20">
+                    <section className="pc-auth-panel relative flex min-h-[620px] items-start justify-center overflow-y-auto px-4 pb-8 pt-16 sm:px-8 lg:min-h-0">
                         <div className="pc-auth-panel-glow" aria-hidden="true" />
-                        <div className="pc-auth-security-badge absolute right-5 top-5 inline-flex items-center gap-2 text-xs text-white/46 lg:right-8 lg:top-8">
+                        <div className="pc-auth-security-badge absolute right-5 top-5 inline-flex items-center gap-2 text-xs text-white/46">
                             <ShieldCheck className="size-3.5" aria-hidden="true" />
-                            安全登录
+                            PRIVATE WORKSPACE · 安全登录
                         </div>
                         <motion.div
                             initial={reducedMotion ? false : { opacity: 0, y: 14 }}
                             animate={{ opacity: 1, y: 0 }}
                             layout={!reducedMotion}
                             transition={{ duration: aceternityMotion.duration.panel, ease: aceternityMotion.easing.enter }}
-                            className="pc-auth-card-wrap my-auto w-full max-w-[460px]"
+                            className="pc-auth-card-wrap my-auto w-full"
                         >
+                            <div className="pc-auth-entry-label" aria-hidden="true">
+                                <span>ENTRY / {activeTab === "login" ? "01" : "02"}</span>
+                                <span>AUTHENTICATION</span>
+                            </div>
                             <ConfigProvider theme={withBrandingAntTheme(getAntThemeConfig(true, desktop), branding.config.theme.primaryColor, true)}>
                                 <div className="auth-card-dark pc-auth-card h-auto overflow-hidden backdrop-blur-2xl">
                                     <section aria-label={copy.title} className={`pc-auth-card-content flex flex-col ${activeTab === "login" ? "is-login" : "is-register"}`}>

@@ -9,7 +9,10 @@ describe("auth login experience", () => {
         expect(scene).toContain("branding.config.auth.title");
         expect(scene).toContain("creativeCapabilities.map");
         expect(scene).toContain("STORY TO SCREEN");
-        expect(scene).toContain('aria-label="核心创作能力"');
+        expect(scene).toContain('aria-label="影视创作流程"');
+        expect(scene).toContain("NOW SHOWING");
+        expect(scene).toContain("PRIVATE WORKSPACE · 安全登录");
+        expect(scene).toContain("ENTRY / ");
         expect(scene).toContain("pc-auth-media-layer");
         expect(scene).toContain('hasHeroMedia ? " has-auth-media"');
     });
@@ -41,6 +44,8 @@ describe("auth login experience", () => {
         expect(styles).toContain(".pc-auth-panel-glow");
         expect(styles).toContain(".pc-auth-login-error");
         expect(styles).toContain(".pc-auth-scene.has-auth-media .pc-auth-brand");
+        expect(styles).toContain(".pc-auth-showcase-caption");
+        expect(styles).toContain("grid-template-columns: repeat(4, minmax(0, 1fr))");
         expect(styles).toContain("var(--auth-brand)");
     });
 });

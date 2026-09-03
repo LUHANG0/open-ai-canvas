@@ -221,6 +221,11 @@ export default function BrandingSettingsPage() {
         );
     }
 
+    const previewHeroKind = draft.auth.heroUrl ? draft.auth.heroKind : setting.assets.authHeroKind;
+    const previewHeroURL = draft.auth.heroUrl || setting.assets.authHeroUrl;
+    const previewPosterURL = draft.auth.heroPosterUrl || setting.assets.authHeroPosterUrl;
+    const previewImageURL = previewHeroKind === "image" ? previewHeroURL : previewPosterURL;
+
     return (
         <AdminPageFrame title="品牌与外观" description="统一管理站点身份、登录页与浏览器元信息" scroll>
             <div className="admin-settings-stack admin-branding-settings">
@@ -378,20 +383,45 @@ export default function BrandingSettingsPage() {
 
                     <aside className="admin-branding-preview" aria-label="登录页配置预览">
                         <div className="admin-branding-preview-frame" style={{ "--preview-brand": draft.theme.primaryColor } as React.CSSProperties}>
-                            {setting.assets.authHeroKind === "image" && setting.assets.authHeroUrl ? <img src={setting.assets.authHeroUrl} alt="" /> : null}
-                            {setting.assets.authHeroKind === "video" && setting.assets.authHeroPosterUrl ? <img src={setting.assets.authHeroPosterUrl} alt="" /> : null}
+                            {previewImageURL ? <img src={previewImageURL} alt="" referrerPolicy="no-referrer" /> : null}
                             <div className="admin-branding-preview-shade" />
                             <div className="admin-branding-preview-brand">
                                 <BrandMark className="size-6" />
-                                <span>{draft.identity.displayName}</span>
+                                <span>
+                                    <strong>{draft.identity.displayName}</strong>
+                                    <small>{draft.identity.englishName || draft.identity.workspaceLabel}</small>
+                                </span>
                             </div>
                             <div className="admin-branding-preview-copy">
-                                <small>{draft.auth.eyebrow}</small>
+                                <small>STORY TO SCREEN · 01</small>
+                                <em>{draft.auth.eyebrow}</em>
                                 <strong>{draft.auth.title}</strong>
                                 <p>{draft.auth.description}</p>
+                                <div className="admin-branding-preview-flow">
+                                    {[
+                                        ["01", "故事"],
+                                        ["02", "角色"],
+                                        ["03", "分镜"],
+                                        ["04", "成片"],
+                                    ].map(([index, label]) => (
+                                        <span key={index}>
+                                            <i>{index}</i>
+                                            {label}
+                                        </span>
+                                    ))}
+                                </div>
+                            </div>
+                            <div className="admin-branding-preview-login" aria-hidden="true">
+                                <small>ENTRY / 01</small>
+                                <strong>继续你的创作</strong>
+                                <span />
+                                <span />
+                                <button type="button" tabIndex={-1} style={{ background: draft.theme.primaryColor }}>
+                                    进入{draft.identity.shortName}
+                                </button>
                             </div>
                         </div>
-                        <p>简化预览只展示品牌区；实际登录表单会根据注册、邮件和 Linux.do 配置自动变化。</p>
+                        <p>预览展示桌面端品牌片场结构；实际表单会根据注册、邮件和 Linux.do 配置自动变化，移动端使用海报并将表单排列在品牌区下方。</p>
                     </aside>
                 </div>
             </div>
