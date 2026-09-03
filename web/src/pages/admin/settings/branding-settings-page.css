@@ -164,9 +164,7 @@
     border: 1px solid var(--app-border-default);
     border-radius: 16px;
     background:
-        radial-gradient(circle at 18% 22%, color-mix(in srgb, var(--preview-brand) 34%, transparent), transparent 32%),
-        radial-gradient(circle at 72% 68%, rgba(26, 168, 180, 0.18), transparent 38%),
-        linear-gradient(145deg, #121529, #0a0c13 58%, #11131d);
+        radial-gradient(circle at 18% 22%, color-mix(in srgb, var(--preview-brand) 34%, transparent), transparent 32%), radial-gradient(circle at 72% 68%, rgba(26, 168, 180, 0.18), transparent 38%), linear-gradient(145deg, #121529, #0a0c13 58%, #11131d);
     box-shadow: var(--app-shadow-raised, 0 12px 30px rgba(0, 0, 0, 0.1));
     color: white;
 }

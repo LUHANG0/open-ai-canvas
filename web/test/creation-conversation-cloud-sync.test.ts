@@ -59,7 +59,13 @@ describe("creation conversation cloud merge", () => {
                 ...next,
                 messages: next.messages.map((message) => ({
                     ...message,
-                    attachments: message.attachments?.map((attachment) => ({ ...attachment, dataUrl: "/api/resources/resource-1/file", url: "/api/resources/resource-1/file", storageKey: "resource:resource-1", previewUrl: "/api/resources/resource-1/file" })),
+                    attachments: message.attachments?.map((attachment) => ({
+                        ...attachment,
+                        dataUrl: "/api/resources/resource-1/file",
+                        url: "/api/resources/resource-1/file",
+                        storageKey: "resource:resource-1",
+                        previewUrl: "/api/resources/resource-1/file",
+                    })),
                 })),
             }),
             upsert: async (next) => {

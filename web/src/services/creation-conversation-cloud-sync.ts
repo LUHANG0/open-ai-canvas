@@ -1,11 +1,6 @@
 import type { CreationConversation, CreationMessage } from "@/pages/create/creation-types";
 import { ApiError } from "@/services/api/request";
-import {
-    deleteRemoteCreationConversation,
-    listRemoteCreationConversations,
-    upsertRemoteCreationConversation,
-    type RemoteCreationConversationRecord,
-} from "@/services/api/user-data";
+import { deleteRemoteCreationConversation, listRemoteCreationConversations, upsertRemoteCreationConversation, type RemoteCreationConversationRecord } from "@/services/api/user-data";
 import { ensureRemoteResourceReferences } from "@/services/user-data-sync";
 
 export type CreationConversationCloudSyncStatus = "hydrating" | "synced" | "pending" | "syncing" | "failed" | "conflict";
@@ -68,11 +63,7 @@ export function mergeCreationConversations(remote: CreationConversation, local: 
     };
 }
 
-export async function syncCreationConversationWithMerge(
-    conversation: CreationConversation,
-    expectedRevision: number,
-    dependencies: CreationConversationCloudDependencies = defaultCreationConversationCloudDependencies,
-) {
+export async function syncCreationConversationWithMerge(conversation: CreationConversation, expectedRevision: number, dependencies: CreationConversationCloudDependencies = defaultCreationConversationCloudDependencies) {
     const portableConversation = dependencies.prepare ? await dependencies.prepare(conversation) : conversation;
     try {
         return (await dependencies.upsert(portableConversation, expectedRevision)).record;
