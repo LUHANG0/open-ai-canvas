@@ -2,7 +2,7 @@ import { lazy, Suspense, type MutableRefObject } from "react";
 
 import type { CanvasVideoFrameParams } from "@/components/canvas/canvas-video-frame-dialog";
 import type { CanvasVideoSegmentParams } from "@/components/canvas/canvas-video-segment-dialog";
-import { WorkspaceState } from "@/components/layout/workspace-state";
+import { WorkspaceState } from "@/components/ui/pc/workspace-state";
 import type { AiConfig } from "@/stores/use-config-store";
 import type { CanvasConnection, CanvasNodeData, CanvasNodeMetadata } from "@/types/canvas";
 import type { TimelineDirectMedia, TimelineProject } from "@/types/timeline";

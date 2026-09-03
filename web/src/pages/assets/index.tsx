@@ -6,7 +6,7 @@ import type { MenuProps } from "antd";
 import { useNavigate } from "react-router";
 
 import { CollectionGrid, ListToolbar, PageHeader, PaginationBar, WorkspacePage } from "@/components/layout/workspace-page";
-import { WorkspaceState } from "@/components/layout/workspace-state";
+import { WorkspaceState } from "@/components/ui/pc/workspace-state";
 import { DialogFrame, DrawerFrame, SearchField, SelectionBar, Surface } from "@/components/ui/pc";
 import { AssetMediaPreview } from "@/components/asset-media-preview";
 import { AssetLibraryCard, AssetLibraryCardMedia } from "@/components/assets/asset-library-card";

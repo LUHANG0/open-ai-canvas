@@ -5,7 +5,7 @@ import { App, Button, Dropdown, Modal, Select } from "antd";
 import { ArrowDownAZ, ChevronDown, Clock3, Download, FileUp, ListFilter, MoreHorizontal, Plus, Search, SlidersHorizontal, Trash2, X } from "lucide-react";
 
 import { CollectionGrid, PageHeader, WorkspacePage } from "@/components/layout/workspace-page";
-import { WorkspaceLoadingState, WorkspaceState } from "@/components/layout/workspace-state";
+import { WorkspaceLoadingState, WorkspaceState } from "@/components/ui/pc/workspace-state";
 import { FilterBar, FilterChip, SearchField, SelectionBar, StatusBadge, Surface } from "@/components/ui/pc";
 import { usePcBrandViewport } from "@/hooks/use-pc-brand-viewport";
 

@@ -5,7 +5,7 @@ import { Link2, Unlink, X } from "lucide-react";
 
 import { CanvasProjectCard } from "@/components/canvas/canvas-project-card";
 import { PaginationBar } from "@/components/layout/workspace-page";
-import { WorkspaceState } from "@/components/layout/workspace-state";
+import { WorkspaceState } from "@/components/ui/pc/workspace-state";
 import { SectionHeader, StatusBadge } from "@/components/ui/pc";
 import { linkCanvasUnit, listProjectCanvases, unlinkCanvasProject, unlinkCanvasUnit } from "@/services/api/projects";
 import { useCanvasStore, type CanvasProject } from "@/stores/canvas/use-canvas-store";

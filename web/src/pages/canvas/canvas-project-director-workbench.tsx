@@ -1,6 +1,6 @@
 import { lazy, Suspense } from "react";
 
-import { WorkspaceState } from "@/components/layout/workspace-state";
+import { WorkspaceState } from "@/components/ui/pc/workspace-state";
 import type { CanvasTheme } from "@/lib/canvas-theme";
 import type { CanvasNodeData } from "@/types/canvas";
 import type { DirectorScene, DirectorSceneOutput } from "@/types/director";

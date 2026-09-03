@@ -41,7 +41,7 @@ describe("PC UI primitive viewport contract", () => {
         expect(brandDesktop).toContain(".pc-status-badge--running .pc-status-badge__dot");
         expect(brandDesktop).toContain(".pc-file-dropzone:hover:not(.is-disabled) .pc-file-dropzone__icon");
         expect(brandDesktop).toContain(".pc-media-thumbnail__overlay");
-        expect(source).toContain(".pc-empty-state__visual");
+        expect(source).not.toContain(".pc-empty-state");
         expect(source).toContain(".pc-media-thumbnail--interactive:hover");
         expect(source).toContain("@media (prefers-reduced-motion: reduce)");
     });

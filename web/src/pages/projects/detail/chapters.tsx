@@ -15,7 +15,7 @@ import { Check, BookOpenText, Clapperboard, Crosshair, FileUp, GripVertical, Mor
 import { useBlocker, useNavigate, useParams, useSearchParams } from "react-router";
 
 import { useSkillRuntimeCatalog } from "@/components/skills/skill-runtime-picker";
-import { WorkspaceState } from "@/components/layout/workspace-state";
+import { WorkspaceState } from "@/components/ui/pc/workspace-state";
 import { resolveProjectCanvasStyle } from "@/components/canvas/canvas-style-picker-modal";
 import { normalizeCharacterName } from "@/lib/canvas/canvas-character-reference";
 import { navigateToSettings } from "@/lib/settings-navigation";

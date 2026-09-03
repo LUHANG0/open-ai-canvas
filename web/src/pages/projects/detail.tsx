@@ -6,7 +6,7 @@ import { Link, Navigate, useNavigate, useParams } from "react-router";
 import { createCanvasProjectWithRemoteSync } from "@/services/user-data-sync";
 import { getProjectCore, getProjectOverview, getProjectUnitWorkspace, linkCanvasUnit, listProjectUnits } from "@/services/api/projects";
 import { WorkspacePage } from "@/components/layout/workspace-page";
-import { WorkspaceErrorState, WorkspaceLoadingState } from "@/components/layout/workspace-state";
+import { WorkspaceErrorState, WorkspaceLoadingState } from "@/components/ui/pc/workspace-state";
 import { useWorkspaceTopBarExtension } from "@/components/layout/workspace-top-bar-extension";
 import { upsertProjectChapterStoryboard } from "@/lib/canvas/project-chapter-storyboard";
 import type { ProjectDetail } from "@/services/api/projects";

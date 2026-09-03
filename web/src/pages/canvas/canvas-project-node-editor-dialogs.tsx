@@ -1,7 +1,7 @@
 import { lazy, Suspense, type Dispatch, type SetStateAction } from "react";
 import { App } from "antd";
 
-import { WorkspaceState } from "@/components/layout/workspace-state";
+import { WorkspaceState } from "@/components/ui/pc/workspace-state";
 import type { CanvasTheme } from "@/lib/canvas-theme";
 import type { PortraitClearanceNodeState } from "@/lib/portrait-clearance/contracts";
 import type { CanvasNodeData } from "@/types/canvas";

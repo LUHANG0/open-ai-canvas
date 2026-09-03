@@ -8,7 +8,7 @@ import { Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer,
 import { resolveCanvasStylePreset, resolveProjectCanvasStyle } from "@/components/canvas/canvas-style-picker-modal";
 import { useBranding } from "@/components/branding/branding-provider";
 import { PageHeader, WorkspacePage } from "@/components/layout/workspace-page";
-import { WorkspaceErrorState, WorkspaceLoadingState } from "@/components/layout/workspace-state";
+import { WorkspaceErrorState, WorkspaceLoadingState } from "@/components/ui/pc/workspace-state";
 import { SearchField, StatTile, Surface } from "@/components/ui/pc";
 import { parseStyleProfile } from "@/lib/canvas/style-profile";
 import { projectSummaryCompletion, projectSummaryStage } from "@/lib/project-workbench";

@@ -5,7 +5,7 @@ import { BookOpenText, ChevronDown, FileText, FolderKanban, Palette, Plus, Searc
 import { useNavigate, useSearchParams } from "react-router";
 
 import { CollectionGrid, ListToolbar, PageHeader, WorkspacePage } from "@/components/layout/workspace-page";
-import { WorkspaceErrorState, WorkspaceLoadingState, WorkspaceState } from "@/components/layout/workspace-state";
+import { WorkspaceErrorState, WorkspaceLoadingState, WorkspaceState } from "@/components/ui/pc/workspace-state";
 import { DialogFrame, SearchField, SectionHeader, StatusBadge, Surface } from "@/components/ui/pc";
 import { CanvasStylePickerModal, resolveCanvasStylePreset, type CanvasStylePreset } from "@/components/canvas/canvas-style-picker-modal";
 import { ModelPicker } from "@/components/model-picker";

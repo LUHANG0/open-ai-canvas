@@ -4,7 +4,7 @@ import type { LucideIcon } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
 
 import { ListToolbar, PageHeader, PaginationBar, WorkspacePage } from "@/components/layout/workspace-page";
-import { WorkspaceErrorState, WorkspaceState } from "@/components/layout/workspace-state";
+import { WorkspaceErrorState, WorkspaceState } from "@/components/ui/pc/workspace-state";
 import { SearchField, SectionHeader, Surface, ViewToggle } from "@/components/ui/pc";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { fallbackSkillCategories, formatSkillCount, groupSkills, skillCategoryLabel } from "@/pages/skills/skill-catalog";

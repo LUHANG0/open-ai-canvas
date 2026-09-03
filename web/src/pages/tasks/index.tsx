@@ -5,7 +5,7 @@ import { useNavigate, useSearchParams } from "react-router";
 
 import { MediaPreview } from "@/components/media-preview";
 import { ListToolbar, PageHeader, PaginationBar, WorkspacePage } from "@/components/layout/workspace-page";
-import { WorkspaceState } from "@/components/layout/workspace-state";
+import { WorkspaceState } from "@/components/ui/pc/workspace-state";
 import { DialogFrame, DrawerFrame, SearchField, Surface, ViewToggle } from "@/components/ui/pc";
 import { usePcBrandViewport } from "@/hooks/use-pc-brand-viewport";
 import { CONTENT_MODERATION_ERROR_CODE, generationErrorMessage, isContentModerationError } from "@/lib/generation-error";

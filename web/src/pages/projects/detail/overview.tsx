@@ -1,7 +1,7 @@
 import { ArrowRight, CheckCircle2 } from "lucide-react";
 import { Link } from "react-router";
 
-import { WorkspaceState } from "@/components/layout/workspace-state";
+import { WorkspaceState } from "@/components/ui/pc/workspace-state";
 import type { ProjectStageCell, ProjectWorkbenchAction } from "@/lib/project-workbench";
 import type { ProjectOverview, ProjectOverviewMetrics } from "@/services/api/projects";
 
