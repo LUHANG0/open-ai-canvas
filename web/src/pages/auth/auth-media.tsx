@@ -25,6 +25,8 @@ export function AuthMedia() {
                 <div className="pc-auth-brand-ambient" />
             )}
             <div className="pc-auth-atmosphere-grade" />
+            <div className="pc-auth-atmosphere-vignette" />
+            <div className="pc-auth-atmosphere-glow" />
         </div>
     );
 }

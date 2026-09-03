@@ -13,11 +13,15 @@ describe("auth login experience", () => {
         expect(scene).toContain("<AuthEntry");
         expect(scene).toContain("<AuthPanel");
         expect(entry).toContain("pc-auth-entry-nav");
-        expect(entry).toContain("智能影像创作空间");
+        expect(entry).toContain("pc-auth-stars");
+        expect(entry).toContain("pc-auth-entry-ornament");
+        expect(entry).toContain("pc-auth-entry-brand-mark");
         expect(entry).toContain("branding.config.auth.title");
         expect(entry).toContain("branding.config.auth.description");
         expect(entry).toContain("进入{branding.config.identity.shortName}");
         expect(media).toContain("pc-auth-atmosphere-media");
+        expect(media).toContain("pc-auth-atmosphere-vignette");
+        expect(media).toContain("pc-auth-atmosphere-glow");
         expect(panel).toContain("pc-auth-brand-head");
         expect(panel).toContain("pc-auth-workspace");
         expect(panel).toContain("pc-auth-panel-close");
@@ -75,7 +79,11 @@ describe("auth login experience", () => {
 
         expect(styles).toContain(".pc-auth-atmosphere-media");
         expect(styles).toContain(".pc-auth-scene.is-auth-open .pc-auth-atmosphere-media");
+        expect(styles).toContain("filter: none");
         expect(styles).toContain("filter: blur(14px)");
+        expect(styles).toContain("transparent 42%");
+        expect(styles).toContain(".pc-auth-entry-ornament");
+        expect(styles).toContain("font-family: Inter");
         expect(styles).toContain(".pc-auth-entry-button");
         expect(styles).toContain(".pc-auth-workspace");
         expect(styles).toContain(".pc-auth-login-fields");
