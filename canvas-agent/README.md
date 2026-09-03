@@ -12,10 +12,12 @@ npx -y @ddcat666/open-ai-canvas-agent
 
 ```bash
 cd canvas-agent
-npm install
+bun install --frozen-lockfile
 npm run build
 node dist/index.js
 ```
+
+仓库依赖以 `bun.lock` 为唯一锁文件，并固定使用 Bun 1.3.9 安装；`npm` 只用于运行兼容的 package scripts，不使用 `npm install` 生成第二套依赖树或锁文件。`zod` 的直接依赖与 override 使用同一精确版本，避免 npm 兼容检查触发 `EOVERRIDE`。
 
 启动后会输出本机地址和 token：
 

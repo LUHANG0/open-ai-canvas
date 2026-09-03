@@ -214,10 +214,12 @@ Canvas Agent 用于连接网页画布与本机 Codex/CLI。仓库内开发运行
 
 ```bash
 cd canvas-agent
-npm install
+bun install --frozen-lockfile
 npm run build
 node dist/index.js
 ```
+
+Canvas Agent 以 `bun.lock` 和 Bun 1.3.9 作为唯一依赖安装基线；`npm` 仅运行已有 scripts，不使用 `npm install`。
 
 启动后，将终端输出的 Local URL 和 Connect token 填入画布右上角的 Agent 面板。Agent 默认只监听 `127.0.0.1`，连接 token 不应写入 URL、日志或任务正文。
 
