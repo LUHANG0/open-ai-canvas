@@ -8,11 +8,14 @@ describe("auth login experience", () => {
 
         expect(scene).toContain("branding.config.auth.title");
         expect(scene).toContain("creativeCapabilities.map");
-        expect(scene).toContain("STORY TO SCREEN");
+        expect(scene).toContain("从故事到成片");
         expect(scene).toContain('aria-label="影视创作流程"');
-        expect(scene).toContain("NOW SHOWING");
-        expect(scene).toContain("PRIVATE WORKSPACE · 安全登录");
-        expect(scene).toContain("ENTRY / ");
+        expect(scene).toContain("创作空间");
+        expect(scene).toContain("私有工作区 · 安全登录");
+        expect(scene).toContain("登录入口");
+        expect(scene).toContain("身份验证");
+        expect(scene).not.toContain("WELCOME BACK");
+        expect(scene).not.toContain("AUTHENTICATION");
         expect(scene).toContain("pc-auth-media-layer");
         expect(scene).toContain('hasHeroMedia ? " has-auth-media"');
     });

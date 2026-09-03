@@ -1,7 +1,7 @@
 import { motion, useReducedMotion } from "motion/react";
 import { ConfigProvider, Tabs } from "antd";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import { ArrowLeft, Clapperboard, Film, Layers3, Play, ShieldCheck, Sparkles } from "lucide-react";
+import { ArrowLeft, Clapperboard, Film, Layers3, ShieldCheck, Sparkles } from "lucide-react";
 import { Link, Outlet, useLocation, useNavigate } from "react-router";
 
 import { BrandMark } from "@/components/branding/brand-mark";
@@ -25,22 +25,20 @@ const AuthSettingsContext = createContext<AuthSettingsContextValue | null>(null)
 
 const authCopy = {
     login: {
-        eyebrow: "WELCOME BACK",
         title: "继续你的创作",
         description: "回到你的项目、素材与生成现场。",
     },
     register: {
-        eyebrow: "CREATE ACCOUNT",
         title: "建立你的创作空间",
         description: "从故事开始，建立属于你的数字片场。",
     },
 } as const;
 
 const creativeCapabilities = [
-    { label: "故事", detail: "STORY", icon: Sparkles },
-    { label: "角色", detail: "CAST", icon: Layers3 },
-    { label: "分镜", detail: "SHOT", icon: Clapperboard },
-    { label: "成片", detail: "FILM", icon: Film },
+    { label: "故事", icon: Sparkles },
+    { label: "角色", icon: Layers3 },
+    { label: "分镜", icon: Clapperboard },
+    { label: "成片", icon: Film },
 ] as const;
 
 export function LinuxDOIcon() {
@@ -136,7 +134,7 @@ export function AuthScene() {
                                 </span>
                                 <span className="pc-auth-brand-wordmark">
                                     <strong>{branding.config.identity.displayName}</strong>
-                                    <small>{branding.config.identity.englishName || branding.config.identity.workspaceLabel}</small>
+                                    <small>{branding.config.identity.workspaceLabel}</small>
                                 </span>
                             </Link>
                             <div className="pc-auth-brand-nav-meta">
@@ -144,12 +142,6 @@ export function AuthScene() {
                                     <Clapperboard aria-hidden="true" />
                                     {branding.config.identity.workspaceLabel}
                                 </span>
-                                {branding.config.auth.liveBadge ? (
-                                    <span className="pc-auth-live-badge inline-flex items-center gap-2 border px-3 py-1.5 text-[var(--fs-label)] backdrop-blur-xl">
-                                        <Play className="size-3 fill-current" />
-                                        {branding.config.auth.liveBadge}
-                                    </span>
-                                ) : null}
                             </div>
                         </div>
                         <motion.div
@@ -160,23 +152,21 @@ export function AuthScene() {
                         >
                             <div className="pc-auth-brand-rule" aria-hidden="true">
                                 <span />
-                                STORY TO SCREEN · 01
+                                从故事到成片
                             </div>
-                            {branding.config.auth.eyebrow ? <p className="pc-auth-brand-eyebrow">{branding.config.auth.eyebrow}</p> : null}
                             <h1 className="pc-auth-brand-title">{branding.config.auth.title}</h1>
                             {branding.config.auth.description ? <p className="pc-auth-brand-summary">{branding.config.auth.description}</p> : null}
                             <div className="pc-auth-brand-capabilities" aria-label="影视创作流程">
-                                {creativeCapabilities.map(({ label, detail, icon: Icon }, index) => (
+                                {creativeCapabilities.map(({ label, icon: Icon }, index) => (
                                     <span key={label}>
                                         <i>{String(index + 1).padStart(2, "0")}</i>
                                         <Icon aria-hidden="true" />
                                         <b>{label}</b>
-                                        <small>{detail}</small>
                                     </span>
                                 ))}
                             </div>
                             <div className="pc-auth-showcase-caption">
-                                <span>NOW SHOWING</span>
+                                <span>创作空间</span>
                                 <div>
                                     <strong>{branding.config.identity.workspaceLabel}</strong>
                                     <small>{branding.config.identity.slogan || branding.config.identity.description}</small>
@@ -194,7 +184,7 @@ export function AuthScene() {
                             </Link>
                             <div className="pc-auth-security-badge inline-flex items-center gap-2 text-xs text-white/46">
                                 <ShieldCheck className="size-3.5" aria-hidden="true" />
-                                PRIVATE WORKSPACE · 安全登录
+                                私有工作区 · 安全登录
                             </div>
                         </div>
                         <motion.div
@@ -205,14 +195,14 @@ export function AuthScene() {
                             className="pc-auth-card-wrap my-auto w-full"
                         >
                             <div className="pc-auth-entry-label" aria-hidden="true">
-                                <span>ENTRY / {activeTab === "login" ? "01" : "02"}</span>
-                                <span>AUTHENTICATION</span>
+                                <span>{activeTab === "login" ? "登录入口" : "注册入口"}</span>
+                                <span>身份验证</span>
                             </div>
                             <ConfigProvider theme={withBrandingAntTheme(getAntThemeConfig(true, desktop), branding.config.theme.primaryColor, true)}>
                                 <div className="auth-card-dark pc-auth-card h-auto overflow-hidden backdrop-blur-2xl">
                                     <section aria-label={copy.title} className={`pc-auth-card-content flex flex-col ${activeTab === "login" ? "is-login" : "is-register"}`}>
                                         <header className="pc-auth-card-header">
-                                            <p className="pc-auth-card-eyebrow">{settings?.firstUser ? "INITIAL SETUP" : copy.eyebrow}</p>
+                                            <p className="pc-auth-card-eyebrow">{settings?.firstUser ? "首次设置" : activeTab === "login" ? "欢迎回来" : "创建账号"}</p>
                                             <h2 className="pc-auth-card-title">{settings?.firstUser ? "创建第一个管理员" : copy.title}</h2>
                                             <p className="pc-auth-card-description">{settings?.firstUser ? `完成 ${branding.config.identity.displayName} 的首次初始化。` : copy.description}</p>
                                         </header>

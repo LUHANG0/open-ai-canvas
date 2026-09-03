@@ -38,7 +38,11 @@ test("brand configuration is wired into public, auth and admin entry points", as
     expect(authScene).not.toContain("bilibili.com");
     expect(router).toContain('path: "settings/branding"');
     expect(adminShell).toContain('path: "/admin/settings/branding"');
-    expect(brandingSettings).toContain("登录页背景 URL");
-    expect(brandingSettings).toContain("仅允许完整的 https:// 地址");
+    expect(brandingSettings).toContain("登录页背景链接");
+    expect(brandingSettings).toContain("仅允许以 https:// 开头的完整安全链接");
     expect(brandingSettings).toContain('heroKind: value ? draft.auth.heroKind || "video" : ""');
+    expect(brandingSettings).toContain('className="admin-branding-summary"');
+    expect(brandingSettings).not.toContain("admin-branding-preview-frame");
+    expect(brandingSettings).not.toContain('label="英文名称"');
+    expect(brandingSettings).not.toContain('label="Meta Description"');
 });
