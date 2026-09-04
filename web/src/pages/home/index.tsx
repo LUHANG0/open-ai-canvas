@@ -40,8 +40,8 @@ const ASSET_KINDS: Array<{ key: AssetKind; label: string }> = [
     { key: "model", label: "模型" },
 ];
 
-const CHART_BRAND = "var(--home-chart-brand, var(--app-action-primary-bg))";
-const CHART_BRAND_MUTED = "color-mix(in srgb, var(--home-chart-brand, var(--app-action-primary-bg)) 36%, transparent)";
+const CHART_BRAND = "var(--home-chart-brand, var(--app-text-secondary))";
+const CHART_BRAND_MUTED = "color-mix(in srgb, var(--home-chart-brand, var(--app-text-secondary)) 36%, transparent)";
 const CHART_AI = "var(--home-chart-ai, var(--app-status-running-fg))";
 
 export default function IndexPage() {
@@ -696,10 +696,10 @@ type AssetChartEntry = { name: string; value: number; color: string };
 function assetChartData(assets: Asset[]): AssetChartEntry[] {
     const colors = [
         CHART_BRAND,
-        "color-mix(in srgb, var(--home-chart-brand, var(--app-action-primary-bg)) 68%, transparent)",
-        "color-mix(in srgb, var(--home-chart-brand, var(--app-action-primary-bg)) 50%, transparent)",
-        "color-mix(in srgb, var(--home-chart-brand, var(--app-action-primary-bg)) 34%, transparent)",
-        "color-mix(in srgb, var(--home-chart-brand, var(--app-action-primary-bg)) 22%, transparent)",
+        "color-mix(in srgb, var(--home-chart-brand, var(--app-text-secondary)) 68%, transparent)",
+        "color-mix(in srgb, var(--home-chart-brand, var(--app-text-secondary)) 50%, transparent)",
+        "color-mix(in srgb, var(--home-chart-brand, var(--app-text-secondary)) 34%, transparent)",
+        "color-mix(in srgb, var(--home-chart-brand, var(--app-text-secondary)) 22%, transparent)",
     ];
     const counts = countAssetKinds(assets);
     return ASSET_KINDS.filter(({ key }) => (counts[key] || 0) > 0).map(({ key, label }, index) => ({ name: label, value: counts[key] || 0, color: colors[index % colors.length] }));

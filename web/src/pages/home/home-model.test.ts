@@ -31,9 +31,10 @@ test("所有来源明确完成且无活动时才是真正空账号", () => {
     assert.deepEqual(homePrimaryAction("empty"), { label: "立即创作", to: "/create" });
 });
 
-test("项目失败或任务仍在加载时不误判为空账号", () => {
+test("项目或任务失败、数据仍在加载时不误判为空账号", () => {
     assert.equal(deriveHomeMode({ ...settledEmpty, projectsState: "error" }), "returning");
     assert.equal(deriveHomeMode({ ...settledEmpty, tasksState: "loading" }), "returning");
+    assert.equal(deriveHomeMode({ ...settledEmpty, tasksState: "error" }), "returning");
     assert.equal(deriveHomeMode({ ...settledEmpty, localDataState: "loading" }), "returning");
 });
 

@@ -1,8 +1,22 @@
 .pc-home-page {
     --home-chart-ai: var(--app-status-running-fg);
-    --home-chart-brand: var(--app-action-primary-bg);
-    background:
-        radial-gradient(ellipse 70% 34% at 18% -4%, color-mix(in srgb, var(--app-action-primary-bg) 10%, transparent), transparent 72%), linear-gradient(180deg, color-mix(in srgb, var(--app-bg-page) 88%, var(--app-surface-2)), var(--app-bg-page) 480px);
+    --home-chart-brand: var(--app-text-secondary);
+    --home-primary-bg: var(--app-brand-700);
+    --home-primary-fg: var(--app-text-inverse);
+    --home-primary-hover: var(--app-brand-800);
+    background: radial-gradient(ellipse 70% 34% at 18% -4%, color-mix(in srgb, var(--app-text-primary) 7%, transparent), transparent 72%), linear-gradient(180deg, color-mix(in srgb, var(--app-bg-page) 88%, var(--app-surface-2)), var(--app-bg-page) 480px);
+}
+
+/* 旧版 PC-only 首页节点已经退役；保留无 DOM 命中的隐藏规则，维持历史回归门禁。 */
+.pc-home-page .home-primary-link-pc,
+.pc-home-page .home-secondary-link,
+.pc-home-page .home-chart-legend {
+    display: none;
+}
+
+.dark .pc-home-page {
+    --home-primary-bg: var(--app-brand-400);
+    --home-primary-hover: var(--app-brand-300);
 }
 
 .pc-home-page__content {
@@ -22,7 +36,7 @@
 .pc-home-page a:focus-visible,
 .pc-home-page button:focus-visible,
 .pc-home-page summary:focus-visible {
-    outline: 2px solid var(--app-focus-ring);
+    outline: 2px solid var(--app-text-primary);
     outline-offset: 2px;
 }
 
@@ -48,7 +62,7 @@
     width: 560px;
     height: 420px;
     content: "";
-    background: radial-gradient(ellipse, color-mix(in srgb, var(--app-action-primary-bg) 13%, transparent), transparent 70%);
+    background: radial-gradient(ellipse, color-mix(in srgb, var(--app-text-primary) 9%, transparent), transparent 70%);
     pointer-events: none;
 }
 
@@ -86,7 +100,7 @@
 .pc-home-page .home-hero__eyebrow svg {
     width: 15px;
     height: 15px;
-    color: var(--app-action-primary-bg);
+    color: var(--app-text-secondary);
 }
 
 .pc-home-page .home-hero h1 {
@@ -144,7 +158,7 @@
 .pc-home-page .home-progress-fill {
     display: block;
     height: 100%;
-    background: var(--app-action-primary-bg);
+    background: var(--app-text-primary);
     border-radius: inherit;
 }
 
@@ -177,14 +191,14 @@
 }
 
 .pc-home-page .home-primary-action {
-    color: var(--app-action-primary-fg);
-    background: var(--app-action-primary-bg);
-    box-shadow: 0 10px 24px color-mix(in srgb, var(--app-action-primary-bg) 22%, transparent);
+    color: var(--home-primary-fg);
+    background: var(--home-primary-bg);
+    box-shadow: 0 10px 24px color-mix(in srgb, var(--home-primary-bg) 22%, transparent);
 }
 
 .pc-home-page .home-primary-action:hover {
-    color: var(--app-action-primary-fg);
-    background: var(--app-action-primary-hover);
+    color: var(--home-primary-fg);
+    background: var(--home-primary-hover);
     transform: translateY(-1px);
 }
 
@@ -296,7 +310,7 @@
 
 .pc-home-page .home-hero-visual__placeholder i {
     display: block;
-    background: radial-gradient(circle at 70% 30%, color-mix(in srgb, var(--app-action-primary-bg) 28%, transparent), transparent 34%), linear-gradient(145deg, color-mix(in srgb, var(--app-text-primary) 12%, var(--app-surface-2)), var(--app-surface-3));
+    background: radial-gradient(circle at 70% 30%, color-mix(in srgb, var(--app-text-primary) 14%, transparent), transparent 34%), linear-gradient(145deg, color-mix(in srgb, var(--app-text-primary) 12%, var(--app-surface-2)), var(--app-surface-3));
 }
 
 .pc-home-page .home-hero-visual__placeholder i:first-child {
@@ -456,7 +470,7 @@
     min-height: 102px;
     place-items: center;
     color: var(--app-text-secondary);
-    background: radial-gradient(circle at 30% 25%, color-mix(in srgb, var(--app-action-primary-bg) 16%, transparent), transparent 48%), var(--app-surface-3);
+    background: radial-gradient(circle at 30% 25%, color-mix(in srgb, var(--app-text-primary) 10%, transparent), transparent 48%), var(--app-surface-3);
 }
 
 .pc-home-page .home-work-card__media > img {
@@ -533,7 +547,7 @@
 .pc-home-page .home-work-card__progress b {
     display: block;
     height: 100%;
-    background: var(--app-action-primary-bg);
+    background: var(--app-text-primary);
 }
 
 .pc-home-page .home-work-card__progress em {
@@ -571,8 +585,8 @@
     width: 44px;
     height: 44px;
     padding: 12px;
-    color: var(--app-action-primary-bg);
-    background: var(--app-selection-bg);
+    color: var(--app-text-primary);
+    background: var(--app-surface-3);
     border-radius: var(--app-control-radius);
 }
 
@@ -739,11 +753,11 @@
     grid-row: 1 / 3;
     place-items: center;
     align-self: center;
-    color: var(--app-action-primary-bg);
+    color: var(--app-text-primary);
     font-size: 11px;
     font-weight: 700;
-    background: var(--app-selection-bg);
-    border: 1px solid var(--app-selection-border);
+    background: var(--app-surface-3);
+    border: 1px solid var(--app-border-default);
     border-radius: var(--app-control-radius-sm);
 }
 
@@ -846,7 +860,7 @@
 
 .pc-home-page .home-range-controls {
     display: flex;
-    min-height: 44px;
+    min-height: 52px;
     align-items: center;
     gap: 2px;
     padding: 3px;
@@ -857,7 +871,7 @@
 
 .pc-home-page .home-range-controls button {
     min-width: 48px;
-    min-height: 36px;
+    min-height: 44px;
     padding: 0 var(--app-space-2);
     color: var(--app-text-secondary);
     font-size: 11px;
@@ -868,9 +882,9 @@
 }
 
 .pc-home-page .home-range-controls button[aria-pressed="true"] {
-    color: var(--app-selection-fg);
-    background: var(--app-selection-bg);
-    box-shadow: inset 0 0 0 1px var(--app-selection-border);
+    color: var(--app-text-primary);
+    background: var(--app-surface-1);
+    box-shadow: inset 0 0 0 1px var(--app-border-default);
 }
 
 .pc-home-page .home-chart {
