@@ -111,7 +111,7 @@ export function RegistrationInviteDrawer({ open, onClose }: { open: boolean; onC
     };
 
     return (
-        <Drawer title="邀请注册" open={open} width="min(640px, 100vw)" onClose={requestClose} keyboard destroyOnHidden styles={{ body: { padding: 0 } }}>
+        <Drawer title="邀请注册" open={open} size="min(640px, 100vw)" onClose={requestClose} keyboard destroyOnHidden styles={{ body: { padding: 0 } }}>
             <Tabs
                 activeKey={tab}
                 onChange={setTab}
