@@ -2,6 +2,7 @@ package database
 
 import (
 	"errors"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -12,10 +13,7 @@ import (
 )
 
 func TestMigrateSchemaRecordsAndValidatesVersion(t *testing.T) {
-	db, err := Open(Config{Driver: "sqlite", DSN: "file:migration-version?mode=memory&cache=shared"})
-	if err != nil {
-		t.Fatal(err)
-	}
+	db := openSQLiteMigrationTestDB(t, "migration-version")
 	if err := MigrateSchema(db); err != nil {
 		t.Fatal(err)
 	}
@@ -94,10 +92,7 @@ func TestMigrateSchemaRecordsAndValidatesVersion(t *testing.T) {
 }
 
 func TestMigrateSchemaUpgradesV4DatabaseWithProjectDeliveryJobs(t *testing.T) {
-	db, err := Open(Config{Driver: "sqlite", DSN: "file:migration-project-delivery?mode=memory&cache=shared"})
-	if err != nil {
-		t.Fatal(err)
-	}
+	db := openSQLiteMigrationTestDB(t, "migration-project-delivery")
 	if err := MigrateSchema(db); err != nil {
 		t.Fatal(err)
 	}
@@ -145,11 +140,50 @@ func TestMigrateSchemaUpgradesV4DatabaseWithProjectDeliveryJobs(t *testing.T) {
 	}
 }
 
-func TestMigrateSchemaV8BackfillsExistingInviteCredits(t *testing.T) {
-	db, err := Open(Config{Driver: "sqlite", DSN: "file:migration-invite-credits?mode=memory&cache=shared"})
+func TestMigrateSchemaUpgradesV6DatabaseWithRegistrationInvites(t *testing.T) {
+	db := openSQLiteMigrationTestDB(t, "migration-registration-invites-v6")
+	if err := MigrateSchema(db); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Migrator().DropTable(&model.RegistrationInvite{}); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Delete(&schemaMigration{}, "version >= ?", 7).Error; err != nil {
+		t.Fatal(err)
+	}
+	status, err := ReadSchemaStatus(db)
 	if err != nil {
 		t.Fatal(err)
 	}
+	if status.Current != 6 || status.Ready {
+		t.Fatalf("pre-upgrade schema status = %#v", status)
+	}
+
+	if err := MigrateSchema(db); err != nil {
+		t.Fatalf("upgrade v6 database: %v", err)
+	}
+	if !db.Migrator().HasTable(&model.RegistrationInvite{}) {
+		t.Fatal("v7 upgrade did not create registration invites")
+	}
+	if !db.Migrator().HasColumn(&model.RegistrationInvite{}, "credit_amount_microcredits") {
+		t.Fatal("v8 upgrade did not create registration invite credits")
+	}
+	for _, index := range []string{"idx_registration_invites_token_hash", "idx_registration_invites_state"} {
+		if !db.Migrator().HasIndex(&model.RegistrationInvite{}, index) {
+			t.Fatalf("registration invite upgrade did not create %s", index)
+		}
+	}
+	status, err = ReadSchemaStatus(db)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !status.Ready || status.Current != 8 {
+		t.Fatalf("post-upgrade schema status = %#v", status)
+	}
+}
+
+func TestMigrateSchemaV8BackfillsExistingInviteCredits(t *testing.T) {
+	db := openSQLiteMigrationTestDB(t, "migration-invite-credits")
 	if err := MigrateSchema(db); err != nil {
 		t.Fatal(err)
 	}
@@ -180,10 +214,7 @@ func TestMigrateSchemaV8BackfillsExistingInviteCredits(t *testing.T) {
 }
 
 func TestMigrateSchemaRejectsChecksumMismatch(t *testing.T) {
-	db, err := Open(Config{Driver: "sqlite", DSN: "file:migration-checksum?mode=memory&cache=shared"})
-	if err != nil {
-		t.Fatal(err)
-	}
+	db := openSQLiteMigrationTestDB(t, "migration-checksum")
 	if err := MigrateSchema(db); err != nil {
 		t.Fatal(err)
 	}
@@ -199,10 +230,7 @@ func TestMigrateSchemaRejectsChecksumMismatch(t *testing.T) {
 }
 
 func TestMigrateSchemaRollsBackFailedMigration(t *testing.T) {
-	db, err := Open(Config{Driver: "sqlite", DSN: "file:migration-rollback?mode=memory&cache=shared"})
-	if err != nil {
-		t.Fatal(err)
-	}
+	db := openSQLiteMigrationTestDB(t, "migration-rollback")
 	if err := MigrateSchema(db); err != nil {
 		t.Fatal(err)
 	}
@@ -237,11 +265,26 @@ func TestMigrateSchemaRollsBackFailedMigration(t *testing.T) {
 }
 
 func TestRequireSchemaVersionRejectsUninitializedDatabase(t *testing.T) {
-	db, err := Open(Config{Driver: "sqlite", DSN: "file:migration-uninitialized?mode=memory&cache=shared"})
-	if err != nil {
-		t.Fatal(err)
-	}
+	db := openSQLiteMigrationTestDB(t, "migration-uninitialized")
 	if err := RequireSchemaVersion(db); err == nil || !strings.Contains(err.Error(), "请先执行 migrate-schema up") {
 		t.Fatalf("expected missing migration error, got %v", err)
 	}
+}
+
+func openSQLiteMigrationTestDB(t *testing.T, name string) *gorm.DB {
+	t.Helper()
+	db, err := Open(Config{Driver: "sqlite", DSN: filepath.Join(t.TempDir(), name+".db")})
+	if err != nil {
+		t.Fatal(err)
+	}
+	sqlDB, err := db.DB()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := sqlDB.Close(); err != nil {
+			t.Errorf("close sqlite migration database: %v", err)
+		}
+	})
+	return db
 }
