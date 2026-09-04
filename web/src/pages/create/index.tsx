@@ -344,6 +344,7 @@ export default function CreatePage() {
         setCount,
         promptOptimizerProvider,
         composerFocusRef,
+        desktopLayout: pcBrandV2,
         placeholderOverride: viewMode === "storyboard" && (pcBrandV2 || composingNextShot) ? `SC.${String(nextShotNumber).padStart(2, "0")} · 写下这一镜的镜头、画面或故事` : undefined,
         onSubmit: () => void submit(),
     };
@@ -382,6 +383,7 @@ export default function CreatePage() {
                                 onOpenHistory={openHistory}
                                 cloudSyncStatus={cloudSyncStatus}
                                 onRetryCloudSync={() => void retryCloudSync()}
+                                desktopLayout={pcBrandV2}
                                 storyboard={
                                     viewMode === "storyboard"
                                         ? {
@@ -408,6 +410,15 @@ export default function CreatePage() {
                         )}
                         <main ref={threadScrollRef} onScroll={handleThreadScroll} className="creation-empty-workspace creation-scrollbar">
                             <CreationEmptyIntro mode={mode} />
+                            {pcBrandV2 ? (
+                                <div className="creation-empty-composer">
+                                    <header className="creation-empty-composer-heading">
+                                        <span>从这里开始</span>
+                                        <small>素材 · 提示词 · 模型 · 规格</small>
+                                    </header>
+                                    <CreationComposer {...composerProps} variant="empty" />
+                                </div>
+                            ) : null}
                             <CreationEmptySuggest
                                 onStartPrompt={(nextMode, prompt) => {
                                     selectMode(nextMode);
@@ -415,18 +426,28 @@ export default function CreatePage() {
                                     window.requestAnimationFrame(() => composerFocusRef.current?.focus());
                                 }}
                             />
-                            <div className="creation-empty-composer">
-                                <header className="creation-empty-composer-heading">
-                                    <span>创作指令</span>
-                                    <small>素材 · 提示词 · 模型 · 规格 · 计费</small>
-                                </header>
-                                <CreationComposer {...composerProps} variant="empty" />
-                            </div>
+                            {!pcBrandV2 ? (
+                                <div className="creation-empty-composer">
+                                    <header className="creation-empty-composer-heading">
+                                        <span>创作指令</span>
+                                        <small>素材 · 提示词 · 模型 · 规格 · 计费</small>
+                                    </header>
+                                    <CreationComposer {...composerProps} variant="empty" />
+                                </div>
+                            ) : null}
                         </main>
                     </>
                 ) : viewMode === "chat" ? (
                     <div className="creation-thread-workbench">
-                        <CreationWorkspaceToolbar viewMode={viewMode} onViewModeChange={setViewMode} onNewConversation={startNewConversation} onOpenHistory={openHistory} cloudSyncStatus={cloudSyncStatus} onRetryCloudSync={() => void retryCloudSync()} />
+                        <CreationWorkspaceToolbar
+                            viewMode={viewMode}
+                            onViewModeChange={setViewMode}
+                            onNewConversation={startNewConversation}
+                            onOpenHistory={openHistory}
+                            cloudSyncStatus={cloudSyncStatus}
+                            onRetryCloudSync={() => void retryCloudSync()}
+                            desktopLayout={pcBrandV2}
+                        />
                         <main ref={threadScrollRef} onScroll={handleThreadScroll} className="creation-thread-scroll creation-scrollbar" aria-label="连续对话" tabIndex={0}>
                             <section className="creation-thread-stage">
                                 <div className="creation-results" role="log" aria-live="polite" aria-relevant="additions text">
@@ -457,6 +478,7 @@ export default function CreatePage() {
                                 onOpenHistory={openHistory}
                                 cloudSyncStatus={cloudSyncStatus}
                                 onRetryCloudSync={() => void retryCloudSync()}
+                                desktopLayout={pcBrandV2}
                                 storyboard={{
                                     timelineOpen: storyboardTimelineOpen,
                                     count: shots.length,

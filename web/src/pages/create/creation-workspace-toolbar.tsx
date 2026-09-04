@@ -120,9 +120,10 @@ export function CreationHistoryDrawer({
     );
 }
 
-export function CreationViewSwitch({ viewMode, onChange }: { viewMode: CreationViewMode; onChange: (mode: CreationViewMode) => void }) {
+export function CreationViewSwitch({ viewMode, onChange, desktopLayout = false }: { viewMode: CreationViewMode; onChange: (mode: CreationViewMode) => void; desktopLayout?: boolean }) {
     return (
-        <div className="creation-view-switch" role="group" aria-label="创作视图">
+        <div className="creation-view-switch" role="group" aria-label={desktopLayout ? "工作方式" : "创作视图"}>
+            {desktopLayout ? <span className="creation-view-switch-label">工作方式</span> : null}
             <button type="button" aria-pressed={viewMode === "chat"} onClick={() => onChange("chat")}>
                 <MessageSquareText />
                 连续对话
@@ -162,7 +163,7 @@ export function CreationCloudSyncButton({ status, onRetry }: { status: CreationC
         <Tooltip title={copy.title}>
             <button type="button" className={`creation-cloud-sync is-${status}`} aria-label={copy.title} disabled={!retryable} onClick={retryable ? onRetry : undefined}>
                 <Icon aria-hidden="true" className={busy ? "animate-spin" : undefined} />
-                <span>{copy.label}</span>
+                <span className="creation-cloud-sync-copy">{copy.label}</span>
             </button>
         </Tooltip>
     );
@@ -175,6 +176,7 @@ export function CreationWorkspaceToolbar({
     onOpenHistory,
     cloudSyncStatus,
     onRetryCloudSync,
+    desktopLayout,
     storyboard,
 }: {
     viewMode: CreationViewMode;
@@ -183,6 +185,7 @@ export function CreationWorkspaceToolbar({
     onOpenHistory: () => void;
     cloudSyncStatus: CreationConversationCloudSyncStatus;
     onRetryCloudSync: () => void;
+    desktopLayout: boolean;
     storyboard?: CreationWorkspaceStoryboardControls;
 }) {
     return (
@@ -207,7 +210,7 @@ export function CreationWorkspaceToolbar({
                 ) : null}
             </div>
             <div className="creation-workspace-toolbar-switch">
-                <CreationViewSwitch viewMode={viewMode} onChange={onViewModeChange} />
+                <CreationViewSwitch viewMode={viewMode} onChange={onViewModeChange} desktopLayout={desktopLayout} />
             </div>
             <div className="storyboard-workbench-bar-actions">
                 {storyboard ? (
@@ -220,11 +223,13 @@ export function CreationWorkspaceToolbar({
                 <Tooltip title="新建创作">
                     <button type="button" aria-label="新建创作" className="storyboard-workbench-bar-action" onClick={onNewConversation}>
                         <Plus />
+                        {desktopLayout ? <span>新建</span> : null}
                     </button>
                 </Tooltip>
                 <Tooltip title="历史对话">
                     <button type="button" aria-label="查看历史对话" className="storyboard-workbench-bar-action" onClick={onOpenHistory}>
                         <History />
+                        {desktopLayout ? <span>历史</span> : null}
                     </button>
                 </Tooltip>
             </div>

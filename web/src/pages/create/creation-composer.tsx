@@ -270,6 +270,7 @@ type ComposerProps = {
     setCount: (value: string) => void;
     promptOptimizerProvider: PromptOptimizerProvider | null;
     composerFocusRef: RefObject<HTMLTextAreaElement | null>;
+    desktopLayout: boolean;
     placeholderOverride?: string;
     onSubmit: () => void;
 };
@@ -503,7 +504,7 @@ export function CreationComposer(props: ComposerProps) {
     };
     const composer = (
         <section
-            className={`creation-chat-composer is-${props.variant}${props.attachments.length ? " has-references" : ""}${showReferenceEntry ? " has-reference-entry" : ""}${isFileDraggingOver ? " is-file-dragging-over" : ""}`}
+            className={`creation-chat-composer is-${props.variant}${props.desktopLayout ? " is-desktop" : ""}${props.attachments.length ? " has-references" : ""}${showReferenceEntry ? " has-reference-entry" : ""}${isFileDraggingOver ? " is-file-dragging-over" : ""}`}
             aria-busy={interactionBusy}
             onDragEnter={handleComposerDragEnter}
             onDragOver={handleComposerDragOver}
@@ -712,7 +713,7 @@ export function CreationComposer(props: ComposerProps) {
                 <div className="creation-chat-controls creation-entry-toolbar">
                     <div className="creation-entry-group is-config" role="group" aria-label="生成配置">
                         <div className="creation-config-field is-mode">
-                            <span className="creation-config-label">类型</span>
+                            <span className="creation-config-label">{props.desktopLayout ? "生成类型" : "类型"}</span>
                             <ModePicker mode={props.mode} onModeChange={props.onModeChange} disabled={interactionBusy} />
                         </div>
                         <div className="creation-config-field is-model">
@@ -730,7 +731,7 @@ export function CreationComposer(props: ComposerProps) {
                                 disabled={interactionBusy}
                             />
                         </div>
-                        {props.mode === "video" ? (
+                        {!props.desktopLayout && props.mode === "video" ? (
                             <div className="creation-config-field is-operation">
                                 <span className="creation-config-label">方式</span>
                                 <VideoOperationPicker value={props.videoOperationChoice} operations={props.videoOperations} onChange={props.onVideoOperationChange} disabled={interactionBusy} />
@@ -738,17 +739,17 @@ export function CreationComposer(props: ComposerProps) {
                         ) : null}
                         {props.mode === "video" || (props.mode === "image" && imageSettingsSupported) ? (
                             <div className="creation-config-field is-settings">
-                                <span className="creation-config-label">规格</span>
+                                <span className="creation-config-label">{props.desktopLayout ? "详细设置" : "规格"}</span>
                                 <GenerationSettingsMenu {...props} />
                             </div>
                         ) : null}
-                        {props.mode === "video" ? (
+                        {!props.desktopLayout && props.mode === "video" ? (
                             <div className="creation-config-field is-duration">
                                 <span className="creation-config-label">时长</span>
                                 <DurationMenu profile={props.videoProfile} seconds={props.seconds} onChange={props.setSeconds} disabled={interactionBusy} />
                             </div>
                         ) : null}
-                        {props.mode === "video" ? (
+                        {!props.desktopLayout && props.mode === "video" ? (
                             <div className="creation-config-field is-sound">
                                 <span className="creation-config-label">声音</span>
                                 <Tooltip title={generateAudioSupported ? `点击切换为${generateAudio ? "无声音" : "有声音"}` : "当前模型不支持同步生成声音"}>
@@ -990,15 +991,58 @@ function GenerationSettingsMenu(props: ComposerProps) {
         setCustomRatioOpen(false);
     };
     const videoResolutionSupported = props.mode === "video" && resolutions.length > 0;
+    const videoOperation = creationVideoOperationOptions.find((option) => option.value === props.videoOperationChoice) || creationVideoOperationOptions[0];
+    const durationValue = props.mode === "video" ? Number(normalizeVideoValue(props.videoProfile, { seconds: props.seconds }).seconds) : 0;
+    const durationPresets = props.mode === "video" && props.videoProfile.duration.selection === "enum" ? videoDurationOptions(props.videoProfile) : [];
+    const durationFallback = durationPresets.length ? durationPresets : props.mode === "video" ? [props.videoProfile.duration.default] : [1];
+    const durationMin = props.mode === "video" && props.videoProfile.duration.selection === "range" ? props.videoProfile.duration.min || 1 : Math.min(...durationFallback);
+    const durationMax = props.mode === "video" && props.videoProfile.duration.selection === "range" ? Math.max(durationMin, props.videoProfile.duration.max || durationMin) : Math.max(...durationFallback);
+    const durationStep = props.mode === "video" ? Math.max(1, props.videoProfile.duration.step || 1) : 1;
+    const generateAudioSupported = props.mode === "video" && props.videoProfile.generateAudio.supported;
+    const generateAudio = generateAudioSupported && props.config.videoGenerateAudio === "true";
     const imageSummary = [
         ...(mergedProfile.size.parameter !== "none" ? [referenceImageSizeSelected ? referenceImageSizeLabel : usesImageResolutionPicker ? formatImageResolutionSize(props.ratio, imageResolutionOptions) : props.ratio] : []),
         ...(props.imageProfile.quality.supported ? [qualityLabel] : []),
         ...(props.imageProfile.maxOutputs > 1 ? [props.count] : []),
     ].join(" · ");
     const videoRatioSupported = props.mode === "video" && ratios.length > 0;
-    const summary = props.mode === "video" ? [...(videoRatioSupported ? [props.ratio] : []), ...(videoResolutionSupported ? [videoResolutionLabel(props.videoQuality)] : [])].join(" · ") : imageSummary;
+    const videoSummary = [
+        ...(props.desktopLayout ? [videoOperation.label] : []),
+        ...(videoRatioSupported ? [props.ratio] : []),
+        ...(videoResolutionSupported ? [videoResolutionLabel(props.videoQuality)] : []),
+        ...(props.desktopLayout ? [`${durationValue}s`, ...(generateAudioSupported ? [generateAudio ? "声音开" : "声音关"] : [])] : []),
+    ].join(" · ");
+    const summary = props.mode === "video" ? videoSummary : imageSummary;
     const panel = (
         <div className="creation-parameter-menu">
+            {props.desktopLayout && props.mode === "video" ? (
+                <SettingSection title="生成方式" value={videoOperation.label}>
+                    <div className="creation-choice-grid is-operation">
+                        {creationVideoOperationOptions.map((option) => {
+                            const supported = option.value === "auto" || props.videoOperations.includes(option.value);
+                            return (
+                                <button
+                                    key={option.value}
+                                    type="button"
+                                    aria-pressed={option.value === props.videoOperationChoice}
+                                    className={option.value === props.videoOperationChoice ? "is-selected" : undefined}
+                                    disabled={!supported}
+                                    title={supported ? option.description : "当前模型不支持此生成方式"}
+                                    onClick={() => props.onVideoOperationChange(option.value)}
+                                >
+                                    <span className="creation-option-check" aria-hidden="true">
+                                        <Check />
+                                    </span>
+                                    <span className="creation-choice-copy">
+                                        <strong>{option.label}</strong>
+                                        <small>{supported ? option.description : "当前模型不支持"}</small>
+                                    </span>
+                                </button>
+                            );
+                        })}
+                    </div>
+                </SettingSection>
+            ) : null}
             {videoRatioSupported || (props.mode !== "video" && mergedProfile.size.parameter !== "none") ? (
                 <SettingSection title="画幅" value={referenceImageSizeSelected ? referenceImageSizeLabel : props.mode === "image" && usesImageResolutionPicker ? activeImageRatio : props.ratio}>
                     <div className="creation-parameter-content">
@@ -1069,23 +1113,75 @@ function GenerationSettingsMenu(props: ComposerProps) {
                 </SettingSection>
             ) : null}
             {props.mode === "video" ? (
-                videoResolutionSupported ? (
-                    <SettingSection title="清晰度" value={videoResolutionLabel(props.videoQuality)}>
-                        <div className="creation-choice-grid is-resolution">
-                            {resolutions.map((option) => (
-                                <button key={option.value} type="button" aria-pressed={option.value === props.videoQuality} className={option.value === props.videoQuality ? "is-selected" : ""} onClick={() => props.setVideoQuality(option.value)}>
-                                    <span className="creation-option-check" aria-hidden="true">
-                                        <Check />
-                                    </span>
-                                    <span className="creation-choice-copy">
-                                        <strong>{option.label}</strong>
-                                        <small>{resolutionDisplayDescription(option.value)}</small>
-                                    </span>
-                                </button>
-                            ))}
-                        </div>
-                    </SettingSection>
-                ) : null
+                <>
+                    {videoResolutionSupported ? (
+                        <SettingSection title="清晰度" value={videoResolutionLabel(props.videoQuality)}>
+                            <div className="creation-choice-grid is-resolution">
+                                {resolutions.map((option) => (
+                                    <button key={option.value} type="button" aria-pressed={option.value === props.videoQuality} className={option.value === props.videoQuality ? "is-selected" : ""} onClick={() => props.setVideoQuality(option.value)}>
+                                        <span className="creation-option-check" aria-hidden="true">
+                                            <Check />
+                                        </span>
+                                        <span className="creation-choice-copy">
+                                            <strong>{option.label}</strong>
+                                            <small>{resolutionDisplayDescription(option.value)}</small>
+                                        </span>
+                                    </button>
+                                ))}
+                            </div>
+                        </SettingSection>
+                    ) : null}
+                    {props.desktopLayout ? (
+                        <SettingSection title="时长" value={`${durationValue} 秒`}>
+                            <div className="creation-settings-duration">
+                                {props.videoProfile.duration.selection === "range" ? (
+                                    <>
+                                        <input type="range" min={durationMin} max={durationMax} step={durationStep} value={durationValue} aria-label="视频时长（秒）" onChange={(event) => props.setSeconds(event.target.value)} />
+                                        <div className="creation-settings-duration-scale" aria-hidden="true">
+                                            <span>{durationMin}s</span>
+                                            <span>{durationMax}s</span>
+                                        </div>
+                                        <label className="creation-custom-value is-duration">
+                                            <span>自定义时长</span>
+                                            <span className="creation-duration-custom-field">
+                                                <input
+                                                    type="number"
+                                                    min={durationMin}
+                                                    max={durationMax}
+                                                    step={durationStep}
+                                                    inputMode="numeric"
+                                                    value={props.seconds}
+                                                    onFocus={(event) => event.currentTarget.select()}
+                                                    onBlur={() => props.setSeconds(String(durationValue))}
+                                                    onChange={(event) => props.setSeconds(event.target.value)}
+                                                    aria-label="自定义视频时长，单位秒"
+                                                />
+                                                <em>秒</em>
+                                            </span>
+                                        </label>
+                                    </>
+                                ) : (
+                                    <div className="creation-duration-choices">
+                                        {durationPresets.map((item) => (
+                                            <button key={item} type="button" className={item === durationValue ? "is-selected" : ""} aria-pressed={item === durationValue} onClick={() => props.setSeconds(String(item))}>
+                                                {item}s
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        </SettingSection>
+                    ) : null}
+                    {props.desktopLayout && generateAudioSupported ? (
+                        <SettingSection title="声音" value={generateAudio ? "有声音" : "无声音"}>
+                            <button type="button" className="creation-settings-sound creation-sound-toggle" aria-pressed={generateAudio} onClick={() => props.onGenerateAudioChange(!generateAudio)}>
+                                {generateAudio ? <Volume2 /> : <VolumeX />}
+                                <span>{generateAudio ? "同步生成声音" : "不生成声音"}</span>
+                                <small>点击切换</small>
+                            </button>
+                        </SettingSection>
+                    ) : null}
+                </>
             ) : (
                 <>
                     {imageResolutionChoiceOptions.length ? (
@@ -1256,4 +1352,3 @@ function DurationMenu({ profile, seconds, onChange, disabled = false }: { profil
         </Popover>
     );
 }
-

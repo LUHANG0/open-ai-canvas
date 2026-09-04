@@ -138,7 +138,7 @@ describe("PC creation chat and storyboard director workbench regression gates", 
         expect(shotCard).toContain('className="storyboard-workbench-card-meta"');
         expect(shotCard).toContain('className="storyboard-workbench-card-title"');
         expect(shotCard).toContain("创作内容");
-        expect(rail).toContain('storyboard-editor-shot-thumb-state is-${status}');
+        expect(rail).toContain("storyboard-editor-shot-thumb-state is-${status}");
         expect(nextCard).toContain('className="storyboard-workbench-next-kicker"');
         expect(nextCard).toContain('aria-label="镜头描述建议"');
         expect(nextCard).toContain("主体与动作");
@@ -158,7 +158,7 @@ describe("PC creation chat and storyboard director workbench regression gates", 
         expectRuleWith(desktopStyles, ".creation-home .storyboard-workbench-next-guide", [/display:\s*flex/, /flex-wrap:\s*wrap/]);
     });
 
-    test("locks the compact 1024 rail and the 1280 and 1360 director column widths", async () => {
+    test("keeps rail, preview, and inspector visible from 1024px with bounded director columns", async () => {
         const styles = await read("../src/pages/create/creation-workspace.css");
         const desktopStart = styles.indexOf("@media (min-width: 1024px)");
         const wideStart = styles.lastIndexOf("@media (min-width: 1280px) {");
@@ -170,22 +170,49 @@ describe("PC creation chat and storyboard director workbench regression gates", 
         const wideStyles = styles.slice(wideStart, cinemaStart);
         const cinemaStyles = styles.slice(cinemaStart);
 
-        expectRuleWith(desktopStyles, ".creation-home .storyboard-editor-body", [/grid-template-columns:\s*80px\s+minmax\(0,\s*1fr\)/]);
+        expectRuleWith(desktopStyles, ".creation-home .storyboard-editor-body", [/grid-template-columns:\s*84px\s+minmax\(0,\s*1fr\)/]);
         expectRuleWith(desktopStyles, ".creation-home .storyboard-editor-shot", [/grid-template-columns:\s*minmax\(0,\s*1fr\)/]);
         expectRuleWith(desktopStyles, ".creation-home .storyboard-editor-shot-info", [/display:\s*none/]);
-        expectRuleWith(desktopStyles, ".creation-home .storyboard-editor-shot-layout", [/grid-template-columns:\s*minmax\(0,\s*1fr\)/]);
-        expectRuleWith(desktopStyles, ".creation-home .storyboard-editor-inspector", [/display:\s*none/]);
-        expectRuleWith(desktopStyles, ".creation-home .storyboard-editor-inspector-toggle", [/display:\s*inline-flex/]);
+        expectRuleWith(desktopStyles, ".creation-home .storyboard-editor-shot-layout", [/grid-template-columns:\s*minmax\(0,\s*1fr\)\s+220px/]);
+        expectRuleWith(desktopStyles, ".creation-home .storyboard-editor-inspector", [/display:\s*block/]);
+        expectRuleWith(desktopStyles, ".creation-home .storyboard-editor-inspector-toggle", [/display:\s*none\s*!important/]);
 
-        expectRuleWith(wideStyles, ".creation-home .storyboard-editor-body", [/grid-template-columns:\s*216px\s+minmax\(0,\s*1fr\)/]);
+        expectRuleWith(wideStyles, ".creation-home .storyboard-editor-body", [/grid-template-columns:\s*200px\s+minmax\(0,\s*1fr\)/]);
         expectRuleWith(wideStyles, ".creation-home .storyboard-editor-shot", [/grid-template-columns:\s*86px\s+minmax\(0,\s*1fr\)/]);
-        expectRuleWith(wideStyles, ".creation-home .storyboard-editor-shot-layout", [/grid-template-columns:\s*minmax\(0,\s*1fr\)\s+280px/]);
+        expectRuleWith(wideStyles, ".creation-home .storyboard-editor-shot-layout", [/grid-template-columns:\s*minmax\(0,\s*1fr\)\s+260px/]);
         expectRuleWith(wideStyles, ".creation-home .storyboard-editor-inspector", [/display:\s*block/]);
         expectRuleWith(wideStyles, ".creation-home .storyboard-editor-inspector-toggle", [/display:\s*none\s*!important/]);
 
-        expectRuleWith(cinemaStyles, ".creation-home .storyboard-editor-body", [/grid-template-columns:\s*240px\s+minmax\(0,\s*1fr\)/]);
+        expectRuleWith(cinemaStyles, ".creation-home .storyboard-editor-body", [/grid-template-columns:\s*220px\s+minmax\(0,\s*1fr\)/]);
         expectRuleWith(cinemaStyles, ".creation-home .storyboard-editor-shot", [/grid-template-columns:\s*96px\s+minmax\(0,\s*1fr\)/]);
-        expectRuleWith(cinemaStyles, ".creation-home .storyboard-editor-shot-layout", [/grid-template-columns:\s*minmax\(0,\s*1fr\)\s+320px/]);
+        expectRuleWith(cinemaStyles, ".creation-home .storyboard-editor-shot-layout", [/grid-template-columns:\s*minmax\(0,\s*1fr\)\s+300px/]);
+    });
+
+    test("puts the desktop composer before auxiliary inspiration without changing the mobile branch", async () => {
+        const [source, composer, toolbar, message] = await Promise.all([
+            read("../src/pages/create/index.tsx"),
+            read("../src/pages/create/creation-composer.tsx"),
+            read("../src/pages/create/creation-workspace-toolbar.tsx"),
+            read("../src/pages/create/creation-message-view.tsx"),
+        ]);
+        const emptyRender = sourceSection(source, "{isEmpty ? (", ') : viewMode === "chat" ? (');
+        const desktopComposer = emptyRender.indexOf('{pcBrandV2 ? (\n                                <div className="creation-empty-composer">');
+        const suggestions = emptyRender.indexOf("<CreationEmptySuggest");
+        const mobileComposer = emptyRender.indexOf('{!pcBrandV2 ? (\n                                <div className="creation-empty-composer">');
+
+        expect(desktopComposer).toBeGreaterThanOrEqual(0);
+        expect(suggestions).toBeGreaterThan(desktopComposer);
+        expect(mobileComposer).toBeGreaterThan(suggestions);
+        expect(source).toContain("desktopLayout: pcBrandV2");
+        expect(composer).toContain('props.desktopLayout ? " is-desktop" : ""');
+        expect(composer).toContain('!props.desktopLayout && props.mode === "video"');
+        expect(composer).toContain('<SettingSection title="生成方式"');
+        expect(composer).toContain('<SettingSection title="时长"');
+        expect(composer).toContain('<SettingSection title="声音"');
+        expect(toolbar).toContain('aria-label={desktopLayout ? "工作方式" : "创作视图"}');
+        expect(toolbar).toContain("desktopLayout ? <span>新建</span> : null");
+        expect(toolbar).toContain("desktopLayout ? <span>历史</span> : null");
+        expect(message).toContain('compactLayout ? "继续创作" : "生成同款"');
     });
 
     test("uses ordered-list and button semantics with aria-current instead of a fake listbox", async () => {
@@ -290,7 +317,14 @@ describe("PC creation chat and storyboard director workbench regression gates", 
     });
 
     test("retains preview, download, retry, canvas handoff, upload, and generation fingerprints", async () => {
-        const [source, executorSource, messageSource, composerSource, storyboardSource, submitSource] = await Promise.all([read("../src/pages/create/index.tsx"), read("../src/pages/create/creation-generation-executor.ts"), read("../src/pages/create/creation-message-view.tsx"), read("../src/pages/create/creation-composer.tsx"), read("../src/pages/create/creation-storyboard-workbench.tsx"), read("../src/pages/create/use-creation-submit-workflow.ts")]);
+        const [source, executorSource, messageSource, composerSource, storyboardSource, submitSource] = await Promise.all([
+            read("../src/pages/create/index.tsx"),
+            read("../src/pages/create/creation-generation-executor.ts"),
+            read("../src/pages/create/creation-message-view.tsx"),
+            read("../src/pages/create/creation-composer.tsx"),
+            read("../src/pages/create/creation-storyboard-workbench.tsx"),
+            read("../src/pages/create/use-creation-submit-workflow.ts"),
+        ]);
         const shotCard = sourceSection(storyboardSource, "function StoryboardShotCard", "function StoryboardNextShotCard");
         const result = storyboardSource.slice(storyboardSource.indexOf("function StoryboardShotResult"));
         const downloads = sourceSection(messageSource, "export function CreationResultDownloads", "function CreationMediaPending");

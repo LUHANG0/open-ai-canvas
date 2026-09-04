@@ -336,9 +336,9 @@ function MediaResult({ item, compactLayout, onRetryFailure, onCreateVariant }: {
                 resultDetails
             )}
             <div className="creation-media-actions">
-                <button type="button" onClick={onCreateVariant}>
+                <button type="button" className={compactLayout ? "is-primary" : undefined} onClick={onCreateVariant}>
                     <RefreshCw />
-                    生成同款
+                    {compactLayout ? "继续创作" : "生成同款"}
                 </button>
                 <Link to={canvasPath}>{resultAssetIds.length ? "添加到画布" : "打开画布"}</Link>
                 <CreationResultDownloads results={resultMedia} />
