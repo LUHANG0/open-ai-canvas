@@ -79,6 +79,12 @@ func (r *Repository) RevokeRegistrationInvite(id string, now time.Time, audit *m
 // failure rolls the claim back, so callers may safely let the user retry.
 func (r *Repository) ConsumeRegistrationInvite(inviteID string, tokenHash string, now time.Time, user *model.User, session *model.AuthSession, signupBonus int64) error {
 	return r.db.Transaction(func(tx *gorm.DB) error {
+		// used_by is an immediate foreign key on both supported databases. Insert
+		// the user first; a lost invite claim rolls this insert back with the rest
+		// of the transaction.
+		if err := tx.Create(user).Error; err != nil {
+			return err
+		}
 		claimed := tx.Model(&model.RegistrationInvite{}).
 			Where("id = ? AND token_hash = ? AND used_at IS NULL AND revoked_at IS NULL AND expires_at > ?", inviteID, tokenHash, now).
 			Updates(map[string]any{"used_at": now, "used_by": user.ID, "updated_at": now})
@@ -87,9 +93,6 @@ func (r *Repository) ConsumeRegistrationInvite(inviteID string, tokenHash string
 		}
 		if claimed.RowsAffected != 1 {
 			return ErrRegistrationInviteUnavailable
-		}
-		if err := tx.Create(user).Error; err != nil {
-			return err
 		}
 		if signupBonus > 0 {
 			account := model.CreditAccount{UserID: user.ID, AvailableMicrocredits: signupBonus, Version: 1, CreatedAt: now, UpdatedAt: now}

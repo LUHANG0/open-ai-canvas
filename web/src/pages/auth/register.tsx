@@ -27,6 +27,7 @@ export default function RegisterPage() {
     const [inviteRetry, setInviteRetry] = useState(0);
     const inviteToken = params.get("invite");
     const isInviteFlow = inviteToken !== null || params.get("invited") === "1";
+    const searchParamsText = params.toString();
     const next = safeNext(params.get("next"));
 
     useEffect(() => {
@@ -43,7 +44,7 @@ export default function RegisterPage() {
                 if (!active) return;
                 setInviteStatus(result.status);
                 if (inviteToken !== null) {
-                    const nextParams = new URLSearchParams(params);
+                    const nextParams = new URLSearchParams(searchParamsText);
                     nextParams.delete("invite");
                     nextParams.set("invited", "1");
                     navigate({ pathname: "/register", search: nextParams.toString() }, { replace: true });
@@ -57,7 +58,7 @@ export default function RegisterPage() {
         return () => {
             active = false;
         };
-    }, [inviteRetry, inviteToken, isInviteFlow, navigate, params]);
+    }, [inviteRetry, inviteToken, isInviteFlow, navigate, searchParamsText]);
 
     useEffect(() => {
         if (countdown <= 0) return;
