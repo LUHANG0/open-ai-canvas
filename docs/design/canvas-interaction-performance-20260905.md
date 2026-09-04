@@ -68,6 +68,8 @@ CANVAS_PERF_REPORT=../.local/cache/canvas-performance-final.json bun scripts/can
 
 原始数据：[优化前性能样本](evidence/canvas-performance-20260905/baseline.json)、[优化后完整回归与性能样本](evidence/canvas-performance-20260905/optimized.json)。基线只运行 F 性能场景，13 项断言中 10 项通过、3 项失败；优化后运行 A–F，含新增预览/取消断言共 95 项。两份报告的总断言数不能直接用来计算通过率提升。
 
+用户随后授权了当前本地页面的直接操作验收，新增 24 项检查中 21 项通过、3 项未通过，发现大图刷新尺寸回退及相邻图形操作合并撤销两类既有问题。完整复现与边界见 [浏览器直接操作验收](canvas-live-validation-20260905.md)；此前 95 项通过不覆盖这两个新增场景。
+
 本轮也修正了验证脚本的两个等待条件：切页前等待本地保存完成；首屏图片检查等待解码完成。前者避免自动化切页产生 `beforeunload` 警告，后者避免把正在加载的图片误判成失败；原有错误断言仍保留。
 
 ## 回滚步骤
