@@ -39,7 +39,7 @@ var publicCanvasMetadataKeys = map[string]bool{
 	"generationMode": true, "generationType": true, "model": true, "size": true, "quality": true, "transparentBackground": true,
 	"count": true, "seconds": true, "vquality": true, "generateAudio": true, "watermark": true,
 	"audioVoice": true, "audioFormat": true, "audioSpeed": true, "audioInstructions": true,
-	"naturalWidth": true, "naturalHeight": true, "freeResize": true, "isBatchRoot": true,
+	"naturalWidth": true, "naturalHeight": true, "freeResize": true, "manualSize": true, "locked": true, "isBatchRoot": true,
 	"batchRootId": true, "batchChildIds": true, "batchUsesReferenceImages": true, "primaryImageId": true,
 	"imageBatchExpanded": true, "mimeType": true, "bytes": true, "durationMs": true, "assetTags": true,
 	"workflowKind": true, "workflowTitle": true, "workflowDescription": true, "shotIndex": true,

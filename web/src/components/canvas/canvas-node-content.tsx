@@ -696,7 +696,7 @@ function ImageContent({ node, theme, isBatchRoot, batchCount, batchExpanded, bat
      *
      * 判据是「用户有没有手动定过尺寸」，**不是**「有没有量过尺寸」——后者会让所有已经
      * 存过 naturalWidth 的旧节点永远得不到修正（第一版就是这么写的，所以没生效）。
-     * 手动拉过（manualSize）或自由比例（freeResize）的节点只补记尺寸、不动宽高。
+     * 手动拉过、自由比例或锁定的节点只补记尺寸、不动宽高。
      */
     const fitToImage = (element: HTMLImageElement) => {
         const naturalWidth = element.naturalWidth;
@@ -705,7 +705,7 @@ function ImageContent({ node, theme, isBatchRoot, batchCount, batchExpanded, bat
         if (node.metadata?.naturalWidth !== naturalWidth || node.metadata?.naturalHeight !== naturalHeight) {
             updateMetadata?.(node.id, { naturalWidth, naturalHeight });
         }
-        if (node.metadata?.freeResize || node.metadata?.manualSize) return;
+        if (node.metadata?.freeResize || node.metadata?.manualSize || node.metadata?.locked) return;
         const size = fitNodeSize(naturalWidth, naturalHeight);
         // 差不到 1px 就别动，避免无意义的状态写入。
         if (Math.abs(size.width - node.width) < 1 && Math.abs(size.height - node.height) < 1) return;

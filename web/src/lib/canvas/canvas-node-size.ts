@@ -36,12 +36,14 @@ export function nodeSizeFromRatio(size: string, baseWidth: number, baseHeight: n
 export function ensureMediaNodeMinimumSize(node: CanvasNodeData) {
     if (node.type !== CanvasNodeType.Image && node.type !== CanvasNodeType.Video) return node;
     const title = node.title === "New Generation" ? "图片" : node.title === "Video" ? "视频" : node.title;
+    // 恢复已有画布时，用户确定的布局优先于默认占位、比例修正和预览大小限制。
+    if (node.metadata?.manualSize || node.metadata?.freeResize || node.metadata?.locked) {
+        return title === node.title ? node : { ...node, title };
+    }
     let width = node.width;
     let height = node.height;
     const emptyStage = isBuiltinCanvasNodeType(node.type) ? NODE_DEFAULT_SIZE[node.type] : undefined;
     const shouldPromoteEmptyStage = !node.metadata?.content
-        && !node.metadata?.freeResize
-        && !node.metadata?.locked
         && emptyStage !== undefined
         && width * height < emptyStage.width * emptyStage.height;
     if (shouldPromoteEmptyStage) {
@@ -55,8 +57,8 @@ export function ensureMediaNodeMinimumSize(node: CanvasNodeData) {
         : null;
     const naturalRatio = naturalWidth / Math.max(1, naturalHeight);
     const nodeRatio = node.width / Math.max(1, node.height);
-    // 修复旧版图生图无条件继承参考节点尺寸造成的比例错误，不覆盖自由拉伸或锁定布局。
-    if (requestedSize && naturalWidth > 0 && naturalHeight > 0 && !node.metadata?.freeResize && !node.metadata?.locked && Math.abs(naturalRatio - nodeRatio) > 0.01) {
+    // 修复旧版图生图无条件继承参考节点尺寸造成的比例错误。
+    if (requestedSize && naturalWidth > 0 && naturalHeight > 0 && Math.abs(naturalRatio - nodeRatio) > 0.01) {
         const alignedSize = fitNodeSize(naturalWidth, naturalHeight, requestedSize.width, requestedSize.height);
         width = alignedSize.width;
         height = alignedSize.height;

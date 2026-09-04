@@ -49,6 +49,62 @@ func TestPublicCanvasProjectScrubsSecretsAndRewritesResources(t *testing.T) {
 	}
 }
 
+func TestPublicCanvasProjectPreservesMediaLayout(t *testing.T) {
+	for _, nodeType := range []string{"image", "video"} {
+		for _, layout := range []struct {
+			name       string
+			manualSize bool
+			locked     bool
+		}{
+			{name: "manual", manualSize: true},
+			{name: "locked", locked: true},
+			{name: "manual_and_locked", manualSize: true, locked: true},
+			{name: "automatic"},
+		} {
+			t.Run(nodeType+"/"+layout.name, func(t *testing.T) {
+				const width, height, x, y = 840.0, 482.222222, -250.666667, 983.333333
+				payload := map[string]any{
+					"id": "project-1",
+					"nodes": []any{map[string]any{
+						"id": "node-1", "type": nodeType, "title": "手工布局",
+						"width": width, "height": height, "position": map[string]any{"x": x, "y": y},
+						"metadata": map[string]any{
+							"manualSize": layout.manualSize, "locked": layout.locked,
+							"storageKey": "resource:resource_123", "apiKey": "secret", "taskId": "task-1", "unlistedField": "private",
+						},
+					}},
+				}
+				raw, err := json.Marshal(payload)
+				if err != nil {
+					t.Fatal(err)
+				}
+				public, _, err := publicCanvasProject(&model.CanvasProject{ID: "project-1", PayloadJSON: string(raw)}, "share-token")
+				if err != nil {
+					t.Fatal(err)
+				}
+				nodes, ok := public["nodes"].([]any)
+				if !ok || len(nodes) != 1 {
+					t.Fatalf("unexpected public nodes: %#v", public["nodes"])
+				}
+				node := nodes[0].(map[string]any)
+				position := node["position"].(map[string]any)
+				if node["width"] != width || node["height"] != height || position["x"] != x || position["y"] != y {
+					t.Fatalf("public share changed saved geometry: %#v", node)
+				}
+				metadata := node["metadata"].(map[string]any)
+				if metadata["manualSize"] != layout.manualSize || metadata["locked"] != layout.locked {
+					t.Fatalf("public share lost layout flags: %#v", metadata)
+				}
+				for _, key := range []string{"apiKey", "taskId", "storageKey", "unlistedField"} {
+					if _, exists := metadata[key]; exists {
+						t.Fatalf("public share retained private metadata %q", key)
+					}
+				}
+			})
+		}
+	}
+}
+
 func TestCanvasResourceIDRejectsInvalidValues(t *testing.T) {
 	for _, value := range []string{"resource:", "resource:../secret", "/api/resources/a%2Fb/file", "resource:" + strings.Repeat("a", 81)} {
 		if got := canvasResourceID(value); got != "" {
