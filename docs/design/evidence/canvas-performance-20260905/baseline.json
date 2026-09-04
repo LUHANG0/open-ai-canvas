@@ -1,0 +1,352 @@
+{
+  "environment": "Chrome headless / SwiftShader / Vite DEV / 1366x900 / DPR 1",
+  "results": [
+    {
+      "ok": true,
+      "name": "F drag detail 1 commits final position",
+      "detail": "{\"changed\":true,\"persisted\":true}"
+    },
+    {
+      "ok": true,
+      "name": "F drag detail 2 commits final position",
+      "detail": "{\"changed\":true,\"persisted\":true}"
+    },
+    {
+      "ok": true,
+      "name": "F drag detail 3 commits final position",
+      "detail": "{\"changed\":true,\"persisted\":true}"
+    },
+    {
+      "ok": true,
+      "name": "F resize detail visibly previews before release",
+      "detail": ""
+    },
+    {
+      "ok": true,
+      "name": "F resize detail commits final size",
+      "detail": "{\"changed\":true,\"persisted\":true}"
+    },
+    {
+      "ok": false,
+      "name": "F resize detail undo restores original size",
+      "detail": ""
+    },
+    {
+      "ok": true,
+      "name": "F drag overview 1 commits final position",
+      "detail": "{\"changed\":true,\"persisted\":true}"
+    },
+    {
+      "ok": true,
+      "name": "F drag overview 2 commits final position",
+      "detail": "{\"changed\":true,\"persisted\":true}"
+    },
+    {
+      "ok": true,
+      "name": "F drag overview 3 commits final position",
+      "detail": "{\"changed\":true,\"persisted\":true}"
+    },
+    {
+      "ok": false,
+      "name": "F resize overview visibly previews before release",
+      "detail": ""
+    },
+    {
+      "ok": false,
+      "name": "F resize overview commits final size",
+      "detail": "{\"changed\":false,\"persisted\":true}"
+    },
+    {
+      "ok": true,
+      "name": "F resize overview undo restores original size",
+      "detail": ""
+    },
+    {
+      "ok": true,
+      "name": "F no browser errors during performance gestures",
+      "detail": "[]"
+    }
+  ],
+  "samples": [
+    {
+      "kind": "drag",
+      "view": "detail",
+      "trial": 1,
+      "nodeId": "canvas-large-node-39",
+      "mountedNodes": 36,
+      "mountedConnections": 72,
+      "before": {
+        "x": 600,
+        "y": 420,
+        "width": 220,
+        "height": 130
+      },
+      "elapsedMs": 14783.600000023842,
+      "frames": 65,
+      "frameP50": 200,
+      "frameP95": 416.6000000000022,
+      "frameMax": 699.8999999999996,
+      "longTasks": 1,
+      "longTaskMs": 59,
+      "storeUpdates": 1,
+      "after": {
+        "x": 668.75,
+        "y": 463.75,
+        "width": 220,
+        "height": 130
+      },
+      "changed": true,
+      "persisted": true,
+      "previewChanged": true,
+      "updatesDuringGesture": 0,
+      "scriptMs": 1898.68,
+      "layoutMs": 4.505,
+      "taskMs": 2241.805
+    },
+    {
+      "kind": "drag",
+      "view": "detail",
+      "trial": 2,
+      "nodeId": "canvas-large-node-39",
+      "mountedNodes": 36,
+      "mountedConnections": 72,
+      "before": {
+        "x": 668.75,
+        "y": 463.75,
+        "width": 220,
+        "height": 130
+      },
+      "elapsedMs": 12692.5,
+      "frames": 65,
+      "frameP50": 183.39999999999782,
+      "frameP95": 233.29999999999927,
+      "frameMax": 450.09999999999854,
+      "longTasks": 1,
+      "longTaskMs": 73,
+      "storeUpdates": 1,
+      "after": {
+        "x": 737.5,
+        "y": 507.5,
+        "width": 220,
+        "height": 130
+      },
+      "changed": true,
+      "persisted": true,
+      "previewChanged": true,
+      "updatesDuringGesture": 0,
+      "scriptMs": 1766.012,
+      "layoutMs": 3.4479999999999986,
+      "taskMs": 2073.794
+    },
+    {
+      "kind": "drag",
+      "view": "detail",
+      "trial": 3,
+      "nodeId": "canvas-large-node-39",
+      "mountedNodes": 36,
+      "mountedConnections": 72,
+      "before": {
+        "x": 737.5,
+        "y": 507.5,
+        "width": 220,
+        "height": 130
+      },
+      "elapsedMs": 12503.599999904633,
+      "frames": 65,
+      "frameP50": 183.40000000000146,
+      "frameP95": 216.70000000000437,
+      "frameMax": 250.10000000000582,
+      "longTasks": 1,
+      "longTaskMs": 113,
+      "storeUpdates": 1,
+      "after": {
+        "x": 806.25,
+        "y": 551.25,
+        "width": 220,
+        "height": 130
+      },
+      "changed": true,
+      "persisted": true,
+      "previewChanged": true,
+      "updatesDuringGesture": 0,
+      "scriptMs": 1792.8840000000005,
+      "layoutMs": 4.7410000000000005,
+      "taskMs": 2101.7580000000003
+    },
+    {
+      "kind": "resize",
+      "view": "detail",
+      "trial": 1,
+      "nodeId": "canvas-large-node-39",
+      "mountedNodes": 36,
+      "mountedConnections": 72,
+      "before": {
+        "x": 806.25,
+        "y": 551.25,
+        "width": 220,
+        "height": 130
+      },
+      "elapsedMs": 18413.5,
+      "frames": 63,
+      "frameP50": 266.59999999999854,
+      "frameP95": 466.70000000000437,
+      "frameMax": 583.3000000000029,
+      "longTasks": 18,
+      "longTaskMs": 1528,
+      "storeUpdates": 53,
+      "after": {
+        "x": 806.25,
+        "y": 551.25,
+        "width": 282.5,
+        "height": 167.5
+      },
+      "changed": true,
+      "persisted": true,
+      "previewChanged": true,
+      "updatesDuringGesture": 52,
+      "scriptMs": 4352.199999999999,
+      "layoutMs": 17.805,
+      "taskMs": 5044.018999999999
+    },
+    {
+      "kind": "drag",
+      "view": "overview",
+      "trial": 1,
+      "nodeId": "canvas-large-node-172",
+      "mountedNodes": 324,
+      "mountedConnections": 612,
+      "before": {
+        "x": 2700,
+        "y": 1890,
+        "width": 220,
+        "height": 130
+      },
+      "elapsedMs": 12413.899999976158,
+      "frames": 65,
+      "frameP50": 166.6999999999971,
+      "frameP95": 316.6999999999971,
+      "frameMax": 516.6999999999971,
+      "longTasks": 10,
+      "longTaskMs": 618,
+      "storeUpdates": 1,
+      "after": {
+        "x": 3000,
+        "y": 2100,
+        "width": 220,
+        "height": 130
+      },
+      "changed": true,
+      "persisted": true,
+      "previewChanged": true,
+      "updatesDuringGesture": 0,
+      "scriptMs": 2640.288,
+      "layoutMs": 7.830000000000004,
+      "taskMs": 3381.582999999999
+    },
+    {
+      "kind": "drag",
+      "view": "overview",
+      "trial": 2,
+      "nodeId": "canvas-large-node-172",
+      "mountedNodes": 324,
+      "mountedConnections": 612,
+      "before": {
+        "x": 3000,
+        "y": 2100,
+        "width": 220,
+        "height": 130
+      },
+      "elapsedMs": 10903.900000095367,
+      "frames": 63,
+      "frameP50": 166.60000000000582,
+      "frameP95": 266.70000000001164,
+      "frameMax": 350,
+      "longTasks": 8,
+      "longTaskMs": 627,
+      "storeUpdates": 1,
+      "after": {
+        "x": 3300,
+        "y": 2310,
+        "width": 220,
+        "height": 130
+      },
+      "changed": true,
+      "persisted": true,
+      "previewChanged": true,
+      "updatesDuringGesture": 0,
+      "scriptMs": 2564.069000000002,
+      "layoutMs": 5.817000000000003,
+      "taskMs": 3357.437000000001
+    },
+    {
+      "kind": "drag",
+      "view": "overview",
+      "trial": 3,
+      "nodeId": "canvas-large-node-172",
+      "mountedNodes": 324,
+      "mountedConnections": 612,
+      "before": {
+        "x": 3300,
+        "y": 2310,
+        "width": 220,
+        "height": 130
+      },
+      "elapsedMs": 12157.799999952316,
+      "frames": 66,
+      "frameP50": 166.70000000001164,
+      "frameP95": 216.60000000000582,
+      "frameMax": 416.6999999999971,
+      "longTasks": 6,
+      "longTaskMs": 534,
+      "storeUpdates": 1,
+      "after": {
+        "x": 3600,
+        "y": 2520,
+        "width": 220,
+        "height": 130
+      },
+      "changed": true,
+      "persisted": true,
+      "previewChanged": true,
+      "updatesDuringGesture": 0,
+      "scriptMs": 2578.6250000000023,
+      "layoutMs": 9.001999999999995,
+      "taskMs": 3289.8630000000003
+    },
+    {
+      "kind": "resize",
+      "view": "overview",
+      "trial": 1,
+      "nodeId": "canvas-large-node-172",
+      "mountedNodes": 324,
+      "mountedConnections": 612,
+      "before": {
+        "x": 3600,
+        "y": 2520,
+        "width": 220,
+        "height": 130
+      },
+      "elapsedMs": 6090.800000071526,
+      "frames": 69,
+      "frameP50": 66.70000000001164,
+      "frameP95": 150,
+      "frameMax": 233.30000000001746,
+      "longTasks": 1,
+      "longTaskMs": 155,
+      "storeUpdates": 1,
+      "after": {
+        "x": 3600,
+        "y": 2520,
+        "width": 220,
+        "height": 130
+      },
+      "changed": false,
+      "persisted": true,
+      "previewChanged": false,
+      "updatesDuringGesture": 0,
+      "scriptMs": 1462.128,
+      "layoutMs": 3.4249999999999976,
+      "taskMs": 1982.2009999999998
+    }
+  ]
+}
