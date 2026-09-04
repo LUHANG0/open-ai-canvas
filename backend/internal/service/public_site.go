@@ -96,6 +96,14 @@ type UpdatePublicSiteRequest struct {
 	Config           PublicSiteConfig `json:"config"`
 }
 
+type UpdateSiteDisplayRequest struct {
+	ExpectedRevision int64  `json:"expectedRevision"`
+	PosterURL        string `json:"posterUrl"`
+	ContactURL       string `json:"contactUrl"`
+	ICPText          string `json:"icpText"`
+	ICPURL           string `json:"icpUrl"`
+}
+
 type publicSiteSettingValue struct {
 	Revision          int64            `json:"revision"`
 	PublishedRevision int64            `json:"publishedRevision"`
@@ -183,6 +191,22 @@ func (s *Service) PublishPublicSite(actor *model.User, expectedRevision int64) (
 		value.Published = value.Draft
 		value.PublishedRevision = value.Revision + 1
 	}, "public_site.publish", "发布官网内容")
+}
+
+func (s *Service) UpdateSiteDisplay(actor *model.User, req UpdateSiteDisplayRequest) (*AdminPublicSiteSetting, error) {
+	if err := s.RequireAdmin(actor); err != nil {
+		return nil, err
+	}
+	return s.writePublicSiteSetting(actor, req.ExpectedRevision, func(value *publicSiteSettingValue) {
+		// Apply only the exposed settings; unrelated legacy drafts remain unpublished.
+		for _, config := range []*PublicSiteConfig{&value.Draft, &value.Published} {
+			config.Hero.PosterURL = req.PosterURL
+			config.Links.ContactURL = req.ContactURL
+			config.Links.ICPText = req.ICPText
+			config.Links.ICPURL = req.ICPURL
+		}
+		value.PublishedRevision = value.Revision + 1
+	}, "public_site.display.update", "更新网站封面、联系与备案设置")
 }
 
 func (s *Service) ResetPublicSiteDraft(actor *model.User, expectedRevision int64) (*AdminPublicSiteSetting, error) {

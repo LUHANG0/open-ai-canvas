@@ -217,7 +217,27 @@
 
 .admin-branding-editor-sheet {
     flex: 1;
+    min-width: 0;
+    margin: 0;
+    border: 0;
     padding: 0 28px;
+}
+
+.admin-branding-brand-editor {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-width: 0;
+}
+.admin-branding-site-editor {
+    min-width: 0;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+.admin-branding-brand-editor[hidden],
+.admin-branding-site-editor[hidden] {
+    display: none;
 }
 
 .admin-branding-panel {

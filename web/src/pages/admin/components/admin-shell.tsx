@@ -81,8 +81,7 @@ const adminNavigation: Array<{ label: string; items: AdminNavigationItem[] }> = 
     {
         label: "系统配置",
         items: [
-            { path: "/admin/settings/branding", label: "品牌中心", description: "品牌资料与登录页", icon: <Palette className="size-4" /> },
-            { path: "/admin/settings/public-site", label: "官网内容", description: "品牌官网、作品与内容发布", icon: <Home className="size-4" /> },
+            { path: "/admin/settings/branding", label: "网站设置", description: "品牌、登录页与备案信息", icon: <Palette className="size-4" /> },
             { path: "/admin/settings/features", label: "功能开放", description: "工作台、插件与模型能力", icon: <ToggleLeft className="size-4" /> },
             { path: "/admin/settings/drawing-engine", label: "绘图工具", description: "画布绘图节点默认引擎", icon: <Paintbrush className="size-4" /> },
             { path: "/admin/settings/runtime-policy", label: "资源与策略", description: "配额、并发、频控与超时", icon: <Settings2 className="size-4" /> },

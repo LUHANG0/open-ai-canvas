@@ -61,6 +61,26 @@ func RegisterPublicSiteRoutes(r *gin.RouterGroup, svc *service.Service) {
 		ok(c, gin.H{"setting": setting})
 	})
 
+	r.PATCH("/admin/settings/site-display", func(c *gin.Context) {
+		user, err := currentUser(c, svc)
+		if err != nil {
+			failService(c, err)
+			return
+		}
+		c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 16<<10)
+		var req service.UpdateSiteDisplayRequest
+		if err := c.ShouldBindJSON(&req); err != nil {
+			fail(c, http.StatusBadRequest, err)
+			return
+		}
+		setting, err := svc.UpdateSiteDisplay(user, req)
+		if err != nil {
+			failService(c, err)
+			return
+		}
+		ok(c, gin.H{"setting": setting})
+	})
+
 	r.POST("/admin/settings/public-site/publish", func(c *gin.Context) {
 		user, err := currentUser(c, svc)
 		if err != nil {

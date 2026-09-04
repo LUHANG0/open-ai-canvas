@@ -30,7 +30,6 @@ const ResponseInterceptionSettingsPage = lazy(() => import("@/pages/admin/settin
 const ThirdPartySettingsPage = lazy(() => import("@/pages/admin/settings/libtv-settings-page"));
 const SystemUpdatePage = lazy(() => import("@/pages/admin/settings/system-update-page"));
 const BrandingSettingsPage = lazy(() => import("@/pages/admin/settings/branding-settings-page"));
-const PublicSiteSettingsPage = lazy(() => import("@/pages/admin/settings/public-site-settings-page"));
 const PublicSiteLayout = lazy(() => import("@/pages/public-site/layout"));
 const PublicHomePage = lazy(() => import("@/pages/public-site/home"));
 const PublicProductPage = lazy(() => import("@/pages/public-site/product"));
@@ -211,7 +210,7 @@ export const router = createBrowserRouter([
                     { path: "logs", element: deferred(<LogsPage />) },
                     { path: "settings", element: <Navigate to="runtime-policy" replace /> },
                     { path: "settings/branding", element: deferred(<BrandingSettingsPage />) },
-                    { path: "settings/public-site", element: deferred(<PublicSiteSettingsPage />) },
+                    { path: "settings/public-site", element: <Navigate to="/admin/settings/branding?section=website" replace /> },
                     { path: "settings/drawing-engine", element: deferred(<DrawingEngineSettingsPage />) },
                     { path: "settings/concurrency", element: <Navigate to="/admin/settings/runtime-policy" replace /> },
                     { path: "settings/runtime-policy", element: deferred(<RuntimePolicySettingsPage />) },

@@ -4,6 +4,8 @@
 
 ## 设计沉淀
 
+- [网站设置精简](design/website-settings-simplification-20260905.md)：删除独立官网 CMS，保留四个常用分区，以及封面、联系和备案的限定字段保存。
+
 - [品牌官网与整页登录](design/public-brand-launch-20260905.md)：电影感公开页面、居中登录、Logo 与素材来源、备案草稿发布及验证记录。
 
 - [PC 画布全流程检查与优化方案（2026-09-02）](design/2026-09-02_canvas-interaction-audit-report.md)：R15 基线的入口盘点、实测问题、代码风险、分阶段优化与集中验收清单；本轮未修改产品代码。

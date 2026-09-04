@@ -8,23 +8,24 @@ test("brand pages are public while workspace and content settings keep their exi
     expect(router).toContain("<PublicSiteLayout />");
     expect(router).toContain("<PublicHomePage />");
     expect(router).toContain('{ path: "/home", element: <RequireAuth>');
-    expect(router).toContain('{ path: "settings/public-site", element: deferred(<PublicSiteSettingsPage />) }');
-    expect(adminShell).toContain('path: "/admin/settings/public-site"');
+    expect(router).toContain('{ path: "settings/public-site", element: <Navigate to="/admin/settings/branding?section=website" replace /> }');
+    expect(adminShell).not.toContain('path: "/admin/settings/public-site"');
+    expect(adminShell).toContain('label: "网站设置"');
     expect(router).toContain('path: "/admin",');
     expect(router).toContain("<RequireAuth>{deferred(<AdminPage />)}</RequireAuth>");
 });
 
-test("public content keeps draft and published states separate", async () => {
+test("site display saves only exposed settings and leaves legacy publishing out of the editor", async () => {
     const [api, admin, provider] = await Promise.all([
         Bun.file(new URL("../src/services/api/public-site.ts", import.meta.url)).text(),
-        Bun.file(new URL("../src/pages/admin/settings/public-site-settings-page.tsx", import.meta.url)).text(),
+        Bun.file(new URL("../src/pages/admin/settings/site-display-settings.tsx", import.meta.url)).text(),
         Bun.file(new URL("../src/components/public-site/public-site-provider.tsx", import.meta.url)).text(),
     ]);
-    expect(api).toContain('patch("/admin/settings/public-site"');
-    expect(api).toContain('post("/admin/settings/public-site/publish"');
-    expect(api).toContain('post("/admin/settings/public-site/reset"');
-    expect(admin).toContain("保存草稿不会影响公开官网");
-    expect(admin).toContain("localDirty || !setting.dirty");
+    expect(api).toContain('patch("/admin/settings/site-display"');
+    expect(admin).toContain("updateAdminSiteDisplay(setting.revision, draft)");
+    expect(admin).toContain("setting.published.hero.posterUrl");
+    expect(admin).not.toContain("publishAdminPublicSite");
+    expect(admin).not.toContain("updateAdminPublicSiteDraft");
     expect(provider).toContain("PUBLIC_SITE_CACHE_KEY");
     expect(provider).toContain("Public marketing content must not block login");
 });

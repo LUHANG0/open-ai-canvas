@@ -74,14 +74,8 @@ export function getAdminPublicSite() {
     return request<{ setting: AdminPublicSiteSetting }>(apiClient.get("/admin/settings/public-site"));
 }
 
-export function updateAdminPublicSiteDraft(expectedRevision: number, config: PublicSiteConfig) {
-    return request<{ setting: AdminPublicSiteSetting }>(apiClient.patch("/admin/settings/public-site", { expectedRevision, config }));
-}
+export type SiteDisplaySettings = { posterUrl: string; contactUrl: string; icpText: string; icpUrl: string };
 
-export function publishAdminPublicSite(expectedRevision: number) {
-    return request<{ setting: AdminPublicSiteSetting }>(apiClient.post("/admin/settings/public-site/publish", { expectedRevision }));
-}
-
-export function resetAdminPublicSiteDraft(expectedRevision: number) {
-    return request<{ setting: AdminPublicSiteSetting }>(apiClient.post("/admin/settings/public-site/reset", { expectedRevision }));
+export function updateAdminSiteDisplay(expectedRevision: number, settings: SiteDisplaySettings) {
+    return request<{ setting: AdminPublicSiteSetting }>(apiClient.patch("/admin/settings/site-display", { expectedRevision, ...settings }));
 }

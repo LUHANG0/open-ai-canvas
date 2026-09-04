@@ -93,6 +93,81 @@ func TestPublicSiteValidation(t *testing.T) {
 	}
 }
 
+func TestSiteDisplayPreservesOtherDraftsAndPublishesOnlyDisplay(t *testing.T) {
+	svc, db := newBrandingTestService(t)
+	admin := &model.User{ID: "admin", Role: model.UserRoleAdmin, Status: model.UserStatusActive}
+	draft := DefaultPublicSiteConfig()
+	draft.Hero.Title = "尚未发布的官网标题"
+	_, err := svc.UpdatePublicSiteDraft(admin, UpdatePublicSiteRequest{ExpectedRevision: 0, Config: draft})
+	if err != nil {
+		t.Fatal(err)
+	}
+	request := UpdateSiteDisplayRequest{ExpectedRevision: 1, PosterURL: " /brand/last-train-wide.webp ", ContactURL: "https://example.com/contact", ICPText: " 自动化测试备案文字 ", ICPURL: ""}
+	updated, err := svc.UpdateSiteDisplay(admin, request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if updated.PublishedRevision != 2 || updated.Revision != 2 || !updated.Dirty {
+		t.Fatalf("unexpected revisions/state: %+v", updated)
+	}
+	if updated.Draft.Hero.Title != draft.Hero.Title || updated.Published.Hero.Title != DefaultPublicSiteConfig().Hero.Title {
+		t.Fatal("unrelated title was overwritten or published")
+	}
+	public, err := svc.PublicSite()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if public.Config.Hero.PosterURL != "/brand/last-train-wide.webp" || public.Config.Links.ICPText != "自动化测试备案文字" || public.Config.Links.ICPURL != "https://beian.miit.gov.cn/" || public.Config.Links.ContactURL != request.ContactURL {
+		t.Fatalf("display not published: %+v", public.Config)
+	}
+	if updated.Draft.Links.ICPText != public.Config.Links.ICPText {
+		t.Fatal("later draft publish would undo filing settings")
+	}
+	_, err = svc.UpdateSiteDisplay(admin, request)
+	var conflict *AppError
+	if !errors.As(err, &conflict) || conflict.Status != http.StatusConflict {
+		t.Fatalf("stale update: %v", err)
+	}
+	cleared, err := svc.UpdateSiteDisplay(admin, UpdateSiteDisplayRequest{ExpectedRevision: 2})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cleared.Published.Links.ICPText != "" || cleared.Published.Links.ContactURL != "" || cleared.Published.Hero.PosterURL != "" || cleared.Draft.Hero.Title != draft.Hero.Title {
+		t.Fatal("clearing display damaged unrelated settings")
+	}
+	var count int64
+	if err := db.Model(&model.AdminAuditEvent{}).Where("action = ?", "public_site.display.update").Count(&count).Error; err != nil {
+		t.Fatal(err)
+	}
+	if count != 2 {
+		t.Fatalf("display audits = %d", count)
+	}
+}
+
+func TestSiteDisplayRejectsInvalidAndNonAdminUpdates(t *testing.T) {
+	svc, _ := newBrandingTestService(t)
+	admin := &model.User{ID: "admin", Role: model.UserRoleAdmin, Status: model.UserStatusActive}
+	for _, req := range []UpdateSiteDisplayRequest{
+		{ICPURL: "javascript:alert(1)"}, {ICPText: strings.Repeat("备", 121)}, {PosterURL: "javascript:alert(1)"}, {ContactURL: "https://user:pass@example.com"},
+	} {
+		if _, err := svc.UpdateSiteDisplay(admin, req); err == nil {
+			t.Fatalf("accepted invalid display: %+v", req)
+		}
+	}
+	for _, actor := range []*model.User{nil, {ID: "user", Role: model.UserRoleUser, Status: model.UserStatusActive}} {
+		if _, err := svc.UpdateSiteDisplay(actor, UpdateSiteDisplayRequest{}); err == nil {
+			t.Fatal("accepted non-admin update")
+		}
+	}
+	public, err := svc.PublicSite()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if public.Revision != 0 {
+		t.Fatal("rejected update changed published state")
+	}
+}
+
 func TestPublicSiteICPDraftIsPrivateUntilPublished(t *testing.T) {
 	svc, _ := newBrandingTestService(t)
 	admin := &model.User{ID: "admin", Role: model.UserRoleAdmin, Status: model.UserStatusActive}
