@@ -3682,6 +3682,7 @@ html:not(.dark) .creation-media-preview-modal.is-video .ant-modal-container {
 
     .creation-home .creation-thread-composer {
         width: min(980px, calc(100% - 48px));
+        border-top: 0;
         padding: 8px 0 12px;
     }
 
