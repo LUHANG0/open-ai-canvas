@@ -1,10 +1,10 @@
 import { type FormEvent, useEffect, useState, type ReactNode } from "react";
 import { App, Button, Divider, Input } from "antd";
-import { ArrowRight, Info, LockKeyhole, Mail, ShieldCheck, TriangleAlert, UserRound } from "lucide-react";
+import { ArrowRight, Info, LockKeyhole, Mail, RotateCcw, ShieldCheck, TriangleAlert, UserRound } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router";
 
 import { applyUserSession } from "@/lib/user-session";
-import { getAuthSession, linuxDOLoginURL, register, sendRegistrationEmailCode } from "@/services/api/auth";
+import { exchangeRegistrationInvite, getAuthSession, linuxDOLoginURL, register, sendRegistrationEmailCode, type RegistrationInviteStatus } from "@/services/api/auth";
 import { AuthField, LinuxDOIcon } from "./auth-fields";
 import { useAuthSettings } from "./auth-settings-provider";
 
@@ -22,7 +22,42 @@ export default function RegisterPage() {
     const [submitting, setSubmitting] = useState(false);
     const [sendingCode, setSendingCode] = useState(false);
     const [countdown, setCountdown] = useState(0);
+    const [inviteStatus, setInviteStatus] = useState<RegistrationInviteStatus | "loading" | "network-error" | null>(null);
+    const [inviteError, setInviteError] = useState("");
+    const [inviteRetry, setInviteRetry] = useState(0);
+    const inviteToken = params.get("invite");
+    const isInviteFlow = inviteToken !== null || params.get("invited") === "1";
     const next = safeNext(params.get("next"));
+
+    useEffect(() => {
+        if (!isInviteFlow) {
+            setInviteStatus(null);
+            setInviteError("");
+            return;
+        }
+        let active = true;
+        setInviteStatus("loading");
+        setInviteError("");
+        void exchangeRegistrationInvite(inviteToken || undefined)
+            .then((result) => {
+                if (!active) return;
+                setInviteStatus(result.status);
+                if (inviteToken !== null) {
+                    const nextParams = new URLSearchParams(params);
+                    nextParams.delete("invite");
+                    nextParams.set("invited", "1");
+                    navigate({ pathname: "/register", search: nextParams.toString() }, { replace: true });
+                }
+            })
+            .catch((error) => {
+                if (!active) return;
+                setInviteStatus("network-error");
+                setInviteError(error instanceof Error ? error.message : "暂时无法验证邀请");
+            });
+        return () => {
+            active = false;
+        };
+    }, [inviteRetry, inviteToken, isInviteFlow, navigate, params]);
 
     useEffect(() => {
         if (countdown <= 0) return;
@@ -58,23 +93,78 @@ export default function RegisterPage() {
             await register({ username, email, emailCode, displayName, password });
             await applyUserSession(await getAuthSession());
             if (!settings?.firstUser) window.sessionStorage.setItem("infinite-canvas:model-setup-guide", "1");
-            message.success(settings?.firstUser ? "管理员账号已创建" : "注册成功");
+            message.success(isInviteFlow ? "受邀注册成功" : settings?.firstUser ? "管理员账号已创建" : "注册成功");
             navigate(next, { replace: true });
         } catch (error) {
-            message.error(error instanceof Error ? error.message : "注册失败");
+            const errorMessage = error instanceof Error ? error.message : "注册失败";
+            if (isInviteFlow) {
+                if (errorMessage.includes("已过期")) setInviteStatus("expired");
+                else if (errorMessage.includes("已使用")) setInviteStatus("used");
+                else if (errorMessage.includes("已撤销")) setInviteStatus("revoked");
+                else if (errorMessage.includes("邀请无效")) setInviteStatus("invalid");
+            }
+            message.error(errorMessage);
         } finally {
             setSubmitting(false);
         }
     };
 
-    const registrationClosed = settings?.registrationEnabled === false;
-    const mailUnavailable = Boolean(settings && !settings.firstUser && settings.emailCodeRequired && !settings.emailEnabled);
-    const disabled = settingsLoading || registrationClosed || mailUnavailable || !settings;
-    const requireCode = Boolean(settings && !settings.firstUser && settings.emailCodeRequired);
+    const registrationClosed = !isInviteFlow && settings?.registrationEnabled === false;
+    const mailUnavailable = Boolean(!isInviteFlow && settings && !settings.firstUser && settings.emailCodeRequired && !settings.emailEnabled);
+    const disabled = settingsLoading || registrationClosed || mailUnavailable || !settings || (isInviteFlow && inviteStatus !== "pending");
+    const requireCode = Boolean(!isInviteFlow && settings && !settings.firstUser && settings.emailCodeRequired);
     const goToLogin = () => {
         const query = params.toString();
         navigate(`/login${query ? `?${query}` : ""}`);
     };
+
+    if (isInviteFlow && inviteStatus === "loading") {
+        return (
+            <div className="pc-auth-state-panel" aria-busy="true" aria-live="polite">
+                <span className="pc-auth-state-spinner" aria-hidden="true" />
+                <h3>正在验证邀请</h3>
+                <p>凭证将交换为短期安全 Cookie，验证后会从地址栏移除。</p>
+            </div>
+        );
+    }
+
+    if (isInviteFlow && inviteStatus === "network-error") {
+        return (
+            <div className="pc-auth-state-panel" role="alert">
+                <TriangleAlert aria-hidden="true" />
+                <h3>暂时无法验证邀请</h3>
+                <p>{inviteError || "网络可能未就绪，请重试或返回登录。"}</p>
+                <div className="flex flex-wrap justify-center gap-2">
+                    <Button icon={<RotateCcw className="size-4" />} onClick={() => setInviteRetry((value) => value + 1)}>
+                        重新验证
+                    </Button>
+                    <Button type="primary" onClick={goToLogin}>
+                        返回登录
+                    </Button>
+                </div>
+            </div>
+        );
+    }
+
+    if (isInviteFlow && isTerminalInviteStatus(inviteStatus)) {
+        const stateCopy: Record<Exclude<RegistrationInviteStatus, "pending">, { title: string; detail: string }> = {
+            invalid: { title: "邀请链接无效", detail: "请检查链接是否完整，或联系管理员重新创建邀请。" },
+            expired: { title: "邀请已过期", detail: "该邀请已超过有效期，请联系管理员获取新链接。" },
+            used: { title: "邀请已使用", detail: "该邀请只能使用一次。如果你已注册，请直接登录。" },
+            revoked: { title: "邀请已撤销", detail: "管理员已终止该邀请，请联系管理员确认。" },
+        };
+        const copy = stateCopy[inviteStatus];
+        return (
+            <div className="pc-auth-state-panel" role="status">
+                <TriangleAlert aria-hidden="true" />
+                <h3>{copy.title}</h3>
+                <p>{copy.detail}</p>
+                <Button className="pc-auth-submit" type="primary" icon={<ArrowRight className="size-4" />} iconPlacement="end" onClick={goToLogin}>
+                    返回登录
+                </Button>
+            </div>
+        );
+    }
 
     if (settingsLoading && !settings) {
         return (
@@ -122,6 +212,11 @@ export default function RegisterPage() {
                     首个账号自动成为管理员，邮箱验证码暂不要求。
                 </Notice>
             ) : null}
+            {isInviteFlow ? (
+                <Notice icon={<Info className="size-3.5" />} tone="blue">
+                    邀请只能创建普通用户。邮箱可选，本次不需要邮件验证码。
+                </Notice>
+            ) : null}
             <div className="grid gap-4 sm:grid-cols-2">
                 <AuthField label="用户名">
                     <Input size="large" prefix={<UserRound className="pc-auth-field-icon size-4" />} value={username} onChange={(event) => setUsername(event.target.value)} placeholder="3-32 位字符" autoComplete="username" required disabled={disabled} />
@@ -139,7 +234,7 @@ export default function RegisterPage() {
                     onChange={(event) => setEmail(event.target.value)}
                     placeholder="用于登录与安全验证"
                     autoComplete="email"
-                    required={!settings?.firstUser}
+                    required={!settings?.firstUser && !isInviteFlow}
                     disabled={disabled}
                 />
             </AuthField>
@@ -200,7 +295,7 @@ export default function RegisterPage() {
             <Button className="pc-auth-submit" type="primary" htmlType="submit" size="large" block loading={submitting} disabled={disabled} icon={<ArrowRight className="size-4" />} iconPlacement="end">
                 创建账号
             </Button>
-            {settings?.linuxdoEnabled ? (
+            {settings?.linuxdoEnabled && !isInviteFlow ? (
                 <>
                     <Divider plain className="pc-auth-divider">
                         或
@@ -229,4 +324,8 @@ function Notice({ icon, tone, children }: { icon: ReactNode; tone: "blue" | "amb
 function safeNext(value: string | null) {
     if (!value || !value.startsWith("/") || value.startsWith("//")) return "/create";
     return value;
+}
+
+function isTerminalInviteStatus(status: RegistrationInviteStatus | "loading" | "network-error" | null): status is Exclude<RegistrationInviteStatus, "pending"> {
+    return status === "invalid" || status === "expired" || status === "used" || status === "revoked";
 }

@@ -1,5 +1,5 @@
 import { App, Button, Checkbox, Dropdown, Input, Select } from "antd";
-import { Ban, Search, Settings2, UserPlus } from "lucide-react";
+import { Ban, Link2, Search, Settings2, UserPlus } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { PaginationBar } from "@/components/layout/workspace-page";
@@ -11,6 +11,7 @@ import { useTableUrlState } from "../lib/use-table-url-state";
 import { AdminUserDetailDrawer } from "../components/admin-user-detail-drawer";
 import { createUserColumns, userColumnOptions, type UserColumnKey } from "./users-columns";
 import { AdminUserCreateDrawer, AdminUserEditDrawer } from "./users-drawer";
+import { RegistrationInviteDrawer } from "./registration-invite-drawer";
 
 const columnStorageKey = "admin-users-visible-columns";
 const allColumnKeys = userColumnOptions.map((item) => item.key);
@@ -26,6 +27,7 @@ export default function UsersPanel({ onUserChanged }: { onUserChanged?: (user: L
     const [detailUserId, setDetailUserId] = useState<string | null>(null);
     const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
     const [createUserOpen, setCreateUserOpen] = useState(false);
+    const [inviteDrawerOpen, setInviteDrawerOpen] = useState(false);
     const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
     const [bulkDisabling, setBulkDisabling] = useState(false);
     const [visibleColumns, setVisibleColumns] = useState<Set<UserColumnKey>>(() => {
@@ -73,41 +75,57 @@ export default function UsersPanel({ onUserChanged }: { onUserChanged?: (user: L
             });
     }, [debouncedFilter, message, state.page, state.pageSize, state.role, state.status, update]);
 
-    const replaceUser = useCallback((nextUser: LocalUser) => {
-        setUsers((items) => items.map((item) => item.id === nextUser.id ? { ...item, ...nextUser } : item));
-        onUserChanged?.(nextUser);
-    }, [onUserChanged]);
+    const replaceUser = useCallback(
+        (nextUser: LocalUser) => {
+            setUsers((items) => items.map((item) => (item.id === nextUser.id ? { ...item, ...nextUser } : item)));
+            onUserChanged?.(nextUser);
+        },
+        [onUserChanged],
+    );
 
-    const addUser = useCallback((user: AdminUser) => {
-        setUsers((items) => [user, ...items].slice(0, state.pageSize));
-        setTotal((value) => value + 1);
-        onUserChanged?.(user);
-        setCreateUserOpen(false);
-    }, [onUserChanged, state.pageSize]);
+    const addUser = useCallback(
+        (user: AdminUser) => {
+            setUsers((items) => [user, ...items].slice(0, state.pageSize));
+            setTotal((value) => value + 1);
+            onUserChanged?.(user);
+            setCreateUserOpen(false);
+        },
+        [onUserChanged, state.pageSize],
+    );
 
-    const toggleStatus = useCallback(async (user: AdminUser) => {
-        try {
-            if (user.status === "active") {
-                await deleteAdminUser(user.id);
-                replaceUser({ ...user, status: "disabled" });
-                message.success("用户已停用并清除登录状态");
-                return;
+    const toggleStatus = useCallback(
+        async (user: AdminUser) => {
+            try {
+                if (user.status === "active") {
+                    await deleteAdminUser(user.id);
+                    replaceUser({ ...user, status: "disabled" });
+                    message.success("用户已停用并清除登录状态");
+                    return;
+                }
+                const result = await updateAdminUser(user.id, { status: "active" });
+                replaceUser(result.user);
+                message.success("用户已重新启用");
+            } catch (error) {
+                message.error(error instanceof Error ? error.message : "更新用户状态失败");
             }
-            const result = await updateAdminUser(user.id, { status: "active" });
-            replaceUser(result.user);
-            message.success("用户已重新启用");
-        } catch (error) {
-            message.error(error instanceof Error ? error.message : "更新用户状态失败");
-        }
-    }, [message, replaceUser]);
+        },
+        [message, replaceUser],
+    );
 
-    const columns = useMemo(() => createUserColumns({
-        actorId: actor?.id,
-        visibleColumns,
-        onView: (user) => setDetailUserId(user.id),
-        onEdit: (user) => { setCreateUserOpen(false); setEditingUser(user); },
-        onToggleStatus: toggleStatus,
-    }), [actor?.id, toggleStatus, visibleColumns]);
+    const columns = useMemo(
+        () =>
+            createUserColumns({
+                actorId: actor?.id,
+                visibleColumns,
+                onView: (user) => setDetailUserId(user.id),
+                onEdit: (user) => {
+                    setCreateUserOpen(false);
+                    setEditingUser(user);
+                },
+                onToggleStatus: toggleStatus,
+            }),
+        [actor?.id, toggleStatus, visibleColumns],
+    );
 
     const resetFilters = () => update({ filter: "", role: "all", status: "all", page: 1 });
 
@@ -158,21 +176,40 @@ export default function UsersPanel({ onUserChanged }: { onUserChanged?: (user: L
                             aria-label="筛选用户角色"
                             className="w-32"
                             value={state.role}
-                            options={[{ value: "all", label: "全部角色" }, { value: "admin", label: "管理员" }, { value: "user", label: "普通用户" }]}
+                            options={[
+                                { value: "all", label: "全部角色" },
+                                { value: "admin", label: "管理员" },
+                                { value: "user", label: "普通用户" },
+                            ]}
                             onChange={(role) => update({ role, page: 1 })}
                         />
                         <Select
                             aria-label="筛选用户状态"
                             className="w-32"
                             value={state.status}
-                            options={[{ value: "all", label: "全部状态" }, { value: "active", label: "已启用" }, { value: "disabled", label: "已停用" }]}
+                            options={[
+                                { value: "all", label: "全部状态" },
+                                { value: "active", label: "已启用" },
+                                { value: "disabled", label: "已停用" },
+                            ]}
                             onChange={(status) => update({ status, page: 1 })}
                         />
                     </>
                 }
                 trailing={
                     <div className="flex items-center gap-2">
-                        <Button icon={<UserPlus className="size-4" />} onClick={() => { setEditingUser(null); setCreateUserOpen(true); }}>{"\u6dfb\u52a0\u7528\u6237"}</Button>
+                        <Button type="primary" icon={<Link2 className="size-4" />} onClick={() => setInviteDrawerOpen(true)}>
+                            邀请注册
+                        </Button>
+                        <Button
+                            icon={<UserPlus className="size-4" />}
+                            onClick={() => {
+                                setEditingUser(null);
+                                setCreateUserOpen(true);
+                            }}
+                        >
+                            {"\u6dfb\u52a0\u7528\u6237"}
+                        </Button>
                         <Dropdown
                             trigger={["click"]}
                             popupRender={() => (
@@ -184,12 +221,14 @@ export default function UsersPanel({ onUserChanged }: { onUserChanged?: (user: L
                                                 <Checkbox
                                                     checked={visibleColumns.has(option.key)}
                                                     disabled={option.locked}
-                                                    onChange={(event) => setVisibleColumns((current) => {
-                                                        const next = new Set(current);
-                                                        if (event.target.checked) next.add(option.key);
-                                                        else next.delete(option.key);
-                                                        return next;
-                                                    })}
+                                                    onChange={(event) =>
+                                                        setVisibleColumns((current) => {
+                                                            const next = new Set(current);
+                                                            if (event.target.checked) next.add(option.key);
+                                                            else next.delete(option.key);
+                                                            return next;
+                                                        })
+                                                    }
                                                 />
                                                 {option.label}
                                             </label>
@@ -202,7 +241,13 @@ export default function UsersPanel({ onUserChanged }: { onUserChanged?: (user: L
                         </Dropdown>
                     </div>
                 }
-                batchActions={<AdminBatchBar count={selectedUserIds.length} onClear={() => setSelectedUserIds([])}><Button danger size="small" icon={<Ban className="size-3.5" />} loading={bulkDisabling} onClick={bulkDisable}>批量停用</Button></AdminBatchBar>}
+                batchActions={
+                    <AdminBatchBar count={selectedUserIds.length} onClear={() => setSelectedUserIds([])}>
+                        <Button danger size="small" icon={<Ban className="size-3.5" />} loading={bulkDisabling} onClick={bulkDisable}>
+                            批量停用
+                        </Button>
+                    </AdminBatchBar>
+                }
                 skeletonColumns={Math.max(4, columns.length)}
                 table={{
                     className: "app-data-table",
@@ -225,6 +270,7 @@ export default function UsersPanel({ onUserChanged }: { onUserChanged?: (user: L
             />
 
             <AdminUserDetailDrawer userId={detailUserId} previousUserId={previousUserId} nextUserId={nextUserId} onNavigate={setDetailUserId} onClose={() => setDetailUserId(null)} />
+            <RegistrationInviteDrawer open={inviteDrawerOpen} onClose={() => setInviteDrawerOpen(false)} />
             <AdminUserCreateDrawer open={createUserOpen} onClose={() => setCreateUserOpen(false)} onCreated={addUser} />
             <AdminUserEditDrawer user={editingUser} actorId={actor?.id} onClose={() => setEditingUser(null)} onSaved={replaceUser} />
         </>

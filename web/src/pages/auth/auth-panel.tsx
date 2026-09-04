@@ -20,16 +20,22 @@ export function AuthPanel({ mode, Page, reducedMotion, onClose }: { mode: AuthMo
     const desktop = usePcBrandViewport();
     const { branding } = useBranding();
     const { settings } = useAuthSettings();
+    const inviteFlow = mode === "register" && (new URLSearchParams(location.search).has("invite") || new URLSearchParams(location.search).get("invited") === "1");
     const invitationOnly = Boolean(settings && !settings.firstUser && !settings.registrationEnabled);
 
     const tabs = useMemo(() => {
         if (settings?.firstUser) return [{ key: "register", label: "创建管理员" }];
+        if (inviteFlow)
+            return [
+                { key: "register", label: "受邀注册" },
+                { key: "login", label: "登录" },
+            ];
         if (settings && !settings.registrationEnabled) return [{ key: "login", label: "登录" }];
         return [
             { key: "login", label: "登录" },
             { key: "register", label: "注册" },
         ];
-    }, [settings]);
+    }, [inviteFlow, settings]);
 
     return (
         <motion.div key="auth" className="pc-auth-workspace" initial={reducedMotion ? false : { opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: reducedMotion ? 0 : 0.24, ease: aceternityMotion.easing.enter }}>
@@ -42,7 +48,7 @@ export function AuthPanel({ mode, Page, reducedMotion, onClose }: { mode: AuthMo
                         <span className="pc-auth-brand-symbol">
                             <BrandMark className="pc-auth-brand-logo" />
                         </span>
-                        <h1>{settings?.firstUser ? "创建第一个管理员" : mode === "login" ? `登录${branding.config.identity.shortName}` : "创建账号"}</h1>
+                        <h1>{inviteFlow ? "你已受邀加入影策" : settings?.firstUser ? "创建第一个管理员" : mode === "login" ? `登录${branding.config.identity.shortName}` : "创建账号"}</h1>
                     </header>
 
                     <div className="pc-auth-form-slot">

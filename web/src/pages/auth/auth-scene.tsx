@@ -23,7 +23,9 @@ function AuthSceneContent() {
     const navigate = useNavigate();
     const reducedMotion = Boolean(useReducedMotion());
     const { settings, ensureReady } = useAuthSettings();
-    const [authOpen, setAuthOpen] = useState(false);
+    const inviteFlow = location.pathname === "/register" && new URLSearchParams(location.search).has("invite");
+    const invitedFlow = location.pathname === "/register" && new URLSearchParams(location.search).get("invited") === "1";
+    const [authOpen, setAuthOpen] = useState(inviteFlow || invitedFlow);
     const [pages, setPages] = useState<Partial<AuthPages>>(getCachedAuthPages);
     const mode: AuthMode = location.pathname === "/register" ? "register" : "login";
     const ActivePage = pages[mode];
@@ -46,10 +48,14 @@ function AuthSceneContent() {
             navigate({ pathname: "/register", search: location.search }, { replace: true });
             return;
         }
-        if (!settings.firstUser && !settings.registrationEnabled && mode === "register") {
+        if (!settings.firstUser && !settings.registrationEnabled && mode === "register" && !inviteFlow && !invitedFlow) {
             navigate({ pathname: "/login", search: location.search }, { replace: true });
         }
-    }, [location.search, mode, navigate, settings]);
+    }, [inviteFlow, invitedFlow, location.search, mode, navigate, settings]);
+
+    useEffect(() => {
+        if (inviteFlow || invitedFlow) setAuthOpen(true);
+    }, [inviteFlow, invitedFlow]);
 
     const openAuth = useCallback(async () => {
         const [loadedPages] = await Promise.all([preloadAuthPages(), ensureReady().catch(() => null)]);

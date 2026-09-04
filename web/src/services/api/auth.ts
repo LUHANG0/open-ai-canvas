@@ -53,6 +53,24 @@ export type PublicAuthSettings = {
     emailCodeRequired: boolean;
 };
 
+export type RegistrationInviteStatus = "pending" | "used" | "expired" | "revoked" | "invalid";
+
+export type RegistrationInvite = {
+    id: string;
+    note?: string;
+    status: Exclude<RegistrationInviteStatus, "invalid">;
+    expiresAt: string;
+    usedAt?: string;
+    usedBy?: { id: string; username: string; displayName: string };
+    revokedAt?: string;
+    createdAt: string;
+};
+
+export type PublicRegistrationInvite = {
+    status: RegistrationInviteStatus;
+    expiresAt?: string;
+};
+
 export type RuntimeLimits = {
     activeTaskLimit: number;
     resourceUploadMB: number;
@@ -425,8 +443,14 @@ export function sendRegistrationEmailCode(email: string) {
     return request<{ sent: boolean }>(api.post("/auth/email-code", { email }));
 }
 
-export function register(input: { username: string; email?: string; emailCode?: string; displayName?: string; password: string }) {
-    return request<{ user: LocalUser }>(api.post("/auth/register", input));
+export async function register(input: { username: string; email?: string; emailCode?: string; displayName?: string; password: string }) {
+    const result = await request<{ user: LocalUser }>(api.post("/auth/register", input));
+    invalidateAuthSessionCache();
+    return result;
+}
+
+export function exchangeRegistrationInvite(token?: string) {
+    return request<PublicRegistrationInvite>(api.post("/auth/registration-invites/exchange", token ? { token } : {}));
 }
 
 export async function logout() {
@@ -439,6 +463,18 @@ export type AdminListParams = { keyword?: string; status?: string; role?: string
 
 export function listAdminUsers(params: AdminListParams = {}) {
     return request<{ users: AdminUser[]; total: number; page: number; limit: number }>(api.get("/admin/users", { params }));
+}
+
+export function createRegistrationInvite(input: { expiresInDays: 1 | 3 | 7; note?: string }) {
+    return request<{ invite: RegistrationInvite; token: string }>(api.post("/admin/registration-invites", input));
+}
+
+export function listRegistrationInvites(params: { status?: RegistrationInviteStatus | "all"; page?: number; limit?: number } = {}) {
+    return request<{ invites: RegistrationInvite[]; total: number; page: number; limit: number }>(api.get("/admin/registration-invites", { params }));
+}
+
+export function revokeRegistrationInvite(id: string) {
+    return request<{ invite: RegistrationInvite }>(api.post(`/admin/registration-invites/${encodeURIComponent(id)}/revoke`));
 }
 
 export function createAdminUser(input: { username: string; displayName: string; email?: string; password: string; role: LocalUser["role"]; status: LocalUser["status"] }) {
