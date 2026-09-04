@@ -1,0 +1,187 @@
+---
+title: v1.2.2-preview.5 本地候选验收与 Go/No-Go
+description: 2026-09-04 独立分支上的迁移、邀请、镜像、备份恢复、Host Updater 与浏览器验收记录。
+---
+
+# v1.2.2-preview.5 本地候选验收与 Go/No-Go
+
+## 结论
+
+**No-Go，不合并、不发布。** 候选功能、数据库、镜像、恢复和浏览器验收均通过，但仓库要求的 Web 全量格式门禁失败：`bun run format:check` 报告 386 个既有文件不符合 Prettier。候选本次直接修改的邀请抽屉文件单独格式检查通过，因此没有用一次大范围机械格式化掩盖存量问题；只要全量门禁仍为红色，本候选就不能判定为 Go。
+
+本记录只证明本地隔离环境中的候选行为。**仅本地通过，不代表 GitHub Actions、GHCR 或生产环境通过。** 本轮没有推送、远程 PR、Actions、远程标签、GHCR 发布、部署、生产数据访问或付费渠道调用。用户提供的线上已知阻断为 GHCR `permission_denied`；它不是本轮本地验证结果，未来申请上线前仍须单独解决并取得不可变 digest 证据。
+
+## 候选身份与边界
+
+| 项目           | 记录                                                                                                     |
+| -------------- | -------------------------------------------------------------------------------------------------------- |
+| 原始主线       | `main` = `3e1ff98dac1ef35af8547b086ed6ccafb3be1561`；验收前后保持干净且未移动                            |
+| 候选分支       | `release/v1.2.2-preview.5`                                                                               |
+| 运行时验证提交 | `e411143f6900588244499ce0815589d7ceb39ede`                                                               |
+| 版本           | `v1.2.2-preview.5`                                                                                       |
+| 数据库 Schema  | `8`，迁移名 `registration_invite_credits`                                                                |
+| 本地镜像       | `open-ai-canvas-backend:1.2.2-preview.5-e411143f6900`、`open-ai-canvas-web:1.2.2-preview.5-e411143f6900` |
+| 交付 HEAD      | 本文与截图所在提交；可用 `git rev-parse release/v1.2.2-preview.5` 解析                                   |
+| 清理策略       | 证据汇总后删除临时容器、卷、网络、凭据、数据库、备份和附加 worktree；候选分支与提交保留                  |
+
+版本盘点确认生产入口只有 `VERSION`、`CHANGELOG.md` 和 README 安装示例需要提升到 preview.5。旧 preview.1–preview.4 字符串仍出现在历史发布文档、回退测试夹具和 Host Updater 默认测试值中，属于历史或测试语义，不应机械替换。
+
+## 本轮提交
+
+| 提交       | 内容                                                    | 回退影响                       |
+| ---------- | ------------------------------------------------------- | ------------------------------ |
+| `788d9154` | 版本、变更日志和 README 候选镜像提升到 preview.5        | 撤销候选身份                   |
+| `7d446f62` | SQLite 迁移测试改用独立临时库，并显式覆盖 V6→V8         | 只撤销测试隔离与覆盖           |
+| `164e505a` | Host Updater Docker 演练允许通过环境变量指定旧/目标版本 | 只撤销演练参数化               |
+| `a1b27adb` | Docker 构建支持可选 Alpine 镜像源                       | 撤销后受限网络下构建可能失败   |
+| `97b3149c` | 邀请抽屉关闭确认改为受控内嵌 Modal                      | 撤销会重新引入焦点陷阱递归风险 |
+| `4545446e` | 过期邀请标签改为橙色状态                                | 撤销会恢复浅色主题低对比度     |
+| `e411143f` | 依赖安装层与构建元数据解耦，提高候选镜像缓存命中        | 只影响构建性能和可复现迭代效率 |
+
+变更总计 12 个运行时/测试/发布工程文件，较基线 `131 insertions / 51 deletions`。本文和五张浏览器截图由单独文档提交承载。
+
+## 验证矩阵
+
+| 层级              | 方法                                                        | 结果                                                                                    |
+| ----------------- | ----------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| Web 测试          | `cd web && bun test`                                        | **通过**：1686 passed，0 failed，245 files，9782 assertions                             |
+| Web 类型          | `cd web && bun run typecheck`                               | **通过**                                                                                |
+| Web 构建与预算    | 注入 preview.5/e411 元数据后 `bun run build`                | **通过**：生产构建成功，7/7 体积预算通过                                                |
+| Web 全量格式      | `cd web && bun run format:check`                            | **失败/阻断**：386 个既有文件不符合 Prettier                                            |
+| 候选文件格式      | 对 `registration-invite-drawer.tsx` 单独执行 Prettier check | **通过**                                                                                |
+| Backend           | `cd backend && go test ./...`                               | **通过**，最终 e411 源码再次全量执行                                                    |
+| Canvas Agent      | `npm test && npm run build`                                 | **通过**：316 passed，5 conditional skips，0 failed；TypeScript 构建通过                |
+| SQLite Schema     | 数据库迁移测试连续 3 次，每次独立临时文件                   | **通过**：fresh、V4、V6→V8、V7 credits 回填、checksum mismatch、失败事务回退            |
+| PostgreSQL Schema | 隔离 PostgreSQL 17 容器                                     | **通过**：V6→V8、V7→V8、100 条历史数据、索引和约束                                      |
+| SQLite 邀请       | 定向服务测试 `-count=10`                                    | **通过**                                                                                |
+| PostgreSQL 邀请   | 定向服务测试 `-count=10`                                    | **通过**：275 自定义额度、50 失败回滚、100 路并发单次消费                               |
+| Compose           | 生产 server+build 组合，本地隔离目录                        | **通过**：migrate 退出 0；PostgreSQL、Redis、Backend、Web healthy                       |
+| 健康与版本        | Web 代理 `/api/health/live`、`ready`、`/api/system/version` | **通过**：version preview.5，commit e411，schema `8/8`，database/runtime/schema 均 true |
+| 备份恢复          | PostgreSQL custom dump + Backend data tar 恢复到独立网络/卷 | **通过**                                                                                |
+| Host Updater      | 最终 e411 Backend 镜像执行 Docker 集成失败注入              | **通过**：自动回退、重复回退幂等、恢复冲突 fail-closed                                  |
+| 浏览器            | 真实 Chromium，桌面/移动、浅色/深色和键盘焦点               | **通过**：目标状态无页面横向溢出，最终浏览器错误为空                                    |
+
+Canvas Agent 的 5 个 skip 是套件既有的平台/条件跳过，不是失败。Web 格式门禁是本轮唯一确定的本地发布阻断。
+
+## 数据库迁移与邀请制验收
+
+最终 PostgreSQL 实例包含迁移 1–8，`registration_invites` 有主键和 8 个业务索引，共 9 个索引。外键策略复核如下：
+
+- `created_by → users(id)`：`ON DELETE RESTRICT`。
+- `used_by → users(id)`：`ON DELETE SET NULL`。
+
+迁移在 SQLite 和 PostgreSQL 两套引擎上验证 fresh、跨版本升级和重复执行。SQLite 测试从固定共享内存 DSN 改成每测试独立临时文件，消除了重复运行时连接生命周期互相污染；V6→Schema 8 成为显式用例。PostgreSQL 额外覆盖 100 条历史邀请数据升级及 credits 回填。
+
+真实候选栈完成以下邀请链路：
+
+- 50、100、自定义 275 三类邀请分别注册成功，账户初始额度精确为 50,000,000、100,000,000、275,000,000 microcredits，并存在对应账本记录。
+- 注册请求注入 `role=admin` 和超大额度字段后，新用户仍为普通 `user`，额度仍精确取邀请的 100 credits。
+- 无效用户名导致注册事务失败时邀请不被消费；修正输入后同一邀请可成功注册。
+- 同一 75-credit 邀请并发提交两次，仅一个用户创建成功，另一请求返回“邀请已使用”。
+- invalid、expired、revoked、used 四种终态页面均在真实浏览器中确认。
+- 正常复制显示“已复制”；强制 Clipboard API 与 `execCommand` 同时失败时显示“复制失败，请手动选中链接复制”。
+
+## 浏览器发现与修复
+
+首次验证“有未保存内容时关闭邀请抽屉”发现 Drawer 与全局确认框各自的焦点陷阱交替抢焦点，最终触发 `RangeError: Maximum call stack size exceeded`。`97b3149c` 将确认框改为 Drawer 内的受控 Modal；回归时按 Tab 后焦点稳定落在“继续编辑”，控制台无递归错误。
+
+浅色模式下 expired 标签原先计算为近黑文字叠加黑底，状态几乎不可读。`4545446e` 将其改为 Ant Design 橙色语义标签，浅色和深色主题均可辨识。最终截图：
+
+- [邀请记录，浅色桌面](evidence/release-v1.2.2-preview.5/invite-records-light-desktop.png)
+- [邀请记录，深色移动端](evidence/release-v1.2.2-preview.5/invite-records-dark-mobile.png)
+- [创建邀请，深色桌面](evidence/release-v1.2.2-preview.5/invite-create-dark-desktop.png)
+- [未保存关闭确认，深色桌面](evidence/release-v1.2.2-preview.5/invite-close-confirm-dark-desktop.png)
+- [受邀注册 275 credits，浅色移动端](evidence/release-v1.2.2-preview.5/invited-registration-275-light-mobile.png)
+
+截图只含隔离本地候选栈和一次性测试账户，不含生产凭据或生产数据。
+
+## 镜像、备份与恢复
+
+e411 候选镜像本地构建并实际启动：
+
+| 制品    | 本地 image ID                                                             | OCI version        | OCI revision                               |
+| ------- | ------------------------------------------------------------------------- | ------------------ | ------------------------------------------ |
+| Backend | `sha256:5279be2c494780d8fe1061608ecde871f5f1c952b56f46ee60f5d0170123d97d` | `v1.2.2-preview.5` | `e411143f6900588244499ce0815589d7ceb39ede` |
+| Web     | `sha256:4e3bde6a56553ffb6adc7c270a9f235006e8b55c5574a855b3459fdb21caa479` | `v1.2.2-preview.5` | `e411143f6900588244499ce0815589d7ceb39ede` |
+
+备份生成后先计算 SHA-256，再恢复到独立 PostgreSQL/Redis/Backend 网络与卷：
+
+- PostgreSQL dump：`52e76a08a58ff197477d88d412524652d2e128e6662b8213ac1dbc2f8c99d677`。
+- Backend data tar：`54049df37acf5345d09e28341841111903d41cfe9102b7cbe1ed3e44f7d64467`。
+- 恢复后：6 users、7 invites、1 canvas、1 resource；受控画布 `preview5-backup-canvas` 和资源 `preview5-backup-resource` 均存在。
+- 原始与恢复后的 `/data/backup-probe.txt` SHA-256 均为 `54a6101fa05c99cd754d83ceea754dc609493ff15da9ec2e3bc1c6a871edb037`。
+- 恢复实例使用 e411 镜像，readiness 为 true，schema `8/8`。
+
+## Host Updater 回退演练
+
+最终镜像演练通过真实 Manager/HTTP handler、Docker Compose、PostgreSQL 和 Backend `/data`；远程 Release Compose 下载、registry pull 与 RepoDigest 查询使用确定性本地替身，未访问远端。
+
+1. 失败前数据库值为 `before`，媒体 SHA-256 为 `6db7d803e74f1ffa7d8f5adc0bf95b3e15bf4c8373fffadf546227cc6c6742cb`，隐藏文件存在。
+2. 目标迁移修改数据库和媒体后故意退出 42；自动回退进入 `rolled_back`，数据库、媒体、隐藏文件与 schema 全部恢复。
+3. 同一备份再次人工回退仍为 `rolled_back`，状态和数据不变，验证幂等。
+4. 人工制造 `.canvas-updater-previous` 恢复现场后再次回退，操作进入 `manual_intervention`；Backend/Web 保持停止，现场不被覆盖，验证 fail-closed。
+
+本次最终演练耗时 96.35 秒并通过；测试自身已清理随机 Compose 项目与卷。
+
+## Evidence → Finding → Path
+
+| Evidence                                             | Finding                                          | Path / 决策                                          |
+| ---------------------------------------------------- | ------------------------------------------------ | ---------------------------------------------------- |
+| E-01：Web 1686/0、类型检查、构建、7/7 预算           | 功能与构建门禁健康                               | 可保留候选代码；继续执行其他门禁                     |
+| E-02：全量格式检查 386 files failed                  | required 本地门禁未闭环                          | **F-01 / No-Go**；先单独治理格式基线，再重新全量验收 |
+| E-03：SQLite/PostgreSQL migration 与邀请测试         | Schema 8 可升级、可重复执行，邀请消费具事务性    | 允许保留迁移与邀请实现                               |
+| E-04：真实 50/100/275 注册、角色注入、失败重试、并发 | 额度由服务端邀请决定；失败不消费；并发只成功一次 | 邀请业务风险已闭环                                   |
+| E-05：浏览器焦点递归堆栈与修复后无错误               | 原关闭确认存在 P0 可用性问题                     | `97b3149c` 修复并保留回归截图                        |
+| E-06：浅色 expired 标签计算样式与修复截图            | 原状态对比度不足                                 | `4545446e` 改用 orange 语义色                        |
+| E-07：OCI labels、live/ready/version、schema 8/8     | 本地运行制品与 e411 源码一致                     | 本地镜像可作为复验输入；不能替代 GHCR digest         |
+| E-08：两份备份 SHA、隔离恢复记录与文件 SHA           | PostgreSQL 与 Backend 数据可从本地备份恢复       | 恢复路径本地闭环                                     |
+| E-09：自动/重复/fail-closed 三阶段 Host Updater 演练 | 更新失败不会带着部分恢复数据重新上线             | 回退机制本地闭环                                     |
+| E-10：未运行远端系统；已知 GHCR `permission_denied`  | 缺少远端 required checks 与不可变制品证据        | **F-02 / 线上阻断**；获批后修复权限并重跑远端门禁    |
+
+测试原始日志存放在临时 `.local/release-preview.5/logs`，内容已汇总到本文；该目录随附加 worktree 清理，不作为长期制品。长期证据为候选提交、本文及上面的截图。
+
+## 重新申请 Go 的最小条件
+
+1. 在独立变更中建立或修复 Web Prettier 基线，使 `bun run format:check` 全量通过；随后重跑本表全部本地门禁。
+2. 获得远端操作批准后推送候选，确认最终交付 HEAD 的 required GitHub Actions 全绿。
+3. 解决 GHCR `permission_denied`，由最终批准提交构建并记录 version tag、SHA tag、OCI revision 与 RepoDigest 的一致关系；不得用 `latest` 代替。
+4. 使用固定不可变 digest 在获批环境启动，再次核对 readiness、schema、邀请注册和备份恢复。
+
+## 回退清单
+
+Git 撤销只在独立分支用 `git revert`，按最新到最旧执行：
+
+```bash
+git revert --no-edit e411143f
+git revert --no-edit 4545446e
+git revert --no-edit 97b3149c
+git revert --no-edit a1b27adb
+git revert --no-edit 164e505a
+git revert --no-edit 7d446f62
+git revert --no-edit 788d9154
+```
+
+本文所在文档提交可先单独 revert，不影响运行时。若数据库已接受真实写入，Git revert 不等于数据回退；必须使用已校验备份恢复 PostgreSQL 与 Backend `/data`，恢复旧固定镜像后再验活。由于本轮未部署、未发布、未推送，也没有需要撤回的线上制品或环境。
+
+## 可复验命令
+
+```bash
+git rev-parse main
+git rev-parse release/v1.2.2-preview.5
+git log --oneline main..release/v1.2.2-preview.5
+
+cd web
+bun test
+bun run typecheck
+bun run build
+bun run format:check
+
+cd ../backend
+go test ./...
+
+cd ../canvas-agent
+npm test
+npm run build
+```
+
+PostgreSQL、候选 Compose、备份恢复与 Host Updater 演练需要 Docker；复验时应重新创建独立项目、网络和卷，不应复用任何生产或个人开发数据库。
