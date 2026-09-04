@@ -753,6 +753,7 @@ export function CreationComposer(props: ComposerProps) {
                                 className="creation-model-picker creation-entry-button is-model"
                                 placeholder={`选择${modeLabels[props.mode]}模型`}
                                 showSelectedPrice={!props.desktopLayout}
+                                fullWidth={props.desktopLayout}
                                 variant="creation"
                                 disabled={interactionBusy}
                             />

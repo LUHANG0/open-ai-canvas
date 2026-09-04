@@ -1118,6 +1118,13 @@ html:not(.dark) .creation-frame-role-menu button.is-selected {
         border-color: var(--creation-border-strong) !important;
         background: var(--creation-surface-hover) !important;
     }
+
+    /* 旧工具条在同层把模型按钮固定为 196px；桌面字段必须以自身容器为边界。 */
+    .creation-home .creation-chat-composer.is-desktop .creation-config-field.is-model .creation-model-picker.canvas-composer-model-picker {
+        width: 100% !important;
+        min-width: 0 !important;
+        max-width: 100% !important;
+    }
 }
 
 .creation-home .creation-sound-toggle[aria-pressed="true"] {
@@ -5415,7 +5422,8 @@ html:not(.dark) .creation-media-preview-modal.is-video .ant-modal-container {
     .creation-home .creation-chat-composer.is-desktop .creation-config-field.is-model .creation-model-picker {
         width: 100% !important;
         min-width: 0;
-        max-width: none !important;
+        max-width: 100% !important;
+        overflow: hidden;
     }
 
     .creation-home .creation-chat-composer.is-desktop .creation-config-field.is-settings {
