@@ -9,6 +9,7 @@ import { MessageReasoning } from "@/components/ai/message-reasoning";
 import { useCopyText } from "@/hooks/use-copy-text";
 import { creationCanvasHandoffPath, creationResultAssetIds, creationResultMediaEntries, type CreationResultMediaEntry } from "@/lib/canvas/canvas-asset-handoff";
 import { generationErrorMessage } from "@/lib/generation-error";
+import { formatVideoResolutionLabel } from "@/lib/video-generation-options";
 import { useAssetStore } from "@/stores/use-asset-store";
 
 import { creationAttachmentKind, creationMediaAspectRatio } from "./creation-assets";
@@ -278,6 +279,13 @@ function configuredMediaResolution(item: CreationMessage, isVideo: boolean) {
     return ratio ? `${ratio} 画幅` : "自动";
 }
 
+function compactVideoResolutionLabel(item: CreationMessage, metadata?: CreationMediaMetadata) {
+    const configured = formatVideoResolutionLabel(item.settings?.videoQuality);
+    if (configured) return configured;
+    const shortEdge = metadata?.width && metadata?.height ? Math.min(metadata.width, metadata.height) : metadata?.height;
+    return shortEdge ? formatVideoResolutionLabel(shortEdge) : "自动";
+}
+
 function MediaResult({ item, compactLayout, onRetryFailure, onCreateVariant }: { item: CreationMessage; compactLayout: boolean; onRetryFailure: () => void; onCreateVariant: () => void }) {
     const [previewUrl, setPreviewUrl] = useState("");
     const [previewType, setPreviewType] = useState<"image" | "video">("image");
@@ -325,6 +333,7 @@ function MediaResult({ item, compactLayout, onRetryFailure, onCreateVariant }: {
               : undefined;
     const primaryMetadata = mediaMetadata[primaryUrl] || storedMetadata;
     const resolution = primaryMetadata?.width && primaryMetadata?.height ? `${primaryMetadata.width} × ${primaryMetadata.height}` : configuredMediaResolution(item, isVideo);
+    const compactResolution = isVideo ? compactVideoResolutionLabel(item, primaryMetadata) : resolution;
     const format = creationMediaFormatLabel(primaryUrl, primaryMetadata?.mimeType);
     const completedAt = item.completedAt || firstAsset?.createdAt;
     const elapsed = creationGenerationElapsedLabel(item.createdAt, completedAt);
@@ -333,7 +342,7 @@ function MediaResult({ item, compactLayout, onRetryFailure, onCreateVariant }: {
     const resultMetrics = isVideo
         ? [
               { label: "格式", value: format },
-              { label: "分辨率", value: resolution },
+              { label: "清晰度", value: compactResolution },
               { label: "时长", value: mediaDuration || "—" },
               { label: "生成耗时", value: elapsed },
           ]
@@ -343,6 +352,19 @@ function MediaResult({ item, compactLayout, onRetryFailure, onCreateVariant }: {
               { label: "分辨率", value: resolution },
               { label: "生成耗时", value: elapsed },
           ];
+    const compactResultDetails = (
+        <div className="creation-result-summary">
+            <dl className="creation-result-meta" aria-label="生成结果明细">
+                {resultMetrics.map((metric) => (
+                    <div key={metric.label} aria-label={`${metric.label} ${metric.value}`}>
+                        <dt className="sr-only">{metric.label}</dt>
+                        <dd>{metric.label === "生成耗时" ? `耗时 ${metric.value}` : metric.value}</dd>
+                    </div>
+                ))}
+            </dl>
+            {supplementalLabel ? <span>{supplementalLabel}</span> : null}
+        </div>
+    );
     const resultDetails = (
         <dl className="creation-media-details" aria-label="生成结果明细">
             {resultMetrics.map((metric) => (
@@ -438,14 +460,10 @@ function MediaResult({ item, compactLayout, onRetryFailure, onCreateVariant }: {
                 />
             ) : null}
             {compactLayout ? (
-                <section className={`creation-result-inspector is-${isVideo ? "video" : "image"}`} aria-label="输出信息与操作">
-                    <header>
-                        <span>输出信息</span>
-                        {supplementalLabel ? <small>{supplementalLabel}</small> : null}
-                    </header>
-                    {resultDetails}
+                <footer className={`creation-result-footer is-${isVideo ? "video" : "image"}`} aria-label="结果信息与操作">
+                    {compactResultDetails}
                     {resultActions}
-                </section>
+                </footer>
             ) : (
                 <>
                     {resultDetails}
@@ -478,24 +496,29 @@ export function CreationVideoSupplementalImages({ results, onPreview }: { result
 }
 
 export function CreationResultDownloads({ results }: { results: CreationResultMediaEntry[] }) {
+    if (!results.length) return null;
+    if (results.length === 1)
+        return (
+            <a href={results[0].url} download>
+                <Download />
+                下载
+            </a>
+        );
     return (
-        <>
-            {results.map((entry, index) => {
-                const label = entry.kind === "video" ? "下载视频" : entry.role === "last_frame" ? "下载尾帧" : `下载图片 ${index + 1}`;
-                return (
+        <details className="creation-result-download-menu">
+            <summary>
+                <Download />
+                下载
+                <span>{results.length}</span>
+            </summary>
+            <div>
+                {results.map((entry, index) => (
                     <a key={`${entry.url}-download`} href={entry.url} download>
-                        {results.length === 1 ? (
-                            <>
-                                <Download />
-                                下载
-                            </>
-                        ) : (
-                            label
-                        )}
+                        {entry.kind === "video" ? "下载视频" : entry.role === "last_frame" ? "下载尾帧" : `下载图片 ${index + 1}`}
                     </a>
-                );
-            })}
-        </>
+                ))}
+            </div>
+        </details>
     );
 }
 
