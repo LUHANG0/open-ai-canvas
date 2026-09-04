@@ -19,6 +19,15 @@ function node(id: string, patch: Partial<CanvasNodeData> = {}): CanvasNodeData {
 }
 
 describe("canvas node timestamps", () => {
+    test("unchanged node references do not revisit their timestamps or metadata", () => {
+        const untouched = node("untouched");
+        Object.defineProperty(untouched, "createdAt", { get() { throw new Error("unchanged timestamp was read"); } });
+        const old = node("edited", { createdAt: "2026-08-28T01:00:00.000Z" });
+        const next = stampCanvasNodeChanges([untouched, old], [untouched, { ...old, title: "new title" }], "2026-09-05T01:00:00.000Z");
+        expect(next[0]).toBe(untouched);
+        expect(next[1]?.updatedAt).toBe("2026-09-05T01:00:00.000Z");
+    });
+
     test("legacy nodes receive the project timestamp baseline", () => {
         const normalized = normalizeCanvasNodeTimestamps([node("legacy")], {
             createdAt: "2026-08-01T01:00:00.000Z",

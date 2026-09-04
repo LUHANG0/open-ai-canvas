@@ -5,9 +5,9 @@
  * 不触发生成接口。所有等待有硬超时，浏览器异常、console error 和网络失败均失败。
  */
 import { spawn } from "node:child_process";
-import { existsSync, mkdtempSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { createServer } from "node:net";
 
 const FIXTURE_ID = "canvas-p0-fixture";
@@ -36,6 +36,7 @@ const RUNTIME_INFO_BODY = Buffer.from(
 ).toString("base64");
 
 const results = [];
+const performanceSamples = [];
 let failures = 0;
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -154,7 +155,7 @@ async function connectCdp(cdpPort) {
     const problems = [];
     const record = (kind, value) => {
         const clean = String(value ?? "").trim();
-        if (clean && !ALLOWED_NOISE.includes(clean)) problems.push({ kind, text: clean });
+        if (clean && !ALLOWED_NOISE.includes(clean) && !problems.some(item => item.kind === kind && item.text === clean)) problems.push({ kind, text: clean });
     };
     const send = (method, params = {}) => {
         const id = ++nextId;
@@ -311,6 +312,10 @@ async function connectCdp(cdpPort) {
 async function shellScenario(cdp, url) {
     console.log("\n=== A. shell and deterministic fixture ===");
     await cdp.navigate(url);
+    await cdp.poll(`(() => {
+        const image = document.querySelector('[data-node-id="canvas-p0-image-reference"] img');
+        return image instanceof HTMLImageElement && image.complete && image.naturalWidth > 0;
+    })()`, "fixture image decoded");
     const state = await cdp.evaluate(`(() => {
         const workspace = document.querySelector('.pc-canvas-workspace');
         const image = document.querySelector('[data-node-id="canvas-p0-image-reference"] img');
@@ -742,6 +747,189 @@ async function largeWorkspaceScenario(cdp, url) {
     assert(cdp.problems.length === 0, "E6 no browser/network problems on large workspace", JSON.stringify(cdp.problems));
 }
 
+async function canvasPerformanceScenario(cdp, url) {
+    console.log("\n=== F. large canvas drag, resize and frame timings ===");
+    await cdp.send("Emulation.setDeviceMetricsOverride", { width: 1366, height: 900, deviceScaleFactor: 1, mobile: false });
+    // E can finish while the newly loaded fixture is still saving. Wait before
+    // navigating again so beforeunload does not contaminate gesture diagnostics.
+    const hasCurrentCanvas = await cdp.evaluate(`Boolean(document.querySelector('.pc-canvas-save-status'))`);
+    if (hasCurrentCanvas && !(await cdp.poll(`document.querySelector('.pc-canvas-save-status')?.getAttribute('aria-label')?.startsWith('已保存到本机')`, "pre-performance fixture save settled"))) {
+        throw new Error("Current fixture did not finish its local save before performance sampling");
+    }
+    await cdp.navigate(url);
+    await cdp.send("Performance.enable");
+    // Observe the real store after loading the isolated fixture; no account or generation request is needed.
+    await cdp.evaluate(`(async () => {
+        const { useCanvasStore } = await import('/src/stores/canvas/use-canvas-store.ts');
+        window.__canvasPerfStore = useCanvasStore;
+    })()`);
+    const views = process.env.CANVAS_PERF_VIEW === "overview" ? [true] : [false, true];
+    for (const overview of views) {
+        if (overview) {
+            const fitted = await cdp.click('[aria-label="适应画布"]');
+            if (!fitted) throw new Error("Fit canvas control was not available");
+        }
+        await sleep(1600);
+        const target = await cdp.evaluate(`(() => {
+            const candidates = [...document.querySelectorAll('[data-node-id]')].map(element => {
+                const shell = element.querySelector('.canvas-node-shell');
+                const rect = shell?.getBoundingClientRect();
+                if (!rect || rect.width < 12 || rect.height < 12) return null;
+                const x = rect.left + rect.width / 2;
+                const y = rect.top + rect.height / 2;
+                if (x < 200 || x > innerWidth - 200 || y < 180 || y > innerHeight - 220) return null;
+                const hit = document.elementFromPoint(x, y);
+                if (!hit || !element.contains(hit)) return null;
+                return { id: element.dataset.nodeId, x, y, distance: Math.hypot(x-innerWidth/2,y-innerHeight/2) };
+            }).filter(Boolean).sort((a,b) => a.distance-b.distance);
+            return candidates[0];
+        })()`);
+        if (!target) throw new Error("No unobscured fixture node available for drag");
+        for (let trial = 1; trial <= 3; trial += 1) {
+            const sample = await measureCanvasGesture(cdp, target.id, "drag", overview, trial);
+            performanceSamples.push(sample);
+            console.log(`      PERF ${JSON.stringify(sample)}`);
+            assert(sample.changed && sample.persisted, `F drag ${overview ? "overview" : "detail"} ${trial} commits final position`, JSON.stringify({ changed: sample.changed, persisted: sample.persisted }));
+        }
+        const resize = await measureCanvasGesture(cdp, target.id, "resize", overview, 1);
+        performanceSamples.push(resize);
+        console.log(`      PERF ${JSON.stringify(resize)}`);
+        assert(resize.changed && resize.persisted, `F resize ${overview ? "overview" : "detail"} commits final size`, JSON.stringify({ changed: resize.changed, persisted: resize.persisted }));
+        await cdp.shortcut("z");
+        const restored = await cdp.poll(`(() => {
+            const node = window.__canvasPerfStore.getState().projects.find(p => p.id === ${JSON.stringify(LARGE_FIXTURE_ID)})?.nodes.find(n => n.id === ${JSON.stringify(target.id)});
+            return node?.width === ${resize.before.width} && node?.height === ${resize.before.height};
+        })()`, "resize undo restored original size");
+        assert(restored, `F resize ${overview ? "overview" : "detail"} undo restores original size`);
+        if (!overview && await cdp.evaluate(`Boolean(document.querySelector('[data-canvas-resize-handle]'))`)) await cancelResizeScenario(cdp, target.id);
+    }
+    assert(cdp.problems.length === 0, "F no browser errors during performance gestures", JSON.stringify(cdp.problems));
+}
+
+async function cancelResizeScenario(cdp, nodeId) {
+    const selector = `[data-node-id="${nodeId}"]`;
+    // A small header drag selects the node without opening its inline editor.
+    await cdp.movePointer(100, 60);
+    const selected = await cdp.drag(`${selector} [data-canvas-node-drag-handle]`, 8, 4);
+    if (!selected) throw new Error("Cannot select cancellation target through its drag handle");
+    for (const key of ["Escape", "undo"]) {
+        await cdp.hover(selector);
+        await sleep(200);
+        const setup = await cdp.evaluate(`(() => {
+            const node = document.querySelector(${JSON.stringify(selector)});
+            const handle = node?.querySelector('[data-canvas-resize-handle="bottom-right"]');
+            const rect = handle?.getBoundingClientRect();
+            return rect ? { x: rect.left+rect.width/2, y: rect.top+rect.height/2, width: parseFloat(node.style.width), height: parseFloat(node.style.height), transform: node.style.transform,
+                selected: [...document.querySelectorAll('[data-node-id]')].filter(n => n.className.includes('z-[var(--z-node-active)]')).map(n => n.dataset.nodeId) } : null;
+        })()`);
+        if (!setup) throw new Error("Resize cancellation handle missing");
+        await cdp.send("Input.dispatchMouseEvent", { type: "mouseMoved", x: setup.x, y: setup.y, buttons: 0 });
+        await cdp.send("Input.dispatchMouseEvent", { type: "mousePressed", x: setup.x, y: setup.y, button: "left", buttons: 1, clickCount: 1 });
+        await cdp.send("Input.dispatchMouseEvent", { type: "mouseMoved", x: setup.x+32, y: setup.y+20, button: "left", buttons: 1 });
+        const previewed = await cdp.poll(`Boolean(document.querySelector('[data-canvas-resize-active="true"]')) && parseFloat(document.querySelector(${JSON.stringify(selector)}).style.width) !== ${setup.width}`, "cancel gesture has visible preview");
+        assert(previewed, `F ${key} cancellation starts from a visible resize preview`);
+        if (key === "undo") await cdp.shortcut("z");
+        else {
+            await cdp.send("Input.dispatchKeyEvent", { type: "keyDown", key: "Escape", code: "Escape", windowsVirtualKeyCode: 27 });
+            await cdp.send("Input.dispatchKeyEvent", { type: "keyUp", key: "Escape", code: "Escape", windowsVirtualKeyCode: 27 });
+        }
+        await cdp.send("Input.dispatchMouseEvent", { type: "mouseReleased", x: setup.x+32, y: setup.y+20, button: "left", buttons: 0, clickCount: 1 });
+        const cancelled = await cdp.poll(`(() => {
+            const element = document.querySelector(${JSON.stringify(selector)});
+            const node = window.__canvasPerfStore.getState().projects.find(p => p.id === ${JSON.stringify(LARGE_FIXTURE_ID)})?.nodes.find(n => n.id === ${JSON.stringify(nodeId)});
+            const selected = [...document.querySelectorAll('[data-node-id]')].filter(n => n.className.includes('z-[var(--z-node-active)]')).map(n => n.dataset.nodeId);
+            return !document.querySelector('[data-canvas-resize-active="true"]') && parseFloat(element?.style.width) === ${setup.width}
+                && element?.style.transform === ${JSON.stringify(setup.transform)} && node?.width === ${setup.width} && node?.height === ${setup.height} && JSON.stringify(selected) === ${JSON.stringify(JSON.stringify(setup.selected))};
+        })()`, "cancel preserves stored dimensions and selection");
+        assert(cancelled, `F ${key} cancels resize without changing dimensions or selection`);
+    }
+}
+
+async function measureCanvasGesture(cdp, nodeId, kind, overview, trial) {
+    const selector = `[data-node-id="${nodeId}"]`;
+    if (kind === "resize" && !(await cdp.click(selector))) throw new Error(`Cannot select resize target ${nodeId}`);
+    await cdp.hover(selector);
+    await sleep(160);
+    const setup = await cdp.evaluate(`(() => {
+        const element = document.querySelector(${JSON.stringify(selector)});
+        const shell = element?.querySelector('.canvas-node-shell');
+        const handle = element?.querySelector('[data-canvas-resize-handle="bottom-right"]')
+            || [...(element?.querySelectorAll('.cursor-nwse-resize') || [])].find(item => item.className.includes('-right-'));
+        const rect = (${JSON.stringify(kind)} === 'resize' ? handle : shell)?.getBoundingClientRect();
+        const project = window.__canvasPerfStore.getState().projects.find(p => p.id === ${JSON.stringify(LARGE_FIXTURE_ID)});
+        const node = project?.nodes.find(n => n.id === ${JSON.stringify(nodeId)});
+        if (!rect || !node) return null;
+        const x = rect.left + rect.width/2;
+        const y = rect.top + rect.height/2;
+        const hit = document.elementFromPoint(x,y);
+        return { x, y, hitNodeId: hit?.closest('[data-node-id]')?.getAttribute('data-node-id'), handleHit: Boolean(handle && (hit === handle || handle.contains(hit))),
+            hitClass: hit?.getAttribute('class'), incrementalResize: Boolean(handle?.hasAttribute('data-canvas-resize-handle')),
+            before: { x: node.position.x, y: node.position.y, width: node.width, height: node.height },
+            mounted: document.querySelectorAll('[data-node-id]').length,
+            connections: document.querySelectorAll('[data-connection-id]').length };
+    })()`);
+    if (!setup) throw new Error(`Cannot locate ${kind} target ${nodeId}`);
+    if (setup.hitNodeId !== nodeId) throw new Error(`Gesture target is occluded: ${JSON.stringify(setup)}`);
+    const readMetrics = async () => Object.fromEntries((await cdp.send("Performance.getMetrics")).metrics.map(item => [item.name, item.value]));
+    const beforeMetrics = await readMetrics();
+    await cdp.evaluate(`(() => {
+        const state = { frames: [], longTasks: [], updates: 0, stopped: false, last: performance.now(), started: performance.now() };
+        state.observer = new PerformanceObserver(list => state.longTasks.push(...list.getEntries().map(entry => entry.duration)));
+        state.observer.observe({ type: 'longtask', buffered: false });
+        state.unsubscribe = window.__canvasPerfStore.subscribe((next, previous) => { if (next.projects !== previous.projects) state.updates++; });
+        const frame = now => { if (state.stopped) return; state.frames.push(now-state.last); state.last=now; state.raf=requestAnimationFrame(frame); };
+        state.raf=requestAnimationFrame(frame);
+        window.__canvasPerfSample = state;
+    })()`);
+    await cdp.send("Input.dispatchMouseEvent", { type: "mouseMoved", x: setup.x, y: setup.y, buttons: 0 });
+    await cdp.send("Input.dispatchMouseEvent", { type: "mousePressed", x: setup.x, y: setup.y, button: "left", buttons: 1, clickCount: 1 });
+    if (kind === "resize" && setup.incrementalResize) {
+        const active = await cdp.evaluate(`Boolean(document.querySelector('[data-canvas-resize-active="true"]'))`);
+        if (!active) throw new Error(`Resize did not acquire the pointer: ${JSON.stringify(setup)}`);
+    }
+    const dx = kind === "resize" ? (overview ? 12 : 50) : 55;
+    const dy = kind === "resize" ? (overview ? 8 : 30) : 35;
+    for (let step = 1; step <= 60; step += 1) {
+        const fraction = step / 60;
+        await cdp.send("Input.dispatchMouseEvent", { type: "mouseMoved", x: setup.x + dx*fraction, y: setup.y + dy*fraction, button: "left", buttons: 1 });
+        await sleep(12);
+    }
+    const updatesDuringGesture = await cdp.evaluate("window.__canvasPerfSample.updates");
+    const previewChanged = kind !== "resize" || await cdp.evaluate(`(() => {
+        const element = document.querySelector(${JSON.stringify(selector)});
+        return element && (parseFloat(element.style.width) !== ${setup.before.width} || parseFloat(element.style.height) !== ${setup.before.height});
+    })()`);
+    if (kind === "resize") assert(previewChanged, `F resize ${overview ? "overview" : "detail"} visibly previews before release`);
+    if (kind === "resize" && setup.incrementalResize) assert(updatesDuringGesture === 0, `F resize ${overview ? "overview" : "detail"} keeps project state unchanged during preview`, `updates=${updatesDuringGesture}`);
+    await cdp.send("Input.dispatchMouseEvent", { type: "mouseReleased", x: setup.x + dx, y: setup.y + dy, button: "left", buttons: 0, clickCount: 1 });
+    // Include deferred history and local persistence work in the sample.
+    await sleep(900);
+    const sample = await cdp.evaluate(`(() => {
+        const state = window.__canvasPerfSample;
+        state.stopped=true;
+        cancelAnimationFrame(state.raf);
+        state.longTasks.push(...state.observer.takeRecords().map(entry => entry.duration));
+        state.observer.disconnect();
+        state.unsubscribe();
+        const sorted = state.frames.slice(1).sort((a,b) => a-b);
+        const quantile = q => sorted[Math.min(sorted.length-1, Math.floor(sorted.length*q))] || 0;
+        const node = window.__canvasPerfStore.getState().projects.find(p => p.id === ${JSON.stringify(LARGE_FIXTURE_ID)})?.nodes.find(n => n.id === ${JSON.stringify(nodeId)});
+        return { elapsedMs: performance.now()-state.started, frames: sorted.length, frameP50: quantile(.5), frameP95: quantile(.95), frameMax: quantile(1),
+            longTasks: state.longTasks.length, longTaskMs: state.longTasks.reduce((a,b) => a+b,0), storeUpdates: state.updates,
+            after: node ? { x: node.position.x, y: node.position.y, width: node.width, height: node.height } : null };
+    })()`);
+    const afterMetrics = await readMetrics();
+    const changed = Boolean(sample.after && (kind === "resize" ? sample.after.width !== setup.before.width || sample.after.height !== setup.before.height : sample.after.x !== setup.before.x || sample.after.y !== setup.before.y));
+    const persisted = await cdp.poll(`document.querySelector('.pc-canvas-save-status')?.getAttribute('aria-label')?.startsWith('已保存到本机')`, "gesture persistence settled");
+    return {
+        kind, view: overview ? "overview" : "detail", trial, nodeId, mountedNodes: setup.mounted, mountedConnections: setup.connections,
+        before: setup.before, ...sample, changed, persisted, previewChanged, updatesDuringGesture,
+        scriptMs: (afterMetrics.ScriptDuration-beforeMetrics.ScriptDuration)*1000,
+        layoutMs: (afterMetrics.LayoutDuration-beforeMetrics.LayoutDuration)*1000,
+        taskMs: (afterMetrics.TaskDuration-beforeMetrics.TaskDuration)*1000,
+    };
+}
+
 async function stopExact(child, name) {
     if (!child) return;
     const stopped = () => child.exitCode !== null || child.signalCode !== null;
@@ -783,13 +971,23 @@ async function main() {
         chrome = await launchChrome(chromePath, cdpPort, profileDir);
         console.log(`Temporary Vite pid=${vite.pid}; Chrome pid=${chrome.pid}; profile=${profileDir}`);
         cdp = await connectCdp(cdpPort);
-        await shellScenario(cdp, url);
-        const movedTransform = await interactionScenario(cdp);
-        await persistenceScenario(cdp, url, movedTransform);
-        await compactViewportScenario(cdp);
-        await largeWorkspaceScenario(cdp, largeUrl);
+        if (!process.env.CANVAS_PERF_ONLY) {
+            await shellScenario(cdp, url);
+            const movedTransform = await interactionScenario(cdp);
+            await persistenceScenario(cdp, url, movedTransform);
+            await compactViewportScenario(cdp);
+            await largeWorkspaceScenario(cdp, largeUrl);
+        }
+        await canvasPerformanceScenario(cdp, largeUrl);
     } catch (error) {
         fail("runner threw", String(error?.stack || error));
+        if (cdp && process.env.CANVAS_PERF_REPORT) {
+            const screenshot = await cdp.send("Page.captureScreenshot", { format: "png" }).catch(() => null);
+            if (screenshot) {
+                mkdirSync(dirname(process.env.CANVAS_PERF_REPORT), { recursive: true });
+                writeFileSync(process.env.CANVAS_PERF_REPORT.replace(/\.json$/, "-failure.png"), Buffer.from(screenshot.data, "base64"));
+            }
+        }
     } finally {
         try {
             cdp?.close();
@@ -813,6 +1011,10 @@ async function main() {
         }
     }
     const passed = results.filter((item) => item.ok).length;
+    if (process.env.CANVAS_PERF_REPORT) {
+        mkdirSync(dirname(process.env.CANVAS_PERF_REPORT), { recursive: true });
+        writeFileSync(process.env.CANVAS_PERF_REPORT, JSON.stringify({ environment: "Chrome headless / SwiftShader / Vite DEV / 1366x900 / DPR 1", results, samples: performanceSamples }, null, 2));
+    }
     console.log(`\nCanvas P0 E2E: ${passed} passed, ${failures} failed, ${results.length} total`);
     for (const item of results.filter((entry) => !entry.ok)) console.log(`  FAILED: ${item.name} — ${item.detail}`);
     if (failures) process.exit(1);

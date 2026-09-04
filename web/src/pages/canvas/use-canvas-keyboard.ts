@@ -121,6 +121,8 @@ export function useCanvasKeyboard({
 }: UseCanvasKeyboardOptions) {
     useEffect(() => {
         const handleKeyDown = (event: KeyboardEvent) => {
+            // A live resize owns Escape/undo until its local preview is committed or cancelled.
+            if (document.querySelector("[data-canvas-resize-active='true']")) return;
             const target = event.target instanceof Element ? event.target : null;
             const key = event.key.toLowerCase();
             const isModifierShortcut = event.metaKey || event.ctrlKey;
@@ -240,6 +242,7 @@ export function useCanvasKeyboard({
         };
 
         const handlePaste = (event: ClipboardEvent) => {
+            if (document.querySelector("[data-canvas-resize-active='true']")) return;
             const target = event.target instanceof Element ? event.target : null;
             if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement || event.target instanceof HTMLSelectElement || target?.closest("[contenteditable='true']") || hasVisibleCanvasBlockingOverlay() || isCanvasKeyboardUiTarget(target)) return;
             // 节点标记写入失败或仍在写入时避开旧系统图片，其余情况保持系统内容优先。

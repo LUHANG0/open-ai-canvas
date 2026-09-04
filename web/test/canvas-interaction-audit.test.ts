@@ -73,6 +73,28 @@ test("history patches restore deleted node content and exact ordering", () => {
     expect(applyCanvasHistoryPatch(before, patch!, "after").nodes).toEqual([second]);
 });
 
+test("node edits skip unchanged connection and session collections and remain undoable", () => {
+    const first = node("first", CanvasNodeType.Image);
+    const untouched = new Proxy([], { get() { throw new Error("unchanged history collection was traversed"); } });
+    const before: CanvasHistorySnapshot = { nodes: [first], connections: untouched, chatSessions: untouched, activeChatId: null, backgroundMode: "lines", showImageInfo: false };
+    const after = { ...before, nodes: [{ ...first, width: 500 }] };
+    const patch = createCanvasHistoryPatch(before, after);
+    expect(patch?.connections).toBeUndefined();
+    expect(patch?.chatSessions).toBeUndefined();
+    expect(applyCanvasHistoryPatch(after, patch!, "before").nodes).toEqual(before.nodes);
+    expect(applyCanvasHistoryPatch(before, patch!, "after").nodes).toEqual(after.nodes);
+});
+
+test("history still detects reordered references and ignores copied no-op arrays", () => {
+    const first = node("first", CanvasNodeType.Image);
+    const second = node("second", CanvasNodeType.Text);
+    const before: CanvasHistorySnapshot = { nodes: [first, second], connections: [], chatSessions: [], activeChatId: null, backgroundMode: "lines", showImageInfo: false };
+    expect(createCanvasHistoryPatch(before, { ...before, nodes: [...before.nodes] })).toBeNull();
+    const after = { ...before, nodes: [second, first] };
+    const patch = createCanvasHistoryPatch(before, after);
+    expect(applyCanvasHistoryPatch(after, patch!, "before").nodes).toEqual(before.nodes);
+});
+
 test("history ignores external media hydration and reference-only no-op arrays", async () => {
     const history = await Bun.file(new URL("../src/pages/canvas/use-canvas-history.ts", import.meta.url)).text();
     const lifecycle = await Bun.file(new URL("../src/pages/canvas/use-canvas-project-lifecycle.ts", import.meta.url)).text();

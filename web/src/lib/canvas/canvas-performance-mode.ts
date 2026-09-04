@@ -19,6 +19,13 @@ export type CanvasMediaRenderPolicy = {
     posterConcurrency: number;
 };
 
+const MEDIA_RENDER_POLICIES = {
+    performance: Object.freeze<CanvasMediaRenderPolicy>({ mode: "performance", tier: "lightweight", reduceEffects: true, preferImagePreview: true, posterMaxWidth: 480, posterQuality: 0.72, posterConcurrency: 1 }),
+    quality: Object.freeze<CanvasMediaRenderPolicy>({ mode: "quality", tier: "quality", reduceEffects: false, preferImagePreview: false, posterMaxWidth: 1280, posterQuality: 0.9, posterConcurrency: 2 }),
+    autoLightweight: Object.freeze<CanvasMediaRenderPolicy>({ mode: "auto", tier: "lightweight", reduceEffects: true, preferImagePreview: true, posterMaxWidth: 640, posterQuality: 0.78, posterConcurrency: 1 }),
+    autoBalanced: Object.freeze<CanvasMediaRenderPolicy>({ mode: "auto", tier: "balanced", reduceEffects: false, preferImagePreview: false, posterMaxWidth: 960, posterQuality: 0.84, posterConcurrency: 1 }),
+};
+
 export const CANVAS_MEDIA_MODE_PRESENTATION: Record<CanvasMediaPerformanceMode, { label: string; shortLabel: string; description: string }> = {
     auto: { label: "智能模式", shortLabel: "智能", description: "根据缩放和素材密度自动平衡清晰度与流畅度" },
     quality: { label: "画质优先", shortLabel: "画质", description: "使用原图和高清封面，保留完整视觉效果" },
@@ -79,16 +86,16 @@ export function resolveCanvasMediaRenderPolicy(
     context: CanvasMediaPerformanceContext = {},
 ): CanvasMediaRenderPolicy {
     if (mode === "performance") {
-        return { mode, tier: "lightweight", reduceEffects: true, preferImagePreview: true, posterMaxWidth: 480, posterQuality: 0.72, posterConcurrency: 1 };
+        return MEDIA_RENDER_POLICIES.performance;
     }
     if (mode === "quality") {
-        return { mode, tier: "quality", reduceEffects: false, preferImagePreview: false, posterMaxWidth: 1280, posterQuality: 0.9, posterConcurrency: 2 };
+        return MEDIA_RENDER_POLICIES.quality;
     }
 
     const reduceEffects = shouldAutoReduceCanvasMediaEffects(nodes, context);
     return reduceEffects
-        ? { mode, tier: "lightweight", reduceEffects: true, preferImagePreview: true, posterMaxWidth: 640, posterQuality: 0.78, posterConcurrency: 1 }
-        : { mode, tier: "balanced", reduceEffects: false, preferImagePreview: false, posterMaxWidth: 960, posterQuality: 0.84, posterConcurrency: 1 };
+        ? MEDIA_RENDER_POLICIES.autoLightweight
+        : MEDIA_RENDER_POLICIES.autoBalanced;
 }
 
 function shouldAutoReduceCanvasMediaEffects(nodes: readonly CanvasNodeData[], context: CanvasMediaPerformanceContext) {

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { AlertCircle, BookOpenCheck, CheckCircle2, ChevronRight, Clapperboard, Copy, Download, GripVertical, Image as ImageIcon, Lock, Maximize2, Music2, Pencil, Plus, RefreshCw, Settings2, Star, Trash2, Type, Video } from "lucide-react";
 
@@ -16,8 +16,9 @@ import { PortraitClearanceIcon } from "@/components/canvas/portrait-clearance/po
 import { PORTRAIT_CLEARANCE_NODE_TYPE } from "@/lib/portrait-clearance/contracts";
 import { getNodeDefinition, getNodeMinSize, shouldKeepAspectRatio } from "@/lib/canvas/node-registry";
 import { CanvasNodeContent, CanvasNodeImageInfo } from "./canvas-node-content";
+import { useCanvasNodeResize } from "./use-canvas-node-resize";
+import type { CanvasResizeCorner as ResizeCorner } from "@/lib/canvas/canvas-node-resize";
 
-type ResizeCorner = "top-left" | "top-right" | "bottom-left" | "bottom-right";
 type CanvasTheme = (typeof canvasThemes)[keyof typeof canvasThemes];
 
 type CanvasNodeProps = {
@@ -114,7 +115,6 @@ export const CanvasNode = React.memo(function CanvasNode({
     const [hovered, setHovered] = useState(false);
     const [isEditingContent, setIsEditingContent] = useState(false);
     const [isEditingTitle, setIsEditingTitle] = useState(false);
-    const [isResizing, setIsResizing] = useState(false);
     const [titleDraft, setTitleDraft] = useState(data.title);
     const { download: downloadNode, duplicate: duplicateNode, deleteNode } = useCanvasNodeActions();
     const hasImageContent = data.type === CanvasNodeType.Image && Boolean(data.metadata?.content);
@@ -133,18 +133,21 @@ export const CanvasNode = React.memo(function CanvasNode({
     const assetTags = data.metadata?.assetTags?.filter((tag) => tag.trim()) || [];
     const scriptMinHeight = data.type === CanvasNodeType.Script ? storyboardMinNodeHeight(data.metadata?.storyboardComposerHeight) : null;
     const textareaRef = useRef<HTMLTextAreaElement>(null);
-    const resizeRef = useRef({
-        isResizing: false,
-        corner: "bottom-right" as ResizeCorner,
-        startX: 0,
-        startY: 0,
-        startLeft: 0,
-        startTop: 0,
-        startWidth: 0,
-        startHeight: 0,
-        keepRatio: false,
-        ratio: 1,
+    const minSize = getNodeMinSize(data.type);
+    const { resizePreview, isResizing, startResize } = useCanvasNodeResize({
+        nodeId: data.id,
+        bounds: { ...data.position, width: data.width, height: data.height },
+        scale,
+        disabled: readOnly || Boolean(data.metadata?.locked),
+        constraints: {
+            minWidth: minSize.width,
+            // Script height follows its storyboard rows, including the composer.
+            minHeight: scriptMinHeight || minSize.height,
+            aspectRatio: shouldKeepAspectRatio(data) ? (data.metadata?.naturalWidth || data.width) / (data.metadata?.naturalHeight || data.height || 1) : undefined,
+        },
+        onResize,
     });
+    const displayData = useMemo(() => resizePreview ? { ...data, width: resizePreview.width, height: resizePreview.height, position: { x: resizePreview.x, y: resizePreview.y } } : data, [data, resizePreview]);
 
     useEffect(() => {
         const textarea = textareaRef.current;
@@ -181,83 +184,6 @@ export const CanvasNode = React.memo(function CanvasNode({
         return () => window.removeEventListener("pointerdown", handleOutsidePointerDown, true);
     }, [isEditingContent]);
 
-    const handleResizeMove = useCallback(
-        (event: MouseEvent) => {
-            if (!resizeRef.current.isResizing) return;
-
-            const dx = (event.clientX - resizeRef.current.startX) / scale;
-            const dy = (event.clientY - resizeRef.current.startY) / scale;
-            const minSize = getNodeMinSize(data.type);
-            const minWidth = minSize.width;
-            // 分镜脚本的高度由表格内容动态撑开，覆盖注册表里的静态下限。
-            const minHeight = scriptMinHeight || minSize.height;
-            const startRight = resizeRef.current.startLeft + resizeRef.current.startWidth;
-            const startBottom = resizeRef.current.startTop + resizeRef.current.startHeight;
-            const fromLeft = resizeRef.current.corner.includes("left");
-            const fromTop = resizeRef.current.corner.includes("top");
-            const rawWidth = Math.max(minWidth, resizeRef.current.startWidth + (fromLeft ? -dx : dx));
-            const rawHeight = Math.max(minHeight, resizeRef.current.startHeight + (fromTop ? -dy : dy));
-            let width = rawWidth;
-            let height = rawHeight;
-            if (resizeRef.current.keepRatio) {
-                const ratio = resizeRef.current.ratio;
-                if (Math.abs(dx) >= Math.abs(dy)) {
-                    height = width / ratio;
-                } else {
-                    width = height * ratio;
-                }
-                if (height < minHeight) {
-                    height = minHeight;
-                    width = height * ratio;
-                }
-                if (width < minWidth) {
-                    width = minWidth;
-                    height = width / ratio;
-                }
-            }
-
-            onResize(data.id, width, height, {
-                x: fromLeft ? startRight - width : resizeRef.current.startLeft,
-                y: fromTop ? startBottom - height : resizeRef.current.startTop,
-            });
-        },
-        [data.id, data.type, onResize, scale, scriptMinHeight],
-    );
-
-    const handleResizeUp = useCallback(() => {
-        resizeRef.current.isResizing = false;
-        setIsResizing(false);
-        window.removeEventListener("mousemove", handleResizeMove);
-        window.removeEventListener("mouseup", handleResizeUp);
-    }, [handleResizeMove]);
-
-    const handleResizeMouseDown = (event: React.MouseEvent, corner: ResizeCorner) => {
-        event.stopPropagation();
-        event.preventDefault();
-        setIsResizing(true);
-        resizeRef.current = {
-            isResizing: true,
-            corner,
-            startX: event.clientX,
-            startY: event.clientY,
-            startLeft: data.position.x,
-            startTop: data.position.y,
-            startWidth: data.width,
-            startHeight: data.height,
-            keepRatio: shouldKeepAspectRatio(data),
-            ratio: (data.metadata?.naturalWidth || data.width) / (data.metadata?.naturalHeight || data.height || 1),
-        };
-        window.addEventListener("mousemove", handleResizeMove);
-        window.addEventListener("mouseup", handleResizeUp);
-    };
-
-    useEffect(() => {
-        return () => {
-            window.removeEventListener("mousemove", handleResizeMove);
-            window.removeEventListener("mouseup", handleResizeUp);
-        };
-    }, [handleResizeMove, handleResizeUp]);
-
     const commitTitle = () => {
         const next = titleDraft.trim();
         setIsEditingTitle(false);
@@ -277,9 +203,9 @@ export const CanvasNode = React.memo(function CanvasNode({
             aria-label={`${data.title}，${getNodeDefinition(data.type)?.label || "画布节点"}`}
             className={`node-element absolute flex select-none flex-col ${dragOffset ? "cursor-grabbing" : data.type === CanvasNodeType.Drawing ? "cursor-pointer" : "cursor-default"} ${isSelected ? "z-[var(--z-node-active)]" : "z-[var(--z-node)]"}`}
             style={{
-                transform: `translate(${data.position.x + (dragOffset?.x || 0)}px, ${data.position.y + (dragOffset?.y || 0)}px)`,
-                width: data.width,
-                height: data.height,
+                transform: `translate(${(resizePreview?.x ?? data.position.x) + (dragOffset?.x || 0)}px, ${(resizePreview?.y ?? data.position.y) + (dragOffset?.y || 0)}px)`,
+                width: resizePreview?.width ?? data.width,
+                height: resizePreview?.height ?? data.height,
                 contain: "layout style",
             }}
             onMouseEnter={() => {
@@ -294,7 +220,7 @@ export const CanvasNode = React.memo(function CanvasNode({
             onContextMenu={(event) => onContextMenu(event, data.id)}
         >
             <NodeExternalHeader
-                node={data}
+                node={displayData}
                 scale={scale}
                 dimensionLabel={mediaDimensionLabel}
                 active={hovered || isSelected || isFocusRelated}
@@ -376,7 +302,7 @@ export const CanvasNode = React.memo(function CanvasNode({
                     {/* 节点状态徽章（对应 #97 决策2：左上角 loading/success/error，近距离确认信号）*/}
                     {data.metadata?.status && data.metadata.status !== "idle" && data.type !== CanvasNodeType.Frame ? <NodeStatusBadge status={data.metadata.status} /> : null}
                     <CanvasNodeContent
-                        node={data}
+                        node={displayData}
                         theme={theme}
                         isEditingContent={isEditingContent}
                         textareaRef={textareaRef}
@@ -487,15 +413,17 @@ export const CanvasNode = React.memo(function CanvasNode({
                     </div>
                 ) : null}
 
-                {!readOnly && !data.metadata?.locked && (isSelected || hovered) ? (
-                    <>
-                        <ResizeHandle corner="top-left" onMouseDown={handleResizeMouseDown} />
-                        <ResizeHandle corner="top-right" onMouseDown={handleResizeMouseDown} />
-                        <ResizeHandle corner="bottom-left" onMouseDown={handleResizeMouseDown} />
-                        <ResizeHandle corner="bottom-right" onMouseDown={handleResizeMouseDown} />
-                    </>
-                ) : null}
             </div>
+
+            {/* Keep corner handles above side rails, outside the shell's hover transform. */}
+            {!readOnly && !data.metadata?.locked && keyboardControlsEnabled && (isSelected || hovered) ? (
+                <>
+                    <ResizeHandle corner="top-left" onPointerDown={startResize} />
+                    <ResizeHandle corner="top-right" onPointerDown={startResize} />
+                    <ResizeHandle corner="bottom-left" onPointerDown={startResize} />
+                    <ResizeHandle corner="bottom-right" onPointerDown={startResize} />
+                </>
+            ) : null}
 
             {!readOnly && data.type !== CanvasNodeType.Script && (hovered || forceInputVisible) ? (
                 <ConnectionSideRail side="left" scale={scale} theme={theme} onPointerDown={(event, anchorRatio) => onConnectStart(event, data.id, "target", undefined, anchorRatio)} />
@@ -672,7 +600,7 @@ function AssetTagBadges({ tags, theme }: { tags: string[]; theme: (typeof canvas
     );
 }
 
-function ResizeHandle({ corner, onMouseDown }: { corner: ResizeCorner; onMouseDown: (event: React.MouseEvent, corner: ResizeCorner) => void }) {
+function ResizeHandle({ corner, onPointerDown }: { corner: ResizeCorner; onPointerDown: (event: React.PointerEvent, corner: ResizeCorner) => void }) {
     const positionClass = {
         "top-left": "-left-[14px] -top-[14px] cursor-nwse-resize",
         "top-right": "-right-[14px] -top-[14px] cursor-nesw-resize",
@@ -680,7 +608,7 @@ function ResizeHandle({ corner, onMouseDown }: { corner: ResizeCorner; onMouseDo
         "bottom-right": "-bottom-[14px] -right-[14px] cursor-nwse-resize",
     }[corner];
 
-    return <div className={`absolute z-[var(--node-z-handle)] size-7 ${positionClass}`} onMouseDown={(event) => onMouseDown(event, corner)} />;
+    return <div data-canvas-resize-handle={corner} className={`absolute z-[var(--node-z-handle)] size-7 touch-none ${positionClass}`} onPointerDown={(event) => onPointerDown(event, corner)} />;
 }
 
 const NODE_EXTERNAL_HEADER_MIN_SCALE = 0.35;

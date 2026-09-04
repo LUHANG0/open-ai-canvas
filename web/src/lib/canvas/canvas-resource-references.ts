@@ -30,6 +30,51 @@ export type CanvasResourceGraphIndex = {
     outgoingByNodeId: ReadonlyMap<string, readonly CanvasConnection[]>;
 };
 
+export type CanvasResourceReferenceSnapshot = {
+    nodes: CanvasNodeData[];
+    references: CanvasResourceReference[];
+};
+
+export function reuseCanvasResourceReferences(previous: CanvasResourceReference[] | undefined, next: CanvasResourceReference[]): CanvasResourceReference[] {
+    if (!previous) return next;
+    const previousById = new Map(previous.map((reference) => [reference.id, reference]));
+    const reused = next.map((reference, index) => {
+        const candidate = previous[index]?.id === reference.id ? previous[index] : previousById.get(reference.id);
+        if (!candidate) return reference;
+        const keys = Object.keys(reference) as (keyof CanvasResourceReference)[];
+        return keys.length === Object.keys(candidate).length && keys.every((key) => candidate[key] === reference[key]) ? candidate : reference;
+    });
+    return previous.length === reused.length && reused.every((reference, index) => reference === previous[index]) ? previous : reused;
+}
+
+export function buildCanvasResourceReferenceSnapshot(nodes: CanvasNodeData[], previous?: CanvasResourceReferenceSnapshot): CanvasResourceReferenceSnapshot {
+    const references = reuseCanvasResourceReferences(previous?.references, labelResourceNodes(nodes.filter(isResourceNode), false));
+    // Progress, dimensions and other non-reference metadata do not change mentions.
+    // Keep raw titles: an empty title falls back to the context-specific label.
+    // Node identity/type also matters because non-resource Configs change routing.
+    if (previous && references === previous.references && nodes.length === previous.nodes.length
+        && nodes.every((node, index) => node.id === previous.nodes[index].id && node.type === previous.nodes[index].type && node.title === previous.nodes[index].title)) return previous;
+    return { nodes, references };
+}
+
+export function buildCanvasNodeMentionReferenceMap(
+    snapshot: CanvasResourceReferenceSnapshot,
+    connections: CanvasConnection[],
+    skillReferences: CanvasResourceReference[],
+    previous?: ReadonlyMap<string, CanvasResourceReference[]>,
+    graphIndex = createCanvasResourceGraphIndex(snapshot.nodes, connections),
+): Map<string, CanvasResourceReference[]> {
+    const next = new Map(snapshot.nodes.map((node) => [node.id, reuseCanvasResourceReferences(previous?.get(node.id), [
+        ...buildNodeMentionReferences(node, snapshot.nodes, connections, graphIndex),
+        ...skillReferences,
+    ])]));
+    if (previous instanceof Map && previous.size === next.size) {
+        const previousIds = [...previous.keys()];
+        if ([...next].every(([id, references], index) => id === previousIds[index] && references === previous.get(id))) return previous;
+    }
+    return next;
+}
+
 export function createCanvasResourceGraphIndex(nodes: CanvasNodeData[], connections: CanvasConnection[]): CanvasResourceGraphIndex {
     const nodeById = new Map(nodes.map((node) => [node.id, node]));
     const incomingByNodeId = new Map<string, CanvasConnection[]>();
@@ -91,9 +136,8 @@ export function buildAssetMentionReferences(assets: Asset[]): CanvasResourceRefe
     });
 }
 
-export function buildCanvasResourceReferences(nodes: CanvasNodeData[], connections: CanvasConnection[], contextNodeId?: string | null, graphIndex = createCanvasResourceGraphIndex(nodes, connections)) {
+export function buildCanvasResourceReferences(nodes: CanvasNodeData[], connections: CanvasConnection[], contextNodeId?: string | null, graphIndex = createCanvasResourceGraphIndex(nodes, connections), globalReferences = labelResourceNodes(nodes.filter(isResourceNode), false)) {
     const contextNodes = contextNodeId ? getMentionResourceNodes(contextNodeId, nodes, connections, graphIndex) : [];
-    const globalReferences = labelResourceNodes(nodes.filter(isResourceNode), false);
     const activeByNodeId = new Map(labelResourceNodes(contextNodes, true).map((reference) => [reference.nodeId, reference]));
     return globalReferences.map((reference) => activeByNodeId.get(reference.nodeId) || reference);
 }

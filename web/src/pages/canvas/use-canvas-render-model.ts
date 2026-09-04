@@ -8,7 +8,7 @@ import { sameNodeSemanticData } from "@/lib/canvas/canvas-project-domain";
 import { resolveCanvasMediaRenderPolicy } from "@/lib/canvas/canvas-performance-mode";
 import { getCanvasSelectionCapabilities } from "@/lib/canvas/canvas-selection-capabilities";
 import { canvasNodeIntersectsRenderBounds } from "@/lib/canvas/canvas-render-culling";
-import { buildCanvasResourceReferences, buildNodeMentionReferences, createCanvasResourceGraphIndex } from "@/lib/canvas/canvas-resource-references";
+import { buildCanvasNodeMentionReferenceMap, buildCanvasResourceReferences, buildCanvasResourceReferenceSnapshot, createCanvasResourceGraphIndex, reuseCanvasResourceReferences, type CanvasResourceReference, type CanvasResourceReferenceSnapshot } from "@/lib/canvas/canvas-resource-references";
 import { buildSkillMentionReferences } from "@/lib/canvas/canvas-skill-mentions";
 import type { Skill } from "@/services/api/skills";
 import type { ProjectUnit } from "@/services/api/projects";
@@ -90,6 +90,13 @@ export function useCanvasRenderModel({
     }, [nodes]);
     const resourceGraphIndex = useMemo(() => createCanvasResourceGraphIndex(semanticNodes, connections), [connections, semanticNodes]);
     const nodeGraphContext = useMemo(() => createCanvasNodeGraphContextValue(resourceGraphIndex), [resourceGraphIndex]);
+    const referenceSnapshotRef = useRef<CanvasResourceReferenceSnapshot | undefined>(undefined);
+    const referenceSnapshot = useMemo(() => {
+        const next = buildCanvasResourceReferenceSnapshot(semanticNodes, referenceSnapshotRef.current);
+        referenceSnapshotRef.current = next;
+        return next;
+    }, [semanticNodes]);
+    const referenceGraphIndex = useMemo(() => createCanvasResourceGraphIndex(referenceSnapshot.nodes, connections), [connections, referenceSnapshot]);
     const collapsedBatchChildIds = useMemo(() => {
         const hidden = new Set<string>();
         nodes.forEach((node) => {
@@ -286,14 +293,20 @@ export function useCanvasRenderModel({
     const activeStylePresetId = useMemo(() => semanticNodes.find((node) => node.metadata?.workflowKind === "styleboard")?.metadata?.stylePresetId, [semanticNodes]);
     const activeScriptNode = useMemo(() => semanticNodes.find((node) => node.id === scriptEditorNodeId && node.type === CanvasNodeType.Script) || null, [scriptEditorNodeId, semanticNodes]);
     const activeDirectorScene = useMemo(() => directorScenes?.find((scene) => scene.id === activeDirectorNode?.metadata?.directorSceneId) || null, [activeDirectorNode?.metadata?.directorSceneId, directorScenes]);
-    const canvasResourceReferences = useMemo(() => buildCanvasResourceReferences(semanticNodes, connections, dialogNodeId || activeNodeId, resourceGraphIndex), [activeNodeId, connections, dialogNodeId, resourceGraphIndex, semanticNodes]);
+    const canvasResourceReferencesRef = useRef<CanvasResourceReference[]>([]);
+    const canvasResourceReferences = useMemo(() => {
+        const next = reuseCanvasResourceReferences(canvasResourceReferencesRef.current, buildCanvasResourceReferences(referenceSnapshot.nodes, connections, dialogNodeId || activeNodeId, referenceGraphIndex, referenceSnapshot.references));
+        canvasResourceReferencesRef.current = next;
+        return next;
+    }, [activeNodeId, connections, dialogNodeId, referenceGraphIndex, referenceSnapshot]);
     const resourceReferenceByNodeId = useMemo(() => new Map(canvasResourceReferences.map((reference) => [reference.nodeId, reference])), [canvasResourceReferences]);
     const skillMentionReferences = useMemo(() => buildSkillMentionReferences(addedSkills), [addedSkills]);
+    const mentionReferencesRef = useRef<Map<string, CanvasResourceReference[]>>(new Map());
     const mentionReferencesByNodeId = useMemo(() => {
-        const map = new Map<string, ReturnType<typeof buildNodeMentionReferences>>();
-        semanticNodes.forEach((node) => map.set(node.id, [...buildNodeMentionReferences(node, semanticNodes, connections, resourceGraphIndex), ...skillMentionReferences]));
+        const map = buildCanvasNodeMentionReferenceMap(referenceSnapshot, connections, skillMentionReferences, mentionReferencesRef.current, referenceGraphIndex);
+        mentionReferencesRef.current = map;
         return map;
-    }, [connections, resourceGraphIndex, semanticNodes, skillMentionReferences]);
+    }, [connections, referenceGraphIndex, referenceSnapshot, skillMentionReferences]);
 
     return {
         activeDirectorNode,

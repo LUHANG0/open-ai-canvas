@@ -40,6 +40,21 @@ describe("canvas media performance mode", () => {
         expect(quality).toMatchObject({ tier: "quality", reduceEffects: false, preferImagePreview: false, posterMaxWidth: 1280, posterConcurrency: 2 });
     });
 
+    test("视口和节点改变但展示档位不变时复用策略对象", () => {
+        const videos = [node("video-a", CanvasNodeType.Video), node("video-b", CanvasNodeType.Video)];
+        for (const mode of ["auto", "quality", "performance"] as const) {
+            const before = resolveCanvasMediaRenderPolicy(mode, videos, { viewportScale: 1, visibleNodes: videos });
+            const after = resolveCanvasMediaRenderPolicy(mode, [...videos], { viewportScale: 0.8, visibleNodes: videos.slice(0, 1) });
+            expect(after).toBe(before);
+        }
+        const balanced = resolveCanvasMediaRenderPolicy("auto", videos, { viewportScale: 1, visibleNodes: videos });
+        const lightweight = resolveCanvasMediaRenderPolicy("auto", videos, { viewportScale: 0.2, visibleNodes: videos });
+        expect(lightweight).not.toBe(balanced);
+        expect(lightweight.tier).toBe("lightweight");
+        expect(resolveCanvasMediaRenderPolicy("auto", videos, { viewportScale: 0.3, visibleNodes: videos.slice(0, 1) })).toBe(lightweight);
+        expect(resolveCanvasMediaRenderPolicy("auto", videos, { viewportScale: 1, visibleNodes: videos })).toBe(balanced);
+    });
+
     test("超远景下只要有可见视频就开启轻量展示", () => {
         const video = node("video", CanvasNodeType.Video);
 

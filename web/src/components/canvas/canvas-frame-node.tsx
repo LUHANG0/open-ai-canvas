@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import type { MouseEvent as ReactMouseEvent } from "react";
 import { ChevronDown, ChevronRight, Video } from "lucide-react";
 
@@ -9,8 +9,8 @@ import { shouldEnableCanvasNodeKeyboardControls } from "@/lib/canvas/canvas-keyb
 import { canvasThemes, type CanvasTheme } from "@/lib/canvas-theme";
 import { useThemeStore } from "@/stores/use-theme-store";
 import { CanvasNodeType, type CanvasFolderStyle, type CanvasFolderTheme, type CanvasNodeData, type Position } from "@/types/canvas";
-
-type ResizeCorner = "top-left" | "top-right" | "bottom-left" | "bottom-right";
+import { useCanvasNodeResize } from "./use-canvas-node-resize";
+import type { CanvasResizeCorner as ResizeCorner } from "@/lib/canvas/canvas-node-resize";
 
 export const CanvasFrameNode = React.memo(function CanvasFrameNode({
     data,
@@ -53,20 +53,6 @@ export const CanvasFrameNode = React.memo(function CanvasFrameNode({
     const [editing, setEditing] = useState(false);
     const [title, setTitle] = useState(data.title);
     const titleInputRef = useRef<HTMLInputElement>(null);
-    const resizeRef = useRef({
-        active: false,
-        corner: "bottom-right" as ResizeCorner,
-        startX: 0,
-        startY: 0,
-        startLeft: 0,
-        startTop: 0,
-        startWidth: 0,
-        startHeight: 0,
-        nodeId: data.id,
-        scale,
-        childBounds: null as { left: number; top: number; right: number; bottom: number } | null,
-        onResize,
-    });
 
     useEffect(() => setTitle(data.title), [data.title]);
 
@@ -99,63 +85,23 @@ export const CanvasFrameNode = React.memo(function CanvasFrameNode({
         return { left, top, right, bottom };
     }, [childNodes]);
 
-    const handleResizeMove = useCallback((event: MouseEvent) => {
-        const state = resizeRef.current;
-        if (!state.active) return;
-        const dx = (event.clientX - state.startX) / state.scale;
-        const dy = (event.clientY - state.startY) / state.scale;
-        const fromLeft = state.corner.includes("left");
-        const fromTop = state.corner.includes("top");
-        const startRight = state.startLeft + state.startWidth;
-        const startBottom = state.startTop + state.startHeight;
-        let left = fromLeft ? Math.min(state.startLeft + dx, startRight - 360) : state.startLeft;
-        let top = fromTop ? Math.min(state.startTop + dy, startBottom - 240) : state.startTop;
-        let right = fromLeft ? startRight : Math.max(state.startLeft + 360, startRight + dx);
-        let bottom = fromTop ? startBottom : Math.max(state.startTop + 240, startBottom + dy);
-
-        if (state.childBounds) {
-            if (fromLeft) left = Math.min(left, state.childBounds.left - FRAME_PADDING);
-            else right = Math.max(right, state.childBounds.right + FRAME_PADDING);
-            if (fromTop) top = Math.min(top, state.childBounds.top - FRAME_HEADER_HEIGHT - FRAME_PADDING);
-            else bottom = Math.max(bottom, state.childBounds.bottom + FRAME_PADDING);
-        }
-        state.onResize(state.nodeId, right - left, bottom - top, { x: left, y: top });
-    }, []);
-
-    const handleResizeUp = useCallback(() => {
-        resizeRef.current.active = false;
-        window.removeEventListener("mousemove", handleResizeMove);
-        window.removeEventListener("mouseup", handleResizeUp);
-    }, [handleResizeMove]);
-
-    useEffect(
-        () => () => {
-            window.removeEventListener("mousemove", handleResizeMove);
-            window.removeEventListener("mouseup", handleResizeUp);
+    const { resizePreview, isResizing, startResize } = useCanvasNodeResize({
+        nodeId: data.id,
+        bounds: { ...data.position, width: data.width, height: data.height },
+        scale,
+        disabled: readOnly || collapsed || Boolean(data.metadata?.locked),
+        constraints: {
+            minWidth: 360,
+            minHeight: 240,
+            contentBounds: childBounds ? {
+                left: childBounds.left - FRAME_PADDING,
+                top: childBounds.top - FRAME_HEADER_HEIGHT - FRAME_PADDING,
+                right: childBounds.right + FRAME_PADDING,
+                bottom: childBounds.bottom + FRAME_PADDING,
+            } : null,
         },
-        [handleResizeMove, handleResizeUp],
-    );
-
-    const startResize = (event: ReactMouseEvent, corner: ResizeCorner) => {
-        event.preventDefault();
-        event.stopPropagation();
-        resizeRef.current = {
-            active: true,
-            corner,
-            startX: event.clientX,
-            startY: event.clientY,
-            startLeft: data.position.x,
-            startTop: data.position.y,
-            startWidth: data.width,
-            startHeight: data.height,
-            nodeId: data.id,
-            scale,
-            childBounds,
-            onResize,
-        };
-        window.addEventListener("mousemove", handleResizeMove);
-        window.addEventListener("mouseup", handleResizeUp);
-    };
+        onResize,
+    });
 
     const active = isSelected || isDropTarget;
     const linkedFolder = Boolean(data.metadata?.folder?.assetFolderId);
@@ -164,12 +110,13 @@ export const CanvasFrameNode = React.memo(function CanvasFrameNode({
     return (
         <div
             data-node-id={data.id}
+            data-canvas-node-interacting={dragOffset || editing || isResizing ? "true" : undefined}
             data-canvas-keyboard-controls={keyboardControlsEnabled ? "enabled" : "overview"}
             role="group"
             tabIndex={folder && collapsed && keyboardControlsEnabled ? 0 : undefined}
             aria-label={`${data.title}，${folder ? "文件夹" : "背板"}，${childNodes.length} 项内容${folder && collapsed && keyboardControlsEnabled ? "。按回车打开" : ""}`}
             className={`absolute z-0 select-none${folder && collapsed ? " canvas-folder-node" : ""} ${dragOffset ? "cursor-grabbing" : "cursor-default"}`}
-            style={{ transform: `translate(${data.position.x + (dragOffset?.x || 0)}px, ${data.position.y + (dragOffset?.y || 0)}px)`, width: data.width, height: data.height, contain: "layout style" }}
+            style={{ transform: `translate(${(resizePreview?.x ?? data.position.x) + (dragOffset?.x || 0)}px, ${(resizePreview?.y ?? data.position.y) + (dragOffset?.y || 0)}px)`, width: resizePreview?.width ?? data.width, height: resizePreview?.height ?? data.height, contain: "layout style" }}
             onMouseDown={(event) => onMouseDown(event, data.id)}
             onDoubleClick={(event) => {
                 if (!collapsed || (event.target instanceof Element && event.target.closest("button,input"))) return;
@@ -273,10 +220,10 @@ export const CanvasFrameNode = React.memo(function CanvasFrameNode({
                 </CometCard>
                 {!readOnly && !collapsed && isSelected && !data.metadata?.locked ? (
                     <>
-                        <ResizeHandle corner="top-left" scale={scale} theme={theme} onMouseDown={startResize} />
-                        <ResizeHandle corner="top-right" scale={scale} theme={theme} onMouseDown={startResize} />
-                        <ResizeHandle corner="bottom-left" scale={scale} theme={theme} onMouseDown={startResize} />
-                        <ResizeHandle corner="bottom-right" scale={scale} theme={theme} onMouseDown={startResize} />
+                        <ResizeHandle corner="top-left" scale={scale} theme={theme} onPointerDown={startResize} />
+                        <ResizeHandle corner="top-right" scale={scale} theme={theme} onPointerDown={startResize} />
+                        <ResizeHandle corner="bottom-left" scale={scale} theme={theme} onPointerDown={startResize} />
+                        <ResizeHandle corner="bottom-right" scale={scale} theme={theme} onPointerDown={startResize} />
                     </>
                 ) : null}
             </div>
@@ -337,7 +284,7 @@ function FramePreview({ nodes, frame, theme }: { nodes: CanvasNodeData[]; frame:
     );
 }
 
-function ResizeHandle({ corner, scale, theme, onMouseDown }: { corner: ResizeCorner; scale: number; theme: CanvasTheme; onMouseDown: (event: ReactMouseEvent, corner: ResizeCorner) => void }) {
+function ResizeHandle({ corner, scale, theme, onPointerDown }: { corner: ResizeCorner; scale: number; theme: CanvasTheme; onPointerDown: (event: React.PointerEvent, corner: ResizeCorner) => void }) {
     const inverseScale = 1 / Math.max(scale, 0.05);
     const size = 14 * inverseScale;
     const offset = -size / 2;
@@ -349,7 +296,8 @@ function ResizeHandle({ corner, scale, theme, onMouseDown }: { corner: ResizeCor
         <button
             type="button"
             aria-label="调整背板尺寸"
-            className="pointer-events-auto absolute z-20 rounded-sm shadow-sm"
+            data-canvas-resize-handle={corner}
+            className="pointer-events-auto absolute z-20 touch-none rounded-sm shadow-sm"
             style={{
                 top: fromTop ? offset : undefined,
                 bottom: fromTop ? undefined : offset,
@@ -361,7 +309,7 @@ function ResizeHandle({ corner, scale, theme, onMouseDown }: { corner: ResizeCor
                 background: theme.frame.activeStroke,
                 border: `${2 * inverseScale}px solid ${theme.canvas.background}`,
             }}
-            onMouseDown={(event) => onMouseDown(event, corner)}
+            onPointerDown={(event) => onPointerDown(event, corner)}
         />
     );
 }

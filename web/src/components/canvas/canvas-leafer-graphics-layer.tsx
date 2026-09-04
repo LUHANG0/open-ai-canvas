@@ -3,6 +3,7 @@ import { Group, Leafer, Path, Rect } from "leafer-ui";
 
 import { activeConnectionPath, canvasConnectionPath } from "@/components/canvas/canvas-connections";
 import type { CanvasBatchConnectionPreview } from "@/lib/canvas/canvas-batch-connection";
+import { CanvasConnectionGraphics } from "@/lib/canvas/canvas-connection-graphics";
 import { subscribeCanvasGraphicsViewportPreview, subscribeCanvasSelectionPreview } from "@/lib/canvas/canvas-live-viewport";
 import { calculateCanvasPreviewTransform, sameCanvasViewport, shouldRebaseCanvasRaster } from "@/lib/canvas/canvas-leafer-viewport";
 import type { CanvasTheme } from "@/lib/canvas-theme";
@@ -36,7 +37,7 @@ type LeaferScene = {
 };
 
 type UnderlayScene = LeaferScene & {
-    connections: Group;
+    connectionGraphics: CanvasConnectionGraphics;
 };
 
 type OverlayScene = LeaferScene & {
@@ -111,6 +112,7 @@ export function CanvasLeaferGraphicsLayer(props: CanvasLeaferGraphicsLayerProps)
             unsubscribeSelection();
             resizeObserver.disconnect();
             window.removeEventListener("resize", resize);
+            underlay.connectionGraphics.destroy();
             underlay.leafer.destroy(true);
             overlay.leafer.destroy(true);
             underlayRef.current = null;
@@ -121,7 +123,7 @@ export function CanvasLeaferGraphicsLayer(props: CanvasLeaferGraphicsLayerProps)
     useLayoutEffect(() => {
         const underlay = underlayRef.current;
         if (!underlay) return;
-        rebuildConnections(underlay, props);
+        underlay.connectionGraphics.sync(props);
     }, [props.displayConnections, props.relatedConnectionIds, props.scriptScrollTopById, props.selectedConnectionId, props.theme]);
 
     useLayoutEffect(() => {
@@ -173,7 +175,12 @@ function createUnderlayScene(host: HTMLDivElement): UnderlayScene {
     const connections = new Group({ hittable: false });
     world.add(connections);
     leafer.add(world);
-    return { leafer, world, host, connections };
+    const connectionGraphics = new CanvasConnectionGraphics(
+        connections,
+        (attributes) => new Path({ ...attributes, strokeScaleFixed: true, strokeCap: "round", hittable: false }),
+        ({ connection, from, to }, fromScrollTop, toScrollTop) => canvasConnectionPath(connection, from, to, fromScrollTop, toScrollTop).pathD,
+    );
+    return { leafer, world, host, connectionGraphics };
 }
 
 function createOverlayScene(host: HTMLDivElement): OverlayScene {
@@ -191,23 +198,6 @@ function createOverlayScene(host: HTMLDivElement): OverlayScene {
     world.add(batchDrafts);
     leafer.add(world);
     return { leafer, world, host, selection, selectionBounds, guides, draft, batchDrafts };
-}
-
-function rebuildConnections(scene: UnderlayScene, props: CanvasLeaferGraphicsLayerProps) {
-    scene.connections.removeAll(true);
-    props.displayConnections.forEach(({ connection, from, to }) => {
-        const emphasized = props.selectedConnectionId === connection.id || props.relatedConnectionIds.has(connection.id);
-        const path = new Path({
-            path: canvasConnectionPath(connection, from, to, props.scriptScrollTopById[from.id] || 0, props.scriptScrollTopById[to.id] || 0).pathD,
-            stroke: emphasized ? props.theme.accent.primary : props.theme.node.muted,
-            strokeWidth: emphasized ? 1.6 : 1,
-            strokeScaleFixed: true,
-            strokeCap: "round",
-            opacity: emphasized ? 0.52 : 0.24,
-            hittable: false,
-        });
-        scene.connections.add(path);
-    });
 }
 
 function syncOverlayContent(scene: OverlayScene, props: CanvasLeaferGraphicsLayerProps, viewportScale: number) {

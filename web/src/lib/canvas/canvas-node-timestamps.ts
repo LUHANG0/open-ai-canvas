@@ -52,6 +52,7 @@ export function stampCanvasNodeChanges(previousNodes: CanvasNodeData[], nextNode
     let changed = false;
     const stamped = nextNodes.map((node) => {
         const previous = previousById.get(node.id);
+        if (previous === node) return node;
         const createdAt = canvasNodeCreatedAt(node, canvasNodeCreatedAt(previous || node, now)) || now;
         const meaningfulChange = previous ? canvasNodeMeaningfullyChanged(previous, node) : false;
         const updatedAt = previous
