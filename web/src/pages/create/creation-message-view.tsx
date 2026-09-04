@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Modal, Tooltip } from "antd";
-import { ChevronDown, Copy, CornerUpLeft, Download, FileText, Film, Image as ImageIcon, LoaderCircle, Maximize2, Music2, RefreshCw, Sparkles, Square } from "lucide-react";
+import { Copy, CornerUpLeft, Download, FileText, Film, Image as ImageIcon, LoaderCircle, Maximize2, Music2, PanelTop, RefreshCw, Sparkles, Square } from "lucide-react";
 import { Link } from "react-router";
 
 import { AIMessageMarkdown } from "@/components/ai/ai-message-markdown";
@@ -329,29 +329,44 @@ function MediaResult({ item, compactLayout, onRetryFailure, onCreateVariant }: {
     const completedAt = item.completedAt || firstAsset?.createdAt;
     const elapsed = creationGenerationElapsedLabel(item.createdAt, completedAt);
     const mediaDuration = isVideo ? creationMediaDurationLabel(primaryMetadata?.durationMs || Number(item.settings?.seconds || 0) * 1000) : "";
-    const supplementalLabel = supplementalImages.some((entry) => entry.role === "last_frame") ? " · 含尾帧" : supplementalImages.length ? ` · ${supplementalImages.length} 张附图` : "";
-    const resultType = isVideo ? `视频 · ${format}${supplementalLabel}` : `图片 · ${imageResults.length} 张`;
+    const supplementalLabel = supplementalImages.some((entry) => entry.role === "last_frame") ? "含尾帧" : supplementalImages.length ? `${supplementalImages.length} 张附图` : "";
+    const resultMetrics = isVideo
+        ? [
+              { label: "格式", value: format },
+              { label: "分辨率", value: resolution },
+              { label: "时长", value: mediaDuration || "—" },
+              { label: "生成耗时", value: elapsed },
+          ]
+        : [
+              { label: "数量", value: `${imageResults.length} 张` },
+              { label: "格式", value: format },
+              { label: "分辨率", value: resolution },
+              { label: "生成耗时", value: elapsed },
+          ];
     const resultDetails = (
         <dl className="creation-media-details" aria-label="生成结果明细">
-            <div>
-                <dt>类型</dt>
-                <dd>{resultType}</dd>
-            </div>
-            <div>
-                <dt>分辨率</dt>
-                <dd>{resolution}</dd>
-            </div>
-            <div>
-                <dt>生成耗时</dt>
-                <dd>{elapsed}</dd>
-            </div>
-            {mediaDuration ? (
-                <div>
-                    <dt>视频时长</dt>
-                    <dd>{mediaDuration}</dd>
+            {resultMetrics.map((metric) => (
+                <div key={metric.label}>
+                    <dt>{metric.label}</dt>
+                    <dd>{metric.value}</dd>
                 </div>
-            ) : null}
+            ))}
         </dl>
+    );
+    const resultActions = (
+        <div className="creation-media-actions">
+            <Tooltip title={compactLayout ? "沿用本轮提示词、素材与输出参数，在新回合中继续调整" : "沿用本轮参数生成新版本"}>
+                <button type="button" className={compactLayout ? "is-primary" : undefined} onClick={onCreateVariant}>
+                    <RefreshCw />
+                    {compactLayout ? "继续调整" : "生成同款"}
+                </button>
+            </Tooltip>
+            <Link to={canvasPath}>
+                <PanelTop />
+                {resultAssetIds.length ? "添加到画布" : "打开画布"}
+            </Link>
+            <CreationResultDownloads results={resultMedia} />
+        </div>
     );
     return (
         <div className="creation-media-result">
@@ -423,29 +438,20 @@ function MediaResult({ item, compactLayout, onRetryFailure, onCreateVariant }: {
                 />
             ) : null}
             {compactLayout ? (
-                <details className="creation-media-disclosure">
-                    <summary>
-                        <span>结果详情</span>
-                        <small>
-                            {resultType} · {resolution}
-                        </small>
-                        <ChevronDown aria-hidden="true" />
-                    </summary>
+                <section className={`creation-result-inspector is-${isVideo ? "video" : "image"}`} aria-label="输出信息与操作">
+                    <header>
+                        <span>输出信息</span>
+                        {supplementalLabel ? <small>{supplementalLabel}</small> : null}
+                    </header>
                     {resultDetails}
-                </details>
+                    {resultActions}
+                </section>
             ) : (
-                resultDetails
+                <>
+                    {resultDetails}
+                    {resultActions}
+                </>
             )}
-            <div className="creation-media-actions">
-                <Tooltip title={compactLayout ? "沿用本轮提示词、素材与输出参数，在新回合中继续调整" : "沿用本轮参数生成新版本"}>
-                    <button type="button" className={compactLayout ? "is-primary" : undefined} onClick={onCreateVariant}>
-                        <RefreshCw />
-                        {compactLayout ? "继续调整" : "生成同款"}
-                    </button>
-                </Tooltip>
-                <Link to={canvasPath}>{resultAssetIds.length ? "添加到画布" : "打开画布"}</Link>
-                <CreationResultDownloads results={resultMedia} />
-            </div>
             <CreationMediaPreviewModal url={previewUrl} type={previewType} onClose={() => setPreviewUrl("")} />
         </div>
     );
