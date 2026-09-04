@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Drawer, Tooltip } from "antd";
-import { Check, ChevronDown, Clapperboard, Cloud, CloudOff, Film, History, LoaderCircle, MessageSquareText, Plus, RefreshCw, Search, Trash2, X } from "lucide-react";
+import { Check, Clapperboard, Cloud, CloudOff, Film, History, LoaderCircle, MessageSquareText, Plus, RefreshCw, Search, Trash2, X } from "lucide-react";
 
 import type { CreationConversationCloudSyncStatus } from "@/services/creation-conversation-cloud-sync";
 import { displayCreationPrompt } from "./creation-references";
@@ -123,7 +123,6 @@ export function CreationHistoryDrawer({
 export function CreationViewSwitch({ viewMode, onChange, desktopLayout = false }: { viewMode: CreationViewMode; onChange: (mode: CreationViewMode) => void; desktopLayout?: boolean }) {
     return (
         <div className="creation-view-switch" role="group" aria-label={desktopLayout ? "工作方式" : "创作视图"}>
-            {desktopLayout ? <span className="creation-view-switch-label">工作方式</span> : null}
             <button type="button" aria-pressed={viewMode === "chat"} onClick={() => onChange("chat")}>
                 <MessageSquareText />
                 连续创作
@@ -216,7 +215,8 @@ export function CreationWorkspaceToolbar({
                 {storyboard ? (
                     <Tooltip title={storyboard.composing ? "收起镜头草稿" : "新增镜头"}>
                         <button type="button" aria-label={storyboard.composing ? "收起镜头草稿" : "新增镜头"} className="storyboard-workbench-bar-action is-primary" onClick={storyboard.composing ? storyboard.onCancelCompose : storyboard.onBeginCompose}>
-                            {storyboard.composing ? <ChevronDown /> : <Clapperboard />}
+                            {storyboard.composing ? <X /> : <Plus />}
+                            {desktopLayout ? <span>{storyboard.composing ? "收起草稿" : "新增镜头"}</span> : null}
                         </button>
                     </Tooltip>
                 ) : null}

@@ -57,6 +57,7 @@ export function CreationTurnView({
                         item={shot.user}
                         modelName=""
                         compactLayout={compactLayout}
+                        turnNumber={turnNumber}
                         sourceTurnNumber={sourceTurnNumber}
                         cancelling={false}
                         onRetryFailure={onRetryFailure}
@@ -84,6 +85,7 @@ export function CreationMessageView({
     item,
     modelName,
     compactLayout,
+    turnNumber,
     sourceTurnNumber,
     cancelling,
     onRetryFailure,
@@ -93,13 +95,14 @@ export function CreationMessageView({
     item: CreationMessage;
     modelName: string;
     compactLayout: boolean;
+    turnNumber?: number;
     sourceTurnNumber?: number;
     cancelling: boolean;
     onRetryFailure: () => void;
     onCreateVariant: () => void;
     onCancelGeneration: () => void;
 }) {
-    if (item.role === "user") return <CreationUserMessage item={item} sourceTurnNumber={sourceTurnNumber} />;
+    if (item.role === "user") return <CreationUserMessage item={item} turnNumber={turnNumber} sourceTurnNumber={sourceTurnNumber} />;
     const mode = item.mode || "text";
     const isRunning = item.status === "pending" || item.status === "streaming";
     const stateLabel = item.status === "cancelled" ? "已停止" : item.status === "error" ? "生成失败" : "";
@@ -149,7 +152,7 @@ export function CreationMessageView({
     );
 }
 
-function CreationUserMessage({ item, sourceTurnNumber }: { item: CreationMessage; sourceTurnNumber?: number }) {
+function CreationUserMessage({ item, turnNumber, sourceTurnNumber }: { item: CreationMessage; turnNumber?: number; sourceTurnNumber?: number }) {
     const [previewUrl, setPreviewUrl] = useState("");
     const [previewType, setPreviewType] = useState<"image" | "video">("image");
     const copyText = useCopyText();
@@ -158,6 +161,7 @@ function CreationUserMessage({ item, sourceTurnNumber }: { item: CreationMessage
         <article className="creation-user-message">
             <div className="creation-user-message-meta">
                 <span>你的描述</span>
+                {turnNumber ? <span className="creation-user-message-turn">第 {String(turnNumber).padStart(2, "0")} 轮</span> : null}
                 {item.createdAt ? <time dateTime={item.createdAt}>{formatMessageTime(item.createdAt)}</time> : null}
                 <Tooltip title="复制消息">
                     <button type="button" className="creation-user-message-copy" aria-label="复制提示词" onClick={() => copyText(visiblePrompt, "提示词已复制")}>

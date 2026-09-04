@@ -1621,6 +1621,14 @@ html:not(.dark) .creation-generation-settings-surface .creation-custom-trigger {
     font-weight: 650;
 }
 
+.creation-home .creation-user-message-turn {
+    border-left: 1px solid var(--creation-border);
+    color: var(--creation-muted);
+    padding-left: 7px;
+    font-size: 11px;
+    font-weight: 560;
+}
+
 .creation-home .creation-user-message-context {
     display: inline-flex;
     width: fit-content;
@@ -5449,36 +5457,47 @@ html:not(.dark) .creation-media-preview-modal.is-video .ant-modal-container {
     }
 
     .creation-home .creation-workspace-toolbar {
-        grid-template-columns: minmax(44px, 1fr) minmax(300px, 360px) minmax(156px, 1fr);
-        gap: 12px;
+        grid-template-columns: minmax(0, 1fr) max-content max-content;
+        gap: 8px;
+        padding: 7px 20px;
     }
 
-    .creation-home .creation-workspace-toolbar-switch,
+    .creation-home .creation-workspace-toolbar-switch {
+        grid-column: 1;
+        grid-row: 1;
+        width: auto;
+        justify-self: start;
+    }
+
     .creation-home .creation-view-switch {
-        width: 100%;
+        width: 236px;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
-    .creation-home .creation-view-switch {
-        grid-template-columns: 80px repeat(2, minmax(0, 1fr));
+    .creation-home .creation-view-switch svg,
+    .creation-home .creation-cloud-sync svg,
+    .creation-home .storyboard-workbench-bar-action svg {
+        width: 15px;
+        height: 15px;
     }
 
-    .creation-home .creation-view-switch-label {
-        display: flex;
-        align-items: center;
-        color: var(--app-text-muted, var(--creation-faint));
-        padding-left: 9px;
-        font-size: var(--app-font-size-label, 12px);
-        font-weight: 600;
+    .creation-home .creation-workspace-toolbar-leading {
+        grid-column: 2;
+        grid-row: 1;
+        min-width: 0;
+        justify-self: end;
     }
 
     .creation-home .creation-cloud-sync {
-        width: 30px;
-        min-width: 30px;
-        height: 30px;
+        width: auto;
+        min-width: 0;
+        height: 32px;
         justify-content: center;
         border-color: transparent;
         background: transparent;
-        padding: 0;
+        padding: 0 8px;
+        gap: 6px;
+        opacity: 1;
     }
 
     .creation-home .creation-cloud-sync:hover:not(:disabled) {
@@ -5486,22 +5505,33 @@ html:not(.dark) .creation-media-preview-modal.is-video .ant-modal-container {
     }
 
     .creation-home .creation-cloud-sync-copy {
-        position: absolute;
-        width: 1px;
-        height: 1px;
-        overflow: hidden;
-        clip: rect(0 0 0 0);
-        clip-path: inset(50%);
+        position: static;
+        width: auto;
+        height: auto;
+        overflow: visible;
+        clip: auto;
+        clip-path: none;
+        font-size: var(--app-font-size-label, 12px);
         white-space: nowrap;
     }
 
-    .creation-home .storyboard-workbench-bar-actions {
+    .creation-home .creation-workspace-toolbar .storyboard-workbench-bar-actions {
+        grid-column: 3;
+        grid-row: 1;
+        min-width: 0;
         gap: 6px;
+        border-left: 1px solid var(--app-border-subtle, var(--creation-border));
+        padding-left: 8px;
+        justify-self: end;
     }
 
     .creation-home .storyboard-workbench-bar-action {
+        display: inline-flex;
         width: auto;
         min-width: 64px;
+        height: 36px;
+        align-items: center;
+        justify-content: center;
         gap: 6px;
         padding: 0 10px;
         font-size: var(--app-font-size-label, 12px);
@@ -5512,12 +5542,12 @@ html:not(.dark) .creation-media-preview-modal.is-video .ant-modal-container {
     }
 
     .creation-home .storyboard-workbench-bar-action.is-primary {
-        min-width: 36px;
-        padding: 0 9px;
+        min-width: 86px;
+        padding: 0 10px;
     }
 
     .creation-home .storyboard-workbench-bar-action.is-primary > span {
-        display: none;
+        display: inline;
     }
 
     /* 桌面端将输入与素材拆成并行工作区，素材增加不再挤压描述框。 */
@@ -5810,86 +5840,56 @@ html:not(.dark) .creation-media-preview-modal.is-video .ant-modal-container {
         min-width: 152px;
     }
 
-    /* 连续创作以“描述 + 结果”为一个回合，编号轨道负责建立上下文关系。 */
+    /* 连续创作保持一问一答的左右节奏，媒体结果仍获得完整的横向展示空间。 */
     .creation-home .creation-thread-stage {
         width: min(900px, calc(100% - 48px));
         padding: 20px 0 28px;
     }
 
     .creation-home .creation-results {
-        gap: 22px;
+        gap: 28px;
     }
 
     .creation-home .creation-turn {
-        padding-left: 42px;
+        padding-left: 0;
     }
 
     .creation-home .creation-turn::before {
-        position: absolute;
-        top: 31px;
-        bottom: -23px;
-        left: 14px;
-        width: 1px;
-        background: var(--app-border-subtle, var(--creation-border));
-        content: "";
-    }
-
-    .creation-home .creation-turn:last-child::before {
-        bottom: 4px;
-        background: linear-gradient(var(--app-border-subtle, var(--creation-border)), transparent);
+        display: none;
     }
 
     .creation-home .creation-turn-index {
-        position: absolute;
-        top: 0;
-        left: 0;
-        display: grid;
-        width: 29px;
-        height: 29px;
-        place-items: center;
-        border: 1px solid var(--app-border-default, var(--creation-border));
-        border-radius: 9px;
-        background: var(--app-surface-1, var(--creation-surface));
-        color: var(--app-text-muted, var(--creation-faint));
-        font-family: var(--app-font-mono, monospace);
-        font-size: 11px;
-        font-weight: 650;
-        font-variant-numeric: tabular-nums;
-    }
-
-    .creation-home .creation-turn.is-latest .creation-turn-index {
-        border-color: var(--app-selection-border, var(--creation-border-strong));
-        background: var(--app-selection-bg, var(--creation-accent-soft));
-        color: var(--app-selection-fg, var(--creation-text));
+        display: none;
     }
 
     .creation-home .creation-turn-body {
-        gap: 13px;
+        gap: 16px;
     }
 
     .creation-home .creation-turn .creation-user-message {
         width: fit-content;
-        min-width: min(360px, 100%);
-        max-width: min(620px, 100%);
-        margin: 0;
+        min-width: 0;
+        max-width: min(560px, 62%);
+        margin: 0 0 0 auto;
         border: 1px solid var(--app-border-subtle, var(--creation-border));
-        border-radius: 11px;
+        border-radius: 14px 14px 4px 14px;
         background: var(--app-surface-2, var(--creation-surface-muted));
-        padding: 10px 12px;
+        padding: 11px 13px;
     }
 
     .creation-home .creation-turn .creation-user-message-meta {
-        justify-content: flex-start;
+        justify-content: flex-end;
     }
 
     .creation-home .creation-turn .creation-user-message-references,
     .creation-home .creation-turn .creation-user-message-attachments {
-        justify-content: flex-start;
+        justify-content: flex-end;
     }
 
     .creation-home .creation-turn .creation-assistant-message {
-        width: 100%;
-        max-width: none;
+        width: min(820px, 100%);
+        max-width: min(820px, 100%);
+        margin-right: auto;
     }
 
     .creation-home .creation-turn .creation-message-content,
