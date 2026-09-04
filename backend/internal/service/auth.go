@@ -97,6 +97,22 @@ func (s *Service) PublicAuthSettings() (*PublicAuthSettings, error) {
 }
 
 func (s *Service) Register(req RegisterRequest) (*AuthSessionResult, error) {
+	result, _, err := s.RegisterWithInvitation(req, "")
+	return result, err
+}
+
+// RegisterWithInvitation preserves the public registration contract while
+// allowing a validated HttpOnly invite credential to select the invite-only
+// branch. clearInvite is true only when the credential is terminal or consumed.
+func (s *Service) RegisterWithInvitation(req RegisterRequest, inviteToken string) (*AuthSessionResult, bool, error) {
+	if strings.TrimSpace(inviteToken) != "" {
+		return s.registerInvitedUser(req, inviteToken)
+	}
+	result, err := s.registerPublicUser(req)
+	return result, false, err
+}
+
+func (s *Service) registerPublicUser(req RegisterRequest) (*AuthSessionResult, error) {
 	username := normalizeUsername(req.Username)
 	email := normalizeEmail(req.Email)
 	displayName := normalizeDisplayName(req.DisplayName, username)

@@ -55,6 +55,14 @@ func TestMigrateSchemaRecordsAndValidatesVersion(t *testing.T) {
 	if !db.Migrator().HasTable(&model.CreationConversation{}) {
 		t.Fatal("schema migration v6 did not create creation conversations")
 	}
+	if !db.Migrator().HasTable(&model.RegistrationInvite{}) {
+		t.Fatal("schema migration v7 did not create registration invites")
+	}
+	for _, index := range []string{"idx_registration_invites_token_hash", "idx_registration_invites_state"} {
+		if !db.Migrator().HasIndex(&model.RegistrationInvite{}, index) {
+			t.Fatalf("schema migration v7 did not create %s", index)
+		}
+	}
 	for _, index := range []string{"idx_project_delivery_claim", "idx_project_delivery_scope_created", "idx_project_delivery_jobs_active_key"} {
 		if !db.Migrator().HasIndex(&model.ProjectDeliveryJob{}, index) {
 			t.Fatalf("schema migration v5 did not create %s", index)
@@ -124,6 +132,9 @@ func TestMigrateSchemaUpgradesV4DatabaseWithProjectDeliveryJobs(t *testing.T) {
 	}
 	if !db.Migrator().HasTable(&model.CreationConversation{}) {
 		t.Fatal("v6 upgrade did not create creation conversations")
+	}
+	if !db.Migrator().HasTable(&model.RegistrationInvite{}) {
+		t.Fatal("v7 upgrade did not create registration invites")
 	}
 }
 

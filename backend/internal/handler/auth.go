@@ -28,6 +28,46 @@ func RegisterAuthRoutes(r *gin.RouterGroup, svc *service.Service) {
 		}
 		ok(c, settings)
 	})
+	r.POST("/auth/registration-invites/exchange", func(c *gin.Context) {
+		c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 8<<10)
+		if !enforceRateLimit(c, "registration-invite-exchange:"+c.ClientIP(), 60, 10*time.Minute) {
+			return
+		}
+		var req struct {
+			Token string `json:"token"`
+		}
+		if c.Request.ContentLength != 0 {
+			if err := c.ShouldBindJSON(&req); err != nil {
+				clearRegistrationInviteCookie(c)
+				fail(c, http.StatusBadRequest, err)
+				return
+			}
+		}
+		token := strings.TrimSpace(req.Token)
+		if token == "" {
+			token = registrationInviteCookie(c)
+		}
+		result, err := svc.ExchangeRegistrationInvite(token)
+		if err != nil {
+			failService(c, err)
+			return
+		}
+		if result.Status == service.RegistrationInvitePending {
+			maxAge := service.RegistrationInviteCookieMaxAgeSeconds()
+			if result.ExpiresAt != nil {
+				remaining := int(time.Until(*result.ExpiresAt).Seconds())
+				if remaining < maxAge {
+					maxAge = remaining
+				}
+			}
+			if maxAge > 0 {
+				setRegistrationInviteCookie(c, token, maxAge)
+			}
+		} else {
+			clearRegistrationInviteCookie(c)
+		}
+		ok(c, result)
+	})
 	r.POST("/auth/register", func(c *gin.Context) {
 		c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 64<<10)
 		var req service.RegisterRequest
@@ -39,7 +79,10 @@ func RegisterAuthRoutes(r *gin.RouterGroup, svc *service.Service) {
 		if !available || !enforceRateLimit(c, "register:"+c.ClientIP(), policy.Request.RegisterPerHour, time.Hour) {
 			return
 		}
-		result, err := svc.Register(req)
+		result, clearInvite, err := svc.RegisterWithInvitation(req, registrationInviteCookie(c))
+		if clearInvite {
+			clearRegistrationInviteCookie(c)
+		}
 		if err != nil {
 			failService(c, err)
 			return
@@ -178,6 +221,53 @@ func linuxDOCallbackHandler(svc *service.Service) gin.HandlerFunc {
 }
 
 func RegisterAdminRoutes(r *gin.RouterGroup, svc *service.Service) {
+	r.POST("/admin/registration-invites", func(c *gin.Context) {
+		user, err := currentUser(c, svc)
+		if err != nil {
+			failService(c, err)
+			return
+		}
+		c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 16<<10)
+		var req service.CreateRegistrationInviteRequest
+		if err := c.ShouldBindJSON(&req); err != nil {
+			fail(c, http.StatusBadRequest, err)
+			return
+		}
+		created, err := svc.CreateRegistrationInvite(user, req)
+		if err != nil {
+			failService(c, err)
+			return
+		}
+		ok(c, created)
+	})
+	r.GET("/admin/registration-invites", func(c *gin.Context) {
+		user, err := currentUser(c, svc)
+		if err != nil {
+			failService(c, err)
+			return
+		}
+		page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+		limit, _ := strconv.Atoi(c.DefaultQuery("limit", "20"))
+		result, err := svc.AdminRegistrationInvites(user, c.Query("status"), page, limit)
+		if err != nil {
+			failService(c, err)
+			return
+		}
+		ok(c, result)
+	})
+	r.POST("/admin/registration-invites/:id/revoke", func(c *gin.Context) {
+		user, err := currentUser(c, svc)
+		if err != nil {
+			failService(c, err)
+			return
+		}
+		invite, err := svc.RevokeRegistrationInvite(user, c.Param("id"))
+		if err != nil {
+			failService(c, err)
+			return
+		}
+		ok(c, gin.H{"invite": invite})
+	})
 	r.GET("/admin/users", func(c *gin.Context) {
 		user, err := currentUser(c, svc)
 		if err != nil {
@@ -1093,4 +1183,37 @@ func clearSessionCookie(c *gin.Context) {
 		SameSite: http.SameSiteLaxMode,
 		Secure:   secure,
 	})
+}
+
+func registrationInviteCookie(c *gin.Context) string {
+	value, _ := c.Cookie(service.RegistrationInviteCookieName)
+	return value
+}
+
+func setRegistrationInviteCookie(c *gin.Context, value string, maxAge int) {
+	http.SetCookie(c.Writer, &http.Cookie{
+		Name:     service.RegistrationInviteCookieName,
+		Value:    value,
+		Path:     "/api/auth",
+		MaxAge:   maxAge,
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+		Secure:   secureRequest(c),
+	})
+}
+
+func clearRegistrationInviteCookie(c *gin.Context) {
+	http.SetCookie(c.Writer, &http.Cookie{
+		Name:     service.RegistrationInviteCookieName,
+		Value:    "",
+		Path:     "/api/auth",
+		MaxAge:   -1,
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+		Secure:   secureRequest(c),
+	})
+}
+
+func secureRequest(c *gin.Context) bool {
+	return c.Request.TLS != nil || strings.EqualFold(strings.TrimSpace(c.GetHeader("X-Forwarded-Proto")), "https")
 }

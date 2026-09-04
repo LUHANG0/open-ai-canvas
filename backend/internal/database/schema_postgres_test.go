@@ -92,6 +92,14 @@ func TestPostgresProjectDeliveryMigrationUpgradesV4(t *testing.T) {
 	if !status.Ready || status.Current != CurrentSchemaVersion {
 		t.Fatalf("post-upgrade postgres schema status = %#v", status)
 	}
+	if !db.Migrator().HasTable(&model.RegistrationInvite{}) {
+		t.Fatal("v7 upgrade did not create postgres registration invites")
+	}
+	for _, index := range []string{"idx_registration_invites_token_hash", "idx_registration_invites_state"} {
+		if !db.Migrator().HasIndex(&model.RegistrationInvite{}, index) {
+			t.Fatalf("v7 postgres upgrade did not create %s", index)
+		}
+	}
 }
 
 func openPostgresMigrationTestDB(t *testing.T, prefix string) *gorm.DB {

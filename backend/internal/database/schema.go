@@ -21,6 +21,7 @@ func Models() []any {
 		&model.UserIdentity{},
 		&model.OAuthState{},
 		&model.EmailVerificationCode{},
+		&model.RegistrationInvite{},
 		&model.ModelChannel{},
 		&model.ChannelModel{},
 		&model.ChannelModelPriceTier{},

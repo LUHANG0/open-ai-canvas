@@ -219,6 +219,7 @@ func migrations() []tableMigration {
 		migrateTable[model.UserIdentity]("user_identities"),
 		migrateTable[model.OAuthState]("o_auth_states"),
 		migrateTable[model.EmailVerificationCode]("email_verification_codes"),
+		migrateTable[model.RegistrationInvite]("registration_invites"),
 		migrateTable[model.ModelChannel]("model_channels"),
 		migrateTable[model.ChannelModel]("channel_models"),
 		migrateTable[model.ChannelModelPriceTier]("channel_model_price_tiers"),
