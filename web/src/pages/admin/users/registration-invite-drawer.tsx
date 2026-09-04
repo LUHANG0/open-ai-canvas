@@ -1,10 +1,13 @@
-import { App, Button, Drawer, Empty, Input, Pagination, Popconfirm, Segmented, Select, Spin, Tabs, Tag } from "antd";
+import { App, Button, Drawer, Empty, Input, InputNumber, Pagination, Popconfirm, Segmented, Select, Spin, Tabs, Tag } from "antd";
 import { Check, Clipboard, Link2, RefreshCw, RotateCcw, ShieldAlert, UserCheck } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
 import { createRegistrationInvite, listRegistrationInvites, revokeRegistrationInvite, type RegistrationInvite, type RegistrationInviteStatus } from "@/services/api/auth";
+import { formatCredits } from "@/constant/credits";
 
 const pageSize = 10;
+const microcreditsPerCredit = 1_000_000;
+const maxInviteCredits = 1_000_000;
 const statusCopy: Record<RegistrationInvite["status"], { label: string; color: string }> = {
     pending: { label: "待使用", color: "blue" },
     used: { label: "已使用", color: "green" },
@@ -16,9 +19,12 @@ export function RegistrationInviteDrawer({ open, onClose }: { open: boolean; onC
     const { message, modal } = App.useApp();
     const [tab, setTab] = useState("create");
     const [expiresInDays, setExpiresInDays] = useState<1 | 3 | 7>(7);
+    const [creditPreset, setCreditPreset] = useState<"50" | "100" | "custom">("100");
+    const [customCredits, setCustomCredits] = useState<number | null>(null);
     const [note, setNote] = useState("");
     const [creating, setCreating] = useState(false);
     const [generatedLink, setGeneratedLink] = useState("");
+    const [generatedCreditAmountMicrocredits, setGeneratedCreditAmountMicrocredits] = useState(0);
     const [copied, setCopied] = useState(false);
     const [status, setStatus] = useState<RegistrationInviteStatus | "all">("all");
     const [page, setPage] = useState(1);
@@ -47,22 +53,25 @@ export function RegistrationInviteDrawer({ open, onClose }: { open: boolean; onC
         if (open) return;
         setTab("create");
         setExpiresInDays(7);
+        setCreditPreset("100");
+        setCustomCredits(null);
         setNote("");
         setGeneratedLink("");
+        setGeneratedCreditAmountMicrocredits(0);
         setCopied(false);
         setStatus("all");
         setPage(1);
     }, [open]);
 
     const requestClose = () => {
-        const hasDraft = note.trim() !== "" || expiresInDays !== 7;
+        const hasDraft = note.trim() !== "" || expiresInDays !== 7 || creditPreset !== "100" || customCredits !== null;
         if (!generatedLink && !hasDraft) {
             onClose();
             return;
         }
         modal.confirm({
             title: generatedLink ? "关闭后将无法再查看该链接" : "放弃未保存的邀请？",
-            content: generatedLink ? "原始邀请链接只在创建成功后显示这一次，请确认已复制到安全的分享渠道。" : "当前有效期或备注修改将丢失。",
+            content: generatedLink ? "原始邀请链接只在创建成功后显示这一次，请确认已复制到安全的分享渠道。" : "当前有效期、积分或备注修改将丢失。",
             okText: "确认关闭",
             cancelText: "继续编辑",
             onOk: onClose,
@@ -70,12 +79,18 @@ export function RegistrationInviteDrawer({ open, onClose }: { open: boolean; onC
     };
 
     const createInvite = async () => {
+        const creditAmount = creditPreset === "custom" ? customCredits : Number(creditPreset);
+        if (!Number.isInteger(creditAmount) || !creditAmount || creditAmount < 1 || creditAmount > maxInviteCredits) {
+            message.error("请输入 1–1,000,000 之间的整数积分");
+            return;
+        }
         setCreating(true);
         try {
-            const result = await createRegistrationInvite({ expiresInDays, note: note.trim() || undefined });
+            const result = await createRegistrationInvite({ expiresInDays, creditAmountMicrocredits: creditAmount * microcreditsPerCredit, note: note.trim() || undefined });
             const url = new URL("/register", window.location.origin);
             url.searchParams.set("invite", result.token);
             setGeneratedLink(url.toString());
+            setGeneratedCreditAmountMicrocredits(result.invite.creditAmountMicrocredits);
             setCopied(false);
             setNote("");
             setExpiresInDays(7);
@@ -148,6 +163,41 @@ export function RegistrationInviteDrawer({ open, onClose }: { open: boolean; onC
                                     />
                                 </div>
                                 <div>
+                                    <label className="mb-2 block text-sm font-medium" htmlFor="registration-invite-credits">
+                                        注册积分
+                                    </label>
+                                    <Segmented
+                                        id="registration-invite-credits"
+                                        block
+                                        value={creditPreset}
+                                        options={[
+                                            { label: "50 积分", value: "50" },
+                                            { label: "100 积分", value: "100" },
+                                            { label: "自定义", value: "custom" },
+                                        ]}
+                                        onChange={(value) => {
+                                            const next = value as "50" | "100" | "custom";
+                                            setCreditPreset(next);
+                                            if (next === "custom" && customCredits === null) setCustomCredits(100);
+                                        }}
+                                        disabled={creating || Boolean(generatedLink)}
+                                    />
+                                    {creditPreset === "custom" ? (
+                                        <InputNumber
+                                            aria-label="自定义注册积分"
+                                            className="mt-3 w-full"
+                                            min={1}
+                                            max={maxInviteCredits}
+                                            precision={0}
+                                            value={customCredits}
+                                            placeholder="输入 1–1,000,000 之间的整数"
+                                            onChange={setCustomCredits}
+                                            disabled={creating || Boolean(generatedLink)}
+                                        />
+                                    ) : null}
+                                    <p className="mb-0 mt-2 text-xs leading-5 text-muted-foreground">账号创建成功后自动到账，无需再发送积分兑换码。</p>
+                                </div>
+                                <div>
                                     <label className="mb-2 block text-sm font-medium" htmlFor="registration-invite-note">
                                         备注 <span className="font-normal text-muted-foreground">（可选）</span>
                                     </label>
@@ -175,6 +225,7 @@ export function RegistrationInviteDrawer({ open, onClose }: { open: boolean; onC
                                         <p className="m-0 text-xs leading-5 text-muted-foreground">
                                             <strong className="text-foreground">链接仅显示一次。</strong>关闭抽屉后无法再次查看，请现在复制并安全分享。
                                         </p>
+                                        <p className="m-0 text-xs font-medium">注册后自动发放 {formatCredits(generatedCreditAmountMicrocredits)} 积分</p>
                                         <Input value={generatedLink} readOnly aria-label="新创建的邀请链接" onFocus={(event) => event.currentTarget.select()} />
                                         <Button block icon={copied ? <Check className="size-4" /> : <Clipboard className="size-4" />} onClick={() => void copyLink()}>
                                             {copied ? "已复制" : "一键复制"}
@@ -218,6 +269,7 @@ export function RegistrationInviteDrawer({ open, onClose }: { open: boolean; onC
                                                                     <span className="truncate text-xs text-muted-foreground">{invite.id}</span>
                                                                 </div>
                                                                 <p className="mb-0 mt-2 break-words text-sm">{invite.note || "无备注"}</p>
+                                                                <p className="mb-0 mt-1 text-xs font-medium text-primary">注册积分：{formatCredits(invite.creditAmountMicrocredits)}</p>
                                                             </div>
                                                             {invite.status === "pending" ? (
                                                                 <Popconfirm title="撤销这条邀请？" description="撤销后该链接立即失效。" okText="撤销" cancelText="取消" onConfirm={() => void revoke(invite)}>

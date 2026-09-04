@@ -58,6 +58,7 @@ export type RegistrationInviteStatus = "pending" | "used" | "expired" | "revoked
 export type RegistrationInvite = {
     id: string;
     note?: string;
+    creditAmountMicrocredits: number;
     status: Exclude<RegistrationInviteStatus, "invalid">;
     expiresAt: string;
     usedAt?: string;
@@ -69,6 +70,7 @@ export type RegistrationInvite = {
 export type PublicRegistrationInvite = {
     status: RegistrationInviteStatus;
     expiresAt?: string;
+    creditAmountMicrocredits?: number;
 };
 
 export type RuntimeLimits = {
@@ -465,7 +467,7 @@ export function listAdminUsers(params: AdminListParams = {}) {
     return request<{ users: AdminUser[]; total: number; page: number; limit: number }>(api.get("/admin/users", { params }));
 }
 
-export function createRegistrationInvite(input: { expiresInDays: 1 | 3 | 7; note?: string }) {
+export function createRegistrationInvite(input: { expiresInDays: 1 | 3 | 7; creditAmountMicrocredits: number; note?: string }) {
     return request<{ invite: RegistrationInvite; token: string }>(api.post("/admin/registration-invites", input));
 }
 

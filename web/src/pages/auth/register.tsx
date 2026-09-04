@@ -4,6 +4,7 @@ import { ArrowRight, Info, LockKeyhole, Mail, RotateCcw, ShieldCheck, TriangleAl
 import { useNavigate, useSearchParams } from "react-router";
 
 import { applyUserSession } from "@/lib/user-session";
+import { formatCredits } from "@/constant/credits";
 import { exchangeRegistrationInvite, getAuthSession, linuxDOLoginURL, register, sendRegistrationEmailCode, type RegistrationInviteStatus } from "@/services/api/auth";
 import { AuthField, LinuxDOIcon } from "./auth-fields";
 import { useAuthSettings } from "./auth-settings-provider";
@@ -23,6 +24,7 @@ export default function RegisterPage() {
     const [sendingCode, setSendingCode] = useState(false);
     const [countdown, setCountdown] = useState(0);
     const [inviteStatus, setInviteStatus] = useState<RegistrationInviteStatus | "loading" | "network-error" | null>(null);
+    const [inviteCreditAmountMicrocredits, setInviteCreditAmountMicrocredits] = useState(0);
     const [inviteError, setInviteError] = useState("");
     const [inviteRetry, setInviteRetry] = useState(0);
     const exchangedTokenRef = useRef(false);
@@ -48,6 +50,7 @@ export default function RegisterPage() {
             .then((result) => {
                 if (!active) return;
                 setInviteStatus(result.status);
+                setInviteCreditAmountMicrocredits(result.creditAmountMicrocredits || 0);
                 if (inviteToken !== null) {
                     exchangedTokenRef.current = true;
                     const nextParams = new URLSearchParams(searchParamsText);
@@ -222,6 +225,7 @@ export default function RegisterPage() {
             {isInviteFlow ? (
                 <Notice icon={<Info className="size-3.5" />} tone="blue">
                     邀请只能创建普通用户。邮箱可选，本次不需要邮件验证码。
+                    {inviteCreditAmountMicrocredits > 0 ? ` 注册成功后将自动获得 ${formatCredits(inviteCreditAmountMicrocredits)} 积分。` : null}
                 </Notice>
             ) : null}
             <div className="grid gap-4 sm:grid-cols-2">

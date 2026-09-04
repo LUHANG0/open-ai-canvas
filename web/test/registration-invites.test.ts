@@ -19,6 +19,7 @@ describe("registration invitation experience", () => {
         expect(register).toContain("if (inviteToken === null && exchangedTokenRef.current) return");
         expect(register).toContain("!settings?.firstUser && !isInviteFlow");
         expect(register).toContain("邮箱可选");
+        expect(register).toContain("注册成功后将自动获得");
     });
 
     test("shows understandable terminal and network states", async () => {
@@ -37,6 +38,12 @@ describe("registration invitation experience", () => {
         expect(drawer).toContain("链接仅显示一次");
         expect(drawer).toContain("navigator.clipboard.writeText");
         expect(drawer).toContain("复制失败");
+        expect(drawer).toContain('label: "50 积分"');
+        expect(drawer).toContain('label: "100 积分"');
+        expect(drawer).toContain('aria-label="自定义注册积分"');
+        expect(drawer).toContain("无需再发送积分兑换码");
+        expect(drawer).toContain("creditAmountMicrocredits: creditAmount * microcreditsPerCredit");
+        expect(drawer).toContain("注册积分：");
         expect(drawer).toContain('invite.status === "pending"');
         expect(drawer).toContain("关闭后将无法再查看该链接");
         expect(api).toContain('api.post("/admin/registration-invites", input)');
