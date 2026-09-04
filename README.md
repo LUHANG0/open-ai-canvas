@@ -185,7 +185,7 @@ sudo docker compose --env-file .env \
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/LUHANG0/open-ai-canvas/main/scripts/install-server-image.sh \
-  | sudo env CANVAS_IMAGE_TAG=1.2.2-preview.4 bash
+  | sudo env CANVAS_IMAGE_TAG=1.2.2-preview.5 bash
 ```
 
 生产环境必须将 `CANVAS_IMAGE_TAG` 固定为明确的 Release；安装脚本和 Compose 都会拒绝空值或 `latest`。系统更新、备份验证和异常回退流程见[系统更新文档](docs/content/docs/backend/system-update.mdx)。
