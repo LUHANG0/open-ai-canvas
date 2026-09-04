@@ -5274,6 +5274,35 @@ html:not(.dark) .creation-media-preview-modal.is-video .ant-modal-container {
     }
 }
 
+/* 工具提示挂载到 body，必须独立于 .creation-home 才能继承两套主题。 */
+.creation-toolbar-tooltip {
+    --ant-tooltip-arrow-background-color: var(--workspace-overlay-bg-strong, var(--app-surface-overlay));
+}
+
+.creation-toolbar-tooltip :is(.ant-tooltip-inner, .ant-tooltip-container) {
+    display: flex;
+    min-height: 30px;
+    align-items: center;
+    border-color: var(--workspace-overlay-border, var(--app-border-default)) !important;
+    border-radius: 8px;
+    background: var(--workspace-overlay-bg-strong, var(--app-surface-overlay)) !important;
+    color: var(--app-text-primary, var(--foreground)) !important;
+    padding: 6px 9px;
+    box-shadow: var(--workspace-overlay-shadow, var(--app-shadow-overlay)) !important;
+    font-size: 12px;
+    font-weight: 520;
+    line-height: 1.45;
+}
+
+.creation-toolbar-tooltip .ant-tooltip-arrow::before {
+    border-color: var(--workspace-overlay-border, var(--app-border-default)) !important;
+    background: var(--workspace-overlay-bg-strong, var(--app-surface-overlay)) !important;
+}
+
+.creation-toolbar-tooltip .ant-tooltip-arrow-content {
+    background: var(--workspace-overlay-bg-strong, var(--app-surface-overlay)) !important;
+}
+
 @media (min-width: 1280px) {
     .creation-home .creation-empty-workspace {
         display: grid;
@@ -6015,10 +6044,16 @@ html:not(.dark) .creation-media-preview-modal.is-video .ant-modal-container {
         min-width: 0;
         max-width: min(560px, 62%);
         margin: 0 0 0 auto;
-        border: 1px solid var(--app-border-subtle, var(--creation-border));
+        border: 1px solid var(--app-selection-border, var(--creation-border-strong));
         border-radius: 14px 14px 4px 14px;
-        background: var(--app-surface-2, var(--creation-surface-muted));
+        background: color-mix(in srgb, var(--app-selection-bg, var(--creation-accent-soft)) 58%, var(--app-surface-1, var(--creation-surface)));
         padding: 11px 13px;
+        box-shadow: var(--app-shadow-surface, none);
+    }
+
+    /* 覆盖旧版浅色主题的透明消息规则，左右两端都保持明确的气泡层级。 */
+    html:not(.dark) .creation-home .creation-turn .creation-user-message {
+        background: color-mix(in srgb, var(--app-selection-bg, var(--creation-accent-soft)) 58%, var(--app-surface-1, var(--creation-surface)));
     }
 
     .creation-home .creation-turn .creation-user-message-meta {
@@ -6031,15 +6066,96 @@ html:not(.dark) .creation-media-preview-modal.is-video .ant-modal-container {
     }
 
     .creation-home .creation-turn .creation-assistant-message {
+        width: min(720px, 100%);
+        max-width: min(720px, 100%);
+        box-sizing: border-box;
+        margin-right: auto;
+        border: 1px solid var(--app-border-default, var(--creation-border-strong));
+        border-radius: 14px 14px 14px 4px;
+        background: var(--app-surface-1, var(--creation-surface));
+        padding: 10px 12px 12px;
+        box-shadow: var(--app-shadow-surface, none);
+    }
+
+    .creation-home .creation-turn .creation-assistant-message.is-video {
+        width: min(590px, 100%);
+        max-width: min(590px, 100%);
+    }
+
+    .creation-home .creation-turn .creation-assistant-message.is-image {
         width: min(820px, 100%);
         max-width: min(820px, 100%);
-        margin-right: auto;
     }
 
     .creation-home .creation-turn .creation-message-content,
     .creation-home .creation-turn .creation-media-result {
-        max-width: 760px;
+        max-width: none;
         padding-left: 38px;
+    }
+
+    /* 顶部状态和动作使用相同的实心控件语言，避免深浅主题下像漂浮文字。 */
+    .creation-home .creation-workspace-toolbar .creation-cloud-sync {
+        border: 1px solid var(--app-border-default, var(--creation-border-strong));
+        border-radius: var(--app-control-radius, 8px);
+        background: var(--app-surface-2, var(--creation-surface-muted));
+        color: var(--app-text-secondary, var(--creation-muted));
+        font-size: var(--app-font-size-control, 13px);
+    }
+
+    .creation-home .creation-cloud-sync-tooltip-trigger {
+        display: inline-flex;
+        border-radius: var(--app-control-radius, 8px);
+        outline: 0;
+    }
+
+    .creation-home .creation-cloud-sync-tooltip-trigger:focus-visible {
+        box-shadow: 0 0 0 2px var(--app-focus-ring, var(--creation-accent-soft));
+    }
+
+    .creation-home .creation-workspace-toolbar .creation-cloud-sync:disabled {
+        cursor: default;
+        opacity: 1;
+    }
+
+    .creation-home .creation-workspace-toolbar .creation-cloud-sync.is-synced {
+        border-color: var(--app-status-success-border, var(--creation-border));
+        background: var(--app-status-success-bg, var(--creation-surface-muted));
+        color: var(--app-status-success-fg, var(--status-success));
+    }
+
+    .creation-home .creation-workspace-toolbar .creation-cloud-sync:is(.is-hydrating, .is-syncing, .is-pending) {
+        border-color: var(--app-status-running-border, var(--creation-border));
+        background: var(--app-status-running-bg, var(--creation-surface-muted));
+        color: var(--app-status-running-fg, var(--creation-muted));
+    }
+
+    .creation-home .creation-workspace-toolbar .creation-cloud-sync:is(.is-failed, .is-conflict) {
+        border-color: var(--app-status-error-border, var(--creation-border));
+        background: var(--app-status-error-bg, var(--creation-surface-muted));
+        color: var(--app-status-error-fg, var(--status-error));
+    }
+
+    html:not(.dark) .creation-home .creation-workspace-toolbar .storyboard-workbench-bar-action,
+    .dark .creation-home .creation-workspace-toolbar .storyboard-workbench-bar-action {
+        border-color: var(--app-border-default, var(--creation-border-strong));
+        background: var(--app-surface-2, var(--creation-surface-muted));
+        color: var(--app-text-secondary, var(--creation-muted));
+        font-size: var(--app-font-size-control, 13px);
+        font-weight: 580;
+        box-shadow: none;
+    }
+
+    html:not(.dark) .creation-home .creation-workspace-toolbar .storyboard-workbench-bar-action.is-new,
+    .dark .creation-home .creation-workspace-toolbar .storyboard-workbench-bar-action.is-new {
+        border-color: var(--app-selection-border, var(--creation-border-strong));
+        background: var(--app-selection-bg, var(--creation-surface-selected));
+        color: var(--app-selection-fg, var(--creation-text));
+    }
+
+    .creation-home .creation-workspace-toolbar .storyboard-workbench-bar-action:hover:not(:disabled) {
+        border-color: var(--app-border-interactive, var(--creation-border-strong));
+        background: var(--app-selection-hover, var(--creation-surface-hover));
+        color: var(--app-text-primary, var(--creation-text));
     }
 
     .creation-home .creation-message-stop {
