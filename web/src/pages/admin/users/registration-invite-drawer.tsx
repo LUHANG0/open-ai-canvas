@@ -11,7 +11,7 @@ const maxInviteCredits = 1_000_000;
 const statusCopy: Record<RegistrationInvite["status"], { label: string; color: string }> = {
     pending: { label: "待使用", color: "blue" },
     used: { label: "已使用", color: "green" },
-    expired: { label: "已过期", color: "default" },
+    expired: { label: "已过期", color: "orange" },
     revoked: { label: "已撤销", color: "red" },
 };
 
