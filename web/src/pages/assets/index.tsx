@@ -799,7 +799,21 @@ function AssetCard({
     );
 }
 
-function AssetCover({ asset, selected, onSelect, onOpen, menuItems, onVideoMetadata }: { asset: LibraryAsset; selected: boolean; onSelect: (selected: boolean) => void; onOpen: () => void; menuItems: MenuProps["items"]; onVideoMetadata: (metadata: LoadedVideoMetadata) => void }) {
+function AssetCover({
+    asset,
+    selected,
+    onSelect,
+    onOpen,
+    menuItems,
+    onVideoMetadata,
+}: {
+    asset: LibraryAsset;
+    selected: boolean;
+    onSelect: (selected: boolean) => void;
+    onOpen: () => void;
+    menuItems: MenuProps["items"];
+    onVideoMetadata: (metadata: LoadedVideoMetadata) => void;
+}) {
     const KindIcon = assetKindIcons[asset.kind];
     const clock = asset.kind === "video" || asset.kind === "audio" ? formatAssetClock(asset.data.durationMs) : null;
     const showPlay = asset.kind === "video";

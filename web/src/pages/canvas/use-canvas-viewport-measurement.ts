@@ -37,8 +37,7 @@ function canvasNodeHasVisibleArea(node: CanvasNodeData, viewport: ViewportTransf
     const bottom = (node.position.y + node.height) * viewport.k + viewport.y;
     const overlapWidth = Math.max(0, Math.min(size.width, right) - Math.max(0, left));
     const overlapHeight = Math.max(0, Math.min(size.height, bottom) - Math.max(0, top));
-    return overlapWidth >= Math.min(MIN_VISIBLE_NODE_EDGE, node.width * viewport.k)
-        && overlapHeight >= Math.min(MIN_VISIBLE_NODE_EDGE, node.height * viewport.k);
+    return overlapWidth >= Math.min(MIN_VISIBLE_NODE_EDGE, node.width * viewport.k) && overlapHeight >= Math.min(MIN_VISIBLE_NODE_EDGE, node.height * viewport.k);
 }
 
 interface UseCanvasViewportMeasurementOptions {
