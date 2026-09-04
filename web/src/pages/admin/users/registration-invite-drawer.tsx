@@ -1,4 +1,4 @@
-import { App, Button, Drawer, Empty, Input, InputNumber, Pagination, Popconfirm, Segmented, Select, Spin, Tabs, Tag } from "antd";
+import { App, Button, Drawer, Empty, Input, InputNumber, Modal, Pagination, Popconfirm, Segmented, Select, Spin, Tabs, Tag } from "antd";
 import { Check, Clipboard, Link2, RefreshCw, RotateCcw, ShieldAlert, UserCheck } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
@@ -16,7 +16,7 @@ const statusCopy: Record<RegistrationInvite["status"], { label: string; color: s
 };
 
 export function RegistrationInviteDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
-    const { message, modal } = App.useApp();
+    const { message } = App.useApp();
     const [tab, setTab] = useState("create");
     const [expiresInDays, setExpiresInDays] = useState<1 | 3 | 7>(7);
     const [creditPreset, setCreditPreset] = useState<"50" | "100" | "custom">("100");
@@ -26,6 +26,7 @@ export function RegistrationInviteDrawer({ open, onClose }: { open: boolean; onC
     const [generatedLink, setGeneratedLink] = useState("");
     const [generatedCreditAmountMicrocredits, setGeneratedCreditAmountMicrocredits] = useState(0);
     const [copied, setCopied] = useState(false);
+    const [closeConfirmationOpen, setCloseConfirmationOpen] = useState(false);
     const [status, setStatus] = useState<RegistrationInviteStatus | "all">("all");
     const [page, setPage] = useState(1);
     const [invites, setInvites] = useState<RegistrationInvite[]>([]);
@@ -59,6 +60,7 @@ export function RegistrationInviteDrawer({ open, onClose }: { open: boolean; onC
         setGeneratedLink("");
         setGeneratedCreditAmountMicrocredits(0);
         setCopied(false);
+        setCloseConfirmationOpen(false);
         setStatus("all");
         setPage(1);
     }, [open]);
@@ -69,13 +71,7 @@ export function RegistrationInviteDrawer({ open, onClose }: { open: boolean; onC
             onClose();
             return;
         }
-        modal.confirm({
-            title: generatedLink ? "关闭后将无法再查看该链接" : "放弃未保存的邀请？",
-            content: generatedLink ? "原始邀请链接只在创建成功后显示这一次，请确认已复制到安全的分享渠道。" : "当前有效期、积分或备注修改将丢失。",
-            okText: "确认关闭",
-            cancelText: "继续编辑",
-            onOk: onClose,
-        });
+        setCloseConfirmationOpen(true);
     };
 
     const createInvite = async () => {
@@ -311,6 +307,20 @@ export function RegistrationInviteDrawer({ open, onClose }: { open: boolean; onC
                     },
                 ]}
             />
+            <Modal
+                title={generatedLink ? "关闭后将无法再查看该链接" : "放弃未保存的邀请？"}
+                open={closeConfirmationOpen}
+                okText="确认关闭"
+                cancelText="继续编辑"
+                getContainer={false}
+                onCancel={() => setCloseConfirmationOpen(false)}
+                onOk={() => {
+                    setCloseConfirmationOpen(false);
+                    onClose();
+                }}
+            >
+                <p>{generatedLink ? "原始邀请链接只在创建成功后显示这一次，请确认已复制到安全的分享渠道。" : "当前有效期、积分或备注修改将丢失。"}</p>
+            </Modal>
         </Drawer>
     );
 }
