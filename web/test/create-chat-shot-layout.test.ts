@@ -235,14 +235,62 @@ describe("PC creation chat and storyboard director workbench regression gates", 
         expectRuleWith(finalDesktopStyles, ".creation-home .creation-chat-composer.is-desktop.has-references .creation-chat-mention-editor", [/min-height:\s*112px/, /max-height:\s*144px/]);
         expectRuleWith(finalDesktopStyles, ".creation-home .creation-chat-composer.is-desktop .creation-entry-group.is-config", [/display:\s*flex/, /width:\s*auto/, /flex:\s*0\s+1\s+auto/]);
         expectRuleWith(finalDesktopStyles, ".creation-home .creation-chat-composer.is-desktop .creation-config-field.is-mode", [/width:\s*136px/, /flex:\s*0\s+0\s+136px/]);
-        expectRuleWith(finalDesktopStyles, ".creation-home .creation-chat-composer.is-desktop .creation-config-field.is-model .creation-model-picker", [/width:\s*100%\s*!important/, /min-width:\s*0/, /max-width:\s*100%\s*!important/, /overflow:\s*hidden/]);
-        expectRuleWith(layeredOverrides, ".creation-home .creation-chat-composer.is-desktop .creation-config-field.is-model .creation-model-picker.canvas-composer-model-picker", [/width:\s*100%\s*!important/, /min-width:\s*0\s*!important/, /max-width:\s*100%\s*!important/]);
+        expectRuleWith(finalDesktopStyles, ".creation-home .creation-chat-composer.is-desktop .creation-config-field.is-model .creation-model-picker", [
+            /width:\s*100%\s*!important/,
+            /min-width:\s*0/,
+            /max-width:\s*100%\s*!important/,
+            /overflow:\s*hidden/,
+        ]);
+        expectRuleWith(layeredOverrides, ".creation-home .creation-chat-composer.is-desktop .creation-config-field.is-model .creation-model-picker.canvas-composer-model-picker", [
+            /width:\s*100%\s*!important/,
+            /min-width:\s*0\s*!important/,
+            /max-width:\s*100%\s*!important/,
+        ]);
         expectRuleWith(finalDesktopStyles, ".creation-home .creation-chat-composer.is-desktop .creation-submit-cluster", [/display:\s*flex/, /gap:\s*8px/]);
         expectRuleWith(finalDesktopStyles, ".creation-home .creation-chat-composer.is-desktop .creation-submit-estimate", [/height:\s*42px/, /align-items:\s*flex-end/]);
         expect(toolbar).toContain('aria-label={desktopLayout ? "工作方式" : "创作视图"}');
         expect(toolbar).toContain("desktopLayout ? <span>新建</span> : null");
         expect(toolbar).toContain("desktopLayout ? <span>历史</span> : null");
-        expect(message).toContain('compactLayout ? "继续创作" : "生成同款"');
+        expect(message).toContain('compactLayout ? "继续调整" : "生成同款"');
+    });
+
+    test("keeps the new turn graph and continuation UI behind the desktop breakpoint", async () => {
+        const [source, messageSource, submitSource, transactionSource, draftSource, composerSource] = await Promise.all([
+            read("../src/pages/create/index.tsx"),
+            read("../src/pages/create/creation-message-view.tsx"),
+            read("../src/pages/create/use-creation-submit-workflow.ts"),
+            read("../src/pages/create/creation-submission-transaction.ts"),
+            read("../src/pages/create/use-creation-draft-workflow.ts"),
+            read("../src/pages/create/creation-composer.tsx"),
+        ]);
+        const compactSource = compact(source);
+
+        expect(compactSource).toContain("{pcBrandV2 ? shots.map");
+        expect(compactSource).toContain(": activeConversation.messages.map");
+        expect(compactSource).toContain("<CreationMessageView");
+        expect(compactSource).toContain("legacyLayout");
+        expect(compactSource).toContain("createVariant(item, index, { legacy: true })");
+        expect(source).toContain("continuationContext: pcBrandV2 &&");
+        expect(source).toContain("linkConversationMessages: pcBrandV2");
+        expect(submitSource).toContain("linkMessages: linkConversationMessages");
+        expect(transactionSource).toContain("const linkMessages = input.linkMessages !== false");
+        expect(draftSource).toContain("if (options?.legacy)");
+        expect(messageSource).toContain("legacyLayout = false");
+        expect(composerSource).toContain("{props.desktopLayout ? (");
+        expect(composerSource).toContain('className="creation-entry-button creation-reference-action is-upload"');
+        expect(composerSource).toContain('className="creation-entry-button creation-reference-action is-library"');
+    });
+
+    test("compacts the desktop composer controls instead of clipping them at narrow PC widths", async () => {
+        const styles = await read("../src/pages/create/creation-workspace.css");
+        const compactDesktop = sourceSection(styles, "/* 窄屏 PC 保持所有关键配置可达", "@media (min-width: 1280px) and (max-width: 1439px)");
+
+        expect(compactDesktop).toContain("@media (min-width: 1024px) and (max-width: 1279px)");
+        expect(compactDesktop).toContain("overflow: visible");
+        expect(compactDesktop).toContain("flex: 1 1 104px");
+        expect(compactDesktop).toContain("flex: 0 0 38px");
+        expect(compactDesktop).toContain(".creation-reference-add-chevron");
+        expect(compactDesktop).toContain("display: none");
     });
 
     test("uses ordered-list and button semantics with aria-current instead of a fake listbox", async () => {
@@ -291,7 +339,7 @@ describe("PC creation chat and storyboard director workbench regression gates", 
         const promptUpdate = sourceSection(draftSource, "const updateComposerPrompt", "const resetStoryboardDraftState");
         const composeControls = sourceSection(draftSource, "const cancelComposeNextShot", "const selectStoryboardShot");
 
-        expect(variant).toContain("createVariant(shot.result, resultIndex)");
+        expect(variant).toContain("createVariant(shot.result, resultIndex, { announce: false })");
         expect(variant).toContain("setVariantSourceShotId(shot.id)");
         expect(variant).toContain("setSelectedShotId(shot.id)");
         expect(variant).toContain("setComposingNextShot(true)");
@@ -318,7 +366,7 @@ describe("PC creation chat and storyboard director workbench regression gates", 
         const submit = sourceSection(submitSource, "const submit = async", "useEffect(() => {");
         const guard = sourceSection(submitSource, "export function creationSubmissionStartGuard", "export function useCreationSubmitWorkflow");
         const retry = sourceSection(draftSource, "const retryFailedMessage", "const createVariant");
-        const retryEffect = sourceSection(submitSource, "if (!pendingRetry) return", "return { submit }");
+        const retryEffect = sourceSection(submitSource, "if (!pendingRetry) return", "return { submit, cancelSubmission, cancellingMessageIds }");
 
         expect(retry).not.toContain("updateActive(");
         expect(retry).not.toContain("removedIds");
@@ -327,6 +375,7 @@ describe("PC creation chat and storyboard director workbench regression gates", 
         expect(retry).toContain("conversationId: activeConversation.id");
         expect(retry).toContain("userMessageId: pair.userMessage.id");
         expect(retry).toContain("assistantMessageId: pair.assistantMessage.id");
+        expect(retry).toContain("parentMessageId: pair.userMessage.parentMessageId");
         expect(retryEffect).toContain("void submit(pendingRetry.context, pendingRetry.lockKey, pendingRetry.target)");
 
         const guardPosition = submit.indexOf("const guard = creationSubmissionStartGuard");
@@ -342,6 +391,8 @@ describe("PC creation chat and storyboard director workbench regression gates", 
         expect(preparationSource).toContain("reconcileCreationAttachmentLimits(submissionAttachments, mode, referenceLimits)");
         expect(guard).toContain('message: "已切换到其他创作，本次重试未执行"');
         expect(transactionSource).toContain("if (retryTarget && conversation.id === retryTarget.conversationId)");
+        expect(transactionSource).toContain("const userParentMessageId = linkMessages ? (input.retryTarget ? input.retryTarget.parentMessageId : input.continuationParentMessageId) : undefined");
+        expect(transactionSource).toContain("deletedMessageIds.delete(userMessage.id)");
         expect(transactionSource).toContain("retained.splice(insertAt >= 0 ? insertAt : retained.length, 0, userMessage, assistantMessage)");
         expect(submit).toContain("selectSubmittedShot(userMessage.id)");
     });
@@ -365,7 +416,22 @@ describe("PC creation chat and storyboard director workbench regression gates", 
         expect(executorSource).toContain("runBackendGenerationTaskBatch(");
         expect(submitSource).toContain("executeCreationGeneration({");
         expect((submitSource.match(/requestLifecycle\.release\(\)/g) || []).length).toBe(1);
-        expect(submitSource).toContain("useEffect(() => () => abortRef.current?.abort(), [])");
+        expect(submitSource).not.toContain("abortRef.current?.abort()");
+        expect(submitSource).not.toContain("submissionControllersRef.current.forEach((controller) => controller.abort())");
+        expect(submitSource).toContain("Abort 只代表当前页面停止消费结果");
+        expect(submitSource).toContain("if (cancelledByUserMessageIdsRef.current.has(assistantMessage.id))");
+        expect(submitSource).toContain("const uniqueTaskIds = creationCancelableTaskIds(taskIds)");
+        expect(submitSource).toContain("if (!uniqueTaskIds.length)");
+        expect(submitSource).toContain("任务创建完成后才能停止，请稍候");
+        expect(submitSource).toContain("Promise.allSettled(uniqueTaskIds.map((id) => cancelGenerationTask(id)))");
+        expect(submitSource).toContain("if (cancelledCount !== uniqueTaskIds.length)");
+        expect(submitSource.indexOf("if (!uniqueTaskIds.length)")).toBeLessThan(submitSource.indexOf("controller?.abort()"));
+        expect(submitSource.indexOf("cancelledByUserMessageIdsRef.current.add(messageId)")).toBeLessThan(submitSource.indexOf("controller?.abort()"));
+        expect(submitSource).toContain("controller?.abort()");
+        expect(submitSource).toContain("cancelCreationSubmissionMessage(item)");
+        expect(messageSource).toContain("const canCancelGeneration = !legacyLayout && creationCancelableTaskIds(item.taskIds).length > 0");
+        expect(messageSource).toContain("disabled={cancelling || !canCancelGeneration}");
+        expect(messageSource).toContain("任务创建完成后即可停止");
         expect(source).toContain("onSubmit: () => void submit()");
         expect(shotCard).toContain("onRetryFailure");
         expect(shotCard).toContain('<Link className="storyboard-workbench-card-action" to={canvasPath}>');
@@ -382,7 +448,7 @@ describe("PC creation chat and storyboard director workbench regression gates", 
         expect(composer).toContain("props.onFilesDrop(event.dataTransfer.files)");
         expect(composer).toContain("props.fileInputRef.current?.click()");
         expect(composer).toContain("props.onOpenLibrary");
-        expect(composer).toContain('aria-label="打开素材库上传或选择素材"');
+        expect(composer).toContain("<CreationReferenceAddMenu");
     });
 
     test("treats expected materialization cancellation as lifecycle cleanup instead of a generation failure", async () => {

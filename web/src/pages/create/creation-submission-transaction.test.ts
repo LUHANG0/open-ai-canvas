@@ -7,6 +7,7 @@ import {
     applyCreationSubmissionToConversation,
     cancelCreationSubmissionMessage,
     completeCreationSubmissionMessage,
+    creationCancelableTaskIds,
     createCreationSubmissionMessages,
     createCreationTaskBindings,
     creationMessageWithBoundTask,
@@ -21,7 +22,7 @@ function message(id: string, role: CreationMessage["role"], content = id): Creat
 }
 
 describe("creation submission transaction", () => {
-    test("按创作类型建立稳定的用户消息和待生成助手消息", () => {
+    test("普通续作建立新镜头，并把用户消息连到来源消息", () => {
         const ids = ["user-id", "assistant-id"];
         const result = createCreationSubmissionMessages({
             text: "一段电影镜头",
@@ -31,18 +32,38 @@ describe("creation submission transaction", () => {
             references: [],
             settings,
             continuationParentMessageId: "source-assistant",
+            createId: () => ids.shift() || "fallback-id",
+            now: () => "2026-09-02T01:00:00.000Z",
+        });
+
+        assert.equal(result.userMessage.id, "user-id");
+        assert.equal(result.userMessage.content, "一段电影镜头");
+        assert.equal(result.userMessage.parentMessageId, "source-assistant");
+        assert.equal(result.assistantMessage.id, "assistant-id");
+        assert.equal(result.assistantMessage.parentMessageId, "user-id");
+        assert.equal(result.assistantMessage.status, "pending");
+    });
+
+    test("重试保留原镜头 ID、分支父消息和尝试上下文", () => {
+        const ids = ["unused-user-id", "assistant-id"];
+        const result = createCreationSubmissionMessages({
+            text: "一段电影镜头",
+            mode: "video",
+            selectedModel: "video-model",
+            attachments: [],
+            references: [],
+            settings,
+            continuationParentMessageId: "unrelated-current-continuation",
             retryContext: { clientOperationId: "operation-1", retryOf: "task-0", attemptGroupId: "attempt-1" },
-            retryTarget: { shotId: "stable-shot" },
+            retryTarget: { shotId: "stable-shot", parentMessageId: "original-source-assistant" },
             createId: () => ids.shift() || "fallback-id",
             now: () => "2026-09-02T01:00:00.000Z",
         });
 
         assert.equal(result.userMessage.id, "stable-shot");
-        assert.equal(result.userMessage.content, "一段电影镜头");
-        assert.equal(result.userMessage.parentMessageId, "source-assistant");
+        assert.equal(result.userMessage.parentMessageId, "original-source-assistant");
         assert.equal(result.assistantMessage.id, "assistant-id");
         assert.equal(result.assistantMessage.parentMessageId, "stable-shot");
-        assert.equal(result.assistantMessage.status, "pending");
         assert.equal(result.assistantMessage.clientOperationId, "operation-1");
     });
 
@@ -52,7 +73,10 @@ describe("creation submission transaction", () => {
         const assistant = message("new-assistant", "assistant");
         const appended = applyCreationSubmissionToConversation({ conversation: empty, text: "超过二十四个字符时只截取标题所需的前二十四个字符内容", userMessage: user, assistantMessage: assistant, updatedAt: "new" });
         assert.equal(appended.title, "超过二十四个字符时只截取标题所需的前二十四个字符");
-        assert.deepEqual(appended.messages.map((item) => item.id), ["new-user", "new-assistant"]);
+        assert.deepEqual(
+            appended.messages.map((item) => item.id),
+            ["new-user", "new-assistant"],
+        );
 
         const existing: CreationConversation = {
             id: "conversation",
@@ -68,8 +92,26 @@ describe("creation submission transaction", () => {
             retryTarget: { conversationId: "conversation", shotId: "new-user", userMessageId: "old-user", assistantMessageId: "old-assistant" },
             updatedAt: "new",
         });
-        assert.deepEqual(replaced.messages.map((item) => item.id), ["before", "new-user", "new-assistant", "after"]);
+        assert.deepEqual(
+            replaced.messages.map((item) => item.id),
+            ["before", "new-user", "new-assistant", "after"],
+        );
         assert.equal(replaced.title, "已有创作");
+        assert.deepEqual(replaced.deletedMessageIds, ["old-user", "old-assistant"]);
+
+        const stableUserRetry = applyCreationSubmissionToConversation({
+            conversation: { ...existing, deletedMessageIds: ["old-user", "older-assistant"] },
+            text: "原位重试",
+            userMessage: message("old-user", "user"),
+            assistantMessage: message("replacement-assistant", "assistant"),
+            retryTarget: { conversationId: "conversation", shotId: "old-user", userMessageId: "old-user", assistantMessageId: "old-assistant" },
+            updatedAt: "newer",
+        });
+        assert.deepEqual(
+            stableUserRetry.messages.map((item) => item.id),
+            ["before", "old-user", "replacement-assistant", "after"],
+        );
+        assert.deepEqual(stableUserRetry.deletedMessageIds, ["older-assistant", "old-assistant"]);
     });
 
     test("任务绑定同时维护批次索引、任务快照和消息去重 ID", () => {
@@ -93,6 +135,11 @@ describe("creation submission transaction", () => {
         assert.deepEqual(updated.taskIds, ["task-1"]);
         assert.equal(updated.generationStage, "running");
         assert.equal(updated.attemptGroupId, "attempt-1");
+    });
+
+    test("停止只能在后端任务 ID 已绑定后执行", () => {
+        assert.deepEqual(creationCancelableTaskIds(), []);
+        assert.deepEqual(creationCancelableTaskIds(["", "task-1", "task-1", "task-2"]), ["task-1", "task-2"]);
     });
 
     test("完成、取消和失败分别按既有生命周期字段收口", () => {

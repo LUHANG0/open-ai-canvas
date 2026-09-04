@@ -15,6 +15,7 @@ export type CreationRetryTarget = {
     userMessageId: string;
     assistantMessageId: string;
     shotId: string;
+    parentMessageId?: string;
 };
 
 export type PendingCreationRetry = {
@@ -226,6 +227,7 @@ export function useCreationDraftWorkflow(options: CreationDraftWorkflowOptions) 
                         userMessageId: pair.userMessage.id,
                         assistantMessageId: pair.assistantMessage.id,
                         shotId: pair.userMessage.id,
+                        parentMessageId: pair.userMessage.parentMessageId,
                     },
                 });
             } catch (error) {
@@ -237,10 +239,14 @@ export function useCreationDraftWorkflow(options: CreationDraftWorkflowOptions) 
     );
 
     const createVariant = useCallback(
-        (item: CreationMessage, index: number, options?: { announce?: boolean }) => {
+        (item: CreationMessage, index: number, options?: { announce?: boolean; legacy?: boolean }) => {
             if (!activeConversation || busy) return;
             const pair = creationRetryMessagePair(activeConversation.messages, item, index);
             if (!pair) return;
+            if (options?.legacy) {
+                restoreMessageDraft(pair.userMessage);
+                return;
+            }
             onFollowLatest();
             restoreMessageDraft(pair.userMessage);
             setSelectedShotId(pair.userMessage.id);

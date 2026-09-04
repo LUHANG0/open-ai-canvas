@@ -5289,32 +5289,70 @@ html:not(.dark) .creation-media-preview-modal.is-video .ant-modal-container {
 
 /* 创作页工具提示挂载到 body，用统一根类覆盖顶部、消息区和底部控制区。 */
 .creation-ui-tooltip {
-    --ant-tooltip-arrow-background-color: var(--workspace-overlay-bg-strong, var(--app-surface-overlay));
+    --creation-tooltip-bg: var(--workspace-overlay-bg-strong, var(--app-surface-overlay, #ffffff));
+    --creation-tooltip-border: var(--workspace-overlay-border, var(--app-border-default, rgba(17, 24, 39, 0.16)));
+    --creation-tooltip-text: var(--app-text-primary, var(--foreground, #171717));
+    --creation-tooltip-muted: var(--app-text-muted, color-mix(in srgb, var(--creation-tooltip-text) 66%, transparent));
+    --creation-tooltip-shadow: var(--workspace-overlay-shadow, var(--app-shadow-overlay, 0 12px 30px rgba(15, 23, 42, 0.18)));
+    --ant-tooltip-arrow-background-color: var(--creation-tooltip-bg);
     max-width: min(320px, calc(100vw - 24px));
+    z-index: var(--z-tooltip, 1000);
+    color-scheme: light;
+}
+
+.dark .creation-ui-tooltip {
+    --creation-tooltip-bg: var(--workspace-overlay-bg-strong, var(--app-surface-overlay, #1f1f20));
+    --creation-tooltip-border: var(--workspace-overlay-border, var(--app-border-default, rgba(255, 255, 255, 0.16)));
+    --creation-tooltip-text: var(--app-text-primary, var(--foreground, #f5f5f5));
+    --creation-tooltip-shadow: var(--workspace-overlay-shadow, var(--app-shadow-overlay, 0 16px 36px rgba(0, 0, 0, 0.48)));
+    color-scheme: dark;
 }
 
 .creation-ui-tooltip :is(.ant-tooltip-inner, .ant-tooltip-container) {
     display: flex;
     min-height: 30px;
     align-items: center;
-    border: 1px solid var(--workspace-overlay-border, var(--app-border-default)) !important;
+    border: 1px solid var(--creation-tooltip-border) !important;
     border-radius: 8px;
-    background: var(--workspace-overlay-bg-strong, var(--app-surface-overlay)) !important;
-    color: var(--app-text-primary, var(--foreground)) !important;
+    background: var(--creation-tooltip-bg) !important;
+    color: var(--creation-tooltip-text) !important;
     padding: 6px 9px;
-    box-shadow: var(--workspace-overlay-shadow, var(--app-shadow-overlay)) !important;
+    box-shadow: var(--creation-tooltip-shadow) !important;
     font-size: 12px;
-    font-weight: 520;
+    font-weight: 550;
     line-height: 1.45;
 }
 
 .creation-ui-tooltip .ant-tooltip-arrow::before {
-    border-color: var(--workspace-overlay-border, var(--app-border-default)) !important;
-    background: var(--workspace-overlay-bg-strong, var(--app-surface-overlay)) !important;
+    border: 1px solid var(--creation-tooltip-border) !important;
+    background: var(--creation-tooltip-bg) !important;
 }
 
 .creation-ui-tooltip .ant-tooltip-arrow-content {
-    background: var(--workspace-overlay-bg-strong, var(--app-surface-overlay)) !important;
+    background: var(--creation-tooltip-bg) !important;
+}
+
+.creation-ui-tooltip-content {
+    display: grid;
+    max-width: 260px;
+    gap: 2px;
+}
+
+.creation-ui-tooltip-content > strong {
+    color: var(--creation-tooltip-text);
+    font: inherit;
+    font-weight: 650;
+}
+
+.creation-ui-tooltip-content > small {
+    color: var(--creation-tooltip-muted);
+    font-size: 11px;
+    font-weight: 450;
+    line-height: 1.45;
+}
+
+.creation-message-stop-tooltip-trigger {
+    display: inline-flex;
 }
 
 @media (min-width: 1280px) {
@@ -6537,6 +6575,116 @@ html:not(.dark) .creation-media-preview-modal.is-video .ant-modal-container {
 
     .creation-home .storyboard-editor-shot-layout {
         grid-template-columns: minmax(0, 1fr) 300px;
+    }
+}
+
+/* 窄屏 PC 保持所有关键配置可达，不再用隐藏滚动条的超宽工具条截断声音开关。 */
+@media (min-width: 1024px) and (max-width: 1279px) {
+    .creation-home .creation-thread-stage,
+    .creation-home .creation-thread-composer {
+        width: min(900px, calc(100% - 24px));
+    }
+
+    .creation-home .creation-chat-composer.is-desktop .creation-entry-toolbar {
+        overflow: visible;
+    }
+
+    .creation-home .creation-chat-composer.is-desktop .creation-entry-group.is-config {
+        min-width: 0;
+        flex: 1 1 auto;
+        gap: 6px;
+    }
+
+    .creation-home .creation-chat-composer.is-desktop.is-thread .creation-entry-group.is-reference .creation-entry-button {
+        width: 38px;
+        min-width: 38px;
+        padding: 0 !important;
+    }
+
+    .creation-home .creation-chat-composer.is-desktop.is-thread .creation-entry-group.is-reference .creation-entry-button > span,
+    .creation-home .creation-chat-composer.is-desktop.is-thread .creation-entry-group.is-reference .creation-reference-add-chevron {
+        display: none;
+    }
+
+    .creation-home .creation-chat-composer.is-desktop .creation-config-field.is-mode,
+    .creation-home .creation-chat-composer.is-desktop.is-thread .creation-config-field.is-mode {
+        width: 72px;
+        min-width: 64px;
+        flex: 1 1 72px;
+    }
+
+    .creation-home .creation-chat-composer.is-desktop .creation-config-field.is-model,
+    .creation-home .creation-chat-composer.is-desktop.is-thread .creation-config-field.is-model {
+        width: 104px;
+        min-width: 88px;
+        flex: 1 1 104px;
+    }
+
+    .creation-home .creation-chat-composer.is-desktop .creation-config-field.is-settings,
+    .creation-home .creation-chat-composer.is-desktop.is-thread .creation-config-field.is-settings {
+        width: 104px;
+        min-width: 88px;
+        flex: 1 1 104px;
+    }
+
+    .creation-home .creation-chat-composer.is-desktop .creation-config-field.is-sound {
+        width: 38px;
+        min-width: 38px;
+        flex: 0 0 38px;
+    }
+
+    .creation-home .creation-chat-composer.is-desktop .creation-config-field.is-sound .creation-entry-button {
+        padding: 0 !important;
+    }
+
+    .creation-home .creation-chat-composer.is-desktop .creation-config-field.is-sound .creation-entry-button > span {
+        display: none;
+    }
+
+    .creation-home .creation-chat-composer.is-desktop .creation-submit-cluster {
+        gap: 4px;
+    }
+
+    .creation-home .creation-chat-composer.is-desktop .creation-submit-estimate.is-metered {
+        min-width: 136px;
+    }
+}
+
+@media (min-width: 1280px) and (max-width: 1439px) {
+    .creation-home .creation-chat-composer.is-desktop.is-thread .creation-entry-group.is-reference .creation-entry-button {
+        min-width: 96px;
+    }
+
+    .creation-home .creation-chat-composer.is-desktop.is-thread .creation-config-field.is-mode {
+        width: 104px;
+        flex-basis: 104px;
+    }
+
+    .creation-home .creation-chat-composer.is-desktop.is-thread .creation-config-field.is-model {
+        width: 132px;
+        flex-basis: 132px;
+    }
+
+    .creation-home .creation-chat-composer.is-desktop.is-thread .creation-config-field.is-settings {
+        width: 132px;
+        flex-basis: 132px;
+    }
+
+    .creation-home .creation-chat-composer.is-desktop.is-thread .creation-config-field.is-sound {
+        width: 42px;
+        flex-basis: 42px;
+    }
+
+    .creation-home .creation-chat-composer.is-desktop.is-thread .creation-config-field.is-sound .creation-entry-button {
+        padding: 0 !important;
+    }
+
+    .creation-home .creation-chat-composer.is-desktop.is-thread .creation-config-field.is-sound .creation-entry-button > span {
+        display: none;
+    }
+
+    .creation-home .creation-chat-composer.is-desktop.is-thread .creation-submit-estimate.is-metered {
+        min-width: 138px;
     }
 }
 

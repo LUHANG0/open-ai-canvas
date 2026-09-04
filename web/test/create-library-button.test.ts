@@ -54,6 +54,7 @@ describe("creation library button", () => {
 
     test("本机上传和素材库入口长期显示在参考素材区域，底栏不重复", () => {
         const source = readCreateSource();
+        const compact = compactSource(source);
         const dockStart = source.indexOf('<footer className="creation-chat-dock">');
         const dockEnd = source.indexOf("</footer>", dockStart);
 
@@ -65,13 +66,17 @@ describe("creation library button", () => {
         expect(dockSource).not.toContain('aria-label="从本机上传附件"');
         expect(dockSource).not.toContain('aria-label="打开素材库选择参考内容"');
         expect(dockSource).not.toContain("VoiceRecordingButton");
+        expect(source).toContain('className="creation-entry-button creation-reference-add-trigger"');
+        expect(source).toContain('role="menu" aria-label="选择参考素材来源"');
+        expect(compact).toContain('role="menuitem" onClick={() => selectSource(onUpload)}');
+        expect(compact).toContain('role="menuitem" onClick={() => selectSource(onOpenLibrary)}');
         expect(source).toContain('className="creation-entry-button creation-reference-action is-upload"');
         expect(source).toContain('className="creation-entry-button creation-reference-action is-library"');
-        expect(source).toContain('aria-label="打开素材库上传或选择素材"');
+        expect(source).toContain("props.desktopLayout ? (");
         expect(source).toContain("const showReferenceEntry = !props.attachments.length");
         expect(source).not.toContain("referencesSupported && !props.attachments.length");
         expect(source).toContain('className="creation-reference-add-button"');
-        expect(source).toContain("onClick={props.onOpenLibrary}");
+        expect(source).toContain("onOpenLibrary={props.onOpenLibrary}");
     });
 
     test("素材库上传只入库，不静默勾选或加入当前创作", () => {
@@ -169,7 +174,8 @@ describe("creation library button", () => {
         expect(source).toContain('axis="x"');
         expect(source).toContain("values={visibleAttachments}");
         expect(source).toContain("onReorder={reorderVisibleAttachments}");
-        expect(source).toContain('className="creation-reference-card-remove" onPointerDownCapture={(event) => event.stopPropagation()}');
+        expect(source).toContain('className="creation-reference-card-remove"');
+        expect(source).toContain("onPointerDownCapture={(event) => event.stopPropagation()}");
         expect(source).toContain("<Reorder.Item");
         expect(source).toContain('layout="position"');
         expect(source).not.toContain("setReferencePanelExpanded");
@@ -204,7 +210,9 @@ describe("creation library button", () => {
         expect(source).toContain("creation-reference-add-button");
         expect(source).toContain("addReferenceLabel");
         expect(source).toContain("aria-busy={interactionBusy}");
-        expect(source).toContain('className="creation-reference-add-button" onClick={props.onOpenLibrary} disabled={interactionBusy}');
+        expect(source).toContain('<CreationReferenceAddMenu variant="slot" disabled={interactionBusy}');
+        expect(source).toContain("onUpload={() => props.fileInputRef.current?.click()}");
+        expect(source).toContain("onOpenLibrary={props.onOpenLibrary}");
         expect(source).toContain("creation-reference-track-button");
         expect(source).toContain("imageReferenceAtPoint");
         expect(source).toContain("setDropTargetReferenceId");
@@ -258,8 +266,10 @@ describe("creation library button", () => {
         expect(workspaceStyles).toContain(".creation-home .creation-reference-entry-bar {");
         expect(workspaceStyles).toContain("border-bottom: 1px solid var(--creation-border);");
         expect(workspaceStyles).toContain("--creation-composer-writing-height: 126px;");
-        expect(source).toContain('className="creation-entry-button creation-reference-action is-upload"');
-        expect(source).toContain('className="creation-entry-button creation-reference-action is-library"');
+        expect(source).toContain('className="creation-entry-button creation-reference-add-trigger"');
+        expect(source).toContain('aria-haspopup="menu" aria-expanded={open}');
+        expect(source).toContain("从本机上传");
+        expect(source).toContain("从素材库选择");
         expect(source).toContain("参考素材");
         expect(source).toContain("可以先上传到素材库；选择模型后再添加为参考");
         expect(workspaceStyles).toContain("position: relative;");
@@ -273,18 +283,48 @@ describe("creation library button", () => {
 
         expect(source).toContain("onPointerDownCapture={(event) => event.stopPropagation()}");
         expect(source).toContain("onRemove(item.id)");
-        expect(source).toContain("onClick={() => props.fileInputRef.current?.click()}");
-        expect(source).toContain("onClick={props.onOpenLibrary}");
+        expect(source).toContain("onUpload={() => props.fileInputRef.current?.click()}");
+        expect(source).toContain("onOpenLibrary={props.onOpenLibrary}");
     });
 
     test("视频创作的声音开关会更新生成配置并反馈当前状态", () => {
         const source = compactSource(readCreateSource());
+        const tooltipSource = compactSource(readFileSync(resolve(import.meta.dir, "../src/pages/create/creation-tooltip.tsx"), "utf8"));
+        const modelPickerSource = compactSource(readFileSync(resolve(import.meta.dir, "../src/components/model-picker.tsx"), "utf8"));
+        const workspaceStyles = compactSource(readFileSync(resolve(import.meta.dir, "../src/pages/create/creation-workspace.css"), "utf8"));
 
         expect(source).toContain('onGenerateAudioChange: (enabled: boolean) => updateConfig("videoGenerateAudio", String(enabled))');
         expect(source).toContain('className="creation-chat-control creation-entry-button creation-sound-toggle"');
         expect(source).toContain("aria-pressed={generateAudio}");
         expect(source).toContain("onClick={() => props.onGenerateAudioChange(!generateAudio)}");
         expect(source).toContain('{generateAudio ? "有声音" : "无声音"}');
+        expect(source).toContain('<CreationTooltipContent title="生成声音已开启" description="点击关闭，输出无声视频" />');
+        expect(source).toContain('<CreationTooltipContent title="生成声音已关闭" description="点击开启，为视频生成配套声音" />');
+        expect(source).toContain("aria-label={interactionBusy || !generateAudioSupported ? soundTooltipLabel : undefined}");
+        expect(source).toContain('`${soundActionLabel}，当前${generateAudio ? "有声音" : "无声音"}`');
+        expect(source).toContain("tabIndex={interactionBusy || !generateAudioSupported ? 0 : undefined}");
+        expect(tooltipSource).toContain("rootClassName={tooltipClassName}");
+        expect(tooltipSource).toContain('trigger = ["hover", "focus"]');
+        expect(tooltipSource).toContain('className="creation-ui-tooltip-content"');
+        expect(modelPickerSource).toContain('rootClassName="creation-ui-tooltip"');
+        expect(modelPickerSource).toContain("mouseEnterDelay={0.18}");
+        expect(workspaceStyles).toContain(".creation-ui-tooltip :is(.ant-tooltip-inner, .ant-tooltip-container)");
+        expect(workspaceStyles).toContain("background: var(--creation-tooltip-bg) !important");
+        expect(workspaceStyles).toContain(".dark .creation-ui-tooltip");
+        expect(workspaceStyles).toContain(".creation-ui-tooltip-content > small");
+    });
+
+    test("自定义弹层支持 Tab、方向键和 Escape 的完整键盘路径", () => {
+        const source = compactSource(readCreateSource());
+
+        expect(source).toContain("function useCreationPopoverKeyboardNavigation");
+        expect(source).toContain('event.key === "Tab" && open && !event.shiftKey');
+        expect(source).toContain('event.key === "Escape"');
+        expect(source).toContain('["ArrowDown", "ArrowUp", "Home", "End"]');
+        expect(source).toContain("closeAndRefocusTrigger");
+        expect(source).toContain("onKeyDown={menuKeyboard.onMenuKeyDown}");
+        expect(source).toContain("onKeyDown={roleKeyboard.onMenuKeyDown}");
+        expect(source).toContain("aria-controls={open ? menuKeyboard.menuId : undefined}");
     });
 
     test("生成同款恢复参数时不会被模型默认值覆盖或污染非视频配置", () => {
@@ -422,7 +462,7 @@ describe("creation library button", () => {
         expect(source).toContain("completedAt?: string");
         expect(source).toContain('className="creation-media-details"');
         expect(source).toContain("生成耗时");
-        expect(source).toContain("视频时长");
+        expect(source).toContain('label: "时长"');
         expect(source).toContain("video.videoWidth");
         expect(source).toContain("image.naturalWidth");
         expect(source).toContain('width="fit-content"');

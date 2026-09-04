@@ -261,7 +261,7 @@ export function ModelPicker({ config, value, onChange, capability, className, po
                 }}
             >
                 {creationVariant ? (
-                    <Tooltip title={triggerLabel} rootClassName="creation-ui-tooltip" mouseEnterDelay={0.25} mouseLeaveDelay={0.08} trigger={["hover", "focus"]}>
+                    <Tooltip title={triggerLabel} rootClassName="creation-ui-tooltip" mouseEnterDelay={0.18} mouseLeaveDelay={0.08} trigger={["hover", "focus"]}>
                         {trigger}
                     </Tooltip>
                 ) : (

@@ -13,6 +13,7 @@ export type CreationSubmissionRetryTarget = {
     shotId: string;
     userMessageId: string;
     assistantMessageId: string;
+    parentMessageId?: string;
 };
 
 type CreationSubmissionMessagesInput = {
@@ -22,9 +23,10 @@ type CreationSubmissionMessagesInput = {
     attachments: CreationAttachment[];
     references: CreationReference[];
     settings: CreationSettings;
+    linkMessages?: boolean;
     continuationParentMessageId?: string;
     retryContext?: CreationSubmissionRetryContext;
-    retryTarget?: Pick<CreationSubmissionRetryTarget, "shotId">;
+    retryTarget?: Pick<CreationSubmissionRetryTarget, "shotId" | "parentMessageId">;
     createId?: () => string;
     now?: () => string;
 };
@@ -42,6 +44,8 @@ function creationSubmissionMessage(role: CreationMessage["role"], content: strin
 export function createCreationSubmissionMessages(input: CreationSubmissionMessagesInput) {
     const createId = input.createId || createClientId;
     const now = input.now || (() => new Date().toISOString());
+    const linkMessages = input.linkMessages !== false;
+    const userParentMessageId = linkMessages ? (input.retryTarget ? input.retryTarget.parentMessageId : input.continuationParentMessageId) : undefined;
     const userMessage = creationSubmissionMessage(
         "user",
         input.text,
@@ -52,7 +56,7 @@ export function createCreationSubmissionMessages(input: CreationSubmissionMessag
             attachments: input.attachments,
             references: input.references,
             settings: input.settings,
-            ...(input.continuationParentMessageId ? { parentMessageId: input.continuationParentMessageId } : {}),
+            ...(userParentMessageId ? { parentMessageId: userParentMessageId } : {}),
         },
         createId,
         now,
@@ -65,7 +69,7 @@ export function createCreationSubmissionMessages(input: CreationSubmissionMessag
             model: input.selectedModel,
             status: input.mode === "text" ? "streaming" : "pending",
             settings: input.settings,
-            parentMessageId: userMessage.id,
+            ...(linkMessages ? { parentMessageId: userMessage.id } : {}),
             ...input.retryContext,
         },
         createId,
@@ -74,14 +78,7 @@ export function createCreationSubmissionMessages(input: CreationSubmissionMessag
     return { userMessage, assistantMessage };
 }
 
-export function applyCreationSubmissionToConversation(input: {
-    conversation: CreationConversation;
-    text: string;
-    userMessage: CreationMessage;
-    assistantMessage: CreationMessage;
-    retryTarget?: CreationSubmissionRetryTarget;
-    updatedAt?: string;
-}) {
+export function applyCreationSubmissionToConversation(input: { conversation: CreationConversation; text: string; userMessage: CreationMessage; assistantMessage: CreationMessage; retryTarget?: CreationSubmissionRetryTarget; updatedAt?: string }) {
     const { conversation, text, userMessage, assistantMessage, retryTarget } = input;
     const updatedAt = input.updatedAt || new Date().toISOString();
     const messages = [...conversation.messages];
@@ -90,7 +87,10 @@ export function applyCreationSubmissionToConversation(input: {
         const replacedIds = new Set([retryTarget.userMessageId, retryTarget.assistantMessageId]);
         const retained = messages.filter((message) => !replacedIds.has(message.id));
         retained.splice(insertAt >= 0 ? insertAt : retained.length, 0, userMessage, assistantMessage);
-        return { ...conversation, updatedAt, messages: retained, deletedMessageIds: Array.from(new Set([...(conversation.deletedMessageIds || []), ...replacedIds])) };
+        const deletedMessageIds = new Set([...(conversation.deletedMessageIds || []), ...replacedIds]);
+        deletedMessageIds.delete(userMessage.id);
+        deletedMessageIds.delete(assistantMessage.id);
+        return { ...conversation, updatedAt, messages: retained, ...(deletedMessageIds.size ? { deletedMessageIds: Array.from(deletedMessageIds) } : { deletedMessageIds: undefined }) };
     }
     return {
         ...conversation,
@@ -102,6 +102,10 @@ export function applyCreationSubmissionToConversation(input: {
 
 export function createCreationTaskBindings(): CreationTaskBindings {
     return { taskIds: new Set<string>(), taskIdsByBatchIndex: new Map<number, string>(), tasks: new Map<string, GenerationTask>() };
+}
+
+export function creationCancelableTaskIds(taskIds: string[] = []) {
+    return Array.from(new Set(taskIds.filter(Boolean)));
 }
 
 export function recordCreationTaskBinding(bindings: CreationTaskBindings, task: GenerationTask) {
@@ -131,11 +135,7 @@ export function cancelCreationSubmissionMessage(item: CreationMessage, completed
     return { ...item, status: "cancelled", completedAt, content: "已停止" };
 }
 
-export function failCreationSubmissionMessage(
-    item: CreationMessage,
-    error: unknown,
-    input: { operation?: string; assistantCreatedAt: string; completedAt?: string },
-): CreationMessage {
+export function failCreationSubmissionMessage(item: CreationMessage, error: unknown, input: { operation?: string; assistantCreatedAt: string; completedAt?: string }): CreationMessage {
     return {
         ...item,
         status: "error",

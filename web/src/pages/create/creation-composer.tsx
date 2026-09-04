@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type CSSProperties, type DragEvent as ReactDragEvent, type PointerEvent, type ReactNode, type RefObject } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState, type ChangeEvent, type CSSProperties, type DragEvent as ReactDragEvent, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent, type ReactNode, type RefObject } from "react";
 import { Button, Popover } from "antd";
 import { Reorder } from "motion/react";
 import {
@@ -55,7 +55,7 @@ import type { CreationMode } from "./creation-empty-state";
 import { CreationMediaPreviewModal } from "./creation-message-view";
 import type { CreationReference } from "./creation-references";
 import type { CreationVideoOperationChoice } from "./creation-types";
-import { CreationTooltip } from "./creation-tooltip";
+import { CreationTooltip, CreationTooltipContent } from "./creation-tooltip";
 
 const modeLabels: Record<CreationMode, string> = { text: "文本", image: "图片", video: "视频" };
 const ratioOptions = [
@@ -115,6 +115,100 @@ function ratioPreviewStyle(value: string) {
     return { width: Math.max(4, Math.round(width * scale)), height: Math.max(4, Math.round(height * scale)) };
 }
 
+function useCreationPopoverKeyboardNavigation({
+    open,
+    setOpen,
+    itemCount,
+    selectedIndex = 0,
+    isItemDisabled = () => false,
+}: {
+    open: boolean;
+    setOpen: (open: boolean) => void;
+    itemCount: number;
+    selectedIndex?: number;
+    isItemDisabled?: (index: number) => boolean;
+}) {
+    const menuId = useId();
+    const triggerRef = useRef<HTMLButtonElement>(null);
+    const itemRefs = useRef<Array<HTMLButtonElement | null>>([]);
+    const enabledIndices = () => Array.from({ length: itemCount }, (_, index) => index).filter((index) => !isItemDisabled(index));
+    const focusItem = (preferredIndex: number, direction = 1) => {
+        const enabled = enabledIndices();
+        if (!enabled.length) return;
+        const exact = enabled.includes(preferredIndex) ? preferredIndex : direction > 0 ? enabled.find((index) => index >= preferredIndex) : [...enabled].reverse().find((index) => index <= preferredIndex);
+        itemRefs.current[exact ?? (direction > 0 ? enabled[0] : enabled[enabled.length - 1])]?.focus();
+    };
+    const focusFirstItem = () => focusItem(selectedIndex);
+    const focusRelativeToTrigger = (direction: -1 | 1) => {
+        const trigger = triggerRef.current;
+        if (!trigger) return;
+        const focusable = Array.from(document.querySelectorAll<HTMLElement>('button:not([disabled]), a[href], input:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])')).filter(
+            (element) => element.getClientRects().length > 0 && !element.closest(".creation-control-popover, .creation-reference-add-popover"),
+        );
+        const triggerIndex = focusable.indexOf(trigger);
+        focusable[triggerIndex + direction]?.focus();
+    };
+    const focusMenuAfterOpen = (index = selectedIndex) => {
+        setOpen(true);
+        window.requestAnimationFrame(() => focusItem(index));
+    };
+    const closeAndRefocusTrigger = () => {
+        setOpen(false);
+        window.requestAnimationFrame(() => triggerRef.current?.focus());
+    };
+    const onTriggerKeyDown = (event: ReactKeyboardEvent<HTMLButtonElement>) => {
+        if (event.key === "Escape" && open) {
+            event.preventDefault();
+            closeAndRefocusTrigger();
+            return;
+        }
+        if (event.key === "Tab" && open && !event.shiftKey) {
+            event.preventDefault();
+            focusFirstItem();
+            return;
+        }
+        if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+            event.preventDefault();
+            const enabled = enabledIndices();
+            focusMenuAfterOpen(event.key === "ArrowDown" ? selectedIndex : (enabled[enabled.length - 1] ?? selectedIndex));
+        }
+    };
+    const onMenuKeyDown = (event: ReactKeyboardEvent<HTMLElement>) => {
+        const enabled = enabledIndices();
+        const currentIndex = itemRefs.current.findIndex((item) => item === document.activeElement);
+        if (event.key === "Escape") {
+            event.preventDefault();
+            event.stopPropagation();
+            closeAndRefocusTrigger();
+            return;
+        }
+        if (event.key === "Tab") {
+            const firstIndex = enabled[0];
+            const lastIndex = enabled[enabled.length - 1];
+            if (event.shiftKey && currentIndex === firstIndex) {
+                event.preventDefault();
+                closeAndRefocusTrigger();
+            } else if (!event.shiftKey && currentIndex === lastIndex) {
+                event.preventDefault();
+                setOpen(false);
+                window.requestAnimationFrame(() => focusRelativeToTrigger(1));
+            }
+            return;
+        }
+        if (!["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key) || !enabled.length) return;
+        event.preventDefault();
+        if (event.key === "Home") focusItem(enabled[0]);
+        else if (event.key === "End") focusItem(enabled[enabled.length - 1], -1);
+        else {
+            const currentEnabledIndex = Math.max(0, enabled.indexOf(currentIndex));
+            const offset = event.key === "ArrowDown" ? 1 : -1;
+            focusItem(enabled[(currentEnabledIndex + offset + enabled.length) % enabled.length], offset);
+        }
+    };
+
+    return { menuId, triggerRef, itemRefs, onTriggerKeyDown, onMenuKeyDown, closeAndRefocusTrigger };
+}
+
 function CreationAttachmentThumbnail({
     item,
     mode,
@@ -136,6 +230,15 @@ function CreationAttachmentThumbnail({
     const url = (kind === "video" ? item.url : item.previewUrl) || "";
     const videoImageRole = mode === "video" && kind === "image" ? creationVideoImageRole(item) : undefined;
     const videoImageRoleOption = creationVideoImageRoleOptions.find((option) => option.value === videoImageRole);
+    const roleKeyboard = useCreationPopoverKeyboardNavigation({
+        open: roleOpen,
+        setOpen: setRoleOpen,
+        itemCount: creationVideoImageRoleOptions.length,
+        selectedIndex: Math.max(
+            0,
+            creationVideoImageRoleOptions.findIndex((option) => option.value === videoImageRole),
+        ),
+    });
     const content =
         kind === "video" ? (
             <video src={item.url} poster={item.previewUrl !== item.url ? item.previewUrl : undefined} muted playsInline preload="metadata" aria-label={item.name} />
@@ -167,9 +270,12 @@ function CreationAttachmentThumbnail({
                     arrow={false}
                     classNames={{ root: "creation-control-popover", container: "creation-control-popover-surface", content: "creation-control-popover-content" }}
                     content={
-                        <div className="creation-frame-role-menu" role="listbox" aria-label="设置参考图角色">
-                            {creationVideoImageRoleOptions.map((option) => (
+                        <div id={roleKeyboard.menuId} className="creation-frame-role-menu" role="listbox" aria-label="设置参考图角色" onKeyDown={roleKeyboard.onMenuKeyDown}>
+                            {creationVideoImageRoleOptions.map((option, index) => (
                                 <button
+                                    ref={(node) => {
+                                        roleKeyboard.itemRefs.current[index] = node;
+                                    }}
                                     key={option.value}
                                     type="button"
                                     role="option"
@@ -190,6 +296,7 @@ function CreationAttachmentThumbnail({
                 >
                     <button
                         type="button"
+                        ref={roleKeyboard.triggerRef}
                         className={`creation-reference-frame-role is-${videoImageRole}`}
                         onPointerDownCapture={(event) => event.stopPropagation()}
                         onMouseDownCapture={(event) => event.stopPropagation()}
@@ -197,6 +304,8 @@ function CreationAttachmentThumbnail({
                         aria-label={`图片角色：${videoImageRoleOption.label}`}
                         aria-haspopup="listbox"
                         aria-expanded={roleOpen}
+                        aria-controls={roleOpen ? roleKeyboard.menuId : undefined}
+                        onKeyDown={roleKeyboard.onTriggerKeyDown}
                     >
                         {videoImageRoleOption.shortLabel}
                     </button>
@@ -301,6 +410,7 @@ function CreationReferenceAddMenu({
     onOpenLibrary: () => void;
 }) {
     const [open, setOpen] = useState(false);
+    const menuKeyboard = useCreationPopoverKeyboardNavigation({ open, setOpen, itemCount: 2 });
     useEffect(() => {
         if (disabled) setOpen(false);
     }, [disabled]);
@@ -310,12 +420,32 @@ function CreationReferenceAddMenu({
     };
     const trigger =
         variant === "slot" ? (
-            <button type="button" className="creation-reference-add-button" disabled={disabled} aria-label={triggerLabel} aria-haspopup="menu" aria-expanded={open}>
+            <button
+                ref={menuKeyboard.triggerRef}
+                type="button"
+                className="creation-reference-add-button"
+                disabled={disabled}
+                aria-label={triggerLabel}
+                aria-haspopup="menu"
+                aria-expanded={open}
+                aria-controls={open ? menuKeyboard.menuId : undefined}
+                onKeyDown={menuKeyboard.onTriggerKeyDown}
+            >
                 <Plus aria-hidden="true" />
                 <span>添加参考</span>
             </button>
         ) : (
-            <button type="button" className="creation-entry-button creation-reference-add-trigger" disabled={disabled} aria-label={triggerLabel} aria-haspopup="menu" aria-expanded={open}>
+            <button
+                ref={menuKeyboard.triggerRef}
+                type="button"
+                className="creation-entry-button creation-reference-add-trigger"
+                disabled={disabled}
+                aria-label={triggerLabel}
+                aria-haspopup="menu"
+                aria-expanded={open}
+                aria-controls={open ? menuKeyboard.menuId : undefined}
+                onKeyDown={menuKeyboard.onTriggerKeyDown}
+            >
                 <Plus aria-hidden="true" />
                 <span>添加参考</span>
                 <ChevronDown className="creation-reference-add-chevron" aria-hidden="true" />
@@ -330,13 +460,21 @@ function CreationReferenceAddMenu({
             arrow={false}
             classNames={{ root: "creation-reference-add-popover", container: "creation-control-popover-surface creation-reference-add-popover-surface", content: "creation-reference-add-popover-content" }}
             content={
-                <div className="creation-reference-add-menu" role="menu" aria-label="选择参考素材来源">
+                <div id={menuKeyboard.menuId} className="creation-reference-add-menu" role="menu" aria-label="选择参考素材来源" onKeyDown={menuKeyboard.onMenuKeyDown}>
                     <header>
                         <strong>添加参考</strong>
                         <span>为本轮创作补充画面、视频或声音</span>
                     </header>
                     <div className="creation-reference-add-options">
-                        <button type="button" role="menuitem" onClick={() => selectSource(onUpload)} aria-label={directUploadLabel}>
+                        <button
+                            ref={(node) => {
+                                menuKeyboard.itemRefs.current[0] = node;
+                            }}
+                            type="button"
+                            role="menuitem"
+                            onClick={() => selectSource(onUpload)}
+                            aria-label={directUploadLabel}
+                        >
                             <span className="creation-reference-add-option-icon is-upload" aria-hidden="true">
                                 <Upload />
                             </span>
@@ -345,7 +483,14 @@ function CreationReferenceAddMenu({
                                 <small>新素材会自动保存到素材库</small>
                             </span>
                         </button>
-                        <button type="button" role="menuitem" onClick={() => selectSource(onOpenLibrary)}>
+                        <button
+                            ref={(node) => {
+                                menuKeyboard.itemRefs.current[1] = node;
+                            }}
+                            type="button"
+                            role="menuitem"
+                            onClick={() => selectSource(onOpenLibrary)}
+                        >
                             <span className="creation-reference-add-option-icon is-library" aria-hidden="true">
                                 <Library />
                             </span>
@@ -387,13 +532,22 @@ export function CreationComposer(props: ComposerProps) {
     const generateAudioSupported = props.mode === "video" && props.videoProfile.generateAudio.supported;
     const generateAudio = generateAudioSupported && props.config.videoGenerateAudio === "true";
     const soundActionLabel = generateAudio ? "关闭声音" : "开启声音";
-    const soundTooltipTitle = !generateAudioSupported
-        ? "当前模型不支持生成声音"
+    const soundTooltipLabel = !generateAudioSupported
+        ? "生成声音不可用：当前模型不支持生成声音"
         : interactionBusy
-          ? `当前${generateAudio ? "有声音" : "无声音"}，生成进行中暂不可切换`
+          ? `生成声音已${generateAudio ? "开启" : "关闭"}：生成进行中暂不可切换`
           : generateAudio
-            ? "当前有声音，点击后生成无声视频"
-            : "当前无声音，点击后为视频生成配套声音";
+            ? "生成声音已开启：点击关闭，输出无声视频"
+            : "生成声音已关闭：点击开启，为视频生成配套声音";
+    const soundTooltipTitle = !generateAudioSupported ? (
+        <CreationTooltipContent title="生成声音不可用" description="当前模型不支持生成声音" />
+    ) : interactionBusy ? (
+        <CreationTooltipContent title={`生成声音已${generateAudio ? "开启" : "关闭"}`} description="生成进行中，暂不可切换" />
+    ) : generateAudio ? (
+        <CreationTooltipContent title="生成声音已开启" description="点击关闭，输出无声视频" />
+    ) : (
+        <CreationTooltipContent title="生成声音已关闭" description="点击开启，为视频生成配套声音" />
+    );
     const optimizerReferences = props.references.filter((reference) => reference.active && reference.kind !== "skill");
     const pricingRequest = {
         channelMode: priceChannel.scope === "system" ? "remote" : "local",
@@ -643,7 +797,24 @@ export function CreationComposer(props: ComposerProps) {
                         </span>
                     </div>
                     <div className="creation-reference-entry-actions">
-                        <CreationReferenceAddMenu disabled={interactionBusy} directUploadLabel={directUploadLabel} referenceEntryHint={referenceEntryHint} onUpload={() => props.fileInputRef.current?.click()} onOpenLibrary={props.onOpenLibrary} />
+                        {props.desktopLayout ? (
+                            <CreationReferenceAddMenu disabled={interactionBusy} directUploadLabel={directUploadLabel} referenceEntryHint={referenceEntryHint} onUpload={() => props.fileInputRef.current?.click()} onOpenLibrary={props.onOpenLibrary} />
+                        ) : (
+                            <>
+                                <CreationTooltip title={directUploadLabel}>
+                                    <button type="button" className="creation-entry-button creation-reference-action is-upload" onClick={() => props.fileInputRef.current?.click()} disabled={interactionBusy} aria-label={directUploadLabel}>
+                                        <Upload aria-hidden="true" />
+                                        <span>本机上传</span>
+                                    </button>
+                                </CreationTooltip>
+                                <CreationTooltip title="打开素材库上传或选择素材">
+                                    <button type="button" className="creation-entry-button creation-reference-action is-library" onClick={props.onOpenLibrary} disabled={interactionBusy} aria-label="打开素材库上传或选择素材">
+                                        <Library aria-hidden="true" />
+                                        <span>素材库</span>
+                                    </button>
+                                </CreationTooltip>
+                            </>
+                        )}
                         {!props.model ? (
                             <Link className="creation-reference-config-link" to={settingsPath("models", true)}>
                                 配置模型
@@ -718,6 +889,22 @@ export function CreationComposer(props: ComposerProps) {
                                             </span>
                                         </CreationTooltip>
                                     ) : null}
+                                    {!props.desktopLayout ? (
+                                        <>
+                                            <CreationTooltip title={directUploadLabel}>
+                                                <button type="button" onClick={() => props.fileInputRef.current?.click()} disabled={interactionBusy} aria-label={directUploadLabel}>
+                                                    <Upload aria-hidden="true" />
+                                                    <span>上传</span>
+                                                </button>
+                                            </CreationTooltip>
+                                            <CreationTooltip title="打开素材库上传或选择素材">
+                                                <button type="button" onClick={props.onOpenLibrary} disabled={interactionBusy} aria-label="打开素材库上传或选择素材">
+                                                    <Library aria-hidden="true" />
+                                                    <span>素材库</span>
+                                                </button>
+                                            </CreationTooltip>
+                                        </>
+                                    ) : null}
                                     <CreationTooltip title="清空全部素材">
                                         <button type="button" onClick={props.onClearAttachments} disabled={interactionBusy} aria-label="清空全部素材">
                                             <Trash2 aria-hidden="true" />
@@ -786,15 +973,24 @@ export function CreationComposer(props: ComposerProps) {
                                         ))}
                                         {!visibleAttachments.length && props.attachments.length ? <li className="creation-reference-filter-empty">该类型暂无参考内容</li> : null}
                                         <li className="creation-reference-add-slot">
-                                            <CreationReferenceAddMenu
-                                                variant="slot"
-                                                disabled={interactionBusy}
-                                                triggerLabel={addReferenceLabel}
-                                                directUploadLabel={directUploadLabel}
-                                                referenceEntryHint={referenceEntryHint}
-                                                onUpload={() => props.fileInputRef.current?.click()}
-                                                onOpenLibrary={props.onOpenLibrary}
-                                            />
+                                            {props.desktopLayout ? (
+                                                <CreationReferenceAddMenu
+                                                    variant="slot"
+                                                    disabled={interactionBusy}
+                                                    triggerLabel={addReferenceLabel}
+                                                    directUploadLabel={directUploadLabel}
+                                                    referenceEntryHint={referenceEntryHint}
+                                                    onUpload={() => props.fileInputRef.current?.click()}
+                                                    onOpenLibrary={props.onOpenLibrary}
+                                                />
+                                            ) : (
+                                                <CreationTooltip title={addReferenceLabel}>
+                                                    <button type="button" className="creation-reference-add-button" onClick={props.onOpenLibrary} disabled={interactionBusy} aria-label={addReferenceLabel}>
+                                                        <Plus aria-hidden="true" />
+                                                        <span>参考内容</span>
+                                                    </button>
+                                                </CreationTooltip>
+                                            )}
                                         </li>
                                     </Reorder.Group>
                                     {trackState.canScrollRight ? (
@@ -887,11 +1083,11 @@ export function CreationComposer(props: ComposerProps) {
                             <div className="creation-config-field is-sound">
                                 <span className="creation-config-label">声音</span>
                                 <CreationTooltip title={soundTooltipTitle} placement="top">
-                                    <span className="creation-sound-tooltip-trigger" aria-label={interactionBusy || !generateAudioSupported ? soundTooltipTitle : undefined} tabIndex={interactionBusy || !generateAudioSupported ? 0 : undefined}>
+                                    <span className="creation-sound-tooltip-trigger" aria-label={interactionBusy || !generateAudioSupported ? soundTooltipLabel : undefined} tabIndex={interactionBusy || !generateAudioSupported ? 0 : undefined}>
                                         <button
                                             type="button"
                                             className="creation-chat-control creation-entry-button creation-sound-toggle"
-                                            aria-label={generateAudioSupported ? soundActionLabel : soundTooltipTitle}
+                                            aria-label={generateAudioSupported ? `${soundActionLabel}，当前${generateAudio ? "有声音" : "无声音"}` : soundTooltipLabel}
                                             aria-pressed={generateAudio}
                                             onClick={() => props.onGenerateAudioChange(!generateAudio)}
                                             disabled={interactionBusy || !generateAudioSupported}
@@ -1001,6 +1197,15 @@ function ModePicker({ mode, onModeChange, terminology, disabled = false }: { mod
         { mode: "text", icon: <MessageSquareText />, label: "文本创作" },
     ];
     const current = items.find((item) => item.mode === mode) || items[0];
+    const menuKeyboard = useCreationPopoverKeyboardNavigation({
+        open,
+        setOpen,
+        itemCount: items.length,
+        selectedIndex: Math.max(
+            0,
+            items.findIndex((item) => item.mode === mode),
+        ),
+    });
     useEffect(() => {
         if (disabled) setOpen(false);
     }, [disabled]);
@@ -1013,9 +1218,12 @@ function ModePicker({ mode, onModeChange, terminology, disabled = false }: { mod
             arrow={false}
             classNames={{ root: "creation-control-popover", container: "creation-control-popover-surface", content: "creation-control-popover-content" }}
             content={
-                <div className="creation-mode-picker-menu" role="listbox" aria-label={`选择${terminology}`}>
-                    {items.map((item) => (
+                <div id={menuKeyboard.menuId} className="creation-mode-picker-menu" role="listbox" aria-label={`选择${terminology}`} onKeyDown={menuKeyboard.onMenuKeyDown}>
+                    {items.map((item, index) => (
                         <button
+                            ref={(node) => {
+                                menuKeyboard.itemRefs.current[index] = node;
+                            }}
                             key={item.mode}
                             type="button"
                             role="option"
@@ -1034,7 +1242,17 @@ function ModePicker({ mode, onModeChange, terminology, disabled = false }: { mod
                 </div>
             }
         >
-            <button type="button" className="creation-chat-control creation-entry-button is-mode" aria-label={`${terminology}：${current.label}`} aria-haspopup="listbox" aria-expanded={open} disabled={disabled}>
+            <button
+                ref={menuKeyboard.triggerRef}
+                type="button"
+                className="creation-chat-control creation-entry-button is-mode"
+                aria-label={`${terminology}：${current.label}`}
+                aria-haspopup="listbox"
+                aria-expanded={open}
+                aria-controls={open ? menuKeyboard.menuId : undefined}
+                onKeyDown={menuKeyboard.onTriggerKeyDown}
+                disabled={disabled}
+            >
                 {current.icon}
                 <span>{current.label}</span>
                 <ChevronDown className={open ? "is-open" : ""} />
@@ -1046,6 +1264,20 @@ function ModePicker({ mode, onModeChange, terminology, disabled = false }: { mod
 function VideoOperationPicker({ value, operations, onChange, disabled }: { value: CreationVideoOperationChoice; operations: string[]; onChange: (choice: CreationVideoOperationChoice) => void; disabled?: boolean }) {
     const [open, setOpen] = useState(false);
     const current = creationVideoOperationOptions.find((option) => option.value === value) || creationVideoOperationOptions[0];
+    const isUnsupported = (index: number) => {
+        const option = creationVideoOperationOptions[index];
+        return Boolean(option && option.value !== "auto" && !operations.includes(option.value));
+    };
+    const menuKeyboard = useCreationPopoverKeyboardNavigation({
+        open,
+        setOpen,
+        itemCount: creationVideoOperationOptions.length,
+        selectedIndex: Math.max(
+            0,
+            creationVideoOperationOptions.findIndex((option) => option.value === value),
+        ),
+        isItemDisabled: isUnsupported,
+    });
     useEffect(() => {
         if (disabled) setOpen(false);
     }, [disabled]);
@@ -1058,11 +1290,14 @@ function VideoOperationPicker({ value, operations, onChange, disabled }: { value
             arrow={false}
             classNames={{ root: "creation-control-popover", container: "creation-control-popover-surface", content: "creation-control-popover-content" }}
             content={
-                <div className="creation-video-operation-menu" role="listbox" aria-label="选择视频生成方式">
-                    {creationVideoOperationOptions.map((option) => {
+                <div id={menuKeyboard.menuId} className="creation-video-operation-menu" role="listbox" aria-label="选择视频生成方式" onKeyDown={menuKeyboard.onMenuKeyDown}>
+                    {creationVideoOperationOptions.map((option, index) => {
                         const supported = option.value === "auto" || operations.includes(option.value);
                         return (
                             <button
+                                ref={(node) => {
+                                    menuKeyboard.itemRefs.current[index] = node;
+                                }}
                                 key={option.value}
                                 type="button"
                                 role="option"
@@ -1086,7 +1321,17 @@ function VideoOperationPicker({ value, operations, onChange, disabled }: { value
                 </div>
             }
         >
-            <button type="button" className="creation-chat-control creation-entry-button is-video-operation" aria-label={`视频生成方式：${current.label}`} aria-haspopup="listbox" aria-expanded={open} disabled={disabled}>
+            <button
+                ref={menuKeyboard.triggerRef}
+                type="button"
+                className="creation-chat-control creation-entry-button is-video-operation"
+                aria-label={`视频生成方式：${current.label}`}
+                aria-haspopup="listbox"
+                aria-expanded={open}
+                aria-controls={open ? menuKeyboard.menuId : undefined}
+                onKeyDown={menuKeyboard.onTriggerKeyDown}
+                disabled={disabled}
+            >
                 <Clapperboard />
                 <span>{current.label}</span>
                 <ChevronDown className={open ? "is-open" : ""} />

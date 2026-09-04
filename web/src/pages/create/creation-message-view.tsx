@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Modal } from "antd";
-import { Copy, CornerUpLeft, Download, FileText, Film, Image as ImageIcon, LoaderCircle, Maximize2, Music2, PanelTop, RefreshCw, Sparkles, Square } from "lucide-react";
+import { ChevronDown, Copy, CornerUpLeft, Download, FileText, Film, Image as ImageIcon, LoaderCircle, Maximize2, Music2, PanelTop, RefreshCw, Sparkles, Square } from "lucide-react";
 import { Link } from "react-router";
 
 import { AIMessageMarkdown } from "@/components/ai/ai-message-markdown";
@@ -16,6 +16,7 @@ import { creationAttachmentKind, creationMediaAspectRatio } from "./creation-ass
 import type { CreationMode } from "./creation-empty-state";
 import { displayCreationPrompt, type CreationReference } from "./creation-references";
 import type { CreationMessage, CreationShot } from "./creation-types";
+import { creationCancelableTaskIds } from "./creation-submission-transaction";
 import { CreationTooltip } from "./creation-tooltip";
 
 const messageTimeFormatter = new Intl.DateTimeFormat("zh-CN", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false });
@@ -81,6 +82,7 @@ export function CreationMessageView({
     compactLayout,
     turnNumber,
     sourceTurnNumber,
+    legacyLayout = false,
     cancelling,
     onRetryFailure,
     onCreateVariant,
@@ -91,15 +93,17 @@ export function CreationMessageView({
     compactLayout: boolean;
     turnNumber?: number;
     sourceTurnNumber?: number;
-    cancelling: boolean;
+    legacyLayout?: boolean;
+    cancelling?: boolean;
     onRetryFailure: () => void;
     onCreateVariant: () => void;
-    onCancelGeneration: () => void;
+    onCancelGeneration?: () => void;
 }) {
-    if (item.role === "user") return <CreationUserMessage item={item} turnNumber={turnNumber} sourceTurnNumber={sourceTurnNumber} />;
+    if (item.role === "user") return <CreationUserMessage item={item} turnNumber={turnNumber} sourceTurnNumber={sourceTurnNumber} legacyLayout={legacyLayout} />;
     const mode = item.mode || "text";
     const isRunning = item.status === "pending" || item.status === "streaming";
-    const stateLabel = item.status === "cancelled" ? "已停止" : item.status === "error" ? "生成失败" : "";
+    const canCancelGeneration = !legacyLayout && creationCancelableTaskIds(item.taskIds).length > 0;
+    const stateLabel = legacyLayout ? (isRunning ? "生成中" : item.status === "cancelled" ? "已停止" : item.status === "error" ? "生成失败" : "") : item.status === "cancelled" ? "已停止" : item.status === "error" ? "生成失败" : "";
     const resultLabel = mode === "image" ? "图像" : mode === "video" ? "视频" : "文本";
     const headingLabel = mode === "text" ? "影策 AI" : item.status === "error" ? `${resultLabel}生成失败` : item.status === "cancelled" ? `${resultLabel}生成已停止` : isRunning ? `正在生成${resultLabel}` : `${resultLabel}已生成`;
     const heading = (
@@ -107,15 +111,27 @@ export function CreationMessageView({
             <span className="creation-message-mark">
                 <Sparkles />
             </span>
-            <strong>{headingLabel}</strong>
+            <strong>{legacyLayout ? (mode === "image" ? "图像生成" : mode === "video" ? "视频生成" : "影策 AI") : headingLabel}</strong>
+            {legacyLayout && mode !== "text" && item.status === "pending" ? <span className="creation-message-progress-copy">正在生成{mode === "video" ? "视频" : "图像"}……</span> : null}
             {modelName ? <span className="creation-message-model">{modelName}</span> : null}
             {item.createdAt ? <time dateTime={item.createdAt}>{formatMessageTime(item.createdAt)}</time> : null}
             {stateLabel ? <span className={`creation-message-state is-${item.status}`}>{stateLabel}</span> : null}
-            {isRunning ? (
-                <button type="button" className="creation-message-stop" onClick={onCancelGeneration} disabled={cancelling} aria-label={cancelling ? "正在停止本轮生成" : "停止本轮生成"}>
-                    {cancelling ? <LoaderCircle className="animate-spin" /> : <Square />}
-                    <span>{cancelling ? "正在停止" : "停止"}</span>
-                </button>
+            {!legacyLayout && isRunning ? (
+                <CreationTooltip title={canCancelGeneration ? "停止本轮生成" : "任务创建完成后即可停止"}>
+                    <span className="creation-message-stop-tooltip-trigger" tabIndex={canCancelGeneration ? undefined : 0} aria-label={canCancelGeneration ? undefined : "任务创建完成后即可停止"}>
+                        <button
+                            type="button"
+                            className="creation-message-stop"
+                            onClick={onCancelGeneration}
+                            disabled={cancelling || !canCancelGeneration}
+                            tabIndex={canCancelGeneration ? undefined : -1}
+                            aria-label={cancelling ? "正在停止本轮生成" : canCancelGeneration ? "停止本轮生成" : "任务创建中，暂不可停止"}
+                        >
+                            {cancelling ? <LoaderCircle className="animate-spin" /> : <Square />}
+                            <span>{cancelling ? "正在停止" : "停止"}</span>
+                        </button>
+                    </span>
+                </CreationTooltip>
             ) : null}
         </>
     );
@@ -130,7 +146,7 @@ export function CreationMessageView({
                 </>
             ) : (
                 <GenerationToolCard status={toolStatus} isBulk={mode !== "video" && (item.resultUrls?.length || Number(item.settings?.count) || 1) > 1} defaultExpanded={compactLayout ? true : undefined} heading={heading}>
-                    <MediaResult item={item} compactLayout={compactLayout} onRetryFailure={onRetryFailure} onCreateVariant={onCreateVariant} />
+                    <MediaResult item={item} compactLayout={compactLayout} legacyLayout={legacyLayout} onRetryFailure={onRetryFailure} onCreateVariant={onCreateVariant} />
                 </GenerationToolCard>
             )}
             {item.error && mode === "text" ? (
@@ -146,7 +162,7 @@ export function CreationMessageView({
     );
 }
 
-function CreationUserMessage({ item, turnNumber, sourceTurnNumber }: { item: CreationMessage; turnNumber?: number; sourceTurnNumber?: number }) {
+function CreationUserMessage({ item, turnNumber, sourceTurnNumber, legacyLayout }: { item: CreationMessage; turnNumber?: number; sourceTurnNumber?: number; legacyLayout: boolean }) {
     const [previewUrl, setPreviewUrl] = useState("");
     const [previewType, setPreviewType] = useState<"image" | "video">("image");
     const copyText = useCopyText();
@@ -154,8 +170,8 @@ function CreationUserMessage({ item, turnNumber, sourceTurnNumber }: { item: Cre
     return (
         <article className="creation-user-message">
             <div className="creation-user-message-meta">
-                <span>你的描述</span>
-                {turnNumber ? <span className="creation-user-message-turn">第 {String(turnNumber).padStart(2, "0")} 轮</span> : null}
+                <span>{legacyLayout ? "你" : "你的描述"}</span>
+                {!legacyLayout && turnNumber ? <span className="creation-user-message-turn">第 {String(turnNumber).padStart(2, "0")} 轮</span> : null}
                 {item.createdAt ? <time dateTime={item.createdAt}>{formatMessageTime(item.createdAt)}</time> : null}
                 <CreationTooltip title="复制消息">
                     <button type="button" className="creation-user-message-copy" aria-label="复制提示词" onClick={() => copyText(visiblePrompt, "提示词已复制")}>
@@ -166,7 +182,7 @@ function CreationUserMessage({ item, turnNumber, sourceTurnNumber }: { item: Cre
             <div className="creation-user-message-copy-wrap">
                 <p>{visiblePrompt}</p>
             </div>
-            {sourceTurnNumber ? (
+            {!legacyLayout && sourceTurnNumber ? (
                 <div className="creation-user-message-context">
                     <CornerUpLeft aria-hidden="true" />
                     延续第 {sourceTurnNumber} 轮
@@ -279,7 +295,7 @@ function compactVideoResolutionLabel(item: CreationMessage, metadata?: CreationM
     return shortEdge ? formatVideoResolutionLabel(shortEdge) : "自动";
 }
 
-function MediaResult({ item, compactLayout, onRetryFailure, onCreateVariant }: { item: CreationMessage; compactLayout: boolean; onRetryFailure: () => void; onCreateVariant: () => void }) {
+function MediaResult({ item, compactLayout, legacyLayout, onRetryFailure, onCreateVariant }: { item: CreationMessage; compactLayout: boolean; legacyLayout: boolean; onRetryFailure: () => void; onCreateVariant: () => void }) {
     const [previewUrl, setPreviewUrl] = useState("");
     const [previewType, setPreviewType] = useState<"image" | "video">("image");
     const [mediaMetadata, setMediaMetadata] = useState<Record<string, CreationMediaMetadata>>({});
@@ -332,6 +348,8 @@ function MediaResult({ item, compactLayout, onRetryFailure, onCreateVariant }: {
     const elapsed = creationGenerationElapsedLabel(item.createdAt, completedAt);
     const mediaDuration = isVideo ? creationMediaDurationLabel(primaryMetadata?.durationMs || Number(item.settings?.seconds || 0) * 1000) : "";
     const supplementalLabel = supplementalImages.some((entry) => entry.role === "last_frame") ? "含尾帧" : supplementalImages.length ? `${supplementalImages.length} 张附图` : "";
+    const legacySupplementalLabel = supplementalImages.some((entry) => entry.role === "last_frame") ? " · 含尾帧" : supplementalImages.length ? ` · ${supplementalImages.length} 张附图` : "";
+    const legacyResultType = isVideo ? `视频 · ${format}${legacySupplementalLabel}` : `图片 · ${imageResults.length} 张`;
     const resultMetrics = isVideo
         ? [
               { label: "格式", value: format },
@@ -368,6 +386,28 @@ function MediaResult({ item, compactLayout, onRetryFailure, onCreateVariant }: {
             ))}
         </dl>
     );
+    const legacyResultDetails = (
+        <dl className="creation-media-details" aria-label="生成结果明细">
+            <div>
+                <dt>类型</dt>
+                <dd>{legacyResultType}</dd>
+            </div>
+            <div>
+                <dt>分辨率</dt>
+                <dd>{resolution}</dd>
+            </div>
+            <div>
+                <dt>生成耗时</dt>
+                <dd>{elapsed}</dd>
+            </div>
+            {mediaDuration ? (
+                <div>
+                    <dt>视频时长</dt>
+                    <dd>{mediaDuration}</dd>
+                </div>
+            ) : null}
+        </dl>
+    );
     const resultActions = (
         <div className="creation-media-actions">
             <CreationTooltip title={compactLayout ? "沿用本轮提示词、素材与输出参数，在新回合中继续调整" : "沿用本轮参数生成新版本"}>
@@ -383,9 +423,19 @@ function MediaResult({ item, compactLayout, onRetryFailure, onCreateVariant }: {
             <CreationResultDownloads results={resultMedia} />
         </div>
     );
+    const legacyResultActions = (
+        <div className="creation-media-actions">
+            <button type="button" onClick={onCreateVariant}>
+                <RefreshCw />
+                生成同款
+            </button>
+            <Link to={canvasPath}>{resultAssetIds.length ? "添加到画布" : "打开画布"}</Link>
+            <CreationResultDownloads results={resultMedia} legacyLayout />
+        </div>
+    );
     return (
         <div className="creation-media-result">
-            <p className="creation-media-response-copy">{creationMediaResponseCopy(item, isVideo)}</p>
+            {!legacyLayout ? <p className="creation-media-response-copy">{creationMediaResponseCopy(item, isVideo)}</p> : null}
             {isVideo ? (
                 <button
                     type="button"
@@ -452,7 +502,22 @@ function MediaResult({ item, compactLayout, onRetryFailure, onCreateVariant }: {
                     }}
                 />
             ) : null}
-            {compactLayout ? (
+            {legacyLayout ? (
+                compactLayout ? (
+                    <details className="creation-media-disclosure">
+                        <summary>
+                            <span>结果详情</span>
+                            <small>
+                                {legacyResultType} · {resolution}
+                            </small>
+                            <ChevronDown aria-hidden="true" />
+                        </summary>
+                        {legacyResultDetails}
+                    </details>
+                ) : (
+                    legacyResultDetails
+                )
+            ) : compactLayout ? (
                 <footer className={`creation-result-footer is-${isVideo ? "video" : "image"}`} aria-label="结果信息与操作">
                     {compactResultDetails}
                     {resultActions}
@@ -463,6 +528,7 @@ function MediaResult({ item, compactLayout, onRetryFailure, onCreateVariant }: {
                     {resultActions}
                 </>
             )}
+            {legacyLayout ? legacyResultActions : null}
             <CreationMediaPreviewModal url={previewUrl} type={previewType} onClose={() => setPreviewUrl("")} />
         </div>
     );
@@ -488,7 +554,27 @@ export function CreationVideoSupplementalImages({ results, onPreview }: { result
     );
 }
 
-export function CreationResultDownloads({ results }: { results: CreationResultMediaEntry[] }) {
+export function CreationResultDownloads({ results, legacyLayout = false }: { results: CreationResultMediaEntry[]; legacyLayout?: boolean }) {
+    if (legacyLayout)
+        return (
+            <>
+                {results.map((entry, index) => {
+                    const label = entry.kind === "video" ? "下载视频" : entry.role === "last_frame" ? "下载尾帧" : `下载图片 ${index + 1}`;
+                    return (
+                        <a key={`${entry.url}-download`} href={entry.url} download>
+                            {results.length === 1 ? (
+                                <>
+                                    <Download />
+                                    下载
+                                </>
+                            ) : (
+                                label
+                            )}
+                        </a>
+                    );
+                })}
+            </>
+        );
     if (!results.length) return null;
     if (results.length === 1)
         return (

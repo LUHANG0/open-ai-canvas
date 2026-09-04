@@ -15,7 +15,7 @@ import { buildCreationMentionReferences, type CreationReference } from "./creati
 import type { CreationAttachment } from "./creation-assets";
 import { CreationComposer } from "./creation-composer";
 import { CreationEmptyIntro, CreationEmptySuggest, type CreationMode } from "./creation-empty-state";
-import { CreationTurnView } from "./creation-message-view";
+import { CreationMessageView, CreationTurnView } from "./creation-message-view";
 import { StoryboardComposerContext, StoryboardNextShotCard, StoryboardShotCard, StoryboardShotRail, StoryboardToolbar } from "./creation-storyboard-workbench";
 import { normalizeCreationVideoAttachments } from "./creation-submit-preparation";
 import type { CreationMessage, CreationShot, CreationVideoOperationChoice, CreationViewMode } from "./creation-types";
@@ -258,6 +258,7 @@ export default function CreatePage() {
         quality,
         videoQuality,
         count,
+        linkConversationMessages: pcBrandV2,
         continuationParentMessageId,
         pendingRetry,
         clearPendingRetry,
@@ -364,14 +365,14 @@ export default function CreatePage() {
         promptOptimizerProvider,
         composerFocusRef,
         desktopLayout: pcBrandV2,
-        continuationContext: viewMode === "chat" && variantSourceShotNumber ? { label: `延续第 ${variantSourceShotNumber} 轮`, detail: "已复用提示词、素材与输出参数" } : undefined,
+        continuationContext: pcBrandV2 && viewMode === "chat" && variantSourceShotNumber ? { label: `延续第 ${variantSourceShotNumber} 轮`, detail: "已复用提示词、素材与输出参数" } : undefined,
         onClearContinuation: clearVariantSource,
         placeholderOverride:
             viewMode === "storyboard" && (pcBrandV2 || composingNextShot)
                 ? `SC.${String(nextShotNumber).padStart(2, "0")} · 写下这一镜的镜头、画面或故事`
-                : viewMode === "chat" && variantSourceShotNumber
+                : pcBrandV2 && viewMode === "chat" && variantSourceShotNumber
                   ? "描述你想继续调整的画面、动作、光线或节奏"
-                  : viewMode === "chat" && shots.length
+                  : pcBrandV2 && viewMode === "chat" && shots.length
                     ? "继续描述下一步想创作或调整的内容"
                     : undefined,
         onSubmit: () => void submit(),
@@ -479,34 +480,46 @@ export default function CreatePage() {
                         <main ref={threadScrollRef} onScroll={handleThreadScroll} className="creation-thread-scroll creation-scrollbar" aria-label="连续创作" tabIndex={0}>
                             <section className="creation-thread-stage">
                                 <div className="creation-results" role="log" aria-live="polite" aria-relevant="additions text">
-                                    {shots.map((shot, shotIndex) => {
-                                        const resultIndex = shot.result ? activeConversation.messages.indexOf(shot.result) : -1;
-                                        const sourceShotIndex = shot.user?.parentMessageId ? shots.findIndex((candidate) => candidate.user?.id === shot.user?.parentMessageId || candidate.result?.id === shot.user?.parentMessageId) : -1;
-                                        return (
-                                            <CreationTurnView
-                                                key={shot.id}
-                                                shot={shot}
-                                                turnNumber={shotIndex + 1}
-                                                sourceTurnNumber={sourceShotIndex >= 0 ? sourceShotIndex + 1 : undefined}
-                                                modelName={shot.result?.model ? modelDisplayName(config, shot.result.model) : ""}
-                                                compactLayout={pcBrandV2}
-                                                isLatest={shotIndex === shots.length - 1}
-                                                cancelling={Boolean(shot.result && cancellingMessageIds.has(shot.result.id))}
-                                                onRetryFailure={() => {
-                                                    if (shot.result && resultIndex >= 0) retryFailedMessage(shot.result, resultIndex);
-                                                }}
-                                                onCreateVariant={() => {
-                                                    if (shot.result && resultIndex >= 0) createVariant(shot.result, resultIndex);
-                                                }}
-                                                onCancelGeneration={() => {
-                                                    if (shot.result) void cancelSubmission(activeConversation.id, shot.result.id, shot.result.taskIds || []);
-                                                }}
-                                            />
-                                        );
-                                    })}
+                                    {pcBrandV2
+                                        ? shots.map((shot, shotIndex) => {
+                                              const resultIndex = shot.result ? activeConversation.messages.indexOf(shot.result) : -1;
+                                              const sourceShotIndex = shot.user?.parentMessageId ? shots.findIndex((candidate) => candidate.user?.id === shot.user?.parentMessageId || candidate.result?.id === shot.user?.parentMessageId) : -1;
+                                              return (
+                                                  <CreationTurnView
+                                                      key={shot.id}
+                                                      shot={shot}
+                                                      turnNumber={shotIndex + 1}
+                                                      sourceTurnNumber={sourceShotIndex >= 0 ? sourceShotIndex + 1 : undefined}
+                                                      modelName={shot.result?.model ? modelDisplayName(config, shot.result.model) : ""}
+                                                      compactLayout
+                                                      isLatest={shotIndex === shots.length - 1}
+                                                      cancelling={Boolean(shot.result && cancellingMessageIds.has(shot.result.id))}
+                                                      onRetryFailure={() => {
+                                                          if (shot.result && resultIndex >= 0) retryFailedMessage(shot.result, resultIndex);
+                                                      }}
+                                                      onCreateVariant={() => {
+                                                          if (shot.result && resultIndex >= 0) createVariant(shot.result, resultIndex);
+                                                      }}
+                                                      onCancelGeneration={() => {
+                                                          if (shot.result) void cancelSubmission(activeConversation.id, shot.result.id, shot.result.taskIds || []);
+                                                      }}
+                                                  />
+                                              );
+                                          })
+                                        : activeConversation.messages.map((item, index) => (
+                                              <CreationMessageView
+                                                  key={item.id}
+                                                  item={item}
+                                                  modelName={item.model ? modelDisplayName(config, item.model) : ""}
+                                                  compactLayout={false}
+                                                  legacyLayout
+                                                  onRetryFailure={() => retryFailedMessage(item, index)}
+                                                  onCreateVariant={() => createVariant(item, index, { legacy: true })}
+                                              />
+                                          ))}
                                 </div>
                             </section>
-                            {showJumpToLatest ? (
+                            {pcBrandV2 && showJumpToLatest ? (
                                 <button type="button" className="creation-jump-latest" onClick={scrollToLatest}>
                                     <ArrowDown aria-hidden="true" />
                                     回到最新
