@@ -14,13 +14,13 @@ FROM oven/bun:1.3.13 AS web-build
 
 WORKDIR /app/web
 ARG VITE_TLDRAW_LICENSE_KEY
-ARG BUILD_VERSION
-ARG BUILD_COMMIT=unknown
 ENV VITE_TLDRAW_LICENSE_KEY=${VITE_TLDRAW_LICENSE_KEY}
-ENV CANVAS_BUILD_VERSION=${BUILD_VERSION}
-ENV VITE_BUILD_COMMIT=${BUILD_COMMIT}
 COPY web/package.json web/bun.lock ./
 RUN --mount=type=cache,target=/root/.bun/install/cache bun install --frozen-lockfile --cache-dir=/root/.bun/install/cache
+ARG BUILD_VERSION
+ARG BUILD_COMMIT=unknown
+ENV CANVAS_BUILD_VERSION=${BUILD_VERSION}
+ENV VITE_BUILD_COMMIT=${BUILD_COMMIT}
 COPY VERSION /app/VERSION
 COPY CHANGELOG.md /app/CHANGELOG.md
 COPY canvas-agent /app/canvas-agent
