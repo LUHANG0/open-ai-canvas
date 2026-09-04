@@ -7,7 +7,7 @@ description: 2026-09-04 独立分支上的迁移、邀请、镜像、备份恢�
 
 ## 结论
 
-**No-Go，不合并、不发布。** 候选功能、数据库、镜像、恢复和浏览器验收均通过，但仓库要求的 Web 全量格式门禁失败：`bun run format:check` 报告 386 个既有文件不符合 Prettier。候选本次直接修改的邀请抽屉文件单独格式检查通过，因此没有用一次大范围机械格式化掩盖存量问题；只要全量门禁仍为红色，本候选就不能判定为 Go。
+**分层结论：本地 Go，可合并；线上 No-Go，不可发布。** 候选功能、数据库、镜像、恢复和浏览器验收均通过。原始 `main` 与候选分别执行 `bun run format:check` 都报告相同的 386 个文件不符合 Prettier，证明它们是既有基线问题；严格复现 `.github/workflows/quality.yml` 的 changed-files 逻辑后，只选中本次修改的 `registration-invite-drawer.tsx`，检查通过。因此这 386 个文件登记为非本次回归的 P3 技术债，不阻断 preview.5 的本地合并。
 
 本记录只证明本地隔离环境中的候选行为。**仅本地通过，不代表 GitHub Actions、GHCR 或生产环境通过。** 本轮没有推送、远程 PR、Actions、远程标签、GHCR 发布、部署、生产数据访问或付费渠道调用。用户提供的线上已知阻断为 GHCR `permission_denied`；它不是本轮本地验证结果，未来申请上线前仍须单独解决并取得不可变 digest 证据。
 
@@ -25,6 +25,12 @@ description: 2026-09-04 独立分支上的迁移、邀请、镜像、备份恢�
 | 清理策略       | 证据汇总后删除临时容器、卷、网络、凭据、数据库、备份和附加 worktree；候选分支与提交保留                  |
 
 版本盘点确认生产入口只有 `VERSION`、`CHANGELOG.md` 和 README 安装示例需要提升到 preview.5。旧 preview.1–preview.4 字符串仍出现在历史发布文档、回退测试夹具和 Host Updater 默认测试值中，属于历史或测试语义，不应机械替换。
+
+`e411143f..93c8083a` 只新增本文和五张截图；使用排除 `docs/design/**` 的 diff 复核结果为 `runtime-diff: none`。本次复判也只修改本文。因此：
+
+- **本地 deployable/runtime candidate 是 `e411143f6900588244499ce0815589d7ceb39ede`。** 已验证镜像的 OCI revision 与它一致，因为两份镜像是在该源码树上以完整 e411 SHA 注入构建元数据并实际启动验收。
+- 报告/截图提交只承载证据，不冒充运行时 SHA，也不要求为文档变化重跑数据库、镜像或业务链路。
+- 如获批后将本分支合并到 `main`，正式发布构建必须使用合并完成后的不可变 `main` SHA，并让 OCI revision 精确等于该 SHA。若合并后 SHA 不是 e411，则当前 e411 镜像只能作为本地验收制品，必须从最终 `main` 重新构建，不能直接发布。
 
 ## 本轮提交
 
@@ -47,8 +53,10 @@ description: 2026-09-04 独立分支上的迁移、邀请、镜像、备份恢�
 | Web 测试          | `cd web && bun test`                                        | **通过**：1686 passed，0 failed，245 files，9782 assertions                             |
 | Web 类型          | `cd web && bun run typecheck`                               | **通过**                                                                                |
 | Web 构建与预算    | 注入 preview.5/e411 元数据后 `bun run build`                | **通过**：生产构建成功，7/7 体积预算通过                                                |
-| Web 全量格式      | `cd web && bun run format:check`                            | **失败/阻断**：386 个既有文件不符合 Prettier                                            |
-| 候选文件格式      | 对 `registration-invite-drawer.tsx` 单独执行 Prettier check | **通过**                                                                                |
+| Web 全量格式基线  | 在原始 `main=3e1ff98d` 执行 `bun run format:check`          | **信息项/P3**：386 个既有文件不符合 Prettier                                            |
+| Web 全量格式候选  | 在候选分支执行相同命令                                      | **信息项/P3**：同样为 386 个文件，未增加                                                |
+| Workflow 差异格式 | 原样复现 Quality checks 的 BASE_SHA/changed-files 脚本      | **通过**：只检查 `registration-invite-drawer.tsx`，Prettier 通过                        |
+| Backend 格式      | `cd backend && test -z "$(gofmt -l .)"`                     | **通过**                                                                                |
 | Backend           | `cd backend && go test ./...`                               | **通过**，最终 e411 源码再次全量执行                                                    |
 | Canvas Agent      | `npm test && npm run build`                                 | **通过**：316 passed，5 conditional skips，0 failed；TypeScript 构建通过                |
 | SQLite Schema     | 数据库迁移测试连续 3 次，每次独立临时文件                   | **通过**：fresh、V4、V6→V8、V7 credits 回填、checksum mismatch、失败事务回退            |
@@ -60,8 +68,9 @@ description: 2026-09-04 独立分支上的迁移、邀请、镜像、备份恢�
 | 备份恢复          | PostgreSQL custom dump + Backend data tar 恢复到独立网络/卷 | **通过**                                                                                |
 | Host Updater      | 最终 e411 Backend 镜像执行 Docker 集成失败注入              | **通过**：自动回退、重复回退幂等、恢复冲突 fail-closed                                  |
 | 浏览器            | 真实 Chromium，桌面/移动、浅色/深色和键盘焦点               | **通过**：目标状态无页面横向溢出，最终浏览器错误为空                                    |
+| Director P0 E2E   | Quality workflow 的 `bun run test:director:e2e`             | **通过**：58 passed，0 failed；临时 Chrome/Vite/profile 已自动清理                      |
 
-Canvas Agent 的 5 个 skip 是套件既有的平台/条件跳过，不是失败。Web 格式门禁是本轮唯一确定的本地发布阻断。
+Canvas Agent 的 5 个 skip 是套件既有的平台/条件跳过，不是失败。386 个全量 Prettier 告警不属于工作流的 changed-files 阻断口径；没有批量改写这些历史文件。差异格式复判使用锁文件安装的 Prettier `3.9.5`；本机 Bun 为 `1.3.14`，Actions 配置为 `1.3.9`，因此远端 runner 结果仍须由获批后的真实 Actions 确认。
 
 ## 数据库迁移与邀请制验收
 
@@ -125,27 +134,31 @@ e411 候选镜像本地构建并实际启动：
 
 ## Evidence → Finding → Path
 
-| Evidence                                             | Finding                                          | Path / 决策                                          |
-| ---------------------------------------------------- | ------------------------------------------------ | ---------------------------------------------------- |
-| E-01：Web 1686/0、类型检查、构建、7/7 预算           | 功能与构建门禁健康                               | 可保留候选代码；继续执行其他门禁                     |
-| E-02：全量格式检查 386 files failed                  | required 本地门禁未闭环                          | **F-01 / No-Go**；先单独治理格式基线，再重新全量验收 |
-| E-03：SQLite/PostgreSQL migration 与邀请测试         | Schema 8 可升级、可重复执行，邀请消费具事务性    | 允许保留迁移与邀请实现                               |
-| E-04：真实 50/100/275 注册、角色注入、失败重试、并发 | 额度由服务端邀请决定；失败不消费；并发只成功一次 | 邀请业务风险已闭环                                   |
-| E-05：浏览器焦点递归堆栈与修复后无错误               | 原关闭确认存在 P0 可用性问题                     | `97b3149c` 修复并保留回归截图                        |
-| E-06：浅色 expired 标签计算样式与修复截图            | 原状态对比度不足                                 | `4545446e` 改用 orange 语义色                        |
-| E-07：OCI labels、live/ready/version、schema 8/8     | 本地运行制品与 e411 源码一致                     | 本地镜像可作为复验输入；不能替代 GHCR digest         |
-| E-08：两份备份 SHA、隔离恢复记录与文件 SHA           | PostgreSQL 与 Backend 数据可从本地备份恢复       | 恢复路径本地闭环                                     |
-| E-09：自动/重复/fail-closed 三阶段 Host Updater 演练 | 更新失败不会带着部分恢复数据重新上线             | 回退机制本地闭环                                     |
-| E-10：未运行远端系统；已知 GHCR `permission_denied`  | 缺少远端 required checks 与不可变制品证据        | **F-02 / 线上阻断**；获批后修复权限并重跑远端门禁    |
+| Evidence                                             | Finding                                          | Path / 决策                                         |
+| ---------------------------------------------------- | ------------------------------------------------ | --------------------------------------------------- |
+| E-01：Web 1686/0、类型检查、构建、7/7 预算           | 功能与构建门禁健康                               | 可保留候选代码；继续执行其他门禁                    |
+| E-02：`main` 与候选全量格式均为相同 386 files failed | 失败在候选之前已存在，且候选没有增加             | **F-01 / P3 技术债**；另立变更治理，不阻断本次合并  |
+| E-02b：原样复现 workflow，只选中 1 个候选 Web 文件   | required changed-files 格式门禁通过              | preview.5 本地格式门禁闭环                          |
+| E-03：SQLite/PostgreSQL migration 与邀请测试         | Schema 8 可升级、可重复执行，邀请消费具事务性    | 允许保留迁移与邀请实现                              |
+| E-04：真实 50/100/275 注册、角色注入、失败重试、并发 | 额度由服务端邀请决定；失败不消费；并发只成功一次 | 邀请业务风险已闭环                                  |
+| E-05：浏览器焦点递归堆栈与修复后无错误               | 原关闭确认存在 P0 可用性问题                     | `97b3149c` 修复并保留回归截图                       |
+| E-06：浅色 expired 标签计算样式与修复截图            | 原状态对比度不足                                 | `4545446e` 改用 orange 语义色                       |
+| E-07：OCI labels、live/ready/version、schema 8/8     | 本地运行制品与 e411 源码一致                     | 本地镜像可作为复验输入；不能替代 GHCR digest        |
+| E-08：两份备份 SHA、隔离恢复记录与文件 SHA           | PostgreSQL 与 Backend 数据可从本地备份恢复       | 恢复路径本地闭环                                    |
+| E-09：自动/重复/fail-closed 三阶段 Host Updater 演练 | 更新失败不会带着部分恢复数据重新上线             | 回退机制本地闭环                                    |
+| E-10：未运行远端系统；已知 GHCR `permission_denied`  | 缺少远端 required checks 与不可变制品证据        | **F-02 / 线上 No-Go**；获批后修复权限并重跑远端门禁 |
 
 测试原始日志存放在临时 `.local/release-preview.5/logs`，内容已汇总到本文；该目录随附加 worktree 清理，不作为长期制品。长期证据为候选提交、本文及上面的截图。
 
-## 重新申请 Go 的最小条件
+## 合并建议与线上放行条件
 
-1. 在独立变更中建立或修复 Web Prettier 基线，使 `bun run format:check` 全量通过；随后重跑本表全部本地门禁。
-2. 获得远端操作批准后推送候选，确认最终交付 HEAD 的 required GitHub Actions 全绿。
-3. 解决 GHCR `permission_denied`，由最终批准提交构建并记录 version tag、SHA tag、OCI revision 与 RepoDigest 的一致关系；不得用 `latest` 代替。
-4. 使用固定不可变 digest 在获批环境启动，再次核对 readiness、schema、邀请注册和备份恢复。
+本机建议合并 `release/v1.2.2-preview.5`；本轮按用户要求只给出建议，不实际合并。386 个 legacy 格式文件另列 P3 技术债，治理时应使用独立提交，避免与 preview.5 混入大范围无语义重排。
+
+线上仍保持 No-Go，直到以下条件全部满足：
+
+1. 获得远端操作批准后推送候选，确认最终合并 SHA 的 required GitHub Actions 全绿。
+2. 解决 GHCR `permission_denied`，从最终 `main` 不可变 SHA 重新构建，并记录 version tag、SHA tag、OCI revision 与 RepoDigest 的一致关系；不得用 `latest` 代替。
+3. 使用固定不可变 digest 在获批环境启动，再次核对 readiness、schema、邀请注册和备份恢复。
 
 ## 回退清单
 
@@ -170,13 +183,48 @@ git rev-parse main
 git rev-parse release/v1.2.2-preview.5
 git log --oneline main..release/v1.2.2-preview.5
 
+# 在未移动的原始 main 工作区执行；本次结果为 386 个 legacy 文件。
+cd web
+bun run format:check
+```
+
+在候选 worktree 的 `web/` 中运行下列 Bash。主体与 `quality.yml` 的 “Check formatting” step 一致，只额外打印选中文件以便取证：
+
+```bash
+BASE_SHA=3e1ff98dac1ef35af8547b086ed6ccafb3be1561
+GITHUB_SHA="$(git rev-parse release/v1.2.2-preview.5)"
+changed_files=()
+repo_prefix="$(git rev-parse --show-prefix)"
+while IFS= read -r -d '' file; do
+  case "$file" in
+    *.css|*.html|*.json|*.js|*.jsx|*.md|*.mdx|*.mjs|*.cjs|*.ts|*.tsx|*.yaml|*.yml)
+      base_path="${repo_prefix}${file}"
+      if git cat-file -e "$BASE_SHA:$base_path" 2>/dev/null \
+        && ! diff -q \
+          <(git show "$BASE_SHA:$base_path") \
+          <(git show "$BASE_SHA:$base_path" | bunx prettier --ignore-path /dev/null --stdin-filepath "$file") \
+          >/dev/null; then
+        echo "Skipping legacy unformatted file: $file"
+        continue
+      fi
+      changed_files+=("$file")
+      ;;
+  esac
+done < <(git diff --relative --name-only --diff-filter=ACMR -z "$BASE_SHA" "$GITHUB_SHA" -- .)
+printf 'Selected: %s\n' "${changed_files[@]}"
+bunx prettier --check "${changed_files[@]}"
+```
+
+其余本地门禁：
+
+```bash
 cd web
 bun test
 bun run typecheck
 bun run build
-bun run format:check
 
 cd ../backend
+test -z "$(gofmt -l .)"
 go test ./...
 
 cd ../canvas-agent
