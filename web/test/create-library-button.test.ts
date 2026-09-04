@@ -106,7 +106,12 @@ describe("creation library button", () => {
         expect(source).toContain("素材仍在上传，完成后才能提交生成");
         expect(source).toContain("上传完成前不能生成或切换配置");
         expect(source).toContain('className="creation-upload-status is-error" role="alert"');
-        expect(source).toContain('<ModePicker mode={props.mode} onModeChange={props.onModeChange} disabled={interactionBusy} terminology={props.desktopLayout ? "创作类型" : "生成类型"} />');
+        expect(source).toContain("<ModePicker");
+        expect(source).toContain('terminology={props.desktopLayout ? "创作类型" : "生成类型"}');
+        expect(source).toContain("combineVideoOperation={props.desktopLayout}");
+        expect(source).toContain("videoOperationChoice={props.videoOperationChoice}");
+        expect(source).toContain("videoOperations={props.videoOperations}");
+        expect(source).toContain("onVideoOperationChange={props.onVideoOperationChange}");
         expect(source).toContain("<DurationMenu profile={props.videoProfile} seconds={props.seconds} onChange={props.setSeconds} disabled={interactionBusy} />");
         expect(pickerSource).toContain("disabled?: boolean");
         expect(pickerSource).toContain("disabled={disabled}");

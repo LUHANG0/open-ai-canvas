@@ -207,7 +207,12 @@ describe("PC creation chat and storyboard director workbench regression gates", 
         expect(source).toContain("desktopLayout: pcBrandV2");
         expect(composer).toContain('props.desktopLayout ? " is-desktop" : ""');
         expect(composer).toContain('!props.desktopLayout && props.mode === "video"');
-        expect(composer).toContain('<SettingSection title="参考模式"');
+        expect(composer).not.toContain('<SettingSection title="参考模式"');
+        expect(composer).toContain('className="creation-mode-picker-menu is-combined"');
+        expect(composer).toContain('className="creation-mode-operation-grid" role="listbox" aria-label="选择参考模式"');
+        expect(composer).toContain("onVideoOperationChange?.(option.value)");
+        expect(composer).toContain('if (!combineVideoOperation || nextMode !== "video") setOpen(false)');
+        expect(composer).not.toContain("...(props.desktopLayout ? [videoOperation.label] : [])");
         expect(composer).toContain('props.desktopLayout ? "创作类型" : "类型"');
         expect(composer).toContain('terminology={props.desktopLayout ? "创作类型" : "生成类型"}');
         expect(composer).toContain("showSelectedPrice={!props.desktopLayout}");
@@ -220,7 +225,8 @@ describe("PC creation chat and storyboard director workbench regression gates", 
         const finalDesktopStyles = styles.slice(styles.lastIndexOf("/*\n * 创作页桌面端层级收口"));
         expectRuleWith(finalDesktopStyles, ".creation-home .creation-chat-composer.is-desktop.has-references .creation-chat-editor", [/display:\s*grid/, /grid-template-columns:\s*minmax\(0,\s*1fr\)\s+clamp\(264px,\s*32%,\s*304px\)/]);
         expectRuleWith(finalDesktopStyles, ".creation-home .creation-chat-composer.is-desktop.has-references .creation-chat-mention-editor", [/min-height:\s*112px/, /max-height:\s*144px/]);
-        expectRuleWith(finalDesktopStyles, ".creation-home .creation-chat-composer.is-desktop .creation-entry-group.is-config", [/display:\s*grid/, /grid-template-columns:[^;]+minmax\(94px,\s*0\.64fr\)/]);
+        expectRuleWith(finalDesktopStyles, ".creation-home .creation-chat-composer.is-desktop .creation-entry-group.is-config", [/display:\s*flex/, /width:\s*auto/, /flex:\s*0\s+1\s+auto/]);
+        expectRuleWith(finalDesktopStyles, ".creation-home .creation-chat-composer.is-desktop .creation-config-field.is-mode", [/width:\s*136px/, /flex:\s*0\s+0\s+136px/]);
         expectRuleWith(finalDesktopStyles, ".creation-home .creation-chat-composer.is-desktop .creation-submit-cluster", [/display:\s*flex/, /gap:\s*8px/]);
         expectRuleWith(finalDesktopStyles, ".creation-home .creation-chat-composer.is-desktop .creation-submit-estimate", [/height:\s*42px/, /align-items:\s*flex-end/]);
         expect(toolbar).toContain('aria-label={desktopLayout ? "工作方式" : "创作视图"}');

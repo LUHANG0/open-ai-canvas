@@ -731,7 +731,16 @@ export function CreationComposer(props: ComposerProps) {
                     <div className="creation-entry-group is-config" role="group" aria-label="生成配置">
                         <div className="creation-config-field is-mode">
                             <span className="creation-config-label">{props.desktopLayout ? "创作类型" : "类型"}</span>
-                            <ModePicker mode={props.mode} onModeChange={props.onModeChange} disabled={interactionBusy} terminology={props.desktopLayout ? "创作类型" : "生成类型"} />
+                            <ModePicker
+                                mode={props.mode}
+                                onModeChange={props.onModeChange}
+                                terminology={props.desktopLayout ? "创作类型" : "生成类型"}
+                                combineVideoOperation={props.desktopLayout}
+                                videoOperationChoice={props.videoOperationChoice}
+                                videoOperations={props.videoOperations}
+                                onVideoOperationChange={props.onVideoOperationChange}
+                                disabled={interactionBusy}
+                            />
                         </div>
                         <div className="creation-config-field is-model">
                             <span className="creation-config-label">模型</span>
@@ -756,7 +765,7 @@ export function CreationComposer(props: ComposerProps) {
                         ) : null}
                         {props.mode === "video" || (props.mode === "image" && imageSettingsSupported) ? (
                             <div className="creation-config-field is-settings">
-                                <span className="creation-config-label">{props.desktopLayout ? "详细设置" : "规格"}</span>
+                                <span className="creation-config-label">{props.desktopLayout ? "输出规格" : "规格"}</span>
                                 <GenerationSettingsMenu {...props} />
                             </div>
                         ) : null}
@@ -866,7 +875,25 @@ export function CreationComposer(props: ComposerProps) {
     );
 }
 
-function ModePicker({ mode, onModeChange, terminology, disabled = false }: { mode: CreationMode; onModeChange: (mode: CreationMode) => void; terminology: "创作类型" | "生成类型"; disabled?: boolean }) {
+function ModePicker({
+    mode,
+    onModeChange,
+    terminology,
+    combineVideoOperation = false,
+    videoOperationChoice = "auto",
+    videoOperations = [],
+    onVideoOperationChange,
+    disabled = false,
+}: {
+    mode: CreationMode;
+    onModeChange: (mode: CreationMode) => void;
+    terminology: "创作类型" | "生成类型";
+    combineVideoOperation?: boolean;
+    videoOperationChoice?: CreationVideoOperationChoice;
+    videoOperations?: string[];
+    onVideoOperationChange?: (choice: CreationVideoOperationChoice) => void;
+    disabled?: boolean;
+}) {
     const [open, setOpen] = useState(false);
     const items: { mode: CreationMode; icon: ReactNode; label: string }[] = [
         { mode: "video", icon: <Film />, label: "视频生成" },
@@ -874,9 +901,74 @@ function ModePicker({ mode, onModeChange, terminology, disabled = false }: { mod
         { mode: "text", icon: <MessageSquareText />, label: "文本创作" },
     ];
     const current = items.find((item) => item.mode === mode) || items[0];
+    const currentVideoOperation = creationVideoOperationOptions.find((option) => option.value === videoOperationChoice) || creationVideoOperationOptions[0];
+    const triggerLabel = combineVideoOperation && mode === "video" ? `视频 · ${currentVideoOperation.label}` : current.label;
+    const triggerAriaLabel = combineVideoOperation && mode === "video" ? `${terminology}：${current.label}；参考模式：${currentVideoOperation.label}` : `${terminology}：${current.label}`;
     useEffect(() => {
         if (disabled) setOpen(false);
     }, [disabled]);
+    const selectMode = (nextMode: CreationMode) => {
+        onModeChange(nextMode);
+        if (!combineVideoOperation || nextMode !== "video") setOpen(false);
+    };
+    const modeButtons = items.map((item) => (
+        <button key={item.mode} type="button" role="option" aria-selected={item.mode === mode} className={item.mode === mode ? "is-selected" : ""} onClick={() => selectMode(item.mode)}>
+            <span className="creation-menu-icon">{item.icon}</span>
+            <span>{item.label}</span>
+            {item.mode === mode ? <Check /> : null}
+        </button>
+    ));
+    const menu = combineVideoOperation ? (
+        <div className="creation-mode-picker-menu is-combined" role="dialog" aria-label="创作类型与参考模式">
+            <section className="creation-mode-picker-section">
+                <header>
+                    <h3>创作类型</h3>
+                    <span>{current.label}</span>
+                </header>
+                <div className="creation-mode-option-grid" role="listbox" aria-label="选择创作类型">
+                    {modeButtons}
+                </div>
+            </section>
+            {mode === "video" ? (
+                <section className="creation-mode-picker-section is-reference-mode">
+                    <header>
+                        <h3>参考模式</h3>
+                        <span>{currentVideoOperation.label}</span>
+                    </header>
+                    <div className="creation-mode-operation-grid" role="listbox" aria-label="选择参考模式">
+                        {creationVideoOperationOptions.map((option) => {
+                            const supported = option.value === "auto" || videoOperations.includes(option.value);
+                            return (
+                                <button
+                                    key={option.value}
+                                    type="button"
+                                    role="option"
+                                    aria-selected={option.value === videoOperationChoice}
+                                    className={option.value === videoOperationChoice ? "is-selected" : undefined}
+                                    disabled={!supported}
+                                    title={supported ? option.description : "当前模型不支持此参考模式"}
+                                    onClick={() => {
+                                        onVideoOperationChange?.(option.value);
+                                        setOpen(false);
+                                    }}
+                                >
+                                    <span className="creation-mode-operation-copy">
+                                        <strong>{option.label}</strong>
+                                        <small>{supported ? option.description : "当前模型不支持"}</small>
+                                    </span>
+                                    {option.value === videoOperationChoice ? <Check /> : null}
+                                </button>
+                            );
+                        })}
+                    </div>
+                </section>
+            ) : null}
+        </div>
+    ) : (
+        <div className="creation-mode-picker-menu" role="listbox" aria-label={`选择${terminology}`}>
+            {modeButtons}
+        </div>
+    );
     return (
         <Popover
             open={open}
@@ -885,31 +977,11 @@ function ModePicker({ mode, onModeChange, terminology, disabled = false }: { mod
             placement="bottomLeft"
             arrow={false}
             classNames={{ root: "creation-control-popover", container: "creation-control-popover-surface", content: "creation-control-popover-content" }}
-            content={
-                <div className="creation-mode-picker-menu" role="listbox" aria-label={`选择${terminology}`}>
-                    {items.map((item) => (
-                        <button
-                            key={item.mode}
-                            type="button"
-                            role="option"
-                            aria-selected={item.mode === mode}
-                            className={item.mode === mode ? "is-selected" : ""}
-                            onClick={() => {
-                                onModeChange(item.mode);
-                                setOpen(false);
-                            }}
-                        >
-                            <span className="creation-menu-icon">{item.icon}</span>
-                            <span>{item.label}</span>
-                            {item.mode === mode ? <Check /> : null}
-                        </button>
-                    ))}
-                </div>
-            }
+            content={menu}
         >
-            <button type="button" className="creation-chat-control creation-entry-button is-mode" aria-label={`${terminology}：${current.label}`} aria-haspopup="listbox" aria-expanded={open} disabled={disabled}>
+            <button type="button" className="creation-chat-control creation-entry-button is-mode" aria-label={triggerAriaLabel} aria-haspopup={combineVideoOperation ? "dialog" : "listbox"} aria-expanded={open} disabled={disabled}>
                 {current.icon}
-                <span>{current.label}</span>
+                <span>{triggerLabel}</span>
                 <ChevronDown className={open ? "is-open" : ""} />
             </button>
         </Popover>
@@ -1019,7 +1091,6 @@ function GenerationSettingsMenu(props: ComposerProps) {
         setCustomRatioOpen(false);
     };
     const videoResolutionSupported = props.mode === "video" && resolutions.length > 0;
-    const videoOperation = creationVideoOperationOptions.find((option) => option.value === props.videoOperationChoice) || creationVideoOperationOptions[0];
     const durationValue = props.mode === "video" ? Number(normalizeVideoValue(props.videoProfile, { seconds: props.seconds }).seconds) : 0;
     const durationPresets = props.mode === "video" && props.videoProfile.duration.selection === "enum" ? videoDurationOptions(props.videoProfile) : [];
     const durationFallback = durationPresets.length ? durationPresets : props.mode === "video" ? [props.videoProfile.duration.default] : [1];
@@ -1032,43 +1103,10 @@ function GenerationSettingsMenu(props: ComposerProps) {
         ...(props.imageProfile.maxOutputs > 1 ? [props.count] : []),
     ].join(" · ");
     const videoRatioSupported = props.mode === "video" && ratios.length > 0;
-    const videoSummary = [
-        ...(props.desktopLayout ? [videoOperation.label] : []),
-        ...(videoRatioSupported ? [props.ratio] : []),
-        ...(videoResolutionSupported ? [videoResolutionLabel(props.videoQuality)] : []),
-        ...(props.desktopLayout ? [`${durationValue}s`] : []),
-    ].join(" · ");
+    const videoSummary = [...(videoRatioSupported ? [props.ratio] : []), ...(videoResolutionSupported ? [videoResolutionLabel(props.videoQuality)] : []), ...(props.desktopLayout ? [`${durationValue}s`] : [])].join(" · ");
     const summary = props.mode === "video" ? videoSummary : imageSummary;
     const panel = (
         <div className="creation-parameter-menu">
-            {props.desktopLayout && props.mode === "video" ? (
-                <SettingSection title="参考模式" value={videoOperation.label}>
-                    <div className="creation-choice-grid is-operation">
-                        {creationVideoOperationOptions.map((option) => {
-                            const supported = option.value === "auto" || props.videoOperations.includes(option.value);
-                            return (
-                                <button
-                                    key={option.value}
-                                    type="button"
-                                    aria-pressed={option.value === props.videoOperationChoice}
-                                    className={option.value === props.videoOperationChoice ? "is-selected" : undefined}
-                                    disabled={!supported}
-                                    title={supported ? option.description : "当前模型不支持此参考模式"}
-                                    onClick={() => props.onVideoOperationChange(option.value)}
-                                >
-                                    <span className="creation-option-check" aria-hidden="true">
-                                        <Check />
-                                    </span>
-                                    <span className="creation-choice-copy">
-                                        <strong>{option.label}</strong>
-                                        <small>{supported ? option.description : "当前模型不支持"}</small>
-                                    </span>
-                                </button>
-                            );
-                        })}
-                    </div>
-                </SettingSection>
-            ) : null}
             {videoRatioSupported || (props.mode !== "video" && mergedProfile.size.parameter !== "none") ? (
                 <SettingSection title="画幅" value={referenceImageSizeSelected ? referenceImageSizeLabel : props.mode === "image" && usesImageResolutionPicker ? activeImageRatio : props.ratio}>
                     <div className="creation-parameter-content">
