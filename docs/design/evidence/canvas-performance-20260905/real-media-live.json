@@ -1,0 +1,309 @@
+{
+  "date": "2026-09-05",
+  "codeCommit": "34f4cffbe67b347486abfea352c7c56522b06ba5",
+  "method": "Local application browser UI actions, diagnostic read-only geometry/media sampling, temporary projects-reference subscription; aggregated record without media URLs or account data.",
+  "canvas": {
+    "title": "画布性能实测 · 素材库图片视频 · 2026-09-05",
+    "url": "http://localhost:8888/canvas/eXrhz6-luUXWJxhaj4BgB"
+  },
+  "summary": {
+    "checks": 35,
+    "passed": 34,
+    "failed": 1
+  },
+  "library": {
+    "images": 12,
+    "videos": 12,
+    "itemsBefore": 24,
+    "itemsAfter": 24
+  },
+  "denseCanvas": {
+    "nodes": 96,
+    "imageNodes": 48,
+    "videoNodes": 48,
+    "distinctAssetIds": 24,
+    "mountedAtOverview": 96,
+    "decodedImageNodes": 48,
+    "videoPostersWhenMultiselected": 48,
+    "activePlayersWhenMultiselected": 0,
+    "activePlayersWhenPlayingOne": 1,
+    "reloadGeometryChangedNodes": 0,
+    "geometryTolerance": 0.1
+  },
+  "measurements": {
+    "videoResize24": {
+      "before": {
+        "width": 720,
+        "height": 413.33333333333337
+      },
+      "preview": {
+        "width": 600,
+        "height": 344.445
+      },
+      "after": {
+        "width": 600.00009765625,
+        "height": 344.4445005063658
+      },
+      "projectsChangesDuring": 0,
+      "projectsChangesAfter": 1,
+      "mediaTimeStart": 0.360413,
+      "mediaTimeDuring": 1.747625
+    },
+    "imageResize": {
+      "naturalWidth": 6582,
+      "naturalHeight": 4388,
+      "before": {
+        "width": 720,
+        "height": 480
+      },
+      "after": {
+        "width": 600,
+        "height": 400
+      },
+      "projectsChangesDuring": 0,
+      "projectsChangesAfter": 1,
+      "reloadPreserved": true
+    },
+    "videoResize96": {
+      "before": {
+        "width": 720,
+        "height": 413.33333333333326
+      },
+      "after": {
+        "width": 600,
+        "height": 344.44444444444446
+      },
+      "projectsChangesDuring": 0,
+      "projectsChangesAfter": 1,
+      "mediaTimeStart": 0.344008,
+      "mediaTimeDuring": 0.886829
+    },
+    "videoDrag96": {
+      "pointerMoves": 20,
+      "before": {
+        "x": 1285.3333740234375,
+        "y": -474
+      },
+      "after": {
+        "x": 1333.760009765625,
+        "y": -446.22222222222223
+      },
+      "mediaTimeStart": 0.381909,
+      "mediaTimeEnd": 1.370204
+    },
+    "videoOversizeReload": {
+      "passed": false,
+      "before": {
+        "x": -250.6666259765625,
+        "y": 983.3333333333331,
+        "width": 840.00009765625,
+        "height": 482.2222782841434,
+        "manualSize": true
+      },
+      "after": {
+        "x": -190.6665771484375,
+        "y": 1017.7778058087382,
+        "width": 720,
+        "height": 413.33333333333326,
+        "manualSize": true
+      },
+      "restoredToWidthForHandoff": 600
+    }
+  },
+  "checks": [
+    {
+      "id": 1,
+      "name": "素材库24项完整插入测试画布",
+      "passed": true
+    },
+    {
+      "id": 2,
+      "name": "12张素材库图片全部完成解码",
+      "passed": true
+    },
+    {
+      "id": 3,
+      "name": "素材库视频1解码播放",
+      "passed": true
+    },
+    {
+      "id": 4,
+      "name": "素材库视频2解码播放",
+      "passed": true
+    },
+    {
+      "id": 5,
+      "name": "素材库视频3解码播放",
+      "passed": true
+    },
+    {
+      "id": 6,
+      "name": "素材库视频4解码播放",
+      "passed": true
+    },
+    {
+      "id": 7,
+      "name": "素材库视频5解码播放",
+      "passed": true
+    },
+    {
+      "id": 8,
+      "name": "素材库视频6解码播放",
+      "passed": true
+    },
+    {
+      "id": 9,
+      "name": "素材库视频7解码播放",
+      "passed": true
+    },
+    {
+      "id": 10,
+      "name": "素材库视频8解码播放",
+      "passed": true
+    },
+    {
+      "id": 11,
+      "name": "素材库视频9解码播放",
+      "passed": true
+    },
+    {
+      "id": 12,
+      "name": "素材库视频10解码播放",
+      "passed": true
+    },
+    {
+      "id": 13,
+      "name": "素材库视频11解码播放",
+      "passed": true
+    },
+    {
+      "id": 14,
+      "name": "素材库视频12解码播放",
+      "passed": true
+    },
+    {
+      "id": 15,
+      "name": "24节点：真实视频尺寸预览与一次提交",
+      "passed": true
+    },
+    {
+      "id": 16,
+      "name": "24节点：真实视频调整尺寸时继续播放且画面同步变化",
+      "passed": true
+    },
+    {
+      "id": 17,
+      "name": "真实视频尺寸撤销与重做",
+      "passed": true
+    },
+    {
+      "id": 18,
+      "name": "真实视频缩放中Escape取消",
+      "passed": true
+    },
+    {
+      "id": 19,
+      "name": "真实视频常规尺寸保存刷新",
+      "passed": true
+    },
+    {
+      "id": 20,
+      "name": "真实视频刷新后再次解码播放",
+      "passed": true
+    },
+    {
+      "id": 21,
+      "name": "真实视频超大尺寸保存刷新保持",
+      "passed": false
+    },
+    {
+      "id": 22,
+      "name": "真实视频超大尺寸完成提交",
+      "passed": true
+    },
+    {
+      "id": 23,
+      "name": "6582×4388真实图片尺寸预览与一次提交",
+      "passed": true
+    },
+    {
+      "id": 24,
+      "name": "真实高清图片缩放取消恢复",
+      "passed": true
+    },
+    {
+      "id": 25,
+      "name": "真实高清图片常规尺寸保存刷新",
+      "passed": true
+    },
+    {
+      "id": 26,
+      "name": "96个媒体节点全景完整展示",
+      "passed": true
+    },
+    {
+      "id": 27,
+      "name": "96节点下选择真实视频播放",
+      "passed": true
+    },
+    {
+      "id": 28,
+      "name": "96节点下真实视频缩放预览与一次提交",
+      "passed": true
+    },
+    {
+      "id": 29,
+      "name": "96节点：真实视频调整尺寸时继续播放且画面同步变化",
+      "passed": true
+    },
+    {
+      "id": 30,
+      "name": "96节点下播放中拖动视频",
+      "passed": true
+    },
+    {
+      "id": 31,
+      "name": "96节点下撤销视频移动保留先前尺寸",
+      "passed": true
+    },
+    {
+      "id": 32,
+      "name": "96节点下重做视频移动",
+      "passed": true
+    },
+    {
+      "id": 33,
+      "name": "96媒体节点保存刷新保留位置与尺寸",
+      "passed": true
+    },
+    {
+      "id": 34,
+      "name": "96节点下48个图片节点均完成解码",
+      "passed": true
+    },
+    {
+      "id": 35,
+      "name": "原素材库仍为12图片和12视频",
+      "passed": true
+    }
+  ],
+  "excludedDiagnostics": [
+    "Video wait began after playback ended; immediate replay verified progress.",
+    "Playback opened panel and moved node; old coordinates did not start resize. Re-observed handle, confirmed active gesture and reran.",
+    "One preview sampled before final rAF; final width committed correctly. Later samples wait for animation frames.",
+    "Browser automation virtual clipboard had no paste data; used asset picker for expansion.",
+    "Asset picker closing animation affected immediate reopen; waited for dialog lifecycle.",
+    "Reload initially mounted 7 nodes at 125% while store retained all 96; fit canvas mounted 96."
+  ],
+  "limitations": [
+    "No controlled FPS comparison, GPU memory measurement or long-duration test",
+    "Repeated asset references share resources and caches",
+    "No cold-cache bulk loading or shared-canvas validation",
+    "Single selected video player policy; no simultaneous multi-video playback claim"
+  ],
+  "runtimeConsoleSpotCheck": {
+    "warnings": 0,
+    "errors": 0,
+    "fullNetworkAudit": false
+  }
+}
