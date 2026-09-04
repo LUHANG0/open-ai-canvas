@@ -50,6 +50,9 @@ func TestRegistrationInviteExchangeCookieAttributes(t *testing.T) {
 	if strings.Contains(response.Body.String(), created.Token) {
 		t.Fatal("exchange body exposed raw token")
 	}
+	if !strings.Contains(response.Body.String(), `"creditAmountMicrocredits":100000000`) {
+		t.Fatalf("exchange body missing default invite credits: %s", response.Body.String())
+	}
 	cookies := response.Result().Cookies()
 	if len(cookies) != 1 {
 		t.Fatalf("cookies=%#v", cookies)

@@ -60,16 +60,17 @@ type EmailVerificationCode struct {
 // The raw token exists solely in the create response and the short-lived
 // HttpOnly cookie used while completing registration.
 type RegistrationInvite struct {
-	ID            string     `json:"id" gorm:"primaryKey;size:36"`
-	TokenHash     string     `json:"-" gorm:"size:64;uniqueIndex:idx_registration_invites_token_hash"`
-	CreatedBy     string     `json:"createdBy" gorm:"size:36;index"`
-	CreatedByUser User       `json:"-" gorm:"foreignKey:CreatedBy;references:ID;constraint:OnUpdate:CASCADE,OnDelete:RESTRICT"`
-	Note          string     `json:"note,omitempty" gorm:"size:500"`
-	ExpiresAt     time.Time  `json:"expiresAt" gorm:"index;index:idx_registration_invites_state,priority:3"`
-	UsedAt        *time.Time `json:"usedAt,omitempty" gorm:"index;index:idx_registration_invites_state,priority:1"`
-	UsedBy        *string    `json:"usedBy,omitempty" gorm:"size:36;index"`
-	UsedByUser    *User      `json:"-" gorm:"foreignKey:UsedBy;references:ID;constraint:OnUpdate:CASCADE,OnDelete:SET NULL"`
-	RevokedAt     *time.Time `json:"revokedAt,omitempty" gorm:"index;index:idx_registration_invites_state,priority:2"`
-	CreatedAt     time.Time  `json:"createdAt" gorm:"index"`
-	UpdatedAt     time.Time  `json:"updatedAt"`
+	ID                       string     `json:"id" gorm:"primaryKey;size:36"`
+	TokenHash                string     `json:"-" gorm:"size:64;uniqueIndex:idx_registration_invites_token_hash"`
+	CreatedBy                string     `json:"createdBy" gorm:"size:36;index"`
+	CreatedByUser            User       `json:"-" gorm:"foreignKey:CreatedBy;references:ID;constraint:OnUpdate:CASCADE,OnDelete:RESTRICT"`
+	Note                     string     `json:"note,omitempty" gorm:"size:500"`
+	CreditAmountMicrocredits int64      `json:"creditAmountMicrocredits" gorm:"not null;default:100000000"`
+	ExpiresAt                time.Time  `json:"expiresAt" gorm:"index;index:idx_registration_invites_state,priority:3"`
+	UsedAt                   *time.Time `json:"usedAt,omitempty" gorm:"index;index:idx_registration_invites_state,priority:1"`
+	UsedBy                   *string    `json:"usedBy,omitempty" gorm:"size:36;index"`
+	UsedByUser               *User      `json:"-" gorm:"foreignKey:UsedBy;references:ID;constraint:OnUpdate:CASCADE,OnDelete:SET NULL"`
+	RevokedAt                *time.Time `json:"revokedAt,omitempty" gorm:"index;index:idx_registration_invites_state,priority:2"`
+	CreatedAt                time.Time  `json:"createdAt" gorm:"index"`
+	UpdatedAt                time.Time  `json:"updatedAt"`
 }

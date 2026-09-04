@@ -77,7 +77,7 @@ func (r *Repository) RevokeRegistrationInvite(id string, now time.Time, audit *m
 // ConsumeRegistrationInvite atomically claims the one-time credential and
 // creates every durable part of a successful signup. Any validation or insert
 // failure rolls the claim back, so callers may safely let the user retry.
-func (r *Repository) ConsumeRegistrationInvite(inviteID string, tokenHash string, now time.Time, user *model.User, session *model.AuthSession, signupBonus int64) error {
+func (r *Repository) ConsumeRegistrationInvite(inviteID string, tokenHash string, now time.Time, user *model.User, session *model.AuthSession, creditAmountMicrocredits int64) error {
 	return r.db.Transaction(func(tx *gorm.DB) error {
 		// used_by is an immediate foreign key on both supported databases. Insert
 		// the user first; a lost invite claim rolls this insert back with the rest
@@ -94,8 +94,8 @@ func (r *Repository) ConsumeRegistrationInvite(inviteID string, tokenHash string
 		if claimed.RowsAffected != 1 {
 			return ErrRegistrationInviteUnavailable
 		}
-		if signupBonus > 0 {
-			account := model.CreditAccount{UserID: user.ID, AvailableMicrocredits: signupBonus, Version: 1, CreatedAt: now, UpdatedAt: now}
+		if creditAmountMicrocredits > 0 {
+			account := model.CreditAccount{UserID: user.ID, AvailableMicrocredits: creditAmountMicrocredits, Version: 1, CreatedAt: now, UpdatedAt: now}
 			if err := tx.Create(&account).Error; err != nil {
 				return err
 			}
@@ -104,11 +104,11 @@ func (r *Repository) ConsumeRegistrationInvite(inviteID string, tokenHash string
 				ID:                         newRepositoryID(),
 				UserID:                     user.ID,
 				Type:                       model.CreditLedgerSignupBonus,
-				AmountMicrocredits:         signupBonus,
-				AvailableDeltaMicrocredits: signupBonus,
-				AvailableAfterMicrocredits: signupBonus,
+				AmountMicrocredits:         creditAmountMicrocredits,
+				AvailableDeltaMicrocredits: creditAmountMicrocredits,
+				AvailableAfterMicrocredits: creditAmountMicrocredits,
 				ReferenceKey:               &reference,
-				Note:                       "新用户默认积分",
+				Note:                       "邀请注册积分",
 				CreatedAt:                  now,
 			}
 			if err := tx.Create(&entry).Error; err != nil {

@@ -17,6 +17,9 @@ const RegistrationInviteCookieName = "open_ai_canvas_registration_invite"
 
 const registrationInviteCookieMaxAge = 15 * time.Minute
 
+const defaultRegistrationInviteCreditAmountMicrocredits int64 = 100 * CreditScale
+const maxRegistrationInviteCreditAmountMicrocredits int64 = 1_000_000 * CreditScale
+
 type RegistrationInviteStatus string
 
 const (
@@ -28,8 +31,9 @@ const (
 )
 
 type CreateRegistrationInviteRequest struct {
-	ExpiresInDays int    `json:"expiresInDays"`
-	Note          string `json:"note"`
+	ExpiresInDays            int    `json:"expiresInDays"`
+	CreditAmountMicrocredits int64  `json:"creditAmountMicrocredits"`
+	Note                     string `json:"note"`
 }
 
 type RegistrationInviteUser struct {
@@ -39,14 +43,15 @@ type RegistrationInviteUser struct {
 }
 
 type RegistrationInviteView struct {
-	ID        string                   `json:"id"`
-	Note      string                   `json:"note,omitempty"`
-	Status    RegistrationInviteStatus `json:"status"`
-	ExpiresAt time.Time                `json:"expiresAt"`
-	UsedAt    *time.Time               `json:"usedAt,omitempty"`
-	UsedBy    *RegistrationInviteUser  `json:"usedBy,omitempty"`
-	RevokedAt *time.Time               `json:"revokedAt,omitempty"`
-	CreatedAt time.Time                `json:"createdAt"`
+	ID                       string                   `json:"id"`
+	Note                     string                   `json:"note,omitempty"`
+	CreditAmountMicrocredits int64                    `json:"creditAmountMicrocredits"`
+	Status                   RegistrationInviteStatus `json:"status"`
+	ExpiresAt                time.Time                `json:"expiresAt"`
+	UsedAt                   *time.Time               `json:"usedAt,omitempty"`
+	UsedBy                   *RegistrationInviteUser  `json:"usedBy,omitempty"`
+	RevokedAt                *time.Time               `json:"revokedAt,omitempty"`
+	CreatedAt                time.Time                `json:"createdAt"`
 }
 
 type CreatedRegistrationInvite struct {
@@ -62,8 +67,9 @@ type RegistrationInvitePage struct {
 }
 
 type PublicRegistrationInvite struct {
-	Status    RegistrationInviteStatus `json:"status"`
-	ExpiresAt *time.Time               `json:"expiresAt,omitempty"`
+	Status                   RegistrationInviteStatus `json:"status"`
+	ExpiresAt                *time.Time               `json:"expiresAt,omitempty"`
+	CreditAmountMicrocredits int64                    `json:"creditAmountMicrocredits,omitempty"`
 }
 
 func (s *Service) CreateRegistrationInvite(actor *model.User, req CreateRegistrationInviteRequest) (*CreatedRegistrationInvite, error) {
@@ -72,6 +78,13 @@ func (s *Service) CreateRegistrationInvite(actor *model.User, req CreateRegistra
 	}
 	if req.ExpiresInDays != 1 && req.ExpiresInDays != 3 && req.ExpiresInDays != 7 {
 		return nil, BadAuthRequest("邀请有效期只支持 1 天、3 天或 7 天")
+	}
+	creditAmountMicrocredits := req.CreditAmountMicrocredits
+	if creditAmountMicrocredits == 0 {
+		creditAmountMicrocredits = defaultRegistrationInviteCreditAmountMicrocredits
+	}
+	if creditAmountMicrocredits < CreditScale || creditAmountMicrocredits > maxRegistrationInviteCreditAmountMicrocredits || creditAmountMicrocredits%CreditScale != 0 {
+		return nil, BadAuthRequest("邀请积分必须是 1-1000000 之间的整数")
 	}
 	note := strings.TrimSpace(req.Note)
 	if len([]rune(note)) > 500 {
@@ -83,15 +96,16 @@ func (s *Service) CreateRegistrationInvite(actor *model.User, req CreateRegistra
 	}
 	now := time.Now().UTC()
 	invite := model.RegistrationInvite{
-		ID:        newID(),
-		TokenHash: hashToken(token),
-		CreatedBy: actor.ID,
-		Note:      note,
-		ExpiresAt: now.Add(time.Duration(req.ExpiresInDays) * 24 * time.Hour),
-		CreatedAt: now,
-		UpdatedAt: now,
+		ID:                       newID(),
+		TokenHash:                hashToken(token),
+		CreatedBy:                actor.ID,
+		Note:                     note,
+		CreditAmountMicrocredits: creditAmountMicrocredits,
+		ExpiresAt:                now.Add(time.Duration(req.ExpiresInDays) * 24 * time.Hour),
+		CreatedAt:                now,
+		UpdatedAt:                now,
 	}
-	audit, err := newAdminAuditEvent(actor, "registration_invite.create", "registration_invite", invite.ID, "创建用户注册邀请", map[string]any{"expiresAt": invite.ExpiresAt, "expiresInDays": req.ExpiresInDays, "hasNote": note != ""})
+	audit, err := newAdminAuditEvent(actor, "registration_invite.create", "registration_invite", invite.ID, "创建用户注册邀请", map[string]any{"expiresAt": invite.ExpiresAt, "expiresInDays": req.ExpiresInDays, "creditAmountMicrocredits": creditAmountMicrocredits, "hasNote": note != ""})
 	if err != nil {
 		return nil, err
 	}
@@ -160,6 +174,7 @@ func (s *Service) ExchangeRegistrationInvite(token string) (*PublicRegistrationI
 	result := &PublicRegistrationInvite{Status: status}
 	if invite != nil && status == RegistrationInvitePending {
 		result.ExpiresAt = &invite.ExpiresAt
+		result.CreditAmountMicrocredits = invite.CreditAmountMicrocredits
 	}
 	return result, nil
 }
@@ -193,13 +208,14 @@ func registrationInviteStatus(invite model.RegistrationInvite, now time.Time) Re
 
 func registrationInviteView(invite model.RegistrationInvite, now time.Time) RegistrationInviteView {
 	view := RegistrationInviteView{
-		ID:        invite.ID,
-		Note:      invite.Note,
-		Status:    registrationInviteStatus(invite, now),
-		ExpiresAt: invite.ExpiresAt,
-		UsedAt:    invite.UsedAt,
-		RevokedAt: invite.RevokedAt,
-		CreatedAt: invite.CreatedAt,
+		ID:                       invite.ID,
+		Note:                     invite.Note,
+		CreditAmountMicrocredits: invite.CreditAmountMicrocredits,
+		Status:                   registrationInviteStatus(invite, now),
+		ExpiresAt:                invite.ExpiresAt,
+		UsedAt:                   invite.UsedAt,
+		RevokedAt:                invite.RevokedAt,
+		CreatedAt:                invite.CreatedAt,
 	}
 	if invite.UsedByUser != nil {
 		view.UsedBy = &RegistrationInviteUser{ID: invite.UsedByUser.ID, Username: invite.UsedByUser.Username, DisplayName: invite.UsedByUser.DisplayName}
@@ -262,10 +278,6 @@ func (s *Service) registerInvitedUser(req RegisterRequest, inviteToken string) (
 	if err != nil {
 		return nil, false, err
 	}
-	signupBonus, err := s.signupBonusForInvitedUser()
-	if err != nil {
-		return nil, false, err
-	}
 	now = time.Now().UTC()
 	user := model.User{
 		ID:           newID(),
@@ -287,7 +299,7 @@ func (s *Service) registerInvitedUser(req RegisterRequest, inviteToken string) (
 		CreatedAt: now,
 		UpdatedAt: now,
 	}
-	if err := s.repo.ConsumeRegistrationInvite(invite.ID, hashToken(strings.TrimSpace(inviteToken)), now, &user, &session, signupBonus); err != nil {
+	if err := s.repo.ConsumeRegistrationInvite(invite.ID, hashToken(strings.TrimSpace(inviteToken)), now, &user, &session, invite.CreditAmountMicrocredits); err != nil {
 		if errors.Is(err, repository.ErrRegistrationInviteUnavailable) {
 			_, latestStatus, resolveErr := s.resolveRegistrationInvite(inviteToken, time.Now().UTC())
 			if resolveErr != nil {
@@ -305,18 +317,6 @@ func (s *Service) registerInvitedUser(req RegisterRequest, inviteToken string) (
 		Session:    session.ID + "." + sessionToken,
 		MaxAgeSecs: int(sessionMaxAge.Seconds()),
 	}, true, nil
-}
-
-func (s *Service) signupBonusForInvitedUser() (int64, error) {
-	enabled, err := s.FeatureEnabled(FeatureCredits)
-	if err != nil || !enabled {
-		return 0, err
-	}
-	policy, err := s.creditPolicy()
-	if err != nil {
-		return 0, err
-	}
-	return policy.SignupBonusMicrocredits, nil
 }
 
 func registrationInviteStatusError(status RegistrationInviteStatus) error {

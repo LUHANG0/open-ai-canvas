@@ -4,6 +4,7 @@ import (
 	"errors"
 	"strings"
 	"testing"
+	"time"
 
 	"infinite-canvas/backend/internal/model"
 
@@ -57,6 +58,9 @@ func TestMigrateSchemaRecordsAndValidatesVersion(t *testing.T) {
 	}
 	if !db.Migrator().HasTable(&model.RegistrationInvite{}) {
 		t.Fatal("schema migration v7 did not create registration invites")
+	}
+	if !db.Migrator().HasColumn(&model.RegistrationInvite{}, "credit_amount_microcredits") {
+		t.Fatal("schema migration v8 did not create registration_invites.credit_amount_microcredits")
 	}
 	for _, index := range []string{"idx_registration_invites_token_hash", "idx_registration_invites_state"} {
 		if !db.Migrator().HasIndex(&model.RegistrationInvite{}, index) {
@@ -135,6 +139,43 @@ func TestMigrateSchemaUpgradesV4DatabaseWithProjectDeliveryJobs(t *testing.T) {
 	}
 	if !db.Migrator().HasTable(&model.RegistrationInvite{}) {
 		t.Fatal("v7 upgrade did not create registration invites")
+	}
+	if !db.Migrator().HasColumn(&model.RegistrationInvite{}, "credit_amount_microcredits") {
+		t.Fatal("v8 upgrade did not create registration invite credits")
+	}
+}
+
+func TestMigrateSchemaV8BackfillsExistingInviteCredits(t *testing.T) {
+	db, err := Open(Config{Driver: "sqlite", DSN: "file:migration-invite-credits?mode=memory&cache=shared"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := MigrateSchema(db); err != nil {
+		t.Fatal(err)
+	}
+	now := time.Now().UTC()
+	admin := model.User{ID: "migration-admin", Username: "migration-admin", Role: model.UserRoleAdmin, Status: model.UserStatusActive, CreatedAt: now, UpdatedAt: now}
+	if err := db.Create(&admin).Error; err != nil {
+		t.Fatal(err)
+	}
+	invite := model.RegistrationInvite{ID: "legacy-invite", TokenHash: strings.Repeat("a", 64), CreatedBy: admin.ID, ExpiresAt: now.Add(time.Hour), CreatedAt: now, UpdatedAt: now}
+	if err := db.Create(&invite).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Exec("UPDATE registration_invites SET credit_amount_microcredits = 0 WHERE id = ?", invite.ID).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Delete(&schemaMigration{}, "version = ?", 8).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := MigrateSchema(db); err != nil {
+		t.Fatalf("upgrade schema 7 invite credits: %v", err)
+	}
+	if err := db.First(&invite, "id = ?", invite.ID).Error; err != nil {
+		t.Fatal(err)
+	}
+	if invite.CreditAmountMicrocredits != 100_000_000 {
+		t.Fatalf("legacy invite credits=%d, want 100000000", invite.CreditAmountMicrocredits)
 	}
 }
 

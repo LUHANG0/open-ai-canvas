@@ -95,6 +95,9 @@ func TestPostgresProjectDeliveryMigrationUpgradesV4(t *testing.T) {
 	if !db.Migrator().HasTable(&model.RegistrationInvite{}) {
 		t.Fatal("v7 upgrade did not create postgres registration invites")
 	}
+	if !db.Migrator().HasColumn(&model.RegistrationInvite{}, "credit_amount_microcredits") {
+		t.Fatal("v8 upgrade did not create postgres registration invite credits")
+	}
 	for _, index := range []string{"idx_registration_invites_token_hash", "idx_registration_invites_state"} {
 		if !db.Migrator().HasIndex(&model.RegistrationInvite{}, index) {
 			t.Fatalf("v7 postgres upgrade did not create %s", index)

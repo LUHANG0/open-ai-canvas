@@ -16,7 +16,7 @@ import (
 
 func TestRegistrationInviteLifecycleAndInviteOnlySignup(t *testing.T) {
 	svc, db, admin := newRegistrationInviteTestService(t)
-	created, err := svc.CreateRegistrationInvite(admin, CreateRegistrationInviteRequest{ExpiresInDays: 7, Note: "新成员"})
+	created, err := svc.CreateRegistrationInvite(admin, CreateRegistrationInviteRequest{ExpiresInDays: 7, CreditAmountMicrocredits: 50 * CreditScale, Note: "新成员"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -30,6 +30,13 @@ func TestRegistrationInviteLifecycleAndInviteOnlySignup(t *testing.T) {
 	}
 	if stored.TokenHash == created.Token || strings.Contains(stored.TokenHash, created.Token) || len(stored.TokenHash) != 64 {
 		t.Fatalf("raw token persisted: %#v", stored)
+	}
+	if stored.CreditAmountMicrocredits != 50*CreditScale || created.Invite.CreditAmountMicrocredits != 50*CreditScale {
+		t.Fatalf("invite credit amount was not persisted: stored=%d view=%d", stored.CreditAmountMicrocredits, created.Invite.CreditAmountMicrocredits)
+	}
+	publicInvite, err := svc.ExchangeRegistrationInvite(created.Token)
+	if err != nil || publicInvite.CreditAmountMicrocredits != 50*CreditScale {
+		t.Fatalf("public invite credit amount=%d error=%v", publicInvite.CreditAmountMicrocredits, err)
 	}
 	var audit model.AdminAuditEvent
 	if err := db.First(&audit, "action = ?", "registration_invite.create").Error; err != nil {
@@ -50,8 +57,12 @@ func TestRegistrationInviteLifecycleAndInviteOnlySignup(t *testing.T) {
 		t.Fatalf("unexpected invited signup result: %#v clear=%v", result, clearInvite)
 	}
 	var account model.CreditAccount
-	if err := db.First(&account, "user_id = ?", result.User.ID).Error; err != nil || account.AvailableMicrocredits <= 0 {
+	if err := db.First(&account, "user_id = ?", result.User.ID).Error; err != nil || account.AvailableMicrocredits != 50*CreditScale {
 		t.Fatalf("signup bonus missing: %#v error=%v", account, err)
+	}
+	var ledger model.CreditLedgerEntry
+	if err := db.First(&ledger, "user_id = ? AND type = ?", result.User.ID, model.CreditLedgerSignupBonus).Error; err != nil || ledger.AmountMicrocredits != 50*CreditScale || ledger.Note != "邀请注册积分" {
+		t.Fatalf("invite credit ledger mismatch: %#v error=%v", ledger, err)
 	}
 	used, err := svc.AdminRegistrationInvites(admin, "used", 1, 20)
 	if err != nil {
@@ -136,6 +147,9 @@ func TestRegistrationInviteStatusesPermissionsAndRevocationAudit(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if created.Invite.CreditAmountMicrocredits != 100*CreditScale {
+		t.Fatalf("default invite credits=%d, want %d", created.Invite.CreditAmountMicrocredits, 100*CreditScale)
+	}
 	if _, err := svc.RevokeRegistrationInvite(nonAdmin, created.Invite.ID); err == nil {
 		t.Fatal("non-admin revoked invite")
 	}
@@ -169,6 +183,15 @@ func TestRegistrationInviteStatusesPermissionsAndRevocationAudit(t *testing.T) {
 	expiredState, err := svc.ExchangeRegistrationInvite(expired.Token)
 	if err != nil || expiredState.Status != RegistrationInviteExpired {
 		t.Fatalf("expired exchange=%#v error=%v", expiredState, err)
+	}
+}
+
+func TestRegistrationInviteRejectsInvalidCreditAmounts(t *testing.T) {
+	svc, _, admin := newRegistrationInviteTestService(t)
+	for _, amount := range []int64{-CreditScale, CreditScale - 1, 50*CreditScale + 1, 1_000_001 * CreditScale} {
+		if _, err := svc.CreateRegistrationInvite(admin, CreateRegistrationInviteRequest{ExpiresInDays: 7, CreditAmountMicrocredits: amount}); err == nil || !strings.Contains(err.Error(), "邀请积分") {
+			t.Fatalf("credit amount %d was accepted: %v", amount, err)
+		}
 	}
 }
 

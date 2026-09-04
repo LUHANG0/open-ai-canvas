@@ -10,7 +10,7 @@ import (
 	"gorm.io/gorm"
 )
 
-const CurrentSchemaVersion int64 = 7
+const CurrentSchemaVersion int64 = 8
 
 const baselineSchemaChecksum = "sha256:open-ai-canvas-schema-v1-20260830"
 const schemaMigrationAppliedAtIndexChecksum = "sha256:schema-migrations-applied-at-index-v2-20260830"
@@ -19,6 +19,7 @@ const taskCreationIdempotencyChecksum = "sha256:task-creation-idempotency-v4-202
 const projectDeliveryJobsChecksum = "sha256:project-delivery-jobs-v5-20260903"
 const creationConversationSyncChecksum = "sha256:creation-conversation-sync-v6-20260903"
 const registrationInvitesChecksum = "sha256:registration-invites-v7-20260904"
+const registrationInviteCreditsChecksum = "sha256:registration-invite-credits-v8-20260904"
 
 const postgresSchemaMigrationLockID int64 = 73123910420260830
 
@@ -52,6 +53,7 @@ var schemaMigrations = []migration{
 	{version: 5, name: "project_delivery_jobs", checksum: projectDeliveryJobsChecksum, apply: migrateSchemaV5},
 	{version: 6, name: "creation_conversation_sync", checksum: creationConversationSyncChecksum, apply: migrateSchemaV6},
 	{version: 7, name: "registration_invites", checksum: registrationInvitesChecksum, apply: migrateSchemaV7},
+	{version: 8, name: "registration_invite_credits", checksum: registrationInviteCreditsChecksum, apply: migrateSchemaV8},
 }
 
 func migrateSchemaV2(tx *gorm.DB) error {
@@ -78,6 +80,17 @@ func migrateSchemaV6(tx *gorm.DB) error {
 
 func migrateSchemaV7(tx *gorm.DB) error {
 	return tx.AutoMigrate(&model.RegistrationInvite{})
+}
+
+func migrateSchemaV8(tx *gorm.DB) error {
+	if err := tx.AutoMigrate(&model.RegistrationInvite{}); err != nil {
+		return err
+	}
+	// Schema 7 invitations did not carry an explicit amount. Preserve the
+	// previous 100-credit onboarding experience for every existing row.
+	return tx.Model(&model.RegistrationInvite{}).
+		Where("credit_amount_microcredits <= 0").
+		Update("credit_amount_microcredits", int64(100_000_000)).Error
 }
 
 func MigrateSchema(db *gorm.DB) error {
