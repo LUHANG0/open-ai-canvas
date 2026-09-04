@@ -31,6 +31,7 @@ type VideoPlayerProps = {
     onPictureInPictureChange?: MediaPlayerProps["onPictureInPictureChange"];
     onTimeUpdate?: MediaPlayerProps["onTimeUpdate"];
     onVolumeChange?: MediaPlayerProps["onVolumeChange"];
+    onLoadStart?: MediaPlayerProps["onLoadStart"];
 };
 
 const zhCNTranslations = {
@@ -81,7 +82,7 @@ const supportedVideoMimeTypes = new Set<VideoMimeType>(["video/mp4", "video/webm
  * 统一视频播放表面，保留原生媒体 URL 契约，同时提供可访问的完整控件布局。
  * 画布节点需要隔离播放器手势，避免拖动进度条时被误判为拖动画布。
  */
-export function VideoPlayer({ src, mimeType, title = "视频", className, brandColor = "#f5f5f5", preload = "metadata", autoPlay = false, muted, volume, dataCanvasNoZoom = false, compactControls = false, playerRef, hideCenterControls = false, onCanPlay, onPlay, onAutoPlayFail, onFullscreenChange, onPictureInPictureChange, onTimeUpdate, onVolumeChange }: VideoPlayerProps) {
+export function VideoPlayer({ src, mimeType, title = "视频", className, brandColor = "#f5f5f5", preload = "metadata", autoPlay = false, muted, volume, dataCanvasNoZoom = false, compactControls = false, playerRef, hideCenterControls = false, onCanPlay, onPlay, onAutoPlayFail, onFullscreenChange, onPictureInPictureChange, onTimeUpdate, onVolumeChange, onLoadStart }: VideoPlayerProps) {
     const stopCanvasControlInteraction = (event: { target: EventTarget | null; stopPropagation: () => void }) => {
         if (!dataCanvasNoZoom || !(event.target instanceof Element)) return;
         if (event.target.closest(".vds-controls,.vds-menu-items,.vds-button,.vds-slider")) event.stopPropagation();
@@ -112,6 +113,7 @@ export function VideoPlayer({ src, mimeType, title = "视频", className, brandC
             onPictureInPictureChange={onPictureInPictureChange}
             onTimeUpdate={onTimeUpdate}
             onVolumeChange={onVolumeChange}
+            onLoadStart={onLoadStart}
             onPointerDown={stopCanvasControlInteraction}
             onMouseDown={stopCanvasControlInteraction}
         >

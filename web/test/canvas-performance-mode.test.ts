@@ -100,7 +100,9 @@ describe("canvas media performance mode", () => {
 
         expect(lightweight).toContain("data-canvas-video-lod");
         expect(lightweight).not.toContain("<video");
-        expect(full).not.toContain("data-canvas-video-lod");
+        expect(full).toContain("data-canvas-video-lod");
+        expect(full).toContain('data-canvas-video-frame="pending"');
+        expect(full).toMatch(/data-canvas-video-cover[^>]*aria-hidden="false"[^>]*opacity:1/);
         expect(full).toContain("<video");
     });
 

@@ -64,15 +64,20 @@ describe("画布视频播放入口", () => {
         expect(markup).not.toContain("<video");
     });
 
-    test("普通选中只挂载带原声的暂停播放器，封面不会成为视频源或显示中央按钮", () => {
+    test("普通选中挂载暂停播放器并保留首帧封面，封面不会成为视频源", () => {
         const markup = render({ videoPreviewOnly: false });
         expect(markup).toContain("<video");
         expect(markup).toContain("/test-video.mp4");
-        expect(markup).not.toContain("/test-poster.jpg");
+        expect(markup).toContain('src="/test-poster.jpg"');
+        expect(markup).toContain('data-canvas-video-frame="pending"');
+        expect(markup).toMatch(/data-canvas-video-cover[^>]*aria-hidden="false"[^>]*opacity:1/);
         expect(markup).not.toContain("canvas-video-center-play");
         const videoTag = markup.match(/<video\b[^>]*>/)?.[0];
         expect(videoTag).toBeDefined();
         expect(videoTag).not.toMatch(/\b(?:autoplay|muted)(?:=|\s|>)/i);
+        const videoElement = markup.match(/<video\b[^>]*>[\s\S]*?<\/video>/)?.[0];
+        expect(videoElement).toContain("/test-video.mp4");
+        expect(videoElement).not.toContain("/test-poster.jpg");
     });
 
     test("未缓存的远程资源保留封面和可聚焦播放表面", () => {

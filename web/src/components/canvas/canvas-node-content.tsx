@@ -10,6 +10,7 @@ import { loadCanvasDrawingPreview } from "@/lib/canvas/canvas-drawing-storage";
 import { buildLibTVImagePreviewUrl } from "@/lib/canvas/libtv-import";
 import type { CanvasMediaRenderPolicy } from "@/lib/canvas/canvas-performance-mode";
 import type { CanvasResourceReference } from "@/lib/canvas/canvas-resource-references";
+import { beginCanvasNodeResourceRequest, createCanvasNodeResourceState, finishCanvasNodeResourceRequest, readCanvasNodeResourceState, type CanvasNodeResourceRequest } from "@/lib/canvas/canvas-node-resource-state";
 import type { CanvasTheme } from "@/lib/canvas-theme";
 import { formatBytes } from "@/lib/image-utils";
 import { resourceIdFromStorageKey } from "@/services/api/resources";
@@ -24,6 +25,7 @@ import { CanvasResourceMentionTextarea } from "./canvas-resource-mention-textare
 import { useCanvasNodeActions } from "./canvas-node-action-context";
 import { CanvasSubtitleOverlay } from "./canvas-subtitle-overlay";
 import { useCanvasVideoPreview } from "./use-canvas-video-preview";
+import { waitForCanvasVideoFirstFrame } from "@/lib/canvas/canvas-video-first-frame";
 
 const ChartNodeContent = lazy(() => import("./nodes/chart-node").then((module) => ({ default: module.ChartNodeContent })));
 const ColorGradeNodeContent = lazy(() => import("./nodes/color-grade-node").then((module) => ({ default: module.ColorGradeNodeContent })));
@@ -449,6 +451,27 @@ function VideoNodeContent({ node, theme, reduceMediaEffects, mediaRenderPolicy, 
     const preview = useCanvasVideoPreview(sourceIdentity, videoHovered, videoPlaybackDisabled || !node.metadata?.content);
     const showPlayer = !videoPlaybackDisabled && (!previewOnly || preview.active);
     const { url, loading } = useNodeResourceUrl(node, showPlayer);
+    const [readyFrame, setReadyFrame] = useState<{ source: string; url: string; video: HTMLVideoElement } | null>(null);
+    const frameWatchRef = useRef<{ video: HTMLVideoElement; cancel: () => void } | null>(null);
+    const frameReady = Boolean(showPlayer && readyFrame?.source === sourceIdentity && readyFrame.url === url && readyFrame.video.isConnected);
+    useEffect(() => {
+        setReadyFrame(null);
+        return () => {
+            frameWatchRef.current?.cancel();
+            frameWatchRef.current = null;
+        };
+    }, [showPlayer, sourceIdentity, url]);
+    const resetFirstFrame = () => {
+        frameWatchRef.current?.cancel();
+        frameWatchRef.current = null;
+        setReadyFrame(null);
+    };
+    const awaitFirstFrame = () => {
+        const video = preview.playerRef.current?.el?.querySelector("video");
+        if (!video || frameWatchRef.current?.video === video) return;
+        frameWatchRef.current?.cancel();
+        frameWatchRef.current = { video, cancel: waitForCanvasVideoFirstFrame(video, () => setReadyFrame({ source: sourceIdentity, url, video })) };
+    };
     const subtitleEntries = node.metadata?.subtitleEntries || [];
     const subtitleStyle = node.metadata?.subtitleStyle || createDefaultSubtitleStyle();
     const [currentTimeMs, setCurrentTimeMs] = useState(0);
@@ -490,6 +513,7 @@ function VideoNodeContent({ node, theme, reduceMediaEffects, mediaRenderPolicy, 
             ref={playerBoxRef}
             data-canvas-media-surface
             data-canvas-video-preview={preview.active ? "active" : "idle"}
+            data-canvas-video-frame={frameReady ? "ready" : "pending"}
             role="group"
             tabIndex={videoPlaybackDisabled ? -1 : 0}
             aria-label={`${node.title || "视频"}，悬停播放，点击或按空格播放暂停`}
@@ -559,11 +583,14 @@ function VideoNodeContent({ node, theme, reduceMediaEffects, mediaRenderPolicy, 
                 else preview.start(true);
             }}
         >
-            {showPlayer && url ? <div className="relative" style={{ width: fitWidth, height: Math.round(fitHeight) }}>
-                <VideoPlayer key={sourceIdentity} playerRef={preview.playerRef} src={url} mimeType={node.metadata?.mimeType} title={node.title || "视频"} preload="metadata" muted={preview.muted} volume={preview.volume} onCanPlay={preview.onCanPlay} onPlay={preview.onPlay} onTimeUpdate={preview.rememberPlayback} onVolumeChange={preview.rememberPlayback} onFullscreenChange={preview.onPresentationChange} onPictureInPictureChange={preview.onPresentationChange} brandColor={theme.accent.primary} className="h-full w-full rounded-[var(--node-radius)] bg-black" dataCanvasNoZoom compactControls hideCenterControls />
+            {showPlayer && url ? <div className="relative isolate z-0" style={{ width: fitWidth, height: Math.round(fitHeight) }}>
+                <VideoPlayer key={`${sourceIdentity}:${url}`} playerRef={preview.playerRef} src={url} mimeType={node.metadata?.mimeType} title={node.title || "视频"} preload="metadata" muted={preview.muted} volume={preview.volume} onLoadStart={resetFirstFrame} onCanPlay={() => { preview.onCanPlay(); awaitFirstFrame(); }} onPlay={preview.onPlay} onTimeUpdate={preview.rememberPlayback} onVolumeChange={preview.rememberPlayback} onFullscreenChange={preview.onPresentationChange} onPictureInPictureChange={preview.onPresentationChange} brandColor={theme.accent.primary} className="h-full w-full rounded-[var(--node-radius)] bg-black" dataCanvasNoZoom compactControls hideCenterControls />
                 {activeEntry && activeEntry.text.trim() ? <CanvasSubtitleOverlay text={activeEntry.text} highlight={activeHighlight} style={subtitleStyle} /> : null}
-            </div> : <VideoPosterPreview node={node} theme={theme} policy={mediaRenderPolicy} loadingPlayback={loading && showPlayer} />}
-            {preview.issue ? <span role="status" className="pointer-events-none absolute inset-x-3 top-3 rounded-md bg-black/70 px-2 py-1 text-center text-xs text-white">{preview.issue}</span> : null}
+            </div> : null}
+            <div data-canvas-video-cover className="pointer-events-none absolute inset-0 z-10" aria-hidden={frameReady} style={{ opacity: frameReady ? 0 : 1, background: theme.canvas.background }}>
+                <VideoPosterPreview key={sourceIdentity} node={node} theme={theme} policy={mediaRenderPolicy} loadingPlayback={showPlayer && (loading || !frameReady)} />
+            </div>
+            {preview.issue ? <span role="status" className="pointer-events-none absolute inset-x-3 top-3 z-20 rounded-md bg-black/70 px-2 py-1 text-center text-xs text-white">{preview.issue}</span> : null}
         </div>
     );
 }
@@ -721,44 +748,47 @@ function useNodeResourceUrl(node: CanvasNodeData, eager: boolean) {
         ? node.metadata?.previewContent || (node.metadata?.importSource?.provider === "libtv" ? buildLibTVImagePreviewUrl(content) : content)
         : content;
     const isRemoteResource = Boolean(resourceIdFromStorageKey(storageKey));
-    const [url, setUrl] = useState(isRemoteResource ? "" : fallback);
-    const [loading, setLoading] = useState(isRemoteResource && eager);
+    const source = useMemo(() => ({ storageKey, fallback, remote: isRemoteResource }), [storageKey, fallback, isRemoteResource]);
+    const [state, setState] = useState(() => createCanvasNodeResourceState(source, eager));
+    const { url, loading } = readCanvasNodeResourceState(state, source, eager);
+    const mountedRef = useRef(true);
+
+    useEffect(() => {
+        mountedRef.current = true;
+        return () => { mountedRef.current = false; };
+    }, []);
 
     useEffect(() => {
         let cancelled = false;
-        if (!isRemoteResource) {
-            setUrl(fallback);
-            setLoading(false);
+        if (!source.remote) {
+            setState(createCanvasNodeResourceState(source, eager));
             return;
         }
-        setUrl("");
-        setLoading(eager);
-        const resolve = eager ? cacheResourceObjectUrl(storageKey) : getCachedResourceObjectUrl(storageKey);
+        const request: CanvasNodeResourceRequest = { source, download: eager };
+        setState((current) => beginCanvasNodeResourceRequest(current, request));
+        const resolve = eager ? cacheResourceObjectUrl(source.storageKey) : getCachedResourceObjectUrl(source.storageKey);
         void resolve.then((cached) => {
-            if (!cancelled) setUrl(cached || (eager ? fallback : ""));
+            if (!cancelled) setState((current) => finishCanvasNodeResourceRequest(current, request, cached));
         }).catch(() => {
-            if (!cancelled && eager) setUrl(fallback);
-        }).finally(() => {
-            if (!cancelled) setLoading(false);
+            if (!cancelled) setState((current) => finishCanvasNodeResourceRequest(current, request, ""));
         });
         return () => { cancelled = true; };
-    }, [eager, fallback, isRemoteResource, storageKey]);
+    }, [eager, source]);
 
     const load = useCallback(async () => {
         if (url) return url;
-        if (!isRemoteResource) return fallback;
-        setLoading(true);
+        if (!source.remote) return source.fallback;
+        const request: CanvasNodeResourceRequest = { source, download: true };
+        setState((current) => current.source === source ? beginCanvasNodeResourceRequest(current, request) : current);
         try {
-            const next = (await cacheResourceObjectUrl(storageKey)) || fallback;
-            setUrl(next);
+            const next = (await cacheResourceObjectUrl(source.storageKey)) || source.fallback;
+            if (mountedRef.current) setState((current) => finishCanvasNodeResourceRequest(current, request, next));
             return next;
         } catch {
-            setUrl(fallback);
-            return fallback;
-        } finally {
-            setLoading(false);
+            if (mountedRef.current) setState((current) => finishCanvasNodeResourceRequest(current, request, ""));
+            return source.fallback;
         }
-    }, [fallback, isRemoteResource, storageKey, url]);
+    }, [source, url]);
     return { url, loading, load };
 }
 
