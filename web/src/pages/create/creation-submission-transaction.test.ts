@@ -8,10 +8,12 @@ import {
     cancelCreationSubmissionMessage,
     completeCreationSubmissionMessage,
     creationCancelableTaskIds,
+    creationStableShotMessageId,
     createCreationSubmissionMessages,
     createCreationTaskBindings,
     creationMessageWithBoundTask,
     failCreationSubmissionMessage,
+    findCreationSourceShotIndex,
     recordCreationTaskBinding,
 } from "./creation-submission-transaction";
 
@@ -22,7 +24,7 @@ function message(id: string, role: CreationMessage["role"], content = id): Creat
 }
 
 describe("creation submission transaction", () => {
-    test("普通续作建立新镜头，并把用户消息连到来源消息", () => {
+    test("普通续作建立新镜头，并把用户消息连到稳定的来源镜头", () => {
         const ids = ["user-id", "assistant-id"];
         const result = createCreationSubmissionMessages({
             text: "一段电影镜头",
@@ -31,17 +33,30 @@ describe("creation submission transaction", () => {
             attachments: [],
             references: [],
             settings,
-            continuationParentMessageId: "source-assistant",
+            continuationParentMessageId: "source-user",
             createId: () => ids.shift() || "fallback-id",
             now: () => "2026-09-02T01:00:00.000Z",
         });
 
         assert.equal(result.userMessage.id, "user-id");
         assert.equal(result.userMessage.content, "一段电影镜头");
-        assert.equal(result.userMessage.parentMessageId, "source-assistant");
+        assert.equal(result.userMessage.parentMessageId, "source-user");
         assert.equal(result.assistantMessage.id, "assistant-id");
         assert.equal(result.assistantMessage.parentMessageId, "user-id");
         assert.equal(result.assistantMessage.status, "pending");
+    });
+
+    test("续作使用稳定的用户镜头 ID，并兼容旧 assistant parent 的来源解析", () => {
+        const sourceUser = message("source-user", "user");
+        const sourceAssistant = { ...message("source-assistant", "assistant"), parentMessageId: sourceUser.id };
+        const shots = [
+            { id: sourceUser.id, user: sourceUser, result: sourceAssistant },
+            { id: "child-user", user: { ...message("child-user", "user"), parentMessageId: sourceAssistant.id } },
+        ];
+
+        assert.equal(creationStableShotMessageId(shots[0]), sourceUser.id);
+        assert.equal(findCreationSourceShotIndex(shots, sourceUser.id), 0);
+        assert.equal(findCreationSourceShotIndex(shots, sourceAssistant.id), 0);
     });
 
     test("重试保留原镜头 ID、分支父消息和尝试上下文", () => {
@@ -112,6 +127,42 @@ describe("creation submission transaction", () => {
             ["before", "old-user", "replacement-assistant", "after"],
         );
         assert.deepEqual(stableUserRetry.deletedMessageIds, ["older-assistant", "old-assistant"]);
+    });
+
+    test("重试父镜头时迁移旧 assistant parent，且重试子镜头保留稳定 parent", () => {
+        const parentUser = message("parent-user", "user");
+        const parentAssistant = { ...message("parent-assistant", "assistant"), parentMessageId: parentUser.id };
+        const childUser = { ...message("child-user", "user"), parentMessageId: parentAssistant.id };
+        const childAssistant = { ...message("child-assistant", "assistant"), parentMessageId: childUser.id };
+        const conversation: CreationConversation = {
+            id: "conversation",
+            title: "已有创作",
+            updatedAt: "old",
+            messages: [parentUser, parentAssistant, childUser, childAssistant],
+        };
+
+        const retriedParent = applyCreationSubmissionToConversation({
+            conversation,
+            text: "重试父镜头",
+            userMessage: { ...parentUser },
+            assistantMessage: { ...message("parent-assistant-new", "assistant"), parentMessageId: parentUser.id },
+            retryTarget: { conversationId: conversation.id, shotId: parentUser.id, userMessageId: parentUser.id, assistantMessageId: parentAssistant.id },
+        });
+        const migratedChild = retriedParent.messages.find((item) => item.id === childUser.id);
+        assert.equal(migratedChild?.parentMessageId, parentUser.id);
+        assert.ok(retriedParent.messages.some((item) => item.id === migratedChild?.parentMessageId));
+
+        const retriedChildMessages = createCreationSubmissionMessages({
+            text: "重试子镜头",
+            mode: "video",
+            selectedModel: "video-model",
+            attachments: [],
+            references: [],
+            settings,
+            retryTarget: { shotId: childUser.id, parentMessageId: migratedChild?.parentMessageId },
+            createId: () => "child-assistant-new",
+        });
+        assert.equal(retriedChildMessages.userMessage.parentMessageId, parentUser.id);
     });
 
     test("任务绑定同时维护批次索引、任务快照和消息去重 ID", () => {

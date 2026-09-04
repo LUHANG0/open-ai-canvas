@@ -18,6 +18,7 @@ import { CreationEmptyIntro, CreationEmptySuggest, type CreationMode } from "./c
 import { CreationMessageView, CreationTurnView } from "./creation-message-view";
 import { StoryboardComposerContext, StoryboardNextShotCard, StoryboardShotCard, StoryboardShotRail, StoryboardToolbar } from "./creation-storyboard-workbench";
 import { normalizeCreationVideoAttachments } from "./creation-submit-preparation";
+import { creationStableShotMessageId, findCreationSourceShotIndex } from "./creation-submission-transaction";
 import type { CreationMessage, CreationShot, CreationVideoOperationChoice, CreationViewMode } from "./creation-types";
 import { useCreationAssetWorkflow } from "./use-creation-asset-workflow";
 import { useCreationConversationWorkflow } from "./use-creation-conversation-workflow";
@@ -148,7 +149,7 @@ export default function CreatePage() {
     const variantSourceShotIndex = variantSourceShotId ? shots.findIndex((shot) => shot.id === variantSourceShotId) : -1;
     const variantSourceShotNumber = variantSourceShotIndex >= 0 ? variantSourceShotIndex + 1 : undefined;
     const variantSourceShot = variantSourceShotIndex >= 0 ? shots[variantSourceShotIndex] : undefined;
-    const continuationParentMessageId = variantSourceShot?.result?.id || variantSourceShot?.user?.id;
+    const continuationParentMessageId = creationStableShotMessageId(variantSourceShot);
     const selectedShotIndex = selectedShotId ? shots.findIndex((shot) => shot.id === selectedShotId) : -1;
     const visibleShotIndex = shots.length ? (selectedShotIndex >= 0 ? selectedShotIndex : shots.length - 1) : -1;
 
@@ -483,7 +484,7 @@ export default function CreatePage() {
                                     {pcBrandV2
                                         ? shots.map((shot, shotIndex) => {
                                               const resultIndex = shot.result ? activeConversation.messages.indexOf(shot.result) : -1;
-                                              const sourceShotIndex = shot.user?.parentMessageId ? shots.findIndex((candidate) => candidate.user?.id === shot.user?.parentMessageId || candidate.result?.id === shot.user?.parentMessageId) : -1;
+                                              const sourceShotIndex = findCreationSourceShotIndex(shots, shot.user?.parentMessageId);
                                               return (
                                                   <CreationTurnView
                                                       key={shot.id}

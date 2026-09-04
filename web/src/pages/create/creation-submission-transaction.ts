@@ -4,7 +4,7 @@ import type { GenerationTask } from "@/services/api/task-center";
 import type { CreationAttachment } from "./creation-assets";
 import type { CreationMode } from "./creation-empty-state";
 import type { CreationReference } from "./creation-references";
-import type { CreationConversation, CreationMessage, CreationSettings } from "./creation-types";
+import type { CreationConversation, CreationMessage, CreationSettings, CreationShot } from "./creation-types";
 
 type CreationSubmissionRetryContext = Pick<CreationMessage, "clientOperationId" | "retryOf" | "attemptGroupId">;
 
@@ -36,6 +36,15 @@ export type CreationTaskBindings = {
     taskIdsByBatchIndex: Map<number, string>;
     tasks: Map<string, GenerationTask>;
 };
+
+export function creationStableShotMessageId(shot?: Pick<CreationShot, "user">) {
+    return shot?.user?.id;
+}
+
+export function findCreationSourceShotIndex(shots: CreationShot[], parentMessageId?: string) {
+    if (!parentMessageId) return -1;
+    return shots.findIndex((shot) => shot.user?.id === parentMessageId || shot.result?.id === parentMessageId);
+}
 
 function creationSubmissionMessage(role: CreationMessage["role"], content: string, extra: Partial<CreationMessage>, createId: () => string, now: () => string): CreationMessage {
     return { id: createId(), role, content, createdAt: now(), ...extra };
@@ -85,7 +94,7 @@ export function applyCreationSubmissionToConversation(input: { conversation: Cre
     if (retryTarget && conversation.id === retryTarget.conversationId) {
         const insertAt = messages.findIndex((message) => message.id === retryTarget.userMessageId);
         const replacedIds = new Set([retryTarget.userMessageId, retryTarget.assistantMessageId]);
-        const retained = messages.filter((message) => !replacedIds.has(message.id));
+        const retained = messages.filter((message) => !replacedIds.has(message.id)).map((message) => (message.parentMessageId === retryTarget.assistantMessageId ? { ...message, parentMessageId: userMessage.id } : message));
         retained.splice(insertAt >= 0 ? insertAt : retained.length, 0, userMessage, assistantMessage);
         const deletedMessageIds = new Set([...(conversation.deletedMessageIds || []), ...replacedIds]);
         deletedMessageIds.delete(userMessage.id);
