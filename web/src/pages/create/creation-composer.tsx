@@ -280,6 +280,89 @@ type ComposerProps = {
 
 type CreationReferenceFilter = "all" | "image" | "video" | "audio" | "file";
 
+function CreationReferenceAddMenu({
+    variant = "toolbar",
+    disabled,
+    triggerLabel = "添加参考素材",
+    directUploadLabel,
+    referenceEntryHint,
+    onUpload,
+    onOpenLibrary,
+}: {
+    variant?: "toolbar" | "slot";
+    disabled: boolean;
+    triggerLabel?: string;
+    directUploadLabel: string;
+    referenceEntryHint: string;
+    onUpload: () => void;
+    onOpenLibrary: () => void;
+}) {
+    const [open, setOpen] = useState(false);
+    useEffect(() => {
+        if (disabled) setOpen(false);
+    }, [disabled]);
+    const selectSource = (action: () => void) => {
+        setOpen(false);
+        action();
+    };
+    const trigger =
+        variant === "slot" ? (
+            <button type="button" className="creation-reference-add-button" disabled={disabled} aria-label={triggerLabel} title={triggerLabel} aria-haspopup="menu" aria-expanded={open}>
+                <Plus aria-hidden="true" />
+                <span>添加参考</span>
+            </button>
+        ) : (
+            <button type="button" className="creation-entry-button creation-reference-add-trigger" disabled={disabled} aria-label={triggerLabel} title={triggerLabel} aria-haspopup="menu" aria-expanded={open}>
+                <Plus aria-hidden="true" />
+                <span>添加参考</span>
+                <ChevronDown className="creation-reference-add-chevron" aria-hidden="true" />
+            </button>
+        );
+    return (
+        <Popover
+            open={open}
+            onOpenChange={setOpen}
+            trigger="click"
+            placement="topLeft"
+            arrow={false}
+            classNames={{ root: "creation-reference-add-popover", container: "creation-control-popover-surface creation-reference-add-popover-surface", content: "creation-reference-add-popover-content" }}
+            content={
+                <div className="creation-reference-add-menu" role="menu" aria-label="选择参考素材来源">
+                    <header>
+                        <strong>添加参考</strong>
+                        <span>为本轮创作补充画面、视频或声音</span>
+                    </header>
+                    <div className="creation-reference-add-options">
+                        <button type="button" role="menuitem" onClick={() => selectSource(onUpload)} aria-label={directUploadLabel}>
+                            <span className="creation-reference-add-option-icon is-upload" aria-hidden="true">
+                                <Upload />
+                            </span>
+                            <span>
+                                <strong>从本机上传</strong>
+                                <small>新素材会自动保存到素材库</small>
+                            </span>
+                        </button>
+                        <button type="button" role="menuitem" onClick={() => selectSource(onOpenLibrary)}>
+                            <span className="creation-reference-add-option-icon is-library" aria-hidden="true">
+                                <Library />
+                            </span>
+                            <span>
+                                <strong>从素材库选择</strong>
+                                <small>复用之前上传的素材</small>
+                            </span>
+                        </button>
+                    </div>
+                    <footer title={referenceEntryHint}>
+                        <span>{referenceEntryHint}</span>
+                    </footer>
+                </div>
+            }
+        >
+            {trigger}
+        </Popover>
+    );
+}
+
 export function CreationComposer(props: ComposerProps) {
     const [previewUrl, setPreviewUrl] = useState("");
     const [previewType, setPreviewType] = useState<"image" | "video">("image");
@@ -549,14 +632,13 @@ export function CreationComposer(props: ComposerProps) {
                         </span>
                     </div>
                     <div className="creation-reference-entry-actions">
-                        <button type="button" className="creation-entry-button creation-reference-action is-upload" onClick={() => props.fileInputRef.current?.click()} disabled={interactionBusy} aria-label={directUploadLabel} title={directUploadLabel}>
-                            <Upload aria-hidden="true" />
-                            <span>本机上传</span>
-                        </button>
-                        <button type="button" className="creation-entry-button creation-reference-action is-library" onClick={props.onOpenLibrary} disabled={interactionBusy} aria-label="打开素材库上传或选择素材">
-                            <Library aria-hidden="true" />
-                            <span>素材库</span>
-                        </button>
+                        <CreationReferenceAddMenu
+                            disabled={interactionBusy}
+                            directUploadLabel={directUploadLabel}
+                            referenceEntryHint={referenceEntryHint}
+                            onUpload={() => props.fileInputRef.current?.click()}
+                            onOpenLibrary={props.onOpenLibrary}
+                        />
                         {!props.model ? (
                             <Link className="creation-reference-config-link" to={settingsPath("models", true)}>
                                 配置模型
@@ -629,14 +711,6 @@ export function CreationComposer(props: ComposerProps) {
                                             {invalidReferenceCount} 个不兼容
                                         </span>
                                     ) : null}
-                                    <button type="button" onClick={() => props.fileInputRef.current?.click()} disabled={interactionBusy} aria-label={directUploadLabel} title={directUploadLabel}>
-                                        <Upload aria-hidden="true" />
-                                        <span>上传</span>
-                                    </button>
-                                    <button type="button" onClick={props.onOpenLibrary} disabled={interactionBusy} aria-label="打开素材库上传或选择素材" title="打开素材库">
-                                        <Library aria-hidden="true" />
-                                        <span>素材库</span>
-                                    </button>
                                     <button type="button" onClick={props.onClearAttachments} disabled={interactionBusy} aria-label="清空全部素材" title="清空全部素材">
                                         <Trash2 aria-hidden="true" />
                                         <span>清空</span>
@@ -701,12 +775,15 @@ export function CreationComposer(props: ComposerProps) {
                                         ))}
                                         {!visibleAttachments.length && props.attachments.length ? <li className="creation-reference-filter-empty">该类型暂无参考内容</li> : null}
                                         <li className="creation-reference-add-slot">
-                                            <Tooltip title={addReferenceLabel}>
-                                                <button type="button" className="creation-reference-add-button" onClick={props.onOpenLibrary} disabled={interactionBusy} aria-label={addReferenceLabel}>
-                                                    <Plus aria-hidden="true" />
-                                                    <span>参考内容</span>
-                                                </button>
-                                            </Tooltip>
+                                            <CreationReferenceAddMenu
+                                                variant="slot"
+                                                disabled={interactionBusy}
+                                                triggerLabel={addReferenceLabel}
+                                                directUploadLabel={directUploadLabel}
+                                                referenceEntryHint={referenceEntryHint}
+                                                onUpload={() => props.fileInputRef.current?.click()}
+                                                onOpenLibrary={props.onOpenLibrary}
+                                            />
                                         </li>
                                     </Reorder.Group>
                                     {trackState.canScrollRight ? (
@@ -749,14 +826,13 @@ export function CreationComposer(props: ComposerProps) {
                     {compactThread && showReferenceEntry ? (
                         <>
                             <div className="creation-entry-group is-reference" role="group" aria-label="添加参考素材">
-                                <button type="button" className="creation-entry-button creation-reference-action is-upload" onClick={() => props.fileInputRef.current?.click()} disabled={interactionBusy} aria-label={directUploadLabel} title={directUploadLabel}>
-                                    <Upload aria-hidden="true" />
-                                    <span>参考</span>
-                                </button>
-                                <button type="button" className="creation-entry-button creation-reference-action is-library" onClick={props.onOpenLibrary} disabled={interactionBusy} aria-label="打开素材库上传或选择素材" title="素材库">
-                                    <Library aria-hidden="true" />
-                                    <span>素材库</span>
-                                </button>
+                                <CreationReferenceAddMenu
+                                    disabled={interactionBusy}
+                                    directUploadLabel={directUploadLabel}
+                                    referenceEntryHint={referenceEntryHint}
+                                    onUpload={() => props.fileInputRef.current?.click()}
+                                    onOpenLibrary={props.onOpenLibrary}
+                                />
                             </div>
                             <span className="creation-entry-divider" aria-hidden="true" />
                         </>

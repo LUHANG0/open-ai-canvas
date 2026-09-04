@@ -749,6 +749,159 @@ html:not(.dark) .creation-media-preview-modal.is-image .ant-modal-container {
     gap: 6px;
 }
 
+.creation-home .creation-reference-add-trigger {
+    min-width: 116px;
+    justify-content: flex-start;
+    border-color: color-mix(in srgb, var(--creation-accent) 28%, var(--creation-border)) !important;
+    background: color-mix(in srgb, var(--creation-accent-soft) 54%, var(--creation-toolbar-button-bg)) !important;
+    color: var(--creation-accent-strong) !important;
+    font-weight: 630;
+}
+
+.creation-home .creation-reference-add-trigger:hover:not(:disabled),
+.creation-home .creation-reference-add-trigger[aria-expanded="true"] {
+    border-color: color-mix(in srgb, var(--creation-accent) 55%, var(--creation-border)) !important;
+    background: var(--creation-accent-soft) !important;
+}
+
+.creation-home .creation-reference-add-trigger .creation-reference-add-chevron {
+    width: 12px;
+    height: 12px;
+    margin-left: auto;
+    color: var(--creation-faint);
+    transition: transform var(--motion-state) var(--motion-ease-out);
+}
+
+.creation-home .creation-reference-add-trigger[aria-expanded="true"] .creation-reference-add-chevron {
+    transform: rotate(180deg);
+}
+
+.creation-reference-add-popover-surface,
+.creation-reference-add-popover .ant-popover-inner {
+    width: 310px;
+    overflow: hidden;
+    border: 1px solid var(--app-border-default, rgba(17, 17, 17, 0.16));
+    border-radius: var(--app-surface-radius, 12px) !important;
+    background: var(--app-surface-overlay, #ffffff) !important;
+    padding: 0 !important;
+    box-shadow: var(--app-shadow-overlay, 0 20px 54px rgba(15, 23, 42, 0.18)) !important;
+}
+
+.creation-reference-add-popover-content {
+    padding: 0 !important;
+}
+
+.creation-reference-add-menu {
+    width: 100%;
+    color: var(--app-text-primary, #171717);
+}
+
+.creation-reference-add-menu > header {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    padding: 13px 14px 11px;
+}
+
+.creation-reference-add-menu > header strong {
+    font-size: var(--app-font-size-body, 14px);
+    font-weight: 680;
+    line-height: 1.35;
+}
+
+.creation-reference-add-menu > header span {
+    color: var(--app-text-secondary, #52525b);
+    font-size: var(--app-font-size-label, 12px);
+    line-height: 1.45;
+}
+
+.creation-reference-add-options {
+    display: grid;
+    gap: 5px;
+    padding: 0 7px 7px;
+}
+
+.creation-reference-add-options > button {
+    display: flex;
+    width: 100%;
+    min-height: 58px;
+    align-items: center;
+    gap: 11px;
+    border: 1px solid transparent;
+    border-radius: 9px;
+    background: transparent;
+    color: var(--app-text-primary, #171717);
+    padding: 8px;
+    text-align: left;
+    transition:
+        border-color var(--motion-state, 160ms) ease,
+        background-color var(--motion-state, 160ms) ease;
+}
+
+.creation-reference-add-options > button:hover,
+.creation-reference-add-options > button:focus-visible {
+    border-color: var(--app-border-subtle, rgba(17, 17, 17, 0.1));
+    background: var(--app-action-secondary-hover, rgba(17, 17, 17, 0.05));
+    outline: none;
+}
+
+.creation-reference-add-option-icon {
+    display: grid;
+    width: 38px;
+    height: 38px;
+    flex: 0 0 38px;
+    place-items: center;
+    border: 1px solid var(--app-border-subtle, rgba(17, 17, 17, 0.1));
+    border-radius: 10px;
+    background: var(--app-surface-2, #f7f8fa);
+    color: var(--app-text-secondary, #52525b);
+}
+
+.creation-reference-add-option-icon.is-upload {
+    border-color: var(--app-selection-border, rgba(20, 147, 173, 0.22));
+    background: var(--app-selection-bg, rgba(20, 147, 173, 0.1));
+    color: var(--app-selection-fg, #087f99);
+}
+
+.creation-reference-add-option-icon svg {
+    width: 17px;
+    height: 17px;
+}
+
+.creation-reference-add-options > button > span:last-child {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.creation-reference-add-options strong {
+    font-size: var(--app-font-size-control, 13px);
+    font-weight: 640;
+    line-height: 1.3;
+}
+
+.creation-reference-add-options small {
+    color: var(--app-text-muted, #71717a);
+    font-size: var(--app-font-size-label, 12px);
+    line-height: 1.35;
+}
+
+.creation-reference-add-menu > footer {
+    display: flex;
+    min-width: 0;
+    border-top: 1px solid var(--app-border-subtle, rgba(17, 17, 17, 0.1));
+    background: var(--app-surface-2, #f7f8fa);
+    padding: 9px 12px;
+    color: var(--app-text-muted, #71717a);
+    font-size: var(--app-font-size-label, 12px);
+    line-height: 1.35;
+}
+
+.creation-reference-add-menu > footer > span {
+    display: block;
+}
+
 .creation-home .creation-reference-action {
     z-index: 2;
 }
@@ -5869,7 +6022,7 @@ html:not(.dark) .creation-media-preview-modal.is-video .ant-modal-container {
 
     .creation-home .creation-chat-composer.is-desktop.is-thread .creation-entry-group.is-reference .creation-entry-button {
         width: auto;
-        min-width: 66px;
+        min-width: 116px;
         height: 36px;
         justify-content: center;
         padding: 0 9px;
