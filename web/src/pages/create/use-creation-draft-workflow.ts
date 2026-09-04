@@ -237,13 +237,24 @@ export function useCreationDraftWorkflow(options: CreationDraftWorkflowOptions) 
     );
 
     const createVariant = useCallback(
-        (item: CreationMessage, index: number) => {
+        (item: CreationMessage, index: number, options?: { announce?: boolean }) => {
             if (!activeConversation || busy) return;
             const pair = creationRetryMessagePair(activeConversation.messages, item, index);
-            if (pair) restoreMessageDraft(pair.userMessage);
+            if (!pair) return;
+            onFollowLatest();
+            restoreMessageDraft(pair.userMessage);
+            setSelectedShotId(pair.userMessage.id);
+            setVariantSourceShotId(pair.userMessage.id);
+            if (options?.announce !== false && viewMode === "chat") {
+                const shotNumber = activeConversation.messages.slice(0, index + 1).filter((message) => message.role === "user").length;
+                toast.info(`已承接第 ${Math.max(1, shotNumber)} 轮的提示词与参数，可继续调整`);
+            }
+            focusComposer();
         },
-        [activeConversation, busy, restoreMessageDraft],
+        [activeConversation, busy, focusComposer, onFollowLatest, restoreMessageDraft, toast, viewMode],
     );
+
+    const clearVariantSource = useCallback(() => setVariantSourceShotId(""), []);
 
     const beginComposeNextShot = useCallback(() => {
         setComposingNextShot(true);
@@ -264,7 +275,7 @@ export function useCreationDraftWorkflow(options: CreationDraftWorkflowOptions) 
     const beginVariantFromShot = useCallback(
         (shot: CreationShot, shotNumber: number, resultIndex: number) => {
             if (!shot.result || resultIndex < 0) return;
-            createVariant(shot.result, resultIndex);
+            createVariant(shot.result, resultIndex, { announce: false });
             setVariantSourceShotId(shot.id);
             setSelectedShotId(shot.id);
             setComposingNextShot(true);
@@ -307,6 +318,7 @@ export function useCreationDraftWorkflow(options: CreationDraftWorkflowOptions) 
         pendingRetry,
         retryFailedMessage,
         createVariant,
+        clearVariantSource,
         beginComposeNextShot,
         cancelComposeNextShot,
         selectStoryboardShot,

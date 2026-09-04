@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { App, Spin, Tooltip } from "antd";
-import { History } from "lucide-react";
+import { ArrowDown, History } from "lucide-react";
 
 import { AssetLibraryPickerModal } from "@/components/assets/asset-library-picker-modal";
 import { usePcBrandViewport } from "@/hooks/use-pc-brand-viewport";
@@ -15,7 +15,7 @@ import { buildCreationMentionReferences, type CreationReference } from "./creati
 import type { CreationAttachment } from "./creation-assets";
 import { CreationComposer } from "./creation-composer";
 import { CreationEmptyIntro, CreationEmptySuggest, type CreationMode } from "./creation-empty-state";
-import { CreationMessageView } from "./creation-message-view";
+import { CreationTurnView } from "./creation-message-view";
 import { StoryboardComposerContext, StoryboardNextShotCard, StoryboardShotCard, StoryboardShotRail, StoryboardToolbar } from "./creation-storyboard-workbench";
 import { normalizeCreationVideoAttachments } from "./creation-submit-preparation";
 import type { CreationMessage, CreationShot, CreationVideoOperationChoice, CreationViewMode } from "./creation-types";
@@ -35,10 +35,11 @@ function shotsFromMessages(messages: CreationMessage[]): CreationShot[] {
     for (const message of messages) {
         if (message.role === "user") {
             shots.push({ id: message.id, user: message });
-        } else if (shots.length && !shots[shots.length - 1].result) {
-            shots[shots.length - 1].result = message;
         } else {
-            shots.push({ id: message.id, result: message });
+            const parentShot = message.parentMessageId ? shots.find((shot) => shot.user?.id === message.parentMessageId && !shot.result) : undefined;
+            if (parentShot) parentShot.result = message;
+            else if (shots.length && !shots[shots.length - 1].result) shots[shots.length - 1].result = message;
+            else shots.push({ id: message.id, result: message });
         }
     }
     return shots;
@@ -76,6 +77,7 @@ export default function CreatePage() {
     const [busy, setBusy] = useState(false);
     const [viewMode, setViewMode] = useState<CreationViewMode>("chat");
     const [storyboardTimelineOpen, setStoryboardTimelineOpen] = useState(true);
+    const [showJumpToLatest, setShowJumpToLatest] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const composerFocusRef = useRef<HTMLTextAreaElement>(null);
     const threadScrollRef = useRef<HTMLElement>(null);
@@ -106,6 +108,7 @@ export default function CreatePage() {
         pendingRetry,
         retryFailedMessage,
         createVariant,
+        clearVariantSource,
         beginComposeNextShot,
         cancelComposeNextShot,
         selectStoryboardShot,
@@ -141,6 +144,10 @@ export default function CreatePage() {
         onFollowLatest: followLatestMessage,
         toast,
     });
+    const variantSourceShotIndex = variantSourceShotId ? shots.findIndex((shot) => shot.id === variantSourceShotId) : -1;
+    const variantSourceShotNumber = variantSourceShotIndex >= 0 ? variantSourceShotIndex + 1 : undefined;
+    const variantSourceShot = variantSourceShotIndex >= 0 ? shots[variantSourceShotIndex] : undefined;
+    const continuationParentMessageId = variantSourceShot?.result?.id || variantSourceShot?.user?.id;
     const selectedShotIndex = selectedShotId ? shots.findIndex((shot) => shot.id === selectedShotId) : -1;
     const visibleShotIndex = shots.length ? (selectedShotIndex >= 0 ? selectedShotIndex : shots.length - 1) : -1;
 
@@ -169,7 +176,10 @@ export default function CreatePage() {
         if (!followLatestMessageRef.current) return;
         const frame = window.requestAnimationFrame(() => {
             const container = threadScrollRef.current;
-            if (container) container.scrollTop = container.scrollHeight;
+            if (container) {
+                container.scrollTop = container.scrollHeight;
+                setShowJumpToLatest(false);
+            }
         });
         return () => window.cancelAnimationFrame(frame);
     }, [activeConversation?.id, activeConversation?.messages, pcBrandV2]);
@@ -225,7 +235,7 @@ export default function CreatePage() {
         updateConfig,
         toast,
     });
-    const { submit } = useCreationSubmitWorkflow({
+    const { submit, cancelSubmission, cancellingMessageIds } = useCreationSubmitWorkflow({
         prompt,
         busy,
         setBusy,
@@ -247,6 +257,7 @@ export default function CreatePage() {
         quality,
         videoQuality,
         count,
+        continuationParentMessageId,
         pendingRetry,
         clearPendingRetry,
         releaseRetryLock,
@@ -284,12 +295,19 @@ export default function CreatePage() {
     const handleThreadScroll = () => {
         const container = threadScrollRef.current;
         if (!container) return;
-        followLatestMessageRef.current = container.scrollHeight - container.scrollTop - container.clientHeight <= 160;
+        const nearLatest = container.scrollHeight - container.scrollTop - container.clientHeight <= 160;
+        followLatestMessageRef.current = nearLatest;
+        setShowJumpToLatest(!nearLatest);
+    };
+
+    const scrollToLatest = () => {
+        const container = threadScrollRef.current;
+        followLatestMessageRef.current = true;
+        setShowJumpToLatest(false);
+        container?.scrollTo({ top: container.scrollHeight, behavior: "smooth" });
     };
 
     const nextShotNumber = shots.length + 1;
-    const variantSourceShotIndex = variantSourceShotId ? shots.findIndex((shot) => shot.id === variantSourceShotId) : -1;
-    const variantSourceShotNumber = variantSourceShotIndex >= 0 ? variantSourceShotIndex + 1 : undefined;
 
     const composerProps = {
         mode,
@@ -345,7 +363,19 @@ export default function CreatePage() {
         promptOptimizerProvider,
         composerFocusRef,
         desktopLayout: pcBrandV2,
-        placeholderOverride: viewMode === "storyboard" && (pcBrandV2 || composingNextShot) ? `SC.${String(nextShotNumber).padStart(2, "0")} · 写下这一镜的镜头、画面或故事` : undefined,
+        continuationContext:
+            viewMode === "chat" && variantSourceShotNumber
+                ? { label: `延续第 ${variantSourceShotNumber} 轮`, detail: "已复用提示词、素材与输出参数" }
+                : undefined,
+        onClearContinuation: clearVariantSource,
+        placeholderOverride:
+            viewMode === "storyboard" && (pcBrandV2 || composingNextShot)
+                ? `SC.${String(nextShotNumber).padStart(2, "0")} · 写下这一镜的镜头、画面或故事`
+                : viewMode === "chat" && variantSourceShotNumber
+                  ? "描述你想继续调整的画面、动作、光线或节奏"
+                  : viewMode === "chat" && shots.length
+                    ? "继续描述下一步想创作或调整的内容"
+                    : undefined,
         onSubmit: () => void submit(),
     };
 
@@ -448,21 +478,44 @@ export default function CreatePage() {
                             onRetryCloudSync={() => void retryCloudSync()}
                             desktopLayout={pcBrandV2}
                         />
-                        <main ref={threadScrollRef} onScroll={handleThreadScroll} className="creation-thread-scroll creation-scrollbar" aria-label="连续对话" tabIndex={0}>
+                        <main ref={threadScrollRef} onScroll={handleThreadScroll} className="creation-thread-scroll creation-scrollbar" aria-label="连续创作" tabIndex={0}>
                             <section className="creation-thread-stage">
                                 <div className="creation-results" role="log" aria-live="polite" aria-relevant="additions text">
-                                    {activeConversation.messages.map((item, index) => (
-                                        <CreationMessageView
-                                            key={item.id}
-                                            item={item}
-                                            modelName={item.model ? modelDisplayName(config, item.model) : ""}
-                                            compactLayout={pcBrandV2}
-                                            onRetryFailure={() => retryFailedMessage(item, index)}
-                                            onCreateVariant={() => createVariant(item, index)}
-                                        />
-                                    ))}
+                                    {shots.map((shot, shotIndex) => {
+                                        const resultIndex = shot.result ? activeConversation.messages.indexOf(shot.result) : -1;
+                                        const sourceShotIndex = shot.user?.parentMessageId
+                                            ? shots.findIndex((candidate) => candidate.user?.id === shot.user?.parentMessageId || candidate.result?.id === shot.user?.parentMessageId)
+                                            : -1;
+                                        return (
+                                            <CreationTurnView
+                                                key={shot.id}
+                                                shot={shot}
+                                                turnNumber={shotIndex + 1}
+                                                sourceTurnNumber={sourceShotIndex >= 0 ? sourceShotIndex + 1 : undefined}
+                                                modelName={shot.result?.model ? modelDisplayName(config, shot.result.model) : ""}
+                                                compactLayout={pcBrandV2}
+                                                isLatest={shotIndex === shots.length - 1}
+                                                cancelling={Boolean(shot.result && cancellingMessageIds.has(shot.result.id))}
+                                                onRetryFailure={() => {
+                                                    if (shot.result && resultIndex >= 0) retryFailedMessage(shot.result, resultIndex);
+                                                }}
+                                                onCreateVariant={() => {
+                                                    if (shot.result && resultIndex >= 0) createVariant(shot.result, resultIndex);
+                                                }}
+                                                onCancelGeneration={() => {
+                                                    if (shot.result) void cancelSubmission(activeConversation.id, shot.result.id, shot.result.taskIds || []);
+                                                }}
+                                            />
+                                        );
+                                    })}
                                 </div>
                             </section>
+                            {showJumpToLatest ? (
+                                <button type="button" className="creation-jump-latest" onClick={scrollToLatest}>
+                                    <ArrowDown aria-hidden="true" />
+                                    回到最新
+                                </button>
+                            ) : null}
                         </main>
                         <section className="creation-thread-composer">
                             <CreationComposer {...composerProps} variant="thread" />

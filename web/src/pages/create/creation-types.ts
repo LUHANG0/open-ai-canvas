@@ -20,6 +20,8 @@ export type CreationSettings = {
 export type CreationMessage = {
     id: string;
     role: "user" | "assistant";
+    /** 当前消息直接承接的上一条消息；旧记录没有该字段时仍按相邻消息兼容。 */
+    parentMessageId?: string;
     mode?: CreationMode;
     content: string;
     reasoning?: string;

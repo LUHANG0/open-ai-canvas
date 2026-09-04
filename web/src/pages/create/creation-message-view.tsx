@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Modal, Tooltip } from "antd";
-import { ChevronDown, Copy, Download, FileText, Film, Image as ImageIcon, Maximize2, Music2, RefreshCw, Sparkles } from "lucide-react";
+import { ChevronDown, Copy, CornerUpLeft, Download, FileText, Film, Image as ImageIcon, LoaderCircle, Maximize2, Music2, RefreshCw, Sparkles, Square } from "lucide-react";
 import { Link } from "react-router";
 
 import { AIMessageMarkdown } from "@/components/ai/ai-message-markdown";
@@ -14,7 +14,7 @@ import { useAssetStore } from "@/stores/use-asset-store";
 import { creationAttachmentKind, creationMediaAspectRatio } from "./creation-assets";
 import type { CreationMode } from "./creation-empty-state";
 import { displayCreationPrompt, type CreationReference } from "./creation-references";
-import type { CreationMessage } from "./creation-types";
+import type { CreationMessage, CreationShot } from "./creation-types";
 
 const messageTimeFormatter = new Intl.DateTimeFormat("zh-CN", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false });
 
@@ -23,20 +23,103 @@ export function formatMessageTime(value: string) {
     return Number.isFinite(timestamp) ? messageTimeFormatter.format(timestamp) : "";
 }
 
-export function CreationMessageView({ item, modelName, compactLayout, onRetryFailure, onCreateVariant }: { item: CreationMessage; modelName: string; compactLayout: boolean; onRetryFailure: () => void; onCreateVariant: () => void }) {
-    if (item.role === "user") return <CreationUserMessage item={item} />;
+export function CreationTurnView({
+    shot,
+    turnNumber,
+    sourceTurnNumber,
+    modelName,
+    compactLayout,
+    isLatest,
+    cancelling,
+    onRetryFailure,
+    onCreateVariant,
+    onCancelGeneration,
+}: {
+    shot: CreationShot;
+    turnNumber: number;
+    sourceTurnNumber?: number;
+    modelName: string;
+    compactLayout: boolean;
+    isLatest: boolean;
+    cancelling: boolean;
+    onRetryFailure: () => void;
+    onCreateVariant: () => void;
+    onCancelGeneration: () => void;
+}) {
+    return (
+        <section className={`creation-turn${isLatest ? " is-latest" : ""}`} aria-label={`第 ${turnNumber} 轮创作`}>
+            <span className="creation-turn-index" aria-hidden="true">
+                {String(turnNumber).padStart(2, "0")}
+            </span>
+            <div className="creation-turn-body">
+                {shot.user ? (
+                    <CreationMessageView
+                        item={shot.user}
+                        modelName=""
+                        compactLayout={compactLayout}
+                        sourceTurnNumber={sourceTurnNumber}
+                        cancelling={false}
+                        onRetryFailure={onRetryFailure}
+                        onCreateVariant={onCreateVariant}
+                        onCancelGeneration={onCancelGeneration}
+                    />
+                ) : null}
+                {shot.result ? (
+                    <CreationMessageView
+                        item={shot.result}
+                        modelName={modelName}
+                        compactLayout={compactLayout}
+                        cancelling={cancelling}
+                        onRetryFailure={onRetryFailure}
+                        onCreateVariant={onCreateVariant}
+                        onCancelGeneration={onCancelGeneration}
+                    />
+                ) : null}
+            </div>
+        </section>
+    );
+}
+
+export function CreationMessageView({
+    item,
+    modelName,
+    compactLayout,
+    sourceTurnNumber,
+    cancelling,
+    onRetryFailure,
+    onCreateVariant,
+    onCancelGeneration,
+}: {
+    item: CreationMessage;
+    modelName: string;
+    compactLayout: boolean;
+    sourceTurnNumber?: number;
+    cancelling: boolean;
+    onRetryFailure: () => void;
+    onCreateVariant: () => void;
+    onCancelGeneration: () => void;
+}) {
+    if (item.role === "user") return <CreationUserMessage item={item} sourceTurnNumber={sourceTurnNumber} />;
     const mode = item.mode || "text";
-    const stateLabel = item.status === "pending" || item.status === "streaming" ? "生成中" : item.status === "cancelled" ? "已停止" : item.status === "error" ? "生成失败" : "";
+    const isRunning = item.status === "pending" || item.status === "streaming";
+    const stateLabel = item.status === "cancelled" ? "已停止" : item.status === "error" ? "生成失败" : "";
+    const resultLabel = mode === "image" ? "图像" : mode === "video" ? "视频" : "文本";
+    const headingLabel = mode === "text" ? "影策 AI" : item.status === "error" ? `${resultLabel}生成失败` : item.status === "cancelled" ? `${resultLabel}生成已停止` : isRunning ? `正在生成${resultLabel}` : `${resultLabel}已生成`;
     const heading = (
         <>
             <span className="creation-message-mark">
                 <Sparkles />
             </span>
-            <strong>{mode === "image" ? "图像生成" : mode === "video" ? "视频生成" : "影策 AI"}</strong>
-            {mode !== "text" && item.status === "pending" ? <span className="creation-message-progress-copy">正在生成{mode === "video" ? "视频" : "图像"}……</span> : null}
+            <strong>{headingLabel}</strong>
             {modelName ? <span className="creation-message-model">{modelName}</span> : null}
             {item.createdAt ? <time dateTime={item.createdAt}>{formatMessageTime(item.createdAt)}</time> : null}
             {stateLabel ? <span className={`creation-message-state is-${item.status}`}>{stateLabel}</span> : null}
+            {isRunning ? (
+                <button type="button" className="creation-message-stop" onClick={onCancelGeneration} disabled={cancelling} aria-label={cancelling ? "正在停止本轮生成" : "停止本轮生成"}>
+                    {cancelling ? <LoaderCircle className="animate-spin" /> : <Square />}
+                    <span>{cancelling ? "正在停止" : "停止"}</span>
+                </button>
+            ) : null}
         </>
     );
     const toolStatus: GenerationToolStatus = item.status === "pending" ? "running" : item.status === "error" ? "error" : item.status === "cancelled" ? "cancelled" : "completed";
@@ -66,7 +149,7 @@ export function CreationMessageView({ item, modelName, compactLayout, onRetryFai
     );
 }
 
-function CreationUserMessage({ item }: { item: CreationMessage }) {
+function CreationUserMessage({ item, sourceTurnNumber }: { item: CreationMessage; sourceTurnNumber?: number }) {
     const [previewUrl, setPreviewUrl] = useState("");
     const [previewType, setPreviewType] = useState<"image" | "video">("image");
     const copyText = useCopyText();
@@ -74,7 +157,7 @@ function CreationUserMessage({ item }: { item: CreationMessage }) {
     return (
         <article className="creation-user-message">
             <div className="creation-user-message-meta">
-                <span>你</span>
+                <span>你的描述</span>
                 {item.createdAt ? <time dateTime={item.createdAt}>{formatMessageTime(item.createdAt)}</time> : null}
                 <Tooltip title="复制消息">
                     <button type="button" className="creation-user-message-copy" aria-label="复制提示词" onClick={() => copyText(visiblePrompt, "提示词已复制")}>
@@ -85,6 +168,12 @@ function CreationUserMessage({ item }: { item: CreationMessage }) {
             <div className="creation-user-message-copy-wrap">
                 <p>{visiblePrompt}</p>
             </div>
+            {sourceTurnNumber ? (
+                <div className="creation-user-message-context">
+                    <CornerUpLeft aria-hidden="true" />
+                    延续第 {sourceTurnNumber} 轮
+                </div>
+            ) : null}
             {item.references?.length ? <CreationMessageReferences references={item.references} /> : null}
             {item.attachments?.length ? (
                 <div className="creation-user-message-attachments">
@@ -141,6 +230,13 @@ function creationMediaFormatLabel(url: string, mimeType?: string) {
     if (normalized.includes("quicktime") || /\.mov(?:$|[?#])/i.test(url)) return "MOV";
     if (normalized.includes("mp4") || /\.mp4(?:$|[?#])/i.test(url)) return "MP4";
     return "媒体";
+}
+
+function creationMediaResponseCopy(item: CreationMessage, isVideo: boolean) {
+    const content = item.content.trim();
+    const genericCompletionMessages = new Set(["视频已生成", "图片已生成", "图像已生成"]);
+    if (content && !genericCompletionMessages.has(content)) return content;
+    return isVideo ? "本轮视频已完成，可继续调整或添加到画布。" : "本轮图片已完成，可继续调整或添加到画布。";
 }
 
 function creationGenerationElapsedLabel(start?: string, end?: string) {
@@ -255,6 +351,7 @@ function MediaResult({ item, compactLayout, onRetryFailure, onCreateVariant }: {
     );
     return (
         <div className="creation-media-result">
+            <p className="creation-media-response-copy">{creationMediaResponseCopy(item, isVideo)}</p>
             {isVideo ? (
                 <button
                     type="button"
@@ -336,10 +433,12 @@ function MediaResult({ item, compactLayout, onRetryFailure, onCreateVariant }: {
                 resultDetails
             )}
             <div className="creation-media-actions">
-                <button type="button" className={compactLayout ? "is-primary" : undefined} onClick={onCreateVariant}>
-                    <RefreshCw />
-                    {compactLayout ? "继续创作" : "生成同款"}
-                </button>
+                <Tooltip title={compactLayout ? "沿用本轮提示词、素材与输出参数，在新回合中继续调整" : "沿用本轮参数生成新版本"}>
+                    <button type="button" className={compactLayout ? "is-primary" : undefined} onClick={onCreateVariant}>
+                        <RefreshCw />
+                        {compactLayout ? "继续调整" : "生成同款"}
+                    </button>
+                </Tooltip>
                 <Link to={canvasPath}>{resultAssetIds.length ? "添加到画布" : "打开画布"}</Link>
                 <CreationResultDownloads results={resultMedia} />
             </div>

@@ -126,7 +126,7 @@ export function CreationViewSwitch({ viewMode, onChange, desktopLayout = false }
             {desktopLayout ? <span className="creation-view-switch-label">工作方式</span> : null}
             <button type="button" aria-pressed={viewMode === "chat"} onClick={() => onChange("chat")}>
                 <MessageSquareText />
-                连续对话
+                连续创作
             </button>
             <button type="button" aria-pressed={viewMode === "storyboard"} onClick={() => onChange("storyboard")}>
                 <Clapperboard />

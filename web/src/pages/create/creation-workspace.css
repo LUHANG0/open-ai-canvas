@@ -1427,6 +1427,22 @@ html:not(.dark) .creation-generation-settings-surface .creation-custom-trigger {
     gap: 24px;
 }
 
+.creation-home .creation-turn {
+    position: relative;
+    min-width: 0;
+}
+
+.creation-home .creation-turn-body {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.creation-home .creation-turn-index {
+    display: none;
+}
+
 .creation-home .creation-user-message {
     width: fit-content;
     min-width: 0;
@@ -1450,6 +1466,21 @@ html:not(.dark) .creation-generation-settings-surface .creation-custom-trigger {
     color: var(--creation-text);
     font-size: 11px;
     font-weight: 650;
+}
+
+.creation-home .creation-user-message-context {
+    display: inline-flex;
+    width: fit-content;
+    align-items: center;
+    gap: 5px;
+    color: var(--creation-muted);
+    font-size: 11px;
+    line-height: 1.4;
+}
+
+.creation-home .creation-user-message-context svg {
+    width: 13px;
+    height: 13px;
 }
 
 .creation-home .creation-user-message-copy-wrap p {
@@ -1499,6 +1530,30 @@ html:not(.dark) .creation-generation-settings-surface .creation-custom-trigger {
     font-size: 11px;
 }
 
+.creation-home .creation-message-stop {
+    display: inline-flex;
+    min-height: 28px;
+    align-items: center;
+    gap: 5px;
+    border: 1px solid var(--creation-border);
+    border-radius: 7px;
+    background: transparent;
+    color: var(--creation-muted);
+    padding: 0 8px;
+    font-size: 11px;
+}
+
+.creation-home .creation-message-stop:hover:not(:disabled) {
+    border-color: var(--creation-border-strong);
+    background: var(--creation-surface-hover);
+    color: var(--creation-text);
+}
+
+.creation-home .creation-message-stop svg {
+    width: 12px;
+    height: 12px;
+}
+
 .creation-home .creation-message-model,
 .creation-home .creation-message-state {
     border-radius: 999px;
@@ -1519,6 +1574,13 @@ html:not(.dark) .creation-generation-settings-surface .creation-custom-trigger {
 .creation-home .creation-media-result {
     max-width: 672px;
     padding: 11px 0 0 32px;
+}
+
+.creation-home .creation-media-response-copy {
+    margin: 0 0 9px;
+    color: var(--creation-muted);
+    font-size: 13px;
+    line-height: 1.55;
 }
 
 .creation-home .creation-image-result-grid {
@@ -1683,6 +1745,98 @@ html:not(.dark) .creation-generation-settings-surface .creation-custom-trigger {
 .creation-home .creation-thread-composer {
     width: min(1000px, calc(100% - 56px));
     padding: 8px 0 16px;
+}
+
+.creation-home .creation-continuation-context {
+    display: flex;
+    min-width: 0;
+    min-height: 38px;
+    align-items: center;
+    gap: 8px;
+    border-bottom: 1px solid var(--creation-border);
+    background: color-mix(in srgb, var(--creation-accent-soft) 44%, var(--creation-surface));
+    padding: 6px 10px;
+}
+
+.creation-home .creation-continuation-context-icon {
+    display: grid;
+    width: 24px;
+    height: 24px;
+    flex: 0 0 24px;
+    place-items: center;
+    border-radius: 7px;
+    background: var(--creation-surface);
+    color: var(--creation-text);
+}
+
+.creation-home .creation-continuation-context-icon svg,
+.creation-home .creation-continuation-context > button svg {
+    width: 13px;
+    height: 13px;
+}
+
+.creation-home .creation-continuation-context-copy {
+    display: flex;
+    min-width: 0;
+    flex: 1 1 auto;
+    align-items: baseline;
+    gap: 8px;
+}
+
+.creation-home .creation-continuation-context-copy strong {
+    color: var(--creation-text);
+    font-size: 12px;
+    font-weight: 650;
+}
+
+.creation-home .creation-continuation-context-copy small {
+    overflow: hidden;
+    color: var(--creation-muted);
+    font-size: 11px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.creation-home .creation-continuation-context > button {
+    display: grid;
+    width: 26px;
+    height: 26px;
+    flex: 0 0 26px;
+    place-items: center;
+    border: 0;
+    border-radius: 7px;
+    background: transparent;
+    color: var(--creation-muted);
+}
+
+.creation-home .creation-continuation-context > button:hover {
+    background: var(--creation-surface-hover);
+    color: var(--creation-text);
+}
+
+.creation-home .creation-jump-latest {
+    position: sticky;
+    bottom: 14px;
+    z-index: 3;
+    display: flex;
+    width: fit-content;
+    min-height: 34px;
+    align-items: center;
+    gap: 6px;
+    margin: -48px 20px 14px auto;
+    border: 1px solid var(--creation-border-strong);
+    border-radius: 999px;
+    background: var(--creation-surface);
+    color: var(--creation-text);
+    padding: 0 12px;
+    box-shadow: 0 10px 28px color-mix(in srgb, var(--creation-text) 12%, transparent);
+    font-size: 12px;
+    font-weight: 620;
+}
+
+.creation-home .creation-jump-latest svg {
+    width: 14px;
+    height: 14px;
 }
 
 .creation-home .creation-media-actions a,
@@ -5501,6 +5655,248 @@ html:not(.dark) .creation-media-preview-modal.is-video .ant-modal-container {
 
     .creation-home .creation-chat-composer.is-desktop .creation-submit-estimate.is-metered {
         min-width: 152px;
+    }
+
+    /* 连续创作以“描述 + 结果”为一个回合，编号轨道负责建立上下文关系。 */
+    .creation-home .creation-thread-stage {
+        width: min(900px, calc(100% - 48px));
+        padding: 20px 0 28px;
+    }
+
+    .creation-home .creation-results {
+        gap: 22px;
+    }
+
+    .creation-home .creation-turn {
+        padding-left: 42px;
+    }
+
+    .creation-home .creation-turn::before {
+        position: absolute;
+        top: 31px;
+        bottom: -23px;
+        left: 14px;
+        width: 1px;
+        background: var(--app-border-subtle, var(--creation-border));
+        content: "";
+    }
+
+    .creation-home .creation-turn:last-child::before {
+        bottom: 4px;
+        background: linear-gradient(var(--app-border-subtle, var(--creation-border)), transparent);
+    }
+
+    .creation-home .creation-turn-index {
+        position: absolute;
+        top: 0;
+        left: 0;
+        display: grid;
+        width: 29px;
+        height: 29px;
+        place-items: center;
+        border: 1px solid var(--app-border-default, var(--creation-border));
+        border-radius: 9px;
+        background: var(--app-surface-1, var(--creation-surface));
+        color: var(--app-text-muted, var(--creation-faint));
+        font-family: var(--app-font-mono, monospace);
+        font-size: 11px;
+        font-weight: 650;
+        font-variant-numeric: tabular-nums;
+    }
+
+    .creation-home .creation-turn.is-latest .creation-turn-index {
+        border-color: var(--app-selection-border, var(--creation-border-strong));
+        background: var(--app-selection-bg, var(--creation-accent-soft));
+        color: var(--app-selection-fg, var(--creation-text));
+    }
+
+    .creation-home .creation-turn-body {
+        gap: 13px;
+    }
+
+    .creation-home .creation-turn .creation-user-message {
+        width: fit-content;
+        min-width: min(360px, 100%);
+        max-width: min(620px, 100%);
+        margin: 0;
+        border: 1px solid var(--app-border-subtle, var(--creation-border));
+        border-radius: 11px;
+        background: var(--app-surface-2, var(--creation-surface-muted));
+        padding: 10px 12px;
+    }
+
+    .creation-home .creation-turn .creation-user-message-meta {
+        justify-content: flex-start;
+    }
+
+    .creation-home .creation-turn .creation-user-message-references,
+    .creation-home .creation-turn .creation-user-message-attachments {
+        justify-content: flex-start;
+    }
+
+    .creation-home .creation-turn .creation-assistant-message {
+        width: 100%;
+        max-width: none;
+    }
+
+    .creation-home .creation-turn .creation-message-content,
+    .creation-home .creation-turn .creation-media-result {
+        max-width: 760px;
+        padding-left: 38px;
+    }
+
+    .creation-home .creation-message-stop {
+        border-color: var(--app-border-subtle, var(--creation-border));
+        background: var(--app-action-secondary-bg, transparent);
+        color: var(--app-text-secondary, var(--creation-muted));
+    }
+
+    .creation-home .creation-media-response-copy {
+        color: var(--app-text-secondary, var(--creation-muted));
+        font-size: var(--app-font-size-label, 12px);
+    }
+
+    .creation-home .creation-user-message-context {
+        color: var(--app-text-secondary, var(--creation-muted));
+        font-size: var(--app-font-size-label, 12px);
+    }
+
+    /* 对话态输入区保持单列；参考素材使用横向轨道，不再压缩提示词宽度。 */
+    .creation-home .creation-thread-composer {
+        width: min(900px, calc(100% - 48px));
+        padding: 8px 0 12px;
+    }
+
+    .creation-home .creation-chat-composer.is-desktop.is-thread {
+        border-radius: 14px;
+        box-shadow: var(--app-shadow-surface, none);
+    }
+
+    .creation-home .creation-chat-composer.is-desktop.is-thread .creation-chat-writing-surface,
+    .creation-home .creation-chat-composer.is-desktop.is-thread.has-references .creation-chat-writing-surface {
+        min-height: 62px;
+        max-height: none;
+        padding: 10px 12px 5px;
+    }
+
+    .creation-home .creation-chat-composer.is-desktop.is-thread .creation-chat-editor,
+    .creation-home .creation-chat-composer.is-desktop.is-thread.has-references .creation-chat-editor {
+        display: flex;
+        min-width: 0;
+        flex-direction: column;
+        gap: 0;
+    }
+
+    .creation-home .creation-chat-composer.is-desktop.is-thread .creation-prompt-panel-header {
+        display: none;
+    }
+
+    .creation-home .creation-chat-composer.is-desktop.is-thread .creation-chat-mention-container,
+    .creation-home .creation-chat-composer.is-desktop.is-thread .creation-chat-mention-editor,
+    .creation-home .creation-chat-composer.is-desktop.is-thread.has-reference-entry .creation-chat-mention-container,
+    .creation-home .creation-chat-composer.is-desktop.is-thread.has-reference-entry .creation-chat-mention-editor,
+    .creation-home .creation-chat-composer.is-desktop.is-thread:not(.has-references):not(.has-reference-entry) .creation-chat-mention-container,
+    .creation-home .creation-chat-composer.is-desktop.is-thread:not(.has-references):not(.has-reference-entry) .creation-chat-mention-editor,
+    .creation-home .creation-chat-composer.is-desktop.is-thread.has-references .creation-chat-mention-container,
+    .creation-home .creation-chat-composer.is-desktop.is-thread.has-references .creation-chat-mention-editor {
+        width: auto !important;
+        min-height: 46px;
+        max-height: 92px;
+        overflow-y: auto !important;
+    }
+
+    .creation-home .creation-chat-composer.is-desktop.is-thread.has-references .creation-reference-panel {
+        order: initial;
+        display: flex;
+        width: 100%;
+        min-width: 0;
+        min-height: 52px;
+        max-height: 60px;
+        flex-direction: row;
+        align-items: center;
+        gap: 9px;
+        margin: 7px 0 0;
+        border: 0;
+        border-top: 1px solid var(--app-border-subtle, var(--creation-border));
+        border-radius: 0;
+        background: transparent;
+        padding: 7px 0 0;
+    }
+
+    .creation-home .creation-chat-composer.is-desktop.is-thread.has-references .creation-reference-panel-header {
+        display: contents;
+    }
+
+    .creation-home .creation-chat-composer.is-desktop.is-thread.has-references .creation-reference-panel-title {
+        order: 1;
+        flex: 0 0 auto;
+    }
+
+    .creation-home .creation-chat-composer.is-desktop.is-thread.has-references .creation-reference-filter-tabs {
+        display: none;
+    }
+
+    .creation-home .creation-chat-composer.is-desktop.is-thread.has-references .creation-reference-track-wrapper {
+        order: 2;
+        min-width: 0;
+        min-height: 44px;
+        flex: 1 1 auto;
+        align-self: center;
+    }
+
+    .creation-home .creation-chat-composer.is-desktop.is-thread.has-references .creation-reference-panel-actions {
+        order: 3;
+        flex: 0 0 auto;
+    }
+
+    .creation-home .creation-chat-composer.is-desktop.is-thread .creation-chat-dock {
+        min-height: 56px;
+        max-height: 64px;
+        gap: 8px;
+        padding: 7px 9px 9px 10px;
+    }
+
+    .creation-home .creation-chat-composer.is-desktop.is-thread .creation-entry-toolbar {
+        gap: 6px;
+    }
+
+    .creation-home .creation-chat-composer.is-desktop.is-thread .creation-entry-group.is-reference {
+        display: flex;
+        flex: 0 0 auto;
+        align-items: flex-end;
+        gap: 4px;
+    }
+
+    .creation-home .creation-chat-composer.is-desktop.is-thread .creation-entry-group.is-reference .creation-entry-button {
+        width: auto;
+        min-width: 66px;
+        height: 36px;
+        justify-content: center;
+        padding: 0 9px;
+    }
+
+    .creation-home .creation-chat-composer.is-desktop.is-thread .creation-entry-group.is-config {
+        gap: 6px;
+    }
+
+    .creation-home .creation-chat-composer.is-desktop.is-thread .creation-config-field.is-mode {
+        width: 120px;
+        flex-basis: 120px;
+    }
+
+    .creation-home .creation-chat-composer.is-desktop.is-thread .creation-config-field.is-model {
+        width: 146px;
+        flex-basis: 146px;
+    }
+
+    .creation-home .creation-chat-composer.is-desktop.is-thread .creation-config-field.is-settings {
+        width: 150px;
+        flex-basis: 150px;
+    }
+
+    .creation-home .creation-chat-composer.is-desktop.is-thread .creation-continuation-context {
+        border-color: var(--app-border-subtle, var(--creation-border));
+        background: color-mix(in srgb, var(--app-selection-bg, var(--creation-accent-soft)) 58%, var(--app-surface-1, var(--creation-surface)));
     }
 
     .creation-generation-settings-surface .creation-parameter-menu {

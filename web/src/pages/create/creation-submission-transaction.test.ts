@@ -30,6 +30,7 @@ describe("creation submission transaction", () => {
             attachments: [],
             references: [],
             settings,
+            continuationParentMessageId: "source-assistant",
             retryContext: { clientOperationId: "operation-1", retryOf: "task-0", attemptGroupId: "attempt-1" },
             retryTarget: { shotId: "stable-shot" },
             createId: () => ids.shift() || "fallback-id",
@@ -38,7 +39,9 @@ describe("creation submission transaction", () => {
 
         assert.equal(result.userMessage.id, "stable-shot");
         assert.equal(result.userMessage.content, "一段电影镜头");
+        assert.equal(result.userMessage.parentMessageId, "source-assistant");
         assert.equal(result.assistantMessage.id, "assistant-id");
+        assert.equal(result.assistantMessage.parentMessageId, "stable-shot");
         assert.equal(result.assistantMessage.status, "pending");
         assert.equal(result.assistantMessage.clientOperationId, "operation-1");
     });

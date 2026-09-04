@@ -9,6 +9,7 @@ import {
     ChevronRight,
     Clapperboard,
     Clock3,
+    CornerUpLeft,
     FileText,
     Film,
     Image as ImageIcon,
@@ -271,6 +272,8 @@ type ComposerProps = {
     promptOptimizerProvider: PromptOptimizerProvider | null;
     composerFocusRef: RefObject<HTMLTextAreaElement | null>;
     desktopLayout: boolean;
+    continuationContext?: { label: string; detail: string };
+    onClearContinuation?: () => void;
     placeholderOverride?: string;
     onSubmit: () => void;
 };
@@ -290,6 +293,7 @@ export function CreationComposer(props: ComposerProps) {
     const cardDragRef = useRef<{ startX: number; startY: number; moved: boolean } | null>(null);
     const suppressAttachmentClickRef = useRef(false);
     const [trackState, setTrackState] = useState({ canScrollLeft: false, canScrollRight: false, isDragging: false });
+    const compactThread = props.desktopLayout && props.variant === "thread";
     const interactionBusy = props.busy || props.referenceReplacementBusy || props.uploadPendingCount > 0;
     const creditsEnabled = useUserStore((state) => state.features.creditsEnabled);
     const priceChannel = resolveModelChannel(props.config, props.model);
@@ -506,7 +510,7 @@ export function CreationComposer(props: ComposerProps) {
     };
     const composer = (
         <section
-            className={`creation-chat-composer is-${props.variant}${props.desktopLayout ? " is-desktop" : ""}${props.attachments.length ? " has-references" : ""}${showReferenceEntry ? " has-reference-entry" : ""}${isFileDraggingOver ? " is-file-dragging-over" : ""}`}
+            className={`creation-chat-composer is-${props.variant}${props.desktopLayout ? " is-desktop" : ""}${props.attachments.length ? " has-references" : ""}${showReferenceEntry ? " has-reference-entry" : ""}${props.continuationContext ? " has-continuation" : ""}${isFileDraggingOver ? " is-file-dragging-over" : ""}`}
             aria-busy={interactionBusy}
             onDragEnter={handleComposerDragEnter}
             onDragOver={handleComposerDragOver}
@@ -519,7 +523,21 @@ export function CreationComposer(props: ComposerProps) {
                     <span>{fileDropLabel}</span>
                 </div>
             ) : null}
-            {showReferenceEntry ? (
+            {props.continuationContext ? (
+                <div className="creation-continuation-context" role="status">
+                    <span className="creation-continuation-context-icon" aria-hidden="true">
+                        <CornerUpLeft />
+                    </span>
+                    <span className="creation-continuation-context-copy">
+                        <strong>{props.continuationContext.label}</strong>
+                        <small>{props.continuationContext.detail}</small>
+                    </span>
+                    <button type="button" onClick={props.onClearContinuation} aria-label="取消承接上一轮">
+                        <X aria-hidden="true" />
+                    </button>
+                </div>
+            ) : null}
+            {showReferenceEntry && !compactThread ? (
                 <div className="creation-reference-entry-bar" aria-label="参考素材工具栏">
                     <div className="creation-reference-entry-copy">
                         <span className="creation-reference-entry-icon" aria-hidden="true">
@@ -728,6 +746,21 @@ export function CreationComposer(props: ComposerProps) {
             ) : null}
             <footer className="creation-chat-dock">
                 <div className="creation-chat-controls creation-entry-toolbar">
+                    {compactThread && showReferenceEntry ? (
+                        <>
+                            <div className="creation-entry-group is-reference" role="group" aria-label="添加参考素材">
+                                <button type="button" className="creation-entry-button creation-reference-action is-upload" onClick={() => props.fileInputRef.current?.click()} disabled={interactionBusy} aria-label={directUploadLabel} title={directUploadLabel}>
+                                    <Upload aria-hidden="true" />
+                                    <span>参考</span>
+                                </button>
+                                <button type="button" className="creation-entry-button creation-reference-action is-library" onClick={props.onOpenLibrary} disabled={interactionBusy} aria-label="打开素材库上传或选择素材" title="素材库">
+                                    <Library aria-hidden="true" />
+                                    <span>素材库</span>
+                                </button>
+                            </div>
+                            <span className="creation-entry-divider" aria-hidden="true" />
+                        </>
+                    ) : null}
                     <div className="creation-entry-group is-config" role="group" aria-label="生成配置">
                         <div className="creation-config-field is-mode">
                             <span className="creation-config-label">{props.desktopLayout ? "创作类型" : "类型"}</span>

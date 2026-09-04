@@ -22,6 +22,7 @@ type CreationSubmissionMessagesInput = {
     attachments: CreationAttachment[];
     references: CreationReference[];
     settings: CreationSettings;
+    continuationParentMessageId?: string;
     retryContext?: CreationSubmissionRetryContext;
     retryTarget?: Pick<CreationSubmissionRetryTarget, "shotId">;
     createId?: () => string;
@@ -51,6 +52,7 @@ export function createCreationSubmissionMessages(input: CreationSubmissionMessag
             attachments: input.attachments,
             references: input.references,
             settings: input.settings,
+            ...(input.continuationParentMessageId ? { parentMessageId: input.continuationParentMessageId } : {}),
         },
         createId,
         now,
@@ -63,6 +65,7 @@ export function createCreationSubmissionMessages(input: CreationSubmissionMessag
             model: input.selectedModel,
             status: input.mode === "text" ? "streaming" : "pending",
             settings: input.settings,
+            parentMessageId: userMessage.id,
             ...input.retryContext,
         },
         createId,

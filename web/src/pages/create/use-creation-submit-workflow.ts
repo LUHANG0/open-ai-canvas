@@ -1,6 +1,7 @@
-import { useEffect, useRef, type Dispatch, type MutableRefObject, type SetStateAction } from "react";
+import { useCallback, useEffect, useRef, useState, type Dispatch, type MutableRefObject, type SetStateAction } from "react";
 
 import { isGenerationTaskCancelled } from "@/services/api/generation-task";
+import { cancelGenerationTask } from "@/services/api/task-center";
 import { beginGenerationConsumer } from "@/services/generation-consumer-lifecycle";
 import { skillRuntime } from "@/services/skill-runtime";
 import type { ImageCapabilityConfig, VideoCapabilityConfig } from "@/lib/model-capabilities";
@@ -52,6 +53,7 @@ type CreationSubmitWorkflowOptions = {
     quality: string;
     videoQuality: string;
     count: string;
+    continuationParentMessageId?: string;
     pendingRetry: PendingCreationRetry | null;
     clearPendingRetry: () => void;
     releaseRetryLock: (retryLockKey?: string) => void;
@@ -112,6 +114,7 @@ export function useCreationSubmitWorkflow(options: CreationSubmitWorkflowOptions
         quality,
         videoQuality,
         count,
+        continuationParentMessageId,
         pendingRetry,
         clearPendingRetry,
         releaseRetryLock,
@@ -125,8 +128,18 @@ export function useCreationSubmitWorkflow(options: CreationSubmitWorkflowOptions
         toast,
     } = options;
     const abortRef = useRef<AbortController | null>(null);
+    const submissionControllersRef = useRef(new Map<string, AbortController>());
+    const cancellingMessageIdsRef = useRef(new Set<string>());
+    const [cancellingMessageIds, setCancellingMessageIds] = useState<Set<string>>(() => new Set());
 
-    useEffect(() => () => abortRef.current?.abort(), []);
+    useEffect(
+        () => () => {
+            abortRef.current?.abort();
+            submissionControllersRef.current.forEach((controller) => controller.abort());
+            submissionControllersRef.current.clear();
+        },
+        [],
+    );
 
     const submit = async (retryContext?: CreationRetryContext, retryLockKey?: string, retryTarget?: CreationRetryTarget) => {
         const releaseCurrentRetryLock = () => releaseRetryLock(retryLockKey);
@@ -195,6 +208,7 @@ export function useCreationSubmitWorkflow(options: CreationSubmitWorkflowOptions
             attachments: submissionAttachments,
             references,
             settings,
+            continuationParentMessageId: retryTarget ? undefined : continuationParentMessageId,
             retryContext,
             retryTarget,
         });
@@ -218,6 +232,7 @@ export function useCreationSubmitWorkflow(options: CreationSubmitWorkflowOptions
         const controller = new AbortController();
         const requestLifecycle = beginGenerationConsumer(controller.signal);
         abortRef.current = controller;
+        submissionControllersRef.current.set(assistantMessage.id, controller);
         try {
             await executeCreationGeneration({
                 preparation,
@@ -243,6 +258,7 @@ export function useCreationSubmitWorkflow(options: CreationSubmitWorkflowOptions
         } finally {
             requestLifecycle.release();
             releaseCurrentRetryLock();
+            if (submissionControllersRef.current.get(assistantMessage.id) === controller) submissionControllersRef.current.delete(assistantMessage.id);
             if (abortRef.current === controller) {
                 abortRef.current = null;
                 setBusy(false);
@@ -250,11 +266,49 @@ export function useCreationSubmitWorkflow(options: CreationSubmitWorkflowOptions
         }
     };
 
+    const cancelSubmission = useCallback(
+        async (conversationId: string, messageId: string, taskIds: string[] = []) => {
+            if (cancellingMessageIdsRef.current.has(messageId)) return;
+            const controller = submissionControllersRef.current.get(messageId);
+            const uniqueTaskIds = Array.from(new Set(taskIds.filter(Boolean)));
+            if (!controller && !uniqueTaskIds.length) {
+                toast.warning("当前生成任务还没有可取消的任务标识");
+                return;
+            }
+            cancellingMessageIdsRef.current.add(messageId);
+            setCancellingMessageIds(new Set(cancellingMessageIdsRef.current));
+            try {
+                if (uniqueTaskIds.length) {
+                    const settled = await Promise.allSettled(uniqueTaskIds.map((id) => cancelGenerationTask(id)));
+                    const cancelledCount = settled.filter((item) => item.status === "fulfilled").length;
+                    if (!cancelledCount) {
+                        const reason = settled.find((item): item is PromiseRejectedResult => item.status === "rejected")?.reason;
+                        toast.warning(reason instanceof Error ? reason.message : "当前任务暂时无法停止");
+                        return;
+                    }
+                    if (cancelledCount !== uniqueTaskIds.length) {
+                        toast.warning("部分生成任务未能停止，仍会继续同步剩余结果");
+                        return;
+                    }
+                }
+                controller?.abort();
+                await updateConversationMessage(conversationId, messageId, (item) => cancelCreationSubmissionMessage(item));
+                toast.info("已停止本轮生成，之前的创作记录仍会保留");
+            } catch (error) {
+                toast.error(error instanceof Error ? error.message : "停止生成失败");
+            } finally {
+                cancellingMessageIdsRef.current.delete(messageId);
+                setCancellingMessageIds(new Set(cancellingMessageIdsRef.current));
+            }
+        },
+        [toast, updateConversationMessage],
+    );
+
     useEffect(() => {
         if (!pendingRetry) return;
         clearPendingRetry();
         void submit(pendingRetry.context, pendingRetry.lockKey, pendingRetry.target);
     }, [pendingRetry]);
 
-    return { submit };
+    return { submit, cancelSubmission, cancellingMessageIds };
 }
