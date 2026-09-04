@@ -1,0 +1,81 @@
+---
+title: 邀请注册 API
+description: 创建、交换、消费与撤销单次注册邀请
+---
+
+# 邀请注册 API
+
+> 邀请 token 是一次性凭证。除创建成功响应外，不得把 token 写入日志、错误、审计、配置或数据库。管理员列表无法再次读取原始链接。
+
+管理员创建单次、限时、可撤销的普通用户邀请。匿名浏览器先交换 URL token，后端验证后设置最长 15 分钟的 HttpOnly Cookie；随后的现有注册接口根据该 Cookie 选择邀请分支。
+
+## 创建和管理邀请
+
+### `POST /api/admin/registration-invites`
+
+仅管理员可用。有效期只接受 `1` / `3` / `7`，备注最长 500 个字符。
+
+```json
+{
+  "expiresInDays": 7,
+  "note": "九月新成员"
+}
+```
+
+响应中的 `token` 只出现这一次：
+
+```json
+{
+  "code": 0,
+  "data": {
+    "invite": {
+      "id": "<invite-id>",
+      "status": "pending",
+      "expiresAt": "<RFC3339-time>",
+      "createdAt": "<RFC3339-time>"
+    },
+    "token": "<one-time-base64url-token>"
+  },
+  "msg": "ok"
+}
+```
+
+### `GET /api/admin/registration-invites`
+
+查询参数为 `status=pending|used|expired|revoked|all`、`page`和 `limit`。已使用记录只返回对应用户的 ID、用户名和显示名；不返回邮箱、密码哈希、token 哈希或原始链接。
+
+### `POST /api/admin/registration-invites/:id/revoke`
+
+仅待使用且未过期的邀请可撤销。创建与撤销均追加管理审计，审计元数据不含 token。
+
+## 交换并完成注册
+
+### `POST /api/auth/registration-invites/exchange`
+
+公开限流接口。首次请求提交 URL 中读取的 token：
+
+```json
+{
+  "token": "<one-time-base64url-token>"
+}
+```
+
+有效时返回 `pending` 与到期时间，并设置 `HttpOnly; SameSite=Lax; Path=/api/auth` Cookie；HTTPS 请求同时设置 `Secure`。客户端必须紧接着以 replace 方式从地址栏删除 `invite` 参数。返回状态可为 `pending`、`invalid`、`expired`、`used` 或 `revoked`；非有效状态会清理邀请 Cookie。
+
+### `POST /api/auth/register`
+
+请求体沿用现有合同。存在有效邀请 Cookie 时，邮箱和 `emailCode` 可省略，并且不检查全局公开注册开关；用户名、邮箱格式/唯一性、密码、注册限流和注册奖励保持不变。客户端不能提交或选择角色，后端固定创建 `user`。
+
+邀请占用、用户、注册奖励和登录会话在同一事务中提交。并发消费同一邀请时只有一个条件更新成功；字段或写入失败回滚邀请。注册成功，或邀请已无效、过期、使用、撤销时清理 Cookie；可修正的用户输入失败保留 Cookie 以便重试。
+
+## 错误与安全边界
+
+| 场景 | HTTP | 客户端处理 |
+| --- | --- | --- |
+| 未登录或普通用户访问管理接口 | `401` / `403` | 不展示或不执行管理操作 |
+| 有效期、备注或筛选参数无效 | `400` | 保留当前表单并显示可修正错误 |
+| token 不存在或格式无效 | `200` + `invalid` | 清理 Cookie，显示无效状态，不返回内部区分 |
+| 邀请过期、已使用或已撤销 | `200` + 对应状态 | 清理 Cookie，不返回关联用户敏感信息 |
+| 注册限流 | `429` | 遵循 `Retry-After`，不立即重试 |
+
+所有公开响应都使用统一 `{ code, data, msg }` 包装。

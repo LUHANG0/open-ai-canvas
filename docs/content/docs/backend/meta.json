@@ -6,6 +6,7 @@
     "local-development",
     "code-map",
     "backend-database",
+    "registration-invites",
     "system-update",
     "launch-operations",
     "protocol-plugins",
