@@ -15,6 +15,8 @@ describe("registration invitation experience", () => {
         expect(register).toContain('nextParams.delete("invite")');
         expect(register).toContain('nextParams.set("invited", "1")');
         expect(register).toContain('navigate({ pathname: "/register", search: nextParams.toString() }, { replace: true })');
+        expect(register).toContain("exchangedTokenRef.current = true");
+        expect(register).toContain("if (inviteToken === null && exchangedTokenRef.current) return");
         expect(register).toContain("!settings?.firstUser && !isInviteFlow");
         expect(register).toContain("邮箱可选");
     });

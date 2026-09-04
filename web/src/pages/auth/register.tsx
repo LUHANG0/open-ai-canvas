@@ -1,4 +1,4 @@
-import { type FormEvent, useEffect, useState, type ReactNode } from "react";
+import { type FormEvent, useEffect, useRef, useState, type ReactNode } from "react";
 import { App, Button, Divider, Input } from "antd";
 import { ArrowRight, Info, LockKeyhole, Mail, RotateCcw, ShieldCheck, TriangleAlert, UserRound } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router";
@@ -25,6 +25,7 @@ export default function RegisterPage() {
     const [inviteStatus, setInviteStatus] = useState<RegistrationInviteStatus | "loading" | "network-error" | null>(null);
     const [inviteError, setInviteError] = useState("");
     const [inviteRetry, setInviteRetry] = useState(0);
+    const exchangedTokenRef = useRef(false);
     const inviteToken = params.get("invite");
     const isInviteFlow = inviteToken !== null || params.get("invited") === "1";
     const searchParamsText = params.toString();
@@ -36,6 +37,10 @@ export default function RegisterPage() {
             setInviteError("");
             return;
         }
+        // Replacing ?invite=<secret> with ?invited=1 changes the search params
+        // without remounting this page. Preserve the exchange result instead of
+        // immediately validating again after a terminal response cleared cookie.
+        if (inviteToken === null && exchangedTokenRef.current) return;
         let active = true;
         setInviteStatus("loading");
         setInviteError("");
@@ -44,6 +49,7 @@ export default function RegisterPage() {
                 if (!active) return;
                 setInviteStatus(result.status);
                 if (inviteToken !== null) {
+                    exchangedTokenRef.current = true;
                     const nextParams = new URLSearchParams(searchParamsText);
                     nextParams.delete("invite");
                     nextParams.set("invited", "1");
