@@ -135,6 +135,7 @@ function HomeWorkspace(props: HomeWorkspaceProps) {
         taskCount: props.tasks.length,
         projectsState: props.projectsState,
         tasksState: props.tasksState,
+        localDataState: props.localDataHydrated ? "ready" : "loading",
     });
     const primaryAction = homePrimaryAction(mode, activeProject?.project.id);
     const createProjectHref = projectCreateHref(Boolean(props.user));
@@ -323,7 +324,7 @@ function RecentWorkSection({
                     </Button>
                 </div>
             ) : null}
-            {projectsState === "loading" || !localDataHydrated ? (
+            {!localDataHydrated || (projectsState === "loading" && !hasItems) ? (
                 <div className="home-card-skeletons" aria-label="正在读取最近创作">
                     <i />
                     <i />

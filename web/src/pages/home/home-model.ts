@@ -10,6 +10,7 @@ export type HomeModeInput = {
     taskCount: number;
     projectsState: HomeSectionState;
     tasksState: HomeSectionState;
+    localDataState: HomeSectionState;
 };
 
 export type HomePrimaryAction = {
@@ -21,7 +22,7 @@ export function deriveHomeMode(input: HomeModeInput): HomeMode {
     if (input.activeProjectId) return "project";
 
     const hasActivity = input.projectCount + input.canvasCount + input.assetCount + input.taskCount > 0;
-    const hasUnresolvedHistory = input.projectsState === "loading" || input.projectsState === "error" || input.tasksState === "loading" || input.tasksState === "error";
+    const hasUnresolvedHistory = input.projectsState === "loading" || input.projectsState === "error" || input.tasksState === "loading" || input.tasksState === "error" || input.localDataState === "loading" || input.localDataState === "error";
     return hasActivity || hasUnresolvedHistory ? "returning" : "empty";
 }
 

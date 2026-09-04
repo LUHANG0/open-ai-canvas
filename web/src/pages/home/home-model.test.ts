@@ -11,6 +11,7 @@ const settledEmpty = {
     taskCount: 0,
     projectsState: "ready" as const,
     tasksState: "ready" as const,
+    localDataState: "ready" as const,
 };
 
 test("有 active project 时优先继续该项目", () => {
@@ -33,6 +34,7 @@ test("所有来源明确完成且无活动时才是真正空账号", () => {
 test("项目失败或任务仍在加载时不误判为空账号", () => {
     assert.equal(deriveHomeMode({ ...settledEmpty, projectsState: "error" }), "returning");
     assert.equal(deriveHomeMode({ ...settledEmpty, tasksState: "loading" }), "returning");
+    assert.equal(deriveHomeMode({ ...settledEmpty, localDataState: "loading" }), "returning");
 });
 
 test("shortDrama 与 taskCenter feature gate 控制各自入口", () => {
