@@ -1,32 +1,15 @@
-import { useEffect, useState } from "react";
-import { useReducedMotion } from "motion/react";
-
-import { useBranding } from "@/components/branding/branding-provider";
+import { useState } from "react";
+import { usePublicSite } from "@/components/public-site/public-site-provider";
+import { BRAND_CONCEPT_POSTER } from "@/lib/public-site-content";
 
 export function AuthMedia() {
-    const reducedMotion = useReducedMotion();
-    const { branding } = useBranding();
-    const [mediaFailed, setMediaFailed] = useState(false);
-    const hero = branding.assets;
-
-    useEffect(() => setMediaFailed(false), [hero.authHeroUrl]);
-
-    const showVideo = Boolean(!reducedMotion && hero.authHeroKind === "video" && hero.authHeroUrl && !mediaFailed);
-    const showImage = Boolean(hero.authHeroKind === "image" && hero.authHeroUrl && !mediaFailed);
-    const showPoster = Boolean(hero.authHeroKind === "video" && hero.authHeroPosterUrl && !showVideo);
-
+    const { site } = usePublicSite();
+    const [failedURL, setFailedURL] = useState("");
+    const configuredURL = site.config.hero.posterUrl || BRAND_CONCEPT_POSTER;
     return (
         <div className="pc-auth-atmosphere" aria-hidden="true">
-            {showVideo ? (
-                <video className="pc-auth-atmosphere-media" src={hero.authHeroUrl} poster={hero.authHeroPosterUrl || undefined} autoPlay muted loop playsInline preload="metadata" onError={() => setMediaFailed(true)} />
-            ) : showImage || showPoster ? (
-                <img className="pc-auth-atmosphere-media" src={showImage ? hero.authHeroUrl : hero.authHeroPosterUrl} alt="" referrerPolicy="no-referrer" onError={() => setMediaFailed(true)} />
-            ) : (
-                <div className="pc-auth-brand-ambient" />
-            )}
+            <img className="pc-auth-atmosphere-media" src={failedURL === configuredURL ? BRAND_CONCEPT_POSTER : configuredURL} alt="" fetchPriority="high" onError={() => setFailedURL(configuredURL)} />
             <div className="pc-auth-atmosphere-grade" />
-            <div className="pc-auth-atmosphere-vignette" />
-            <div className="pc-auth-atmosphere-glow" />
         </div>
     );
 }

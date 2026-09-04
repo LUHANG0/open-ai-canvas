@@ -46,8 +46,8 @@ describe("PC detail polish regression gates", () => {
         const auth = `${authScene}\n${authForm}`;
 
         expect(compact(auth)).toContain("@media (max-width: 560px)");
-        expect(compact(auth)).toContain(".pc-auth-workspace { padding: 12px; }");
-        expect(compact(auth)).toContain(".pc-auth-panel { max-height: calc(100dvh - 24px);");
+        expect(compact(auth)).toContain("@media (max-width: 900px)");
+        expect(compact(auth)).not.toContain("max-height: calc(100dvh - 24px)");
         expect(compact(auth)).toContain(".pc-auth-form-assurance, .pc-auth-password-status { display: flex;");
         expect(auth).not.toContain(".pc-auth-brand-capabilities");
         expect(compact(plugins.slice(0, plugins.indexOf("@media (min-width: 1024px)")))).toContain(".plugins-overview, .plugin-card-open-hint, .plugin-section-card-icon { display: none; }");

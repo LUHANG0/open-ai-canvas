@@ -19,7 +19,7 @@ const heroFields: Field[] = [
     { key: "primaryCta", label: "主按钮" },
     { key: "secondaryCta", label: "次按钮" },
     { key: "showreelLabel", label: "片场标识" },
-    { key: "showreelUrl", label: "背景视频 URL", placeholder: "支持 HTTPS 视频地址；留空则复用登录页背景" },
+    { key: "showreelUrl", label: "背景视频 URL", placeholder: "支持 HTTPS 视频地址；留空展示品牌概念海报" },
     { key: "posterUrl", label: "视频海报 URL", placeholder: "支持 HTTPS 图片地址" },
 ];
 
@@ -225,11 +225,13 @@ export default function PublicSiteSettingsPage() {
                 ) : null}
                 <div className="admin-public-site-grid">
                     <div className="admin-public-site-form">
-                        <SettingsSectionCard icon={<Globe2 className="size-4" />} title="首页首屏" description="背景视频留空时，自动使用品牌与外观中的登录页背景。">
+                        <SettingsSectionCard icon={<Globe2 className="size-4" />} title="首页首屏" description="背景视频留空时展示品牌概念海报；邀请制主入口固定为受邀登录。">
                             <div className="admin-public-site-fields">
-                                {heroFields.map((field) => (
-                                    <LabeledField key={field.key} field={field} value={draft.hero[field.key as keyof typeof draft.hero]} onChange={(value) => update("hero", field.key, value)} />
-                                ))}
+                                {heroFields
+                                    .filter((field) => field.key !== "primaryCta")
+                                    .map((field) => (
+                                        <LabeledField key={field.key} field={field} value={draft.hero[field.key as keyof typeof draft.hero]} onChange={(value) => update("hero", field.key, value)} />
+                                    ))}
                             </div>
                         </SettingsSectionCard>
                         <SettingsSectionCard icon={<Eye className="size-4" />} title="页面章节" description="标题支持换行，用于首页与对应内页的主叙事。">
@@ -283,20 +285,17 @@ export default function PublicSiteSettingsPage() {
                         </SettingsSectionCard>
                         <SettingsSectionCard icon={<ArrowUpRight className="size-4" />} title="链接与搜索摘要" description="内部地址使用 / 开头，外部地址必须使用 HTTPS。">
                             <div className="admin-public-site-fields">
-                                <Labeled label="代码仓库 URL">
-                                    <Input value={draft.links.repositoryUrl} onChange={(e) => update("links", "repositoryUrl", e.target.value)} />
-                                </Labeled>
-                                <Labeled label="部署说明 URL">
-                                    <Input value={draft.links.deploymentUrl} onChange={(e) => update("links", "deploymentUrl", e.target.value)} />
-                                </Labeled>
                                 <Labeled label="文档 URL">
                                     <Input value={draft.links.docsUrl} onChange={(e) => update("links", "docsUrl", e.target.value)} />
                                 </Labeled>
                                 <Labeled label="联系 URL">
                                     <Input value={draft.links.contactUrl} onChange={(e) => update("links", "contactUrl", e.target.value)} />
                                 </Labeled>
-                                <Labeled label="备案信息" wide>
-                                    <Input value={draft.links.icpText} onChange={(e) => update("links", "icpText", e.target.value)} />
+                                <Labeled label="备案号（留空不展示）" wide>
+                                    <Input value={draft.links.icpText} maxLength={120} placeholder="填写网站实际备案号" onChange={(e) => update("links", "icpText", e.target.value)} />
+                                </Labeled>
+                                <Labeled label="备案查询链接" wide>
+                                    <Input value={draft.links.icpUrl || ""} placeholder="https://beian.miit.gov.cn/" onChange={(e) => update("links", "icpUrl", e.target.value)} />
                                 </Labeled>
                                 <Labeled label="首页浏览器标题" wide>
                                     <Input value={draft.seo.homeTitle} onChange={(e) => update("seo", "homeTitle", e.target.value)} />
@@ -319,7 +318,7 @@ export default function PublicSiteSettingsPage() {
                                 <small>{draft.hero.eyebrow}</small>
                                 <h2>{draft.hero.title}</h2>
                                 <p>{draft.hero.description}</p>
-                                <b>{draft.hero.primaryCta}</b>
+                                <b>受邀登录</b>
                             </div>
                         </div>
                         <p>预览展示当前表单中的首屏文案。完整布局可在保存并发布后通过“查看线上官网”检查。</p>

@@ -3,39 +3,25 @@ import { describe, expect, test } from "bun:test";
 const read = (path: string) => Bun.file(new URL(path, import.meta.url)).text();
 
 describe("auth login experience", () => {
-    test("uses a full-screen video entry and reveals one centered auth panel", async () => {
-        const [scene, entry, media, panel] = await Promise.all([read("../src/pages/auth/auth-scene.tsx"), read("../src/pages/auth/auth-entry.tsx"), read("../src/pages/auth/auth-media.tsx"), read("../src/pages/auth/auth-panel.tsx")]);
-        const experience = [scene, entry, media, panel].join("\n");
-
-        expect(scene).toContain("authOpen");
+    test("opens the form directly and shares the website identity, poster and filing settings", async () => {
+        const [scene, media, panel] = await Promise.all([read("../src/pages/auth/auth-scene.tsx"), read("../src/pages/auth/auth-media.tsx"), read("../src/pages/auth/auth-panel.tsx")]);
         expect(scene).toContain("<AuthSettingsProvider>");
-        expect(scene).toContain("<AuthMedia />");
-        expect(scene).toContain("<AuthEntry");
         expect(scene).toContain("<AuthPanel");
-        expect(entry).toContain("pc-auth-entry-nav");
-        expect(entry).toContain("pc-auth-stars");
-        expect(entry).toContain("pc-auth-entry-ornament");
-        expect(entry).toContain("pc-auth-entry-brand-mark");
-        expect(entry).toContain("branding.config.auth.title");
-        expect(entry).toContain("branding.config.auth.description");
-        expect(entry).toContain("进入{branding.config.identity.shortName}");
-        expect(media).toContain("pc-auth-atmosphere-media");
-        expect(media).toContain("pc-auth-atmosphere-vignette");
-        expect(media).toContain("pc-auth-atmosphere-glow");
-        expect(panel).toContain("pc-auth-brand-head");
-        expect(panel).toContain("pc-auth-workspace");
-        expect(panel).toContain("pc-auth-panel-close");
-        expect(experience).not.toContain("pc-auth-brand-stage");
-        expect(experience).not.toContain("pc-auth-feature-media");
-        expect(experience).not.toContain("pc-auth-layout");
-        expect(experience).not.toContain("pc-auth-sheet");
-        expect(experience).not.toContain("WELCOME BACK");
-        expect(experience).not.toContain("AUTHENTICATION");
+        expect(scene).not.toContain("authOpen");
+        expect(scene).not.toContain("AuthEntry");
+        expect(scene).toContain("branding.config.auth.title");
+        expect(panel).toContain("branding.config.auth.description");
+        expect(scene).toContain("site.config.links.icpText");
+        expect(scene).toContain("site.config.links.icpUrl");
+        expect(scene).toContain("返回官网");
+        expect(media).toContain("site.config.hero.posterUrl || BRAND_CONCEPT_POSTER");
+        expect(media).toContain("failedURL === configuredURL ? BRAND_CONCEPT_POSTER : configuredURL");
+        expect(panel).not.toContain("pc-auth-panel-close");
+        expect(panel).toContain('<div className="pc-auth-form-slot">');
     });
 
     test("provides local failure feedback and accessible login fields", async () => {
         const login = await read("../src/pages/auth/login.tsx");
-
         expect(login).toContain('role="alert"');
         expect(login).toContain('aria-describedby={submitError ? "login-error" : undefined}');
         expect(login).toContain('autoComplete="username"');
@@ -44,23 +30,21 @@ describe("auth login experience", () => {
         expect(login).toContain('name="username"');
         expect(login).toContain('name="password"');
         expect(login).toContain("disabled={submitting}");
-        expect(login).toContain("pc-auth-login-fields");
-        expect(login).not.toContain("pc-auth-credential-group");
     });
 
-    test("presents registration-disabled states as an invitation-only customer flow", async () => {
-        const [panel, register] = await Promise.all([read("../src/pages/auth/auth-panel.tsx"), read("../src/pages/auth/register.tsx")]);
-
+    test("preserves invitation-only registration and first-administrator routing", async () => {
+        const [scene, panel, register] = await Promise.all([read("../src/pages/auth/auth-scene.tsx"), read("../src/pages/auth/auth-panel.tsx"), read("../src/pages/auth/register.tsx")]);
+        expect(scene).toContain('settings.firstUser && mode !== "register"');
+        expect(scene).toContain("!inviteFlow && !invitedFlow");
         expect(panel).toContain("仅限受邀成员使用，需要账号请联系团队管理员");
+        expect(panel).toContain("!settings.emailCodeRequired || settings.emailEnabled");
         expect(register).toContain("当前仅限受邀成员使用");
         expect(register).toContain("请联系团队管理员获取邀请");
         expect(register).not.toContain("管理员尚未配置注册邮件");
-        expect(register).not.toContain("邮箱注册暂不可用");
     });
 
     test("contains guest hydration failures instead of leaking an unhandled rejection", async () => {
         const [hydrator, session] = await Promise.all([read("../src/components/auth/auth-session-hydrator.tsx"), read("../src/lib/user-session.ts")]);
-
         expect(hydrator).toContain("void getAuthSession()");
         expect(hydrator).toContain("访客状态初始化未完整完成，登录后将自动重试");
         expect(hydrator.match(/\.catch\(/g)?.length).toBe(2);
@@ -68,14 +52,14 @@ describe("auth login experience", () => {
         expect(session).toContain("channels: []");
     });
 
-    test("preloads auth forms without Suspense and keeps settings single-flight so switching stays smooth", async () => {
+    test("preloads auth forms with a retryable failure and keeps settings single-flight", async () => {
         const [scene, loader, provider, router] = await Promise.all([read("../src/pages/auth/auth-scene.tsx"), read("../src/pages/auth/auth-route-loader.ts"), read("../src/pages/auth/auth-settings-provider.tsx"), read("../src/router.tsx")]);
-
         expect(loader).toContain('login: () => import("./login")');
         expect(loader).toContain('register: () => import("./register")');
         expect(loader).toContain("if (pendingPage) return pendingPage");
         expect(scene).toContain("void preloadAuthPages()");
-        expect(scene).toContain("await Promise.all([preloadAuthPages(), ensureReady().catch(() => null)])");
+        expect(scene).toContain("setPageError(true)");
+        expect(scene).toContain("重新加载");
         expect(scene).not.toContain("Suspense");
         expect(scene).not.toContain("lazy(");
         expect(router).not.toContain("fullScreenDeferred(<LoginPage />)");
@@ -84,40 +68,16 @@ describe("auth login experience", () => {
         expect(provider).toContain("if (settingsRequest) return settingsRequest");
     });
 
-    test("reveals the form as one stable layer without nested input animations", async () => {
-        const [scene, entry, panel, styles] = await Promise.all([read("../src/pages/auth/auth-scene.tsx"), read("../src/pages/auth/auth-entry.tsx"), read("../src/pages/auth/auth-panel.tsx"), read("../src/pages/auth/auth-form.css")]);
-
-        expect(scene).toContain('<AnimatePresence mode="sync"');
-        expect(entry).toContain("exit={{ opacity: 0 }}");
-        expect(panel).not.toContain("scale: 0.975");
-        expect(panel).not.toContain("key={mode}");
-        expect(panel).toContain('<div className="pc-auth-form-slot">');
-        expect(styles).toContain("color-scheme: dark");
-        expect(styles).toContain("transition: none");
-        expect(styles).not.toContain("background-color 600000s");
-    });
-
-    test("keeps the cinematic entry responsive without dropping dynamic theme tokens", async () => {
+    test("supports a scrolling mobile form, readable autofill and reduced motion", async () => {
         const styles = [await read("../src/pages/auth/auth-scene.css"), await read("../src/pages/auth/auth-form.css")].join("\n");
-
-        expect(styles).toContain(".pc-auth-atmosphere-media");
-        expect(styles).toContain(".pc-auth-scene.is-auth-open .pc-auth-atmosphere-media");
-        expect(styles).toContain("filter: none");
-        expect(styles).toContain("filter: blur(14px)");
-        expect(styles).toContain("transparent 42%");
-        expect(styles).toContain(".pc-auth-entry-ornament");
-        expect(styles).toContain("font-family: Inter");
-        expect(styles).toContain(".pc-auth-entry-button");
-        expect(styles).toContain(".pc-auth-workspace");
-        expect(styles).toContain(".pc-auth-login-fields");
-        expect(styles).toContain(".pc-auth-login-error");
-        expect(styles).not.toContain(".pc-auth-card-footnote");
-        expect(styles).not.toContain(".pc-auth-brand-stage");
-        expect(styles).toContain(".pc-auth-panel-footer");
-        expect(styles).toContain("--auth-panel: rgba(15, 16, 17, 0.96)");
-        expect(styles).toContain("font-family: ui-serif");
-        expect(styles).toContain("border-radius: 8px");
-        expect(styles).not.toContain("rgba(248, 247, 243, 0.94)");
+        expect(styles).toContain("overflow-y: auto");
+        expect(styles).toContain("@media (max-width: 900px)");
+        expect(styles).toContain("justify-content: center");
+        expect(styles).not.toContain("grid-template-columns");
+        expect(styles).not.toContain("max-height: calc(100dvh");
+        expect(styles).toContain("color-scheme: dark");
+        expect(styles).toContain("input:-webkit-autofill");
+        expect(styles).toContain("@media (prefers-reduced-motion: reduce)");
         expect(styles).toContain("var(--auth-brand)");
     });
 });

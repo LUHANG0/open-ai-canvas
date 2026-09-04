@@ -55,6 +55,7 @@ type PublicSiteLinks struct {
 	DeploymentURL string `json:"deploymentUrl"`
 	ContactURL    string `json:"contactUrl"`
 	ICPText       string `json:"icpText"`
+	ICPURL        string `json:"icpUrl"`
 }
 
 type PublicSiteSEO struct {
@@ -107,29 +108,30 @@ func DefaultPublicSiteConfig() PublicSiteConfig {
 		Hero: PublicSiteHero{
 			Eyebrow:       "AI FILM PRODUCTION OS",
 			Title:         "让故事开机。",
-			Description:   "从剧本、角色、分镜到成片，在一个工作台完成 AI 影视创作。",
-			PrimaryCTA:    "开始创作",
-			SecondaryCTA:  "查看作品",
-			ShowreelLabel: "YINGCE SHOWREEL · 01",
+			Description:   "组织故事、角色与分镜，在一个工作台推进你的 AI 影视创作。",
+			PrimaryCTA:    "受邀登录",
+			SecondaryCTA:  "探索创作示例",
+			ShowreelLabel: "《最后一班》 / 品牌概念视觉",
 		},
 		Sections: PublicSiteSections{
-			ProductTitle:        "不是一个生成器，\n是一套制作系统。",
-			ProductDescription:  "把创意、资产、镜头、模型与交付放在同一条生产线上，让每次生成都回到项目上下文。",
-			WorkflowTitle:       "从故事到成片，\n每一步都连续。",
-			WorkflowDescription: "创作过程不再散落在不同工具和聊天记录里，角色、场景、镜头与结果始终属于同一个项目。",
+			ProductTitle:        "让灵感有位置，\n让创作有连续性。",
+			ProductDescription:  "故事、参考、镜头和版本，在同一创作空间里相遇。从全局梳理，到一帧一帧打磨。",
+			WorkflowTitle:       "一个故事，\n一步步成为画面。",
+			WorkflowDescription: "先把故事说清，再把每个镜头想明白。角色、场景与参考，跟随作品一起向前。",
 			ShowcaseTitle:       "创作正在发生。",
 			ShowcaseDescription: "展示真实制作路径、产品能力与可公开作品。",
 			AboutTitle:          "为真正的影视生产而设计。",
 			AboutDescription:    "支持本地部署、数据自主、多模型接入和可扩展 Agent，让创作者掌握自己的工作流。",
 		},
 		Showcases: []PublicSiteShowcaseItem{
-			{ID: "story-to-screen", Title: "故事到分镜", Category: "短剧生产", Description: "从章节、角色与场景设定开始，连续生成可执行的分镜脚本。"},
-			{ID: "director-canvas", Title: "导演台与自由画布", Category: "视觉编排", Description: "在镜头工作台与无限画布之间组织参考、提示词和生成结果。"},
-			{ID: "generation-delivery", Title: "生成到交付", Category: "成片制作", Description: "统一跟踪图片、视频和音频任务，并把镜头结果整理为可交付文件。"},
+			{ID: "brand-concept-arrival", Title: "最后一班 · 抵达", Category: "品牌概念视觉 / 01", Description: "暮色落进山谷。一个旅人，赶往尚未熄灯的站台。", CoverURL: "/brand/last-train-wide.webp"},
+			{ID: "brand-concept-traveler", Title: "最后一班 · 等候", Category: "品牌概念视觉 / 02", Description: "一张旧车票，一束车窗里的暖光。故事在细节里发生。", CoverURL: "/brand/last-train-traveler.webp"},
+			{ID: "brand-concept-departure", Title: "最后一班 · 出发", Category: "品牌概念视觉 / 03", Description: "列车穿过薄雾，把没有说完的故事带向远方。", CoverURL: "/brand/last-train-departure.webp"},
 		},
 		Links: PublicSiteLinks{
-			RepositoryURL: "https://github.com/LUHANG0/open-ai-canvas",
+			RepositoryURL: "",
 			DeploymentURL: "/about#deployment",
+			ICPURL:        "https://beian.miit.gov.cn/",
 		},
 		SEO: PublicSiteSEO{
 			HomeTitle:       "影策｜AI 影视与短剧创作工作台",
@@ -309,6 +311,13 @@ func normalizePublicSiteConfig(config PublicSiteConfig) (PublicSiteConfig, error
 	config.Links.DeploymentURL = trim(config.Links.DeploymentURL)
 	config.Links.ContactURL = trim(config.Links.ContactURL)
 	config.Links.ICPText = trim(config.Links.ICPText)
+	config.Links.ICPURL = trim(config.Links.ICPURL)
+	if config.Links.ICPURL == "" {
+		config.Links.ICPURL = "https://beian.miit.gov.cn/"
+	}
+	if !strings.HasPrefix(config.Links.ICPURL, "https://") {
+		return PublicSiteConfig{}, BadAuthRequest("备案链接必须是完整的 https:// 地址")
+	}
 	config.SEO.HomeTitle = trim(config.SEO.HomeTitle)
 	config.SEO.HomeDescription = trim(config.SEO.HomeDescription)
 	config.SEO.ProductTitle = trim(config.SEO.ProductTitle)
@@ -325,6 +334,7 @@ func normalizePublicSiteConfig(config PublicSiteConfig) (PublicSiteConfig, error
 		{"产品标题", config.Sections.ProductTitle, true, 160}, {"产品说明", config.Sections.ProductDescription, true, 400}, {"流程标题", config.Sections.WorkflowTitle, true, 160}, {"流程说明", config.Sections.WorkflowDescription, true, 400},
 		{"作品标题", config.Sections.ShowcaseTitle, true, 160}, {"作品说明", config.Sections.ShowcaseDescription, true, 400}, {"关于标题", config.Sections.AboutTitle, true, 160}, {"关于说明", config.Sections.AboutDescription, true, 400},
 		{"首页标题", config.SEO.HomeTitle, true, 100}, {"首页描述", config.SEO.HomeDescription, true, 300},
+		{"备案号", config.Links.ICPText, false, 120},
 	} {
 		if field.required && field.value == "" {
 			return PublicSiteConfig{}, BadAuthRequest(field.name + "不能为空")
@@ -335,7 +345,7 @@ func normalizePublicSiteConfig(config PublicSiteConfig) (PublicSiteConfig, error
 	}
 	for name, value := range map[string]string{
 		"官网视频 URL": config.Hero.ShowreelURL, "官网海报 URL": config.Hero.PosterURL, "文档链接": config.Links.DocsURL, "代码仓库链接": config.Links.RepositoryURL,
-		"部署链接": config.Links.DeploymentURL, "联系链接": config.Links.ContactURL,
+		"部署链接": config.Links.DeploymentURL, "联系链接": config.Links.ContactURL, "备案链接": config.Links.ICPURL,
 	} {
 		if err := validatePublicSiteURL(value); err != nil {
 			return PublicSiteConfig{}, BadAuthRequest(name + err.Error())

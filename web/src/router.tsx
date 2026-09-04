@@ -30,6 +30,12 @@ const ResponseInterceptionSettingsPage = lazy(() => import("@/pages/admin/settin
 const ThirdPartySettingsPage = lazy(() => import("@/pages/admin/settings/libtv-settings-page"));
 const SystemUpdatePage = lazy(() => import("@/pages/admin/settings/system-update-page"));
 const BrandingSettingsPage = lazy(() => import("@/pages/admin/settings/branding-settings-page"));
+const PublicSiteSettingsPage = lazy(() => import("@/pages/admin/settings/public-site-settings-page"));
+const PublicSiteLayout = lazy(() => import("@/pages/public-site/layout"));
+const PublicHomePage = lazy(() => import("@/pages/public-site/home"));
+const PublicProductPage = lazy(() => import("@/pages/public-site/product"));
+const PublicShowcasePage = lazy(() => import("@/pages/public-site/showcase"));
+const PublicAboutPage = lazy(() => import("@/pages/public-site/about"));
 const StoryboardPromptsPage = lazy(() => import("@/pages/admin/storyboard-prompts/storyboard-prompts-page"));
 const UsersPage = lazy(() => import("@/pages/admin/users/users-page"));
 const AssetsPage = lazy(loadAssetsPage);
@@ -79,10 +85,16 @@ function devRoutes() {
 }
 
 export const router = createBrowserRouter([
-    { path: "/", element: <Navigate to="/login" replace /> },
-    { path: "/product", element: <Navigate to="/login" replace /> },
-    { path: "/showcase", element: <Navigate to="/login" replace /> },
-    { path: "/about", element: <Navigate to="/login" replace /> },
+    {
+        element: fullScreenDeferred(<PublicSiteLayout />),
+        errorElement: <RouteErrorPage />,
+        children: [
+            { path: "/", element: fullScreenDeferred(<PublicHomePage />) },
+            { path: "/product", element: fullScreenDeferred(<PublicProductPage />) },
+            { path: "/showcase", element: fullScreenDeferred(<PublicShowcasePage />) },
+            { path: "/about", element: fullScreenDeferred(<PublicAboutPage />) },
+        ],
+    },
     {
         element: <AuthScene />,
         errorElement: <RouteErrorPage />,
@@ -199,7 +211,7 @@ export const router = createBrowserRouter([
                     { path: "logs", element: deferred(<LogsPage />) },
                     { path: "settings", element: <Navigate to="runtime-policy" replace /> },
                     { path: "settings/branding", element: deferred(<BrandingSettingsPage />) },
-                    { path: "settings/public-site", element: <Navigate to="/admin/settings/branding" replace /> },
+                    { path: "settings/public-site", element: deferred(<PublicSiteSettingsPage />) },
                     { path: "settings/drawing-engine", element: deferred(<DrawingEngineSettingsPage />) },
                     { path: "settings/concurrency", element: <Navigate to="/admin/settings/runtime-policy" replace /> },
                     { path: "settings/runtime-policy", element: deferred(<RuntimePolicySettingsPage />) },

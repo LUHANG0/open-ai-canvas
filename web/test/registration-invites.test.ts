@@ -9,8 +9,8 @@ describe("registration invitation experience", () => {
         const [scene, panel, register] = await Promise.all([read("../src/pages/auth/auth-scene.tsx"), read("../src/pages/auth/auth-panel.tsx"), read("../src/pages/auth/register.tsx")]);
 
         expect(scene).toContain("!inviteFlow && !invitedFlow");
-        expect(scene).toContain("useState(inviteFlow || invitedFlow)");
-        expect(panel).toContain("你已受邀加入影策");
+        expect(scene).toContain('const mode: AuthMode = location.pathname === "/register" ? "register" : "login"');
+        expect(panel).toContain("你已受邀加入${branding.config.identity.displayName}");
         expect(register).toContain("exchangeRegistrationInvite(inviteToken || undefined)");
         expect(register).toContain('nextParams.delete("invite")');
         expect(register).toContain('nextParams.set("invited", "1")');

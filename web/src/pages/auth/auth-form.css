@@ -1,78 +1,30 @@
 .pc-auth-panel {
     position: relative;
-    width: min(100%, 560px);
-    max-height: calc(100dvh - 48px);
-    overflow-x: hidden;
-    overflow-y: auto;
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    border-radius: 16px;
-    background: var(--auth-panel);
-    padding: 38px 42px 30px;
-    box-shadow: 0 18px 20px rgba(0, 0, 0, 0.2);
-    backdrop-filter: blur(24px) saturate(0.82);
-}
-
-.pc-auth-panel-close {
-    position: absolute;
-    top: 16px;
-    right: 18px;
-    display: grid;
-    width: 32px;
-    height: 32px;
-    place-items: center;
-    border: 0;
-    border-radius: 999px;
-    background: transparent;
-    color: var(--auth-text-muted);
-    cursor: pointer;
-    font-size: 25px;
-    font-weight: 300;
-    line-height: 1;
-    transition:
-        background 0.2s ease,
-        color 0.2s ease;
-}
-
-.pc-auth-panel-close:hover {
-    background: rgba(255, 255, 255, 0.08);
-    color: var(--auth-ink);
-}
-
-.pc-auth-panel-close:focus-visible {
-    outline: 2px solid rgba(255, 255, 255, 0.9);
-    outline-offset: 4px;
+    width: 100%;
 }
 
 .pc-auth-brand-head {
     display: grid;
-    place-items: center;
-    gap: 14px;
+    gap: 16px;
+    margin-bottom: 36px;
     text-align: center;
-}
-
-.pc-auth-brand-symbol {
-    display: grid;
-    width: 48px;
-    height: 48px;
-    place-items: center;
-    border: 1px solid #fff;
-    border-radius: 8px;
-    background: #fff;
-}
-
-.pc-auth-brand-logo {
-    width: 30px;
-    height: 30px;
 }
 
 .pc-auth-brand-head h1 {
     margin: 0;
     color: var(--auth-ink);
-    font-family: ui-serif, Georgia, Cambria, "Times New Roman", serif;
-    font-size: 38px;
-    font-weight: 300;
+    font-size: 34px;
+    font-weight: 500;
     letter-spacing: -0.03em;
-    line-height: 1;
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+}
+
+.pc-auth-brand-head p {
+    margin: 0;
+    font-size: 15px;
+    line-height: 1.8;
+    color: var(--auth-text-muted);
 }
 
 .pc-auth-tabs-wrap {
@@ -93,7 +45,7 @@
     margin: 0 0 0 18px !important;
     padding: 0 0 7px;
     color: var(--auth-text-muted);
-    font-size: 12px;
+    font-size: 14px;
     font-weight: 620;
 }
 
@@ -122,18 +74,40 @@
 }
 
 .pc-auth-panel-footer {
-    display: flex;
+    display: grid;
     width: 100%;
-    max-width: 430px;
-    min-height: 42px;
-    align-items: center;
-    justify-content: space-between;
-    gap: 20px;
-    margin: 28px auto 0;
+    gap: 12px;
+    margin: 32px 0 0;
     border-top: 1px solid rgba(255, 255, 255, 0.1);
     color: var(--auth-text-muted);
-    padding-top: 17px;
-    font-size: 11px;
+    padding-top: 24px;
+    font-size: 13px;
+    line-height: 1.8;
+    justify-items: center;
+    text-align: center;
+}
+
+.pc-auth-panel-footer p {
+    margin: 0;
+}
+.pc-auth-panel-footer a {
+    color: var(--auth-text-secondary);
+    width: fit-content;
+}
+.pc-auth-panel-footer a:hover {
+    color: var(--auth-brand);
+}
+.pc-auth-invitation-badge {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    color: var(--auth-text-secondary);
+}
+.pc-auth-invitation-badge i {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--auth-brand);
 }
 
 .pc-auth-form {
@@ -158,7 +132,7 @@
 
 .pc-auth-field-label {
     color: var(--auth-text-secondary) !important;
-    font-size: 11px;
+    font-size: 14px;
     font-weight: 620;
 }
 
@@ -170,8 +144,9 @@
     min-height: 52px;
     border-color: rgba(255, 255, 255, 0.12);
     border-radius: 8px;
-    background: #000;
+    background: #18191f;
     color: var(--auth-ink);
+    font-size: 16px;
     box-shadow: none;
 }
 
@@ -189,14 +164,14 @@
 
 .pc-auth-workspace :where(.pc-auth-field .ant-input, .pc-auth-field .ant-input-affix-wrapper):hover {
     border-color: rgba(255, 255, 255, 0.28);
-    background: #090a0b;
+    background: #1d1e25;
 }
 
 .pc-auth-workspace :where(.pc-auth-field .ant-input, .pc-auth-field .ant-input-affix-wrapper):focus,
 .pc-auth-workspace :where(.pc-auth-field .ant-input, .pc-auth-field .ant-input-affix-wrapper):focus-within {
-    border-color: rgba(255, 255, 255, 0.68);
-    background: #000;
-    box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.1);
+    border-color: var(--auth-brand);
+    background: #18191f;
+    box-shadow: 0 0 0 3px var(--auth-brand-soft);
 }
 
 .pc-auth-workspace :where(.ant-input-disabled, .ant-input-affix-wrapper-disabled) {
@@ -206,11 +181,11 @@
 
 .pc-auth-workspace :where(input:-webkit-autofill, input:-webkit-autofill:hover, input:-webkit-autofill:focus) {
     -webkit-text-fill-color: var(--auth-ink);
-    -webkit-box-shadow: 0 0 0 1000px #000 inset !important;
-    background-color: #000 !important;
+    -webkit-box-shadow: 0 0 0 1000px #18191f inset !important;
+    background-color: #18191f !important;
     background-image: none !important;
     caret-color: var(--auth-ink);
-    box-shadow: 0 0 0 1000px #000 inset !important;
+    box-shadow: 0 0 0 1000px #18191f inset !important;
     transition: none !important;
 }
 
@@ -218,7 +193,7 @@
 .pc-auth-oauth {
     min-height: 52px;
     border-radius: 8px;
-    font-size: 13px;
+    font-size: 15px;
     font-weight: 650;
 }
 
@@ -261,7 +236,7 @@
 .pc-auth-divider {
     margin-block: -2px;
     color: var(--auth-text-muted) !important;
-    font-size: 11px;
+    font-size: 13px;
 }
 
 .pc-auth-divider::before,
@@ -277,7 +252,7 @@
     gap: 7px;
     margin-top: -3px;
     color: var(--auth-text-muted);
-    font-size: 11px;
+    font-size: 13px;
     line-height: 1.5;
 }
 
@@ -289,12 +264,12 @@
 
 .pc-auth-password-status.is-match,
 .pc-auth-password-status.is-match svg {
-    color: var(--app-status-success-fg, #14804a);
+    color: #82dbb0;
 }
 
 .pc-auth-password-status.is-mismatch,
 .pc-auth-password-status.is-mismatch svg {
-    color: var(--app-status-warning-fg, #a15c08);
+    color: #edbe7c;
 }
 
 .pc-auth-login-error,
@@ -390,7 +365,7 @@
 .pc-auth-notice.is-amber {
     border-color: rgba(180, 83, 9, 0.16) !important;
     background: rgba(180, 83, 9, 0.05) !important;
-    color: #854d0e !important;
+    color: #edbe7c !important;
 }
 
 @keyframes pc-auth-spin {
@@ -400,23 +375,13 @@
 }
 
 @media (max-width: 560px) {
-    .pc-auth-panel {
-        max-height: calc(100dvh - 24px);
-        border-radius: 22px;
-        padding: 30px 20px 24px;
-    }
-
-    .pc-auth-panel-close {
-        top: 11px;
-        right: 12px;
-    }
-
     .pc-auth-brand-head {
-        gap: 11px;
+        gap: 12px;
+        margin-bottom: 28px;
     }
 
     .pc-auth-brand-head h1 {
-        font-size: 25px;
+        font-size: 28px;
     }
 
     .pc-auth-form-slot {
@@ -425,31 +390,6 @@
 
     .pc-auth-panel-footer {
         margin-top: 24px;
-    }
-}
-
-@media (max-height: 680px) {
-    .pc-auth-panel {
-        padding-block: 24px 22px;
-    }
-
-    .pc-auth-brand-head {
-        grid-template-columns: auto auto;
-        justify-content: center;
-        gap: 12px;
-    }
-
-    .pc-auth-form-slot {
-        margin-top: 20px;
-    }
-
-    .pc-auth-panel-footer {
-        margin-top: 20px;
-    }
-
-    .pc-auth-form,
-    .pc-auth-login-fields {
-        gap: 13px;
     }
 }
 

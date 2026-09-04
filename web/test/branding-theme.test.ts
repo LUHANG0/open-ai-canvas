@@ -45,8 +45,8 @@ test("brand configuration is wired into public, auth and admin entry points", as
     expect(brandingSettings).toContain('label="登录页面"');
     expect(brandingSettings).toContain('label="浏览器显示"');
     expect(brandingSettings).toContain('title="浏览器显示"');
-    expect(brandingSettings).toContain("只接受以 https:// 开头的安全链接");
-    expect(brandingSettings).toContain('heroKind: value ? draft.auth.heroKind || "video" : ""');
+    expect(brandingSettings).toContain("登录页使用官网首页的封面");
+    expect(brandingSettings).toContain('to="/admin/settings/public-site"');
     expect(brandingSettings).toContain("admin-branding-assets-grid");
     expect(brandingSettings).toContain('className="admin-branding-summary"');
     expect(brandingSettings).toContain('className="admin-branding-editor-sheet"');

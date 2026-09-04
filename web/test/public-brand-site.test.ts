@@ -1,16 +1,17 @@
 import { expect, test } from "bun:test";
 
-test("temporary single-entry mode redirects public pages to login", async () => {
+test("brand pages are public while workspace and content settings keep their existing auth boundaries", async () => {
     const [router, adminShell] = await Promise.all([Bun.file(new URL("../src/router.tsx", import.meta.url)).text(), Bun.file(new URL("../src/pages/admin/components/admin-shell.tsx", import.meta.url)).text()]);
     for (const path of ['path: "/"', 'path: "/product"', 'path: "/showcase"', 'path: "/about"']) {
         expect(router).toContain(path);
     }
-    expect(router.match(/<Navigate to="\/login" replace \/>/g)?.length).toBe(4);
-    expect(router).not.toContain("<PublicSiteLayout />");
-    expect(router).not.toContain("PublicHomePage");
+    expect(router).toContain("<PublicSiteLayout />");
+    expect(router).toContain("<PublicHomePage />");
     expect(router).toContain('{ path: "/home", element: <RequireAuth>');
-    expect(router).toContain('{ path: "settings/public-site", element: <Navigate to="/admin/settings/branding" replace /> }');
-    expect(adminShell).not.toContain('path: "/admin/settings/public-site"');
+    expect(router).toContain('{ path: "settings/public-site", element: deferred(<PublicSiteSettingsPage />) }');
+    expect(adminShell).toContain('path: "/admin/settings/public-site"');
+    expect(router).toContain('path: "/admin",');
+    expect(router).toContain("<RequireAuth>{deferred(<AdminPage />)}</RequireAuth>");
 });
 
 test("public content keeps draft and published states separate", async () => {
@@ -28,10 +29,10 @@ test("public content keeps draft and published states separate", async () => {
     expect(provider).toContain("Public marketing content must not block login");
 });
 
-test("homepage reuses brand hero media with resilient fallbacks", async () => {
+test("homepage uses its independent media and a bundled poster with resilient fallbacks", async () => {
     const home = await Bun.file(new URL("../src/pages/public-site/home.tsx", import.meta.url)).text();
-    expect(home).toContain("hero.showreelUrl || branding.assets.authHeroUrl");
-    expect(home).toContain("hero.posterUrl || branding.assets.authHeroPosterUrl");
+    expect(home).toContain("const mediaUrl = hero.showreelUrl");
+    expect(home).toContain("hero.posterUrl || BRAND_CONCEPT_POSTER");
     expect(home).toContain("desktop && !reducedMotion && !videoFailed");
     expect(home).toContain("onError={() => setVideoFailed(true)}");
 });
@@ -59,17 +60,17 @@ test("public site remains scrollable inside the application shell and resets on 
     expect(css).toContain("inset: 66px 0 0;");
 });
 
-test("dormant public navigation remains recoverable while auth exposes no public-site exit", async () => {
+test("navigation uses invitation guidance and preserves invitation-only authentication", async () => {
     const [layout, auth, register] = await Promise.all([
         Bun.file(new URL("../src/pages/public-site/layout.tsx", import.meta.url)).text(),
         Bun.file(new URL("../src/pages/auth/auth-scene.tsx", import.meta.url)).text(),
         Bun.file(new URL("../src/pages/auth/register.tsx", import.meta.url)).text(),
     ]);
     expect(layout).toContain('const accountHref = user ? "/settings" : "/login"');
-    expect(layout).toContain('const accountLabel = user ? "账号设置" : "登录"');
+    expect(layout).toContain('const accountLabel = user ? "账号设置" : "体验说明"');
     expect(layout).toContain('event.key === "Escape"');
-    expect(auth).not.toContain('className="pc-auth-back-link');
-    expect(auth).not.toContain("返回首页");
+    expect(auth).toContain('className="pc-auth-back-link');
+    expect(auth).toContain("返回官网");
     expect(register).toContain("当前仅限受邀成员使用");
     expect(register).not.toContain("管理员尚未配置注册邮件");
     expect(register).toContain("返回登录");

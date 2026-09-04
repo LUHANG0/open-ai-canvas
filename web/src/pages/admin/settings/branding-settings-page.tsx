@@ -1,7 +1,7 @@
-import { App, Button, Input, Select, Skeleton } from "antd";
+import { App, Button, Input, Skeleton } from "antd";
 import { AlertTriangle, ExternalLink, Image as ImageIcon, MonitorSmartphone, Palette, RefreshCw, RotateCcw, Save, Type, Upload } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
-import { useBlocker } from "react-router";
+import { Link, useBlocker } from "react-router";
 
 import { BrandMark } from "@/components/branding/brand-mark";
 import { toPublicBranding, useBranding } from "@/components/branding/branding-provider";
@@ -24,8 +24,6 @@ type BrandSection = "identity" | "visual" | "login" | "browser";
 const assetDefinitions: AssetDefinition[] = [
     { slot: "logo", label: "品牌标志", description: "建议透明背景、1:1 或接近方形，最大 2MB。", accept: "image/png,image/jpeg,image/webp,image/gif", referenceKey: "logoResourceId" },
     { slot: "favicon", label: "浏览器图标", description: "建议使用 64×64 或 128×128 的常用图片格式，最大 512KB。", accept: "image/png,image/jpeg,image/webp,image/gif", referenceKey: "faviconResourceId" },
-    { slot: "auth-hero", label: "登录页背景", description: "支持图片或常用视频格式，视频最大 40MB；移动端不自动播放。", accept: "image/png,image/jpeg,image/webp,image/gif,video/mp4,video/webm", referenceKey: "authHeroResourceId" },
-    { slot: "auth-hero-poster", label: "视频海报", description: "视频加载前、移动端和减少动态效果时展示。", accept: "image/png,image/jpeg,image/webp,image/gif", referenceKey: "authHeroPosterResourceId" },
 ];
 
 export default function BrandingSettingsPage() {
@@ -191,12 +189,6 @@ export default function BrandingSettingsPage() {
         setSaveError("");
     };
 
-    const updateHeroURL = (value: string) => {
-        if (!draft) return;
-        setDraft({ ...draft, auth: { ...draft.auth, heroUrl: value, heroKind: value ? draft.auth.heroKind || "video" : "" } });
-        setSaveError("");
-    };
-
     if (loading && !draft) {
         return (
             <AdminPageFrame title="品牌中心" description="管理网站名称、视觉资源和登录入口" scroll>
@@ -311,7 +303,7 @@ export default function BrandingSettingsPage() {
                             ) : null}
 
                             {activeSection === "login" ? (
-                                <BrandPanel icon={<MonitorSmartphone className="size-4" />} title="登录页面" description="设置独立品牌画面的标题、图片或视频。">
+                                <BrandPanel icon={<MonitorSmartphone className="size-4" />} title="登录页面" description="设置登录页的故事标题与说明；品牌海报和备案信息与官网共用。">
                                     <BrandField label="画面标题">
                                         <Input.TextArea value={draft.auth.title} maxLength={140} autoSize={{ minRows: 2, maxRows: 3 }} onChange={(event) => updateDraft("auth", "title", event.target.value)} />
                                     </BrandField>
@@ -320,33 +312,10 @@ export default function BrandingSettingsPage() {
                                     </BrandField>
                                     <div className="admin-branding-subsection">
                                         <div>
-                                            <strong>画面来源</strong>
-                                            <p>可以上传文件，也可以填写 B 站安全直链；外部链接优先生效。</p>
+                                            <strong>品牌海报</strong>
+                                            <p>登录页使用官网首页的封面，留空时展示内置概念海报。修改后保存并发布官网内容即可同步。</p>
+                                            <Link to="/admin/settings/public-site">前往官网内容设置 →</Link>
                                         </div>
-                                        <div className="admin-branding-external-assets">
-                                            <div className="admin-branding-external-hero-row">
-                                                <BrandField label="图片或视频链接">
-                                                    <Input value={draft.auth.heroUrl} maxLength={2048} allowClear placeholder="https://..." onChange={(event) => updateHeroURL(event.target.value)} />
-                                                </BrandField>
-                                                <BrandField label="资源类型">
-                                                    <Select
-                                                        aria-label="登录页背景类型"
-                                                        value={draft.auth.heroKind || "video"}
-                                                        disabled={!draft.auth.heroUrl}
-                                                        options={[
-                                                            { value: "video", label: "视频" },
-                                                            { value: "image", label: "图片" },
-                                                        ]}
-                                                        onChange={(value) => updateDraft("auth", "heroKind", value)}
-                                                    />
-                                                </BrandField>
-                                            </div>
-                                            <BrandField label="视频封面链接（可选）">
-                                                <Input value={draft.auth.heroPosterUrl} maxLength={2048} allowClear placeholder="https://..." onChange={(event) => updateDraft("auth", "heroPosterUrl", event.target.value)} />
-                                            </BrandField>
-                                            <p>清空链接后恢复使用上传文件。只接受以 https:// 开头的安全链接。</p>
-                                        </div>
-                                        <div className="admin-branding-assets-grid">{assetDefinitions.slice(2).map((asset) => renderAssetEditor(asset, setting, busy, uploadingSlot, fileInputs, uploadAsset, clearAsset))}</div>
                                     </div>
                                 </BrandPanel>
                             ) : null}

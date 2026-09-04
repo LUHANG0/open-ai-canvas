@@ -2,13 +2,14 @@ import { ArrowRight, Bot, Cloud, FolderKanban, Layers3, MonitorPlay, Network } f
 import { Link } from "react-router";
 import { usePublicSite } from "@/components/public-site/public-site-provider";
 import { useUserStore } from "@/stores/use-user-store";
+import { BRAND_CONCEPT_SHOWCASES, publicEntryLabel } from "@/lib/public-site-content";
 import { productionStages, PublicPageIntro, usePublicPageMeta } from "./shared";
 
 const capabilities = [
     {
         icon: Bot,
         eyebrow: "CONVERSATION",
-        title: "不是一次性问答，\n是项目里的创作搭档。",
+        title: "带着故事继续聊，\n让灵感接着往前走。",
         text: "创作对话跟随账号与项目同步，保留故事背景、版本与后续任务，让灵感能够继续生产。",
         bullets: ["项目级对话云同步", "上下文与创作资产关联", "可扩展 Agent 与技能"],
     },
@@ -29,7 +30,7 @@ export default function PublicProductPage() {
     const appHref = user ? "/create" : "/login?next=%2Fcreate";
     usePublicPageMeta(site.config.seo.productTitle, site.config.sections.productDescription);
     return (
-        <main className="public-site-main public-inner-page">
+        <main className="public-site-main public-inner-page" id="main-content">
             <PublicPageIntro eyebrow="THE PRODUCT" count="01" title={site.config.sections.productTitle} description={site.config.sections.productDescription} />
             <section className="public-product-manifesto">
                 <div>
@@ -65,13 +66,20 @@ export default function PublicProductPage() {
                                 ))}
                             </ul>
                         </div>
-                        <div className={`public-capability-visual visual-${index + 1}`} aria-hidden="true">
-                            <span />
-                            <span />
-                            <span />
-                            <span />
-                            <i />
-                        </div>
+                        <figure className="public-capability-visual">
+                            <img
+                                src={index === 2 ? "/brand/workspace-canvas.webp" : BRAND_CONCEPT_SHOWCASES[index % 3].coverUrl}
+                                alt={index === 2 ? "真实画布界面：连接故事、镜头提示、参考图片和生成配置，使用演示数据" : ["暮色中的山中站台", "旅人的服装与车票细节", "列车驶入山谷"][index % 3]}
+                                loading="lazy"
+                            />
+                            <figcaption>{index === 2 ? "真实画布界面 · 演示数据" : `${["故事起点 · 明确情绪与叙事", "角色参考 · 组织服装与人物细节", "", "素材管理 · 保留可继续使用的创作参考"][index]} / 品牌概念视觉`}</figcaption>
+                            {index === 2 ? (
+                                <a className="public-text-link" href="/brand/workspace-canvas.webp" target="_blank" rel="noreferrer">
+                                    查看完整界面
+                                    <ArrowRight aria-hidden="true" />
+                                </a>
+                            ) : null}
+                        </figure>
                     </article>
                 ))}
             </section>
@@ -97,7 +105,7 @@ export default function PublicProductPage() {
                     <h2>让创意进入生产。</h2>
                 </div>
                 <Link to={appHref} className="public-button is-dark">
-                    {user ? "进入工作台" : "开始创作"}
+                    {publicEntryLabel(Boolean(user))}
                     <ArrowRight aria-hidden="true" />
                 </Link>
             </section>

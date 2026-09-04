@@ -38,6 +38,7 @@ export type PublicSiteConfig = {
         deploymentUrl: string;
         contactUrl: string;
         icpText: string;
+        icpUrl: string;
     };
     seo: {
         homeTitle: string;

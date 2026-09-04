@@ -3,6 +3,7 @@ package service
 import (
 	"errors"
 	"net/http"
+	"strings"
 	"testing"
 
 	"infinite-canvas/backend/internal/model"
@@ -72,8 +73,12 @@ func TestPublicSiteDraftPublishConflictAndReset(t *testing.T) {
 
 func TestPublicSiteValidation(t *testing.T) {
 	for name, mutate := range map[string]func(*PublicSiteConfig){
-		"empty title": func(config *PublicSiteConfig) { config.Hero.Title = "" },
-		"unsafe url":  func(config *PublicSiteConfig) { config.Hero.ShowreelURL = "javascript:alert(1)" },
+		"empty title":     func(config *PublicSiteConfig) { config.Hero.Title = "" },
+		"unsafe url":      func(config *PublicSiteConfig) { config.Hero.ShowreelURL = "javascript:alert(1)" },
+		"unsafe icp":      func(config *PublicSiteConfig) { config.Links.ICPURL = "javascript:alert(1)" },
+		"relative icp":    func(config *PublicSiteConfig) { config.Links.ICPURL = "/registration" },
+		"icp credentials": func(config *PublicSiteConfig) { config.Links.ICPURL = "https://user:pass@example.com" },
+		"long icp":        func(config *PublicSiteConfig) { config.Links.ICPText = strings.Repeat("备", 121) },
 		"duplicate id": func(config *PublicSiteConfig) {
 			config.Showcases[1].ID = config.Showcases[0].ID
 		},
@@ -85,5 +90,40 @@ func TestPublicSiteValidation(t *testing.T) {
 				t.Fatal("expected validation error")
 			}
 		})
+	}
+}
+
+func TestPublicSiteICPDraftIsPrivateUntilPublished(t *testing.T) {
+	svc, _ := newBrandingTestService(t)
+	admin := &model.User{ID: "admin", Role: model.UserRoleAdmin, Status: model.UserStatusActive}
+	config := DefaultPublicSiteConfig()
+	config.Links.ICPText = "  测试备案号（仅自动化测试）  "
+	config.Links.ICPURL = "  https://beian.miit.gov.cn/  "
+	saved, err := svc.UpdatePublicSiteDraft(admin, UpdatePublicSiteRequest{ExpectedRevision: 0, Config: config})
+	if err != nil {
+		t.Fatal(err)
+	}
+	public, err := svc.PublicSite()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if public.Config.Links.ICPText != "" {
+		t.Fatal("draft ICP was exposed publicly")
+	}
+	if _, err := svc.PublishPublicSite(admin, saved.Revision); err != nil {
+		t.Fatal(err)
+	}
+	public, err = svc.PublicSite()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if public.Config.Links.ICPText != "测试备案号（仅自动化测试）" || public.Config.Links.ICPURL != "https://beian.miit.gov.cn/" {
+		t.Fatalf("published ICP = %+v", public.Config.Links)
+	}
+	config.Links.ICPText = ""
+	config.Links.ICPURL = ""
+	normalized, err := normalizePublicSiteConfig(config)
+	if err != nil || normalized.Links.ICPURL != "https://beian.miit.gov.cn/" {
+		t.Fatalf("empty ICP fallback = %+v, %v", normalized.Links, err)
 	}
 }
