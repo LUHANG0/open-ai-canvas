@@ -6089,16 +6089,25 @@ html:not(.dark) .creation-media-preview-modal.is-video .ant-modal-container {
     }
 
     .creation-home .creation-chat-composer.is-desktop.is-thread .creation-chat-mention-container,
-    .creation-home .creation-chat-composer.is-desktop.is-thread .creation-chat-mention-editor,
     .creation-home .creation-chat-composer.is-desktop.is-thread.has-reference-entry .creation-chat-mention-container,
-    .creation-home .creation-chat-composer.is-desktop.is-thread.has-reference-entry .creation-chat-mention-editor,
     .creation-home .creation-chat-composer.is-desktop.is-thread:not(.has-references):not(.has-reference-entry) .creation-chat-mention-container,
-    .creation-home .creation-chat-composer.is-desktop.is-thread:not(.has-references):not(.has-reference-entry) .creation-chat-mention-editor,
-    .creation-home .creation-chat-composer.is-desktop.is-thread.has-references .creation-chat-mention-container,
-    .creation-home .creation-chat-composer.is-desktop.is-thread.has-references .creation-chat-mention-editor {
+    .creation-home .creation-chat-composer.is-desktop.is-thread.has-references .creation-chat-mention-container {
         width: auto !important;
         min-height: 46px;
         max-height: 92px;
+        overflow-y: auto !important;
+    }
+
+    /* textarea 是替换元素，width:auto 会收缩到浏览器默认列宽；显式铺满容器。 */
+    .creation-home .creation-chat-composer.is-desktop.is-thread .creation-chat-mention-editor,
+    .creation-home .creation-chat-composer.is-desktop.is-thread.has-reference-entry .creation-chat-mention-editor,
+    .creation-home .creation-chat-composer.is-desktop.is-thread:not(.has-references):not(.has-reference-entry) .creation-chat-mention-editor,
+    .creation-home .creation-chat-composer.is-desktop.is-thread.has-references .creation-chat-mention-editor {
+        width: 100% !important;
+        min-width: 0;
+        min-height: 46px;
+        max-height: 92px;
+        box-sizing: border-box;
         overflow-y: auto !important;
     }
 
@@ -6244,10 +6253,56 @@ html:not(.dark) .creation-media-preview-modal.is-video .ant-modal-container {
         font-size: var(--app-font-size-label, 12px);
     }
 
+    .creation-home .creation-result-footer {
+        min-height: 40px;
+        flex-wrap: nowrap;
+        gap: 8px;
+        border-top: 1px solid var(--app-border-subtle, var(--creation-border));
+        padding-top: 6px;
+    }
+
+    .creation-home .creation-result-footer .creation-result-summary {
+        overflow: hidden;
+    }
+
+    .creation-home .creation-result-footer .creation-result-meta {
+        flex-wrap: nowrap;
+        overflow: hidden;
+    }
+
+    .creation-home .creation-result-footer .creation-media-actions {
+        display: inline-flex;
+        flex: 0 0 auto;
+        flex-wrap: nowrap;
+        align-items: center;
+        gap: 2px;
+        border: 1px solid var(--app-border-subtle, var(--creation-border));
+        border-radius: calc(var(--app-control-radius-sm, 6px) + 3px);
+        background: var(--app-surface-2, var(--creation-surface-muted));
+        padding: 2px;
+    }
+
+    .creation-home .creation-result-footer .creation-media-actions > a,
+    .creation-home .creation-result-footer .creation-media-actions > button,
+    .creation-home .creation-result-footer .creation-result-download-menu > summary {
+        min-height: 28px;
+        padding: 0 7px;
+        white-space: nowrap;
+    }
+
     .creation-home .creation-result-footer .creation-media-actions > button.is-primary {
         border-color: transparent;
         background: var(--app-selection-bg, var(--creation-accent-soft));
         color: var(--app-selection-fg, var(--creation-text));
+    }
+
+    .creation-home .creation-result-footer .creation-result-canvas-action {
+        color: var(--app-text-primary, var(--creation-text));
+    }
+
+    .creation-home .creation-result-footer .creation-result-download-action,
+    .creation-home .creation-result-footer .creation-result-download-menu > summary {
+        color: var(--app-text-secondary, var(--creation-muted));
     }
 
     .creation-home .creation-result-footer .creation-media-actions > a:hover,

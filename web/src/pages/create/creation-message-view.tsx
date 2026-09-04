@@ -383,7 +383,7 @@ function MediaResult({ item, compactLayout, onRetryFailure, onCreateVariant }: {
                     {compactLayout ? "继续调整" : "生成同款"}
                 </button>
             </Tooltip>
-            <Link to={canvasPath}>
+            <Link className="creation-result-canvas-action" to={canvasPath}>
                 <PanelTop />
                 {resultAssetIds.length ? "添加到画布" : "打开画布"}
             </Link>
@@ -499,7 +499,7 @@ export function CreationResultDownloads({ results }: { results: CreationResultMe
     if (!results.length) return null;
     if (results.length === 1)
         return (
-            <a href={results[0].url} download>
+            <a className="creation-result-download-action" href={results[0].url} download>
                 <Download />
                 下载
             </a>
