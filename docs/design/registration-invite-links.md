@@ -28,11 +28,11 @@ sequenceDiagram
 
 ## 验收范围
 
-| 层      | 验收结果                                                                                                                                                        | 尚未执行                                                       |
-| ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
-| Backend | 权限、状态、哈希、审计、关闭公开注册、并发单次、失败回滚、邀请指定积分、Cookie 属性、SQLite Schema 8 和全量 Go 测试均通过                                       | 配置 `CANVAS_TEST_POSTGRES_DSN` 后的 PostgreSQL 升级与事务复验 |
-| Web     | 管理入口、50/100/自定义积分、链接只显示一次、复制成功/失败、状态/撤销、token replace、注册金额提示和各错误态合同；1686 项测试、类型检查、生产构建与体积预算通过 | 无                                                             |
-| 闭环    | 隔离 SQLite 已完成管理创建 → 匿名交换 → 地址栏清理 → 注册 → 自动登录 → 已使用 → 再访拒绝；已另测过期和撤销                                                      | 无                                                             |
+| 层      | 验收结果                                                                                                                                                        | 尚未执行 |
+| ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
+| Backend | 权限、状态、哈希、审计、关闭公开注册、并发单次、失败回滚、邀请指定积分、Cookie 属性、SQLite/PostgreSQL Schema 8 和全量 Go 测试均通过                            | 无       |
+| Web     | 管理入口、50/100/自定义积分、链接只显示一次、复制成功/失败、状态/撤销、token replace、注册金额提示和各错误态合同；1686 项测试、类型检查、生产构建与体积预算通过 | 无       |
+| 闭环    | 隔离 SQLite 已完成管理创建 → 匿名交换 → 地址栏清理 → 注册 → 自动登录 → 已使用 → 再访拒绝；已另测过期和撤销                                                      | 无       |
 
 ## 可复现命令
 
@@ -52,7 +52,11 @@ PostgreSQL 仅使用专用测试库：
 
 ```bash
 cd backend
-CANVAS_TEST_POSTGRES_DSN='<isolated-test-dsn>' go test ./internal/database -run Postgres -count=1
+CANVAS_TEST_POSTGRES_DSN='<isolated-test-dsn>' \
+  go test ./internal/database ./internal/service \
+  -run 'Postgres.*RegistrationInvite' -count=1
+
+CANVAS_TEST_POSTGRES_DSN='<isolated-test-dsn>' go test ./... -count=1
 ```
 
 不得用生产 DSN 替代缺失的隔离 PostgreSQL。
@@ -68,7 +72,15 @@ CANVAS_TEST_POSTGRES_DSN='<isolated-test-dsn>' go test ./internal/database -run 
 - 1366×768 和 390×844 的亮暗主题截图均无横向溢出；移动端抽屉实测宽度为 390px。受邀注册采用既有深色电影入口视觉，但分别在亮、暗应用主题状态下复验。
 - 干净的受邀、已撤销、已过期会话无页面异常，网络记录无 `4xx/5xx`。
 
-本地证据位于 `.local/evidence/registration-invites/`（目录被 Git 忽略，避免把一次性链接截图提交到仓库）。其中包括全量测试日志、构建日志、状态页截图和四组桌面/移动端视觉截图。
+本地证据位于 `.local/evidence/registration-invites/`（目录被 Git 忽略，避免把一次性链接截图提交到仓库）。其中包括 SQLite/PostgreSQL 全量与专项测试日志、构建日志、状态页截图和四组桌面/移动端视觉截图。
+
+## PostgreSQL 证据链
+
+| Evidence | Finding | Path |
+| --- | --- | --- |
+| PostgreSQL 16 独立容器中的 Schema 6→8 和真实 Schema 7 旧表升级测试均通过；旧邀请回填为 100 积分，字段为 `NOT NULL DEFAULT 100000000` | 两条受支持升级路径都能到达完整 Schema 8，历史邀请不会变成 0 积分 | `backend/internal/database/schema_postgres_test.go` |
+| 275 积分注册后邀请、普通用户、积分账户、积分流水和登录会话同时存在；注入积分流水异常后这些写入全部回滚 | 邀请积分与账号创建在 PostgreSQL 上具有同一事务边界 | `backend/internal/service/registration_invites_postgres_test.go` |
+| 同一邀请双并发消费连续 10 轮，每轮均只有一个用户、账户、流水和会话 | PostgreSQL 条件占用可阻止重复领用与重复发放积分 | `.local/evidence/registration-invites/postgres-invite-concurrency-10x.log` |
 
 ## 验证结果
 
@@ -80,7 +92,8 @@ CANVAS_TEST_POSTGRES_DSN='<isolated-test-dsn>' go test ./internal/database -run 
 | `bun run build`               | 通过，全部体积预算通过                                          |
 | 本次 Web 改动文件 Prettier    | 通过                                                            |
 | 仓库级 `bun run format:check` | 基线仍有 386 个既有未格式化文件；本功能未扩大该范围             |
-| PostgreSQL Schema 8 专项      | 未执行：环境未配置 `CANVAS_TEST_POSTGRES_DSN`，未用生产数据替代 |
+| PostgreSQL Schema 8 专项      | 通过：6→8、7→8/历史回填、原子提交、故障回滚；并发 10 轮通过    |
+| 带 PostgreSQL DSN 的后端全量 | 通过                                                            |
 
 ## 回滚边界
 
