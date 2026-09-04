@@ -3,12 +3,14 @@
 FROM golang:1.25-alpine AS backend-build
 
 ARG GOPROXY=https://proxy.golang.org,direct
+ARG ALPINE_MIRROR
 ARG BUILD_VERSION
 ARG BUILD_COMMIT=unknown
 ARG BUILD_TIME=unknown
 ENV GOPROXY=$GOPROXY
 
-RUN apk add --no-cache build-base
+RUN if [ -n "$ALPINE_MIRROR" ]; then sed -i "s#https://dl-cdn.alpinelinux.org#${ALPINE_MIRROR}#g" /etc/apk/repositories; fi \
+    && apk add --no-cache build-base
 
 WORKDIR /src/backend
 COPY VERSION /src/VERSION
@@ -24,12 +26,14 @@ RUN --mount=type=cache,target=/root/.cache/go-build set -eu; \
 
 FROM alpine:3.22
 
+ARG ALPINE_MIRROR
 ARG BUILD_VERSION=dev
 ARG BUILD_COMMIT=unknown
 LABEL org.opencontainers.image.version=${BUILD_VERSION}
 LABEL org.opencontainers.image.revision=${BUILD_COMMIT}
 
-RUN apk add --no-cache ca-certificates tzdata wget ffmpeg \
+RUN if [ -n "$ALPINE_MIRROR" ]; then sed -i "s#https://dl-cdn.alpinelinux.org#${ALPINE_MIRROR}#g" /etc/apk/repositories; fi \
+    && apk add --no-cache ca-certificates tzdata wget ffmpeg \
     && ffmpeg -version >/dev/null \
     && ffprobe -version >/dev/null \
     && addgroup -S app \

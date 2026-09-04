@@ -6,6 +6,7 @@ services:
       dockerfile: backend/Dockerfile
       args:
         GOPROXY: ${GOPROXY:-https://proxy.golang.org,direct}
+        ALPINE_MIRROR: ${ALPINE_MIRROR:-}
         BUILD_VERSION: ${BUILD_VERSION:?源码构建必须设置 BUILD_VERSION}
         BUILD_COMMIT: ${BUILD_COMMIT:?源码构建必须设置 BUILD_COMMIT}
         BUILD_TIME: ${BUILD_TIME:-unknown}
@@ -17,6 +18,7 @@ services:
       dockerfile: backend/Dockerfile
       args:
         GOPROXY: ${GOPROXY:-https://proxy.golang.org,direct}
+        ALPINE_MIRROR: ${ALPINE_MIRROR:-}
         BUILD_VERSION: ${BUILD_VERSION:?源码构建必须设置 BUILD_VERSION}
         BUILD_COMMIT: ${BUILD_COMMIT:?源码构建必须设置 BUILD_COMMIT}
         BUILD_TIME: ${BUILD_TIME:-unknown}
