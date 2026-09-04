@@ -46,6 +46,8 @@ func (r dockerIntegrationRunner) RunWithInput(ctx context.Context, name string, 
 func TestHostUpdaterDockerRollbackRestoresDatabaseAndBackendData(t *testing.T) {
 	oldImage := requireIntegrationImage(t, "CANVAS_HOSTUPDATE_INTEGRATION_OLD_IMAGE")
 	targetImage := requireIntegrationImage(t, "CANVAS_HOSTUPDATE_INTEGRATION_TARGET_IMAGE")
+	oldVersion := integrationVersion("CANVAS_HOSTUPDATE_INTEGRATION_OLD_VERSION", "v1.2.2-preview.3")
+	targetVersion := integrationVersion("CANVAS_HOSTUPDATE_INTEGRATION_TARGET_VERSION", "v1.2.2-preview.4")
 	installDir := t.TempDir()
 	stateDir := filepath.Join(installDir, "state")
 	backupDir := filepath.Join(installDir, "backups")
@@ -55,7 +57,7 @@ func TestHostUpdaterDockerRollbackRestoresDatabaseAndBackendData(t *testing.T) {
 	envPath := filepath.Join(installDir, ".env")
 
 	writeIntegrationFile(t, envPath, strings.Join([]string{
-		"CANVAS_IMAGE_TAG=1.2.2-preview.3",
+		"CANVAS_IMAGE_TAG=" + strings.TrimPrefix(oldVersion, "v"),
 		"POSTGRES_DB=canvas",
 		"POSTGRES_USER=canvas",
 		"POSTGRES_PASSWORD=local-updater-drill-only",
@@ -99,7 +101,7 @@ func TestHostUpdaterDockerRollbackRestoresDatabaseAndBackendData(t *testing.T) {
 		}
 		return http.DefaultTransport.RoundTrip(request)
 	})}
-	manager.state.LatestRelease = &Release{Version: "v1.2.2-preview.4", Prerelease: true}
+	manager.state.LatestRelease = &Release{Version: targetVersion, Prerelease: true}
 
 	server, err := NewServer(manager, integrationUpdaterToken)
 	if err != nil {
@@ -108,13 +110,13 @@ func TestHostUpdaterDockerRollbackRestoresDatabaseAndBackendData(t *testing.T) {
 	httpServer := httptest.NewServer(server.Handler())
 	defer httpServer.Close()
 
-	postUpdater(t, httpServer.URL+"/v1/update", `{"targetVersion":"v1.2.2-preview.4"}`, http.StatusAccepted)
+	postUpdater(t, httpServer.URL+"/v1/update", fmt.Sprintf(`{"targetVersion":%q}`, targetVersion), http.StatusAccepted)
 	automatic := waitForUpdaterTerminal(t, httpServer.URL)
 	if automatic.Operation.Phase != PhaseRolledBack || !automatic.Operation.AutomaticRollback {
 		t.Fatalf("automatic rollback status=%s automatic=%t error=%q rollback=%q", automatic.Operation.Phase, automatic.Operation.AutomaticRollback, automatic.Operation.Error, automatic.Operation.RollbackError)
 	}
 	assertRollbackData(t, realRunner, envPath, composePath, beforeHash)
-	assertReadyVersion(t, manager.config.HealthURL, "v1.2.2-preview.3")
+	assertReadyVersion(t, manager.config.HealthURL, oldVersion)
 	manager.mu.Lock()
 	persistedBackup := *manager.state.LastBackup
 	manager.mu.Unlock()
@@ -127,7 +129,7 @@ func TestHostUpdaterDockerRollbackRestoresDatabaseAndBackendData(t *testing.T) {
 		t.Fatalf("repeat rollback status=%s automatic=%t rollback=%q", repeated.Operation.Phase, repeated.Operation.AutomaticRollback, repeated.Operation.RollbackError)
 	}
 	assertRollbackData(t, realRunner, envPath, composePath, beforeHash)
-	assertReadyVersion(t, manager.config.HealthURL, "v1.2.2-preview.3")
+	assertReadyVersion(t, manager.config.HealthURL, oldVersion)
 	t.Logf("repeat manual rollback: phase=%s database/media/schema unchanged", repeated.Operation.Phase)
 
 	runDocker(t, realRunner, envPath, composePath, nil, "exec", "-T", "--user", "root", "backend", "sh", "-ceu", "mkdir /data/.canvas-updater-previous; printf preserve > /data/.canvas-updater-previous/manual-marker")
@@ -173,6 +175,14 @@ func requireIntegrationImage(t *testing.T, key string) string {
 	}
 	if strings.ContainsAny(value, "\r\n") {
 		t.Fatalf("%s contains a newline", key)
+	}
+	return value
+}
+
+func integrationVersion(key, fallback string) string {
+	value := strings.TrimSpace(os.Getenv(key))
+	if value == "" {
+		return fallback
 	}
 	return value
 }
