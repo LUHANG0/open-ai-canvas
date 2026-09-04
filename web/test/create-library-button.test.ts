@@ -106,13 +106,13 @@ describe("creation library button", () => {
         expect(source).toContain("素材仍在上传，完成后才能提交生成");
         expect(source).toContain("上传完成前不能生成或切换配置");
         expect(source).toContain('className="creation-upload-status is-error" role="alert"');
-        expect(source).toContain("<ModePicker mode={props.mode} onModeChange={props.onModeChange} disabled={interactionBusy} />");
+        expect(source).toContain('<ModePicker mode={props.mode} onModeChange={props.onModeChange} disabled={interactionBusy} terminology={props.desktopLayout ? "创作类型" : "生成类型"} />');
         expect(source).toContain("<DurationMenu profile={props.videoProfile} seconds={props.seconds} onChange={props.setSeconds} disabled={interactionBusy} />");
         expect(pickerSource).toContain("disabled?: boolean");
         expect(pickerSource).toContain("disabled={disabled}");
     });
 
-    test("Token 计费展示当前精确档位与 usage 结算说明，不展示伪固定总价", () => {
+    test("桌面计费统一放在发送按钮旁，Token 展示精确档位而不伪造固定总价", () => {
         const source = compactSource(readCreateSource());
         const pickerSource = compactSource(readFileSync(resolve(import.meta.dir, "../src/components/model-picker.tsx"), "utf8"));
         const workspaceStyles = compactSource(readFileSync(resolve(import.meta.dir, "../src/pages/create/creation-workspace.css"), "utf8"));
@@ -129,8 +129,15 @@ describe("creation library button", () => {
         expect(source).toContain("积分/百万 Token");
         expect(source).toContain("提交时预授权、完成按实际 usage 多退少补");
         expect(source).toContain("showCost ? formattedCredits : `${formattedTokenRate}/1M`");
+        expect(source).toContain("showSelectedPrice={!props.desktopLayout}");
+        expect(source).toContain("props.desktopLayout && (showCost || showTokenPrice)");
+        expect(source).toContain('className={`creation-submit-estimate${showTokenPrice ? " is-metered" : ""}`}');
+        expect(source).toContain('showCost ? "本次预计" : "按量计费"');
+        expect(source).toContain("!props.desktopLayout && showTokenPrice");
         expect(source).toContain('className="creation-token-billing-icon"');
         expect(source).toContain('className="creation-token-billing-description"');
+        expect(workspaceStyles).toContain(".creation-home .creation-chat-composer.is-desktop .creation-submit-cluster { display: flex;");
+        expect(workspaceStyles).toContain(".creation-home .creation-chat-composer.is-desktop .creation-submit-estimate {");
         expect(workspaceStyles).toContain(".creation-home .creation-token-billing-note > .creation-token-billing-icon { grid-column: 1;");
         expect(workspaceStyles).toContain(".creation-home .creation-token-billing-note > strong { grid-column: 2; grid-row: 1;");
         expect(workspaceStyles).toContain(".creation-home .creation-token-billing-note > .creation-token-billing-description { grid-column: 2; grid-row: 2;");
@@ -406,11 +413,7 @@ describe("creation library button", () => {
 
     test("对话消息、生成明细与媒体预览采用统一结果卡设计", () => {
         const entrySource = readCreateSource();
-        const source = compactSource(
-            ["../src/pages/create/creation-message-view.tsx", "../src/pages/create/creation-types.ts"]
-                .map((path) => readFileSync(resolve(import.meta.dir, path), "utf8"))
-                .join("\n"),
-        );
+        const source = compactSource(["../src/pages/create/creation-message-view.tsx", "../src/pages/create/creation-types.ts"].map((path) => readFileSync(resolve(import.meta.dir, path), "utf8")).join("\n"));
         const workspaceStyles = readFileSync(resolve(import.meta.dir, "../src/pages/create/creation-workspace.css"), "utf8");
 
         expect(source).toContain("completedAt?: string");

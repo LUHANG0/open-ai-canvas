@@ -207,7 +207,10 @@ describe("PC creation chat and storyboard director workbench regression gates", 
         expect(source).toContain("desktopLayout: pcBrandV2");
         expect(composer).toContain('props.desktopLayout ? " is-desktop" : ""');
         expect(composer).toContain('!props.desktopLayout && props.mode === "video"');
-        expect(composer).toContain('<SettingSection title="生成方式"');
+        expect(composer).toContain('<SettingSection title="参考模式"');
+        expect(composer).toContain('props.desktopLayout ? "创作类型" : "类型"');
+        expect(composer).toContain('terminology={props.desktopLayout ? "创作类型" : "生成类型"}');
+        expect(composer).toContain("showSelectedPrice={!props.desktopLayout}");
         expect(composer).toContain('<SettingSection title="时长"');
         expect(composer).not.toContain('<SettingSection title="声音"');
         expect(composer).toContain('className="creation-config-field is-sound"');
@@ -218,6 +221,8 @@ describe("PC creation chat and storyboard director workbench regression gates", 
         expectRuleWith(finalDesktopStyles, ".creation-home .creation-chat-composer.is-desktop.has-references .creation-chat-editor", [/display:\s*grid/, /grid-template-columns:\s*minmax\(0,\s*1fr\)\s+clamp\(264px,\s*32%,\s*304px\)/]);
         expectRuleWith(finalDesktopStyles, ".creation-home .creation-chat-composer.is-desktop.has-references .creation-chat-mention-editor", [/min-height:\s*112px/, /max-height:\s*144px/]);
         expectRuleWith(finalDesktopStyles, ".creation-home .creation-chat-composer.is-desktop .creation-entry-group.is-config", [/display:\s*grid/, /grid-template-columns:[^;]+minmax\(94px,\s*0\.64fr\)/]);
+        expectRuleWith(finalDesktopStyles, ".creation-home .creation-chat-composer.is-desktop .creation-submit-cluster", [/display:\s*flex/, /gap:\s*8px/]);
+        expectRuleWith(finalDesktopStyles, ".creation-home .creation-chat-composer.is-desktop .creation-submit-estimate", [/height:\s*42px/, /align-items:\s*flex-end/]);
         expect(toolbar).toContain('aria-label={desktopLayout ? "工作方式" : "创作视图"}');
         expect(toolbar).toContain("desktopLayout ? <span>新建</span> : null");
         expect(toolbar).toContain("desktopLayout ? <span>历史</span> : null");

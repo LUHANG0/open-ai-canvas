@@ -314,6 +314,8 @@ export function CreationComposer(props: ComposerProps) {
     const showTokenPrice = creditsEnabled && tokenPricing !== null;
     const formattedCredits = credits?.toLocaleString("zh-CN", { maximumFractionDigits: 6 });
     const formattedTokenRate = tokenPricing?.perMillionCredits.toLocaleString("zh-CN", { maximumFractionDigits: 6 });
+    const billingSummary = showCost ? `本次预计 ${formattedCredits} 积分` : showTokenPrice ? `按量计费 ${formattedTokenRate} 积分 / 百万 Token` : "";
+    const billingDescription = showCost ? "根据当前模型与生成参数计算，提交时将按此金额扣除" : "显示的是计费单价，提交时预授权，完成后按实际 Token 用量结算";
     const placeholder = props.mode === "text" ? "描述你的故事、角色或想继续讨论的创意" : props.mode === "image" ? "描述画面、人物、场景、构图与风格" : "描述镜头内容、运动、光线与节奏";
     const emptyPlaceholder =
         props.mode === "video"
@@ -372,7 +374,7 @@ export function CreationComposer(props: ComposerProps) {
     const referenceEntryHint = !props.model
         ? "可以先上传到素材库；选择模型后再添加为参考"
         : !referencesSupported
-          ? "当前生成方式不使用参考素材；上传内容仍会保存到素材库"
+          ? `${props.desktopLayout ? "当前参考模式" : "当前生成方式"}不使用参考素材；上传内容仍会保存到素材库`
           : !canAddMoreReferences
             ? `已达到引用上限${referenceLimitSummary ? ` · ${referenceLimitSummary}` : ""}；仍可继续入库`
             : `上传后保存并加入本次创作${referenceLimitSummary ? ` · ${referenceLimitSummary}` : ""}`;
@@ -700,7 +702,7 @@ export function CreationComposer(props: ComposerProps) {
                     ) : null}
                 </div>
             </div>
-            {props.uploadPendingCount > 0 || props.uploadError || showTokenPrice ? (
+            {props.uploadPendingCount > 0 || props.uploadError || (!props.desktopLayout && showTokenPrice) ? (
                 <div className="creation-composer-notices" aria-live="polite">
                     {props.uploadPendingCount > 0 ? (
                         <div className="creation-upload-status is-pending" role="status">
@@ -715,7 +717,7 @@ export function CreationComposer(props: ComposerProps) {
                             </button>
                         </div>
                     ) : null}
-                    {showTokenPrice ? (
+                    {!props.desktopLayout && showTokenPrice ? (
                         <div className="creation-token-billing-note" role="note">
                             <CreditSymbol className="creation-token-billing-icon" aria-hidden="true" />
                             <strong>{formattedTokenRate} 积分/百万 Token</strong>
@@ -728,8 +730,8 @@ export function CreationComposer(props: ComposerProps) {
                 <div className="creation-chat-controls creation-entry-toolbar">
                     <div className="creation-entry-group is-config" role="group" aria-label="生成配置">
                         <div className="creation-config-field is-mode">
-                            <span className="creation-config-label">{props.desktopLayout ? "生成类型" : "类型"}</span>
-                            <ModePicker mode={props.mode} onModeChange={props.onModeChange} disabled={interactionBusy} />
+                            <span className="creation-config-label">{props.desktopLayout ? "创作类型" : "类型"}</span>
+                            <ModePicker mode={props.mode} onModeChange={props.onModeChange} disabled={interactionBusy} terminology={props.desktopLayout ? "创作类型" : "生成类型"} />
                         </div>
                         <div className="creation-config-field is-model">
                             <span className="creation-config-label">模型</span>
@@ -741,7 +743,7 @@ export function CreationComposer(props: ComposerProps) {
                                 requirements={props.modelRequirements}
                                 className="creation-model-picker creation-entry-button is-model"
                                 placeholder={`选择${modeLabels[props.mode]}模型`}
-                                showSelectedPrice
+                                showSelectedPrice={!props.desktopLayout}
                                 variant="creation"
                                 disabled={interactionBusy}
                             />
@@ -804,31 +806,42 @@ export function CreationComposer(props: ComposerProps) {
                         </>
                     ) : null}
                 </div>
-                <Button
-                    type="text"
-                    className={`canvas-node-composer-submit ${showCost || showTokenPrice ? "has-cost" : ""}`}
-                    disabled={interactionBusy || !canSubmit}
-                    style={
-                        {
-                            color: !interactionBusy && !canSubmit ? "var(--creation-faint)" : "var(--creation-text)",
-                            "--canvas-composer-submit-action": !interactionBusy && !canSubmit ? "var(--creation-surface-hover)" : "var(--creation-submit-action, var(--creation-text))",
-                            "--canvas-composer-submit-action-fg": !interactionBusy && !canSubmit ? "var(--creation-faint)" : "var(--creation-submit-action-fg, var(--creation-bg))",
-                        } as CSSProperties
-                    }
-                    onClick={interactionBusy ? undefined : props.onSubmit}
-                    aria-label={actionLabel}
-                    title={actionLabel}
-                >
-                    {showCost || showTokenPrice ? (
-                        <span className="canvas-node-composer-submit-cost">
-                            <CreditSymbol />
-                            <span>{showCost ? formattedCredits : `${formattedTokenRate}/1M`}</span>
-                        </span>
+                <div className="creation-submit-cluster">
+                    {props.desktopLayout && (showCost || showTokenPrice) ? (
+                        <div className={`creation-submit-estimate${showTokenPrice ? " is-metered" : ""}`} role="note" aria-label={billingSummary} title={billingDescription}>
+                            <span>{showCost ? "本次预计" : "按量计费"}</span>
+                            <strong>
+                                <CreditSymbol aria-hidden="true" />
+                                <span>{showCost ? `${formattedCredits} 积分` : `${formattedTokenRate} 积分 / 百万 Token`}</span>
+                            </strong>
+                        </div>
                     ) : null}
-                    <span className="canvas-node-composer-submit-action" aria-hidden>
-                        {interactionBusy ? <LoaderCircle className="size-3 animate-spin" /> : <ArrowUp className="size-3" />}
-                    </span>
-                </Button>
+                    <Button
+                        type="text"
+                        className={`canvas-node-composer-submit ${!props.desktopLayout && (showCost || showTokenPrice) ? "has-cost" : ""}`}
+                        disabled={interactionBusy || !canSubmit}
+                        style={
+                            {
+                                color: !interactionBusy && !canSubmit ? "var(--creation-faint)" : "var(--creation-text)",
+                                "--canvas-composer-submit-action": !interactionBusy && !canSubmit ? "var(--creation-surface-hover)" : "var(--creation-submit-action, var(--creation-text))",
+                                "--canvas-composer-submit-action-fg": !interactionBusy && !canSubmit ? "var(--creation-faint)" : "var(--creation-submit-action-fg, var(--creation-bg))",
+                            } as CSSProperties
+                        }
+                        onClick={interactionBusy ? undefined : props.onSubmit}
+                        aria-label={actionLabel}
+                        title={actionLabel}
+                    >
+                        {!props.desktopLayout && (showCost || showTokenPrice) ? (
+                            <span className="canvas-node-composer-submit-cost">
+                                <CreditSymbol />
+                                <span>{showCost ? formattedCredits : `${formattedTokenRate}/1M`}</span>
+                            </span>
+                        ) : null}
+                        <span className="canvas-node-composer-submit-action" aria-hidden>
+                            {interactionBusy ? <LoaderCircle className="size-3 animate-spin" /> : <ArrowUp className="size-3" />}
+                        </span>
+                    </Button>
+                </div>
             </footer>
             <CreationMediaPreviewModal url={previewUrl} type={previewType} onClose={() => setPreviewUrl("")} />
         </section>
@@ -853,7 +866,7 @@ export function CreationComposer(props: ComposerProps) {
     );
 }
 
-function ModePicker({ mode, onModeChange, disabled = false }: { mode: CreationMode; onModeChange: (mode: CreationMode) => void; disabled?: boolean }) {
+function ModePicker({ mode, onModeChange, terminology, disabled = false }: { mode: CreationMode; onModeChange: (mode: CreationMode) => void; terminology: "创作类型" | "生成类型"; disabled?: boolean }) {
     const [open, setOpen] = useState(false);
     const items: { mode: CreationMode; icon: ReactNode; label: string }[] = [
         { mode: "video", icon: <Film />, label: "视频生成" },
@@ -873,7 +886,7 @@ function ModePicker({ mode, onModeChange, disabled = false }: { mode: CreationMo
             arrow={false}
             classNames={{ root: "creation-control-popover", container: "creation-control-popover-surface", content: "creation-control-popover-content" }}
             content={
-                <div className="creation-mode-picker-menu" role="listbox" aria-label="选择生成类型">
+                <div className="creation-mode-picker-menu" role="listbox" aria-label={`选择${terminology}`}>
                     {items.map((item) => (
                         <button
                             key={item.mode}
@@ -894,7 +907,7 @@ function ModePicker({ mode, onModeChange, disabled = false }: { mode: CreationMo
                 </div>
             }
         >
-            <button type="button" className="creation-chat-control creation-entry-button is-mode" aria-label={`生成类型：${current.label}`} aria-haspopup="listbox" aria-expanded={open} disabled={disabled}>
+            <button type="button" className="creation-chat-control creation-entry-button is-mode" aria-label={`${terminology}：${current.label}`} aria-haspopup="listbox" aria-expanded={open} disabled={disabled}>
                 {current.icon}
                 <span>{current.label}</span>
                 <ChevronDown className={open ? "is-open" : ""} />
@@ -1029,7 +1042,7 @@ function GenerationSettingsMenu(props: ComposerProps) {
     const panel = (
         <div className="creation-parameter-menu">
             {props.desktopLayout && props.mode === "video" ? (
-                <SettingSection title="生成方式" value={videoOperation.label}>
+                <SettingSection title="参考模式" value={videoOperation.label}>
                     <div className="creation-choice-grid is-operation">
                         {creationVideoOperationOptions.map((option) => {
                             const supported = option.value === "auto" || props.videoOperations.includes(option.value);
@@ -1040,7 +1053,7 @@ function GenerationSettingsMenu(props: ComposerProps) {
                                     aria-pressed={option.value === props.videoOperationChoice}
                                     className={option.value === props.videoOperationChoice ? "is-selected" : undefined}
                                     disabled={!supported}
-                                    title={supported ? option.description : "当前模型不支持此生成方式"}
+                                    title={supported ? option.description : "当前模型不支持此参考模式"}
                                     onClick={() => props.onVideoOperationChange(option.value)}
                                 >
                                     <span className="creation-option-check" aria-hidden="true">

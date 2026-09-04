@@ -840,6 +840,11 @@ html:not(.dark) .creation-media-preview-modal.is-image .ant-modal-container {
     overflow: hidden;
 }
 
+/* 移动端沿用原有发送按钮结构；桌面端在后续断点中展开为计费摘要与发送按钮组合。 */
+.creation-home .creation-submit-cluster {
+    display: contents;
+}
+
 .creation-home .creation-entry-toolbar {
     display: flex;
     min-width: 0;
@@ -5435,6 +5440,48 @@ html:not(.dark) .creation-media-preview-modal.is-video .ant-modal-container {
         display: inline;
         overflow: hidden;
         text-overflow: ellipsis;
+    }
+
+    /* 计费信息只有一个桌面端出口：紧邻发送按钮，并明确区分本次总价与按量单价。 */
+    .creation-home .creation-chat-composer.is-desktop .creation-submit-cluster {
+        display: flex;
+        min-width: max-content;
+        flex: 0 0 auto;
+        align-items: flex-end;
+        gap: 8px;
+    }
+
+    .creation-home .creation-chat-composer.is-desktop .creation-submit-estimate {
+        display: flex;
+        height: 42px;
+        min-width: 104px;
+        align-items: flex-end;
+        justify-content: center;
+        flex-direction: column;
+        gap: 3px;
+        color: var(--app-text-muted, var(--creation-faint));
+        font-size: 10px;
+        line-height: 1.1;
+        white-space: nowrap;
+    }
+
+    .creation-home .creation-chat-composer.is-desktop .creation-submit-estimate > strong {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        color: var(--app-text-primary, var(--creation-text));
+        font-size: var(--app-font-size-label, 12px);
+        font-variant-numeric: tabular-nums;
+        font-weight: 650;
+    }
+
+    .creation-home .creation-chat-composer.is-desktop .creation-submit-estimate > strong > :first-child {
+        color: var(--app-selection-fg, var(--creation-muted));
+        font-size: 13px;
+    }
+
+    .creation-home .creation-chat-composer.is-desktop .creation-submit-estimate.is-metered {
+        min-width: 152px;
     }
 
     .creation-generation-settings-surface .creation-parameter-menu {
