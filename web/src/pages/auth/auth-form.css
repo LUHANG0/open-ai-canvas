@@ -141,10 +141,11 @@
 }
 
 .pc-auth-workspace :where(.pc-auth-field .ant-input, .pc-auth-field .ant-input-affix-wrapper) {
+    --auth-input-surface: #18191f;
     min-height: 52px;
     border-color: rgba(255, 255, 255, 0.12);
     border-radius: 8px;
-    background: #18191f;
+    background: var(--auth-input-surface);
     color: var(--auth-ink);
     font-size: 16px;
     box-shadow: none;
@@ -155,6 +156,7 @@
 }
 
 .pc-auth-workspace .pc-auth-field .ant-input-affix-wrapper > .ant-input {
+    --auth-input-surface: inherit;
     min-height: auto;
     border: 0;
     border-radius: 0;
@@ -163,14 +165,16 @@
 }
 
 .pc-auth-workspace :where(.pc-auth-field .ant-input, .pc-auth-field .ant-input-affix-wrapper):hover {
+    --auth-input-surface: #1d1e25;
     border-color: rgba(255, 255, 255, 0.28);
-    background: #1d1e25;
+    background: var(--auth-input-surface);
 }
 
 .pc-auth-workspace :where(.pc-auth-field .ant-input, .pc-auth-field .ant-input-affix-wrapper):focus,
 .pc-auth-workspace :where(.pc-auth-field .ant-input, .pc-auth-field .ant-input-affix-wrapper):focus-within {
+    --auth-input-surface: #18191f;
     border-color: var(--auth-brand);
-    background: #18191f;
+    background: var(--auth-input-surface);
     box-shadow: 0 0 0 3px var(--auth-brand-soft);
 }
 
@@ -179,13 +183,15 @@
     cursor: not-allowed;
 }
 
-.pc-auth-workspace :where(input:-webkit-autofill, input:-webkit-autofill:hover, input:-webkit-autofill:focus) {
-    -webkit-text-fill-color: var(--auth-ink);
-    -webkit-box-shadow: 0 0 0 1000px #18191f inset !important;
-    background-color: #18191f !important;
+/* Keep the autofill cover above Ant Design's important focused-input shadow reset. */
+.pc-auth-workspace .pc-auth-field input.ant-input:-webkit-autofill,
+.pc-auth-workspace .pc-auth-field input.ant-input:autofill {
+    -webkit-text-fill-color: var(--auth-ink) !important;
+    -webkit-box-shadow: 0 0 0 1000px var(--auth-input-surface) inset !important;
+    background-color: var(--auth-input-surface) !important;
     background-image: none !important;
     caret-color: var(--auth-ink);
-    box-shadow: 0 0 0 1000px #18191f inset !important;
+    box-shadow: 0 0 0 1000px var(--auth-input-surface) inset !important;
     transition: none !important;
 }
 

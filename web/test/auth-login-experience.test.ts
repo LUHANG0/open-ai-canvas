@@ -76,7 +76,7 @@ describe("auth login experience", () => {
         expect(styles).not.toContain("grid-template-columns");
         expect(styles).not.toContain("max-height: calc(100dvh");
         expect(styles).toContain("color-scheme: dark");
-        expect(styles).toContain("input:-webkit-autofill");
+        expect(styles).toContain(":-webkit-autofill");
         expect(styles).toContain("@media (prefers-reduced-motion: reduce)");
         expect(styles).toContain("var(--auth-brand)");
     });
