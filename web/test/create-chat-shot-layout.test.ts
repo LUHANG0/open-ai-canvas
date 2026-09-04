@@ -189,11 +189,12 @@ describe("PC creation chat and storyboard director workbench regression gates", 
     });
 
     test("puts the desktop composer before auxiliary inspiration without changing the mobile branch", async () => {
-        const [source, composer, toolbar, message] = await Promise.all([
+        const [source, composer, toolbar, message, styles] = await Promise.all([
             read("../src/pages/create/index.tsx"),
             read("../src/pages/create/creation-composer.tsx"),
             read("../src/pages/create/creation-workspace-toolbar.tsx"),
             read("../src/pages/create/creation-message-view.tsx"),
+            read("../src/pages/create/creation-workspace.css"),
         ]);
         const emptyRender = sourceSection(source, "{isEmpty ? (", ') : viewMode === "chat" ? (');
         const desktopComposer = emptyRender.indexOf('{pcBrandV2 ? (\n                                <div className="creation-empty-composer">');
@@ -208,7 +209,15 @@ describe("PC creation chat and storyboard director workbench regression gates", 
         expect(composer).toContain('!props.desktopLayout && props.mode === "video"');
         expect(composer).toContain('<SettingSection title="生成方式"');
         expect(composer).toContain('<SettingSection title="时长"');
-        expect(composer).toContain('<SettingSection title="声音"');
+        expect(composer).not.toContain('<SettingSection title="声音"');
+        expect(composer).toContain('className="creation-config-field is-sound"');
+        expect(composer).toContain('className="creation-prompt-panel-header"');
+        expect(composer).toContain('className="creation-reference-panel-title"');
+        expect(composer).toContain('.filter((filter) => !props.desktopLayout || filter.id === "all" || filter.count > 0)');
+        const finalDesktopStyles = styles.slice(styles.lastIndexOf("/*\n * 创作页桌面端层级收口"));
+        expectRuleWith(finalDesktopStyles, ".creation-home .creation-chat-composer.is-desktop.has-references .creation-chat-editor", [/display:\s*grid/, /grid-template-columns:\s*minmax\(0,\s*1fr\)\s+clamp\(264px,\s*32%,\s*304px\)/]);
+        expectRuleWith(finalDesktopStyles, ".creation-home .creation-chat-composer.is-desktop.has-references .creation-chat-mention-editor", [/min-height:\s*112px/, /max-height:\s*144px/]);
+        expectRuleWith(finalDesktopStyles, ".creation-home .creation-chat-composer.is-desktop .creation-entry-group.is-config", [/display:\s*grid/, /grid-template-columns:[^;]+minmax\(94px,\s*0\.64fr\)/]);
         expect(toolbar).toContain('aria-label={desktopLayout ? "工作方式" : "创作视图"}');
         expect(toolbar).toContain("desktopLayout ? <span>新建</span> : null");
         expect(toolbar).toContain("desktopLayout ? <span>历史</span> : null");

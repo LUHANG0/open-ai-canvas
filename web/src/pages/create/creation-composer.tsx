@@ -548,6 +548,12 @@ export function CreationComposer(props: ComposerProps) {
             <div className="creation-chat-writing-surface">
                 <input ref={props.fileInputRef} type="file" hidden accept={directUploadAccept} multiple onChange={props.onFileChange} />
                 <div className="creation-chat-editor">
+                    {props.desktopLayout ? (
+                        <div className="creation-prompt-panel-header">
+                            <strong>创作描述</strong>
+                            <span>支持 @ 引用素材或技能</span>
+                        </div>
+                    ) : null}
                     <CanvasResourceMentionTextarea
                         ref={props.composerFocusRef}
                         value={props.prompt}
@@ -572,6 +578,13 @@ export function CreationComposer(props: ComposerProps) {
                     {props.attachments.length ? (
                         <div className="creation-reference-panel is-expanded" aria-busy={interactionBusy}>
                             <div className="creation-reference-panel-header">
+                                {props.desktopLayout ? (
+                                    <div className="creation-reference-panel-title">
+                                        <Library aria-hidden="true" />
+                                        <strong>参考素材</strong>
+                                        <span>{props.attachments.length} 个</span>
+                                    </div>
+                                ) : null}
                                 <div className="creation-reference-filter-tabs" role="group" aria-label="筛选参考内容">
                                     {(
                                         [
@@ -581,12 +594,14 @@ export function CreationComposer(props: ComposerProps) {
                                             { id: "audio", label: "音频", count: referenceCounts.audio },
                                             { id: "file", label: "文件", count: referenceCounts.file },
                                         ] as const
-                                    ).map((filter) => (
-                                        <button key={filter.id} type="button" aria-pressed={referenceFilter === filter.id} className={referenceFilter === filter.id ? "is-active" : undefined} onClick={() => setReferenceFilter(filter.id)}>
-                                            {filter.label}
-                                            {filter.count ? ` (${filter.count})` : ""}
-                                        </button>
-                                    ))}
+                                    )
+                                        .filter((filter) => !props.desktopLayout || filter.id === "all" || filter.count > 0)
+                                        .map((filter) => (
+                                            <button key={filter.id} type="button" aria-pressed={referenceFilter === filter.id} className={referenceFilter === filter.id ? "is-active" : undefined} onClick={() => setReferenceFilter(filter.id)}>
+                                                {filter.label}
+                                                {filter.count ? ` (${filter.count})` : ""}
+                                            </button>
+                                        ))}
                                 </div>
                                 <div className="creation-reference-panel-actions">
                                     {invalidReferenceCount ? (
@@ -598,11 +613,11 @@ export function CreationComposer(props: ComposerProps) {
                                         <Upload aria-hidden="true" />
                                         <span>上传</span>
                                     </button>
-                                    <button type="button" onClick={props.onOpenLibrary} disabled={interactionBusy} aria-label="打开素材库上传或选择素材">
+                                    <button type="button" onClick={props.onOpenLibrary} disabled={interactionBusy} aria-label="打开素材库上传或选择素材" title="打开素材库">
                                         <Library aria-hidden="true" />
                                         <span>素材库</span>
                                     </button>
-                                    <button type="button" onClick={props.onClearAttachments} disabled={interactionBusy} aria-label="清空全部素材">
+                                    <button type="button" onClick={props.onClearAttachments} disabled={interactionBusy} aria-label="清空全部素材" title="清空全部素材">
                                         <Trash2 aria-hidden="true" />
                                         <span>清空</span>
                                     </button>
@@ -749,7 +764,7 @@ export function CreationComposer(props: ComposerProps) {
                                 <DurationMenu profile={props.videoProfile} seconds={props.seconds} onChange={props.setSeconds} disabled={interactionBusy} />
                             </div>
                         ) : null}
-                        {!props.desktopLayout && props.mode === "video" ? (
+                        {props.mode === "video" ? (
                             <div className="creation-config-field is-sound">
                                 <span className="creation-config-label">声音</span>
                                 <Tooltip title={generateAudioSupported ? `点击切换为${generateAudio ? "无声音" : "有声音"}` : "当前模型不支持同步生成声音"}>
@@ -998,8 +1013,6 @@ function GenerationSettingsMenu(props: ComposerProps) {
     const durationMin = props.mode === "video" && props.videoProfile.duration.selection === "range" ? props.videoProfile.duration.min || 1 : Math.min(...durationFallback);
     const durationMax = props.mode === "video" && props.videoProfile.duration.selection === "range" ? Math.max(durationMin, props.videoProfile.duration.max || durationMin) : Math.max(...durationFallback);
     const durationStep = props.mode === "video" ? Math.max(1, props.videoProfile.duration.step || 1) : 1;
-    const generateAudioSupported = props.mode === "video" && props.videoProfile.generateAudio.supported;
-    const generateAudio = generateAudioSupported && props.config.videoGenerateAudio === "true";
     const imageSummary = [
         ...(mergedProfile.size.parameter !== "none" ? [referenceImageSizeSelected ? referenceImageSizeLabel : usesImageResolutionPicker ? formatImageResolutionSize(props.ratio, imageResolutionOptions) : props.ratio] : []),
         ...(props.imageProfile.quality.supported ? [qualityLabel] : []),
@@ -1010,7 +1023,7 @@ function GenerationSettingsMenu(props: ComposerProps) {
         ...(props.desktopLayout ? [videoOperation.label] : []),
         ...(videoRatioSupported ? [props.ratio] : []),
         ...(videoResolutionSupported ? [videoResolutionLabel(props.videoQuality)] : []),
-        ...(props.desktopLayout ? [`${durationValue}s`, ...(generateAudioSupported ? [generateAudio ? "声音开" : "声音关"] : [])] : []),
+        ...(props.desktopLayout ? [`${durationValue}s`] : []),
     ].join(" · ");
     const summary = props.mode === "video" ? videoSummary : imageSummary;
     const panel = (
@@ -1170,15 +1183,6 @@ function GenerationSettingsMenu(props: ComposerProps) {
                                     </div>
                                 )}
                             </div>
-                        </SettingSection>
-                    ) : null}
-                    {props.desktopLayout && generateAudioSupported ? (
-                        <SettingSection title="声音" value={generateAudio ? "有声音" : "无声音"}>
-                            <button type="button" className="creation-settings-sound creation-sound-toggle" aria-pressed={generateAudio} onClick={() => props.onGenerateAudioChange(!generateAudio)}>
-                                {generateAudio ? <Volume2 /> : <VolumeX />}
-                                <span>{generateAudio ? "同步生成声音" : "不生成声音"}</span>
-                                <small>点击切换</small>
-                            </button>
                         </SettingSection>
                     ) : null}
                 </>

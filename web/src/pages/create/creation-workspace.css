@@ -5201,37 +5201,218 @@ html:not(.dark) .creation-media-preview-modal.is-video .ant-modal-container {
         display: none;
     }
 
-    .creation-home .creation-chat-composer.is-desktop .creation-entry-group.is-config {
+    /* 桌面端将输入与素材拆成并行工作区，素材增加不再挤压描述框。 */
+    .creation-home .creation-chat-composer.is-desktop .creation-chat-writing-surface {
+        height: auto;
+        min-height: 112px;
+        max-height: none;
+        padding: 14px 16px 10px;
+        overflow: visible;
+    }
+
+    .creation-home .creation-chat-composer.is-desktop .creation-chat-editor {
+        display: grid;
+        min-width: 0;
+        grid-template-areas:
+            "prompt-heading"
+            "prompt";
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-rows: auto minmax(64px, auto);
+        align-items: stretch;
+        gap: 7px;
+    }
+
+    .creation-home .creation-chat-composer.is-desktop.has-references .creation-chat-writing-surface {
+        min-height: 164px;
+    }
+
+    .creation-home .creation-chat-composer.is-desktop.has-references .creation-chat-editor {
+        display: grid;
+        grid-template-areas:
+            "prompt-heading references"
+            "prompt references";
+        grid-template-columns: minmax(0, 1fr) clamp(264px, 32%, 304px);
+        grid-template-rows: auto minmax(112px, 1fr);
+        column-gap: 14px;
+    }
+
+    .creation-home .creation-prompt-panel-header {
+        grid-area: prompt-heading;
+        display: flex;
+        min-width: 0;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 12px;
+        color: var(--app-text-primary, var(--creation-text));
+        font-size: var(--app-font-size-label, 12px);
+        line-height: 1.3;
+    }
+
+    .creation-home .creation-prompt-panel-header strong {
+        font-weight: 650;
+    }
+
+    .creation-home .creation-prompt-panel-header span {
+        overflow: hidden;
+        color: var(--app-text-muted, var(--creation-faint));
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .creation-home .creation-chat-composer.is-desktop .creation-chat-mention-container {
+        grid-area: prompt;
+        width: auto !important;
+        min-height: 64px;
+        max-height: 144px;
+        overflow: hidden;
+    }
+
+    .creation-home .creation-chat-composer.is-desktop .creation-chat-mention-editor {
+        min-height: 64px;
+        max-height: 144px;
+        overflow-y: auto;
+    }
+
+    .creation-home .creation-chat-composer.is-desktop.has-references .creation-chat-mention-container,
+    .creation-home .creation-chat-composer.is-desktop.has-references .creation-chat-mention-editor {
+        min-height: 112px;
+        max-height: 144px;
+    }
+
+    .creation-home .creation-chat-composer.is-desktop.has-references .creation-reference-panel {
+        grid-area: references;
+        order: initial;
+        display: grid;
         width: auto;
         min-width: 0;
+        min-height: 136px;
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-rows: auto minmax(0, 1fr);
+        align-self: stretch;
+        gap: 8px;
+        margin: 0;
+        border: 1px solid var(--app-border-subtle, var(--creation-border));
+        border-radius: var(--app-surface-radius, 12px);
+        background: var(--app-surface-2, var(--creation-surface-muted));
+        padding: 9px 10px;
+        overflow: hidden;
+    }
+
+    .creation-home .creation-chat-composer.is-desktop.has-references .creation-reference-panel-header {
+        display: grid;
+        min-width: 0;
+        grid-template-areas:
+            "reference-title reference-actions"
+            "reference-filters reference-filters";
+        grid-template-columns: minmax(0, 1fr) max-content;
+        align-items: center;
+        gap: 7px 8px;
+    }
+
+    .creation-home .creation-reference-panel-title {
+        grid-area: reference-title;
+        display: flex;
+        min-width: 0;
+        align-items: center;
+        gap: 6px;
+        color: var(--app-text-primary, var(--creation-text));
+        font-size: var(--app-font-size-label, 12px);
+        line-height: 1;
+    }
+
+    .creation-home .creation-reference-panel-title svg {
+        width: 14px;
+        height: 14px;
+        color: var(--app-selection-fg, var(--creation-muted));
+    }
+
+    .creation-home .creation-reference-panel-title strong {
+        overflow: hidden;
+        font-weight: 650;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .creation-home .creation-reference-panel-title span {
+        flex: 0 0 auto;
+        color: var(--app-text-muted, var(--creation-faint));
+        font-size: var(--app-font-size-label, 12px);
+    }
+
+    .creation-home .creation-chat-composer.is-desktop.has-references .creation-reference-filter-tabs {
+        grid-area: reference-filters;
+        min-width: 0;
+        gap: 4px;
+        overflow-x: auto;
+        scrollbar-width: none;
+    }
+
+    .creation-home .creation-chat-composer.is-desktop.has-references .creation-reference-filter-tabs::-webkit-scrollbar {
+        display: none;
+    }
+
+    .creation-home .creation-chat-composer.is-desktop.has-references .creation-reference-panel-actions {
+        grid-area: reference-actions;
+        gap: 3px;
+    }
+
+    .creation-home .creation-chat-composer.is-desktop.has-references .creation-reference-panel-actions button {
+        width: 28px;
+        min-width: 28px;
+        min-height: 28px;
+        padding: 0;
+    }
+
+    .creation-home .creation-chat-composer.is-desktop.has-references .creation-reference-panel-actions button span {
+        display: none;
+    }
+
+    .creation-home .creation-chat-composer.is-desktop.has-references .creation-reference-track-wrapper {
+        grid-column: auto;
+        grid-row: auto;
+        min-width: 0;
+        min-height: 48px;
+        align-self: end;
+    }
+
+    .creation-home .creation-chat-composer.is-desktop.has-references .creation-reference-track {
+        gap: 6px;
+        padding: 0;
+    }
+
+    /* 配置栏用稳定网格分配宽度，声音作为独立一级控件。 */
+    .creation-home .creation-chat-composer.is-desktop .creation-entry-group.is-config {
+        display: grid;
+        width: 100%;
+        min-width: 0;
         flex: 1 1 auto;
-        flex-wrap: nowrap;
+        grid-template-columns: minmax(104px, 0.72fr) minmax(150px, 1fr) minmax(180px, 1.3fr) minmax(94px, 0.64fr);
+        align-items: end;
+        gap: 10px;
     }
 
     .creation-home .creation-chat-composer.is-desktop .creation-config-field.is-mode .creation-entry-button {
-        width: 128px;
-        min-width: 128px;
+        width: 100%;
+        min-width: 0;
     }
 
     .creation-home .creation-chat-composer.is-desktop .creation-config-field.is-model {
         min-width: 0;
-        flex: 1 1 196px;
     }
 
     .creation-home .creation-chat-composer.is-desktop .creation-config-field.is-model .creation-model-picker {
-        width: clamp(172px, 18vw, 232px) !important;
+        width: 100% !important;
         min-width: 0;
-        max-width: 232px !important;
+        max-width: none !important;
     }
 
     .creation-home .creation-chat-composer.is-desktop .creation-config-field.is-settings {
         min-width: 0;
-        flex: 0 1 238px;
     }
 
     .creation-home .creation-chat-composer.is-desktop .creation-config-field.is-settings .creation-entry-button {
-        width: min(238px, 21vw);
-        min-width: 148px;
+        width: 100%;
+        min-width: 0;
     }
 
     .creation-home .creation-chat-composer.is-desktop .creation-config-field.is-settings .creation-entry-button > span {
@@ -5239,6 +5420,21 @@ html:not(.dark) .creation-media-preview-modal.is-video .ant-modal-container {
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
+    }
+
+    .creation-home .creation-chat-composer.is-desktop .creation-config-field.is-sound {
+        min-width: 0;
+    }
+
+    .creation-home .creation-chat-composer.is-desktop .creation-config-field.is-sound .creation-entry-button {
+        width: 100%;
+        min-width: 0;
+    }
+
+    .creation-home .creation-chat-composer.is-desktop .creation-config-field.is-sound .creation-entry-button > span {
+        display: inline;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
 
     .creation-generation-settings-surface .creation-parameter-menu {
@@ -5298,38 +5494,6 @@ html:not(.dark) .creation-media-preview-modal.is-video .ant-modal-container {
     .creation-generation-settings-surface .creation-settings-duration-scale {
         display: flex;
         justify-content: space-between;
-        color: var(--app-text-muted);
-        font-size: 10px;
-    }
-
-    .creation-generation-settings-surface .creation-settings-sound {
-        display: grid;
-        width: 100%;
-        min-height: 44px;
-        grid-template-columns: 20px minmax(0, 1fr) auto;
-        align-items: center;
-        gap: 8px;
-        border: 1px solid var(--app-border-subtle);
-        border-radius: var(--app-control-radius, 8px);
-        background: var(--app-surface-2);
-        color: var(--app-text-secondary);
-        padding: 0 12px;
-        text-align: left;
-        cursor: pointer;
-    }
-
-    .creation-generation-settings-surface .creation-settings-sound[aria-pressed="true"] {
-        border-color: var(--app-selection-border);
-        background: var(--app-selection-bg);
-        color: var(--app-selection-fg);
-    }
-
-    .creation-generation-settings-surface .creation-settings-sound svg {
-        width: 16px;
-        height: 16px;
-    }
-
-    .creation-generation-settings-surface .creation-settings-sound small {
         color: var(--app-text-muted);
         font-size: 10px;
     }
