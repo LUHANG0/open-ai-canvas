@@ -108,10 +108,8 @@ describe("creation library button", () => {
         expect(source).toContain('className="creation-upload-status is-error" role="alert"');
         expect(source).toContain("<ModePicker");
         expect(source).toContain('terminology={props.desktopLayout ? "创作类型" : "生成类型"}');
-        expect(source).toContain("combineVideoOperation={props.desktopLayout}");
-        expect(source).toContain("videoOperationChoice={props.videoOperationChoice}");
-        expect(source).toContain("videoOperations={props.videoOperations}");
-        expect(source).toContain("onVideoOperationChange={props.onVideoOperationChange}");
+        expect(source).not.toContain("combineVideoOperation=");
+        expect(source).toContain('{ mode: "video", icon: <Film />, label: "文生视频" }');
         expect(source).toContain("<DurationMenu profile={props.videoProfile} seconds={props.seconds} onChange={props.setSeconds} disabled={interactionBusy} />");
         expect(pickerSource).toContain("disabled?: boolean");
         expect(pickerSource).toContain("disabled={disabled}");

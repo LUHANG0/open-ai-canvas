@@ -200,6 +200,7 @@ describe("PC creation chat and storyboard director workbench regression gates", 
         const desktopComposer = emptyRender.indexOf('{pcBrandV2 ? (\n                                <div className="creation-empty-composer">');
         const suggestions = emptyRender.indexOf("<CreationEmptySuggest");
         const mobileComposer = emptyRender.indexOf('{!pcBrandV2 ? (\n                                <div className="creation-empty-composer">');
+        const modePicker = sourceSection(composer, "function ModePicker", "function VideoOperationPicker");
 
         expect(desktopComposer).toBeGreaterThanOrEqual(0);
         expect(suggestions).toBeGreaterThan(desktopComposer);
@@ -208,10 +209,15 @@ describe("PC creation chat and storyboard director workbench regression gates", 
         expect(composer).toContain('props.desktopLayout ? " is-desktop" : ""');
         expect(composer).toContain('!props.desktopLayout && props.mode === "video"');
         expect(composer).not.toContain('<SettingSection title="参考模式"');
-        expect(composer).toContain('className="creation-mode-picker-menu is-combined"');
-        expect(composer).toContain('className="creation-mode-operation-grid" role="listbox" aria-label="选择参考模式"');
-        expect(composer).toContain("onVideoOperationChange?.(option.value)");
-        expect(composer).toContain('if (!combineVideoOperation || nextMode !== "video") setOpen(false)');
+        expect(modePicker).toContain('{ mode: "video", icon: <Film />, label: "文生视频" }');
+        expect(modePicker).toContain('{ mode: "image", icon: <ImageIcon />, label: "图片生成" }');
+        expect(modePicker).toContain('{ mode: "text", icon: <MessageSquareText />, label: "文本创作" }');
+        expect(modePicker).toContain('className="creation-mode-picker-menu" role="listbox"');
+        expect(modePicker).not.toContain("combineVideoOperation");
+        expect(modePicker).not.toContain("参考模式");
+        expect(modePicker).not.toContain("creation-mode-operation-grid");
+        expect(styles).not.toContain(".creation-mode-picker-menu.is-combined");
+        expect(styles).not.toContain(".creation-mode-operation-grid");
         expect(composer).not.toContain("...(props.desktopLayout ? [videoOperation.label] : [])");
         expect(composer).toContain('props.desktopLayout ? "创作类型" : "类型"');
         expect(composer).toContain('terminology={props.desktopLayout ? "创作类型" : "生成类型"}');

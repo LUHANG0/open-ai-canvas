@@ -735,10 +735,6 @@ export function CreationComposer(props: ComposerProps) {
                                 mode={props.mode}
                                 onModeChange={props.onModeChange}
                                 terminology={props.desktopLayout ? "创作类型" : "生成类型"}
-                                combineVideoOperation={props.desktopLayout}
-                                videoOperationChoice={props.videoOperationChoice}
-                                videoOperations={props.videoOperations}
-                                onVideoOperationChange={props.onVideoOperationChange}
                                 disabled={interactionBusy}
                             />
                         </div>
@@ -880,96 +876,23 @@ function ModePicker({
     mode,
     onModeChange,
     terminology,
-    combineVideoOperation = false,
-    videoOperationChoice = "auto",
-    videoOperations = [],
-    onVideoOperationChange,
     disabled = false,
 }: {
     mode: CreationMode;
     onModeChange: (mode: CreationMode) => void;
     terminology: "创作类型" | "生成类型";
-    combineVideoOperation?: boolean;
-    videoOperationChoice?: CreationVideoOperationChoice;
-    videoOperations?: string[];
-    onVideoOperationChange?: (choice: CreationVideoOperationChoice) => void;
     disabled?: boolean;
 }) {
     const [open, setOpen] = useState(false);
     const items: { mode: CreationMode; icon: ReactNode; label: string }[] = [
-        { mode: "video", icon: <Film />, label: "视频生成" },
+        { mode: "video", icon: <Film />, label: "文生视频" },
         { mode: "image", icon: <ImageIcon />, label: "图片生成" },
         { mode: "text", icon: <MessageSquareText />, label: "文本创作" },
     ];
     const current = items.find((item) => item.mode === mode) || items[0];
-    const currentVideoOperation = creationVideoOperationOptions.find((option) => option.value === videoOperationChoice) || creationVideoOperationOptions[0];
-    const triggerLabel = combineVideoOperation && mode === "video" ? `视频 · ${currentVideoOperation.label}` : current.label;
-    const triggerAriaLabel = combineVideoOperation && mode === "video" ? `${terminology}：${current.label}；参考模式：${currentVideoOperation.label}` : `${terminology}：${current.label}`;
     useEffect(() => {
         if (disabled) setOpen(false);
     }, [disabled]);
-    const selectMode = (nextMode: CreationMode) => {
-        onModeChange(nextMode);
-        if (!combineVideoOperation || nextMode !== "video") setOpen(false);
-    };
-    const modeButtons = items.map((item) => (
-        <button key={item.mode} type="button" role="option" aria-selected={item.mode === mode} className={item.mode === mode ? "is-selected" : ""} onClick={() => selectMode(item.mode)}>
-            <span className="creation-menu-icon">{item.icon}</span>
-            <span>{item.label}</span>
-            {item.mode === mode ? <Check /> : null}
-        </button>
-    ));
-    const menu = combineVideoOperation ? (
-        <div className="creation-mode-picker-menu is-combined" role="dialog" aria-label="创作类型与参考模式">
-            <section className="creation-mode-picker-section">
-                <header>
-                    <h3>创作类型</h3>
-                    <span>{current.label}</span>
-                </header>
-                <div className="creation-mode-option-grid" role="listbox" aria-label="选择创作类型">
-                    {modeButtons}
-                </div>
-            </section>
-            {mode === "video" ? (
-                <section className="creation-mode-picker-section is-reference-mode">
-                    <header>
-                        <h3>参考模式</h3>
-                        <span>{currentVideoOperation.label}</span>
-                    </header>
-                    <div className="creation-mode-operation-grid" role="listbox" aria-label="选择参考模式">
-                        {creationVideoOperationOptions.map((option) => {
-                            const supported = option.value === "auto" || videoOperations.includes(option.value);
-                            return (
-                                <button
-                                    key={option.value}
-                                    type="button"
-                                    role="option"
-                                    aria-selected={option.value === videoOperationChoice}
-                                    className={option.value === videoOperationChoice ? "is-selected" : undefined}
-                                    disabled={!supported}
-                                    title={supported ? option.description : "当前模型不支持此参考模式"}
-                                    onClick={() => {
-                                        onVideoOperationChange?.(option.value);
-                                        setOpen(false);
-                                    }}
-                                >
-                                    <span className="creation-mode-operation-copy">
-                                        <strong>{option.label}</strong>
-                                        <small>{supported ? option.description : "当前模型不支持"}</small>
-                                    </span>
-                                    {option.value === videoOperationChoice ? <Check /> : null}
-                                </button>
-                            );
-                        })}
-                    </div>
-                </section>
-            ) : null}
-        </div>
-    ) : (
-        <div className="creation-mode-picker-menu" role="listbox" aria-label={`选择${terminology}`}>
-            {modeButtons}
-        </div>
-    );
     return (
         <Popover
             open={open}
@@ -978,11 +901,31 @@ function ModePicker({
             placement="bottomLeft"
             arrow={false}
             classNames={{ root: "creation-control-popover", container: "creation-control-popover-surface", content: "creation-control-popover-content" }}
-            content={menu}
+            content={
+                <div className="creation-mode-picker-menu" role="listbox" aria-label={`选择${terminology}`}>
+                    {items.map((item) => (
+                        <button
+                            key={item.mode}
+                            type="button"
+                            role="option"
+                            aria-selected={item.mode === mode}
+                            className={item.mode === mode ? "is-selected" : ""}
+                            onClick={() => {
+                                onModeChange(item.mode);
+                                setOpen(false);
+                            }}
+                        >
+                            <span className="creation-menu-icon">{item.icon}</span>
+                            <span>{item.label}</span>
+                            {item.mode === mode ? <Check /> : null}
+                        </button>
+                    ))}
+                </div>
+            }
         >
-            <button type="button" className="creation-chat-control creation-entry-button is-mode" aria-label={triggerAriaLabel} aria-haspopup={combineVideoOperation ? "dialog" : "listbox"} aria-expanded={open} disabled={disabled}>
+            <button type="button" className="creation-chat-control creation-entry-button is-mode" aria-label={`${terminology}：${current.label}`} aria-haspopup="listbox" aria-expanded={open} disabled={disabled}>
                 {current.icon}
-                <span>{triggerLabel}</span>
+                <span>{current.label}</span>
                 <ChevronDown className={open ? "is-open" : ""} />
             </button>
         </Popover>
