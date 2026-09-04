@@ -37,53 +37,58 @@ function render(overrides: Partial<CanvasNodeContentProps> = {}) {
 
 describe("画布视频播放入口", () => {
     for (const mode of ["auto", "performance", "quality"] as const) {
-        test(`${mode} 封面包含真正的播放按钮，不提前挂载播放器`, () => {
+        test(`${mode} 封面提供可聚焦的悬停与键盘播放入口，不渲染中央按钮或提前挂载播放器`, () => {
             const markup = render({
                 videoPreviewOnly: true,
                 mediaRenderPolicy: resolveCanvasMediaRenderPolicy(mode, [video], { viewportScale: 1, visibleNodes: [video] }),
             });
-            expect(markup).toMatch(/<button[^>]*data-canvas-video-poster-play[^>]*aria-label="播放视频"/);
-            expect(markup).toContain("color:#fff");
-            expect(markup).toContain("background-color:rgba(0, 0, 0, 0.68)");
-            expect(markup).toContain("z-20");
+            expect(markup).toContain('role="group"');
+            expect(markup).toContain('tabindex="0"');
+            expect(markup).toContain('aria-label="播放测试视频，悬停播放，点击或按空格播放暂停"');
+            expect(markup).toContain('data-canvas-video-preview="idle"');
+            expect(markup).toContain('data-canvas-video-poster-status="ready"');
             expect(markup).toContain('src="/test-poster.jpg"');
             expect(markup).not.toContain("<video");
-            expect(markup).not.toContain("选中播放");
+            expect(markup).not.toContain("data-canvas-video-poster-play");
+            expect(markup).not.toContain("canvas-video-center-play");
         });
     }
 
-    test("没有封面或封面生成失败时也可直接播放", () => {
+    test("没有封面时仍保留悬停和键盘入口，不将空封面挂为播放器", () => {
         const markup = render({ node: { ...video, metadata: { content: "/test-video.mp4" } }, videoPreviewOnly: true });
-        expect(markup).toContain('aria-label="播放视频"');
+        expect(markup).toContain('role="group"');
+        expect(markup).toContain('tabindex="0"');
+        expect(markup).toContain("悬停播放，点击或按空格播放暂停");
+        expect(markup).toContain("data-canvas-video-lod");
+        expect(markup).not.toContain("data-canvas-video-poster-play");
         expect(markup).not.toContain("<video");
     });
 
-    test("普通选中只挂载暂停播放器，封面不会成为视频源", () => {
+    test("普通选中只挂载带原声的暂停播放器，封面不会成为视频源或显示中央按钮", () => {
         const markup = render({ videoPreviewOnly: false });
         expect(markup).toContain("<video");
         expect(markup).toContain("/test-video.mp4");
         expect(markup).not.toContain("/test-poster.jpg");
-        expect(markup).not.toContain(" autoplay=");
+        expect(markup).not.toContain("canvas-video-center-play");
+        const videoTag = markup.match(/<video\b[^>]*>/)?.[0];
+        expect(videoTag).toBeDefined();
+        expect(videoTag).not.toMatch(/\b(?:autoplay|muted)(?:=|\s|>)/i);
     });
 
-    test("未缓存的远程资源保留封面和播放入口，不再要求先加载再播放", () => {
+    test("未缓存的远程资源保留封面和可聚焦播放表面", () => {
         const markup = render({ node: { ...video, metadata: { ...video.metadata, storageKey: "resource:playback-test" } }, videoPreviewOnly: false });
-        expect(markup).toContain("data-canvas-video-poster-play");
+        expect(markup).toContain('role="group"');
+        expect(markup).toContain('tabindex="0"');
+        expect(markup).toContain("悬停播放，点击或按空格播放暂停");
         expect(markup).toContain('src="/test-poster.jpg"');
-        expect(markup).not.toContain("加载视频（保持暂停）");
+        expect(markup).not.toContain("data-canvas-video-poster-play");
         expect(markup).not.toContain("<video");
     });
 
-    test("唯一选中的远程视频会提前准备播放资源，避免首次点击只完成加载", async () => {
-        const source = await Bun.file(new URL("../src/components/canvas/canvas-node-content.tsx", import.meta.url)).text();
-        expect(source).toContain("useNodeResourceUrl(node, !previewOnly)");
-        expect(source).toContain("loadingPlayback={loading && (!previewOnly || playRequested)}");
-    });
-
-    test("播放中点击视频画面可暂停，只有真实控件不拦截画面点击", async () => {
-        const source = await Bun.file(new URL("../src/components/canvas/canvas-node-content.tsx", import.meta.url)).text();
-        expect(source).toContain('CANVAS_VIDEO_INTERACTIVE_CONTROL_SELECTOR = ".vds-menu-items,.vds-button,.vds-slider"');
-        expect(source).toContain("if (video && !video.paused && !video.ended) video.pause();");
-        expect(source).not.toContain('closest(".vds-controls,.vds-menu-items,.vds-button,.vds-slider")');
+    test("显式禁止播放时保留封面并移出键盘顺序", () => {
+        const markup = render({ videoPreviewOnly: false, videoPlaybackDisabled: true });
+        expect(markup).toContain('tabindex="-1"');
+        expect(markup).toContain("data-canvas-video-lod");
+        expect(markup).not.toContain("<video");
     });
 });

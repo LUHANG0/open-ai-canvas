@@ -23,6 +23,7 @@ import { createDefaultSubtitleStyle } from "@/types/timeline";
 import { CanvasResourceMentionTextarea } from "./canvas-resource-mention-textarea";
 import { useCanvasNodeActions } from "./canvas-node-action-context";
 import { CanvasSubtitleOverlay } from "./canvas-subtitle-overlay";
+import { useCanvasVideoPreview } from "./use-canvas-video-preview";
 
 const ChartNodeContent = lazy(() => import("./nodes/chart-node").then((module) => ({ default: module.ChartNodeContent })));
 const ColorGradeNodeContent = lazy(() => import("./nodes/color-grade-node").then((module) => ({ default: module.ColorGradeNodeContent })));
@@ -55,6 +56,8 @@ export type CanvasNodeContentProps = {
     reduceMediaEffects?: boolean;
     mediaRenderPolicy?: CanvasMediaRenderPolicy;
     videoPreviewOnly?: boolean;
+    videoPlaybackDisabled?: boolean;
+    videoHovered?: boolean;
 };
 
 export function CanvasNodeContent(props: CanvasNodeContentProps) {
@@ -436,35 +439,23 @@ function EmptyImageContent({ node, theme, isBatchRoot, batchCount, batchExpanded
 
 const CANVAS_VIDEO_INTERACTIVE_CONTROL_SELECTOR = ".vds-menu-items,.vds-button,.vds-slider";
 
-function VideoNodeContent({ node, theme, reduceMediaEffects, mediaRenderPolicy, videoPreviewOnly }: CanvasNodeContentProps) {
+function VideoNodeContent({ node, theme, reduceMediaEffects, mediaRenderPolicy, videoPreviewOnly, videoPlaybackDisabled = false, videoHovered }: CanvasNodeContentProps) {
     const playerBoxRef = useRef<HTMLDivElement>(null);
     const pointerGestureRef = useRef<{ pointerId: number; startX: number; startY: number; moved: boolean } | null>(null);
     const suppressSurfaceClickRef = useRef(false);
-    const { updateMetadata, selectVideoForPlayback } = useCanvasNodeActions();
+    const { updateMetadata } = useCanvasNodeActions();
     const previewOnly = videoPreviewOnly ?? reduceMediaEffects;
-    // 画布只为唯一选中的视频准备完整资源。远程视频若等到播放按钮点击后才下载，
-    // 异步鉴权下载会越过浏览器的用户手势窗口，首击只能挂载播放器、需要再点一次。
-    // 选中后提前准备 Blob URL，既保留未选中视频的封面性能，也让中央按钮首击直接播放。
-    const { url, loading, load } = useNodeResourceUrl(node, !previewOnly);
     const sourceIdentity = JSON.stringify([node.id, node.metadata?.storageKey, node.metadata?.content]);
-    const [playRequest, setPlayRequest] = useState<string | null>(null);
-    const playRequested = playRequest === sourceIdentity;
-    const requestPlayback = () => {
-        setPlayRequest(sourceIdentity);
-        selectVideoForPlayback?.(node.id);
-        void load();
-    };
-    useEffect(() => {
-        // 取消选中、进入多选或更换素材后，不保留稍后突然播放的意图。
-        setPlayRequest((current) => previewOnly || current !== sourceIdentity ? null : current);
-    }, [previewOnly, sourceIdentity]);
+    const preview = useCanvasVideoPreview(sourceIdentity, videoHovered, videoPlaybackDisabled || !node.metadata?.content);
+    const showPlayer = !videoPlaybackDisabled && (!previewOnly || preview.active);
+    const { url, loading } = useNodeResourceUrl(node, showPlayer);
     const subtitleEntries = node.metadata?.subtitleEntries || [];
     const subtitleStyle = node.metadata?.subtitleStyle || createDefaultSubtitleStyle();
     const [currentTimeMs, setCurrentTimeMs] = useState(0);
     const [videoSize, setVideoSize] = useState<{ width: number; height: number } | null>(null);
 
     useEffect(() => {
-        if (reduceMediaEffects) return;
+        if (!showPlayer || !url) return;
         const box = playerBoxRef.current;
         const video = box?.querySelector("video");
         if (!video) return;
@@ -484,10 +475,9 @@ function VideoNodeContent({ node, theme, reduceMediaEffects, mediaRenderPolicy, 
             video.removeEventListener("timeupdate", handleTimeUpdate);
             video.removeEventListener("loadedmetadata", handleLoadedMetadata);
         };
-    }, [node.id, node.metadata?.naturalHeight, node.metadata?.naturalWidth, reduceMediaEffects, subtitleEntries.length, updateMetadata, url]);
+    }, [node.id, node.metadata?.naturalHeight, node.metadata?.naturalWidth, showPlayer, subtitleEntries.length, updateMetadata, url]);
 
     if (!node.metadata?.content) return <EmptyMediaContent icon={<Video className="size-7 opacity-35" />} label="空视频节点" color={theme.node.placeholder} />;
-    if (previewOnly || !url) return <VideoPosterPreview node={node} theme={theme} policy={mediaRenderPolicy} loadingPlayback={loading && (!previewOnly || playRequested)} onPlay={requestPlayback} />;
 
     const sourceRatio = (videoSize?.width || node.metadata?.naturalWidth || node.width) / Math.max(1, videoSize?.height || node.metadata?.naturalHeight || node.height);
     const fitHeight = Math.min(node.height, node.width / Math.max(0.01, sourceRatio));
@@ -499,16 +489,46 @@ function VideoNodeContent({ node, theme, reduceMediaEffects, mediaRenderPolicy, 
         <div
             ref={playerBoxRef}
             data-canvas-media-surface
+            data-canvas-video-preview={preview.active ? "active" : "idle"}
+            role="group"
+            tabIndex={videoPlaybackDisabled ? -1 : 0}
+            aria-label={`${node.title || "视频"}，悬停播放，点击或按空格播放暂停`}
             className="relative flex h-full w-full cursor-grab items-center justify-center overflow-hidden rounded-[var(--node-radius)] bg-black active:cursor-grabbing"
+            onPointerEnter={(event) => { if (event.pointerType === "mouse" && event.buttons === 0) preview.start(); }}
+            onPointerLeave={() => {
+                const state = preview.playerRef.current?.state;
+                if (!state?.fullscreen && !state?.pictureInPicture) preview.stop();
+            }}
+            onBlurCapture={(event) => {
+                if (!event.currentTarget.contains(event.relatedTarget) && !event.currentTarget.matches(":hover")) preview.stop();
+            }}
+            onKeyDownCapture={(event) => {
+                if (event.key === "Escape") { preview.stop(); return; }
+                if (event.key !== " " && event.key !== "Enter") return;
+                if (event.target instanceof Element && event.target.closest(".vds-play-button")) {
+                    if (preview.playerRef.current?.state.paused) preview.start(true);
+                    else preview.requestPause();
+                    return;
+                }
+                if (event.target !== event.currentTarget) return;
+                event.preventDefault();
+                event.stopPropagation();
+                if (preview.active && !preview.playerRef.current?.state.paused) preview.stop();
+                else preview.start(true);
+            }}
             onPointerDownCapture={(event) => {
                 if (event.target instanceof Element && event.target.closest(CANVAS_VIDEO_INTERACTIVE_CONTROL_SELECTOR)) return;
+                if (event.button !== 0) { preview.stop(); return; }
                 pointerGestureRef.current = { pointerId: event.pointerId, startX: event.clientX, startY: event.clientY, moved: false };
                 suppressSurfaceClickRef.current = false;
             }}
             onPointerMoveCapture={(event) => {
                 const gesture = pointerGestureRef.current;
                 if (!gesture || gesture.pointerId !== event.pointerId || gesture.moved) return;
-                if (Math.hypot(event.clientX - gesture.startX, event.clientY - gesture.startY) >= 6) gesture.moved = true;
+                if (Math.hypot(event.clientX - gesture.startX, event.clientY - gesture.startY) >= 6) {
+                    gesture.moved = true;
+                    preview.stop();
+                }
             }}
             onPointerUpCapture={(event) => {
                 const gesture = pointerGestureRef.current;
@@ -519,33 +539,41 @@ function VideoNodeContent({ node, theme, reduceMediaEffects, mediaRenderPolicy, 
             onPointerCancelCapture={() => {
                 suppressSurfaceClickRef.current = true;
                 pointerGestureRef.current = null;
+                preview.stop();
             }}
             onClickCapture={(event) => {
-                if (event.target instanceof Element && event.target.closest(CANVAS_VIDEO_INTERACTIVE_CONTROL_SELECTOR)) return;
+                if (event.target instanceof Element && event.target.closest(CANVAS_VIDEO_INTERACTIVE_CONTROL_SELECTOR)) {
+                    if (event.target.closest(".vds-play-button")) {
+                        if (preview.playerRef.current?.state.paused) preview.start(true);
+                        else preview.requestPause();
+                    }
+                    return;
+                }
                 event.preventDefault();
                 event.stopPropagation();
                 const wasDrag = suppressSurfaceClickRef.current;
                 suppressSurfaceClickRef.current = false;
                 if (wasDrag) return;
                 const video = playerBoxRef.current?.querySelector("video");
-                if (video && !video.paused && !video.ended) video.pause();
+                if (video && !video.paused && !video.ended) preview.stop();
+                else preview.start(true);
             }}
         >
-            <div className="relative" style={{ width: fitWidth, height: Math.round(fitHeight) }}>
-                <VideoPlayer src={url} mimeType={node.metadata?.mimeType} title={node.title || "视频"} preload={reduceMediaEffects ? "none" : "metadata"} autoPlay={playRequested} onPlay={() => setPlayRequest(null)} onAutoPlayFail={() => setPlayRequest(null)} brandColor={theme.accent.primary} className="h-full w-full rounded-[var(--node-radius)] bg-black" dataCanvasNoZoom compactControls />
+            {showPlayer && url ? <div className="relative" style={{ width: fitWidth, height: Math.round(fitHeight) }}>
+                <VideoPlayer key={sourceIdentity} playerRef={preview.playerRef} src={url} mimeType={node.metadata?.mimeType} title={node.title || "视频"} preload="metadata" muted={preview.muted} volume={preview.volume} onCanPlay={preview.onCanPlay} onPlay={preview.onPlay} onTimeUpdate={preview.rememberPlayback} onVolumeChange={preview.rememberPlayback} onFullscreenChange={preview.onPresentationChange} onPictureInPictureChange={preview.onPresentationChange} brandColor={theme.accent.primary} className="h-full w-full rounded-[var(--node-radius)] bg-black" dataCanvasNoZoom compactControls hideCenterControls />
                 {activeEntry && activeEntry.text.trim() ? <CanvasSubtitleOverlay text={activeEntry.text} highlight={activeHighlight} style={subtitleStyle} /> : null}
-            </div>
+            </div> : <VideoPosterPreview node={node} theme={theme} policy={mediaRenderPolicy} loadingPlayback={loading && showPlayer} />}
+            {preview.issue ? <span role="status" className="pointer-events-none absolute inset-x-3 top-3 rounded-md bg-black/70 px-2 py-1 text-center text-xs text-white">{preview.issue}</span> : null}
         </div>
     );
 }
 
-function VideoPosterPreview({ node, theme, policy, loadingPlayback, onPlay }: Pick<CanvasNodeContentProps, "node" | "theme"> & { policy?: CanvasMediaRenderPolicy; loadingPlayback: boolean; onPlay: () => void }) {
+function VideoPosterPreview({ node, theme, policy, loadingPlayback }: Pick<CanvasNodeContentProps, "node" | "theme"> & { policy?: CanvasMediaRenderPolicy; loadingPlayback: boolean }) {
     const staticPosterUrl = staticVideoPosterUrl(node.metadata?.previewContent);
     const [staticPosterFailed, setStaticPosterFailed] = useState(false);
     const generatedPoster = useCanvasVideoPoster(node, policy, !staticPosterUrl || staticPosterFailed);
     const posterUrl = staticPosterUrl && !staticPosterFailed ? staticPosterUrl : generatedPoster.url;
     const isLoading = !posterUrl && generatedPoster.status === "loading";
-    const playGestureRef = useRef<{ x: number; y: number; cancelled: boolean } | null>(null);
 
     useEffect(() => setStaticPosterFailed(false), [staticPosterUrl]);
 
@@ -556,7 +584,7 @@ function VideoPosterPreview({ node, theme, policy, loadingPlayback, onPlay }: Pi
             data-canvas-video-poster-status={posterUrl ? "ready" : generatedPoster.status}
             className="relative flex size-full cursor-grab items-center justify-center overflow-hidden rounded-[var(--node-radius)] active:cursor-grabbing"
             style={{ background: `linear-gradient(145deg, ${theme.node.fill} 0%, ${theme.canvas.background} 100%)`, color: theme.node.text }}
-            aria-label={`${node.title || "视频"}，点击中央按钮播放`}
+            aria-label={`${node.title || "视频"}，悬停播放`}
         >
             {posterUrl ? <>
                 {!policy?.reduceEffects ? <img src={posterUrl} alt="" aria-hidden loading="lazy" decoding="async" draggable={false} className="pointer-events-none absolute inset-[-8%] size-[116%] object-cover opacity-35 blur-xl" /> : null}
@@ -565,48 +593,9 @@ function VideoPosterPreview({ node, theme, policy, loadingPlayback, onPlay }: Pi
                 <div className="pointer-events-none absolute inset-0 opacity-70" style={{ backgroundImage: `radial-gradient(circle at 25% 20%, ${theme.accent.primarySoft}, transparent 36%), linear-gradient(135deg, transparent, ${theme.node.stroke})` }} />
             )}
             <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-black/5" />
-            <button
-                type="button"
-                data-canvas-no-zoom
-                data-canvas-video-poster-play
-                aria-label={loadingPlayback ? "正在加载视频" : "播放视频"}
-                disabled={loadingPlayback}
-                className={`relative z-20 grid size-11 cursor-pointer place-items-center rounded-full border shadow-sm transition-[filter,box-shadow] hover:brightness-110 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-wait ${policy?.reduceEffects ? "" : "backdrop-blur-sm"}`}
-                style={{
-                    transform: "scale(clamp(1, calc(var(--canvas-live-inverse-scale, 1) * 0.55), 10))",
-                    color: "#fff",
-                    backgroundColor: "rgba(0, 0, 0, 0.68)",
-                    borderColor: "rgba(255, 255, 255, 0.58)",
-                    boxShadow: "0 4px 16px rgba(0, 0, 0, 0.38), inset 0 0 0 1px rgba(0, 0, 0, 0.12)",
-                }}
-                onMouseDown={(event) => event.stopPropagation()}
-                onPointerDown={(event) => {
-                    event.stopPropagation();
-                    if (event.button !== 0) return;
-                    playGestureRef.current = { x: event.clientX, y: event.clientY, cancelled: false };
-                    event.currentTarget.setPointerCapture(event.pointerId);
-                }}
-                onPointerMove={(event) => {
-                    const gesture = playGestureRef.current;
-                    if (gesture && Math.hypot(event.clientX - gesture.x, event.clientY - gesture.y) >= 6) gesture.cancelled = true;
-                }}
-                onPointerUp={(event) => {
-                    const gesture = playGestureRef.current;
-                    if (gesture && Math.hypot(event.clientX - gesture.x, event.clientY - gesture.y) >= 6) gesture.cancelled = true;
-                }}
-                onPointerCancel={() => { if (playGestureRef.current) playGestureRef.current.cancelled = true; }}
-                onClick={(event) => {
-                    event.stopPropagation();
-                    if (event.detail !== 0 && playGestureRef.current?.cancelled) return;
-                    onPlay();
-                }}
-                onDoubleClick={(event) => event.stopPropagation()}
-            >
-                {loadingPlayback ? <LoaderCircle className="size-5 animate-spin" /> : <Play className="ml-0.5 size-5 fill-current" aria-hidden />}
-            </button>
             <div className="pointer-events-none absolute inset-x-3 bottom-3 flex min-w-0 items-end justify-between gap-2 text-white">
                 <span className={`min-w-0 truncate rounded-md bg-black/48 px-2 py-1 text-[var(--fs-tiny)] font-medium ${policy?.reduceEffects ? "" : "backdrop-blur-sm"}`}>{node.title || "视频素材"}</span>
-                <span className={`shrink-0 rounded-md bg-black/48 px-2 py-1 text-[10px] ${policy?.reduceEffects ? "" : "backdrop-blur-sm"}`}>{loadingPlayback ? "正在加载视频" : isLoading ? "生成预览中 · 可播放" : "点击播放"}</span>
+                <span className={`shrink-0 rounded-md bg-black/48 px-2 py-1 text-[10px] ${policy?.reduceEffects ? "" : "backdrop-blur-sm"}`}>{loadingPlayback ? "正在加载视频" : isLoading ? "生成封面中 · 悬停播放" : "悬停播放"}</span>
             </div>
         </div>
     );

@@ -155,6 +155,7 @@ export const CanvasProjectWorldLayers = memo(function CanvasProjectWorldLayers(p
                             forced: props.mediaEffectsDisabledNodeId === node.id,
                         })}
                         mediaRenderPolicy={props.mediaRenderPolicy}
+                        videoPlaybackDisabled={props.mediaEffectsDisabledNodeId === node.id}
                         videoPreviewOnly={node.type === CanvasNodeType.Video && !shouldMountCanvasVideoPlayer({
                             selected: props.selectedNodeIds.has(node.id),
                             selectionSize: props.selectedNodeIds.size,

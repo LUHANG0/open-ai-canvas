@@ -1,6 +1,6 @@
 import { useMemo } from "react";
-import type { ComponentProps } from "react";
-import { MediaPlayer, MediaProvider, PlayButton, type VideoMimeType } from "@vidstack/react";
+import type { ComponentProps, Ref } from "react";
+import { MediaPlayer, MediaProvider, PlayButton, type MediaPlayerInstance, type VideoMimeType } from "@vidstack/react";
 import { DefaultVideoLayout, defaultLayoutIcons, type DefaultLayoutTranslations } from "@vidstack/react/player/layouts/default";
 import { Pause, Play } from "lucide-react";
 import "@vidstack/react/player/styles/base.css";
@@ -18,11 +18,19 @@ type VideoPlayerProps = {
     brandColor?: string;
     preload?: MediaPlayerProps["preload"];
     autoPlay?: boolean;
+    muted?: boolean;
+    volume?: number;
     dataCanvasNoZoom?: boolean;
     compactControls?: boolean;
+    playerRef?: Ref<MediaPlayerInstance>;
+    hideCenterControls?: boolean;
     onCanPlay?: MediaPlayerProps["onCanPlay"];
     onPlay?: MediaPlayerProps["onPlay"];
     onAutoPlayFail?: MediaPlayerProps["onAutoPlayFail"];
+    onFullscreenChange?: MediaPlayerProps["onFullscreenChange"];
+    onPictureInPictureChange?: MediaPlayerProps["onPictureInPictureChange"];
+    onTimeUpdate?: MediaPlayerProps["onTimeUpdate"];
+    onVolumeChange?: MediaPlayerProps["onVolumeChange"];
 };
 
 const zhCNTranslations = {
@@ -73,7 +81,7 @@ const supportedVideoMimeTypes = new Set<VideoMimeType>(["video/mp4", "video/webm
  * 统一视频播放表面，保留原生媒体 URL 契约，同时提供可访问的完整控件布局。
  * 画布节点需要隔离播放器手势，避免拖动进度条时被误判为拖动画布。
  */
-export function VideoPlayer({ src, mimeType, title = "视频", className, brandColor = "#f5f5f5", preload = "metadata", autoPlay = false, dataCanvasNoZoom = false, compactControls = false, onCanPlay, onPlay, onAutoPlayFail }: VideoPlayerProps) {
+export function VideoPlayer({ src, mimeType, title = "视频", className, brandColor = "#f5f5f5", preload = "metadata", autoPlay = false, muted, volume, dataCanvasNoZoom = false, compactControls = false, playerRef, hideCenterControls = false, onCanPlay, onPlay, onAutoPlayFail, onFullscreenChange, onPictureInPictureChange, onTimeUpdate, onVolumeChange }: VideoPlayerProps) {
     const stopCanvasControlInteraction = (event: { target: EventTarget | null; stopPropagation: () => void }) => {
         if (!dataCanvasNoZoom || !(event.target instanceof Element)) return;
         if (event.target.closest(".vds-controls,.vds-menu-items,.vds-button,.vds-slider")) event.stopPropagation();
@@ -83,6 +91,7 @@ export function VideoPlayer({ src, mimeType, title = "视频", className, brandC
 
     return (
         <MediaPlayer
+            ref={playerRef}
             className={`canvas-video-player ${compactControls ? "canvas-video-player-compact" : ""} ${className || ""}`}
             src={mediaSource}
             title={title}
@@ -90,6 +99,8 @@ export function VideoPlayer({ src, mimeType, title = "视频", className, brandC
             streamType="on-demand"
             playsInline
             autoPlay={autoPlay}
+            muted={muted}
+            volume={volume}
             load="eager"
             preload={preload}
             data-canvas-no-zoom={dataCanvasNoZoom ? "true" : undefined}
@@ -97,11 +108,15 @@ export function VideoPlayer({ src, mimeType, title = "视频", className, brandC
             onCanPlay={onCanPlay}
             onPlay={onPlay}
             onAutoPlayFail={onAutoPlayFail}
+            onFullscreenChange={onFullscreenChange}
+            onPictureInPictureChange={onPictureInPictureChange}
+            onTimeUpdate={onTimeUpdate}
+            onVolumeChange={onVolumeChange}
             onPointerDown={stopCanvasControlInteraction}
             onMouseDown={stopCanvasControlInteraction}
         >
             <MediaProvider />
-            {dataCanvasNoZoom ? (
+            {dataCanvasNoZoom && !hideCenterControls ? (
                 <>
                     <PlayButton className="canvas-video-center-play vds-button" aria-label="播放视频">
                         <Play className="vds-icon fill-current" />

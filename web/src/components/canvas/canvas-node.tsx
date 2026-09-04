@@ -34,6 +34,7 @@ type CanvasNodeProps = {
     reduceMediaEffects?: boolean;
     mediaRenderPolicy?: CanvasMediaRenderPolicy;
     videoPreviewOnly?: boolean;
+    videoPlaybackDisabled?: boolean;
     readOnly?: boolean;
     resourceLabel?: CanvasResourceReference;
     mentionReferences?: CanvasResourceReference[];
@@ -80,6 +81,7 @@ export const CanvasNode = React.memo(function CanvasNode({
     reduceMediaEffects = false,
     mediaRenderPolicy,
     videoPreviewOnly = false,
+    videoPlaybackDisabled = false,
     readOnly = false,
     resourceLabel,
     mentionReferences = [],
@@ -113,6 +115,7 @@ export const CanvasNode = React.memo(function CanvasNode({
 }: CanvasNodeProps) {
     const theme = canvasThemes[useThemeStore((state) => state.theme)];
     const [hovered, setHovered] = useState(false);
+    const [videoHovered, setVideoHovered] = useState(false);
     const [isEditingContent, setIsEditingContent] = useState(false);
     const [isEditingTitle, setIsEditingTitle] = useState(false);
     const [titleDraft, setTitleDraft] = useState(data.title);
@@ -216,6 +219,15 @@ export const CanvasNode = React.memo(function CanvasNode({
                 setHovered(false);
                 onHoverEnd(data.id);
             }}
+            onPointerEnter={(event) => {
+                if (data.type === CanvasNodeType.Video && event.pointerType === "mouse" && event.buttons === 0) setVideoHovered(true);
+            }}
+            onPointerLeave={() => setVideoHovered(false)}
+            onPointerDownCapture={(event) => {
+                if (event.target instanceof Element && event.target.closest(".vds-menu-items,.vds-button,.vds-slider")) return;
+                setVideoHovered(false);
+            }}
+            onPointerCancel={() => setVideoHovered(false)}
             onMouseDown={keyboardControlsEnabled ? undefined : (event) => onMouseDown(event, data.id)}
             onContextMenu={(event) => onContextMenu(event, data.id)}
         >
@@ -323,6 +335,8 @@ export const CanvasNode = React.memo(function CanvasNode({
                         reduceMediaEffects={reduceMediaEffects}
                         mediaRenderPolicy={mediaRenderPolicy}
                         videoPreviewOnly={videoPreviewOnly}
+                        videoPlaybackDisabled={videoPlaybackDisabled}
+                        videoHovered={videoHovered && !dragOffset && !isResizing && !videoPlaybackDisabled}
                     />
                 </div>
 
@@ -450,6 +464,7 @@ function areCanvasNodePropsEqual(previous: CanvasNodeProps, next: CanvasNodeProp
         previous.reduceMediaEffects === next.reduceMediaEffects &&
         previous.mediaRenderPolicy === next.mediaRenderPolicy &&
         previous.videoPreviewOnly === next.videoPreviewOnly &&
+        previous.videoPlaybackDisabled === next.videoPlaybackDisabled &&
         previous.readOnly === next.readOnly &&
         previous.resourceLabel === next.resourceLabel &&
         previous.mentionReferences === next.mentionReferences &&
