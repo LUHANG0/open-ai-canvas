@@ -1290,6 +1290,18 @@ html:not(.dark) .creation-frame-role-menu button.is-selected {
     color: var(--creation-text);
 }
 
+.creation-home .creation-sound-tooltip-trigger {
+    display: flex;
+    width: 100%;
+    min-width: 0;
+}
+
+.creation-home .creation-submit-tooltip-trigger {
+    display: inline-flex;
+    min-width: 0;
+    flex: 0 0 auto;
+}
+
 /* 生成设置弹层：画幅与清晰度使用可扫描的选择卡，避免只显示一排难辨认的参数。 */
 .creation-generation-settings-surface {
     overflow: hidden;
@@ -5275,16 +5287,17 @@ html:not(.dark) .creation-media-preview-modal.is-video .ant-modal-container {
     }
 }
 
-/* 工具提示挂载到 body，必须独立于 .creation-home 才能继承两套主题。 */
-.creation-toolbar-tooltip {
+/* 创作页工具提示挂载到 body，用统一根类覆盖顶部、消息区和底部控制区。 */
+.creation-ui-tooltip {
     --ant-tooltip-arrow-background-color: var(--workspace-overlay-bg-strong, var(--app-surface-overlay));
+    max-width: min(320px, calc(100vw - 24px));
 }
 
-.creation-toolbar-tooltip :is(.ant-tooltip-inner, .ant-tooltip-container) {
+.creation-ui-tooltip :is(.ant-tooltip-inner, .ant-tooltip-container) {
     display: flex;
     min-height: 30px;
     align-items: center;
-    border-color: var(--workspace-overlay-border, var(--app-border-default)) !important;
+    border: 1px solid var(--workspace-overlay-border, var(--app-border-default)) !important;
     border-radius: 8px;
     background: var(--workspace-overlay-bg-strong, var(--app-surface-overlay)) !important;
     color: var(--app-text-primary, var(--foreground)) !important;
@@ -5295,12 +5308,12 @@ html:not(.dark) .creation-media-preview-modal.is-video .ant-modal-container {
     line-height: 1.45;
 }
 
-.creation-toolbar-tooltip .ant-tooltip-arrow::before {
+.creation-ui-tooltip .ant-tooltip-arrow::before {
     border-color: var(--workspace-overlay-border, var(--app-border-default)) !important;
     background: var(--workspace-overlay-bg-strong, var(--app-surface-overlay)) !important;
 }
 
-.creation-toolbar-tooltip .ant-tooltip-arrow-content {
+.creation-ui-tooltip .ant-tooltip-arrow-content {
     background: var(--workspace-overlay-bg-strong, var(--app-surface-overlay)) !important;
 }
 

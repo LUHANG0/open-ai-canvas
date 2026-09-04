@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { App, Spin, Tooltip } from "antd";
+import { App, Spin } from "antd";
 import { ArrowDown, History } from "lucide-react";
 
 import { AssetLibraryPickerModal } from "@/components/assets/asset-library-picker-modal";
@@ -28,6 +28,7 @@ import { useCreationReferenceWorkflow } from "./use-creation-reference-workflow"
 import { useCreationSubmitWorkflow } from "./use-creation-submit-workflow";
 import { useCreationWorkspaceActions } from "./use-creation-workspace-actions";
 import { CreationCloudSyncButton, CreationHistoryDrawer, CreationWorkspaceToolbar } from "./creation-workspace-toolbar";
+import { CreationTooltip } from "./creation-tooltip";
 import "./creation-workspace.css";
 
 function shotsFromMessages(messages: CreationMessage[]): CreationShot[] {
@@ -363,10 +364,7 @@ export default function CreatePage() {
         promptOptimizerProvider,
         composerFocusRef,
         desktopLayout: pcBrandV2,
-        continuationContext:
-            viewMode === "chat" && variantSourceShotNumber
-                ? { label: `延续第 ${variantSourceShotNumber} 轮`, detail: "已复用提示词、素材与输出参数" }
-                : undefined,
+        continuationContext: viewMode === "chat" && variantSourceShotNumber ? { label: `延续第 ${variantSourceShotNumber} 轮`, detail: "已复用提示词、素材与输出参数" } : undefined,
         onClearContinuation: clearVariantSource,
         placeholderOverride:
             viewMode === "storyboard" && (pcBrandV2 || composingNextShot)
@@ -430,12 +428,12 @@ export default function CreatePage() {
                         ) : (
                             <div className="creation-top-actions">
                                 <CreationCloudSyncButton status={cloudSyncStatus} onRetry={() => void retryCloudSync()} />
-                                <Tooltip title="历史对话">
+                                <CreationTooltip title="历史对话">
                                     <button type="button" aria-label="查看历史对话" aria-expanded={historyOpen} className="creation-top-action" onClick={openHistory}>
                                         <History />
                                         <span>历史</span>
                                     </button>
-                                </Tooltip>
+                                </CreationTooltip>
                             </div>
                         )}
                         <main ref={threadScrollRef} onScroll={handleThreadScroll} className="creation-empty-workspace creation-scrollbar">
@@ -483,9 +481,7 @@ export default function CreatePage() {
                                 <div className="creation-results" role="log" aria-live="polite" aria-relevant="additions text">
                                     {shots.map((shot, shotIndex) => {
                                         const resultIndex = shot.result ? activeConversation.messages.indexOf(shot.result) : -1;
-                                        const sourceShotIndex = shot.user?.parentMessageId
-                                            ? shots.findIndex((candidate) => candidate.user?.id === shot.user?.parentMessageId || candidate.result?.id === shot.user?.parentMessageId)
-                                            : -1;
+                                        const sourceShotIndex = shot.user?.parentMessageId ? shots.findIndex((candidate) => candidate.user?.id === shot.user?.parentMessageId || candidate.result?.id === shot.user?.parentMessageId) : -1;
                                         return (
                                             <CreationTurnView
                                                 key={shot.id}

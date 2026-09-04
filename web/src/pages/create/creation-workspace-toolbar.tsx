@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
-import { Drawer, Tooltip } from "antd";
+import { Drawer } from "antd";
 import { Check, Clapperboard, Cloud, CloudOff, Film, History, LoaderCircle, MessageSquareText, Plus, RefreshCw, Search, Trash2, X } from "lucide-react";
 
 import type { CreationConversationCloudSyncStatus } from "@/services/creation-conversation-cloud-sync";
 import { displayCreationPrompt } from "./creation-references";
 import type { CreationConversation, CreationMessage, CreationViewMode } from "./creation-types";
 import type { CreationMode } from "./creation-empty-state";
+import { CreationTooltip } from "./creation-tooltip";
 
 const historyModeLabels: Record<CreationMode, string> = { text: "文本", image: "图片", video: "视频" };
 const historyTimeFormatter = new Intl.DateTimeFormat("zh-CN", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false });
@@ -103,11 +104,11 @@ export function CreationHistoryDrawer({
                                         <strong className="creation-history-item-heading">{conversation.title.trim() || "新创作"}</strong>
                                         <span className="creation-history-snippet">{latest ? displayCreationPrompt(latest.content, latest.references || []).trim() || "还没有开始创作" : "还没有开始创作"}</span>
                                     </button>
-                                    <Tooltip title="删除对话">
+                                    <CreationTooltip title="删除对话">
                                         <button type="button" className="creation-history-delete" aria-label={`删除对话：${conversation.title.trim() || "新创作"}`} onClick={() => onDelete(conversation)}>
                                             <Trash2 />
                                         </button>
-                                    </Tooltip>
+                                    </CreationTooltip>
                                 </li>
                             );
                         })}
@@ -123,18 +124,18 @@ export function CreationHistoryDrawer({
 export function CreationViewSwitch({ viewMode, onChange, desktopLayout = false }: { viewMode: CreationViewMode; onChange: (mode: CreationViewMode) => void; desktopLayout?: boolean }) {
     return (
         <div className="creation-view-switch" role="group" aria-label={desktopLayout ? "工作方式" : "创作视图"}>
-            <Tooltip title="按对话逐轮生成与调整" placement="bottom" mouseEnterDelay={0.25} rootClassName="creation-toolbar-tooltip">
+            <CreationTooltip title="按对话逐轮生成与调整" placement="bottom">
                 <button type="button" aria-label="连续创作" aria-pressed={viewMode === "chat"} onClick={() => onChange("chat")}>
                     <MessageSquareText />
                     连续创作
                 </button>
-            </Tooltip>
-            <Tooltip title="按镜头组织并生成内容" placement="bottom" mouseEnterDelay={0.25} rootClassName="creation-toolbar-tooltip">
+            </CreationTooltip>
+            <CreationTooltip title="按镜头组织并生成内容" placement="bottom">
                 <button type="button" aria-label="镜头创作" aria-pressed={viewMode === "storyboard"} onClick={() => onChange("storyboard")}>
                     <Clapperboard />
                     镜头创作
                 </button>
-            </Tooltip>
+            </CreationTooltip>
         </div>
     );
 }
@@ -163,14 +164,14 @@ export function CreationCloudSyncButton({ status, onRetry }: { status: CreationC
     const retryable = status === "failed" || status === "conflict" || status === "pending";
     const Icon = busy ? LoaderCircle : status === "synced" ? Check : status === "failed" ? CloudOff : status === "conflict" ? RefreshCw : Cloud;
     return (
-        <Tooltip title={copy.title} placement="bottom" mouseEnterDelay={0.25} rootClassName="creation-toolbar-tooltip">
+        <CreationTooltip title={copy.title} placement="bottom">
             <span className="creation-cloud-sync-tooltip-trigger" role={!retryable ? "status" : undefined} aria-label={!retryable ? copy.title : undefined} tabIndex={!retryable ? 0 : undefined}>
                 <button type="button" className={`creation-cloud-sync is-${status}`} aria-label={copy.title} disabled={!retryable} onClick={retryable ? onRetry : undefined} tabIndex={!retryable ? -1 : undefined}>
                     <Icon aria-hidden="true" className={busy ? "animate-spin" : undefined} />
                     <span className="creation-cloud-sync-copy">{copy.label}</span>
                 </button>
             </span>
-        </Tooltip>
+        </CreationTooltip>
     );
 }
 
@@ -198,7 +199,7 @@ export function CreationWorkspaceToolbar({
             <div className="creation-workspace-toolbar-leading">
                 <CreationCloudSyncButton status={cloudSyncStatus} onRetry={onRetryCloudSync} />
                 {storyboard ? (
-                    <Tooltip title={storyboard.timelineOpen ? "收起镜头轨道" : "展开镜头轨道"} placement="bottom" mouseEnterDelay={0.25} rootClassName="creation-toolbar-tooltip">
+                    <CreationTooltip title={storyboard.timelineOpen ? "收起镜头轨道" : "展开镜头轨道"} placement="bottom">
                         <button
                             type="button"
                             className={`storyboard-workbench-rail-button${storyboard.timelineOpen ? " is-open" : ""}${storyboard.composing ? " is-draft" : ""}`}
@@ -211,7 +212,7 @@ export function CreationWorkspaceToolbar({
                             <span className="storyboard-workbench-rail-badge">{storyboard.count}</span>
                             {storyboard.composing ? <span className="storyboard-editor-toolbar-draft" aria-hidden="true" /> : null}
                         </button>
-                    </Tooltip>
+                    </CreationTooltip>
                 ) : null}
             </div>
             <div className="creation-workspace-toolbar-switch">
@@ -219,25 +220,25 @@ export function CreationWorkspaceToolbar({
             </div>
             <div className="storyboard-workbench-bar-actions">
                 {storyboard ? (
-                    <Tooltip title={storyboard.composing ? "收起镜头草稿" : "新增镜头"} placement="bottom" mouseEnterDelay={0.25} rootClassName="creation-toolbar-tooltip">
+                    <CreationTooltip title={storyboard.composing ? "收起镜头草稿" : "新增镜头"} placement="bottom">
                         <button type="button" aria-label={storyboard.composing ? "收起镜头草稿" : "新增镜头"} className="storyboard-workbench-bar-action is-primary" onClick={storyboard.composing ? storyboard.onCancelCompose : storyboard.onBeginCompose}>
                             {storyboard.composing ? <X /> : <Plus />}
                             {desktopLayout ? <span>{storyboard.composing ? "收起草稿" : "新增镜头"}</span> : null}
                         </button>
-                    </Tooltip>
+                    </CreationTooltip>
                 ) : null}
-                <Tooltip title="开始新的创作对话" placement="bottom" mouseEnterDelay={0.25} rootClassName="creation-toolbar-tooltip">
+                <CreationTooltip title="开始新的创作对话" placement="bottom">
                     <button type="button" aria-label="新建创作" className="storyboard-workbench-bar-action is-new" onClick={onNewConversation}>
                         <Plus />
                         {desktopLayout ? <span>新建</span> : null}
                     </button>
-                </Tooltip>
-                <Tooltip title="查看历史创作对话" placement="bottom" mouseEnterDelay={0.25} rootClassName="creation-toolbar-tooltip">
+                </CreationTooltip>
+                <CreationTooltip title="查看历史创作对话" placement="bottom">
                     <button type="button" aria-label="查看历史对话" className="storyboard-workbench-bar-action is-history" onClick={onOpenHistory}>
                         <History />
                         {desktopLayout ? <span>历史</span> : null}
                     </button>
-                </Tooltip>
+                </CreationTooltip>
             </div>
         </header>
     );

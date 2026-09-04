@@ -1,26 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
-import { Tooltip } from "antd";
-import {
-    ArrowDown,
-    Check,
-    ChevronDown,
-    ChevronLeft,
-    Clapperboard,
-    Copy,
-    FileText,
-    Film,
-    History,
-    Image as ImageIcon,
-    LoaderCircle,
-    Maximize2,
-    MessageSquareText,
-    Music2,
-    Plus,
-    RefreshCw,
-    SlidersHorizontal,
-    Sparkles,
-    X,
-} from "lucide-react";
+import { ArrowDown, Check, ChevronDown, ChevronLeft, Clapperboard, Copy, FileText, Film, History, Image as ImageIcon, LoaderCircle, Maximize2, MessageSquareText, Music2, Plus, RefreshCw, SlidersHorizontal, Sparkles, X } from "lucide-react";
 import { Link } from "react-router";
 
 import { AIMessageMarkdown } from "@/components/ai/ai-message-markdown";
@@ -32,16 +11,10 @@ import { useAssetStore } from "@/stores/use-asset-store";
 import { creationAttachmentKind, creationMediaAspectRatio, type CreationAttachment } from "./creation-assets";
 import { creationVideoOperationOptions } from "./creation-composer";
 import type { CreationMode } from "./creation-empty-state";
-import {
-    CreationMediaPreviewModal,
-    CreationMessageReferences,
-    CreationResultDownloads,
-    CreationVideoSupplementalImages,
-    StoryboardResultDownloads,
-    formatMessageTime,
-} from "./creation-message-view";
+import { CreationMediaPreviewModal, CreationMessageReferences, CreationResultDownloads, CreationVideoSupplementalImages, StoryboardResultDownloads, formatMessageTime } from "./creation-message-view";
 import { displayCreationPrompt } from "./creation-references";
 import type { CreationMessage, CreationSettings, CreationShot, CreationViewMode } from "./creation-types";
+import { CreationTooltip } from "./creation-tooltip";
 import { CreationViewSwitch } from "./creation-workspace-toolbar";
 
 type StoryboardShotState = "queued" | "pending" | "done" | "error" | "cancelled";
@@ -139,42 +112,43 @@ export function StoryboardShotRail({
                     const shotCode = `SC.${String(index + 1).padStart(2, "0")}`;
                     return (
                         <li key={shot.id}>
-                            <button
-                                ref={active ? activeItemRef : undefined}
-                                type="button"
-                                aria-current={active ? "true" : undefined}
-                                aria-label={`${shotCode}，${storyboardShotStateLabels[status]}，${title}，${shotMeta}`}
-                                title={title}
-                                className={`storyboard-editor-shot${active ? " is-active" : ""}`}
-                                onClick={() => onSelect(shot.id)}
-                            >
-                                <span className="storyboard-editor-shot-thumb">
-                                    {primary?.url ? (
-                                        primary.kind === "video" ? (
-                                            <video muted preload="metadata" src={primary.url} />
+                            <CreationTooltip title={title} placement="right">
+                                <button
+                                    ref={active ? activeItemRef : undefined}
+                                    type="button"
+                                    aria-current={active ? "true" : undefined}
+                                    aria-label={`${shotCode}，${storyboardShotStateLabels[status]}，${title}，${shotMeta}`}
+                                    className={`storyboard-editor-shot${active ? " is-active" : ""}`}
+                                    onClick={() => onSelect(shot.id)}
+                                >
+                                    <span className="storyboard-editor-shot-thumb">
+                                        {primary?.url ? (
+                                            primary.kind === "video" ? (
+                                                <video muted preload="metadata" src={primary.url} />
+                                            ) : (
+                                                <img src={primary.url} alt="" />
+                                            )
                                         ) : (
-                                            <img src={primary.url} alt="" />
-                                        )
-                                    ) : (
-                                        <span className="storyboard-editor-shot-thumb-placeholder">
-                                            <Clapperboard />
+                                            <span className="storyboard-editor-shot-thumb-placeholder">
+                                                <Clapperboard />
+                                            </span>
+                                        )}
+                                        <em>{shotCode}</em>
+                                        <span className={`storyboard-editor-shot-thumb-state is-${status}`} aria-hidden="true">
+                                            <i />
+                                            <span>{storyboardShotStateLabels[status]}</span>
                                         </span>
-                                    )}
-                                    <em>{shotCode}</em>
-                                    <span className={`storyboard-editor-shot-thumb-state is-${status}`} aria-hidden="true">
-                                        <i />
-                                        <span>{storyboardShotStateLabels[status]}</span>
                                     </span>
-                                </span>
-                                <span className="storyboard-editor-shot-info">
-                                    <span className="storyboard-editor-shot-meta">
-                                        <span>{shotCode}</span>
-                                        <span className={`storyboard-editor-shot-state is-${status}`}>{storyboardShotStateLabels[status]}</span>
+                                    <span className="storyboard-editor-shot-info">
+                                        <span className="storyboard-editor-shot-meta">
+                                            <span>{shotCode}</span>
+                                            <span className={`storyboard-editor-shot-state is-${status}`}>{storyboardShotStateLabels[status]}</span>
+                                        </span>
+                                        <strong>{title}</strong>
+                                        <small>{shotMeta}</small>
                                     </span>
-                                    <strong>{title}</strong>
-                                    <small>{shotMeta}</small>
-                                </span>
-                            </button>
+                                </button>
+                            </CreationTooltip>
                         </li>
                     );
                 })}
@@ -276,12 +250,12 @@ export function StoryboardToolbar({
     return (
         <header className="storyboard-workbench-bar" aria-label="镜头工具条">
             <div className="storyboard-workbench-rail">
-                <Tooltip title="镜头时间线">
+                <CreationTooltip title="镜头时间线">
                     <button type="button" className={`storyboard-workbench-rail-button${railOpen ? " is-open" : ""}${composing ? " is-draft" : ""}`} aria-expanded={railOpen} aria-label="镜头时间线" onClick={() => setRailOpen((value) => !value)}>
                         <Film />
                         <span className="storyboard-workbench-rail-badge">{composing ? nextShotNumber : shots.length}</span>
                     </button>
-                </Tooltip>
+                </CreationTooltip>
                 {railOpen ? (
                     <div className="storyboard-workbench-rail-pop" role="listbox" aria-label="镜头列表">
                         <div className="storyboard-workbench-rail-pop-head">
@@ -378,21 +352,21 @@ export function StoryboardToolbar({
             </div>
             <div className="storyboard-workbench-bar-actions">
                 <CreationViewSwitch viewMode={viewMode} onChange={onViewModeChange} />
-                <Tooltip title={composing ? "收起下一镜" : "新增镜头"}>
+                <CreationTooltip title={composing ? "收起下一镜" : "新增镜头"}>
                     <button type="button" aria-label={composing ? "收起下一镜" : "新增镜头"} className="storyboard-workbench-bar-action" onClick={composing ? onCancelCompose : onBeginCompose}>
                         {composing ? <X /> : <Clapperboard />}
                     </button>
-                </Tooltip>
-                <Tooltip title="新建创作">
+                </CreationTooltip>
+                <CreationTooltip title="新建创作">
                     <button type="button" aria-label="新建创作" className="storyboard-workbench-bar-action" onClick={onNewConversation}>
                         <Plus />
                     </button>
-                </Tooltip>
-                <Tooltip title="历史对话">
+                </CreationTooltip>
+                <CreationTooltip title="历史对话">
                     <button type="button" aria-label="查看历史对话" className="storyboard-workbench-bar-action" onClick={onOpenHistory}>
                         <History />
                     </button>
-                </Tooltip>
+                </CreationTooltip>
             </div>
         </header>
     );
@@ -444,9 +418,9 @@ export function StoryboardShotCard({
                     <span className="storyboard-workbench-card-shot">
                         <span className="storyboard-workbench-card-shot-index">SC.{String(shotNumber).padStart(2, "0")}</span>
                         <span className="storyboard-workbench-card-summary">
-                            <span className="storyboard-workbench-card-title" title={shotTitle}>
-                                {shotTitle}
-                            </span>
+                            <CreationTooltip title={shotTitle}>
+                                <span className="storyboard-workbench-card-title">{shotTitle}</span>
+                            </CreationTooltip>
                             <span className="storyboard-workbench-card-meta">
                                 <span className="storyboard-workbench-card-mode">
                                     {mode === "video" ? <Film /> : mode === "image" ? <ImageIcon /> : <MessageSquareText />}
@@ -531,11 +505,11 @@ export function StoryboardShotCard({
                                     <span>创作内容</span>
                                     {user?.createdAt ? <time dateTime={user.createdAt}>{formatMessageTime(user.createdAt)}</time> : null}
                                     {visiblePrompt ? (
-                                        <Tooltip title="复制镜头脚本">
+                                        <CreationTooltip title="复制镜头脚本">
                                             <button type="button" aria-label="复制提示词" onClick={() => copyText(visiblePrompt, "提示词已复制")}>
                                                 <Copy />
                                             </button>
-                                        </Tooltip>
+                                        </CreationTooltip>
                                     ) : null}
                                 </header>
                                 {briefVisible && user ? (
@@ -560,7 +534,9 @@ export function StoryboardShotCard({
                                     {modelName ? (
                                         <div>
                                             <dt>模型</dt>
-                                            <dd title={modelName}>{modelName}</dd>
+                                            <CreationTooltip title={modelName}>
+                                                <dd>{modelName}</dd>
+                                            </CreationTooltip>
                                         </div>
                                     ) : null}
                                     {settings?.ratio ? (
@@ -615,11 +591,11 @@ export function StoryboardShotCard({
                                                 {formatMessageTime(user.createdAt)}
                                             </time>
                                         ) : null}
-                                        <Tooltip title="复制消息">
+                                        <CreationTooltip title="复制消息">
                                             <button type="button" className="creation-user-message-copy" aria-label="复制提示词" onClick={() => copyText(visiblePrompt, "提示词已复制")}>
                                                 <Copy />
                                             </button>
-                                        </Tooltip>
+                                        </CreationTooltip>
                                     </div>
                                     <div className="storyboard-workbench-turn-bubble">
                                         <p className="storyboard-workbench-turn-text">{visiblePrompt}</p>
@@ -856,13 +832,7 @@ function StoryboardShotResult({
         <>
             {mode === "video" ? (
                 <>
-                    <button
-                        type="button"
-                        className="creation-video-result"
-                        style={{ aspectRatio: creationMediaAspectRatio(result.settings?.ratio, "video") }}
-                        onClick={() => openPreview(primaryVideoUrl, "video")}
-                        aria-label="预览生成视频"
-                    >
+                    <button type="button" className="creation-video-result" style={{ aspectRatio: creationMediaAspectRatio(result.settings?.ratio, "video") }} onClick={() => openPreview(primaryVideoUrl, "video")} aria-label="预览生成视频">
                         <video muted preload="metadata" className="size-full object-cover" src={primaryVideoUrl} />
                         <span>
                             <Maximize2 />
@@ -934,4 +904,3 @@ function StoryboardShotResult({
         </>
     );
 }
-

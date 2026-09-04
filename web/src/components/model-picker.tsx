@@ -1,6 +1,6 @@
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent } from "react";
 import { Check, ChevronDown, Coins } from "lucide-react";
-import { Popover } from "antd";
+import { Popover, Tooltip } from "antd";
 
 import { canvasThemes, type CanvasTheme } from "@/lib/canvas-theme";
 import { modelCapabilityConfigFor, videoDurationOptions } from "@/lib/model-capabilities";
@@ -196,7 +196,7 @@ export function ModelPicker({ config, value, onChange, capability, className, po
                                         aria-selected={selected}
                                         aria-disabled={Boolean(disabledReason)}
                                         disabled={Boolean(disabledReason)}
-                                        title={disabledReason || pickerModelOptionLabel(config, displayModel, showConfiguredModelName)}
+                                        title={creationVariant ? undefined : disabledReason || pickerModelOptionLabel(config, displayModel, showConfiguredModelName)}
                                         className="canvas-model-picker-option disabled:cursor-not-allowed disabled:opacity-45"
                                         style={{ background: selected ? theme.toolbar.activeBg : "transparent", color: theme.node.text }}
                                         onClick={() => {
@@ -221,6 +221,29 @@ export function ModelPicker({ config, value, onChange, capability, className, po
             )}
         </div>
     );
+    const triggerLabel = current ? pickerModelOptionLabel(config, current, showConfiguredModelName) : placeholder;
+    const trigger = (
+        <button
+            ref={triggerRef}
+            type="button"
+            className={cn("canvas-composer-model-picker", fullWidth ? "w-full" : "min-w-36 max-w-full", className)}
+            aria-haspopup="listbox"
+            aria-expanded={open}
+            aria-label={placeholder}
+            title={creationVariant ? undefined : triggerLabel}
+            onKeyDown={handleTriggerKeyDown}
+            disabled={disabled}
+        >
+            <span className="canvas-model-picker-label flex min-w-0 items-center gap-1.5">
+                <span className="canvas-model-picker-trigger-icon" style={{ background: theme.toolbar.itemHover }}>
+                    <ModelIcon config={config} model={current} />
+                </span>
+                <span className="min-w-0 flex-1 truncate">{current ? (creationVariant ? pickerModelDisplayName(config, current, showConfiguredModelName) : triggerLabel) : placeholder}</span>
+                {showSelectedPrice && creditsEnabled ? <ModelPrice price={currentPrice} quote={routeQuote} compact nativeTitle={!creationVariant} /> : null}
+            </span>
+            <ChevronDown className={cn("canvas-model-picker-chevron", open && "is-open")} aria-hidden="true" />
+        </button>
+    );
 
     return (
         <div className={cn(fullWidth ? "w-full min-w-0" : "w-fit max-w-full")} onMouseDown={(event) => event.stopPropagation()} onPointerDown={(event) => event.stopPropagation()}>
@@ -237,26 +260,13 @@ export function ModelPicker({ config, value, onChange, capability, className, po
                     content: "canvas-composer-popover-content",
                 }}
             >
-                <button
-                    ref={triggerRef}
-                    type="button"
-                    className={cn("canvas-composer-model-picker", fullWidth ? "w-full" : "min-w-36 max-w-full", className)}
-                    aria-haspopup="listbox"
-                    aria-expanded={open}
-                    aria-label={placeholder}
-                    title={current ? pickerModelOptionLabel(config, current, showConfiguredModelName) : placeholder}
-                    onKeyDown={handleTriggerKeyDown}
-                    disabled={disabled}
-                >
-                    <span className="canvas-model-picker-label flex min-w-0 items-center gap-1.5">
-                        <span className="canvas-model-picker-trigger-icon" style={{ background: theme.toolbar.itemHover }}>
-                            <ModelIcon config={config} model={current} />
-                        </span>
-                        <span className="min-w-0 flex-1 truncate">{current ? (creationVariant ? pickerModelDisplayName(config, current, showConfiguredModelName) : pickerModelOptionLabel(config, current, showConfiguredModelName)) : placeholder}</span>
-                        {showSelectedPrice && creditsEnabled ? <ModelPrice price={currentPrice} quote={routeQuote} compact /> : null}
-                    </span>
-                    <ChevronDown className={cn("canvas-model-picker-chevron", open && "is-open")} aria-hidden="true" />
-                </button>
+                {creationVariant ? (
+                    <Tooltip title={triggerLabel} rootClassName="creation-ui-tooltip" mouseEnterDelay={0.25} mouseLeaveDelay={0.08} trigger={["hover", "focus"]}>
+                        {trigger}
+                    </Tooltip>
+                ) : (
+                    trigger
+                )}
             </Popover>
         </div>
     );
@@ -300,11 +310,11 @@ function ModelLabel({
             </span>
             <span className="min-w-0 flex-1 overflow-hidden">
                 <span className="block min-w-0 truncate text-[var(--fs-label)] font-medium leading-none">{pickerModelDisplayName(config, model, showConfiguredModelName)}</span>
-                <span className="mt-1 block truncate text-[var(--fs-tiny)]" style={{ color: theme.node.muted }} title={capabilitySummary}>
+                <span className="mt-1 block truncate text-[var(--fs-tiny)]" style={{ color: theme.node.muted }} title={creationVariant ? undefined : capabilitySummary}>
                     {capabilitySummary}
                 </span>
             </span>
-            {showPrice ? <ModelPrice price={modelMenuPrice(config, model, capability, true)} /> : null}
+            {showPrice ? <ModelPrice price={modelMenuPrice(config, model, capability, true)} nativeTitle={!creationVariant} /> : null}
             {!creationVariant && meta.time ? (
                 <span className="shrink-0 rounded-full px-1.5 py-0.5 text-[var(--fs-tiny)] tabular-nums" style={{ background: theme.toolbar.itemHover, color: theme.node.muted }}>
                     {meta.time}
@@ -467,12 +477,12 @@ function tierPriceLabel(tier: NonNullable<NonNullable<AiConfig["channels"][numbe
     return `${formatPriceRange([tier.unitPriceMicrocredits / 1_000_000], tier.billingMode === "per_second" ? "积分/秒" : "积分")}`;
 }
 
-function ModelPrice({ price, quote, compact = false }: { price: ModelMenuPrice | null | undefined; quote?: LogicalModelQuote; compact?: boolean }) {
+function ModelPrice({ price, quote, compact = false, nativeTitle = true }: { price: ModelMenuPrice | null | undefined; quote?: LogicalModelQuote; compact?: boolean; nativeTitle?: boolean }) {
     if (quote && quote.billingMode !== "token") {
         const amount = (quote.amountMicrocredits / 1_000_000).toLocaleString("zh-CN", { maximumFractionDigits: 3 });
         const label = quote.estimated ? `预计 ${amount}` : `${amount}`;
         return (
-            <span className="inline-flex shrink-0 items-center gap-0.5 text-[var(--fs-tiny)] font-bold tabular-nums text-amber-600 dark:text-amber-300" title={`${quote.estimated ? "预计" : "本次"}消耗 ${amount} 积分`}>
+            <span className="inline-flex shrink-0 items-center gap-0.5 text-[var(--fs-tiny)] font-bold tabular-nums text-amber-600 dark:text-amber-300" title={nativeTitle ? `${quote.estimated ? "预计" : "本次"}消耗 ${amount} 积分` : undefined}>
                 <Coins className="size-3" />
                 {compact ? label : `${label} 积分`}
             </span>
@@ -482,7 +492,7 @@ function ModelPrice({ price, quote, compact = false }: { price: ModelMenuPrice |
     if (price === null) return compact ? null : <span className="shrink-0 text-[var(--fs-tiny)] text-foreground/40">未配置</span>;
     if (price.kind === "tiers") {
         return (
-            <span className="inline-flex shrink-0 items-center gap-0.5 text-[var(--fs-tiny)] font-bold tabular-nums text-amber-600 dark:text-amber-300" title={price.title}>
+            <span className="inline-flex shrink-0 items-center gap-0.5 text-[var(--fs-tiny)] font-bold tabular-nums text-amber-600 dark:text-amber-300" title={nativeTitle ? price.title : undefined}>
                 <Coins className="size-3" />
                 {compact ? price.compactLabel : price.label}
             </span>
@@ -492,7 +502,7 @@ function ModelPrice({ price, quote, compact = false }: { price: ModelMenuPrice |
         return <span className="shrink-0 text-[var(--fs-tiny)] font-medium text-amber-600 dark:text-amber-300">按量预估</span>;
     }
     return (
-        <span className="inline-flex shrink-0 items-center gap-0.5 text-[var(--fs-tiny)] font-bold tabular-nums text-amber-600 dark:text-amber-300" title={`每${price.unit}消耗 ${price.value.toLocaleString("zh-CN", { maximumFractionDigits: 6 })} 积分`}>
+        <span className="inline-flex shrink-0 items-center gap-0.5 text-[var(--fs-tiny)] font-bold tabular-nums text-amber-600 dark:text-amber-300" title={nativeTitle ? `每${price.unit}消耗 ${price.value.toLocaleString("zh-CN", { maximumFractionDigits: 6 })} 积分` : undefined}>
             <Coins className="size-3" />
             {price.value.toLocaleString("zh-CN", { maximumFractionDigits: compact ? 3 : 6 })}/{price.unit}
         </span>

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type CSSProperties, type DragEvent as ReactDragEvent, type PointerEvent, type ReactNode, type RefObject } from "react";
-import { Button, Popover, Tooltip } from "antd";
+import { Button, Popover } from "antd";
 import { Reorder } from "motion/react";
 import {
     ArrowUp,
@@ -55,6 +55,7 @@ import type { CreationMode } from "./creation-empty-state";
 import { CreationMediaPreviewModal } from "./creation-message-view";
 import type { CreationReference } from "./creation-references";
 import type { CreationVideoOperationChoice } from "./creation-types";
+import { CreationTooltip } from "./creation-tooltip";
 
 const modeLabels: Record<CreationMode, string> = { text: "文本", image: "图片", video: "视频" };
 const ratioOptions = [
@@ -202,9 +203,11 @@ function CreationAttachmentThumbnail({
                 </Popover>
             ) : null}
             {invalidReason ? (
-                <span className="creation-reference-invalid-badge" title={invalidReason} aria-label={invalidReason}>
-                    !
-                </span>
+                <CreationTooltip title={invalidReason}>
+                    <span className="creation-reference-invalid-badge" aria-label={invalidReason} tabIndex={0}>
+                        !
+                    </span>
+                </CreationTooltip>
             ) : null}
             <button
                 type="button"
@@ -307,12 +310,12 @@ function CreationReferenceAddMenu({
     };
     const trigger =
         variant === "slot" ? (
-            <button type="button" className="creation-reference-add-button" disabled={disabled} aria-label={triggerLabel} title={triggerLabel} aria-haspopup="menu" aria-expanded={open}>
+            <button type="button" className="creation-reference-add-button" disabled={disabled} aria-label={triggerLabel} aria-haspopup="menu" aria-expanded={open}>
                 <Plus aria-hidden="true" />
                 <span>添加参考</span>
             </button>
         ) : (
-            <button type="button" className="creation-entry-button creation-reference-add-trigger" disabled={disabled} aria-label={triggerLabel} title={triggerLabel} aria-haspopup="menu" aria-expanded={open}>
+            <button type="button" className="creation-entry-button creation-reference-add-trigger" disabled={disabled} aria-label={triggerLabel} aria-haspopup="menu" aria-expanded={open}>
                 <Plus aria-hidden="true" />
                 <span>添加参考</span>
                 <ChevronDown className="creation-reference-add-chevron" aria-hidden="true" />
@@ -352,7 +355,7 @@ function CreationReferenceAddMenu({
                             </span>
                         </button>
                     </div>
-                    <footer title={referenceEntryHint}>
+                    <footer>
                         <span>{referenceEntryHint}</span>
                     </footer>
                 </div>
@@ -383,6 +386,14 @@ export function CreationComposer(props: ComposerProps) {
     const canOptimizePrompt = Boolean(props.promptOptimizerProvider) && (props.mode === "image" || props.mode === "video");
     const generateAudioSupported = props.mode === "video" && props.videoProfile.generateAudio.supported;
     const generateAudio = generateAudioSupported && props.config.videoGenerateAudio === "true";
+    const soundActionLabel = generateAudio ? "关闭声音" : "开启声音";
+    const soundTooltipTitle = !generateAudioSupported
+        ? "当前模型不支持生成声音"
+        : interactionBusy
+          ? `当前${generateAudio ? "有声音" : "无声音"}，生成进行中暂不可切换`
+          : generateAudio
+            ? "当前有声音，点击后生成无声视频"
+            : "当前无声音，点击后为视频生成配套声音";
     const optimizerReferences = props.references.filter((reference) => reference.active && reference.kind !== "skill");
     const pricingRequest = {
         channelMode: priceChannel.scope === "system" ? "remote" : "local",
@@ -632,13 +643,7 @@ export function CreationComposer(props: ComposerProps) {
                         </span>
                     </div>
                     <div className="creation-reference-entry-actions">
-                        <CreationReferenceAddMenu
-                            disabled={interactionBusy}
-                            directUploadLabel={directUploadLabel}
-                            referenceEntryHint={referenceEntryHint}
-                            onUpload={() => props.fileInputRef.current?.click()}
-                            onOpenLibrary={props.onOpenLibrary}
-                        />
+                        <CreationReferenceAddMenu disabled={interactionBusy} directUploadLabel={directUploadLabel} referenceEntryHint={referenceEntryHint} onUpload={() => props.fileInputRef.current?.click()} onOpenLibrary={props.onOpenLibrary} />
                         {!props.model ? (
                             <Link className="creation-reference-config-link" to={settingsPath("models", true)}>
                                 配置模型
@@ -707,22 +712,28 @@ export function CreationComposer(props: ComposerProps) {
                                 </div>
                                 <div className="creation-reference-panel-actions">
                                     {invalidReferenceCount ? (
-                                        <span className="creation-reference-panel-warning" role="status" title="请移除或调整与当前模型不兼容的素材">
-                                            {invalidReferenceCount} 个不兼容
-                                        </span>
+                                        <CreationTooltip title="请移除或调整与当前模型不兼容的素材">
+                                            <span className="creation-reference-panel-warning" role="status" tabIndex={0}>
+                                                {invalidReferenceCount} 个不兼容
+                                            </span>
+                                        </CreationTooltip>
                                     ) : null}
-                                    <button type="button" onClick={props.onClearAttachments} disabled={interactionBusy} aria-label="清空全部素材" title="清空全部素材">
-                                        <Trash2 aria-hidden="true" />
-                                        <span>清空</span>
-                                    </button>
+                                    <CreationTooltip title="清空全部素材">
+                                        <button type="button" onClick={props.onClearAttachments} disabled={interactionBusy} aria-label="清空全部素材">
+                                            <Trash2 aria-hidden="true" />
+                                            <span>清空</span>
+                                        </button>
+                                    </CreationTooltip>
                                 </div>
                             </div>
                             <div className="creation-reference-track-wrapper">
                                 <div className="creation-reference-stack-shell">
                                     {trackState.canScrollLeft ? (
-                                        <button type="button" className="creation-reference-track-button is-left" onClick={() => scrollAttachmentTrack(-1)} aria-label="向左浏览参考内容" title="向左浏览参考内容">
-                                            <ChevronLeft aria-hidden="true" />
-                                        </button>
+                                        <CreationTooltip title="向左浏览参考内容">
+                                            <button type="button" className="creation-reference-track-button is-left" onClick={() => scrollAttachmentTrack(-1)} aria-label="向左浏览参考内容">
+                                                <ChevronLeft aria-hidden="true" />
+                                            </button>
+                                        </CreationTooltip>
                                     ) : null}
                                     <Reorder.Group<CreationAttachment[]>
                                         as="ul"
@@ -787,9 +798,11 @@ export function CreationComposer(props: ComposerProps) {
                                         </li>
                                     </Reorder.Group>
                                     {trackState.canScrollRight ? (
-                                        <button type="button" className="creation-reference-track-button is-right" onClick={() => scrollAttachmentTrack(1)} aria-label="向右浏览参考内容" title="向右浏览参考内容">
-                                            <ChevronRight aria-hidden="true" />
-                                        </button>
+                                        <CreationTooltip title="向右浏览参考内容">
+                                            <button type="button" className="creation-reference-track-button is-right" onClick={() => scrollAttachmentTrack(1)} aria-label="向右浏览参考内容">
+                                                <ChevronRight aria-hidden="true" />
+                                            </button>
+                                        </CreationTooltip>
                                     ) : null}
                                 </div>
                             </div>
@@ -826,13 +839,7 @@ export function CreationComposer(props: ComposerProps) {
                     {compactThread && showReferenceEntry ? (
                         <>
                             <div className="creation-entry-group is-reference" role="group" aria-label="添加参考素材">
-                                <CreationReferenceAddMenu
-                                    disabled={interactionBusy}
-                                    directUploadLabel={directUploadLabel}
-                                    referenceEntryHint={referenceEntryHint}
-                                    onUpload={() => props.fileInputRef.current?.click()}
-                                    onOpenLibrary={props.onOpenLibrary}
-                                />
+                                <CreationReferenceAddMenu disabled={interactionBusy} directUploadLabel={directUploadLabel} referenceEntryHint={referenceEntryHint} onUpload={() => props.fileInputRef.current?.click()} onOpenLibrary={props.onOpenLibrary} />
                             </div>
                             <span className="creation-entry-divider" aria-hidden="true" />
                         </>
@@ -840,12 +847,7 @@ export function CreationComposer(props: ComposerProps) {
                     <div className="creation-entry-group is-config" role="group" aria-label="生成配置">
                         <div className="creation-config-field is-mode">
                             <span className="creation-config-label">{props.desktopLayout ? "创作类型" : "类型"}</span>
-                            <ModePicker
-                                mode={props.mode}
-                                onModeChange={props.onModeChange}
-                                terminology={props.desktopLayout ? "创作类型" : "生成类型"}
-                                disabled={interactionBusy}
-                            />
+                            <ModePicker mode={props.mode} onModeChange={props.onModeChange} terminology={props.desktopLayout ? "创作类型" : "生成类型"} disabled={interactionBusy} />
                         </div>
                         <div className="creation-config-field is-model">
                             <span className="creation-config-label">模型</span>
@@ -884,18 +886,22 @@ export function CreationComposer(props: ComposerProps) {
                         {props.mode === "video" ? (
                             <div className="creation-config-field is-sound">
                                 <span className="creation-config-label">声音</span>
-                                <Tooltip title={generateAudioSupported ? `点击切换为${generateAudio ? "无声音" : "有声音"}` : "当前模型不支持同步生成声音"}>
-                                    <button
-                                        type="button"
-                                        className="creation-chat-control creation-entry-button creation-sound-toggle"
-                                        aria-pressed={generateAudio}
-                                        onClick={() => props.onGenerateAudioChange(!generateAudio)}
-                                        disabled={interactionBusy || !generateAudioSupported}
-                                    >
-                                        {generateAudio ? <Volume2 /> : <VolumeX />}
-                                        <span>{generateAudio ? "有声音" : "无声音"}</span>
-                                    </button>
-                                </Tooltip>
+                                <CreationTooltip title={soundTooltipTitle} placement="top">
+                                    <span className="creation-sound-tooltip-trigger" aria-label={interactionBusy || !generateAudioSupported ? soundTooltipTitle : undefined} tabIndex={interactionBusy || !generateAudioSupported ? 0 : undefined}>
+                                        <button
+                                            type="button"
+                                            className="creation-chat-control creation-entry-button creation-sound-toggle"
+                                            aria-label={generateAudioSupported ? soundActionLabel : soundTooltipTitle}
+                                            aria-pressed={generateAudio}
+                                            onClick={() => props.onGenerateAudioChange(!generateAudio)}
+                                            disabled={interactionBusy || !generateAudioSupported}
+                                            tabIndex={interactionBusy || !generateAudioSupported ? -1 : undefined}
+                                        >
+                                            {generateAudio ? <Volume2 /> : <VolumeX />}
+                                            <span>{generateAudio ? "有声音" : "无声音"}</span>
+                                        </button>
+                                    </span>
+                                </CreationTooltip>
                             </div>
                         ) : null}
                     </div>
@@ -903,7 +909,7 @@ export function CreationComposer(props: ComposerProps) {
                         <>
                             <span className="creation-entry-divider" aria-hidden="true" />
                             <div className="creation-entry-group is-input" role="group" aria-label="提示词辅助">
-                                <Tooltip title="用 AI 优化提示词">
+                                <CreationTooltip title="用 AI 优化提示词">
                                     <button
                                         type="button"
                                         className="creation-chat-control creation-entry-button"
@@ -916,46 +922,52 @@ export function CreationComposer(props: ComposerProps) {
                                         <WandSparkles />
                                         <span>优化</span>
                                     </button>
-                                </Tooltip>
+                                </CreationTooltip>
                             </div>
                         </>
                     ) : null}
                 </div>
                 <div className="creation-submit-cluster">
                     {props.desktopLayout && (showCost || showTokenPrice) ? (
-                        <div className={`creation-submit-estimate${showTokenPrice ? " is-metered" : ""}`} role="note" aria-label={billingSummary} title={billingDescription}>
-                            <span>{showCost ? "本次预计" : "按量计费"}</span>
-                            <strong>
-                                <CreditSymbol aria-hidden="true" />
-                                <span>{showCost ? `${formattedCredits} 积分` : `${formattedTokenRate} 积分 / 百万 Token`}</span>
-                            </strong>
-                        </div>
+                        <CreationTooltip title={billingDescription}>
+                            <div className={`creation-submit-estimate${showTokenPrice ? " is-metered" : ""}`} role="note" aria-label={billingSummary} tabIndex={0}>
+                                <span>{showCost ? "本次预计" : "按量计费"}</span>
+                                <strong>
+                                    <CreditSymbol aria-hidden="true" />
+                                    <span>{showCost ? `${formattedCredits} 积分` : `${formattedTokenRate} 积分 / 百万 Token`}</span>
+                                </strong>
+                            </div>
+                        </CreationTooltip>
                     ) : null}
-                    <Button
-                        type="text"
-                        className={`canvas-node-composer-submit ${!props.desktopLayout && (showCost || showTokenPrice) ? "has-cost" : ""}`}
-                        disabled={interactionBusy || !canSubmit}
-                        style={
-                            {
-                                color: !interactionBusy && !canSubmit ? "var(--creation-faint)" : "var(--creation-text)",
-                                "--canvas-composer-submit-action": !interactionBusy && !canSubmit ? "var(--creation-surface-hover)" : "var(--creation-submit-action, var(--creation-text))",
-                                "--canvas-composer-submit-action-fg": !interactionBusy && !canSubmit ? "var(--creation-faint)" : "var(--creation-submit-action-fg, var(--creation-bg))",
-                            } as CSSProperties
-                        }
-                        onClick={interactionBusy ? undefined : props.onSubmit}
-                        aria-label={actionLabel}
-                        title={actionLabel}
-                    >
-                        {!props.desktopLayout && (showCost || showTokenPrice) ? (
-                            <span className="canvas-node-composer-submit-cost">
-                                <CreditSymbol />
-                                <span>{showCost ? formattedCredits : `${formattedTokenRate}/1M`}</span>
-                            </span>
-                        ) : null}
-                        <span className="canvas-node-composer-submit-action" aria-hidden>
-                            {interactionBusy ? <LoaderCircle className="size-3 animate-spin" /> : <ArrowUp className="size-3" />}
+                    <CreationTooltip title={actionLabel}>
+                        <span className="creation-submit-tooltip-trigger" aria-label={interactionBusy || !canSubmit ? actionLabel : undefined} tabIndex={interactionBusy || !canSubmit ? 0 : undefined}>
+                            <Button
+                                type="text"
+                                className={`canvas-node-composer-submit ${!props.desktopLayout && (showCost || showTokenPrice) ? "has-cost" : ""}`}
+                                disabled={interactionBusy || !canSubmit}
+                                style={
+                                    {
+                                        color: !interactionBusy && !canSubmit ? "var(--creation-faint)" : "var(--creation-text)",
+                                        "--canvas-composer-submit-action": !interactionBusy && !canSubmit ? "var(--creation-surface-hover)" : "var(--creation-submit-action, var(--creation-text))",
+                                        "--canvas-composer-submit-action-fg": !interactionBusy && !canSubmit ? "var(--creation-faint)" : "var(--creation-submit-action-fg, var(--creation-bg))",
+                                    } as CSSProperties
+                                }
+                                onClick={interactionBusy ? undefined : props.onSubmit}
+                                aria-label={actionLabel}
+                                tabIndex={interactionBusy || !canSubmit ? -1 : undefined}
+                            >
+                                {!props.desktopLayout && (showCost || showTokenPrice) ? (
+                                    <span className="canvas-node-composer-submit-cost">
+                                        <CreditSymbol />
+                                        <span>{showCost ? formattedCredits : `${formattedTokenRate}/1M`}</span>
+                                    </span>
+                                ) : null}
+                                <span className="canvas-node-composer-submit-action" aria-hidden>
+                                    {interactionBusy ? <LoaderCircle className="size-3 animate-spin" /> : <ArrowUp className="size-3" />}
+                                </span>
+                            </Button>
                         </span>
-                    </Button>
+                    </CreationTooltip>
                 </div>
             </footer>
             <CreationMediaPreviewModal url={previewUrl} type={previewType} onClose={() => setPreviewUrl("")} />
@@ -981,17 +993,7 @@ export function CreationComposer(props: ComposerProps) {
     );
 }
 
-function ModePicker({
-    mode,
-    onModeChange,
-    terminology,
-    disabled = false,
-}: {
-    mode: CreationMode;
-    onModeChange: (mode: CreationMode) => void;
-    terminology: "创作类型" | "生成类型";
-    disabled?: boolean;
-}) {
+function ModePicker({ mode, onModeChange, terminology, disabled = false }: { mode: CreationMode; onModeChange: (mode: CreationMode) => void; terminology: "创作类型" | "生成类型"; disabled?: boolean }) {
     const [open, setOpen] = useState(false);
     const items: { mode: CreationMode; icon: ReactNode; label: string }[] = [
         { mode: "video", icon: <Film />, label: "文生视频" },
@@ -1067,7 +1069,6 @@ function VideoOperationPicker({ value, operations, onChange, disabled }: { value
                                 aria-selected={option.value === value}
                                 className={option.value === value ? "is-selected" : undefined}
                                 disabled={!supported}
-                                title={supported ? option.description : "当前模型不支持此生成方式"}
                                 onClick={(event) => {
                                     event.stopPropagation();
                                     onChange(option.value);
@@ -1169,7 +1170,6 @@ function GenerationSettingsMenu(props: ComposerProps) {
                                     type="button"
                                     aria-pressed={referenceImageSizeSelected}
                                     aria-label={"使用参考图尺寸 " + referenceImageSizeLabel}
-                                    title={"使用参考图尺寸 " + referenceImageSizeLabel}
                                     className={"creation-reference-size-choice" + (referenceImageSizeSelected ? " is-selected" : "")}
                                     onClick={selectReferenceImageSize}
                                 >

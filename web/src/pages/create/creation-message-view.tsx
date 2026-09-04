@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Modal, Tooltip } from "antd";
+import { Modal } from "antd";
 import { Copy, CornerUpLeft, Download, FileText, Film, Image as ImageIcon, LoaderCircle, Maximize2, Music2, PanelTop, RefreshCw, Sparkles, Square } from "lucide-react";
 import { Link } from "react-router";
 
@@ -16,6 +16,7 @@ import { creationAttachmentKind, creationMediaAspectRatio } from "./creation-ass
 import type { CreationMode } from "./creation-empty-state";
 import { displayCreationPrompt, type CreationReference } from "./creation-references";
 import type { CreationMessage, CreationShot } from "./creation-types";
+import { CreationTooltip } from "./creation-tooltip";
 
 const messageTimeFormatter = new Intl.DateTimeFormat("zh-CN", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false });
 
@@ -67,15 +68,7 @@ export function CreationTurnView({
                     />
                 ) : null}
                 {shot.result ? (
-                    <CreationMessageView
-                        item={shot.result}
-                        modelName={modelName}
-                        compactLayout={compactLayout}
-                        cancelling={cancelling}
-                        onRetryFailure={onRetryFailure}
-                        onCreateVariant={onCreateVariant}
-                        onCancelGeneration={onCancelGeneration}
-                    />
+                    <CreationMessageView item={shot.result} modelName={modelName} compactLayout={compactLayout} cancelling={cancelling} onRetryFailure={onRetryFailure} onCreateVariant={onCreateVariant} onCancelGeneration={onCancelGeneration} />
                 ) : null}
             </div>
         </section>
@@ -164,11 +157,11 @@ function CreationUserMessage({ item, turnNumber, sourceTurnNumber }: { item: Cre
                 <span>你的描述</span>
                 {turnNumber ? <span className="creation-user-message-turn">第 {String(turnNumber).padStart(2, "0")} 轮</span> : null}
                 {item.createdAt ? <time dateTime={item.createdAt}>{formatMessageTime(item.createdAt)}</time> : null}
-                <Tooltip title="复制消息">
+                <CreationTooltip title="复制消息">
                     <button type="button" className="creation-user-message-copy" aria-label="复制提示词" onClick={() => copyText(visiblePrompt, "提示词已复制")}>
                         <Copy />
                     </button>
-                </Tooltip>
+                </CreationTooltip>
             </div>
             <div className="creation-user-message-copy-wrap">
                 <p>{visiblePrompt}</p>
@@ -377,12 +370,12 @@ function MediaResult({ item, compactLayout, onRetryFailure, onCreateVariant }: {
     );
     const resultActions = (
         <div className="creation-media-actions">
-            <Tooltip title={compactLayout ? "沿用本轮提示词、素材与输出参数，在新回合中继续调整" : "沿用本轮参数生成新版本"}>
+            <CreationTooltip title={compactLayout ? "沿用本轮提示词、素材与输出参数，在新回合中继续调整" : "沿用本轮参数生成新版本"}>
                 <button type="button" className={compactLayout ? "is-primary" : undefined} onClick={onCreateVariant}>
                     <RefreshCw />
                     {compactLayout ? "继续调整" : "生成同款"}
                 </button>
-            </Tooltip>
+            </CreationTooltip>
             <Link className="creation-result-canvas-action" to={canvasPath}>
                 <PanelTop />
                 {resultAssetIds.length ? "添加到画布" : "打开画布"}
