@@ -175,20 +175,20 @@ export function CanvasDirectorOnboarding({ scope, open = true, restartSignal = 0
                 padding: "var(--space-3)",
                 border: "var(--stroke-1) solid var(--border-semantic)",
                 borderRadius: "var(--r-lg)",
-                background: "var(--surface)",
+                background: "var(--app-surface-overlay)",
                 boxShadow: "var(--elevation-overlay)",
-                color: "var(--cn-text)",
+                color: "var(--app-text-primary)",
             }}
         >
             <header className="flex min-w-0 items-center justify-between gap-[var(--space-2)]">
                 <p className="m-0 min-w-0 truncate" style={{ fontSize: "var(--fs-label)", fontWeight: 600 }}>
                     {step.title}
                 </p>
-                <span style={{ flex: "0 0 auto", color: "var(--cn-muted)", fontSize: "var(--fs-tiny)" }}>{`第 ${position} 步 / 共 ${total} 步`}</span>
+                <span style={{ flex: "0 0 auto", color: "var(--app-text-secondary)", fontSize: "var(--fs-tiny)" }}>{`第 ${position} 步 / 共 ${total} 步`}</span>
             </header>
 
             {/* 步骤切换靠 aria-live 播报，不靠焦点转移：焦点必须留在用户正在操作的地方。 */}
-            <p className="m-0" aria-live="polite" style={{ color: "var(--cn-muted)", fontSize: "var(--fs-caption)", lineHeight: 1.5 }}>
+            <p className="m-0" aria-live="polite" style={{ color: "var(--app-text-secondary)", fontSize: "var(--fs-caption)", lineHeight: 1.5 }}>
                 {step.detail}
             </p>
 
@@ -208,7 +208,7 @@ export function CanvasDirectorOnboarding({ scope, open = true, restartSignal = 0
             </div>
 
             <div className="flex items-center justify-between gap-[var(--space-2)]">
-                <button type="button" className={FOCUS_RING} onClick={dismiss} disabled={busy} style={{ height: "var(--space-6)", padding: "0 var(--space-2)", borderRadius: "var(--r-sm)", color: "var(--cn-muted)", fontSize: "var(--fs-tiny)" }}>
+                <button type="button" className={FOCUS_RING} onClick={dismiss} disabled={busy} style={{ height: "var(--space-6)", padding: "0 var(--space-2)", borderRadius: "var(--r-sm)", color: "var(--app-text-secondary)", fontSize: "var(--fs-tiny)" }}>
                     跳过引导
                 </button>
                 <div className="flex items-center gap-[var(--space-1)]">
@@ -237,10 +237,10 @@ export function CanvasDirectorOnboarding({ scope, open = true, restartSignal = 0
                         style={{
                             height: "var(--space-6)",
                             padding: "0 var(--space-3)",
-                            border: "var(--stroke-1) solid var(--workspace-accent)",
+                            border: "var(--stroke-1) solid var(--app-action-primary-bg)",
                             borderRadius: "var(--r-sm)",
-                            background: "var(--workspace-accent)",
-                            color: "var(--btn-solid-fg)",
+                            background: "var(--app-action-primary-bg)",
+                            color: "var(--app-action-primary-fg)",
                             fontSize: "var(--fs-tiny)",
                         }}
                     >

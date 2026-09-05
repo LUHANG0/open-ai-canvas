@@ -1,3 +1,4 @@
+import "./director-workbench.css";
 import { Canvas, useFrame, useThree, type ThreeEvent } from "@react-three/fiber";
 import { Grid, Line, OrbitControls, TransformControls } from "@react-three/drei";
 import { Component, forwardRef, memo, Suspense, useCallback, useEffect, useImperativeHandle, useMemo, useReducer, useRef, useState, type ComponentRef, type ReactNode } from "react";

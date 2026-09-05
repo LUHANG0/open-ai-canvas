@@ -23,7 +23,7 @@ export function DirectorViewToolbar({ viewMode, onViewModeChange }: DirectorView
         <div
             role="group"
             aria-label="导演台取景模式"
-            className="absolute right-3 top-3 z-[var(--z-toolbar)] inline-flex items-center gap-1 rounded-[var(--r-lg)] border p-1 shadow-xl backdrop-blur"
+            className="director-view-toolbar absolute right-3 top-3 z-[var(--z-toolbar)] inline-flex items-center gap-1 rounded-[var(--r-lg)] border p-1 shadow-xl backdrop-blur"
             style={{ borderColor: "var(--director-sequencer-border)", background: "var(--director-dock-surface)", color: "var(--director-dock-fg)" }}
         >
             {DIRECTOR_VIEW_MODES.map((item) => {
