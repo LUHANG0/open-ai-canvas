@@ -1,0 +1,133 @@
+{
+  "before": {
+    "result": {
+      "timeout": true
+    },
+    "network": [
+      {
+        "url": "http://127.0.0.1:3014/@fs/<isolated-worktree>/.local/cache/delivery-fix/vite/deps/@ffmpeg_ffmpeg.js?v=a0f20032",
+        "status": 200,
+        "type": "text/javascript"
+      },
+      {
+        "url": "http://127.0.0.1:3014/@fs/<shared-main>/web/node_modules/@ffmpeg/core/dist/esm/ffmpeg-core.js?url",
+        "status": 200,
+        "type": "text/javascript"
+      },
+      {
+        "url": "http://127.0.0.1:3014/@fs/<shared-main>/web/node_modules/@ffmpeg/core/dist/esm/ffmpeg-core.wasm?import&url",
+        "status": 200,
+        "type": "text/javascript"
+      },
+      {
+        "url": "http://127.0.0.1:3014/@fs/<isolated-worktree>/.local/cache/delivery-fix/vite/deps/@ffmpeg_util.js?v=eac43c0a",
+        "status": 200,
+        "type": "text/javascript"
+      },
+      {
+        "url": "http://127.0.0.1:3014/@fs/<shared-main>/web/node_modules/@ffmpeg/ffmpeg/dist/esm/worker.js?worker_file&type=module",
+        "status": 403
+      },
+      {
+        "url": "http://127.0.0.1:3014/src/lib/timeline/timeline-to-ffmpeg.ts",
+        "status": 200,
+        "type": "text/javascript"
+      }
+    ],
+    "errors": [],
+    "worker": [
+      {
+        "url": "http://127.0.0.1:3014/@fs/<shared-main>/web/node_modules/@ffmpeg/ffmpeg/dist/esm/worker.js?worker_file&type=module",
+        "options": {
+          "type": "module"
+        }
+      },
+      {
+        "error": "worker script failed"
+      }
+    ],
+    "environment": {
+      "crossOriginIsolated": false,
+      "secureContext": true,
+      "wasm": "object",
+      "sharedArrayBuffer": "undefined"
+    }
+  },
+  "after": {
+    "result": {
+      "loaded": true
+    },
+    "network": [
+      {
+        "url": "http://127.0.0.1:3014/@fs/<isolated-worktree>/.local/cache/delivery-fix/vite/deps/@ffmpeg_ffmpeg.js?v=a0f20032",
+        "status": 200,
+        "type": "text/javascript"
+      },
+      {
+        "url": "http://127.0.0.1:3014/@fs/<shared-main>/web/node_modules/@ffmpeg/ffmpeg/dist/esm/worker.js?worker&url",
+        "status": 200,
+        "type": "text/javascript"
+      },
+      {
+        "url": "http://127.0.0.1:3014/@fs/<shared-main>/web/node_modules/@ffmpeg/core/dist/esm/ffmpeg-core.wasm?import&url",
+        "status": 200,
+        "type": "text/javascript"
+      },
+      {
+        "url": "http://127.0.0.1:3014/@fs/<isolated-worktree>/.local/cache/delivery-fix/vite/deps/@ffmpeg_util.js?v=eac43c0a",
+        "status": 200,
+        "type": "text/javascript"
+      },
+      {
+        "url": "http://127.0.0.1:3014/@fs/<shared-main>/web/node_modules/@ffmpeg/core/dist/esm/ffmpeg-core.js?url",
+        "status": 200,
+        "type": "text/javascript"
+      },
+      {
+        "url": "http://127.0.0.1:3014/@fs/<shared-main>/web/node_modules/@ffmpeg/ffmpeg/dist/esm/worker.js?worker_file&type=module",
+        "status": 200,
+        "type": "text/javascript"
+      },
+      {
+        "url": "http://127.0.0.1:3014/@fs/<shared-main>/web/node_modules/@ffmpeg/ffmpeg/dist/esm/const.js?v=831cd60a",
+        "status": 200,
+        "type": "text/javascript"
+      },
+      {
+        "url": "http://127.0.0.1:3014/@fs/<shared-main>/web/node_modules/@ffmpeg/ffmpeg/dist/esm/errors.js?v=831cd60a",
+        "status": 200,
+        "type": "text/javascript"
+      },
+      {
+        "url": "http://127.0.0.1:3014/@fs/<shared-main>/web/node_modules/@ffmpeg/core/dist/esm/ffmpeg-core.js?import",
+        "status": 200,
+        "type": "text/javascript"
+      },
+      {
+        "url": "http://127.0.0.1:3014/@fs/<shared-main>/web/node_modules/@ffmpeg/core/dist/esm/ffmpeg-core.wasm",
+        "status": 200,
+        "type": "application/wasm"
+      },
+      {
+        "url": "http://127.0.0.1:3014/src/lib/timeline/timeline-to-ffmpeg.ts",
+        "status": 200,
+        "type": "text/javascript"
+      }
+    ],
+    "errors": [],
+    "worker": [
+      {
+        "url": "http://127.0.0.1:3014/@fs/<shared-main>/web/node_modules/@ffmpeg/ffmpeg/dist/esm/worker.js?worker_file&type=module",
+        "options": {
+          "type": "module"
+        }
+      }
+    ],
+    "environment": {
+      "crossOriginIsolated": false,
+      "secureContext": true,
+      "wasm": "object",
+      "sharedArrayBuffer": "undefined"
+    }
+  }
+}

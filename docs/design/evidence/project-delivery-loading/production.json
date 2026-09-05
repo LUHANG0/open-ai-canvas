@@ -1,0 +1,99 @@
+{
+  "failed": {
+    "error": "视频合并工具加载失败，请重试"
+  },
+  "result": {
+    "loaded": true,
+    "cancellation": "AbortError",
+    "bytes": 2797,
+    "duration": 1.263158,
+    "width": 96,
+    "height": 54,
+    "colors": [
+      [
+        197,
+        61,
+        59,
+        255
+      ],
+      [
+        34,
+        87,
+        195,
+        255
+      ]
+    ],
+    "crossOriginIsolated": false,
+    "wasm": "object"
+  },
+  "network": [
+    {
+      "url": "http://127.0.0.1:3015/assets/worker-BzdDEeh7.js",
+      "status": 200,
+      "type": "text/javascript"
+    },
+    {
+      "url": "http://127.0.0.1:3015/assets/ffmpeg-core-CI9Irx9p.js",
+      "status": 200,
+      "type": "text/javascript"
+    },
+    {
+      "url": "http://127.0.0.1:3015/assets/ffmpeg-core-CgUfceKH.wasm",
+      "status": 403
+    },
+    {
+      "url": "http://127.0.0.1:3015/assets/ffmpeg-core-CgUfceKH.wasm",
+      "status": 403
+    },
+    {
+      "url": "http://127.0.0.1:3015/assets/ffmpeg-core-CgUfceKH.wasm",
+      "status": 403
+    },
+    {
+      "url": "http://127.0.0.1:3015/assets/worker-BzdDEeh7.js",
+      "status": 200,
+      "type": "text/javascript"
+    },
+    {
+      "url": "http://127.0.0.1:3015/assets/ffmpeg-core-CI9Irx9p.js",
+      "status": 200,
+      "type": "text/javascript"
+    },
+    {
+      "url": "http://127.0.0.1:3015/assets/ffmpeg-core-CgUfceKH.wasm",
+      "status": 200,
+      "type": "application/wasm"
+    },
+    {
+      "url": "http://127.0.0.1:3015/assets/worker-BzdDEeh7.js",
+      "status": 200,
+      "type": "text/javascript"
+    },
+    {
+      "url": "http://127.0.0.1:3015/assets/ffmpeg-core-CI9Irx9p.js",
+      "status": 200,
+      "type": "text/javascript"
+    },
+    {
+      "url": "http://127.0.0.1:3015/assets/ffmpeg-core-CgUfceKH.wasm",
+      "status": 200,
+      "type": "application/wasm"
+    },
+    {
+      "url": "http://127.0.0.1:3015/assets/worker-BzdDEeh7.js",
+      "status": 200,
+      "type": "text/javascript"
+    },
+    {
+      "url": "http://127.0.0.1:3015/assets/ffmpeg-core-CI9Irx9p.js",
+      "status": 200,
+      "type": "text/javascript"
+    },
+    {
+      "url": "http://127.0.0.1:3015/assets/ffmpeg-core-CgUfceKH.wasm",
+      "status": 200,
+      "type": "application/wasm"
+    }
+  ],
+  "errors": []
+}
