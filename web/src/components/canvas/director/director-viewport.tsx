@@ -6,6 +6,7 @@ import { AnimationClip, AnimationMixer, Box3, Bone, Camera, Color, Group, LoopOn
 import type { Material } from "three";
 import { GLTFLoader, SkeletonUtils } from "three-stdlib";
 
+import { applyClaySceneMaterials } from "@/lib/canvas/director/director-clay-materials";
 import { resolveDirectorBoneRotation } from "@/lib/canvas/director/director-animation-semantics";
 import { createDirectorTransaction, installDirectorTerminalListeners } from "@/lib/canvas/director/director-gesture-transaction";
 import { emptyDirectorPlacementIntent, finiteDirectorGroundPoint, type DirectorGroundPoint, type DirectorPlacementIntent } from "@/lib/canvas/director/director-placement";
@@ -1130,43 +1131,31 @@ async function recordCanvas(context: CaptureContext | null, duration: number, fp
     const resumeDisplayMaterialOverride = context.suspendDisplayMaterialOverride();
     const previousMaterial = context.scene.overrideMaterial;
     const restoreClayMaterials = applyClaySceneMaterials(context.scene);
-    context.scene.overrideMaterial = null;
-    context.gl.render(context.scene, context.camera);
-    const stream = context.gl.domElement.captureStream(fps);
-    const mimeType = ["video/webm;codecs=vp9", "video/webm;codecs=vp8", "video/webm"].find((type) => MediaRecorder.isTypeSupported(type)) || "";
-    const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
-    const chunks: Blob[] = [];
-    const result = new Promise<Blob>((resolve, reject) => {
-        recorder.ondataavailable = (event) => { if (event.data.size) chunks.push(event.data); };
-        recorder.onerror = () => reject(new Error("白膜视频录制失败"));
-        recorder.onstop = () => resolve(new Blob(chunks, { type: recorder.mimeType || "video/webm" }));
-    });
-    recorder.start();
-    window.setTimeout(() => recorder.stop(), Math.max(250, duration * 1000 + 120));
+    let stream: MediaStream | undefined;
+    let stopTimer: number | undefined;
     try {
+        context.scene.overrideMaterial = null;
+        context.gl.render(context.scene, context.camera);
+        stream = context.gl.domElement.captureStream(fps);
+        const mimeType = ["video/webm;codecs=vp9", "video/webm;codecs=vp8", "video/webm"].find((type) => MediaRecorder.isTypeSupported(type)) || "";
+        const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+        const chunks: Blob[] = [];
+        const result = new Promise<Blob>((resolve, reject) => {
+            recorder.ondataavailable = (event) => { if (event.data.size) chunks.push(event.data); };
+            recorder.onerror = () => reject(new Error("白膜视频录制失败"));
+            recorder.onstop = () => resolve(new Blob(chunks, { type: recorder.mimeType || "video/webm" }));
+        });
+        recorder.start();
+        stopTimer = window.setTimeout(() => { if (recorder.state !== "inactive") recorder.stop(); }, Math.max(250, duration * 1000 + 120));
         return await result;
     } finally {
-        stream.getTracks().forEach((track) => track.stop());
+        window.clearTimeout(stopTimer);
+        stream?.getTracks().forEach((track) => track.stop());
         restoreClayMaterials();
         context.scene.overrideMaterial = previousMaterial;
         resumeDisplayMaterialOverride();
         context.gl.render(context.scene, context.camera);
     }
-}
-
-function applyClaySceneMaterials(scene: Scene) {
-    const clayMaterial = new MeshStandardMaterial({ color: "#d6d9dd", roughness: 0.88, metalness: 0 });
-    const originals: Array<{ mesh: Mesh; material: Material | Material[] }> = [];
-    scene.traverse((child) => {
-        const mesh = child as Mesh;
-        if (!mesh.isMesh || mesh.userData.directorActor) return;
-        originals.push({ mesh, material: mesh.material });
-        mesh.material = clayMaterial;
-    });
-    return () => {
-        originals.forEach(({ mesh, material }) => { mesh.material = material; });
-        clayMaterial.dispose();
-    };
 }
 
 function canvasToBlob(canvas: HTMLCanvasElement) {
