@@ -1,0 +1,18 @@
+.admin-logical-model-section {
+    min-width: 0;
+    border: 1px solid var(--app-border-subtle);
+    border-radius: 10px;
+    background: var(--app-surface-1);
+    padding: 16px;
+}
+.admin-logical-model-drawer .ant-drawer-body {
+    background: var(--app-bg-page);
+}
+.admin-logical-model-section .ant-form-item:last-child {
+    margin-bottom: 0;
+}
+@media (max-width: 639px) {
+    .admin-logical-model-drawer .ant-drawer-body {
+        padding: 16px;
+    }
+}
