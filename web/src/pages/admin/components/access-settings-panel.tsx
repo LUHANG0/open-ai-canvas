@@ -1,5 +1,6 @@
-import "./admin-configuration.css";
-import { App, Button, Form, Input, Select, Skeleton, Switch } from "antd";
+import { configurationConfirmProps } from "./configuration-confirm";
+import { BrandLoader } from "@/components/ui/brand-loader";
+import { App, Button, Form, Input, Select, Switch } from "antd";
 import { AlertTriangle, BadgeCheck, ChevronDown, Globe2, KeyRound, LockKeyhole, RefreshCw, RotateCcw, Save, ShieldCheck, UserPlus, UsersRound } from "lucide-react";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { useBlocker } from "react-router";
@@ -7,6 +8,7 @@ import { useBlocker } from "react-router";
 import { cn } from "@/lib/utils";
 import { getAdminLinuxDOSetting, getAdminRegistrationSetting, updateAdminLinuxDOSetting, updateAdminRegistrationSetting, type LinuxDOSetting, type RegistrationSetting } from "@/services/api/wallet";
 import { AdminStatusBadge, configuredSecretText, SettingsSectionCard } from "./admin-ui";
+import "./admin-configuration.css";
 
 type LinuxDOFormValues = Omit<LinuxDOSetting, "hasClientSecret" | "updatedAt">;
 
@@ -24,6 +26,7 @@ export default function AccessSettingsPanel() {
     const [saveError, setSaveError] = useState("");
     const [form] = Form.useForm<LinuxDOFormValues>();
     const requestVersionRef = useRef(0);
+    const writingRef = useRef(false);
     const navigationConfirmOpenRef = useRef(false);
     const navigationTriggerRef = useRef<HTMLElement | null>(null);
 
@@ -64,10 +67,10 @@ export default function AccessSettingsPanel() {
     }, [load]);
 
     useEffect(() => {
-        if (loading || !linuxdo || !registration) return;
+        if (loading || !linuxdo) return;
         form.setFieldsValue(toLinuxDOFormValues(linuxdo));
         setDraftLinuxDOEnabled(linuxdo.enabled);
-    }, [form, linuxdo, loading, registration]);
+    }, [form, linuxdo, loading]);
 
     const blocker = useBlocker(dirty && !savingLinuxDO);
 
@@ -85,6 +88,7 @@ export default function AccessSettingsPanel() {
         navigationConfirmOpenRef.current = true;
         navigationTriggerRef.current = document.activeElement instanceof HTMLElement && document.activeElement !== document.body ? document.activeElement : null;
         modal.confirm({
+            ...configurationConfirmProps,
             title: "放弃 Linux.do 登录调整？",
             content: "当前表单有尚未保存的调整，离开后这些内容会丢失。用户注册状态不受影响。",
             okText: "放弃并离开",
@@ -124,6 +128,7 @@ export default function AccessSettingsPanel() {
             return;
         }
         modal.confirm({
+            ...configurationConfirmProps,
             title: "放弃调整并重新读取？",
             content: "重新读取会丢弃当前 Linux.do 表单中的未保存内容，并以服务端配置为准。",
             okText: "放弃并刷新",
@@ -134,16 +139,25 @@ export default function AccessSettingsPanel() {
     };
 
     const toggleRegistration = async (enabled: boolean) => {
+        if (writingRef.current || loading || refreshing || loadError) return;
+        writingRef.current = true;
+        const version = requestVersionRef.current;
         setSavingRegistration(true);
+        setSaveError("");
         try {
             const data = await updateAdminRegistrationSetting(enabled);
+            if (version !== requestVersionRef.current) return;
+            if (data.setting.enabled !== enabled) throw new Error("注册状态与本次修改不一致，请重新读取后核对");
             setRegistration(data.setting);
             message.success(enabled ? "用户注册已开启" : "用户注册已关闭");
         } catch (error) {
+            if (version !== requestVersionRef.current) return;
             const errorMessage = error instanceof Error ? error.message : "更新注册设置失败";
+            setSaveError(`${errorMessage}。注册开关仍显示上次确认状态，Linux.do 草稿已保留。`);
             message.error(errorMessage);
             throw error;
         } finally {
+            writingRef.current = false;
             setSavingRegistration(false);
         }
     };
@@ -154,21 +168,27 @@ export default function AccessSettingsPanel() {
     };
 
     const saveLinuxDO = async (values: LinuxDOFormValues) => {
+        if (writingRef.current || loading || refreshing || loadError || !dirty) return;
+        writingRef.current = true;
+        const version = requestVersionRef.current;
         const expected = normalizeLinuxDOFormValues(values);
         setSavingLinuxDO(true);
         setSaveError("");
         try {
             const result = await updateAdminLinuxDOSetting(expected);
+            if (version !== requestVersionRef.current) return;
             if (!linuxDOResponseMatches(result.setting, expected)) throw new Error("服务端返回的 Linux.do 配置与本次保存内容不一致，请重新读取后核对");
             setLinuxdo(result.setting);
             setDirty(false);
             message.success("Linux.do 登录配置已保存");
         } catch (error) {
+            if (version !== requestVersionRef.current) return;
             const errorMessage = error instanceof Error ? error.message : "保存 Linux.do 配置失败";
             setSaveError(`${errorMessage}。未自动重试，请重新读取当前配置后再决定是否保存。`);
             message.error(errorMessage);
             throw error;
         } finally {
+            writingRef.current = false;
             setSavingLinuxDO(false);
         }
     };
@@ -176,7 +196,8 @@ export default function AccessSettingsPanel() {
     const submitLinuxDOSave = async () => {
         let values: LinuxDOFormValues;
         try {
-            values = await form.validateFields();
+            await form.validateFields();
+            values = form.getFieldsValue(true);
         } catch {
             return;
         }
@@ -204,7 +225,7 @@ export default function AccessSettingsPanel() {
         return (
             <div className="admin-settings-stack admin-access-settings" aria-label="正在读取登录与注册配置" role="status">
                 <div className="admin-access-loading-card">
-                    <Skeleton active paragraph={{ rows: 6 }} />
+                    <BrandLoader label="正在读取服务端配置" detail="读取完成后即可调整设置" />
                 </div>
             </div>
         );
@@ -280,7 +301,13 @@ export default function AccessSettingsPanel() {
                             <p>关闭后，本地注册和未绑定账号的 Linux.do 首次登录都会被拒绝；已有账号及已绑定身份仍可继续登录。</p>
                             <span>{formatSettingTime(registration.updatedAt, "当前来自部署环境默认值")}</span>
                         </div>
-                        <Switch checked={registration.enabled} loading={savingRegistration} disabled={loading || refreshing || savingLinuxDO} onChange={requestRegistrationChange} aria-label="允许创建新账号，切换后立即生效" />
+                        <Switch
+                            checked={registration.enabled}
+                            loading={savingRegistration}
+                            disabled={loading || refreshing || savingLinuxDO || savingRegistration || Boolean(loadError)}
+                            onChange={requestRegistrationChange}
+                            aria-label="允许创建新账号，切换后立即生效"
+                        />
                     </div>
                 </SettingsSectionCard>
             </div>
@@ -304,7 +331,7 @@ export default function AccessSettingsPanel() {
                                         撤销
                                     </Button>
                                 ) : null}
-                                <Button type="primary" icon={<Save className="size-4" />} loading={savingLinuxDO} disabled={!dirty || loading || refreshing} onClick={() => void submitLinuxDOSave()}>
+                                <Button type="primary" icon={<Save className="size-4" />} loading={savingLinuxDO} disabled={!dirty || loading || refreshing || savingRegistration || Boolean(loadError)} onClick={() => void submitLinuxDOSave()}>
                                     {draftLinuxDOEnabled ? "保存并启用" : "保存并关闭"}
                                 </Button>
                             </div>
@@ -315,7 +342,7 @@ export default function AccessSettingsPanel() {
                         form={form}
                         layout="vertical"
                         requiredMark={false}
-                        disabled={loading || refreshing || savingLinuxDO}
+                        disabled={loading || refreshing || savingLinuxDO || savingRegistration || Boolean(loadError)}
                         onValuesChange={() => {
                             const values = form.getFieldsValue(true);
                             setDraftLinuxDOEnabled(Boolean(values.enabled));
