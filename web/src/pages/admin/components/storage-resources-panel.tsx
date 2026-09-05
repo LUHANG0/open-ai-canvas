@@ -1,4 +1,4 @@
-import { App, Button, Input, Modal, Select } from "antd";
+import { Alert, App, Button, Input, Modal, Select } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { Download, Eye, Search, Trash2 } from "lucide-react";
 import { saveAs } from "file-saver";
@@ -9,6 +9,7 @@ import { PaginationBar } from "@/components/layout/workspace-page";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { adminResourceFileUrl, deleteAdminResources, downloadAdminResource, getAdminStorageStats, listAdminResources, type AdminStorageResource, type AdminStorageStats } from "@/services/api/admin-storage";
 import { AdminBatchBar, AdminDataTable, AdminFilterChip, AdminStatTile, AdminStatusBadge, AdminTableEmpty } from "./admin-ui";
+import { configurationConfirmProps } from "./configuration-confirm";
 
 const pageSizes = [20, 50, 100];
 
@@ -28,6 +29,8 @@ export default function StorageResourcesPanel() {
     const [stats, setStats] = useState<AdminStorageStats | null>(null);
     const [total, setTotal] = useState(0);
     const [loading, setLoading] = useState(true);
+    const [loadError, setLoadError] = useState("");
+    const [statsError, setStatsError] = useState("");
     const [previewing, setPreviewing] = useState<AdminStorageResource | null>(null);
     const [downloadingId, setDownloadingId] = useState("");
     const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -48,11 +51,13 @@ export default function StorageResourcesPanel() {
 
     useEffect(() => {
         const controller = new AbortController();
+        setStats(null);
+        setStatsError("");
         void getAdminStorageStats(controller.signal)
             .then(setStats)
             .catch((error) => {
-                if (error instanceof DOMException && error.name === "AbortError") return;
-                message.error(error instanceof Error ? error.message : "读取存储统计失败");
+                if (controller.signal.aborted) return;
+                setStatsError(error instanceof Error ? error.message : "读取存储统计失败");
             });
         return () => controller.abort();
     }, [refreshKey]);
@@ -61,6 +66,10 @@ export default function StorageResourcesPanel() {
         const sequence = ++requestSequence.current;
         const controller = new AbortController();
         setLoading(true);
+        setLoadError("");
+        setResources([]);
+        setTotal(0);
+        setSelectedIds([]);
         void listAdminResources(
             {
                 keyword: debouncedKeyword || undefined,
@@ -80,8 +89,8 @@ export default function StorageResourcesPanel() {
                 if (result.total > 0 && result.items.length === 0 && page > 1) updateUrl({ page: 1 }, true);
             })
             .catch((error) => {
-                if (error instanceof DOMException && error.name === "AbortError") return;
-                if (sequence === requestSequence.current) message.error(error instanceof Error ? error.message : "读取资源列表失败");
+                if (controller.signal.aborted) return;
+                if (sequence === requestSequence.current) setLoadError(error instanceof Error ? error.message : "读取资源列表失败");
             })
             .finally(() => sequence === requestSequence.current && setLoading(false));
         return () => controller.abort();
@@ -159,6 +168,8 @@ export default function StorageResourcesPanel() {
     const confirmDelete = (resourceIds: string[]) => {
         const uniqueIds = Array.from(new Set(resourceIds));
         modal.confirm({
+            ...configurationConfirmProps,
+            rootClassName: "admin-modal-root",
             title: uniqueIds.length > 1 ? `删除选中的 ${uniqueIds.length} 个资源？` : "删除这个资源？",
             content: "系统会先批量检查公告、素材、画布、项目、工作流和镜头产物引用。仍被引用的资源会保留；无引用资源的记录、清理任务和审计事件会在同一事务提交。",
             okText: uniqueIds.length > 1 ? "检查并删除" : "确认删除",
@@ -190,6 +201,7 @@ export default function StorageResourcesPanel() {
 
     return (
         <div className="space-y-4 pt-4">
+            {loadError || statsError ? <Alert type="error" showIcon title={loadError ? "资源列表读取失败" : "容量统计读取失败"} description={loadError || statsError} action={<Button onClick={() => setRefreshKey((value) => value + 1)}>重新读取</Button>} /> : null}
             <div className="grid overflow-hidden rounded-md border border-border sm:grid-cols-2 xl:grid-cols-4">
                 <AdminStatTile label="资源记录" value={stats ? stats.resourceCount.toLocaleString() : "--"} detail={stats ? `可用 ${stats.readyCount.toLocaleString()} 项` : undefined} />
                 <AdminStatTile label="逻辑体积" value={stats ? formatBytes(stats.logicalBytes) : "--"} detail="包含失败与待处理记录" />
@@ -237,6 +249,7 @@ export default function StorageResourcesPanel() {
                 table={{
                     className: "app-data-table",
                     size: "small",
+                    tableLayout: "fixed",
                     rowKey: "id",
                     loading,
                     columns,
@@ -257,6 +270,7 @@ export default function StorageResourcesPanel() {
                 footer={<PaginationBar alwaysShow current={page} pageSize={pageSize} total={total} onChange={(nextPage, nextSize) => updateUrl({ page: nextSize !== pageSize ? 1 : nextPage, pageSize: nextSize })} />}
             />
             <Modal
+                rootClassName="admin-modal-root"
                 title={previewing ? fileName(previewing.objectKey) || "资源预览" : "资源预览"}
                 open={Boolean(previewing)}
                 width={880}
@@ -299,13 +313,16 @@ function DeleteBlockedSummary({ blocked }: { blocked: Array<{ id: string; reason
 }
 
 function ResourcePreview({ resource }: { resource: AdminStorageResource }) {
+    const [failed, setFailed] = useState(false);
+    const [attempt, setAttempt] = useState(0);
     const url = adminResourceFileUrl(resource.id);
-    if (resource.kind === "image" || resource.mimeType.startsWith("image/")) return <img className="mx-auto max-h-[65vh] max-w-full object-contain" src={url} alt={fileName(resource.objectKey) || "资源预览"} />;
-    if (resource.kind === "video" || resource.mimeType.startsWith("video/")) return <video className="mx-auto max-h-[65vh] max-w-full bg-black" src={url} controls playsInline />;
+    if (failed) return <Alert type="error" showIcon title="文件预览失败" description="请检查资源是否仍可读取，或下载原文件查看。" action={<Button onClick={() => { setFailed(false); setAttempt((value) => value + 1); }}>重新加载</Button>} />;
+    if (resource.kind === "image" || resource.mimeType.startsWith("image/")) return <img key={attempt} onError={() => setFailed(true)} className="mx-auto max-h-[65vh] max-w-full object-contain" src={url} alt={fileName(resource.objectKey) || "资源预览"} />;
+    if (resource.kind === "video" || resource.mimeType.startsWith("video/")) return <video key={attempt} onError={() => setFailed(true)} className="mx-auto max-h-[65vh] max-w-full bg-black" src={url} controls playsInline />;
     if (resource.kind === "audio" || resource.mimeType.startsWith("audio/"))
         return (
             <div className="py-12">
-                <audio className="w-full" src={url} controls />
+                <audio key={attempt} onError={() => setFailed(true)} className="w-full" src={url} controls />
             </div>
         );
     return <div className="rounded-md border border-border bg-muted/20 px-5 py-10 text-center text-sm text-foreground/55">该文件类型不支持内嵌预览，请下载后查看。</div>;
