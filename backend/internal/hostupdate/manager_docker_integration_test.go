@@ -10,9 +10,13 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"image"
+	"image/png"
 	"io"
+	"mime/multipart"
 	"net"
 	"net/http"
+	"net/http/cookiejar"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
@@ -73,9 +77,10 @@ func TestHostUpdaterDockerRollbackRestoresDatabaseAndBackendData(t *testing.T) {
 		_ = realRunner.Run(ctx, "docker", []string{"compose", "--env-file", envPath, "-f", composePath, "down", "-v", "--remove-orphans"}, nil, io.Discard, io.Discard)
 	})
 	runDocker(t, realRunner, envPath, composePath, nil, "up", "-d", "--wait", "--wait-timeout", "120")
+	verifyBusiness := seedRollbackBusiness(t, fmt.Sprintf("http://127.0.0.1:%d", healthPort))
 
 	runDocker(t, realRunner, envPath, composePath, nil, "exec", "-T", "postgres", "psql", "-U", "canvas", "-d", "canvas", "-v", "ON_ERROR_STOP=1", "-c", "CREATE TABLE rc_rollback_probe (id integer PRIMARY KEY, value text NOT NULL); INSERT INTO rc_rollback_probe VALUES (1, 'before');")
-	runDocker(t, realRunner, envPath, composePath, nil, "exec", "-T", "--user", "root", "backend", "sh", "-ceu", "mkdir -p /data/media; printf before > /data/media/probe.bin; printf hidden-before > /data/.hidden-probe")
+	runDocker(t, realRunner, envPath, composePath, nil, "exec", "-T", "--user", "root", "backend", "sh", "-ceu", "mkdir -p /data/media; printf before > /data/media/probe.bin; printf hidden-before > /data/.hidden-probe; chmod 600 /data/.hidden-probe")
 	beforeHash := readDockerOutput(t, realRunner, envPath, composePath, "exec", "-T", "--user", "root", "backend", "sha256sum", "/data/media/probe.bin")
 	t.Logf("pre-failure evidence: database=before media=%s hidden=hidden-before", strings.TrimSpace(beforeHash))
 
@@ -116,11 +121,13 @@ func TestHostUpdaterDockerRollbackRestoresDatabaseAndBackendData(t *testing.T) {
 		t.Fatalf("automatic rollback status=%s automatic=%t error=%q rollback=%q", automatic.Operation.Phase, automatic.Operation.AutomaticRollback, automatic.Operation.Error, automatic.Operation.RollbackError)
 	}
 	assertRollbackData(t, realRunner, envPath, composePath, beforeHash)
+	verifyBusiness()
 	assertReadyVersion(t, manager.config.HealthURL, oldVersion)
 	manager.mu.Lock()
 	persistedBackup := *manager.state.LastBackup
 	manager.mu.Unlock()
 	assertBackupContains(t, &persistedBackup, "database.dump", "backend-data.tar")
+	assertBackupArchiveReadable(t, realRunner, envPath, composePath, persistedBackup)
 	t.Logf("automatic rollback: phase=%s database=before media restored schema=ready backup=%s", automatic.Operation.Phase, persistedBackup.Checksum)
 
 	postUpdater(t, httpServer.URL+"/v1/rollback", `{"reason":"repeatability drill"}`, http.StatusAccepted)
@@ -129,6 +136,7 @@ func TestHostUpdaterDockerRollbackRestoresDatabaseAndBackendData(t *testing.T) {
 		t.Fatalf("repeat rollback status=%s automatic=%t rollback=%q", repeated.Operation.Phase, repeated.Operation.AutomaticRollback, repeated.Operation.RollbackError)
 	}
 	assertRollbackData(t, realRunner, envPath, composePath, beforeHash)
+	verifyBusiness()
 	assertReadyVersion(t, manager.config.HealthURL, oldVersion)
 	t.Logf("repeat manual rollback: phase=%s database/media/schema unchanged", repeated.Operation.Phase)
 
@@ -151,6 +159,172 @@ func TestHostUpdaterDockerRollbackRestoresDatabaseAndBackendData(t *testing.T) {
 
 	encoded, _ := json.MarshalIndent(failed, "", "  ")
 	t.Logf("final updater status:\n%s", encoded)
+}
+
+// All requests use the randomly allocated loopback port of this test's own Compose project.
+func seedRollbackBusiness(t *testing.T, baseURL string) func() {
+	t.Helper()
+	jar, err := cookiejar.New(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	client := &http.Client{Jar: jar, Timeout: 15 * time.Second}
+	call := func(method, path, contentType string, body io.Reader) []byte {
+		t.Helper()
+		req, err := http.NewRequest(method, baseURL+path, body)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if contentType != "" {
+			req.Header.Set("Content-Type", contentType)
+		}
+		res, err := client.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer res.Body.Close()
+		data, err := io.ReadAll(res.Body)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if res.StatusCode != http.StatusOK {
+			t.Fatalf("business %s %s status=%d", method, path, res.StatusCode)
+		}
+		if strings.Contains(res.Header.Get("Content-Type"), "application/json") {
+			var result struct {
+				Code int `json:"code"`
+			}
+			if json.Unmarshal(data, &result) != nil || result.Code != 0 {
+				t.Fatalf("business %s %s failed", method, path)
+			}
+		}
+		return data
+	}
+	credentials := `{"username":"rollback_drill","password":"local-drill-password-only"}`
+	call("POST", "/api/auth/register", "application/json", strings.NewReader(credentials))
+	// Saving a disabled fake SMTP setting creates the real encryption key without sending mail.
+	call("PATCH", "/api/admin/settings/email", "application/json", strings.NewReader(`{"enabled":false,"password":"drill-only-secret"}`))
+	var media bytes.Buffer
+	if err := png.Encode(&media, image.NewRGBA(image.Rect(0, 0, 2, 2))); err != nil {
+		t.Fatal(err)
+	}
+	var upload bytes.Buffer
+	form := multipart.NewWriter(&upload)
+	part, err := form.CreateFormFile("file", "drill.png")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := part.Write(media.Bytes()); err != nil {
+		t.Fatal(err)
+	}
+	if err := form.WriteField("kind", "image"); err != nil {
+		t.Fatal(err)
+	}
+	if err := form.Close(); err != nil {
+		t.Fatal(err)
+	}
+	data := call("POST", "/api/resources", form.FormDataContentType(), &upload)
+	var uploaded struct {
+		Data struct {
+			Resource struct {
+				ID string `json:"id"`
+			} `json:"resource"`
+		} `json:"data"`
+	}
+	if json.Unmarshal(data, &uploaded) != nil || uploaded.Data.Resource.ID == "" {
+		t.Fatal("missing uploaded resource ID")
+	}
+	resourceID := uploaded.Data.Resource.ID
+	canvas := fmt.Sprintf(`{"project":{"id":"rollback-drill-canvas","title":"before","nodes":[{"id":"probe","type":"image","resourceId":%q}],"connections":[]}}`, resourceID)
+	call("PUT", "/api/canvas-projects/rollback-drill-canvas", "application/json", strings.NewReader(canvas))
+	verify := func() {
+		call("POST", "/api/auth/login", "application/json", strings.NewReader(credentials))
+		setting := call("GET", "/api/admin/settings/email", "", nil)
+		var mail struct {
+			Data struct {
+				Setting struct {
+					HasPassword bool `json:"hasPassword"`
+					Enabled     bool `json:"enabled"`
+				} `json:"setting"`
+			} `json:"data"`
+		}
+		if json.Unmarshal(setting, &mail) != nil || !mail.Data.Setting.HasPassword || mail.Data.Setting.Enabled || bytes.Contains(setting, []byte("drill-only-secret")) {
+			t.Fatal("restored encrypted setting cannot be read safely")
+		}
+		data := call("GET", "/api/canvas-projects/rollback-drill-canvas", "", nil)
+		var restored struct {
+			Data struct {
+				Project struct {
+					Title string `json:"title"`
+					Nodes []struct {
+						ResourceID string `json:"resourceId"`
+					} `json:"nodes"`
+				} `json:"project"`
+			} `json:"data"`
+		}
+		if json.Unmarshal(data, &restored) != nil || restored.Data.Project.Title != "before" || len(restored.Data.Project.Nodes) != 1 || restored.Data.Project.Nodes[0].ResourceID != resourceID {
+			t.Fatal("restored canvas differs from backup")
+		}
+		file := call("GET", "/api/resources/"+resourceID+"/file", "", nil)
+		if !bytes.Equal(file, media.Bytes()) {
+			t.Fatal("restored business resource differs from uploaded PNG")
+		}
+		t.Log("business readback: fresh login, encrypted disabled SMTP setting, canvas resource reference and exact uploaded PNG passed")
+	}
+	verify()
+	return verify
+}
+
+func assertBackupArchiveReadable(t *testing.T, runner execRunner, envPath, composePath string, backup Backup) {
+	t.Helper()
+	stat, err := os.Stat(backup.Path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stat.Mode().Perm() != 0o600 {
+		t.Fatalf("backup permissions=%o", stat.Mode().Perm())
+	}
+	archive, err := zip.OpenReader(backup.Path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer archive.Close()
+	for _, entry := range archive.File {
+		reader, err := entry.Open()
+		if err != nil {
+			t.Fatal(err)
+		}
+		data, err := io.ReadAll(reader)
+		reader.Close()
+		if err != nil {
+			t.Fatal(err)
+		}
+		switch entry.Name {
+		case "database.dump":
+			runDocker(t, runner, envPath, composePath, bytes.NewReader(data), "exec", "-T", "postgres", "pg_restore", "--list")
+		case "backend-data.tar":
+			runDocker(t, runner, envPath, composePath, bytes.NewReader(data), "run", "--rm", "--no-deps", "-T", "--user", "root", "backend", "tar", "-tf", "-")
+		case "metadata.json":
+			var meta struct {
+				ID        string    `json:"id"`
+				Version   string    `json:"version"`
+				Format    int       `json:"format"`
+				CreatedAt time.Time `json:"createdAt"`
+			}
+			if json.Unmarshal(data, &meta) != nil || meta.ID != backup.ID || meta.Version != backup.Version || meta.Format != 1 || !meta.CreatedAt.Equal(backup.CreatedAt) {
+				t.Fatal("backup metadata differs from persisted backup")
+			}
+		}
+	}
+	mode := strings.TrimSpace(readDockerOutput(t, runner, envPath, composePath, "exec", "-T", "--user", "root", "backend", "stat", "-c", "%a", "/data/.hidden-probe"))
+	if mode != "600" {
+		t.Fatalf("restored private file permissions=%s", mode)
+	}
+	keyMode := strings.TrimSpace(readDockerOutput(t, runner, envPath, composePath, "exec", "-T", "backend", "stat", "-c", "%a:%s", "/data/.settings-key"))
+	if keyMode != "600:32" {
+		t.Fatalf("restored encryption key mode:size=%s", keyMode)
+	}
+	t.Log("backup validation: ZIP CRC, metadata identity, mode 0600, pg_restore list, tar list and restored private mode passed")
 }
 
 type roundTripFunc func(*http.Request) (*http.Response, error)
@@ -479,8 +653,9 @@ services:
       - sh
       - -ceu
       - |
-        psql "$$DATABASE_URL" -v ON_ERROR_STOP=1 -c "UPDATE rc_rollback_probe SET value='after' WHERE id=1;"
+        psql "$$DATABASE_URL" -v ON_ERROR_STOP=1 -c "UPDATE rc_rollback_probe SET value='after' WHERE id=1; UPDATE canvas_projects SET payload_json='{}', title='after';"
         printf after > /data/media/probe.bin
+        printf invalid-key > /data/.settings-key
         printf target-only > /data/target-only.txt
         exit 42
     environment:
