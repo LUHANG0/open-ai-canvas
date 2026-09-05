@@ -1,5 +1,6 @@
-import "./admin-configuration.css";
-import { App, Button, Form, Input, InputNumber, Select, Skeleton, Switch } from "antd";
+import { configurationConfirmProps } from "./configuration-confirm";
+import { BrandLoader } from "@/components/ui/brand-loader";
+import { App, Button, Form, Input, InputNumber, Select, Switch } from "antd";
 import { AlertTriangle, AtSign, BadgeCheck, KeyRound, MailCheck, RefreshCw, RotateCcw, Save, Send, Server } from "lucide-react";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { useBlocker } from "react-router";
@@ -7,6 +8,7 @@ import { useBlocker } from "react-router";
 import { cn } from "@/lib/utils";
 import { getAdminEmailSetting, updateAdminEmailSetting, type EmailSetting } from "@/services/api/wallet";
 import { AdminStatusBadge, configuredSecretText, SettingsSectionCard } from "./admin-ui";
+import "./admin-configuration.css";
 
 type EmailFormValues = Pick<EmailSetting, "enabled" | "host" | "port" | "username" | "password" | "encryption" | "fromEmail" | "fromName">;
 
@@ -22,6 +24,7 @@ export default function EmailSettingsPanel() {
     const [saveError, setSaveError] = useState("");
     const [form] = Form.useForm<EmailFormValues>();
     const requestVersionRef = useRef(0);
+    const writingRef = useRef(false);
     const navigationConfirmOpenRef = useRef(false);
     const navigationTriggerRef = useRef<HTMLElement | null>(null);
 
@@ -83,6 +86,7 @@ export default function EmailSettingsPanel() {
         navigationConfirmOpenRef.current = true;
         navigationTriggerRef.current = document.activeElement instanceof HTMLElement && document.activeElement !== document.body ? document.activeElement : null;
         modal.confirm({
+            ...configurationConfirmProps,
             title: "放弃邮件服务调整？",
             content: "当前 SMTP 表单有尚未保存的调整，离开后这些内容会丢失。服务端正在使用的邮件配置不会改变。",
             okText: "放弃并离开",
@@ -122,6 +126,7 @@ export default function EmailSettingsPanel() {
             return;
         }
         modal.confirm({
+            ...configurationConfirmProps,
             title: "放弃调整并重新读取？",
             content: "重新读取会丢弃当前 SMTP 表单中的未保存内容，并以服务端配置为准。",
             okText: "放弃并刷新",
@@ -132,11 +137,15 @@ export default function EmailSettingsPanel() {
     };
 
     const save = async (values: EmailFormValues) => {
+        if (writingRef.current || loading || refreshing || loadError || !dirty) return;
+        writingRef.current = true;
+        const version = requestVersionRef.current;
         const expected = normalizeEmailFormValues(values);
         setSaving(true);
         setSaveError("");
         try {
             const result = await updateAdminEmailSetting(expected);
+            if (version !== requestVersionRef.current) return;
             if (!isEmailSetting(result.setting) || !emailResponseMatches(result.setting, expected)) throw new Error("服务端返回的邮件配置与本次保存内容不一致，请重新读取后核对");
             setSetting(result.setting);
             form.setFieldsValue(toEmailFormValues(result.setting));
@@ -144,11 +153,13 @@ export default function EmailSettingsPanel() {
             setDirty(false);
             message.success("注册邮件配置已保存");
         } catch (error) {
+            if (version !== requestVersionRef.current) return;
             const errorMessage = error instanceof Error ? error.message : "保存邮件配置失败";
             setSaveError(`${errorMessage}。未自动重试，请重新读取当前配置后再决定是否保存。`);
             message.error(errorMessage);
             throw error;
         } finally {
+            writingRef.current = false;
             setSaving(false);
         }
     };
@@ -156,7 +167,8 @@ export default function EmailSettingsPanel() {
     const submitSave = async () => {
         let values: EmailFormValues;
         try {
-            values = await form.validateFields();
+            await form.validateFields();
+            values = form.getFieldsValue(true);
         } catch {
             return;
         }
@@ -184,7 +196,7 @@ export default function EmailSettingsPanel() {
         return (
             <div className="admin-settings-stack admin-email-settings" aria-label="正在读取邮件服务配置" role="status">
                 <div className="admin-email-loading-card">
-                    <Skeleton active paragraph={{ rows: 7 }} />
+                    <BrandLoader label="正在读取服务端配置" detail="读取完成后即可调整设置" />
                 </div>
             </div>
         );
@@ -263,7 +275,7 @@ export default function EmailSettingsPanel() {
                                             撤销
                                         </Button>
                                     ) : null}
-                                    <Button type="primary" icon={<Save className="size-4" />} loading={saving} disabled={!dirty || loading || refreshing} onClick={() => void submitSave()}>
+                                    <Button type="primary" icon={<Save className="size-4" />} loading={saving} disabled={!dirty || loading || refreshing || Boolean(loadError)} onClick={() => void submitSave()}>
                                         保存设置
                                     </Button>
                                 </div>
@@ -283,7 +295,7 @@ export default function EmailSettingsPanel() {
                             <p>启用后，普通邮箱注册需要获取并校验 6 位验证码；邮件发送失败时不会创建可用验证码。</p>
                             <span>关闭只停止后续验证码邮件，不改变新用户注册开关，也不影响已有账号。</span>
                         </div>
-                        <Switch checked={draftEnabled} disabled={loading || refreshing || saving} aria-label="发送注册邮箱验证码" onChange={toggleEnabled} />
+                        <Switch checked={draftEnabled} disabled={loading || refreshing || saving || Boolean(loadError)} aria-label="发送注册邮箱验证码" onChange={toggleEnabled} />
                     </div>
                 </SettingsSectionCard>
             </div>
@@ -308,7 +320,7 @@ export default function EmailSettingsPanel() {
                                             撤销
                                         </Button>
                                     ) : null}
-                                    <Button type="primary" icon={<Save className="size-4" />} loading={saving} disabled={!dirty || loading || refreshing} onClick={() => void submitSave()}>
+                                    <Button type="primary" icon={<Save className="size-4" />} loading={saving} disabled={!dirty || loading || refreshing || Boolean(loadError)} onClick={() => void submitSave()}>
                                         保存并启用
                                     </Button>
                                 </div>
@@ -319,7 +331,7 @@ export default function EmailSettingsPanel() {
                             form={form}
                             layout="vertical"
                             requiredMark={false}
-                            disabled={loading || refreshing || saving}
+                            disabled={loading || refreshing || saving || Boolean(loadError)}
                             onValuesChange={() => {
                                 const values = form.getFieldsValue(true);
                                 setDraftEnabled(Boolean(values.enabled));
