@@ -104,6 +104,8 @@ export function CanvasTimelinePreview({ clips, nodes, playheadMs, playing, theme
 
     // 视频换源后元数据加载完成，应用之前记录的源内定位目标。
     const handleVideoLoadedMetadata = (video: HTMLVideoElement) => {
+        // 远端 metadata 预加载不保证触发 loadeddata；元数据可用后允许用户主动播放。
+        setLoading(false);
         if (video.videoWidth > 0 && video.videoHeight > 0) setVideoSize({ width: video.videoWidth, height: video.videoHeight });
         if (targetSeekSecRef.current != null && video.readyState >= 1) {
             const target = Math.min(targetSeekSecRef.current, Math.max(0, (video.duration || 0) - 0.05));
@@ -146,7 +148,7 @@ export function CanvasTimelinePreview({ clips, nodes, playheadMs, playing, theme
                 {videoUrl && activeVideoClip ? (
                     <>
                         <div className="relative" style={previewDisplay ? { width: previewDisplay.width, height: previewDisplay.height } : { width: "100%", height: "100%" }}>
-                            <video ref={videoRef} className="block h-full w-full" src={videoUrl} playsInline preload={videoUrl.startsWith("blob:") ? "auto" : "metadata"} onLoadedData={() => setLoading(false)} onError={() => { setLoading(false); setFailed(true); }} onLoadedMetadata={(event) => handleVideoLoadedMetadata(event.currentTarget)} onTimeUpdate={handleTimeUpdate} />
+                            <video key={`${activeVideoClip.id}:${retry}`} ref={videoRef} className="block h-full w-full" src={videoUrl} playsInline preload={videoUrl.startsWith("blob:") ? "auto" : "metadata"} onLoadedData={() => setLoading(false)} onError={() => { setLoading(false); setFailed(true); }} onLoadedMetadata={(event) => handleVideoLoadedMetadata(event.currentTarget)} onTimeUpdate={handleTimeUpdate} />
                             {activeSubtitleClip ? <CanvasSubtitleOverlay text={activeSubtitleClip.text || ""} highlight={activeHighlight} style={subtitleStyle} /> : null}
                         </div>
                         <button
