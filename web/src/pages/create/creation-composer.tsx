@@ -571,9 +571,9 @@ export function CreationComposer(props: ComposerProps) {
     const placeholder = props.mode === "text" ? "描述你的故事、角色或想继续讨论的创意" : props.mode === "image" ? "描述画面、人物、场景、构图与风格" : "描述镜头内容、运动、光线与节奏";
     const emptyPlaceholder =
         props.mode === "video"
-            ? "上传参考素材、输入文字或 @ 参考内容，自由组合图、文、音、视频元素，描述你想生成的镜头。"
+            ? "描述镜头内容、运镜、光线与节奏；选择模型后，可添加它支持的参考素材。"
             : props.mode === "image"
-              ? "上传参考素材、输入文字或 @ 参考内容，描述人物、场景、构图与风格。"
+              ? "描述人物、场景、构图与风格；选择模型后，可添加它支持的参考素材。"
               : "输入故事、角色或创意，也可以使用 @ 引用素材与技能。";
     const referenceCounts = useMemo(() => countCreationAttachments(props.attachments), [props.attachments]);
     const referenceKinds: CreationAttachmentKind[] = ["image", "video", "audio", "file"];
@@ -1025,7 +1025,7 @@ export function CreationComposer(props: ComposerProps) {
                         <div className="creation-token-billing-note" role="note">
                             <CreditSymbol className="creation-token-billing-icon" aria-hidden="true" />
                             <strong>{formattedTokenRate} 积分/百万 Token</strong>
-                            <span className="creation-token-billing-description">提交时预授权、完成按实际 usage 多退少补</span>
+                            <span className="creation-token-billing-description">提交时预授权，完成后按实际 Token 用量结算</span>
                         </div>
                     ) : null}
                 </div>
@@ -1166,6 +1166,7 @@ export function CreationComposer(props: ComposerProps) {
                     </CreationTooltip>
                 </div>
             </footer>
+            {!canSubmit ? <p className="creation-submit-status" role="status">{actionLabel}</p> : null}
             <CreationMediaPreviewModal url={previewUrl} type={previewType} onClose={() => setPreviewUrl("")} />
         </section>
     );

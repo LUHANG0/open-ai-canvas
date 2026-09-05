@@ -168,7 +168,7 @@ export default function CreatePage() {
     }, []);
 
     useEffect(() => {
-        if (pcBrandV2 && !activeConversation?.messages.length) {
+        if (!activeConversation?.messages.length) {
             const frame = window.requestAnimationFrame(() => {
                 const container = threadScrollRef.current;
                 if (container) container.scrollTop = 0;
@@ -440,15 +440,13 @@ export default function CreatePage() {
                         )}
                         <main ref={threadScrollRef} onScroll={handleThreadScroll} className="creation-empty-workspace creation-scrollbar">
                             <CreationEmptyIntro mode={mode} />
-                            {pcBrandV2 ? (
-                                <div className="creation-empty-composer">
-                                    <header className="creation-empty-composer-heading">
-                                        <span>从这里开始</span>
-                                        <small>素材 · 提示词 · 模型 · 规格</small>
-                                    </header>
-                                    <CreationComposer {...composerProps} variant="empty" />
-                                </div>
-                            ) : null}
+                            <div className="creation-empty-composer">
+                                <header className="creation-empty-composer-heading">
+                                    <span>从这里开始</span>
+                                    <small>素材 · 提示词 · 模型 · 规格</small>
+                                </header>
+                                <CreationComposer {...composerProps} variant="empty" />
+                            </div>
                             <CreationEmptySuggest
                                 onStartPrompt={(nextMode, prompt) => {
                                     selectMode(nextMode);
@@ -456,15 +454,6 @@ export default function CreatePage() {
                                     window.requestAnimationFrame(() => composerFocusRef.current?.focus());
                                 }}
                             />
-                            {!pcBrandV2 ? (
-                                <div className="creation-empty-composer">
-                                    <header className="creation-empty-composer-heading">
-                                        <span>创作指令</span>
-                                        <small>素材 · 提示词 · 模型 · 规格 · 计费</small>
-                                    </header>
-                                    <CreationComposer {...composerProps} variant="empty" />
-                                </div>
-                            ) : null}
                         </main>
                     </>
                 ) : viewMode === "chat" ? (

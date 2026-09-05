@@ -6,6 +6,7 @@ import { Link } from "react-router";
 import { AIMessageMarkdown } from "@/components/ai/ai-message-markdown";
 import { GenerationToolCard, type GenerationToolStatus } from "@/components/ai/generation-tool-card";
 import { MessageReasoning } from "@/components/ai/message-reasoning";
+import { useBranding } from "@/components/branding/branding-provider";
 import { useCopyText } from "@/hooks/use-copy-text";
 import { creationCanvasHandoffPath, creationResultAssetIds, creationResultMediaEntries, type CreationResultMediaEntry } from "@/lib/canvas/canvas-asset-handoff";
 import { generationErrorMessage } from "@/lib/generation-error";
@@ -99,19 +100,23 @@ export function CreationMessageView({
     onCreateVariant: () => void;
     onCancelGeneration?: () => void;
 }) {
+    const { branding } = useBranding();
     if (item.role === "user") return <CreationUserMessage item={item} turnNumber={turnNumber} sourceTurnNumber={sourceTurnNumber} legacyLayout={legacyLayout} />;
     const mode = item.mode || "text";
     const isRunning = item.status === "pending" || item.status === "streaming";
     const canCancelGeneration = !legacyLayout && creationCancelableTaskIds(item.taskIds).length > 0;
     const stateLabel = legacyLayout ? (isRunning ? "生成中" : item.status === "cancelled" ? "已停止" : item.status === "error" ? "生成失败" : "") : item.status === "cancelled" ? "已停止" : item.status === "error" ? "生成失败" : "";
     const resultLabel = mode === "image" ? "图像" : mode === "video" ? "视频" : "文本";
-    const headingLabel = mode === "text" ? "影策 AI" : item.status === "error" ? `${resultLabel}生成失败` : item.status === "cancelled" ? `${resultLabel}生成已停止` : isRunning ? `正在生成${resultLabel}` : `${resultLabel}已生成`;
+    const assistantName = `${branding.config.identity.shortName} AI`;
+    const hasMediaResult = Boolean(item.resultUrls?.some(Boolean));
+    const headingLabel = mode === "text" ? assistantName : item.status === "error" ? `${resultLabel}生成失败` : item.status === "cancelled" ? `${resultLabel}生成已停止` : isRunning ? `正在生成${resultLabel}` : hasMediaResult ? `${resultLabel}已生成` : `未返回${resultLabel}`;
+    const emptyText = isRunning ? "正在生成…" : item.status === "cancelled" ? "本轮生成已停止。" : item.status === "error" ? "本轮未能生成内容，请重试。" : "本轮未返回文本内容，可调整描述后重新生成。";
     const heading = (
         <>
             <span className="creation-message-mark">
                 <Sparkles />
             </span>
-            <strong>{legacyLayout ? (mode === "image" ? "图像生成" : mode === "video" ? "视频生成" : "影策 AI") : headingLabel}</strong>
+            <strong>{legacyLayout ? (mode === "image" ? "图像生成" : mode === "video" ? "视频生成" : assistantName) : headingLabel}</strong>
             {legacyLayout && mode !== "text" && item.status === "pending" ? <span className="creation-message-progress-copy">正在生成{mode === "video" ? "视频" : "图像"}……</span> : null}
             {modelName ? <span className="creation-message-model">{modelName}</span> : null}
             {item.createdAt ? <time dateTime={item.createdAt}>{formatMessageTime(item.createdAt)}</time> : null}
@@ -142,7 +147,7 @@ export function CreationMessageView({
                 <>
                     <div className="creation-message-heading">{heading}</div>
                     {item.reasoning ? <MessageReasoning reasoning={item.reasoning} isStreaming={item.status === "streaming"} /> : null}
-                    <div className="creation-message-content">{item.content ? <AIMessageMarkdown isStreaming={item.status === "streaming"}>{item.content}</AIMessageMarkdown> : <span>正在生成…</span>}</div>
+                    <div className="creation-message-content">{item.content ? <AIMessageMarkdown isStreaming={item.status === "streaming"}>{item.content}</AIMessageMarkdown> : <span>{emptyText}</span>}</div>
                 </>
             ) : (
                 <GenerationToolCard status={toolStatus} isBulk={mode !== "video" && (item.resultUrls?.length || Number(item.settings?.count) || 1) > 1} defaultExpanded={compactLayout ? true : undefined} heading={heading}>
@@ -307,7 +312,7 @@ function MediaResult({ item, compactLayout, legacyLayout, onRetryFailure, onCrea
     if (item.status === "pending") return <CreationMediaPending mode={item.mode || "image"} ratio={item.settings?.ratio} />;
     if ((item.status === "error" || item.status === "cancelled") && !resultUrls.length)
         return (
-            <div className={`creation-media-error${item.status === "cancelled" ? " is-cancelled" : ""}`} role="alert">
+            <div className={`creation-media-error${item.status === "cancelled" ? " is-cancelled" : ""}`} role={item.status === "cancelled" ? "status" : "alert"}>
                 <span>{item.status === "cancelled" ? item.content || "已停止" : generationErrorMessage(item.error || "生成失败")}</span>
                 <button type="button" onClick={onRetryFailure}>
                     <RefreshCw />

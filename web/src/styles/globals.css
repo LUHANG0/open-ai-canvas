@@ -1059,7 +1059,7 @@
     body.app-spatial-overlays :where(
         .ant-dropdown-menu,
         .ant-select-dropdown,
-        .ant-popover-container,
+        .ant-popover-container:not(.creation-control-popover-surface),
         .ant-picker-dropdown .ant-picker-panel-container,
         .ant-cascader-menus,
         .ant-mentions-dropdown,
@@ -1078,12 +1078,12 @@
         background: var(--workspace-overlay-bg-strong) !important;
     }
 
-    body.app-spatial-overlays :where(.ant-dropdown-menu, .ant-select-dropdown, .ant-popover-container, .ant-cascader-menus, .ant-mentions-dropdown) {
+    body.app-spatial-overlays :where(.ant-dropdown-menu, .ant-select-dropdown, .ant-popover-container:not(.creation-control-popover-surface), .ant-cascader-menus, .ant-mentions-dropdown) {
         border-radius: 8px !important;
     }
 
     /* 展开菜单（下拉/弹出）取消阴影：层级由边框 + 背景对比表达 */
-    body.app-spatial-overlays :where(.ant-dropdown-menu, .ant-select-dropdown, .ant-popover-container, .ant-cascader-menus, .ant-mentions-dropdown) {
+    body.app-spatial-overlays :where(.ant-dropdown-menu, .ant-select-dropdown, .ant-popover-container:not(.creation-control-popover-surface), .ant-cascader-menus, .ant-mentions-dropdown) {
         box-shadow: none !important;
     }
 
@@ -2509,7 +2509,12 @@
         filter: none !important;
     }
 
-    .creation-control-popover-surface,
+    .creation-control-popover-surface {
+        overflow: hidden;
+        padding: 0 !important;
+        animation: creation-popover-enter var(--motion-dur-fast-calc) var(--motion-ease-out) both;
+    }
+
     .creation-model-picker-surface {
         border: 1px solid rgba(220, 225, 231, .82) !important;
         border-radius: 14px !important;
@@ -2522,7 +2527,6 @@
         animation: creation-popover-enter var(--motion-dur-fast-calc) var(--motion-ease-out) both;
     }
 
-    .dark .creation-control-popover-surface,
     .dark .creation-model-picker-surface {
         border-color: rgba(61, 66, 76, .72) !important;
         background: rgba(25, 27, 32, .92) !important;
@@ -3200,8 +3204,6 @@
         box-shadow: 0 10px 32px rgba(20, 26, 35, .05);
     }
 
-    .creation-chat-composer:focus-within { box-shadow: none; }
-
     .creation-chat-writing-surface {
         display: grid;
         min-height: 92px;
@@ -3327,15 +3329,6 @@
     html:not(.dark) .creation-chat-control:hover,
     html:not(.dark) .creation-chat-composer .creation-model-picker.canvas-composer-model-picker:hover { border-color: rgba(20, 26, 35, .2) !important; background: #e9edf1 !important; }
 
-    .creation-control-popover-surface {
-        border: 0 !important;
-        border-radius: 12px !important;
-        background: #202227 !important;
-        box-shadow: 0 16px 38px rgba(0, 0, 0, .36) !important;
-        backdrop-filter: none !important;
-        -webkit-backdrop-filter: none !important;
-    }
-
     .creation-parameter-menu { width: 292px; padding: 12px; }
     .creation-parameter-section + .creation-parameter-section { margin-top: 14px; }
     .creation-parameter-section h3 { margin: 0 0 8px; color: #858c97; font-size: 11px; font-weight: 500; }
@@ -3371,7 +3364,6 @@
     .creation-range-wrap input::-moz-range-track { height: 5px; }
     .creation-range-wrap input::-moz-range-thumb { width: 7px; height: 19px; border-radius: 4px; }
     .creation-range-labels { margin-top: 3px; font-size: 10px; }
-    html:not(.dark) .creation-control-popover-surface { background: #fff !important; box-shadow: 0 14px 34px rgba(20, 26, 35, .14) !important; }
     html:not(.dark) .creation-parameter-section h3, html:not(.dark) .creation-duration-menu > div:first-child { color: #7b8490; }
     html:not(.dark) .creation-choice-grid button { color: #4d5661; }
     html:not(.dark) .creation-duration-menu strong { color: #20242a; }
@@ -9968,8 +9960,6 @@ html:not(.dark) .creation-chat-composer {
     box-shadow: 0 18px 48px rgba(30, 34, 38, .08);
 }
 
-.creation-chat-composer:focus-within { box-shadow: 0 20px 58px rgba(0, 0, 0, .18); }
-
 .creation-chat-writing-surface,
 .creation-chat-composer.is-empty .creation-chat-writing-surface {
     display: grid;
@@ -10098,7 +10088,6 @@ html:not(.dark) .creation-chat-control.is-mode,
 html:not(.dark) .creation-chat-control:hover,
 html:not(.dark) .creation-chat-composer .creation-model-picker.canvas-composer-model-picker:hover { background: rgba(29, 33, 37, .06) !important; color: var(--creation-text) !important; }
 
-.creation-control-popover-surface,
 .creation-model-picker-surface {
     overflow: hidden;
     border: 0 !important;
@@ -10185,7 +10174,6 @@ html:not(.dark) .creation-chat-composer .creation-model-picker.canvas-composer-m
 .creation-new-button { border: 0; border-radius: 8px; background: rgba(255, 255, 255, .06); box-shadow: none; }
 .creation-new-button:hover { border: 0; background: rgba(255, 255, 255, .12); }
 
-html:not(.dark) .creation-control-popover-surface,
 html:not(.dark) .creation-model-picker-surface { background: rgba(255, 255, 255, .94) !important; box-shadow: 0 16px 38px rgba(28, 32, 37, .12) !important; }
 html:not(.dark) .creation-parameter-section h3,
 html:not(.dark) .creation-duration-menu > div:first-child,
@@ -12831,13 +12819,6 @@ html:not(.dark) .creation-media-preview-modal .ant-modal-container { background:
 .creation-custom-value.is-duration { grid-column: auto !important; width: 100%; margin-top: 7px; }
 
 /* 创作参数是即时选择，不使用后台式表单控件。 */
-.creation-control-popover-surface {
-    border: 0 !important;
-    border-radius: 12px !important;
-    background: rgba(25, 27, 31, .96) !important;
-    box-shadow: 0 20px 48px rgba(0, 0, 0, .34) !important;
-}
-
 .creation-parameter-menu {
     width: 288px !important;
     padding: 12px !important;
@@ -13018,7 +12999,6 @@ html:not(.dark) .creation-media-preview-modal .ant-modal-container { background:
 .creation-duration-choices button:hover { background: rgba(255, 255, 255, .055) !important; color: var(--creation-text) !important; }
 .creation-duration-choices button.is-selected { background: var(--control-selected-bg) !important; color: var(--control-selected-fg) !important; }
 
-html:not(.dark) .creation-control-popover-surface { background: rgba(255, 255, 255, .98) !important; box-shadow: 0 20px 48px rgba(25, 29, 35, .14) !important; }
 html:not(.dark) .creation-choice-grid button:hover,
 html:not(.dark) .creation-duration-choices button:hover,
 html:not(.dark) .creation-custom-trigger:hover { background: rgba(28, 32, 37, .055) !important; }

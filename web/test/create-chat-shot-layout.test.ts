@@ -188,7 +188,7 @@ describe("PC creation chat and storyboard director workbench regression gates", 
         expectRuleWith(cinemaStyles, ".creation-home .storyboard-editor-shot-layout", [/grid-template-columns:\s*minmax\(0,\s*1fr\)\s+300px/]);
     });
 
-    test("puts the desktop composer before auxiliary inspiration without changing the mobile branch", async () => {
+    test("puts one composer before auxiliary inspiration at every viewport", async () => {
         const [source, composer, toolbar, message, styles] = await Promise.all([
             read("../src/pages/create/index.tsx"),
             read("../src/pages/create/creation-composer.tsx"),
@@ -197,14 +197,13 @@ describe("PC creation chat and storyboard director workbench regression gates", 
             read("../src/pages/create/creation-workspace.css"),
         ]);
         const emptyRender = sourceSection(source, "{isEmpty ? (", ') : viewMode === "chat" ? (');
-        const desktopComposer = emptyRender.indexOf('{pcBrandV2 ? (\n                                <div className="creation-empty-composer">');
+        const composerPosition = emptyRender.indexOf('<div className="creation-empty-composer">');
         const suggestions = emptyRender.indexOf("<CreationEmptySuggest");
-        const mobileComposer = emptyRender.indexOf('{!pcBrandV2 ? (\n                                <div className="creation-empty-composer">');
         const modePicker = sourceSection(composer, "function ModePicker", "function VideoOperationPicker");
 
-        expect(desktopComposer).toBeGreaterThanOrEqual(0);
-        expect(suggestions).toBeGreaterThan(desktopComposer);
-        expect(mobileComposer).toBeGreaterThan(suggestions);
+        expect(composerPosition).toBeGreaterThanOrEqual(0);
+        expect(suggestions).toBeGreaterThan(composerPosition);
+        expect((emptyRender.match(/<CreationComposer/g) || []).length).toBe(1);
         expect(source).toContain("desktopLayout: pcBrandV2");
         expect(composer).toContain('props.desktopLayout ? " is-desktop" : ""');
         expect(composer).toContain('!props.desktopLayout && props.mode === "video"');

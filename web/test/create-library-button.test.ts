@@ -33,9 +33,9 @@ function readCreationAssetWorkflowSource() {
 }
 
 describe("creation library button", () => {
-    test("PC Brand V2 空白创作工作区从顶部展示，移动端保留原跟随逻辑", () => {
+    test("空白创作工作区始终从输入区顶部展示，已有对话保持跟随逻辑", () => {
         const source = compactSource(readCreateSource());
-        const scrollEffectStart = source.indexOf("if (pcBrandV2 && !activeConversation?.messages.length)");
+        const scrollEffectStart = source.indexOf("if (!activeConversation?.messages.length)");
         const scrollEffectEnd = source.indexOf("const { promptRef, attachmentsRef", scrollEffectStart);
 
         expect(source).toContain('import { usePcBrandViewport } from "@/hooks/use-pc-brand-viewport"');
@@ -44,8 +44,8 @@ describe("creation library button", () => {
         expect(scrollEffectEnd).toBeGreaterThan(scrollEffectStart);
         const scrollEffect = source.slice(scrollEffectStart, scrollEffectEnd);
 
-        expect(scrollEffect).toContain("if (pcBrandV2 && !activeConversation?.messages.length)");
-        expect(scrollEffect).not.toContain("if (!activeConversation?.messages.length)");
+        expect(scrollEffect).toContain("if (!activeConversation?.messages.length)");
+        expect(scrollEffect).not.toContain("if (pcBrandV2 && !activeConversation?.messages.length)");
         expect(scrollEffect).toContain("container.scrollTop = 0");
         expect(scrollEffect).toContain("if (!followLatestMessageRef.current) return");
         expect(scrollEffect).toContain("container.scrollTop = container.scrollHeight");
@@ -135,7 +135,7 @@ describe("creation library button", () => {
         expect(pricingSource).toContain("requirements: props.modelRequirements");
         expect(source).toContain("const credits = requestCreditCost(pricingRequest)");
         expect(source).toContain("积分/百万 Token");
-        expect(source).toContain("提交时预授权、完成按实际 usage 多退少补");
+        expect(source).toContain("提交时预授权，完成后按实际 Token 用量结算");
         expect(source).toContain("showCost ? formattedCredits : `${formattedTokenRate}/1M`");
         expect(source).toContain("showSelectedPrice={!props.desktopLayout}");
         expect(source).toContain("props.desktopLayout && (showCost || showTokenPrice)");
@@ -425,8 +425,8 @@ describe("creation library button", () => {
         expect(source).not.toContain('aria-label="打开素材库选择参考内容"');
         expect(source).toContain("creation-reference-entry");
         expect(workspaceStyles).toContain(".creation-chat-composer:is(.is-empty, .is-thread) {");
-        expect(workspaceStyles).toContain("--creation-toolbar-button-bg: #f1f3f5;");
-        expect(workspaceStyles).toContain("--creation-toolbar-button-bg: #272b32;");
+        expect(workspaceStyles).toContain("--creation-toolbar-button-bg: var(--app-control-bg)");
+        expect(workspaceStyles).not.toContain("--creation-toolbar-button-bg: #272b32;");
         expect(workspaceStyles).toContain("background: var(--creation-toolbar-button-bg) !important;");
         expect(workspaceStyles).toContain(".creation-home .creation-entry-button,");
         expect(workspaceStyles).toContain(".creation-home .creation-entry-group.is-input");
@@ -434,7 +434,7 @@ describe("creation library button", () => {
         expect(workspaceStyles).toContain("@layer utilities {");
         expect(workspaceStyles).toContain(".creation-chat-composer:is(.is-empty, .is-thread):focus-within {");
         expect(workspaceStyles).toContain("box-shadow: none !important;");
-        expect(workspaceStyles).toContain("filter: none !important;");
+        expect(workspaceStyles).toContain("box-shadow: 0 0 0 2px var(--app-focus-ring)");
     });
 
     test("画幅与清晰度使用带说明和选中反馈的参数卡片", () => {
