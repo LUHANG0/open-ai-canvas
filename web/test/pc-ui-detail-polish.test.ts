@@ -53,7 +53,9 @@ describe("PC detail polish regression gates", () => {
         expect(compact(auth)).not.toContain("max-height: calc(100dvh - 24px)");
         expect(compact(auth)).toContain(".pc-auth-form-assurance, .pc-auth-password-status { display: flex;");
         expect(auth).not.toContain(".pc-auth-brand-capabilities");
-        expect(compact(plugins.slice(0, plugins.indexOf("@media (min-width: 1024px)")))).toContain(".plugins-overview, .plugin-card-open-hint, .plugin-section-card-icon { display: none; }");
+        expect(compact(plugins)).toContain("@media (max-width: 1023px)");
+        expect(compact(plugins)).toMatch(/grid-template-columns: repeat\(2,\s*minmax\(0,\s*1fr\)\)/);
+        expect(plugins).not.toContain("@media (min-width: 1024px) {");
         expect(compact(settings)).not.toContain(".settings-section-context { display: none; }");
         expect(compact(settings)).not.toContain(".settings-diagnostics-preview-error { display: none; }");
         expect(compact(voice.slice(0, voice.indexOf("@media (min-width: 1024px)")))).toContain(".pc-voice-count, .pc-voice-status-strip { display: none; }");

@@ -18,6 +18,7 @@ import { WorkspaceErrorState, WorkspaceLoadingState } from "@/components/ui/pc/w
 import { DialogFrame, SearchField, StatusBadge, SubnavLayout } from "@/components/ui/pc";
 
 import { PluginDetailsDialog } from "./plugin-details-dialog";
+import { normalizeEagleAddress, pluginDisplayState } from "./plugin-display-state";
 import "./plugins.css";
 
 const categoryLabels: Record<string, string> = {
@@ -61,7 +62,7 @@ const protocolSectionMeta = [
 ] as const;
 
 export default function PluginsPage() {
-    const { message } = App.useApp();
+    const { message, modal } = App.useApp();
     const navigate = useNavigate();
     const user = useUserStore((state) => state.user);
     const features = useUserStore((state) => state.features);
@@ -74,7 +75,7 @@ export default function PluginsPage() {
     const updateConfig = usePluginStore((state) => state.updateConfig);
     const builtinPlugins = useMemo(() => listRegisteredPlugins(), []);
     const [backendPlugins, setBackendPlugins] = useState<BackendPlugin[]>([]);
-    const [backendPluginsLoading, setBackendPluginsLoading] = useState(false);
+    const [backendPluginsLoading, setBackendPluginsLoading] = useState(true);
     const [backendPluginsError, setBackendPluginsError] = useState("");
     const [settingsPluginId, setSettingsPluginId] = useState<string | null>(null);
     const [detailsPluginId, setDetailsPluginId] = useState<string | null>(null);
@@ -90,31 +91,38 @@ export default function PluginsPage() {
     const [eagleFolders, setEagleFolders] = useState<EagleFolder[]>([]);
     const [eagleFoldersLoading, setEagleFoldersLoading] = useState(false);
     const [eagleFoldersError, setEagleFoldersError] = useState("");
+    const [eagleAddressError, setEagleAddressError] = useState("");
+    const eagleFolderRequest = useRef(0);
     const sectionRefs = useRef<Record<string, HTMLElement | null>>({});
+    const listRequest = useRef(0);
+    const toggleRequests = useRef(new Set<string>());
+    const [togglingIds, setTogglingIds] = useState<string[]>([]);
 
     useEffect(() => {
         for (const plugin of builtinPlugins) ensurePlugin(plugin.manifest);
     }, [builtinPlugins, ensurePlugin]);
 
     const reloadBackendPlugins = async () => {
+        const request = ++listRequest.current;
         setBackendPluginsLoading(true);
         setBackendPluginsError("");
         try {
             const result = await fetchPlugins();
+            if (request !== listRequest.current) return;
             setBackendPlugins(result.plugins);
             setPluginStates(result.states);
         } catch (error) {
+            if (request !== listRequest.current) return;
             const detail = error instanceof Error ? error.message : "读取插件中心失败";
-            message.error(detail);
             setBackendPluginsError(detail);
-            setBackendPlugins([]);
         } finally {
-            setBackendPluginsLoading(false);
+            if (request === listRequest.current) setBackendPluginsLoading(false);
         }
     };
 
     useEffect(() => {
         void reloadBackendPlugins();
+        return () => { listRequest.current += 1; };
     }, [user?.id]);
 
     const remotePlugins = useMemo(() => backendPlugins.map(toRegisteredPlugin), [backendPlugins]);
@@ -143,7 +151,7 @@ export default function PluginsPage() {
             const isApplicationPlugin = backendPluginById.get(plugin.manifest.id)?.management.kind === "application" || isOfficialApplicationPlugin(plugin.manifest.id);
             if (user?.role !== "admin" && !features.systemPluginsVisibleToUsers && !isApplicationPlugin) return false;
             const installation = installations.find((item) => item.manifest.id === plugin.manifest.id);
-            const enabled = state?.effectiveEnabled ?? Boolean(installation?.enabled);
+            const enabled = state?.userEnabled ?? Boolean(installation?.enabled);
             const manifest = plugin.manifest;
             const contributionKinds = contributionKindsFor(manifest);
             const searchableText = [manifest.name, manifest.description, manifest.author, manifest.id, ...contributionKinds.map((kind) => categoryLabels[kind] || kind)].filter(Boolean).join(" ").toLocaleLowerCase();
@@ -188,7 +196,7 @@ export default function PluginsPage() {
     }, [pluginSections, scrollTarget]);
 
     const categoryCounts = useMemo(() => {
-        const visiblePlugins = registeredPlugins.filter((plugin) => user?.role === "admin" || features.systemPluginsVisibleToUsers || isOfficialApplicationPlugin(plugin.manifest.id));
+        const visiblePlugins = registeredPlugins.filter((plugin) => user?.role === "admin" || features.systemPluginsVisibleToUsers || backendPluginById.get(plugin.manifest.id)?.management.kind === "application" || isOfficialApplicationPlugin(plugin.manifest.id));
         const counts: Record<string, number> = { all: visiblePlugins.length, text: 0, image: 0, video: 0, audio: 0, other: 0 };
         for (const plugin of visiblePlugins) {
             const capabilities = providerCapabilitiesFor(plugin.manifest);
@@ -198,7 +206,7 @@ export default function PluginsPage() {
             }
         }
         return counts;
-    }, [features.systemPluginsVisibleToUsers, registeredPlugins, user?.role]);
+    }, [backendPluginById, features.systemPluginsVisibleToUsers, registeredPlugins, user?.role]);
     const navigationItems = useMemo(
         () => [
             { value: "all", label: "全部插件", description: "全部可见扩展", icon: <PlugZap className="size-4" />, badge: categoryCounts.all },
@@ -219,44 +227,62 @@ export default function PluginsPage() {
     const hasPluginConfiguration = (plugin: RegisteredPlugin) => Boolean(plugin.manifest.configuration?.fields?.length);
     const canConfigurePlugin = (plugin: RegisteredPlugin) => Boolean(pluginStates[plugin.manifest.id]?.canConfigure) && (hasPluginConfiguration(plugin) || plugin.manifest.id === RUNNINGHUB_PLUGIN_ID || plugin.manifest.id === COMFYUI_PLUGIN_ID);
 
-    const isPluginEnabled = (plugin: RegisteredPlugin, installation = installations.find((item) => item.manifest.id === plugin.manifest.id)) => pluginStates[plugin.manifest.id]?.effectiveEnabled ?? Boolean(installation?.enabled);
+    const isPluginEnabled = (plugin: RegisteredPlugin) => pluginDisplayState(pluginStates[plugin.manifest.id], backendPluginsLoading || Boolean(backendPluginsError)).enabled;
 
     const togglePlugin = async (plugin: RegisteredPlugin, enabled: boolean) => {
+        if (toggleRequests.current.has(plugin.manifest.id)) return;
+        toggleRequests.current.add(plugin.manifest.id);
+        setTogglingIds([...toggleRequests.current]);
         try {
             const next = await setUserPluginEnabled(plugin.manifest.id, enabled);
-            setEnabled(plugin.manifest.id, enabled);
+            setEnabled(plugin.manifest.id, next.userEnabled);
             setPluginStates({ ...usePluginStore.getState().pluginStates, [next.pluginId]: next });
             if (next.pluginId === RUNNINGHUB_PLUGIN_ID || next.pluginId === COMFYUI_PLUGIN_ID) {
                 setRuntimeStatuses({ ...usePluginStore.getState().runtimeStatuses, [next.pluginId]: next.effectiveEnabled ? "enabled" : "disabled" });
             }
-            message.success(`${plugin.manifest.name}${enabled ? "已启用" : "已停用"}`);
+            message.success(`${plugin.manifest.name}：${next.userEnabled ? "个人开关已开启" : "个人开关已关闭"}，${pluginDisplayState(next).label}`);
         } catch (error) {
             message.error(error instanceof Error ? error.message : "更新插件状态失败");
+        } finally {
+            toggleRequests.current.delete(plugin.manifest.id);
+            setTogglingIds([...toggleRequests.current]);
         }
     };
 
     const loadEagleFolders = async (url = eagleBaseUrl) => {
+        const request = ++eagleFolderRequest.current;
         setEagleFoldersLoading(true);
         setEagleFoldersError("");
         try {
-            const result = await getEagleLibrary(url.trim().replace(/\/$/, ""));
+            const result = await getEagleLibrary(normalizeEagleAddress(url));
+            if (request !== eagleFolderRequest.current) return;
             setEagleFolders(result.library.folders || []);
         } catch (reason) {
+            if (request !== eagleFolderRequest.current) return;
             setEagleFoldersError(reason instanceof Error ? reason.message : "读取 Eagle 文件夹失败");
             setEagleFolders([]);
         } finally {
-            setEagleFoldersLoading(false);
+            if (request === eagleFolderRequest.current) setEagleFoldersLoading(false);
         }
     };
 
     const saveEagleConfig = () => {
-        const baseUrl = eagleBaseUrl.trim().replace(/\/$/, "");
-        if (!/^https?:\/\//i.test(baseUrl)) {
-            message.error("Eagle 地址必须以 http:// 或 https:// 开头");
+        let baseUrl: string;
+        try { baseUrl = normalizeEagleAddress(eagleBaseUrl); } catch (error) {
+            setEagleAddressError(error instanceof Error ? error.message : "Eagle 地址无效");
             return;
         }
+        setEagleFoldersError("");
+        setEagleAddressError("");
         updateConfig(EAGLE_PLUGIN_ID, { baseUrl, autoUploadGenerated: eagleAutoUploadGenerated, generatedFolderId: eagleGeneratedFolderId });
-        message.success("Eagle 插件配置已保存");
+        message.success("Eagle 配置已应用到本机；连接状态请通过读取文件夹确认");
+    };
+
+    const eagleDirty = eagleBaseUrl.trim().replace(/\/$/, "") !== (eagle?.config.baseUrl || "http://localhost:41595") || eagleAutoUploadGenerated !== (eagle?.config.autoUploadGenerated !== false && eagle?.config.autoUploadGenerated !== "false") || eagleGeneratedFolderId !== (eagle?.config.generatedFolderId || "");
+    const closeSettings = () => {
+        if (settingsPluginId === EAGLE_PLUGIN_ID && eagleDirty) {
+            modal.confirm({ title: "放弃未应用的配置？", content: "当前修改尚未应用到 Eagle 插件。", okText: "放弃修改", cancelText: "继续编辑", onOk: () => { setEagleBaseUrl(String(eagle?.config.baseUrl || "http://localhost:41595")); setEagleAutoUploadGenerated(eagle?.config.autoUploadGenerated !== false && eagle?.config.autoUploadGenerated !== "false"); setEagleGeneratedFolderId(String(eagle?.config.generatedFolderId || "")); setSettingsPluginId(null); } });
+        } else setSettingsPluginId(null);
     };
 
     const hasActiveFilters = Boolean(search.trim() || categoryFilter !== "all" || statusFilter !== "all" || trustFilter !== "all");
@@ -267,7 +293,7 @@ export default function PluginsPage() {
     return (
         <WorkspacePage className="plugins-page" contentClassName="plugins-page-content">
             <PageHeader
-                eyebrow="PLUGIN CENTER"
+                eyebrow="能力中心"
                 title="插件中心"
                 description="统一管理模型、工作流、画布节点与素材扩展能力。"
                 meta={<span className="plugins-page-count">{categoryCounts.all} 个可见插件</span>}
@@ -309,8 +335,8 @@ export default function PluginsPage() {
                             <dd>{filteredPlugins.length}</dd>
                         </div>
                         <div>
-                            <dt>已启用</dt>
-                            <dd>{filteredEnabledCount}</dd>
+                            <dt>已生效</dt>
+                            <dd>{backendPluginsLoading || backendPluginsError ? "—" : filteredEnabledCount}</dd>
                         </div>
                         <div>
                             <dt>可信来源</dt>
@@ -323,14 +349,14 @@ export default function PluginsPage() {
                     </dl>
                 </div>
                 <div className="plugins-toolbar" aria-label="插件筛选">
-                    <SearchField containerClassName="plugins-search" value={search} placeholder="搜索插件名称、描述或作者" onChange={(event) => setSearch(event.target.value)} onClear={() => setSearch("")} />
+                    <SearchField containerClassName="plugins-search" value={search} aria-label="搜索插件" placeholder="搜索插件名称、描述或作者" onChange={(event) => setSearch(event.target.value)} onClear={() => setSearch("")} />
                     <Select
                         className="plugins-filter"
                         value={statusFilter}
                         options={[
                             { value: "all", label: "全部状态" },
-                            { value: "enabled", label: "已启用" },
-                            { value: "disabled", label: "已停用" },
+                            { value: "enabled", label: "个人已开启" },
+                            { value: "disabled", label: "个人已关闭" },
                         ]}
                         onChange={(value) => setStatusFilter(value as "all" | "enabled" | "disabled")}
                         aria-label="按状态筛选"
@@ -348,8 +374,8 @@ export default function PluginsPage() {
                     <span className="plugins-filter-summary">{filteredPlugins.length} 个结果</span>
                 </div>
 
-                {backendPluginsError ? <WorkspaceErrorState compact title="部分插件信息加载失败" description={`${backendPluginsError}。内置插件仍可继续使用。`} onRetry={() => void reloadBackendPlugins()} /> : null}
-                {backendPluginsError && registeredPlugins.length === 0 ? null : backendPluginsLoading && registeredPlugins.length === 0 ? (
+                {backendPluginsError ? <WorkspaceErrorState compact title="插件状态读取失败" description={`${backendPluginsError}。说明文档仍可查看，重新读取后再修改开关与配置。`} onRetry={() => void reloadBackendPlugins()} /> : null}
+                {backendPluginsLoading ? (
                     <WorkspaceLoadingState label="正在读取插件" detail="正在同步插件清单与当前账号状态。" rows={4} />
                 ) : filteredPlugins.length ? (
                     <div className="plugins-sections">
@@ -379,11 +405,13 @@ export default function PluginsPage() {
                                         {section.plugins.map((plugin) => {
                                             const installation = installations.find((item) => item.manifest.id === plugin.manifest.id);
                                             const remote = backendPluginById.get(plugin.manifest.id);
-                                            const enabled = isPluginEnabled(plugin, installation);
+                                            const display = pluginDisplayState(pluginStates[plugin.manifest.id], Boolean(backendPluginsError));
+                                            const enabled = display.enabled;
                                             const trusted = Boolean(plugin.manifest.trusted);
                                             const state = pluginStates[plugin.manifest.id];
                                             const sourceLabel = pluginSourceLabel(plugin, state);
                                             const canConfigure = canConfigurePlugin(plugin);
+                                            const personalSwitch = remote?.management.activationScope === "user" || isOfficialApplicationPlugin(plugin.manifest.id);
                                             return (
                                                 <section
                                                     key={plugin.manifest.id}
@@ -458,18 +486,19 @@ export default function PluginsPage() {
                                                     </button>
 
                                                     <div className="plugin-card-actions">
-                                                        <StatusBadge dot tone={!state?.platformAvailable && state?.blockedReason ? "warning" : enabled ? "success" : "neutral"} live>
-                                                            {!state?.platformAvailable && state?.blockedReason ? state.blockedReason : enabled ? "已启用" : "已停用"}
+                                                        <StatusBadge dot tone={display.tone} live>
+                                                            {display.label}
                                                         </StatusBadge>
-                                                        <Switch
+                                                        {personalSwitch ? <Switch
                                                             className="plugin-state-switch"
-                                                            disabled={!state?.canToggle}
-                                                            checked={enabled}
-                                                            aria-label={`${plugin.manifest.name}，当前${enabled ? "已启用，点击停用" : "已停用，点击启用"}`}
+                                                            disabled={!state?.canToggle || Boolean(backendPluginsError)}
+                                                            loading={togglingIds.includes(plugin.manifest.id)}
+                                                            checked={display.userEnabled}
+                                                            aria-label={`${plugin.manifest.name}，个人开关${display.userEnabled ? "已开启，点击关闭" : "已关闭，点击开启"}`}
                                                             title={state?.blockedReason}
                                                             onChange={(checked) => void togglePlugin(plugin, checked)}
-                                                        />
-                                                        {canConfigure ? (
+                                                        /> : <span className="plugin-platform-managed">由平台管理</span>}
+                                                        {canConfigure && !backendPluginsError ? (
                                                             <Button
                                                                 className="plugin-settings-button"
                                                                 icon={<Settings2 className="size-4" />}
@@ -525,7 +554,7 @@ export default function PluginsPage() {
                     centered
                     footer={null}
                     destroyOnHidden
-                    onCancel={() => setSettingsPluginId(null)}
+                    onCancel={closeSettings}
                     styles={{ body: { maxHeight: "min(72vh, 760px)", overflowY: "auto", overscrollBehavior: "contain" } }}
                 >
                     {settingsPlugin ? (
@@ -549,8 +578,9 @@ export default function PluginsPage() {
                                     <div className="plugin-settings-fields">
                                         <div className="min-w-0">
                                             <label htmlFor="eagle-base-url">Eagle 本地 API 地址</label>
-                                            <Input id="eagle-base-url" aria-label="Eagle 本地 API 地址" value={eagleBaseUrl} onChange={(event) => setEagleBaseUrl(event.target.value)} placeholder="http://localhost:41595" />
-                                            <p>Eagle 必须在本机运行；影策通过插件直接读取和写入 Eagle 原始文件。</p>
+                                            <Input id="eagle-base-url" aria-label="Eagle 本地 API 地址" status={eagleAddressError ? "error" : undefined} aria-describedby={eagleAddressError ? "eagle-address-error" : undefined} value={eagleBaseUrl} onChange={(event) => { setEagleBaseUrl(event.target.value); eagleFolderRequest.current += 1; setEagleFolders([]); setEagleFoldersLoading(false); setEagleFoldersError(""); setEagleAddressError(""); }} placeholder="http://localhost:41595" />
+                                            {eagleAddressError ? <Typography.Text id="eagle-address-error" type="danger" role="alert">{eagleAddressError}</Typography.Text> : null}
+                                            <p>仅支持 HTTP 本机地址与默认端口 41595。请在后端所在电脑启动 Eagle 并打开资料库；配置应用到当前浏览器，应用地址不代表连接成功。</p>
                                         </div>
                                         <div className="min-w-0">
                                             <div className="plugin-setting-label-row">
@@ -581,8 +611,8 @@ export default function PluginsPage() {
                                         </div>
                                     </div>
                                     <div className="plugin-settings-actions">
-                                        <Button type="primary" icon={<CheckCircle2 className="size-4" />} onClick={saveEagleConfig}>
-                                            保存配置
+                                        <Button type="primary" disabled={!eagleDirty} icon={<CheckCircle2 className="size-4" />} onClick={saveEagleConfig}>
+                                            {eagleDirty ? "应用配置" : "暂无修改"}
                                         </Button>
                                         <Button icon={<FolderOpen className="size-4" />} disabled={!settingsEnabled} onClick={() => navigate("/plugins/eagle")}>
                                             打开 Eagle 素材库

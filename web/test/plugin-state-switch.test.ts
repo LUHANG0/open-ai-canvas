@@ -19,7 +19,8 @@ describe("plugin state switches", () => {
         const adminPage = readFileSync(resolve(import.meta.dir, "../src/pages/admin/plugins/plugins-page.tsx"), "utf8");
 
         expect(userPage).toContain('className="plugin-state-switch"');
-        expect(userPage).toContain('enabled ? "已启用" : "已停用"');
+        expect(userPage).toContain('checked={display.userEnabled}');
+        expect(userPage).toContain('{display.label}');
         expect(adminPage).toContain('className="plugin-state-switch"');
         expect(adminPage).toContain('label={available ? "已开放" : "已停用"}');
     });
