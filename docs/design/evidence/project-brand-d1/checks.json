@@ -1,0 +1,347 @@
+{
+  "matrix-checks": [
+    "shot required validation, version save and reload",
+    {
+      "view": "chapters",
+      "width": 1440,
+      "theme": "dark",
+      "metrics": {
+        "scroll": 1440,
+        "editor": 739,
+        "nav": 591.609375
+      }
+    },
+    {
+      "view": "picker",
+      "width": 1440,
+      "theme": "dark",
+      "focus": true
+    },
+    {
+      "view": "chapters",
+      "width": 1440,
+      "theme": "light",
+      "metrics": {
+        "scroll": 1440,
+        "editor": 739,
+        "nav": 591.609375
+      }
+    },
+    {
+      "view": "picker",
+      "width": 1440,
+      "theme": "light",
+      "focus": true
+    },
+    {
+      "view": "chapters",
+      "width": 390,
+      "theme": "dark",
+      "metrics": {
+        "scroll": 390,
+        "editor": 246.046875,
+        "nav": 130
+      }
+    },
+    {
+      "view": "picker",
+      "width": 390,
+      "theme": "dark",
+      "focus": true
+    },
+    {
+      "view": "chapters",
+      "width": 390,
+      "theme": "light",
+      "metrics": {
+        "scroll": 390,
+        "editor": 246.046875,
+        "nav": 130
+      }
+    },
+    {
+      "view": "picker",
+      "width": 390,
+      "theme": "light",
+      "focus": true
+    },
+    "core read failure retry"
+  ],
+  "final-ui-checks": [
+    {
+      "view": "import",
+      "width": 390,
+      "theme": "dark",
+      "box": {
+        "width": 374,
+        "scroll": 374
+      }
+    },
+    {
+      "view": "picker",
+      "width": 390,
+      "theme": "dark",
+      "box": {
+        "width": 366,
+        "scroll": 366
+      }
+    },
+    {
+      "view": "overview",
+      "width": 390,
+      "theme": "dark",
+      "cta": {
+        "bg": "rgb(240, 241, 245)",
+        "color": "rgb(23, 23, 23)"
+      },
+      "scroll": 390
+    },
+    {
+      "view": "import",
+      "width": 390,
+      "theme": "light",
+      "box": {
+        "width": 374,
+        "scroll": 374
+      }
+    },
+    {
+      "view": "picker",
+      "width": 390,
+      "theme": "light",
+      "box": {
+        "width": 366,
+        "scroll": 366
+      }
+    },
+    {
+      "view": "overview",
+      "width": 390,
+      "theme": "light",
+      "cta": {
+        "bg": "rgb(23, 23, 23)",
+        "color": "rgb(255, 255, 255)"
+      },
+      "scroll": 390
+    },
+    {
+      "view": "import",
+      "width": 1023,
+      "theme": "dark",
+      "box": {
+        "width": 920,
+        "scroll": 920
+      }
+    },
+    {
+      "view": "picker",
+      "width": 1023,
+      "theme": "dark",
+      "box": {
+        "width": 975,
+        "scroll": 975
+      }
+    },
+    {
+      "view": "overview",
+      "width": 1023,
+      "theme": "dark",
+      "cta": {
+        "bg": "rgb(240, 241, 245)",
+        "color": "rgb(23, 23, 23)"
+      },
+      "scroll": 1023
+    },
+    {
+      "view": "import",
+      "width": 1023,
+      "theme": "light",
+      "box": {
+        "width": 920,
+        "scroll": 920
+      }
+    },
+    {
+      "view": "picker",
+      "width": 1023,
+      "theme": "light",
+      "box": {
+        "width": 975,
+        "scroll": 975
+      }
+    },
+    {
+      "view": "overview",
+      "width": 1023,
+      "theme": "light",
+      "cta": {
+        "bg": "rgb(23, 23, 23)",
+        "color": "rgb(255, 255, 255)"
+      },
+      "scroll": 1023
+    },
+    {
+      "view": "import",
+      "width": 1024,
+      "theme": "dark",
+      "box": {
+        "width": 920,
+        "scroll": 920
+      }
+    },
+    {
+      "view": "picker",
+      "width": 1024,
+      "theme": "dark",
+      "box": {
+        "width": 976,
+        "scroll": 976
+      }
+    },
+    {
+      "view": "overview",
+      "width": 1024,
+      "theme": "dark",
+      "cta": {
+        "bg": "rgb(240, 241, 245)",
+        "color": "rgb(23, 23, 23)"
+      },
+      "scroll": 1024
+    },
+    {
+      "view": "import",
+      "width": 1024,
+      "theme": "light",
+      "box": {
+        "width": 920,
+        "scroll": 920
+      }
+    },
+    {
+      "view": "picker",
+      "width": 1024,
+      "theme": "light",
+      "box": {
+        "width": 976,
+        "scroll": 976
+      }
+    },
+    {
+      "view": "overview",
+      "width": 1024,
+      "theme": "light",
+      "cta": {
+        "bg": "rgb(23, 23, 23)",
+        "color": "rgb(255, 255, 255)"
+      },
+      "scroll": 1024
+    },
+    {
+      "view": "import",
+      "width": 1440,
+      "theme": "dark",
+      "box": {
+        "width": 920,
+        "scroll": 920
+      }
+    },
+    {
+      "view": "picker",
+      "width": 1440,
+      "theme": "dark",
+      "box": {
+        "width": 1360,
+        "scroll": 1360
+      }
+    },
+    {
+      "view": "overview",
+      "width": 1440,
+      "theme": "dark",
+      "cta": {
+        "bg": "rgb(240, 241, 245)",
+        "color": "rgb(23, 23, 23)"
+      },
+      "scroll": 1440
+    },
+    {
+      "view": "import",
+      "width": 1440,
+      "theme": "light",
+      "box": {
+        "width": 920,
+        "scroll": 920
+      }
+    },
+    {
+      "view": "picker",
+      "width": 1440,
+      "theme": "light",
+      "box": {
+        "width": 1360,
+        "scroll": 1360
+      }
+    },
+    {
+      "view": "overview",
+      "width": 1440,
+      "theme": "light",
+      "cta": {
+        "bg": "rgb(23, 23, 23)",
+        "color": "rgb(255, 255, 255)"
+      },
+      "scroll": 1440
+    }
+  ],
+  "editor-checks": [
+    "format toggle and dialog preserve selected text",
+    "failure retry and leave restore"
+  ],
+  "import-retry-checks": [
+    {
+      "request": "POST",
+      "fail": true
+    },
+    {
+      "request": "POST",
+      "fail": false
+    },
+    "retained file text and retry succeeded"
+  ],
+  "combined-ui-checks": {
+    "checks": [
+      "mobile import scroll and submit",
+      "mobile chapter picker switches actual unit",
+      {
+        "view": "assets",
+        "scroll": 1440
+      },
+      {
+        "view": "canvases",
+        "scroll": 1440
+      },
+      {
+        "view": "settings",
+        "scroll": 1440
+      },
+      "existing project library after detail CSS loaded",
+      {
+        "admin": "redemption-codes",
+        "url": "http://127.0.0.1:3014/admin/redemption-codes",
+        "hasError": false
+      },
+      {
+        "admin": "announcements",
+        "url": "http://127.0.0.1:3014/admin/announcements",
+        "hasError": false
+      },
+      {
+        "admin": "logs",
+        "url": "http://127.0.0.1:3014/admin/logs",
+        "hasError": false
+      }
+    ],
+    "errors": []
+  },
+  "boundary": "本机交付E2E停在加载本地视频工具，180秒无ZIP；未调用付费模型，未验证真实IME。"
+}
