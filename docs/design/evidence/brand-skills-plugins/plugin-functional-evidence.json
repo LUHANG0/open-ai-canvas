@@ -1,0 +1,54 @@
+[
+  {
+    "name": "筛选无结果",
+    "ok": true
+  },
+  {
+    "name": "非法端口就地拒绝",
+    "ok": true
+  },
+  {
+    "name": "应用后无修改",
+    "ok": true
+  },
+  {
+    "name": "配置确认键盘焦点",
+    "ok": true
+  },
+  {
+    "name": "取消后配置草稿保留",
+    "ok": true
+  },
+  {
+    "name": "配置刷新回读",
+    "ok": true
+  },
+  {
+    "name": "开关写入失败保持旧值",
+    "ok": true
+  },
+  {
+    "name": "开关三连点单次写入",
+    "ok": true,
+    "detail": {
+      "count": 1,
+      "value": "false"
+    }
+  },
+  {
+    "name": "键盘打开文档",
+    "ok": true
+  },
+  {
+    "name": "文档关闭焦点返回",
+    "ok": true
+  },
+  {
+    "name": "目录读取失败有重试且开关禁用",
+    "ok": true
+  },
+  {
+    "name": "目录恢复",
+    "ok": true
+  }
+]

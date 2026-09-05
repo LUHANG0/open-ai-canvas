@@ -1,0 +1,218 @@
+[
+  {
+    "name": "skills-390-dark",
+    "alerts": [],
+    "cardWidth": 340,
+    "document": 390,
+    "surface": "rgb(25, 27, 34)",
+    "theme": "dark",
+    "width": 390
+  },
+  {
+    "name": "skills-1023-dark",
+    "alerts": [],
+    "cardWidth": 308.328125,
+    "document": 1023,
+    "surface": "rgb(25, 27, 34)",
+    "theme": "dark",
+    "width": 1023
+  },
+  {
+    "name": "skills-1024-dark",
+    "alerts": [],
+    "cardWidth": 218,
+    "document": 1024,
+    "surface": "rgb(25, 27, 34)",
+    "theme": "dark",
+    "width": 1024
+  },
+  {
+    "name": "skills-1440-dark",
+    "alerts": [],
+    "cardWidth": 263.5,
+    "document": 1440,
+    "surface": "rgb(25, 27, 34)",
+    "theme": "dark",
+    "width": 1440
+  },
+  {
+    "name": "skills-390-light",
+    "alerts": [],
+    "cardWidth": 340,
+    "document": 390,
+    "surface": "rgb(255, 255, 255)",
+    "theme": "light",
+    "width": 390
+  },
+  {
+    "name": "skills-1023-light",
+    "alerts": [],
+    "cardWidth": 308.328125,
+    "document": 1023,
+    "surface": "rgb(255, 255, 255)",
+    "theme": "light",
+    "width": 1023
+  },
+  {
+    "name": "skills-1024-light",
+    "alerts": [],
+    "cardWidth": 218,
+    "document": 1024,
+    "surface": "rgb(255, 255, 255)",
+    "theme": "light",
+    "width": 1024
+  },
+  {
+    "name": "skills-1440-light",
+    "alerts": [],
+    "cardWidth": 263.5,
+    "document": 1440,
+    "surface": "rgb(255, 255, 255)",
+    "theme": "light",
+    "width": 1440
+  },
+  {
+    "name": "plugins-390-dark",
+    "alerts": [],
+    "cardWidth": 334,
+    "document": 390,
+    "surface": "rgb(25, 27, 34)",
+    "theme": "dark",
+    "width": 390
+  },
+  {
+    "name": "plugins-1023-dark",
+    "alerts": [],
+    "cardWidth": 308.328125,
+    "document": 1023,
+    "surface": "rgb(25, 27, 34)",
+    "theme": "dark",
+    "width": 1023
+  },
+  {
+    "name": "plugins-1024-dark",
+    "alerts": [],
+    "cardWidth": 438,
+    "document": 1024,
+    "surface": "rgb(25, 27, 34)",
+    "theme": "dark",
+    "width": 1024
+  },
+  {
+    "name": "plugins-1440-dark",
+    "alerts": [],
+    "cardWidth": 421,
+    "document": 1440,
+    "surface": "rgb(25, 27, 34)",
+    "theme": "dark",
+    "width": 1440
+  },
+  {
+    "name": "plugins-390-light",
+    "alerts": [],
+    "cardWidth": 334,
+    "document": 390,
+    "surface": "rgb(255, 255, 255)",
+    "theme": "light",
+    "width": 390
+  },
+  {
+    "name": "plugins-1023-light",
+    "alerts": [],
+    "cardWidth": 308.328125,
+    "document": 1023,
+    "surface": "rgb(255, 255, 255)",
+    "theme": "light",
+    "width": 1023
+  },
+  {
+    "name": "plugins-1024-light",
+    "alerts": [],
+    "cardWidth": 438,
+    "document": 1024,
+    "surface": "rgb(255, 255, 255)",
+    "theme": "light",
+    "width": 1024
+  },
+  {
+    "name": "plugins-1440-light",
+    "alerts": [],
+    "cardWidth": 421,
+    "document": 1440,
+    "surface": "rgb(255, 255, 255)",
+    "theme": "light",
+    "width": 1440
+  },
+  {
+    "name": "plugins-eagle-390-dark",
+    "alerts": [],
+    "cardWidth": 366,
+    "document": 390,
+    "surface": "rgb(25, 27, 34)",
+    "theme": "dark",
+    "width": 390
+  },
+  {
+    "name": "plugins-eagle-1023-dark",
+    "alerts": [],
+    "cardWidth": 991,
+    "document": 1023,
+    "surface": "rgb(25, 27, 34)",
+    "theme": "dark",
+    "width": 1023
+  },
+  {
+    "name": "plugins-eagle-1024-dark",
+    "alerts": [],
+    "cardWidth": 720,
+    "document": 1024,
+    "surface": "rgb(25, 27, 34)",
+    "theme": "dark",
+    "width": 1024
+  },
+  {
+    "name": "plugins-eagle-1440-dark",
+    "alerts": [],
+    "cardWidth": 1136,
+    "document": 1440,
+    "surface": "rgb(25, 27, 34)",
+    "theme": "dark",
+    "width": 1440
+  },
+  {
+    "name": "plugins-eagle-390-light",
+    "alerts": [],
+    "cardWidth": 366,
+    "document": 390,
+    "surface": "rgb(255, 255, 255)",
+    "theme": "light",
+    "width": 390
+  },
+  {
+    "name": "plugins-eagle-1023-light",
+    "alerts": [],
+    "cardWidth": 991,
+    "document": 1023,
+    "surface": "rgb(255, 255, 255)",
+    "theme": "light",
+    "width": 1023
+  },
+  {
+    "name": "plugins-eagle-1024-light",
+    "alerts": [],
+    "cardWidth": 720,
+    "document": 1024,
+    "surface": "rgb(255, 255, 255)",
+    "theme": "light",
+    "width": 1024
+  },
+  {
+    "name": "plugins-eagle-1440-light",
+    "alerts": [],
+    "cardWidth": 1136,
+    "document": 1440,
+    "surface": "rgb(255, 255, 255)",
+    "theme": "light",
+    "width": 1440
+  }
+]
