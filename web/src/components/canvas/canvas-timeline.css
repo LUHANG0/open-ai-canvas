@@ -13,6 +13,7 @@
 .timeline-track-labels { position: sticky; left: 0; z-index: 2; width: 144px; align-self: flex-start; }
 .timeline-inspector { max-height: 26dvh; flex-shrink: 0; overflow-y: auto; overscroll-behavior: contain; }
 .timeline-footer { flex-shrink: 0; }
+.timeline-capability-note { flex-shrink: 0; padding: 6px 12px; border-top: 1px solid var(--app-border-subtle); color: var(--app-text-secondary); font-size: var(--fs-tiny); }
 .timeline-clip:focus-visible { outline: 2px solid var(--app-focus-ring); outline-offset: -2px; }
 .timeline-clip[aria-pressed="true"] > .cursor-ew-resize { opacity: 1; }
 .timeline-workspace [data-timeline-ruler] { position: sticky; top: 0; z-index: 1; touch-action: none; }
