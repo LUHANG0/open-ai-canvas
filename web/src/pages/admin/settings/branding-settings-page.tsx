@@ -45,6 +45,7 @@ export default function BrandingSettingsPage() {
     const siteSection = activeSection === "website";
     const [siteDirty, setSiteDirty] = useState(false);
     const [siteBusy, setSiteBusy] = useState(false);
+    const [siteError, setSiteError] = useState(false);
     const setActiveSection = (section: BrandSection) => {
         setParams({ section }, { replace: true });
     };
@@ -132,8 +133,7 @@ export default function BrandingSettingsPage() {
             message.success("品牌与登录页配置已生效");
         } catch (error) {
             const detail = error instanceof Error ? error.message : "保存品牌配置失败";
-            setSaveError(`${detail}。未自动重试，请刷新后再保存。`);
-            message.error(detail);
+            setSaveError(`${detail}。输入已保留，可修改后重试；如配置已被他人更新，请重新读取。`);
         } finally {
             setSaving(false);
         }
@@ -198,6 +198,17 @@ export default function BrandingSettingsPage() {
         setSaveError("");
     };
 
+    const requestReload = () => {
+        if (!dirty) return void load();
+        modal.confirm({
+            title: "重新读取品牌设置？",
+            content: "将读取当前已生效的品牌配置，并丢弃品牌资料、标志与颜色、登录页面中的未保存修改。官网与备案草稿会保留。",
+            okText: "丢弃修改并读取",
+            cancelText: "继续编辑",
+            onOk: () => load(),
+        });
+    };
+
     if (loading && !draft) {
         return (
             <AdminPageFrame title="网站设置" description="品牌、登录页外观与备案信息" scroll>
@@ -236,7 +247,10 @@ export default function BrandingSettingsPage() {
                             </span>
                             <h2>{draft.identity.displayName || "未命名品牌"}</h2>
                             <div className={cn("admin-branding-sync-state", anyDirty && "is-dirty")}>
-                                <AdminStatusBadge label={anyDirty ? "有未保存修改" : "设置已同步"} tone={anyDirty ? "warning" : "success"} />
+                                <AdminStatusBadge
+                                    label={loadError || saveError || siteError ? "设置需要处理" : busy || siteBusy ? "正在同步" : anyDirty ? "有未保存修改" : "设置已同步"}
+                                    tone={loadError || saveError || siteError ? "error" : anyDirty || busy || siteBusy ? "warning" : "success"}
+                                />
                             </div>
                         </div>
                         <nav className="admin-branding-section-nav">
@@ -345,8 +359,11 @@ export default function BrandingSettingsPage() {
                             </fieldset>
 
                             <div className="admin-branding-command-actions">
-                                <Button icon={<RefreshCw className="size-4" />} loading={refreshing} disabled={busy || dirty} onClick={() => void load()}>
-                                    刷新
+                                <span className="admin-branding-save-state" role="status">
+                                    {saving ? "正在保存品牌设置…" : saveError || loadError ? "未完成同步，输入已保留" : dirty ? "品牌设置有未保存修改" : "品牌设置已同步"}
+                                </span>
+                                <Button icon={<RefreshCw className="size-4" />} loading={refreshing} disabled={busy} onClick={requestReload}>
+                                    重新读取
                                 </Button>
                                 {dirty ? (
                                     <Button icon={<RotateCcw className="size-4" />} disabled={busy} onClick={() => setDraft(structuredClone(setting.config))}>
@@ -362,7 +379,7 @@ export default function BrandingSettingsPage() {
                             </div>
                         </div>
                         <div className="admin-branding-site-editor" hidden={!siteSection}>
-                            <SiteDisplaySettingsEditor onDirtyChange={setSiteDirty} onBusyChange={setSiteBusy} />
+                            <SiteDisplaySettingsEditor onDirtyChange={setSiteDirty} onBusyChange={setSiteBusy} onErrorChange={setSiteError} />
                         </div>
                     </div>
                 </div>
