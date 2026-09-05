@@ -5,6 +5,7 @@ import { useBlocker } from "react-router";
 
 import { cn } from "@/lib/utils";
 import { getAdminResponseInterceptionSetting, updateAdminResponseInterceptionSetting, type ResponseInterceptionRule, type ResponseInterceptionSetting } from "@/services/api/response-interception";
+import { configurationConfirmProps } from "../components/configuration-confirm";
 import { AdminPageFrame } from "../components/admin-shell";
 import { AdminStatusBadge, SettingsSectionCard } from "../components/admin-ui";
 
@@ -86,6 +87,8 @@ export default function ResponseInterceptionSettingsPage() {
         navigationConfirmOpenRef.current = true;
         navigationTriggerRef.current = document.activeElement instanceof HTMLElement && document.activeElement !== document.body ? document.activeElement : null;
         modal.confirm({
+            ...configurationConfirmProps,
+            rootClassName: "admin-modal-root",
             title: "放弃响应拦截调整？",
             content: "当前页面有尚未保存的开关、规则内容或优先级调整，离开后这些草稿会丢失。服务端正在使用的拦截配置不会改变。",
             okText: "放弃并离开",
@@ -123,6 +126,8 @@ export default function ResponseInterceptionSettingsPage() {
             return;
         }
         modal.confirm({
+            ...configurationConfirmProps,
+            rootClassName: "admin-modal-root",
             title: "放弃调整并重新读取？",
             content: "重新读取会丢弃当前开关、规则内容和优先级草稿，并以服务端配置为准。",
             okText: "放弃并刷新",
