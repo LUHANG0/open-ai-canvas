@@ -5,6 +5,7 @@ import { useBlocker } from "react-router";
 
 import { cn } from "@/lib/utils";
 import { getAdminLibTVSetting, testAdminLibTV, updateAdminLibTVSetting, type AdminLibTVSetting } from "@/services/api/libtv";
+import { configurationConfirmProps } from "../components/configuration-confirm";
 import { AdminPageFrame } from "../components/admin-shell";
 import { AdminStatusBadge, configuredSecretText, SettingsSectionCard } from "../components/admin-ui";
 
@@ -89,6 +90,8 @@ export default function LibTVSettingsPage() {
         navigationConfirmOpenRef.current = true;
         navigationTriggerRef.current = document.activeElement instanceof HTMLElement && document.activeElement !== document.body ? document.activeElement : null;
         modal.confirm({
+            ...configurationConfirmProps,
+            rootClassName: "admin-modal-root",
             title: "放弃第三方参数调整？",
             content: "当前页面有尚未保存的 LibTV 凭据或导入策略草稿，离开后这些内容会丢失。服务端正在使用的配置不会改变。",
             okText: "放弃并离开",
@@ -127,6 +130,8 @@ export default function LibTVSettingsPage() {
             return;
         }
         modal.confirm({
+            ...configurationConfirmProps,
+            rootClassName: "admin-modal-root",
             title: "放弃调整并重新读取？",
             content: "重新读取会丢弃当前 LibTV 凭据和导入开关草稿，并以服务端配置为准。",
             okText: "放弃并刷新",
