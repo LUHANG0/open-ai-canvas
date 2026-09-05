@@ -55,6 +55,8 @@
 - 普通过渡：180ms。
 - 抽屉、布局切换：240ms。
 - 不用动画表达业务成功与否；减少动画模式下移除非必要位移和缩放。
+- 等待反馈统一使用 `BrandLoadingIndicator` 的四角逐格点亮动效。首次启动与会话恢复使用带配置 Logo 的 `FullScreenLoader`；路由等待使用内容区 `WorkspaceRouteLoader`，140ms 后显示，内容就绪立即卸载，不设置最短等待时长。
+- `WorkspaceLoadingState` 保留内容骨架，默认 Spin、按钮和画布加载弹层复用同一图形。已有真实进度条、取消入口与业务状态不由装饰动画替代；`prefers-reduced-motion` 和 `.no-motion` 下停止循环。
 
 ## 4. Semantic Token
 

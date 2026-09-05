@@ -7,6 +7,7 @@
 - [品牌风格统一分析](design/brand-style-unification-audit-20260905.md)：以当前品牌页为基准，覆盖用户前台、22 个后台页面、主题断点、配置消费和分批验收方案。
 - [品牌风格统一实施记录](design/brand-style-unification-implementation-20260905.md)：第一批主题、前后台外壳与配置同步的提交、验收证据和逐阶段回滚方法。
 - [品牌核心流程 B1 实施记录](design/brand-core-flow-implementation-20260905.md)：创作、任务与素材页的风格统一、本地明暗及响应式验证与回滚记录；实现完成，待用户验收，后续 B/C/D 继续分批处理。
+- [全局品牌加载动效](design/brand-loading-motion-20260905.md)：从首屏到路由、弹层与按钮的统一等待反馈、开发预览、验证与回滚记录。
 
 - [网站设置精简](design/website-settings-simplification-20260905.md)：删除独立官网 CMS，保留四个常用分区，以及封面、联系和备案的限定字段保存。
 
