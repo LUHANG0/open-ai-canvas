@@ -35,7 +35,7 @@ export function createUserColumns({
         {
             key: "user",
             title: "用户",
-            width: 220,
+            width: 190,
             dataIndex: "username",
             render: (_, user) => (
                 <div>
@@ -49,12 +49,12 @@ export function createUserColumns({
                 </div>
             ),
         },
-        { key: "email", title: "邮箱", dataIndex: "email", width: 200, ellipsis: true, render: (email) => email || <span className="text-foreground/40">未填写</span> },
+        { key: "email", title: "邮箱", dataIndex: "email", width: 160, ellipsis: true, render: (email) => email || <span className="text-foreground/40">未填写</span> },
         {
             key: "credits",
             title: "当前积分",
             dataIndex: "availableMicrocredits",
-            width: 130,
+            width: 100,
             align: "right",
             render: (value, user) => (
                 <span className="tabular-nums" title={`冻结积分：${formatCredits(user.reservedMicrocredits)}`}>
@@ -62,18 +62,18 @@ export function createUserColumns({
                 </span>
             ),
         },
-        { key: "role", title: "角色", dataIndex: "role", width: 110, align: "center", render: (role) => <AdminStatusBadge label={role === "admin" ? "管理员" : "普通用户"} tone={role === "admin" ? "info" : "neutral"} /> },
-        { key: "status", title: "状态", dataIndex: "status", width: 110, align: "center", render: (status) => <AdminStatusBadge label={status === "active" ? "已启用" : "已停用"} tone={status === "active" ? "success" : "neutral"} /> },
-        { key: "createdAt", title: "注册时间", dataIndex: "createdAt", width: 180, align: "center", render: formatTime },
+        { key: "role", title: "角色", dataIndex: "role", width: 90, align: "center", render: (role) => <AdminStatusBadge label={role === "admin" ? "管理员" : "普通用户"} tone={role === "admin" ? "info" : "neutral"} /> },
+        { key: "status", title: "状态", dataIndex: "status", width: 100, align: "center", render: (status) => <AdminStatusBadge label={status === "active" ? "已启用" : "已停用"} tone={status === "active" ? "success" : "neutral"} /> },
+        { key: "createdAt", title: "注册时间", dataIndex: "createdAt", width: 150, align: "center", render: formatTime },
         {
             key: "actions",
             title: "操作",
-            width: 220,
+            width: 270,
             align: "center",
             render: (_, user) => (
                 <AdminRowActions
                     primary={{ label: "详情", icon: <Eye className="size-3.5" />, onClick: () => onView(user) }}
-                    visibleActionCount={2}
+                    visibleActionCount={1}
                     actions={[
                         { key: "edit", label: "编辑用户", icon: <Pencil className="size-3.5" />, onClick: () => onEdit(user) },
                         {

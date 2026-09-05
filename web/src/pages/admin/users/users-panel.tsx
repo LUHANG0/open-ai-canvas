@@ -262,6 +262,7 @@ export default function UsersPanel({ onUserChanged }: { onUserChanged?: (user: L
                 table={{
                     className: "app-data-table",
                     size: "small",
+                    tableLayout: "fixed",
                     rowKey: "id",
                     loading,
                     rowSelection: {
