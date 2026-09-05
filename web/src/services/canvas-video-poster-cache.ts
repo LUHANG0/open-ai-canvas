@@ -1,5 +1,6 @@
 import localforage from "localforage";
 
+import { createCanvasVideoPosterRequests } from "@/lib/canvas/canvas-video-poster-requests";
 import { getActiveUserScope } from "@/lib/user-scope";
 import { cacheResourceObjectUrl } from "@/services/resource-blob-cache";
 
@@ -29,18 +30,12 @@ type PosterJob = {
     resolve: (value: string) => void;
 };
 
-type SharedPosterTask = {
-    controller: AbortController;
-    consumers: Set<symbol>;
-    promise: Promise<string>;
-};
-
 const POSTER_VERSION = "v2";
 const MAX_POSTER_ENTRIES = 240;
 const posterStore = localforage.createInstance({ name: "infinite-canvas", storeName: "canvas_video_posters" });
 const memoryRecords = new Map<string, CanvasVideoPosterRecord>();
 const objectUrls = new Map<string, string>();
-const inFlight = new Map<string, SharedPosterTask>();
+const requestPoster = createCanvasVideoPosterRequests();
 const queue: PosterJob[] = [];
 let activeJobs = 0;
 
@@ -54,43 +49,7 @@ export function loadCanvasVideoPoster(request: CanvasVideoPosterRequest) {
     const cacheKey = canvasVideoPosterCacheKey(request.cacheIdentity);
     const targetWidth = Math.max(240, Math.round(request.maxWidth));
     const requestKey = `${cacheKey}:${targetWidth}`;
-    let task = inFlight.get(requestKey);
-    if (!task) {
-        const controller = new AbortController();
-        const promise = readOrCreatePoster(cacheKey, { ...request, maxWidth: targetWidth, signal: controller.signal });
-        task = { controller, consumers: new Set(), promise };
-        inFlight.set(requestKey, task);
-        void promise.then(
-            () => inFlight.delete(requestKey),
-            () => inFlight.delete(requestKey),
-        );
-    }
-    return subscribePosterTask(task, request.signal);
-}
-
-function subscribePosterTask(task: SharedPosterTask, signal?: AbortSignal) {
-    const consumer = Symbol("poster-consumer");
-    task.consumers.add(consumer);
-    return new Promise<string>((resolve) => {
-        let settled = false;
-        const finish = (value: string) => {
-            if (settled) return;
-            settled = true;
-            signal?.removeEventListener("abort", onAbort);
-            task.consumers.delete(consumer);
-            resolve(value);
-        };
-        const onAbort = () => {
-            finish("");
-            if (!task.consumers.size) task.controller.abort();
-        };
-        if (signal?.aborted) {
-            onAbort();
-            return;
-        }
-        signal?.addEventListener("abort", onAbort, { once: true });
-        void task.promise.then(finish).catch(() => finish(""));
-    });
+    return requestPoster(requestKey, (signal) => readOrCreatePoster(cacheKey, { ...request, maxWidth: targetWidth, signal }), request.signal);
 }
 
 async function readOrCreatePoster(cacheKey: string, request: CanvasVideoPosterRequest) {
