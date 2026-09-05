@@ -1,0 +1,37 @@
+{
+  "results": [
+    {
+      "ok": true,
+      "name": "Worker403加载超时后恢复导出按钮"
+    },
+    {
+      "ok": true,
+      "name": "Worker故障不下载伪成功成片"
+    },
+    {
+      "ok": true,
+      "name": "取消挂起Worker立即释放等待且不下载",
+      "data": {
+        "elapsed": 272
+      }
+    },
+    {
+      "ok": true,
+      "name": "取消后重试合成恰好一个视频节点"
+    },
+    {
+      "ok": true,
+      "name": "取消后重试实际MP4合成解码",
+      "data": {
+        "width": 320,
+        "height": 180,
+        "duration": 4.838167
+      }
+    },
+    {
+      "ok": true,
+      "name": "音轨能力边界在正式时间线显示"
+    }
+  ],
+  "errors": []
+}

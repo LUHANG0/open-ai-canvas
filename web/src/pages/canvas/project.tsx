@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState } from "react";
 import { uploadMediaFile } from "@/services/file-storage";
 import { flushCanvasStorePersistence } from "@/stores/canvas/use-canvas-store";
+import { saveRemoteUserDataNow } from "@/services/user-data-sync";
 import { useFocusMode } from "@/hooks/use-focus-mode";
 import { CanvasOverlayLayerProvider } from "@/components/canvas/canvas-overlay-layer";
 import { CanvasProjectFeedbackLayer } from "./canvas-project-feedback";
@@ -1554,7 +1555,10 @@ function InfiniteCanvasPage() {
                             onChange={saveDirectorScene}
                             onApply={applyDirectorOutput}
                             onDeleteImageNode={(nodeId) => deleteNodes(new Set([nodeId]))}
-                            onFlush={() => flushCanvasStorePersistence()}
+                            onFlush={async () => {
+                                await flushCanvasStorePersistence();
+                                await saveRemoteUserDataNow();
+                            }}
                         />
 
                         <CanvasProjectVersionCompareDialog open={Boolean(versionCompareRootId)} versions={versionCompareNodes} onClose={() => setVersionCompareRootId(null)} onSetPrimary={setPrimaryVersion} onFocus={focusCanvasNode} />

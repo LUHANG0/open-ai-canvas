@@ -1,16 +1,18 @@
 import { App, Button, ColorPicker, Dropdown, Input, InputNumber, Select, Slider, Switch } from "antd";
 import type { MenuProps } from "antd";
-import { Box, BoxSelect, Camera, Circle, Cuboid, FileUp, Focus, Image as ImageIcon, LampDesk, Lightbulb, Plus, Redo2, RotateCcw, Save, Trash2, Undo2, UserRound, Video, X } from "lucide-react";
+import { Box, BoxSelect, Camera, Circle, Cuboid, FileUp, Focus, Image as ImageIcon, LampDesk, Lightbulb, Pencil, Plus, Redo2, RotateCcw, Save, Trash2, Undo2, UserRound, Video, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement, type ReactNode } from "react";
 import { nanoid } from "nanoid";
 import { Euler, Quaternion } from "three";
 import type { AnimationClip } from "three";
 
+import { CanvasToolConfirmContent } from "@/components/canvas/canvas-tool-confirm-content";
 import { CanvasDirectorOnboarding } from "@/components/canvas/director/canvas-director-onboarding";
 import { DirectorViewport, type DirectorViewportHandle } from "@/components/canvas/director/director-viewport";
 import { DirectorViewportDock } from "@/components/canvas/director/director-viewport-dock";
 import { DirectorSequencer } from "@/components/canvas/director/director-sequencer";
-import { canvasThemes } from "@/lib/canvas-theme";
+import { useCanvasTheme } from "@/components/canvas/canvas-theme-provider";
+import "./director-workbench.css";
 import { compileDirectorPrompt } from "@/lib/canvas/director/director-prompt-compiler";
 import { advanceDirectorPlayhead, resolveDirectorCameraAlignment, resolveDirectorCameraMoveKeyframes, resolveDirectorKeyframeRecord, resolveDirectorObjectTransformEdit, snapDirectorTime } from "@/lib/canvas/director/director-animation-semantics";
 import { createDirectorTransaction, installDirectorTerminalListeners, type DirectorTransaction } from "@/lib/canvas/director/director-gesture-transaction";
@@ -25,13 +27,13 @@ import { useDirectorSaveCoordinator } from "@/components/canvas/director/use-dir
 import { uploadMediaFile } from "@/services/file-storage";
 import { useAssetStore, type ModelAsset } from "@/stores/use-asset-store";
 import { useDirectorWorkbenchStore } from "@/stores/canvas/use-director-workbench-store";
-import { useThemeStore } from "@/stores/use-theme-store";
 import type { CanvasNodeData } from "@/types/canvas";
 import type { DirectorCamera, DirectorCameraMove, DirectorHumanoidBone, DirectorKeyframeDeleteTarget, DirectorKeyframeEasing, DirectorLight, DirectorObject, DirectorPose, DirectorQuat, DirectorRenderMode, DirectorRig, DirectorScene, DirectorSceneOutput, DirectorShot, DirectorShotSize, DirectorTransform, DirectorVec3 } from "@/types/director";
 
 export function CanvasDirectorWorkbench({ open, scene, imageNodes, onboardingScope, onClose, onChange, onApply, onDeleteImageNode, onFlush }: { open: boolean; scene: DirectorScene | null; imageNodes: CanvasNodeData[]; onboardingScope: string; onClose: () => void; onChange: (scene: DirectorScene) => void; onApply: (output: DirectorSceneOutput) => Promise<void>; onDeleteImageNode: (nodeId: string) => void; onFlush?: () => void | Promise<void> }) {
     const { message, modal } = App.useApp();
-    const theme = canvasThemes[useThemeStore((state) => state.theme)];
+    const theme = useCanvasTheme();
+    const [mobilePanel, setMobilePanel] = useState<"scene" | "viewport" | "inspector">("viewport");
     const viewportRef = useRef<DirectorViewportHandle>(null);
     const modelInputRef = useRef<HTMLInputElement>(null);
     const [draft, setDraft] = useState<DirectorScene | null>(null);
@@ -169,6 +171,7 @@ export function CanvasDirectorWorkbench({ open, scene, imageNodes, onboardingSco
         if (!shouldOfferDirectorDraftRecovery({ candidate, authoritativeScene: scene })) return;
 
         modal.confirm({
+            modalRender: (content) => <CanvasToolConfirmContent>{content}</CanvasToolConfirmContent>,
             title: "发现未保存的本地草稿",
             content: `这个镜头存在一份比项目更新的本地草稿（修订 ${candidate.revision}）。恢复后会立即写回项目并保存。`,
             okText: "恢复草稿",
@@ -344,10 +347,12 @@ export function CanvasDirectorWorkbench({ open, scene, imageNodes, onboardingSco
 
             // 确认框存续期间保持上锁，否则重复点击会叠出多个弹窗。
             modal.confirm({
+                modalRender: (content) => <CanvasToolConfirmContent>{content}</CanvasToolConfirmContent>,
                 title: "远端保存失败",
                 content: decision.message,
                 okText: "仍然离开",
                 cancelText: "留在导演台",
+                focusable: { autoFocusButton: "cancel" },
                 closable: false,
                 mask: { closable: false },
                 keyboard: false,
@@ -687,10 +692,10 @@ export function CanvasDirectorWorkbench({ open, scene, imageNodes, onboardingSco
     if (!open || !draft || !activeShot) return null;
 
     return (
-        <div data-canvas-no-zoom className="fixed inset-0 z-[var(--z-toast)] flex min-h-0 flex-col overflow-hidden" style={{ background: theme.canvas.background, color: theme.node.text }}>
-            <header className="thin-scrollbar flex h-12 shrink-0 items-center gap-2 overflow-x-auto overflow-y-hidden border-b px-2" style={{ background: theme.toolbar.panel, borderColor: theme.toolbar.border }}>
+        <div data-canvas-no-zoom role="region" aria-label="3D 导演台" className="director-workbench fixed inset-0 z-[var(--z-toast)] flex min-h-0 flex-col overflow-hidden" style={{ background: theme.canvas.background, color: theme.node.text }}>
+            <header className="director-workbench-header thin-scrollbar flex h-12 shrink-0 items-center gap-2 overflow-x-auto overflow-y-hidden border-b px-2" style={{ background: theme.toolbar.panel, borderColor: theme.toolbar.border }}>
                 <IconButton label="关闭导演台" onClick={closeWorkbench}><X className="size-4" /></IconButton>
-                <Input variant="borderless" value={draft.title} className="max-w-56 font-medium" onChange={(event) => replaceWithoutHistory((current) => ({ ...current, title: event.target.value }))} />
+                <Input aria-label="场景名称" prefix={<Pencil className="size-3" aria-hidden />} variant="borderless" value={draft.title} className="director-workbench-title font-medium" onChange={(event) => replaceWithoutHistory((current) => ({ ...current, title: event.target.value }))} />
                 <span className="h-5 w-px" style={{ background: theme.toolbar.border }} />
                 <IconButton label="撤销" disabled={!history.length} onClick={undo}><Undo2 className="size-4" /></IconButton>
                 <IconButton label="重做" disabled={!future.length} onClick={redo}><Redo2 className="size-4" /></IconButton>
@@ -733,8 +738,9 @@ export function CanvasDirectorWorkbench({ open, scene, imageNodes, onboardingSco
                 </div>
             </header>
 
-            <div className="grid min-h-0 flex-1 grid-cols-[220px_minmax(0,1fr)_292px] max-lg:grid-cols-[180px_minmax(0,1fr)]">
-                <aside className="thin-scrollbar min-h-0 overflow-y-auto border-r" style={{ background: theme.node.panel, borderColor: theme.toolbar.border }}>
+            <nav className="director-mobile-panels" aria-label="导演台面板">{([{ id: "scene", label: "场景与资源" }, { id: "viewport", label: "预览与编辑" }, { id: "inspector", label: "参数" }] as const).map((panel) => <button key={panel.id} type="button" aria-pressed={mobilePanel === panel.id} onClick={() => setMobilePanel(panel.id)}>{panel.label}</button>)}</nav>
+            <div className="director-workbench-grid">
+                <aside aria-label="场景与资源" data-mobile-active={mobilePanel === "scene"} data-canvas-wheel-scroll className="thin-scrollbar min-h-0 overflow-y-auto border-r" style={{ background: theme.node.panel, borderColor: theme.toolbar.border }}>
                     <PanelTitle title="场景对象" action={<AddMenuButton label="添加场景对象" items={addObjectMenuItems} />} />
                     <div className="px-2 pb-2">
                         {draft.objects.map((object) => <SceneRow key={object.id} active={selectedObjectId === object.id} icon={object.kind === "actor" || object.primitive === "character" ? <UserRound /> : object.kind === "model" ? <BoxSelect /> : object.kind === "billboard" ? <ImageIcon /> : <Cuboid />} label={object.name} onClick={() => setSelectedObjectId(object.id)} onDelete={() => removeObject(object.id)} />)}
@@ -757,14 +763,14 @@ export function CanvasDirectorWorkbench({ open, scene, imageNodes, onboardingSco
                     <input ref={modelInputRef} type="file" accept=".glb,.gltf,model/gltf-binary,model/gltf+json" className="hidden" onChange={(event) => { void uploadModel(event.target.files?.[0]); event.currentTarget.value = ""; }} />
                 </aside>
 
-                <main className="relative min-h-0 overflow-hidden bg-neutral-900">
+                <main aria-label="预览与编辑" data-mobile-active={mobilePanel === "viewport"} className="director-workbench-viewport">
                     <DirectorViewport ref={viewportRef} scene={draft} selectedObjectId={selectedObjectId} selectedBone={selectedBone} transformMode={transformMode} renderMode={renderMode} playhead={playhead} playing={playing} showMotionPaths={capabilities.timeline} viewMode={viewMode} onViewModeChange={setViewMode} onSelectObject={setSelectedObjectId} onSelectBone={setSelectedBone} onObjectTransform={handleObjectTransform} onBoneTransform={handleBoneTransform} onActorRigReady={handleActorRigReady} />
-                    <div className="pointer-events-none absolute left-3 top-3 text-[var(--fs-tiny)] font-medium text-white/70">{activeShot.name} · {activeCamera?.name || "无摄影机"} · {activeShot.duration}s</div>
-                    <CanvasDirectorOnboarding scope={onboardingScope} open={open} restartSignal={onboardingRestartSignal} className="absolute right-3 top-3 z-[var(--z-popover)] w-[min(360px,calc(100%-24px))]" />
+                    <div className="director-workbench-caption">{activeShot.name} · {activeCamera?.name || "无摄影机"} · {activeShot.duration}s</div>
+                    <CanvasDirectorOnboarding scope={onboardingScope} open={open} restartSignal={onboardingRestartSignal} className="director-onboarding" />
                     <DirectorViewportDock transformMode={transformMode} renderMode={renderMode} renderModes={capabilities.renderModes} onTransformModeChange={setTransformMode} onRenderModeChange={setRenderMode} onAddActor={addActor} onAddBox={() => addPrimitive("box", "立方体")} onAddLight={addLight} onAddCamera={addCamera} onAlignCamera={alignCameraToView} />
                 </main>
 
-                <aside className="thin-scrollbar min-h-0 overflow-y-auto border-l max-lg:col-span-2 max-lg:max-h-[40vh] max-lg:border-l-0 max-lg:border-t" style={{ background: theme.node.panel, borderColor: theme.toolbar.border }}>
+                <aside aria-label="参数" data-mobile-active={mobilePanel === "inspector"} data-canvas-wheel-scroll className="thin-scrollbar min-h-0 overflow-y-auto border-l" style={{ background: theme.node.panel, borderColor: theme.toolbar.border }}>
                     {/* 摄影机模式下右栏固定显示 shot/camera 检查器：对齐视图与运镜是这个模式的主入口。 */}
                     {selectedObject && !capabilities.cameraTools ? <ObjectInspector object={selectedObject} rendered={selectedObjectRendered || selectedObject.transform} playhead={snappedPlayhead} selectedBone={selectedBone} capabilities={capabilities} onSelectBone={setSelectedBone} onUpdate={(patch) => updateObject(selectedObject.id, patch)} onTransformEdit={(edited) => handleObjectTransform(selectedObject.id, selectedObjectRendered || selectedObject.transform, edited)} onBoneRotationStage={(rotation) => selectedBone && writeBoneRotation(selectedObject.id, selectedBone, rotation, "stage")} onBoneRotationCommit={() => stagedTransaction.end("commit")} onAddKeyframe={recordSelectedKeyframe} onDelete={() => removeObject(selectedObject.id)} /> : selectedLight && !capabilities.cameraTools ? <LightInspector light={selectedLight} onUpdate={(patch) => updateLight(selectedLight.id, patch)} onDelete={() => removeLight(selectedLight.id)} /> : <ShotInspector shot={activeShot} camera={activeCamera} cameras={draft.cameras} capabilities={capabilities} onUpdateShot={(patch) => updateShot(activeShot.id, patch)} onUpdateCamera={(patch) => activeCamera && commit((current) => ({ ...current, cameras: current.cameras.map((item) => item.id === activeCamera.id ? { ...item, ...patch } : item) }))} onAddCameraKeyframe={addCameraKeyframe} onApplyCameraMove={applyCameraMove} onAlignCameraToView={alignCameraToView} onExportClay={() => void exportClayVideo()} recording={recording} />}
                 </aside>
@@ -793,7 +799,7 @@ function ObjectInspector({ object, rendered, playhead, selectedBone, capabilitie
     return <Inspector title={object.name} onTitleChange={(name) => onUpdate({ name })} onDelete={onDelete}>
         <TransformFields transform={rendered} onChange={onTransformEdit} />
         {object.kind === "actor" || object.primitive === "character"
-            ? <Field label="角色颜色"><div className="director-actor-colors">{DIRECTOR_ACTOR_COLORS.map((color) => <button key={color} type="button" className={`director-actor-color ${object.color.toLowerCase() === color ? "is-active" : ""}`} style={{ background: color }} aria-label={`设置颜色 ${color}`} onClick={() => onUpdate({ color })} />)}<ColorPicker value={object.color} size="small" onChange={(_, color) => onUpdate({ color })} /></div></Field>
+            ? <Field label="角色颜色"><div className="director-actor-colors">{DIRECTOR_ACTOR_COLORS.map((color) => <button key={color} type="button" className={`director-actor-color ${object.color.toLowerCase() === color ? "is-active" : ""}`} style={{ background: color }} aria-pressed={object.color.toLowerCase() === color} aria-label={`设置颜色 ${color}`} onClick={() => onUpdate({ color })} />)}<ColorPicker value={object.color} size="small" onChange={(_, color) => onUpdate({ color })} /></div></Field>
             : <Field label="颜色"><ColorPicker value={object.color} onChange={(_, color) => onUpdate({ color })} /></Field>}
         {/*
           骨骼与姿势入口：只在姿态/动画模式出现，且只对演员出现。
@@ -803,7 +809,7 @@ function ObjectInspector({ object, rendered, playhead, selectedBone, capabilitie
         {capabilities.bones && (object.kind === "actor" || object.primitive === "character") ? <>
             <section className="director-pose-section">
                 <div className="director-inspector-section-title"><span>姿势预设</span><span>{directorPoseLabel(object.pose || "stand")}</span></div>
-                <div className="director-pose-grid">{poseOptions.map((option) => <button key={option.value} type="button" className={`director-pose-button ${object.pose === option.value && !object.activeMotionClipId ? "is-active" : ""}`} title={option.label} onClick={() => applyPose(option.value)}>{option.label}</button>)}</div>
+                <div className="director-pose-grid">{poseOptions.map((option) => <button key={option.value} type="button" className={`director-pose-button ${object.pose === option.value && !object.activeMotionClipId ? "is-active" : ""}`} aria-pressed={object.pose === option.value && !object.activeMotionClipId} title={option.label} onClick={() => applyPose(option.value)}>{option.label}</button>)}</div>
                 <Button size="small" block onClick={() => applyPose("stand")}>重置姿态</Button>
             </section>
             <div className="flex items-center justify-between border-y py-2 text-[var(--fs-label)]"><span>角色绑定</span><span className="opacity-55">{object.rig?.status === "ready" ? `${mappedBones.length} 根骨骼` : "等待模型"}</span></div>
@@ -835,12 +841,12 @@ function ShotInspector({ shot, camera, cameras, capabilities, onUpdateShot, onUp
         <Field label="运镜"><Select className="w-full" value={shot.cameraMove} options={cameraMoveOptions} onChange={(cameraMove: DirectorCameraMove) => onUpdateShot({ cameraMove })} /></Field>
         <Field label="时长"><InputNumber className="w-full" min={0.5} max={60} step={0.5} value={shot.duration} addonAfter="秒" onChange={(value) => onUpdateShot({ duration: value || 5 })} /></Field>
         <Field label="镜头意图"><Input.TextArea autoSize={{ minRows: 3, maxRows: 7 }} value={shot.prompt} placeholder="人物表演、动作、叙事目标…" onChange={(event) => onUpdateShot({ prompt: event.target.value })} /></Field>
-        {camera ? <><Vec3Field label="摄影机位置" value={camera.transform.position} onChange={(position) => onUpdateCamera({ transform: { ...camera.transform, position } })} /><Vec3Field label="焦点" value={camera.target} onChange={(target) => onUpdateCamera({ target })} /><Field label="焦距"><InputNumber className="w-full" min={12} max={200} value={camera.focalLength} addonAfter="mm" onChange={(focalLength) => onUpdateCamera({ focalLength: focalLength || 35, fov: directorFocalLengthToFov(focalLength || 35) })} /></Field><div className="grid grid-cols-2 gap-2"><Field label="光圈"><InputNumber className="w-full" min={0.7} max={32} step={0.1} value={camera.aperture} addonBefore="f/" onChange={(aperture) => onUpdateCamera({ aperture: aperture || 2.8 })} /></Field><Field label="焦点距离"><InputNumber className="w-full" min={0.1} max={200} step={0.1} value={camera.focusDistance} addonAfter="m" onChange={(focusDistance) => onUpdateCamera({ focusDistance: focusDistance || 5 })} /></Field></div><Button block icon={<Camera className="size-3.5" />} onClick={onAlignCameraToView}>摄影机对齐当前视图</Button><Button block icon={<Video className="size-3.5" />} onClick={onApplyCameraMove}>按运镜生成轨迹</Button>{capabilities.keyframes ? <Button block icon={<Focus className="size-3.5" />} onClick={onAddCameraKeyframe}>记录摄影机关键帧</Button> : null}<Button block type="primary" ghost icon={<Video className="size-3.5" />} loading={recording} onClick={onExportClay}>导出白膜视频</Button></> : null}
+        {camera ? <><Vec3Field label="摄影机位置" value={camera.transform.position} onChange={(position) => onUpdateCamera({ transform: { ...camera.transform, position } })} /><Vec3Field label="焦点" value={camera.target} onChange={(target) => onUpdateCamera({ target })} /><Field label="焦距"><InputNumber className="w-full" min={12} max={200} value={camera.focalLength} addonAfter="mm" onChange={(focalLength) => onUpdateCamera({ focalLength: focalLength || 35, fov: directorFocalLengthToFov(focalLength || 35) })} /></Field><div className="grid grid-cols-2 gap-2"><Field label="光圈"><InputNumber className="w-full" min={0.7} max={32} step={0.1} value={camera.aperture} addonBefore="f/" onChange={(aperture) => onUpdateCamera({ aperture: aperture || 2.8 })} /></Field><Field label="焦点距离"><InputNumber className="w-full" min={0.1} max={200} step={0.1} value={camera.focusDistance} addonAfter="m" onChange={(focusDistance) => onUpdateCamera({ focusDistance: focusDistance || 5 })} /></Field></div><Button block icon={<Camera className="size-3.5" />} onClick={onAlignCameraToView}>摄影机对齐当前视图</Button><Button block icon={<Video className="size-3.5" />} onClick={onApplyCameraMove}>按运镜生成轨迹</Button>{capabilities.keyframes ? <Button block icon={<Focus className="size-3.5" />} onClick={onAddCameraKeyframe}>记录摄影机关键帧</Button> : null}<Button block icon={<Video className="size-3.5" />} loading={recording} onClick={onExportClay}>导出白膜视频</Button></> : null}
     </Inspector>;
 }
 
 function Inspector({ title, children, onTitleChange, onDelete }: { title: string; children: ReactNode; onTitleChange: (value: string) => void; onDelete?: () => void }) {
-    return <div className="space-y-3 p-3"><div className="flex items-center gap-2"><Input variant="borderless" value={title} className="min-w-0 flex-1 px-0 font-medium" onChange={(event) => onTitleChange(event.target.value)} />{onDelete ? <IconButton label="删除" onClick={onDelete}><Trash2 className="size-4" /></IconButton> : null}</div>{children}</div>;
+    return <div className="space-y-3 p-3"><div className="flex items-center gap-2"><Input aria-label="对象或镜头名称" prefix={<Pencil className="size-3" aria-hidden />} variant="borderless" value={title} className="min-w-0 flex-1 px-0 font-medium" onChange={(event) => onTitleChange(event.target.value)} />{onDelete ? <IconButton label="删除" onClick={onDelete}><Trash2 className="size-4" /></IconButton> : null}</div>{children}</div>;
 }
 
 function TransformFields({ transform, onChange }: { transform: DirectorTransform; onChange: (transform: DirectorTransform) => void }) {
@@ -885,19 +891,19 @@ function sameDirectorQuaternion(left: DirectorQuat, right: DirectorQuat) {
 }
 
 function Vec3Field({ label, value, step = 0.1, onChange }: { label: string; value: DirectorVec3; step?: number; onChange: (value: DirectorVec3) => void }) {
-    return <Field label={label}><div className="grid grid-cols-3 gap-1">{value.map((item, index) => <InputNumber key={index} className="w-full" size="small" step={step} value={Number(item.toFixed(2))} onChange={(next) => onChange(value.map((entry, itemIndex) => itemIndex === index ? next || 0 : entry) as DirectorVec3)} />)}</div></Field>;
+    return <Field label={label}><div className="grid grid-cols-3 gap-1">{value.map((item, index) => <InputNumber aria-label={`${label} ${["X", "Y", "Z"][index]}`} key={index} className="w-full" size="small" step={step} value={Number(item.toFixed(2))} onChange={(next) => onChange(value.map((entry, itemIndex) => itemIndex === index ? next || 0 : entry) as DirectorVec3)} />)}</div></Field>;
 }
 
-function Field({ label, children }: { label: string; children: ReactNode }) { return <label className="block"><span className="mb-1 block text-[var(--fs-label)] opacity-55">{label}</span>{children}</label>; }
-function PanelTitle({ title, action }: { title: string; action?: ReactNode }) { return <div className="flex h-9 items-center px-3 text-[var(--fs-tiny)] font-semibold uppercase opacity-55"><span className="flex-1">{title}</span>{action}</div>; }
+function Field({ label, children }: { label: string; children: ReactNode }) { return <label className="block"><span className="mb-1 block text-[var(--fs-label)] text-[var(--app-text-secondary)]">{label}</span>{children}</label>; }
+function PanelTitle({ title, action }: { title: string; action?: ReactNode }) { return <div className="flex h-9 items-center px-3 text-[var(--fs-tiny)] font-semibold text-[var(--app-text-secondary)]"><span className="flex-1">{title}</span>{action}</div>; }
 /**
  * 场景列表行。选择按钮点完必须释放焦点：
  *「点选对象 -> 按 Delete」是 delete-selected 快捷键的主流程，
  * 焦点留在按钮上会让守卫把 Delete 吃掉。
  */
 function SceneRow({ active, icon, label, onClick, onDelete }: { active?: boolean; icon: ReactElement; label: string; onClick: () => void; onDelete?: () => void }) {
-    return <div className={`flex h-8 w-full items-center gap-1 px-1 text-left text-xs transition ${active ? "bg-black/10 dark:bg-white/10" : "hover:bg-black/5 dark:hover:bg-white/5"}`}>
-        <button type="button" className="flex min-w-0 flex-1 items-center gap-2 px-1 text-left" onClick={(event) => { onClick(); releaseDirectorFocusAfterPointer(event); }}>
+    return <div className={`director-scene-row ${active ? "is-active" : ""}`}>
+        <button type="button" aria-pressed={active} className="flex min-w-0 flex-1 items-center gap-2 px-1 text-left" onClick={(event) => { onClick(); releaseDirectorFocusAfterPointer(event); }}>
             <span className="[&>svg]:size-3.5">{icon}</span>
             <span className="truncate">{label}</span>
         </button>

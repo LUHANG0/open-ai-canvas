@@ -1,0 +1,71 @@
+{
+  "results": [
+    {
+      "ok": true,
+      "name": "正式时间线192px精确定位2000ms"
+    },
+    {
+      "ok": true,
+      "name": "播放头键盘前进100ms"
+    },
+    {
+      "ok": true,
+      "name": "播放头Home返回起点"
+    },
+    {
+      "ok": true,
+      "name": "放大后240px精确定位2000ms",
+      "data": {
+        "actual": "2000"
+      }
+    },
+    {
+      "ok": true,
+      "name": "Escape取消拖动还原位置且不关闭时间线"
+    },
+    {
+      "ok": true,
+      "name": "真实拖动移动片段"
+    },
+    {
+      "ok": true,
+      "name": "右缘真实裁剪缩短片段"
+    },
+    {
+      "ok": true,
+      "name": "未保存确认默认聚焦继续编辑"
+    },
+    {
+      "ok": true,
+      "name": "未保存确认12次正反Tab焦点保持"
+    },
+    {
+      "ok": true,
+      "name": "继续编辑保留时间线草稿"
+    },
+    {
+      "ok": true,
+      "name": "保存字幕同步回视频节点"
+    },
+    {
+      "ok": true,
+      "name": "保存刷新恢复字幕"
+    },
+    {
+      "ok": true,
+      "name": "保存刷新恢复片段移动"
+    },
+    {
+      "ok": true,
+      "name": "小型真实WebM预览解码并播放原声",
+      "data": {
+        "width": 320,
+        "height": 180,
+        "time": 0.284776,
+        "paused": false,
+        "muted": false
+      }
+    }
+  ],
+  "errors": []
+}

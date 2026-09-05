@@ -1,0 +1,137 @@
+{
+  "results": [
+    {
+      "ok": true,
+      "name": "正式导演台添加对象并写回隔离画布"
+    },
+    {
+      "ok": true,
+      "name": "对象参数编辑与场景一致"
+    },
+    {
+      "ok": true,
+      "name": "导演台撤销参数"
+    },
+    {
+      "ok": true,
+      "name": "导演台重做参数"
+    },
+    {
+      "ok": true,
+      "name": "动画记录对象关键帧"
+    },
+    {
+      "ok": true,
+      "name": "导演台 1440 light 无整页横向溢出"
+    },
+    {
+      "ok": true,
+      "name": "导演台 1024 light 无整页横向溢出"
+    },
+    {
+      "ok": true,
+      "name": "导演台 1023 light 无整页横向溢出"
+    },
+    {
+      "ok": true,
+      "name": "导演台 1023 light 视口占完整宽度",
+      "data": {
+        "x": 0,
+        "y": 89,
+        "width": 1023,
+        "height": 511
+      }
+    },
+    {
+      "ok": true,
+      "name": "导演台 1023 light 参数可达"
+    },
+    {
+      "ok": true,
+      "name": "导演台 1023 light 场景可达"
+    },
+    {
+      "ok": true,
+      "name": "导演台 390 light 无整页横向溢出"
+    },
+    {
+      "ok": true,
+      "name": "导演台 390 light 视口占完整宽度",
+      "data": {
+        "x": 0,
+        "y": 89,
+        "width": 390,
+        "height": 511
+      }
+    },
+    {
+      "ok": true,
+      "name": "导演台 390 light 参数可达"
+    },
+    {
+      "ok": true,
+      "name": "导演台 390 light 场景可达"
+    },
+    {
+      "ok": true,
+      "name": "导演台 1440 dark 无整页横向溢出"
+    },
+    {
+      "ok": true,
+      "name": "导演台 1024 dark 无整页横向溢出"
+    },
+    {
+      "ok": true,
+      "name": "导演台 1023 dark 无整页横向溢出"
+    },
+    {
+      "ok": true,
+      "name": "导演台 1023 dark 视口占完整宽度",
+      "data": {
+        "x": 0,
+        "y": 89,
+        "width": 1023,
+        "height": 511
+      }
+    },
+    {
+      "ok": true,
+      "name": "导演台 1023 dark 参数可达"
+    },
+    {
+      "ok": true,
+      "name": "导演台 1023 dark 场景可达"
+    },
+    {
+      "ok": true,
+      "name": "导演台 390 dark 无整页横向溢出"
+    },
+    {
+      "ok": true,
+      "name": "导演台 390 dark 视口占完整宽度",
+      "data": {
+        "x": 0,
+        "y": 89,
+        "width": 390,
+        "height": 511
+      }
+    },
+    {
+      "ok": true,
+      "name": "导演台 390 dark 参数可达"
+    },
+    {
+      "ok": true,
+      "name": "导演台 390 dark 场景可达"
+    },
+    {
+      "ok": true,
+      "name": "导演台保存刷新恢复对象名"
+    },
+    {
+      "ok": true,
+      "name": "导演台保存刷新恢复位置"
+    }
+  ],
+  "errors": []
+}

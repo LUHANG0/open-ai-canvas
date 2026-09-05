@@ -1,0 +1,78 @@
+{
+  "results": [
+    {
+      "ok": true,
+      "name": "正式导演台切换CAM视图"
+    },
+    {
+      "ok": true,
+      "name": "正式导演台切换TOP视图"
+    },
+    {
+      "ok": true,
+      "name": "正式导演台切换FRONT视图"
+    },
+    {
+      "ok": true,
+      "name": "正式导演台切换BACK视图"
+    },
+    {
+      "ok": true,
+      "name": "正式导演台切换LEFT视图"
+    },
+    {
+      "ok": true,
+      "name": "正式导演台切换RIGHT视图"
+    },
+    {
+      "ok": true,
+      "name": "正式导演台切换3D视图"
+    },
+    {
+      "ok": true,
+      "name": "七种取景切换不改变场景数据"
+    },
+    {
+      "ok": true,
+      "name": "真实指针拖动3D变换控件改变对象"
+    },
+    {
+      "ok": true,
+      "name": "3D拖动撤销恢复对象"
+    },
+    {
+      "ok": true,
+      "name": "正式接口503保留导演草稿并显示失败"
+    },
+    {
+      "ok": true,
+      "name": "导演失败关闭默认聚焦留在导演台"
+    },
+    {
+      "ok": true,
+      "name": "导演失败确认12次正反Tab焦点保持"
+    },
+    {
+      "ok": true,
+      "name": "重试成功实际写入隔离服务端"
+    },
+    {
+      "ok": true,
+      "name": "真实3D构图捕获并回写图片节点"
+    },
+    {
+      "ok": true,
+      "name": "一秒白膜真实录制回写导演节点"
+    },
+    {
+      "ok": true,
+      "name": "白膜录制可实际解码",
+      "data": {
+        "width": 928,
+        "height": 852,
+        "ready": 4
+      }
+    }
+  ],
+  "errors": []
+}

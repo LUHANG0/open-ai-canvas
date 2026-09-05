@@ -14,7 +14,7 @@ const project = readFileSync(resolve(import.meta.dir, "../src/pages/canvas/proje
 const entryDialogs = readFileSync(resolve(import.meta.dir, "../src/pages/canvas/canvas-project-entry-dialogs.tsx"), "utf8");
 const modal = readFileSync(resolve(import.meta.dir, "../src/components/canvas/director/canvas-director-template-modal.tsx"), "utf8");
 const store = readFileSync(resolve(import.meta.dir, "../src/stores/canvas/use-director-workbench-store.ts"), "utf8");
-const styles = readFileSync(resolve(import.meta.dir, "../src/styles/globals.css"), "utf8");
+const styles = readFileSync(resolve(import.meta.dir, "../src/components/canvas/director/director-workbench.css"), "utf8");
 
 function slice(source: string, from: string, to: string) {
     const start = source.indexOf(from);
@@ -150,8 +150,9 @@ describe("模式接线", () => {
         expect(workbench).not.toContain("keyframes: [{ id: nanoid(), time: 0, transform: start }");
     });
 
-    test("小屏把属性检查器放到下方而不是隐藏，姿态与骨骼入口仍可达", () => {
-        expect(workbench).toContain("max-lg:col-span-2 max-lg:max-h-[40vh] max-lg:border-l-0 max-lg:border-t");
+    test("小屏通过显式面板导航到达检查器，姿态与骨骼入口仍可达", () => {
+        expect(workbench).toContain('aria-label="导演台面板"');
+        expect(workbench).toContain('data-mobile-active={mobilePanel === "inspector"}');
         expect(workbench).not.toContain("border-l max-lg:hidden");
     });
 

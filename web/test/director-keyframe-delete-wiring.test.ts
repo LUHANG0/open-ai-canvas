@@ -9,7 +9,7 @@ import { resolve } from "node:path";
 const dock = readFileSync(resolve(import.meta.dir, "../src/components/canvas/director/director-viewport-dock.tsx"), "utf8");
 const workbench = readFileSync(resolve(import.meta.dir, "../src/components/canvas/director/canvas-director-workbench.tsx"), "utf8");
 const sequencer = readFileSync(resolve(import.meta.dir, "../src/components/canvas/director/director-sequencer.tsx"), "utf8");
-const styles = readFileSync(resolve(import.meta.dir, "../src/styles/globals.css"), "utf8");
+const styles = readFileSync(resolve(import.meta.dir, "../src/components/canvas/director/director-workbench.css"), "utf8");
 
 function slice(source: string, from: string, to: string) {
     const start = source.indexOf(from);

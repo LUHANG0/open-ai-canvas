@@ -1,4 +1,5 @@
 import { Modal } from "antd";
+import "./director-workbench.css";
 
 import { DIRECTOR_TEMPLATES, type DirectorTemplateId } from "@/lib/canvas/director/director-templates";
 
@@ -11,7 +12,7 @@ import { DIRECTOR_TEMPLATES, type DirectorTemplateId } from "@/lib/canvas/direct
  */
 export function CanvasDirectorTemplateModal({ open, onClose, onSelect }: { open: boolean; onClose: () => void; onSelect: (templateId: DirectorTemplateId) => void }) {
     return (
-        <Modal rootClassName="pc-canvas-overlay pc-canvas-modal pc-canvas-director-modal" open={open} onCancel={onClose} footer={null} width={560} title="选择镜头模板" destroyOnHidden>
+        <Modal rootClassName="pc-canvas-overlay pc-canvas-modal pc-canvas-director-modal" open={open} onCancel={onClose} footer={null} centered styles={{ body: { maxHeight: "72dvh", overflowY: "auto", overscrollBehavior: "contain" } }} width={560} title="选择镜头模板" destroyOnHidden>
             <div className="director-template-grid">
                 {DIRECTOR_TEMPLATES.map((template) => (
                     <button

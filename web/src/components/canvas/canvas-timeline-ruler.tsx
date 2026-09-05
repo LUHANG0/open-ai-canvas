@@ -2,7 +2,7 @@
 
 import { useMemo, useRef } from "react";
 
-import { formatTimelineTime, getRulerTickStep } from "@/lib/timeline/timeline-view";
+import { formatTimelineTime, getRulerTickStep, getTimelineTimeAtOffset } from "@/lib/timeline/timeline-view";
 import type { CanvasTheme } from "@/lib/canvas-theme";
 
 type CanvasTimelineRulerProps = {
@@ -31,15 +31,29 @@ export function CanvasTimelineRuler({ pxPerMs, durationMs, playheadMs, width, th
     const seekFromEvent = (clientX: number) => {
         const rect = barRef.current?.getBoundingClientRect();
         if (!rect) return;
-        const ratio = Math.min(1, Math.max(0, (clientX - rect.left) / Math.max(1, rect.width)));
-        onSeek(Math.round(ratio * durationMs));
+        onSeek(getTimelineTimeAtOffset(clientX - rect.left, pxPerMs, durationMs));
     };
 
     return (
         <div
             ref={barRef}
+            data-timeline-ruler
+            role="slider"
+            tabIndex={0}
+            aria-label="时间线播放头"
+            aria-valuemin={0}
+            aria-valuemax={durationMs}
+            aria-valuenow={playheadMs}
+            aria-valuetext={formatTimelineTime(playheadMs)}
+            onKeyDown={(event) => {
+                const step = event.shiftKey ? 1000 : 100;
+                const next = event.key === "Home" ? 0 : event.key === "End" ? durationMs : event.key === "ArrowLeft" ? Math.max(0, playheadMs - step) : event.key === "ArrowRight" ? Math.min(durationMs, playheadMs + step) : null;
+                if (next !== null) { event.preventDefault(); event.stopPropagation(); onSeek(next); }
+            }}
+            onPointerCancel={() => { draggingRef.current = false; }}
+            onLostPointerCapture={() => { draggingRef.current = false; }}
             className="relative shrink-0 cursor-col-resize select-none overflow-hidden border-b"
-            style={{ height: 32, borderColor: theme.toolbar.border, background: theme.toolbar.panel }}
+            style={{ width, height: 32, borderColor: theme.toolbar.border, background: theme.toolbar.panel }}
             onPointerDown={(event) => {
                 draggingRef.current = true;
                 event.currentTarget.setPointerCapture(event.pointerId);

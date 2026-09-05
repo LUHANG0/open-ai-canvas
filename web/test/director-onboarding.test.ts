@@ -488,7 +488,7 @@ describe("引导浮层契约", () => {
         expect(code).not.toMatch(/\b(rgba?|oklch|hsla?)\(/);
         expect(code).not.toMatch(/:\s*"\d+px"/);
         expect(code).not.toMatch(/(text|rounded|z|bg|text)-\[\d/);
-        for (const token of ["var(--space-3)", "var(--r-lg)", "var(--surface)", "var(--cn-text)", "var(--cn-muted)", "var(--fs-caption)", "var(--elevation-overlay)", "var(--border-semantic)"]) {
+        for (const token of ["var(--space-3)", "var(--r-lg)", "var(--app-surface-overlay)", "var(--app-text-primary)", "var(--app-text-secondary)", "var(--fs-caption)", "var(--elevation-overlay)", "var(--border-semantic)"]) {
             expect(code).toContain(token);
         }
     });

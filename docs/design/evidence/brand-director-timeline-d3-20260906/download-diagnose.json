@@ -1,0 +1,15 @@
+{
+  "results": [
+    {
+      "ok": true,
+      "name": "真实MP4下载并解码保持尺寸时长",
+      "data": {
+        "width": 320,
+        "height": 180,
+        "duration": 4.838167,
+        "size": 24959
+      }
+    }
+  ],
+  "errors": []
+}

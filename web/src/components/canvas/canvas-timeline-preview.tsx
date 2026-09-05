@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Pause, Play } from "lucide-react";
+import { BrandLoadingIndicator } from "@/components/ui/brand-loader";
 
 import { canvasThemes } from "@/lib/canvas-theme";
 import { resolveMediaUrl } from "@/services/file-storage";
@@ -34,6 +35,9 @@ const AUTO_ADVANCE_GAP_MS = 500;
 export function CanvasTimelinePreview({ clips, nodes, playheadMs, playing, theme, onTogglePlay, onPlayheadChange }: CanvasTimelinePreviewProps) {
     const videoRef = useRef<HTMLVideoElement>(null);
     const [videoUrl, setVideoUrl] = useState("");
+    const [loading, setLoading] = useState(false);
+    const [failed, setFailed] = useState(false);
+    const [retry, setRetry] = useState(0);
     const [videoSize, setVideoSize] = useState<{ width: number; height: number } | null>(null);
     // 源内定位目标（秒）；视频换源后 metadata 尚未加载时先记录，loadedmetadata 后再应用。
     const targetSeekSecRef = useRef<number | null>(null);
@@ -55,34 +59,28 @@ export function CanvasTimelinePreview({ clips, nodes, playheadMs, playing, theme
         const media = activeVideoClip?.directMedia;
         setVideoUrl("");
         setVideoSize(null);
-        if (!node && !media) return;
+        setFailed(false);
+        setLoading(Boolean(activeVideoClip));
+        if (!node && !media) { setLoading(false); setFailed(Boolean(activeVideoClip)); return; }
         let cancelled = false;
         // 直连媒体片段（directMedia，不落画布）与画布节点走同一套缓存/回退解析策略
         const storageKey = node?.metadata?.storageKey || media?.storageKey || "";
         const fallback = node?.metadata?.content || media?.url || "";
-        const applyUrl = (url: string) => {
-            if (!cancelled) setVideoUrl(url);
-        };
-        if (resourceIdFromStorageKey(storageKey)) {
-            void cacheResourceObjectUrl(storageKey)
-                .then((cached) => {
-                    if (cancelled) return;
-                    if (cached) {
-                        setVideoUrl(cached);
-                    } else {
-                        void resolveMediaUrl(storageKey, fallback).then(applyUrl);
-                    }
-                })
-                .catch(() => {
-                    if (!cancelled) void resolveMediaUrl(storageKey, fallback).then(applyUrl);
-                });
-        } else {
-            void resolveMediaUrl(storageKey, fallback).then(applyUrl);
-        }
+        void (async () => {
+            try {
+                const cached = resourceIdFromStorageKey(storageKey) ? await cacheResourceObjectUrl(storageKey).catch(() => null) : null;
+                const url = cached || await resolveMediaUrl(storageKey, fallback);
+                if (cancelled) return;
+                if (!url) throw new Error("媒体不可用");
+                setVideoUrl(url);
+            } catch {
+                if (!cancelled) { setLoading(false); setFailed(true); }
+            }
+        })();
         return () => {
             cancelled = true;
         };
-    }, [activeNode, activeVideoClip]);
+    }, [activeNode, activeVideoClip, retry]);
 
     // 播放/暂停与外部跳转（标尺拖动）时同步视频位置；播放前先定位到片段源内起点，
     // 避免裁剪后的片段从原始视频 0s 开始播放；播放期间视频时间反向驱动播放头，不做回跳。
@@ -106,6 +104,8 @@ export function CanvasTimelinePreview({ clips, nodes, playheadMs, playing, theme
 
     // 视频换源后元数据加载完成，应用之前记录的源内定位目标。
     const handleVideoLoadedMetadata = (video: HTMLVideoElement) => {
+        // 远端 metadata 预加载不保证触发 loadeddata；元数据可用后允许用户主动播放。
+        setLoading(false);
         if (video.videoWidth > 0 && video.videoHeight > 0) setVideoSize({ width: video.videoWidth, height: video.videoHeight });
         if (targetSeekSecRef.current != null && video.readyState >= 1) {
             const target = Math.min(targetSeekSecRef.current, Math.max(0, (video.duration || 0) - 0.05));
@@ -143,33 +143,36 @@ export function CanvasTimelinePreview({ clips, nodes, playheadMs, playing, theme
     }, [videoSize]);
 
     return (
-        <div className="flex items-center gap-3 border-b px-4 py-2.5" style={{ borderColor: theme.toolbar.border, background: theme.toolbar.panel }}>
-            <div className="relative grid shrink-0 place-items-center overflow-hidden rounded-lg bg-black" style={{ width: PREVIEW_WIDTH, height: PREVIEW_HEIGHT }} data-canvas-no-zoom>
+        <div className="timeline-preview flex items-center gap-3 border-b px-4 py-2.5" style={{ borderColor: theme.toolbar.border, background: theme.toolbar.panel }}>
+            <div className="timeline-preview-media relative grid shrink-0 place-items-center overflow-hidden rounded-lg bg-black text-white" style={{ width: PREVIEW_WIDTH, height: PREVIEW_HEIGHT }} data-canvas-no-zoom>
                 {videoUrl && activeVideoClip ? (
                     <>
                         <div className="relative" style={previewDisplay ? { width: previewDisplay.width, height: previewDisplay.height } : { width: "100%", height: "100%" }}>
-                            <video ref={videoRef} className="block h-full w-full" src={videoUrl} playsInline preload="metadata" onLoadedMetadata={(event) => handleVideoLoadedMetadata(event.currentTarget)} onTimeUpdate={handleTimeUpdate} />
+                            <video key={`${activeVideoClip.id}:${retry}`} ref={videoRef} className="block h-full w-full" src={videoUrl} playsInline preload={videoUrl.startsWith("blob:") ? "auto" : "metadata"} onLoadedData={() => setLoading(false)} onError={() => { setLoading(false); setFailed(true); }} onLoadedMetadata={(event) => handleVideoLoadedMetadata(event.currentTarget)} onTimeUpdate={handleTimeUpdate} />
                             {activeSubtitleClip ? <CanvasSubtitleOverlay text={activeSubtitleClip.text || ""} highlight={activeHighlight} style={subtitleStyle} /> : null}
                         </div>
                         <button
                             type="button"
                             className="absolute inset-0 z-10 grid place-items-center"
+                            disabled={loading || failed}
                             aria-label={playing ? "暂停预览" : "播放预览"}
                             onClick={(event) => {
                                 event.stopPropagation();
                                 onTogglePlay();
                             }}
                         >
-                            <span className="grid size-10 place-items-center rounded-full bg-black/45 text-white backdrop-blur transition hover:scale-105 hover:bg-black/60">
+                            <span className="grid size-10 place-items-center rounded-full bg-black/45 text-white backdrop-blur transition hover:bg-black/60 motion-reduce:transition-none">
                                 {playing ? <Pause className="size-4 fill-current" /> : <Play className="size-4 fill-current" />}
                             </span>
                         </button>
                     </>
                 ) : (
-                    <div className="px-4 text-center text-xs opacity-55">该位置无视频片段</div>
+                    <div className="px-4 text-center text-xs opacity-75">{activeVideoClip ? "" : "该位置无视频片段"}</div>
                 )}
+                {loading ? <div role="status" className="absolute inset-0 z-20 grid place-content-center gap-2 bg-black/70 text-center text-xs"><BrandLoadingIndicator /><span>正在准备预览</span></div> : null}
+                {failed ? <div role="status" className="absolute inset-0 z-20 grid place-content-center gap-2 bg-black/80 px-4 text-center text-xs"><span>视频预览加载失败</span><button type="button" className="rounded border border-white/40 px-3 py-2 focus-visible:outline focus-visible:outline-2" onClick={() => setRetry((value) => value + 1)}>重试预览</button></div> : null}
             </div>
-            <div className="min-w-0 flex-1">
+            <div className="timeline-preview-info min-w-0 flex-1">
                 <div className="flex items-center gap-2 text-xs">
                     <span className="truncate font-semibold" style={{ color: theme.accent.primary }}>
                         {activeVideoClip?.title || "无视频片段"}
