@@ -1,7 +1,7 @@
-import { App, Button, Input, Select, Switch } from "antd";
+import { Alert, App, Button, Input, Select, Switch } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { CloudUpload, PlugZap, RefreshCw, Search, Trash2, UsersRound } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { PaginationBar } from "@/components/layout/workspace-page";
 import "@/lib/plugins/builtin";
@@ -15,6 +15,8 @@ import { UploadPluginModal } from "@/pages/plugins/plugin-documentation-modals";
 
 import { AdminPageFrame } from "../components/admin-shell";
 import { AdminDataTable, AdminStatusBadge, AdminTableEmpty } from "../components/admin-ui";
+import { configurationConfirmProps } from "../components/configuration-confirm";
+import "./plugins-page.css";
 
 type AdminPluginItem = {
     manifest: PluginManifest;
@@ -31,6 +33,9 @@ export default function AdminPluginsPage() {
     const [plugins, setPlugins] = useState<BackendPlugin[]>([]);
     const [states, setStates] = useState<Record<string, AdminPluginState>>({});
     const [loading, setLoading] = useState(true);
+    const [loadError, setLoadError] = useState("");
+    const requestRef = useRef(0);
+    const savingRef = useRef(false);
     const [savingId, setSavingId] = useState("");
     const [uploadOpen, setUploadOpen] = useState(false);
     const [search, setSearch] = useState("");
@@ -40,20 +45,25 @@ export default function AdminPluginsPage() {
     const [pageSize, setPageSize] = useState(20);
 
     const reload = async () => {
+        const sequence = ++requestRef.current;
         setLoading(true);
+        setLoadError("");
         try {
             const result = await fetchAdminPlugins();
+            if (sequence !== requestRef.current) return;
             setPlugins(result.plugins);
             setStates(result.states);
         } catch (error) {
-            message.error(error instanceof Error ? error.message : "读取插件管理数据失败");
+            if (sequence !== requestRef.current) return;
+            setLoadError(error instanceof Error ? error.message : "读取插件管理数据失败");
         } finally {
-            setLoading(false);
+            if (sequence === requestRef.current) setLoading(false);
         }
     };
 
     useEffect(() => {
         void reload();
+        return () => { requestRef.current += 1; };
     }, []);
 
     const items = useMemo(() => mergePlugins(plugins), [plugins]);
@@ -75,6 +85,8 @@ export default function AdminPluginsPage() {
     }, [filtered.length, pageSize]);
 
     const changeAvailability = async (item: AdminPluginItem, available: boolean) => {
+        if (savingRef.current || loading || loadError) return;
+        savingRef.current = true;
         setSavingId(item.manifest.id);
         try {
             const state = await setPluginPlatformAvailability(item.manifest.id, available);
@@ -83,6 +95,7 @@ export default function AdminPluginsPage() {
         } catch (error) {
             message.error(error instanceof Error ? error.message : "更新插件可用状态失败");
         } finally {
+            savingRef.current = false;
             setSavingId("");
         }
     };
@@ -100,6 +113,7 @@ export default function AdminPluginsPage() {
 
     const remove = (item: AdminPluginItem) => {
         modal.confirm({
+            ...configurationConfirmProps,
             title: `卸载 ${item.manifest.name}？`,
             content: "插件包、平台状态和所有用户的启用记录都会删除。此操作不可撤销。",
             okText: "确认卸载",
@@ -225,7 +239,8 @@ export default function AdminPluginsPage() {
                 </>
             }
         >
-            <div className="my-4 grid min-h-16 grid-cols-4 divide-x divide-border/70 overflow-hidden rounded-lg border border-border/70 bg-card">
+            {loadError ? <Alert type="error" showIcon title="插件列表读取失败" description={loadError} action={<Button onClick={() => void reload()}>重新读取</Button>} /> : null}
+            <div className="admin-plugin-overview" aria-busy={loading}>
                 <OverviewItem label="全部插件" value={items.length} />
                 <OverviewItem label="官方应用" value={applicationCount} />
                 <OverviewItem label="协议与自定义" value={protocolCount} />
@@ -237,7 +252,7 @@ export default function AdminPluginsPage() {
                 toolbarActive={hasFilters}
                 onReset={() => { setSearch(""); setKind("all"); setAvailability("all"); setPage(1); }}
                 skeletonColumns={5}
-                table={{ className: "app-data-table", size: "small", sticky: true, rowKey: (item) => item.manifest.id, loading, columns, dataSource: paginated, pagination: false, scroll: { x: 1120 } }}
+                table={{ className: "app-data-table", size: "small", tableLayout: "fixed", sticky: true, rowKey: (item) => item.manifest.id, loading, columns, dataSource: loadError || loading ? [] : paginated, pagination: false, scroll: { x: 1120 } }}
                 empty={<AdminTableEmpty filtered={hasFilters} title={hasFilters ? undefined : "还没有可管理的插件"} />}
                 footer={<PaginationBar alwaysShow current={page} pageSize={pageSize} total={filtered.length} onChange={(nextPage, nextPageSize) => { setPage(nextPageSize !== pageSize ? 1 : nextPage); setPageSize(nextPageSize); }} />}
             />
