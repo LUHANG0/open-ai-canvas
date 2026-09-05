@@ -1,6 +1,6 @@
 import { App, Button, Form, Input, Segmented, Select, Switch, Upload, type UploadFile } from "antd";
 import { FileArchive, FileText, GitBranch, UploadCloud } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { fallbackSkillCategories } from "@/pages/skills/skill-catalog";
 import { DialogFrame } from "@/components/ui/pc";
@@ -55,6 +55,7 @@ export function SkillInstallModal({ open, onClose, onInstalled, onManualCreate }
     const [mode, setMode] = useState<InstallMode>("markdown");
     const [fileList, setFileList] = useState<UploadFile[]>([]);
     const [installing, setInstalling] = useState(false);
+    const installingRef = useRef(false);
 
     useEffect(() => {
         if (!open) return;
@@ -64,10 +65,19 @@ export function SkillInstallModal({ open, onClose, onInstalled, onManualCreate }
     }, [form, open]);
 
     const install = async () => {
-        const values = await form.validateFields();
+        if (installingRef.current) return;
+        installingRef.current = true;
+        let values: InstallFormValues;
+        try {
+            values = await form.validateFields();
+        } catch {
+            installingRef.current = false;
+            return;
+        }
         const file = fileList[0]?.originFileObj;
         if (mode !== "github" && !file) {
             message.warning(`请选择一个 ${mode === "zip" ? "ZIP 技能包" : "Markdown 文件"}`);
+            installingRef.current = false;
             return;
         }
         setInstalling(true);
@@ -95,6 +105,7 @@ export function SkillInstallModal({ open, onClose, onInstalled, onManualCreate }
         } catch (error) {
             message.error(error instanceof Error ? error.message : "技能安装失败");
         } finally {
+            installingRef.current = false;
             setInstalling(false);
         }
     };
@@ -108,14 +119,18 @@ export function SkillInstallModal({ open, onClose, onInstalled, onManualCreate }
             mask={{ closable: !installing }}
             title="安装技能"
             subtitle="导入标准技能文件、多文件包或 GitHub 仓库"
-            onCancel={onClose}
+            onCancel={() => {
+                if (!installingRef.current) onClose();
+            }}
             footer={
-                <div className="flex items-center justify-between gap-3">
-                    <Button type="text" onClick={onManualCreate}>
+                <div className="skill-install-footer">
+                    <Button type="text" disabled={installing} onClick={onManualCreate}>
                         从空白创建单文件技能
                     </Button>
                     <div className="flex gap-2">
-                        <Button onClick={onClose}>取消</Button>
+                        <Button disabled={installing} onClick={onClose}>
+                            取消
+                        </Button>
                         <Button type="primary" loading={installing} onClick={() => void install()}>
                             安装技能
                         </Button>
@@ -129,6 +144,7 @@ export function SkillInstallModal({ open, onClose, onInstalled, onManualCreate }
             <Segmented
                 className="skill-install-mode"
                 block
+                disabled={installing}
                 options={modeOptions}
                 value={mode}
                 onChange={(value) => {
@@ -137,7 +153,7 @@ export function SkillInstallModal({ open, onClose, onInstalled, onManualCreate }
                 }}
             />
 
-            <Form form={form} layout="vertical" requiredMark="optional" className="skill-install-form">
+            <Form form={form} disabled={installing} layout="vertical" requiredMark="optional" className="skill-install-form">
                 {mode === "github" ? (
                     <>
                         <Form.Item

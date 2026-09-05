@@ -1,6 +1,6 @@
 import { App, Button, Form, Input, Select, Switch } from "antd";
 import { Minus, Plus, Save, Wand2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { fallbackSkillCategories } from "@/pages/skills/skill-catalog";
 import { DrawerFrame } from "@/components/ui/pc";
@@ -15,9 +15,11 @@ export function SkillEditorDrawer({ open, skill, onClose, onSaved }: { open: boo
     const { message, modal } = App.useApp();
     const [form] = Form.useForm<SkillFormValues>();
     const [saving, setSaving] = useState(false);
+    const savingRef = useRef(false);
     const [dirty, setDirty] = useState(false);
     const [draftIdea, setDraftIdea] = useState("");
     const [drafting, setDrafting] = useState(false);
+    const [confirmOpen, setConfirmOpen] = useState(false);
     const effectiveConfig = useEffectiveConfig();
     const isPackageSkill = Boolean(skill && skill.source_type !== "markdown" && skill.source_type !== "builtin" && skill.source_type !== "");
 
@@ -34,17 +36,22 @@ export function SkillEditorDrawer({ open, skill, onClose, onSaved }: { open: boo
             extra_info: skill?.extra_info || "",
         });
         setDirty(false);
+        setDraftIdea("");
     }, [form, open, skill]);
 
     const requestClose = () => {
+        if (savingRef.current || drafting) return;
         if (!dirty) {
             onClose();
             return;
         }
-        modal.confirm({ title: "放弃未保存的修改？", content: "当前填写内容不会保留。", okText: "放弃修改", okButtonProps: { danger: true }, cancelText: "继续编辑", onOk: onClose });
+        setConfirmOpen(true);
+        modal.confirm({ title: "放弃未保存的修改？", content: "当前填写内容不会保留。", okText: "放弃修改", okButtonProps: { danger: true }, cancelText: "继续编辑", onOk: onClose, afterClose: () => setConfirmOpen(false) });
     };
 
     const submit = async (values: SkillFormValues) => {
+        if (savingRef.current || drafting) return;
+        savingRef.current = true;
         setSaving(true);
         try {
             const input: SkillMutationInput = {
@@ -64,6 +71,7 @@ export function SkillEditorDrawer({ open, skill, onClose, onSaved }: { open: boo
         } catch (error) {
             message.error(error instanceof Error ? error.message : "技能保存失败");
         } finally {
+            savingRef.current = false;
             setSaving(false);
         }
     };
@@ -102,14 +110,15 @@ export function SkillEditorDrawer({ open, skill, onClose, onSaved }: { open: boo
             className="skill-editor-drawer"
             frameSize="lg"
             open={open}
+            focusable={{ trap: !confirmOpen }}
             destroyOnHidden
             maskClosable={!dirty}
             title={skill ? "编辑技能" : "创建技能"}
             subtitle="维护技能的基本信息、指令与展示内容"
             onClose={requestClose}
             extra={
-                <Button type="primary" loading={saving} icon={<Save className="size-4" />} onClick={() => form.submit()}>
-                    保存技能
+                <Button type="primary" loading={saving} disabled={!dirty || drafting} icon={<Save className="size-4" />} onClick={() => form.submit()}>
+                    {saving ? "正在保存" : dirty ? "保存技能" : "暂无修改"}
                 </Button>
             }
         >
@@ -131,7 +140,7 @@ export function SkillEditorDrawer({ open, skill, onClose, onSaved }: { open: boo
                     />
                     <div className="mt-2 flex items-center justify-between gap-2">
                         <span className="text-xs text-foreground/45">将使用你的文本模型生成一次草稿</span>
-                        <Button type="primary" loading={drafting} disabled={!draftIdea.trim()} icon={<Wand2 className="size-4" />} onClick={() => void draftFromIdea()}>
+                        <Button loading={drafting} disabled={!draftIdea.trim() || saving} icon={<Wand2 className="size-4" />} onClick={() => void draftFromIdea()}>
                             生成草稿
                         </Button>
                     </div>
@@ -139,7 +148,7 @@ export function SkillEditorDrawer({ open, skill, onClose, onSaved }: { open: boo
             ) : (
                 <div className="skill-editor-intro mb-4 p-3 text-sm leading-6">这是多文件技能包。这里仅编辑名称、简介、分类和展示信息；技能正文请更新 ZIP，或在 GitHub 仓库修改后执行同步。</div>
             )}
-            <Form form={form} layout="vertical" requiredMark="optional" onFinish={submit} onValuesChange={() => setDirty(true)}>
+            <Form form={form} disabled={saving || drafting} layout="vertical" requiredMark="optional" onFinish={submit} onValuesChange={() => setDirty(true)}>
                 <div className="grid gap-x-4 sm:grid-cols-2">
                     <Form.Item
                         name="skill_name"

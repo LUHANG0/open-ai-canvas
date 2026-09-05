@@ -3823,38 +3823,13 @@
     }
 
     /* 技能中心 hero：GalleryGridBlock 式标题区——徽章 + 大标题 + 描述居中，背景点阵 + 双光斑，底部淡出到页面背景。仅技能页。 */
-    .skills-hero { position: relative; overflow: hidden; margin-top: 4px; border-radius: var(--r-xl); background: color-mix(in srgb, var(--foreground) 2%, transparent); }
-    .skills-hero::before { position: absolute; inset: 0; background-image: radial-gradient(circle at 16% 0%, color-mix(in srgb, var(--primary) 13%, transparent), transparent 42%), radial-gradient(circle at 84% 8%, color-mix(in srgb, var(--primary) 7%, transparent), transparent 40%), radial-gradient(circle at 50% 130%, color-mix(in srgb, var(--foreground) 10%, transparent), transparent 46%), radial-gradient(circle, color-mix(in srgb, var(--foreground) 4.5%, transparent) 1px, transparent 1.6px); background-size: 100% 100%, 100% 100%, 100% 100%, 22px 22px; content: ""; pointer-events: none; }
-    .skills-hero::after { position: absolute; right: 0; bottom: 0; left: 0; height: 40px; background: linear-gradient(to bottom, transparent, color-mix(in srgb, var(--workspace-content) 92%, transparent)); content: ""; pointer-events: none; }
-    .skills-hero-inner { position: relative; display: flex; min-height: 128px; flex-direction: column; align-items: center; justify-content: center; padding: 20px 24px 24px; text-align: center; }
-    .skills-hero-badge { display: inline-flex; align-items: center; gap: 6px; margin-bottom: 8px; border-radius: 999px; background: color-mix(in srgb, var(--primary) 12%, transparent); padding: 4px 12px; color: var(--primary); font-size: var(--fs-caption); font-weight: 560; line-height: 1.4; }
-    .skills-hero-badge svg { width: 14px; height: 14px; stroke-width: 1.8; }
-    .skills-hero-title { color: var(--foreground); font-size: var(--fs-display); font-weight: 720; letter-spacing: -0.02em; line-height: 1.15; }
-    .skills-hero-description { margin-top: 6px; max-width: 460px; color: color-mix(in srgb, var(--foreground) 56%, transparent); font-size: var(--fs-body); line-height: 1.6; }
-    .skills-hero-meta { margin-top: 8px; display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; background: color-mix(in srgb, var(--foreground) 6%, transparent); padding: 4px 12px; color: color-mix(in srgb, var(--foreground) 46%, transparent); font-size: var(--fs-label); font-variant-numeric: tabular-nums; }
     /* 移动端收窄 hero 高度，避免抢占首屏。 */
-    @media (max-width: 640px) { .skills-hero-inner { min-height: 112px; padding: 16px 18px 20px; } .skills-hero-title { font-size: var(--fs-title); } }
 
     /* 技能页工具栏与 hero 圆角容器之间留出小间隙（共享 .library-toolbar 的 margin-top 8px 会被 Tailwind mt-7 覆盖，故用更高特异性局部类固定 20px）。 */
-    .library-toolbar.skills-toolbar { margin-top: 20px; }
     /* 技能中心 scope 切换：shadcn TabsList 语言——底托 + 激活胶囊，图标 + 计数徽章；内容区切换淡入上移。 */
-    .skills-tabs { position: relative; display: inline-flex; min-width: 0; flex: 0 1 auto; max-width: 100%; align-items: center; gap: 2px; overflow-x: auto; border-radius: var(--r-xl); background: color-mix(in srgb, var(--foreground) 5%, transparent); padding: 4px; }
     /* tab 按钮须为定位元素（DOM 顺序在指示器之后）以渲染在胶囊之上，否则 absolute 指示器会遮住文字与图标。 */
-    .skills-tab { position: relative; display: inline-flex; height: 32px; flex: 0 0 auto; align-items: center; gap: 5px; border: 0; border-radius: var(--r-lg); background: transparent; padding-inline: 10px; color: color-mix(in srgb, var(--foreground) 48%, transparent); font-size: var(--fs-body); font-weight: 520; transition: color 160ms ease-out; }
-    .skills-tab:hover { color: color-mix(in srgb, var(--foreground) 76%, transparent); }
-    .skills-tab.is-active { color: var(--foreground); font-weight: 560; }
-    .skills-tabs-indicator { position: absolute; top: 4px; bottom: 4px; left: 0; border-radius: var(--r-lg); background: var(--workspace-content); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08); transition: left 300ms cubic-bezier(0.16, 1, 0.3, 1), width 300ms cubic-bezier(0.16, 1, 0.3, 1); }
     /* 深主题：激活胶囊须亮于底托（--workspace-content 在深色下与页面底色相同，会形成黑块），用白色叠加提亮，白字在亮灰胶囊上保持可读。 */
-    .dark .skills-tabs-indicator { background: color-mix(in srgb, white 10%, var(--workspace-content)); }
-    .skills-tab:focus-visible { outline: 2px solid var(--ring); outline-offset: 1px; }
-    .skills-tab svg { width: 16px; height: 16px; stroke-width: 1.8; }
-    .skills-tab-count { display: inline-flex; min-width: 18px; height: 18px; align-items: center; justify-content: center; border-radius: 999px; background: color-mix(in srgb, var(--foreground) 9%, transparent); padding-inline: 5px; color: color-mix(in srgb, var(--foreground) 44%, transparent); font-size: var(--fs-label); font-variant-numeric: tabular-nums; line-height: 1; }
     /* 激活徽章用实底 primary + primary-foreground：明暗主题均为一对已定义的前景/背景组合，避免深主题下浅底亮字对比不足。 */
-    .skills-tab.is-active .skills-tab-count { background: var(--primary); color: var(--primary-foreground); }
-    @keyframes skills-panel-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
-    .skills-scope-panel { animation: skills-panel-in 280ms cubic-bezier(0.16, 1, 0.3, 1) both; }
-    .skill-group-icon { display: inline-flex; width: 20px; height: 20px; align-items: center; justify-content: center; border-radius: var(--r-sm); background: color-mix(in srgb, var(--foreground) 6%, transparent); color: color-mix(in srgb, var(--foreground) 55%, transparent); }
-    .skill-group-icon svg { width: 13px; height: 13px; stroke-width: 1.8; }
 
     .canvas-library-page .studio-band .canvas-library-discovery {
         border: 0;
@@ -4739,15 +4714,11 @@
     .library-create-title { margin-top: 15px; font-size: var(--fs-heading-lg); font-weight: 620; line-height: 1.3; }
     .library-create-meta { margin-top: 6px; color: color-mix(in srgb, var(--foreground) 38%, transparent); font-size: var(--fs-caption); }
     /* 技能网格里的创建卡要和技能卡等高，不然首格会短一截。 */
-    .skill-library-grid .library-create-card { justify-content: center; min-height: 260px; border-radius: var(--r-xl); background: var(--card-surface); padding: 16px; box-shadow: none; }
-    .skill-library-grid .library-create-cover { aspect-ratio: auto; min-height: 96px; flex: 1 1 auto; border-radius: var(--r-lg); }
-    .skill-library-grid .library-create-title { margin-top: 13px; font-size: var(--fs-body-lg); }
 
     /* 列数按内容体量分开定：项目卡是这些页面的主角，6 列会把它挤成缩略图；
        资产卡只承载一张图 + 标题，密一点反而好扫。 */
     .assets-library-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); }
     .project-library-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-5) var(--space-4); align-items: stretch; }
-    .skill-library-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 16px; }
     /* 项目卡是一个完整实体表面；封面只是顶部内容区，避免透明主体和内嵌细线造成「镂空」感。 */
     .project-library-grid .library-create-card:hover, .project-library-grid .library-create-card:focus-visible { transform: translateY(-2px); }
     .project-library-grid .library-create-cover, .project-library-grid .library-create-card:hover .library-create-cover, .project-library-grid .library-create-card:focus-visible .library-create-cover { border-radius: var(--r-lg); background: var(--project-library-cover-surface); box-shadow: none; }
@@ -5077,41 +5048,9 @@
     }
 
     /* 技能卡与其他作品库卡片共用无框表面，仅选中态显示状态描边。 */
-    .skill-library-card { display: flex; min-height: 260px; flex-direction: column; padding: 16px 16px 14px; animation: skill-card-in 420ms cubic-bezier(0.16, 1, 0.3, 1) backwards; }
 
     /* 画廊入场：切换 scope/翻页时卡片依次淡入上浮（stagger 由内联 animation-delay 控制），入场后保持 transform 复位以免影响 hover。 */
-    @keyframes skill-card-in { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
-    .skill-card-icon { width: 48px; height: 48px; margin-bottom: 12px; border-radius: var(--r-lg); color: color-mix(in srgb, var(--foreground) 64%, transparent); transition: background-color var(--motion-state) ease-out, color var(--motion-state) ease-out, transform var(--motion-state) ease-out; transform: translateY(0); }
-    .skill-card-icon svg { width: 22px; height: 22px; stroke-width: 1.8; }
-    .skill-library-card:hover .skill-card-icon, .skill-library-card:focus-within .skill-card-icon { background: color-mix(in srgb, var(--foreground) 8%, transparent); color: var(--foreground); transform: translateY(-2px); }
-    .skill-card-top { display: flex; min-height: 0; align-items: flex-start; gap: 8px; }
-    .skill-card-title-button { min-width: 0; flex: 1 1 auto; border: 0; background: transparent; padding: 0; color: inherit; text-align: left; }
-    .skill-card-title-button:focus-visible { outline: 2px solid var(--ring); outline-offset: 3px; border-radius: var(--r-xs); }
-    .skill-library-card h3 { overflow: hidden; color: var(--foreground); font-size: var(--fs-body-lg); font-weight: 620; line-height: 1.4; text-overflow: ellipsis; white-space: nowrap; }
-    .skill-card-more { display: inline-flex; width: 28px; height: 28px; flex: 0 0 auto; align-items: center; justify-content: center; margin: -3px -5px 0 0; border: 0; border-radius: var(--r-sm); background: transparent; color: color-mix(in srgb, var(--foreground) 40%, transparent); opacity: 0; transition: opacity 180ms ease-out, background-color 160ms ease-out; }
-    .skill-library-card:hover .skill-card-more, .skill-card-more:focus-visible, .skill-library-card:focus-within .skill-card-more { opacity: 1; }
-    .skill-card-more:hover { background: color-mix(in srgb, var(--foreground) 8%, transparent); color: var(--foreground); }
-    .skill-card-description { min-height: 0; flex: 1 1 auto; margin-top: 8px; border: 0; background: transparent; padding: 0; text-align: left; }
-    .skill-card-description:focus-visible { outline: 2px solid var(--ring); outline-offset: 3px; border-radius: var(--r-xs); }
-    .skill-card-description p { display: -webkit-box; overflow: hidden; color: color-mix(in srgb, var(--foreground) 50%, transparent); font-size: var(--fs-caption); line-height: 1.6; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
-    .skill-card-footer { display: flex; min-width: 0; align-items: center; gap: 10px; margin-top: 12px; color: color-mix(in srgb, var(--foreground) 40%, transparent); font-size: var(--fs-label); }
-    .skill-card-like { display: inline-flex; flex: 0 0 auto; align-items: center; gap: 4px; border: 0; background: transparent; padding: 0; color: inherit; font-variant-numeric: tabular-nums; transition: color 160ms ease-out; }
-    .skill-card-like:hover { color: var(--foreground); }
-    .skill-card-like:disabled { cursor: wait; }
-    .skill-card-author { min-width: 0; flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .skill-card-tag { flex: 0 0 auto; max-width: 76px; overflow: hidden; border-radius: var(--r-sm); background: color-mix(in srgb, var(--foreground) 7%, transparent); padding: 2px 7px; color: color-mix(in srgb, var(--foreground) 50%, transparent); font-size: var(--fs-micro); text-overflow: ellipsis; white-space: nowrap; }
-    .skill-card-flag { margin-left: auto; flex: 0 0 auto; color: color-mix(in srgb, var(--foreground) 52%, transparent); }
-    .skill-card-action { display: flex; align-items: center; gap: 10px; margin-top: 16px; }
     /* 加入按钮：无边框浅底（与 tab/搜索容器同语言），is-added 态弱化表达已加入。 */
-    .skill-card-join { display: inline-flex; min-width: 0; height: 32px; flex: 1 1 auto; align-items: center; justify-content: center; gap: 6px; overflow: hidden; border: 0; border-radius: var(--r-md); background: color-mix(in srgb, var(--foreground) 6%, transparent); padding-inline: 12px; color: var(--foreground); font-size: var(--fs-caption); font-weight: 560; white-space: nowrap; transition: background-color 160ms ease-out, color 160ms ease-out; }
-    .skill-card-join svg { color: currentColor; }
-    .skill-card-join:hover { background: color-mix(in srgb, var(--foreground) 10%, transparent); color: var(--foreground); }
-    .skill-card-join:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
-    .skill-card-join:disabled { cursor: wait; opacity: .6; }
-    .skill-card-join.is-added { background: color-mix(in srgb, var(--foreground) 8%, transparent); color: color-mix(in srgb, var(--foreground) 66%, transparent); }
-    .skill-card-join.is-added:hover { background: color-mix(in srgb, var(--foreground) 12%, transparent); color: var(--foreground); }
-    .skill-card-added-count { flex: 0 0 auto; color: color-mix(in srgb, var(--foreground) 36%, transparent); font-size: var(--fs-label); font-variant-numeric: tabular-nums; }
-    .skill-card-owner-flag { flex: 1 1 auto; color: color-mix(in srgb, var(--foreground) 46%, transparent); font-size: var(--fs-caption); }
 
     .library-loading-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 26px 18px; margin-top: 20px; }
     /* 画布骨架屏 - 使用新token */
@@ -5133,13 +5072,11 @@
         .assets-library-grid, .library-loading-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); }
         .project-assets-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
         .project-library-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-        .skill-library-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
     }
     @media (max-width: 1100px) and (min-width: 900px) {
         .assets-library-grid, .library-loading-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
         .project-assets-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
         .project-library-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-        .skill-library-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
     }
     @media (max-width: 899px) and (min-width: 640px) {
         .assets-library-grid, .library-loading-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
@@ -13623,95 +13560,6 @@ html:not(.dark) .creation-history-drawer-root {
     }
 }
 .library-confirm-modal .ant-modal-body { padding-top: 4px; padding-bottom: 12px; }
-
-.skill-install-modal .ant-modal-container { border: 1px solid color-mix(in srgb, var(--foreground) 10%, transparent); background: var(--popover); }
-.skill-install-modal .ant-modal-header { margin-bottom: 8px; background: transparent; }
-.skill-install-modal .ant-modal-title { font-size: var(--fs-heading-lg); font-weight: 620; }
-.skill-install-modal .ant-upload-wrapper .ant-upload-drag { border-color: color-mix(in srgb, var(--foreground) 14%, transparent); border-radius: var(--r-lg); background: color-mix(in srgb, var(--foreground) 2.5%, transparent); }
-.skill-install-modal .ant-upload-wrapper .ant-upload-drag:hover { border-color: color-mix(in srgb, var(--foreground) 28%, transparent); }
-.skill-install-mode { padding: 3px; background: color-mix(in srgb, var(--foreground) 5%, transparent); }
-.skill-install-mode .ant-segmented-item { min-height: 34px; }
-.skill-install-modal .skill-install-form { margin-top: 16px; }
-
-.skill-package-modal .ant-modal-container { border: 1px solid color-mix(in srgb, var(--foreground) 11%, transparent); border-radius: var(--r-xl); background: var(--popover); box-shadow: var(--elevation-panel); }
-.skill-package-modal .ant-modal-close { top: 17px; inset-inline-end: 18px; z-index: 3; border-radius: var(--r-full); color: color-mix(in srgb, var(--foreground) 45%, transparent); }
-.skill-package-modal .ant-modal-close:hover { background: color-mix(in srgb, var(--foreground) 7%, transparent); color: var(--foreground); }
-.skill-package-shell { display: flex; height: 100%; min-height: 0; flex-direction: column; }
-.skill-package-header { display: flex; flex: 0 0 auto; align-items: center; gap: 24px; min-height: 112px; border-bottom: 1px solid color-mix(in srgb, var(--foreground) 9%, transparent); padding: 18px 68px 18px 24px; }
-.skill-package-actions { display: flex; flex: 0 0 auto; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
-.skill-package-workspace { display: grid; min-height: 0; flex: 1 1 auto; grid-template-columns: minmax(220px, 26%) minmax(0, 1fr); }
-.skill-package-sidebar { display: flex; min-width: 0; min-height: 0; flex-direction: column; gap: 10px; border-right: 1px solid color-mix(in srgb, var(--foreground) 9%, transparent); background: color-mix(in srgb, var(--foreground) 2%, transparent); padding: 14px 12px 10px; }
-.skill-package-sidebar-summary, .skill-package-sidebar-footer { display: flex; align-items: center; justify-content: space-between; gap: 8px; color: color-mix(in srgb, var(--foreground) 44%, transparent); font-size: var(--fs-label); font-variant-numeric: tabular-nums; }
-.skill-package-sidebar-summary span:first-child { display: inline-flex; align-items: center; gap: 6px; color: color-mix(in srgb, var(--foreground) 62%, transparent); }
-.skill-package-sidebar-footer { flex: 0 0 auto; border-top: 1px solid color-mix(in srgb, var(--foreground) 8%, transparent); padding: 9px 2px 0; }
-.skill-package-tree { min-height: 0; flex: 1 1 auto; overflow: auto; overscroll-behavior: contain; padding: 3px 0 8px; }
-.skill-package-tree .ant-tree { background: transparent; color: color-mix(in srgb, var(--foreground) 70%, transparent); font-size: var(--fs-label); }
-.skill-package-tree .ant-tree-treenode { display: flex; width: 100%; min-width: 0; min-height: 30px; align-items: center; padding-block: 0; }
-.skill-package-tree .ant-tree-indent-unit { width: 14px; }
-.skill-package-tree .ant-tree-switcher { display: grid; width: 20px; height: 30px; flex: 0 0 20px; place-items: center; color: color-mix(in srgb, var(--foreground) 38%, transparent); }
-.skill-package-tree .ant-tree-switcher:hover { color: color-mix(in srgb, var(--foreground) 72%, transparent); }
-.skill-package-tree-chevron { transition: transform var(--motion-state) ease-out; }
-.skill-package-tree-chevron.is-expanded { transform: rotate(90deg); }
-.skill-package-tree .ant-tree-node-content-wrapper { display: flex; height: 30px; min-width: 0; flex: 1 1 auto; align-items: center; border-radius: var(--r-sm); padding: 0 7px 0 2px; line-height: 30px; }
-.skill-package-tree .ant-tree-node-content-wrapper:hover { background: color-mix(in srgb, var(--foreground) 6%, transparent); }
-.skill-package-tree .ant-tree-node-content-wrapper.ant-tree-node-selected { background: color-mix(in srgb, var(--foreground) 9%, transparent) !important; color: var(--foreground); }
-.skill-package-tree .ant-tree-node-content-wrapper:focus-visible { outline: 2px solid var(--ring); outline-offset: -1px; }
-.skill-package-tree .ant-tree-iconEle { display: grid !important; width: 20px !important; height: 30px !important; flex: 0 0 20px; place-items: center; color: color-mix(in srgb, var(--foreground) 55%, transparent); }
-.skill-package-tree .ant-tree-title { display: block; min-width: 0; flex: 1 1 auto; line-height: normal; }
-.skill-package-folder-title { display: block; overflow: hidden; color: color-mix(in srgb, var(--foreground) 76%, transparent); font-weight: 540; text-overflow: ellipsis; white-space: nowrap; }
-.skill-package-tree-title { display: flex; min-width: 0; height: 30px; align-items: center; justify-content: space-between; gap: 8px; }
-.skill-package-tree-title > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.skill-package-tree-title > span:last-child { flex: 0 0 auto; color: color-mix(in srgb, var(--foreground) 30%, transparent); font-size: var(--fs-micro); font-variant-numeric: tabular-nums; }
-.skill-package-preview { display: flex; min-width: 0; min-height: 0; flex-direction: column; background: var(--background); }
-.skill-package-preview-toolbar { display: flex; min-height: 48px; flex: 0 0 auto; align-items: center; gap: 10px; border-bottom: 1px solid color-mix(in srgb, var(--foreground) 8%, transparent); padding: 8px 14px 8px 18px; }
-.skill-package-raw-link { display: inline-flex; width: 30px; height: 30px; align-items: center; justify-content: center; border-radius: var(--r-sm); color: color-mix(in srgb, var(--foreground) 48%, transparent); }
-.skill-package-raw-link:hover { background: color-mix(in srgb, var(--foreground) 7%, transparent); color: var(--foreground); }
-.skill-package-raw-link:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
-.skill-package-preview-body { min-height: 0; flex: 1 1 auto; overflow: auto; overscroll-behavior: contain; padding: clamp(18px, 2.4vw, 36px); }
-.skill-package-empty { display: flex; min-height: 220px; align-items: center; justify-content: center; flex-direction: column; color: color-mix(in srgb, var(--foreground) 42%, transparent); font-size: var(--fs-caption); text-align: center; }
-.skill-package-source { min-height: 100%; margin: 0; color: color-mix(in srgb, var(--foreground) 78%, transparent); font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; font-size: 12px; line-height: 1.75; tab-size: 4; white-space: pre-wrap; overflow-wrap: anywhere; }
-.skill-package-media-stage { display: grid; min-height: 100%; place-items: center; }
-.skill-package-media-stage :where(img, video) { max-width: 100%; max-height: calc(82vh - 220px); border-radius: var(--r-md); object-fit: contain; }
-.skill-package-media-stage audio { width: min(560px, 100%); }
-.skill-package-markdown { max-width: 920px; margin: 0 auto; color: color-mix(in srgb, var(--foreground) 76%, transparent); font-size: 14px; line-height: 1.75; }
-.skill-package-markdown :where(h1, h2, h3, h4) { color: var(--foreground); font-weight: 650; line-height: 1.35; text-wrap: balance; }
-.skill-package-markdown h1 { margin: 0 0 22px; font-size: 28px; }
-.skill-package-markdown h2 { margin: 30px 0 12px; border-bottom: 1px solid color-mix(in srgb, var(--foreground) 9%, transparent); padding-bottom: 7px; font-size: 20px; }
-.skill-package-markdown h3 { margin: 24px 0 8px; font-size: 16px; }
-.skill-package-markdown h4 { margin: 20px 0 6px; font-size: 14px; }
-.skill-package-markdown p { margin: 10px 0; text-wrap: pretty; }
-.skill-package-markdown :where(ul, ol) { margin: 10px 0; padding-left: 24px; }
-.skill-package-markdown li { margin: 4px 0; }
-.skill-package-markdown a { color: var(--foreground); text-decoration: underline; text-decoration-color: color-mix(in srgb, var(--foreground) 30%, transparent); text-underline-offset: 3px; }
-.skill-package-markdown a:hover { text-decoration-color: currentColor; }
-.skill-package-markdown blockquote { margin: 14px 0; border-left: 3px solid color-mix(in srgb, var(--foreground) 22%, transparent); padding: 2px 0 2px 14px; color: color-mix(in srgb, var(--foreground) 55%, transparent); }
-.skill-package-markdown :not(pre) > code { border-radius: var(--r-xs); background: color-mix(in srgb, var(--foreground) 7%, transparent); padding: 2px 5px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; font-size: .9em; }
-.skill-package-markdown pre { overflow: auto; border: 1px solid color-mix(in srgb, var(--foreground) 9%, transparent); border-radius: var(--r-md); background: color-mix(in srgb, var(--foreground) 3%, transparent); padding: 14px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; font-size: 12px; line-height: 1.65; }
-.skill-package-markdown img { display: block; max-width: 100%; height: auto; margin: 18px auto; border-radius: var(--r-md); }
-.skill-package-inline-file { display: inline-flex; align-items: center; gap: 7px; border: 1px solid color-mix(in srgb, var(--foreground) 12%, transparent); border-radius: var(--r-md); background: color-mix(in srgb, var(--foreground) 3%, transparent); padding: 8px 10px; color: var(--foreground); font-size: var(--fs-caption); }
-.skill-package-inline-file:hover { background: color-mix(in srgb, var(--foreground) 7%, transparent); }
-.skill-package-inline-file:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
-.skill-package-inline-missing { color: color-mix(in srgb, var(--foreground) 42%, transparent); font-size: var(--fs-caption); }
-.skill-package-table-wrap { overflow-x: auto; margin: 16px 0; }
-.skill-package-table-wrap table { width: 100%; border-collapse: collapse; font-size: var(--fs-caption); }
-.skill-package-table-wrap :where(th, td) { border: 1px solid color-mix(in srgb, var(--foreground) 11%, transparent); padding: 8px 10px; text-align: left; }
-.skill-package-table-wrap th { background: color-mix(in srgb, var(--foreground) 4%, transparent); color: var(--foreground); font-weight: 620; }
-
-@media (max-width: 860px) {
-    .skill-package-modal { width: 96vw !important; max-width: 96vw; }
-    .skill-package-modal .ant-modal-container { height: 90vh !important; }
-    .skill-package-header { min-height: 0; align-items: flex-start; flex-direction: column; gap: 12px; padding: 18px 54px 16px 18px; }
-    .skill-package-actions { justify-content: flex-start; }
-    .skill-package-workspace { grid-template-columns: minmax(180px, 34%) minmax(0, 1fr); }
-}
-
-@media (max-width: 640px) {
-    .skill-package-workspace { display: flex; flex-direction: column; }
-    .skill-package-sidebar { min-height: 190px; max-height: 34%; border-right: 0; border-bottom: 1px solid color-mix(in srgb, var(--foreground) 9%, transparent); }
-    .skill-package-sidebar-footer { display: none; }
-    .skill-package-preview-body { padding: 18px; }
-    .skill-package-actions .ant-btn > span:not(.ant-btn-icon) { display: none; }
-}
 
 .library-drawer .ant-drawer-content { overflow: hidden; border: 0 !important; background: var(--popover); box-shadow: var(--elevation-panel) !important; }
 .library-drawer .ant-drawer-header { min-height: 70px; border-bottom: 1px solid color-mix(in srgb, var(--foreground) 8%, transparent); background: transparent; padding: 22px 28px 15px; }
