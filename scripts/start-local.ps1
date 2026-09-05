@@ -16,6 +16,11 @@ foreach ($commandName in @("go", "bun")) {
     }
 }
 
+& bun (Join-Path $repoRoot "scripts/check-toolchain.mjs")
+if ($LASTEXITCODE -ne 0) {
+    throw "工具链检查失败，请先按 .bun-version 统一 Bun 版本。"
+}
+
 foreach ($directory in @($dataDir, $goBuildCache, $goModuleCache)) {
     New-Item -ItemType Directory -Force -Path $directory | Out-Null
 }

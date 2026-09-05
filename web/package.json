@@ -3,7 +3,9 @@
     "version": "0.1.0",
     "private": true,
     "type": "module",
+    "packageManager": "bun@1.3.13",
     "scripts": {
+        "check:toolchain": "bun ../scripts/check-toolchain.mjs",
         "build:bridge": "bun ../canvas-agent/scripts/build-comfy-bridge.ts",
         "dev": "vite --host 0.0.0.0 --port 3000",
         "build": "bun run build:bridge && tsc --noEmit && vite build && bun run check:bundle",

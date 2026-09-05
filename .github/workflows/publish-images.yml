@@ -30,6 +30,13 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: .bun-version
+
+      - name: Check toolchain baseline
+        run: bun scripts/check-toolchain.mjs
+
       - name: Resolve and validate build version
         id: build-info
         shell: bash

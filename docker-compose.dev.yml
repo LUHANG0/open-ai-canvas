@@ -55,7 +55,7 @@ services:
   web:
     image: oven/bun:1.3.13
     working_dir: /workspace/web
-    command: ["sh", "-c", "bun install --frozen-lockfile && bun run dev"]
+    command: ["sh", "-c", "bun ../scripts/check-toolchain.mjs && bun install --frozen-lockfile && bun run dev"]
     environment:
       VITE_API_PROXY_TARGET: http://backend:8080
       VITE_TLDRAW_LICENSE_KEY: ${VITE_TLDRAW_LICENSE_KEY:-}
