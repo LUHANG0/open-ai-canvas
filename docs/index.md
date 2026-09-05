@@ -4,6 +4,8 @@
 
 ## 设计沉淀
 
+- [后台配置第一批 C4](design/brand-admin-configuration-c4-20260905.md)：功能开放、登录注册、邮件、存储的品牌表单、草稿与检测状态、隔离 SMTP/S3 验证及独立回滚。
+
 - [短剧项目详情与章节 D1](design/brand-project-detail-20260905.md)：项目框架、章节编辑/导入、分镜定位与状态、隔离保存恢复证据和独立回滚。
 - [本机交付加载修复](2026-09-05_project-delivery-loading-report.md)：共享依赖 Worker 403 根因、取消重试、真实双媒体导出与生产资产验收、独立回滚。
 
