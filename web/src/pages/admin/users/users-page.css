@@ -1,0 +1,85 @@
+.admin-users-workspace {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+    min-width: 0;
+    flex-direction: column;
+}
+
+.admin-users-actions,
+.admin-user-drawer-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+}
+
+.admin-users-workspace .admin-table-primary-link {
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.admin-user-drawer .ant-drawer-body {
+    background: var(--app-surface-1);
+}
+
+.admin-user-drawer-actions {
+    justify-content: flex-end;
+}
+.admin-user-form-section + .admin-user-form-section {
+    margin-top: 24px;
+    padding-top: 24px;
+    border-top: 1px solid var(--app-border-subtle);
+}
+.admin-user-form-section h2 {
+    margin: 0 0 16px;
+    font-size: 16px;
+    color: var(--app-text-primary);
+}
+.admin-user-drawer .ant-drawer-title {
+    overflow-wrap: anywhere;
+}
+.admin-user-drawer .ant-form-item {
+    margin-bottom: 20px;
+}
+.admin-user-drawer .ant-alert {
+    margin-bottom: 16px;
+}
+.admin-user-drawer .ant-tabs-content {
+    min-width: 0;
+}
+.admin-user-drawer .ant-descriptions-item-content {
+    overflow-wrap: anywhere;
+}
+.admin-invite-note {
+    border-left: 2px solid var(--app-brand-accent);
+    padding: 4px 0 4px 16px;
+}
+.admin-invite-record {
+    border: 1px solid var(--app-border-subtle);
+    border-radius: 12px;
+    padding: 16px;
+}
+.admin-invite-result {
+    border: 1px solid var(--app-status-success-border, var(--app-border-default));
+    border-radius: 12px;
+    background: var(--app-status-success-bg);
+    padding: 16px;
+}
+
+@media (max-width: 640px) {
+    .admin-users-actions {
+        width: 100%;
+    }
+    .admin-user-drawer .ant-drawer-header,
+    .admin-user-drawer .ant-drawer-body,
+    .admin-user-drawer .ant-drawer-footer {
+        padding: 16px;
+    }
+    .admin-user-drawer .ant-drawer-header-title {
+        min-width: 0;
+    }
+}

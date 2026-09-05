@@ -1,5 +1,5 @@
 import { App, Button, Checkbox, Dropdown, Input, Select } from "antd";
-import { Ban, Link2, Search, Settings2, UserPlus } from "lucide-react";
+import { Ban, Link2, RefreshCw, Search, Settings2, UserPlus } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { PaginationBar } from "@/components/layout/workspace-page";
@@ -12,6 +12,7 @@ import { AdminUserDetailDrawer } from "../components/admin-user-detail-drawer";
 import { createUserColumns, userColumnOptions, type UserColumnKey } from "./users-columns";
 import { AdminUserCreateDrawer, AdminUserEditDrawer } from "./users-drawer";
 import { RegistrationInviteDrawer } from "./registration-invite-drawer";
+import "./users-page.css";
 
 const columnStorageKey = "admin-users-visible-columns";
 const allColumnKeys = userColumnOptions.map((item) => item.key);
@@ -24,6 +25,8 @@ export default function UsersPanel({ onUserChanged }: { onUserChanged?: (user: L
     const [users, setUsers] = useState<AdminUser[]>([]);
     const [total, setTotal] = useState(0);
     const [loading, setLoading] = useState(true);
+    const [loadError, setLoadError] = useState("");
+    const [reload, setReload] = useState(0);
     const [detailUserId, setDetailUserId] = useState<string | null>(null);
     const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
     const [createUserOpen, setCreateUserOpen] = useState(false);
@@ -53,6 +56,9 @@ export default function UsersPanel({ onUserChanged }: { onUserChanged?: (user: L
     useEffect(() => {
         const sequence = ++requestSequence.current;
         setLoading(true);
+        setLoadError("");
+        setUsers([]);
+        setSelectedUserIds([]);
         void listAdminUsers({
             keyword: debouncedFilter || undefined,
             role: state.role === "all" ? undefined : state.role,
@@ -68,29 +74,32 @@ export default function UsersPanel({ onUserChanged }: { onUserChanged?: (user: L
                 if (result.total > 0 && result.users.length === 0 && state.page > 1) update({ page: 1 }, true);
             })
             .catch((error) => {
-                if (sequence === requestSequence.current) message.error(error instanceof Error ? error.message : "读取用户失败");
+                if (sequence === requestSequence.current) setLoadError(error instanceof Error ? error.message : "读取用户失败");
             })
             .finally(() => {
                 if (sequence === requestSequence.current) setLoading(false);
             });
-    }, [debouncedFilter, message, state.page, state.pageSize, state.role, state.status, update]);
+        return () => {
+            requestSequence.current++;
+        };
+    }, [debouncedFilter, reload, state.page, state.pageSize, state.role, state.status, update]);
 
     const replaceUser = useCallback(
         (nextUser: LocalUser) => {
             setUsers((items) => items.map((item) => (item.id === nextUser.id ? { ...item, ...nextUser } : item)));
             onUserChanged?.(nextUser);
+            setReload((value) => value + 1);
         },
         [onUserChanged],
     );
 
     const addUser = useCallback(
         (user: AdminUser) => {
-            setUsers((items) => [user, ...items].slice(0, state.pageSize));
-            setTotal((value) => value + 1);
+            setReload((value) => value + 1);
             onUserChanged?.(user);
             setCreateUserOpen(false);
         },
-        [onUserChanged, state.pageSize],
+        [onUserChanged],
     );
 
     const toggleStatus = useCallback(
@@ -153,7 +162,7 @@ export default function UsersPanel({ onUserChanged }: { onUserChanged?: (user: L
     };
 
     return (
-        <>
+        <div className="admin-users-workspace">
             <AdminDataTable
                 toolbar={
                     <>
@@ -197,7 +206,7 @@ export default function UsersPanel({ onUserChanged }: { onUserChanged?: (user: L
                     </>
                 }
                 trailing={
-                    <div className="flex items-center gap-2">
+                    <div className="admin-users-actions">
                         <Button type="primary" icon={<Link2 className="size-4" />} onClick={() => setInviteDrawerOpen(true)}>
                             邀请注册
                         </Button>
@@ -210,6 +219,7 @@ export default function UsersPanel({ onUserChanged }: { onUserChanged?: (user: L
                         >
                             {"\u6dfb\u52a0\u7528\u6237"}
                         </Button>
+                        <Button aria-label="刷新用户列表" icon={<RefreshCw className="size-4" />} loading={loading} onClick={() => setReload((value) => value + 1)} />
                         <Dropdown
                             trigger={["click"]}
                             popupRender={() => (
@@ -252,6 +262,7 @@ export default function UsersPanel({ onUserChanged }: { onUserChanged?: (user: L
                 table={{
                     className: "app-data-table",
                     size: "small",
+                    tableLayout: "fixed",
                     rowKey: "id",
                     loading,
                     rowSelection: {
@@ -265,14 +276,27 @@ export default function UsersPanel({ onUserChanged }: { onUserChanged?: (user: L
                     pagination: false,
                     scroll: { x: 860 },
                 }}
-                empty={<AdminTableEmpty filtered={hasFilters} />}
-                footer={<PaginationBar alwaysShow current={state.page} pageSize={state.pageSize} total={total} onChange={(page, pageSize) => update({ page: pageSize !== state.pageSize ? 1 : page, pageSize })} />}
+                empty={
+                    loadError ? (
+                        <div role="alert">
+                            <AdminTableEmpty title="无法读取用户列表" description={loadError} action={<Button onClick={() => setReload((value) => value + 1)}>重新读取用户</Button>} />
+                        </div>
+                    ) : (
+                        <AdminTableEmpty
+                            filtered={hasFilters}
+                            title={hasFilters ? "没有符合条件的用户" : "暂无用户"}
+                            description={hasFilters ? "试试其他关键词，或重置角色与状态筛选。" : "邀请成员注册，或添加一个用户账号。"}
+                            action={hasFilters ? <Button onClick={resetFilters}>重置筛选</Button> : undefined}
+                        />
+                    )
+                }
+                footer={!loadError && !loading ? <PaginationBar alwaysShow current={state.page} pageSize={state.pageSize} total={total} onChange={(page, pageSize) => update({ page: pageSize !== state.pageSize ? 1 : page, pageSize })} /> : undefined}
             />
 
             <AdminUserDetailDrawer userId={detailUserId} previousUserId={previousUserId} nextUserId={nextUserId} onNavigate={setDetailUserId} onClose={() => setDetailUserId(null)} />
             <RegistrationInviteDrawer open={inviteDrawerOpen} onClose={() => setInviteDrawerOpen(false)} />
             <AdminUserCreateDrawer open={createUserOpen} onClose={() => setCreateUserOpen(false)} onCreated={addUser} />
             <AdminUserEditDrawer user={editingUser} actorId={actor?.id} onClose={() => setEditingUser(null)} onSaved={replaceUser} />
-        </>
+        </div>
     );
 }

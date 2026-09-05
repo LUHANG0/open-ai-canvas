@@ -44,44 +44,45 @@
 .admin-branding-workspace {
     display: grid;
     width: 100%;
-    min-height: 680px;
     overflow: hidden;
-    grid-template-columns: 280px minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr);
     border: 1px solid var(--app-border-default, var(--color-border));
-    border-radius: 16px;
+    border-radius: 12px;
     background: var(--app-surface-1, #fff);
-    box-shadow: var(--app-shadow-surface, 0 12px 34px rgba(15, 23, 42, 0.06));
 }
 
 .admin-branding-summary {
     display: flex;
     min-width: 0;
     flex-direction: column;
-    border-right: 1px solid var(--app-border-subtle, var(--color-border));
-    background: radial-gradient(circle at 20% 2%, color-mix(in srgb, var(--app-action-primary-bg, #3157d5) 8%, transparent), transparent 28%), var(--app-surface-2, #f5f2eb);
-    padding: 34px 24px 24px;
+    border-bottom: 1px solid var(--app-border-subtle);
+    background: var(--app-surface-1);
+    padding: 20px 24px 12px;
 }
 
 .admin-branding-identity {
-    padding: 4px 10px 30px;
-    border-bottom: 1px solid var(--app-border-subtle, rgba(23, 23, 23, 0.1));
+    display: flex;
+    align-items: center;
+    gap: 12px;
 }
 
 .admin-branding-logo {
     display: grid;
-    width: 84px;
-    height: 84px;
+    width: 40px;
+    height: 40px;
     place-items: center;
-    border: 1px solid var(--app-border-default, rgba(23, 23, 23, 0.13));
-    border-radius: 22px;
-    background: var(--app-surface-1, rgba(255, 255, 255, 0.78));
-    box-shadow: 0 12px 28px rgba(15, 23, 42, 0.06);
+    flex: none;
+}
+
+.admin-branding-logo img {
+    width: 36px;
+    height: 36px;
 }
 
 .admin-branding-identity h2 {
-    margin: 20px 0 0;
+    margin: 0;
     color: var(--app-text-primary, #171717);
-    font-size: 28px;
+    font-size: 18px;
     font-weight: 720;
     letter-spacing: -0.04em;
     line-height: 1.2;
@@ -93,26 +94,27 @@
     flex-wrap: wrap;
     align-items: center;
     gap: 8px;
-    margin-top: 12px;
+    margin-left: auto;
     color: var(--app-text-muted, rgba(23, 23, 23, 0.48));
     font-size: 11px;
 }
 
 .admin-branding-section-nav {
     display: grid;
-    gap: 6px;
-    margin-top: 24px;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
+    margin-top: 16px;
 }
 
 .admin-branding-section-button {
     position: relative;
     display: flex;
     width: 100%;
-    min-height: 42px;
+    min-height: 36px;
     align-items: center;
-    gap: 11px;
+    gap: 8px;
     border: 0;
-    border-radius: 9px;
+    border-radius: 8px;
     background: transparent;
     color: var(--app-text-secondary, rgba(23, 23, 23, 0.64));
     padding: 0 12px;
@@ -156,7 +158,7 @@
 }
 
 .admin-branding-theme-chip {
-    display: flex;
+    display: none;
     align-items: center;
     gap: 10px;
     margin-top: auto;
@@ -196,11 +198,11 @@
 
 .admin-branding-editor-head {
     display: flex;
-    min-height: 76px;
+    min-height: 68px;
     align-items: center;
     justify-content: space-between;
     gap: 16px;
-    padding: 16px 28px;
+    padding: 16px 24px;
     border-bottom: 1px solid var(--app-border-subtle, var(--color-border));
 }
 
@@ -220,7 +222,7 @@
     min-width: 0;
     margin: 0;
     border: 0;
-    padding: 0 28px;
+    padding: 0 24px;
 }
 
 .admin-branding-brand-editor {
@@ -248,8 +250,7 @@
     display: flex;
     align-items: flex-start;
     gap: 13px;
-    padding: 32px 4px 24px;
-    border-bottom: 1px solid var(--app-border-subtle, var(--color-border));
+    padding: 24px 0 0;
 }
 
 .admin-branding-panel-header > span {
@@ -259,14 +260,14 @@
     flex: 0 0 auto;
     place-items: center;
     border-radius: 10px;
-    background: color-mix(in srgb, var(--app-action-primary-bg, #3157d5) 8%, transparent);
-    color: var(--app-action-primary-bg, #3157d5);
+    background: var(--app-selection-bg);
+    color: var(--app-brand-accent);
 }
 
 .admin-branding-panel-header h2 {
     margin: 0;
     color: var(--app-text-primary, #171717);
-    font-size: 20px;
+    font-size: 18px;
     font-weight: 700;
     letter-spacing: -0.025em;
 }
@@ -280,13 +281,13 @@
 
 .admin-branding-panel-content {
     max-width: 780px;
-    padding: 30px 4px 42px;
+    padding: 24px 0 32px;
 }
 
 .admin-branding-field {
     display: grid;
     gap: 8px;
-    margin-bottom: 22px;
+    margin-bottom: 20px;
 }
 
 .admin-branding-field:last-child {
@@ -300,14 +301,14 @@
 }
 
 .admin-branding-field :where(.ant-input, .ant-input-affix-wrapper) {
-    min-height: 42px;
+    min-height: 36px;
 }
 
 .admin-branding-subsection {
     display: grid;
     gap: 16px;
-    margin-top: 28px;
-    padding-top: 26px;
+    margin-top: 24px;
+    padding-top: 24px;
     border-top: 1px solid var(--app-border-subtle, var(--color-border));
 }
 
@@ -416,16 +417,33 @@
     z-index: 4;
     bottom: 0;
     display: flex;
-    min-height: 72px;
+    min-height: 64px;
     flex-wrap: wrap;
     align-items: center;
     justify-content: flex-end;
     gap: 8px;
     margin-top: auto;
-    padding: 14px 28px;
+    padding: 12px 24px;
     border-top: 1px solid var(--app-border-subtle, var(--color-border));
-    background: color-mix(in srgb, var(--app-surface-1, #fff) 94%, transparent);
-    backdrop-filter: blur(14px);
+    background: var(--app-surface-1);
+}
+
+.admin-branding-save-state {
+    margin-right: auto;
+    color: var(--app-text-muted);
+    font-size: 12px;
+}
+.admin-branding-group-heading {
+    margin-bottom: 20px;
+}
+.admin-branding-group-heading strong {
+    font-size: 16px;
+    color: var(--app-text-primary);
+}
+.admin-branding-group-heading p {
+    margin: 4px 0 0;
+    font-size: 12px;
+    color: var(--app-text-muted);
 }
 
 @media (max-width: 900px) {
@@ -441,15 +459,14 @@
 
     .admin-branding-identity {
         display: grid;
-        grid-template-columns: 62px minmax(0, 1fr);
+        grid-template-columns: 40px minmax(0, 1fr);
         align-items: center;
-        column-gap: 14px;
-        padding: 0 0 18px;
+        column-gap: 12px;
     }
 
     .admin-branding-logo {
-        width: 62px;
-        height: 62px;
+        width: 40px;
+        height: 40px;
         grid-row: span 2;
         border-radius: 17px;
     }
@@ -461,11 +478,12 @@
 
     .admin-branding-identity h2 {
         margin: 0;
-        font-size: 22px;
+        font-size: 18px;
     }
 
     .admin-branding-sync-state {
         margin-top: 6px;
+        margin-left: 0;
     }
 
     .admin-branding-section-nav {
@@ -544,5 +562,12 @@
         position: static;
         justify-content: flex-start;
         padding: 14px 16px;
+    }
+
+    .admin-branding-save-state {
+        flex-basis: 100%;
+    }
+    .admin-branding-section-button {
+        min-height: 42px;
     }
 }

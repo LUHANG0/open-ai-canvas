@@ -1,28 +1,22 @@
-import { App, Button, Drawer, Form, Input, Select } from "antd";
+import { Alert, App, Button, Drawer, Form, Input, Select } from "antd";
 import { useEffect, useState } from "react";
 
 import { createAdminUser, updateAdminUser, type AdminUser, type LocalUser } from "@/services/api/auth";
 
 type UserFormValues = Pick<LocalUser, "displayName" | "email" | "role" | "status">;
 
-export function AdminUserEditDrawer({
-    user,
-    actorId,
-    onClose,
-    onSaved,
-}: {
-    user: AdminUser | null;
-    actorId?: string;
-    onClose: () => void;
-    onSaved: (user: LocalUser) => void;
-}) {
+export function AdminUserEditDrawer({ user, actorId, onClose, onSaved }: { user: AdminUser | null; actorId?: string; onClose: () => void; onSaved: (user: LocalUser) => void }) {
     const { message, modal } = App.useApp();
     const [saving, setSaving] = useState(false);
+    const [error, setError] = useState("");
     const [form] = Form.useForm<UserFormValues>();
+    const values = Form.useWatch([], form);
+    const dirty = Boolean(user && values && (values.displayName !== user.displayName || (values.email || "") !== (user.email || "") || values.role !== user.role || values.status !== user.status));
     const editingSelf = user?.id === actorId;
 
     useEffect(() => {
         if (!user) return;
+        setError("");
         form.resetFields();
         form.setFieldsValue({
             displayName: user.displayName,
@@ -34,7 +28,7 @@ export function AdminUserEditDrawer({
 
     const close = () => {
         if (saving) return;
-        if (!form.isFieldsTouched()) {
+        if (!dirty) {
             onClose();
             return;
         }
@@ -49,9 +43,11 @@ export function AdminUserEditDrawer({
     };
 
     const save = async () => {
-        if (!user) return;
-        const values = await form.validateFields();
+        if (!user || saving || !dirty) return;
+        const values = await form.validateFields().catch(() => null);
+        if (!values) return;
         setSaving(true);
+        setError("");
         try {
             const result = await updateAdminUser(user.id, {
                 displayName: values.displayName.trim(),
@@ -64,7 +60,7 @@ export function AdminUserEditDrawer({
             onClose();
             message.success("用户信息已保存");
         } catch (error) {
-            message.error(error instanceof Error ? error.message : "保存用户失败");
+            setError(error instanceof Error ? error.message : "保存用户失败");
         } finally {
             setSaving(false);
         }
@@ -78,24 +74,54 @@ export function AdminUserEditDrawer({
             onClose={close}
             mask={{ closable: !saving }}
             destroyOnHidden
-            extra={<Button type="primary" loading={saving} onClick={() => void save()}>保存</Button>}
+            keyboard={!saving}
+            rootClassName="admin-drawer admin-user-drawer"
+            footer={
+                <div className="admin-user-drawer-actions">
+                    <Button disabled={saving} onClick={close}>
+                        取消
+                    </Button>
+                    <Button type="primary" disabled={!dirty} loading={saving} onClick={() => void save()}>
+                        保存用户
+                    </Button>
+                </div>
+            }
         >
-            <Form form={form} layout="vertical" requiredMark={false}>
-                <Form.Item label="用户名">
-                    <Input value={user ? `@${user.username}` : ""} disabled />
-                </Form.Item>
-                <Form.Item name="displayName" label="显示名称" rules={[{ required: true, whitespace: true, message: "请填写显示名称" }]}>
-                    <Input placeholder="用户在产品内显示的名称" />
-                </Form.Item>
-                <Form.Item name="email" label="邮箱" rules={[{ type: "email", message: "请输入有效邮箱" }]}>
-                    <Input placeholder="name@example.com" />
-                </Form.Item>
-                <Form.Item name="role" label="角色" extra={editingSelf ? "不能在此修改当前管理员自己的角色。" : "角色变更会立即影响后台访问权限。"}>
-                    <Select disabled={editingSelf} options={[{ label: "管理员", value: "admin" }, { label: "普通用户", value: "user" }]} />
-                </Form.Item>
-                <Form.Item name="status" label="账号状态" extra={editingSelf ? "不能停用当前登录账号。" : "停用后会清除登录态，但保留身份、任务和积分流水。"}>
-                    <Select disabled={editingSelf} options={[{ label: "已启用", value: "active" }, { label: "已停用", value: "disabled" }]} />
-                </Form.Item>
+            {error ? <Alert type="error" showIcon title="用户未保存" description={error} /> : null}
+            <Form form={form} layout="vertical" requiredMark={false} disabled={saving}>
+                <section className="admin-user-form-section">
+                    <h2>账号资料</h2>
+                    <Form.Item label="用户名">
+                        <Input value={user ? `@${user.username}` : ""} disabled />
+                    </Form.Item>
+                    <Form.Item name="displayName" label="显示名称" rules={[{ required: true, whitespace: true, message: "请填写显示名称" }]}>
+                        <Input placeholder="用户在产品内显示的名称" />
+                    </Form.Item>
+                    <Form.Item name="email" label="邮箱" rules={[{ type: "email", message: "请输入有效邮箱" }]}>
+                        <Input placeholder="name@example.com" />
+                    </Form.Item>
+                </section>
+                <section className="admin-user-form-section">
+                    <h2>权限与状态</h2>
+                    <Form.Item name="role" label="角色" extra={editingSelf ? "不能在此修改当前管理员自己的角色。" : "角色变更会立即影响后台访问权限。"}>
+                        <Select
+                            disabled={editingSelf}
+                            options={[
+                                { label: "管理员", value: "admin" },
+                                { label: "普通用户", value: "user" },
+                            ]}
+                        />
+                    </Form.Item>
+                    <Form.Item name="status" label="账号状态" extra={editingSelf ? "不能停用当前登录账号。" : "停用后会清除登录态，但保留身份、任务和积分流水。"}>
+                        <Select
+                            disabled={editingSelf}
+                            options={[
+                                { label: "已启用", value: "active" },
+                                { label: "已停用", value: "disabled" },
+                            ]}
+                        />
+                    </Form.Item>
+                </section>
             </Form>
         </Drawer>
     );
@@ -110,23 +136,21 @@ type CreateUserFormValues = {
     status: LocalUser["status"];
 };
 
-export function AdminUserCreateDrawer({
-    open,
-    onClose,
-    onCreated,
-}: {
-    open: boolean;
-    onClose: () => void;
-    onCreated: (user: AdminUser) => void;
-}) {
+export function AdminUserCreateDrawer({ open, onClose, onCreated }: { open: boolean; onClose: () => void; onCreated: (user: AdminUser) => void }) {
     const { message, modal } = App.useApp();
     const [saving, setSaving] = useState(false);
+    const [error, setError] = useState("");
     const [form] = Form.useForm<CreateUserFormValues>();
 
     useEffect(() => {
         if (!open) return;
+        setError("");
         form.resetFields();
         form.setFieldsValue({ role: "user", status: "active" });
+        form.setFields([
+            { name: "role", touched: false },
+            { name: "status", touched: false },
+        ]);
     }, [form, open]);
 
     const close = () => {
@@ -146,8 +170,11 @@ export function AdminUserCreateDrawer({
     };
 
     const save = async () => {
-        const values = await form.validateFields();
+        if (saving) return;
+        const values = await form.validateFields().catch(() => null);
+        if (!values) return;
         setSaving(true);
+        setError("");
         try {
             const result = await createAdminUser({
                 username: values.username.trim(),
@@ -162,7 +189,7 @@ export function AdminUserCreateDrawer({
             onClose();
             message.success("\u7528\u6237\u5df2\u521b\u5efa");
         } catch (error) {
-            message.error(error instanceof Error ? error.message : "\u521b\u5efa\u7528\u6237\u5931\u8d25");
+            setError(error instanceof Error ? error.message : "创建用户失败");
         } finally {
             setSaving(false);
         }
@@ -176,9 +203,21 @@ export function AdminUserCreateDrawer({
             onClose={close}
             mask={{ closable: !saving }}
             destroyOnHidden
-            extra={<Button type="primary" loading={saving} onClick={() => void save()}>{"\u4fdd\u5b58"}</Button>}
+            keyboard={!saving}
+            rootClassName="admin-drawer admin-user-drawer"
+            footer={
+                <div className="admin-user-drawer-actions">
+                    <Button disabled={saving} onClick={close}>
+                        取消
+                    </Button>
+                    <Button type="primary" loading={saving} onClick={() => void save()}>
+                        创建用户
+                    </Button>
+                </div>
+            }
         >
-            <Form form={form} layout="vertical" requiredMark={false}>
+            {error ? <Alert type="error" showIcon title="用户未创建" description={error} /> : null}
+            <Form form={form} layout="vertical" requiredMark={false} disabled={saving}>
                 <Form.Item name="username" label={"\u7528\u6237\u540d"} rules={[{ required: true, whitespace: true, message: "\u8bf7\u8f93\u5165\u7528\u6237\u540d" }]}>
                     <Input placeholder={"3-32 \u4f4d\u5b57\u6bcd\u3001\u6570\u5b57\u3001\u4e0b\u5212\u7ebf\u6216\u8fde\u5b57\u7b26"} />
                 </Form.Item>
@@ -192,10 +231,20 @@ export function AdminUserCreateDrawer({
                     <Input.Password placeholder={"\u81f3\u5c11 8 \u4f4d"} />
                 </Form.Item>
                 <Form.Item name="role" label={"\u89d2\u8272"}>
-                    <Select options={[{ label: "\u7ba1\u7406\u5458", value: "admin" }, { label: "\u666e\u901a\u7528\u6237", value: "user" }]} />
+                    <Select
+                        options={[
+                            { label: "\u7ba1\u7406\u5458", value: "admin" },
+                            { label: "\u666e\u901a\u7528\u6237", value: "user" },
+                        ]}
+                    />
                 </Form.Item>
                 <Form.Item name="status" label={"\u8d26\u53f7\u72b6\u6001"}>
-                    <Select options={[{ label: "\u5df2\u542f\u7528", value: "active" }, { label: "\u5df2\u505c\u7528", value: "disabled" }]} />
+                    <Select
+                        options={[
+                            { label: "\u5df2\u542f\u7528", value: "active" },
+                            { label: "\u5df2\u505c\u7528", value: "disabled" },
+                        ]}
+                    />
                 </Form.Item>
             </Form>
         </Drawer>
