@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { checkSystemUpdate, getSystemUpdateStatus, rollbackSystemUpdate, startSystemUpdate, type SystemUpdateStatus, type UpdatePhase } from "@/services/api/system-update";
 import { AdminPageFrame } from "../components/admin-shell";
 import { AdminStatusBadge, SettingsSectionCard } from "../components/admin-ui";
+import { configurationConfirmProps } from "../components/configuration-confirm";
 
 const activePhases = new Set<UpdatePhase>(["checking", "preflight", "backing_up", "pulling", "draining", "migrating", "switching", "verifying", "rolling_back"]);
 
@@ -36,22 +37,24 @@ export default function SystemUpdatePage() {
     const [reconnecting, setReconnecting] = useState(false);
     const [loadError, setLoadError] = useState("");
     const mountedRef = useRef(true);
+    const loadSequence = useRef(0);
 
     const load = useCallback(async (initial = false) => {
+        const sequence = ++loadSequence.current;
         if (initial) setLoading(true);
         try {
             const next = await getSystemUpdateStatus();
-            if (!mountedRef.current) return;
+            if (!mountedRef.current || sequence !== loadSequence.current) return;
             setStatus(next);
             setLoadError("");
             setReconnecting(false);
         } catch (error) {
-            if (!mountedRef.current) return;
+            if (!mountedRef.current || sequence !== loadSequence.current) return;
             const errorMessage = error instanceof Error ? error.message : "读取系统更新状态失败";
             setLoadError(errorMessage);
             if (status && activePhases.has(status.operation.phase)) setReconnecting(true);
         } finally {
-            if (mountedRef.current && initial) setLoading(false);
+            if (mountedRef.current && sequence === loadSequence.current && initial) setLoading(false);
         }
     }, [status]);
 
@@ -73,10 +76,13 @@ export default function SystemUpdatePage() {
     const blockingCheckFailed = status?.checks.some((check) => check.blocking && check.status === "failed") ?? true;
 
     const requestCheck = async () => {
+        if (checking || starting || operationActive) return;
+        loadSequence.current += 1;
         setChecking(true);
         try {
             const next = await checkSystemUpdate();
             setStatus(next);
+            setLoadError("");
             message.success(next.updateAvailable ? `发现新版本 ${next.latestRelease?.version}` : "当前已是最新版本");
         } catch (error) {
             message.error(error instanceof Error ? error.message : "检查更新失败");
@@ -90,12 +96,14 @@ export default function SystemUpdatePage() {
         if (!status?.latestRelease) return;
         const target = status.latestRelease.version;
         modal.confirm({
+            ...configurationConfirmProps,
+            rootClassName: "admin-modal-root",
             title: `更新到 ${target}？`,
             width: 560,
             content: (
                 <div className="space-y-3 text-sm text-foreground/70">
                     <p>系统会先创建并校验数据库 ZIP 与数据目录备份，再停止旧服务、执行迁移并切换镜像。</p>
-                    <p>更新期间站点会短暂不可用。任何前置检查失败都不会切换服务；切换后验证失败会自动恢复旧版本和数据库。</p>
+                    <p>更新期间站点会暂时不可用。切换后验证失败会尝试恢复旧版本、数据库和数据目录；回退失败将保持停服并要求人工介入。外部对象与供应商任务需另行核对。</p>
                 </div>
             ),
             okText: "确认并开始更新",
@@ -120,12 +128,14 @@ export default function SystemUpdatePage() {
         if (!status?.rollbackVersion) return;
         let reason = "";
         modal.confirm({
+            ...configurationConfirmProps,
+            rootClassName: "admin-modal-root",
             title: `回退到 ${status.rollbackVersion}？`,
             width: 520,
             content: (
                 <div className="space-y-3">
-                    <p className="text-sm text-foreground/65">回退会停止当前服务、恢复最近一次已校验数据库备份并重新启动旧镜像。请先确认备份时间与业务影响。</p>
-                    <Input.TextArea rows={3} maxLength={300} showCount placeholder="填写回退原因（必填）" onChange={(event) => (reason = event.target.value)} />
+                    <p className="text-sm text-foreground/65">回退会停止当前服务，恢复最近一次已校验数据库与数据目录备份。恢复点之后的本地写入可能丢失；外部对象和供应商任务需另行核对。恢复失败时保持停服并要求人工介入。</p>
+                    <Input.TextArea aria-label="回退原因" rows={3} maxLength={300} showCount placeholder="填写回退原因（必填）" onChange={(event) => (reason = event.target.value)} />
                 </div>
             ),
             okText: "开始回退",
@@ -157,14 +167,14 @@ export default function SystemUpdatePage() {
             description="检查 GitHub Release，并在完成备份、迁移和健康验证后切换版本。"
             scroll
             actions={
-                <Button icon={<RefreshCw className="size-4" />} loading={checking} disabled={operationActive || !status?.supported} onClick={() => void requestCheck()}>
+                <><Button onClick={() => void load(true)} disabled={loading || checking || starting}>刷新状态</Button><Button icon={<RefreshCw className="size-4" />} loading={checking} disabled={operationActive || !status?.supported || Boolean(loadError)} onClick={() => void requestCheck()}>
                     检查更新
-                </Button>
+                </Button></>
             }
         >
             <div className="admin-settings-stack admin-system-update">
-                {loadError && !status ? <UpdateAlert tone="error" title="无法读取更新状态" detail={loadError} /> : null}
-                {!status?.supported ? <UpdateAlert tone="warning" title="当前部署不支持后台在线更新" detail="请先在服务器安装 Host Updater，并重建 backend 容器挂载 Unix Socket。此状态下不会执行任何更新操作。" /> : null}
+                {loadError ? <UpdateAlert tone="error" title="无法读取更新状态" detail={`${loadError}。请刷新状态核对，当前禁止开始新的更新或回退。`} /> : null}
+                {status && !status.supported ? <UpdateAlert tone="warning" title="当前部署不支持后台在线更新" detail="请先在服务器安装 Host Updater，并重建 backend 容器挂载 Unix Socket。此状态下不会执行任何更新操作。" /> : null}
                 {reconnecting ? <UpdateAlert tone="warning" title="服务正在切换，等待重新连接" detail="更新器运行在宿主机，后台页面暂时断线不会中止更新。连接恢复后会继续显示最终结果。" /> : null}
                 {status?.operation.phase === "manual_intervention" ? <UpdateAlert tone="error" title="自动回退未完成，需要人工介入" detail={status.operation.rollbackError || status.operation.error || "请检查 Host Updater 和容器日志。"} /> : null}
 
@@ -179,7 +189,7 @@ export default function SystemUpdatePage() {
                         footer={
                             <>
                                 <span className="text-xs leading-5 text-foreground/50">每次在线更新都会重新备份数据库，并校验镜像摘要、迁移结果和服务健康状态。</span>
-                                <Button type="primary" loading={starting} disabled={!status?.connected || !status.updateAvailable || operationActive || blockingCheckFailed} onClick={requestStart}>
+                                <Button type="primary" loading={starting} disabled={!status?.connected || !status.updateAvailable || operationActive || blockingCheckFailed || Boolean(loadError)} onClick={requestStart}>
                                     开始更新
                                 </Button>
                             </>
@@ -207,6 +217,7 @@ export default function SystemUpdatePage() {
 
                     <SettingsSectionCard layout="stacked" icon={<ShieldCheck className="size-4" />} title="更新前检查" description="所有阻断项通过后才允许切换服务。" status={{ label: status?.connected ? "更新器已连接" : "更新器未连接", color: status?.connected ? "success" : "error" }}>
                         <div className="admin-system-update-checks">
+                            {!status?.checks.length ? <p className="admin-system-update-empty">尚无检查结果，请先读取状态或检查更新。</p> : null}
                             {(status?.checks || []).map((check) => <UpdateCheckRow key={check.key} check={check} />)}
                         </div>
                     </SettingsSectionCard>
@@ -234,7 +245,7 @@ export default function SystemUpdatePage() {
                     footer={
                         <>
                             <span className="text-xs text-foreground/50">人工回退同样会执行停服、数据库恢复、旧镜像启动和健康验证。</span>
-                            <Button danger icon={<RotateCcw className="size-4" />} disabled={!status?.rollbackVersion || operationActive || !status?.connected} onClick={requestRollback}>回退到上一版本</Button>
+                            <Button danger icon={<RotateCcw className="size-4" />} disabled={!status?.rollbackVersion || operationActive || !status?.connected || Boolean(loadError)} onClick={requestRollback}>回退到上一版本</Button>
                         </>
                     }
                 >
