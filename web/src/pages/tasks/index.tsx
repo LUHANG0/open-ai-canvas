@@ -82,6 +82,7 @@ export default function TasksPage() {
     const [domainProjects, setDomainProjects] = useState<ProjectSummary[]>([]);
     const [loading, setLoading] = useState(false);
     const [actingId, setActingId] = useState("");
+    const retryingTaskIdsRef = useRef(new Set<string>());
     const [createOpen, setCreateOpen] = useState(false);
     const [creating, setCreating] = useState(false);
     const statusFilter = taskStatusFilter(searchParams.get("status"));
@@ -347,11 +348,13 @@ export default function TasksPage() {
     }, [loadTasks]);
 
     const runAction = async (id: string) => {
+        if (retryingTaskIdsRef.current.has(id)) return;
         const currentTask = tasksRef.current.find((task) => task.id === id);
         if (currentTask && isGenerationTaskSubmissionUncertain(currentTask)) {
             message.warning("提交结果尚未确认，不能自动重试；请先核对官方状态，避免重复生成。");
             return;
         }
+        retryingTaskIdsRef.current.add(id);
         setActingId(id);
         try {
             const next = await retryGenerationTask(id);
@@ -363,7 +366,8 @@ export default function TasksPage() {
         } catch (error) {
             message.error(error instanceof Error ? error.message : "操作失败");
         } finally {
-            setActingId("");
+            retryingTaskIdsRef.current.delete(id);
+            setActingId((current) => current === id ? "" : current);
         }
     };
 
