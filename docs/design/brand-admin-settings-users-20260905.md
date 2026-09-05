@@ -28,7 +28,7 @@
 
 ## 验证与证据
 
-前端 22 项专项、231 个断言通过。类型检查随生产构建执行通过，7 项体积预算全部通过。后端品牌、官网限定字段保存、修订冲突、邀请生命周期/权限/积分、用户创建和批量停用专项通过。
+前端 22 项专项、231 个断言通过。类型检查随生产构建执行通过，7 项体积预算全部通过。后端品牌、官网限定字段保存、修订冲突、邀请生命周期/权限/积分、用户创建和批量停用专项通过。浏览器共记录 [44 项独立检查](evidence/admin-brand-c1/checks.json)，没有未捕获页面异常；补充覆盖停用/重新启用、详情加载骨架和迟到请求隔离。
 
 ```sh
 cd web
@@ -79,3 +79,10 @@ git revert 18bed434
 已用临时 Git 索引逆序反向应用三个实现提交，文件树与 `03752078` 完全一致；没有改动真实索引和工作区。仅撤网站设置可回退 `18bed434`；仅撤用户管理先回退 `9d0ab6d5` 再回退 `16b9f6f9`。回滚只撤销代码，不撤销管理员已保存的配置、角色、积分或邀请数据；没有数据库迁移。
 
 浏览器截图：[网站设置桌面深色](evidence/admin-brand-c1/settings-final-dark-1440.png)、[桌面浅色](evidence/admin-brand-c1/settings-final-light-1440.png)、[手机深色](evidence/admin-brand-c1/settings-final-dark-390.png)、[手机浅色](evidence/admin-brand-c1/settings-final-light-390.png)；[用户管理桌面深色](evidence/admin-brand-c1/users-final-dark-1440.png)、[桌面浅色](evidence/admin-brand-c1/users-final-light-1440.png)、[手机深色](evidence/admin-brand-c1/users-final-dark-390.png)、[手机浅色](evidence/admin-brand-c1/users-final-light-390.png)；[邀请抽屉](evidence/admin-brand-c1/invite-mobile-light.png)、[用户详情](evidence/admin-brand-c1/detail-mobile-light.png)。这些均为隔离验收数据。
+
+## 本地集成与预览
+
+- 本地 main 已从 `9a5ab9fb` 快进合入 `c7046e98`（实现截至 `9d0ab6d5`），本节作为后续记录一并集成。没有覆盖原有本地提交，没有推送或部署。
+- 更新前再次核对 `brand-launch` 工作树：分离 HEAD 为 `9a5ab9fb`，没有已跟踪修改，只有有意保留的 `web/node_modules` 链接。3012 已切到本批成果，依赖链接保留。
+- 3012 官网在独立 Chrome 中显示配置品牌「帧镜」，没有未捕获异常；Vite 已提供更新后的用户模块。代理健康检查就绪，8080 仍是原后端 `a4e096e5`，本批不涉及后端替换。
+- 临时 3013/8093 验收服务停止后，隔离数据库与本地证据保留在上文位置；临时分支清理。后续个人设置与积分中心批次基于此 main 再集成，避免同时更新 3012。
