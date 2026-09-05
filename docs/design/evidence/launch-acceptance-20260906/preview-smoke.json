@@ -1,0 +1,51 @@
+{
+  "checks": [
+    {
+      "path": "/",
+      "status": 200,
+      "content": true,
+      "overflow": 0
+    },
+    {
+      "path": "/create",
+      "status": 200,
+      "content": true,
+      "overflow": 0
+    },
+    {
+      "path": "/tasks",
+      "status": 200,
+      "content": true,
+      "overflow": 0
+    },
+    {
+      "path": "/assets",
+      "status": 200,
+      "content": true,
+      "overflow": 0
+    },
+    {
+      "path": "/projects",
+      "status": 200,
+      "content": true,
+      "overflow": 0
+    },
+    {
+      "path": "/canvas/d2-brand-fixture",
+      "status": 200,
+      "content": true,
+      "overflow": 0
+    },
+    {
+      "path": "/admin/settings/storage",
+      "status": 200,
+      "content": true,
+      "overflow": 0
+    }
+  ],
+  "reads": 78,
+  "blockedWrites": [],
+  "errors": [],
+  "apiTarget": "isolated backend 8093",
+  "real8080Writes": 0
+}

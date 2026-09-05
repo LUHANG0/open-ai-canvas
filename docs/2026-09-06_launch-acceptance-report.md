@@ -84,3 +84,11 @@ git diff --exit-code c7175cf0 HEAD -- web
 组合导演台专项 **58/58**、三项修复点浏览器复验 **20/20**（素材 4、章节/分镜 14、任务 2）通过。分镜复验曾填入与服务端相同的值，保存按钮正确禁用；改用新测试内容后完成版本保存回读，该脚本中断不属于产品故障。
 
 最终证据：[组合检查与回滚](design/evidence/launch-acceptance-20260906/final-verification.json)、[生产包有声媒体](design/evidence/launch-acceptance-20260906/production.json)、[最终交付 ZIP](design/evidence/launch-acceptance-20260906/delivery-final.json)、[证据 SHA-256 清单](design/evidence/launch-acceptance-20260906/manifest.json)。源码验证对象固定为上述组合提交；后续仅文档/证据提交不会改变该前端树。
+
+## 本地集成与清理完成
+
+修复与报告以 `30561e97` 快进合入本地 main，3012 工作树同步到同一提交，原 PID 89878 保持运行。3012 的官网、创作、任务、素材、项目、正式画布和存储设置共 7 个入口只读冒烟通过；78 次 API 读取全部转发隔离 8093，写入阻断器未捕获任何写请求，页面异常为零。见 [3012 证据](design/evidence/launch-acceptance-20260906/preview-smoke.json)。
+
+核对 PID 与工作目录后，已停止本任务的 3013、8093、3016、19093、19094、25253 服务；未停止真实 8080 或其他任务服务。完整日志、探针、截图、构建 manifest 和交付媒体归档在主仓库 `.local/cache/launch-acceptance-20260906`，**2724 文件**逐个 SHA-256 与原件一致；假数据归档 `.local/project-workbench-debug/launch-acceptance-20260906`，**43 文件**一致，主数据库及本轮迁移备份 SQLite 完整性检查均为 `ok`。校验摘要见归档中的 `archive-checks.json`。
+
+本任务依赖链接、临时工作树及 `test/launch-acceptance-20260906` 分支已删除；保留 3012 有意存在的 `web/node_modules` 链接和其他历史工作树。本段及预览证据为清理后的纯文档收尾，前端树仍为 `98440d8406089e07bcbae6663ed44112a824e41c`。未推送或部署。

@@ -10,5 +10,6 @@
   "production.json": "4c247985cddfa2e465a4059f4bba58482c4178d976e583c0f4f48e8526d4e6eb",
   "retry-race-after.json": "3ad13eb0be4cdff5adffa4e1819dbdc51d632f0dcf6a8251921dbb5a99696744",
   "retry-race-before.json": "e280ab2a59d380c477cb734f2396d7ba1f31af4f2be6f1fc7715a0da82eeb18f",
-  "shot-focus-before.json": "b18f102fb64620948e10e5f8ed9099630958b1a14a6a5fa688f88b51d8ecab34"
+  "shot-focus-before.json": "b18f102fb64620948e10e5f8ed9099630958b1a14a6a5fa688f88b51d8ecab34",
+  "preview-smoke.json": "b4cdf8618b4ae7845751b2ca2d876c86325f03cc9afaf47a8187e48394240046"
 }
