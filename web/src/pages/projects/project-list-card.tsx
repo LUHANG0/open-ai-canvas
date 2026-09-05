@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { ArrowRight, Clock3, FolderKanban, Trash2 } from "lucide-react";
 import { Link } from "react-router";
 
@@ -10,68 +11,60 @@ import { resourceFileUrl } from "@/services/api/resources";
 import { sourceTypeLabel } from "./detail/shared";
 
 export function ProjectListCard({ row, onDelete }: { row: ProjectSummary; onDelete: () => void }) {
+    const [failedCover, setFailedCover] = useState<string>();
     const completion = projectSummaryCompletion(row);
     const stage = projectSummaryStage(row);
     const projectStyle = resolveProjectCanvasStyle(row.project.stylePresetId, row.project.styleProfileJson);
     const styleTitle = projectStyle?.title || parseStyleProfile(row.project.styleProfileJson)?.title || resolveCanvasStylePreset(row.project.stylePresetId)?.title || (row.project.stylePresetId ? "自定义画风" : "未设置画风");
     const coverUrl = row.project.coverResourceId ? resourceFileUrl(row.project.coverResourceId) : projectStyle?.imageUrl;
     return (
-        <Link to={`/projects/${row.project.id}/overview`} className="library-card project-library-card group">
-            <span className="project-library-cover">
-                {coverUrl ? (
-                    <img className="project-library-cover-art" src={coverUrl} alt="" />
-                ) : (
-                    <span className="project-library-cover-icon">
-                        <FolderKanban className="size-7" />
-                    </span>
-                )}
-                <span className="project-library-cover-scrim" />
-                <span className="project-library-cover-ratio">{row.project.aspectRatio}</span>
-                <span className="project-library-cover-stage">{stage.label}</span>
-                <button
-                    type="button"
-                    className="project-library-cover-delete"
-                    title="删除项目"
-                    aria-label={`删除项目 ${row.project.name}`}
-                    onClick={(event) => {
-                        event.preventDefault();
-                        event.stopPropagation();
-                        onDelete();
-                    }}
-                >
-                    <Trash2 className="size-3.5" />
-                </button>
-            </span>
-            <span className="project-library-body">
-                <span className="project-library-heading">
-                    <strong title={row.project.name}>{row.project.name}</strong>
-                    {row.project.status === "archived" ? <em>已归档</em> : null}
-                    <ArrowRight className="project-library-arrow size-4" />
-                </span>
-                <span className="project-library-subtitle">
-                    {styleTitle} · {sourceTypeLabel(row.project.sourceType)}
-                </span>
-                <span className="project-library-progress">
-                    <span>
-                        <span>
-                            {row.completedUnitCount}/{row.unitCount} 章
+        <article className="library-card project-library-card group">
+            <Link to={`/projects/${row.project.id}/overview`} className="project-library-open" aria-label={`打开项目 ${row.project.name}`}>
+                <span className="project-library-cover">
+                    {coverUrl && failedCover !== coverUrl ? (
+                        <img className="project-library-cover-art" src={coverUrl} alt="" loading="lazy" onError={() => setFailedCover(coverUrl)} />
+                    ) : (
+                        <span className="project-library-cover-icon">
+                            <FolderKanban className="size-7" />
                         </span>
-                        <span>{completion}%</span>
-                    </span>
-                    <i className="pc-project-progress-legacy" aria-hidden="true">
-                        <b style={{ width: `${completion}%` }} />
-                    </i>
-                    <progress className="pc-project-progress-pc" max={100} value={completion} aria-label={`${row.project.name}章节完成度 ${completion}%`} />
+                    )}
+                    <span className="project-library-cover-scrim" />
+                    <span className="project-library-cover-ratio">{row.project.aspectRatio}</span>
+                    <span className="project-library-cover-stage">{stage.label}</span>
                 </span>
-                <span className="pc-short-drama-card-meta">
-                    <span>{row.unitCount} 章 · {row.canvasCount} 画布</span>
-                    <span className="pc-short-drama-card-updated">
-                        <Clock3 className="size-3.5" aria-hidden="true" />
-                        <time dateTime={row.project.updatedAt}>{formatProjectUpdatedAt(row.project.updatedAt)}</time>
+                <span className="project-library-body">
+                    <span className="project-library-heading">
+                        <strong title={row.project.name}>{row.project.name}</strong>
+                        {row.project.status === "archived" ? <em>已归档</em> : null}
+                        <ArrowRight className="project-library-arrow size-4" />
+                    </span>
+                    <span className="project-library-subtitle">
+                        {styleTitle} · {sourceTypeLabel(row.project.sourceType)}
+                    </span>
+                    <span className="project-library-progress">
+                        <span>
+                            <span>
+                                {row.completedUnitCount}/{row.unitCount} 章
+                            </span>
+                            <span>{completion}%</span>
+                        </span>
+                        <progress className="pc-project-progress-pc" max={100} value={completion} aria-label={`${row.project.name}章节完成度 ${completion}%`} />
+                    </span>
+                    <span className="pc-short-drama-card-meta">
+                        <span>
+                            {row.unitCount} 章 · {row.canvasCount} 画布
+                        </span>
+                        <span className="pc-short-drama-card-updated">
+                            <Clock3 className="size-3.5" aria-hidden="true" />
+                            <time dateTime={row.project.updatedAt}>{formatProjectUpdatedAt(row.project.updatedAt)}</time>
+                        </span>
                     </span>
                 </span>
-            </span>
-        </Link>
+            </Link>
+            <button type="button" className="project-library-cover-delete" title="删除项目" aria-label={`删除项目 ${row.project.name}`} onClick={onDelete}>
+                <Trash2 className="size-3.5" />
+            </button>
+        </article>
     );
 }
 

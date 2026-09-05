@@ -7,7 +7,7 @@ describe("asset library command colors", () => {
         const css = readFileSync(resolve(import.meta.dir, "../src/styles/globals.css"), "utf8");
         const page = readFileSync(resolve(import.meta.dir, "../src/pages/assets/index.tsx"), "utf8");
 
-        expect(css).toContain("html:not(.dark) .library-page:not(.assets-library-page):not(.task-library-page) .app-page-header .ant-btn");
+        expect(css).toContain("html:not(.dark) .library-page:not(.assets-library-page):not(.task-library-page):not(.pc-projects-page) .app-page-header .ant-btn");
         expect(css).toContain("html:not(.dark) .canvas-library-page:not(.assets-library-page):not(.task-library-page):not(.pc-canvas-library-page) .app-page-header .ant-btn");
         expect(css).not.toContain("html:not(.dark) .library-page .app-page-header .ant-btn");
         expect(page).toContain('className="assets-primary-action" type="primary"');

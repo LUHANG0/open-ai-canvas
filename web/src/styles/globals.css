@@ -4699,7 +4699,7 @@
     .library-page .app-page-header .workspace-signal-icon > svg { transition: transform 420ms var(--motion-ease-out); }
     .library-page .app-page-header:hover .workspace-signal-icon { transform: rotate(-6deg) scale(1.04); }
     /* 页面头部按钮优化 - 去除重边框 */
-    html:not(.dark) .library-page:not(.assets-library-page):not(.task-library-page) .app-page-header .ant-btn,
+    html:not(.dark) .library-page:not(.assets-library-page):not(.task-library-page):not(.pc-projects-page) .app-page-header .ant-btn,
     html:not(.dark) .canvas-library-page:not(.assets-library-page):not(.task-library-page):not(.pc-canvas-library-page) .app-page-header .ant-btn {
         border: 1px solid rgba(17, 17, 17, 0.08) !important;
         background: #ffffff !important;
@@ -4707,7 +4707,7 @@
         box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04) !important;
         transition: all 180ms ease-out !important;
     }
-    html:not(.dark) .library-page:not(.assets-library-page):not(.task-library-page) .app-page-header .ant-btn:hover,
+    html:not(.dark) .library-page:not(.assets-library-page):not(.task-library-page):not(.pc-projects-page) .app-page-header .ant-btn:hover,
     html:not(.dark) .canvas-library-page:not(.assets-library-page):not(.task-library-page):not(.pc-canvas-library-page) .app-page-header .ant-btn:hover {
         border-color: rgba(17, 17, 17, 0.12) !important;
         background: #ffffff !important;
@@ -4871,51 +4871,9 @@
     .project-library-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-5) var(--space-4); align-items: stretch; }
     .skill-library-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 16px; }
     /* 项目卡是一个完整实体表面；封面只是顶部内容区，避免透明主体和内嵌细线造成「镂空」感。 */
-    .project-library-card { display: block; border-radius: var(--r-lg); background: var(--card-surface) !important; box-shadow: none; }
-    .project-library-card:hover, .project-library-card:focus-within { background: var(--card-surface-hover) !important; box-shadow: none; }
-    .project-library-card:hover, .project-library-card:focus-within, .project-library-grid .library-create-card:hover, .project-library-grid .library-create-card:focus-visible { transform: translateY(-2px); }
-    .project-library-card:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+    .project-library-grid .library-create-card:hover, .project-library-grid .library-create-card:focus-visible { transform: translateY(-2px); }
     .project-library-grid .library-create-cover, .project-library-grid .library-create-card:hover .library-create-cover, .project-library-grid .library-create-card:focus-visible .library-create-cover { border-radius: var(--r-lg); background: var(--project-library-cover-surface); box-shadow: none; }
     .project-library-grid .library-create-card:hover .library-create-cover svg, .project-library-grid .library-create-card:focus-visible .library-create-cover svg { transform: none; }
-    .project-library-cover { position: relative; display: flex; aspect-ratio: 16 / 9; align-items: center; justify-content: center; overflow: hidden; border-radius: var(--r-lg) var(--r-lg) 0 0; background: var(--project-library-cover-surface) !important; }
-    .library-card:hover .project-library-cover { background: var(--project-library-cover-surface) !important; }
-    .project-library-cover-art { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transition: transform 420ms var(--motion-ease-out), filter 420ms ease-out; }
-    .library-card:hover .project-library-cover-art, .library-card:focus-within .project-library-cover-art { transform: scale(1.035); filter: saturate(1.08); }
-    .project-library-cover-scrim { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0, 0, 0, 0.08) 0%, rgba(0, 0, 0, 0.42) 100%); }
-    .project-library-cover-delete {
-        position: absolute;
-        z-index: 3;
-        right: 10px;
-        top: 10px;
-        display: grid;
-        width: 28px;
-        height: 28px;
-        place-items: center;
-        border: 1px solid rgba(255, 255, 255, 0.18);
-        border-radius: var(--r-md);
-        background: rgba(10, 10, 10, 0.55);
-        color: rgba(255, 255, 255, 0.82);
-        backdrop-filter: blur(8px);
-        transition: background-color 180ms ease-out, color 180ms ease-out, transform 180ms var(--motion-ease-out);
-    }
-    .project-library-cover-delete:hover { background: rgba(190, 30, 30, 0.82); color: #ffffff; transform: scale(1.06); }
-    .project-library-cover-icon { position: relative; z-index: 1; display: grid; place-items: center; width: 56px; height: 56px; border-radius: var(--r-md); background: var(--project-library-icon-surface); color: color-mix(in srgb, var(--foreground) 58%, transparent); box-shadow: 0 6px 16px rgba(0, 0, 0, 0.18); }
-    .project-library-cover-icon svg { width: 26px; height: 26px; }
-    .project-library-cover-ratio, .project-library-cover-stage { position: absolute; z-index: 2; bottom: 14px; border-radius: var(--r-full); background: color-mix(in srgb, var(--background) 62%, transparent); padding: 5px 10px; color: color-mix(in srgb, var(--foreground) 74%, transparent); font-size: var(--fs-tiny); backdrop-filter: blur(8px); }
-    .project-library-cover-ratio { left: 14px; font-variant-numeric: tabular-nums; }
-    .project-library-cover-stage { right: 14px; }
-    .project-library-body { display: block; padding: 15px 14px 16px; }
-    .project-library-heading { display: flex; min-width: 0; align-items: center; gap: 7px; }
-    .project-library-heading strong { min-width: 0; overflow: hidden; font-size: var(--fs-heading-lg); font-weight: 620; text-overflow: ellipsis; white-space: nowrap; }
-    .project-library-heading em { flex: 0 0 auto; border-radius: var(--r-xs); background: color-mix(in srgb, var(--foreground) 7%, transparent); padding: 3px 5px; color: color-mix(in srgb, var(--foreground) 44%, transparent); font-size: var(--fs-micro); font-style: normal; }
-    .project-library-arrow { margin-left: auto; flex: 0 0 auto; color: color-mix(in srgb, var(--foreground) 25%, transparent); opacity: 0; transform: translateX(-4px); transition: opacity 220ms ease-out, transform 320ms var(--motion-ease-out); }
-    .library-card:hover .project-library-arrow, .library-card:focus-within .project-library-arrow { opacity: 1; transform: translateX(0); }
-    .project-library-subtitle { display: block; margin-top: 6px; overflow: hidden; color: color-mix(in srgb, var(--foreground) 42%, transparent); font-size: var(--fs-caption); text-overflow: ellipsis; white-space: nowrap; }
-    .project-library-progress { display: block; margin-top: 13px; color: color-mix(in srgb, var(--foreground) 45%, transparent); font-size: var(--fs-label); }
-    .project-library-progress > span { display: flex; justify-content: space-between; gap: 8px; font-variant-numeric: tabular-nums; }
-    .project-library-progress i { display: block; height: 4px; margin-top: 7px; overflow: hidden; border-radius: var(--r-full); background: color-mix(in srgb, var(--foreground) 9%, transparent); }
-    .project-library-progress b { display: block; height: 100%; border-radius: inherit; background: var(--workspace-accent); transition: width 420ms var(--motion-ease-out); }
-    .project-library-stats { display: flex; align-items: center; gap: 14px; margin-top: 12px; color: color-mix(in srgb, var(--foreground) 40%, transparent); font-size: var(--fs-label); }
     .library-load-more { display: flex; min-height: 44px; align-items: center; justify-content: center; padding: 14px 0 6px; color: color-mix(in srgb, var(--foreground) 42%, transparent); font-size: var(--fs-caption); }
     .library-load-more button { cursor: pointer; border: 0; background: transparent; color: inherit; font: inherit; text-decoration: underline; text-underline-offset: 3px; }
     .library-load-more button:focus:not(:focus-visible) { outline: none; }
@@ -5359,7 +5317,7 @@
     }
     @media (max-width: 639px) {
         .project-library-grid, .project-assets-grid, .assets-library-grid, .skill-library-grid, .library-loading-grid { grid-template-columns: 1fr; gap: 22px; }
-        .library-create-title, .project-library-heading strong, .skill-library-card h3 { font-size: var(--fs-body); }
+        .library-create-title, .skill-library-card h3 { font-size: var(--fs-body); }
     }
 
     @media (max-width: 639px) {

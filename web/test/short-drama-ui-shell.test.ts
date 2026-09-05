@@ -45,16 +45,14 @@ describe("short-drama PC shell regression gates", () => {
         expect(index).toContain('id="short-drama-story-draft"');
     });
 
-    test("keeps PC-only helpers hidden until the desktop breakpoint", async () => {
-        const css = await read("../src/pages/projects/short-drama-shell.css");
-        const beforeDesktop = compact(css.slice(0, css.indexOf("@media (min-width: 1024px)")));
-        const desktop = compact(css.slice(css.indexOf("@media (min-width: 1024px)")));
-
-        expect(beforeDesktop).toContain(".pc-short-drama-create-launcher, .pc-short-drama-story-label, .pc-short-drama-options-toggle");
-        expect(beforeDesktop).toContain("display: none;");
-        expect(desktop).toContain(".pc-short-drama-create-launcher { display: flex;");
-        expect(desktop).toContain('.pc-short-drama-status-filter button[aria-pressed="true"]');
-        expect(desktop).toContain("@media (min-width: 1024px) and (prefers-reduced-motion: reduce)");
+    test("shares library controls across viewports while retaining the detail shell", async () => {
+        const [library, detail] = await Promise.all([read("../src/pages/projects/project-library.css"), read("../src/pages/projects/short-drama-shell.css")]);
+        expect(library).toContain(".pc-short-drama-create-launcher {");
+        expect(library).toContain('.pc-short-drama-status-filter button[aria-pressed="true"]');
+        expect(library).toContain("@media (prefers-reduced-motion: reduce)");
+        expect(library).toContain("@media (max-width: 640px)");
+        expect(detail).not.toContain(".pc-short-drama-create-launcher");
+        expect(detail).toContain(".pc-short-drama-workbench");
     });
 
     test("reduces the overview to one current task and one compact production path", async () => {
@@ -72,7 +70,7 @@ describe("short-drama PC shell regression gates", () => {
     });
 
     test("keeps new visual rules isolated from Admin and global theme contracts", async () => {
-        const css = await read("../src/pages/projects/short-drama-shell.css");
+        const css = await read("../src/pages/projects/project-library.css");
 
         expect(css).not.toContain(".admin-");
         expect(css).not.toContain("--admin-");

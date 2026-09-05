@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { App, Button, Form, Input, Select } from "antd";
-import { BookOpenText, ChevronDown, FileText, FolderKanban, Palette, Plus, Search, SlidersHorizontal, Sparkles } from "lucide-react";
+import { BookOpenText, ChevronDown, FileText, FolderKanban, Palette, Plus, SlidersHorizontal, Sparkles } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router";
 
 import { CollectionGrid, ListToolbar, PageHeader, WorkspacePage } from "@/components/ui/pc/page";
@@ -19,8 +19,7 @@ import { modelDisplayName, useEffectiveConfig } from "@/stores/use-config-store"
 import { ProjectListCard } from "./project-list-card";
 import { generationStepDone, generationSteps, isProjectNameConflict, parseGeneratedStory, projectNameCandidates } from "./project-story-generation";
 
-import "./projects.css";
-import "./short-drama-shell.css";
+import "./project-library.css";
 
 type ProjectForm = { name: string; aspectRatio: string; sourceType: string };
 
@@ -259,7 +258,7 @@ export default function ProjectsPage() {
                             <Sparkles className="size-4" />
                         </span>
                         <div>
-                            <span className="app-story-create-kicker hidden lg:inline-flex">LIGHTFRAME STORY LAB</span>
+                            <span className="app-story-create-kicker">STORY STUDIO</span>
                             <h2>把一句灵感变成可制作的短剧</h2>
                             <p>输入故事起点，由 AI 建立项目和章节；也可以从空白、小说或文本开始。</p>
                         </div>
@@ -281,7 +280,7 @@ export default function ProjectsPage() {
                         </div>
                         <div className="app-story-create-execution-actions" aria-label="创建方式">
                             <ModelPicker config={effectiveConfig} value={generateModel || effectiveConfig.textModel} onChange={setGenerateModel} capability="text" variant="creation" placeholder="选择文本模型" showSelectedPrice={false} />
-                            <Button type="default" className="app-story-generate-action" icon={<Sparkles className="size-3.5" />} disabled={!storyDraft.trim() || generating} loading={generating} onClick={() => void generateStory()}>
+                            <Button type="primary" className="app-story-generate-action" icon={<Sparkles className="size-3.5" />} disabled={!storyDraft.trim() || generating} loading={generating} onClick={() => void generateStory()}>
                                 AI 生成章节
                             </Button>
                             <Button className="app-story-manual-action" icon={<Plus className="size-3.5" />} onClick={() => openCreate(createSource)}>
@@ -307,7 +306,7 @@ export default function ProjectsPage() {
                         </button>
                     ) : null}
                     <span className={`pc-projects-story-status${storyDraft.trim() ? " is-ready" : ""}`} aria-live="polite">
-                        {storyDraft.trim() ? `${storyDraft.trim().length} 字 · 已可生成，也可以继续补充人物、冲突或结局` : "先输入一句话故事，再选择模型生成章节"}
+                        {storyDraft.trim() ? `${storyDraft.trim().length} 字 · 可继续补充人物、冲突或结局` : "先输入一句话故事，再选择模型生成章节"}
                     </span>
                 </div>
                 <button
@@ -438,15 +437,7 @@ export default function ProjectsPage() {
                         setSort("updated");
                     }}
                 >
-                    <Input
-                        allowClear
-                        className="app-list-search pc-projects-search-legacy"
-                        prefix={<Search className="size-4 text-foreground/40" />}
-                        value={keyword}
-                        placeholder="搜索项目、简介或画风"
-                        onChange={(event) => setKeyword(event.target.value)}
-                    />
-                    <SearchField containerClassName="pc-projects-search" value={keyword} placeholder="搜索项目、简介或画风" onChange={(event) => setKeyword(event.target.value)} onClear={() => setKeyword("")} />
+                    <SearchField aria-label="搜索项目" containerClassName="pc-projects-search" value={keyword} placeholder="搜索项目、简介或画风" onChange={(event) => setKeyword(event.target.value)} onClear={() => setKeyword("")} />
                     <div className="pc-short-drama-status-filter" aria-label="项目状态筛选">
                         {([
                             { value: "all", label: "全部", count: allProjects.length },
@@ -482,7 +473,7 @@ export default function ProjectsPage() {
                         ))}
                     </CollectionGrid>
                 ) : null}
-                {!query.isLoading && !hasInitialError ? (
+                {!query.isLoading && !hasInitialError && allProjects.length > 0 ? (
                     <div ref={loadMoreRef} className="library-load-more" aria-live="polite">
                         {query.isFetchingNextPage ? (
                             "正在加载更多项目…"
@@ -491,7 +482,7 @@ export default function ProjectsPage() {
                                 加载更多失败，点击重试
                             </button>
                         ) : query.hasNextPage ? (
-                            "继续下滑加载更多（每页 50 条）"
+                            "继续下滑加载更多"
                         ) : allProjects.length ? (
                             `已加载全部 ${totalProjectCount} 个项目`
                         ) : null}
@@ -506,9 +497,6 @@ export default function ProjectsPage() {
                         action={
                             !keyword && status === "all" ? (
                                 <>
-                                    <Button className="pc-projects-empty-mobile-action" type="primary" icon={<Plus className="size-3.5" />} onClick={() => setCreateOpen(true)}>
-                                        创建项目
-                                    </Button>
                                     <div className="pc-projects-empty-actions">
                                         <Button type="primary" icon={<Plus className="size-3.5" />} onClick={() => openCreate("blank")}>
                                             创建空白项目
@@ -518,14 +506,14 @@ export default function ProjectsPage() {
                                         </Button>
                                     </div>
                                 </>
-                            ) : undefined
+                            ) : <Button onClick={() => { setKeyword(""); setStatus("all"); setSort("updated"); }}>重置筛选</Button>
                         }
                     />
                 ) : null}
             </section>
 
             <DialogFrame
-                className="library-modal pc-projects-dialog pc-project-dialog"
+                className="library-modal pc-projects-dialog"
                 title="创建短剧项目"
                 subtitle="建立项目基础信息，章节和素材可以稍后继续补充。"
                 open={createOpen}
@@ -542,7 +530,7 @@ export default function ProjectsPage() {
                         mutation.mutate({ ...values, type: "short-drama", ...(selectedStyle ? { stylePresetId: selectedStyle.id, styleProfileJson: serializeStyleProfile(selectedStyle.profile || createStyleProfileSnapshot(selectedStyle)) } : {}) })
                     }
                 >
-                    <div className="mb-4 grid grid-cols-3 gap-2">
+                    <div className="pc-projects-create-sources">
                         <button
                             type="button"
                             className={createSource === "blank" ? "app-story-source is-active" : "app-story-source"}
@@ -639,7 +627,7 @@ export default function ProjectsPage() {
                 }}
             />
             <DialogFrame
-                className="library-modal pc-projects-dialog pc-project-dialog pc-projects-generating-dialog"
+                className="library-modal pc-projects-dialog pc-projects-generating-dialog"
                 title="AI 生成章节"
                 subtitle="项目、故事大纲和章节会按顺序创建，请保持当前页面开启。"
                 open={generating}
