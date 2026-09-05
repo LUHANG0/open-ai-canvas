@@ -169,7 +169,6 @@ export default function StorageResourcesPanel() {
         const uniqueIds = Array.from(new Set(resourceIds));
         modal.confirm({
             ...configurationConfirmProps,
-            rootClassName: "admin-modal-root",
             title: uniqueIds.length > 1 ? `删除选中的 ${uniqueIds.length} 个资源？` : "删除这个资源？",
             content: "系统会先批量检查公告、素材、画布、项目、工作流和镜头产物引用。仍被引用的资源会保留；无引用资源的记录、清理任务和审计事件会在同一事务提交。",
             okText: uniqueIds.length > 1 ? "检查并删除" : "确认删除",

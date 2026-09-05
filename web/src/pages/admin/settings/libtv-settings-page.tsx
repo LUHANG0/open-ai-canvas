@@ -91,7 +91,6 @@ export default function LibTVSettingsPage() {
         navigationTriggerRef.current = document.activeElement instanceof HTMLElement && document.activeElement !== document.body ? document.activeElement : null;
         modal.confirm({
             ...configurationConfirmProps,
-            rootClassName: "admin-modal-root",
             title: "放弃第三方参数调整？",
             content: "当前页面有尚未保存的 LibTV 凭据或导入策略草稿，离开后这些内容会丢失。服务端正在使用的配置不会改变。",
             okText: "放弃并离开",
@@ -131,7 +130,6 @@ export default function LibTVSettingsPage() {
         }
         modal.confirm({
             ...configurationConfirmProps,
-            rootClassName: "admin-modal-root",
             title: "放弃调整并重新读取？",
             content: "重新读取会丢弃当前 LibTV 凭据和导入开关草稿，并以服务端配置为准。",
             okText: "放弃并刷新",

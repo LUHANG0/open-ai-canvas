@@ -97,7 +97,6 @@ export default function SystemUpdatePage() {
         const target = status.latestRelease.version;
         modal.confirm({
             ...configurationConfirmProps,
-            rootClassName: "admin-modal-root",
             title: `更新到 ${target}？`,
             width: 560,
             content: (
@@ -129,7 +128,6 @@ export default function SystemUpdatePage() {
         let reason = "";
         modal.confirm({
             ...configurationConfirmProps,
-            rootClassName: "admin-modal-root",
             title: `回退到 ${status.rollbackVersion}？`,
             width: 520,
             content: (
