@@ -1,3 +1,4 @@
+import { useCanvasTheme } from "@/components/canvas/canvas-theme-provider";
 import { lazy, Suspense, useCallback, useRef, useState } from "react";
 import { Images } from "lucide-react";
 
@@ -5,7 +6,6 @@ import { useCanvasOverlayLayer } from "@/components/canvas/canvas-overlay-layer"
 import { FloatingDock, type FloatingDockEntry } from "@/components/ui/aceternity/floating-dock";
 import { canvasDockStyle } from "@/lib/canvas/canvas-aceternity-style";
 import { canvasThemes, type CanvasTheme } from "@/lib/canvas-theme";
-import { useThemeStore } from "@/stores/use-theme-store";
 import type { ImageAsset } from "@/stores/use-asset-store";
 import type { CanvasNodeData } from "@/types/canvas";
 
@@ -37,7 +37,7 @@ type CanvasAssetTrayProps = {
 };
 
 export function CanvasAssetTray({ assetImages, canvasImages, showLibrary = true, activeNodeId, onInsertAssetImage, onFocusCanvasImage }: CanvasAssetTrayProps) {
-    const theme = canvasThemes[useThemeStore((state) => state.theme)];
+    const theme = useCanvasTheme();
     const { bringToFront, zIndex } = useCanvasOverlayLayer("asset-tray", "var(--z-panel)");
     const initialTabRef = useRef<"library" | "canvas">(showLibrary ? "library" : "canvas");
     const [open, setOpen] = useState(false);

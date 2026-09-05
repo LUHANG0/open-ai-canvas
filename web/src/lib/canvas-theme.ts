@@ -149,6 +149,6 @@ export const canvasThemes = {
             danger: "#fb7185",
         },
     },
-} as const;
+};
 
 export type CanvasTheme = (typeof canvasThemes)[CanvasColorTheme];

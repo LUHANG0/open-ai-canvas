@@ -1,7 +1,9 @@
+import { useCanvasTheme } from "@/components/canvas/canvas-theme-provider";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { Link } from "react-router";
-import { Bot, Check, ChevronDown, Clapperboard, CloudDownload, Coins, CopyPlus, Focus, FolderKanban, Gauge, Home, LayoutGrid, LoaderCircle, Menu, Pencil, Plus, Redo2, Search, Settings2, Share2, Sparkles, Trash2, Undo2, Upload } from "lucide-react";
+import { Bot, Check, ChevronDown, Clapperboard, CloudDownload, Coins, CopyPlus, Focus, FolderKanban, Gauge, Home, LayoutGrid, Menu, Pencil, Plus, Redo2, Search, Settings2, Share2, Sparkles, Trash2, Undo2, Upload } from "lucide-react";
+import { BrandLoadingIndicator } from "@/components/ui/brand-loader";
 import { Button, Dropdown } from "antd";
 
 import { useWalletBalance } from "@/hooks/use-wallet-balance";
@@ -12,7 +14,6 @@ import { CANVAS_MEDIA_MODE_PRESENTATION, CANVAS_MEDIA_TIER_LABEL, type CanvasMed
 import { canvasSaveStatusPresentation, type CanvasSaveStatus } from "@/lib/canvas/canvas-save-status";
 import type { CanvasShortDramaProgress } from "@/lib/canvas/canvas-short-drama";
 import { canvasThemes } from "@/lib/canvas-theme";
-import { useThemeStore } from "@/stores/use-theme-store";
 import { useUserStore } from "@/stores/use-user-store";
 import type { CanvasMediaPerformanceMode, CanvasWorkspaceMode } from "@/types/canvas";
 
@@ -79,7 +80,7 @@ export function CanvasTopBar({
     onEnterFocusMode,
     shortDramaGuide,
 }: CanvasTopBarProps) {
-    const theme = canvasThemes[useThemeStore((state) => state.theme)];
+    const theme = useCanvasTheme();
     const dockStyle = canvasDockStyle(theme, theme.node.text);
     const user = useUserStore((state) => state.user);
     const creditsEnabled = useUserStore((state) => state.features.creditsEnabled);
@@ -257,7 +258,7 @@ export function CanvasTopBar({
                                 style={{ color: theme.node.text }}
                                 aria-label="查看积分明细"
                             >
-                                {refreshing && availableMicrocredits === null ? <LoaderCircle className="size-3.5 animate-spin opacity-60" /> : <Coins className="size-3.5" />}
+                                {refreshing && availableMicrocredits === null ? <BrandLoadingIndicator size="inline" /> : <Coins className="size-3.5" />}
                                 <span>{availableMicrocredits === null ? "--" : (availableMicrocredits / 1_000_000).toLocaleString("zh-CN", { maximumFractionDigits: 3 })}</span>
                             </Link>
                         </CanvasTopBarTooltip>
@@ -291,6 +292,7 @@ export function CanvasTopBar({
                         icon={<Bot className="size-4" />}
                         onClick={onToggleAgent}
                         aria-pressed={agentOpen}
+                        aria-label={agentOpen ? "收起 Agent" : "打开 Agent"}
                     >
                         <span className="pc-canvas-agent-button__label">Agent</span>
                     </Button>
@@ -301,7 +303,7 @@ export function CanvasTopBar({
 }
 
 export function CanvasWorkspaceModeSwitch({ mode, onChange }: { mode: CanvasWorkspaceMode; onChange: (mode: CanvasWorkspaceMode) => void }) {
-    const theme = canvasThemes[useThemeStore((state) => state.theme)];
+    const theme = useCanvasTheme();
     const reducedMotion = useReducedMotion();
     const simple = mode === "simple";
     const rootRef = useRef<HTMLDivElement>(null);
@@ -342,7 +344,7 @@ export function CanvasWorkspaceModeSwitch({ mode, onChange }: { mode: CanvasWork
                 aria-label={`当前为${simple ? "简洁" : "专业"}模式，点击切换`}
                 onClick={() => setOpen((value) => !value)}
             >
-                <span className="grid size-6 shrink-0 place-items-center rounded-full" style={{ background: theme.toolbar.itemHover, color: theme.accent.primary }}>
+                <span className="grid size-6 shrink-0 place-items-center rounded-full" style={{ background: theme.toolbar.itemHover, color: theme.toolbar.activeText }}>
                     {simple ? <Sparkles className="size-3" /> : <Settings2 className="size-3" />}
                 </span>
                 <span className="min-w-0 flex-1 whitespace-nowrap text-[var(--fs-caption)] font-semibold leading-none">{simple ? "简洁模式" : "专业模式"}</span>
@@ -448,9 +450,9 @@ function canvasTitleInputSize(value: string) {
 }
 
 function CompactAgentStatus({ status, onClick }: { status: { connected: boolean; enabled: boolean; activity: string }; onClick: () => void }) {
-    const theme = canvasThemes[useThemeStore((state) => state.theme)];
+    const theme = useCanvasTheme();
     const label = status.connected ? "已连接到本地 Codex" : status.enabled ? status.activity || "连接中" : "正在连接本地 Codex";
-    const dotColor = status.connected ? "#22c55e" : status.enabled ? "#f59e0b" : theme.node.muted;
+    const dotColor = status.connected ? "var(--app-status-success-fg)" : status.enabled ? "var(--app-status-warning-fg)" : theme.node.muted;
     return (
         <CanvasTopBarTooltip label="打开本地 Codex 面板">
             <button
@@ -468,9 +470,9 @@ function CompactAgentStatus({ status, onClick }: { status: { connected: boolean;
 }
 
 function CanvasSaveStatusButton({ status, onRetry }: { status: CanvasSaveStatus; onRetry: () => void }) {
-    const theme = canvasThemes[useThemeStore((state) => state.theme)];
+    const theme = useCanvasTheme();
     const presentation = canvasSaveStatusPresentation(status);
-    const toneColor = presentation.tone === "danger" ? "#ef4444" : presentation.tone === "warning" ? "#f59e0b" : presentation.tone === "success" ? "#22c55e" : theme.node.muted;
+    const toneColor = presentation.tone === "danger" ? "var(--app-status-error-fg)" : presentation.tone === "warning" ? "var(--app-status-warning-fg)" : presentation.tone === "success" ? "var(--app-status-success-fg)" : theme.node.muted;
     return (
         <CanvasTopBarTooltip label={`${presentation.detail}${presentation.retryable ? "，点击重试" : ""}`}>
             <button
@@ -483,7 +485,7 @@ function CanvasSaveStatusButton({ status, onRetry }: { status: CanvasSaveStatus;
                 disabled={!presentation.retryable}
             >
                 {presentation.busy ? (
-                    <LoaderCircle className="size-3.5 animate-spin" style={{ color: toneColor }} />
+                    <BrandLoadingIndicator size="inline" style={{ color: toneColor }} />
                 ) : presentation.retryable ? (
                     <Redo2 className="size-3.5" style={{ color: toneColor }} />
                 ) : (

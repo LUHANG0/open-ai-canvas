@@ -1,3 +1,4 @@
+import { useCanvasTheme } from "@/components/canvas/canvas-theme-provider";
 import { AnimatePresence, motion } from "motion/react";
 import { lazy, Suspense, useEffect, useRef, useState, type MouseEvent as ReactMouseEvent, type ReactNode } from "react";
 import { Switch } from "antd";
@@ -91,7 +92,7 @@ export function CanvasToolbar({
     const installations = usePluginStore((state) => state.installations);
     const pluginStates = usePluginStore((state) => state.pluginStates);
     const setTheme = useThemeStore((state) => state.setTheme);
-    const theme = canvasThemes[colorTheme];
+    const theme = useCanvasTheme();
     const [addOpen, setAddOpen] = useState(false);
     const [appearanceOpen, setAppearanceOpen] = useState(false);
     const [moreOpen, setMoreOpen] = useState(false);
@@ -414,7 +415,7 @@ function PanelHeading({ icon, title, subtitle, theme }: { icon: ReactNode; title
 }
 
 function CanvasThemeButton({ colorTheme, targetTheme, onThemeChange, children }: { colorTheme: CanvasColorTheme; targetTheme: CanvasColorTheme; onThemeChange: (theme: CanvasColorTheme) => void; children: ReactNode }) {
-    const theme = canvasThemes[colorTheme];
+    const theme = useCanvasTheme();
     const active = colorTheme === targetTheme;
     return (
         <AnimatedThemeToggler

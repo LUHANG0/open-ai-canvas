@@ -87,13 +87,16 @@ import { useCanvasViewportState } from "./use-canvas-viewport-state";
 import { useCanvasWorkspaceUiState } from "./use-canvas-workspace-ui-state";
 import { useCanvasPortraitClearance } from "./use-canvas-portrait-clearance";
 import "./canvas-editor-pc.css";
+import { CanvasThemeProvider } from "@/components/canvas/canvas-theme-provider";
 import { CanvasNodeType, type CanvasNodeData, type CanvasWorkflowKind, type Position } from "@/types/canvas";
 import type { ReferenceImage } from "@/types/image";
 
 export default function CanvasPage() {
     return (
         <CanvasClientMountGate>
-            <InfiniteCanvasPage />
+            <CanvasThemeProvider>
+                <InfiniteCanvasPage />
+            </CanvasThemeProvider>
         </CanvasClientMountGate>
     );
 }
