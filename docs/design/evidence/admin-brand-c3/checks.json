@@ -1,0 +1,160 @@
+{
+  "notice": "仅本批隔离数据；恢复查询使用浏览器响应夹具，无真实上游调用。兑换初次脚本在已完成9项后选择错误重试控件中断；修复就地重试入口后由redemption-rest补验。",
+  "groups": {
+    "credits": {
+      "checks": [
+        "未修改策略不可保存",
+        "保存期间策略字段锁定",
+        "积分策略保存六位精度与单次提交",
+        "策略读取失败禁止提交旧值",
+        "策略重试恢复最新值",
+        "策略保存失败保留输入",
+        "调账确认焦点留在确认框",
+        "人工调账真实到账并保留六位精度",
+        "连续确认只提交一次调账",
+        "订单读取失败可就地恢复",
+        "筛选无结果与错误分开",
+        "积分页无页面异常"
+      ],
+      "errors": []
+    },
+    "redemption": {
+      "checks": [
+        "兑换创建确认键盘焦点受限",
+        "创建成功后列表故障仍保留兑换码结果",
+        "批次金额准确保存",
+        "兑换真实到账回读六位精度",
+        "已核销兑换码不可重复到账",
+        "明细包含核销状态",
+        "单码禁用保留已核销记录",
+        "批次禁用只处理剩余可用码",
+        "兑换明细失败隐藏旧码"
+      ],
+      "errors": []
+    },
+    "redemption-rest": {
+      "checks": [
+        "兑换明细就地重试恢复当前筛选",
+        "到期状态按服务端时钟展示",
+        "到期兑换码被服务端拒绝",
+        "兑换码筛选无结果与空批次分开"
+      ],
+      "errors": []
+    },
+    "announcements": {
+      "checks": [
+        "公告发布确认焦点留在确认框",
+        "公告真实发布状态为active",
+        "发布内容进入真实前台公告中心",
+        "编辑发布更新内容与发布时间",
+        "关闭后前台接口移除公告",
+        "关闭后前台同步不显示内容",
+        "发布成功与列表读取失败分别反馈",
+        "公告列表恢复"
+      ],
+      "errors": []
+    },
+    "logs": {
+      "checks": [
+        "真实隔离日志列表第一页20条",
+        "真实日志第二页3条",
+        "筛选失败结果重置页码",
+        "请求筛选失败隐藏旧行",
+        "请求列表读取恢复",
+        "详情读取失败与重试恢复",
+        "详情保留脱敏报文",
+        "迟到详情不覆盖新请求",
+        "请求页面无未捕获异常"
+      ],
+      "errors": []
+    },
+    "recovery": {
+      "checks": [
+        "恢复查询期间禁止关闭与重复提交",
+        "模拟恢复成功与回读失败分开且禁止重复查上游",
+        "恢复后仅重新读取详情",
+        "恢复故障验证无页面异常"
+      ],
+      "errors": []
+    },
+    "matrix": {
+      "checks": [
+        "credit-operations-dark-1440 页面无横向溢出",
+        "credit-operations-dark-1440 浮层无横向溢出",
+        "redemption-codes-dark-1440 页面无横向溢出",
+        "redemption-codes-dark-1440 浮层无横向溢出",
+        "announcements-dark-1440 页面无横向溢出",
+        "announcements-dark-1440 浮层无横向溢出",
+        "logs-dark-1440 页面无横向溢出",
+        "logs-dark-1440 浮层无横向溢出",
+        "credit-operations-light-1440 页面无横向溢出",
+        "credit-operations-light-1440 浮层无横向溢出",
+        "redemption-codes-light-1440 页面无横向溢出",
+        "redemption-codes-light-1440 浮层无横向溢出",
+        "announcements-light-1440 页面无横向溢出",
+        "announcements-light-1440 浮层无横向溢出",
+        "logs-light-1440 页面无横向溢出",
+        "logs-light-1440 浮层无横向溢出",
+        "credit-operations-dark-390 页面无横向溢出",
+        "credit-operations-dark-390 浮层无横向溢出",
+        "redemption-codes-dark-390 页面无横向溢出",
+        "redemption-codes-dark-390 浮层无横向溢出",
+        "announcements-dark-390 页面无横向溢出",
+        "announcements-dark-390 浮层无横向溢出",
+        "logs-dark-390 页面无横向溢出",
+        "logs-dark-390 浮层无横向溢出",
+        "credit-operations-light-390 页面无横向溢出",
+        "credit-operations-light-390 浮层无横向溢出",
+        "redemption-codes-light-390 页面无横向溢出",
+        "redemption-codes-light-390 浮层无横向溢出",
+        "announcements-light-390 页面无横向溢出",
+        "announcements-light-390 浮层无横向溢出",
+        "logs-light-390 页面无横向溢出",
+        "logs-light-390 浮层无横向溢出",
+        "完整矩阵无未捕获异常"
+      ],
+      "errors": []
+    },
+    "final": {
+      "checks": [
+        "策略恢复原值后禁止无变化保存",
+        "策略读取复用品牌加载图形",
+        "原生上传输入不重复显示",
+        "手机公告确认Tab 0",
+        "手机公告确认Tab 1",
+        "手机公告确认Tab 2",
+        "手机公告确认Tab 3",
+        "手机公告确认Tab 4",
+        "手机公告确认Tab 5",
+        "手机公告确认Tab 6",
+        "手机公告确认Tab 7",
+        "手机公告确认Tab 8",
+        "手机公告确认Tab 9",
+        "手机公告确认Tab 10",
+        "手机公告确认Tab 11",
+        "手机公告确认Tab 12",
+        "手机公告确认Tab 13",
+        "手机公告确认Tab 14",
+        "返回修改保留公告草稿",
+        "C1/C2 settings/branding dark 390",
+        "C1/C2 users dark 390",
+        "C1/C2 channels dark 390",
+        "C1/C2 models dark 390",
+        "C1/C2 settings/branding light 390",
+        "C1/C2 users light 390",
+        "C1/C2 channels light 390",
+        "C1/C2 models light 390",
+        "C1/C2 settings/branding dark 1440",
+        "C1/C2 users dark 1440",
+        "C1/C2 channels dark 1440",
+        "C1/C2 models dark 1440",
+        "C1/C2 settings/branding light 1440",
+        "C1/C2 users light 1440",
+        "C1/C2 channels light 1440",
+        "C1/C2 models light 1440",
+        "补充验证无未捕获异常"
+      ],
+      "errors": []
+    }
+  }
+}

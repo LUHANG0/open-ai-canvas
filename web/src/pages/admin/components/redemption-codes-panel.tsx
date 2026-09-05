@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import "./admin-operations.css";
 import { App, Button, Drawer, Form, Input, InputNumber, Modal, Popconfirm, Select, Space } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { Ban, Copy, Eye, KeyRound, RefreshCw, Search, TicketCheck } from "lucide-react";
@@ -108,6 +109,9 @@ export default function RedemptionCodesPanel({ createOpen, onCreateOpenChange, o
 
     useEffect(() => {
         void reload(page, pageSize);
+        return () => {
+            listRequestRef.current++;
+        };
     }, [debouncedKeyword, validity, page, pageSize]);
 
     const closeCreateDrawer = () => {
@@ -411,7 +415,8 @@ function CreateRedeemBatchDrawer({
             <Drawer
                 title="生成兑换码批次"
                 open={open && !pending}
-                size="min(600px, 100vw)"
+                size="min(640px, 100vw)"
+                focusable={{ trap: !pending }}
                 onClose={onClose}
                 rootClassName="admin-drawer admin-redemption-drawer"
                 destroyOnHidden
@@ -438,7 +443,7 @@ function CreateRedeemBatchDrawer({
                         <p>确认后会一次性写入完整批次。接口没有自动重试，遇到网络异常时请先回到列表核对。</p>
                     </div>
                 </div>
-                <Form form={form} layout="vertical" requiredMark={false} initialValues={DEFAULT_CREATE_VALUES} onFinish={onPreview}>
+                <Form form={form} inert={creating || Boolean(pending)} disabled={creating || Boolean(pending)} layout="vertical" requiredMark={false} initialValues={DEFAULT_CREATE_VALUES} onFinish={onPreview}>
                     <section className="admin-redemption-drawer-section">
                         <div className="admin-redemption-drawer-section-heading">
                             <h3>批次参数</h3>
@@ -667,6 +672,9 @@ function RedeemBatchCodesModal({ batch, onClose, onBatchChanged }: { batch: Rede
 
     useEffect(() => {
         void loadDetails(page, pageSize, status);
+        return () => {
+            requestRef.current++;
+        };
     }, [batch, page, pageSize, status]);
 
     const copyCode = async (code?: string) => {
@@ -817,7 +825,14 @@ function RedeemBatchCodesModal({ batch, onClose, onBatchChanged }: { batch: Rede
                         setPage(1);
                     }}
                     table={{ className: "app-data-table", rowKey: "id", size: "small", loading, columns, dataSource: codes, pagination: false, scroll: { x: 960 } }}
-                    empty={<AdminTableEmpty filtered={status !== "all"} title={detailError ? "明细读取失败" : status === "all" ? "暂无兑换码" : undefined} description={detailError || undefined} />}
+                    empty={
+                        <AdminTableEmpty
+                            filtered={status !== "all"}
+                            title={detailError ? "明细读取失败" : status === "all" ? "暂无兑换码" : undefined}
+                            description={detailError || undefined}
+                            action={detailError ? <Button onClick={() => void loadDetails()}>重试</Button> : undefined}
+                        />
+                    }
                     footer={
                         <PaginationBar
                             alwaysShow

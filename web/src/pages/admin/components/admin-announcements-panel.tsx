@@ -23,6 +23,7 @@ import {
 import { resourceFileUrl } from "@/services/api/resources";
 import { clearAnnouncementPendingReview, readAnnouncementPendingReview, writeAnnouncementPendingReview, type AnnouncementPendingReview } from "./admin-announcement-safety";
 import { AdminDataTable, AdminRowActions, AdminStatusBadge, AdminTableEmpty } from "./admin-ui";
+import "./admin-operations.css";
 
 type AnnouncementFormValues = {
     title: string;
@@ -610,7 +611,7 @@ export default function AdminAnnouncementsPanel({
                             刷新
                         </Button>
                     }
-                    table={{ rowKey: "id", size: "small", loading, pagination: false, columns, dataSource: announcements }}
+                    table={{ rowKey: "id", size: "small", loading, pagination: false, tableLayout: "fixed", scroll: { x: 1010 }, columns, dataSource: announcements }}
                     empty={
                         <AdminTableEmpty
                             filtered={hasFilters}
@@ -628,6 +629,8 @@ export default function AdminAnnouncementsPanel({
                                     >
                                         发布首条公告
                                     </Button>
+                                ) : listError ? (
+                                    <Button onClick={() => setListRefreshNonce((value) => value + 1)}>重试</Button>
                                 ) : undefined
                             }
                         />
@@ -725,7 +728,7 @@ function AnnouncementEditor({
             <Drawer
                 title={editingAnnouncement ? "编辑并重新发布公告" : "发布系统公告"}
                 open={open && !pending}
-                size="min(680px, 100vw)"
+                size="min(640px, 100vw)"
                 onClose={onClose}
                 rootClassName="admin-drawer admin-announcement-drawer"
                 forceRender
@@ -752,7 +755,16 @@ function AnnouncementEditor({
                     <strong>{editingAnnouncement ? "保存会重新向全体用户发布" : "发布成功后会进入用户公告中心"}</strong>
                     <p>{editingAnnouncement ? "无论当前公告是否已关闭，保存都会刷新发布时间、恢复为发布中，并清除所有用户的旧已读状态。" : "已打开的页面会在下一次同步后看到（通常 5 分钟内）；请写清影响范围、所需操作和预计恢复时间。"}</p>
                 </div>
-                <Form form={form} layout="vertical" requiredMark={false} disabled={publishBlocked} initialValues={DEFAULT_ANNOUNCEMENT} scrollToFirstError={{ focus: true, block: "center" }} onFinish={onPreview}>
+                <Form
+                    form={form}
+                    inert={saving || imageUploading}
+                    layout="vertical"
+                    requiredMark={false}
+                    disabled={publishBlocked || saving || imageUploading}
+                    initialValues={DEFAULT_ANNOUNCEMENT}
+                    scrollToFirstError={{ focus: true, block: "center" }}
+                    onFinish={onPreview}
+                >
                     <section className="admin-announcement-editor-section">
                         <div className="admin-announcement-editor-section-heading">
                             <h2>公告内容</h2>
@@ -799,7 +811,7 @@ function AnnouncementEditor({
                                 ) : (
                                     <div className="flex min-h-24 items-center justify-center rounded-md border border-dashed border-border/80 bg-muted/10 text-xs text-foreground/45">暂未添加配图</div>
                                 )}
-                                <input ref={imageInputRef} type="file" accept="image/*" className="hidden" onChange={onUploadImage} />
+                                <input ref={imageInputRef} type="file" accept="image/*" hidden className="admin-announcement-image-input" onChange={onUploadImage} />
                                 <Button icon={<Upload className="size-3.5" />} loading={imageUploading} onClick={() => imageInputRef.current?.click()}>
                                     {imagePreviewUrl ? "更换配图" : "上传配图"}
                                 </Button>

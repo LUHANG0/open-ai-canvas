@@ -1,38 +1,45 @@
-import { useEffect, useState } from "react";
-import { App, Button, Descriptions, Drawer, Empty, Skeleton, Tabs, Typography } from "antd";
+import { useEffect, useRef, useState } from "react";
+import { Alert, App, Button, Descriptions, Drawer, Empty, Spin, Tabs, Typography } from "antd";
 import { RefreshCw } from "lucide-react";
 
 import { formatCredits } from "@/constant/credits";
 import { getAdminApiLog, queryAdminApiLogTask, type ApiCallLog } from "@/services/api/auth";
-import { AdminStatusBadge } from "./admin-ui";
+import { AdminStatusBadge, AdminTableEmpty } from "./admin-ui";
+import "./admin-operations.css";
 
 export function ApiLogDetailDrawer({ logId, onClose, onLogUpdated }: { logId: string | null; onClose: () => void; onLogUpdated?: (log: ApiCallLog) => void }) {
     const { message } = App.useApp();
     const [log, setLog] = useState<ApiCallLog | null>(null);
     const [loading, setLoading] = useState(false);
     const [querying, setQuerying] = useState(false);
+    const [detailError, setDetailError] = useState("");
+    const [reloadNonce, setReloadNonce] = useState(0);
+    const requestSequence = useRef(0);
+    const queryInFlight = useRef(false);
     useEffect(() => {
+        const sequence = ++requestSequence.current;
         if (!logId) return;
-        let active = true;
         setLoading(true);
         setLog(null);
+        setDetailError("");
         void getAdminApiLog(logId)
-            .then((result) => active && setLog(result.log))
-            .catch((error) => active && message.error(error instanceof Error ? error.message : "读取请求详情失败"))
-            .finally(() => active && setLoading(false));
+            .then((result) => sequence === requestSequence.current && setLog(result.log))
+            .catch((error) => sequence === requestSequence.current && setDetailError(error instanceof Error ? error.message : "读取请求详情失败"))
+            .finally(() => sequence === requestSequence.current && setLoading(false));
         return () => {
-            active = false;
+            requestSequence.current++;
         };
-    }, [logId, message]);
+    }, [logId, reloadNonce]);
 
     const queryProviderTask = async () => {
-        if (!log) return;
+        if (!log || queryInFlight.current) return;
+        queryInFlight.current = true;
+        const sequence = requestSequence.current;
         setQuerying(true);
+        setDetailError("");
         try {
             const result = await queryAdminApiLogTask(log.id);
-            const refreshed = await getAdminApiLog(log.id);
-            setLog(refreshed.log);
-            onLogUpdated?.(refreshed.log);
+            if (sequence !== requestSequence.current) return;
             if (result.recovered) {
                 window.dispatchEvent(new CustomEvent("wallet:updated"));
                 if (result.billingSettled) message.success("已获取上游视频，任务已恢复并完成结算");
@@ -40,21 +47,54 @@ export function ApiLogDetailDrawer({ logId, onClose, onLogUpdated }: { logId: st
             } else {
                 message.info(`上游任务仍在处理中${result.providerStatus ? `（${result.providerStatus}）` : ""}`);
             }
+            try {
+                const refreshed = await getAdminApiLog(log.id);
+                if (sequence !== requestSequence.current) return;
+                setLog(refreshed.log);
+                onLogUpdated?.(refreshed.log);
+            } catch (error) {
+                if (sequence === requestSequence.current) setDetailError(`查询已完成，最新详情读取失败：${error instanceof Error ? error.message : "请重试读取"}。无需重复查询上游。`);
+            }
         } catch (error) {
-            message.error(error instanceof Error ? error.message : "查询上游任务失败");
+            if (sequence === requestSequence.current) setDetailError(`查询结果未确认：${error instanceof Error ? error.message : "查询上游任务失败"}。请先重新读取详情核对。`);
         } finally {
+            queryInFlight.current = false;
             setQuerying(false);
         }
     };
 
     return (
-        <Drawer title="请求详情" open={Boolean(logId)} onClose={onClose} size="min(920px, 100vw)" destroyOnHidden rootClassName="admin-drawer">
-            {loading ? <Skeleton active paragraph={{ rows: 12 }} /> : log ? <LogDetail log={log} querying={querying} onQueryProviderTask={queryProviderTask} /> : <Empty description="没有请求详情" />}
+        <Drawer
+            title="请求详情"
+            open={Boolean(logId)}
+            onClose={() => {
+                if (!querying) onClose();
+            }}
+            closable={!querying}
+            keyboard={!querying}
+            mask={{ closable: !querying }}
+            size="min(920px, 100vw)"
+            destroyOnHidden
+            rootClassName="admin-drawer admin-api-log-drawer"
+        >
+            {loading ? (
+                <div className="admin-credit-drawer-loading" role="status">
+                    <Spin />
+                    正在读取请求详情…
+                </div>
+            ) : log ? (
+                <>
+                    {detailError ? <Alert showIcon type="warning" title="详情待刷新" description={detailError} action={<Button onClick={() => setReloadNonce((value) => value + 1)}>重新读取</Button>} /> : null}
+                    <LogDetail log={log} querying={querying} queryBlocked={Boolean(detailError)} onQueryProviderTask={queryProviderTask} />
+                </>
+            ) : (
+                <AdminTableEmpty title={detailError ? "请求详情读取失败" : "没有请求详情"} description={detailError || undefined} action={detailError ? <Button onClick={() => setReloadNonce((value) => value + 1)}>重试</Button> : undefined} />
+            )}
         </Drawer>
     );
 }
 
-function LogDetail({ log, querying, onQueryProviderTask }: { log: ApiCallLog; querying: boolean; onQueryProviderTask: () => void }) {
+function LogDetail({ log, querying, queryBlocked, onQueryProviderTask }: { log: ApiCallLog; querying: boolean; queryBlocked: boolean; onQueryProviderTask: () => void }) {
     const providerStatus = log.providerStatus?.toLowerCase();
     const processing = ["queued", "pending", "processing", "running", "in_progress"].includes(providerStatus || "");
     const failed = log.status === "failed" || ["failed", "cancelled", "expired"].includes(providerStatus || "");
@@ -87,10 +127,11 @@ function LogDetail({ log, querying, onQueryProviderTask }: { log: ApiCallLog; qu
     const canQueryProviderTask = log.capability === "video" && log.taskStatus === "failed" && Boolean(log.taskId && log.providerRequestId);
 
     return (
-        <div className="space-y-6">
+        <div className="admin-api-log-detail-stack">
             {canQueryProviderTask ? (
-                <div className="flex justify-end">
-                    <Button icon={<RefreshCw className="size-4" />} loading={querying} onClick={onQueryProviderTask}>
+                <div className="space-y-2">
+                    <p className="text-xs text-foreground/55">查询上游成功后可能恢复任务并完成积分结算，请核对当前任务。</p>
+                    <Button icon={<RefreshCw className="size-4" />} loading={querying} disabled={queryBlocked} onClick={onQueryProviderTask}>
                         手动查询任务
                     </Button>
                 </div>
