@@ -1,3 +1,5 @@
+import { useCanvasTheme } from "@/components/canvas/canvas-theme-provider";
+import { BrandLoadingIndicator } from "@/components/ui/brand-loader";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { AlertCircle, BookOpenCheck, CheckCircle2, ChevronRight, Clapperboard, Copy, Download, GripVertical, Image as ImageIcon, Lock, Maximize2, Music2, Pencil, Plus, RefreshCw, Settings2, Star, Trash2, Type, Video } from "lucide-react";
@@ -9,7 +11,6 @@ import { storyboardMinNodeHeight } from "@/lib/canvas/canvas-storyboard-layout";
 import { shouldEnableCanvasNodeKeyboardControls } from "@/lib/canvas/canvas-keyboard-access";
 import type { CanvasMediaRenderPolicy } from "@/lib/canvas/canvas-performance-mode";
 import { resourceStorageLabel, resourceStorageLocation, resourceStorageTitle } from "@/lib/canvas/resource-storage-status";
-import { useThemeStore } from "@/stores/use-theme-store";
 import { CanvasNodeType, type CanvasNodeData, type CanvasNodeTypeId, type Position } from "@/types/canvas";
 import type { CanvasResourceReference } from "@/lib/canvas/canvas-resource-references";
 import { PortraitClearanceIcon } from "@/components/canvas/portrait-clearance/portrait-clearance-icon";
@@ -113,7 +114,7 @@ export const CanvasNode = React.memo(function CanvasNode({
     onOpenDrawing,
     onContextMenu,
 }: CanvasNodeProps) {
-    const theme = canvasThemes[useThemeStore((state) => state.theme)];
+    const theme = useCanvasTheme();
     const [hovered, setHovered] = useState(false);
     const [videoHovered, setVideoHovered] = useState(false);
     const [isEditingContent, setIsEditingContent] = useState(false);
@@ -395,7 +396,7 @@ export const CanvasNode = React.memo(function CanvasNode({
                 {/* 批次子图操作条：成功子项提供下载/副本/设为主图，失败子项提供重试/删除 */}
                 {isBatchChild && !readOnly && (hasImageContent || data.metadata?.status === "error") && (hovered || isSelected) ? (
                     <div className="absolute inset-x-0 bottom-2 z-[var(--node-z-overlay)] flex justify-center" onMouseDown={(event) => event.stopPropagation()} onPointerDown={(event) => event.stopPropagation()}>
-                        <div className="flex items-center gap-0.5 rounded-[var(--r-md)] border px-1 py-1 backdrop-blur-xl" style={{ background: `${theme.toolbar.panel}e6`, borderColor: theme.toolbar.border }}>
+                        <div className="flex items-center gap-0.5 rounded-[var(--r-md)] border px-1 py-1 backdrop-blur-xl" style={{ background: theme.toolbar.panel, borderColor: theme.toolbar.border }}>
                             {hasImageContent ? <BatchChildActionButton theme={theme} label="下载图片" icon={<Download className="size-3.5" />} onClick={() => downloadNode?.(data)} /> : null}
                             {hasImageContent ? <BatchChildActionButton theme={theme} label="创建副本" icon={<Copy className="size-3.5" />} onClick={() => duplicateNode?.(data)} /> : null}
                             {hasImageContent ? (
@@ -540,7 +541,7 @@ function BatchToggleBadge({ count, expanded, theme, onToggle }: { count: number;
         <button
             type="button"
             className="canvas-node-tool-button inline-flex h-7 shrink-0 items-center gap-1 rounded-md border px-2 text-[var(--fs-tiny)] font-semibold backdrop-blur-md"
-            style={{ background: `${theme.toolbar.panel}d9`, borderColor: `${theme.toolbar.border}cc`, color: theme.node.text }}
+            style={{ background: theme.toolbar.panel, borderColor: theme.toolbar.border, color: theme.node.text }}
             aria-label={expanded ? "图片组已展开" : "图片组已收起"}
             onClick={(event) => {
                 event.stopPropagation();
@@ -803,10 +804,10 @@ function NodeStatusBadge({ status }: { status: "loading" | "success" | "error" }
         return (
             <div
                 className="pointer-events-none absolute left-2 top-2 z-20 flex items-center gap-1 rounded-full px-2 py-0.5 backdrop-blur-sm"
-                style={{ background: "color-mix(in oklch, var(--status-loading) 20%, transparent)", color: "var(--status-loading)" }}
+                style={{ background: "var(--app-status-running-bg)", color: "var(--app-status-running-fg)" }}
                 aria-label="生成中"
             >
-                <span className="size-1.5 animate-pulse rounded-full" style={{ background: "var(--status-loading)" }} />
+                <BrandLoadingIndicator size="inline" />
                 <span className="text-[var(--fs-micro)] font-medium leading-none">生成中</span>
             </div>
         );
@@ -815,7 +816,7 @@ function NodeStatusBadge({ status }: { status: "loading" | "success" | "error" }
         return (
             <div
                 className="pointer-events-none absolute left-2 top-2 z-20 flex items-center gap-1 rounded-full px-2 py-0.5 backdrop-blur-sm"
-                style={{ background: "color-mix(in oklch, var(--status-error) 20%, transparent)", color: "var(--status-error)" }}
+                style={{ background: "var(--app-status-error-bg)", color: "var(--app-status-error-fg)" }}
                 aria-label="生成失败"
             >
                 <AlertCircle className="size-3" strokeWidth={2} />
@@ -827,7 +828,7 @@ function NodeStatusBadge({ status }: { status: "loading" | "success" | "error" }
     return (
         <div
             className="pointer-events-none absolute left-2 top-2 z-20 flex items-center gap-1 rounded-full px-2 py-0.5 backdrop-blur-sm"
-            style={{ background: "color-mix(in oklch, var(--status-success) 20%, transparent)", color: "var(--status-success)", animation: "canvas-status-success-fade 2s ease-out forwards" }}
+            style={{ background: "var(--app-status-success-bg)", color: "var(--app-status-success-fg)", animation: "canvas-status-success-fade 2s ease-out forwards" }}
             aria-label="生成完成"
         >
             <CheckCircle2 className="size-3" strokeWidth={2} />

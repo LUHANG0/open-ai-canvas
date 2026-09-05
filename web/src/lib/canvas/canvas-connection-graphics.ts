@@ -54,7 +54,7 @@ export class CanvasConnectionGraphics {
             const fromScrollTop = scriptScrollTopById[from.id] || 0;
             const toScrollTop = scriptScrollTopById[to.id] || 0;
             const emphasized = selectedConnectionId === connection.id || relatedConnectionIds.has(connection.id);
-            const stroke = emphasized ? theme.accent.primary : theme.node.muted;
+            const stroke = emphasized ? theme.canvas.selectionStroke : theme.node.muted;
             const strokeWidth = emphasized ? 1.6 : 1;
             const opacity = emphasized ? 0.52 : 0.24;
             let entry = this.entries.get(connection.id);

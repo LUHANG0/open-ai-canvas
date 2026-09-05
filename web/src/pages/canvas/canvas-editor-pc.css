@@ -1,5 +1,6 @@
 /* Canvas-owned appearance is shared across viewport sizes; desktop layout remains below. */
 .pc-canvas-workspace {
+    --canvas-editor-background: var(--app-bg-canvas);
     --pc-canvas-panel-border: var(--app-border-default);
     --pc-canvas-panel-surface: var(--app-surface-overlay);
     --pc-canvas-panel-muted: var(--app-surface-2);

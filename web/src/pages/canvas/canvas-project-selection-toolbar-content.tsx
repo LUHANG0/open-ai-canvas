@@ -1,9 +1,8 @@
+import { useCanvasTheme } from "@/components/canvas/canvas-theme-provider";
 import { FloatingDock } from "@/components/ui/aceternity/floating-dock";
-import { canvasThemes } from "@/lib/canvas-theme";
 import { canvasDockStyle } from "@/lib/canvas/canvas-aceternity-style";
 import type { CanvasAlignmentMode } from "@/lib/canvas/canvas-layout";
 import { defaultToolbarPrefs, readToolbarPrefs, resolveToolbarEntries, type ToolContext, type ToolbarHandlers } from "@/lib/canvas/tool-registry";
-import { useThemeStore } from "@/stores/use-theme-store";
 
 export type CanvasProjectSelectionToolbarContentProps = {
     count: number;
@@ -36,7 +35,7 @@ export function CanvasProjectSelectionToolbarContent({
     onBatchConnect,
     onMergeVideos,
 }: CanvasProjectSelectionToolbarContentProps) {
-    const theme = canvasThemes[useThemeStore((state) => state.theme)];
+    const theme = useCanvasTheme();
 
     const handlers = {
         onAlign,

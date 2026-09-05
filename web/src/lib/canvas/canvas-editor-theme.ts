@@ -11,7 +11,7 @@ export function createCanvasEditorTheme(mode: CanvasColorTheme, primaryColor: st
     const selection = brand.colorPrimaryBg!;
     return {
         ...base,
-        canvas: { ...base.canvas, background: colors.background.canvas, selectionFill: selection },
+        canvas: { ...base.canvas, background: colors.background.canvas, selectionFill: selection, selectionStroke: accent },
         node: {
             ...base.node,
             fill: colors.surface.one,

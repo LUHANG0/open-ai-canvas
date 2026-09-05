@@ -1,3 +1,4 @@
+import { useCanvasTheme } from "@/components/canvas/canvas-theme-provider";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import type { MouseEvent as ReactMouseEvent } from "react";
 import { ChevronDown, ChevronRight, Video } from "lucide-react";
@@ -7,7 +8,6 @@ import { CanvasFolderPreview } from "@/components/canvas/canvas-folder-preview";
 import { FRAME_HEADER_HEIGHT, FRAME_PADDING, isCanvasFolderNode } from "@/lib/canvas/canvas-frame";
 import { shouldEnableCanvasNodeKeyboardControls } from "@/lib/canvas/canvas-keyboard-access";
 import { canvasThemes, type CanvasTheme } from "@/lib/canvas-theme";
-import { useThemeStore } from "@/stores/use-theme-store";
 import { CanvasNodeType, type CanvasFolderStyle, type CanvasFolderTheme, type CanvasNodeData, type Position } from "@/types/canvas";
 import { useCanvasNodeResize } from "./use-canvas-node-resize";
 import type { CanvasResizeCorner as ResizeCorner } from "@/lib/canvas/canvas-node-resize";
@@ -47,7 +47,7 @@ export const CanvasFrameNode = React.memo(function CanvasFrameNode({
     onHoverStart?: (nodeId: string) => void;
     onHoverEnd?: (nodeId: string) => void;
 }) {
-    const theme = canvasThemes[useThemeStore((state) => state.theme)];
+    const theme = useCanvasTheme();
     const collapsed = Boolean(data.metadata?.frame?.collapsed);
     const folder = isCanvasFolderNode(data);
     const [editing, setEditing] = useState(false);

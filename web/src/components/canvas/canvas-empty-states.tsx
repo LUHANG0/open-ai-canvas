@@ -1,12 +1,12 @@
+import { useCanvasTheme } from "@/components/canvas/canvas-theme-provider";
 import type { CSSProperties, ReactNode } from "react";
 import { Dropdown } from "antd";
 import { ArrowRight, Bot, ChevronDown, Clapperboard, FolderKanban, Images, MoreHorizontal, Plus, Type, Upload } from "lucide-react";
 
 import { canvasThemes, type CanvasTheme } from "@/lib/canvas-theme";
-import { useThemeStore } from "@/stores/use-theme-store";
 
 export function CanvasLinkedProjectEmptyState({ projectName, hasChapter, onAddFirstChapter, onOpenAssets, onAddText }: { projectName: string; hasChapter: boolean; onAddFirstChapter: () => void; onOpenAssets: () => void; onAddText: () => void }) {
-    const theme = canvasThemes[useThemeStore((state) => state.theme)];
+    const theme = useCanvasTheme();
     return (
         <div className="pointer-events-none absolute inset-0 z-20 grid place-items-center px-4 pb-16 pt-20">
             <div className="pointer-events-auto w-full max-w-[440px] rounded-lg border p-3 shadow-sm backdrop-blur" data-canvas-no-zoom style={{ background: theme.toolbar.panel, borderColor: theme.toolbar.border, color: theme.node.text }}>
@@ -28,7 +28,7 @@ export function CanvasShortDramaEmptyState({ onCreatePipeline, onOpenAgent, onUp
     onAddText: () => void;
     onAddScript: () => void;
 }) {
-    const theme = canvasThemes[useThemeStore((state) => state.theme)];
+    const theme = useCanvasTheme();
     const focusStyle = { "--tw-ring-color": theme.accent.primary } as CSSProperties;
     return (
         <div className="pointer-events-none absolute inset-0 z-20 grid place-items-center px-4 pb-20 pt-24">
@@ -81,7 +81,7 @@ export function CanvasShortDramaEmptyState({ onCreatePipeline, onOpenAgent, onUp
 }
 
 export function CanvasFreeformEmptyState({ onUpload, onAddText }: { onUpload: () => void; onAddText: () => void }) {
-    const theme = canvasThemes[useThemeStore((state) => state.theme)];
+    const theme = useCanvasTheme();
     return (
         <div className="pointer-events-none absolute inset-0 z-20 grid place-items-center px-4 pb-20 pt-24">
             <div className="pointer-events-auto w-full max-w-[440px] rounded-lg border p-4 shadow-sm backdrop-blur" data-canvas-no-zoom style={{ background: theme.toolbar.panel, borderColor: theme.toolbar.border, color: theme.node.text }}>

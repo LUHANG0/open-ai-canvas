@@ -1,14 +1,13 @@
+import { useCanvasTheme } from "@/components/canvas/canvas-theme-provider";
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 import { App, Dropdown } from "antd";
 import type { MenuProps } from "antd";
 import { ChevronDown, Ellipsis, Lock, Unlock } from "lucide-react";
 
 import { canvasDockStyle } from "@/lib/canvas/canvas-aceternity-style";
-import { canvasThemes } from "@/lib/canvas-theme";
 import { resolveToolbarTools, type ToolContext, type ToolbarHandlers } from "@/lib/canvas/tool-registry";
 import { subscribeCanvasViewportPreview } from "@/lib/canvas/canvas-live-viewport";
 import { useCopyText } from "@/hooks/use-copy-text";
-import { useThemeStore } from "@/stores/use-theme-store";
 import { CanvasNodeType, type CanvasNodeData, type CanvasWorkspaceMode, type ViewportTransform } from "@/types/canvas";
 import { buildImageToolbarTools } from "./canvas-image-toolbar-tools";
 
@@ -109,8 +108,7 @@ export function CanvasNodeToolbar({
     const toolbarRef = useRef<HTMLDivElement>(null);
     const { message } = App.useApp();
     const copyText = useCopyText();
-    const themeName = useThemeStore((state) => state.theme);
-    const theme = canvasThemes[themeName];
+    const theme = useCanvasTheme();
     const simpleMode = workspaceMode === "simple";
 
     useEffect(() => {

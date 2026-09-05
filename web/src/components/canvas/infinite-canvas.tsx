@@ -44,7 +44,9 @@ export function InfiniteCanvas({ containerRef, viewport, backgroundMode = "lines
     const colorTheme = useThemeStore((state) => state.theme);
     const normalizedBackgroundMode = normalizeCanvasBackgroundMode(backgroundMode);
     const backgroundPreset = canvasBackgroundPresets[normalizedBackgroundMode];
-    const canvasBackground = backgroundPreset.surface[colorTheme];
+    const canvasBackground = normalizedBackgroundMode === "dots" || normalizedBackgroundMode === "lines" || normalizedBackgroundMode === "blank"
+        ? `var(--canvas-editor-background, ${backgroundPreset.surface[colorTheme]})`
+        : backgroundPreset.surface[colorTheme];
     const panState = useRef({
         isPanning: false,
         pointerId: -1,

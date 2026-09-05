@@ -211,7 +211,7 @@ function syncOverlayContent(scene: OverlayScene, props: CanvasLeaferGraphicsLaye
     scene.selectionBounds.visible = Boolean(bounds && !selection);
     if (bounds && !selection) {
         syncSelectionBounds(scene.selectionBounds, bounds, viewportScale);
-        scene.selectionBounds.stroke = props.theme.accent.primary;
+        scene.selectionBounds.stroke = props.theme.canvas.selectionStroke;
     }
 
     const connecting = props.connectingParams;
@@ -225,7 +225,7 @@ function syncOverlayContent(scene: OverlayScene, props: CanvasLeaferGraphicsLaye
                 props.connectionTargetNodeId ? props.nodeById.get(props.connectionTargetNodeId) : undefined,
                 props.scriptScrollTopById[connecting.nodeId] || 0,
             ),
-            stroke: props.theme.accent.primary,
+            stroke: props.theme.canvas.selectionStroke,
             strokeCap: "round",
             opacity: 0.72,
         });
@@ -236,7 +236,7 @@ function syncOverlayContent(scene: OverlayScene, props: CanvasLeaferGraphicsLaye
     scene.batchDrafts.visible = Boolean(batch);
     if (!batch) return;
     const target = batch.targetNodeId ? props.nodeById.get(batch.targetNodeId) : undefined;
-    const stroke = batch.status === "invalid" ? props.theme.accent.danger : batch.status === "partial" ? props.theme.node.activeStroke : props.theme.accent.primary;
+    const stroke = batch.status === "invalid" ? props.theme.accent.danger : batch.status === "partial" ? props.theme.canvas.selectionStroke : props.theme.canvas.selectionStroke;
     batch.sourceNodeIds.forEach((sourceNodeId) => {
         const source = props.nodeById.get(sourceNodeId);
         if (!source) return;
@@ -261,7 +261,7 @@ function syncSelection(rect: Rect, selection: SelectionBox, theme: CanvasTheme) 
         width: Math.abs(selection.currentWorldX - selection.startWorldX),
         height: Math.abs(selection.currentWorldY - selection.startWorldY),
         fill: theme.canvas.selectionFill,
-        stroke: theme.accent.primary,
+        stroke: theme.canvas.selectionStroke,
     });
 }
 
@@ -277,7 +277,7 @@ function syncViewport(viewport: ViewportTransform, width: number, height: number
     overlay.guides.set({
         visible: typeof props.alignmentGuides.vertical === "number" || typeof props.alignmentGuides.horizontal === "number",
         path: guidePath(viewport, width, height, props.alignmentGuides),
-        stroke: props.theme.accent.primary,
+        stroke: props.theme.canvas.selectionStroke,
         strokeWidth: 1 / scale,
         dashPattern: [5 / scale, 5 / scale],
         opacity: 0.72,

@@ -1,5 +1,6 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from "react";
-import { AlertCircle, BookOpenCheck, Clock3, Download, FileText, Image as ImageIcon, LoaderCircle, Music2, Pencil, Play, RefreshCw, Video } from "lucide-react";
+import { AlertCircle, BookOpenCheck, Clock3, Download, FileText, Image as ImageIcon, Music2, Pencil, Play, RefreshCw, Video } from "lucide-react";
+import { BrandLoadingIndicator } from "@/components/ui/brand-loader";
 
 import { VideoPlayer } from "@/components/video-player";
 import { CONTENT_MODERATION_ERROR_CODE, generationErrorMessage, isContentModerationError } from "@/lib/generation-error";
@@ -205,7 +206,7 @@ function LoadingContent({ node, theme, onOpenTaskDetails }: Pick<CanvasNodeConte
     const elapsed = useTaskElapsed(node.metadata?.taskCreatedAt);
     return (
         <div className="flex h-full w-full flex-col items-center justify-center gap-2.5 px-5 text-center" style={{ color: theme.node.activeStroke }}>
-            {submissionUncertain ? <AlertCircle className="size-10" /> : <div className="size-10 animate-spin rounded-full border-2" style={{ borderColor: theme.node.stroke, borderTopColor: theme.node.activeStroke }} />}
+            {submissionUncertain ? <AlertCircle className="size-10" /> : <BrandLoadingIndicator size="md" />}
             <span className="text-[var(--fs-tiny)] font-semibold">{stageLabel}</span>
             {taskId ? (
                 <div className="flex w-full max-w-[210px] flex-col items-center gap-1.5">
@@ -682,7 +683,7 @@ function AudioNodeContent({ node, theme }: CanvasNodeContentProps) {
         void audio.play().catch(() => undefined).finally(() => setPlayRequest(null));
     }, [playRequested, url]);
     if (!node.metadata?.content) return <EmptyMediaContent icon={<Music2 className="size-7 opacity-35" />} label="空音频节点" color={theme.node.placeholder} />;
-    if (!url) return <DeferredMediaLoad icon={loading ? <LoaderCircle className="size-5 animate-spin" /> : <Play className="size-5 fill-current" />} label={loading ? "正在加载音频" : "播放音频"} disabled={loading} onClick={() => { setPlayRequest(sourceIdentity); void load(); }} />;
+    if (!url) return <DeferredMediaLoad icon={loading ? <BrandLoadingIndicator size="sm" /> : <Play className="size-5 fill-current" />} label={loading ? "正在加载音频" : "播放音频"} disabled={loading} onClick={() => { setPlayRequest(sourceIdentity); void load(); }} />;
     return (
         <div className="flex h-full w-full cursor-grab flex-col justify-center gap-3 px-4 active:cursor-grabbing" data-canvas-media-surface style={{ background: theme.node.fill, color: theme.node.text }}>
             <div className="flex min-w-0 items-center gap-2 text-sm opacity-70"><Music2 className="size-4 shrink-0" /><span className="min-w-0 truncate" title={node.title || "音频"}>{node.title || "音频"}</span></div>
@@ -731,7 +732,7 @@ function ImageContent({ node, theme, isBatchRoot, batchCount, batchExpanded, bat
     return (
         <BatchFrame batchCount={isBatchRoot ? batchCount : 0} batchExpanded={batchExpanded} batchOpening={batchOpening} batchRecovering={batchRecovering} reduceMediaEffects={reduceMediaEffects} theme={theme} onToggleBatch={onToggleBatch}>
             <div ref={imageContainerRef} className="h-full w-full overflow-hidden rounded-[var(--node-radius)]">
-                {displayUrl ? <img src={displayUrl} alt={node.title} loading={importedFromLibTV && !reduceMediaEffects ? "eager" : "lazy"} decoding="async" draggable={false} onDragStart={(event) => event.preventDefault()} onLoad={(event) => { if (!lightweightPreviewUrl) fitToImage(event.currentTarget); }} className={`pointer-events-none block h-full w-full select-none ${node.metadata?.freeResize ? "object-fill" : "object-contain"}`} /> : <div className="grid size-full place-items-center" style={{ color: theme.node.muted }}>{loading ? <LoaderCircle className="size-5 animate-spin" /> : <ImageIcon className="size-5 opacity-45" />}</div>}
+                {displayUrl ? <img src={displayUrl} alt={node.title} loading={importedFromLibTV && !reduceMediaEffects ? "eager" : "lazy"} decoding="async" draggable={false} onDragStart={(event) => event.preventDefault()} onLoad={(event) => { if (!lightweightPreviewUrl) fitToImage(event.currentTarget); }} className={`pointer-events-none block h-full w-full select-none ${node.metadata?.freeResize ? "object-fill" : "object-contain"}`} /> : <div className="grid size-full place-items-center" style={{ color: theme.node.muted }}>{loading ? <BrandLoadingIndicator size="sm" /> : <ImageIcon className="size-5 opacity-45" />}</div>}
             </div>
         </BatchFrame>
     );

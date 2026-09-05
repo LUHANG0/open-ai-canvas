@@ -16,6 +16,7 @@ describe("画布编辑器品牌映射", () => {
                 expect(theme.toolbar.panel).toBe(shared.surface.overlay);
                 expect(theme.node.activeStroke).toBe(brand.colorPrimary!);
                 expect(theme.canvas.selectionFill).toBe(brand.colorPrimaryBg!);
+                expect(theme.canvas.selectionStroke).toBe(brand.colorPrimary!);
                 expect(theme.accent.primary).toBe(shared.action.primary.bg);
                 expect(theme.accent.onPrimary).toBe(shared.action.primary.fg);
                 expect(theme.timeline).toBe(canvasThemes[mode].timeline);

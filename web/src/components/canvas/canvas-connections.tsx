@@ -1,8 +1,7 @@
+import { useCanvasTheme } from "@/components/canvas/canvas-theme-provider";
 import React, { useState } from "react";
 import type { MouseEvent as ReactMouseEvent } from "react";
 
-import { canvasThemes } from "@/lib/canvas-theme";
-import { useThemeStore } from "@/stores/use-theme-store";
 import { STORYBOARD_HEADER_HEIGHT, STORYBOARD_ROW_HEIGHT, storyboardTableHeight } from "@/lib/canvas/canvas-storyboard-layout";
 import type { CanvasConnection, CanvasNodeData, ConnectionHandle, Position } from "@/types/canvas";
 
@@ -27,7 +26,7 @@ export const ConnectionPath = React.memo(function ConnectionPath({
     onSelect: () => void;
     onContextMenu?: (event: ReactMouseEvent<SVGPathElement>) => void;
 }) {
-    const theme = canvasThemes[useThemeStore((state) => state.theme)];
+    const theme = useCanvasTheme();
     const [hovered, setHovered] = useState(false);
     const { pathD, startX, startY, endX, endY } = canvasConnectionPath(connection, from, to, fromScrollTop, toScrollTop);
     const emphasized = active || hovered;
@@ -39,14 +38,14 @@ export const ConnectionPath = React.memo(function ConnectionPath({
             {emphasized ? <defs>
                 <linearGradient id={gradientId} gradientUnits="userSpaceOnUse" x1={startX} y1={startY} x2={endX} y2={endY}>
                     <stop offset="0%" stopColor={theme.node.muted} stopOpacity={0.18} />
-                    <stop offset="48%" stopColor={theme.accent.primary} stopOpacity={0.58} />
-                    <stop offset="100%" stopColor={theme.accent.primary} stopOpacity={0.34} />
+                    <stop offset="48%" stopColor={theme.canvas.selectionStroke} stopOpacity={0.58} />
+                    <stop offset="100%" stopColor={theme.canvas.selectionStroke} stopOpacity={0.34} />
                 </linearGradient>
                 {/* 流光头部的软化渐变：两端透明、中间亮，避免短划线看起来是硬色块 */}
                 <linearGradient id={`${gradientId}-comet`} x1="0" y1="0" x2="1" y2="0">
-                    <stop offset="0%" stopColor={theme.accent.primary} stopOpacity={0} />
-                    <stop offset="45%" stopColor={theme.accent.primary} stopOpacity={0.95} />
-                    <stop offset="100%" stopColor={theme.accent.primary} stopOpacity={0} />
+                    <stop offset="0%" stopColor={theme.canvas.selectionStroke} stopOpacity={0} />
+                    <stop offset="45%" stopColor={theme.canvas.selectionStroke} stopOpacity={0.95} />
+                    <stop offset="100%" stopColor={theme.canvas.selectionStroke} stopOpacity={0} />
                 </linearGradient>
             </defs> : null}
             {/* 光晕：只在强调态渲染。blur 是 filter，成本随线条数量线性上升，
@@ -54,7 +53,7 @@ export const ConnectionPath = React.memo(function ConnectionPath({
                 垫在底衬描边之下，不改动常态可读性那几层。 */}
             {emphasized ? <path
                 d={pathD}
-                stroke={theme.accent.primary}
+                stroke={theme.canvas.selectionStroke}
                 strokeWidth="8"
                 vectorEffect="non-scaling-stroke"
                 strokeOpacity={0.18}
@@ -95,7 +94,7 @@ export const ConnectionPath = React.memo(function ConnectionPath({
             /> : null}
             {showVisual ? <path
                 d={pathD}
-                stroke={emphasized ? theme.accent.primary : theme.node.muted}
+                stroke={emphasized ? theme.canvas.selectionStroke : theme.node.muted}
                 strokeWidth={emphasized ? 2.2 : 1.5}
                 vectorEffect="non-scaling-stroke"
                 strokeOpacity={emphasized ? 0.9 : 0.72}
@@ -105,8 +104,8 @@ export const ConnectionPath = React.memo(function ConnectionPath({
                 style={{ pointerEvents: "none" }}
             /> : null}
             {showVisual ? <>
-                <circle cx={startX} cy={startY} r={emphasized ? 3.5 : 2.5} fill={emphasized ? theme.accent.primary : theme.node.muted} fillOpacity={emphasized ? 0.9 : 0.72} vectorEffect="non-scaling-stroke" style={{ pointerEvents: "none" }} />
-                <circle cx={endX} cy={endY} r={emphasized ? 3.5 : 2.5} fill={emphasized ? theme.accent.primary : theme.node.muted} fillOpacity={emphasized ? 0.9 : 0.72} vectorEffect="non-scaling-stroke" style={{ pointerEvents: "none" }} />
+                <circle cx={startX} cy={startY} r={emphasized ? 3.5 : 2.5} fill={emphasized ? theme.canvas.selectionStroke : theme.node.muted} fillOpacity={emphasized ? 0.9 : 0.72} vectorEffect="non-scaling-stroke" style={{ pointerEvents: "none" }} />
+                <circle cx={endX} cy={endY} r={emphasized ? 3.5 : 2.5} fill={emphasized ? theme.canvas.selectionStroke : theme.node.muted} fillOpacity={emphasized ? 0.9 : 0.72} vectorEffect="non-scaling-stroke" style={{ pointerEvents: "none" }} />
             </> : null}
             {showVisual && emphasized ? <path
                 className="canvas-connection-flow"
