@@ -6,7 +6,7 @@ import type { MenuProps } from "antd";
 import { useNavigate } from "react-router";
 
 import { CollectionGrid, ListToolbar, PageHeader, PaginationBar, WorkspacePage } from "@/components/ui/pc/page";
-import { WorkspaceState } from "@/components/ui/pc/workspace-state";
+import { WorkspaceLoadingState, WorkspaceState } from "@/components/ui/pc/workspace-state";
 import { LibraryCreateCard } from "@/components/ui/pc/library-create-card";
 import { DialogFrame, DrawerFrame, SearchField, SelectionBar, Surface } from "@/components/ui/pc";
 import { AssetMediaPreview } from "@/components/asset-media-preview";
@@ -14,7 +14,7 @@ import { AssetLibraryCard, AssetLibraryCardMedia } from "@/components/assets/ass
 import { saveAs } from "file-saver";
 
 import { useCopyText } from "@/hooks/use-copy-text";
-import { usePcBrandViewport } from "@/hooks/use-pc-brand-viewport";
+import { BRAND_CONCEPT_POSTER } from "@/lib/public-site-content";
 import { resourceStorageLabel, resourceStorageLocation, resourceStorageTitle } from "@/lib/canvas/resource-storage-status";
 import { formatBytes, readFileAsDataUrl, readImageMeta } from "@/lib/image-utils";
 import { uploadImage } from "@/services/image-storage";
@@ -75,7 +75,6 @@ export default function AssetsPage() {
     const navigate = useNavigate();
     const queryClient = useQueryClient();
     const copyText = useCopyText();
-    const isPcBrandViewport = usePcBrandViewport();
     const [form] = Form.useForm<AssetFormValues>();
     const coverInputRef = useRef<HTMLInputElement>(null);
     const imageInputRef = useRef<HTMLInputElement>(null);
@@ -105,10 +104,11 @@ export default function AssetsPage() {
     const [imageFile, setImageFile] = useState<File | null>(null);
     const [imageUploading, setImageUploading] = useState(false);
     const [imageUploadProgress, setImageUploadProgress] = useState<{ phase: "uploading" | "confirming"; percent?: number } | null>(null);
-    const coverUrl = Form.useWatch("coverUrl", form) || "";
-    const title = Form.useWatch("title", form) || "";
-    const tags = Form.useWatch("tags", form) || [];
-    const content = Form.useWatch("content", form) || "";
+    // 弹窗挂载前已写入编辑初值，预览也需要读取尚未注册的表单字段。
+    const coverUrl = Form.useWatch("coverUrl", { form, preserve: true }) || "";
+    const title = Form.useWatch("title", { form, preserve: true }) || "";
+    const tags = Form.useWatch("tags", { form, preserve: true }) || [];
+    const content = Form.useWatch("content", { form, preserve: true }) || "";
     const validAssets = useMemo(() => assets.filter((asset): asset is LibraryAsset => asset.kind !== "entity"), [assets]);
     const selectedAssets = useMemo(() => validAssets.filter((asset) => selectedIds.includes(asset.id)), [selectedIds, validAssets]);
     const kindCounts = useMemo(() => new Map(kindOptions.map((option) => [option.value, option.value === "all" ? validAssets.length : validAssets.filter((asset) => asset.kind === option.value).length])), [validAssets]);
@@ -249,8 +249,8 @@ export default function AssetsPage() {
     };
 
     const readModelFile = async (file?: File) => {
-        if (!file || !/\.(glb|gltf)$/i.test(file.name) || (isPcBrandViewport && Boolean(transferBusy))) return;
-        if (isPcBrandViewport) setTransferBusy("model");
+        if (!file || !/\.(glb|gltf)$/i.test(file.name) || Boolean(transferBusy)) return;
+        setTransferBusy("model");
         try {
             const uploaded = await uploadMediaFile(file);
             void queryClient.invalidateQueries({ queryKey: assetStorageUsageQueryKey });
@@ -267,7 +267,7 @@ export default function AssetsPage() {
         } catch (error) {
             message.error(error instanceof Error ? error.message : "3D 模型上传失败");
         } finally {
-            if (isPcBrandViewport) setTransferBusy("");
+            setTransferBusy("");
         }
     };
 
@@ -288,20 +288,20 @@ export default function AssetsPage() {
             message.warning("暂无素材可导出");
             return;
         }
-        if (isPcBrandViewport) setTransferBusy("export-all");
+        setTransferBusy("export-all");
         try {
             await exportAssets(validAssets);
-            if (isPcBrandViewport) message.success(`已导出 ${validAssets.length} 个素材`);
+            message.success(`已导出 ${validAssets.length} 个素材`);
         } catch (error) {
             message.error(error instanceof Error ? error.message : "素材导出失败");
         } finally {
-            if (isPcBrandViewport) setTransferBusy("");
+            setTransferBusy("");
         }
     };
 
     const importAssetZip = async (file?: File) => {
-        if (!file || (isPcBrandViewport && Boolean(transferBusy))) return;
-        if (isPcBrandViewport) setTransferBusy("import");
+        if (!file || Boolean(transferBusy)) return;
+        setTransferBusy("import");
         try {
             const importedAssets = await readAssetPackage(file);
             importedAssets.forEach((asset) => {
@@ -315,14 +315,14 @@ export default function AssetsPage() {
         } catch {
             message.error("导入失败，请选择有效的素材压缩包");
         } finally {
-            if (isPcBrandViewport) setTransferBusy("");
+            setTransferBusy("");
             if (assetInputRef.current) assetInputRef.current.value = "";
         }
     };
 
     const confirmDelete = async () => {
         if (!deletingAsset) return;
-        if (isPcBrandViewport) setDeleteBusy(true);
+        setDeleteBusy(true);
         try {
             await deleteAssetWithRemoteSync(deletingAsset.id);
             message.success("素材已删除");
@@ -330,26 +330,26 @@ export default function AssetsPage() {
         } catch (error) {
             message.error(error instanceof Error ? error.message : "素材删除失败");
         } finally {
-            if (isPcBrandViewport) setDeleteBusy(false);
+            setDeleteBusy(false);
         }
     };
 
     const exportSelectedAssets = async () => {
-        if (!selectedAssets.length || (isPcBrandViewport && Boolean(transferBusy))) return;
-        if (isPcBrandViewport) setTransferBusy("export-selected");
+        if (!selectedAssets.length || Boolean(transferBusy)) return;
+        setTransferBusy("export-selected");
         try {
             await exportAssets(selectedAssets);
-            if (isPcBrandViewport) message.success(`已导出 ${selectedAssets.length} 个素材`);
+            message.success(`已导出 ${selectedAssets.length} 个素材`);
         } catch (error) {
             message.error(error instanceof Error ? error.message : "所选素材导出失败");
         } finally {
-            if (isPcBrandViewport) setTransferBusy("");
+            setTransferBusy("");
         }
     };
 
     const confirmBatchDelete = async () => {
         if (!selectedAssets.length) return;
-        if (isPcBrandViewport) setDeleteBusy(true);
+        setDeleteBusy(true);
         try {
             for (const asset of selectedAssets) await deleteAssetWithRemoteSync(asset.id);
             message.success(`已删除 ${selectedAssets.length} 个素材`);
@@ -358,7 +358,7 @@ export default function AssetsPage() {
         } catch (error) {
             message.error(error instanceof Error ? error.message : "批量删除失败");
         } finally {
-            if (isPcBrandViewport) setDeleteBusy(false);
+            setDeleteBusy(false);
         }
     };
 
@@ -375,13 +375,13 @@ export default function AssetsPage() {
                 <div className="studio-band">
                     <PageHeader
                         title="素材库"
-                        description="管理文本、图片、视频、音频和 3D 模型素材。"
-                        eyebrow="资产管理"
+                        description="收藏每次创作，让好的镜头、声音和灵感继续被使用。"
+                        eyebrow="CREATIVE LIBRARY"
                         meta={<span className="app-projects-header-meta assets-header-meta">{validAssets.length} 个素材</span>}
                         actions={
                             <div className="assets-header-actions">
                                 <div className="assets-header-action-buttons">
-                                    <Button className="library-primary-action" type="primary" icon={<Plus className="size-3.5" />} onClick={openCreate}>
+                                    <Button className="assets-primary-action" type="primary" icon={<Plus className="size-3.5" />} onClick={openCreate}>
                                         新增素材
                                     </Button>
                                     <Button icon={<FolderOpen className="size-3.5" />} onClick={() => navigate("/plugins/eagle")}>
@@ -392,8 +392,8 @@ export default function AssetsPage() {
                                         title="导出全部素材"
                                         aria-label="导出全部素材"
                                         icon={<Download className="size-4" />}
-                                        loading={isPcBrandViewport && transferBusy === "export-all"}
-                                        disabled={isPcBrandViewport && Boolean(transferBusy && transferBusy !== "export-all")}
+                                        loading={transferBusy === "export-all"}
+                                        disabled={Boolean(transferBusy && transferBusy !== "export-all")}
                                         onClick={() => void exportAllAssets()}
                                     >
                                         <span className="assets-header-action-label hidden lg:inline">导出全部</span>
@@ -402,8 +402,8 @@ export default function AssetsPage() {
                                         trigger={["click"]}
                                         menu={{
                                             items: [
-                                                { key: "package", icon: <FileUp className="size-4" />, label: "批量导入素材包", disabled: isPcBrandViewport && Boolean(transferBusy), onClick: () => assetInputRef.current?.click() },
-                                                { key: "model", icon: <Upload className="size-4" />, label: "上传 3D 模型", disabled: isPcBrandViewport && Boolean(transferBusy), onClick: () => modelInputRef.current?.click() },
+                                                { key: "package", icon: <FileUp className="size-4" />, label: "批量导入素材包", disabled: Boolean(transferBusy), onClick: () => assetInputRef.current?.click() },
+                                                { key: "model", icon: <Upload className="size-4" />, label: "上传 3D 模型", disabled: Boolean(transferBusy), onClick: () => modelInputRef.current?.click() },
                                             ],
                                         }}
                                     >
@@ -412,7 +412,7 @@ export default function AssetsPage() {
                                             title="导入或上传素材"
                                             aria-label="导入或上传素材"
                                             icon={<FileUp className="size-4" />}
-                                            loading={isPcBrandViewport && (transferBusy === "import" || transferBusy === "model")}
+                                            loading={transferBusy === "import" || transferBusy === "model"}
                                         >
                                             <span className="assets-header-action-label hidden lg:inline">导入 / 上传</span>
                                         </Button>
@@ -451,7 +451,7 @@ export default function AssetsPage() {
 
                 <Surface className="canvas-library-frame assets-library-frame" padding="none">
                     <div className="assets-library-layout">
-                        <aside className="thin-scrollbar flex gap-2 overflow-x-auto py-3 lg:block assets-filter-rail">
+                        <aside className="assets-filter-rail" aria-label="素材分类">
                             <AssetFilterGroup
                                 title="素材类型"
                                 options={kindOptions}
@@ -471,14 +471,14 @@ export default function AssetsPage() {
                                     setCategoryFilter(value as AssetCategory | "all");
                                     setPage(1);
                                 }}
-                                className="lg:mt-5"
+                                className="assets-category-filters"
                             />
                         </aside>
                         <section className="min-w-0" aria-labelledby={validAssets.length ? "assets-collection-title" : undefined} aria-label={validAssets.length ? undefined : "素材列表"}>
                             {validAssets.length ? (
-                                <div className="assets-collection-heading hidden" role={isPcBrandViewport ? "status" : undefined} aria-live={isPcBrandViewport ? "polite" : undefined}>
+                                <div className="assets-collection-heading" role="status" aria-live="polite">
                                     <div>
-                                        <h2 id="assets-collection-title">{kindFilter === "all" && categoryFilter === "all" ? "全部媒体资产" : "筛选结果"}</h2>
+                                        <h2 id="assets-collection-title">{kindFilter === "all" && categoryFilter === "all" ? "全部素材" : "筛选结果"}</h2>
                                         <span>{filteredAssets.length} 项</span>
                                     </div>
                                     <span>点击媒体查看档案，勾选后进入批量处理</span>
@@ -488,28 +488,24 @@ export default function AssetsPage() {
                                 <AssetsBatchBar
                                     count={selectedAssets.length}
                                     allSelected={allFilteredSelected}
-                                    exporting={isPcBrandViewport && transferBusy === "export-selected"}
+                                    exporting={transferBusy === "export-selected"}
                                     onSelectAll={() => setSelectedIds((current) => Array.from(new Set([...current, ...filteredAssetIds])))}
                                     onClear={() => setSelectedIds([])}
                                     onExport={() => void exportSelectedAssets()}
                                     onDelete={() => setBatchDeleteOpen(true)}
                                 />
                             ) : null}
-                            {isPcBrandViewport && !assetsHydrated ? (
-                                <div className="assets-loading-grid" aria-label="正在加载素材库">
-                                    {Array.from({ length: 9 }, (_, index) => (
-                                        <div key={index} className="library-skeleton" />
-                                    ))}
-                                </div>
+                            {!assetsHydrated ? (
+                                <WorkspaceLoadingState className="assets-loading-state" label="正在加载素材库" detail="正在整理你的素材与分类" rows={6} />
                             ) : validAssets.length === 0 ? (
                                 <AssetsEmptyState onNew={openCreate} onImport={() => assetInputRef.current?.click()} onGoCanvas={() => navigate("/canvas")} />
                             ) : (
                                 <>
                                     {filteredAssets.length === 0 ? (
-                                        <WorkspaceState icon="assets" compact title="没有匹配的素材" description="调整关键词或左侧分类后再试。" action={isPcBrandViewport ? <Button onClick={resetFilters}>清除筛选</Button> : undefined} />
+                                        <WorkspaceState icon="assets" compact title="没有匹配的素材" description="调整关键词或素材分类后再试。" action={<Button onClick={resetFilters}>清除筛选</Button>} />
                                     ) : (
                                         <CollectionGrid className="library-grid assets-library-grid">
-                                            {canCreateAsset ? <LibraryCreateCard label="新增素材" description="文本、图片、音视频或模型" icon={<Plus className="size-8" />} onClick={openCreate} /> : null}
+                                            {canCreateAsset ? <LibraryCreateCard label="新增素材" description="记录文本灵感，上传参考图片" icon={<Plus className="size-8" />} onClick={openCreate} /> : null}
                                             {visibleAssets.map((asset) => (
                                                 <AssetCard
                                                     key={asset.id}
@@ -606,7 +602,7 @@ export default function AssetsPage() {
                             </Form.Item>
                         ) : (
                             <Form.Item label="图片内容" required>
-                                <div className="asset-image-dropzone rounded-lg border border-dashed border-stone-300 p-4 dark:border-stone-700">
+                                <div className="asset-image-dropzone">
                                     <Button disabled={imageUploading} icon={<Upload className="size-4" />} onClick={() => imageInputRef.current?.click()}>
                                         {imageUploading ? "正在上传图片" : "选择图片文件"}
                                     </Button>
@@ -624,16 +620,16 @@ export default function AssetsPage() {
                                             未选择图片
                                         </Typography.Text>
                                     )}
-                                    {isPcBrandViewport ? <span className="asset-image-help">支持常见图片格式；选择后会先本地预览，保存时再上传。</span> : null}
+                                    <span className="asset-image-help">支持常见图片格式；选择后会先本地预览，保存时再上传。</span>
                                 </div>
                             </Form.Item>
                         )}
                     </Form>
-                    <div className="asset-editor-preview lg:pl-4">
+                    <div className="asset-editor-preview">
                         <Typography.Text strong className="text-xs">
                             预览
                         </Typography.Text>
-                        <div className="asset-editor-preview-card mt-2 overflow-hidden rounded-md bg-stone-100 dark:bg-stone-900">
+                        <div className="asset-editor-preview-card">
                             {coverUrl || imageDraft?.dataUrl ? (
                                 <div className={`asset-preview-uploading ${imageUploading ? "is-uploading" : ""}`}>
                                     <img src={coverUrl || imageDraft?.dataUrl} alt="" loading="lazy" decoding="async" className="aspect-[4/3] w-full object-cover" />
@@ -648,9 +644,9 @@ export default function AssetsPage() {
                                     ) : null}
                                 </div>
                             ) : (
-                                <div className="flex aspect-[4/3] items-center justify-center bg-stone-100 p-5 text-center text-sm text-stone-500 dark:bg-stone-900">{content || "暂无封面"}</div>
+                                <div className="asset-editor-preview-empty">{content || "暂无封面"}</div>
                             )}
-                            <div className="bg-background p-3">
+                            <div className="asset-editor-preview-copy">
                                 <Typography.Text strong ellipsis className="block">
                                     {title || "未命名素材"}
                                 </Typography.Text>
@@ -693,7 +689,6 @@ export default function AssetsPage() {
 
             <AssetDrawer
                 asset={previewAsset}
-                pcEnhanced={isPcBrandViewport}
                 onClose={() => setPreviewAsset(null)}
                 onEdit={(asset) => {
                     setPreviewAsset(null);
@@ -724,7 +719,7 @@ export default function AssetsPage() {
                 onOk={() => void confirmDelete()}
                 okText="删除"
                 okButtonProps={{ danger: true }}
-                confirmLoading={isPcBrandViewport && deleteBusy}
+                confirmLoading={deleteBusy}
                 cancelText="取消"
             >
                 确定删除「{deletingAsset?.title}」吗？未被其他内容引用的服务器本地或对象存储文件也会同步删除；若仍被画布、任务或其他素材占用，本次删除将被阻止。
@@ -738,7 +733,7 @@ export default function AssetsPage() {
                 onOk={() => void confirmBatchDelete()}
                 okText="删除"
                 okButtonProps={{ danger: true }}
-                confirmLoading={isPcBrandViewport && deleteBusy}
+                confirmLoading={deleteBusy}
                 cancelText="取消"
             >
                 确定删除已选择的 {selectedAssets.length} 个素材吗？未被复用的服务器文件会同步删除；仍被画布、任务或其他素材占用的素材会保留并提示具体来源。
@@ -779,17 +774,17 @@ function AssetCard({
     return (
         <AssetLibraryCard selected={selected}>
             <AssetCover asset={asset} selected={selected} onSelect={onSelect} onOpen={onOpen} menuItems={menuItems} onVideoMetadata={onVideoMetadata} />
-            <button type="button" className="assets-card-copy block w-full px-2.5 py-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--workspace-accent)]" onClick={onOpen}>
-                <div className="assets-card-title-row flex min-w-0 items-center justify-between gap-2">
-                    <h2 className="assets-card-title truncate text-[var(--fs-body)] font-semibold text-foreground" title={asset.title}>
+            <button type="button" className="assets-card-copy" onClick={onOpen}>
+                <div className="assets-card-title-row">
+                    <h2 className="assets-card-title" title={asset.title}>
                         {asset.title}
                     </h2>
-                    <span className="assets-card-time shrink-0 text-[var(--fs-tiny)] tabular-nums text-foreground/38">{formatAssetTime(asset.updatedAt)}</span>
+                    <span className="assets-card-time">{formatAssetTime(asset.updatedAt)}</span>
                 </div>
-                <div className="assets-card-summary mt-1 truncate text-[var(--fs-label)] text-foreground/52" title={summary}>
+                <div className="assets-card-summary" title={summary}>
                     {summary}
                 </div>
-                <div className="assets-card-context mt-1 flex min-w-0 items-center gap-1.5 text-[var(--fs-tiny)] text-foreground/38">
+                <div className="assets-card-context">
                     <span className="truncate">{asset.source || "未标注来源"}</span>
                     <span aria-hidden="true">·</span>
                     <span className="truncate">{assetProjectLabel(asset)}</span>
@@ -919,50 +914,27 @@ function AssetsBatchBar({ count, allSelected, exporting, onSelectAll, onClear, o
     );
 }
 
-const assetsEmptyBannerFrames = [
-    { src: "/short-drama-styles/retro-hong-kong.jpg", caption: "ASSET.01 · 天台重逢" },
-    { src: "/short-drama-styles/cyberpunk-neon.jpg", caption: "ASSET.02 · 雨夜霓虹" },
-    { src: "/short-drama-styles/suspense-noir.jpg", caption: "ASSET.03 · 暗巷追逐" },
-];
-
 function AssetsEmptyState({ onNew, onImport, onGoCanvas }: { onNew: () => void; onImport: () => void; onGoCanvas: () => void }) {
     return (
-        <div className="assets-empty">
-            <div className="assets-empty-banner" aria-hidden="true">
-                {assetsEmptyBannerFrames.map((frame, index) => (
-                    <figure key={frame.caption} className={`assets-empty-banner-frame ${index === 1 ? "is-main" : index === 0 ? "is-back" : "is-front"}`}>
-                        <img src={frame.src} alt="" loading="lazy" decoding="async" />
-                        <span>{frame.caption}</span>
-                    </figure>
-                ))}
-                <span className="assets-empty-banner-caption">
-                    <span>影策素材库</span>把每次创作的结果，留档成可复用的资产
-                </span>
+        <section className="assets-empty" aria-labelledby="assets-empty-title">
+            <div className="assets-empty-hero">
+                <figure className="assets-empty-visual">
+                    <img src={BRAND_CONCEPT_POSTER} alt="列车穿过暮色山谷的品牌概念画面" loading="lazy" decoding="async" />
+                    <figcaption>AI 品牌概念视觉</figcaption>
+                </figure>
+                <div className="assets-empty-copy">
+                    <span className="assets-empty-eyebrow">YOUR CREATIVE COLLECTION</span>
+                    <h2 id="assets-empty-title">好素材，值得留下。</h2>
+                    <p>把参考图片、提示词和创作结果收进素材库，下一个作品从这里继续。</p>
+                    <Button type="primary" icon={<Plus className="size-4" />} onClick={onNew}>添加第一份素材</Button>
+                </div>
             </div>
-            <div className="assets-empty-cards">
-                <button type="button" className="assets-empty-card" onClick={onNew}>
-                    <span className="assets-empty-card-icon">
-                        <Plus />
-                    </span>
-                    <strong>新建素材</strong>
-                    <span>录入提示词、说明文案，或上传图片资产。</span>
-                </button>
-                <button type="button" className="assets-empty-card" onClick={onImport}>
-                    <span className="assets-empty-card-icon">
-                        <FileUp />
-                    </span>
-                    <strong>导入素材包</strong>
-                    <span>从素材压缩包一键恢复旧资产，继续创作。</span>
-                </button>
-                <button type="button" className="assets-empty-card" onClick={onGoCanvas}>
-                    <span className="assets-empty-card-icon">
-                        <Clapperboard />
-                    </span>
-                    <strong>去画布保存</strong>
-                    <span>把画布上满意的镜头与画面留档进素材库。</span>
-                </button>
+            <div className="assets-empty-paths">
+                <Button icon={<FileUp className="size-4" />} onClick={onImport}>导入素材包</Button>
+                <Button icon={<Clapperboard className="size-4" />} onClick={onGoCanvas}>从画布收藏</Button>
+                <span>支持文本、图片、视频、音频和 3D 模型</span>
             </div>
-        </div>
+        </section>
     );
 }
 
@@ -982,9 +954,9 @@ function AssetFilterGroup({
     className?: string;
 }) {
     return (
-        <div className={className}>
-            <div className="mb-1.5 px-1 text-[var(--fs-tiny)] font-semibold uppercase tracking-[0.08em] text-foreground/38">{title}</div>
-            <div className="flex gap-1.5 lg:block lg:space-y-0.5">
+        <div className={`assets-filter-group ${className}`}>
+            <h2 className="assets-filter-heading">{title}</h2>
+            <div className="assets-filter-options thin-scrollbar">
                 {options.map((option) => {
                     const active = value === option.value;
                     return (
@@ -1001,14 +973,12 @@ function AssetFilterGroup({
 
 function AssetDrawer({
     asset,
-    pcEnhanced,
     onClose,
     onEdit,
     onCopy,
     onDownload,
 }: {
     asset: LibraryAsset | null;
-    pcEnhanced: boolean;
     onClose: () => void;
     onEdit: (asset: LibraryAsset) => void;
     onCopy: (asset: LibraryAsset) => void;
@@ -1058,9 +1028,9 @@ function AssetDrawer({
                                     {tag}
                                 </Tag>
                             ))
-                        ) : pcEnhanced ? (
+                        ) : (
                             <span className="asset-archive-no-tags">未添加标签</span>
-                        ) : null}
+                        )}
                         <StorageTag asset={asset} />
                     </div>
                     <div className="asset-archive-facts">
@@ -1085,7 +1055,7 @@ function AssetDrawer({
                         </div>
                     ) : null}
                     <div className="asset-archive-actions">
-                        {pcEnhanced && (asset.kind === "text" || asset.kind === "image") ? (
+                        {asset.kind === "text" || asset.kind === "image" ? (
                             <Button className="asset-archive-edit-action" icon={<PencilLine className="size-4" />} onClick={() => onEdit(asset)}>
                                 编辑信息
                             </Button>

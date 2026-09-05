@@ -21,12 +21,13 @@ describe("PC detail polish regression gates", () => {
         );
     });
 
-    test("shares task feedback across viewports while preserving other content-chain behavior", async () => {
+    test("shares task and asset feedback across viewports while preserving wallet behavior", async () => {
         const [assets, tasks, wallet] = await Promise.all([read("../src/pages/assets/index.tsx"), read("../src/pages/tasks/index.tsx"), read("../src/pages/wallet/index.tsx")]);
 
-        expect(assets).toContain('loading={isPcBrandViewport && transferBusy === "export-all"}');
-        expect(assets).toContain("disabled: isPcBrandViewport && Boolean(transferBusy)");
-        expect(assets).toContain("isPcBrandViewport && !assetsHydrated");
+        expect(assets).toContain('loading={transferBusy === "export-all"}');
+        expect(assets).toContain("disabled: Boolean(transferBusy)");
+        expect(assets).toContain("!assetsHydrated");
+        expect(assets).not.toContain("isPcBrandViewport");
         expect(tasks).not.toContain("usePcBrandViewport");
         expect(tasks).toContain("!loading && loadError && !tasks.length");
         expect(tasks).toContain("(!loadError || tasks.length)");
