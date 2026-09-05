@@ -28,8 +28,7 @@ export default function TestVoiceRecording() {
         setSending(true);
         try {
             // 原型阶段：发送到对话入口由调用方接入；此处仅输出
-            console.log("发送文本:", prompt);
-            message.success("发送成功（原型阶段，仅控制台输出）");
+            message.success("本地输入验证完成，未发送对话");
             setPrompt("");
         } finally {
             setSending(false);
@@ -97,7 +96,7 @@ export default function TestVoiceRecording() {
                                 <VoiceRecordingButton onTranscribed={handleTranscribed} />
                             </div>
                             <Button type="primary" icon={<Send className="size-4" />} disabled={!prompt.trim()} loading={sending} onClick={handleSubmit} className="pc-voice-send">
-                                发送
+                                验证输入
                             </Button>
                         </div>
 
@@ -109,7 +108,7 @@ export default function TestVoiceRecording() {
                                 <i aria-hidden="true">2</i>自动转写
                             </span>
                             <span>
-                                <i aria-hidden="true">3</i>确认并发送
+                                <i aria-hidden="true">3</i>确认输入
                             </span>
                         </div>
 
