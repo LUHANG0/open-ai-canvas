@@ -1,5 +1,10 @@
 /* Remaining admin pages: owned rules in original cascade order. */
 @media (max-width: 639px) {
+    .admin-analytics-date-popup {
+        position: fixed !important;
+        inset: 16px auto auto 12px !important;
+        max-width: calc(100vw - 24px);
+    }
     .admin-analytics-date-popup .ant-picker-panel-container {
         max-width: calc(100vw - 24px);
         max-height: calc(100dvh - 32px);
