@@ -43,6 +43,9 @@
     "director-visual-final.json": "8c0bb5c4fbb45ed9e48631fd1c2a6a89b626e0d6f0c13a5142c70fdc2a04e2b2",
     "director.json": "d31406a865a18eff3d32f86f5577c15e0d3fb15e8459ec799470711240b0fb92",
     "download-diagnose.json": "01e0bc06fddf4e127bf8cc39934cb1c9d7b621c514f9ecd070a676f10fbd7ec3",
+    "preview-3012-director.png": "a469238abf85f37f39578989d9d37a4ce36a78541680623c29594a657e749ef4",
+    "preview-3012-timeline.png": "e25d7d2041aa8f3e04b85caa822fa1b127670db1c0cca3fb6003b6e45e7e37e6",
+    "preview-3012.json": "2436e887d506039694739e7f07b1e0f6532fc906afc3afef63841536d1dedc3a",
     "preview-retry.json": "7ffe3a7a194692ae9b37bae0d26efafd619a2fb02419dd35e548acf2df6e603a",
     "timeline-1440-light.png": "e8ad34e36d9c679df9a45ad719e953cc99ccc7e329b74ae88d232d50526859e6",
     "timeline-390-dark.png": "4cc10c338ebab351230fbe71b20bb5711f544ee54b08cda001c877f6ecc9435c",
@@ -51,5 +54,6 @@
     "timeline-preview-retry.png": "d290baca8b710d5da1d7b766beb5cdb5611de72a008091f5b2f691cf67b1620c",
     "timeline-recovery.json": "bdef0138a38bade2d8a434d18ad9d6967aae14ee518680dda14a02683971aeb9",
     "timeline-visual.json": "ab72f2e44e30b152a01db99a2b21f64d3520494a2d3f3ff7533781af327fc267"
-  }
+  },
+  "previewCommit": "9373cf02"
 }
