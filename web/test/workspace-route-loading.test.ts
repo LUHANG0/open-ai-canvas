@@ -50,13 +50,12 @@ describe("workspace route loading", () => {
 
 describe("wallet balance summary", () => {
     test("uses the workspace surface instead of an inverted primary button surface", () => {
-        const css = source("../src/styles/globals.css");
+        const css = source("../src/pages/wallet/wallet-pc.css");
         const rule = css.match(/\.credit-balance-card \{[^}]+}/)?.[0] || "";
 
-        expect(rule).toContain("background: var(--library-surface)");
-        expect(rule).toContain("color: var(--foreground)");
+        expect(rule).toContain("var(--app-surface-1)");
         expect(rule).not.toContain("--btn-solid-bg");
-        expect(css.match(/\.wallet-balance-inner \{/g)).toHaveLength(3);
+        expect(css).toContain("@media (max-width: 767px)");
         expect(css).not.toContain(".wallet-library-page .wallet-balance-inner { padding-left: 0; }");
     });
 });

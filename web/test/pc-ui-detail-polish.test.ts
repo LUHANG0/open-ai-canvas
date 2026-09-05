@@ -31,9 +31,10 @@ describe("PC detail polish regression gates", () => {
         expect(tasks).not.toContain("usePcBrandViewport");
         expect(tasks).toContain("!loading && loadError && !tasks.length");
         expect(tasks).toContain("(!loadError || tasks.length)");
-        expect(wallet).toContain("!account && isPcBrandViewport && (loading || loadError)");
-        expect(wallet).toContain("scroll={{ x: isPcBrandViewport ? 1000 : 990 }}");
-        expect(wallet).toContain("locale={");
+        expect(wallet).not.toContain("isPcBrandViewport");
+        expect(wallet).toContain('account ? availableCredits : "—"');
+        expect(wallet).toContain("scroll={{ x: 1000 }}");
+        expect(wallet).toContain('title="积分流水加载失败"');
         expect(wallet).not.toContain("screens.lg &&");
     });
 
@@ -53,7 +54,8 @@ describe("PC detail polish regression gates", () => {
         expect(compact(auth)).toContain(".pc-auth-form-assurance, .pc-auth-password-status { display: flex;");
         expect(auth).not.toContain(".pc-auth-brand-capabilities");
         expect(compact(plugins.slice(0, plugins.indexOf("@media (min-width: 1024px)")))).toContain(".plugins-overview, .plugin-card-open-hint, .plugin-section-card-icon { display: none; }");
-        expect(compact(settings.slice(0, settings.indexOf("@media (min-width: 1024px)")))).toContain(".settings-section-context { display: none; } .settings-diagnostics-preview-error { display: none; }");
+        expect(compact(settings)).not.toContain(".settings-section-context { display: none; }");
+        expect(compact(settings)).not.toContain(".settings-diagnostics-preview-error { display: none; }");
         expect(compact(voice.slice(0, voice.indexOf("@media (min-width: 1024px)")))).toContain(".pc-voice-count, .pc-voice-status-strip { display: none; }");
     });
 

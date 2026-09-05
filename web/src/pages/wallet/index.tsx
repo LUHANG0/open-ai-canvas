@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { App, Button, Grid, Input, Segmented, Table, Tag } from "antd";
+import { Alert, App, Button, Grid, Input, Segmented, Table, Tag } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { ArrowDownLeft, ArrowUpRight, CalendarCheck, Coins, RefreshCw, RotateCcw, ShieldCheck, SlidersHorizontal, Sparkles, TicketCheck } from "lucide-react";
 
@@ -7,7 +7,6 @@ import { formatCredits } from "@/constant/credits";
 import { PageHeader, PaginationBar, TableSurface, WorkspacePage } from "@/components/ui/pc/page";
 import { WorkspaceState } from "@/components/ui/pc/workspace-state";
 import { SectionHeader, StatusBadge, Surface } from "@/components/ui/pc";
-import { usePcBrandViewport } from "@/hooks/use-pc-brand-viewport";
 import { checkinCredits, getWallet, redeemCredits, type CreditLedgerEntry, type WalletSummary } from "@/services/api/wallet";
 import { modelDisplayName, useEffectiveConfig, type AiConfig } from "@/stores/use-config-store";
 
@@ -25,33 +24,38 @@ const ledgerFilterOptions = [
 export default function WalletPage() {
     const { message } = App.useApp();
     const screens = Grid.useBreakpoint();
-    const isPcBrandViewport = usePcBrandViewport();
     const config = useEffectiveConfig();
     const [wallet, setWallet] = useState<WalletSummary | null>(null);
     const [code, setCode] = useState("");
     const [filter, setFilter] = useState<LedgerFilter>("all");
-    const [loading, setLoading] = useState(false);
+    const [loading, setLoading] = useState(true);
     const [loadError, setLoadError] = useState("");
     const [redeeming, setRedeeming] = useState(false);
     const [checkingIn, setCheckingIn] = useState(false);
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(20);
     const requestSequence = useRef(0);
+    const mutationLock = useRef(false);
+    const query = useRef({ page, pageSize, filter });
+    query.current = { page, pageSize, filter };
+    const [loadedQuery, setLoadedQuery] = useState("");
+    const [result, setResult] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
-    const reload = async (targetPage = page, targetPageSize = pageSize) => {
+    const reload = async (targetPage = query.current.page, targetPageSize = query.current.pageSize) => {
+        const targetFilter = query.current.filter;
         const sequence = ++requestSequence.current;
         setLoading(true);
         try {
-            const nextWallet = await getWallet(targetPage, targetPageSize, filter);
+            const nextWallet = await getWallet(targetPage, targetPageSize, targetFilter);
             if (sequence === requestSequence.current) {
                 setWallet(nextWallet);
                 setLoadError("");
+                setLoadedQuery(`${targetFilter}:${targetPage}:${targetPageSize}`);
             }
         } catch (error) {
             if (sequence === requestSequence.current) {
                 const nextError = error instanceof Error ? error.message : "读取积分记录失败";
                 setLoadError(nextError);
-                message.error(nextError);
             }
         } finally {
             if (sequence === requestSequence.current) setLoading(false);
@@ -60,51 +64,63 @@ export default function WalletPage() {
 
     useEffect(() => {
         void reload(page, pageSize);
+        return () => { requestSequence.current += 1; };
     }, [filter, page, pageSize]);
 
     const redeem = async () => {
+        if (mutationLock.current) return;
         const normalized = code.trim().toLowerCase();
         if (normalized.length !== 32) {
             message.error("请输入完整的 32 位兑换码");
             return;
         }
+        mutationLock.current = true;
         setRedeeming(true);
+        setResult(null);
         try {
-            await redeemCredits(normalized);
+            const response = await redeemCredits(normalized);
+            setWallet((current) => current ? { ...current, account: response.account } : current);
             setCode("");
             setPage(1);
             await reload(1, pageSize);
             window.dispatchEvent(new CustomEvent("wallet:updated"));
             message.success("兑换成功，积分已到账");
+            setResult({ type: "success", text: "兑换成功，积分已到账。流水以最近一次成功读取为准。" });
         } catch (error) {
-            message.error(error instanceof Error ? error.message : "兑换失败");
+            setResult({ type: "error", text: error instanceof Error ? error.message : "兑换失败，请重试" });
         } finally {
+            mutationLock.current = false;
             setRedeeming(false);
         }
     };
 
     const checkin = async () => {
+        if (mutationLock.current || !wallet || wallet.policy.checkedInToday) return;
+        mutationLock.current = true;
         setCheckingIn(true);
         try {
-            await checkinCredits();
+            const response = await checkinCredits();
+            setWallet((current) => current ? { ...current, account: response.account, policy: { ...current.policy, checkedInToday: true } } : current);
             await reload(page, pageSize);
             window.dispatchEvent(new CustomEvent("wallet:updated"));
-            message.success("签到成功，积分已到账");
+            message.success(response.granted ? "签到成功，积分已到账" : "今日已签到");
         } catch (error) {
             message.error(error instanceof Error ? error.message : "签到失败");
         } finally {
+            mutationLock.current = false;
             setCheckingIn(false);
         }
     };
 
-    const entries = wallet?.entries || [];
+    const queryMatches = loadedQuery === `${filter}:${page}:${pageSize}`;
+    const entries = queryMatches ? wallet?.entries || [] : [];
     const account = wallet?.account;
     const totalMicrocredits = (account?.availableMicrocredits || 0) + (account?.reservedMicrocredits || 0);
     const availableCredits = formatCredits(account?.availableMicrocredits || 0, 6);
-    const availableDisplay = !account && isPcBrandViewport && (loading || loadError) ? "—" : availableCredits;
+    const availableDisplay = account ? availableCredits : "—";
     const balanceLengthClass = availableCredits.length > 16 ? " is-very-long" : availableCredits.length > 11 ? " is-long" : "";
-    const accountStatusUnavailable = isPcBrandViewport && (!account || Boolean(loadError));
-    const accountStatusLabel = !isPcBrandViewport || (account && !loadError) ? "账户正常" : loadError ? "数据待刷新" : "数据同步中";
+    const accountStatusUnavailable = !account || Boolean(loadError);
+    const accountStatusLabel = loadError ? "数据待刷新" : loading ? "数据同步中" : "账户正常";
 
     const columns: ColumnsType<CreditLedgerEntry> = [
         { title: "发生时间", dataIndex: "createdAt", width: 180, render: formatTime },
@@ -130,11 +146,10 @@ export default function WalletPage() {
         {
             title: "变更后余额",
             dataIndex: "availableAfterMicrocredits",
-            width: isPcBrandViewport ? 155 : 145,
+            width: 155,
             align: "right",
             render: (value) => {
                 const formatted = formatCredits(value);
-                if (!isPcBrandViewport) return <span className="tabular-nums">{formatted}</span>;
                 return (
                     <span className="wallet-ledger-balance tabular-nums" title={`${formatted} 积分`}>
                         {formatted}
@@ -164,10 +179,10 @@ export default function WalletPage() {
                                 icon={<CalendarCheck className="size-4" />}
                                 type={wallet?.policy.checkedInToday ? "default" : "primary"}
                                 loading={checkingIn}
-                                disabled={(isPcBrandViewport && !wallet) || wallet?.policy.checkedInToday}
+                                disabled={!wallet || redeeming || wallet.policy.checkedInToday}
                                 onClick={() => void checkin()}
                             >
-                                {wallet?.policy.checkedInToday ? "今日已签到" : `签到 +${formatCredits(wallet?.policy.checkinBonusMicrocredits || 0)}`}
+                                {!wallet ? "签到信息待读取" : wallet.policy.checkedInToday ? "今日已签到" : `签到 +${formatCredits(wallet.policy.checkinBonusMicrocredits)}`}
                             </Button>
                             <Button icon={<RefreshCw className="size-4" />} loading={loading} onClick={() => void reload()}>
                                 刷新余额
@@ -178,7 +193,7 @@ export default function WalletPage() {
             </div>
 
             {loadError ? (
-                <div className="wallet-load-warning hidden" role="alert">
+                <div className="wallet-load-warning" role="alert">
                     <span>积分数据暂时未能更新：{loadError}</span>
                     <Button size="small" icon={<RefreshCw className="size-3.5" />} loading={loading} onClick={() => void reload()}>
                         重试
@@ -190,7 +205,7 @@ export default function WalletPage() {
                 <Surface className="credit-balance-card" padding="none" aria-busy={loading && !account}>
                     <div className="wallet-balance-inner">
                         <div className="wallet-balance-primary">
-                            <span className="wallet-balance-eyebrow hidden">ACCOUNT BALANCE</span>
+                            <span className="wallet-balance-eyebrow">创作账户</span>
                             <div className="wallet-balance-heading">
                                 <span className="library-icon-tile wallet-balance-icon">
                                     <Coins />
@@ -205,15 +220,15 @@ export default function WalletPage() {
                                     <strong>{availableDisplay}</strong>
                                     <span>积分</span>
                                 </div>
-                                <span className="wallet-balance-precision hidden">账务精度保留至百万分之一积分</span>
+                                <span className="wallet-balance-precision">账务精度保留至百万分之一积分</span>
                             </div>
                         </div>
                         <div className="wallet-balance-details">
                             <StatusBadge className="wallet-account-status" tone={accountStatusUnavailable ? "warning" : "success"} icon={accountStatusUnavailable ? <RefreshCw /> : <ShieldCheck />} live={accountStatusUnavailable}>
                                 {accountStatusLabel}
                             </StatusBadge>
-                            <BalanceMetric label="冻结积分" description="调用中或待核对" value={account?.reservedMicrocredits || 0} icon={<TicketCheck className="size-4" />} />
-                            <BalanceMetric label="账户总额" description="可用与冻结合计" value={totalMicrocredits} icon={<Coins className="size-4" />} />
+                            <BalanceMetric label="冻结积分" description="调用中或待核对" value={account?.reservedMicrocredits} icon={<TicketCheck className="size-4" />} />
+                            <BalanceMetric label="账户总额" description="可用与冻结合计" value={account ? totalMicrocredits : undefined} icon={<Coins className="size-4" />} />
                         </div>
                     </div>
                 </Surface>
@@ -234,6 +249,7 @@ export default function WalletPage() {
                             className="mt-2 font-mono"
                             size="large"
                             value={code}
+                            disabled={redeeming || checkingIn}
                             maxLength={32}
                             spellCheck={false}
                             autoComplete="off"
@@ -246,19 +262,20 @@ export default function WalletPage() {
                         <span>兑换成功后立即到账</span>
                         <span className="tabular-nums">{code.length} / 32</span>
                     </div>
-                    <Button className="mt-5" type="primary" size="large" block loading={redeeming} disabled={code.length !== 32} onClick={() => void redeem()}>
+                    <Button className="mt-5" type="primary" size="large" block loading={redeeming} disabled={checkingIn || code.length !== 32} onClick={() => void redeem()}>
                         兑换积分
                     </Button>
+                    {result ? <Alert className="mt-3" type={result.type} showIcon title={result.text} role={result.type === "error" ? "alert" : "status"} /> : null}
                 </Surface>
             </section>
 
             <Surface className="wallet-ledger-panel" padding="md">
                 <SectionHeader
                     title="积分流水"
-                    description={`当前展示最近 ${wallet?.entries.length || 0} 条记录。`}
+                    description={loading ? "正在读取积分流水…" : loadError ? "流水未能更新，请重试。" : `共 ${queryMatches ? wallet?.total || 0 : 0} 条记录，本页 ${entries.length} 条。`}
                     actions={
                         <Segmented
-                            aria-label={isPcBrandViewport ? "筛选积分流水" : undefined}
+                            aria-label="筛选积分流水"
                             block={!screens.sm}
                             value={filter}
                             options={ledgerFilterOptions}
@@ -270,27 +287,24 @@ export default function WalletPage() {
                     }
                 />
 
-                {screens.md ? (
+                {loading ? <WorkspaceState compact icon="loading" role="status" title="正在读取积分流水" /> : loadError ? (
+                    <WorkspaceState compact icon="error" role="alert" title="积分流水加载失败" description="余额保留最近一次成功读取的结果。重新读取后再查看当前筛选与页码。" action={<Button onClick={() => void reload()}>重新读取流水</Button>} />
+                ) : entries.length === 0 ? (
+                    <WorkspaceState compact icon="wallet" title={filter === "all" ? "暂无积分记录" : "当前筛选没有记录"} description={filter === "all" ? "充值、签到和模型结算后的记录会显示在这里。" : "试试查看全部类型的积分记录。"} action={filter !== "all" ? <Button onClick={() => { setFilter("all"); setPage(1); }}>查看全部记录</Button> : undefined} />
+                ) : screens.md ? (
                     <TableSurface className="wallet-ledger-table-surface mt-0 rounded-xl border-border/70 bg-transparent">
                         <Table
-                            aria-label={isPcBrandViewport ? "积分流水明细" : undefined}
+                            aria-label="积分流水明细"
                             className="app-data-table wallet-ledger-table"
                             rowKey="id"
-                            rowClassName={isPcBrandViewport ? (entry) => `wallet-ledger-row is-${entry.type}` : undefined}
+                            rowClassName={(entry) => `wallet-ledger-row is-${entry.type}`}
                             size="middle"
                             loading={loading}
                             columns={columns}
                             dataSource={entries}
                             pagination={false}
                             tableLayout="fixed"
-                            scroll={{ x: isPcBrandViewport ? 1000 : 990 }}
-                            locale={
-                                isPcBrandViewport
-                                    ? {
-                                          emptyText: <WorkspaceState compact icon="wallet" title={loadError ? "积分流水加载失败" : "没有匹配的积分记录"} description={loadError || "切换流水类型，或完成一次生成后再回来查看。"} />,
-                                      }
-                                    : undefined
-                            }
+                            scroll={{ x: 1000 }}
                         />
                     </TableSurface>
                 ) : (
@@ -305,7 +319,7 @@ export default function WalletPage() {
                 <PaginationBar
                     current={page}
                     pageSize={pageSize}
-                    total={wallet?.total || 0}
+                    total={queryMatches ? wallet?.total || 0 : 0}
                     pageSizeOptions={[20, 50, 100]}
                     onChange={(nextPage, nextPageSize) => {
                         setPage(nextPageSize !== pageSize ? 1 : nextPage);
@@ -317,8 +331,8 @@ export default function WalletPage() {
     );
 }
 
-function BalanceMetric({ label, description, value, icon }: { label: string; description: string; value: number; icon: ReactNode }) {
-    const formatted = formatCredits(value, 6);
+function BalanceMetric({ label, description, value, icon }: { label: string; description: string; value?: number; icon: ReactNode }) {
+    const formatted = value === undefined ? "—" : formatCredits(value, 6);
     return (
         <div className="wallet-balance-metric">
             <span className="wallet-balance-metric-icon">{icon}</span>
@@ -336,7 +350,7 @@ function BalanceMetric({ label, description, value, icon }: { label: string; des
 function LedgerMobileRow({ config, entry }: { config: AiConfig; entry: CreditLedgerEntry }) {
     const meta = ledgerTypeMeta(entry.type);
     return (
-        <article className="flex items-start gap-3 rounded-md bg-foreground/[.025] px-4 py-4">
+        <article className="wallet-mobile-entry flex items-start gap-3 rounded-md px-4 py-4">
             <span className={`mt-0.5 grid size-8 shrink-0 place-items-center rounded-md ${meta.iconClass}`}>{meta.icon}</span>
             <div className="min-w-0 flex-1">
                 <div className="flex items-start justify-between gap-3">
@@ -347,6 +361,7 @@ function LedgerMobileRow({ config, entry }: { config: AiConfig; entry: CreditLed
                     <CreditDelta value={entry.amountMicrocredits} />
                 </div>
                 <div className="mt-2 line-clamp-2 break-words text-xs leading-5 text-foreground/55">{[sceneLabel(entry.scene), entry.note].filter(Boolean).join(" · ") || meta.label}</div>
+                <div className="wallet-mobile-entry-meta"><LedgerTypeTag type={entry.type} /><span>变更后 {formatCredits(entry.availableAfterMicrocredits, 6)} 积分</span></div>
             </div>
         </article>
     );
