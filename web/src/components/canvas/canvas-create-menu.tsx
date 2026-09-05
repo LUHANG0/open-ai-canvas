@@ -1,11 +1,10 @@
+import { useCanvasTheme } from "@/components/canvas/canvas-theme-provider";
 import { motion, useReducedMotion } from "motion/react";
 import type { CSSProperties, ReactNode } from "react";
 import { ArrowLeft } from "lucide-react";
 
 import { aceternityMotion } from "@/lib/aceternity-motion";
-import { canvasThemes } from "@/lib/canvas-theme";
 import { cn } from "@/lib/utils";
-import { useThemeStore } from "@/stores/use-theme-store";
 
 export type CanvasCreateCommand = {
     id: string;
@@ -27,7 +26,7 @@ const structureNodeIds = new Set(["drawing", "script", "frame", "folder"]);
 const advancedNodeIds = new Set(["director"]);
 
 export function CanvasCreateMenu({ commands, variant = "dock", onBack }: CanvasCreateMenuProps) {
-    const theme = canvasThemes[useThemeStore((state) => state.theme)];
+    const theme = useCanvasTheme();
     const projectCommands = commands.filter((command) => command.section === "project");
     const nodeCommands = commands.filter((command) => command.section === "node");
     const workflowCommands = commands.filter((command) => command.section === "workflow");
@@ -65,7 +64,7 @@ export function CanvasCreateMenu({ commands, variant = "dock", onBack }: CanvasC
 }
 
 function MenuGroup({ title, commands, kind, menuVariant }: { title: string; commands: CanvasCreateCommand[]; kind: "node" | "detail" | "wide"; menuVariant: "dock" | "context" }) {
-    const theme = canvasThemes[useThemeStore((state) => state.theme)];
+    const theme = useCanvasTheme();
     return (
         <section className="mt-3 first:mt-2">
             <MenuSection title={title} color={theme.node.muted} />
@@ -75,7 +74,7 @@ function MenuGroup({ title, commands, kind, menuVariant }: { title: string; comm
 }
 
 function CanvasCreateCommandGrid({ commands, kind, menuVariant }: { commands: CanvasCreateCommand[]; kind: "node" | "detail" | "wide"; menuVariant: "dock" | "context" }) {
-    const theme = canvasThemes[useThemeStore((state) => state.theme)];
+    const theme = useCanvasTheme();
     const reducedMotion = useReducedMotion();
     const contextNode = menuVariant === "context" && kind === "node";
     const columns = kind === "wide" ? "grid-cols-1" : kind === "node" ? (contextNode ? "grid-cols-2" : "grid-cols-4") : "grid-cols-2";

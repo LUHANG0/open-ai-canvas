@@ -1,3 +1,4 @@
+import { useCanvasTheme } from "@/components/canvas/canvas-theme-provider";
 import type { RefObject } from "react";
 import { createPortal } from "react-dom";
 import { Image as ImageIcon, Settings2 } from "lucide-react";
@@ -6,7 +7,6 @@ import { Button } from "antd";
 import { ImageSettingsPanel, imageQualityLabel, imageSizeLabel } from "@/components/image-settings-panel";
 import { canvasThemes } from "@/lib/canvas-theme";
 import { modelCapabilityConfigFor, normalizeImageValue } from "@/lib/model-capabilities";
-import { useThemeStore } from "@/stores/use-theme-store";
 import type { AiConfig } from "@/stores/use-config-store";
 import { CanvasGenerationSettingsShell } from "./canvas-generation-settings-shell";
 import { canvasSettingsPopoverStyle, useCanvasSettingsPopover, type CanvasSettingsPlacement } from "./use-canvas-settings-popover";
@@ -24,7 +24,7 @@ type CanvasImageSettingsPopoverProps = {
 };
 
 export function CanvasImageSettingsPopover({ config, onConfigChange, onOpenChange, buttonClassName, placement = "topLeft", showCount = true }: CanvasImageSettingsPopoverProps) {
-    const theme = canvasThemes[useThemeStore((state) => state.theme)];
+    const theme = useCanvasTheme();
     const { buttonRef, panelRef, open, buttonRect, setOpen } = useCanvasSettingsPopover(onOpenChange);
     const profile = modelCapabilityConfigFor(config, config.model || config.imageModel).image!;
     const normalized = normalizeImageValue(profile, config);

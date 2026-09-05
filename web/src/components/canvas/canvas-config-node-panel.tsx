@@ -1,5 +1,7 @@
+import { BrandLoadingIndicator } from "@/components/ui/brand-loader";
+import { useCanvasTheme } from "@/components/canvas/canvas-theme-provider";
 import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
-import { ChevronDown, Dice5, Image as ImageIcon, LoaderCircle, MessageSquare, Music2, Play, Sparkles, Video, Workflow as WorkflowIcon } from "lucide-react";
+import { ChevronDown, Dice5, Image as ImageIcon, MessageSquare, Music2, Play, Sparkles, Video, Workflow as WorkflowIcon } from "lucide-react";
 import { Button, Input, InputNumber, Segmented, Select, Slider, Switch, Tooltip } from "antd";
 
 import { configuredModelMatchesCapability, defaultConfig, modelOptionName, normalizeRunningHubCapability, resolveModelChannel, useEffectiveConfig, type AiConfig, type RunningHubCapability, type RunningHubWorkflow, type RunningHubWorkflowKind } from "@/stores/use-config-store";
@@ -9,7 +11,6 @@ import { defaultModelCapabilityConfig, modelCapabilityConfigFor, normalizeImageV
 import { defaultImageParamsForModel, modelCompatibilityError, modelRequestOptions, resolveCompatibleModel, resolveModelGenerationDefaults, type ModelRequirements } from "@/lib/model-selection";
 import { resolveCanvasWorkflowProvider } from "@/lib/canvas/canvas-workflow";
 import type { CanvasAudioSettingKey } from "./canvas-audio-settings-popover";
-import { useThemeStore } from "@/stores/use-theme-store";
 import { workflowProviderPluginEnabled } from "@/lib/plugins/builtin/workflows";
 import { usePluginStore } from "@/stores/use-plugin-store";
 import type { CanvasGenerationMode, CanvasNodeData, CanvasNodeMetadata, CanvasVideoEditOperation, CanvasWorkspaceMode } from "@/types/canvas";
@@ -61,7 +62,7 @@ function runningHubWorkflowEntryKey(workflow: RunningHubWorkflow): string {
 export function CanvasConfigNodePanel({ node, isRunning, inputSummary, onConfigChange, onGenerate, onComposerToggle, workspaceMode = "professional" }: CanvasConfigNodePanelProps) {
     const globalConfig = useEffectiveConfig();
     const runtimeStatuses = usePluginStore((state) => state.runtimeStatuses);
-    const theme = canvasThemes[useThemeStore((state) => state.theme)];
+    const theme = useCanvasTheme();
     const mode = node.metadata?.generationMode === "video" || node.metadata?.generationMode === "audio" ? node.metadata.generationMode : "image";
     const simpleMode = workspaceMode === "simple";
     const resolvedProvider = resolveCanvasWorkflowProvider(node.metadata);
@@ -329,7 +330,7 @@ export function CanvasConfigNodePanel({ node, isRunning, inputSummary, onConfigC
                 <span className="inline-flex items-center gap-1.5">
                         {isRunning ? (
                             <>
-                                <LoaderCircle className="size-4 animate-spin" />
+                                <BrandLoadingIndicator size="inline" />
                                 <span>生成中</span>
                         </>
                     ) : (

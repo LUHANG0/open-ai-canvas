@@ -17,7 +17,7 @@ test("heavy selection dock assembly lives only in the lazy content module", asyn
         Bun.file(new URL("../src/pages/canvas/canvas-project-selection-toolbar-content.tsx", import.meta.url)).text(),
     ]);
 
-    for (const marker of ["FloatingDock", "canvasThemes", "canvasDockStyle", "readToolbarPrefs", "resolveToolbarEntries", "useThemeStore"]) {
+    for (const marker of ["FloatingDock", "useCanvasTheme", "canvasDockStyle", "readToolbarPrefs", "resolveToolbarEntries"]) {
         expect(shellSource).not.toContain(marker);
         expect(contentSource).toContain(marker);
     }

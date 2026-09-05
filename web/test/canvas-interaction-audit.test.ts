@@ -150,7 +150,10 @@ test("canvas project environment owns external store subscriptions", async () =>
     expect(projectSource).not.toContain("useAssetStore((state)");
     expect(environmentSource).toContain("useEffectiveConfig()");
     expect(environmentSource).toContain("state.features.shortDramaEnabled");
-    expect(environmentSource).toContain("canvasThemes[useThemeStore");
+    expect(environmentSource).toContain("useCanvasTheme()");
+    const themeProvider = await Bun.file(new URL("../src/components/canvas/canvas-theme-provider.tsx", import.meta.url)).text();
+    expect(themeProvider).toContain("useMemo(() => createCanvasEditorTheme");
+    expect(themeProvider).not.toContain("getComputedStyle");
 });
 
 test("canvas project route owns route params and local agent entry parsing", async () => {

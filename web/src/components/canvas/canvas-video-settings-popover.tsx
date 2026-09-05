@@ -1,3 +1,4 @@
+import { useCanvasTheme } from "@/components/canvas/canvas-theme-provider";
 import type { RefObject } from "react";
 import { createPortal } from "react-dom";
 import { Settings2, Video } from "lucide-react";
@@ -6,7 +7,6 @@ import { Button } from "antd";
 import { VideoSettingsPanel, videoResolutionLabel, videoSecondsLabel, videoSizeLabel } from "@/components/video-settings-panel";
 import { canvasThemes } from "@/lib/canvas-theme";
 import { modelCapabilityConfigFor, resolveVideoRatioValue, resolveVideoResolutionValue } from "@/lib/model-capabilities";
-import { useThemeStore } from "@/stores/use-theme-store";
 import type { AiConfig } from "@/stores/use-config-store";
 import { CanvasGenerationSettingsShell } from "./canvas-generation-settings-shell";
 import { canvasSettingsPopoverStyle, useCanvasSettingsPopover, type CanvasSettingsPlacement } from "./use-canvas-settings-popover";
@@ -19,7 +19,7 @@ type CanvasVideoSettingsPopoverProps = {
 };
 
 export function CanvasVideoSettingsPopover({ config, onConfigChange, buttonClassName, placement = "topLeft" }: CanvasVideoSettingsPopoverProps) {
-    const theme = canvasThemes[useThemeStore((state) => state.theme)];
+    const theme = useCanvasTheme();
     const { buttonRef, panelRef, open, buttonRect, setOpen } = useCanvasSettingsPopover();
     const videoProfile = modelCapabilityConfigFor(config, config.model).video;
     const resolutionSupported = Boolean(videoProfile?.resolutions.length);

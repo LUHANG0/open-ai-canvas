@@ -40,15 +40,15 @@ describe("canvas resource mention editor", () => {
         expect(css).toContain('content: "替换"');
     });
 
-    test("resolves storage-backed previews and renders a visible loading spinner", () => {
+    test("resolves storage-backed previews and renders the shared brand loading indicator", () => {
         const editor = source("../src/components/canvas/canvas-resource-mention-textarea.tsx");
         const panel = source("../src/components/canvas/canvas-node-prompt-panel.tsx");
         const configComposer = source("../src/components/canvas/canvas-config-composer.tsx");
         const project = source("../src/pages/canvas/project.tsx");
 
         expect(editor).toContain("useResolvedCanvasResourceReferences");
-        expect(panel).toContain("<LoaderCircle className=");
-        expect(panel).toContain("animate-spin motion-reduce:animate-none");
+        expect(panel).toContain('<BrandLoadingIndicator size="inline"');
+        expect(panel).toContain("isRunning ? <BrandLoadingIndicator");
         expect(panel).not.toContain("isRunning ? theme.accent.danger");
         expect(configComposer).toContain("wrapper.dataset.referenceToken");
         expect(configComposer).not.toContain("result += `@[node:");

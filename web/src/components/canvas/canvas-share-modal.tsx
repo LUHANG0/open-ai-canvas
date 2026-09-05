@@ -1,14 +1,13 @@
+import { useCanvasTheme } from "@/components/canvas/canvas-theme-provider";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { App, Button, Input, Modal, Select, Spin } from "antd";
 import { Copy, Link2, RefreshCw, Share2, Unlink } from "lucide-react";
 
-import { canvasThemes } from "@/lib/canvas-theme";
 import { createCanvasShare, deleteCanvasShare, getCanvasShare, type CanvasShareStatus } from "@/services/api/canvas-share";
-import { useThemeStore } from "@/stores/use-theme-store";
 
 export function CanvasShareModal({ projectId, open, onClose, beforeCreate }: { projectId: string; open: boolean; onClose: () => void; beforeCreate: () => Promise<boolean | void> }) {
     const { message, modal } = App.useApp();
-    const theme = canvasThemes[useThemeStore((state) => state.theme)];
+    const theme = useCanvasTheme();
     const [share, setShare] = useState<CanvasShareStatus>({ enabled: false });
     const [expiresDays, setExpiresDays] = useState(0);
     const [loading, setLoading] = useState(false);

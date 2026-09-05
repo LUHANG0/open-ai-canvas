@@ -1,14 +1,15 @@
+import { BrandLoadingIndicator } from "@/components/ui/brand-loader";
+import { useCanvasTheme } from "@/components/canvas/canvas-theme-provider";
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { App, Button, Segmented, Tooltip } from "antd";
 import copyToClipboard from "copy-to-clipboard";
-import { CheckCircle2, ChevronDown, Copy, ExternalLink, FolderOpen, History, LoaderCircle, PlugZap, Plus, RefreshCw, Terminal, Trash2 } from "lucide-react";
+import { CheckCircle2, ChevronDown, Copy, ExternalLink, FolderOpen, History, PlugZap, Plus, RefreshCw, Terminal, Trash2 } from "lucide-react";
 import { motion } from "motion/react";
 
 import { canvasThemes } from "@/lib/canvas-theme";
 import { consumeLocalRuntimeEventStream, postCanvasRuntimeState, prepareCanvasRuntimeConnection, waitForCanvasRuntimeReconnect, type LocalRuntimeEvent } from "@/lib/canvas/local-runtime-connection";
 import { createClientId } from "@/lib/client-id";
 import { getLocalRuntimeSessionClient, useLocalRuntimeStore } from "@/stores/use-local-runtime-store";
-import { useThemeStore } from "@/stores/use-theme-store";
 import { useUserStore } from "@/stores/use-user-store";
 import {
     canvasAgentConnectionStatusText,
@@ -82,7 +83,7 @@ export const CanvasLocalAgentPanel = memo(function CanvasLocalAgentPanel({
     onApplyOps: (ops: CanvasAgentOp[], context?: { conversationId?: string; messageId?: string; source?: "online" | "local" }) => Promise<CanvasAgentSnapshot>;
     onUndoOps: () => CanvasAgentSnapshot | null;
 }) {
-    const theme = canvasThemes[useThemeStore((state) => state.theme)];
+    const theme = useCanvasTheme();
     const user = useUserStore((state) => state.user);
     const { message, modal } = App.useApp();
     const {
@@ -990,7 +991,7 @@ function AgentConnectView({ theme, enabled, activity, connectError, onToggleEnab
                             <div className="flex min-w-0 items-center gap-2">
                                 <span className="shrink-0 text-sm font-medium leading-5">本机 Runtime</span>
                                 <span className="inline-flex min-w-0 items-center gap-1.5 rounded-full px-2 py-0.5 text-[var(--fs-label)] leading-4" style={{ background: theme.node.fill, color: statusColor }} aria-live="polite">
-                                    {enabled ? <LoaderCircle className="size-3 shrink-0 animate-spin" /> : <span className="size-1.5 shrink-0 rounded-full" style={{ background: statusColor }} />}
+                                    {enabled ? <BrandLoadingIndicator size="inline" /> : <span className="size-1.5 shrink-0 rounded-full" style={{ background: statusColor }} />}
                                     <span className="truncate">{statusText}</span>
                                 </span>
                             </div>

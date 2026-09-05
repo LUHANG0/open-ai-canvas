@@ -1,3 +1,4 @@
+import { useCanvasTheme } from "@/components/canvas/canvas-theme-provider";
 import { lazy, memo, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import copyToClipboard from "copy-to-clipboard";
 import { Copy, Cpu, Settings2, Trash2, X } from "lucide-react";
@@ -14,7 +15,6 @@ import { consumeGenerationTaskAgent } from "@/services/project-asset-sync";
 import { applyGenerationConsumerEffect, generationEffectApplied } from "@/services/generation-consumer-dedupe";
 import { activeGenerationConsumerController } from "@/services/generation-consumer-lifecycle";
 import { useAssetStore } from "@/stores/use-asset-store";
-import { useThemeStore } from "@/stores/use-theme-store";
 import { useUserStore } from "@/stores/use-user-store";
 import { imageReferenceLabel } from "@/lib/image-reference-prompt";
 import { navigateToSettings } from "@/lib/settings-navigation";
@@ -356,7 +356,7 @@ function CanvasAssistantPanelImpl({
     cinematicEntry = false,
     onCinematicEntryConsumed,
 }: CanvasAssistantPanelProps) {
-    const theme = canvasThemes[useThemeStore((state) => state.theme)];
+    const theme = useCanvasTheme();
     const user = useUserStore((state) => state.user);
     const effectiveConfig = useEffectiveConfig();
     const cleanupImages = useAssetStore((state) => state.cleanupImages);
@@ -1291,7 +1291,7 @@ function AgentModelIcon({ config, model }: { config: AiConfig; model: string }) 
 }
 
 function AssistantHistory({ sessions, activeSession, onOpen, onDelete }: { sessions: CanvasAssistantSession[]; activeSession: CanvasAssistantSession | null; onOpen: (id: string) => void; onDelete: (id: string) => void }) {
-    const theme = canvasThemes[useThemeStore((state) => state.theme)];
+    const theme = useCanvasTheme();
 
     return (
         <div className="space-y-3">
@@ -1421,7 +1421,7 @@ function MessageReferences({ message }: { message: CanvasAssistantMessage }) {
 }
 
 function AssistantReferenceChip({ item, label, onRemove }: { item: CanvasAssistantReference; label?: string; onRemove?: () => void }) {
-    const theme = canvasThemes[useThemeStore((state) => state.theme)];
+    const theme = useCanvasTheme();
     const text = (item.text || item.title).replace(/\s+/g, " ").trim().slice(0, 1) || "文";
     return (
         <div className="group/chip relative inline-flex h-8 max-w-[150px] shrink-0 items-center gap-1.5 rounded-lg text-sm" style={{ color: theme.node.text }}>

@@ -1,3 +1,4 @@
+import { useCanvasTheme } from "@/components/canvas/canvas-theme-provider";
 import { useEffect, useState, type ReactNode } from "react";
 import { Button, Input, Modal, Tag } from "antd";
 import { Plus } from "lucide-react";
@@ -5,8 +6,6 @@ import { Plus } from "lucide-react";
 import { canvasNodeAssetCategory } from "@/lib/canvas/canvas-node-asset";
 import { generationErrorMessage } from "@/lib/generation-error";
 import { formatBytes, getDataUrlByteSize } from "@/lib/image-utils";
-import { canvasThemes } from "@/lib/canvas-theme";
-import { useThemeStore } from "@/stores/use-theme-store";
 import { CanvasNodeType, type CanvasNodeData, type CanvasNodeMetadata } from "@/types/canvas";
 
 type CanvasAssetCategory = NonNullable<NonNullable<CanvasNodeData["metadata"]>["assetCategory"]>;
@@ -31,7 +30,7 @@ export type CanvasNodeInfoModalProps = {
 };
 
 export function CanvasNodeInfoModal({ node, open, onClose, onMetadataChange, readOnly = false, onUnauthorized }: CanvasNodeInfoModalProps) {
-    const theme = canvasThemes[useThemeStore((state) => state.theme)];
+    const theme = useCanvasTheme();
     const [assetTags, setAssetTags] = useState<string[]>([]);
     const [assetTagInput, setAssetTagInput] = useState("");
     const [assetCategory, setAssetCategory] = useState<CanvasAssetCategory>("other");

@@ -3,8 +3,7 @@ import type { CSSProperties, ClipboardEvent, DragEvent, KeyboardEvent, MouseEven
 import { createPortal } from "react-dom";
 import { ArrowLeft, ChevronRight, FileText, Folder, Image as ImageIcon, Music2, Pencil, Search, UserRound, Video, Workflow } from "lucide-react";
 
-import { canvasThemes } from "@/lib/canvas-theme";
-import { useThemeStore } from "@/stores/use-theme-store";
+import { useCanvasTheme } from "@/components/canvas/canvas-theme-provider";
 import { buildAssetMentionReferences, canvasResourceMentionToken, type CanvasResourceReference } from "@/lib/canvas/canvas-resource-references";
 import { useAssetStore, type AssetCategory } from "@/stores/use-asset-store";
 import { CanvasNodeType } from "@/types/canvas";
@@ -68,9 +67,8 @@ export const CanvasResourceMentionTextarea = forwardRef<HTMLTextAreaElement, Pro
     },
     forwardedRef,
 ) {
-    const rawTheme = useThemeStore((state) => state.theme);
     const assets = useAssetStore((state) => state.assets);
-    const theme = canvasThemes[rawTheme as keyof typeof canvasThemes] ?? canvasThemes.dark;
+    const theme = useCanvasTheme();
     const containerRef = useRef<HTMLDivElement | null>(null);
     const textareaRef = useRef<HTMLTextAreaElement | null>(null);
     const editorRef = useRef<HTMLDivElement | null>(null);

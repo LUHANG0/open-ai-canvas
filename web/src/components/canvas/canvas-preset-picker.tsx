@@ -1,9 +1,8 @@
+import { useCanvasTheme } from "@/components/canvas/canvas-theme-provider";
 import { useMemo, useState } from "react";
 import { Input, Popover } from "antd";
 import { Search, WandSparkles } from "lucide-react";
 
-import { canvasThemes } from "@/lib/canvas-theme";
-import { useThemeStore } from "@/stores/use-theme-store";
 import type { CanvasGenerationMode } from "@/types/canvas";
 import type { CanvasResourceReference } from "@/lib/canvas/canvas-resource-references";
 
@@ -84,7 +83,7 @@ export function CanvasPresetPicker({
     compact?: boolean;
     dense?: boolean;
 }) {
-    const theme = canvasThemes[useThemeStore((state) => state.theme)];
+    const theme = useCanvasTheme();
     const [internalOpen, setInternalOpen] = useState(false);
     const [query, setQuery] = useState("");
     const actualOpen = open ?? internalOpen;

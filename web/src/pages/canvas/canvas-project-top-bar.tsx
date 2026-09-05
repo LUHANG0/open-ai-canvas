@@ -155,6 +155,7 @@ export function CanvasTopBar({
                                 onChange={(event) => onTitleDraftChange(event.target.value)}
                                 onBlur={onFinishTitleEditing}
                                 onKeyDown={(event) => {
+                                    if (event.nativeEvent.isComposing || event.keyCode === 229) return;
                                     if (event.key === "Enter") onFinishTitleEditing();
                                     if (event.key === "Escape") onCancelTitleEditing();
                                 }}

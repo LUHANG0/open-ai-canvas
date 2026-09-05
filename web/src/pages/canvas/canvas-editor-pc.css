@@ -1,3 +1,274 @@
+.pc-canvas-overlay.pc-canvas-menu-overlay .ant-dropdown-menu {
+    min-width: 212px;
+    border: 1px solid var(--app-border-default);
+    border-radius: var(--app-surface-radius);
+    background: var(--app-surface-overlay);
+    padding: var(--app-space-1);
+    box-shadow: var(--app-shadow-overlay);
+}
+
+.pc-canvas-overlay.pc-canvas-menu-overlay .ant-dropdown-menu-item,
+.pc-canvas-overlay.pc-canvas-menu-overlay .ant-dropdown-menu-submenu-title {
+    min-height: var(--app-control-height);
+    border-radius: var(--app-control-radius);
+    font-size: var(--app-font-size-control);
+}
+
+.pc-canvas-overlay.pc-canvas-menu-overlay .ant-dropdown-menu-item:focus-visible,
+.pc-canvas-overlay.pc-canvas-menu-overlay .ant-dropdown-menu-submenu-title:focus-visible {
+    outline: none;
+    box-shadow: inset var(--app-focus-shadow);
+}
+
+.pc-canvas-workspace .canvas-node-toolbar,
+.pc-canvas-workspace .canvas-floating-panel,
+.pc-canvas-workspace .pc-canvas-context-menu {
+    border-color: var(--pc-canvas-panel-border);
+    border-radius: var(--app-surface-radius);
+    box-shadow: var(--app-shadow-raised);
+}
+
+.pc-canvas-workspace .canvas-node-toolbar {
+    padding: var(--app-space-1);
+}
+
+.pc-canvas-workspace .canvas-node-tool-button,
+.pc-canvas-workspace .canvas-menu-item,
+.pc-canvas-workspace .canvas-node-inline-action {
+    border-radius: var(--app-control-radius);
+}
+
+.pc-canvas-workspace .canvas-node-tool-button:focus-visible,
+.pc-canvas-workspace .canvas-menu-item:focus-visible,
+.pc-canvas-workspace .canvas-node-inline-action:focus-visible {
+    outline: none;
+    box-shadow: var(--app-focus-shadow);
+}
+
+.pc-canvas-workspace .pc-canvas-context-menu {
+    width: 236px;
+    max-height: calc(100vh - 80px);
+    border-color: var(--pc-canvas-panel-border);
+    padding: var(--app-space-1);
+}
+
+.pc-canvas-workspace .pc-canvas-context-menu .canvas-menu-item {
+    min-height: var(--app-control-height);
+    padding-inline: var(--app-space-2);
+}
+
+.pc-canvas-workspace .pc-canvas-assistant-panel :where(button, input, textarea, [role="button"]):focus-visible,
+.pc-canvas-workspace .pc-canvas-local-agent-panel :where(button, input, textarea, [role="button"]):focus-visible {
+    outline: none;
+    box-shadow: var(--app-focus-shadow);
+}
+
+.pc-canvas-workspace .pc-canvas-config-panel {
+    gap: var(--app-space-3);
+    padding-inline: var(--app-space-4);
+    padding-bottom: var(--app-space-4);
+}
+
+.pc-canvas-workspace .canvas-config-composer {
+    border: 1px solid var(--pc-canvas-panel-border);
+    border-radius: var(--app-surface-radius);
+    padding: var(--app-space-4);
+    background: var(--pc-canvas-panel-surface);
+}
+
+.pc-canvas-workspace .canvas-config-composer-editor:focus-within,
+.pc-canvas-workspace .canvas-node-composer-editor:focus-within {
+    box-shadow: inset var(--app-focus-shadow);
+}
+
+.pc-canvas-workspace .canvas-node-composer {
+    border-radius: var(--app-surface-radius);
+}
+
+.pc-canvas-workspace .canvas-node-composer :where(button, input, textarea, [contenteditable="true"]):focus-visible,
+.pc-canvas-workspace .canvas-config-composer :where(button, input, textarea, [contenteditable="true"]):focus-visible {
+    outline: none;
+    box-shadow: var(--app-focus-shadow);
+}
+
+.pc-canvas-modal .ant-modal-container {
+    overflow: hidden;
+    border: 1px solid var(--app-border-default);
+    border-radius: var(--app-surface-radius);
+    background: var(--app-surface-overlay);
+    color: var(--app-text-primary);
+    box-shadow: var(--app-shadow-overlay);
+}
+
+.pc-canvas-modal .ant-modal-header {
+    min-height: 56px;
+    margin: 0;
+    border-bottom: 1px solid var(--app-border-subtle);
+    background: transparent;
+    padding: var(--app-space-4) 52px var(--app-space-4) var(--app-space-5);
+}
+
+.pc-canvas-modal .ant-modal-title {
+    color: var(--app-text-primary);
+    font-size: var(--app-font-size-section);
+    font-weight: 650;
+    line-height: 1.4;
+}
+
+.pc-canvas-modal .ant-modal-body {
+    color: var(--app-text-primary);
+}
+
+.pc-canvas-modal .ant-modal-footer {
+    margin: 0;
+    border-top: 1px solid var(--app-border-subtle);
+    padding: var(--app-space-3) var(--app-space-5);
+}
+
+.pc-canvas-modal .ant-modal-close {
+    top: var(--app-space-3);
+    right: var(--app-space-3);
+    width: var(--app-control-height);
+    height: var(--app-control-height);
+    border-radius: var(--app-control-radius);
+    color: var(--app-text-secondary);
+}
+
+.pc-canvas-modal .ant-modal-close:hover {
+    background: var(--app-action-secondary-hover);
+    color: var(--app-text-primary);
+}
+
+.pc-canvas-modal .ant-modal-close:focus-visible {
+    outline: none;
+    box-shadow: var(--app-focus-shadow);
+}
+
+.pc-canvas-modal :where(.ant-input, .ant-input-affix-wrapper, .ant-select-selector, .ant-input-number, .ant-segmented) {
+    border-radius: var(--app-control-radius);
+}
+
+.pc-canvas-modal :where(.ant-input, .ant-input-affix-wrapper, .ant-select-selector, .ant-input-number):focus-within {
+    box-shadow: var(--app-focus-shadow);
+}
+
+.pc-canvas-task-modal .ant-modal-body {
+    padding: var(--app-space-5);
+}
+
+.pc-canvas-media-modal :where(button, [role="button"]):focus-visible,
+.pc-canvas-confirm-modal :where(button, [role="button"]):focus-visible {
+    outline: none;
+    box-shadow: var(--app-focus-shadow);
+}
+
+.pc-canvas-confirm-copy {
+    margin: 0;
+    color: var(--app-text-secondary);
+    line-height: 1.65;
+    opacity: 1;
+}
+
+.pc-canvas-image-preview.ant-image-preview-operations-wrapper,
+.pc-canvas-image-preview .ant-image-preview-operations-wrapper {
+    inset: var(--app-space-4) var(--app-space-4) auto auto;
+    width: auto;
+    border: 1px solid var(--app-border-default);
+    border-radius: var(--app-surface-radius);
+    background: color-mix(in srgb, var(--app-surface-overlay) 92%, transparent);
+    box-shadow: var(--app-shadow-raised);
+    backdrop-filter: blur(18px);
+}
+
+.pc-canvas-image-preview :where(.ant-image-preview-close, .ant-image-preview-switch-left, .ant-image-preview-switch-right):focus-visible {
+    outline: none;
+    box-shadow: var(--app-focus-shadow);
+}
+
+.pc-canvas-shortcuts-modal .canvas-shortcuts-header,
+.pc-canvas-shortcuts-modal .canvas-shortcuts-footer {
+    border-color: var(--app-border-subtle);
+    background: var(--app-surface-2);
+}
+
+.pc-canvas-shortcuts-modal .canvas-shortcuts-categories {
+    border-color: var(--app-border-subtle);
+    background: color-mix(in srgb, var(--app-surface-2) 72%, transparent);
+}
+
+.pc-canvas-shortcuts-modal .canvas-shortcuts-search {
+    border-color: var(--app-border-default);
+    border-radius: var(--app-control-radius);
+    background: var(--app-surface-1);
+}
+
+.pc-canvas-shortcuts-modal .canvas-shortcuts-search:focus-within {
+    border-color: var(--app-border-interactive);
+    box-shadow: var(--app-focus-shadow);
+}
+
+.pc-canvas-shortcuts-modal .canvas-shortcuts-categories button.is-active {
+    background: var(--app-selection-bg);
+    color: var(--app-selection-fg);
+}
+
+.pc-canvas-upload-modal .ant-upload-drag {
+    border-radius: var(--app-surface-radius);
+    background: var(--app-surface-2);
+}
+
+.pc-canvas-upload-modal .ant-upload-drag:hover,
+.pc-canvas-upload-modal .ant-upload-drag-hover {
+    border-color: var(--app-border-strong);
+    background: var(--app-selection-bg);
+}
+
+.pc-canvas-preview-modal .ant-modal-body,
+.pc-canvas-drawing-modal .ant-modal-body {
+    background: color-mix(in srgb, var(--app-bg-canvas) 92%, black 8%);
+}
+
+.pc-canvas-workspace .pc-canvas-node-panel {
+    border: 1px solid var(--pc-canvas-panel-border);
+    border-radius: var(--app-surface-radius);
+    background: var(--pc-canvas-panel-surface);
+    box-shadow: var(--app-shadow-raised);
+    scrollbar-gutter: stable;
+}
+
+.pc-canvas-workspace .pc-canvas-connection-menu button:focus-visible {
+    outline: none;
+    box-shadow: var(--app-focus-shadow);
+}
+
+.pc-canvas-workspace .pc-canvas-focus-bar > div {
+    border: 1px solid var(--pc-canvas-panel-border);
+    border-radius: var(--app-surface-radius);
+    padding: var(--app-space-1);
+}
+
+.pc-canvas-workspace .pc-canvas-focus-bar button {
+    border-radius: var(--app-control-radius);
+}
+
+.pc-canvas-workspace .pc-canvas-focus-bar button:focus-visible {
+    outline: none;
+    box-shadow: var(--app-focus-shadow);
+}
+
+.pc-canvas-prompt-optimizer-popover .ant-popover-container {
+    overflow: hidden;
+    border: 1px solid var(--app-border-default);
+    border-radius: var(--app-surface-radius);
+    background: var(--app-surface-overlay);
+    box-shadow: var(--app-shadow-overlay);
+}
+
+.pc-canvas-prompt-optimizer :where(button, input, textarea, [role="button"]):focus-visible {
+    outline: none;
+    box-shadow: var(--app-focus-shadow);
+}
+
 /* Canvas-owned appearance is shared across viewport sizes; desktop layout remains below. */
 .pc-canvas-workspace {
     --canvas-editor-background: var(--app-bg-canvas);
@@ -325,27 +596,8 @@
         outline: none;
     }
 
-    .pc-canvas-overlay.pc-canvas-menu-overlay .ant-dropdown-menu {
-        min-width: 212px;
-        border: 1px solid var(--app-border-default);
-        border-radius: var(--app-surface-radius);
-        background: var(--app-surface-overlay);
-        padding: var(--app-space-1);
-        box-shadow: var(--app-shadow-overlay);
-    }
 
-    .pc-canvas-overlay.pc-canvas-menu-overlay .ant-dropdown-menu-item,
-    .pc-canvas-overlay.pc-canvas-menu-overlay .ant-dropdown-menu-submenu-title {
-        min-height: var(--app-control-height);
-        border-radius: var(--app-control-radius);
-        font-size: var(--app-font-size-control);
-    }
 
-    .pc-canvas-overlay.pc-canvas-menu-overlay .ant-dropdown-menu-item:focus-visible,
-    .pc-canvas-overlay.pc-canvas-menu-overlay .ant-dropdown-menu-submenu-title:focus-visible {
-        outline: none;
-        box-shadow: inset var(--app-focus-shadow);
-    }
 
     .pc-canvas-workspace .pc-canvas-infinite {
         background-clip: padding-box;
@@ -437,9 +689,9 @@
         background-clip: padding-box;
     }
 
-    /* 节点坐标层保持不动，只轻微放大视觉外壳；连线、拖动和媒体控件的命中逻辑不受影响。 */
+    /* 媒体外壳不随悬停缩放或调色，保持内容与几何命中区一致。 */
     .pc-canvas-workspace .node-element:not([data-canvas-node-interacting="true"]):hover > .canvas-node-shell {
-        transform: scale(1.012);
+        transform: none;
     }
 
     .pc-canvas-workspace .node-element[data-canvas-node-interacting="true"] > .canvas-node-shell {
@@ -448,7 +700,7 @@
 
     .pc-canvas-workspace .pc-canvas-node:hover,
     .pc-canvas-workspace .pc-canvas-node:focus-within {
-        filter: saturate(1.02);
+        filter: none;
     }
 
     .pc-canvas-workspace .pc-canvas-node:focus-within {
@@ -459,47 +711,16 @@
         border-radius: var(--app-surface-radius);
     }
 
-    .pc-canvas-workspace .canvas-node-toolbar,
-    .pc-canvas-workspace .canvas-floating-panel,
-    .pc-canvas-workspace .pc-canvas-context-menu {
-        border-color: var(--pc-canvas-panel-border);
-        border-radius: var(--app-surface-radius);
-        box-shadow: var(--app-shadow-raised);
-    }
 
-    .pc-canvas-workspace .canvas-node-toolbar {
-        padding: var(--app-space-1);
-    }
 
-    .pc-canvas-workspace .canvas-node-tool-button,
-    .pc-canvas-workspace .canvas-menu-item,
-    .pc-canvas-workspace .canvas-node-inline-action {
-        border-radius: var(--app-control-radius);
-    }
 
     .pc-canvas-workspace :is(.canvas-node-tool-button, .canvas-menu-item, .canvas-node-inline-action, .aceternity-dock-command):disabled {
         cursor: not-allowed;
         opacity: 0.42;
     }
 
-    .pc-canvas-workspace .canvas-node-tool-button:focus-visible,
-    .pc-canvas-workspace .canvas-menu-item:focus-visible,
-    .pc-canvas-workspace .canvas-node-inline-action:focus-visible {
-        outline: none;
-        box-shadow: var(--app-focus-shadow);
-    }
 
-    .pc-canvas-workspace .pc-canvas-context-menu {
-        width: 236px;
-        max-height: calc(100vh - 80px);
-        border-color: var(--pc-canvas-panel-border);
-        padding: var(--app-space-1);
-    }
 
-    .pc-canvas-workspace .pc-canvas-context-menu .canvas-menu-item {
-        min-height: var(--app-control-height);
-        padding-inline: var(--app-space-2);
-    }
 
     .pc-canvas-workspace .pc-canvas-mini-map {
         border: 1px solid var(--pc-canvas-panel-border);
@@ -553,104 +774,22 @@
         border-inline-start: 1px solid var(--pc-canvas-panel-border);
     }
 
-    .pc-canvas-workspace .pc-canvas-assistant-panel :where(button, input, textarea, [role="button"]):focus-visible,
-    .pc-canvas-workspace .pc-canvas-local-agent-panel :where(button, input, textarea, [role="button"]):focus-visible {
-        outline: none;
-        box-shadow: var(--app-focus-shadow);
-    }
 
-    .pc-canvas-workspace .pc-canvas-config-panel {
-        gap: var(--app-space-3);
-        padding-inline: var(--app-space-4);
-        padding-bottom: var(--app-space-4);
-    }
 
-    .pc-canvas-workspace .canvas-config-composer {
-        border: 1px solid var(--pc-canvas-panel-border);
-        border-radius: var(--app-surface-radius);
-        padding: var(--app-space-4);
-        background: var(--pc-canvas-panel-surface);
-    }
 
-    .pc-canvas-workspace .canvas-config-composer-editor:focus-within,
-    .pc-canvas-workspace .canvas-node-composer-editor:focus-within {
-        box-shadow: inset var(--app-focus-shadow);
-    }
 
-    .pc-canvas-workspace .canvas-node-composer {
-        border-radius: var(--app-surface-radius);
-    }
 
-    .pc-canvas-workspace .canvas-node-composer :where(button, input, textarea, [contenteditable="true"]):focus-visible,
-    .pc-canvas-workspace .canvas-config-composer :where(button, input, textarea, [contenteditable="true"]):focus-visible {
-        outline: none;
-        box-shadow: var(--app-focus-shadow);
-    }
 
-    .pc-canvas-modal .ant-modal-container {
-        overflow: hidden;
-        border: 1px solid var(--app-border-default);
-        border-radius: var(--app-surface-radius);
-        background: var(--app-surface-overlay);
-        color: var(--app-text-primary);
-        box-shadow: var(--app-shadow-overlay);
-    }
 
-    .pc-canvas-modal .ant-modal-header {
-        min-height: 56px;
-        margin: 0;
-        border-bottom: 1px solid var(--app-border-subtle);
-        background: transparent;
-        padding: var(--app-space-4) 52px var(--app-space-4) var(--app-space-5);
-    }
 
-    .pc-canvas-modal .ant-modal-title {
-        color: var(--app-text-primary);
-        font-size: var(--app-font-size-section);
-        font-weight: 650;
-        line-height: 1.4;
-    }
 
-    .pc-canvas-modal .ant-modal-body {
-        color: var(--app-text-primary);
-    }
 
-    .pc-canvas-modal .ant-modal-footer {
-        margin: 0;
-        border-top: 1px solid var(--app-border-subtle);
-        padding: var(--app-space-3) var(--app-space-5);
-    }
 
-    .pc-canvas-modal .ant-modal-close {
-        top: var(--app-space-3);
-        right: var(--app-space-3);
-        width: var(--app-control-height);
-        height: var(--app-control-height);
-        border-radius: var(--app-control-radius);
-        color: var(--app-text-secondary);
-    }
 
-    .pc-canvas-modal .ant-modal-close:hover {
-        background: var(--app-action-secondary-hover);
-        color: var(--app-text-primary);
-    }
 
-    .pc-canvas-modal .ant-modal-close:focus-visible {
-        outline: none;
-        box-shadow: var(--app-focus-shadow);
-    }
 
-    .pc-canvas-modal :where(.ant-input, .ant-input-affix-wrapper, .ant-select-selector, .ant-input-number, .ant-segmented) {
-        border-radius: var(--app-control-radius);
-    }
 
-    .pc-canvas-modal :where(.ant-input, .ant-input-affix-wrapper, .ant-select-selector, .ant-input-number):focus-within {
-        box-shadow: var(--app-focus-shadow);
-    }
 
-    .pc-canvas-task-modal .ant-modal-body {
-        padding: var(--app-space-5);
-    }
 
     .pc-canvas-task-detail__summary {
         grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -733,77 +872,17 @@
         line-height: 1.65;
     }
 
-    .pc-canvas-media-modal :where(button, [role="button"]):focus-visible,
-    .pc-canvas-confirm-modal :where(button, [role="button"]):focus-visible {
-        outline: none;
-        box-shadow: var(--app-focus-shadow);
-    }
 
-    .pc-canvas-confirm-copy {
-        margin: 0;
-        color: var(--app-text-secondary);
-        line-height: 1.65;
-        opacity: 1;
-    }
 
-    .pc-canvas-image-preview.ant-image-preview-operations-wrapper,
-    .pc-canvas-image-preview .ant-image-preview-operations-wrapper {
-        inset: var(--app-space-4) var(--app-space-4) auto auto;
-        width: auto;
-        border: 1px solid var(--app-border-default);
-        border-radius: var(--app-surface-radius);
-        background: color-mix(in srgb, var(--app-surface-overlay) 92%, transparent);
-        box-shadow: var(--app-shadow-raised);
-        backdrop-filter: blur(18px);
-    }
 
-    .pc-canvas-image-preview :where(.ant-image-preview-close, .ant-image-preview-switch-left, .ant-image-preview-switch-right):focus-visible {
-        outline: none;
-        box-shadow: var(--app-focus-shadow);
-    }
 
-    .pc-canvas-shortcuts-modal .canvas-shortcuts-header,
-    .pc-canvas-shortcuts-modal .canvas-shortcuts-footer {
-        border-color: var(--app-border-subtle);
-        background: var(--app-surface-2);
-    }
 
-    .pc-canvas-shortcuts-modal .canvas-shortcuts-categories {
-        border-color: var(--app-border-subtle);
-        background: color-mix(in srgb, var(--app-surface-2) 72%, transparent);
-    }
 
-    .pc-canvas-shortcuts-modal .canvas-shortcuts-search {
-        border-color: var(--app-border-default);
-        border-radius: var(--app-control-radius);
-        background: var(--app-surface-1);
-    }
 
-    .pc-canvas-shortcuts-modal .canvas-shortcuts-search:focus-within {
-        border-color: var(--app-border-interactive);
-        box-shadow: var(--app-focus-shadow);
-    }
 
-    .pc-canvas-shortcuts-modal .canvas-shortcuts-categories button.is-active {
-        background: var(--app-selection-bg);
-        color: var(--app-selection-fg);
-    }
 
-    .pc-canvas-upload-modal .ant-upload-drag {
-        border-radius: var(--app-surface-radius);
-        background: var(--app-surface-2);
-    }
 
-    .pc-canvas-upload-modal .ant-upload-drag:hover,
-    .pc-canvas-upload-modal .ant-upload-drag-hover {
-        border-color: var(--app-border-strong);
-        background: var(--app-selection-bg);
-    }
 
-    .pc-canvas-preview-modal .ant-modal-body,
-    .pc-canvas-drawing-modal .ant-modal-body {
-        background: color-mix(in srgb, var(--app-bg-canvas) 92%, black 8%);
-    }
 
     .pc-canvas-workspace .pc-canvas-selection-toolbar .aceternity-floating-panel,
     .pc-canvas-workspace .pc-canvas-connection-menu {
@@ -811,33 +890,10 @@
         border-radius: var(--app-surface-radius);
     }
 
-    .pc-canvas-workspace .pc-canvas-node-panel {
-        border: 1px solid var(--pc-canvas-panel-border);
-        border-radius: var(--app-surface-radius);
-        background: var(--pc-canvas-panel-surface);
-        box-shadow: var(--app-shadow-raised);
-        scrollbar-gutter: stable;
-    }
 
-    .pc-canvas-workspace .pc-canvas-connection-menu button:focus-visible {
-        outline: none;
-        box-shadow: var(--app-focus-shadow);
-    }
 
-    .pc-canvas-workspace .pc-canvas-focus-bar > div {
-        border: 1px solid var(--pc-canvas-panel-border);
-        border-radius: var(--app-surface-radius);
-        padding: var(--app-space-1);
-    }
 
-    .pc-canvas-workspace .pc-canvas-focus-bar button {
-        border-radius: var(--app-control-radius);
-    }
 
-    .pc-canvas-workspace .pc-canvas-focus-bar button:focus-visible {
-        outline: none;
-        box-shadow: var(--app-focus-shadow);
-    }
 
     .pc-canvas-workspace .pc-canvas-file-drop {
         inset: var(--app-space-4);
@@ -846,18 +902,7 @@
         background: color-mix(in srgb, var(--app-selection-bg) 82%, transparent);
     }
 
-    .pc-canvas-prompt-optimizer-popover .ant-popover-container {
-        overflow: hidden;
-        border: 1px solid var(--app-border-default);
-        border-radius: var(--app-surface-radius);
-        background: var(--app-surface-overlay);
-        box-shadow: var(--app-shadow-overlay);
-    }
 
-    .pc-canvas-prompt-optimizer :where(button, input, textarea, [role="button"]):focus-visible {
-        outline: none;
-        box-shadow: var(--app-focus-shadow);
-    }
 
     .pc-canvas-share {
         --canvas-topbar-h: 68px;
@@ -1131,7 +1176,7 @@
     }
 }
 
-@media (min-width: 1024px) and (prefers-reduced-motion: reduce) {
+@media (prefers-reduced-motion: reduce) {
     .pc-canvas-workspace,
     .pc-canvas-workspace *,
     .pc-canvas-workspace *::before,
@@ -1149,7 +1194,7 @@
     }
 }
 
-@media (min-width: 1024px) and (forced-colors: active) {
+@media (forced-colors: active) {
     .pc-canvas-workspace .pc-canvas-panel,
     .pc-canvas-workspace .canvas-topbar-cluster,
     .pc-canvas-workspace .canvas-floating-dock,
