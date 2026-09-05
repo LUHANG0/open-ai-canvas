@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { App, Button, Drawer, Form, Input, InputNumber, Modal, Select } from "antd";
+import { Alert, App, Button, Drawer, Form, Input, InputNumber, Modal, Select, Spin } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { BadgeCheck, Coins, Plus, RefreshCw, Search, Trash2, Undo2 } from "lucide-react";
 
@@ -10,6 +10,7 @@ import { listAdminUsers, type AdminReferenceData, type AdminUser } from "@/servi
 import { adjustAdminUserCredits, getAdminCreditPolicy, listAdminBillingOrders, resolveAdminBillingOrder, resolveAdminBillingOrders, updateAdminCreditPolicy, type BillingOrder } from "@/services/api/wallet";
 
 import { AdminBatchBar, AdminDataTable, AdminRowActions, AdminStatusBadge, AdminTableEmpty } from "./admin-ui";
+import "./admin-operations.css";
 
 export type CreditOperation = "policy" | "adjustment" | null;
 
@@ -33,6 +34,14 @@ export default function CreditOperationsPanel({ users, activeOperation, onOperat
     const { message } = App.useApp();
     const [orders, setOrders] = useState<BillingOrder[]>([]);
     const [loading, setLoading] = useState(true);
+    const [listError, setListError] = useState("");
+    const [policyError, setPolicyError] = useState("");
+    const [policyReady, setPolicyReady] = useState(false);
+    const [policyReload, setPolicyReload] = useState(0);
+    const [policyDirty, setPolicyDirty] = useState(false);
+    const [writeError, setWriteError] = useState("");
+    const [userSearchError, setUserSearchError] = useState("");
+    const [userSearchReload, setUserSearchReload] = useState(0);
     const [loadingPolicy, setLoadingPolicy] = useState(false);
     const [savingPolicy, setSavingPolicy] = useState(false);
     const [adjusting, setAdjusting] = useState(false);
@@ -55,6 +64,10 @@ export default function CreditOperationsPanel({ users, activeOperation, onOperat
     const [policyForm] = Form.useForm<PolicyFormValues>();
     const ordersRequestRef = useRef(0);
     const userSearchRequestRef = useRef(0);
+    const policySavingRef = useRef(false);
+    const policySnapshotRef = useRef("");
+    const adjustingRef = useRef(false);
+    const resolvingRef = useRef(false);
     const selectedAdjustmentUserId = Form.useWatch("userId", adjustmentForm);
 
     const userLabels = useMemo(() => {
@@ -68,6 +81,10 @@ export default function CreditOperationsPanel({ users, activeOperation, onOperat
     const reload = async (targetPage = page, targetPageSize = pageSize) => {
         const requestId = ++ordersRequestRef.current;
         setLoading(true);
+        setListError("");
+        setOrders([]);
+        setTotal(0);
+        setSelectedOrderIds([]);
         try {
             const result = await listAdminBillingOrders({
                 keyword: debouncedKeyword || undefined,
@@ -84,7 +101,7 @@ export default function CreditOperationsPanel({ users, activeOperation, onOperat
             setTotal(result.total);
             setSelectedOrderIds([]);
         } catch (error) {
-            if (requestId === ordersRequestRef.current) message.error(error instanceof Error ? error.message : "读取待核对计费失败");
+            if (requestId === ordersRequestRef.current) setListError(error instanceof Error ? error.message : "读取待核对计费失败");
         } finally {
             if (requestId === ordersRequestRef.current) setLoading(false);
         }
@@ -92,12 +109,19 @@ export default function CreditOperationsPanel({ users, activeOperation, onOperat
 
     useEffect(() => {
         void reload(page, pageSize);
+        return () => {
+            ordersRequestRef.current++;
+        };
     }, [debouncedKeyword, orderStatus, page, pageSize]);
 
     useEffect(() => {
         if (activeOperation !== "policy") return;
         let active = true;
         setLoadingPolicy(true);
+        setPolicyReady(false);
+        setPolicyDirty(false);
+        setPolicyError("");
+        setWriteError("");
         void getAdminCreditPolicy()
             .then(({ policy }) => {
                 if (!active) return;
@@ -110,9 +134,11 @@ export default function CreditOperationsPanel({ users, activeOperation, onOperat
                         multiplier: value / 10_000,
                     })),
                 });
+                setPolicyReady(true);
+                policySnapshotRef.current = JSON.stringify(policyForm.getFieldsValue(true));
             })
             .catch((error) => {
-                if (active) message.error(error instanceof Error ? error.message : "读取积分策略失败");
+                if (active) setPolicyError(error instanceof Error ? error.message : "读取积分策略失败");
             })
             .finally(() => {
                 if (active) setLoadingPolicy(false);
@@ -120,12 +146,13 @@ export default function CreditOperationsPanel({ users, activeOperation, onOperat
         return () => {
             active = false;
         };
-    }, [activeOperation, message, policyForm]);
+    }, [activeOperation, policyReload, policyForm]);
 
     useEffect(() => {
         if (activeOperation !== "adjustment") return;
         adjustmentForm.resetFields();
         setPendingAdjustment(null);
+        setWriteError("");
         setAdjustmentSearch("");
         setAdjustmentUsers(users);
     }, [activeOperation, adjustmentForm, users]);
@@ -134,6 +161,7 @@ export default function CreditOperationsPanel({ users, activeOperation, onOperat
         if (activeOperation !== "adjustment") return;
         const requestId = ++userSearchRequestRef.current;
         setSearchingUsers(true);
+        setUserSearchError("");
         void listAdminUsers({ keyword: debouncedAdjustmentSearch.trim() || undefined, page: 1, limit: 50 })
             .then((result) => {
                 if (requestId !== userSearchRequestRef.current) return;
@@ -145,14 +173,21 @@ export default function CreditOperationsPanel({ users, activeOperation, onOperat
                 });
             })
             .catch((error) => {
-                if (requestId === userSearchRequestRef.current) message.error(error instanceof Error ? error.message : "搜索用户失败");
+                if (requestId === userSearchRequestRef.current) {
+                    setAdjustmentUsers([]);
+                    setUserSearchError(error instanceof Error ? error.message : "搜索用户失败");
+                }
             })
             .finally(() => {
                 if (requestId === userSearchRequestRef.current) setSearchingUsers(false);
             });
-    }, [activeOperation, adjustmentForm, debouncedAdjustmentSearch, message]);
+        return () => {
+            userSearchRequestRef.current++;
+        };
+    }, [activeOperation, adjustmentForm, debouncedAdjustmentSearch, userSearchReload]);
 
     const savePolicy = async (values: PolicyFormValues) => {
+        if (policySavingRef.current || !policyReady || !policyDirty) return;
         const modelMultiplierBasisPoints: Record<string, number> = {};
         for (const row of values.modelMultipliers || []) {
             const model = String(row.model || "").trim();
@@ -167,7 +202,9 @@ export default function CreditOperationsPanel({ users, activeOperation, onOperat
             }
             modelMultiplierBasisPoints[model] = Math.round(multiplier * 10_000);
         }
+        policySavingRef.current = true;
         setSavingPolicy(true);
+        setWriteError("");
         try {
             await updateAdminCreditPolicy({
                 signupBonusMicrocredits: toMicrocredits(values.signupBonus),
@@ -178,13 +215,16 @@ export default function CreditOperationsPanel({ users, activeOperation, onOperat
             message.success("积分策略已保存，将应用于后续创建的计费订单");
             onOperationChange(null);
         } catch (error) {
-            message.error(error instanceof Error ? error.message : "保存积分策略失败");
+            setWriteError(error instanceof Error ? error.message : "保存积分策略失败");
         } finally {
+            policySavingRef.current = false;
             setSavingPolicy(false);
         }
     };
 
     const previewAdjustment = (values: AdjustmentFormValues) => {
+        if (adjustingRef.current || searchingUsers || userSearchError) return;
+        setWriteError("");
         const amount = Number(values.amount);
         if (!Number.isFinite(amount) || amount === 0) {
             message.error("积分变化不能为 0");
@@ -205,8 +245,10 @@ export default function CreditOperationsPanel({ users, activeOperation, onOperat
     };
 
     const applyAdjustment = async () => {
-        if (!pendingAdjustment) return;
+        if (!pendingAdjustment || adjustingRef.current) return;
+        adjustingRef.current = true;
         setAdjusting(true);
+        setWriteError("");
         try {
             const result = await adjustAdminUserCredits(pendingAdjustment.userId, {
                 amountMicrocredits: toMicrocredits(pendingAdjustment.amount),
@@ -228,18 +270,21 @@ export default function CreditOperationsPanel({ users, activeOperation, onOperat
             onOperationChange(null);
             message.success(`用户积分已调整，当前可用积分 ${formatCredits(result.account.availableMicrocredits)}`);
         } catch (error) {
-            message.error(error instanceof Error ? error.message : "调整积分失败");
+            setWriteError(error instanceof Error ? error.message : "调整积分失败");
         } finally {
+            adjustingRef.current = false;
             setAdjusting(false);
         }
     };
 
     const resolveBilling = async () => {
-        if (!resolutionTarget) return;
+        if (!resolutionTarget || resolvingRef.current) return;
+        resolvingRef.current = true;
         let values: ResolutionFormValues;
         try {
             values = await resolutionForm.validateFields();
         } catch {
+            resolvingRef.current = false;
             return;
         }
         const note = values.note.trim();
@@ -272,6 +317,7 @@ export default function CreditOperationsPanel({ users, activeOperation, onOperat
         } catch (error) {
             message.error(error instanceof Error ? error.message : "处理计费订单失败");
         } finally {
+            resolvingRef.current = false;
             setResolving(false);
         }
     };
@@ -432,6 +478,7 @@ export default function CreditOperationsPanel({ users, activeOperation, onOperat
                         rowKey: "id",
                         size: "small",
                         loading,
+                        tableLayout: "fixed",
                         pagination: false,
                         columns,
                         dataSource: orders,
@@ -446,7 +493,14 @@ export default function CreditOperationsPanel({ users, activeOperation, onOperat
                         },
                         scroll: { x: 1510 },
                     }}
-                    empty={<AdminTableEmpty filtered={hasFilters} title={!hasFilters ? "当前没有待核对订单" : undefined} description={!hasFilters ? "新的异常计费订单会自动出现在这里。" : undefined} />}
+                    empty={
+                        <AdminTableEmpty
+                            filtered={hasFilters}
+                            title={listError ? "计费订单读取失败" : !hasFilters ? "当前没有待核对订单" : undefined}
+                            description={listError || (!hasFilters ? "新的异常计费订单会自动出现在这里。" : undefined)}
+                            action={listError ? <Button onClick={() => void reload()}>重试</Button> : undefined}
+                        />
+                    }
                     footer={
                         <PaginationBar
                             alwaysShow
@@ -465,7 +519,7 @@ export default function CreditOperationsPanel({ users, activeOperation, onOperat
             <Drawer
                 title="积分策略"
                 open={activeOperation === "policy"}
-                size="min(700px, 100vw)"
+                size="min(640px, 100vw)"
                 onClose={() => {
                     if (!savingPolicy) onOperationChange(null);
                 }}
@@ -478,7 +532,7 @@ export default function CreditOperationsPanel({ users, activeOperation, onOperat
                         <Button disabled={savingPolicy} onClick={() => onOperationChange(null)}>
                             取消
                         </Button>
-                        <Button type="primary" loading={savingPolicy} disabled={loadingPolicy} onClick={() => policyForm.submit()}>
+                        <Button type="primary" loading={savingPolicy} disabled={loadingPolicy || !policyReady || !policyDirty} onClick={() => policyForm.submit()}>
                             保存策略
                         </Button>
                     </div>
@@ -490,10 +544,23 @@ export default function CreditOperationsPanel({ users, activeOperation, onOperat
                 </div>
                 {loadingPolicy ? (
                     <div className="admin-credit-drawer-loading" role="status">
+                        <Spin />
                         正在读取积分策略…
                     </div>
+                ) : policyError ? (
+                    <AdminTableEmpty title="积分策略读取失败" description={policyError} action={<Button onClick={() => setPolicyReload((value) => value + 1)}>重试</Button>} />
                 ) : (
-                    <Form form={policyForm} layout="vertical" requiredMark={false} initialValues={{ modelMultipliers: [] }} onFinish={(values) => void savePolicy(values)}>
+                    <Form
+                        form={policyForm}
+                        inert={savingPolicy}
+                        disabled={savingPolicy}
+                        onValuesChange={() => setPolicyDirty(JSON.stringify(policyForm.getFieldsValue(true)) !== policySnapshotRef.current)}
+                        layout="vertical"
+                        requiredMark={false}
+                        initialValues={{ modelMultipliers: [] }}
+                        onFinish={(values) => void savePolicy(values)}
+                    >
+                        {writeError ? <Alert type="error" showIcon title="策略未保存，输入已保留" description={writeError} /> : null}
                         <section className="admin-credit-drawer-section">
                             <div className="admin-credit-drawer-section-heading">
                                 <h3>基础规则</h3>
@@ -585,7 +652,8 @@ export default function CreditOperationsPanel({ users, activeOperation, onOperat
             <Drawer
                 title="人工调账"
                 open={activeOperation === "adjustment"}
-                size="min(580px, 100vw)"
+                size="min(640px, 100vw)"
+                focusable={{ trap: !pendingAdjustment }}
                 onClose={() => {
                     if (adjusting || pendingAdjustment) return;
                     onOperationChange(null);
@@ -596,10 +664,10 @@ export default function CreditOperationsPanel({ users, activeOperation, onOperat
                 keyboard={!adjusting && !pendingAdjustment}
                 footer={
                     <div className="flex justify-end gap-2">
-                        <Button disabled={adjusting} onClick={() => onOperationChange(null)}>
+                        <Button disabled={adjusting || Boolean(pendingAdjustment)} onClick={() => onOperationChange(null)}>
                             取消
                         </Button>
-                        <Button type="primary" disabled={adjusting} onClick={() => adjustmentForm.submit()}>
+                        <Button type="primary" disabled={adjusting || Boolean(pendingAdjustment) || searchingUsers || Boolean(userSearchError)} onClick={() => adjustmentForm.submit()}>
                             核对并继续
                         </Button>
                     </div>
@@ -609,7 +677,8 @@ export default function CreditOperationsPanel({ users, activeOperation, onOperat
                     <strong>账务写入操作</strong>
                     <p>提交后会立即写入积分流水和管理员审计记录，请填写可追溯的处理依据。</p>
                 </div>
-                <Form form={adjustmentForm} layout="vertical" requiredMark={false} onFinish={previewAdjustment}>
+                {userSearchError ? <Alert type="error" showIcon title="调账用户读取失败" description={userSearchError} action={<Button onClick={() => setUserSearchReload((value) => value + 1)}>重试</Button>} /> : null}
+                <Form form={adjustmentForm} inert={adjusting || Boolean(pendingAdjustment)} disabled={adjusting || Boolean(pendingAdjustment)} layout="vertical" requiredMark={false} onFinish={previewAdjustment}>
                     <section className="admin-credit-drawer-section">
                         <Form.Item name="userId" label="目标用户" rules={[{ required: true, message: "请选择用户" }]}>
                             <Select
@@ -664,6 +733,7 @@ export default function CreditOperationsPanel({ users, activeOperation, onOperat
             >
                 {pendingAdjustment ? (
                     <div className="admin-operation-confirmation">
+                        {writeError ? <Alert type="error" showIcon title="调账未确认完成" description={`${writeError}。请先核对该用户积分流水，避免重复调整。`} /> : null}
                         <p className="admin-operation-confirmation-copy">请再次核对用户、积分变化和处理依据。确认后将立即写入账务流水。</p>
                         <dl className="admin-operation-confirmation-grid">
                             <div>
