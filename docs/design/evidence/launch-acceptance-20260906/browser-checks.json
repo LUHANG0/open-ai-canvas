@@ -1,0 +1,2190 @@
+{
+  "baseline": "ab0d0a6d",
+  "fixes": [
+    "981890cf",
+    "e3921c0c",
+    "0261e3f5"
+  ],
+  "execution": "隔离Chrome/本机模拟服务，D3整合前；部分序列明确标记未完整结束",
+  "suites": [
+    {
+      "source": "access-email-checks.json",
+      "completed": true,
+      "checks": [
+        {
+          "name": "OAuth 初始无调整不可保存",
+          "passed": true
+        },
+        {
+          "name": "切换注册不覆盖 OAuth 草稿",
+          "passed": true
+        },
+        {
+          "name": "OAuth 保存失败保留草稿",
+          "passed": true
+        },
+        {
+          "name": "未保存离开焦点留在确认",
+          "passed": true
+        },
+        {
+          "name": "取消离开保留 OAuth 草稿",
+          "passed": true
+        },
+        {
+          "name": "OAuth 三连保存只写一次",
+          "passed": true
+        },
+        {
+          "name": "OAuth 回读配置且密钥不回显",
+          "passed": true
+        },
+        {
+          "name": "关闭 OAuth 保留收起字段与密钥",
+          "passed": true
+        },
+        {
+          "name": "OAuth 刷新回读",
+          "passed": true
+        },
+        {
+          "name": "OAuth 撤销回到保存值",
+          "passed": true
+        },
+        {
+          "name": "前台实际显示 Linux.do 登录入口",
+          "passed": true
+        },
+        {
+          "name": "SMTP 保存失败保留输入",
+          "passed": true
+        },
+        {
+          "name": "邮件三连保存只写一次",
+          "passed": true
+        },
+        {
+          "name": "SMTP 真实保存回读",
+          "passed": true
+        },
+        {
+          "name": "邮件关闭保留收起字段",
+          "passed": true
+        },
+        {
+          "name": "邮件刷新回读",
+          "passed": true
+        },
+        {
+          "name": "邮件撤销恢复保存值",
+          "passed": true
+        }
+      ],
+      "errors": []
+    },
+    {
+      "source": "announcements-checks.json",
+      "completed": true,
+      "checks": [
+        {
+          "name": "公告发布确认焦点留在确认框",
+          "passed": true
+        },
+        {
+          "name": "公告真实发布状态为active",
+          "passed": true
+        },
+        {
+          "name": "发布内容进入真实前台公告中心",
+          "passed": true
+        },
+        {
+          "name": "编辑发布更新内容与发布时间",
+          "passed": true
+        },
+        {
+          "name": "关闭后前台接口移除公告",
+          "passed": true
+        },
+        {
+          "name": "关闭后前台同步不显示内容",
+          "passed": true
+        },
+        {
+          "name": "发布成功与列表读取失败分别反馈",
+          "passed": true
+        },
+        {
+          "name": "公告列表恢复",
+          "passed": true
+        }
+      ],
+      "errors": []
+    },
+    {
+      "source": "asset-insertion-checks.json",
+      "completed": true,
+      "checks": [
+        {
+          "name": "素材选择器真实插入画布并保存",
+          "passed": true
+        },
+        {
+          "name": "引用素材画布刷新保留",
+          "passed": true
+        },
+        {
+          "name": "已被画布引用的素材删除被明确阻止",
+          "passed": true
+        },
+        {
+          "name": "被阻止删除仍保留素材记录",
+          "passed": true
+        }
+      ],
+      "errors": []
+    },
+    {
+      "source": "asset-save-retry-checks.json",
+      "completed": true,
+      "checks": [
+        {
+          "name": "素材同步失败保留编辑弹窗和内容",
+          "passed": true
+        },
+        {
+          "name": "失败三连保存仅一次即时写入",
+          "passed": true
+        },
+        {
+          "name": "素材重试保留同一ID且只新增一条",
+          "passed": true
+        },
+        {
+          "name": "失败后成功重试立即刷新仍在",
+          "passed": true
+        }
+      ],
+      "errors": []
+    },
+    {
+      "source": "assets-checks.json",
+      "completed": true,
+      "checks": [
+        {
+          "name": "素材图片从真实上传保存到刷新回读",
+          "passed": true
+        },
+        {
+          "name": "素材预览中存在实际解码图片",
+          "passed": true
+        }
+      ],
+      "errors": []
+    },
+    {
+      "source": "features-recovery-checks.json",
+      "completed": true,
+      "checks": [
+        {
+          "name": "即时功能保存失败恢复原开关",
+          "passed": true
+        },
+        {
+          "name": "即时功能连续切换一次保存",
+          "passed": true
+        },
+        {
+          "name": "功能开放公开 API 同步",
+          "passed": true
+        },
+        {
+          "name": "关闭插件中心收起依赖项",
+          "passed": true
+        },
+        {
+          "name": "重开插件恢复依赖配置",
+          "passed": true
+        },
+        {
+          "name": "刷新期间禁止功能写入",
+          "passed": true
+        },
+        {
+          "name": "功能刷新失败禁止旧状态写入",
+          "passed": true
+        },
+        {
+          "name": "功能刷新恢复写入",
+          "passed": true
+        },
+        {
+          "name": "features 首次读取失败显示就地恢复",
+          "passed": true
+        },
+        {
+          "name": "features 重新读取恢复完整配置",
+          "passed": true
+        },
+        {
+          "name": "access 首次读取失败显示就地恢复",
+          "passed": true
+        },
+        {
+          "name": "access 重新读取恢复完整配置",
+          "passed": true
+        },
+        {
+          "name": "email 首次读取失败显示就地恢复",
+          "passed": true
+        },
+        {
+          "name": "email 重新读取恢复完整配置",
+          "passed": true
+        },
+        {
+          "name": "storage 首次读取失败显示就地恢复",
+          "passed": true
+        },
+        {
+          "name": "storage 重新读取恢复完整配置",
+          "passed": true
+        }
+      ],
+      "errors": []
+    },
+    {
+      "source": "layout-checks.json",
+      "completed": true,
+      "checks": [
+        {
+          "name": "features dark 1440 页面与字段无横向溢出",
+          "passed": true
+        },
+        {
+          "name": "access dark 1440 页面与字段无横向溢出",
+          "passed": true
+        },
+        {
+          "name": "access dark 1440 底部保存可达",
+          "passed": true
+        },
+        {
+          "name": "email dark 1440 页面与字段无横向溢出",
+          "passed": true
+        },
+        {
+          "name": "email dark 1440 底部保存可达",
+          "passed": true
+        },
+        {
+          "name": "storage dark 1440 页面与字段无横向溢出",
+          "passed": true
+        },
+        {
+          "name": "storage dark 1440 底部保存可达",
+          "passed": true
+        },
+        {
+          "name": "features light 1440 页面与字段无横向溢出",
+          "passed": true
+        },
+        {
+          "name": "access light 1440 页面与字段无横向溢出",
+          "passed": true
+        },
+        {
+          "name": "access light 1440 底部保存可达",
+          "passed": true
+        },
+        {
+          "name": "email light 1440 页面与字段无横向溢出",
+          "passed": true
+        },
+        {
+          "name": "email light 1440 底部保存可达",
+          "passed": true
+        },
+        {
+          "name": "storage light 1440 页面与字段无横向溢出",
+          "passed": true
+        },
+        {
+          "name": "storage light 1440 底部保存可达",
+          "passed": true
+        },
+        {
+          "name": "features dark 390 页面与字段无横向溢出",
+          "passed": true
+        },
+        {
+          "name": "access dark 390 页面与字段无横向溢出",
+          "passed": true
+        },
+        {
+          "name": "access dark 390 底部保存可达",
+          "passed": true
+        },
+        {
+          "name": "email dark 390 页面与字段无横向溢出",
+          "passed": true
+        },
+        {
+          "name": "email dark 390 底部保存可达",
+          "passed": true
+        },
+        {
+          "name": "storage dark 390 页面与字段无横向溢出",
+          "passed": true
+        },
+        {
+          "name": "storage dark 390 底部保存可达",
+          "passed": true
+        },
+        {
+          "name": "features light 390 页面与字段无横向溢出",
+          "passed": true
+        },
+        {
+          "name": "access light 390 页面与字段无横向溢出",
+          "passed": true
+        },
+        {
+          "name": "access light 390 底部保存可达",
+          "passed": true
+        },
+        {
+          "name": "email light 390 页面与字段无横向溢出",
+          "passed": true
+        },
+        {
+          "name": "email light 390 底部保存可达",
+          "passed": true
+        },
+        {
+          "name": "storage light 390 页面与字段无横向溢出",
+          "passed": true
+        },
+        {
+          "name": "storage light 390 底部保存可达",
+          "passed": true
+        },
+        {
+          "name": "features dark 1023 页面与字段无横向溢出",
+          "passed": true
+        },
+        {
+          "name": "access dark 1023 页面与字段无横向溢出",
+          "passed": true
+        },
+        {
+          "name": "email dark 1023 页面与字段无横向溢出",
+          "passed": true
+        },
+        {
+          "name": "storage dark 1023 页面与字段无横向溢出",
+          "passed": true
+        },
+        {
+          "name": "features light 1023 页面与字段无横向溢出",
+          "passed": true
+        },
+        {
+          "name": "access light 1023 页面与字段无横向溢出",
+          "passed": true
+        },
+        {
+          "name": "email light 1023 页面与字段无横向溢出",
+          "passed": true
+        },
+        {
+          "name": "storage light 1023 页面与字段无横向溢出",
+          "passed": true
+        },
+        {
+          "name": "features dark 1024 页面与字段无横向溢出",
+          "passed": true
+        },
+        {
+          "name": "access dark 1024 页面与字段无横向溢出",
+          "passed": true
+        },
+        {
+          "name": "email dark 1024 页面与字段无横向溢出",
+          "passed": true
+        },
+        {
+          "name": "storage dark 1024 页面与字段无横向溢出",
+          "passed": true
+        },
+        {
+          "name": "features light 1024 页面与字段无横向溢出",
+          "passed": true
+        },
+        {
+          "name": "access light 1024 页面与字段无横向溢出",
+          "passed": true
+        },
+        {
+          "name": "email light 1024 页面与字段无横向溢出",
+          "passed": true
+        },
+        {
+          "name": "storage light 1024 页面与字段无横向溢出",
+          "passed": true
+        },
+        {
+          "name": "手机确认框第 0 次 Tab 焦点保持",
+          "passed": true
+        },
+        {
+          "name": "手机确认框第 1 次 Tab 焦点保持",
+          "passed": true
+        },
+        {
+          "name": "手机确认框第 2 次 Tab 焦点保持",
+          "passed": true
+        },
+        {
+          "name": "手机确认框第 3 次 Tab 焦点保持",
+          "passed": true
+        },
+        {
+          "name": "手机确认框第 4 次 Tab 焦点保持",
+          "passed": true
+        },
+        {
+          "name": "手机确认框第 5 次 Tab 焦点保持",
+          "passed": true
+        },
+        {
+          "name": "手机确认框第 6 次 Tab 焦点保持",
+          "passed": true
+        },
+        {
+          "name": "手机确认框第 7 次 Tab 焦点保持",
+          "passed": true
+        },
+        {
+          "name": "手机确认框第 8 次 Tab 焦点保持",
+          "passed": true
+        },
+        {
+          "name": "手机确认框第 9 次 Tab 焦点保持",
+          "passed": true
+        },
+        {
+          "name": "手机确认框第 10 次 Tab 焦点保持",
+          "passed": true
+        },
+        {
+          "name": "手机确认框第 11 次 Tab 焦点保持",
+          "passed": true
+        },
+        {
+          "name": "邮件取消离开保留草稿",
+          "passed": true
+        },
+        {
+          "name": "输入聚焦可见边框",
+          "passed": true
+        },
+        {
+          "name": "减少动画偏好下页面可操作",
+          "passed": true
+        }
+      ],
+      "errors": []
+    },
+    {
+      "source": "model-create-checks.json",
+      "completed": true,
+      "checks": [
+        {
+          "name": "后台本地渠道回读并隐藏密钥",
+          "passed": true
+        },
+        {
+          "name": "当前接口创建文本供应模型",
+          "passed": true
+        },
+        {
+          "name": "前台模型目录已关联本地供应",
+          "passed": true
+        },
+        {
+          "name": "创作页实际显示后台文本模型",
+          "passed": true
+        }
+      ],
+      "errors": []
+    },
+    {
+      "source": "public-share-checks.json",
+      "completed": true,
+      "checks": [
+        {
+          "name": "隔离画布创建分享成功",
+          "passed": true
+        },
+        {
+          "name": "无登录态公开分享可打开",
+          "passed": true
+        },
+        {
+          "name": "公开分享深链接刷新可读",
+          "passed": true
+        },
+        {
+          "name": "撤销后公开接口失效",
+          "passed": true
+        },
+        {
+          "name": "撤销分享页面明确失效",
+          "passed": true
+        }
+      ],
+      "errors": []
+    },
+    {
+      "source": "redemption-recovery-checks.json",
+      "completed": true,
+      "checks": [
+        {
+          "name": "明细故障明确且保留筛选",
+          "passed": true
+        },
+        {
+          "name": "明细原位重试恢复禁用记录",
+          "passed": true
+        }
+      ],
+      "errors": []
+    },
+    {
+      "source": "route-matrix-checks.json",
+      "completed": true,
+      "checks": [
+        {
+          "name": "/ 1440 dark 有内容无整页横向溢出",
+          "passed": true
+        },
+        {
+          "name": "/ 1440 light 有内容无整页横向溢出",
+          "passed": true
+        },
+        {
+          "name": "/ 390 dark 有内容无整页横向溢出",
+          "passed": true
+        },
+        {
+          "name": "/ 390 light 有内容无整页横向溢出",
+          "passed": true
+        },
+        {
+          "name": "/product 1440 dark 有内容无整页横向溢出",
+          "passed": true
+        },
+        {
+          "name": "/product 1440 light 有内容无整页横向溢出",
+          "passed": true
+        },
+        {
+          "name": "/product 390 dark 有内容无整页横向溢出",
+          "passed": true
+        },
+        {
+          "name": "/product 390 light 有内容无整页横向溢出",
+          "passed": true
+        },
+        {
+          "name": "/showcase 1440 dark 有内容无整页横向溢出",
+          "passed": true
+        },
+        {
+          "name": "/showcase 1440 light 有内容无整页横向溢出",
+          "passed": true
+        },
+        {
+          "name": "/showcase 390 dark 有内容无整页横向溢出",
+          "passed": true
+        },
+        {
+          "name": "/showcase 390 light 有内容无整页横向溢出",
+          "passed": true
+        },
+        {
+          "name": "/about 1440 dark 有内容无整页横向溢出",
+          "passed": true
+        },
+        {
+          "name": "/about 1440 light 有内容无整页横向溢出",
+          "passed": true
+        },
+        {
+          "name": "/about 390 dark 有内容无整页横向溢出",
+          "passed": true
+        },
+        {
+          "name": "/about 390 light 有内容无整页横向溢出",
+          "passed": true
+        },
+        {
+          "name": "/login 1440 dark 有内容无整页横向溢出",
+          "passed": true
+        },
+        {
+          "name": "/login 1440 light 有内容无整页横向溢出",
+          "passed": true
+        },
+        {
+          "name": "/login 390 dark 有内容无整页横向溢出",
+          "passed": true
+        },
+        {
+          "name": "/login 390 light 有内容无整页横向溢出",
+          "passed": true
+        },
+        {
+          "name": "/home 1440 dark 有内容无整页横向溢出",
+          "passed": true
+        },
+        {
+          "name": "/home 1440 light 有内容无整页横向溢出",
+          "passed": true
+        },
+        {
+          "name": "/home 390 dark 有内容无整页横向溢出",
+          "passed": true
+        },
+        {
+          "name": "/home 390 light 有内容无整页横向溢出",
+          "passed": true
+        },
+        {
+          "name": "/create 1440 dark 有内容无整页横向溢出",
+          "passed": true
+        },
+        {
+          "name": "/create 1440 light 有内容无整页横向溢出",
+          "passed": true
+        },
+        {
+          "name": "/create 390 dark 有内容无整页横向溢出",
+          "passed": true
+        },
+        {
+          "name": "/create 390 light 有内容无整页横向溢出",
+          "passed": true
+        },
+        {
+          "name": "/tasks 1440 dark 有内容无整页横向溢出",
+          "passed": true
+        },
+        {
+          "name": "/tasks 1440 light 有内容无整页横向溢出",
+          "passed": true
+        },
+        {
+          "name": "/tasks 390 dark 有内容无整页横向溢出",
+          "passed": true
+        },
+        {
+          "name": "/tasks 390 light 有内容无整页横向溢出",
+          "passed": true
+        },
+        {
+          "name": "/assets 1440 dark 有内容无整页横向溢出",
+          "passed": true
+        },
+        {
+          "name": "/assets 1440 light 有内容无整页横向溢出",
+          "passed": true
+        },
+        {
+          "name": "/assets 390 dark 有内容无整页横向溢出",
+          "passed": true
+        },
+        {
+          "name": "/assets 390 light 有内容无整页横向溢出",
+          "passed": true
+        },
+        {
+          "name": "/projects 1440 dark 有内容无整页横向溢出",
+          "passed": true
+        },
+        {
+          "name": "/projects 1440 light 有内容无整页横向溢出",
+          "passed": true
+        },
+        {
+          "name": "/projects 390 dark 有内容无整页横向溢出",
+          "passed": true
+        },
+        {
+          "name": "/projects 390 light 有内容无整页横向溢出",
+          "passed": true
+        },
+        {
+          "name": "/canvas 1440 dark 有内容无整页横向溢出",
+          "passed": true
+        },
+        {
+          "name": "/canvas 1440 light 有内容无整页横向溢出",
+          "passed": true
+        },
+        {
+          "name": "/canvas 390 dark 有内容无整页横向溢出",
+          "passed": true
+        },
+        {
+          "name": "/canvas 390 light 有内容无整页横向溢出",
+          "passed": true
+        },
+        {
+          "name": "/wallet 1440 dark 有内容无整页横向溢出",
+          "passed": true
+        },
+        {
+          "name": "/wallet 1440 light 有内容无整页横向溢出",
+          "passed": true
+        },
+        {
+          "name": "/wallet 390 dark 有内容无整页横向溢出",
+          "passed": true
+        },
+        {
+          "name": "/wallet 390 light 有内容无整页横向溢出",
+          "passed": true
+        },
+        {
+          "name": "剩余范围实际入口只读 /admin",
+          "passed": true
+        },
+        {
+          "name": "剩余范围实际入口只读 /admin/plugins",
+          "passed": true
+        },
+        {
+          "name": "剩余范围实际入口只读 /admin/prompt-templates",
+          "passed": true
+        },
+        {
+          "name": "剩余范围实际入口只读 /admin/resources",
+          "passed": true
+        },
+        {
+          "name": "剩余范围实际入口只读 /admin/settings/drawing-engine",
+          "passed": true
+        },
+        {
+          "name": "剩余范围实际入口只读 /admin/settings/runtime-policy",
+          "passed": true
+        },
+        {
+          "name": "剩余范围实际入口只读 /admin/settings/ark-private-assets",
+          "passed": true
+        },
+        {
+          "name": "剩余范围实际入口只读 /admin/settings/response-interception",
+          "passed": true
+        },
+        {
+          "name": "剩余范围实际入口只读 /admin/settings/third-party",
+          "passed": true
+        },
+        {
+          "name": "剩余范围实际入口只读 /admin/settings/system-update",
+          "passed": true
+        },
+        {
+          "name": "剩余范围实际入口只读 /share/canvas/invalid-local-acceptance",
+          "passed": true
+        },
+        {
+          "name": "剩余范围实际入口只读 /route-does-not-exist",
+          "passed": true
+        },
+        {
+          "name": "剩余范围实际入口只读 /test-voice-recording",
+          "passed": true
+        }
+      ],
+      "errors": []
+    },
+    {
+      "source": "shot-and-focus-checks.json",
+      "completed": true,
+      "checks": [
+        {
+          "name": "章节确认默认继续编辑 1440dark",
+          "passed": true
+        },
+        {
+          "name": "章节确认正反Tab循环 1440dark",
+          "passed": true
+        },
+        {
+          "name": "取消离开保留草稿 1440dark",
+          "passed": true
+        },
+        {
+          "name": "章节确认默认继续编辑 1440light",
+          "passed": true
+        },
+        {
+          "name": "章节确认正反Tab循环 1440light",
+          "passed": true
+        },
+        {
+          "name": "取消离开保留草稿 1440light",
+          "passed": true
+        },
+        {
+          "name": "章节确认默认继续编辑 390dark",
+          "passed": true
+        },
+        {
+          "name": "章节确认正反Tab循环 390dark",
+          "passed": true
+        },
+        {
+          "name": "取消离开保留草稿 390dark",
+          "passed": true
+        },
+        {
+          "name": "章节确认默认继续编辑 390light",
+          "passed": true
+        },
+        {
+          "name": "章节确认正反Tab循环 390light",
+          "passed": true
+        },
+        {
+          "name": "取消离开保留草稿 390light",
+          "passed": true
+        },
+        {
+          "name": "完整分镜脚本保存刷新回读",
+          "passed": true
+        },
+        {
+          "name": "手机分镜章节定位搜索和关闭",
+          "passed": true
+        }
+      ],
+      "errors": []
+    },
+    {
+      "source": "shot-focus-after-checks.json",
+      "completed": true,
+      "checks": [
+        {
+          "name": "镜头脚本离开确认焦点受限",
+          "passed": true
+        },
+        {
+          "name": "镜头脚本取消离开保留草稿",
+          "passed": true
+        }
+      ],
+      "errors": []
+    },
+    {
+      "source": "smtp-registration-checks.json",
+      "completed": true,
+      "checks": [
+        {
+          "name": "关闭注册真实 API 拒绝创建",
+          "passed": true
+        },
+        {
+          "name": "前台展示注册关闭",
+          "passed": true
+        },
+        {
+          "name": "真实 SMTP 失败可恢复发送",
+          "passed": true
+        },
+        {
+          "name": "本地 SMTP 接收六位注册验证码",
+          "passed": true
+        },
+        {
+          "name": "真实前台验证码注册成功",
+          "passed": true
+        },
+        {
+          "name": "普通用户不能读取管理配置",
+          "passed": true
+        },
+        {
+          "name": "前台关闭短剧显示受限状态",
+          "passed": true
+        },
+        {
+          "name": "前台关闭插件显示受限状态",
+          "passed": true
+        },
+        {
+          "name": "重新开放短剧恢复前台入口",
+          "passed": true
+        }
+      ],
+      "errors": []
+    },
+    {
+      "source": "storage-checks.json",
+      "completed": true,
+      "checks": [
+        {
+          "name": "本地地址输入绑定且出现未保存",
+          "passed": true
+        },
+        {
+          "name": "存储保存失败保留地址",
+          "passed": true
+        },
+        {
+          "name": "本地地址真实保存回读",
+          "passed": true
+        },
+        {
+          "name": "本地地址刷新显示保存值",
+          "passed": true
+        },
+        {
+          "name": "自动填当前地址同步到输入",
+          "passed": true
+        },
+        {
+          "name": "撤销地址恢复原值",
+          "passed": true
+        },
+        {
+          "name": "S3 未测试真实保存被拒绝且草稿保留",
+          "passed": true
+        },
+        {
+          "name": "S3 实际连接失败有明确状态",
+          "passed": true
+        },
+        {
+          "name": "检测期间字段保存撤销刷新全部互斥",
+          "passed": true
+        },
+        {
+          "name": "S3 真实读写检测成功且连续点击一次",
+          "passed": true
+        },
+        {
+          "name": "连接通过尚未改变平台配置",
+          "passed": true
+        },
+        {
+          "name": "S3 保存回读与密钥脱敏",
+          "passed": true
+        },
+        {
+          "name": "S3 刷新后保留测试状态",
+          "passed": true
+        },
+        {
+          "name": "改关键配置使测试失效",
+          "passed": true
+        },
+        {
+          "name": "撤销恢复已保存测试状态",
+          "passed": true
+        },
+        {
+          "name": "切本地不清空收起的 S3 配置",
+          "passed": true
+        },
+        {
+          "name": "本地 S3 模拟完成 PUT Range GET DELETE 且清理测试对象",
+          "passed": true
+        }
+      ],
+      "errors": []
+    },
+    {
+      "source": "task-cancel-checks.json",
+      "completed": true,
+      "checks": [
+        {
+          "name": "正式创作入口取消运行中的慢文本任务",
+          "passed": true
+        },
+        {
+          "name": "迟到上游结果不能复活取消任务",
+          "passed": true
+        },
+        {
+          "name": "已发往上游的取消任务进入待核对",
+          "passed": true
+        },
+        {
+          "name": "待核对订单阻止重复计费重试",
+          "passed": true
+        }
+      ],
+      "errors": []
+    },
+    {
+      "source": "task-retry-existing-checks.json",
+      "completed": true,
+      "checks": [
+        {
+          "name": "真实供应商拒绝转换为可理解失败状态",
+          "passed": true
+        },
+        {
+          "name": "创作失败原位重试成功",
+          "passed": true
+        }
+      ],
+      "errors": []
+    },
+    {
+      "source": "task-retry-race-after-checks.json",
+      "completed": true,
+      "checks": [
+        {
+          "name": "任务中心三连重试只有一次提交",
+          "passed": true
+        },
+        {
+          "name": "供应商执行和积分结算均一次",
+          "passed": true
+        }
+      ],
+      "errors": []
+    },
+    {
+      "source": "task-retry-failure-checks.json",
+      "completed": true,
+      "checks": [
+        {
+          "name": "重试503三连点仅一次请求",
+          "passed": true
+        },
+        {
+          "name": "请求失败后重试锁释放并成功",
+          "passed": true
+        }
+      ],
+      "errors": []
+    },
+    {
+      "source": "login-guest-checks.json",
+      "completed": true,
+      "checks": [
+        {
+          "name": "访客登录 390/light 无整页横向溢出",
+          "passed": true
+        },
+        {
+          "name": "访客登录 390/dark 无整页横向溢出",
+          "passed": true
+        },
+        {
+          "name": "访客登录 1440/light 无整页横向溢出",
+          "passed": true
+        },
+        {
+          "name": "访客登录 1440/dark 无整页横向溢出",
+          "passed": true
+        },
+        {
+          "name": "错误登录明确提示并保留用户名",
+          "passed": true
+        },
+        {
+          "name": "真实登录返回受保护深链接且刷新保持登录",
+          "passed": true
+        }
+      ],
+      "errors": []
+    },
+    {
+      "source": "create-flow-checks.json",
+      "completed": true,
+      "checks": [
+        {
+          "name": "创作正式入口经真实任务后端获得本地模拟文本",
+          "passed": true
+        },
+        {
+          "name": "创作文本刷新持久化",
+          "passed": true
+        },
+        {
+          "name": "任务中心可见创作任务",
+          "passed": true
+        }
+      ],
+      "errors": []
+    },
+    {
+      "source": "browser-checks.json",
+      "completed": true,
+      "checks": [
+        "两组草稿切换保留，离开取消后仍可编辑",
+        "网站与品牌真实独立保存",
+        "非法 URL 保存失败保留输入并可撤销",
+        "保存备案在官网真实生效",
+        "网站设置 dark 1440 无页面横向溢出",
+        "网站设置 light 1440 无页面横向溢出",
+        "网站设置 dark 390 无页面横向溢出",
+        "网站设置 light 390 无页面横向溢出",
+        "真实创建一次性邀请",
+        "关闭公开注册时邀请注册成功",
+        "邀请 100 积分到账且用户详情可查流水",
+        "用户管理 dark 1440 无页面横向溢出",
+        "用户管理 light 1440 无页面横向溢出",
+        "用户管理 dark 390 无页面横向溢出",
+        "用户管理 light 390 无页面横向溢出",
+        "搜索空态与重置恢复",
+        "用户列表故障不显示旧用户或零结果，重试恢复",
+        "无未捕获页面异常"
+      ],
+      "errors": []
+    },
+    {
+      "source": "chapters-checks.json",
+      "completed": false,
+      "note": "仅采纳创建/保存/导入，后续错误注入端点已纠正并由专项补验",
+      "checks": [
+        {
+          "name": "真实 API 新建隔离短剧",
+          "passed": true
+        },
+        {
+          "name": "章节正文保存刷新回读",
+          "passed": true
+        },
+        {
+          "name": "文稿真实解析追加两章",
+          "passed": true
+        }
+      ],
+      "errors": []
+    },
+    {
+      "source": "chapters-recovery-checks.json",
+      "completed": false,
+      "note": "仅采纳完成检查，分镜必填提示词另补验",
+      "checks": [
+        {
+          "name": "真实章节 PATCH 故障保留草稿",
+          "passed": true
+        },
+        {
+          "name": "章节离开确认焦点受限",
+          "passed": true
+        },
+        {
+          "name": "章节原位成功重试",
+          "passed": true
+        },
+        {
+          "name": "真实导航后恢复未保存草稿",
+          "passed": true
+        }
+      ],
+      "errors": []
+    },
+    {
+      "source": "redemption-checks.json",
+      "completed": false,
+      "note": "前9项已发生；后续错误刷新定位由redemption-recovery补验",
+      "checks": [
+        {
+          "name": "兑换创建确认键盘焦点受限",
+          "passed": true
+        },
+        {
+          "name": "创建成功后列表故障仍保留兑换码结果",
+          "passed": true
+        },
+        {
+          "name": "批次金额准确保存",
+          "passed": true
+        },
+        {
+          "name": "兑换真实到账回读六位精度",
+          "passed": true
+        },
+        {
+          "name": "已核销兑换码不可重复到账",
+          "passed": true
+        },
+        {
+          "name": "明细包含核销状态",
+          "passed": true
+        },
+        {
+          "name": "单码禁用保留已核销记录",
+          "passed": true
+        },
+        {
+          "name": "批次禁用只处理剩余可用码",
+          "passed": true
+        },
+        {
+          "name": "兑换明细失败隐藏旧码",
+          "passed": true
+        }
+      ],
+      "errors": []
+    },
+    {
+      "source": "isolation-checks.json",
+      "completed": false,
+      "note": "仅前5项账号隔离；错误删除端点404作废，正确400见asset-insertion",
+      "checks": [
+        {
+          "name": "另一用户拒绝读取 tasks",
+          "passed": true
+        },
+        {
+          "name": "另一用户拒绝读取 projects",
+          "passed": true
+        },
+        {
+          "name": "另一用户拒绝读取 canvas-projects",
+          "passed": true
+        },
+        {
+          "name": "另一用户任务列表不泄漏本账号提示词",
+          "passed": true
+        },
+        {
+          "name": "另一用户画布列表不泄漏本账号画布",
+          "passed": true
+        }
+      ],
+      "errors": []
+    },
+    {
+      "source": "canvas/interactions.json",
+      "completed": true,
+      "checks": [
+        {
+          "ok": true,
+          "name": "刷新进入两个视频封面 ready"
+        },
+        {
+          "ok": true,
+          "name": "静止时不挂载完整播放器"
+        },
+        {
+          "ok": true,
+          "name": "悬停原声播放且真实解码",
+          "data": [
+            {
+              "time": 0.541546,
+              "paused": false,
+              "muted": false,
+              "volume": 1,
+              "w": 320,
+              "h": 180,
+              "audio": 4795
+            }
+          ]
+        },
+        {
+          "ok": true,
+          "name": "真实首帧呈现后揭盖"
+        },
+        {
+          "ok": true,
+          "name": "移开释放播放器"
+        },
+        {
+          "ok": true,
+          "name": "快速切换请求隔离"
+        },
+        {
+          "ok": true,
+          "name": "桌面 light 主题表面与空间",
+          "data": {
+            "node": "rgb(255, 255, 255)",
+            "panel": "rgb(255, 255, 255)",
+            "semantic": "#ffffff",
+            "overflow": 0
+          }
+        },
+        {
+          "ok": true,
+          "name": "主题切换不改变节点几何 light"
+        },
+        {
+          "ok": true,
+          "name": "桌面 dark 主题表面与空间",
+          "data": {
+            "node": "rgb(25, 27, 34)",
+            "panel": "rgb(34, 37, 46)",
+            "semantic": "#191b22",
+            "overflow": 0
+          }
+        },
+        {
+          "ok": true,
+          "name": "主题切换不改变节点几何 dark"
+        },
+        {
+          "ok": true,
+          "name": "中文组合输入 Enter 不提前提交画布标题"
+        },
+        {
+          "ok": true,
+          "name": "标题提交并保存"
+        },
+        {
+          "ok": true,
+          "name": "Escape 取消标题草稿"
+        },
+        {
+          "ok": true,
+          "name": "文本弹窗滚动与编辑撤销不触发画布缩放"
+        },
+        {
+          "ok": true,
+          "name": "富文本弹窗保存回节点"
+        },
+        {
+          "ok": true,
+          "name": "节点拖动落位"
+        },
+        {
+          "ok": true,
+          "name": "独立撤销拖动"
+        },
+        {
+          "ok": true,
+          "name": "独立重做拖动"
+        },
+        {
+          "ok": true,
+          "name": "图片尺寸调整保持原比例",
+          "data": [
+            480,
+            270
+          ]
+        },
+        {
+          "ok": true,
+          "name": "单次撤销尺寸调整"
+        },
+        {
+          "ok": true,
+          "name": "Escape 取消尺寸预览"
+        },
+        {
+          "ok": true,
+          "name": "锁定节点不被键盘移动"
+        },
+        {
+          "ok": true,
+          "name": "右键菜单滚动不触发画布手势"
+        },
+        {
+          "ok": true,
+          "name": "Escape 关闭右键菜单"
+        },
+        {
+          "ok": true,
+          "name": "助手面板打开"
+        },
+        {
+          "ok": true,
+          "name": "同用户刷新恢复位置与手工尺寸"
+        },
+        {
+          "ok": true,
+          "name": "刷新恢复画布名称"
+        }
+      ]
+    },
+    {
+      "source": "canvas/history.json",
+      "completed": true,
+      "checks": [
+        {
+          "ok": true,
+          "name": "两次紧邻拖动均落位",
+          "data": {
+            "before": [
+              {
+                "x": 140.29296875,
+                "y": 121.2451171875
+              },
+              {
+                "x": 80,
+                "y": 380
+              }
+            ],
+            "both": [
+              {
+                "x": 180.87890625,
+                "y": 140
+              },
+              {
+                "x": 120.29296875,
+                "y": 400
+              }
+            ]
+          }
+        },
+        {
+          "ok": true,
+          "name": "紧邻独立手势只撤销最后一次",
+          "data": {
+            "undone": [
+              {
+                "x": 180.87890625,
+                "y": 140
+              },
+              {
+                "x": 80,
+                "y": 380
+              }
+            ]
+          }
+        },
+        {
+          "ok": true,
+          "name": "第二次撤销恢复第一手势",
+          "data": {
+            "before": [
+              {
+                "x": 140.29296875,
+                "y": 121.2451171875
+              },
+              {
+                "x": 80,
+                "y": 380
+              }
+            ],
+            "restored": [
+              {
+                "x": 140.29296875,
+                "y": 121.2451171875
+              },
+              {
+                "x": 80,
+                "y": 380
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "source": "canvas/responsive.json",
+      "completed": true,
+      "checks": [
+        {
+          "ok": true,
+          "name": "手机默认专注模式提供退出入口"
+        },
+        {
+          "ok": true,
+          "name": "手机退出专注后画布菜单可达"
+        },
+        {
+          "ok": true,
+          "name": "手机退出偏好刷新保留"
+        },
+        {
+          "ok": true,
+          "name": "断点 390 light 控件完整无横向溢出",
+          "data": {
+            "overflow": 0,
+            "boxes": [
+              {
+                "label": "返回画布列表",
+                "x": 17,
+                "y": 13,
+                "w": 36,
+                "h": 36
+              },
+              {
+                "label": "打开画布菜单",
+                "x": 61,
+                "y": 13,
+                "w": 36,
+                "h": 36
+              },
+              {
+                "label": "重命名画布",
+                "x": 212.28125,
+                "y": 17,
+                "w": 28,
+                "h": 28
+              },
+              {
+                "label": "导入第三方画布",
+                "x": 132,
+                "y": 63,
+                "w": 38,
+                "h": 40
+              },
+              {
+                "label": "保存中。正在保存到此设备",
+                "x": 170,
+                "y": 63,
+                "w": 40,
+                "h": 40
+              },
+              {
+                "label": "查看积分明细",
+                "x": 210,
+                "y": 65,
+                "w": 40,
+                "h": 36
+              },
+              {
+                "label": "进入专注模式",
+                "x": 250,
+                "y": 63,
+                "w": 40,
+                "h": 40
+              },
+              {
+                "label": "分享画布",
+                "x": 290,
+                "y": 63,
+                "w": 40,
+                "h": 40
+              },
+              {
+                "label": "打开 Agent",
+                "x": 331,
+                "y": 63,
+                "w": 42,
+                "h": 40
+              }
+            ]
+          }
+        },
+        {
+          "ok": true,
+          "name": "断点 390 dark 控件完整无横向溢出",
+          "data": {
+            "overflow": 0,
+            "boxes": [
+              {
+                "label": "返回画布列表",
+                "x": 17,
+                "y": 13,
+                "w": 36,
+                "h": 36
+              },
+              {
+                "label": "打开画布菜单",
+                "x": 61,
+                "y": 13,
+                "w": 36,
+                "h": 36
+              },
+              {
+                "label": "重命名画布",
+                "x": 212.28125,
+                "y": 17,
+                "w": 28,
+                "h": 28
+              },
+              {
+                "label": "导入第三方画布",
+                "x": 132,
+                "y": 63,
+                "w": 38,
+                "h": 40
+              },
+              {
+                "label": "保存中。正在保存到此设备",
+                "x": 170,
+                "y": 63,
+                "w": 40,
+                "h": 40
+              },
+              {
+                "label": "查看积分明细",
+                "x": 210,
+                "y": 65,
+                "w": 40,
+                "h": 36
+              },
+              {
+                "label": "进入专注模式",
+                "x": 250,
+                "y": 63,
+                "w": 40,
+                "h": 40
+              },
+              {
+                "label": "分享画布",
+                "x": 290,
+                "y": 63,
+                "w": 40,
+                "h": 40
+              },
+              {
+                "label": "打开 Agent",
+                "x": 331,
+                "y": 63,
+                "w": 42,
+                "h": 40
+              }
+            ]
+          }
+        },
+        {
+          "ok": true,
+          "name": "断点 1023 light 控件完整无横向溢出",
+          "data": {
+            "overflow": 0,
+            "boxes": [
+              {
+                "label": "返回画布列表",
+                "x": 17,
+                "y": 15,
+                "w": 36,
+                "h": 36
+              },
+              {
+                "label": "打开画布菜单",
+                "x": 61,
+                "y": 15,
+                "w": 36,
+                "h": 36
+              },
+              {
+                "label": "重命名画布",
+                "x": 212.28125,
+                "y": 19,
+                "w": 28,
+                "h": 28
+              },
+              {
+                "label": "导入第三方画布",
+                "x": 765,
+                "y": 13,
+                "w": 38,
+                "h": 40
+              },
+              {
+                "label": "同步中。本地已保存，正在同步到云端",
+                "x": 803,
+                "y": 13,
+                "w": 40,
+                "h": 40
+              },
+              {
+                "label": "查看积分明细",
+                "x": 843,
+                "y": 15,
+                "w": 40,
+                "h": 36
+              },
+              {
+                "label": "进入专注模式",
+                "x": 883,
+                "y": 13,
+                "w": 40,
+                "h": 40
+              },
+              {
+                "label": "分享画布",
+                "x": 923,
+                "y": 13,
+                "w": 40,
+                "h": 40
+              },
+              {
+                "label": "打开 Agent",
+                "x": 964,
+                "y": 13,
+                "w": 42,
+                "h": 40
+              }
+            ]
+          }
+        },
+        {
+          "ok": true,
+          "name": "断点 1023 dark 控件完整无横向溢出",
+          "data": {
+            "overflow": 0,
+            "boxes": [
+              {
+                "label": "返回画布列表",
+                "x": 17,
+                "y": 15,
+                "w": 36,
+                "h": 36
+              },
+              {
+                "label": "打开画布菜单",
+                "x": 61,
+                "y": 15,
+                "w": 36,
+                "h": 36
+              },
+              {
+                "label": "重命名画布",
+                "x": 212.28125,
+                "y": 19,
+                "w": 28,
+                "h": 28
+              },
+              {
+                "label": "导入第三方画布",
+                "x": 765,
+                "y": 13,
+                "w": 38,
+                "h": 40
+              },
+              {
+                "label": "已保存。最近保存于 00:39",
+                "x": 803,
+                "y": 13,
+                "w": 40,
+                "h": 40
+              },
+              {
+                "label": "查看积分明细",
+                "x": 843,
+                "y": 15,
+                "w": 40,
+                "h": 36
+              },
+              {
+                "label": "进入专注模式",
+                "x": 883,
+                "y": 13,
+                "w": 40,
+                "h": 40
+              },
+              {
+                "label": "分享画布",
+                "x": 923,
+                "y": 13,
+                "w": 40,
+                "h": 40
+              },
+              {
+                "label": "打开 Agent",
+                "x": 964,
+                "y": 13,
+                "w": 42,
+                "h": 40
+              }
+            ]
+          }
+        },
+        {
+          "ok": true,
+          "name": "断点 1024 light 控件完整无横向溢出",
+          "data": {
+            "overflow": 0,
+            "boxes": [
+              {
+                "label": "返回画布列表",
+                "x": 17,
+                "y": 12,
+                "w": 36,
+                "h": 36
+              },
+              {
+                "label": "打开画布菜单",
+                "x": 61,
+                "y": 12,
+                "w": 36,
+                "h": 36
+              },
+              {
+                "label": "重命名画布",
+                "x": 212.28125,
+                "y": 16,
+                "w": 28,
+                "h": 28
+              },
+              {
+                "label": "导入第三方画布",
+                "x": 740,
+                "y": 10,
+                "w": 38,
+                "h": 40
+              },
+              {
+                "label": "已保存。最近保存于 00:39",
+                "x": 786,
+                "y": 10,
+                "w": 40,
+                "h": 40
+              },
+              {
+                "label": "查看积分明细",
+                "x": 830,
+                "y": 12,
+                "w": 40,
+                "h": 36
+              },
+              {
+                "label": "进入专注模式",
+                "x": 874,
+                "y": 10,
+                "w": 40,
+                "h": 40
+              },
+              {
+                "label": "分享画布",
+                "x": 918,
+                "y": 10,
+                "w": 40,
+                "h": 40
+              },
+              {
+                "label": "打开 Agent",
+                "x": 967,
+                "y": 10,
+                "w": 40,
+                "h": 40
+              }
+            ]
+          }
+        },
+        {
+          "ok": true,
+          "name": "断点 1024 dark 控件完整无横向溢出",
+          "data": {
+            "overflow": 0,
+            "boxes": [
+              {
+                "label": "返回画布列表",
+                "x": 17,
+                "y": 12,
+                "w": 36,
+                "h": 36
+              },
+              {
+                "label": "打开画布菜单",
+                "x": 61,
+                "y": 12,
+                "w": 36,
+                "h": 36
+              },
+              {
+                "label": "重命名画布",
+                "x": 212.28125,
+                "y": 16,
+                "w": 28,
+                "h": 28
+              },
+              {
+                "label": "导入第三方画布",
+                "x": 740,
+                "y": 10,
+                "w": 38,
+                "h": 40
+              },
+              {
+                "label": "已保存。最近保存于 00:39",
+                "x": 786,
+                "y": 10,
+                "w": 40,
+                "h": 40
+              },
+              {
+                "label": "查看积分明细",
+                "x": 830,
+                "y": 12,
+                "w": 40,
+                "h": 36
+              },
+              {
+                "label": "进入专注模式",
+                "x": 874,
+                "y": 10,
+                "w": 40,
+                "h": 40
+              },
+              {
+                "label": "分享画布",
+                "x": 918,
+                "y": 10,
+                "w": 40,
+                "h": 40
+              },
+              {
+                "label": "打开 Agent",
+                "x": 967,
+                "y": 10,
+                "w": 40,
+                "h": 40
+              }
+            ]
+          }
+        },
+        {
+          "ok": true,
+          "name": "断点 1440 light 控件完整无横向溢出",
+          "data": {
+            "overflow": 0,
+            "boxes": [
+              {
+                "label": "返回画布列表",
+                "x": 21,
+                "y": 12,
+                "w": 36,
+                "h": 36
+              },
+              {
+                "label": "打开画布菜单",
+                "x": 65,
+                "y": 12,
+                "w": 36,
+                "h": 36
+              },
+              {
+                "label": "重命名画布",
+                "x": 216.28125,
+                "y": 16,
+                "w": 28,
+                "h": 28
+              },
+              {
+                "label": "搜索画布节点",
+                "x": 872.28125,
+                "y": 10,
+                "w": 40,
+                "h": 40
+              },
+              {
+                "label": "导入第三方画布",
+                "x": 916.28125,
+                "y": 10,
+                "w": 137,
+                "h": 40
+              },
+              {
+                "label": "媒体性能模式",
+                "x": 1057.28125,
+                "y": 10,
+                "w": 40,
+                "h": 40
+              },
+              {
+                "label": "已保存。最近保存于 00:39",
+                "x": 1101.28125,
+                "y": 10,
+                "w": 40,
+                "h": 40
+              },
+              {
+                "label": "查看积分明细",
+                "x": 1145.28125,
+                "y": 12,
+                "w": 90.109375,
+                "h": 36
+              },
+              {
+                "label": "进入专注模式",
+                "x": 1239.390625,
+                "y": 10,
+                "w": 40,
+                "h": 40
+              },
+              {
+                "label": "分享画布",
+                "x": 1283.390625,
+                "y": 10,
+                "w": 40,
+                "h": 40
+              },
+              {
+                "label": "打开 Agent",
+                "x": 1332.390625,
+                "y": 10,
+                "w": 86.609375,
+                "h": 40
+              }
+            ]
+          }
+        },
+        {
+          "ok": true,
+          "name": "断点 1440 dark 控件完整无横向溢出",
+          "data": {
+            "overflow": 0,
+            "boxes": [
+              {
+                "label": "返回画布列表",
+                "x": 21,
+                "y": 12,
+                "w": 36,
+                "h": 36
+              },
+              {
+                "label": "打开画布菜单",
+                "x": 65,
+                "y": 12,
+                "w": 36,
+                "h": 36
+              },
+              {
+                "label": "重命名画布",
+                "x": 216.28125,
+                "y": 16,
+                "w": 28,
+                "h": 28
+              },
+              {
+                "label": "搜索画布节点",
+                "x": 872.28125,
+                "y": 10,
+                "w": 40,
+                "h": 40
+              },
+              {
+                "label": "导入第三方画布",
+                "x": 916.28125,
+                "y": 10,
+                "w": 137,
+                "h": 40
+              },
+              {
+                "label": "媒体性能模式",
+                "x": 1057.28125,
+                "y": 10,
+                "w": 40,
+                "h": 40
+              },
+              {
+                "label": "已保存。最近保存于 00:39",
+                "x": 1101.28125,
+                "y": 10,
+                "w": 40,
+                "h": 40
+              },
+              {
+                "label": "查看积分明细",
+                "x": 1145.28125,
+                "y": 12,
+                "w": 90.109375,
+                "h": 36
+              },
+              {
+                "label": "进入专注模式",
+                "x": 1239.390625,
+                "y": 10,
+                "w": 40,
+                "h": 40
+              },
+              {
+                "label": "分享画布",
+                "x": 1283.390625,
+                "y": 10,
+                "w": 40,
+                "h": 40
+              },
+              {
+                "label": "打开 Agent",
+                "x": 1332.390625,
+                "y": 10,
+                "w": 86.609375,
+                "h": 40
+              }
+            ]
+          }
+        },
+        {
+          "ok": true,
+          "name": "手机助手可打开"
+        }
+      ]
+    },
+    {
+      "source": "canvas/save-retry.json",
+      "completed": true,
+      "checks": [
+        {
+          "ok": true,
+          "name": "云端失败保留本地编辑并提供重试"
+        },
+        {
+          "ok": true,
+          "name": "点击重试后真实云端保存成功"
+        },
+        {
+          "ok": true,
+          "name": "失败重试后同用户刷新恢复"
+        }
+      ]
+    },
+    {
+      "source": "canvas/large-media.json",
+      "completed": true,
+      "checks": [
+        {
+          "ok": true,
+          "name": "大型媒体画布保留96节点并按视口裁剪、静止仅封面",
+          "data": {
+            "mounted": 20,
+            "posters": 8,
+            "players": 0
+          }
+        },
+        {
+          "ok": true,
+          "name": "大型媒体画布仅悬停项挂载播放器"
+        },
+        {
+          "ok": true,
+          "name": "大型媒体总览不批量挂载完整播放器",
+          "data": {
+            "mounted": 96,
+            "posters": 48,
+            "players": 0
+          }
+        }
+      ]
+    },
+    {
+      "source": "canvas/custom-brand.json",
+      "completed": true,
+      "checks": [
+        {
+          "ok": true,
+          "name": "自定义品牌 light 选中节点消费真实公共配置",
+          "data": {
+            "expected": "#138153",
+            "border": "rgb(19, 129, 83)",
+            "shadow": "rgba(15, 23, 42, 0.18) 0px 4px 14px 0px"
+          }
+        },
+        {
+          "ok": true,
+          "name": "自定义品牌 light 不改变几何"
+        },
+        {
+          "ok": true,
+          "name": "自定义品牌 dark 选中节点消费真实公共配置",
+          "data": {
+            "expected": "#52bc90",
+            "border": "rgb(82, 188, 144)",
+            "shadow": "rgba(0, 0, 0, 0.6) 0px 4px 14px 0px"
+          }
+        },
+        {
+          "ok": true,
+          "name": "自定义品牌 dark 不改变几何"
+        }
+      ]
+    }
+  ]
+}

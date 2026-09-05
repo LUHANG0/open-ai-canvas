@@ -1,0 +1,15 @@
+{
+  "writes": [
+    {
+      "method": "POST"
+    }
+  ],
+  "responses": [
+    {
+      "status": 200
+    }
+  ],
+  "upstreamBefore": 10,
+  "upstreamAfter": 11,
+  "balanceDelta": 100000
+}

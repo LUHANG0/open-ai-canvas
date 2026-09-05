@@ -1,0 +1,27 @@
+{
+  "writes": [
+    {
+      "method": "POST"
+    },
+    {
+      "method": "POST"
+    },
+    {
+      "method": "POST"
+    }
+  ],
+  "responses": [
+    {
+      "status": 400
+    },
+    {
+      "status": 400
+    },
+    {
+      "status": 200
+    }
+  ],
+  "upstreamBefore": 8,
+  "upstreamAfter": 9,
+  "balanceDelta": 100000
+}

@@ -1,0 +1,140 @@
+{
+  "codeCommit": "a50250ae0d09933c2a5a40e7845f0f576a167b6d",
+  "webTree": "98440d8406089e07bcbae6663ed44112a824e41c",
+  "baseD3": "c7175cf0059d7222fce328892812b092f2b96638",
+  "frontend": {
+    "pass": 1816,
+    "fail": 0,
+    "assertions": 10507,
+    "files": 260
+  },
+  "build": {
+    "typecheck": true,
+    "budgetsPassed": 7,
+    "budgetsTotal": 7
+  },
+  "director": {
+    "pass": 58,
+    "fail": 0
+  },
+  "delivery": {
+    "pass": 20,
+    "fail": 0,
+    "zipSha256": "15800a64407fc3a0491dac74200d937819a80fa125fe94adb425a5b783c7303b"
+  },
+  "regressions": [
+    {
+      "suite": "asset-save-retry-final",
+      "checks": [
+        {
+          "name": "素材同步失败保留编辑弹窗和内容",
+          "passed": true
+        },
+        {
+          "name": "失败三连保存仅一次即时写入",
+          "passed": true
+        },
+        {
+          "name": "素材重试保留同一ID且只新增一条",
+          "passed": true
+        },
+        {
+          "name": "失败后成功重试立即刷新仍在",
+          "passed": true
+        }
+      ],
+      "errors": []
+    },
+    {
+      "suite": "shot-and-focus-final",
+      "checks": [
+        {
+          "name": "章节确认默认继续编辑 1440dark",
+          "passed": true
+        },
+        {
+          "name": "章节确认正反Tab循环 1440dark",
+          "passed": true
+        },
+        {
+          "name": "取消离开保留草稿 1440dark",
+          "passed": true
+        },
+        {
+          "name": "章节确认默认继续编辑 1440light",
+          "passed": true
+        },
+        {
+          "name": "章节确认正反Tab循环 1440light",
+          "passed": true
+        },
+        {
+          "name": "取消离开保留草稿 1440light",
+          "passed": true
+        },
+        {
+          "name": "章节确认默认继续编辑 390dark",
+          "passed": true
+        },
+        {
+          "name": "章节确认正反Tab循环 390dark",
+          "passed": true
+        },
+        {
+          "name": "取消离开保留草稿 390dark",
+          "passed": true
+        },
+        {
+          "name": "章节确认默认继续编辑 390light",
+          "passed": true
+        },
+        {
+          "name": "章节确认正反Tab循环 390light",
+          "passed": true
+        },
+        {
+          "name": "取消离开保留草稿 390light",
+          "passed": true
+        },
+        {
+          "name": "完整分镜脚本保存刷新回读",
+          "passed": true
+        },
+        {
+          "name": "手机分镜章节定位搜索和关闭",
+          "passed": true
+        }
+      ],
+      "errors": []
+    },
+    {
+      "suite": "task-retry-race-final",
+      "checks": [
+        {
+          "name": "任务中心三连重试只有一次提交",
+          "passed": true
+        },
+        {
+          "name": "供应商执行和积分结算均一次",
+          "passed": true
+        }
+      ],
+      "errors": []
+    }
+  ],
+  "rollback": {
+    "reverted": [
+      "0261e3f5",
+      "e3921c0c",
+      "981890cf"
+    ],
+    "revertCommits": [
+      "ba59c0a9",
+      "aae44ab8",
+      "e8c773a6"
+    ],
+    "webEquals": "c7175cf0",
+    "diffExitCode": 0,
+    "worktreeRemoved": true
+  }
+}

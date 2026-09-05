@@ -1,0 +1,777 @@
+{
+  "environment": "Chrome headless / SwiftShader / Vite DEV / 1366x900 / DPR 1",
+  "results": [
+    {
+      "ok": true,
+      "name": "A1 fixture route remains active",
+      "detail": "/dev/canvas-repro/canvas-p0-fixture"
+    },
+    {
+      "ok": true,
+      "name": "A2 deterministic nodes and connections rendered",
+      "detail": "{\"path\":\"/dev/canvas-repro/canvas-p0-fixture\",\"nodes\":4,\"connections\":2,\"topbar\":true,\"canvasListHref\":\"/canvas\",\"saveStatus\":\"保存中。正在保存到此设备\",\"dock\":true,\"workspaceHeight\":913,\"horizontalOverflow\":0,\"imageReady\":true}"
+    },
+    {
+      "ok": true,
+      "name": "A3 PC canvas shell fills the viewport",
+      "detail": "{\"path\":\"/dev/canvas-repro/canvas-p0-fixture\",\"nodes\":4,\"connections\":2,\"topbar\":true,\"canvasListHref\":\"/canvas\",\"saveStatus\":\"保存中。正在保存到此设备\",\"dock\":true,\"workspaceHeight\":913,\"horizontalOverflow\":0,\"imageReady\":true}"
+    },
+    {
+      "ok": true,
+      "name": "A4 no document-level horizontal overflow",
+      "detail": "overflow=0"
+    },
+    {
+      "ok": true,
+      "name": "A5 same-origin fixture image decoded",
+      "detail": ""
+    },
+    {
+      "ok": true,
+      "name": "A6 save status is exposed in the project toolbar",
+      "detail": "保存中。正在保存到此设备"
+    },
+    {
+      "ok": true,
+      "name": "A7 top bar provides a direct canvas-list entry",
+      "detail": "/canvas"
+    },
+    {
+      "ok": true,
+      "name": "A8 no browser/network problems",
+      "detail": "[]"
+    },
+    {
+      "ok": true,
+      "name": "A9 adjacent independent gestures move both nodes",
+      "detail": ""
+    },
+    {
+      "ok": true,
+      "name": "A10 undo adjacent gesture preserves preceding gesture",
+      "detail": "{\"before\":[\"translate(80px, 90px)\",\"translate(80px, 380px)\"],\"moved\":[\"translate(111.227px, 105.563px)\",\"translate(111.227px, 400px)\"],\"undone\":[\"translate(111.227px, 105.563px)\",\"translate(80px, 380px)\"]}"
+    },
+    {
+      "ok": true,
+      "name": "A11 second undo restores first gesture",
+      "detail": "{\"before\":[\"translate(80px, 90px)\",\"translate(80px, 380px)\"],\"restored\":[\"translate(80px, 90px)\",\"translate(80px, 380px)\"]}"
+    },
+    {
+      "ok": true,
+      "name": "B0a node title and dimension use persistent readable surfaces",
+      "detail": "{\"titleBackground\":\"rgb(34, 37, 46)\",\"dimensionBackground\":\"rgb(34, 37, 46)\",\"titleOpaque\":true,\"dimensionOpaque\":true}"
+    },
+    {
+      "ok": true,
+      "name": "B0b node title enters edit mode",
+      "detail": ""
+    },
+    {
+      "ok": true,
+      "name": "B0c clicking blank canvas completes node rename",
+      "detail": ""
+    },
+    {
+      "ok": true,
+      "name": "B0d media node can receive hover",
+      "detail": ""
+    },
+    {
+      "ok": true,
+      "name": "B0e node hover preserves media and hit-test geometry",
+      "detail": "scale=1"
+    },
+    {
+      "ok": true,
+      "name": "B0f node hover feedback uses a bounded transform transition",
+      "detail": "{\"transitionProperty\":\"box-shadow, border-color, background-color, transform\",\"transformOrigin\":\"360px 240px\"}"
+    },
+    {
+      "ok": true,
+      "name": "B0g add-node menu opens from Dock hover",
+      "detail": ""
+    },
+    {
+      "ok": true,
+      "name": "B0h add-node menu keeps a safe traversal window after leaving the Dock",
+      "detail": ""
+    },
+    {
+      "ok": true,
+      "name": "B0i leaving Dock and menu closes after a safe delay",
+      "detail": ""
+    },
+    {
+      "ok": true,
+      "name": "B0j blank canvas context menu opens",
+      "detail": ""
+    },
+    {
+      "ok": true,
+      "name": "B0k context add-node entry opens on hover",
+      "detail": ""
+    },
+    {
+      "ok": true,
+      "name": "B1 real mouse drag changes node position",
+      "detail": "translate(80px, 90px) -> translate(180px, 150.556px)"
+    },
+    {
+      "ok": true,
+      "name": "B2 dragged node exposes its focus/selection tools",
+      "detail": ""
+    },
+    {
+      "ok": true,
+      "name": "B2a fixture exposes a genuine blank-canvas point",
+      "detail": "[272,48]"
+    },
+    {
+      "ok": true,
+      "name": "B2b clicking blank canvas fully dismisses the selected-node toolbar",
+      "detail": ""
+    },
+    {
+      "ok": true,
+      "name": "B3 Ctrl+Z restores the original position",
+      "detail": ""
+    },
+    {
+      "ok": true,
+      "name": "B4 Ctrl+Y restores the moved position",
+      "detail": ""
+    },
+    {
+      "ok": true,
+      "name": "B5 node edits settle into a durable local save",
+      "detail": ""
+    },
+    {
+      "ok": true,
+      "name": "B6 Ctrl+F opens node search",
+      "detail": ""
+    },
+    {
+      "ok": true,
+      "name": "B7 search returns the reference image",
+      "detail": ""
+    },
+    {
+      "ok": true,
+      "name": "B8 Enter focuses the matching image node",
+      "detail": ""
+    },
+    {
+      "ok": true,
+      "name": "B9 Ctrl+= increases committed scale",
+      "detail": "before=0.9"
+    },
+    {
+      "ok": true,
+      "name": "B9a ? opens shortcuts in normal mode",
+      "detail": ""
+    },
+    {
+      "ok": true,
+      "name": "B9b shortcuts modal closes before focus mode",
+      "detail": ""
+    },
+    {
+      "ok": true,
+      "name": "B9c focus mode hides the top bar",
+      "detail": ""
+    },
+    {
+      "ok": true,
+      "name": "B9d ? opens shortcuts while the top bar is unmounted",
+      "detail": ""
+    },
+    {
+      "ok": true,
+      "name": "B9e focus shortcuts modal closes",
+      "detail": ""
+    },
+    {
+      "ok": true,
+      "name": "B9f leaving focus mode does not replay a historical shortcuts request",
+      "detail": ""
+    },
+    {
+      "ok": true,
+      "name": "B10 minimap opens from the dock",
+      "detail": ""
+    },
+    {
+      "ok": true,
+      "name": "B11 Ctrl+C/Ctrl+V duplicates the selected node",
+      "detail": ""
+    },
+    {
+      "ok": true,
+      "name": "B12 appearance panel opens",
+      "detail": ""
+    },
+    {
+      "ok": true,
+      "name": "B13 dot background can be selected",
+      "detail": ""
+    },
+    {
+      "ok": true,
+      "name": "B14 dot background is visibly rendered",
+      "detail": "{\"backgroundImage\":\"radial-gradient(circle, rgba(203, 213, 225, 0.3) 1px, rgba(0, 0, 0, 0) 1.2px)\",\"opacity\":0.62}"
+    },
+    {
+      "ok": true,
+      "name": "B15 appearance panel closes",
+      "detail": ""
+    },
+    {
+      "ok": true,
+      "name": "B16 more panel opens",
+      "detail": ""
+    },
+    {
+      "ok": true,
+      "name": "B17 toolbar settings opens",
+      "detail": ""
+    },
+    {
+      "ok": true,
+      "name": "B18 toolbar settings uses compact two-column rows",
+      "detail": "{\"count\":9,\"columns\":2,\"rows\":5,\"maxHeight\":56}"
+    },
+    {
+      "ok": true,
+      "name": "B19 toolbar settings closes",
+      "detail": ""
+    },
+    {
+      "ok": true,
+      "name": "B20 website Agent does not pre-mount the local runtime",
+      "detail": "{\"viewportWidth\":1440,\"mountedNodes\":5,\"mountedVideos\":0,\"localMounted\":false}"
+    },
+    {
+      "ok": true,
+      "name": "B21 Agent panel opens from the project bar",
+      "detail": ""
+    },
+    {
+      "ok": true,
+      "name": "B22 Agent overlays without resizing, reculling or covering primary canvas controls",
+      "detail": "{\"closed\":{\"viewportWidth\":1440,\"mountedNodes\":5,\"mountedVideos\":0,\"localMounted\":false},\"open\":{\"viewportWidth\":1440,\"mountedNodes\":5,\"mountedVideos\":0,\"localMounted\":false,\"columnBackgroundTransparent\":true,\"dockPanelOverlap\":0,\"topbarTriggerReachable\":true}}"
+    },
+    {
+      "ok": true,
+      "name": "B23 website mode keeps the local Agent runtime lazy",
+      "detail": "{\"viewportWidth\":1440,\"mountedNodes\":5,\"mountedVideos\":0,\"localMounted\":false,\"columnBackgroundTransparent\":true,\"dockPanelOverlap\":0,\"topbarTriggerReachable\":true}"
+    },
+    {
+      "ok": true,
+      "name": "B24 local Agent loads only after explicit mode selection",
+      "detail": ""
+    },
+    {
+      "ok": true,
+      "name": "B25 Agent can switch back to website mode",
+      "detail": ""
+    },
+    {
+      "ok": true,
+      "name": "B26 Agent mode switch preserves the panel and local session tree",
+      "detail": "{\"stablePanel\":true,\"localStillMounted\":true,\"localHidden\":true}"
+    },
+    {
+      "ok": true,
+      "name": "B27 returning to local Agent is immediate",
+      "detail": ""
+    },
+    {
+      "ok": true,
+      "name": "B28 returning to local Agent does not rebuild the runtime",
+      "detail": ""
+    },
+    {
+      "ok": true,
+      "name": "B29 Agent panel closes inertly, restores focus and preserves its session tree",
+      "detail": ""
+    },
+    {
+      "ok": true,
+      "name": "B30 reopening Agent reuses the mounted panel instance",
+      "detail": ""
+    },
+    {
+      "ok": true,
+      "name": "B31 reopening Agent preserves the selected local mode and runtime",
+      "detail": "{\"exists\":true,\"visible\":true}"
+    },
+    {
+      "ok": true,
+      "name": "B32 Agent can be left safely collapsed",
+      "detail": ""
+    },
+    {
+      "ok": true,
+      "name": "B33 no browser/network problems",
+      "detail": "[]"
+    },
+    {
+      "ok": true,
+      "name": "C1 moved position and pasted node survive reload",
+      "detail": ""
+    },
+    {
+      "ok": true,
+      "name": "C2 reload stays on isolated fixture route",
+      "detail": ""
+    },
+    {
+      "ok": true,
+      "name": "C3 no browser/network problems after reload",
+      "detail": "[]"
+    },
+    {
+      "ok": true,
+      "name": "D1 compact PC viewport applied",
+      "detail": "{\"width\":1024,\"height\":768,\"nodes\":5,\"topbar\":true,\"dock\":true,\"zoom\":true,\"overflow\":0}"
+    },
+    {
+      "ok": true,
+      "name": "D2 canvas content and primary controls remain available",
+      "detail": "{\"width\":1024,\"height\":768,\"nodes\":5,\"topbar\":true,\"dock\":true,\"zoom\":true,\"overflow\":0}"
+    },
+    {
+      "ok": true,
+      "name": "D3 no horizontal overflow at 1024x768",
+      "detail": "overflow=0"
+    },
+    {
+      "ok": true,
+      "name": "D4 compact PC can open Agent",
+      "detail": ""
+    },
+    {
+      "ok": true,
+      "name": "D5 compact toolbar and mode switch remain outside the Agent drawer",
+      "detail": "{\"panel\":{\"left\":584,\"right\":1024,\"width\":440},\"dock\":{\"left\":143,\"right\":437,\"width\":294},\"dockOverlap\":0,\"modeSwitchOverlap\":0}"
+    },
+    {
+      "ok": true,
+      "name": "D6 compact Agent can close",
+      "detail": ""
+    },
+    {
+      "ok": true,
+      "name": "D7 no browser/network problems at compact viewport",
+      "detail": "[]"
+    },
+    {
+      "ok": true,
+      "name": "E1 large fixture route mounted",
+      "detail": "{\"title\":\"大型画布性能验收夹具\",\"renderedNodes\":25,\"renderedConnections\":50,\"saveStatus\":\"保存中。正在保存到此设备\",\"overflow\":0}"
+    },
+    {
+      "ok": true,
+      "name": "E2 viewport culling limits mounted node DOM",
+      "detail": "rendered=25 of 324"
+    },
+    {
+      "ok": true,
+      "name": "E3 viewport culling limits mounted connection DOM",
+      "detail": "rendered=50 of 612"
+    },
+    {
+      "ok": true,
+      "name": "E4 large workspace becomes interactive within budget",
+      "detail": "1566ms"
+    },
+    {
+      "ok": true,
+      "name": "E5 large workspace keeps save feedback and layout integrity",
+      "detail": "{\"title\":\"大型画布性能验收夹具\",\"renderedNodes\":25,\"renderedConnections\":50,\"saveStatus\":\"保存中。正在保存到此设备\",\"overflow\":0}"
+    },
+    {
+      "ok": true,
+      "name": "E6 no browser/network problems on large workspace",
+      "detail": "[]"
+    },
+    {
+      "ok": true,
+      "name": "F drag detail 1 commits final position",
+      "detail": "{\"changed\":true,\"persisted\":true}"
+    },
+    {
+      "ok": true,
+      "name": "F drag detail 2 commits final position",
+      "detail": "{\"changed\":true,\"persisted\":true}"
+    },
+    {
+      "ok": true,
+      "name": "F drag detail 3 commits final position",
+      "detail": "{\"changed\":true,\"persisted\":true}"
+    },
+    {
+      "ok": true,
+      "name": "F resize detail visibly previews before release",
+      "detail": ""
+    },
+    {
+      "ok": true,
+      "name": "F resize detail keeps project state unchanged during preview",
+      "detail": "updates=0"
+    },
+    {
+      "ok": true,
+      "name": "F resize detail commits final size",
+      "detail": "{\"changed\":true,\"persisted\":true}"
+    },
+    {
+      "ok": true,
+      "name": "F resize detail undo restores original size",
+      "detail": ""
+    },
+    {
+      "ok": true,
+      "name": "F Escape cancellation starts from a visible resize preview",
+      "detail": ""
+    },
+    {
+      "ok": true,
+      "name": "F Escape cancels resize without changing dimensions or selection",
+      "detail": ""
+    },
+    {
+      "ok": true,
+      "name": "F undo cancellation starts from a visible resize preview",
+      "detail": ""
+    },
+    {
+      "ok": true,
+      "name": "F undo cancels resize without changing dimensions or selection",
+      "detail": ""
+    },
+    {
+      "ok": true,
+      "name": "F drag overview 1 commits final position",
+      "detail": "{\"changed\":true,\"persisted\":true}"
+    },
+    {
+      "ok": true,
+      "name": "F drag overview 2 commits final position",
+      "detail": "{\"changed\":true,\"persisted\":true}"
+    },
+    {
+      "ok": true,
+      "name": "F drag overview 3 commits final position",
+      "detail": "{\"changed\":true,\"persisted\":true}"
+    },
+    {
+      "ok": true,
+      "name": "F resize overview visibly previews before release",
+      "detail": ""
+    },
+    {
+      "ok": true,
+      "name": "F resize overview keeps project state unchanged during preview",
+      "detail": "updates=0"
+    },
+    {
+      "ok": true,
+      "name": "F resize overview commits final size",
+      "detail": "{\"changed\":true,\"persisted\":true}"
+    },
+    {
+      "ok": true,
+      "name": "F resize overview undo restores original size",
+      "detail": ""
+    },
+    {
+      "ok": true,
+      "name": "F no browser errors during performance gestures",
+      "detail": "[]"
+    }
+  ],
+  "samples": [
+    {
+      "kind": "drag",
+      "view": "detail",
+      "trial": 1,
+      "nodeId": "canvas-large-node-39",
+      "mountedNodes": 36,
+      "mountedConnections": 72,
+      "before": {
+        "x": 600,
+        "y": 420,
+        "width": 220,
+        "height": 130
+      },
+      "elapsedMs": 9235.099999904633,
+      "frames": 66,
+      "frameP50": 100,
+      "frameP95": 250.09999999999945,
+      "frameMax": 566.5,
+      "longTasks": 1,
+      "longTaskMs": 51,
+      "storeUpdates": 1,
+      "after": {
+        "x": 668.75,
+        "y": 463.75,
+        "width": 220,
+        "height": 130
+      },
+      "changed": true,
+      "persisted": true,
+      "previewChanged": true,
+      "updatesDuringGesture": 0,
+      "scriptMs": 1429.2779999999998,
+      "layoutMs": 3.6740000000000004,
+      "taskMs": 1737.157
+    },
+    {
+      "kind": "drag",
+      "view": "detail",
+      "trial": 2,
+      "nodeId": "canvas-large-node-39",
+      "mountedNodes": 36,
+      "mountedConnections": 72,
+      "before": {
+        "x": 668.75,
+        "y": 463.75,
+        "width": 220,
+        "height": 130
+      },
+      "elapsedMs": 8534.600000023842,
+      "frames": 66,
+      "frameP50": 100.10000000000036,
+      "frameP95": 233.39999999999782,
+      "frameMax": 316.7000000000007,
+      "longTasks": 1,
+      "longTaskMs": 54,
+      "storeUpdates": 1,
+      "after": {
+        "x": 737.5,
+        "y": 507.5,
+        "width": 220,
+        "height": 130
+      },
+      "changed": true,
+      "persisted": true,
+      "previewChanged": true,
+      "updatesDuringGesture": 0,
+      "scriptMs": 1386.8519999999999,
+      "layoutMs": 3.2529999999999997,
+      "taskMs": 1806.6670000000001
+    },
+    {
+      "kind": "drag",
+      "view": "detail",
+      "trial": 3,
+      "nodeId": "canvas-large-node-39",
+      "mountedNodes": 36,
+      "mountedConnections": 72,
+      "before": {
+        "x": 737.5,
+        "y": 507.5,
+        "width": 220,
+        "height": 130
+      },
+      "elapsedMs": 7427.399999976158,
+      "frames": 66,
+      "frameP50": 100,
+      "frameP95": 166.60000000000218,
+      "frameMax": 216.6999999999971,
+      "longTasks": 1,
+      "longTaskMs": 59,
+      "storeUpdates": 1,
+      "after": {
+        "x": 806.25,
+        "y": 551.25,
+        "width": 220,
+        "height": 130
+      },
+      "changed": true,
+      "persisted": true,
+      "previewChanged": true,
+      "updatesDuringGesture": 0,
+      "scriptMs": 1237,
+      "layoutMs": 2.973,
+      "taskMs": 1520.4850000000004
+    },
+    {
+      "kind": "resize",
+      "view": "detail",
+      "trial": 1,
+      "nodeId": "canvas-large-node-39",
+      "mountedNodes": 36,
+      "mountedConnections": 72,
+      "before": {
+        "x": 806.25,
+        "y": 551.25,
+        "width": 220,
+        "height": 130
+      },
+      "elapsedMs": 7455.100000023842,
+      "frames": 67,
+      "frameP50": 100,
+      "frameP95": 150.10000000000582,
+      "frameMax": 216.8000000000029,
+      "longTasks": 1,
+      "longTaskMs": 104,
+      "storeUpdates": 1,
+      "after": {
+        "x": 806.25,
+        "y": 551.25,
+        "width": 282.5,
+        "height": 167.5
+      },
+      "changed": true,
+      "persisted": true,
+      "previewChanged": true,
+      "updatesDuringGesture": 0,
+      "scriptMs": 370.1699999999999,
+      "layoutMs": 14.334,
+      "taskMs": 752.2380000000002
+    },
+    {
+      "kind": "drag",
+      "view": "overview",
+      "trial": 1,
+      "nodeId": "canvas-large-node-172",
+      "mountedNodes": 324,
+      "mountedConnections": 612,
+      "before": {
+        "x": 2700,
+        "y": 1890,
+        "width": 220,
+        "height": 130
+      },
+      "elapsedMs": 6402.299999952316,
+      "frames": 71,
+      "frameP50": 50,
+      "frameP95": 316.70000000000437,
+      "frameMax": 383.3999999999942,
+      "longTasks": 0,
+      "longTaskMs": 0,
+      "storeUpdates": 1,
+      "after": {
+        "x": 3000,
+        "y": 2100,
+        "width": 220,
+        "height": 130
+      },
+      "changed": true,
+      "persisted": true,
+      "previewChanged": true,
+      "updatesDuringGesture": 0,
+      "scriptMs": 1500.4739999999997,
+      "layoutMs": 5.8889999999999985,
+      "taskMs": 2237.204
+    },
+    {
+      "kind": "drag",
+      "view": "overview",
+      "trial": 2,
+      "nodeId": "canvas-large-node-172",
+      "mountedNodes": 324,
+      "mountedConnections": 612,
+      "before": {
+        "x": 3000,
+        "y": 2100,
+        "width": 220,
+        "height": 130
+      },
+      "elapsedMs": 4733.600000023842,
+      "frames": 71,
+      "frameP50": 50,
+      "frameP95": 116.70000000000437,
+      "frameMax": 133.3000000000029,
+      "longTasks": 0,
+      "longTaskMs": 0,
+      "storeUpdates": 1,
+      "after": {
+        "x": 3300,
+        "y": 2310,
+        "width": 220,
+        "height": 130
+      },
+      "changed": true,
+      "persisted": true,
+      "previewChanged": true,
+      "updatesDuringGesture": 0,
+      "scriptMs": 1410.8839999999993,
+      "layoutMs": 4.693999999999996,
+      "taskMs": 2029.8599999999992
+    },
+    {
+      "kind": "drag",
+      "view": "overview",
+      "trial": 3,
+      "nodeId": "canvas-large-node-172",
+      "mountedNodes": 324,
+      "mountedConnections": 612,
+      "before": {
+        "x": 3300,
+        "y": 2310,
+        "width": 220,
+        "height": 130
+      },
+      "elapsedMs": 5373,
+      "frames": 67,
+      "frameP50": 66.69999999999709,
+      "frameP95": 149.90000000000146,
+      "frameMax": 183.3000000000029,
+      "longTasks": 0,
+      "longTaskMs": 0,
+      "storeUpdates": 1,
+      "after": {
+        "x": 3600,
+        "y": 2520,
+        "width": 220,
+        "height": 130
+      },
+      "changed": true,
+      "persisted": true,
+      "previewChanged": true,
+      "updatesDuringGesture": 0,
+      "scriptMs": 1350.212000000001,
+      "layoutMs": 4.982000000000007,
+      "taskMs": 1932.519000000001
+    },
+    {
+      "kind": "resize",
+      "view": "overview",
+      "trial": 1,
+      "nodeId": "canvas-large-node-172",
+      "mountedNodes": 324,
+      "mountedConnections": 612,
+      "before": {
+        "x": 3600,
+        "y": 2520,
+        "width": 220,
+        "height": 130
+      },
+      "elapsedMs": 5372.699999928474,
+      "frames": 73,
+      "frameP50": 66.69999999999709,
+      "frameP95": 116.70000000000437,
+      "frameMax": 133.3000000000029,
+      "longTasks": 1,
+      "longTaskMs": 144,
+      "storeUpdates": 1,
+      "after": {
+        "x": 3600,
+        "y": 2520,
+        "width": 281.32596685082854,
+        "height": 170.8839779005525
+      },
+      "changed": true,
+      "persisted": true,
+      "previewChanged": true,
+      "updatesDuringGesture": 0,
+      "scriptMs": 351.63299999999964,
+      "layoutMs": 38.26800000000001,
+      "taskMs": 1075.9089999999994
+    }
+  ]
+}
