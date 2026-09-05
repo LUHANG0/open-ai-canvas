@@ -119,6 +119,10 @@
     color: var(--app-text-primary);
 }
 
+.pc-canvas-text-editor-modal [contenteditable="true"]:focus-visible {
+    box-shadow: inset var(--app-focus-shadow);
+}
+
 .pc-canvas-modal .ant-modal-footer {
     margin: 0;
     border-top: 1px solid var(--app-border-subtle);

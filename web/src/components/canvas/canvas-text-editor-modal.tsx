@@ -52,6 +52,8 @@ export function CanvasTextEditorModal({ node, open, onClose, onSave }: CanvasTex
             attributes: {
                 class: "min-h-full px-8 py-7 text-[var(--fs-body-lg)] leading-7 outline-none sm:px-12 lg:px-16",
                 "aria-label": "文本节点富文本编辑区",
+                role: "textbox",
+                "aria-multiline": "true",
             },
         },
         onUpdate: () => setDirty(true),

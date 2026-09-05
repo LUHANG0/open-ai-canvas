@@ -69,8 +69,8 @@ function VideoSettingsPortal({
         ...canvasSettingsPopoverStyle({ buttonRect, placement: placement || "topLeft", estimatedHeight: 370, minimumHeight: 260 }),
         background: theme.spatial.elevated,
         border: `1px solid ${theme.toolbar.border}`,
-        borderRadius: 16,
-        boxShadow: `0 24px 72px ${theme.spatial.shadow}`,
+        borderRadius: "var(--app-surface-radius)",
+        boxShadow: "var(--app-shadow-overlay)",
         padding: 0,
         overflow: "hidden",
         color: theme.node.text,
@@ -80,6 +80,7 @@ function VideoSettingsPortal({
         <div
             ref={panelRef}
             data-canvas-overlay
+            data-canvas-no-zoom
             className="canvas-generation-settings-popover aceternity-floating-panel backdrop-blur-2xl"
             style={style}
             onPointerDown={(event) => event.stopPropagation()}
