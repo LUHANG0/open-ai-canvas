@@ -29,6 +29,9 @@ export default function StoryboardPromptsPage() {
     const [templates, setTemplates] = useState<PromptTemplate[]>([]);
     const [definitions, setDefinitions] = useState<PromptOperationDefinition[]>([]);
     const [loading, setLoading] = useState(true);
+    const [loadError, setLoadError] = useState("");
+    const requestRef = useRef(0);
+    const saveRef = useRef(false);
     const [drawerOpen, setDrawerOpen] = useState(false);
     const [baseTemplate, setBaseTemplate] = useState<PromptTemplate | null>(null);
     const [draftOperation, setDraftOperation] = useState("");
@@ -59,19 +62,22 @@ export default function StoryboardPromptsPage() {
     };
 
     const reload = async () => {
+        const sequence = ++requestRef.current;
         setLoading(true);
+        setLoadError("");
         try {
             const result = await listAdminPromptTemplates();
+            if (sequence !== requestRef.current) return;
             setTemplates(result.templates);
             setDefinitions(result.definitions);
         } catch (error) {
-            message.error(error instanceof Error ? error.message : "读取提示词模板失败");
+            if (sequence === requestRef.current) setLoadError(error instanceof Error ? error.message : "读取提示词模板失败");
         } finally {
-            setLoading(false);
+            if (sequence === requestRef.current) setLoading(false);
         }
     };
 
-    useEffect(() => { void reload(); }, []);
+    useEffect(() => { void reload(); return () => { requestRef.current += 1; }; }, []);
 
     const definitionByOperation = useMemo(() => new Map(definitions.map((item) => [item.operation, item])), [definitions]);
     const filtered = useMemo(() => templates.filter((template) => {
@@ -125,6 +131,9 @@ export default function StoryboardPromptsPage() {
     };
 
     const save = async () => {
+        if (saveRef.current) return;
+        saveRef.current = true;
+        try {
         const values = await form.validateFields();
         if (!editorContent.trim()) {
             message.warning("请填写提示词模板内容");
@@ -142,6 +151,7 @@ export default function StoryboardPromptsPage() {
         } finally {
             setSaving(false);
         }
+        } finally { saveRef.current = false; }
     };
 
     const activate = async (template: PromptTemplate) => {
@@ -175,12 +185,13 @@ export default function StoryboardPromptsPage() {
 
     return (
         <AdminPageFrame title="提示词模板" description="平台创作策略与版本管理" actions={<Button type="primary" icon={<Plus className="size-4" />} disabled={!definitions.length} onClick={() => openDrawer()}>新建版本</Button>}>
+            {loadError ? <Alert type="error" showIcon title="提示词模板读取失败" description={loadError} action={<Button onClick={() => void reload()}>重新读取</Button>} /> : null}
             <AdminDataTable
                 toolbar={<Input allowClear className="app-list-search" prefix={<Search className="size-4 text-foreground/40" />} value={keyword} aria-label="搜索提示词模板" placeholder="搜索模板或内容" onChange={(event) => updateUrl({ filter: event.target.value })} />}
                 toolbarActive={hasFilters}
                 toolbarFilters={<><Select aria-label="筛选提示词类型" className="w-40" value={operationFilter} onChange={(value) => updateUrl({ operation: value })} options={[{ label: "全部类型", value: "all" }, ...definitions.map((item) => ({ label: item.label, value: item.operation }))]} /><Select aria-label="筛选提示词状态" className="w-32" value={status} onChange={(value) => updateUrl({ status: value })} options={[{ label: "全部状态", value: "all" }, { label: "启用中", value: "enabled" }, { label: "历史版本", value: "disabled" }]} /></>}
                 onReset={() => updateUrl({ filter: "", operation: "all", status: "all" })}
-                table={{ className: "app-data-table", size: "small", rowKey: "id", loading, pagination: false, columns, dataSource: paginatedTemplates, scroll: { x: 1120 }, expandable: { expandedRowRender: (template) => <pre className="max-h-80 overflow-auto whitespace-pre-wrap rounded-md bg-muted/50 p-3 text-xs leading-5 text-foreground/75">{template.content}</pre> } }}
+                table={{ className: "app-data-table", size: "small", tableLayout: "fixed", rowKey: "id", loading, pagination: false, columns, dataSource: loadError || loading ? [] : paginatedTemplates, scroll: { x: 1120 }, expandable: { expandedRowRender: (template) => <pre className="max-h-80 overflow-auto whitespace-pre-wrap break-words rounded-md bg-muted/50 p-3 text-xs leading-5 text-foreground/75">{template.content}</pre> } }}
                 empty={<AdminTableEmpty filtered={hasFilters} />}
                 footer={<PaginationBar alwaysShow current={page} pageSize={pageSize} total={filtered.length} onChange={(nextPage, nextPageSize) => { setPage(nextPageSize !== pageSize ? 1 : nextPage); setPageSize(nextPageSize); }} />}
             />
@@ -198,7 +209,7 @@ export default function StoryboardPromptsPage() {
                 styles={{ body: { padding: 0 } }}
                 extra={<div className="flex gap-2"><Popconfirm disabled={!dirty} title="放弃模板修改？" description="尚未保存的新版本内容将丢失。" okText="放弃修改" cancelText="继续编辑" okButtonProps={{ danger: true }} onConfirm={closeDrawer}><Button disabled={saving} onClick={() => { if (!dirty) closeDrawer(); }}>关闭</Button></Popconfirm><Button type="primary" loading={saving} disabled={!draftOperation || !draftName.trim() || !editorContent.trim()} onClick={() => void save()}>保存版本</Button></div>}
             >
-                <Form form={form} layout="vertical" requiredMark={false} className="flex min-h-full flex-col">
+                <Form form={form} layout="vertical" requiredMark={false} disabled={saving} className="flex min-h-full flex-col">
                     <div className="grid shrink-0 gap-4 border-b border-border p-4 md:grid-cols-3">
                         <Form.Item label="模板类型" className="mb-0">
                             <Select value={draftOperation} disabled={Boolean(baseTemplate)} options={definitions.map((item) => ({ label: `${item.category} · ${item.label}`, value: item.operation }))} onChange={switchOperation} />
@@ -234,7 +245,7 @@ export default function StoryboardPromptsPage() {
                                 </div>
                             </div>
                             <div className="min-h-96 flex-1 overflow-hidden rounded-md border border-border">
-                                <PromptCodeEditor ref={editorRef} value={editorContent} ariaLabel="提示词模板内容" onChange={setEditorContent} />
+                                <PromptCodeEditor ref={editorRef} value={editorContent} readOnly={saving} ariaLabel="提示词模板内容" onChange={setEditorContent} />
                             </div>
                         </section>
 

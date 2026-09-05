@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent, type ReactNode } from "react";
 import { App, Button } from "antd";
-import { Clapperboard, Eye, FileText, Image as ImageIcon, LockKeyhole, LogIn, Send, Share2, Video } from "lucide-react";
+import { Clapperboard, Eye, FileText, Image as ImageIcon, LockKeyhole, LogIn, RefreshCw, Send, Share2, Video } from "lucide-react";
 import { Link, useParams } from "react-router";
 import { nanoid } from "nanoid";
 
@@ -47,6 +47,7 @@ export default function SharedCanvasPage() {
     const [contextMenu, setContextMenu] = useState<ContextMenu | null>(null);
     const [loading, setLoading] = useState(true);
     const [loadError, setLoadError] = useState("");
+    const [retryKey, setRetryKey] = useState(0);
 
     const unauthorized = useCallback(() => message.warning("未授权：分享画布仅供查看，该操作不会执行。"), [message]);
     const infoNode = nodes.find((node) => node.id === infoNodeId) || null;
@@ -79,6 +80,9 @@ export default function SharedCanvasPage() {
     useEffect(() => {
         let active = true;
         setLoading(true);
+        setLoadError("");
+        setSelectedNodeId(null);
+        setInfoNodeId(null);
         getPublicCanvasShare(token).then(({ project }) => {
             if (!active) return;
             setTitle(project.title || "共享画布");
@@ -94,7 +98,7 @@ export default function SharedCanvasPage() {
             if (active) setLoading(false);
         });
         return () => { active = false; };
-    }, [token]);
+    }, [token, retryKey]);
 
     useEffect(() => {
         const onMove = (event: MouseEvent) => {
@@ -237,10 +241,11 @@ export default function SharedCanvasPage() {
                     <WorkspaceState
                         icon="error"
                         title="分享链接不可用"
-                        description={loadError}
+                        description={`${loadError}。链接可能已过期或被撤销；网络恢复后可重新读取，仍不可用时请联系分享者。`}
                         action={
                             <>
-                                <Link to="/"><Button>进入工作台</Button></Link>
+                                <Button icon={<RefreshCw className="size-4" />} onClick={() => setRetryKey((value) => value + 1)}>重新读取</Button>
+                                <Link to="/"><Button>返回首页</Button></Link>
                                 <Link className="pc-canvas-share__state-login hidden" to="/login"><Button type="primary" icon={<LogIn className="size-4" />}>登录{branding.config.identity.shortName}</Button></Link>
                             </>
                         }
@@ -261,8 +266,11 @@ export default function SharedCanvasPage() {
                     </span>
                     <span className="pc-canvas-share__badge inline-flex items-center gap-1 text-xs" style={{ color: theme.node.muted }}><Eye className="size-3.5" />只读分享</span>
                 </div>
-                <Link className="pc-canvas-share__login pointer-events-auto" to="/login"><Button type="text" icon={<LogIn className="size-4" />}>登录<span className="hidden">并开始创作</span></Button></Link>
+                <Button className="pointer-events-auto shrink-0" aria-label="重新读取分享画布" icon={<RefreshCw className="size-4" />} onClick={() => setRetryKey((value) => value + 1)} />
+                <Link className="pc-canvas-share__login pointer-events-auto shrink-0" to="/login"><Button type="text" icon={<LogIn className="size-4" />}>登录<span className="hidden">并开始创作</span></Button></Link>
             </header>
+
+            {!nodes.length ? <div className="pointer-events-none absolute inset-0 z-[var(--z-panel-floating)] grid place-items-center px-5"><WorkspaceState icon="empty" title="分享画布暂无节点" description="分享者添加内容后，可重新读取此画布查看。" /></div> : null}
 
             <InfiniteCanvas containerRef={containerRef} viewport={viewport} backgroundMode={backgroundMode} onViewportChange={onViewportChange} onViewportPreviewChange={(next) => { viewportRef.current = next; }} onCanvasDeselect={() => { setSelectedNodeId(null); setContextMenu(null); }} onContextMenu={(event) => openContextMenu(event)} onDrop={(event) => { event.preventDefault(); unauthorized(); }}>
                 <svg className="absolute overflow-visible" viewBox={`${connectionBounds.left} ${connectionBounds.top} ${connectionBounds.width} ${connectionBounds.height}`} style={{ left: connectionBounds.left, top: connectionBounds.top, width: connectionBounds.width, height: connectionBounds.height, pointerEvents: "none", zIndex: 0 }}>

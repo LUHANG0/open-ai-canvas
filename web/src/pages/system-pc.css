@@ -1,9 +1,8 @@
-/* 新增的 PC 辅助信息在小屏不进入既有信息结构。 */
+/* 辅助页面在手机和桌面使用同一品牌表面与操作语义。 */
 .pc-system-pc-only {
     display: none;
 }
 
-@media (min-width: 1024px) {
     .pc-system-pc-only {
         display: block;
     }
@@ -28,7 +27,8 @@
     }
 
     .pc-system-page-main {
-        padding: 48px;
+        padding: clamp(20px, 4vw, 48px);
+        overflow-y: auto;
     }
 
     .pc-system-card {
@@ -37,24 +37,13 @@
         overflow: hidden;
         border: 1px solid var(--app-border-subtle);
         border-radius: var(--app-surface-radius);
-        padding: 52px 48px 40px;
+        padding: 52px clamp(20px, 4vw, 48px) 40px;
         background: color-mix(in srgb, var(--app-surface-1) 96%, transparent);
         box-shadow:
             inset 0 1px 0 color-mix(in srgb, var(--app-brand-400) 14%, transparent),
             var(--app-shadow-overlay);
     }
 
-    .pc-system-card::before {
-        position: absolute;
-        top: 18px;
-        left: 20px;
-        width: 20px;
-        height: 20px;
-        background: var(--app-brand-600);
-        content: "";
-        mask: url("/logo.svg") center / contain no-repeat;
-        -webkit-mask: url("/logo.svg") center / contain no-repeat;
-    }
 
     .pc-system-card::after {
         position: absolute;
@@ -152,6 +141,7 @@
 
     .pc-system-actions {
         margin-top: 28px;
+        flex-wrap: wrap;
     }
 
     .pc-system-primary-action,
@@ -197,16 +187,10 @@
         box-shadow: var(--app-focus-shadow);
     }
 
-    .dark .pc-system-card::before {
-        background-color: var(--app-brand-300);
-    }
-
     .dark .pc-system-code {
         color: var(--app-brand-300);
     }
-}
-
-@media (min-width: 1024px) and (max-height: 680px) {
+@media (max-height: 680px) {
     .pc-system-page-main {
         padding: var(--app-space-6);
     }
@@ -217,7 +201,7 @@
     }
 }
 
-@media (min-width: 1024px) and (prefers-reduced-motion: reduce) {
+@media (prefers-reduced-motion: reduce) {
     .pc-system-primary-action,
     .pc-system-primary-button,
     .pc-system-secondary-action {

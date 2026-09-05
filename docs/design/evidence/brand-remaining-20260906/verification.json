@@ -1,0 +1,61 @@
+{
+  "baseline": "70b810bae2ab5a2685fb231820b37cdcc4975e67",
+  "codeCandidate": "71456191",
+  "checks": {
+    "layout": 52,
+    "configs": 25,
+    "lists": 16,
+    "updater": 12,
+    "public-voice": 31,
+    "share-recovery": 16,
+    "analytics-extra": 16,
+    "focus-final": 23,
+    "production": 8
+  },
+  "totalCompletedChecks": 199,
+  "frontend": {
+    "passed": 1816,
+    "failed": 0,
+    "assertions": 10507
+  },
+  "build": {
+    "typecheck": "passed",
+    "budgets": 7,
+    "voiceChunkPresent": false,
+    "devChunks": 0
+  },
+  "backendService": "passed targeted tests",
+  "backendHandler": "no matching tests",
+  "rollback": {
+    "method": "reverse git revert --no-commit for all web commits",
+    "webDiffAgainstBaseline": 0
+  },
+  "limitations": [
+    "isolated local environment",
+    "updater protocol simulated",
+    "no external service execution",
+    "no production deployment"
+  ],
+  "files": {
+    "share-error-final-390-dark.png": "e9ca388838c31d8a2995ed5c948ad79ad93af1ff1c29dbc279fcba848760a4c8",
+    "share-recovery.json": "7e9eb39a56d03a6e3d4b43c62fa87736a067a7d844082eda9f7e901d651941da",
+    "production.json": "421852ce37e1c3e5f37457e0d7f7606d57b7ef314dd7742a116cab3960f78367",
+    "resource-reference-blocked.png": "d4c883a6a5c0e8e40344d90c770691c1fadd9885a00892fc059a209395343a7e",
+    "update-confirm-390-light.png": "58bf3ee4a57bd9b38de6ab9b56b7bdd550c14d38526fbf635778ae8d3a51c5b4",
+    "analytics-date-390-light.png": "747363dd0205ddc5a008ef6be9e4bbe6b5335b7bfad3897859974a4e55aa05b6",
+    "configs.json": "27a394f02137bc68ab64bfabfa966cf0dd0191f9a162079b39eea682063c3fdf",
+    "updater.json": "923e124be198d3c9775c4e6d9763ff62834f70d37b21a07355f080c635dbf237",
+    "_admin_plugins-390-dark.png": "f6fd2452998de77c0057b412d05885c42a786d3afd24454be6a59bfc5d180b78",
+    "share-recovered-390-light.png": "3269ad5319423a371e1360c05cd8a60f40676ed24fad686d84a46f328169e638",
+    "lists.json": "b64fc2938419755d55117907368427657b890b6159d9bbbf074b6146af7320d4",
+    "_admin_settings_runtime-policy-390-light.png": "3ef60fbe304886e4809b9d8031eee338b21dbd49166a9c49f84eef6e773a27e6",
+    "analytics-extra.json": "aa30dedbf1ea0f6c3824ca315f2ef481047bf50d3bc95c5e6e347d817a0bc38d",
+    "layout.json": "02d70108db47548487980b39bc27993875581f920d451799188b582415484085",
+    "voice-transcribed.png": "f7cb5eaccbc71075960b2bb47bd292a91476d807d9782369fc3be227f89917a1",
+    "config-confirm-final-ark-private-assets-390-light.png": "6b19c4f2858924e5d847076aabc8c0f4ac5d9587761056ec8f052f116a5cbec9",
+    "public-voice.json": "8cf7dfbc5b64a7b546ed03af29833e974394a3d38fd4ef8001dcd823814345e5",
+    "route-error-390-dark.png": "b904d2e3b0fcb194345098ec97ab39049a0709347d1b823bc362f4bdd0fa7049",
+    "not-found-final-1440-light.png": "a1333d21fbb6d6bac251e5d31afd741fbf4dea304171317e74cf6c8415d2c8bd",
+    "focus-final.json": "e95bc78e2f0bd5b4025c372708af4543d80c0b71e8d72783823a5b728ff15743"
+  }
+}

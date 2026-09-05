@@ -27,9 +27,8 @@ export default function TestVoiceRecording() {
         if (!prompt.trim()) return;
         setSending(true);
         try {
-            // 原型阶段：发送到对话入口由调用方接入；此处仅输出
-            console.log("发送文本:", prompt);
-            message.success("发送成功（原型阶段，仅控制台输出）");
+            // 原型只验证输入，不提交对话或记录转写正文。
+            message.success("本地输入验证完成，未发送对话");
             setPrompt("");
         } finally {
             setSending(false);
@@ -58,7 +57,7 @@ export default function TestVoiceRecording() {
                     <div>
                         <p>内部原型</p>
                         <h1>实时语音转写</h1>
-                        <span>验证录音、波形、上传和 STT 回填闭环，不发送真实对话。</span>
+                        <span>验证录音、波形与浏览器语音识别回填。识别能力由浏览器提供，可能需要联网；本页不发送对话。</span>
                     </div>
                     <span className="pc-voice-prototype-badge">MVP · 本地验证</span>
                 </header>
@@ -84,7 +83,7 @@ export default function TestVoiceRecording() {
                                 id="pc-voice-input"
                                 value={prompt}
                                 onChange={(e) => setPrompt(e.target.value)}
-                                placeholder="输入消息，或点击实时对话按钮用语音输入..."
+                                placeholder="输入测试文字，或点击麦克风体验语音输入..."
                                 className="pc-voice-textarea w-full rounded-lg border px-3 py-2 text-sm outline-none transition focus:border-current"
                             />
                         </div>
@@ -97,7 +96,7 @@ export default function TestVoiceRecording() {
                                 <VoiceRecordingButton onTranscribed={handleTranscribed} />
                             </div>
                             <Button type="primary" icon={<Send className="size-4" />} disabled={!prompt.trim()} loading={sending} onClick={handleSubmit} className="pc-voice-send">
-                                发送
+                                验证输入
                             </Button>
                         </div>
 
@@ -109,7 +108,7 @@ export default function TestVoiceRecording() {
                                 <i aria-hidden="true">2</i>自动转写
                             </span>
                             <span>
-                                <i aria-hidden="true">3</i>确认并发送
+                                <i aria-hidden="true">3</i>确认输入
                             </span>
                         </div>
 
@@ -121,8 +120,8 @@ export default function TestVoiceRecording() {
                             <ul className="mt-1 list-inside list-disc space-y-1">
                                 <li>点击麦克风按钮，输入行内展开波形录制条并自动开始录音</li>
                                 <li>波形动画实时显示音量变化</li>
-                                <li>点击停止按钮完成录制，自动上传并转写</li>
-                                <li>转写结果自动填入输入框，可编辑后发送</li>
+                                <li>点击停止按钮完成录制，回填浏览器识别的文字</li>
+                                <li>识别结果可编辑，点击验证输入完成本地检查</li>
                                 <li>转写失败时在录制条内提示，可点击麦克风重试</li>
                             </ul>
                         </section>

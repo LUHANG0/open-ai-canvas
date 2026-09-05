@@ -1,0 +1,105 @@
+{
+  "checks": [
+    {
+      "name": "drawing-engine initial error visible",
+      "passed": true
+    },
+    {
+      "name": "drawing-engine dirty refresh focus trap",
+      "passed": true
+    },
+    {
+      "name": "drawing-engine save error retains draft",
+      "passed": true
+    },
+    {
+      "name": "drawing-engine persisted readback",
+      "passed": true
+    },
+    {
+      "name": "drawing-engine reload usable",
+      "passed": true
+    },
+    {
+      "name": "runtime-policy initial error visible",
+      "passed": true
+    },
+    {
+      "name": "runtime-policy dirty refresh focus trap",
+      "passed": true
+    },
+    {
+      "name": "runtime-policy save error retains draft",
+      "passed": true
+    },
+    {
+      "name": "runtime-policy persisted readback",
+      "passed": true
+    },
+    {
+      "name": "runtime-policy reload usable",
+      "passed": true
+    },
+    {
+      "name": "ark-private-assets initial error visible",
+      "passed": true
+    },
+    {
+      "name": "ark-private-assets dirty refresh focus trap",
+      "passed": true
+    },
+    {
+      "name": "ark-private-assets save error retains draft",
+      "passed": true
+    },
+    {
+      "name": "ark-private-assets persisted readback",
+      "passed": true
+    },
+    {
+      "name": "ark-private-assets reload usable",
+      "passed": true
+    },
+    {
+      "name": "response-interception initial error visible",
+      "passed": true
+    },
+    {
+      "name": "response-interception dirty refresh focus trap",
+      "passed": true
+    },
+    {
+      "name": "response-interception save error retains draft",
+      "passed": true
+    },
+    {
+      "name": "response-interception persisted readback",
+      "passed": true
+    },
+    {
+      "name": "response-interception reload usable",
+      "passed": true
+    },
+    {
+      "name": "third-party initial error visible",
+      "passed": true
+    },
+    {
+      "name": "third-party dirty refresh focus trap",
+      "passed": true
+    },
+    {
+      "name": "third-party save error retains draft",
+      "passed": true
+    },
+    {
+      "name": "third-party persisted readback",
+      "passed": true
+    },
+    {
+      "name": "third-party reload usable",
+      "passed": true
+    }
+  ],
+  "errors": []
+}

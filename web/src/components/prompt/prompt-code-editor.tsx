@@ -45,7 +45,7 @@ export const PromptCodeEditor = forwardRef<PromptCodeEditorHandle, PromptCodeEdi
             theme={theme}
             readOnly={readOnly}
             editable={!readOnly}
-            extensions={[EditorView.lineWrapping]}
+            extensions={[EditorView.lineWrapping, EditorView.contentAttributes.of({ "aria-label": ariaLabel })]}
             basicSetup={{ lineNumbers: true, foldGutter: false, highlightActiveLine: !readOnly, highlightActiveLineGutter: !readOnly }}
             aria-label={ariaLabel}
             onCreateEditor={(view) => { viewRef.current = view; }}

@@ -5,6 +5,7 @@ import { lazy, Suspense, useState } from "react";
 import { useAdminContext } from "./admin-context";
 import { AdminPageFrame } from "./components/admin-shell";
 import { readAnnouncementPendingReview } from "./components/admin-announcement-safety";
+import { WorkspaceLoadingState } from "@/components/ui/pc/workspace-state";
 
 const AnalyticsPanel = lazy(() => import("./components/analytics-panel"));
 const AdminAnnouncementsPanel = lazy(() => import("./components/admin-announcements-panel"));
@@ -15,7 +16,7 @@ const FeatureAvailabilityPanel = lazy(() => import("./components/feature-availab
 const StorageResourcesPanel = lazy(() => import("./components/storage-resources-panel"));
 
 function PageFallback({ label }: { label: string }) {
-    return <div className="py-16 text-center text-sm text-foreground/50">正在读取{label}...</div>;
+    return <WorkspaceLoadingState label={`正在读取${label}`} />;
 }
 
 export function AnalyticsPage() {
@@ -117,7 +118,7 @@ export function FeatureAvailabilityPage() {
 
 export function StorageResourcesPage() {
     return (
-        <AdminPageFrame title="存储资源" description="只读查看资源记录、容量分布与文件预览" scroll>
+        <AdminPageFrame title="存储资源" description="查看容量与文件，清理资源前检查业务引用" scroll>
             <Suspense fallback={<PageFallback label="存储资源" />}>
                 <StorageResourcesPanel />
             </Suspense>

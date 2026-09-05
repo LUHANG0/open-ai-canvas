@@ -1,0 +1,19 @@
+.admin-plugin-overview {
+    flex-shrink: 0;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    margin-block: 16px;
+    border: 1px solid var(--app-border-default);
+    border-radius: var(--app-surface-radius);
+    background: var(--app-surface-1);
+    overflow: hidden;
+}
+.admin-plugin-overview > div { border-right: 1px solid var(--app-border-subtle); }
+.admin-plugin-overview > div:last-child { border-right: 0; }
+.admin-plugin-overview[aria-busy="true"] { opacity: 0.5; }
+@media (max-width: 767px) {
+    .admin-plugin-overview { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .admin-plugin-overview > div { gap: 8px; padding: 12px; }
+    .admin-plugin-overview > div:nth-child(-n+2) { border-bottom: 1px solid var(--app-border-subtle); }
+    .admin-plugin-overview > div:nth-child(2) { border-right: 0; }
+}

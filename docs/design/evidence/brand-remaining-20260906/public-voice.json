@@ -1,0 +1,129 @@
+{
+  "checks": [
+    {
+      "name": "public media 390 light",
+      "passed": true
+    },
+    {
+      "name": "public page bounds 390 light",
+      "passed": true
+    },
+    {
+      "name": "public media 390 dark",
+      "passed": true
+    },
+    {
+      "name": "public page bounds 390 dark",
+      "passed": true
+    },
+    {
+      "name": "public media 1440 light",
+      "passed": true
+    },
+    {
+      "name": "public page bounds 1440 light",
+      "passed": true
+    },
+    {
+      "name": "public media 1440 dark",
+      "passed": true
+    },
+    {
+      "name": "public page bounds 1440 dark",
+      "passed": true
+    },
+    {
+      "name": "public media 1023 light",
+      "passed": true
+    },
+    {
+      "name": "public page bounds 1023 light",
+      "passed": true
+    },
+    {
+      "name": "public media 1023 dark",
+      "passed": true
+    },
+    {
+      "name": "public page bounds 1023 dark",
+      "passed": true
+    },
+    {
+      "name": "public media 1024 light",
+      "passed": true
+    },
+    {
+      "name": "public page bounds 1024 light",
+      "passed": true
+    },
+    {
+      "name": "public media 1024 dark",
+      "passed": true
+    },
+    {
+      "name": "public page bounds 1024 dark",
+      "passed": true
+    },
+    {
+      "name": "public browsing never writes",
+      "passed": true
+    },
+    {
+      "name": "anonymous owner endpoint unauthorized",
+      "passed": true
+    },
+    {
+      "name": "revoked share invalid",
+      "passed": true
+    },
+    {
+      "name": "revoked share retry remains invalid",
+      "passed": true
+    },
+    {
+      "name": "404 return home 390 light",
+      "passed": true
+    },
+    {
+      "name": "route error layout 390 light",
+      "passed": true
+    },
+    {
+      "name": "404 return home 390 dark",
+      "passed": true
+    },
+    {
+      "name": "route error layout 390 dark",
+      "passed": true
+    },
+    {
+      "name": "404 return home 1440 light",
+      "passed": true
+    },
+    {
+      "name": "route error layout 1440 light",
+      "passed": true
+    },
+    {
+      "name": "404 return home 1440 dark",
+      "passed": true
+    },
+    {
+      "name": "route error layout 1440 dark",
+      "passed": true
+    },
+    {
+      "name": "controlled microphone and speech fill input",
+      "passed": true
+    },
+    {
+      "name": "voice local input clears",
+      "passed": true
+    },
+    {
+      "name": "voice cancel keeps page usable",
+      "passed": true
+    }
+  ],
+  "errors": []
+}

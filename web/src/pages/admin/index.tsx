@@ -1,6 +1,7 @@
 import { useUserStore } from "@/stores/use-user-store";
 import { AdminProvider } from "./admin-context";
 import { AdminShell } from "./components/admin-shell";
+import "./components/admin-remaining.css";
 
 export default function AdminPage() {
     const actor = useUserStore((state) => state.user);

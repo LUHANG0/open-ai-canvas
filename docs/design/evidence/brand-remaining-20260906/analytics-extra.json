@@ -1,0 +1,69 @@
+{
+  "checks": [
+    {
+      "name": "chart metric 390 light",
+      "passed": true
+    },
+    {
+      "name": "date popup in viewport 390 light",
+      "passed": true
+    },
+    {
+      "name": "chart metric 390 dark",
+      "passed": true
+    },
+    {
+      "name": "date popup in viewport 390 dark",
+      "passed": true
+    },
+    {
+      "name": "chart metric 1440 light",
+      "passed": true
+    },
+    {
+      "name": "date popup in viewport 1440 light",
+      "passed": true
+    },
+    {
+      "name": "chart metric 1440 dark",
+      "passed": true
+    },
+    {
+      "name": "date popup in viewport 1440 dark",
+      "passed": true
+    },
+    {
+      "name": "chart metric 1023 light",
+      "passed": true
+    },
+    {
+      "name": "date popup in viewport 1023 light",
+      "passed": true
+    },
+    {
+      "name": "chart metric 1023 dark",
+      "passed": true
+    },
+    {
+      "name": "date popup in viewport 1023 dark",
+      "passed": true
+    },
+    {
+      "name": "chart metric 1024 light",
+      "passed": true
+    },
+    {
+      "name": "date popup in viewport 1024 light",
+      "passed": true
+    },
+    {
+      "name": "chart metric 1024 dark",
+      "passed": true
+    },
+    {
+      "name": "date popup in viewport 1024 dark",
+      "passed": true
+    }
+  ],
+  "errors": []
+}

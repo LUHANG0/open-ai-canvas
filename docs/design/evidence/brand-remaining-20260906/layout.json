@@ -1,0 +1,369 @@
+{
+  "checks": [
+    {
+      "path": "/admin",
+      "width": 390,
+      "theme": "light",
+      "overflow": false,
+      "tail": "正在打开页面"
+    },
+    {
+      "path": "/admin/plugins",
+      "width": 390,
+      "theme": "light",
+      "overflow": false,
+      "tail": "ions\nv1.0.0\nnewapi-channel-2\n·\n未提供插件说明\n\t\n系统协议\n\t\n全局生效\n管理员统一控制\n\t\n已开放\n\t\n\n\nNovita 视频\nv1.0.0\nnovita-video\n·\n未提供插件说明\n\t\n系统协议\n\t\n全局生效\n管理员统一控制\n\t\n已开放\n\t\n\n\nOpenAI Audio\nv1.0.0\nopenai-audio\n·\n未提供插件说明\n\t\n系统协议\n\t\n全局生效\n管理员统一控制\n\t\n已开放\n\t\n1-20 / 共 25 条\n20 条/页\n1\n2"
+    },
+    {
+      "path": "/admin/prompt-templates",
+      "width": 390,
+      "theme": "light",
+      "overflow": false,
+      "tail": "v3\t启用中\t2026/9/6 01:53:12\t\n基于此版本新建\n启用版本\n删除版本\n\n\t\n分镜修复\n分镜\n\t\n默认分镜修复模板\nv1 · 178 字符\n\t\nstoryboard-plan/v3\t启用中\t2026/9/6 01:53:12\t\n基于此版本新建\n启用版本\n删除版本\n\n\t\n分镜视频\n生成\n\t\n默认分镜视频模板\nv1 · 171 字符\n\t\n文本\t启用中\t2026/9/6 01:53:12\t\n基于此版本新建\n启用版本\n删除版本\n1-8 / 共 8 条\n20 条/页\n1"
+    },
+    {
+      "path": "/admin/resources",
+      "width": 390,
+      "theme": "light",
+      "overflow": false,
+      "tail": "3c2ccebc\n\t图片\t已就绪\t本地\t68 B\t--\t2026/9/6 02:10:19\t\n预览\n下载\n删除\n\n\n\t\n0a3c9b81888135b50258c88b12dcd61a.png\nc9c207c5a74afa4715b52b9f375d510a\n\t\n隔离验收管理员\n01f3637b7d7a2a221ae5fb9d3c2ccebc\n\t图片\t已就绪\t本地\t68 B\t--\t2026/9/6 02:09:40\t\n预览\n下载\n删除\n1-2 / 共 2 条\n20 条/页\n1"
+    },
+    {
+      "path": "/admin/settings/drawing-engine",
+      "width": 390,
+      "theme": "light",
+      "overflow": false,
+      "tail": "选择新建绘图默认编辑器\n\n仅影响之后新建的绘图，不转换已有节点。\n\nExcalidraw\nExcalidraw\n已选择\n无需授权，适合草图、结构标注和轻量协作。\ntldraw\n可用\n需要浏览器端 License Key，也用于打开已有 tldraw 绘图。\n2. 配置 tldraw 授权（按需）\n\n选择 tldraw 或需要打开已有 tldraw 绘图时配置。\n\n后台已配置\ntldraw License Key\n\n留空时使用部署环境授权；两处都未配置时 tldraw 不可用。"
+    },
+    {
+      "path": "/admin/settings/runtime-policy",
+      "width": 390,
+      "theme": "light",
+      "overflow": false,
+      "tail": "并发、超时和上游故障保护。\n\n自定义渠道并发\n个\n单账号同时进行的自定义渠道请求数。\n自定义渠道请求体\nMB\n中转到自定义上游的请求体上限。\n自定义渠道响应体\nMB\n自定义上游 JSON 与流式响应的读取上限。\n自定义渠道超时\n分钟\n自定义渠道连接与响应的最长等待时间。\n系统渠道请求体\nMB\n中转到系统渠道的请求体上限。\n系统渠道响应体\nMB\n系统渠道上游响应的读取上限。\n熔断失败次数\n次\n一分钟内连续失败达到该值后打开熔断。\n熔断持续时间\n秒\n渠道熔断打开后拒绝请求的时间。"
+    },
+    {
+      "path": "/admin/settings/ark-private-assets",
+      "width": 390,
+      "theme": "light",
+      "overflow": false,
+      "tail": "保存修改\n1. 配置方舟项目与 IAM 凭据\n\n凭据仅保存在服务端，用于创建素材组、上传图片和查询审核状态。\n\n已配置\nRegion\nArk ProjectName\nIAM AccessKey\nIAM SecretKey（已配置 · 留空不改）\nAccessKey 不变时留空可保留原密钥。\n2. 是否启用可信素材同步\n\n启用后，符合条件的 Seedance 参考图会在生成前导入方舟素材库。\n\n已停用\n自动导入可信参考素材\n\n关闭只停止新素材同步，不删除已有素材和绑定。\n\n停用"
+    },
+    {
+      "path": "/admin/settings/response-interception",
+      "width": 390,
+      "theme": "light",
+      "overflow": false,
+      "tail": "忽略英文大小写，使用包含判断。\n5 / 500\n命中后整条替换，不是局部替换。\n保存不会调用模型或制造测试错误 · 原始上游内容继续保留\n保存修改\n3. 本地预览用户最终文案\n\n使用当前草稿模拟服务端的裁剪、忽略大小写包含和首条命中逻辑；内容不会发送或保存。\n\n仅当前浏览器\n模拟上游错误文案\n\n只在内存中计算，不进入保存请求、审计或请求明细。\n\n用户最终可见文案\n等待输入\n\n输入模拟错误后，这里会显示按当前开关和规则计算的结果。\n\n预览不验证真实上游响应，也不会触发模型请求。"
+    },
+    {
+      "path": "/admin/settings/third-party",
+      "width": 390,
+      "theme": "light",
+      "overflow": false,
+      "tail": "入节点与连线继续保留，不会被删除或转换。\n\n关闭\n服务端凭据\nToken 不回传\n→\n读取画布\n按 UUID 请求\n→\n导入影策\n生成节点与连线\n更新于 2026年9月6日 02:04 · 保存不会读取外部画布\n保存修改\n3. 验证已保存的 LibTV 凭据\n\n使用服务端当前保存的 Token 发起一次只读请求，不会向 LibTV 或当前影策画布写入内容。\n\n本会话尚未验证\n可访问的 LibTV 画布 UUID\n验证连接\n验证会产生一次真实的外部只读请求，但不会保存画布内容。"
+    },
+    {
+      "path": "/admin/settings/system-update",
+      "width": 390,
+      "theme": "light",
+      "overflow": false,
+      "tail": "过后才允许切换服务。\n\n更新器未连接\nHost Updater\n\n当前部署未安装 Host Updater\n\n失败\n更新进度\n\n操作状态和日志由宿主机持久化，服务重启后仍可读取。\n\n等待检查\n\n检查更新后，这里会显示完整操作记录。\n\n备份与回退\n\n只使用最近一次通过 ZIP 结构与 SHA-256 校验的备份。\n\n暂无备份\n\n首次开始更新时会自动创建数据库与数据目录 ZIP；备份失败将直接中止更新。\n\n人工回退同样会执行停服、数据库恢复、旧镜像启动和健康验证。\n回退到上一版本"
+    },
+    {
+      "path": "/share/canvas/missing-test",
+      "width": 390,
+      "theme": "light",
+      "overflow": false,
+      "tail": "帧镜共享画布\n分享链接不可用\n\n分享链接无效或已失效。链接可能已过期或被撤销；网络恢复后可重新读取，仍不可用时请联系分享者。\n\n重新读取\n返回首页\n登录帧镜"
+    },
+    {
+      "path": "/missing-page",
+      "width": 390,
+      "theme": "light",
+      "overflow": false,
+      "tail": "404\n\n页面导航\n\n页面不存在\n\n这个地址没有对应的页面，可能已经移动或被合并到其他入口。\n\n返回首页"
+    },
+    {
+      "path": "/test-voice-recording",
+      "width": 390,
+      "theme": "light",
+      "overflow": false,
+      "tail": "内部原型\n\n实时语音转写\n验证录音、波形与浏览器语音识别回填。识别能力由浏览器提供，可能需要联网；本页不发送对话。\nMVP · 本地验证\n文本输入（语音转写结果会自动填入）\n0 字\n验证输入\n1\n开始录音\n2\n自动转写\n3\n确认输入\n使用说明：\n点击麦克风按钮，输入行内展开波形录制条并自动开始录音\n波形动画实时显示音量变化\n点击停止按钮完成录制，回填浏览器识别的文字\n识别结果可编辑，点击验证输入完成本地检查\n转写失败时在录制条内提示，可点击麦克风重试"
+    },
+    {
+      "path": "/admin",
+      "width": 390,
+      "theme": "dark",
+      "overflow": false,
+      "tail": "用无法完成费用估算\n0/0\n深度分析\n\n按模型、用户或异常类型继续核对当前统计范围。\n\n模型价格配置\n模型分析\n用户活动\n异常定位\n模型\t任务 / 请求\t用户\t任务成功率\t请求成功率\tP50 / P95\tToken（入 / 出 / 缓存）\t媒体 / 视频秒\t估算费用\n\n模型\n\t\n任务 / 请求\n\t\n用户\n\t\n任务成功率\n\t\n请求成功率\n\t\nP50 / P95\n\t\nToken（入 / 出 / 缓存）\n\t\n媒体 / 视频秒\n\t\n估算费用\n\n\n暂无数据\n共 0 条\n20 条/页\n1"
+    },
+    {
+      "path": "/admin/plugins",
+      "width": 390,
+      "theme": "dark",
+      "overflow": false,
+      "tail": "ions\nv1.0.0\nnewapi-channel-2\n·\n未提供插件说明\n\t\n系统协议\n\t\n全局生效\n管理员统一控制\n\t\n已开放\n\t\n\n\nNovita 视频\nv1.0.0\nnovita-video\n·\n未提供插件说明\n\t\n系统协议\n\t\n全局生效\n管理员统一控制\n\t\n已开放\n\t\n\n\nOpenAI Audio\nv1.0.0\nopenai-audio\n·\n未提供插件说明\n\t\n系统协议\n\t\n全局生效\n管理员统一控制\n\t\n已开放\n\t\n1-20 / 共 25 条\n20 条/页\n1\n2"
+    },
+    {
+      "path": "/admin/prompt-templates",
+      "width": 390,
+      "theme": "dark",
+      "overflow": false,
+      "tail": "v3\t启用中\t2026/9/6 01:53:12\t\n基于此版本新建\n启用版本\n删除版本\n\n\t\n分镜修复\n分镜\n\t\n默认分镜修复模板\nv1 · 178 字符\n\t\nstoryboard-plan/v3\t启用中\t2026/9/6 01:53:12\t\n基于此版本新建\n启用版本\n删除版本\n\n\t\n分镜视频\n生成\n\t\n默认分镜视频模板\nv1 · 171 字符\n\t\n文本\t启用中\t2026/9/6 01:53:12\t\n基于此版本新建\n启用版本\n删除版本\n1-8 / 共 8 条\n20 条/页\n1"
+    },
+    {
+      "path": "/admin/resources",
+      "width": 390,
+      "theme": "dark",
+      "overflow": false,
+      "tail": "3c2ccebc\n\t图片\t已就绪\t本地\t68 B\t--\t2026/9/6 02:10:19\t\n预览\n下载\n删除\n\n\n\t\n0a3c9b81888135b50258c88b12dcd61a.png\nc9c207c5a74afa4715b52b9f375d510a\n\t\n隔离验收管理员\n01f3637b7d7a2a221ae5fb9d3c2ccebc\n\t图片\t已就绪\t本地\t68 B\t--\t2026/9/6 02:09:40\t\n预览\n下载\n删除\n1-2 / 共 2 条\n20 条/页\n1"
+    },
+    {
+      "path": "/admin/settings/drawing-engine",
+      "width": 390,
+      "theme": "dark",
+      "overflow": false,
+      "tail": "选择新建绘图默认编辑器\n\n仅影响之后新建的绘图，不转换已有节点。\n\nExcalidraw\nExcalidraw\n已选择\n无需授权，适合草图、结构标注和轻量协作。\ntldraw\n可用\n需要浏览器端 License Key，也用于打开已有 tldraw 绘图。\n2. 配置 tldraw 授权（按需）\n\n选择 tldraw 或需要打开已有 tldraw 绘图时配置。\n\n后台已配置\ntldraw License Key\n\n留空时使用部署环境授权；两处都未配置时 tldraw 不可用。"
+    },
+    {
+      "path": "/admin/settings/runtime-policy",
+      "width": 390,
+      "theme": "dark",
+      "overflow": false,
+      "tail": "并发、超时和上游故障保护。\n\n自定义渠道并发\n个\n单账号同时进行的自定义渠道请求数。\n自定义渠道请求体\nMB\n中转到自定义上游的请求体上限。\n自定义渠道响应体\nMB\n自定义上游 JSON 与流式响应的读取上限。\n自定义渠道超时\n分钟\n自定义渠道连接与响应的最长等待时间。\n系统渠道请求体\nMB\n中转到系统渠道的请求体上限。\n系统渠道响应体\nMB\n系统渠道上游响应的读取上限。\n熔断失败次数\n次\n一分钟内连续失败达到该值后打开熔断。\n熔断持续时间\n秒\n渠道熔断打开后拒绝请求的时间。"
+    },
+    {
+      "path": "/admin/settings/ark-private-assets",
+      "width": 390,
+      "theme": "dark",
+      "overflow": false,
+      "tail": "保存修改\n1. 配置方舟项目与 IAM 凭据\n\n凭据仅保存在服务端，用于创建素材组、上传图片和查询审核状态。\n\n已配置\nRegion\nArk ProjectName\nIAM AccessKey\nIAM SecretKey（已配置 · 留空不改）\nAccessKey 不变时留空可保留原密钥。\n2. 是否启用可信素材同步\n\n启用后，符合条件的 Seedance 参考图会在生成前导入方舟素材库。\n\n已停用\n自动导入可信参考素材\n\n关闭只停止新素材同步，不删除已有素材和绑定。\n\n停用"
+    },
+    {
+      "path": "/admin/settings/response-interception",
+      "width": 390,
+      "theme": "dark",
+      "overflow": false,
+      "tail": "忽略英文大小写，使用包含判断。\n5 / 500\n命中后整条替换，不是局部替换。\n保存不会调用模型或制造测试错误 · 原始上游内容继续保留\n保存修改\n3. 本地预览用户最终文案\n\n使用当前草稿模拟服务端的裁剪、忽略大小写包含和首条命中逻辑；内容不会发送或保存。\n\n仅当前浏览器\n模拟上游错误文案\n\n只在内存中计算，不进入保存请求、审计或请求明细。\n\n用户最终可见文案\n等待输入\n\n输入模拟错误后，这里会显示按当前开关和规则计算的结果。\n\n预览不验证真实上游响应，也不会触发模型请求。"
+    },
+    {
+      "path": "/admin/settings/third-party",
+      "width": 390,
+      "theme": "dark",
+      "overflow": false,
+      "tail": "入节点与连线继续保留，不会被删除或转换。\n\n关闭\n服务端凭据\nToken 不回传\n→\n读取画布\n按 UUID 请求\n→\n导入影策\n生成节点与连线\n更新于 2026年9月6日 02:04 · 保存不会读取外部画布\n保存修改\n3. 验证已保存的 LibTV 凭据\n\n使用服务端当前保存的 Token 发起一次只读请求，不会向 LibTV 或当前影策画布写入内容。\n\n本会话尚未验证\n可访问的 LibTV 画布 UUID\n验证连接\n验证会产生一次真实的外部只读请求，但不会保存画布内容。"
+    },
+    {
+      "path": "/admin/settings/system-update",
+      "width": 390,
+      "theme": "dark",
+      "overflow": false,
+      "tail": "过后才允许切换服务。\n\n更新器未连接\nHost Updater\n\n当前部署未安装 Host Updater\n\n失败\n更新进度\n\n操作状态和日志由宿主机持久化，服务重启后仍可读取。\n\n等待检查\n\n检查更新后，这里会显示完整操作记录。\n\n备份与回退\n\n只使用最近一次通过 ZIP 结构与 SHA-256 校验的备份。\n\n暂无备份\n\n首次开始更新时会自动创建数据库与数据目录 ZIP；备份失败将直接中止更新。\n\n人工回退同样会执行停服、数据库恢复、旧镜像启动和健康验证。\n回退到上一版本"
+    },
+    {
+      "path": "/share/canvas/missing-test",
+      "width": 390,
+      "theme": "dark",
+      "overflow": false,
+      "tail": "帧镜共享画布\n分享链接不可用\n\n分享链接无效或已失效。链接可能已过期或被撤销；网络恢复后可重新读取，仍不可用时请联系分享者。\n\n重新读取\n返回首页\n登录帧镜"
+    },
+    {
+      "path": "/missing-page",
+      "width": 390,
+      "theme": "dark",
+      "overflow": false,
+      "tail": "404\n\n页面导航\n\n页面不存在\n\n这个地址没有对应的页面，可能已经移动或被合并到其他入口。\n\n返回首页"
+    },
+    {
+      "path": "/test-voice-recording",
+      "width": 390,
+      "theme": "dark",
+      "overflow": false,
+      "tail": "内部原型\n\n实时语音转写\n验证录音、波形与浏览器语音识别回填。识别能力由浏览器提供，可能需要联网；本页不发送对话。\nMVP · 本地验证\n文本输入（语音转写结果会自动填入）\n0 字\n验证输入\n1\n开始录音\n2\n自动转写\n3\n确认输入\n使用说明：\n点击麦克风按钮，输入行内展开波形录制条并自动开始录音\n波形动画实时显示音量变化\n点击停止按钮完成录制，回填浏览器识别的文字\n识别结果可编辑，点击验证输入完成本地检查\n转写失败时在录制条内提示，可点击麦克风重试"
+    },
+    {
+      "path": "/admin",
+      "width": 1440,
+      "theme": "light",
+      "overflow": false,
+      "tail": "用无法完成费用估算\n0/0\n深度分析\n\n按模型、用户或异常类型继续核对当前统计范围。\n\n模型价格配置\n模型分析\n用户活动\n异常定位\n模型\t任务 / 请求\t用户\t任务成功率\t请求成功率\tP50 / P95\tToken（入 / 出 / 缓存）\t媒体 / 视频秒\t估算费用\n\n模型\n\t\n任务 / 请求\n\t\n用户\n\t\n任务成功率\n\t\n请求成功率\n\t\nP50 / P95\n\t\nToken（入 / 出 / 缓存）\n\t\n媒体 / 视频秒\n\t\n估算费用\n\n\n暂无数据\n共 0 条\n20 条/页\n1"
+    },
+    {
+      "path": "/admin/plugins",
+      "width": 1440,
+      "theme": "light",
+      "overflow": false,
+      "tail": "ions\nv1.0.0\nnewapi-channel-2\n·\n未提供插件说明\n\t\n系统协议\n\t\n全局生效\n管理员统一控制\n\t\n已开放\n\t\n\n\nNovita 视频\nv1.0.0\nnovita-video\n·\n未提供插件说明\n\t\n系统协议\n\t\n全局生效\n管理员统一控制\n\t\n已开放\n\t\n\n\nOpenAI Audio\nv1.0.0\nopenai-audio\n·\n未提供插件说明\n\t\n系统协议\n\t\n全局生效\n管理员统一控制\n\t\n已开放\n\t\n1-20 / 共 25 条\n20 条/页\n1\n2"
+    },
+    {
+      "path": "/admin/prompt-templates",
+      "width": 1440,
+      "theme": "light",
+      "overflow": false,
+      "tail": "v3\t启用中\t2026/9/6 01:53:12\t\n基于此版本新建\n启用版本\n删除版本\n\n\t\n分镜修复\n分镜\n\t\n默认分镜修复模板\nv1 · 178 字符\n\t\nstoryboard-plan/v3\t启用中\t2026/9/6 01:53:12\t\n基于此版本新建\n启用版本\n删除版本\n\n\t\n分镜视频\n生成\n\t\n默认分镜视频模板\nv1 · 171 字符\n\t\n文本\t启用中\t2026/9/6 01:53:12\t\n基于此版本新建\n启用版本\n删除版本\n1-8 / 共 8 条\n20 条/页\n1"
+    },
+    {
+      "path": "/admin/resources",
+      "width": 1440,
+      "theme": "light",
+      "overflow": false,
+      "tail": "3c2ccebc\n\t图片\t已就绪\t本地\t68 B\t--\t2026/9/6 02:10:19\t\n预览\n下载\n删除\n\n\n\t\n0a3c9b81888135b50258c88b12dcd61a.png\nc9c207c5a74afa4715b52b9f375d510a\n\t\n隔离验收管理员\n01f3637b7d7a2a221ae5fb9d3c2ccebc\n\t图片\t已就绪\t本地\t68 B\t--\t2026/9/6 02:09:40\t\n预览\n下载\n删除\n1-2 / 共 2 条\n20 条/页\n1"
+    },
+    {
+      "path": "/admin/settings/drawing-engine",
+      "width": 1440,
+      "theme": "light",
+      "overflow": false,
+      "tail": "选择新建绘图默认编辑器\n\n仅影响之后新建的绘图，不转换已有节点。\n\nExcalidraw\nExcalidraw\n已选择\n无需授权，适合草图、结构标注和轻量协作。\ntldraw\n可用\n需要浏览器端 License Key，也用于打开已有 tldraw 绘图。\n2. 配置 tldraw 授权（按需）\n\n选择 tldraw 或需要打开已有 tldraw 绘图时配置。\n\n后台已配置\ntldraw License Key\n\n留空时使用部署环境授权；两处都未配置时 tldraw 不可用。"
+    },
+    {
+      "path": "/admin/settings/runtime-policy",
+      "width": 1440,
+      "theme": "light",
+      "overflow": false,
+      "tail": "并发、超时和上游故障保护。\n\n自定义渠道并发\n个\n单账号同时进行的自定义渠道请求数。\n自定义渠道请求体\nMB\n中转到自定义上游的请求体上限。\n自定义渠道响应体\nMB\n自定义上游 JSON 与流式响应的读取上限。\n自定义渠道超时\n分钟\n自定义渠道连接与响应的最长等待时间。\n系统渠道请求体\nMB\n中转到系统渠道的请求体上限。\n系统渠道响应体\nMB\n系统渠道上游响应的读取上限。\n熔断失败次数\n次\n一分钟内连续失败达到该值后打开熔断。\n熔断持续时间\n秒\n渠道熔断打开后拒绝请求的时间。"
+    },
+    {
+      "path": "/admin/settings/ark-private-assets",
+      "width": 1440,
+      "theme": "light",
+      "overflow": false,
+      "tail": "保存修改\n1. 配置方舟项目与 IAM 凭据\n\n凭据仅保存在服务端，用于创建素材组、上传图片和查询审核状态。\n\n已配置\nRegion\nArk ProjectName\nIAM AccessKey\nIAM SecretKey（已配置 · 留空不改）\nAccessKey 不变时留空可保留原密钥。\n2. 是否启用可信素材同步\n\n启用后，符合条件的 Seedance 参考图会在生成前导入方舟素材库。\n\n已停用\n自动导入可信参考素材\n\n关闭只停止新素材同步，不删除已有素材和绑定。\n\n停用"
+    },
+    {
+      "path": "/admin/settings/response-interception",
+      "width": 1440,
+      "theme": "light",
+      "overflow": false,
+      "tail": "忽略英文大小写，使用包含判断。\n5 / 500\n命中后整条替换，不是局部替换。\n保存不会调用模型或制造测试错误 · 原始上游内容继续保留\n保存修改\n3. 本地预览用户最终文案\n\n使用当前草稿模拟服务端的裁剪、忽略大小写包含和首条命中逻辑；内容不会发送或保存。\n\n仅当前浏览器\n模拟上游错误文案\n\n只在内存中计算，不进入保存请求、审计或请求明细。\n\n用户最终可见文案\n等待输入\n\n输入模拟错误后，这里会显示按当前开关和规则计算的结果。\n\n预览不验证真实上游响应，也不会触发模型请求。"
+    },
+    {
+      "path": "/admin/settings/third-party",
+      "width": 1440,
+      "theme": "light",
+      "overflow": false,
+      "tail": "入节点与连线继续保留，不会被删除或转换。\n\n关闭\n服务端凭据\nToken 不回传\n→\n读取画布\n按 UUID 请求\n→\n导入影策\n生成节点与连线\n更新于 2026年9月6日 02:04 · 保存不会读取外部画布\n保存修改\n3. 验证已保存的 LibTV 凭据\n\n使用服务端当前保存的 Token 发起一次只读请求，不会向 LibTV 或当前影策画布写入内容。\n\n本会话尚未验证\n可访问的 LibTV 画布 UUID\n验证连接\n验证会产生一次真实的外部只读请求，但不会保存画布内容。"
+    },
+    {
+      "path": "/admin/settings/system-update",
+      "width": 1440,
+      "theme": "light",
+      "overflow": false,
+      "tail": "过后才允许切换服务。\n\n更新器未连接\nHost Updater\n\n当前部署未安装 Host Updater\n\n失败\n更新进度\n\n操作状态和日志由宿主机持久化，服务重启后仍可读取。\n\n等待检查\n\n检查更新后，这里会显示完整操作记录。\n\n备份与回退\n\n只使用最近一次通过 ZIP 结构与 SHA-256 校验的备份。\n\n暂无备份\n\n首次开始更新时会自动创建数据库与数据目录 ZIP；备份失败将直接中止更新。\n\n人工回退同样会执行停服、数据库恢复、旧镜像启动和健康验证。\n回退到上一版本"
+    },
+    {
+      "path": "/share/canvas/missing-test",
+      "width": 1440,
+      "theme": "light",
+      "overflow": false,
+      "tail": "帧镜共享画布\n分享链接不可用\n\n分享链接无效或已失效。链接可能已过期或被撤销；网络恢复后可重新读取，仍不可用时请联系分享者。\n\n重新读取\n返回首页\n登录帧镜"
+    },
+    {
+      "path": "/missing-page",
+      "width": 1440,
+      "theme": "light",
+      "overflow": false,
+      "tail": "404\n\n页面导航\n\n页面不存在\n\n这个地址没有对应的页面，可能已经移动或被合并到其他入口。\n\n返回首页"
+    },
+    {
+      "path": "/test-voice-recording",
+      "width": 1440,
+      "theme": "light",
+      "overflow": false,
+      "tail": "内部原型\n\n实时语音转写\n验证录音、波形与浏览器语音识别回填。识别能力由浏览器提供，可能需要联网；本页不发送对话。\nMVP · 本地验证\n文本输入（语音转写结果会自动填入）\n0 字\n验证输入\n1\n开始录音\n2\n自动转写\n3\n确认输入\n使用说明：\n点击麦克风按钮，输入行内展开波形录制条并自动开始录音\n波形动画实时显示音量变化\n点击停止按钮完成录制，回填浏览器识别的文字\n识别结果可编辑，点击验证输入完成本地检查\n转写失败时在录制条内提示，可点击麦克风重试"
+    },
+    {
+      "path": "/admin",
+      "width": 1440,
+      "theme": "dark",
+      "overflow": false,
+      "tail": "用无法完成费用估算\n0/0\n深度分析\n\n按模型、用户或异常类型继续核对当前统计范围。\n\n模型价格配置\n模型分析\n用户活动\n异常定位\n模型\t任务 / 请求\t用户\t任务成功率\t请求成功率\tP50 / P95\tToken（入 / 出 / 缓存）\t媒体 / 视频秒\t估算费用\n\n模型\n\t\n任务 / 请求\n\t\n用户\n\t\n任务成功率\n\t\n请求成功率\n\t\nP50 / P95\n\t\nToken（入 / 出 / 缓存）\n\t\n媒体 / 视频秒\n\t\n估算费用\n\n\n暂无数据\n共 0 条\n20 条/页\n1"
+    },
+    {
+      "path": "/admin/plugins",
+      "width": 1440,
+      "theme": "dark",
+      "overflow": false,
+      "tail": "ions\nv1.0.0\nnewapi-channel-2\n·\n未提供插件说明\n\t\n系统协议\n\t\n全局生效\n管理员统一控制\n\t\n已开放\n\t\n\n\nNovita 视频\nv1.0.0\nnovita-video\n·\n未提供插件说明\n\t\n系统协议\n\t\n全局生效\n管理员统一控制\n\t\n已开放\n\t\n\n\nOpenAI Audio\nv1.0.0\nopenai-audio\n·\n未提供插件说明\n\t\n系统协议\n\t\n全局生效\n管理员统一控制\n\t\n已开放\n\t\n1-20 / 共 25 条\n20 条/页\n1\n2"
+    },
+    {
+      "path": "/admin/prompt-templates",
+      "width": 1440,
+      "theme": "dark",
+      "overflow": false,
+      "tail": "v3\t启用中\t2026/9/6 01:53:12\t\n基于此版本新建\n启用版本\n删除版本\n\n\t\n分镜修复\n分镜\n\t\n默认分镜修复模板\nv1 · 178 字符\n\t\nstoryboard-plan/v3\t启用中\t2026/9/6 01:53:12\t\n基于此版本新建\n启用版本\n删除版本\n\n\t\n分镜视频\n生成\n\t\n默认分镜视频模板\nv1 · 171 字符\n\t\n文本\t启用中\t2026/9/6 01:53:12\t\n基于此版本新建\n启用版本\n删除版本\n1-8 / 共 8 条\n20 条/页\n1"
+    },
+    {
+      "path": "/admin/resources",
+      "width": 1440,
+      "theme": "dark",
+      "overflow": false,
+      "tail": "3c2ccebc\n\t图片\t已就绪\t本地\t68 B\t--\t2026/9/6 02:10:19\t\n预览\n下载\n删除\n\n\n\t\n0a3c9b81888135b50258c88b12dcd61a.png\nc9c207c5a74afa4715b52b9f375d510a\n\t\n隔离验收管理员\n01f3637b7d7a2a221ae5fb9d3c2ccebc\n\t图片\t已就绪\t本地\t68 B\t--\t2026/9/6 02:09:40\t\n预览\n下载\n删除\n1-2 / 共 2 条\n20 条/页\n1"
+    },
+    {
+      "path": "/admin/settings/drawing-engine",
+      "width": 1440,
+      "theme": "dark",
+      "overflow": false,
+      "tail": "选择新建绘图默认编辑器\n\n仅影响之后新建的绘图，不转换已有节点。\n\nExcalidraw\nExcalidraw\n已选择\n无需授权，适合草图、结构标注和轻量协作。\ntldraw\n可用\n需要浏览器端 License Key，也用于打开已有 tldraw 绘图。\n2. 配置 tldraw 授权（按需）\n\n选择 tldraw 或需要打开已有 tldraw 绘图时配置。\n\n后台已配置\ntldraw License Key\n\n留空时使用部署环境授权；两处都未配置时 tldraw 不可用。"
+    },
+    {
+      "path": "/admin/settings/runtime-policy",
+      "width": 1440,
+      "theme": "dark",
+      "overflow": false,
+      "tail": "并发、超时和上游故障保护。\n\n自定义渠道并发\n个\n单账号同时进行的自定义渠道请求数。\n自定义渠道请求体\nMB\n中转到自定义上游的请求体上限。\n自定义渠道响应体\nMB\n自定义上游 JSON 与流式响应的读取上限。\n自定义渠道超时\n分钟\n自定义渠道连接与响应的最长等待时间。\n系统渠道请求体\nMB\n中转到系统渠道的请求体上限。\n系统渠道响应体\nMB\n系统渠道上游响应的读取上限。\n熔断失败次数\n次\n一分钟内连续失败达到该值后打开熔断。\n熔断持续时间\n秒\n渠道熔断打开后拒绝请求的时间。"
+    },
+    {
+      "path": "/admin/settings/ark-private-assets",
+      "width": 1440,
+      "theme": "dark",
+      "overflow": false,
+      "tail": "保存修改\n1. 配置方舟项目与 IAM 凭据\n\n凭据仅保存在服务端，用于创建素材组、上传图片和查询审核状态。\n\n已配置\nRegion\nArk ProjectName\nIAM AccessKey\nIAM SecretKey（已配置 · 留空不改）\nAccessKey 不变时留空可保留原密钥。\n2. 是否启用可信素材同步\n\n启用后，符合条件的 Seedance 参考图会在生成前导入方舟素材库。\n\n已停用\n自动导入可信参考素材\n\n关闭只停止新素材同步，不删除已有素材和绑定。\n\n停用"
+    },
+    {
+      "path": "/admin/settings/response-interception",
+      "width": 1440,
+      "theme": "dark",
+      "overflow": false,
+      "tail": "忽略英文大小写，使用包含判断。\n5 / 500\n命中后整条替换，不是局部替换。\n保存不会调用模型或制造测试错误 · 原始上游内容继续保留\n保存修改\n3. 本地预览用户最终文案\n\n使用当前草稿模拟服务端的裁剪、忽略大小写包含和首条命中逻辑；内容不会发送或保存。\n\n仅当前浏览器\n模拟上游错误文案\n\n只在内存中计算，不进入保存请求、审计或请求明细。\n\n用户最终可见文案\n等待输入\n\n输入模拟错误后，这里会显示按当前开关和规则计算的结果。\n\n预览不验证真实上游响应，也不会触发模型请求。"
+    },
+    {
+      "path": "/admin/settings/third-party",
+      "width": 1440,
+      "theme": "dark",
+      "overflow": false,
+      "tail": "入节点与连线继续保留，不会被删除或转换。\n\n关闭\n服务端凭据\nToken 不回传\n→\n读取画布\n按 UUID 请求\n→\n导入影策\n生成节点与连线\n更新于 2026年9月6日 02:04 · 保存不会读取外部画布\n保存修改\n3. 验证已保存的 LibTV 凭据\n\n使用服务端当前保存的 Token 发起一次只读请求，不会向 LibTV 或当前影策画布写入内容。\n\n本会话尚未验证\n可访问的 LibTV 画布 UUID\n验证连接\n验证会产生一次真实的外部只读请求，但不会保存画布内容。"
+    },
+    {
+      "path": "/admin/settings/system-update",
+      "width": 1440,
+      "theme": "dark",
+      "overflow": false,
+      "tail": "过后才允许切换服务。\n\n更新器未连接\nHost Updater\n\n当前部署未安装 Host Updater\n\n失败\n更新进度\n\n操作状态和日志由宿主机持久化，服务重启后仍可读取。\n\n等待检查\n\n检查更新后，这里会显示完整操作记录。\n\n备份与回退\n\n只使用最近一次通过 ZIP 结构与 SHA-256 校验的备份。\n\n暂无备份\n\n首次开始更新时会自动创建数据库与数据目录 ZIP；备份失败将直接中止更新。\n\n人工回退同样会执行停服、数据库恢复、旧镜像启动和健康验证。\n回退到上一版本"
+    },
+    {
+      "path": "/share/canvas/missing-test",
+      "width": 1440,
+      "theme": "dark",
+      "overflow": false,
+      "tail": "帧镜共享画布\n分享链接不可用\n\n分享链接无效或已失效。链接可能已过期或被撤销；网络恢复后可重新读取，仍不可用时请联系分享者。\n\n重新读取\n返回首页\n登录帧镜"
+    },
+    {
+      "path": "/missing-page",
+      "width": 1440,
+      "theme": "dark",
+      "overflow": false,
+      "tail": "404\n\n页面导航\n\n页面不存在\n\n这个地址没有对应的页面，可能已经移动或被合并到其他入口。\n\n返回首页"
+    },
+    {
+      "path": "/test-voice-recording",
+      "width": 1440,
+      "theme": "dark",
+      "overflow": false,
+      "tail": "内部原型\n\n实时语音转写\n验证录音、波形与浏览器语音识别回填。识别能力由浏览器提供，可能需要联网；本页不发送对话。\nMVP · 本地验证\n文本输入（语音转写结果会自动填入）\n0 字\n验证输入\n1\n开始录音\n2\n自动转写\n3\n确认输入\n使用说明：\n点击麦克风按钮，输入行内展开波形录制条并自动开始录音\n波形动画实时显示音量变化\n点击停止按钮完成录制，回填浏览器识别的文字\n识别结果可编辑，点击验证输入完成本地检查\n转写失败时在录制条内提示，可点击麦克风重试"
+    }
+  ],
+  "errors": []
+}
