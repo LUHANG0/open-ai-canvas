@@ -5,6 +5,18 @@ description: 在宿主机启动影策前后端开发服务
 
 # 本地开发
 
+## 工具链与依赖
+
+先安装仓库根目录 `.bun-version` 指定的 Bun，再从根目录运行：
+
+```bash
+bun scripts/check-toolchain.mjs
+```
+
+检查会核对当前 Bun、两个 package.json、唯一锁文件、Docker 镜像标签和 CI 版本来源。版本不一致时先切换 Bun；不要删除锁文件重新解析整个依赖树。`web/` 和 `canvas-agent/` 分别保留自己的 `bun.lock`，都使用 `bun install --frozen-lockfile`。
+
+Canvas Agent 继续使用 Node.js 运行，`npm run build` / `npm test` 只执行已有脚本，不安装另一套依赖。Go Backend 与原生 ComfyUI Bridge 仍按各自 `go.mod` 构建。
+
 ## 一键启动（Windows PowerShell）
 
 在仓库根目录执行：
@@ -15,6 +27,7 @@ description: 在宿主机启动影策前后端开发服务
 
 脚本会：
 
+- 先执行工具链检查，版本错误时停止，不启动服务；
 - 使用 `.local/project-workbench-debug` 作为后端 SQLite 开发数据目录；
 - 创建 `.local/cache/go-build` 和 `.local/cache/go-mod` 缓存目录；
 - 首次启动时，如果 `web/node_modules` 不存在，执行 `bun install --frozen-lockfile`；
@@ -50,7 +63,7 @@ go run ./cmd/server
 
 ```bash
 cd web
-bun install
+bun install --frozen-lockfile
 bun run dev
 ```
 
@@ -66,3 +79,19 @@ LOCAL_UID=$(id -u) LOCAL_GID=$(id -g) \
 ```
 
 Docker 开发编排也使用 `.local/project-workbench-debug`，并默认暴露前端 `3000` 和后端 `8080`。端口冲突时，可通过 `CANVAS_WEB_HOST_PORT` 和 `CANVAS_BACKEND_HOST_PORT` 调整宿主机端口。
+
+## 验证改动
+
+工具链、依赖或前端改动需要复验时，从仓库根目录依次运行：
+
+```bash
+bun scripts/check-toolchain.mjs
+(cd web && bun install --frozen-lockfile)
+(cd canvas-agent && bun install --frozen-lockfile)
+(cd web && bun run test && bun run build)
+(cd canvas-agent && npm run build && npm test)
+```
+
+`web` 的构建包含原生 Bridge、类型检查、Vite 打包与体积预算。Canvas Agent 的测试保持 Node.js 执行语义。浏览器工作流按改动范围另外运行 `web/package.json` 中的 E2E 脚本，不使用真实账号或媒体做写入验收。
+
+`docs/` 当前只有文档源，没有独立 package.json、Next.js 或 Fumadocs 构建配置；修改文档时检查链接和命令，不执行 `cd docs && bun run build`。

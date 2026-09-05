@@ -85,7 +85,7 @@ Canvas Agent ↔ 浏览器画布 ↔ Codex MCP / 本机 CLI
 
 ### 环境要求
 
-- Bun
+- Bun（版本以根目录 `.bun-version` 为准）
 - Go 1.25
 - Node.js 18+（使用 Canvas Agent 时需要）
 - Docker 与 Docker Compose（仅容器方式需要）
@@ -98,6 +98,7 @@ Canvas Agent ↔ 浏览器画布 ↔ Codex MCP / 本机 CLI
 git clone https://github.com/LUHANG0/open-ai-canvas.git
 cd open-ai-canvas
 mkdir -p .local/project-workbench-debug .local/cache/go-build .local/cache/go-mod
+bun scripts/check-toolchain.mjs
 ```
 
 启动后端：
@@ -225,7 +226,7 @@ npm run build
 node dist/index.js
 ```
 
-Canvas Agent 以 `bun.lock` 和 Bun 1.3.9 作为唯一依赖安装基线；`npm` 仅运行已有 scripts，不使用 `npm install`。
+Web 与 Canvas Agent 均以各自的 `bun.lock` 和根目录 `.bun-version` 作为唯一依赖安装基线；`npm` 仅运行已有 scripts，不使用 `npm install`。工具链检查与常用验证命令见[本地开发](docs/content/docs/backend/local-development.mdx)。
 
 启动后，将终端输出的 Local URL 和 Connect token 填入画布右上角的 Agent 面板。Agent 默认只监听 `127.0.0.1`，连接 token 不应写入 URL、日志或任务正文。
 

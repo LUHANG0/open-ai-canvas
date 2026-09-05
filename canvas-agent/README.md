@@ -17,7 +17,7 @@ npm run build
 node dist/index.js
 ```
 
-仓库依赖以 `bun.lock` 为唯一锁文件，并固定使用 Bun 1.3.9 安装；`npm` 只用于运行兼容的 package scripts，不使用 `npm install` 生成第二套依赖树或锁文件。`zod` 的直接依赖与 override 使用同一精确版本，避免 npm 兼容检查触发 `EOVERRIDE`。
+仓库依赖以 `bun.lock` 为唯一锁文件，安装版本统一读取仓库根目录 `.bun-version`；从仓库根目录运行 `bun scripts/check-toolchain.mjs` 核对工具链。`npm` 只用于运行兼容的 package scripts，不使用 `npm install` 生成第二套依赖树或锁文件。Agent 的运行时仍为 Node.js；已发布 npm 包的使用方式不变。`zod` 的直接依赖与 override 使用同一精确版本，避免 npm 兼容检查触发 `EOVERRIDE`。
 
 启动后会输出本机地址和 token：
 

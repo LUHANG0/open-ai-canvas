@@ -21,7 +21,7 @@
 | `backend/` | Go 1.25、Gin、GORM、SQLite/PostgreSQL、Redis 协调 | `backend/cmd/server/main.go` | 登录、权限、业务 API、任务队列、资源、模型中转和后台管理 |
 | `canvas-agent/` | Node.js 18+、TypeScript、Express、MCP SDK、Codex SDK | `canvas-agent/src/index.ts` | 本机 Agent、MCP、画布会话桥接和本地渠道 |
 | `plugins/yingce/` | Codex App 插件清单和 skills | `.codex-plugin/plugin.json` | 将 Canvas Agent MCP 接入 Codex App |
-| `docs/` | Next.js、Fumadocs、MDX | `docs/content/docs/` | 面向用户和开发者的专题文档；构建配置见 `docs/source.config.ts` |
+| `docs/` | Markdown、MDX 文档源 | `docs/index.md` | 面向用户和开发者的专题文档；当前没有独立文档站 package.json 或构建入口 |
 
 根目录的 `Dockerfile` 构建前端静态镜像；`nginx.conf` 托管 SPA 并代理后端。`docker-compose.dev.yml` 是源码热更新开发编排，`docker-compose.local.yml` 是本地构建运行，`docker-compose.deploy.yml` 是 PostgreSQL + Redis 部署编排。
 
@@ -32,6 +32,7 @@
 3. 先形成目标边界：页面负责什么、service 负责什么、handler/service/repository 如何分层、数据和错误如何流动。新增 helper 必须消除真实重复或隔离明确协议，不能只透传参数。
 4. 检查 `git status --short`。不覆盖、不回滚、不清理非本次产生的变更；不使用 `git reset --hard`、`git checkout --` 或宽范围删除。
 5. 手工编辑使用 `apply_patch`；默认使用 ASCII，业务中文或已有 Unicode 文件除外。注释只解释非直观算法、核心入口、安全边界和降级原因。
+6. Web 与 Canvas Agent 的依赖安装统一使用根目录 `.bun-version` 指定的 Bun 和各自的 `bun.lock`，执行 `bun install --frozen-lockfile`。先运行 `bun scripts/check-toolchain.mjs` 检查本机版本、清单、CI 与 Docker；不生成 pnpm/npm/Yarn 第二套锁文件。Canvas Agent 继续用 Node.js 运行，`npm` 可运行既有 scripts。
 
 ## 3. 目录职责和依赖方向
 
@@ -129,7 +130,7 @@
 - 前端：`cd web && bun run build`；专项测试用 `bun test ...`。
 - 后端：`cd backend && go test ./...`；涉及 PostgreSQL、资源、任务或权限时补对应集成/冒烟路径。
 - Canvas Agent：`cd canvas-agent && npm test`，构建用 `npm run build`。
-- 文档站：`cd docs && bun run types:check` 或 `bun run build`。
+- 文档：检查实际链接、命令与索引；当前 `docs/` 没有 package.json，不执行不存在的文档站构建命令。
 - UI 变更能浏览器验证时，检查关键路由、明暗主题、滚动、弹窗、空态和核心交互；不能验证时说明替代依据，不把静态阅读或 `git diff` 写成运行验证。
 
 同类失败连续三次时停止盲试，记录现象、已排除项和新假设，再切换路径或请求用户决策。
