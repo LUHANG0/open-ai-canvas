@@ -44,7 +44,7 @@ describe("app provider route theme", () => {
     test("places App-level feedback holders inside the route-aware theme", async () => {
         const [providerSource, applicationSource] = await Promise.all([Bun.file(new URL("../src/components/layout/app-providers.tsx", import.meta.url)).text(), Bun.file(new URL("../src/application.tsx", import.meta.url)).text()]);
         const provider = providerSource.replace(/\s+/g, " ");
-        const themedTreeStart = provider.indexOf("<ConfigProvider locale={zhCN} theme={antTheme}>");
+        const themedTreeStart = provider.indexOf("<ConfigProvider locale={zhCN} theme={antTheme}");
         const themedTreeEnd = provider.indexOf("</ConfigProvider>", themedTreeStart);
 
         expect(provider).toContain("useSyncExternalStore(pathnameStore.subscribe, pathnameStore.getSnapshot, pathnameStore.getSnapshot)");

@@ -32,18 +32,19 @@ describe("workspace route loading", () => {
         expect(navigation).toContain("onFocus={() => preloadWorkspaceRoute(linkTo)}");
     });
 
-    test("uses a quiet workspace skeleton for initial hydration", () => {
+    test("shares brand motion between startup and route boundaries without delaying completion", () => {
         const loader = source("../src/components/ui/aceternity/full-screen-loader.tsx");
-        const css = source("../src/styles/globals.css");
+        const css = source("../src/styles/brand-loading.css");
 
-        expect(loader).toContain("full-screen-loader-topbar");
-        expect(loader).toContain("full-screen-loader-rail");
-        expect(loader).toContain("LoadingSignal");
+        expect(loader).toContain("<BrandLoader label={label} detail={detail} branded />");
+        expect(loader).toContain("<BrandLoader label={label} />");
+        expect(loader).toContain("window.clearTimeout(timer)");
         expect(loader).not.toContain("YINGCE STUDIO");
         expect(loader).not.toContain("loading-cue");
-        expect(css).toContain("@keyframes loading-signal-spin");
+        expect(css).toContain("@keyframes brand-frame-light");
         expect(css).toContain("@media (prefers-reduced-motion: reduce)");
         expect(css).not.toContain("@keyframes loading-cue-pulse");
+        expect(css).toContain(".no-motion .brand-loading-frame path");
     });
 });
 

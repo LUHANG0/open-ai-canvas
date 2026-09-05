@@ -1,3 +1,5 @@
+import { BrandLoadingIndicator } from "@/components/ui/brand-loader";
+
 export type CanvasInlinePanelLoadingProps = {
     label: string;
     minHeight: number;
@@ -14,7 +16,7 @@ export function CanvasInlinePanelLoading({ label, minHeight, onClose, closeLabel
             role="status"
             aria-live="polite"
         >
-            <span className="pt-1 font-medium">{label}</span>
+            <span className="brand-loading-feedback pt-1 font-medium"><BrandLoadingIndicator />{label}</span>
             <button type="button" className="shrink-0 rounded-md px-2 py-1 text-xs text-foreground/60 transition-colors hover:bg-foreground/5 hover:text-foreground" onClick={onClose} aria-label={closeLabel}>
                 关闭
             </button>

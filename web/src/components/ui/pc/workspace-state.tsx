@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { useId } from "react";
 
 import { WorkspaceSignalIcon, type WorkspaceSignalIconVariant } from "@/components/ui/aceternity/workspace-signal-icon";
+import { BrandLoadingIndicator } from "@/components/ui/brand-loader";
 import { cn } from "@/lib/utils";
 
 export type WorkspaceStateProps = {
@@ -27,7 +28,7 @@ export function WorkspaceState({ icon = "empty", title, description, action, com
             aria-describedby={description ? descriptionId : undefined}
             aria-busy={icon === "loading" || undefined}
         >
-            <WorkspaceSignalIcon variant={icon} size={compact ? "md" : "lg"} />
+            {icon === "loading" ? <BrandLoadingIndicator size={compact ? "sm" : "md"} /> : <WorkspaceSignalIcon variant={icon} size={compact ? "md" : "lg"} />}
             <h2 id={titleId} className="workspace-state-title mt-4 text-[var(--fs-body-lg)] font-semibold leading-6 text-foreground">
                 {title}
             </h2>
@@ -67,7 +68,7 @@ export function WorkspaceLoadingState({ label = "正在加载内容", detail, ro
     return (
         <section className={cn("workspace-loading-state py-8", className)} role="status" aria-busy="true" aria-live="polite" aria-labelledby={labelId} aria-describedby={detail ? detailId : undefined}>
             <div className="mb-5 flex items-center gap-3">
-                <WorkspaceSignalIcon variant="loading" size="sm" />
+                <BrandLoadingIndicator size="sm" />
                 <div>
                     <div id={labelId} className="workspace-loading-state-title text-sm font-medium">
                         {label}

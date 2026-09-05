@@ -14,6 +14,7 @@ import { usePluginStore } from "@/stores/use-plugin-store";
 import { fetchPluginRuntimeState, setUserPluginEnabled } from "@/services/api/plugins";
 import { useUserStore } from "@/stores/use-user-store";
 import { useBranding } from "@/components/branding/branding-provider";
+import { BrandLoadingIndicator } from "@/components/ui/brand-loader";
 
 export function AppProviders({ children, router }: { children: ReactNode; router: AppThemeRouter }) {
     const theme = useThemeStore((state) => state.theme);
@@ -80,10 +81,10 @@ export function AppProviders({ children, router }: { children: ReactNode; router
     // DEV 复现台必须是同源本地确定性场景：AuthSessionHydrator 会打 /api/auth/session，
     // ClientRootInit 会打 /api/model-catalog；没有后端时产生的错误会污染导演台和画布的验收判据。
     // 只匹配显式的 DEV 复现路由；生产构建中 import.meta.env.DEV 为 false，本分支被摇树删除。
-    const isolateDevRepro = import.meta.env.DEV && typeof window !== "undefined" && (window.location.pathname === "/dev/director-repro" || window.location.pathname.startsWith("/dev/canvas-repro/") || window.location.pathname === "/dev/project-delivery-repro");
+    const isolateDevRepro = import.meta.env.DEV && typeof window !== "undefined" && (window.location.pathname === "/dev/director-repro" || window.location.pathname.startsWith("/dev/canvas-repro/") || window.location.pathname === "/dev/project-delivery-repro" || window.location.pathname === "/dev/brand-loading");
 
     return (
-        <ConfigProvider locale={zhCN} theme={antTheme}>
+        <ConfigProvider locale={zhCN} theme={antTheme} spin={{ indicator: <BrandLoadingIndicator /> }} button={{ loadingIcon: <BrandLoadingIndicator /> }}>
             <App message={{ duration: 3, maxCount: 3 }} notification={{ duration: 4.5, maxCount: 3, placement: "topRight" }}>
                 <QueryClientProvider client={appQueryClient}>
                     {isolateDevRepro ? (
