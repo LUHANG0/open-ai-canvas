@@ -54,7 +54,7 @@ export default function SystemUpdatePage() {
             setLoadError(errorMessage);
             if (status && activePhases.has(status.operation.phase)) setReconnecting(true);
         } finally {
-            if (mountedRef.current && sequence === loadSequence.current && initial) setLoading(false);
+            if (mountedRef.current && sequence === loadSequence.current) setLoading(false);
         }
     }, [status]);
 
