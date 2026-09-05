@@ -777,6 +777,7 @@ export default function ProjectChaptersView({ detail, refreshProject }: ProjectD
                                                 <button
                                                     type="button"
                                                     onClick={() => selectChapter(unit.id)}
+                                                    aria-current={unit.id === selectedUnit?.id ? "true" : undefined}
                                                     className="flex min-w-0 flex-1 items-center gap-2.5 py-2 pr-14 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--workspace-accent)]"
                                                 >
                                                     <span
@@ -832,7 +833,7 @@ export default function ProjectChaptersView({ detail, refreshProject }: ProjectD
                                 })}
                             </div>
                         ) : (
-                            <div className="px-3 py-8 text-center text-xs text-foreground/40">没有匹配的章节</div>
+                            <WorkspaceState icon="empty" compact title="没有匹配的章节" description="换一个标题或章节序号，或清空搜索查看全部。" action={<Button onClick={() => setSearchQuery("")}>清空搜索</Button>} />
                         )}
                     </div>
                 ) : (
@@ -875,10 +876,11 @@ export default function ProjectChaptersView({ detail, refreshProject }: ProjectD
                                     }}
                                     className="!h-auto !px-0 !py-0 !text-xl !font-semibold !leading-tight disabled:!cursor-wait disabled:!text-foreground"
                                     placeholder="章节标题"
+                                    aria-label="章节标题"
                                 />
                                 <div className="mt-2 flex flex-wrap items-center gap-2 text-[var(--fs-tiny)] text-foreground/42" aria-live="polite">
-                                    <span className={`sd-content-save-state ${dirty ? "is-dirty" : "is-saved"}`}>{dirty ? "有未保存修改" : "已保存"}</span>
-                                    <span>{dirty ? "本机草稿已记录" : `更新于 ${formatTime(selectedUnit.updatedAt)}`}</span>
+                                    <span className={`sd-content-save-state ${dirty ? "is-dirty" : "is-saved"}`}>{saveMutation.isPending ? "正在保存到服务端" : dirty ? "尚未保存到服务端" : "已保存到服务端"}</span>
+                                    <span>{dirty ? "离开前请保存；本机草稿仅用于恢复" : `更新于 ${formatTime(selectedUnit.updatedAt)}`}</span>
                                     <span>·</span>
                                     <span>{formatCount(wordCount)} 字</span>
                                     <span>·</span>

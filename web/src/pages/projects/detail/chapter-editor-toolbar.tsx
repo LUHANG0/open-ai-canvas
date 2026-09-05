@@ -1,30 +1,37 @@
-import type { ReactNode } from "react";
-import { Dropdown, Tooltip } from "antd";
+import { useState, type ReactNode } from "react";
+import { Dropdown, Input, Modal, Tooltip } from "antd";
 import type { Editor } from "@tiptap/react";
 import { AlignCenter, AlignJustify, AlignLeft, AlignRight, Bold, ChevronDown, Code2, Eraser, Highlighter, Italic, Link2, List, ListOrdered, Minus, MoreHorizontal, Quote, Redo2, Strikethrough, Underline, Undo2 } from "lucide-react";
 
 export function ChapterEditorToolbar({ editor }: { editor: Editor | null }) {
+    const [formatPrompt, setFormatPrompt] = useState<{ kind: "link" | "color" | "highlight"; value: string }>();
+    const closePrompt = () => { setFormatPrompt(undefined); editor?.commands.focus(); };
+    const applyFormat = () => {
+        if (!editor || !formatPrompt) return;
+        const value = formatPrompt.value.trim();
+        if (formatPrompt.kind === "link") {
+            if (!value) editor.chain().focus().unsetLink().run();
+            else editor.chain().focus().extendMarkRange("link").setLink({ href: value }).run();
+        } else if (value && formatPrompt.kind === "color") editor.chain().focus().setColor(value).run();
+        else if (value) editor.chain().focus().toggleHighlight({ color: value }).run();
+        closePrompt();
+    };
     const setLink = () => {
         if (!editor) return;
         const current = String(editor.getAttributes("link").href || "");
-        const href = window.prompt("输入链接地址", current);
-        if (href === null) return;
-        if (!href.trim()) editor.chain().focus().unsetLink().run();
-        else editor.chain().focus().extendMarkRange("link").setLink({ href: href.trim() }).run();
+        setFormatPrompt({ kind: "link", value: current });
     };
     const setColor = () => {
-        const color = window.prompt("输入文字颜色，例如 #d97706", String(editor?.getAttributes("textStyle").color || "#d97706"));
-        if (color?.trim()) editor?.chain().focus().setColor(color.trim()).run();
+        setFormatPrompt({ kind: "color", value: String(editor?.getAttributes("textStyle").color || "#d97706") });
     };
     const setHighlight = () => {
-        const color = window.prompt("输入高亮颜色，例如 #fef3c7", String(editor?.getAttributes("highlight").color || "#fef3c7"));
-        if (color?.trim()) editor?.chain().focus().toggleHighlight({ color: color.trim() }).run();
+        setFormatPrompt({ kind: "highlight", value: String(editor?.getAttributes("highlight").color || "#fef3c7") });
     };
     const blockLabel = editor?.isActive("heading", { level: 1 }) ? "标题 1" : editor?.isActive("heading", { level: 2 }) ? "标题 2" : editor?.isActive("heading", { level: 3 }) ? "标题 3" : "正文";
     const alignment = editor?.isActive({ textAlign: "center" }) ? "center" : editor?.isActive({ textAlign: "right" }) ? "right" : editor?.isActive({ textAlign: "justify" }) ? "justify" : "left";
     const alignmentIcon = alignment === "center" ? <AlignCenter className="size-3.5" /> : alignment === "right" ? <AlignRight className="size-3.5" /> : alignment === "justify" ? <AlignJustify className="size-3.5" /> : <AlignLeft className="size-3.5" />;
     return (
-        <div className="sd-content-editor-toolbar hide-scrollbar flex h-11 shrink-0 items-center gap-0.5 overflow-x-auto border-b border-border/70 px-3" aria-label="正文格式工具栏">
+        <><div className="sd-content-editor-toolbar hide-scrollbar flex h-11 shrink-0 items-center gap-0.5 overflow-x-auto border-b border-border/70 px-3" aria-label="正文格式工具栏">
             <EditorTool editor={editor} label="撤销" icon={<Undo2 className="size-3.5" />} onClick={() => editor?.chain().focus().undo().run()} />
             <EditorTool editor={editor} label="重做" icon={<Redo2 className="size-3.5" />} onClick={() => editor?.chain().focus().redo().run()} />
             <ToolbarDivider />
@@ -100,6 +107,9 @@ export function ChapterEditorToolbar({ editor }: { editor: Editor | null }) {
                 </button>
             </Dropdown>
         </div>
+        <Modal title={formatPrompt?.kind === "link" ? "编辑链接" : formatPrompt?.kind === "color" ? "文字颜色" : "高亮颜色"} open={Boolean(formatPrompt)} onCancel={closePrompt} onOk={applyFormat} okText="应用" cancelText="取消" destroyOnHidden afterOpenChange={(open) => { if (!open) editor?.commands.focus(); }}>
+            <Input autoFocus aria-label="格式值" value={formatPrompt?.value || ""} onChange={(event) => setFormatPrompt((current) => current ? { ...current, value: event.target.value } : current)} onPressEnter={applyFormat} placeholder={formatPrompt?.kind === "link" ? "输入链接地址，留空可移除链接" : "输入颜色，例如 #d97706"} />
+        </Modal></>
     );
 }
 
@@ -109,6 +119,7 @@ function EditorTool({ editor, label, icon, active = false, onClick }: { editor: 
             <button
                 type="button"
                 aria-label={label}
+                aria-pressed={label === "撤销" || label === "重做" ? undefined : active}
                 className={`grid size-7 shrink-0 place-items-center rounded ${active ? "bg-surface-active text-[var(--workspace-accent)]" : "text-foreground/55 hover:bg-surface-hover hover:text-foreground"}`}
                 disabled={!editor}
                 onClick={onClick}

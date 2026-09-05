@@ -1,5 +1,11 @@
 /* PC 短剧内容域：章节、导入、资产拆分与确认。所有规则均限定在本域根类下。 */
 
+.sd-content-chapters,
+.sd-content-import-dialog {
+    --workspace-accent: var(--app-brand-accent);
+    --workspace-accent-soft: var(--app-selection-bg);
+}
+
 .sd-content-eyebrow {
     color: color-mix(in srgb, var(--workspace-accent) 78%, var(--foreground));
     font-size: var(--fs-tiny);
@@ -26,22 +32,22 @@
 }
 
 .sd-content-save-state.is-dirty {
-    border-color: color-mix(in srgb, var(--app-status-warning, #d97706) 26%, transparent);
-    background: color-mix(in srgb, var(--app-status-warning, #d97706) 9%, transparent);
-    color: var(--app-status-warning, #b45309);
+    border-color: color-mix(in srgb, var(--app-status-warning-fg) 26%, transparent);
+    background: color-mix(in srgb, var(--app-status-warning-fg) 9%, transparent);
+    color: var(--app-status-warning-fg);
 }
 
 .sd-content-save-state.is-saved {
-    border-color: color-mix(in srgb, var(--app-status-success, #15803d) 24%, transparent);
-    background: color-mix(in srgb, var(--app-status-success, #15803d) 8%, transparent);
-    color: var(--app-status-success, #15803d);
+    border-color: color-mix(in srgb, var(--app-status-success-fg) 24%, transparent);
+    background: color-mix(in srgb, var(--app-status-success-fg) 8%, transparent);
+    color: var(--app-status-success-fg);
 }
 
 .sd-content-dialog-summary {
     background: var(--app-surface-2, color-mix(in srgb, var(--foreground) 2%, transparent));
 }
 
-@media (min-width: 1024px) {
+@media all {
     .sd-content-chapters {
         background: var(--app-bg-canvas, color-mix(in srgb, var(--foreground) 2%, var(--background)));
     }
@@ -51,7 +57,7 @@
     }
 
     .sd-content-rail-heading {
-        background: linear-gradient(180deg, color-mix(in srgb, var(--workspace-accent) 4%, transparent), transparent);
+        background: var(--app-surface-1);
     }
 
     .sd-content-rail-action.ant-btn {
@@ -90,14 +96,14 @@
     }
 
     .sd-content-editor-shell {
-        border-radius: var(--r-xl) !important;
+        border-radius: var(--app-surface-radius);
         background: var(--app-surface-1, var(--background));
         box-shadow: var(--elevation-hairline);
     }
 
     .sd-content-editor-header {
         min-height: 102px;
-        background: linear-gradient(180deg, var(--app-surface-1, var(--background)), color-mix(in srgb, var(--foreground) 1.5%, var(--background)));
+        background: var(--app-surface-1);
     }
 
     .sd-content-editor-actions {
@@ -159,7 +165,7 @@
     }
 
     .sd-content-pipeline-item.is-attention {
-        background: color-mix(in srgb, var(--app-status-warning, #d97706) 5%, transparent);
+        background: color-mix(in srgb, var(--app-status-warning-fg) 5%, transparent);
     }
 
     .sd-content-pipeline-index {
@@ -214,10 +220,10 @@
     }
 
     .sd-content-candidate-section {
-        border: 1px solid color-mix(in srgb, var(--app-status-warning, #d97706) 20%, var(--border));
+        border: 1px solid color-mix(in srgb, var(--app-status-warning-fg) 20%, var(--border));
         border-radius: var(--r-xl);
         padding: 16px;
-        background: linear-gradient(180deg, color-mix(in srgb, var(--app-status-warning, #d97706) 5%, var(--background)), var(--app-surface-1, var(--background)) 96px);
+        background: linear-gradient(180deg, color-mix(in srgb, var(--app-status-warning-fg) 5%, var(--background)), var(--app-surface-1, var(--background)) 96px);
         box-shadow: var(--elevation-hairline);
     }
 
@@ -227,8 +233,8 @@
         height: 30px;
         place-items: center;
         border-radius: var(--r-md);
-        background: color-mix(in srgb, var(--app-status-warning, #d97706) 11%, transparent);
-        color: var(--app-status-warning, #b45309);
+        background: color-mix(in srgb, var(--app-status-warning-fg) 11%, transparent);
+        color: var(--app-status-warning-fg);
     }
 
     .sd-content-candidate-card {
@@ -299,14 +305,14 @@
         margin-top: 8px;
     }
 
-    .sd-content-import-dialog .ant-modal-content {
+    .sd-content-import-dialog .ant-modal-container {
         border: 1px solid var(--app-border-default, var(--border));
         border-radius: var(--r-xl);
         box-shadow: var(--elevation-dialog, var(--elevation-card));
     }
 
     .sd-content-import-header {
-        background: linear-gradient(180deg, color-mix(in srgb, var(--workspace-accent) 5%, var(--background)), var(--background));
+        background: var(--app-surface-1);
     }
 
     .sd-content-dialog-icon {
@@ -407,4 +413,23 @@
     .sd-content-asset-skeleton i {
         animation: none;
     }
+}
+
+.sd-content-editor-toolbar button:focus-visible {
+    outline: 2px solid var(--app-focus-ring);
+    outline-offset: -2px;
+}
+.sd-content-editor-toolbar button { flex-shrink: 0; white-space: nowrap; }
+.sd-content-chapter-row:focus-within button { opacity: 1; }
+@media (max-width: 1023px) {
+    .sd-content-editor-header { min-height: 0; padding: 14px 16px; gap: 12px; }
+    .sd-content-editor-actions { max-width: none; width: 100%; justify-content: flex-start; }
+    .sd-content-editor-shell .project-chapter-editor-wrap { padding: 24px 20px 48px; }
+    .sd-content-assets { padding: 0; }
+    .sd-content-assets-layout { grid-template-columns: minmax(0, 1fr) !important; }
+    .sd-content-asset-pipeline { grid-template-columns: minmax(0, 1fr); }
+    .sd-content-pipeline-item + .sd-content-pipeline-item { border-left: 0; border-top: 1px solid var(--app-border-subtle); }
+    .sd-content-chapter-row button { opacity: 1; }
+    .sd-content-import-shell { min-height: 0; }
+    .sd-content-import-header { padding-right: 48px; }
 }
