@@ -106,6 +106,7 @@ export default function WalletPage() {
             message.success(response.granted ? "签到成功，积分已到账" : "今日已签到");
         } catch (error) {
             message.error(error instanceof Error ? error.message : "签到失败");
+            await reload();
         } finally {
             mutationLock.current = false;
             setCheckingIn(false);
@@ -250,7 +251,7 @@ export default function WalletPage() {
                             size="large"
                             value={code}
                             disabled={redeeming || checkingIn}
-                            maxLength={32}
+                            maxLength={64}
                             spellCheck={false}
                             autoComplete="off"
                             onChange={(event) => setCode(event.target.value.replace(/[-\s]/g, ""))}
