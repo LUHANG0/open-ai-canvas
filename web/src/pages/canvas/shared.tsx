@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent, type ReactNode } from "react";
 import { App, Button } from "antd";
-import { Clapperboard, Eye, FileText, Image as ImageIcon, LockKeyhole, LogIn, Send, Share2, Video } from "lucide-react";
+import { Clapperboard, Eye, FileText, Image as ImageIcon, LockKeyhole, LogIn, RefreshCw, Send, Share2, Video } from "lucide-react";
 import { Link, useParams } from "react-router";
 import { nanoid } from "nanoid";
 
@@ -47,6 +47,7 @@ export default function SharedCanvasPage() {
     const [contextMenu, setContextMenu] = useState<ContextMenu | null>(null);
     const [loading, setLoading] = useState(true);
     const [loadError, setLoadError] = useState("");
+    const [retryKey, setRetryKey] = useState(0);
 
     const unauthorized = useCallback(() => message.warning("未授权：分享画布仅供查看，该操作不会执行。"), [message]);
     const infoNode = nodes.find((node) => node.id === infoNodeId) || null;
@@ -79,6 +80,9 @@ export default function SharedCanvasPage() {
     useEffect(() => {
         let active = true;
         setLoading(true);
+        setLoadError("");
+        setSelectedNodeId(null);
+        setInfoNodeId(null);
         getPublicCanvasShare(token).then(({ project }) => {
             if (!active) return;
             setTitle(project.title || "共享画布");
@@ -94,7 +98,7 @@ export default function SharedCanvasPage() {
             if (active) setLoading(false);
         });
         return () => { active = false; };
-    }, [token]);
+    }, [token, retryKey]);
 
     useEffect(() => {
         const onMove = (event: MouseEvent) => {
@@ -237,10 +241,11 @@ export default function SharedCanvasPage() {
                     <WorkspaceState
                         icon="error"
                         title="分享链接不可用"
-                        description={loadError}
+                        description={`${loadError}。链接可能已过期或被撤销；网络恢复后可重新读取，仍不可用时请联系分享者。`}
                         action={
                             <>
-                                <Link to="/"><Button>进入工作台</Button></Link>
+                                <Button icon={<RefreshCw className="size-4" />} onClick={() => setRetryKey((value) => value + 1)}>重新读取</Button>
+                                <Link to="/"><Button>返回首页</Button></Link>
                                 <Link className="pc-canvas-share__state-login hidden" to="/login"><Button type="primary" icon={<LogIn className="size-4" />}>登录{branding.config.identity.shortName}</Button></Link>
                             </>
                         }

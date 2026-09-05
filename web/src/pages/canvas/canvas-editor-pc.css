@@ -908,6 +908,8 @@
 
 
 
+}
+
     .pc-canvas-share {
         --canvas-topbar-h: 68px;
         --canvas-topbar-offset: 76px;
@@ -919,7 +921,7 @@
 
     .pc-canvas-share--state {
         position: relative;
-        overflow: hidden;
+        overflow-y: auto;
         font-family: var(--app-font-sans);
     }
 
@@ -1101,6 +1103,17 @@
     .pc-canvas-share > .pc-canvas-infinite {
         z-index: 1;
     }
+
+@media (max-width: 1023px) {
+    .pc-canvas-share { --canvas-inset-x: 12px; --canvas-inset-y: 12px; }
+    .pc-canvas-share__header { padding-inline: 12px; gap: 8px; }
+    .pc-canvas-share__identity { gap: 8px; flex: 1; }
+    .pc-canvas-share__mark { display: none; }
+    .pc-canvas-share__identity > span:nth-child(2) > span:last-child { display: none; }
+    .pc-canvas-share__login .ant-btn span.hidden { display: none; }
+    .pc-canvas-share__notice { bottom: 64px; max-width: calc(100vw - 24px); }
+    .pc-canvas-share__notice-detail { display: none; }
+    .pc-canvas-share__state-card { padding: 20px; margin-block: 24px; }
 }
 
 @media (min-width: 1024px) and (max-width: 1279px) {
