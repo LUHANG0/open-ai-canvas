@@ -2452,6 +2452,15 @@
 }
 
 @media (max-width: 720px) {
+    .admin-runtime-policy-field-grid,
+    .admin-ark-form-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .admin-runtime-policy-command-actions {
+        flex-wrap: wrap;
+    }
+
     .admin-intercept-policy-control,
     .admin-third-party-policy-control {
         align-items: stretch;
