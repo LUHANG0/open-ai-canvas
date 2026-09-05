@@ -1,0 +1,648 @@
+{
+  "scope": "C4 isolated 3013/8093",
+  "groups": {
+    "access-email": {
+      "checks": [
+        {
+          "name": "OAuth 初始无调整不可保存",
+          "passed": true
+        },
+        {
+          "name": "切换注册不覆盖 OAuth 草稿",
+          "passed": true
+        },
+        {
+          "name": "OAuth 保存失败保留草稿",
+          "passed": true
+        },
+        {
+          "name": "未保存离开焦点留在确认",
+          "passed": true
+        },
+        {
+          "name": "取消离开保留 OAuth 草稿",
+          "passed": true
+        },
+        {
+          "name": "OAuth 三连保存只写一次",
+          "passed": true
+        },
+        {
+          "name": "OAuth 回读配置且密钥不回显",
+          "passed": true
+        },
+        {
+          "name": "关闭 OAuth 保留收起字段与密钥",
+          "passed": true
+        },
+        {
+          "name": "OAuth 刷新回读",
+          "passed": true
+        },
+        {
+          "name": "OAuth 撤销回到保存值",
+          "passed": true
+        },
+        {
+          "name": "前台实际显示 Linux.do 登录入口",
+          "passed": true
+        },
+        {
+          "name": "SMTP 保存失败保留输入",
+          "passed": true
+        },
+        {
+          "name": "邮件三连保存只写一次",
+          "passed": true
+        },
+        {
+          "name": "SMTP 真实保存回读",
+          "passed": true
+        },
+        {
+          "name": "邮件关闭保留收起字段",
+          "passed": true
+        },
+        {
+          "name": "邮件刷新回读",
+          "passed": true
+        },
+        {
+          "name": "邮件撤销恢复保存值",
+          "passed": true
+        }
+      ],
+      "errors": []
+    },
+    "adjacent": {
+      "checks": [
+        {
+          "name": "相邻后台 users 390 dark 加载且无横向溢出",
+          "passed": true
+        },
+        {
+          "name": "相邻后台 channels 390 dark 加载且无横向溢出",
+          "passed": true
+        },
+        {
+          "name": "相邻后台 announcements 390 dark 加载且无横向溢出",
+          "passed": true
+        },
+        {
+          "name": "相邻后台 settings/drawing-engine 390 dark 加载且无横向溢出",
+          "passed": true
+        },
+        {
+          "name": "相邻后台 users 390 light 加载且无横向溢出",
+          "passed": true
+        },
+        {
+          "name": "相邻后台 channels 390 light 加载且无横向溢出",
+          "passed": true
+        },
+        {
+          "name": "相邻后台 announcements 390 light 加载且无横向溢出",
+          "passed": true
+        },
+        {
+          "name": "相邻后台 settings/drawing-engine 390 light 加载且无横向溢出",
+          "passed": true
+        },
+        {
+          "name": "相邻后台 users 1440 dark 加载且无横向溢出",
+          "passed": true
+        },
+        {
+          "name": "相邻后台 channels 1440 dark 加载且无横向溢出",
+          "passed": true
+        },
+        {
+          "name": "相邻后台 announcements 1440 dark 加载且无横向溢出",
+          "passed": true
+        },
+        {
+          "name": "相邻后台 settings/drawing-engine 1440 dark 加载且无横向溢出",
+          "passed": true
+        },
+        {
+          "name": "相邻后台 users 1440 light 加载且无横向溢出",
+          "passed": true
+        },
+        {
+          "name": "相邻后台 channels 1440 light 加载且无横向溢出",
+          "passed": true
+        },
+        {
+          "name": "相邻后台 announcements 1440 light 加载且无横向溢出",
+          "passed": true
+        },
+        {
+          "name": "相邻后台 settings/drawing-engine 1440 light 加载且无横向溢出",
+          "passed": true
+        }
+      ],
+      "errors": []
+    },
+    "consumer-rest": {
+      "checks": [
+        {
+          "name": "前次真实验证码注册账号已持久化",
+          "passed": true
+        },
+        {
+          "name": "普通用户不能读取管理邮件配置",
+          "passed": true
+        },
+        {
+          "name": "关闭短剧展示受限状态",
+          "passed": true
+        },
+        {
+          "name": "关闭插件展示受限状态",
+          "passed": true
+        },
+        {
+          "name": "重新开放短剧恢复项目入口",
+          "passed": true
+        }
+      ],
+      "errors": []
+    },
+    "features-recovery": {
+      "checks": [
+        {
+          "name": "即时功能保存失败恢复原开关",
+          "passed": true
+        },
+        {
+          "name": "即时功能连续切换一次保存",
+          "passed": true
+        },
+        {
+          "name": "功能开放公开 API 同步",
+          "passed": true
+        },
+        {
+          "name": "关闭插件中心收起依赖项",
+          "passed": true
+        },
+        {
+          "name": "重开插件恢复依赖配置",
+          "passed": true
+        },
+        {
+          "name": "刷新期间禁止功能写入",
+          "passed": true
+        },
+        {
+          "name": "功能刷新失败禁止旧状态写入",
+          "passed": true
+        },
+        {
+          "name": "功能刷新恢复写入",
+          "passed": true
+        },
+        {
+          "name": "features 首次读取失败显示就地恢复",
+          "passed": true
+        },
+        {
+          "name": "features 重新读取恢复完整配置",
+          "passed": true
+        },
+        {
+          "name": "access 首次读取失败显示就地恢复",
+          "passed": true
+        },
+        {
+          "name": "access 重新读取恢复完整配置",
+          "passed": true
+        },
+        {
+          "name": "email 首次读取失败显示就地恢复",
+          "passed": true
+        },
+        {
+          "name": "email 重新读取恢复完整配置",
+          "passed": true
+        },
+        {
+          "name": "storage 首次读取失败显示就地恢复",
+          "passed": true
+        },
+        {
+          "name": "storage 重新读取恢复完整配置",
+          "passed": true
+        }
+      ],
+      "errors": []
+    },
+    "layout": {
+      "checks": [
+        {
+          "name": "features dark 1440 页面与字段无横向溢出",
+          "passed": true
+        },
+        {
+          "name": "access dark 1440 页面与字段无横向溢出",
+          "passed": true
+        },
+        {
+          "name": "access dark 1440 底部保存可达",
+          "passed": true
+        },
+        {
+          "name": "email dark 1440 页面与字段无横向溢出",
+          "passed": true
+        },
+        {
+          "name": "email dark 1440 底部保存可达",
+          "passed": true
+        },
+        {
+          "name": "storage dark 1440 页面与字段无横向溢出",
+          "passed": true
+        },
+        {
+          "name": "storage dark 1440 底部保存可达",
+          "passed": true
+        },
+        {
+          "name": "features light 1440 页面与字段无横向溢出",
+          "passed": true
+        },
+        {
+          "name": "access light 1440 页面与字段无横向溢出",
+          "passed": true
+        },
+        {
+          "name": "access light 1440 底部保存可达",
+          "passed": true
+        },
+        {
+          "name": "email light 1440 页面与字段无横向溢出",
+          "passed": true
+        },
+        {
+          "name": "email light 1440 底部保存可达",
+          "passed": true
+        },
+        {
+          "name": "storage light 1440 页面与字段无横向溢出",
+          "passed": true
+        },
+        {
+          "name": "storage light 1440 底部保存可达",
+          "passed": true
+        },
+        {
+          "name": "features dark 390 页面与字段无横向溢出",
+          "passed": true
+        },
+        {
+          "name": "access dark 390 页面与字段无横向溢出",
+          "passed": true
+        },
+        {
+          "name": "access dark 390 底部保存可达",
+          "passed": true
+        },
+        {
+          "name": "email dark 390 页面与字段无横向溢出",
+          "passed": true
+        },
+        {
+          "name": "email dark 390 底部保存可达",
+          "passed": true
+        },
+        {
+          "name": "storage dark 390 页面与字段无横向溢出",
+          "passed": true
+        },
+        {
+          "name": "storage dark 390 底部保存可达",
+          "passed": true
+        },
+        {
+          "name": "features light 390 页面与字段无横向溢出",
+          "passed": true
+        },
+        {
+          "name": "access light 390 页面与字段无横向溢出",
+          "passed": true
+        },
+        {
+          "name": "access light 390 底部保存可达",
+          "passed": true
+        },
+        {
+          "name": "email light 390 页面与字段无横向溢出",
+          "passed": true
+        },
+        {
+          "name": "email light 390 底部保存可达",
+          "passed": true
+        },
+        {
+          "name": "storage light 390 页面与字段无横向溢出",
+          "passed": true
+        },
+        {
+          "name": "storage light 390 底部保存可达",
+          "passed": true
+        },
+        {
+          "name": "features dark 1023 页面与字段无横向溢出",
+          "passed": true
+        },
+        {
+          "name": "access dark 1023 页面与字段无横向溢出",
+          "passed": true
+        },
+        {
+          "name": "email dark 1023 页面与字段无横向溢出",
+          "passed": true
+        },
+        {
+          "name": "storage dark 1023 页面与字段无横向溢出",
+          "passed": true
+        },
+        {
+          "name": "features light 1023 页面与字段无横向溢出",
+          "passed": true
+        },
+        {
+          "name": "access light 1023 页面与字段无横向溢出",
+          "passed": true
+        },
+        {
+          "name": "email light 1023 页面与字段无横向溢出",
+          "passed": true
+        },
+        {
+          "name": "storage light 1023 页面与字段无横向溢出",
+          "passed": true
+        },
+        {
+          "name": "features dark 1024 页面与字段无横向溢出",
+          "passed": true
+        },
+        {
+          "name": "access dark 1024 页面与字段无横向溢出",
+          "passed": true
+        },
+        {
+          "name": "email dark 1024 页面与字段无横向溢出",
+          "passed": true
+        },
+        {
+          "name": "storage dark 1024 页面与字段无横向溢出",
+          "passed": true
+        },
+        {
+          "name": "features light 1024 页面与字段无横向溢出",
+          "passed": true
+        },
+        {
+          "name": "access light 1024 页面与字段无横向溢出",
+          "passed": true
+        },
+        {
+          "name": "email light 1024 页面与字段无横向溢出",
+          "passed": true
+        },
+        {
+          "name": "storage light 1024 页面与字段无横向溢出",
+          "passed": true
+        },
+        {
+          "name": "手机确认框第 0 次 Tab 焦点保持",
+          "passed": true
+        },
+        {
+          "name": "手机确认框第 1 次 Tab 焦点保持",
+          "passed": true
+        },
+        {
+          "name": "手机确认框第 2 次 Tab 焦点保持",
+          "passed": true
+        },
+        {
+          "name": "手机确认框第 3 次 Tab 焦点保持",
+          "passed": true
+        },
+        {
+          "name": "手机确认框第 4 次 Tab 焦点保持",
+          "passed": true
+        },
+        {
+          "name": "手机确认框第 5 次 Tab 焦点保持",
+          "passed": true
+        },
+        {
+          "name": "手机确认框第 6 次 Tab 焦点保持",
+          "passed": true
+        },
+        {
+          "name": "手机确认框第 7 次 Tab 焦点保持",
+          "passed": true
+        },
+        {
+          "name": "手机确认框第 8 次 Tab 焦点保持",
+          "passed": true
+        },
+        {
+          "name": "手机确认框第 9 次 Tab 焦点保持",
+          "passed": true
+        },
+        {
+          "name": "手机确认框第 10 次 Tab 焦点保持",
+          "passed": true
+        },
+        {
+          "name": "手机确认框第 11 次 Tab 焦点保持",
+          "passed": true
+        },
+        {
+          "name": "邮件取消离开保留草稿",
+          "passed": true
+        },
+        {
+          "name": "输入聚焦可见边框",
+          "passed": true
+        },
+        {
+          "name": "减少动画偏好下页面可操作",
+          "passed": true
+        }
+      ],
+      "errors": []
+    },
+    "remaining-recovery": {
+      "checks": [
+        {
+          "name": "access 取消重新读取保留草稿",
+          "passed": true
+        },
+        {
+          "name": "access 刷新失败保留草稿并禁止提交",
+          "passed": true
+        },
+        {
+          "name": "access 重新读取成功恢复保存值",
+          "passed": true
+        },
+        {
+          "name": "email 取消重新读取保留草稿",
+          "passed": true
+        },
+        {
+          "name": "email 刷新失败保留草稿并禁止提交",
+          "passed": true
+        },
+        {
+          "name": "email 重新读取成功恢复保存值",
+          "passed": true
+        },
+        {
+          "name": "storage 取消重新读取保留草稿",
+          "passed": true
+        },
+        {
+          "name": "storage 刷新失败保留草稿并禁止提交",
+          "passed": true
+        },
+        {
+          "name": "storage 重新读取成功恢复保存值",
+          "passed": true
+        },
+        {
+          "name": "注册保存失败保留状态和 OAuth 草稿",
+          "passed": true
+        },
+        {
+          "name": "离开后迟到连接结果不污染重新进入的页面",
+          "passed": true
+        }
+      ],
+      "errors": []
+    },
+    "secret-and-reentry": {
+      "checks": [
+        {
+          "name": "SMTP 假密码保存后只返回配置标记",
+          "passed": true
+        },
+        {
+          "name": "SMTP 密码留空保存保留服务端值",
+          "passed": true
+        },
+        {
+          "name": "同一应用重新挂载关闭入口不再悬挂",
+          "passed": true
+        }
+      ],
+      "errors": []
+    },
+    "smtp-registration": {
+      "checks": [
+        {
+          "name": "关闭注册真实 API 拒绝创建",
+          "passed": true
+        },
+        {
+          "name": "前台展示注册关闭",
+          "passed": true
+        },
+        {
+          "name": "真实 SMTP 失败可恢复发送",
+          "passed": true
+        },
+        {
+          "name": "本地 SMTP 接收六位注册验证码",
+          "passed": true
+        }
+      ],
+      "errors": []
+    },
+    "storage": {
+      "checks": [
+        {
+          "name": "本地地址输入绑定且出现未保存",
+          "passed": true
+        },
+        {
+          "name": "存储保存失败保留地址",
+          "passed": true
+        },
+        {
+          "name": "本地地址真实保存回读",
+          "passed": true
+        },
+        {
+          "name": "本地地址刷新显示保存值",
+          "passed": true
+        },
+        {
+          "name": "自动填当前地址同步到输入",
+          "passed": true
+        },
+        {
+          "name": "撤销地址恢复原值",
+          "passed": true
+        },
+        {
+          "name": "S3 未测试真实保存被拒绝且草稿保留",
+          "passed": true
+        },
+        {
+          "name": "S3 实际连接失败有明确状态",
+          "passed": true
+        },
+        {
+          "name": "检测期间字段保存撤销刷新全部互斥",
+          "passed": true
+        },
+        {
+          "name": "S3 真实读写检测成功且连续点击一次",
+          "passed": true
+        },
+        {
+          "name": "连接通过尚未改变平台配置",
+          "passed": true
+        },
+        {
+          "name": "S3 保存回读与密钥脱敏",
+          "passed": true
+        },
+        {
+          "name": "S3 刷新后保留测试状态",
+          "passed": true
+        },
+        {
+          "name": "改关键配置使测试失效",
+          "passed": true
+        },
+        {
+          "name": "撤销恢复已保存测试状态",
+          "passed": true
+        },
+        {
+          "name": "切本地不清空收起的 S3 配置",
+          "passed": true
+        },
+        {
+          "name": "本地 S3 模拟完成 PUT Range GET DELETE 且清理测试对象",
+          "passed": true
+        }
+      ],
+      "errors": []
+    }
+  },
+  "smtpRegistration": {
+    "actualSuccess": true,
+    "evidence": "Isolated backend log 2026-09-05T23:24:56+08:00 POST /api/auth/register 200; consumer-rest verified persisted c4_member account.",
+    "scriptBoundary": "First successful run stopped on incorrect /home assertion (actual /create). Repeated run returned existing 429 registration limit; no limit change. Remaining consumer flow used an admin-created isolated user."
+  },
+  "connectionBoundary": "Local SMTP receiver and in-memory S3 PUT/Range GET/DELETE only; no external provider verification."
+}
