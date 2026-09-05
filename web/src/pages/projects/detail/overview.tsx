@@ -1,5 +1,6 @@
 import { ArrowRight, CheckCircle2 } from "lucide-react";
-import { Link } from "react-router";
+import { Button } from "antd";
+import { Link, useNavigate } from "react-router";
 
 import { WorkspaceState } from "@/components/ui/pc/workspace-state";
 import type { ProjectStageCell, ProjectWorkbenchAction } from "@/lib/project-workbench";
@@ -8,6 +9,7 @@ import type { ProjectOverview, ProjectOverviewMetrics } from "@/services/api/pro
 import { formatTime, type ProjectDetailViewProps } from "./shared";
 
 export default function ProjectOverviewView({ detail, overview }: ProjectDetailViewProps & { overview: ProjectOverview }) {
+    const navigate = useNavigate();
     const { project } = detail;
     const metrics = overview.metrics;
     const completedUnits = metrics.completedUnitCount;
@@ -47,11 +49,9 @@ export default function ProjectOverviewView({ detail, overview }: ProjectDetailV
                         <h2 className="project-overview-title">{primaryAction.title}</h2>
                         <p className="project-overview-description">{primaryAction.description}</p>
                         <div className="project-overview-cta">
-                            {/* 主按钮走 --btn-solid-* 配对色：原先是 bg-[--workspace-accent] + text-white，
-                                而暗色下该 accent 是 #f5f5f5，等于白底白字。 */}
-                            <Link to={primaryAction.href} className="project-overview-cta-primary">
+                            <Button type="primary" onClick={() => navigate(primaryAction.href)} className="project-overview-cta-primary">
                                 <span className="truncate">{primaryAction.actionLabel}</span><ArrowRight className="size-4 shrink-0" />
-                            </Link>
+                            </Button>
                         </div>
                     </div>
 

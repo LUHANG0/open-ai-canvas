@@ -420,6 +420,7 @@
     outline-offset: -2px;
 }
 .sd-content-editor-toolbar button { flex-shrink: 0; white-space: nowrap; }
+.sd-content-import-shell { max-height: calc(100dvh - 48px); }
 .sd-content-chapter-row:focus-within button { opacity: 1; }
 @media (max-width: 1023px) {
     .sd-content-editor-header { min-height: 0; padding: 14px 16px; gap: 12px; }
@@ -432,4 +433,5 @@
     .sd-content-chapter-row button { opacity: 1; }
     .sd-content-import-shell { min-height: 0; }
     .sd-content-import-header { padding-right: 48px; }
+    .sd-content-import-textarea { height: 220px; }
 }

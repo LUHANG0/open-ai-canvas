@@ -55,6 +55,8 @@ export function ImportNovelDialog({ open, loading, onClose, onImport }: { open: 
             rootClassName="pc-projects-import-dialog-root sd-content-import-root"
             className="pc-projects-import-dialog sd-content-import-dialog"
             title={null}
+            aria-label="导入小说或章回式剧本"
+            centered
             open={open}
             footer={null}
             destroyOnHidden
@@ -73,7 +75,7 @@ export function ImportNovelDialog({ open, loading, onClose, onImport }: { open: 
                         <p className="mt-1 text-[var(--fs-label)] text-foreground/46">自动识别章节标题，预览确认后追加到当前项目，不会覆盖已有内容。</p>
                     </div>
                 </header>
-                <div className="grid min-h-[478px] flex-1 grid-cols-1 md:grid-cols-[minmax(0,1fr)_300px]">
+                <div className="sd-content-import-body grid min-h-0 flex-1 overflow-y-auto grid-cols-1 md:grid-cols-[minmax(0,1fr)_300px]">
                     <div className="sd-content-import-source border-b border-border p-4 md:border-b-0 md:border-r">
                         <div className="mb-3 flex items-center justify-between gap-3">
                             <div>

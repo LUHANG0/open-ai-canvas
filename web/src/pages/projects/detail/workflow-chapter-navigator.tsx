@@ -59,7 +59,7 @@ export function WorkflowChapterNavigator({ projectId, units, unitId, stage }: Pr
                 </button>
                 <button type="button" disabled={currentIndex >= orderedUnits.length - 1} onClick={() => goTo(orderedUnits[currentIndex + 1])} aria-label="下一章" title="下一章"><ChevronRight /></button>
             </div>
-            <Modal open={open} footer={null} title={null} aria-label="定位章节" destroyOnHidden rootClassName="pc-projects-dialog-root workflow-chapter-modal-root" className="workspace-modal workspace-modal-wide workflow-chapter-modal" onCancel={() => setOpen(false)} styles={{ body: { padding: 0 } }}>
+            <Modal open={open} centered footer={null} title={null} aria-label="定位章节" destroyOnHidden rootClassName="pc-projects-dialog-root workflow-chapter-modal-root" className="workflow-chapter-modal" onCancel={() => setOpen(false)} styles={{ container: { padding: 0 }, body: { padding: 0 } }}>
                 <div className="workflow-chapter-modal-shell">
                     <header className="workflow-chapter-modal-head">
                         <div className="workflow-chapter-modal-title"><span><BookOpenText /></span><div><strong>定位章节</strong><p>快速搜索并跳转到需要制作的剧情章节</p></div></div>
