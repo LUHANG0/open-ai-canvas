@@ -242,6 +242,8 @@ async function generateVideo(cdp, color, direction) {
         const canvas = document.createElement('canvas');
         canvas.width = 96; canvas.height = 54;
         const context = canvas.getContext('2d');
+        context.fillStyle = ${JSON.stringify(color)};
+        context.fillRect(0, 0, canvas.width, canvas.height);
         const stream = canvas.captureStream(12);
         const mimeType = ['video/webm;codecs=vp8', 'video/webm'].find((item) => MediaRecorder.isTypeSupported(item));
         if (!mimeType) throw new Error('MediaRecorder WebM is unavailable');
@@ -262,6 +264,7 @@ async function generateVideo(cdp, color, direction) {
         await stopped;
         stream.getTracks().forEach((track) => track.stop());
         const bytes = new Uint8Array(await new Blob(chunks, { type: mimeType }).arrayBuffer());
+        if (!bytes.byteLength) throw new Error('MediaRecorder generated an empty delivery fixture');
         let binary = '';
         for (let index = 0; index < bytes.length; index += 0x8000) binary += String.fromCharCode(...bytes.subarray(index, index + 0x8000));
         return btoa(binary);
@@ -293,6 +296,7 @@ try {
     await waitForURL(`http://127.0.0.1:${vitePort}/dev/project-delivery-repro`);
     chrome = await launchChrome(chromePort, profileDir, downloadDir);
     cdp = await connectCDP(chromePort);
+    await cdp.send("Emulation.setFocusEmulationEnabled", { enabled: true });
     await cdp.send("Browser.setDownloadBehavior", { behavior: "allow", downloadPath: downloadDir, eventsEnabled: true });
 
     cdp.videos.set("delivery-resource-1", await generateVideo(cdp, "#c63b3b", 1));
