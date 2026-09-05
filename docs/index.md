@@ -8,7 +8,7 @@
 
 - [后台网站设置与用户管理 C1](design/brand-admin-settings-users-20260905.md)：紧凑品牌分区、保存与冲突恢复、用户表格及邀请/编辑/积分详情抽屉，含隔离浏览器验证和逐提交回滚。
 
-- [画布视频封面刷新恢复](design/canvas-video-poster-recovery-20260905.md)：修复重挂载复用已取消任务导致的空封面，包含生命周期回归、48 个视频的浏览器复测与回滚方法。
+- [画布视频封面刷新恢复](design/canvas-video-poster-recovery-20260905.md)：修复重挂载复用已取消任务导致的空封面，包含用户确认、48 个视频复测、1789 项全量测试基线收尾与回滚方法。
 
 - [品牌风格统一分析](design/brand-style-unification-audit-20260905.md)：以当前品牌页为基准，覆盖用户前台、22 个后台页面、主题断点、配置消费和分批验收方案。
 - [品牌风格统一实施记录](design/brand-style-unification-implementation-20260905.md)：第一批主题、前后台外壳与配置同步的提交、验收证据和逐阶段回滚方法。
