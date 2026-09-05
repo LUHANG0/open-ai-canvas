@@ -352,7 +352,7 @@ export function CanvasDirectorWorkbench({ open, scene, imageNodes, onboardingSco
                 content: decision.message,
                 okText: "仍然离开",
                 cancelText: "留在导演台",
-                autoFocusButton: "cancel",
+                focusable: { autoFocusButton: "cancel" },
                 closable: false,
                 mask: { closable: false },
                 keyboard: false,

@@ -332,7 +332,7 @@ export function CanvasTimelineDialog({
         if (dragRef.current) { cancelDrag(); return; }
         if (exportControllerRef.current) { exportControllerRef.current.abort(); return; }
         if (JSON.stringify(draft.clips) === initialDraftRef.current) { afterClose(); return; }
-        modal.confirm({ modalRender: (content) => <CanvasToolConfirmContent>{content}</CanvasToolConfirmContent>, title: "放弃未保存的时间线修改？", content: "取消会保留当前编辑；离开后恢复上次保存到画布的版本。", okText: "放弃修改并离开", cancelText: "继续编辑", autoFocusButton: "cancel", onOk: afterClose });
+        modal.confirm({ modalRender: (content) => <CanvasToolConfirmContent>{content}</CanvasToolConfirmContent>, title: "放弃未保存的时间线修改？", content: "取消会保留当前编辑；离开后恢复上次保存到画布的版本。", okText: "放弃修改并离开", cancelText: "继续编辑", focusable: { autoFocusButton: "cancel" }, onOk: afterClose });
     };
 
     const deleteSelectedClip = () => {
