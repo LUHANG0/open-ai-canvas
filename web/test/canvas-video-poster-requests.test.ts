@@ -5,7 +5,10 @@ import { createCanvasVideoPosterRequests } from "../src/lib/canvas/canvas-video-
 function posterHarness() {
     const load = createCanvasVideoPosterRequests();
     const jobs: Array<{ signal: AbortSignal; resolve: (url: string) => void; reject: (error: Error) => void }> = [];
-    const run = (signal: AbortSignal) => new Promise<string>((resolve, reject) => { jobs.push({ signal, resolve, reject }); });
+    const run = (signal: AbortSignal) =>
+        new Promise<string>((resolve, reject) => {
+            jobs.push({ signal, resolve, reject });
+        });
     return { load: (signal?: AbortSignal, key = "user:video:640") => load(key, run, signal), jobs };
 }
 

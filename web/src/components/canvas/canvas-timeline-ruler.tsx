@@ -48,10 +48,18 @@ export function CanvasTimelineRuler({ pxPerMs, durationMs, playheadMs, width, th
             onKeyDown={(event) => {
                 const step = event.shiftKey ? 1000 : 100;
                 const next = event.key === "Home" ? 0 : event.key === "End" ? durationMs : event.key === "ArrowLeft" ? Math.max(0, playheadMs - step) : event.key === "ArrowRight" ? Math.min(durationMs, playheadMs + step) : null;
-                if (next !== null) { event.preventDefault(); event.stopPropagation(); onSeek(next); }
+                if (next !== null) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    onSeek(next);
+                }
             }}
-            onPointerCancel={() => { draggingRef.current = false; }}
-            onLostPointerCapture={() => { draggingRef.current = false; }}
+            onPointerCancel={() => {
+                draggingRef.current = false;
+            }}
+            onLostPointerCapture={() => {
+                draggingRef.current = false;
+            }}
             className="relative shrink-0 cursor-col-resize select-none overflow-hidden border-b"
             style={{ width, height: 32, borderColor: theme.toolbar.border, background: theme.toolbar.panel }}
             onPointerDown={(event) => {

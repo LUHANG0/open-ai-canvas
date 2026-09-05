@@ -428,13 +428,7 @@ export default function AssetsPage() {
                                             ],
                                         }}
                                     >
-                                        <Button
-                                            className="assets-header-secondary-action"
-                                            title="导入或上传素材"
-                                            aria-label="导入或上传素材"
-                                            icon={<FileUp className="size-4" />}
-                                            loading={transferBusy === "import" || transferBusy === "model"}
-                                        >
+                                        <Button className="assets-header-secondary-action" title="导入或上传素材" aria-label="导入或上传素材" icon={<FileUp className="size-4" />} loading={transferBusy === "import" || transferBusy === "model"}>
                                             <span className="assets-header-action-label hidden lg:inline">导入 / 上传</span>
                                         </Button>
                                     </Dropdown>
@@ -947,12 +941,18 @@ function AssetsEmptyState({ onNew, onImport, onGoCanvas }: { onNew: () => void; 
                     <span className="assets-empty-eyebrow">YOUR CREATIVE COLLECTION</span>
                     <h2 id="assets-empty-title">好素材，值得留下。</h2>
                     <p>把参考图片、提示词和创作结果收进素材库，下一个作品从这里继续。</p>
-                    <Button type="primary" icon={<Plus className="size-4" />} onClick={onNew}>添加第一份素材</Button>
+                    <Button type="primary" icon={<Plus className="size-4" />} onClick={onNew}>
+                        添加第一份素材
+                    </Button>
                 </div>
             </div>
             <div className="assets-empty-paths">
-                <Button icon={<FileUp className="size-4" />} onClick={onImport}>导入素材包</Button>
-                <Button icon={<Clapperboard className="size-4" />} onClick={onGoCanvas}>从画布收藏</Button>
+                <Button icon={<FileUp className="size-4" />} onClick={onImport}>
+                    导入素材包
+                </Button>
+                <Button icon={<Clapperboard className="size-4" />} onClick={onGoCanvas}>
+                    从画布收藏
+                </Button>
                 <span>支持文本、图片、视频、音频和 3D 模型</span>
             </div>
         </section>
@@ -992,19 +992,7 @@ function AssetFilterGroup({
     );
 }
 
-function AssetDrawer({
-    asset,
-    onClose,
-    onEdit,
-    onCopy,
-    onDownload,
-}: {
-    asset: LibraryAsset | null;
-    onClose: () => void;
-    onEdit: (asset: LibraryAsset) => void;
-    onCopy: (asset: LibraryAsset) => void;
-    onDownload: (asset: LibraryAsset) => void;
-}) {
+function AssetDrawer({ asset, onClose, onEdit, onCopy, onDownload }: { asset: LibraryAsset | null; onClose: () => void; onEdit: (asset: LibraryAsset) => void; onCopy: (asset: LibraryAsset) => void; onDownload: (asset: LibraryAsset) => void }) {
     const facts = asset ? assetArchiveFacts(asset) : [];
     const KindIcon = asset ? assetKindIcons[asset.kind] : Clapperboard;
     return (

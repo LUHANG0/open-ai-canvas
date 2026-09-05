@@ -5,7 +5,13 @@ function compactSource(source: string) {
 }
 
 async function readSettingsStyles() {
-    return (await Promise.all([Bun.file(new URL("../src/styles/admin-ui.css", import.meta.url)).text(), Bun.file(new URL("../src/pages/admin/components/admin-configuration.css", import.meta.url)).text(), Bun.file(new URL("../src/pages/admin/components/admin-remaining.css", import.meta.url)).text()])).join("\n");
+    return (
+        await Promise.all([
+            Bun.file(new URL("../src/styles/admin-ui.css", import.meta.url)).text(),
+            Bun.file(new URL("../src/pages/admin/components/admin-configuration.css", import.meta.url)).text(),
+            Bun.file(new URL("../src/pages/admin/components/admin-remaining.css", import.meta.url)).text(),
+        ])
+    ).join("\n");
 }
 
 function sourceSection(source: string, startMarker: string, endMarker: string) {

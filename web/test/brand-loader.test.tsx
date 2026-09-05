@@ -9,7 +9,11 @@ import { WorkspaceLoadingState } from "../src/components/ui/pc/workspace-state";
 
 describe("brand loading feedback", () => {
     test("keeps custom text accessible and the decorative motion silent", () => {
-        const html = renderToStaticMarkup(<BrandingProvider><FullScreenLoader label="正在读取共享画布" detail="恢复视图位置" /></BrandingProvider>);
+        const html = renderToStaticMarkup(
+            <BrandingProvider>
+                <FullScreenLoader label="正在读取共享画布" detail="恢复视图位置" />
+            </BrandingProvider>,
+        );
         expect(html).toContain('role="status"');
         expect(html).toContain('aria-label="正在读取共享画布，恢复视图位置"');
         expect(html).toContain('aria-hidden="true"');
@@ -26,7 +30,12 @@ describe("brand loading feedback", () => {
     });
 
     test("uses the same indicator in Ant Design spinners and loading buttons", () => {
-        const html = renderToStaticMarkup(<ConfigProvider spin={{ indicator: <BrandLoadingIndicator /> }} button={{ loadingIcon: <BrandLoadingIndicator /> }}><Spin /><Button loading>正在保存</Button></ConfigProvider>);
+        const html = renderToStaticMarkup(
+            <ConfigProvider spin={{ indicator: <BrandLoadingIndicator /> }} button={{ loadingIcon: <BrandLoadingIndicator /> }}>
+                <Spin />
+                <Button loading>正在保存</Button>
+            </ConfigProvider>,
+        );
         expect(html.match(/class="brand-loading-frame"/g)).toHaveLength(2);
         expect(html).toContain("正在保存");
         expect(html).toContain("ant-btn-loading");

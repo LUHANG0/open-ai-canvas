@@ -122,7 +122,9 @@ export default function PluginsPage() {
 
     useEffect(() => {
         void reloadBackendPlugins();
-        return () => { listRequest.current += 1; };
+        return () => {
+            listRequest.current += 1;
+        };
     }, [user?.id]);
 
     const remotePlugins = useMemo(() => backendPlugins.map(toRegisteredPlugin), [backendPlugins]);
@@ -196,7 +198,9 @@ export default function PluginsPage() {
     }, [pluginSections, scrollTarget]);
 
     const categoryCounts = useMemo(() => {
-        const visiblePlugins = registeredPlugins.filter((plugin) => user?.role === "admin" || features.systemPluginsVisibleToUsers || backendPluginById.get(plugin.manifest.id)?.management.kind === "application" || isOfficialApplicationPlugin(plugin.manifest.id));
+        const visiblePlugins = registeredPlugins.filter(
+            (plugin) => user?.role === "admin" || features.systemPluginsVisibleToUsers || backendPluginById.get(plugin.manifest.id)?.management.kind === "application" || isOfficialApplicationPlugin(plugin.manifest.id),
+        );
         const counts: Record<string, number> = { all: visiblePlugins.length, text: 0, image: 0, video: 0, audio: 0, other: 0 };
         for (const plugin of visiblePlugins) {
             const capabilities = providerCapabilitiesFor(plugin.manifest);
@@ -268,7 +272,9 @@ export default function PluginsPage() {
 
     const saveEagleConfig = () => {
         let baseUrl: string;
-        try { baseUrl = normalizeEagleAddress(eagleBaseUrl); } catch (error) {
+        try {
+            baseUrl = normalizeEagleAddress(eagleBaseUrl);
+        } catch (error) {
             setEagleAddressError(error instanceof Error ? error.message : "Eagle 地址无效");
             return;
         }
@@ -278,10 +284,24 @@ export default function PluginsPage() {
         message.success("Eagle 配置已应用到本机；连接状态请通过读取文件夹确认");
     };
 
-    const eagleDirty = eagleBaseUrl.trim().replace(/\/$/, "") !== (eagle?.config.baseUrl || "http://localhost:41595") || eagleAutoUploadGenerated !== (eagle?.config.autoUploadGenerated !== false && eagle?.config.autoUploadGenerated !== "false") || eagleGeneratedFolderId !== (eagle?.config.generatedFolderId || "");
+    const eagleDirty =
+        eagleBaseUrl.trim().replace(/\/$/, "") !== (eagle?.config.baseUrl || "http://localhost:41595") ||
+        eagleAutoUploadGenerated !== (eagle?.config.autoUploadGenerated !== false && eagle?.config.autoUploadGenerated !== "false") ||
+        eagleGeneratedFolderId !== (eagle?.config.generatedFolderId || "");
     const closeSettings = () => {
         if (settingsPluginId === EAGLE_PLUGIN_ID && eagleDirty) {
-            modal.confirm({ title: "放弃未应用的配置？", content: "当前修改尚未应用到 Eagle 插件。", okText: "放弃修改", cancelText: "继续编辑", onOk: () => { setEagleBaseUrl(String(eagle?.config.baseUrl || "http://localhost:41595")); setEagleAutoUploadGenerated(eagle?.config.autoUploadGenerated !== false && eagle?.config.autoUploadGenerated !== "false"); setEagleGeneratedFolderId(String(eagle?.config.generatedFolderId || "")); setSettingsPluginId(null); } });
+            modal.confirm({
+                title: "放弃未应用的配置？",
+                content: "当前修改尚未应用到 Eagle 插件。",
+                okText: "放弃修改",
+                cancelText: "继续编辑",
+                onOk: () => {
+                    setEagleBaseUrl(String(eagle?.config.baseUrl || "http://localhost:41595"));
+                    setEagleAutoUploadGenerated(eagle?.config.autoUploadGenerated !== false && eagle?.config.autoUploadGenerated !== "false");
+                    setEagleGeneratedFolderId(String(eagle?.config.generatedFolderId || ""));
+                    setSettingsPluginId(null);
+                },
+            });
         } else setSettingsPluginId(null);
     };
 
@@ -489,15 +509,19 @@ export default function PluginsPage() {
                                                         <StatusBadge dot tone={display.tone} live>
                                                             {display.label}
                                                         </StatusBadge>
-                                                        {personalSwitch ? <Switch
-                                                            className="plugin-state-switch"
-                                                            disabled={!state?.canToggle || Boolean(backendPluginsError)}
-                                                            loading={togglingIds.includes(plugin.manifest.id)}
-                                                            checked={display.userEnabled}
-                                                            aria-label={`${plugin.manifest.name}，个人开关${display.userEnabled ? "已开启，点击关闭" : "已关闭，点击开启"}`}
-                                                            title={state?.blockedReason}
-                                                            onChange={(checked) => void togglePlugin(plugin, checked)}
-                                                        /> : <span className="plugin-platform-managed">由平台管理</span>}
+                                                        {personalSwitch ? (
+                                                            <Switch
+                                                                className="plugin-state-switch"
+                                                                disabled={!state?.canToggle || Boolean(backendPluginsError)}
+                                                                loading={togglingIds.includes(plugin.manifest.id)}
+                                                                checked={display.userEnabled}
+                                                                aria-label={`${plugin.manifest.name}，个人开关${display.userEnabled ? "已开启，点击关闭" : "已关闭，点击开启"}`}
+                                                                title={state?.blockedReason}
+                                                                onChange={(checked) => void togglePlugin(plugin, checked)}
+                                                            />
+                                                        ) : (
+                                                            <span className="plugin-platform-managed">由平台管理</span>
+                                                        )}
                                                         {canConfigure && !backendPluginsError ? (
                                                             <Button
                                                                 className="plugin-settings-button"
@@ -578,8 +602,27 @@ export default function PluginsPage() {
                                     <div className="plugin-settings-fields">
                                         <div className="min-w-0">
                                             <label htmlFor="eagle-base-url">Eagle 本地 API 地址</label>
-                                            <Input id="eagle-base-url" aria-label="Eagle 本地 API 地址" status={eagleAddressError ? "error" : undefined} aria-describedby={eagleAddressError ? "eagle-address-error" : undefined} value={eagleBaseUrl} onChange={(event) => { setEagleBaseUrl(event.target.value); eagleFolderRequest.current += 1; setEagleFolders([]); setEagleFoldersLoading(false); setEagleFoldersError(""); setEagleAddressError(""); }} placeholder="http://localhost:41595" />
-                                            {eagleAddressError ? <Typography.Text id="eagle-address-error" type="danger" role="alert">{eagleAddressError}</Typography.Text> : null}
+                                            <Input
+                                                id="eagle-base-url"
+                                                aria-label="Eagle 本地 API 地址"
+                                                status={eagleAddressError ? "error" : undefined}
+                                                aria-describedby={eagleAddressError ? "eagle-address-error" : undefined}
+                                                value={eagleBaseUrl}
+                                                onChange={(event) => {
+                                                    setEagleBaseUrl(event.target.value);
+                                                    eagleFolderRequest.current += 1;
+                                                    setEagleFolders([]);
+                                                    setEagleFoldersLoading(false);
+                                                    setEagleFoldersError("");
+                                                    setEagleAddressError("");
+                                                }}
+                                                placeholder="http://localhost:41595"
+                                            />
+                                            {eagleAddressError ? (
+                                                <Typography.Text id="eagle-address-error" type="danger" role="alert">
+                                                    {eagleAddressError}
+                                                </Typography.Text>
+                                            ) : null}
                                             <p>仅支持 HTTP 本机地址与默认端口 41595。请在后端所在电脑启动 Eagle 并打开资料库；配置应用到当前浏览器，应用地址不代表连接成功。</p>
                                         </div>
                                         <div className="min-w-0">

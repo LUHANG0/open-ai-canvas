@@ -196,7 +196,11 @@ export function DeliveryStage({ detail, unitId, enableServerDelivery = true }: {
                         <Button data-testid="project-delivery-local-export" icon={<Download className="size-4" />} disabled={!plan.ready || serverActive} loading={localExporting} onClick={() => void exportDeliveryLocally()}>
                             {unavailableLabel || "本机直接生成"}
                         </Button>
-                        {localExporting ? <Button data-testid="project-delivery-local-cancel" onClick={() => localController.current?.abort()}>取消本机生成</Button> : null}
+                        {localExporting ? (
+                            <Button data-testid="project-delivery-local-cancel" onClick={() => localController.current?.abort()}>
+                                取消本机生成
+                            </Button>
+                        ) : null}
                     </div>
                 </div>
                 <div className="workflow-delivery-job-status" aria-live="polite">

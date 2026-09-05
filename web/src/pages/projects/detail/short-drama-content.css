@@ -419,19 +419,53 @@
     outline: 2px solid var(--app-focus-ring);
     outline-offset: -2px;
 }
-.sd-content-editor-toolbar button { flex-shrink: 0; white-space: nowrap; }
-.sd-content-import-shell { max-height: calc(100dvh - 48px); }
-.sd-content-chapter-row:focus-within button { opacity: 1; }
+.sd-content-editor-toolbar button {
+    flex-shrink: 0;
+    white-space: nowrap;
+}
+.sd-content-import-shell {
+    max-height: calc(100dvh - 48px);
+}
+.sd-content-chapter-row:focus-within button {
+    opacity: 1;
+}
 @media (max-width: 1023px) {
-    .sd-content-editor-header { min-height: 0; padding: 14px 16px; gap: 12px; }
-    .sd-content-editor-actions { max-width: none; width: 100%; justify-content: flex-start; }
-    .sd-content-editor-shell .project-chapter-editor-wrap { padding: 24px 20px 48px; }
-    .sd-content-assets { padding: 0; }
-    .sd-content-assets-layout { grid-template-columns: minmax(0, 1fr) !important; }
-    .sd-content-asset-pipeline { grid-template-columns: minmax(0, 1fr); }
-    .sd-content-pipeline-item + .sd-content-pipeline-item { border-left: 0; border-top: 1px solid var(--app-border-subtle); }
-    .sd-content-chapter-row button { opacity: 1; }
-    .sd-content-import-shell { min-height: 0; }
-    .sd-content-import-header { padding-right: 48px; }
-    .sd-content-import-textarea { height: 220px; }
+    .sd-content-editor-header {
+        min-height: 0;
+        padding: 14px 16px;
+        gap: 12px;
+    }
+    .sd-content-editor-actions {
+        max-width: none;
+        width: 100%;
+        justify-content: flex-start;
+    }
+    .sd-content-editor-shell .project-chapter-editor-wrap {
+        padding: 24px 20px 48px;
+    }
+    .sd-content-assets {
+        padding: 0;
+    }
+    .sd-content-assets-layout {
+        grid-template-columns: minmax(0, 1fr) !important;
+    }
+    .sd-content-asset-pipeline {
+        grid-template-columns: minmax(0, 1fr);
+    }
+    .sd-content-pipeline-item + .sd-content-pipeline-item {
+        border-left: 0;
+        border-top: 1px solid var(--app-border-subtle);
+    }
+    .sd-content-chapter-row button {
+        opacity: 1;
+    }
+    .sd-content-import-shell {
+        min-height: 0;
+    }
+    .sd-content-import-header {
+        padding-right: 48px;
+    }
+    .sd-content-import-textarea {
+        height: 220px;
+    }
 }

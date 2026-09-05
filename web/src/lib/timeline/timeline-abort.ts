@@ -4,7 +4,17 @@ export function waitForTimelineOperation<T>(pending: Promise<T>, signal?: AbortS
     return new Promise<T>((resolve, reject) => {
         const abort = () => reject(signal.reason);
         const cleanup = () => signal.removeEventListener("abort", abort);
-        pending.then((value) => { cleanup(); if (signal.aborted) abort(); else resolve(value); }, (error) => { cleanup(); reject(signal.aborted ? signal.reason : error); });
+        pending.then(
+            (value) => {
+                cleanup();
+                if (signal.aborted) abort();
+                else resolve(value);
+            },
+            (error) => {
+                cleanup();
+                reject(signal.aborted ? signal.reason : error);
+            },
+        );
         if (signal.aborted) abort();
         else signal.addEventListener("abort", abort, { once: true });
     });

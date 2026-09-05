@@ -121,7 +121,9 @@ export default function DiagnosticsPanel({ taskId, projectId }: DiagnosticsPanel
                                 {previewError ? (
                                     <div className="settings-diagnostics-preview-error" role="alert">
                                         暂时无法读取数量预览，不影响导出本机诊断信息。
-                                        <Button size="small" onClick={() => setPreviewAttempt((value) => value + 1)}>重新读取</Button>
+                                        <Button size="small" onClick={() => setPreviewAttempt((value) => value + 1)}>
+                                            重新读取
+                                        </Button>
                                     </div>
                                 ) : null}
                             </div>

@@ -28,10 +28,15 @@ describe("website branding theme", () => {
     });
 
     test("keeps extreme custom accent colors readable in both appearances", () => {
-        const luminance = (hex: string) => hex.slice(1).match(/../g)!.map((channel) => {
-            const n = parseInt(channel, 16) / 255;
-            return n <= 0.04045 ? n / 12.92 : ((n + 0.055) / 1.055) ** 2.4;
-        }).reduce((sum, channel, i) => sum + channel * [0.2126, 0.7152, 0.0722][i], 0);
+        const luminance = (hex: string) =>
+            hex
+                .slice(1)
+                .match(/../g)!
+                .map((channel) => {
+                    const n = parseInt(channel, 16) / 255;
+                    return n <= 0.04045 ? n / 12.92 : ((n + 0.055) / 1.055) ** 2.4;
+                })
+                .reduce((sum, channel, i) => sum + channel * [0.2126, 0.7152, 0.0722][i], 0);
         for (const primary of ["#FFFFFF", "#000000", "#FFFF00", "#0000FF", "#18A56B"]) {
             for (const dark of [false, true]) {
                 const theme = getAntThemeConfigForPathname(dark, "/admin", primary);

@@ -109,7 +109,18 @@ export function CreationMessageView({
     const resultLabel = mode === "image" ? "图像" : mode === "video" ? "视频" : "文本";
     const assistantName = `${branding.config.identity.shortName} AI`;
     const hasMediaResult = Boolean(item.resultUrls?.some(Boolean));
-    const headingLabel = mode === "text" ? assistantName : item.status === "error" ? `${resultLabel}生成失败` : item.status === "cancelled" ? `${resultLabel}生成已停止` : isRunning ? `正在生成${resultLabel}` : hasMediaResult ? `${resultLabel}已生成` : `未返回${resultLabel}`;
+    const headingLabel =
+        mode === "text"
+            ? assistantName
+            : item.status === "error"
+              ? `${resultLabel}生成失败`
+              : item.status === "cancelled"
+                ? `${resultLabel}生成已停止`
+                : isRunning
+                  ? `正在生成${resultLabel}`
+                  : hasMediaResult
+                    ? `${resultLabel}已生成`
+                    : `未返回${resultLabel}`;
     const emptyText = isRunning ? "正在生成…" : item.status === "cancelled" ? "本轮生成已停止。" : item.status === "error" ? "本轮未能生成内容，请重试。" : "本轮未返回文本内容，可调整描述后重新生成。";
     const heading = (
         <>

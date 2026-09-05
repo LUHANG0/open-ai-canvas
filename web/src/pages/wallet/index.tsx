@@ -64,7 +64,9 @@ export default function WalletPage() {
 
     useEffect(() => {
         void reload(page, pageSize);
-        return () => { requestSequence.current += 1; };
+        return () => {
+            requestSequence.current += 1;
+        };
     }, [filter, page, pageSize]);
 
     const redeem = async () => {
@@ -79,7 +81,7 @@ export default function WalletPage() {
         setResult(null);
         try {
             const response = await redeemCredits(normalized);
-            setWallet((current) => current ? { ...current, account: response.account } : current);
+            setWallet((current) => (current ? { ...current, account: response.account } : current));
             setCode("");
             setPage(1);
             await reload(1, pageSize);
@@ -100,7 +102,7 @@ export default function WalletPage() {
         setCheckingIn(true);
         try {
             const response = await checkinCredits();
-            setWallet((current) => current ? { ...current, account: response.account, policy: { ...current.policy, checkedInToday: true } } : current);
+            setWallet((current) => (current ? { ...current, account: response.account, policy: { ...current.policy, checkedInToday: true } } : current));
             await reload(page, pageSize);
             window.dispatchEvent(new CustomEvent("wallet:updated"));
             message.success(response.granted ? "签到成功，积分已到账" : "今日已签到");
@@ -288,10 +290,29 @@ export default function WalletPage() {
                     }
                 />
 
-                {loading ? <WorkspaceState compact icon="loading" role="status" title="正在读取积分流水" /> : loadError ? (
+                {loading ? (
+                    <WorkspaceState compact icon="loading" role="status" title="正在读取积分流水" />
+                ) : loadError ? (
                     <WorkspaceState compact icon="error" role="alert" title="积分流水加载失败" description="余额保留最近一次成功读取的结果。重新读取后再查看当前筛选与页码。" action={<Button onClick={() => void reload()}>重新读取流水</Button>} />
                 ) : entries.length === 0 ? (
-                    <WorkspaceState compact icon="wallet" title={filter === "all" ? "暂无积分记录" : "当前筛选没有记录"} description={filter === "all" ? "充值、签到和模型结算后的记录会显示在这里。" : "试试查看全部类型的积分记录。"} action={filter !== "all" ? <Button onClick={() => { setFilter("all"); setPage(1); }}>查看全部记录</Button> : undefined} />
+                    <WorkspaceState
+                        compact
+                        icon="wallet"
+                        title={filter === "all" ? "暂无积分记录" : "当前筛选没有记录"}
+                        description={filter === "all" ? "充值、签到和模型结算后的记录会显示在这里。" : "试试查看全部类型的积分记录。"}
+                        action={
+                            filter !== "all" ? (
+                                <Button
+                                    onClick={() => {
+                                        setFilter("all");
+                                        setPage(1);
+                                    }}
+                                >
+                                    查看全部记录
+                                </Button>
+                            ) : undefined
+                        }
+                    />
                 ) : screens.md ? (
                     <TableSurface className="wallet-ledger-table-surface mt-0 rounded-xl border-border/70 bg-transparent">
                         <Table
@@ -362,7 +383,10 @@ function LedgerMobileRow({ config, entry }: { config: AiConfig; entry: CreditLed
                     <CreditDelta value={entry.amountMicrocredits} />
                 </div>
                 <div className="mt-2 line-clamp-2 break-words text-xs leading-5 text-foreground/55">{[sceneLabel(entry.scene), entry.note].filter(Boolean).join(" · ") || meta.label}</div>
-                <div className="wallet-mobile-entry-meta"><LedgerTypeTag type={entry.type} /><span>变更后 {formatCredits(entry.availableAfterMicrocredits, 6)} 积分</span></div>
+                <div className="wallet-mobile-entry-meta">
+                    <LedgerTypeTag type={entry.type} />
+                    <span>变更后 {formatCredits(entry.availableAfterMicrocredits, 6)} 积分</span>
+                </div>
             </div>
         </article>
     );

@@ -51,9 +51,7 @@ export function CreationEmptyIntro({ mode }: { mode: CreationMode }) {
 
     return (
         <header className="creation-empty-intro">
-            <span className="creation-empty-kicker">
-                YOUR CREATIVE WORKSPACE
-            </span>
+            <span className="creation-empty-kicker">YOUR CREATIVE WORKSPACE</span>
             <h1>
                 <span className="creation-empty-title-mobile">
                     你好，想创作什么<span aria-hidden="true">？</span>

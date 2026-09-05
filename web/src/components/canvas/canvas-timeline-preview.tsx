@@ -61,7 +61,11 @@ export function CanvasTimelinePreview({ clips, nodes, playheadMs, playing, theme
         setVideoSize(null);
         setFailed(false);
         setLoading(Boolean(activeVideoClip));
-        if (!node && !media) { setLoading(false); setFailed(Boolean(activeVideoClip)); return; }
+        if (!node && !media) {
+            setLoading(false);
+            setFailed(Boolean(activeVideoClip));
+            return;
+        }
         let cancelled = false;
         // 直连媒体片段（directMedia，不落画布）与画布节点走同一套缓存/回退解析策略
         const storageKey = node?.metadata?.storageKey || media?.storageKey || "";
@@ -69,12 +73,15 @@ export function CanvasTimelinePreview({ clips, nodes, playheadMs, playing, theme
         void (async () => {
             try {
                 const cached = resourceIdFromStorageKey(storageKey) ? await cacheResourceObjectUrl(storageKey).catch(() => null) : null;
-                const url = cached || await resolveMediaUrl(storageKey, fallback);
+                const url = cached || (await resolveMediaUrl(storageKey, fallback));
                 if (cancelled) return;
                 if (!url) throw new Error("媒体不可用");
                 setVideoUrl(url);
             } catch {
-                if (!cancelled) { setLoading(false); setFailed(true); }
+                if (!cancelled) {
+                    setLoading(false);
+                    setFailed(true);
+                }
             }
         })();
         return () => {
@@ -148,7 +155,21 @@ export function CanvasTimelinePreview({ clips, nodes, playheadMs, playing, theme
                 {videoUrl && activeVideoClip ? (
                     <>
                         <div className="relative" style={previewDisplay ? { width: previewDisplay.width, height: previewDisplay.height } : { width: "100%", height: "100%" }}>
-                            <video key={`${activeVideoClip.id}:${retry}`} ref={videoRef} className="block h-full w-full" src={videoUrl} playsInline preload={videoUrl.startsWith("blob:") ? "auto" : "metadata"} onLoadedData={() => setLoading(false)} onError={() => { setLoading(false); setFailed(true); }} onLoadedMetadata={(event) => handleVideoLoadedMetadata(event.currentTarget)} onTimeUpdate={handleTimeUpdate} />
+                            <video
+                                key={`${activeVideoClip.id}:${retry}`}
+                                ref={videoRef}
+                                className="block h-full w-full"
+                                src={videoUrl}
+                                playsInline
+                                preload={videoUrl.startsWith("blob:") ? "auto" : "metadata"}
+                                onLoadedData={() => setLoading(false)}
+                                onError={() => {
+                                    setLoading(false);
+                                    setFailed(true);
+                                }}
+                                onLoadedMetadata={(event) => handleVideoLoadedMetadata(event.currentTarget)}
+                                onTimeUpdate={handleTimeUpdate}
+                            />
                             {activeSubtitleClip ? <CanvasSubtitleOverlay text={activeSubtitleClip.text || ""} highlight={activeHighlight} style={subtitleStyle} /> : null}
                         </div>
                         <button
@@ -169,8 +190,20 @@ export function CanvasTimelinePreview({ clips, nodes, playheadMs, playing, theme
                 ) : (
                     <div className="px-4 text-center text-xs opacity-75">{activeVideoClip ? "" : "该位置无视频片段"}</div>
                 )}
-                {loading ? <div role="status" className="absolute inset-0 z-20 grid place-content-center gap-2 bg-black/70 text-center text-xs"><BrandLoadingIndicator /><span>正在准备预览</span></div> : null}
-                {failed ? <div role="status" className="absolute inset-0 z-20 grid place-content-center gap-2 bg-black/80 px-4 text-center text-xs"><span>视频预览加载失败</span><button type="button" className="rounded border border-white/40 px-3 py-2 focus-visible:outline focus-visible:outline-2" onClick={() => setRetry((value) => value + 1)}>重试预览</button></div> : null}
+                {loading ? (
+                    <div role="status" className="absolute inset-0 z-20 grid place-content-center gap-2 bg-black/70 text-center text-xs">
+                        <BrandLoadingIndicator />
+                        <span>正在准备预览</span>
+                    </div>
+                ) : null}
+                {failed ? (
+                    <div role="status" className="absolute inset-0 z-20 grid place-content-center gap-2 bg-black/80 px-4 text-center text-xs">
+                        <span>视频预览加载失败</span>
+                        <button type="button" className="rounded border border-white/40 px-3 py-2 focus-visible:outline focus-visible:outline-2" onClick={() => setRetry((value) => value + 1)}>
+                            重试预览
+                        </button>
+                    </div>
+                ) : null}
             </div>
             <div className="timeline-preview-info min-w-0 flex-1">
                 <div className="flex items-center gap-2 text-xs">

@@ -14,41 +14,41 @@
         flex-direction: column;
     }
 }
-.admin-drawing-settings
-    :is(.admin-drawing-overview, .admin-runtime-policy-overview, .admin-access-overview, .admin-email-overview, .admin-storage-overview, .admin-ark-overview, .admin-intercept-overview, .admin-third-party-overview)
-    .admin-stat-tile, .admin-runtime-policy
-    :is(.admin-drawing-overview, .admin-runtime-policy-overview, .admin-access-overview, .admin-email-overview, .admin-storage-overview, .admin-ark-overview, .admin-intercept-overview, .admin-third-party-overview)
-    .admin-stat-tile, .admin-ark-settings
-    :is(.admin-drawing-overview, .admin-runtime-policy-overview, .admin-access-overview, .admin-email-overview, .admin-storage-overview, .admin-ark-overview, .admin-intercept-overview, .admin-third-party-overview)
-    .admin-stat-tile, .admin-intercept-settings
-    :is(.admin-drawing-overview, .admin-runtime-policy-overview, .admin-access-overview, .admin-email-overview, .admin-storage-overview, .admin-ark-overview, .admin-intercept-overview, .admin-third-party-overview)
-    .admin-stat-tile, .admin-third-party-settings
+.admin-drawing-settings :is(.admin-drawing-overview, .admin-runtime-policy-overview, .admin-access-overview, .admin-email-overview, .admin-storage-overview, .admin-ark-overview, .admin-intercept-overview, .admin-third-party-overview) .admin-stat-tile,
+.admin-runtime-policy :is(.admin-drawing-overview, .admin-runtime-policy-overview, .admin-access-overview, .admin-email-overview, .admin-storage-overview, .admin-ark-overview, .admin-intercept-overview, .admin-third-party-overview) .admin-stat-tile,
+.admin-ark-settings :is(.admin-drawing-overview, .admin-runtime-policy-overview, .admin-access-overview, .admin-email-overview, .admin-storage-overview, .admin-ark-overview, .admin-intercept-overview, .admin-third-party-overview) .admin-stat-tile,
+.admin-intercept-settings :is(.admin-drawing-overview, .admin-runtime-policy-overview, .admin-access-overview, .admin-email-overview, .admin-storage-overview, .admin-ark-overview, .admin-intercept-overview, .admin-third-party-overview) .admin-stat-tile,
+.admin-third-party-settings
     :is(.admin-drawing-overview, .admin-runtime-policy-overview, .admin-access-overview, .admin-email-overview, .admin-storage-overview, .admin-ark-overview, .admin-intercept-overview, .admin-third-party-overview)
     .admin-stat-tile {
     min-height: 88px;
     padding: 14px 16px;
-}.admin-drawing-settings
+}
+.admin-drawing-settings
     :is(.admin-drawing-overview, .admin-runtime-policy-overview, .admin-access-overview, .admin-email-overview, .admin-storage-overview, .admin-ark-overview, .admin-intercept-overview, .admin-third-party-overview)
-    .admin-stat-tile-value, .admin-runtime-policy
+    .admin-stat-tile-value,
+.admin-runtime-policy :is(.admin-drawing-overview, .admin-runtime-policy-overview, .admin-access-overview, .admin-email-overview, .admin-storage-overview, .admin-ark-overview, .admin-intercept-overview, .admin-third-party-overview) .admin-stat-tile-value,
+.admin-ark-settings :is(.admin-drawing-overview, .admin-runtime-policy-overview, .admin-access-overview, .admin-email-overview, .admin-storage-overview, .admin-ark-overview, .admin-intercept-overview, .admin-third-party-overview) .admin-stat-tile-value,
+.admin-intercept-settings
     :is(.admin-drawing-overview, .admin-runtime-policy-overview, .admin-access-overview, .admin-email-overview, .admin-storage-overview, .admin-ark-overview, .admin-intercept-overview, .admin-third-party-overview)
-    .admin-stat-tile-value, .admin-ark-settings
-    :is(.admin-drawing-overview, .admin-runtime-policy-overview, .admin-access-overview, .admin-email-overview, .admin-storage-overview, .admin-ark-overview, .admin-intercept-overview, .admin-third-party-overview)
-    .admin-stat-tile-value, .admin-intercept-settings
-    :is(.admin-drawing-overview, .admin-runtime-policy-overview, .admin-access-overview, .admin-email-overview, .admin-storage-overview, .admin-ark-overview, .admin-intercept-overview, .admin-third-party-overview)
-    .admin-stat-tile-value, .admin-third-party-settings
+    .admin-stat-tile-value,
+.admin-third-party-settings
     :is(.admin-drawing-overview, .admin-runtime-policy-overview, .admin-access-overview, .admin-email-overview, .admin-storage-overview, .admin-ark-overview, .admin-intercept-overview, .admin-third-party-overview)
     .admin-stat-tile-value {
     margin-top: 5px;
     font-size: 18px;
-}.admin-drawing-settings
+}
+.admin-drawing-settings
     :is(.admin-drawing-overview, .admin-runtime-policy-overview, .admin-access-overview, .admin-email-overview, .admin-storage-overview, .admin-ark-overview, .admin-intercept-overview, .admin-third-party-overview)
-    .admin-stat-tile-detail, .admin-runtime-policy
+    .admin-stat-tile-detail,
+.admin-runtime-policy
     :is(.admin-drawing-overview, .admin-runtime-policy-overview, .admin-access-overview, .admin-email-overview, .admin-storage-overview, .admin-ark-overview, .admin-intercept-overview, .admin-third-party-overview)
-    .admin-stat-tile-detail, .admin-ark-settings
+    .admin-stat-tile-detail,
+.admin-ark-settings :is(.admin-drawing-overview, .admin-runtime-policy-overview, .admin-access-overview, .admin-email-overview, .admin-storage-overview, .admin-ark-overview, .admin-intercept-overview, .admin-third-party-overview) .admin-stat-tile-detail,
+.admin-intercept-settings
     :is(.admin-drawing-overview, .admin-runtime-policy-overview, .admin-access-overview, .admin-email-overview, .admin-storage-overview, .admin-ark-overview, .admin-intercept-overview, .admin-third-party-overview)
-    .admin-stat-tile-detail, .admin-intercept-settings
-    :is(.admin-drawing-overview, .admin-runtime-policy-overview, .admin-access-overview, .admin-email-overview, .admin-storage-overview, .admin-ark-overview, .admin-intercept-overview, .admin-third-party-overview)
-    .admin-stat-tile-detail, .admin-third-party-settings
+    .admin-stat-tile-detail,
+.admin-third-party-settings
     :is(.admin-drawing-overview, .admin-runtime-policy-overview, .admin-access-overview, .admin-email-overview, .admin-storage-overview, .admin-ark-overview, .admin-intercept-overview, .admin-third-party-overview)
     .admin-stat-tile-detail {
     margin-top: 5px;
@@ -2450,17 +2450,17 @@
 
 @media (min-width: 1100px) and (max-width: 1279px) {
     .admin-ark-command-bar,
-.admin-intercept-command-bar,
-.admin-third-party-command-bar,
-.admin-runtime-policy-command-bar {
+    .admin-intercept-command-bar,
+    .admin-third-party-command-bar,
+    .admin-runtime-policy-command-bar {
         align-items: center;
         flex-direction: row;
     }
 
     .admin-ark-command-actions,
-.admin-intercept-command-actions,
-.admin-third-party-command-actions,
-.admin-runtime-policy-command-actions {
+    .admin-intercept-command-actions,
+    .admin-third-party-command-actions,
+    .admin-runtime-policy-command-actions {
         width: auto;
         justify-content: flex-end;
     }
@@ -2552,13 +2552,13 @@
 
 @media (prefers-reduced-motion: reduce) {
     .admin-ark-command-bar,
-.admin-intercept-command-bar,
-.admin-intercept-rule-row,
-.admin-drawing-command-bar,
-.admin-drawing-engine-choice,
-.admin-runtime-policy-command-bar,
-.admin-runtime-policy-index-links button,
-.admin-third-party-command-bar {
+    .admin-intercept-command-bar,
+    .admin-intercept-rule-row,
+    .admin-drawing-command-bar,
+    .admin-drawing-engine-choice,
+    .admin-runtime-policy-command-bar,
+    .admin-runtime-policy-index-links button,
+    .admin-third-party-command-bar {
         transition: none !important;
     }
 
@@ -2566,7 +2566,6 @@
         transform: none;
     }
 }
-
 
 .admin-analytics-range-presets,
 .admin-analytics-trend-switch {
@@ -2982,7 +2981,6 @@
 }
 
 @media (min-width: 1024px) {
-
     .admin-shell
         :where(
             .admin-sidebar,
@@ -3036,21 +3034,18 @@
 }
 
 @media (min-width: 1600px) {
-
     .admin-runtime-policy-anchor .admin-settings-section:not(.is-stacked) {
         max-width: none;
     }
 }
 
 @media (min-width: 1800px) {
-
     .admin-runtime-policy-field-grid {
         grid-template-columns: repeat(4, minmax(0, 1fr));
     }
 }
 
 @media (prefers-reduced-motion: reduce) {
-
     .admin-shell
         :where(
             .admin-sidebar,

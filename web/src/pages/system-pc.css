@@ -3,193 +3,192 @@
     display: none;
 }
 
-    .pc-system-pc-only {
-        display: block;
-    }
+.pc-system-pc-only {
+    display: block;
+}
 
-    .pc-system-page {
-        position: relative;
-        isolation: isolate;
-        background: linear-gradient(180deg, color-mix(in srgb, var(--app-selection-bg) 22%, transparent), transparent 32%), var(--app-bg-page);
-        color: var(--app-text-primary);
-        font-family: var(--app-font-sans);
-    }
+.pc-system-page {
+    position: relative;
+    isolation: isolate;
+    background: linear-gradient(180deg, color-mix(in srgb, var(--app-selection-bg) 22%, transparent), transparent 32%), var(--app-bg-page);
+    color: var(--app-text-primary);
+    font-family: var(--app-font-sans);
+}
 
-    .pc-system-page::before {
-        position: absolute;
-        z-index: -1;
-        inset: 0;
-        opacity: 0.38;
-        background-image: linear-gradient(var(--app-border-subtle) 1px, transparent 1px), linear-gradient(90deg, var(--app-border-subtle) 1px, transparent 1px);
-        background-size: 32px 32px;
-        content: "";
-        mask-image: radial-gradient(circle at center, black, transparent 72%);
-    }
+.pc-system-page::before {
+    position: absolute;
+    z-index: -1;
+    inset: 0;
+    opacity: 0.38;
+    background-image: linear-gradient(var(--app-border-subtle) 1px, transparent 1px), linear-gradient(90deg, var(--app-border-subtle) 1px, transparent 1px);
+    background-size: 32px 32px;
+    content: "";
+    mask-image: radial-gradient(circle at center, black, transparent 72%);
+}
 
-    .pc-system-page-main {
-        padding: clamp(20px, 4vw, 48px);
-        overflow-y: auto;
-    }
+.pc-system-page-main {
+    padding: clamp(20px, 4vw, 48px);
+    overflow-y: auto;
+}
 
-    .pc-system-card {
-        position: relative;
-        max-width: 600px;
-        overflow: hidden;
-        border: 1px solid var(--app-border-subtle);
-        border-radius: var(--app-surface-radius);
-        padding: 52px clamp(20px, 4vw, 48px) 40px;
-        background: color-mix(in srgb, var(--app-surface-1) 96%, transparent);
-        box-shadow:
-            inset 0 1px 0 color-mix(in srgb, var(--app-brand-400) 14%, transparent),
-            var(--app-shadow-overlay);
-    }
+.pc-system-card {
+    position: relative;
+    max-width: 600px;
+    overflow: hidden;
+    border: 1px solid var(--app-border-subtle);
+    border-radius: var(--app-surface-radius);
+    padding: 52px clamp(20px, 4vw, 48px) 40px;
+    background: color-mix(in srgb, var(--app-surface-1) 96%, transparent);
+    box-shadow:
+        inset 0 1px 0 color-mix(in srgb, var(--app-brand-400) 14%, transparent),
+        var(--app-shadow-overlay);
+}
 
+.pc-system-card::after {
+    position: absolute;
+    top: 0;
+    right: 0;
+    left: 0;
+    height: 2px;
+    background: var(--app-brand-gradient);
+    content: "";
+}
 
-    .pc-system-card::after {
-        position: absolute;
-        top: 0;
-        right: 0;
-        left: 0;
-        height: 2px;
-        background: var(--app-brand-gradient);
-        content: "";
-    }
+.pc-system-card.is-error::after {
+    background: var(--app-status-error-fg);
+}
 
-    .pc-system-card.is-error::after {
-        background: var(--app-status-error-fg);
-    }
+.pc-system-code {
+    position: absolute;
+    top: 18px;
+    right: 20px;
+    margin: 0;
+    color: var(--app-brand-700, var(--app-text-muted));
+    font-family: var(--app-font-mono);
+    font-size: 11px;
+    font-weight: 650;
+    letter-spacing: 0.08em;
+}
 
-    .pc-system-code {
-        position: absolute;
-        top: 18px;
-        right: 20px;
-        margin: 0;
-        color: var(--app-brand-700, var(--app-text-muted));
-        font-family: var(--app-font-mono);
-        font-size: 11px;
-        font-weight: 650;
-        letter-spacing: 0.08em;
-    }
+.pc-system-icon {
+    margin-bottom: 20px;
+}
 
-    .pc-system-icon {
-        margin-bottom: 20px;
-    }
+.pc-system-icon rect {
+    fill: var(--app-surface-2);
+    stroke: var(--app-selection-border);
+}
 
-    .pc-system-icon rect {
-        fill: var(--app-surface-2);
-        stroke: var(--app-selection-border);
-    }
+.pc-system-icon path {
+    stroke: var(--app-brand-600);
+}
 
-    .pc-system-icon path {
-        stroke: var(--app-brand-600);
-    }
+.pc-system-icon circle {
+    fill: var(--app-ai-500);
+}
 
-    .pc-system-icon circle {
-        fill: var(--app-ai-500);
-    }
+.pc-system-card.is-error .pc-system-icon rect {
+    stroke: var(--app-status-error-border);
+}
 
-    .pc-system-card.is-error .pc-system-icon rect {
-        stroke: var(--app-status-error-border);
-    }
+.pc-system-card.is-error .pc-system-icon path {
+    stroke: var(--app-status-error-fg);
+}
 
-    .pc-system-card.is-error .pc-system-icon path {
-        stroke: var(--app-status-error-fg);
-    }
+.pc-system-card.is-error .pc-system-icon circle {
+    fill: var(--app-status-warning-fg);
+}
 
-    .pc-system-card.is-error .pc-system-icon circle {
-        fill: var(--app-status-warning-fg);
-    }
+.pc-system-eyebrow {
+    margin: 0 0 8px;
+    color: var(--app-text-muted);
+    font-size: 11px;
+    font-weight: 650;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
 
-    .pc-system-eyebrow {
-        margin: 0 0 8px;
-        color: var(--app-text-muted);
-        font-size: 11px;
-        font-weight: 650;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-    }
+.pc-system-title {
+    margin-top: 0;
+    color: var(--app-text-primary);
+    font-size: 26px;
+    font-weight: 670;
+    letter-spacing: -0.025em;
+    line-height: 1.3;
+}
 
-    .pc-system-title {
-        margin-top: 0;
-        color: var(--app-text-primary);
-        font-size: 26px;
-        font-weight: 670;
-        letter-spacing: -0.025em;
-        line-height: 1.3;
-    }
+.pc-system-description {
+    max-width: 46ch;
+    margin-inline: auto;
+    color: var(--app-text-secondary);
+    font-size: 13px;
+    line-height: 1.7;
+    overflow-wrap: anywhere;
+}
 
-    .pc-system-description {
-        max-width: 46ch;
-        margin-inline: auto;
-        color: var(--app-text-secondary);
-        font-size: 13px;
-        line-height: 1.7;
-        overflow-wrap: anywhere;
-    }
+.pc-system-card.is-error .pc-system-description {
+    max-width: 100%;
+    padding: var(--app-space-3);
+    color: var(--app-status-error-fg);
+    background: var(--app-status-error-bg);
+    border: 1px solid var(--app-status-error-border);
+    border-radius: var(--app-control-radius);
+    font-family: var(--app-font-mono);
+    font-size: 11px;
+    line-height: 1.6;
+}
 
-    .pc-system-card.is-error .pc-system-description {
-        max-width: 100%;
-        padding: var(--app-space-3);
-        color: var(--app-status-error-fg);
-        background: var(--app-status-error-bg);
-        border: 1px solid var(--app-status-error-border);
-        border-radius: var(--app-control-radius);
-        font-family: var(--app-font-mono);
-        font-size: 11px;
-        line-height: 1.6;
-    }
+.pc-system-actions {
+    margin-top: 28px;
+    flex-wrap: wrap;
+}
 
-    .pc-system-actions {
-        margin-top: 28px;
-        flex-wrap: wrap;
-    }
+.pc-system-primary-action,
+.pc-system-primary-button,
+.pc-system-secondary-action {
+    min-height: var(--app-control-height);
+    border-radius: var(--app-control-radius);
+    font-size: 13px;
+    font-weight: 600;
+}
 
-    .pc-system-primary-action,
-    .pc-system-primary-button,
-    .pc-system-secondary-action {
-        min-height: var(--app-control-height);
-        border-radius: var(--app-control-radius);
-        font-size: 13px;
-        font-weight: 600;
-    }
+.pc-system-primary-action {
+    background: var(--app-action-primary-bg);
+    color: var(--app-action-primary-fg);
+}
 
-    .pc-system-primary-action {
-        background: var(--app-action-primary-bg);
-        color: var(--app-action-primary-fg);
-    }
+.pc-system-primary-action:hover {
+    background: var(--app-action-primary-hover);
+    color: var(--app-action-primary-fg);
+}
 
-    .pc-system-primary-action:hover {
-        background: var(--app-action-primary-hover);
-        color: var(--app-action-primary-fg);
-    }
+.pc-system-secondary-action:hover {
+    color: var(--app-text-primary);
+    background: var(--app-action-secondary-hover);
+    border-color: var(--app-border-interactive);
+}
 
-    .pc-system-secondary-action:hover {
-        color: var(--app-text-primary);
-        background: var(--app-action-secondary-hover);
-        border-color: var(--app-border-interactive);
-    }
+.pc-system-primary-button:disabled,
+.pc-system-secondary-action:disabled {
+    color: var(--app-text-muted);
+    background: var(--app-surface-3);
+    border-color: var(--app-border-subtle);
+    cursor: not-allowed;
+}
 
-    .pc-system-primary-button:disabled,
-    .pc-system-secondary-action:disabled {
-        color: var(--app-text-muted);
-        background: var(--app-surface-3);
-        border-color: var(--app-border-subtle);
-        cursor: not-allowed;
-    }
+.pc-system-primary-action:focus-visible {
+    outline: none;
+    box-shadow: var(--app-focus-shadow);
+}
 
-    .pc-system-primary-action:focus-visible {
-        outline: none;
-        box-shadow: var(--app-focus-shadow);
-    }
+.pc-system-card :where(.pc-system-primary-button, .pc-system-secondary-action):focus-visible {
+    outline: none;
+    box-shadow: var(--app-focus-shadow);
+}
 
-    .pc-system-card :where(.pc-system-primary-button, .pc-system-secondary-action):focus-visible {
-        outline: none;
-        box-shadow: var(--app-focus-shadow);
-    }
-
-    .dark .pc-system-code {
-        color: var(--app-brand-300);
-    }
+.dark .pc-system-code {
+    color: var(--app-brand-300);
+}
 @media (max-height: 680px) {
     .pc-system-page-main {
         padding: var(--app-space-6);

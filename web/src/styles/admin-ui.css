@@ -1162,7 +1162,6 @@
     overflow-y: auto;
 }
 
-
 /* 管理后台可读性基线：收敛历史页面中过低的文字透明度，并统一表单层级。 */
 :is(.admin-shell, .admin-drawer, .admin-secondary-drawer, .admin-modal-root, .admin-channel-modal-root) {
     color: var(--admin-text-primary);

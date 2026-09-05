@@ -409,11 +409,16 @@ export default function WorkflowProductionWorkbench(props: Props) {
     if (!selectedShot) {
         return (
             <div className="workflow-empty-shot">
-                <WorkspaceState icon="projects" title="当前章节还没有分镜" description="手动添加镜头脚本，或返回剧情章节生成本章分镜。" action={
-                    <Button type="primary" icon={<Plus className="size-4" />} loading={addingShot} onClick={onAddShot}>
-                        新增第一个分镜
-                    </Button>
-                } />
+                <WorkspaceState
+                    icon="projects"
+                    title="当前章节还没有分镜"
+                    description="手动添加镜头脚本，或返回剧情章节生成本章分镜。"
+                    action={
+                        <Button type="primary" icon={<Plus className="size-4" />} loading={addingShot} onClick={onAddShot}>
+                            新增第一个分镜
+                        </Button>
+                    }
+                />
             </div>
         );
     }

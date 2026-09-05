@@ -1,18 +1,107 @@
-.brand-loading-lab { height: 100dvh; overflow-y: auto; padding: 48px max(24px, calc((100vw - 1080px) / 2)); background: var(--app-bg-page); color: var(--app-text-primary); }
-.brand-loading-lab > header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 24px; margin-bottom: 32px; }
-.brand-loading-lab header p { font-size: 10px; letter-spacing: .18em; color: var(--app-brand-accent); }
-.brand-loading-lab h1 { margin: 8px 0; font-size: 28px; font-weight: 550; }
-.brand-loading-lab header span { font-size: 12px; color: var(--app-text-muted); }
-.brand-loading-lab nav, .brand-loading-lab-actions { display: flex; gap: 8px; flex-wrap: wrap; }
-.brand-loading-lab-hero { position: relative; display: grid; min-height: 330px; place-items: center; border: 1px solid var(--app-border-subtle); border-radius: var(--app-surface-radius); background: var(--app-surface-1); }
-.brand-loading-lab-fullscreen { position: absolute; right: 16px; bottom: 16px; }
-.brand-loading-lab-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px; }
-.brand-loading-lab-grid > section { padding: 20px; border: 1px solid var(--app-border-subtle); border-radius: var(--app-surface-radius); background: var(--app-surface-1); }
-.brand-loading-lab h2 { font-size: 13px; color: var(--app-text-secondary); }
-.brand-loading-lab-route { position: relative; min-height: 160px; margin: 16px 0; display: grid; place-items: center; }
-.brand-loading-lab-route .workspace-route-loader { background: transparent; }
-.brand-loading-lab-ready { color: var(--app-text-secondary); font-size: 13px; }
-.brand-loading-lab-inline { display: flex; align-items: center; justify-content: center; gap: 32px; min-height: 192px; color: var(--app-brand-accent); }
-.brand-loading-lab-data { margin-top: 12px; }
-.brand-loading-lab-close { position: fixed; right: 24px; top: 24px; z-index: calc(var(--loader-z) + 1); }
-@media (max-width: 639px) { .brand-loading-lab { padding: 28px 20px; } .brand-loading-lab-grid { grid-template-columns: 1fr; } .brand-loading-lab-hero { min-height: 310px; } }
+.brand-loading-lab {
+    height: 100dvh;
+    overflow-y: auto;
+    padding: 48px max(24px, calc((100vw - 1080px) / 2));
+    background: var(--app-bg-page);
+    color: var(--app-text-primary);
+}
+.brand-loading-lab > header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 24px;
+    margin-bottom: 32px;
+}
+.brand-loading-lab header p {
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    color: var(--app-brand-accent);
+}
+.brand-loading-lab h1 {
+    margin: 8px 0;
+    font-size: 28px;
+    font-weight: 550;
+}
+.brand-loading-lab header span {
+    font-size: 12px;
+    color: var(--app-text-muted);
+}
+.brand-loading-lab nav,
+.brand-loading-lab-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+.brand-loading-lab-hero {
+    position: relative;
+    display: grid;
+    min-height: 330px;
+    place-items: center;
+    border: 1px solid var(--app-border-subtle);
+    border-radius: var(--app-surface-radius);
+    background: var(--app-surface-1);
+}
+.brand-loading-lab-fullscreen {
+    position: absolute;
+    right: 16px;
+    bottom: 16px;
+}
+.brand-loading-lab-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-top: 20px;
+}
+.brand-loading-lab-grid > section {
+    padding: 20px;
+    border: 1px solid var(--app-border-subtle);
+    border-radius: var(--app-surface-radius);
+    background: var(--app-surface-1);
+}
+.brand-loading-lab h2 {
+    font-size: 13px;
+    color: var(--app-text-secondary);
+}
+.brand-loading-lab-route {
+    position: relative;
+    min-height: 160px;
+    margin: 16px 0;
+    display: grid;
+    place-items: center;
+}
+.brand-loading-lab-route .workspace-route-loader {
+    background: transparent;
+}
+.brand-loading-lab-ready {
+    color: var(--app-text-secondary);
+    font-size: 13px;
+}
+.brand-loading-lab-inline {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 32px;
+    min-height: 192px;
+    color: var(--app-brand-accent);
+}
+.brand-loading-lab-data {
+    margin-top: 12px;
+}
+.brand-loading-lab-close {
+    position: fixed;
+    right: 24px;
+    top: 24px;
+    z-index: calc(var(--loader-z) + 1);
+}
+@media (max-width: 639px) {
+    .brand-loading-lab {
+        padding: 28px 20px;
+    }
+    .brand-loading-lab-grid {
+        grid-template-columns: 1fr;
+    }
+    .brand-loading-lab-hero {
+        min-height: 310px;
+    }
+}

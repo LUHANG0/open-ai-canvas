@@ -13,7 +13,9 @@ export function applyClaySceneMaterials(scene: Scene) {
         mesh.material = clayMaterial;
     });
     return () => {
-        originals.forEach(({ mesh, material }) => { mesh.material = material; });
+        originals.forEach(({ mesh, material }) => {
+            mesh.material = material;
+        });
         clayMaterial.dispose();
     };
 }

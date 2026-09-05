@@ -485,13 +485,7 @@ function CanvasSaveStatusButton({ status, onRetry }: { status: CanvasSaveStatus;
                 aria-live="polite"
                 disabled={!presentation.retryable}
             >
-                {presentation.busy ? (
-                    <BrandLoadingIndicator size="inline" style={{ color: toneColor }} />
-                ) : presentation.retryable ? (
-                    <Redo2 className="size-3.5" style={{ color: toneColor }} />
-                ) : (
-                    <Check className="size-3.5" style={{ color: toneColor }} />
-                )}
+                {presentation.busy ? <BrandLoadingIndicator size="inline" style={{ color: toneColor }} /> : presentation.retryable ? <Redo2 className="size-3.5" style={{ color: toneColor }} /> : <Check className="size-3.5" style={{ color: toneColor }} />}
                 <span className="hidden whitespace-nowrap 2xl:inline">{presentation.label}</span>
             </button>
         </CanvasTopBarTooltip>

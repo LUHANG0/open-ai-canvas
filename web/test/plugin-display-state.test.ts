@@ -30,5 +30,6 @@ test("Eagle 地址只接受后端支持的本机 HTTP 默认端口", () => {
     expect(normalizeEagleAddress(" http://localhost:41595/ ")).toBe("http://localhost:41595");
     expect(normalizeEagleAddress("http://127.0.0.1:41595")).toBe("http://127.0.0.1:41595");
     expect(normalizeEagleAddress("http://[::1]:41595")).toBe("http://[::1]:41595");
-    for (const value of ["https://localhost:41595", "http://localhost:8095", "http://example.com:41595", "http://user:secret@localhost:41595", "http://localhost:41595/path", "http://localhost:41595?x=1", "not-a-url"]) expect(() => normalizeEagleAddress(value)).toThrow();
+    for (const value of ["https://localhost:41595", "http://localhost:8095", "http://example.com:41595", "http://user:secret@localhost:41595", "http://localhost:41595/path", "http://localhost:41595?x=1", "not-a-url"])
+        expect(() => normalizeEagleAddress(value)).toThrow();
 });

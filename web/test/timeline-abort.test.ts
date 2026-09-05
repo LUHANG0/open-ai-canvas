@@ -3,7 +3,9 @@ import { waitForTimelineOperation } from "../src/lib/timeline/timeline-abort";
 
 test("取消不等待挂起缓存，迟到成功不会改变已取消结果", async () => {
     let complete!: (value: string) => void;
-    const pending = new Promise<string>((resolve) => { complete = resolve; });
+    const pending = new Promise<string>((resolve) => {
+        complete = resolve;
+    });
     const controller = new AbortController();
     const result = waitForTimelineOperation(pending, controller.signal);
     controller.abort();

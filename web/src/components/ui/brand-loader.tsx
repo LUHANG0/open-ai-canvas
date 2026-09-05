@@ -23,14 +23,17 @@ export function BrandLoadingIndicator({ size = "inline", className, style, child
 export function BrandLoader({ label, detail, branded = false }: { label: string; detail?: string; branded?: boolean }) {
     return (
         <div className={cn("brand-loader", branded && "is-branded")}>
-            <BrandLoadingIndicator size={branded ? "lg" : "md"}>
-                {branded ? <BrandMark className="brand-loading-logo" /> : undefined}
-            </BrandLoadingIndicator>
+            <BrandLoadingIndicator size={branded ? "lg" : "md"}>{branded ? <BrandMark className="brand-loading-logo" /> : undefined}</BrandLoadingIndicator>
             <div className="brand-loader-copy">
                 <span className="brand-loader-label">{label}</span>
                 {detail ? <span className="brand-loader-detail">{detail}</span> : null}
             </div>
-            <span className="brand-loader-frames" aria-hidden="true"><i /><i /><i /><i /></span>
+            <span className="brand-loader-frames" aria-hidden="true">
+                <i />
+                <i />
+                <i />
+                <i />
+            </span>
         </div>
     );
 }

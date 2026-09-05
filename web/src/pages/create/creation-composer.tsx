@@ -570,11 +570,7 @@ export function CreationComposer(props: ComposerProps) {
     const billingDescription = showCost ? "根据当前模型与生成参数计算，提交时将按此金额扣除" : "显示的是计费单价，提交时预授权，完成后按实际 Token 用量结算";
     const placeholder = props.mode === "text" ? "描述你的故事、角色或想继续讨论的创意" : props.mode === "image" ? "描述画面、人物、场景、构图与风格" : "描述镜头内容、运动、光线与节奏";
     const emptyPlaceholder =
-        props.mode === "video"
-            ? "描述镜头内容、运镜、光线与节奏；选择模型后，可添加它支持的参考素材。"
-            : props.mode === "image"
-              ? "描述人物、场景、构图与风格；选择模型后，可添加它支持的参考素材。"
-              : "输入故事、角色或创意，也可以使用 @ 引用素材与技能。";
+        props.mode === "video" ? "描述镜头内容、运镜、光线与节奏；选择模型后，可添加它支持的参考素材。" : props.mode === "image" ? "描述人物、场景、构图与风格；选择模型后，可添加它支持的参考素材。" : "输入故事、角色或创意，也可以使用 @ 引用素材与技能。";
     const referenceCounts = useMemo(() => countCreationAttachments(props.attachments), [props.attachments]);
     const referenceKinds: CreationAttachmentKind[] = ["image", "video", "audio", "file"];
     const supportedReferenceKinds = referenceKinds.filter((kind) => creationAttachmentLimit(props.mode, props.referenceLimits, kind) > 0);
@@ -1166,7 +1162,11 @@ export function CreationComposer(props: ComposerProps) {
                     </CreationTooltip>
                 </div>
             </footer>
-            {!canSubmit ? <p className="creation-submit-status" role="status">{actionLabel}</p> : null}
+            {!canSubmit ? (
+                <p className="creation-submit-status" role="status">
+                    {actionLabel}
+                </p>
+            ) : null}
             <CreationMediaPreviewModal url={previewUrl} type={previewType} onClose={() => setPreviewUrl("")} />
         </section>
     );

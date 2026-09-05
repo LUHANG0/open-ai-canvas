@@ -9,7 +9,6 @@
 }
 
 @media all {
-
     .pc-project-topbar {
         gap: 10px;
     }
@@ -72,6 +71,10 @@
 }
 
 @media (max-width: 767px) {
-    .pc-project-topbar { gap: 4px; }
-    .pc-project-topbar .pc-project-topbar-identity { display: none; }
+    .pc-project-topbar {
+        gap: 4px;
+    }
+    .pc-project-topbar .pc-project-topbar-identity {
+        display: none;
+    }
 }

@@ -117,7 +117,10 @@
     flex: 0 0 var(--director-dock-button-size);
     place-items: center;
     border-radius: var(--r-md);
-    transition: background var(--motion-dur-fast) var(--motion-ease-out), color var(--motion-dur-fast) var(--motion-ease-out), transform var(--motion-dur-fast) var(--motion-ease-out);
+    transition:
+        background var(--motion-dur-fast) var(--motion-ease-out),
+        color var(--motion-dur-fast) var(--motion-ease-out),
+        transform var(--motion-dur-fast) var(--motion-ease-out);
 }
 
 .director-viewport-dock-button > svg {
@@ -164,7 +167,9 @@
     color: var(--app-text-primary);
     font-size: var(--fs-tiny);
     opacity: 0.62;
-    transition: background var(--motion-dur-fast-calc) var(--motion-ease-out), opacity var(--motion-dur-fast-calc) var(--motion-ease-out);
+    transition:
+        background var(--motion-dur-fast-calc) var(--motion-ease-out),
+        opacity var(--motion-dur-fast-calc) var(--motion-ease-out);
 }
 
 .director-mode-switch-button:hover {
@@ -289,7 +294,10 @@
     font-size: var(--fs-tiny);
     text-overflow: ellipsis;
     white-space: nowrap;
-    transition: border-color var(--motion-dur-fast) var(--motion-ease-out), background var(--motion-dur-fast) var(--motion-ease-out), color var(--motion-dur-fast) var(--motion-ease-out);
+    transition:
+        border-color var(--motion-dur-fast) var(--motion-ease-out),
+        background var(--motion-dur-fast) var(--motion-ease-out),
+        color var(--motion-dur-fast) var(--motion-ease-out);
 }
 
 .director-pose-button:hover {
@@ -389,7 +397,9 @@
     color: var(--app-text-secondary);
     text-align: left;
     white-space: nowrap;
-    transition: background var(--motion-dur-fast) var(--motion-ease-out), color var(--motion-dur-fast) var(--motion-ease-out);
+    transition:
+        background var(--motion-dur-fast) var(--motion-ease-out),
+        color var(--motion-dur-fast) var(--motion-ease-out);
 }
 
 .director-sequencer-label:hover,
@@ -515,7 +525,9 @@
     height: var(--space-8);
     border-radius: var(--r-sm);
     color: var(--app-text-secondary);
-    transition: background var(--motion-dur-fast) var(--motion-ease-out), color var(--motion-dur-fast) var(--motion-ease-out);
+    transition:
+        background var(--motion-dur-fast) var(--motion-ease-out),
+        color var(--motion-dur-fast) var(--motion-ease-out);
 }
 
 .director-sequencer-transport,
@@ -552,38 +564,139 @@
     color: var(--app-selection-fg);
 }
 
-.director-workbench { font-family: var(--app-font-sans); }
-.director-workbench-header { white-space: nowrap; }
-.director-workbench-header > * { flex-shrink: 0; }
-.director-workbench-title { width: 180px; }
-.director-workbench-grid { display: grid; min-height: 0; flex: 1; grid-template-columns: 220px minmax(0, 1fr) 292px; }
-.director-mobile-panels { display: none; }
-.director-workbench-viewport { position: relative; min-width: 0; min-height: 0; overflow: hidden; }
-.director-workbench-caption { position: absolute; top: 12px; left: 12px; max-width: calc(100% - 24px); padding: 4px 8px; border-radius: var(--r-md); background: var(--app-surface-overlay); color: var(--app-text-secondary); font-size: var(--fs-tiny); pointer-events: none; }
-.director-onboarding { position: absolute; top: 64px; right: 12px; z-index: var(--z-popover); width: min(360px, calc(100% - 24px)); max-height: calc(100% - 124px); overflow-y: auto; overscroll-behavior: contain; }
-.director-view-toolbar { max-width: calc(100% - 24px); overflow-x: auto; white-space: nowrap; }
-.director-view-toolbar button { flex-shrink: 0; }
-.director-scene-row { display: flex; align-items: center; gap: 4px; min-height: 32px; padding: 0 4px; border-radius: var(--r-sm); color: var(--app-text-secondary); }
-.director-scene-row:hover { background: var(--app-action-secondary-hover); }
-.director-scene-row.is-active { background: var(--app-selection-bg); color: var(--app-selection-fg); }
-.director-workbench :is(button, select, input):focus-visible { outline: 2px solid var(--app-focus-ring); outline-offset: 2px; }
-.director-workbench :is(aside, .director-sequencer-body) { overscroll-behavior: contain; }
-.director-workbench .director-sequencer > header { overflow-x: auto; white-space: nowrap; }
-.director-workbench .director-sequencer > header > * { flex-shrink: 0; }
+.director-workbench {
+    font-family: var(--app-font-sans);
+}
+.director-workbench-header {
+    white-space: nowrap;
+}
+.director-workbench-header > * {
+    flex-shrink: 0;
+}
+.director-workbench-title {
+    width: 180px;
+}
+.director-workbench-grid {
+    display: grid;
+    min-height: 0;
+    flex: 1;
+    grid-template-columns: 220px minmax(0, 1fr) 292px;
+}
+.director-mobile-panels {
+    display: none;
+}
+.director-workbench-viewport {
+    position: relative;
+    min-width: 0;
+    min-height: 0;
+    overflow: hidden;
+}
+.director-workbench-caption {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    max-width: calc(100% - 24px);
+    padding: 4px 8px;
+    border-radius: var(--r-md);
+    background: var(--app-surface-overlay);
+    color: var(--app-text-secondary);
+    font-size: var(--fs-tiny);
+    pointer-events: none;
+}
+.director-onboarding {
+    position: absolute;
+    top: 64px;
+    right: 12px;
+    z-index: var(--z-popover);
+    width: min(360px, calc(100% - 24px));
+    max-height: calc(100% - 124px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}
+.director-view-toolbar {
+    max-width: calc(100% - 24px);
+    overflow-x: auto;
+    white-space: nowrap;
+}
+.director-view-toolbar button {
+    flex-shrink: 0;
+}
+.director-scene-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    min-height: 32px;
+    padding: 0 4px;
+    border-radius: var(--r-sm);
+    color: var(--app-text-secondary);
+}
+.director-scene-row:hover {
+    background: var(--app-action-secondary-hover);
+}
+.director-scene-row.is-active {
+    background: var(--app-selection-bg);
+    color: var(--app-selection-fg);
+}
+.director-workbench :is(button, select, input):focus-visible {
+    outline: 2px solid var(--app-focus-ring);
+    outline-offset: 2px;
+}
+.director-workbench :is(aside, .director-sequencer-body) {
+    overscroll-behavior: contain;
+}
+.director-workbench .director-sequencer > header {
+    overflow-x: auto;
+    white-space: nowrap;
+}
+.director-workbench .director-sequencer > header > * {
+    flex-shrink: 0;
+}
 @media (max-width: 1023px) {
-    .director-mobile-panels { display: flex; gap: 4px; padding: 4px 8px; border-bottom: 1px solid var(--app-border-default); background: var(--app-surface-1); }
-    .director-mobile-panels button { flex: 1; min-height: 32px; border-radius: var(--r-md); color: var(--app-text-secondary); }
-    .director-mobile-panels button[aria-pressed="true"] { color: var(--app-selection-fg); background: var(--app-selection-bg); }
-    .director-workbench-grid { grid-template-columns: minmax(0, 1fr); }
-    .director-workbench-grid > [data-mobile-active="false"] { display: none; }
-    .director-workbench-grid > aside { border-left: 0; border-right: 0; }
-    .director-workbench .director-sequencer { max-height: 38dvh; }
-    .director-workbench-caption { top: 60px; }
-    .director-onboarding { top: 92px; }
+    .director-mobile-panels {
+        display: flex;
+        gap: 4px;
+        padding: 4px 8px;
+        border-bottom: 1px solid var(--app-border-default);
+        background: var(--app-surface-1);
+    }
+    .director-mobile-panels button {
+        flex: 1;
+        min-height: 32px;
+        border-radius: var(--r-md);
+        color: var(--app-text-secondary);
+    }
+    .director-mobile-panels button[aria-pressed="true"] {
+        color: var(--app-selection-fg);
+        background: var(--app-selection-bg);
+    }
+    .director-workbench-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+    .director-workbench-grid > [data-mobile-active="false"] {
+        display: none;
+    }
+    .director-workbench-grid > aside {
+        border-left: 0;
+        border-right: 0;
+    }
+    .director-workbench .director-sequencer {
+        max-height: 38dvh;
+    }
+    .director-workbench-caption {
+        top: 60px;
+    }
+    .director-onboarding {
+        top: 92px;
+    }
 }
 @media (max-width: 480px) {
-    .director-template-grid { grid-template-columns: minmax(0, 1fr); }
+    .director-template-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
 }
 @media (prefers-reduced-motion: reduce) {
-    .director-workbench *, .director-template-grid * { transition: none; }
+    .director-workbench *,
+    .director-template-grid * {
+        transition: none;
+    }
 }

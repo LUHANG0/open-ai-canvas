@@ -26,7 +26,12 @@
             <div data-app-boot-loader class="brand-loader-screen" role="status" aria-live="polite" aria-label="正在打开创作空间">
                 <div class="brand-loader is-branded">
                     <span class="brand-loading-indicator is-lg" aria-hidden="true">
-                        <svg class="brand-loading-frame" viewBox="0 0 40 40" fill="none"><path d="M5 14V5H14"/><path d="M26 5H35V14"/><path d="M35 26V35H26"/><path d="M14 35H5V26"/></svg>
+                        <svg class="brand-loading-frame" viewBox="0 0 40 40" fill="none">
+                            <path d="M5 14V5H14" />
+                            <path d="M26 5H35V14" />
+                            <path d="M35 26V35H26" />
+                            <path d="M14 35H5V26" />
+                        </svg>
                         <span class="brand-loading-core"></span>
                     </span>
                     <div class="brand-loader-copy"><span class="brand-loader-label">正在打开创作空间</span><span class="brand-loader-detail">准备当前页面</span></div>
@@ -35,7 +40,13 @@
                 </div>
             </div>
         </div>
-        <noscript><style>[data-app-boot-loader] { display: none; }</style>请启用 JavaScript 后重新加载，以打开创作空间。</noscript>
+        <noscript
+            ><style>
+                [data-app-boot-loader] {
+                    display: none;
+                }</style
+            >请启用 JavaScript 后重新加载，以打开创作空间。</noscript
+        >
         <script type="module" src="/src/main.tsx"></script>
     </body>
 </html>

@@ -200,7 +200,9 @@ export default function StorageResourcesPanel() {
 
     return (
         <div className="space-y-4 pt-4">
-            {loadError || statsError ? <Alert type="error" showIcon title={loadError ? "资源列表读取失败" : "容量统计读取失败"} description={loadError || statsError} action={<Button onClick={() => setRefreshKey((value) => value + 1)}>重新读取</Button>} /> : null}
+            {loadError || statsError ? (
+                <Alert type="error" showIcon title={loadError ? "资源列表读取失败" : "容量统计读取失败"} description={loadError || statsError} action={<Button onClick={() => setRefreshKey((value) => value + 1)}>重新读取</Button>} />
+            ) : null}
             <div className="grid overflow-hidden rounded-md border border-border sm:grid-cols-2 xl:grid-cols-4">
                 <AdminStatTile label="资源记录" value={stats ? stats.resourceCount.toLocaleString() : "--"} detail={stats ? `可用 ${stats.readyCount.toLocaleString()} 项` : undefined} />
                 <AdminStatTile label="逻辑体积" value={stats ? formatBytes(stats.logicalBytes) : "--"} detail="包含失败与待处理记录" />
@@ -315,8 +317,27 @@ function ResourcePreview({ resource }: { resource: AdminStorageResource }) {
     const [failed, setFailed] = useState(false);
     const [attempt, setAttempt] = useState(0);
     const url = adminResourceFileUrl(resource.id);
-    if (failed) return <Alert type="error" showIcon title="文件预览失败" description="请检查资源是否仍可读取，或下载原文件查看。" action={<Button onClick={() => { setFailed(false); setAttempt((value) => value + 1); }}>重新加载</Button>} />;
-    if (resource.kind === "image" || resource.mimeType.startsWith("image/")) return <img key={attempt} onError={() => setFailed(true)} className="mx-auto max-h-[65vh] max-w-full object-contain" src={url} alt={fileName(resource.objectKey) || "资源预览"} />;
+    if (failed)
+        return (
+            <Alert
+                type="error"
+                showIcon
+                title="文件预览失败"
+                description="请检查资源是否仍可读取，或下载原文件查看。"
+                action={
+                    <Button
+                        onClick={() => {
+                            setFailed(false);
+                            setAttempt((value) => value + 1);
+                        }}
+                    >
+                        重新加载
+                    </Button>
+                }
+            />
+        );
+    if (resource.kind === "image" || resource.mimeType.startsWith("image/"))
+        return <img key={attempt} onError={() => setFailed(true)} className="mx-auto max-h-[65vh] max-w-full object-contain" src={url} alt={fileName(resource.objectKey) || "资源预览"} />;
     if (resource.kind === "video" || resource.mimeType.startsWith("video/")) return <video key={attempt} onError={() => setFailed(true)} className="mx-auto max-h-[65vh] max-w-full bg-black" src={url} controls playsInline />;
     if (resource.kind === "audio" || resource.mimeType.startsWith("audio/"))
         return (

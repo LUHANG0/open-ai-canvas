@@ -367,7 +367,7 @@ export default function TasksPage() {
             message.error(error instanceof Error ? error.message : "操作失败");
         } finally {
             retryingTaskIdsRef.current.delete(id);
-            setActingId((current) => current === id ? "" : current);
+            setActingId((current) => (current === id ? "" : current));
         }
     };
 
@@ -607,9 +607,7 @@ export default function TasksPage() {
                             </Button>
                         </div>
                     ) : null}
-                    {loading && !tasks.length ? (
-                        <WorkspaceLoadingState label="正在加载任务" detail="读取生成进度与历史记录" rows={3} />
-                    ) : null}
+                    {loading && !tasks.length ? <WorkspaceLoadingState label="正在加载任务" detail="读取生成进度与历史记录" rows={3} /> : null}
                     {!loading && loadError && !tasks.length ? (
                         <WorkspaceState
                             compact
