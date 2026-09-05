@@ -1,5 +1,6 @@
-import "../components/admin-configuration.css";
-import { App, Button, Form, Input, Select, Skeleton, Switch } from "antd";
+import { configurationConfirmProps } from "../components/configuration-confirm";
+import { BrandLoader } from "@/components/ui/brand-loader";
+import { App, Button, Form, Input, Select, Switch } from "antd";
 import { AlertTriangle, BadgeCheck, Check, Cloud, Database, Globe2, HardDrive, KeyRound, LocateFixed, RefreshCw, RotateCcw, Save, Server, ShieldCheck, Wifi } from "lucide-react";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { useBlocker } from "react-router";
@@ -9,6 +10,7 @@ import { cn } from "@/lib/utils";
 import { getAdminOSSSetting, testAdminOSSConnection, updateAdminOSSSetting, type AdminOSSSetting } from "@/services/api/auth";
 import { AdminPageFrame } from "../components/admin-shell";
 import { AdminStatusBadge, configuredSecretText, SettingsSectionCard } from "../components/admin-ui";
+import "../components/admin-configuration.css";
 
 type StorageMode = "local" | AdminOSSSetting["provider"];
 type OSSFormValues = {
@@ -52,6 +54,7 @@ export default function StorageSettingsPage() {
     const [saveError, setSaveError] = useState("");
     const [form] = Form.useForm<OSSFormValues>();
     const requestVersionRef = useRef(0);
+    const writingRef = useRef(false);
     const navigationConfirmOpenRef = useRef(false);
     const navigationTriggerRef = useRef<HTMLElement | null>(null);
 
@@ -116,6 +119,7 @@ export default function StorageSettingsPage() {
         navigationConfirmOpenRef.current = true;
         navigationTriggerRef.current = document.activeElement instanceof HTMLElement && document.activeElement !== document.body ? document.activeElement : null;
         modal.confirm({
+            ...configurationConfirmProps,
             title: "放弃存储服务调整？",
             content: "当前页面有尚未保存的存储位置或接入配置，离开后这些草稿会丢失。服务端正在使用的存储配置不会改变。",
             okText: "放弃并离开",
@@ -140,7 +144,7 @@ export default function StorageSettingsPage() {
     }, [blocker, modal]);
 
     const resetDraft = () => {
-        if (!setting || saving) return;
+        if (!setting || saving || testing || refreshing) return;
         const values = formValues(setting);
         form.setFieldsValue(values);
         form.setFields([]);
@@ -158,6 +162,7 @@ export default function StorageSettingsPage() {
             return;
         }
         modal.confirm({
+            ...configurationConfirmProps,
             title: "放弃调整并重新读取？",
             content: "重新读取会丢弃当前存储表单中的未保存内容，并以服务端配置为准。",
             okText: "放弃并刷新",
@@ -184,17 +189,20 @@ export default function StorageSettingsPage() {
     };
 
     const requestModeChange = (nextMode: StorageMode) => {
-        if (!setting || nextMode === draftMode || saving || refreshing) return;
+        if (!setting || nextMode === draftMode || saving || testing || refreshing || loadError) return;
         applyMode(nextMode);
     };
 
     const save = async (values: OSSFormValues) => {
-        if (!setting) return;
+        if (!setting || writingRef.current || loading || refreshing || loadError || !dirty) return;
+        writingRef.current = true;
+        const version = requestVersionRef.current;
         const expected = normalizeStoragePayload(values, setting);
         setSaving(true);
         setSaveError("");
         try {
             const result = await updateAdminOSSSetting(expected);
+            if (version !== requestVersionRef.current) return;
             if (!isAdminOSSSetting(result.setting) || !storageResponseMatches(result.setting, expected)) throw new Error("服务端返回的存储配置与本次保存内容不一致，请重新读取后核对");
             setSetting(result.setting);
             const nextValues = formValues(result.setting);
@@ -205,11 +213,13 @@ export default function StorageSettingsPage() {
             setTestStale(false);
             message.success("平台存储配置已保存");
         } catch (error) {
+            if (version !== requestVersionRef.current) return;
             const errorMessage = error instanceof Error ? error.message : "保存存储配置失败";
             setSaveError(`${errorMessage}。未自动重试，请重新读取当前配置后再决定是否保存。`);
             message.error(errorMessage);
             throw error;
         } finally {
+            writingRef.current = false;
             setSaving(false);
         }
     };
@@ -218,7 +228,8 @@ export default function StorageSettingsPage() {
         if (!setting) return;
         let values: OSSFormValues;
         try {
-            values = await form.validateFields();
+            await form.validateFields();
+            values = form.getFieldsValue(true);
         } catch {
             return;
         }
@@ -238,7 +249,8 @@ export default function StorageSettingsPage() {
         if (!setting) return;
         let values: OSSFormValues;
         try {
-            values = await form.validateFields();
+            await form.validateFields();
+            values = form.getFieldsValue(true);
         } catch {
             return;
         }
@@ -247,19 +259,25 @@ export default function StorageSettingsPage() {
             message.error(validationError);
             return;
         }
-        if (values.mode === "local") return;
+        if (values.mode === "local" || writingRef.current || loading || refreshing || loadError) return;
+        writingRef.current = true;
+        const version = requestVersionRef.current;
         setTesting(true);
+        setTestResult(null);
         try {
             const result = await testAdminOSSConnection(connectionInput(values));
+            if (version !== requestVersionRef.current) return;
             setTestResult(result);
             setTestStale(false);
             result.ok ? message.success(result.message || "连接测试通过") : message.error(result.message || "连接测试失败");
         } catch (error) {
+            if (version !== requestVersionRef.current) return;
             const errorMessage = error instanceof Error ? error.message : "连接测试失败";
             setTestResult({ ok: false, message: errorMessage });
             setTestStale(false);
             message.error(errorMessage);
         } finally {
+            writingRef.current = false;
             setTesting(false);
         }
     };
@@ -269,7 +287,7 @@ export default function StorageSettingsPage() {
             <AdminPageFrame title="存储服务" description="配置新增资源的默认存储位置" scroll>
                 <div className="admin-settings-stack admin-storage-settings" aria-label="正在读取平台存储配置" role="status">
                     <div className="admin-storage-loading-card">
-                        <Skeleton active paragraph={{ rows: 7 }} />
+                        <BrandLoader label="正在读取服务端配置" detail="读取完成后即可调整设置" />
                     </div>
                 </div>
             </AdminPageFrame>
@@ -316,11 +334,11 @@ export default function StorageSettingsPage() {
                     </div>
                     <div className="admin-storage-command-actions">
                         {dirty ? (
-                            <Button icon={<RotateCcw className="size-4" />} disabled={saving} onClick={resetDraft}>
+                            <Button icon={<RotateCcw className="size-4" />} disabled={saving || testing || refreshing} onClick={resetDraft}>
                                 撤销调整
                             </Button>
                         ) : null}
-                        <Button icon={<RefreshCw className="size-4" />} loading={refreshing} disabled={saving} onClick={requestRefresh}>
+                        <Button icon={<RefreshCw className="size-4" />} loading={refreshing} disabled={saving || testing || refreshing} onClick={requestRefresh}>
                             刷新状态
                         </Button>
                     </div>
@@ -350,7 +368,7 @@ export default function StorageSettingsPage() {
                                         role="radio"
                                         aria-checked={draftMode === item.mode}
                                         className={cn("admin-storage-mode-choice", draftMode === item.mode && "is-selected")}
-                                        disabled={loading || refreshing || saving}
+                                        disabled={loading || refreshing || saving || testing || Boolean(loadError)}
                                         onClick={() => requestModeChange(item.mode)}
                                     >
                                         <span className="admin-storage-mode-icon">{item.mode === "local" ? <HardDrive className="size-4" aria-hidden="true" /> : <Cloud className="size-4" aria-hidden="true" />}</span>
@@ -392,15 +410,15 @@ export default function StorageSettingsPage() {
                             <>
                                 <div className="admin-storage-footer-note">
                                     <BadgeCheck className="size-4" aria-hidden="true" />
-                                    <span>{formatSettingTime(setting.updatedAt, "尚未保存平台存储配置")} · 保存不会自动连接存储服务，建议先执行连接测试</span>
+                                    <span>{draftMode === "local" ? "保存访问地址，不移动已有文件。" : draftMode === "s3" ? "S3 关键配置须先通过连接测试；测试通过后仍需保存才会启用。" : "保存不会自动连接存储服务，建议先执行连接测试。"}</span>
                                 </div>
                                 <div className="flex flex-wrap items-center gap-2">
                                     {dirty ? (
-                                        <Button icon={<RotateCcw className="size-4" />} disabled={saving} onClick={resetDraft}>
+                                        <Button icon={<RotateCcw className="size-4" />} disabled={saving || testing || refreshing} onClick={resetDraft}>
                                             撤销
                                         </Button>
                                     ) : null}
-                                    <Button type="primary" icon={<Save className="size-4" />} loading={saving} disabled={!dirty || loading || refreshing} onClick={() => void submitSave()}>
+                                    <Button type="primary" icon={<Save className="size-4" />} loading={saving} disabled={!dirty || loading || refreshing || testing || Boolean(loadError)} onClick={() => void submitSave()}>
                                         保存修改
                                     </Button>
                                 </div>
@@ -411,7 +429,7 @@ export default function StorageSettingsPage() {
                             form={form}
                             layout="vertical"
                             requiredMark={false}
-                            disabled={loading || refreshing || saving}
+                            disabled={loading || refreshing || saving || testing || Boolean(loadError)}
                             onValuesChange={(changedValues) => {
                                 const values = form.getFieldsValue(true);
                                 setDraftMode(values.mode || "local");
@@ -428,9 +446,18 @@ export default function StorageSettingsPage() {
                                 <div className="admin-storage-form-section">
                                     <FormSectionTitle icon={<Globe2 className="size-4" />} title="公开访问根地址" description="用于生成本地资源的短时签名链接；填写站点根地址，不要附带 /api、查询参数或片段。" />
                                     <div className="admin-storage-local-field">
-                                        <Form.Item name="publicBaseUrl" label="服务器访问地址" extra="服务端还会按部署安全策略校验协议、主机及私网访问许可。">
+                                        <Form.Item label="服务器访问地址" htmlFor="admin-storage-public-base-url" extra="服务端还会按部署安全策略校验协议、主机及私网访问许可。">
                                             <div className="admin-storage-address-control">
-                                                <Input aria-label="服务器访问地址" autoComplete="off" inputMode="url" placeholder="https://canvas.example.com" prefix={<Globe2 className="size-4 text-foreground/35" />} />
+                                                <Form.Item name="publicBaseUrl" noStyle>
+                                                    <Input
+                                                        id="admin-storage-public-base-url"
+                                                        aria-label="服务器访问地址"
+                                                        autoComplete="off"
+                                                        inputMode="url"
+                                                        placeholder="https://canvas.example.com"
+                                                        prefix={<Globe2 className="size-4 text-foreground/35" />}
+                                                    />
+                                                </Form.Item>
                                                 <Button
                                                     icon={<LocateFixed className="size-4" />}
                                                     onClick={() => {
@@ -556,10 +583,12 @@ export default function StorageSettingsPage() {
                                     <div className="admin-storage-form-section">
                                         <FormSectionTitle icon={<Wifi className="size-4" />} title="连接验证" description="使用当前草稿执行最小读写测试；测试不会保存配置，也不会迁移已有资源。" />
                                         <div className="flex flex-wrap items-center gap-3">
-                                            <Button icon={<Wifi className="size-4" />} loading={testing} disabled={saving || refreshing} onClick={() => void testConnection()}>
+                                            <Button icon={<Wifi className="size-4" />} loading={testing} disabled={saving || refreshing || Boolean(loadError)} onClick={() => void testConnection()}>
                                                 测试连接
                                             </Button>
-                                            <ConnectionTestStatus result={testResult} stale={testStale} />
+                                            <span role="status" aria-live="polite">
+                                                {testing ? <AdminStatusBadge label="正在测试当前草稿" tone="info" /> : <ConnectionTestStatus result={testResult} stale={testStale} />}
+                                            </span>
                                         </div>
                                     </div>
                                 </>
