@@ -1,0 +1,130 @@
+{
+  "date": "2026-09-05",
+  "environment": "isolated 3013/8093",
+  "browser": "Chrome headless",
+  "totalChecks": 80,
+  "groups": [
+    {
+      "source": "checks.json",
+      "checks": [
+        "系统渠道真实新增且回读不暴露密钥",
+        "渠道编辑留空密钥保留"
+      ],
+      "pageErrors": 0
+    },
+    {
+      "source": "model-checks.json",
+      "checks": [
+        "编辑保存生成新价格版本",
+        "历史版本可读取",
+        "渠道模型编辑 dark 1440 无横向溢出",
+        "渠道模型编辑 light 1440 无横向溢出",
+        "渠道模型编辑 dark 390 无横向溢出",
+        "渠道模型编辑 light 390 无横向溢出"
+      ],
+      "pageErrors": 0
+    },
+    {
+      "source": "flow-checks.json",
+      "checks": [
+        "前台模型真实新建并关联供应线路",
+        "前台目录回读可用模型与文本能力",
+        "前台模型保存期间字段锁定",
+        "连续提交只发起一次保存",
+        "路由配置模拟成功且明确不测试连接",
+        "前台停用后从用户目录移除",
+        "前台重新启用恢复可用目录",
+        "目录未读完禁止新增",
+        "前台目录读取故障恢复",
+        "服务端真实价格版本冲突保留本地草稿",
+        "冲突后明确丢弃草稿并读取最新版本",
+        "历史读取失败不显示旧历史",
+        "历史故障重试恢复",
+        "渠道批量停用真实保存",
+        "渠道停用使前台模型不可用",
+        "渠道批量启用恢复供应",
+        "搜索读取失败隐藏旧渠道",
+        "渠道列表故障重试恢复",
+        "无未捕获页面异常"
+      ],
+      "pageErrors": 0
+    },
+    {
+      "source": "matrix-checks.json",
+      "checks": [
+        "channels dark 1440 文档无横向溢出",
+        "channels 编辑器 dark 1440 无横向溢出",
+        "channels dark 1440 键盘焦点位于编辑器",
+        "channels dark 1440 底部保存入口可访问",
+        "channels light 1440 文档无横向溢出",
+        "channels 编辑器 light 1440 无横向溢出",
+        "channels light 1440 键盘焦点位于编辑器",
+        "channels light 1440 底部保存入口可访问",
+        "channels dark 390 文档无横向溢出",
+        "channels 编辑器 dark 390 无横向溢出",
+        "channels dark 390 键盘焦点位于编辑器",
+        "channels dark 390 底部保存入口可访问",
+        "channels light 390 文档无横向溢出",
+        "channels 编辑器 light 390 无横向溢出",
+        "channels light 390 键盘焦点位于编辑器",
+        "channels light 390 底部保存入口可访问",
+        "models dark 1440 文档无横向溢出",
+        "models 编辑器 dark 1440 无横向溢出",
+        "models dark 1440 键盘焦点位于编辑器",
+        "models dark 1440 底部保存入口可访问",
+        "models light 1440 文档无横向溢出",
+        "models 编辑器 light 1440 无横向溢出",
+        "models light 1440 键盘焦点位于编辑器",
+        "models light 1440 底部保存入口可访问",
+        "models dark 390 文档无横向溢出",
+        "models 编辑器 dark 390 无横向溢出",
+        "models dark 390 键盘焦点位于编辑器",
+        "models dark 390 底部保存入口可访问",
+        "models light 390 文档无横向溢出",
+        "models 编辑器 light 390 无横向溢出",
+        "models light 390 键盘焦点位于编辑器",
+        "models light 390 底部保存入口可访问",
+        "前台模型未保存取消后保留草稿",
+        "关闭重开模拟不接受迟到结果",
+        "渠道保存失败保留输入且可继续编辑",
+        "模型长价格表单可滚动到底部并保留操作",
+        "矩阵和嵌套浮层无未捕获异常"
+      ],
+      "pageErrors": 0
+    },
+    {
+      "source": "extra-checks.json",
+      "checks": [
+        "批量部分成功准确落库",
+        "批量失败仅保留失败项选择",
+        "批量失败项可单独重试",
+        "真实恢复历史创建新版本且保留六位价格",
+        "恢复后编辑器采用服务端返回值",
+        "视频能力与价格长表单手机无横向溢出",
+        "视频草稿取消未改写已保存文本模型",
+        "批量、恢复、视频表单无未捕获异常"
+      ],
+      "pageErrors": 0
+    },
+    {
+      "source": "catalog-checks.json",
+      "checks": [
+        "前台模型保存同步当前会话模型目录",
+        "停用立即从当前会话模型目录移除",
+        "重新启用同步当前会话可用模型",
+        "同步失败不伪装为保存失败，编辑器已关闭",
+        "刷新读取服务端已保存的名称",
+        "前台目录同步流程无页面异常"
+      ],
+      "pageErrors": 0
+    },
+    {
+      "source": "frontend-checks.json",
+      "checks": [
+        "真实创作页文本模型选择器显示后台配置名称",
+        "前台目录检查未发起生成且无页面异常"
+      ],
+      "pageErrors": 0
+    }
+  ]
+}
