@@ -1,6 +1,19 @@
 import { describe, expect, test } from "bun:test";
 
-import { getNodeGenerationMode, getNodeInputKind, getNodeListLabel, getNodeMinSize, getNodeResourceKind, listCreatableNodeDefinitions, listNodeDefinitions, shouldKeepAspectRatio } from "../src/lib/canvas/node-registry";
+import {
+    getNodeDefinition,
+    getNodeGenerationMode,
+    getNodeInputKind,
+    getNodeListLabel,
+    getNodeMinSize,
+    getNodeOwnerId,
+    getNodeResourceKind,
+    listCreatableNodeDefinitions,
+    listNodeDefinitions,
+    registerNodeDefinitions,
+    shouldKeepAspectRatio,
+    unregisterNodeDefinitions,
+} from "../src/lib/canvas/node-registry";
 import { connectionInputSummary } from "../src/lib/canvas/canvas-connection-policy";
 import { CanvasNodeType, type CanvasConnection, type CanvasNodeData, type CanvasNodeMetadata } from "../src/types/canvas";
 
@@ -10,10 +23,32 @@ function node(type: CanvasNodeType, metadata?: CanvasNodeMetadata, id = type): C
 
 const ALL_TYPES = Object.values(CanvasNodeType);
 
+function expectBuiltinCoverage() {
+    const builtinTypes = listNodeDefinitions()
+        .filter((definition) => getNodeOwnerId(definition.type) === "builtin")
+        .map((definition) => definition.type);
+    expect(builtinTypes.sort()).toEqual([...ALL_TYPES].sort());
+    for (const type of ALL_TYPES) expect(getNodeDefinition(type)?.type).toBe(type);
+}
+
 describe("节点注册表——覆盖完整性", () => {
     test("每种节点类型都有定义", () => {
-        expect(listNodeDefinitions().length).toBe(ALL_TYPES.length);
-        for (const type of ALL_TYPES) expect(getNodeMinSize(type)).toBeDefined();
+        expectBuiltinCoverage();
+    });
+
+    test("插件扩展节点已加载时仍准确校验内置节点集合", () => {
+        const owner = "registry-coverage-test";
+        const type = "registry-coverage-extension";
+        const originalTypes = listNodeDefinitions().map((definition) => definition.type);
+        try {
+            registerNodeDefinitions([{ ...getNodeDefinition(CanvasNodeType.Image)!, type }], owner);
+            expect(getNodeOwnerId(type)).toBe(owner);
+            expect(listNodeDefinitions().length).toBe(originalTypes.length + 1);
+            expectBuiltinCoverage();
+        } finally {
+            unregisterNodeDefinitions(owner);
+        }
+        expect(listNodeDefinitions().map((definition) => definition.type)).toEqual(originalTypes);
     });
 
     test("仅技能与生成配置不进创建菜单", () => {
@@ -118,23 +153,14 @@ describe("connectionInputSummary——计数与跨类型覆盖", () => {
     });
 
     test("绘图计入 imageCount，脚本与技能计入 textCount", () => {
-        const nodes = [
-            node(CanvasNodeType.Drawing, undefined, "draw"),
-            node(CanvasNodeType.Script, undefined, "script"),
-            node(CanvasNodeType.Skill, undefined, "skill"),
-            node(CanvasNodeType.Text, undefined, "target"),
-        ];
+        const nodes = [node(CanvasNodeType.Drawing, undefined, "draw"), node(CanvasNodeType.Script, undefined, "script"), node(CanvasNodeType.Skill, undefined, "skill"), node(CanvasNodeType.Text, undefined, "target")];
         const summary = connectionInputSummary("target", nodes, [conn("draw", "target"), conn("script", "target"), conn("skill", "target")]);
         expect(summary.imageCount).toBe(1);
         expect(summary.textCount).toBe(2);
     });
 
     test("生成配置与背板作为上游一律不计数", () => {
-        const nodes = [
-            node(CanvasNodeType.Config, undefined, "config"),
-            node(CanvasNodeType.Frame, undefined, "frame"),
-            node(CanvasNodeType.Text, undefined, "target"),
-        ];
+        const nodes = [node(CanvasNodeType.Config, undefined, "config"), node(CanvasNodeType.Frame, undefined, "frame"), node(CanvasNodeType.Text, undefined, "target")];
         const summary = connectionInputSummary("target", nodes, [conn("config", "target"), conn("frame", "target")]);
         expect(summary).toEqual({ textCount: 0, imageCount: 0, videoCount: 0, audioCount: 0, characterCount: 0 });
     });
