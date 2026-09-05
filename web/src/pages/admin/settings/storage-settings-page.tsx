@@ -1,3 +1,4 @@
+import "../components/admin-configuration.css";
 import { App, Button, Form, Input, Select, Skeleton, Switch } from "antd";
 import { AlertTriangle, BadgeCheck, Check, Cloud, Database, Globe2, HardDrive, KeyRound, LocateFixed, RefreshCw, RotateCcw, Save, Server, ShieldCheck, Wifi } from "lucide-react";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";

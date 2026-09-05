@@ -4,6 +4,10 @@ function compactSource(source: string) {
     return source.replace(/\s+/g, " ").trim();
 }
 
+async function readSettingsStyles() {
+    return (await Promise.all([Bun.file(new URL("../src/styles/admin-ui.css", import.meta.url)).text(), Bun.file(new URL("../src/pages/admin/components/admin-configuration.css", import.meta.url)).text()])).join("\n");
+}
+
 function sourceSection(source: string, startMarker: string, endMarker: string) {
     const start = source.indexOf(startMarker);
     const end = source.indexOf(endMarker, start + startMarker.length);
@@ -62,7 +66,7 @@ test("high impact feature shutdowns require confirmation", async () => {
 });
 
 test("admin settings use full-width summaries without selected-card side stripes", async () => {
-    const [componentSource, cssSource] = await Promise.all([Bun.file(new URL("../src/pages/admin/components/admin-ui.tsx", import.meta.url)).text(), Bun.file(new URL("../src/styles/admin-ui.css", import.meta.url)).text()]);
+    const [componentSource, cssSource] = await Promise.all([Bun.file(new URL("../src/pages/admin/components/admin-ui.tsx", import.meta.url)).text(), readSettingsStyles()]);
 
     expect(componentSource).not.toContain("lg:grid lg:grid-cols-4");
     expect(cssSource).not.toContain('content: "配置摘要"');
@@ -85,7 +89,7 @@ test("task-first settings reveal dependent configuration only after the primary 
         Bun.file(new URL("../src/pages/admin/settings/ark-private-assets-settings-page.tsx", import.meta.url)).text(),
         Bun.file(new URL("../src/pages/admin/settings/response-interception-settings-page.tsx", import.meta.url)).text(),
         Bun.file(new URL("../src/pages/admin/settings/libtv-settings-page.tsx", import.meta.url)).text(),
-        Bun.file(new URL("../src/styles/admin-ui.css", import.meta.url)).text(),
+        readSettingsStyles(),
     ]);
 
     expect(storageSource).toContain('title="1. 选择新资源存储位置"');
@@ -130,7 +134,7 @@ test("task-first settings reveal dependent configuration only after the primary 
     expect(thirdPartySource).not.toContain('className="admin-third-party-overview"');
     expect(sourceSection(thirdPartySource, "const changeEnabled", "const markTokenForRemoval")).not.toContain("save(");
 
-    expect(compactSource(cssSource)).toContain(".admin-feature-board { width: 100%; max-width: none; grid-template-columns: minmax(0, 1fr);");
+    expect(sourceSection(cssSource, ".admin-feature-board {", ".admin-feature-domain:last-child {")).toContain("grid-template-columns: minmax(0, 1fr)");
 });
 
 test("admin tables keep requested filters and actions in the intended positions", async () => {
