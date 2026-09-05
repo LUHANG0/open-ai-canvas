@@ -1,4 +1,14 @@
 /* Remaining admin pages: owned rules in original cascade order. */
+@media (max-width: 639px) {
+    .admin-analytics-date-popup .ant-picker-panel-container {
+        max-width: calc(100vw - 24px);
+        max-height: calc(100dvh - 32px);
+        overflow-y: auto;
+    }
+    .admin-analytics-date-popup .ant-picker-panels {
+        flex-direction: column;
+    }
+}
 .admin-drawing-settings
     :is(.admin-drawing-overview, .admin-runtime-policy-overview, .admin-access-overview, .admin-email-overview, .admin-storage-overview, .admin-ark-overview, .admin-intercept-overview, .admin-third-party-overview)
     .admin-stat-tile, .admin-runtime-policy

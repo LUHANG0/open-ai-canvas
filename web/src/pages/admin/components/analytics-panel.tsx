@@ -353,7 +353,7 @@ export default function AnalyticsPanel({ users, channels }: Props) {
                     <>
                         <div className="admin-analytics-range-picker" role="group" aria-label="时间范围">
                             <span className="sr-only">时间范围</span>
-                            <DatePicker.RangePicker allowClear={false} value={range} onChange={(value) => value?.[0] && value?.[1] && setRange([value[0], value[1]])} />
+                            <DatePicker.RangePicker classNames={{ popup: { root: "admin-analytics-date-popup" } }} allowClear={false} value={range} onChange={(value) => value?.[0] && value?.[1] && setRange([value[0], value[1]])} />
                         </div>
                         <Button icon={<RefreshCw className="size-4" />} loading={loading} onClick={() => void reload()}>
                             刷新
