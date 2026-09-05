@@ -1,6 +1,6 @@
-import { App, Button, Input, Modal, Select } from "antd";
+import { Button, Input, Modal, Select } from "antd";
 import type { ColumnsType } from "antd/es/table";
-import { Download, Eye, Play, Search } from "lucide-react";
+import { Download, Eye, Play, RefreshCw, Search } from "lucide-react";
 import { saveAs } from "file-saver";
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router";
@@ -11,11 +11,11 @@ import { formatCredits } from "@/constant/credits";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { exportAdminApiLogs, listAdminApiLogs, type ApiCallLog } from "@/services/api/auth";
 import { ApiLogDetailDrawer } from "../components/api-log-detail-drawer";
+import "../components/admin-operations.css";
 import { AdminPageFrame } from "../components/admin-shell";
 import { AdminBatchBar, AdminDataTable, AdminExportButton, AdminFilterChip, AdminStatusBadge, AdminTableEmpty } from "../components/admin-ui";
 
 export default function LogsPage() {
-    const { message } = App.useApp();
     const [searchParams, setSearchParams] = useSearchParams();
     const keyword = searchParams.get("filter") || "";
     const status = normalizeStatus(searchParams.get("status"));
@@ -25,6 +25,8 @@ export default function LogsPage() {
     const [logs, setLogs] = useState<ApiCallLog[]>([]);
     const [total, setTotal] = useState(0);
     const [loading, setLoading] = useState(true);
+    const [listError, setListError] = useState("");
+    const [reloadNonce, setReloadNonce] = useState(0);
     const [selectedIds, setSelectedIds] = useState<string[]>([]);
     const [detailLogId, setDetailLogId] = useState<string | null>(null);
     const [mediaPreview, setMediaPreview] = useState<{ url: string; kind: "image" | "video"; title: string } | null>(null);
@@ -44,6 +46,10 @@ export default function LogsPage() {
     useEffect(() => {
         const sequence = ++requestSequence.current;
         setLoading(true);
+        setListError("");
+        setLogs([]);
+        setTotal(0);
+        setSelectedIds([]);
         void listAdminApiLogs({ keyword: debouncedKeyword || undefined, status: status === "all" ? undefined : status, page, limit: pageSize })
             .then((result) => {
                 if (sequence !== requestSequence.current) return;
@@ -52,12 +58,15 @@ export default function LogsPage() {
                 setSelectedIds([]);
                 if (result.total > 0 && result.logs.length === 0 && page > 1) updateUrl({ page: 1 }, true);
             })
-            .catch((error) => sequence === requestSequence.current && message.error(error instanceof Error ? error.message : "读取请求明细失败"))
+            .catch((error) => sequence === requestSequence.current && setListError(error instanceof Error ? error.message : "读取请求明细失败"))
             .finally(() => sequence === requestSequence.current && setLoading(false));
-    }, [debouncedKeyword, status, page, pageSize]);
+        return () => {
+            requestSequence.current++;
+        };
+    }, [debouncedKeyword, status, page, pageSize, reloadNonce]);
 
     const columns: ColumnsType<ApiCallLog> = [
-        { title: "时间", width: 168, render: (_, log) => formatTime(log.startedAt || log.createdAt) },
+        { title: "时间", width: 168, render: (_, log) => <span className="tabular-nums">{formatTime(log.startedAt || log.createdAt)}</span> },
         {
             title: "用户",
             width: 180,
@@ -96,11 +105,12 @@ export default function LogsPage() {
                     <span className="text-foreground/30">--</span>
                 ),
         },
-        { title: "耗时", dataIndex: "durationMs", width: 112, render: (value) => <span className="tabular-nums">{formatDuration(value)}</span> },
-        { title: "积分计费", width: 145, render: (_, log) => <BillingSummary log={log} /> },
+        { title: "耗时", dataIndex: "durationMs", width: 112, align: "right", render: (value) => <span className="tabular-nums">{formatDuration(value)}</span> },
+        { title: "积分计费", width: 145, align: "right", render: (_, log) => <BillingSummary log={log} /> },
         {
             title: "Tokens",
             width: 166,
+            align: "right",
             render: (_, log) =>
                 log.usageAvailable ? (
                     <div className="space-y-0.5 text-xs tabular-nums">
@@ -119,6 +129,16 @@ export default function LogsPage() {
                 ) : (
                     <span className="text-foreground/35">未返回</span>
                 ),
+        },
+        {
+            title: "操作",
+            width: 100,
+            fixed: "right",
+            render: (_, log) => (
+                <Button type="text" size="small" onClick={() => setDetailLogId(log.id)}>
+                    查看详情
+                </Button>
+            ),
         },
     ];
 
@@ -140,6 +160,7 @@ export default function LogsPage() {
                 toolbar={
                     <Input
                         allowClear
+                        aria-label="搜索请求明细"
                         className="app-list-search"
                         prefix={<Search className="size-4 text-foreground/40" />}
                         value={keyword}
@@ -155,6 +176,7 @@ export default function LogsPage() {
                 }
                 toolbarFilters={
                     <Select
+                        aria-label="筛选请求结果"
                         className="w-32"
                         value={status}
                         onChange={(value) => updateUrl({ status: value, page: 1 })}
@@ -166,6 +188,11 @@ export default function LogsPage() {
                     />
                 }
                 toolbarActive={hasFilters}
+                trailing={
+                    <Button type="text" size="small" loading={loading} icon={<RefreshCw className="size-3.5" />} onClick={() => setReloadNonce((value) => value + 1)}>
+                        刷新
+                    </Button>
+                }
                 onReset={() => updateUrl({ filter: "", status: "all", page: 1 })}
                 batchActions={
                     <AdminBatchBar count={selectedIds.length} onClear={() => setSelectedIds([])}>
@@ -185,6 +212,7 @@ export default function LogsPage() {
                     className: "app-data-table",
                     size: "small",
                     rowKey: "id",
+                    tableLayout: "fixed",
                     loading,
                     rowSelection: { selectedRowKeys: selectedIds, preserveSelectedRowKeys: false, onChange: (keys) => setSelectedIds(keys.map(String)) },
                     onRow: (log) => ({
@@ -199,7 +227,14 @@ export default function LogsPage() {
                     pagination: false,
                     scroll: { x: 1600 },
                 }}
-                empty={<AdminTableEmpty filtered={hasFilters} />}
+                empty={
+                    <AdminTableEmpty
+                        filtered={hasFilters}
+                        title={listError ? "请求明细读取失败" : !hasFilters ? "暂无请求记录" : undefined}
+                        description={listError || undefined}
+                        action={listError ? <Button onClick={() => setReloadNonce((value) => value + 1)}>重试</Button> : undefined}
+                    />
+                }
                 footer={<PaginationBar alwaysShow current={page} pageSize={pageSize} total={total} onChange={(nextPage, nextSize) => updateUrl({ page: nextSize !== pageSize ? 1 : nextPage, pageSize: nextSize })} />}
             />
             <ApiLogDetailDrawer logId={detailLogId} onClose={() => setDetailLogId(null)} onLogUpdated={(next) => setLogs((items) => items.map((item) => (item.id === next.id ? next : item)))} />
