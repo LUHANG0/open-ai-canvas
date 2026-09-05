@@ -131,7 +131,9 @@ async function captureVideoPoster(sourceUrl: string, maxWidth: number, quality: 
     const video = document.createElement("video");
     video.muted = true;
     video.playsInline = true;
-    video.preload = "metadata";
+    // 已缓存 Blob 不再产生下载；完整解码让无时长头的录制 WebM 得到可采样帧。
+    // 远程地址仍只预取元数据，保持大型画布的按需读取合同。
+    video.preload = sourceUrl.startsWith("blob:") ? "auto" : "metadata";
     if (/^https?:/i.test(sourceUrl)) video.crossOrigin = "anonymous";
     video.src = sourceUrl;
 
