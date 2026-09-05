@@ -17,6 +17,144 @@ description: 周日上线的观测指标、阈值、值守分工、灰度步骤�
 > - 当前生产 Compose 只有一组 Web/Backend，不能原生做百分比流量切分。若入口层没有可靠的分批放量能力，只能在公开通知前用受控账号做功能灰度；受控验证未完成不得公开放量。
 > - `/api/health/ready` 目前不会在每次请求时重新 Ping Redis；“ready”成功不能单独证明 Redis 持续健康。
 
+## 2026-09-06 发布包执行入口
+
+当前候选身份、演练和剩余输入统一记在[本地上线验收报告](../../../2026-09-06_launch-acceptance-report.md)的“生产发布准备”部分。本页规定执行方法；历史 preview.3/4/5 记录不能替代本轮最终 SHA 的证据。
+
+本轮仅授权本地准备与只读远端检查。下面的推送、打标签、安装、切换、发送真实邮件、生成和生产恢复命令是待审阅操作卡，**没有在本轮执行**。生产主机、域名、部署目录、实名值守、唯一频道和窗口必须由用户提供或确认，不能从本机 3012/8080 推断。
+
+### 从候选提交生成远端制品
+
+1. 发布指挥先审阅候选完整 SHA、相对远端的全部本地提交、两个镜像来源与当前报告，单独批准推送。当前 `quality.yml` 与 `publish-images.yml` 都由 main push 触发，镜像发布不会等待 Quality；不能看到镜像构建开始便放行部署。
+2. 包管理员在 GitHub 的两个 GHCR 包中核对所属仓库为 `LUHANG0/open-ai-canvas`，为该仓库 Actions 配置所需访问权限，并核对包可见性或部署主机的只读包凭据。2026-09-06 的证据是 workflow 的 `permission_denied: read_package`、当前 CLI 缺 `read:packages`、匿名 registry 401；三者分别是 Actions、CLI 和匿名访问状态，不能互相替代。密钥通过既有密钥管理或主机终端配置，不粘贴到聊天或日志。
+3. 以下 Bash 在获批的发布检出执行；`CANDIDATE_SHA` 必须来自最终报告，不能用当时的任意 HEAD 替代。第一段推送会触发远端工作流，因此仍需单独批准。
+
+```bash
+set -euo pipefail
+: "${CANDIDATE_SHA:?先设置已批准的完整候选 SHA}"
+test "$(git remote get-url origin)" = https://github.com/LUHANG0/open-ai-canvas.git
+git fetch origin main
+git merge-base --is-ancestor origin/main "$CANDIDATE_SHA"
+git merge-base --is-ancestor "$CANDIDATE_SHA" main
+git push origin "$CANDIDATE_SHA:refs/heads/main"
+gh run list --repo LUHANG0/open-ai-canvas --commit "$CANDIDATE_SHA" \
+  --json databaseId,workflowName,headSha,status,conclusion,url
+```
+
+逐项确认同一个完整 SHA 的 Backend、Web、Canvas Agent Quality，以及 Web/Backend 镜像发布成功；有失败即停在这里，不部署、不使用旧成功。`gh run watch RUN_ID --repo LUHANG0/open-ai-canvas --exit-status` 可等待所登记的运行，不能拿不同 SHA 的运行 ID 顶替。当前仓库的主分支保护和有效 rules 均未配置，所谓“门禁”需要发布指挥实际复核，不是 GitHub 已强制执行。
+
+main push 仅生成 `sha-` 短 SHA 标签。现有安装器和 Host Updater 依赖语义版本标签及 Release 中的二进制、SHA256SUMS 和 Compose；SHA 镜像不能直接作为安装器的完整发行版。确认 Quality 成功后，另行批准以下版本发布步骤（会创建标签、镜像和 GitHub Release）：
+
+```bash
+set -euo pipefail
+: "${CANDIDATE_SHA:?先设置已批准的完整候选 SHA}"
+RELEASE_VERSION="$(git show "$CANDIDATE_SHA:VERSION" | tr -d '\r\n')"
+git show "$CANDIDATE_SHA:CHANGELOG.md" | grep -Fqx "## $RELEASE_VERSION"
+test -z "$(git ls-remote --tags origin "refs/tags/$RELEASE_VERSION")"
+test -z "$(git tag --list "$RELEASE_VERSION")"
+git tag -a "$RELEASE_VERSION" "$CANDIDATE_SHA" -m "影策 $RELEASE_VERSION"
+git push origin "refs/tags/$RELEASE_VERSION"
+gh run list --repo LUHANG0/open-ai-canvas --commit "$CANDIDATE_SHA" \
+  --json databaseId,workflowName,headSha,event,status,conclusion,url
+```
+
+tag 触发的发布构建是新的制品，必须重新取其 digest、OCI revision、平台架构和构建结果；不要复用 main push 或本机 build 的摘要。Release 带 `preview` 时会标记为预发行，不自动等同正式稳定版本。若既有标签或 Release 已存在，停止并核对来源，不能覆盖标签。
+
+```bash
+: "${RELEASE_VERSION:?先设置已发布并核对成功的版本}"
+for image in open-ai-canvas-backend open-ai-canvas-web; do
+  docker buildx imagetools inspect "ghcr.io/luhang0/$image:${RELEASE_VERSION#v}"
+done
+gh release view "$RELEASE_VERSION" --repo LUHANG0/open-ai-canvas \
+  --json tagName,isPrerelease,publishedAt,assets,url
+```
+
+登记两份镜像各自的 registry digest；backend 与 migrate 必须使用同一 backend 制品。固定标签仍可能被移动，因此部署前后的 RepoDigest/OCI revision 均需复核。完整证据不足时不执行安装脚本。
+
+### 在已确认的主机安装或切换
+
+**全新空环境**才使用 `install-server-image.sh`。它会安装软件、改写 `.env` 和 Compose、安装 systemd 更新器并启动服务，没有替已有业务数据做一致备份；不能把它当作已有生产的无损升级脚本。默认 `/opt/open-ai-canvas` 是脚本默认值，不代表本次生产目标已确认。以下命令只能在目标 Linux/systemd 主机的私有终端、入口已封闭且明确获批后执行：
+
+```bash
+set -euo pipefail
+: "${YINGCE_DEPLOY_DIR:?先登记已批准的空部署目录}"
+: "${CANDIDATE_SHA:?先登记已发布的完整候选 SHA}"
+: "${RELEASE_VERSION:?先登记有完整 Release 资产的版本}"
+test ! -e "$YINGCE_DEPLOY_DIR/.env"
+installer="$(mktemp)"
+curl -fsSL "https://raw.githubusercontent.com/LUHANG0/open-ai-canvas/$CANDIDATE_SHA/scripts/install-server-image.sh" -o "$installer"
+sudo env INSTALL_DIR="$YINGCE_DEPLOY_DIR" REPOSITORY_REF="$CANDIDATE_SHA" \
+  CANVAS_IMAGE_TAG="${RELEASE_VERSION#v}" bash "$installer"
+rm -f "$installer"
+```
+
+安装前须封闭公网入口，防止初始管理员被抢先注册。安装生成的 CORS 默认值为空，HTTPS、准确的 `CANVAS_CORS_ORIGINS` 和初始管理员仍须在开放前完成并验证。首次安装失败时保留日志和新目录，先核对是否已产生业务写入；没有上一个有效版本时不声称可“回滚到旧版”。
+
+**已有环境**使用已安装的 Host Updater 管理入口发起已发布版本更新。顺序为：核对候选/旧版和恢复条件 → 排空任务并冻结入口 → 更新器拉取镜像及保存旧 Compose → 停止 web/backend → 一致备份 → 迁移 → 启动和稳定观察。其健康检查只比较可用的版本字段，不足以代替完整 commit/digest/schema 核对；继续执行下面的独立验证。若更新器缺失，先准备和审批人工切换卡，不能为赶进度重跑安装器。
+
+在目标版本 Web 容器中提取静态文件，再用本轮只读脚本检查真实入口（`YINGCE_ORIGIN` 来自用户确认的 HTTPS 域名）：
+
+```bash
+set -euo pipefail
+: "${YINGCE_DEPLOY_DIR:?已确认的部署目录}"
+: "${YINGCE_ORIGIN:?已确认的 HTTPS 入口}"
+: "${CANDIDATE_SHA:?本次完整 SHA}"
+: "${RELEASE_VERSION:?本次版本}"
+: "${RELEASE_CHECK_SCRIPT:?本候选 scripts/verify-release-candidate.py 的绝对路径}"
+cd "$YINGCE_DEPLOY_DIR"
+evidence_dir="$(mktemp -d)"
+chmod 700 "$evidence_dir"
+web_id="$(sudo docker compose --env-file .env -f docker-compose.deploy.yml ps -q web)"
+test -n "$web_id"
+sudo docker cp "$web_id:/usr/share/nginx/html" "$evidence_dir/web"
+sudo python3 "$RELEASE_CHECK_SCRIPT" --base-url "$YINGCE_ORIGIN" \
+  --commit "$CANDIDATE_SHA" --version "$RELEASE_VERSION" --dist "$evidence_dir/web" \
+  > "$evidence_dir/deployment-shape.json"
+sudo docker compose --env-file .env -f docker-compose.deploy.yml exec -T redis redis-cli ping
+```
+
+脚本检查 API 代理、完整 commit、Schema、SPA 路由、HTML 缓存、缺失资产 404、Worker/WASM 的字节/类型/缓存以及 Web 内嵌 commit。它只发送 GET，不证明浏览器实际执行或业务生成成功。之后仍需执行下文批次 0 的受控登录、生成、资源与账务验收。
+
+### 一致备份与失败回退操作卡
+
+发布前需在受限记录中补全：冻结开始/结束时间（含时区）、旧/新完整 SHA 和两份镜像 digest、Compose SHA-256、配置键差异、Schema、队列/账务计数、备份 ID/字节数/摘要、`.settings-key` 和媒体是否在内、属主/权限、外部对象恢复点及其校验。ZIP 内现有 `metadata.json` 只有 ID、版本、创建时间和格式号；不能从它推断完整提交、对象存储快照或所有写入方已冻结。
+
+Host Updater 停止的是此 Compose 的 Web/Backend。其他 Worker、副本、定时程序、人工 SQL 和外部对象生命周期规则若仍写入，两个备份顺序执行便不代表同时间点。数据值守必须先登记全部写入者，并证明它们在整个备份窗口内停止；后续再恢复写入。备份目录 0700、ZIP 0600；复制到外部备份介质后重算摘要并校验恢复权限，不公开备份或密钥。
+
+本轮可复跑的隔离恢复命令如下。OLD_IMAGE/TARGET_IMAGE 只能指向已检查 OCI version 的本地测试镜像；测试自动创建随机 Compose 名称、回环端口、数据库、卷和临时目录并清理，不接入生产。OLD_VERSION 必须匹配旧镜像，TARGET_VERSION 为用于故障注入的更高版本标识，不能对外宣称已发布该版本。
+
+```bash
+cd backend
+: "${OLD_IMAGE:?本地旧版测试镜像}"
+: "${TARGET_IMAGE:?本地候选测试镜像}"
+: "${OLD_VERSION:?旧镜像实际版本}"
+: "${TARGET_VERSION:?演练目标版本标识}"
+CANVAS_HOSTUPDATE_INTEGRATION_OLD_IMAGE="$OLD_IMAGE" \
+CANVAS_HOSTUPDATE_INTEGRATION_TARGET_IMAGE="$TARGET_IMAGE" \
+CANVAS_HOSTUPDATE_INTEGRATION_OLD_VERSION="$OLD_VERSION" \
+CANVAS_HOSTUPDATE_INTEGRATION_TARGET_VERSION="$TARGET_VERSION" \
+go test -tags integration ./internal/hostupdate \
+  -run '^TestHostUpdaterDockerRollbackRestoresDatabaseAndBackendData$' -count=1 -v
+```
+
+演练故意损坏假画布、媒体和 `.settings-key` 后使迁移退出 42，核对自动回退、第二次人工回退和冲突时 `manual_intervention` 保持停服；会实际登录、读取画布、解密禁用的假 SMTP 配置、下载原始 PNG，校验 ZIP CRC、元数据、PostgreSQL/目录归档和权限。registry pull、RepoDigest 和 Release Compose 下载为本地替身；不验证真实 registry、跨架构运行、真实外部存储、长任务或大卷恢复耗时。
+
+真实更新失败时，先按本文“停止条件”冻结放量。自动回退成功仍要复核旧 commit/digest/schema 和业务；`manual_intervention` 则保持入口关闭、保存现场，不删除中断目录，不继续重试。人工恢复按本文“恢复旧版本和数据”执行，数据回退须单独批准恢复点后的写入损失并完成双人复核。仅 Web 回退应保留兼容的 Backend/Schema；不能将 `git revert` 当作数据库与媒体恢复。
+
+### 外部依赖受控验收输入
+
+生产配置位置尚未确认。本轮只核对仓库消费者、默认配置和隔离证据，没有读取真实 8080 的管理配置；这些配置存于数据库加密字段，不能因 `.env` 没有相关键就认定未配置。
+
+| 依赖与消费者 | 必需输入（秘密经既有安全渠道配置） | 最小受控流程与边界 |
+| --- | --- | --- |
+| OAuth：`linuxdo_oauth`、`linuxdo.go` | 供应商应用、client ID/secret 存在性、回调 HTTPS 域名、端点、scopes、测试身份 | 1 次授权/回调/刷新会话；核对身份归属、失败可重试。会向供应商传递测试身份并可能创建本地账号，需另行批准 |
+| SMTP：`email`、`email.go` | DNS/TLS、发件身份、SMTP 认证、测试收件箱、投递日志可见性 | 1 封验证码邮件及消费，验证拒信/超时不产生假成功。仅测试邮箱，不群发；真实投递未执行 |
+| OSS/COS/Kodo/S3：`settings.go`、`storage_s3.go`、`resource.go` | 各在用存储位置/历史配置、桶/前缀权限、endpoint/region/CDN、版本或快照恢复点、保留期 | 独立测试前缀 PUT 一个微型 PNG → HEAD/Range GET → 哈希/可读 → DELETE 并确认残留为零。对象请求/流量可能计费；不得触碰真实媒体 |
+| 模型：系统渠道/前台模型及 provider/outbound | 确定渠道、模型、测试账号、单次和总预算、计费/回调查询权限 | 最低成本文本/图片各 1 次；视频开放时追加 1 次短视频。核对终态/资源/账务，失败后受控重试；运行中取消为 uncertain，不能假定退款 |
+| 外部对象恢复 | 对象清单包含 key、version ID、大小、内容校验、时间与删除标记；或等价可恢复快照 | 在隔离前缀验证恢复到同一冻结点并回读数据库引用。不支持版本恢复时须在停写窗口复制并校验内容；ETag 不总是内容 SHA，不能只凭 ETag 断言完整性 |
+
+所有真实外联写入、付费调用、生产积分和测试告警仍未授权；本地 SMTP/S3 协议及失败恢复证据见上线报告。真实目标、窗口、实名槽位、唯一入口、受控账号名单、成本上限、外部对象恢复点缺少任一必需项时，停在准备完成状态，不能记录为真实上线通过。观察频率、批次时长和停止阈值使用本页后续唯一表格，不另设矛盾口径。
+
 ## 快速执行卡
 
 发布指挥必须按顺序完成以下动作。任何标为“停止”的条件出现后，停止放量并进入[停止、回退或前向修复](#停止回退或前向修复)，不能边观察边继续扩大影响面。
