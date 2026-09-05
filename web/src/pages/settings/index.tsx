@@ -78,6 +78,15 @@ export default function SettingsPage() {
     }, [customChannelsEnabled, requestedSection, visibleConfigSections]);
 
     useEffect(() => {
+        const navigation = document.querySelector<HTMLElement>(".settings-page .pc-subnav-layout__nav");
+        const selected = navigation?.querySelector<HTMLElement>(".is-active");
+        if (!navigation || !selected || navigation.scrollWidth <= navigation.clientWidth) return;
+        const railBounds = navigation.getBoundingClientRect();
+        const selectedBounds = selected.getBoundingClientRect();
+        navigation.scrollLeft += selectedBounds.left - railBounds.left - (railBounds.width - selectedBounds.width) / 2;
+    }, [activeTab, visibleConfigSections]);
+
+    useEffect(() => {
         if (!userId) return;
         let cancelled = false;
         void refreshSystemChannels().catch((error) => {
