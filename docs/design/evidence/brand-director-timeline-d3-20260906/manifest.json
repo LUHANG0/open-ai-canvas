@@ -1,0 +1,55 @@
+{
+  "codeCommit": "3ce34a85",
+  "tests": {
+    "unit": {
+      "passed": 1816,
+      "failed": 0,
+      "files": 260,
+      "assertions": 10507
+    },
+    "directorChrome": {
+      "passed": 58,
+      "failed": 0
+    },
+    "canvasChrome": {
+      "passed": 98,
+      "failed": 0
+    },
+    "deliveryChrome": {
+      "passed": 20,
+      "failed": 0
+    },
+    "buildBudgets": {
+      "passed": 7,
+      "failed": 0
+    }
+  },
+  "rollback": {
+    "baseline": "ab0d0a6d",
+    "revertEnd": "060770ba",
+    "codeCommitsReverted": 8,
+    "webDiffExitCode": 0
+  },
+  "files": {
+    "baseline-director-phone.png": "83dc6f79068a0cee65c6ce4c8765e0b016082a1ca7637f0ff4447bb03e40acdf",
+    "baseline-timeline-phone.png": "d7b27824509879c870e63d05403ddfa644181a0c40f9bd9cd4094e3c57532e07",
+    "baseline.json": "4a1c82c18f87f43480fcc7ab5947fc645be5c22e27531e5aacafac95a828dfe2",
+    "director-final-1440-dark.png": "cd7a9947f275cefb4c2c5538faffd3b34c37a402e01a0825d0de2cb4239d4624",
+    "director-final-1440-light.png": "1c1cd71f8a6ec628618b5c0265dfd22095a80fc68fe19e0ead57ec615b79974e",
+    "director-final-390-dark.png": "30e6eec1bc72bc475bee95760833f3b76a706965582564db67a394efb376472b",
+    "director-final-390-light.png": "d1fe595d290b487e79e6aac69b522c5ac957450695a6470c262d97d95548ab56",
+    "director-recovery.json": "ebdd9904cd8921028e5e5d08bd81551264bb01fe1729f1407905c86b899087d6",
+    "director-recovery.png": "82e0e60496b528062fcfe7a06f6b9f9e0e568bb84edbe22bca8dade0f2e910b0",
+    "director-visual-final.json": "8c0bb5c4fbb45ed9e48631fd1c2a6a89b626e0d6f0c13a5142c70fdc2a04e2b2",
+    "director.json": "d31406a865a18eff3d32f86f5577c15e0d3fb15e8459ec799470711240b0fb92",
+    "download-diagnose.json": "01e0bc06fddf4e127bf8cc39934cb1c9d7b621c514f9ecd070a676f10fbd7ec3",
+    "preview-retry.json": "7ffe3a7a194692ae9b37bae0d26efafd619a2fb02419dd35e548acf2df6e603a",
+    "timeline-1440-light.png": "e8ad34e36d9c679df9a45ad719e953cc99ccc7e329b74ae88d232d50526859e6",
+    "timeline-390-dark.png": "4cc10c338ebab351230fbe71b20bb5711f544ee54b08cda001c877f6ecc9435c",
+    "timeline-interactions.json": "1e033bc608065a6adc0ff8ec1c5d97ce121d85ac12de57bbccfa827ae1ef864e",
+    "timeline-interactions.png": "d2afb4d26094806b116cacee6437e6c1100cc1915aa90d85e24e75978f2d30e0",
+    "timeline-preview-retry.png": "d290baca8b710d5da1d7b766beb5cdb5611de72a008091f5b2f691cf67b1620c",
+    "timeline-recovery.json": "bdef0138a38bade2d8a434d18ad9d6967aae14ee518680dda14a02683971aeb9",
+    "timeline-visual.json": "ab72f2e44e30b152a01db99a2b21f64d3520494a2d3f3ff7533781af327fc267"
+  }
+}
