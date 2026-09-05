@@ -4,6 +4,8 @@
 
 ## 设计沉淀
 
+- [品牌风格统一分析](design/brand-style-unification-audit-20260905.md)：以当前品牌页为基准，覆盖用户前台、22 个后台页面、主题断点、配置消费和分批验收方案。
+
 - [网站设置精简](design/website-settings-simplification-20260905.md)：删除独立官网 CMS，保留四个常用分区，以及封面、联系和备案的限定字段保存。
 
 - [品牌官网与整页登录](design/public-brand-launch-20260905.md)：电影感公开页面、居中登录、Logo 与素材来源、备案草稿发布及验证记录。
