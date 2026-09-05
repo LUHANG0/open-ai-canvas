@@ -3,6 +3,7 @@ import { Home, RefreshCw } from "lucide-react";
 import { useNavigate, useRouteError } from "react-router";
 
 import { WorkspaceSignalIcon } from "@/components/ui/aceternity/workspace-signal-icon";
+import { BrandMark } from "@/components/branding/brand-mark";
 
 import "./system-pc.css";
 
@@ -14,6 +15,7 @@ export default function RouteErrorPage() {
     return (
         <main className="pc-system-page pc-system-page-main app-workspace-page grid h-dvh place-items-center px-6 text-foreground">
             <section className="pc-system-card is-error w-full max-w-md text-center" role="alert" aria-labelledby="pc-route-error-title">
+                <BrandMark className="absolute left-5 top-4 size-6" decorative={false} />
                 <div className="pc-system-code pc-system-pc-only">ERR</div>
                 <WorkspaceSignalIcon variant="error" size="lg" className="pc-system-icon mx-auto" />
                 <p className="pc-system-eyebrow text-xs font-medium text-muted-foreground">页面运行异常</p>

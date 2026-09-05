@@ -2,6 +2,7 @@ import { Home } from "lucide-react";
 import { Link } from "react-router";
 
 import { WorkspaceSignalIcon } from "@/components/ui/aceternity/workspace-signal-icon";
+import { BrandMark } from "@/components/branding/brand-mark";
 
 import "../system-pc.css";
 
@@ -10,6 +11,7 @@ export default function NotFound() {
         <div className="pc-system-page app-workspace-page flex h-dvh flex-col overflow-hidden text-foreground">
             <main className="pc-system-page-main app-workspace-page flex h-full min-h-0 items-center justify-center overflow-y-auto px-6 py-10 text-foreground">
                 <section className="pc-system-card w-full max-w-md text-center" aria-labelledby="pc-not-found-title">
+                    <BrandMark className="absolute left-5 top-4 size-6" decorative={false} />
                     <WorkspaceSignalIcon variant="empty" size="lg" className="pc-system-icon mx-auto mb-5" />
                     <div className="pc-system-code mb-2 text-xs font-semibold tabular-nums text-foreground/45">404</div>
                     <p className="pc-system-eyebrow pc-system-pc-only">页面导航</p>
