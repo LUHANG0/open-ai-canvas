@@ -1,4 +1,5 @@
 .admin-plugin-overview {
+    flex-shrink: 0;
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
     margin-block: 16px;
