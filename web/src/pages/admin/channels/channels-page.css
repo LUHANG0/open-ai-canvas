@@ -1,0 +1,8 @@
+.admin-channel-modal.workspace-modal.workspace-modal-wide {
+    width: min(640px, calc(100vw - 32px)) !important;
+}
+
+.admin-channel-modal .ant-modal-body {
+    max-height: 65dvh;
+    overflow-y: auto;
+}

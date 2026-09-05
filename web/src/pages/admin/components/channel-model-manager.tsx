@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
-import { App, Button, Drawer, Form, Input, InputNumber, Popconfirm, Segmented, Select, Space, Switch, type FormInstance } from "antd";
+import { useEffect, useRef, useState } from "react";
+import { Alert, App, Button, Drawer, Form, Input, InputNumber, Popconfirm, Segmented, Select, Space, Switch, type FormInstance } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { FlaskConical, History, Plus, RefreshCw, Search, Trash2 } from "lucide-react";
 
 import { PaginationBar } from "@/components/layout/workspace-page";
 import { ModelIconPicker } from "@/components/model-logo";
+import { BrandLoadingIndicator } from "@/components/ui/brand-loader";
 import { ModelIcon } from "@/components/model-picker";
 import { ModelCapabilityEditor } from "@/components/model-capability-editor";
 import { CapabilityCardPicker, ProtocolCardPicker, type ModelCapabilityChoice } from "@/components/model-protocol-picker";
@@ -52,7 +53,8 @@ import {
     type VideoTokenPriceMatrix,
 } from "./channel-model-price-tier-form";
 import { AdminPageFrame } from "./admin-shell";
-import { AdminDataTable, AdminFilterChip, AdminStatusBadge } from "./admin-ui";
+import { AdminDataTable, AdminFilterChip, AdminStatusBadge, AdminTableEmpty } from "./admin-ui";
+import "./channel-model-manager.css";
 
 type EditableCapability = ModelCapabilityChoice;
 type PriceEntryMode = "direct" | "discount";
@@ -73,7 +75,19 @@ type FormValues = {
 };
 
 export function ChannelModelManager({ channel, onClose, onChanged }: { channel: ModelChannel; onClose: () => void; onChanged: () => void | Promise<void> }) {
-    const { message } = App.useApp();
+    const { message, modal } = App.useApp();
+    const [readError, setReadError] = useState("");
+    const [saveError, setSaveError] = useState("");
+    const [historyError, setHistoryError] = useState("");
+    const [catalogError, setCatalogError] = useState("");
+    const [confirmOpen, setConfirmOpen] = useState(false);
+    const readSequence = useRef(0);
+    const historySequence = useRef(0);
+    const savingRef = useRef(false);
+    const formSnapshot = useRef("");
+    const testingRef = useRef(false);
+    const fetchingRef = useRef(false);
+    const restoringRef = useRef(false);
     const [items, setItems] = useState<ChannelModel[]>([]);
     const [editing, setEditing] = useState<ChannelModel | null>(null);
     const [loading, setLoading] = useState(false);
@@ -143,20 +157,49 @@ export function ChannelModelManager({ channel, onClose, onChanged }: { channel: 
     const reload = async () => {
         if (!channel) return;
         setLoading(true);
+        const sequence = ++readSequence.current;
+        setReadError("");
+        setItems([]);
         try {
-            setItems((await listAdminChannelModels(channel.id)).models);
+            const result = await listAdminChannelModels(channel.id);
+            if (sequence === readSequence.current) setItems(result.models);
         } catch (error) {
-            message.error(error instanceof Error ? error.message : "读取渠道模型失败");
+            if (sequence === readSequence.current) setReadError(error instanceof Error ? error.message : "读取渠道模型失败");
         } finally {
-            setLoading(false);
+            if (sequence === readSequence.current) setLoading(false);
         }
+    };
+
+    const reloadCatalog = async () => {
+        setCatalogError("");
+        try {
+            setAvailableProtocols(await fetchPluginProviderCatalog("admin.system-channel"));
+        } catch (error) {
+            setCatalogError(error instanceof Error ? error.message : "读取协议目录失败");
+        }
+    };
+
+    const syncSaved = async () => {
+        try {
+            await onChanged();
+        } catch {
+            message.warning("配置已保存，但关联目录同步失败，请刷新后查看。");
+        }
+    };
+
+    const closeEditor = () => {
+        if (savingRef.current || testingRef.current || restoringRevisionId) return;
+        if (JSON.stringify(form.getFieldsValue(true)) === formSnapshot.current) {
+            setEditorOpen(false);
+            return;
+        }
+        setConfirmOpen(true);
+        modal.confirm({ title: "放弃模型修改？", content: "尚未保存的模型配置将丢失。", okText: "放弃修改", cancelText: "继续编辑", okButtonProps: { danger: true }, onOk: () => setEditorOpen(false), afterClose: () => setConfirmOpen(false) });
     };
 
     useEffect(() => {
         void reload();
-        void fetchPluginProviderCatalog("admin.system-channel")
-            .then(setAvailableProtocols)
-            .catch(() => setAvailableProtocols([]));
+        void reloadCatalog();
         setEditing(null);
         setEditorOpen(false);
         setHistoryOpen(false);
@@ -165,26 +208,35 @@ export function ChannelModelManager({ channel, onClose, onChanged }: { channel: 
         setCapability("all");
         setStatus("all");
         setPage(1);
+        return () => {
+            readSequence.current++;
+            historySequence.current++;
+        };
     }, [channel.id]);
 
     const fetchModels = async () => {
+        if (fetchingRef.current) return;
+        fetchingRef.current = true;
         setFetching(true);
         try {
             // 拉取只导入缺失项；新模型仍需管理员定价并手动启用。
             const result = await fetchAdminChannelModels(channel.id);
             await reload();
-            await onChanged();
+            await syncSaved();
             if (result.models.length === 0) message.warning("上游没有返回可用模型");
             else if (result.added > 0) message.success(`已拉取 ${result.models.length} 个模型，新增 ${result.added} 个待配置模型`);
             else message.info(`已拉取 ${result.models.length} 个模型，没有需要新增的模型`);
         } catch (error) {
             message.error(error instanceof Error ? error.message : "拉取模型失败");
         } finally {
+            fetchingRef.current = false;
             setFetching(false);
         }
     };
 
     const startCreate = () => {
+        setSaveError("");
+        form.resetFields();
         setEditing(null);
         form.setFieldsValue({
             modelKey: "",
@@ -200,10 +252,13 @@ export function ChannelModelManager({ channel, onClose, onChanged }: { channel: 
             enabled: true,
             capabilityConfig: defaultModelCapabilityConfig(availableProtocols.find((item) => item.capability === "text")?.value, ""),
         });
+        formSnapshot.current = JSON.stringify(form.getFieldsValue(true));
         setEditorOpen(true);
     };
 
     const startEdit = (item: ChannelModel) => {
+        setSaveError("");
+        form.resetFields();
         setEditing(item);
         form.setFieldsValue({
             modelKey: item.modelKey,
@@ -222,16 +277,20 @@ export function ChannelModelManager({ channel, onClose, onChanged }: { channel: 
                     ? normalizeModelCapabilityConfig(item.capabilityConfig || defaultModelCapabilityConfig(item.protocol, item.providerModelKey || item.modelKey))
                     : undefined,
         });
+        formSnapshot.current = JSON.stringify(form.getFieldsValue(true));
         setEditorOpen(true);
     };
 
     const save = async () => {
-        const values = await form.validateFields();
-        const upstreamModel = values.providerModelKey?.trim() || values.modelKey.trim();
-        const capabilityConfig =
-            values.capability === "text" || values.capability === "image" || values.capability === "video" ? normalizeModelCapabilityConfig(values.capabilityConfig || defaultModelCapabilityConfig(values.protocol, upstreamModel)) : undefined;
+        if (savingRef.current || testingRef.current) return;
+        savingRef.current = true;
         setSaving(true);
+        setSaveError("");
         try {
+            const values = await form.validateFields();
+            const upstreamModel = values.providerModelKey?.trim() || values.modelKey.trim();
+            const capabilityConfig =
+                values.capability === "text" || values.capability === "image" || values.capability === "video" ? normalizeModelCapabilityConfig(values.capabilityConfig || defaultModelCapabilityConfig(values.protocol, upstreamModel)) : undefined;
             const payload = {
                 modelKey: values.modelKey.trim(),
                 providerModelKey: upstreamModel,
@@ -266,13 +325,14 @@ export function ChannelModelManager({ channel, onClose, onChanged }: { channel: 
             if (editing) await updateAdminChannelModel(channel.id, editing.id, payload);
             else await createAdminChannelModel(channel.id, payload);
             await reload();
-            await onChanged();
+            await syncSaved();
             setEditorOpen(false);
             setEditing(null);
             message.success(editing ? "模型配置已更新" : "模型已添加");
         } catch (error) {
-            message.error(error instanceof Error ? error.message : "保存模型失败");
+            if (!(error && typeof error === "object" && "errorFields" in error)) setSaveError(error instanceof Error ? error.message : "保存模型失败");
         } finally {
+            savingRef.current = false;
             setSaving(false);
         }
     };
@@ -281,41 +341,47 @@ export function ChannelModelManager({ channel, onClose, onChanged }: { channel: 
         if (!editing) return;
         setHistoryOpen(true);
         setHistoryLoading(true);
+        setHistoryError("");
+        setRevisions([]);
+        const sequence = ++historySequence.current;
         try {
-            setRevisions((await listAdminChannelModelRevisions(channel.id, editing.id)).revisions);
+            const result = await listAdminChannelModelRevisions(channel.id, editing.id);
+            if (sequence === historySequence.current) setRevisions(result.revisions);
         } catch (error) {
-            message.error(error instanceof Error ? error.message : "读取配置历史失败");
+            if (sequence === historySequence.current) setHistoryError(error instanceof Error ? error.message : "读取配置历史失败");
         } finally {
-            setHistoryLoading(false);
+            if (sequence === historySequence.current) setHistoryLoading(false);
         }
     };
 
     const restoreRevision = async (revision: ChannelModelRevision) => {
-        if (!editing) return;
+        if (!editing || restoringRef.current) return;
+        restoringRef.current = true;
         setRestoringRevisionId(revision.id);
         try {
-            await restoreAdminChannelModelRevision(channel.id, editing.id, revision.id, editing.priceVersion);
-            const refreshed = await listAdminChannelModels(channel.id);
-            setItems(refreshed.models);
-            const restored = refreshed.models.find((item) => item.id === editing.id);
-            if (restored) startEdit(restored);
+            const result = await restoreAdminChannelModelRevision(channel.id, editing.id, revision.id, editing.priceVersion);
+            setItems((current) => current.map((item) => (item.id === result.model.id ? result.model : item)));
+            startEdit(result.model);
             setHistoryOpen(false);
-            await onChanged();
+            await syncSaved();
             message.success(`已恢复 v${revision.version}，并生成新的配置版本`);
         } catch (error) {
             message.error(error instanceof Error ? error.message : "恢复配置版本失败");
         } finally {
+            restoringRef.current = false;
             setRestoringRevisionId("");
         }
     };
 
     const testModel = async () => {
-        const values = await form.validateFields(["modelKey", "providerModelKey", "capability", "protocol", ...(modelCapability === "text" || modelCapability === "image" || modelCapability === "video" ? ["capabilityConfig"] : [])]);
-        const upstreamModel = values.providerModelKey?.trim() || values.modelKey.trim();
-        const capabilityConfig =
-            values.capability === "text" || values.capability === "image" || values.capability === "video" ? normalizeModelCapabilityConfig(values.capabilityConfig || defaultModelCapabilityConfig(values.protocol, upstreamModel)) : undefined;
+        if (testingRef.current || savingRef.current) return;
+        testingRef.current = true;
         setTesting(true);
         try {
+            const values = await form.validateFields(["modelKey", "providerModelKey", "capability", "protocol", ...(modelCapability === "text" || modelCapability === "image" || modelCapability === "video" ? ["capabilityConfig"] : [])]);
+            const upstreamModel = values.providerModelKey?.trim() || values.modelKey.trim();
+            const capabilityConfig =
+                values.capability === "text" || values.capability === "image" || values.capability === "video" ? normalizeModelCapabilityConfig(values.capabilityConfig || defaultModelCapabilityConfig(values.protocol, upstreamModel)) : undefined;
             const result = await testAdminChannelModel(channel.id, {
                 modelKey: values.modelKey.trim(),
                 providerModelKey: upstreamModel,
@@ -325,8 +391,9 @@ export function ChannelModelManager({ channel, onClose, onChanged }: { channel: 
             });
             message.success(`模型测试通过，耗时 ${(result.durationMs / 1000).toFixed(2)} 秒`);
         } catch (error) {
-            message.error(error instanceof Error ? error.message : "模型测试失败");
+            if (!(error && typeof error === "object" && "errorFields" in error)) message.error(error instanceof Error ? error.message : "模型测试失败");
         } finally {
+            testingRef.current = false;
             setTesting(false);
         }
     };
@@ -429,21 +496,26 @@ export function ChannelModelManager({ channel, onClose, onChanged }: { channel: 
     return (
         <AdminPageFrame
             title={`${channel.name} / 模型管理`}
+            description="配置供应模型、协议、能力与价格。前台展示由前台模型目录的供应线路决定。"
             back={{ label: "返回系统渠道", onClick: onClose }}
             actions={
                 <Space wrap>
                     <Button loading={fetching} icon={<RefreshCw className="size-4" />} onClick={() => void fetchModels()}>
                         拉取模型
                     </Button>
-                    <Button type="primary" icon={<Plus className="size-4" />} onClick={startCreate}>
+                    <Button type="primary" disabled={!availableProtocols.length || Boolean(catalogError)} icon={<Plus className="size-4" />} onClick={startCreate}>
                         新增模型
                     </Button>
                 </Space>
             }
         >
+            {readError ? <Alert type="error" showIcon title="模型列表读取失败" description={readError} action={<Button onClick={() => void reload()}>重试</Button>} /> : null}
+            {catalogError ? <Alert type="error" showIcon title="协议目录读取失败" description={catalogError} action={<Button onClick={() => void reloadCatalog()}>重试</Button>} /> : null}
             <AdminDataTable
+                empty={<AdminTableEmpty filtered={Boolean(keyword || capability !== "all" || status !== "all")} title={readError ? "暂时无法显示模型" : undefined} />}
                 toolbar={
                     <Input
+                        aria-label="搜索渠道模型"
                         allowClear
                         className="app-list-search"
                         prefix={<Search className="size-4 text-foreground/40" />}
@@ -490,6 +562,7 @@ export function ChannelModelManager({ channel, onClose, onChanged }: { channel: 
                 toolbarFilters={
                     <>
                         <Select
+                            aria-label="筛选模型能力"
                             className="w-32"
                             value={capability}
                             onChange={(value) => {
@@ -505,6 +578,7 @@ export function ChannelModelManager({ channel, onClose, onChanged }: { channel: 
                             ]}
                         />
                         <Select
+                            aria-label="筛选模型状态"
                             className="w-32"
                             value={status}
                             onChange={(value) => {
@@ -552,8 +626,12 @@ export function ChannelModelManager({ channel, onClose, onChanged }: { channel: 
                 title={editing ? `编辑模型 / ${editing.displayName || editing.modelKey}` : "新增模型"}
                 open={editorOpen}
                 size="min(1080px, 100vw)"
-                onClose={() => !saving && setEditorOpen(false)}
+                onClose={closeEditor}
+                closable={!saving && !testing}
+                keyboard={!saving && !testing}
+                mask={{ closable: !saving && !testing }}
                 rootClassName="admin-drawer admin-model-editor-drawer"
+                focusable={{ trap: !historyOpen && !confirmOpen }}
                 footer={
                     <div className="admin-model-editor-footer-actions flex items-center justify-between gap-3">
                         <Button icon={<FlaskConical className="size-4" />} loading={testing} disabled={saving} onClick={() => void testModel()}>
@@ -568,7 +646,7 @@ export function ChannelModelManager({ channel, onClose, onChanged }: { channel: 
                                 </div>
                                 <Switch aria-label="启用模型" checked={modelEnabled} disabled={saving || testing} onChange={(checked) => form.setFieldValue("enabled", checked)} />
                             </div>
-                            <Button disabled={saving || testing} onClick={() => setEditorOpen(false)}>
+                            <Button disabled={saving || testing} onClick={closeEditor}>
                                 取消
                             </Button>
                             <Button type="primary" loading={saving} disabled={testing} onClick={() => void save()}>
@@ -580,17 +658,57 @@ export function ChannelModelManager({ channel, onClose, onChanged }: { channel: 
                 extra={
                     editing ? (
                         <Space size={8}>
-                            <Button size="small" icon={<History className="size-3.5" />} onClick={() => void openHistory()}>
+                            <Button size="small" disabled={saving || testing} icon={<History className="size-3.5" />} onClick={() => void openHistory()}>
                                 配置历史
-                            </Button>
-                            <Button size="small" icon={<Plus className="size-3.5" />} onClick={startCreate}>
-                                新增模型
                             </Button>
                         </Space>
                     ) : null
                 }
             >
-                <Form className="admin-model-editor-form" form={form} layout="vertical" requiredMark={false} onValuesChange={handleFormValuesChange}>
+                <p className="mb-4 text-sm text-foreground/60">保存配置不会请求上游；「测试模型」会实际调用供应商，可能产生费用。</p>
+                {saveError ? (
+                    <Alert
+                        className="mb-4"
+                        type="error"
+                        showIcon
+                        title="模型配置未保存，输入已保留"
+                        description={saveError}
+                        action={
+                            editing ? (
+                                <Button
+                                    disabled={saving}
+                                    onClick={() => {
+                                        setConfirmOpen(true);
+                                        modal.confirm({
+                                            afterClose: () => setConfirmOpen(false),
+                                            title: "重新读取模型配置？",
+                                            content: "将丢弃当前输入，读取服务端最新版本。",
+                                            okText: "重新读取",
+                                            cancelText: "继续编辑",
+                                            onOk: async () => {
+                                                const result = await listAdminChannelModels(channel.id);
+                                                const latest = result.models.find((item) => item.id === editing.id);
+                                                if (!latest) throw new Error("模型已不存在，请关闭后刷新列表");
+                                                startEdit(latest);
+                                            },
+                                        });
+                                    }}
+                                >
+                                    重新读取
+                                </Button>
+                            ) : undefined
+                        }
+                    />
+                ) : null}
+                <Form
+                    inert={saving || testing || Boolean(restoringRevisionId)}
+                    disabled={saving || testing || Boolean(restoringRevisionId)}
+                    className="admin-model-editor-form"
+                    form={form}
+                    layout="vertical"
+                    requiredMark={false}
+                    onValuesChange={handleFormValuesChange}
+                >
                     <Form.Item name="capabilityConfig" noStyle>
                         <CapabilityConfigField />
                     </Form.Item>
@@ -756,14 +874,25 @@ export function ChannelModelManager({ channel, onClose, onChanged }: { channel: 
                 title={`配置历史${editing ? ` / ${editing.displayName || editing.modelKey}` : ""}`}
                 open={historyOpen}
                 width="min(620px, 100vw)"
-                onClose={() => !restoringRevisionId && setHistoryOpen(false)}
+                onClose={() => {
+                    if (!restoringRevisionId) {
+                        historySequence.current++;
+                        setHistoryOpen(false);
+                    }
+                }}
+                closable={!restoringRevisionId}
+                keyboard={!restoringRevisionId}
+                mask={{ closable: !restoringRevisionId }}
                 rootClassName="admin-drawer"
             >
-                <div className="mb-4 rounded-lg border border-border/70 bg-muted/20 px-4 py-3 text-xs leading-5 text-foreground/55">
-                    每次保存都会生成不可变快照。恢复旧版本不会覆盖历史，而是基于该快照创建一个新版本。
-                </div>
+                <div className="mb-4 rounded-lg border border-border/70 bg-muted/20 px-4 py-3 text-xs leading-5 text-foreground/55">每次保存都会生成不可变快照。恢复旧版本不会覆盖历史，而是基于该快照创建一个新版本。</div>
                 {historyLoading ? (
-                    <div className="py-10 text-center text-sm text-foreground/45">正在读取配置历史…</div>
+                    <div className="flex items-center justify-center gap-2 py-10 text-sm text-foreground/60" role="status">
+                        <BrandLoadingIndicator />
+                        正在读取配置历史…
+                    </div>
+                ) : historyError ? (
+                    <Alert type="error" showIcon title="配置历史读取失败" description={historyError} action={<Button onClick={() => void openHistory()}>重试</Button>} />
                 ) : revisions.length ? (
                     <div className="space-y-3">
                         {revisions.map((revision) => {
@@ -779,14 +908,7 @@ export function ChannelModelManager({ channel, onClose, onChanged }: { channel: 
                                             </div>
                                             <div className="mt-1 text-[var(--fs-tiny)] text-foreground/45">{new Date(revision.createdAt).toLocaleString("zh-CN", { hour12: false })}</div>
                                         </div>
-                                        <Popconfirm
-                                            title={`恢复 v${revision.version}`}
-                                            description="将按此快照创建一个新版本，现有版本仍会保留。"
-                                            okText="确认恢复"
-                                            cancelText="取消"
-                                            disabled={current}
-                                            onConfirm={() => void restoreRevision(revision)}
-                                        >
+                                        <Popconfirm title={`恢复 v${revision.version}`} description="将按此快照创建一个新版本，现有版本仍会保留。" okText="确认恢复" cancelText="取消" disabled={current} onConfirm={() => void restoreRevision(revision)}>
                                             <Button size="small" disabled={current || Boolean(restoringRevisionId)} loading={restoringRevisionId === revision.id}>
                                                 恢复此版本
                                             </Button>
@@ -794,7 +916,9 @@ export function ChannelModelManager({ channel, onClose, onChanged }: { channel: 
                                     </div>
                                     <div className="mt-3 grid gap-2 rounded-md bg-muted/20 px-3 py-2 text-[var(--fs-tiny)] leading-5 text-foreground/55 sm:grid-cols-2">
                                         <span>计费：{revision.snapshot?.billingMode === "token" ? "Token" : revision.snapshot?.billingMode === "per_second" ? "按秒" : "按次"}</span>
-                                        <span>录入：{revision.snapshot?.priceEntryMode === "discount" ? `${formatPriceValue((revision.snapshot.upstreamDiscountBasisPoints + revision.snapshot.discountIncrementBasisPoints) / 1_000)} 折换算` : "直接填写"}</span>
+                                        <span>
+                                            录入：{revision.snapshot?.priceEntryMode === "discount" ? `${formatPriceValue((revision.snapshot.upstreamDiscountBasisPoints + revision.snapshot.discountIncrementBasisPoints) / 1_000)} 折换算` : "直接填写"}
+                                        </span>
                                         <span>价格档：{revision.snapshot?.priceTiers.length || 0} 个</span>
                                         <span>{revisionPriceSummary(revision)}</span>
                                     </div>
@@ -842,17 +966,7 @@ function EnabledConfigField(_: { value?: boolean; onChange?: (value: boolean) =>
     return null;
 }
 
-function PriceDiscountControls({
-    form,
-    entryMode,
-    upstreamDiscount,
-    discountIncrement,
-}: {
-    form: FormInstance<FormValues>;
-    entryMode: PriceEntryMode;
-    upstreamDiscount: number;
-    discountIncrement: number;
-}) {
+function PriceDiscountControls({ form, entryMode, upstreamDiscount, discountIncrement }: { form: FormInstance<FormValues>; entryMode: PriceEntryMode; upstreamDiscount: number; discountIncrement: number }) {
     const discount = sellingDiscount({ upstreamDiscount, discountIncrement });
     return (
         <div className="rounded-lg border border-border/70 bg-muted/20 p-3">
@@ -993,18 +1107,14 @@ function VideoTokenPricingMatrix({
                         <div className="text-xs font-medium">无视频输入</div>
                         <div className="mt-1 text-[var(--fs-tiny)] leading-5 text-foreground/45">文生视频和图生视频使用这组价格。</div>
                     </div>
-                    <div className={priceGridClassName}>
-                        {resolutionPriceGroups.map((group) => priceInput(group.withoutVideo, group.label))}
-                    </div>
+                    <div className={priceGridClassName}>{resolutionPriceGroups.map((group) => priceInput(group.withoutVideo, group.label))}</div>
                 </div>
                 <div className="rounded-lg border border-border/70 bg-muted/20 p-3">
                     <div className="mb-3">
                         <div className="text-xs font-medium">含视频输入</div>
                         <div className="mt-1 text-[var(--fs-tiny)] leading-5 text-foreground/45">请求携带参考视频时优先使用这组价格。</div>
                     </div>
-                    <div className={priceGridClassName}>
-                        {resolutionPriceGroups.map((group) => priceInput(group.withVideo, group.label))}
-                    </div>
+                    <div className={priceGridClassName}>{resolutionPriceGroups.map((group) => priceInput(group.withVideo, group.label))}</div>
                 </div>
             </div>
             <div className="border-t border-border/60 px-4 py-3 text-[var(--fs-tiny)] leading-5 text-foreground/50">
@@ -1272,14 +1382,7 @@ function DiscountAwarePriceField({
                 <InputNumber />
             </Form.Item>
             <Form.Item className="mb-0" name={[index, originalPriceField]} label={`${label}（人民币原价）`} rules={[{ required: true, message: requiredMessage.replace("价格", "原价") }]}>
-                <InputNumber
-                    className="w-full"
-                    min={min}
-                    max={1_000_000}
-                    precision={6}
-                    step={0.1}
-                    onChange={(next) => form.setFieldValue(["priceTiers", index, priceField], discountedPriceFromOriginal(next ?? undefined, discountSettings))}
-                />
+                <InputNumber className="w-full" min={min} max={1_000_000} precision={6} step={0.1} onChange={(next) => form.setFieldValue(["priceTiers", index, priceField], discountedPriceFromOriginal(next ?? undefined, discountSettings))} />
             </Form.Item>
             <div className="mt-1 text-[var(--fs-tiny)] tabular-nums leading-5 text-foreground/45">
                 上游 ¥{hasOriginal ? formatPriceValue(upstreamCostFromOriginal(originalPrice, discountSettings.upstreamDiscount)) : "--"} · 用户售价 {hasOriginal ? formatPriceValue(finalPrice) : "--"} 积分
