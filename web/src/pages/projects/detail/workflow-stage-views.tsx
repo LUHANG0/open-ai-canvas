@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { App, Button, Progress } from "antd";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { saveAs } from "file-saver";
@@ -72,6 +72,8 @@ export function DeliveryStage({ detail, unitId, enableServerDelivery = true }: {
     const [localExporting, setLocalExporting] = useState(false);
     const [serverSubmitting, setServerSubmitting] = useState(false);
     const [localProgress, setLocalProgress] = useState<ProjectDeliveryExportProgress>();
+    const localController = useRef<AbortController | null>(null);
+    useEffect(() => () => localController.current?.abort(), [detail.project.id, unitId]);
     const plan = planProjectDelivery(detail, unitId);
     const readyVideoCount = plan.shots.length - plan.missingShots.length;
     const unavailableLabel = plan.shots.length === 0 ? "先完成分镜与视频" : plan.missingShots.length > 0 ? `还差 ${plan.missingShots.length} 个镜头视频` : "";
@@ -118,17 +120,22 @@ export function DeliveryStage({ detail, unitId, enableServerDelivery = true }: {
         message.success("交付包已开始下载");
     };
     const exportDeliveryLocally = async () => {
-        if (!plan.ready || localExporting) return;
+        if (!plan.ready || localController.current) return;
+        const controller = new AbortController();
+        localController.current = controller;
         setLocalExporting(true);
         setLocalProgress({ phase: "checking", progress: 0, message: "正在核对镜头容量" });
         try {
-            const result = await createProjectDeliveryArchive(detail, unitId, setLocalProgress);
+            const result = await createProjectDeliveryArchive(detail, unitId, setLocalProgress, { signal: controller.signal });
+            controller.signal.throwIfAborted();
             saveAs(result.archive, result.fileName);
             message.success("交付包已生成并开始下载");
         } catch (error) {
             setLocalProgress(undefined);
-            message.error(error instanceof Error ? error.message : "交付包生成失败");
+            if (controller.signal.aborted) message.info("本机生成已取消");
+            else message.error(error instanceof Error ? error.message : "交付包生成失败");
         } finally {
+            localController.current = null;
             setLocalExporting(false);
         }
     };
@@ -189,6 +196,7 @@ export function DeliveryStage({ detail, unitId, enableServerDelivery = true }: {
                         <Button data-testid="project-delivery-local-export" icon={<Download className="size-4" />} disabled={!plan.ready || serverActive} loading={localExporting} onClick={() => void exportDeliveryLocally()}>
                             {unavailableLabel || "本机直接生成"}
                         </Button>
+                        {localExporting ? <Button data-testid="project-delivery-local-cancel" onClick={() => localController.current?.abort()}>取消本机生成</Button> : null}
                     </div>
                 </div>
                 <div className="workflow-delivery-job-status" aria-live="polite">

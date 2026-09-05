@@ -6,7 +6,7 @@
  * 不连接后端、不需要账号、不触发任何模型。
  */
 import { spawn } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createServer } from "node:net";
@@ -73,7 +73,11 @@ async function waitForURL(url, timeout = 60_000) {
 }
 
 function launchVite(port) {
-    const child = spawn("bunx", ["vite", "--host", "127.0.0.1", "--port", String(port), "--strictPort"], {
+    const child = spawn(process.execPath, ["--input-type=module", "-e", `
+        import { createServer } from 'vite';
+        const server = await createServer({ cacheDir: ${JSON.stringify(join(tempRoot, "vite-cache"))}, server: { host: '127.0.0.1', port: ${port}, strictPort: true } });
+        await server.listen();
+    `], {
         cwd: process.cwd(),
         stdio: ["ignore", "pipe", "pipe"],
     });
@@ -121,6 +125,8 @@ async function connectCDP(port) {
     const problems = [];
     const videos = new Map();
     const metadataChecks = [];
+    const faults = { worker: "normal", intercepted: 0 };
+    const requests = [];
     const send = (method, params = {}) => {
         const id = ++nextId;
         return new Promise((resolve, reject) => {
@@ -153,10 +159,20 @@ async function connectCDP(port) {
         if (message.method === "Runtime.exceptionThrown") record("exception", params.exceptionDetails?.exception?.description || params.exceptionDetails?.text);
         if (message.method === "Log.entryAdded" && params.entry?.level === "error") record("log.error", params.entry.text);
         if (message.method === "Runtime.consoleAPICalled" && params.type === "error") record("console.error", (params.args || []).map((arg) => arg.value ?? arg.description ?? "").join(" "));
+        if (message.method === "Network.responseReceived") requests.push({ url: params.response.url, status: params.response.status, type: params.response.mimeType });
         if (message.method === "Network.loadingFailed" && params.errorText !== "net::ERR_ABORTED") record("network.failed", params.errorText);
         if (message.method === "Fetch.requestPaused") {
             let pathname = "";
             try { pathname = new URL(params.request.url).pathname; } catch { /* continue below */ }
+            if (params.request.url.includes("worker_file") && faults.worker !== "normal") {
+                faults.intercepted += 1;
+                if (faults.worker === "fail") void send("Fetch.fulfillRequest", { requestId: params.requestId, responseCode: 403, body: Buffer.from("Worker unavailable").toString("base64") });
+                return;
+            }
+            if (["/api/public/site", "/api/public/branding"].includes(pathname)) {
+                void send("Fetch.fulfillRequest", { requestId: params.requestId, responseCode: 200, responseHeaders: [{ name: "Content-Type", value: "application/json" }], body: Buffer.from(JSON.stringify({ code: 0, data: { revision: 0, config: {}, assets: {} } })).toString("base64") });
+                return;
+            }
             const fileResourceId = pathname.match(/\/api\/resources\/(delivery-resource-[12])\/file$/)?.[1];
             const metadataResourceId = pathname.match(/\/api\/resources\/(delivery-resource-[12])$/)?.[1];
             const videoBody = fileResourceId ? videos.get(fileResourceId) : undefined;
@@ -183,7 +199,9 @@ async function connectCDP(port) {
                         responseHeaders: [{ name: "Content-Type", value: "application/json" }, { name: "Cache-Control", value: "no-store" }],
                         body: metadataBody,
                     })
-                    : send("Fetch.continueRequest", { requestId: params.requestId });
+                    : pathname.startsWith("/api/")
+                        ? (record("unexpected.api", pathname), send("Fetch.failRequest", { requestId: params.requestId, errorReason: "BlockedByClient" }))
+                        : send("Fetch.continueRequest", { requestId: params.requestId });
             action.catch((error) => record("fetch.intercept", error.message));
         }
     });
@@ -193,7 +211,7 @@ async function connectCDP(port) {
         send("Page.enable"),
         send("Log.enable"),
         send("Network.enable"),
-        send("Fetch.enable", { patterns: [{ urlPattern: "*/api/resources/*", requestStage: "Request" }] }),
+        send("Fetch.enable", { patterns: [{ urlPattern: "*/api/*", requestStage: "Request" }, { urlPattern: "*worker_file*", requestStage: "Request" }] }),
     ]);
     const evaluate = async (expression) => {
         const response = await send("Runtime.evaluate", { expression, awaitPromise: true, returnByValue: true });
@@ -216,7 +234,7 @@ async function connectCDP(port) {
         await send("Input.dispatchMouseEvent", { type: "mouseReleased", x: box.x, y: box.y, button: "left", buttons: 0, clickCount: 1 });
         return true;
     };
-    return { send, evaluate, poll, click, problems, videos, metadataChecks, close: () => ws.close() };
+    return { send, evaluate, poll, click, problems, videos, metadataChecks, faults, requests, close: () => ws.close() };
 }
 
 async function generateVideo(cdp, color, direction) {
@@ -285,6 +303,22 @@ try {
     const gate = await cdp.evaluate(`(() => { const button = document.querySelector(${JSON.stringify(localExportSelector)}); return { enabled: button instanceof HTMLButtonElement && !button.disabled, text: document.body.innerText }; })()`);
     assert(gate.enabled, "2 / 2 镜头时交付按钮可用");
     assert(gate.text.includes("2 / 2") && gate.text.includes("历史过期产物") && gate.text.includes("1"), "旧过期产物只提示不阻断");
+    cdp.faults.worker = "fail";
+    await cdp.click(localExportSelector);
+    assert(await cdp.poll(`document.body.innerText.includes('视频工具加载超时') && !document.querySelector('[data-testid="project-delivery-local-cancel"]')`, 40_000), "Worker 403 在加载截止时间内退出并提示重试");
+    assert(cdp.faults.intercepted === 1 && !readdirSync(downloadDir).length, "失败未产出伪造 ZIP");
+    assert(cdp.problems.every((item) => item.kind === "log.error" && item.text.includes("403")), "故障阶段仅出现预期的 Worker 403", JSON.stringify(cdp.problems));
+    cdp.problems.length = 0;
+    cdp.faults.worker = "stall";
+    await cdp.click(localExportSelector);
+    assert(await cdp.poll(`document.body.innerText.includes('正在加载本地视频工具')`), "失败后重试进入新的加载");
+    const stallDeadline = Date.now() + 5000;
+    while (cdp.faults.intercepted < 2 && Date.now() < stallDeadline) await sleep(50);
+    assert(cdp.faults.intercepted === 2, "取消用例已实际挂起 Worker 请求");
+    await cdp.click('[data-testid="project-delivery-local-cancel"]');
+    assert(await cdp.poll(`!document.querySelector('[data-testid="project-delivery-local-cancel"]') && !document.querySelector('[data-delivery-local-progress]')`, 5000), "取消挂起加载后按钮与进度恢复");
+    assert(!readdirSync(downloadDir).length, "取消没有触发下载");
+    cdp.faults.worker = "normal";
     assert(await cdp.click(localExportSelector), "交付按钮已通过真实指针事件触发");
     assert(await cdp.poll(`Boolean(document.querySelector('[data-delivery-local-progress]'))`, 10_000), "页面展示本地合成进度");
 
@@ -293,8 +327,33 @@ try {
     const names = Object.keys(entries);
     const finalVideoName = names.find((name) => name.startsWith("成片/") && name.endsWith(".mp4"));
     const srtName = names.find((name) => name.startsWith("字幕/") && name.endsWith(".srt"));
-    assert(names.length === 7, "ZIP 包含 7 个交付文件", names.join(", "));
-    assert(Boolean(finalVideoName) && entries[finalVideoName].byteLength > 500, "FFmpeg 产出可读 MP4", `${entries[finalVideoName]?.byteLength || 0} bytes`);
+    const expectedNames = ["成片/交付验收-第一集.mp4", "manifest.json", "交付说明.txt", "字幕/交付验收-第一集.srt", "分镜/shots.json", "分镜/shots.csv", "资产/assets.json"];
+    assert(JSON.stringify([...names].sort()) === JSON.stringify(expectedNames.sort()), "ZIP 包含 7 个交付文件", names.join(", "));
+    assert(Boolean(finalVideoName) && entries[finalVideoName].byteLength > 500, "FFmpeg 产出 MP4 文件", `${entries[finalVideoName]?.byteLength || 0} bytes`);
+    const decoded = await cdp.evaluate(`(async () => {
+        const bytes = Uint8Array.from(atob(${JSON.stringify(Buffer.from(entries[finalVideoName]).toString("base64"))}), c => c.charCodeAt(0));
+        const url = URL.createObjectURL(new Blob([bytes], { type: 'video/mp4' }));
+        const video = document.createElement('video');
+        video.muted = true;
+        const wait = event => new Promise((resolve, reject) => {
+            const timer = setTimeout(() => reject(new Error('Video decode timeout: ' + event)), 10000);
+            video.addEventListener(event, () => { clearTimeout(timer); resolve(); }, { once: true });
+            video.addEventListener('error', () => { clearTimeout(timer); reject(new Error('Video decode failed')); }, { once: true });
+        });
+        try {
+            const loaded = wait('loadeddata'); video.src = url; await loaded;
+            const canvas = document.createElement('canvas'); canvas.width = 96; canvas.height = 54;
+            const context = canvas.getContext('2d');
+            const colors = [];
+            for (const position of [0.2, 0.8]) {
+                const sought = wait('seeked'); video.currentTime = video.duration * position; await sought;
+                context.drawImage(video, 0, 0); colors.push([...context.getImageData(80, 5, 1, 1).data]);
+            }
+            return { duration: video.duration, width: video.videoWidth, height: video.videoHeight, colors };
+        } finally { video.removeAttribute('src'); video.load(); URL.revokeObjectURL(url); }
+    })()`);
+    assert(decoded.width === 96 && decoded.height === 54 && decoded.duration >= 0.95 && decoded.duration <= 1.45, "浏览器实际解码 MP4 且时长约 1.2 秒", JSON.stringify(decoded));
+    assert(decoded.colors[0][0] > decoded.colors[0][2] * 2 && decoded.colors[1][2] > decoded.colors[1][0] * 2, "成片前红后蓝，两个镜头均保留且顺序正确");
     const srt = srtName ? new TextDecoder().decode(entries[srtName]) : "";
     assert(srt.includes("00:00:00,000 --> 00:00:00,600") && srt.includes("00:00:00,600 --> 00:00:01,200"), "SRT 时码与两个镜头对齐");
     const manifest = JSON.parse(new TextDecoder().decode(entries["manifest.json"]));
@@ -302,6 +361,15 @@ try {
     assert(new Set(cdp.metadataChecks).size === 2, "合成前已核对两个视频的容量");
     assert(cdp.problems.length === 0, "合成与下载期间无浏览器错误", JSON.stringify(cdp.problems));
     if (failures) throw new Error(`${failures} delivery E2E assertion(s) failed`);
+    if (process.env.DELIVERY_E2E_EVIDENCE_DIR) {
+        const evidenceDir = process.env.DELIVERY_E2E_EVIDENCE_DIR;
+        mkdirSync(evidenceDir, { recursive: true });
+        writeFileSync(join(evidenceDir, "delivery.zip"), readFileSync(zipPath));
+        writeFileSync(join(evidenceDir, "checks.json"), JSON.stringify({ passes, decoded, files: names, workerFaultRequests: cdp.faults.intercepted, problems: cdp.problems }, null, 2));
+        await cdp.poll(`!document.querySelector('.ant-message-notice')`, 10_000);
+        const screenshot = await cdp.send("Page.captureScreenshot", { format: "png" });
+        writeFileSync(join(evidenceDir, "delivery.png"), Buffer.from(screenshot.data, "base64"));
+    }
     console.log(`\n交付 Chrome E2E 通过：${passes.length}/${passes.length}`);
 } catch (error) {
     console.error(error instanceof Error ? error.stack : error);
@@ -313,6 +381,7 @@ try {
             console.error("\nPage diagnostics failed:\n" + String(diagnosticError));
         }
         console.error("\nBrowser problems:\n" + JSON.stringify(cdp.problems, null, 2));
+        console.error("\nResource requests:\n" + JSON.stringify(cdp.requests.filter(item => /ffmpeg|worker|wasm|api/.test(item.url)), null, 2));
     }
     try { console.error("\nDownloads:\n" + JSON.stringify(readdirSync(downloadDir))); } catch { /* ignore */ }
     if (vite) console.error("\nVite log:\n" + vite.log().slice(-5000));

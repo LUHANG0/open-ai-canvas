@@ -40,6 +40,40 @@ function deliveryFixture(): ProjectDetail {
 }
 
 describe("短剧交付包", () => {
+    test("视频工具模块仍在加载时取消，退出等待且不打包", async () => {
+        const controller = new AbortController();
+        let merging!: () => void;
+        const started = new Promise<void>((resolve) => { merging = resolve; });
+        let packed = false;
+        const pending = createProjectDeliveryArchive(deliveryFixture(), "unit-1", undefined, {
+            signal: controller.signal,
+            loadResourceMetadata: async () => ({ size: 1 }),
+            loadResourceBlob: async () => new Blob(["x"]),
+            mergeVideoBlobs: () => { merging(); return new Promise(() => {}); },
+            createArchive: async () => { packed = true; return new Blob(); },
+        });
+        await started;
+        controller.abort();
+        await expect(pending).rejects.toMatchObject({ name: "AbortError" });
+        expect(packed).toBe(false);
+    });
+
+    test("取消挂起资源读取后立即结束，迟到资源不进入编码或打包", async () => {
+        const controller = new AbortController();
+        let finishMetadata!: (value: { size: number }) => void;
+        let merged = false;
+        const pending = createProjectDeliveryArchive(deliveryFixture(), "unit-1", undefined, {
+            signal: controller.signal,
+            loadResourceMetadata: () => new Promise((resolve) => { finishMetadata = resolve; }),
+            mergeVideoBlobs: async () => { merged = true; return new Blob(); },
+        });
+        controller.abort();
+        await expect(pending).rejects.toMatchObject({ name: "AbortError" });
+        finishMetadata({ size: 10 });
+        await Promise.resolve();
+        expect(merged).toBe(false);
+    });
+
     test("后台交付使用独立项目任务接口并保留本机兜底", async () => {
         const apiSource = await Bun.file(new URL("../src/services/api/projects.ts", import.meta.url)).text();
         const viewSource = await Bun.file(new URL("../src/pages/projects/detail/workflow-stage-views.tsx", import.meta.url)).text();

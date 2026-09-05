@@ -17,9 +17,10 @@ export type ProjectDeliveryExportProgress = {
 };
 
 type ProjectDeliveryExportDependencies = {
+    signal?: AbortSignal;
     loadResourceMetadata?: (resourceId: string) => Promise<{ size?: number; kind?: string; status?: string }>;
     loadResourceBlob?: (resourceId: string) => Promise<Blob | null>;
-    mergeVideoBlobs?: (blobs: Blob[], onProgress?: (progress: { phase: "loading" | "reading" | "encoding"; progress: number }) => void) => Promise<Blob>;
+    mergeVideoBlobs?: (blobs: Blob[], onProgress?: (progress: { phase: "loading" | "reading" | "encoding"; progress: number }) => void, signal?: AbortSignal) => Promise<Blob>;
     createArchive?: typeof createZip;
     now?: () => Date;
     deviceMemoryGB?: number;
@@ -31,9 +32,22 @@ function browserDeviceMemoryGB() {
     return (navigator as Navigator & { deviceMemory?: number }).deviceMemory;
 }
 
-async function defaultMergeVideoBlobs(blobs: Blob[], onProgress?: Parameters<NonNullable<ProjectDeliveryExportDependencies["mergeVideoBlobs"]>>[1]) {
+async function defaultMergeVideoBlobs(blobs: Blob[], onProgress?: Parameters<NonNullable<ProjectDeliveryExportDependencies["mergeVideoBlobs"]>>[1], signal?: AbortSignal) {
     const { mergeVideoBlobs } = await import("@/lib/canvas/canvas-video-merge");
-    return mergeVideoBlobs(blobs, onProgress);
+    return mergeVideoBlobs(blobs, onProgress, signal);
+}
+
+function waitForDeliveryStep<T>(step: Promise<T>, signal?: AbortSignal): Promise<T> {
+    if (!signal) return step;
+    return new Promise((resolve, reject) => {
+        const cancel = () => reject(signal.reason);
+        signal.addEventListener("abort", cancel, { once: true });
+        if (signal.aborted) cancel();
+        step.then((value) => { signal.removeEventListener("abort", cancel); resolve(value); }, (error) => {
+            signal.removeEventListener("abort", cancel);
+            reject(error);
+        });
+    });
 }
 
 export async function createProjectDeliveryArchive(
@@ -42,6 +56,11 @@ export async function createProjectDeliveryArchive(
     onProgress?: (progress: ProjectDeliveryExportProgress) => void,
     dependencies: ProjectDeliveryExportDependencies = {},
 ) {
+    const { signal } = dependencies;
+    signal?.throwIfAborted();
+    const reportProgress = (progress: ProjectDeliveryExportProgress) => {
+        if (!signal?.aborted) onProgress?.(progress);
+    };
     const plan = planProjectDelivery(detail, unitId);
     if (plan.shots.length === 0) throw new Error("当前章节还没有分镜，无法生成交付包");
     if (plan.missingShots.length > 0) throw new Error(`还有 ${plan.missingShots.length} 个镜头缺少已通过的视频`);
@@ -57,8 +76,8 @@ export async function createProjectDeliveryArchive(
         const item = plan.shots[index];
         const resourceId = item.video?.resourceId;
         if (!resourceId) throw new Error(`镜头“${item.shot.title}”缺少可下载的视频资源`);
-        onProgress?.({ phase: "checking", progress: Math.round((index / plan.shots.length) * 15), message: `正在核对镜头容量 ${index + 1} / ${plan.shots.length}` });
-        const resource = await loadResourceMetadata(resourceId);
+        reportProgress({ phase: "checking", progress: Math.round((index / plan.shots.length) * 15), message: `正在核对镜头容量 ${index + 1} / ${plan.shots.length}` });
+        const resource = await waitForDeliveryStep(loadResourceMetadata(resourceId), signal);
         if (resource.status && resource.status !== "ready") throw new Error(`镜头“${item.shot.title}”的视频资源当前不可用`);
         if (resource.kind && resource.kind !== "video") throw new Error(`镜头“${item.shot.title}”关联的不是视频资源`);
         resourceSizes.push(resource.size);
@@ -70,7 +89,7 @@ export async function createProjectDeliveryArchive(
         : capacity.level === "warning"
             ? `镜头视频约 ${formatProjectDeliveryBytes(capacity.sourceBytes)}，已接近本机安全上限`
             : `镜头视频约 ${formatProjectDeliveryBytes(capacity.sourceBytes)}，容量检查通过`;
-    onProgress?.({ phase: "checking", progress: 15, message: capacityMessage });
+    reportProgress({ phase: "checking", progress: 15, message: capacityMessage });
 
     const blobs: Blob[] = [];
     let actualSourceBytes = 0;
@@ -78,32 +97,33 @@ export async function createProjectDeliveryArchive(
         const item = plan.shots[index];
         const resourceId = item.video?.resourceId;
         if (!resourceId) throw new Error(`镜头“${item.shot.title}”缺少可下载的视频资源`);
-        onProgress?.({ phase: "reading", progress: 15 + Math.round((index / plan.shots.length) * 30), message: `正在读取镜头 ${index + 1} / ${plan.shots.length}` });
-        const blob = await loadResourceBlob(resourceId);
+        reportProgress({ phase: "reading", progress: 15 + Math.round((index / plan.shots.length) * 30), message: `正在读取镜头 ${index + 1} / ${plan.shots.length}` });
+        const blob = await waitForDeliveryStep(loadResourceBlob(resourceId), signal);
         if (!blob) throw new Error(`无法读取镜头“${item.shot.title}”的视频，请检查资源后重试`);
         actualSourceBytes += blob.size;
         if (actualSourceBytes > sourceBudgetBytes) throw new Error(projectDeliveryCapacityError(actualSourceBytes, sourceBudgetBytes));
         blobs.push(blob);
     }
 
-    onProgress?.({ phase: "encoding", progress: 45, message: "正在本机合成 MP4" });
-    const finalVideo = await mergeVideoBlobs(blobs, (progress) => {
+    reportProgress({ phase: "encoding", progress: 45, message: "正在本机合成 MP4" });
+    const finalVideo = await waitForDeliveryStep(mergeVideoBlobs(blobs, (progress) => {
         const value = progress.phase === "loading"
             ? 45
             : progress.phase === "reading"
                 ? 45 + Math.round(progress.progress * 0.1)
                 : 55 + Math.round(progress.progress * 0.3);
         const message = progress.phase === "loading" ? "正在加载本地视频工具" : progress.phase === "reading" ? "正在准备镜头视频" : "正在本机合成 MP4";
-        onProgress?.({ phase: "encoding", progress: value, message });
-    });
+        reportProgress({ phase: "encoding", progress: value, message });
+    }, signal), signal);
+    signal?.throwIfAborted();
 
-    onProgress?.({ phase: "packing", progress: 90, message: "正在打包字幕、分镜与资产清单" });
+    reportProgress({ phase: "packing", progress: 90, message: "正在打包字幕、分镜与资产清单" });
     const exportedAt = (dependencies.now?.() || new Date()).toISOString();
     const textFiles = buildProjectDeliveryTextFiles(plan, exportedAt);
-    const archive = await createArchive([
+    const archive = await waitForDeliveryStep(createArchive([
         { name: `成片/${plan.fileBaseName}.mp4`, data: finalVideo },
         ...textFiles,
-    ]);
-    onProgress?.({ phase: "packing", progress: 100, message: "交付包已就绪" });
+    ]), signal);
+    reportProgress({ phase: "packing", progress: 100, message: "交付包已就绪" });
     return { archive, fileName: `${plan.fileBaseName}-交付包.zip`, plan, capacity: inspectProjectDeliveryCapacity(blobs.map((blob) => blob.size), sourceBudgetBytes) };
 }

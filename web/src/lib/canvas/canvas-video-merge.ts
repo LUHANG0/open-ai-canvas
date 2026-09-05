@@ -1,14 +1,17 @@
 import { FFmpeg } from "@ffmpeg/ffmpeg";
+import ffmpegWorkerURL from "@ffmpeg/ffmpeg/worker?worker&url";
 import ffmpegCoreURL from "@ffmpeg/core?url";
 import ffmpegWasmURL from "@ffmpeg/core/wasm?url";
 import { fetchFile } from "@ffmpeg/util";
 import { getMediaBlob } from "@/services/file-storage";
+import { loadFFmpegInstance } from "./ffmpeg-load";
 
 export type MergeVideoInput = { id: string; url?: string; storageKey?: string };
 export type MergeVideoProgress = { phase: "loading" | "reading" | "encoding"; progress: number };
 
 let ffmpegPromise: Promise<FFmpeg> | null = null;
 let mergeSequence = 0;
+const ffmpegConfig = { classWorkerURL: ffmpegWorkerURL, coreURL: ffmpegCoreURL, wasmURL: ffmpegWasmURL };
 
 // ffmpeg 只在用户明确合并视频时加载，避免把 wasm 和 worker 放进画布首屏包体。
 export async function loadFFmpeg(onProgress?: (progress: MergeVideoProgress) => void) {
@@ -16,20 +19,16 @@ export async function loadFFmpeg(onProgress?: (progress: MergeVideoProgress) => 
         ffmpegPromise = (async () => {
             const ffmpeg = new FFmpeg();
             onProgress?.({ phase: "loading", progress: 0 });
-            try {
-                // 核心资产随前端同源发布，避免自部署环境首次合并依赖第三方 CDN。
-                await ffmpeg.load({ coreURL: ffmpegCoreURL, wasmURL: ffmpegWasmURL });
-            } catch (cause) {
-                ffmpeg.terminate();
-                throw new Error("视频合并工具加载失败，请刷新页面后重试", { cause });
-            }
+            // 显式 Worker 入口让 Vite 追踪共享依赖及生产构建资产。
+            await loadFFmpegInstance(ffmpeg, ffmpegConfig);
             return ffmpeg;
         })();
     }
+    const pending = ffmpegPromise;
     try {
-        return await ffmpegPromise;
+        return await pending;
     } catch (error) {
-        ffmpegPromise = null;
+        if (ffmpegPromise === pending) ffmpegPromise = null;
         throw error;
     }
 }
@@ -54,8 +53,27 @@ export async function mergeVideos(inputs: MergeVideoInput[], onProgress?: (progr
 }
 
 /** 将已读取的视频统一封装为 MP4；交付包用它避免重复下载镜头资源。 */
-export async function mergeVideoBlobs(blobs: Blob[], onProgress?: (progress: MergeVideoProgress) => void) {
+export async function mergeVideoBlobs(blobs: Blob[], onProgress?: (progress: MergeVideoProgress) => void, signal?: AbortSignal) {
     if (blobs.length === 0) throw new Error("至少需要 1 个视频才能生成成片");
+    if (signal) {
+        signal.throwIfAborted();
+        // 可取消的交付独占 Worker，取消时不会中断其他画布的合并。
+        const ffmpeg = new FFmpeg();
+        const cancel = () => ffmpeg.terminate();
+        try {
+            onProgress?.({ phase: "loading", progress: 0 });
+            await loadFFmpegInstance(ffmpeg, ffmpegConfig, signal);
+            signal.throwIfAborted();
+            signal.addEventListener("abort", cancel, { once: true });
+            return await encodeVideoBlobs(ffmpeg, blobs, onProgress);
+        } catch (error) {
+            signal.throwIfAborted();
+            throw error;
+        } finally {
+            signal.removeEventListener("abort", cancel);
+            ffmpeg.terminate();
+        }
+    }
     const ffmpeg = await loadFFmpeg(onProgress);
     return encodeVideoBlobs(ffmpeg, blobs, onProgress);
 }
