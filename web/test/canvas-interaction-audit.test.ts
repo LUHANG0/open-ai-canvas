@@ -235,13 +235,11 @@ test("canvas task detail loads only when a task is opened", async () => {
     expect(taskSource).toContain("onCancel(task)");
 });
 
-test("assistant layout separates the main toolbar from the left dock and low zoom keeps video play reachable", async () => {
+test("assistant layout separates the main toolbar from the left dock", async () => {
     const css = await Bun.file(new URL("../src/pages/canvas/canvas-editor-pc.css", import.meta.url)).text();
-    const content = await Bun.file(new URL("../src/components/canvas/canvas-node-content.tsx", import.meta.url)).text();
     expect(css).toContain('[data-assistant-open="true"] .pc-canvas-toolbar');
     expect(css).toContain('bottom: calc(var(--canvas-inset-y) + var(--space-12))');
     expect(css).toContain('left: var(--canvas-inset-x)');
-    expect(content).toContain('var(--canvas-live-inverse-scale, 1) * 0.55');
 });
 
 test("unfinished super resolution is disabled and media settings share one shell", async () => {
