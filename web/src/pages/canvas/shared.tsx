@@ -266,8 +266,11 @@ export default function SharedCanvasPage() {
                     </span>
                     <span className="pc-canvas-share__badge inline-flex items-center gap-1 text-xs" style={{ color: theme.node.muted }}><Eye className="size-3.5" />只读分享</span>
                 </div>
-                <Link className="pc-canvas-share__login pointer-events-auto" to="/login"><Button type="text" icon={<LogIn className="size-4" />}>登录<span className="hidden">并开始创作</span></Button></Link>
+                <Button className="pointer-events-auto shrink-0" aria-label="重新读取分享画布" icon={<RefreshCw className="size-4" />} onClick={() => setRetryKey((value) => value + 1)} />
+                <Link className="pc-canvas-share__login pointer-events-auto shrink-0" to="/login"><Button type="text" icon={<LogIn className="size-4" />}>登录<span className="hidden">并开始创作</span></Button></Link>
             </header>
+
+            {!nodes.length ? <div className="pointer-events-none absolute inset-0 z-[var(--z-panel-floating)] grid place-items-center px-5"><WorkspaceState icon="empty" title="分享画布暂无节点" description="分享者添加内容后，可重新读取此画布查看。" /></div> : null}
 
             <InfiniteCanvas containerRef={containerRef} viewport={viewport} backgroundMode={backgroundMode} onViewportChange={onViewportChange} onViewportPreviewChange={(next) => { viewportRef.current = next; }} onCanvasDeselect={() => { setSelectedNodeId(null); setContextMenu(null); }} onContextMenu={(event) => openContextMenu(event)} onDrop={(event) => { event.preventDefault(); unauthorized(); }}>
                 <svg className="absolute overflow-visible" viewBox={`${connectionBounds.left} ${connectionBounds.top} ${connectionBounds.width} ${connectionBounds.height}`} style={{ left: connectionBounds.left, top: connectionBounds.top, width: connectionBounds.width, height: connectionBounds.height, pointerEvents: "none", zIndex: 0 }}>
