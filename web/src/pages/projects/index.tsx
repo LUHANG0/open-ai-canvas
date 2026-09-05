@@ -229,7 +229,7 @@ export default function ProjectsPage() {
                 description="集中管理故事、章节、角色资产、分镜画布与制作进度。"
                 meta={
                     <StatusBadge tone="neutral" dot>
-                        {query.isLoading ? "正在读取" : `已加载 ${allProjects.length} / ${totalProjectCount}`}
+                        {hasInitialError ? "暂未读取" : query.isLoading ? "正在读取" : `已加载 ${allProjects.length} / ${totalProjectCount}`}
                     </StatusBadge>
                 }
                 actions={
@@ -427,7 +427,7 @@ export default function ProjectsPage() {
                 </div>
             </Surface> : null}
             <section className="pc-projects-library" aria-labelledby="pc-projects-library-title">
-                <SectionHeader titleId="pc-projects-library-title" title="我的项目" meta={<span className="pc-projects-library-count">{rows.length} 个结果</span>} />
+                <SectionHeader titleId="pc-projects-library-title" title="我的项目" meta={<span className="pc-projects-library-count">{hasInitialError ? "读取失败" : `${rows.length} 个结果`}</span>} />
                 <ListToolbar
                     className="library-toolbar pc-projects-toolbar"
                     active={Boolean(keyword || status !== "all" || sort !== "updated")}
@@ -464,7 +464,7 @@ export default function ProjectsPage() {
                     </label>
                 </ListToolbar>
 
-                {hasInitialError ? <WorkspaceErrorState description={query.error instanceof Error ? query.error.message : "项目列表加载失败"} onRetry={() => void query.refetch()} /> : null}
+                {hasInitialError ? <WorkspaceErrorState title="项目暂时无法加载" description="暂时无法读取项目列表，请稍后重试。" onRetry={() => void query.refetch()} /> : null}
                 {query.isLoading ? <WorkspaceLoadingState label="正在整理项目" detail="读取章节、画布与资产进度" /> : null}
                 {!query.isLoading && !hasInitialError && rows.length ? (
                     <CollectionGrid className="library-grid project-library-grid">
