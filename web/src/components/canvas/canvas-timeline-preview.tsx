@@ -143,8 +143,8 @@ export function CanvasTimelinePreview({ clips, nodes, playheadMs, playing, theme
     }, [videoSize]);
 
     return (
-        <div className="flex items-center gap-3 border-b px-4 py-2.5" style={{ borderColor: theme.toolbar.border, background: theme.toolbar.panel }}>
-            <div className="relative grid shrink-0 place-items-center overflow-hidden rounded-lg bg-black" style={{ width: PREVIEW_WIDTH, height: PREVIEW_HEIGHT }} data-canvas-no-zoom>
+        <div className="timeline-preview flex items-center gap-3 border-b px-4 py-2.5" style={{ borderColor: theme.toolbar.border, background: theme.toolbar.panel }}>
+            <div className="timeline-preview-media relative grid shrink-0 place-items-center overflow-hidden rounded-lg bg-black text-white" style={{ width: PREVIEW_WIDTH, height: PREVIEW_HEIGHT }} data-canvas-no-zoom>
                 {videoUrl && activeVideoClip ? (
                     <>
                         <div className="relative" style={previewDisplay ? { width: previewDisplay.width, height: previewDisplay.height } : { width: "100%", height: "100%" }}>
@@ -160,7 +160,7 @@ export function CanvasTimelinePreview({ clips, nodes, playheadMs, playing, theme
                                 onTogglePlay();
                             }}
                         >
-                            <span className="grid size-10 place-items-center rounded-full bg-black/45 text-white backdrop-blur transition hover:scale-105 hover:bg-black/60">
+                            <span className="grid size-10 place-items-center rounded-full bg-black/45 text-white backdrop-blur transition hover:bg-black/60 motion-reduce:transition-none">
                                 {playing ? <Pause className="size-4 fill-current" /> : <Play className="size-4 fill-current" />}
                             </span>
                         </button>
@@ -169,7 +169,7 @@ export function CanvasTimelinePreview({ clips, nodes, playheadMs, playing, theme
                     <div className="px-4 text-center text-xs opacity-55">该位置无视频片段</div>
                 )}
             </div>
-            <div className="min-w-0 flex-1">
+            <div className="timeline-preview-info min-w-0 flex-1">
                 <div className="flex items-center gap-2 text-xs">
                     <span className="truncate font-semibold" style={{ color: theme.accent.primary }}>
                         {activeVideoClip?.title || "无视频片段"}

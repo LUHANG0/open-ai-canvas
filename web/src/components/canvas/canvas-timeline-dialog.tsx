@@ -9,8 +9,8 @@ import { saveAs } from "file-saver";
 
 import { CanvasTimelineRuler } from "./canvas-timeline-ruler";
 import { CanvasTimelinePreview } from "./canvas-timeline-preview";
-import { canvasThemes } from "@/lib/canvas-theme";
-import { useThemeStore } from "@/stores/use-theme-store";
+import { useCanvasTheme } from "@/components/canvas/canvas-theme-provider";
+import "./canvas-timeline.css";
 import { buildTimelineFromNodes, isNodeInTimeline, syncTimelineSubtitleClips } from "@/lib/timeline/timeline-build";
 import { canPlaceAt, clampClipDurationByNeighbors, findNearestAvailablePlacement } from "@/lib/timeline/timeline-placement";
 import { computeSnap } from "@/lib/timeline/timeline-snap";
@@ -74,7 +74,8 @@ export function CanvasTimelineDialog({
     onCreateAssembledNode,
 }: CanvasTimelineDialogProps) {
     const { message } = App.useApp();
-    const theme = canvasThemes[useThemeStore((state) => state.theme)];
+    const canvasTheme = useCanvasTheme();
+    const theme = useMemo(() => ({ ...canvasTheme, timeline: { ...canvasTheme.timeline, trackFill: "var(--app-surface-2)", trackBorder: "var(--app-border-default)", clipSelectedBorder: "var(--app-selection-border)", rulerTick: "var(--app-border-strong)", rulerLabel: "var(--app-text-secondary)", playhead: "var(--app-selection-fg)", handle: "var(--app-selection-fg)" } }), [canvasTheme]);
     const [draft, setDraft] = useState<TimelineProject>(() => buildTimelineFromNodes([]));
     const [playheadMs, setPlayheadMs] = useState(0);
     const [zoomLevel, setZoomLevel] = useState(1);
@@ -585,19 +586,28 @@ export function CanvasTimelineDialog({
                     return (
                         <div
                             key={clip.id}
-                            className={`absolute top-1 flex h-[calc(100%-8px)] cursor-grab touch-none select-none items-center overflow-hidden rounded-md border text-xs leading-none active:cursor-grabbing`}
+                            data-timeline-clip={clip.id}
+                            role="button"
+                            tabIndex={0}
+                            aria-pressed={isSelected}
+                            aria-label={`${clip.title || label}，${formatTimelineTime(clip.startMs)}，时长 ${formatTimelineTime(clip.durationMs)}`}
+                            className={`timeline-clip absolute top-1 flex h-[calc(100%-8px)] cursor-grab touch-none select-none items-center overflow-hidden rounded-md border text-xs leading-none active:cursor-grabbing`}
                             style={{
                                 left,
                                 width,
-                                background: isSelected ? theme.accent.primary : clipFill,
+                                background: clipFill,
+                                boxShadow: isSelected ? "inset 0 0 0 1px var(--app-selection-border)" : undefined,
                                 borderColor: isSelected ? theme.timeline.clipSelectedBorder : theme.timeline.trackBorder,
-                                color: isSelected ? theme.accent.onPrimary : theme.node.text,
+                                color: theme.node.text,
                             }}
                             onPointerDown={(event) => handleClipPointerDown(event, clip.id, "move")}
                             onPointerMove={handleClipPointerMove}
                             onPointerUp={handleClipPointerUp}
                             onPointerCancel={handleClipPointerUp}
                             onClick={(event) => event.stopPropagation()}
+                            onKeyDown={(event) => {
+                                if (event.key === "Enter" || event.key === " ") { event.preventDefault(); event.stopPropagation(); setSelectedClipId(clip.id); }
+                            }}
                             title={`${clip.title || label} · ${formatTimelineTime(clip.startMs)}~${formatTimelineTime(clip.startMs + clip.durationMs)}`}
                         >
                             {!isSubtitle ? (
@@ -626,7 +636,7 @@ export function CanvasTimelineDialog({
             </span>
             <div className="min-w-0">
                 <div className="truncate text-[var(--fs-heading-lg)] font-semibold leading-6 tracking-[-0.02em]">多轨时间线</div>
-                <div className="truncate text-xs opacity-45">第二期 · 轨道编辑与素材编排</div>
+                <div className="truncate text-xs opacity-45">轨道编辑与素材编排</div>
             </div>
         </div>
     );
@@ -647,18 +657,18 @@ export function CanvasTimelineDialog({
             }}
             styles={{ container: { padding: 0, overflow: "hidden" }, body: { padding: 0 } }}
         >
-            <div className="flex h-[min(76vh,760px)] min-h-[420px] flex-col text-sm" style={{ color: theme.node.text }}>
-                <div ref={toolbarRef} className="flex flex-nowrap items-center gap-2 overflow-hidden border-b px-4 py-3" style={{ borderColor: theme.toolbar.border, background: theme.toolbar.panel }}>
+            <div data-canvas-no-zoom data-canvas-wheel-scroll className="timeline-workspace text-sm" style={{ color: theme.node.text }}>
+                <div ref={toolbarRef} className="timeline-toolbar thin-scrollbar flex flex-nowrap items-center gap-2 border-b px-4 py-3" style={{ borderColor: theme.toolbar.border, background: theme.toolbar.panel }}>
                     <span className="min-w-24 rounded-md border px-2 py-1 text-xs font-semibold tabular-nums" style={{ borderColor: theme.toolbar.border, background: theme.node.fill, color: theme.accent.primary }}>
                         {formatTimelineTime(playheadMs)}
                     </span>
                     <Tooltip title={snapEnabled ? "关闭吸附" : "开启吸附"}>
-                        <Button size="small" icon={<Scissors className="size-3.5" />} onClick={() => setSnapEnabled((value) => !value)}>
+                        <Button size="small" aria-pressed={snapEnabled} icon={<Scissors className="size-3.5" />} onClick={() => setSnapEnabled((value) => !value)}>
                             {snapEnabled ? "吸附开" : "吸附关"}
                         </Button>
                     </Tooltip>
-                    <Button size="small" icon={<ZoomOut className="size-3.5" />} onClick={() => setZoomLevel((value) => zoomOut(value))} />
-                    <Button size="small" icon={<ZoomIn className="size-3.5" />} onClick={() => setZoomLevel((value) => zoomIn(value))} />
+                    <Button aria-label="缩小时间线" size="small" icon={<ZoomOut className="size-3.5" />} onClick={() => setZoomLevel((value) => zoomOut(value))} />
+                    <Button aria-label="放大时间线" size="small" icon={<ZoomIn className="size-3.5" />} onClick={() => setZoomLevel((value) => zoomIn(value))} />
                     <Button size="small" icon={<Maximize2 className="size-3.5" />} onClick={() => setZoomLevel(getFitTimelineZoom(durationMs, viewportWidth))}>
                         适应
                     </Button>
@@ -773,25 +783,19 @@ export function CanvasTimelineDialog({
                         <Button size="small" danger icon={<Trash2 className="size-3.5" />} disabled={!selectedClipId} onClick={deleteSelectedClip}>
                             删除片段
                         </Button>
-                        <Button size="small" disabled={!draft.clips.length} onClick={onClose}>
-                            取消
-                        </Button>
-                        <Button size="small" type="primary" disabled={!draft.clips.length} onClick={handleSave}>
-                            保存
-                        </Button>
                     </div>
                 </div>
 
                 <CanvasTimelinePreview clips={draft.clips} nodes={nodes} playheadMs={playheadMs} playing={previewPlaying} theme={theme} onTogglePlay={() => setPreviewPlaying((value) => !value)} onPlayheadChange={setPlayheadMs} />
 
-                <div className="flex min-h-0 flex-1">
-                    <div className="flex w-44 shrink-0 flex-col border-r" style={{ borderColor: theme.toolbar.border, background: theme.toolbar.panel }}>
+                <div className="timeline-tracks thin-scrollbar" data-canvas-wheel-scroll>
+                    <div className="timeline-track-labels flex shrink-0 flex-col border-r" style={{ borderColor: theme.toolbar.border, background: theme.toolbar.panel }}>
                         <div className="shrink-0 border-b" style={{ height: 32, borderColor: theme.toolbar.border }} />
                         {draft.tracks
                             .slice()
                             .sort((a, b) => a.order - b.order)
                             .map((track) => (
-                                <div key={track.id} className="flex items-center gap-2 border-b px-3" style={{ height: TRACK_ROW_HEIGHT, borderColor: theme.toolbar.border }}>
+                                <div key={track.id} className="flex shrink-0 items-center gap-2 border-b px-3" style={{ height: TRACK_ROW_HEIGHT, borderColor: theme.toolbar.border }}>
                                     <span className="grid size-6 shrink-0 place-items-center rounded-md text-xs font-semibold" style={{ background: theme.accent.primarySoft, color: theme.accent.primary }}>
                                         {track.kind === "video" ? "V" : track.kind === "audio" ? "A" : "S"}
                                     </span>
@@ -801,7 +805,7 @@ export function CanvasTimelineDialog({
                             ))}
                     </div>
 
-                    <div ref={trackAreaRef} className="thin-scrollbar min-w-0 flex-1 overflow-auto" data-canvas-no-zoom>
+                    <div ref={trackAreaRef} className="min-w-0 flex-1" data-canvas-no-zoom>
                         <div ref={scrollRef} style={{ width: trackWidth }} className="min-h-full">
                             <CanvasTimelineRuler
                                 pxPerMs={pxPerMs}
@@ -829,8 +833,8 @@ export function CanvasTimelineDialog({
                 ) : null}
 
                 {selectedSubtitleClip ? (
-                    <div className="border-t px-4 py-2.5" style={{ borderColor: theme.toolbar.border, background: theme.toolbar.panel }}>
-                        <div className="mb-1.5 flex items-center gap-2 text-xs">
+                    <div className="timeline-inspector border-t px-4 py-2.5" style={{ borderColor: theme.toolbar.border, background: theme.toolbar.panel }}>
+                        <div className="mb-1.5 flex flex-wrap items-center gap-2 text-xs">
                             <span className="font-semibold" style={{ color: theme.accent.primary }}>
                                 字幕编辑
                             </span>
@@ -841,10 +845,10 @@ export function CanvasTimelineDialog({
                                 </Button>
                             ) : null}
                         </div>
-                        <div className="flex items-start gap-3">
-                            <Input.TextArea autoSize={{ minRows: 1, maxRows: 3 }} value={selectedSubtitleClip.text || ""} placeholder="字幕文本" className="flex-1" onChange={(event) => updateClip(selectedSubtitleClip.id, { text: event.target.value })} />
+                        <div className="flex flex-wrap items-start gap-3">
+                            <Input.TextArea aria-label="字幕文本" autoSize={{ minRows: 1, maxRows: 3 }} value={selectedSubtitleClip.text || ""} placeholder="字幕文本" className="flex-1" onChange={(event) => updateClip(selectedSubtitleClip.id, { text: event.target.value })} />
                             <div className="flex shrink-0 items-center gap-1.5 text-xs">
-                                <InputNumber size="small" min={0} step={100} value={selectedSubtitleClip.startMs} onChange={(startMs) => updateClip(selectedSubtitleClip.id, { startMs: startMs ?? 0 })} className="w-28" />
+                                <InputNumber aria-label="字幕起点毫秒" size="small" min={0} step={100} value={selectedSubtitleClip.startMs} onChange={(startMs) => updateClip(selectedSubtitleClip.id, { startMs: startMs ?? 0 })} className="w-28" />
                                 <span className="opacity-40">→</span>
                                 <InputNumber
                                     size="small"
@@ -861,8 +865,8 @@ export function CanvasTimelineDialog({
                 ) : null}
 
                 {selectedMediaClip ? (
-                    <div className="border-t px-4 py-2.5" style={{ borderColor: theme.toolbar.border, background: theme.toolbar.panel }}>
-                        <div className="mb-1.5 flex items-center gap-2 text-xs">
+                    <div className="timeline-inspector border-t px-4 py-2.5" style={{ borderColor: theme.toolbar.border, background: theme.toolbar.panel }}>
+                        <div className="mb-1.5 flex flex-wrap items-center gap-2 text-xs">
                             <span className="font-semibold" style={{ color: theme.accent.primary }}>
                                 片段编辑
                             </span>
@@ -911,11 +915,11 @@ export function CanvasTimelineDialog({
                     </div>
                 ) : null}
 
-                <div className="flex items-center gap-3 border-t px-4 py-2.5" style={{ borderColor: theme.toolbar.border, background: theme.toolbar.panel }}>
+                <div className="timeline-footer flex items-center gap-3 border-t px-4 py-2.5" style={{ borderColor: theme.toolbar.border, background: theme.toolbar.panel }}>
                     <span className="text-xs opacity-60">
                         总时长 {formatTimelineTime(durationMs)} · {draft.clips.length} 个片段 · {draft.tracks.length} 条轨道
                     </span>
-                    <span className="ml-auto truncate text-xs opacity-45">拖拽片段移动，左右边缘裁剪，字幕片段来自视频节点的字幕数据</span>
+                    <div className="ml-auto flex shrink-0 items-center gap-2"><Button size="small" onClick={onClose}>取消</Button><Button size="small" type="primary" onClick={handleSave}>保存到画布</Button></div>
                 </div>
             </div>
         </Modal>
