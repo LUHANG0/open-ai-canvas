@@ -4,6 +4,8 @@
 
 ## 设计沉淀
 
+- [画布视频封面刷新恢复](design/canvas-video-poster-recovery-20260905.md)：修复重挂载复用已取消任务导致的空封面，包含生命周期回归、48 个视频的浏览器复测与回滚方法。
+
 - [品牌风格统一分析](design/brand-style-unification-audit-20260905.md)：以当前品牌页为基准，覆盖用户前台、22 个后台页面、主题断点、配置消费和分批验收方案。
 - [品牌风格统一实施记录](design/brand-style-unification-implementation-20260905.md)：第一批主题、前后台外壳与配置同步的提交、验收证据和逐阶段回滚方法。
 - [品牌核心流程 B1 实施记录](design/brand-core-flow-implementation-20260905.md)：创作、任务与素材页的风格统一、本地明暗及响应式验证与回滚记录；实现完成，待用户验收，后续 B/C/D 继续分批处理。
