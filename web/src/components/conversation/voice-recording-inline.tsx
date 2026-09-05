@@ -113,7 +113,7 @@ export function VoiceRecordingInline({ onTranscribed, onCancel }: VoiceRecording
         >
             {displayError ? (
                 <div className="flex min-w-0 flex-1 items-center gap-2">
-                    <span className="truncate text-xs" style={{ color: "#dc2626" }}>
+                    <span className="text-xs break-words" role="alert" style={{ color: "var(--app-status-error-fg)" }}>
                         {displayError}
                     </span>
                     {speechSupported ? (
@@ -122,6 +122,7 @@ export function VoiceRecordingInline({ onTranscribed, onCancel }: VoiceRecording
                                 type="text"
                                 size="small"
                                 icon={<Mic className="size-3.5" />}
+                                aria-label="重试录音"
                                 onClick={handleRetry}
                                 style={{ color: theme.node.muted }}
                             />
@@ -133,6 +134,7 @@ export function VoiceRecordingInline({ onTranscribed, onCancel }: VoiceRecording
                             size="small"
                             icon={<X className="size-3.5" />}
                             onClick={onCancel}
+                            aria-label="取消录音"
                             style={{ color: theme.node.muted }}
                         />
                     </Tooltip>
@@ -143,7 +145,7 @@ export function VoiceRecordingInline({ onTranscribed, onCancel }: VoiceRecording
                     <span className="text-xs">正在转写...</span>
                 </div>
             ) : transcribeState === "done" ? (
-                <div className="flex items-center gap-2 px-2" style={{ color: "#16a34a" }}>
+                <div className="flex items-center gap-2 px-2" role="status" style={{ color: "var(--app-status-success-fg)" }}>
                     <Check className="size-4" />
                     <span className="text-xs">转写完成</span>
                 </div>
@@ -167,11 +169,13 @@ export function VoiceRecordingInline({ onTranscribed, onCancel }: VoiceRecording
                             size="small"
                             icon={<X className="size-3.5" />}
                             onClick={() => {
+                                // 取消同时释放录音流与浏览器识别。
                                 cancelRecording();
                                 cancelSpeech();
                                 onCancel();
                             }}
                             style={{ color: theme.node.muted }}
+                            aria-label="取消录音"
                         />
                     </Tooltip>
                     <Tooltip title="停止并转写">
@@ -180,6 +184,7 @@ export function VoiceRecordingInline({ onTranscribed, onCancel }: VoiceRecording
                             size="small"
                             icon={<Square className="size-3.5" />}
                             onClick={handleStop}
+                            aria-label="停止并转写"
                             disabled={state !== "recording" || transcribeState !== "idle"}
                             style={{ color: theme.accent.primary }}
                         />
