@@ -2,11 +2,13 @@ import { Alert, App, Button, Drawer, Form, Input, InputNumber, Modal, Select, Sw
 import type { FormInstance } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { Archive, FlaskConical, GitBranch, Layers3, Pencil, Plus, Search } from "lucide-react";
-import { useDeferredValue, useEffect, useMemo, useState, type ReactNode } from "react";
+import { useDeferredValue, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import "./logical-models-page.css";
 
 import { PaginationBar } from "@/components/layout/workspace-page";
 import { ModelIconPicker, ModelLogo } from "@/components/model-logo";
 import { CapabilityCardPicker } from "@/components/model-protocol-picker";
+import { refreshSystemChannels } from "@/lib/user-session";
 import { AdminPageFrame } from "@/pages/admin/components/admin-shell";
 import { AdminDataTable, AdminFilterChip, AdminRowActions, AdminStatusBadge, AdminTableEmpty } from "@/pages/admin/components/admin-ui";
 import { listAdminChannels } from "@/services/api/auth";
@@ -59,7 +61,18 @@ type LogicalModelFormValues = {
     routes: RouteRuleRow[];
 };
 export default function LogicalModelsPage() {
-    const { message } = App.useApp();
+    const { message, modal } = App.useApp();
+    const [readError, setReadError] = useState("");
+    const [saveError, setSaveError] = useState("");
+    const [simulationError, setSimulationError] = useState("");
+    const [confirmOpen, setConfirmOpen] = useState(false);
+    const [statusFilter, setStatusFilter] = useState("all");
+    const [capabilityFilter, setCapabilityFilter] = useState("all");
+    const readSequence = useRef(0);
+    const simulationSequence = useRef(0);
+    const savingRef = useRef(false);
+    const formSnapshot = useRef("");
+    const mutationIds = useRef(new Set<string>());
     const [keyword, setKeyword] = useState("");
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(20);
@@ -82,28 +95,45 @@ export default function LogicalModelsPage() {
     const modelCapabilitySpec = Form.useWatch("capabilitySpec", modelForm);
 
     const reload = async () => {
+        const sequence = ++readSequence.current;
         setLoading(true);
+        setReadError("");
+        setModels([]);
         try {
             const [modelResult, firstChannelPage] = await Promise.all([listAdminLogicalModels(), listAdminChannels({ page: 1, limit: 100 })]);
             const remainingChannelPages = await Promise.all(Array.from({ length: Math.max(0, Math.ceil(firstChannelPage.total / firstChannelPage.limit) - 1) }, (_, index) => listAdminChannels({ page: index + 2, limit: firstChannelPage.limit })));
             const channels = [firstChannelPage, ...remainingChannelPages].flatMap((result) => result.channels);
             const channelModelResults = await Promise.all(channels.map((channel) => listAdminChannelModels(channel.id)));
+            if (sequence !== readSequence.current) return;
             setModels(modelResult.models);
             setChannelModels(channelModelResults.flatMap((result) => result.models));
             setChannelNames(Object.fromEntries(channels.map((channel) => [channel.id, channel.name])));
             setChannelEnabled(Object.fromEntries(channels.map((channel) => [channel.id, channel.enabled !== false])));
         } catch (error) {
-            message.error(error instanceof Error ? error.message : "读取前台模型配置失败");
+            if (sequence === readSequence.current) setReadError(error instanceof Error ? error.message : "读取前台模型配置失败");
         } finally {
-            setLoading(false);
+            if (sequence === readSequence.current) setLoading(false);
         }
     };
 
     useEffect(() => {
         void reload();
+        return () => {
+            readSequence.current++;
+            simulationSequence.current++;
+        };
     }, []);
 
-    const filteredModels = useMemo(() => models.filter((item) => !deferredKeyword || [item.name, item.code, item.capability].some((value) => value.toLowerCase().includes(deferredKeyword))), [models, deferredKeyword]);
+    const filteredModels = useMemo(
+        () =>
+            models.filter(
+                (item) =>
+                    (!deferredKeyword || [item.name, item.code, item.capability, capabilityLabel(item.capability)].some((value) => value.toLowerCase().includes(deferredKeyword))) &&
+                    (capabilityFilter === "all" || item.capability === capabilityFilter) &&
+                    (statusFilter === "all" || (statusFilter === "enabled" ? item.enabled : statusFilter === "disabled" ? !item.enabled : item.enabled && !item.available)),
+            ),
+        [models, deferredKeyword, statusFilter, capabilityFilter],
+    );
     const paginatedModels = useMemo(() => filteredModels.slice((page - 1) * pageSize, page * pageSize), [filteredModels, page, pageSize]);
     const modelChannelModels = useMemo(() => channelModels.filter((item) => item.capability === modelCapability), [channelModels, modelCapability]);
     const modelSourceSpecs = useMemo(
@@ -117,6 +147,7 @@ export default function LogicalModelsPage() {
     );
 
     const openModel = (item?: AdminLogicalModel) => {
+        setSaveError("");
         const capability = item?.capability || "image";
         modelForm.resetFields();
         modelForm.setFieldsValue(
@@ -141,41 +172,52 @@ export default function LogicalModelsPage() {
                       routes: [],
                   },
         );
+        formSnapshot.current = JSON.stringify(modelForm.getFieldsValue(true));
         setEditingModel(item || null);
     };
 
     const saveModel = async () => {
-        const values = await modelForm.validateFields();
-        if (values.enabled && !values.routes.length) {
-            message.error("请至少添加一条供应线路");
-            return;
-        }
-        const sourceError = capabilitySourceError(values.capability, modelSourceSpecs, values.capabilitySpec);
-        if (values.enabled && sourceError) {
-            message.error(sourceError);
-            return;
-        }
+        if (savingRef.current || loading || readError) return;
+        savingRef.current = true;
         setSaving(true);
+        setSaveError("");
         try {
+            const values = await modelForm.validateFields();
+            if (values.enabled && !values.routes.length) {
+                message.error("请至少添加一条供应线路");
+                return;
+            }
+            const sourceError = capabilitySourceError(values.capability, modelSourceSpecs, values.capabilitySpec);
+            if (values.enabled && sourceError) {
+                message.error(sourceError);
+                return;
+            }
             const payload = logicalModelPayload(values, modelSourceSpecs);
             await (editingModel ? updateAdminLogicalModel(editingModel.id, payload) : createAdminLogicalModel(payload));
+            await syncFrontendCatalog();
             setEditingModel(undefined);
             await reload();
             message.success(editingModel ? "前台模型已更新" : "前台模型已创建");
         } catch (error) {
-            message.error(error instanceof Error ? error.message : "保存前台模型失败");
+            if (!(error && typeof error === "object" && "errorFields" in error)) setSaveError(error instanceof Error ? error.message : "保存前台模型失败");
         } finally {
+            savingRef.current = false;
             setSaving(false);
         }
     };
 
     const toggleModel = async (item: AdminLogicalModel) => {
+        if (mutationIds.current.has(item.id)) return;
+        mutationIds.current.add(item.id);
         try {
             await updateAdminLogicalModel(item.id, logicalModelPayload({ ...logicalModelToForm(item), enabled: !item.enabled }));
+            await syncFrontendCatalog();
             await reload();
             message.success(item.enabled ? "前台模型已停用" : "前台模型已启用");
         } catch (error) {
             message.error(error instanceof Error ? error.message : "更新模型状态失败");
+        } finally {
+            mutationIds.current.delete(item.id);
         }
     };
 
@@ -183,6 +225,7 @@ export default function LogicalModelsPage() {
         setDeletingModelId(item.id);
         try {
             await deleteAdminLogicalModel(item.id);
+            await syncFrontendCatalog();
             setModels((current) => current.filter((model) => model.id !== item.id));
             if (paginatedModels.length === 1 && page > 1) setPage(page - 1);
             message.success("前台模型已归档");
@@ -194,7 +237,18 @@ export default function LogicalModelsPage() {
         }
     };
 
+    const syncFrontendCatalog = async () => {
+        try {
+            await refreshSystemChannels();
+        } catch (error) {
+            message.warning(error instanceof Error ? `前台模型配置已保存，但目录同步失败：${error.message}` : "前台模型配置已保存，但目录同步失败，请刷新后查看。");
+        }
+    };
+
     const openSimulation = (item: AdminLogicalModel) => {
+        simulationSequence.current++;
+        setSimulating(false);
+        setSimulationError("");
         setSimulationIntent({
             capability: item.capability,
             operation: item.capabilitySpec.operations?.[0],
@@ -207,14 +261,43 @@ export default function LogicalModelsPage() {
 
     const runSimulation = async () => {
         if (!simulatingModel || !simulationIntent) return;
+        const sequence = ++simulationSequence.current;
         setSimulating(true);
+        setSimulationResult(undefined);
+        setSimulationError("");
         try {
-            setSimulationResult(await simulateAdminLogicalModel(simulatingModel.id, simulationIntent));
+            const result = await simulateAdminLogicalModel(simulatingModel.id, simulationIntent);
+            if (sequence === simulationSequence.current) setSimulationResult(result);
         } catch (error) {
-            message.error(error instanceof Error ? error.message : "路由模拟失败");
+            if (sequence === simulationSequence.current) setSimulationError(error instanceof Error ? error.message : "路由模拟失败");
         } finally {
-            setSimulating(false);
+            if (sequence === simulationSequence.current) setSimulating(false);
         }
+    };
+
+    const changeSimulationIntent = (intent: ModelRequestIntent) => {
+        simulationSequence.current++;
+        setSimulating(false);
+        setSimulationResult(undefined);
+        setSimulationError("");
+        setSimulationIntent(intent);
+    };
+    const closeModel = () => {
+        if (savingRef.current) return;
+        if (JSON.stringify(modelForm.getFieldsValue(true)) === formSnapshot.current) {
+            setEditingModel(undefined);
+            return;
+        }
+        setConfirmOpen(true);
+        modal.confirm({
+            title: "放弃前台模型修改？",
+            content: "尚未保存的展示、能力与供应线路将丢失。",
+            okText: "放弃修改",
+            cancelText: "继续编辑",
+            okButtonProps: { danger: true },
+            onOk: () => setEditingModel(undefined),
+            afterClose: () => setConfirmOpen(false),
+        });
     };
 
     const modelColumns: ColumnsType<AdminLogicalModel> = [
@@ -278,15 +361,47 @@ export default function LogicalModelsPage() {
     return (
         <AdminPageFrame
             title="前台模型目录"
+            description="定义用户看到的名称与创作能力。启用且线路、能力和价格完整的模型才可用于生成。"
             actions={
-                <Button type="primary" icon={<Plus className="size-4" />} onClick={() => openModel()}>
+                <Button type="primary" disabled={loading || Boolean(readError)} icon={<Plus className="size-4" />} onClick={() => openModel()}>
                     新增模型
                 </Button>
             }
         >
+            {readError ? <Alert type="error" showIcon title="前台模型配置读取失败" description={readError} action={<Button onClick={() => void reload()}>重试</Button>} /> : null}
             <AdminDataTable
+                toolbarFilters={
+                    <>
+                        <Select
+                            aria-label="筛选前台模型类型"
+                            className="w-32"
+                            value={capabilityFilter}
+                            onChange={(value) => {
+                                setCapabilityFilter(value);
+                                setPage(1);
+                            }}
+                            options={[{ value: "all", label: "全部类型" }, ...["text", "image", "video", "audio"].map((value) => ({ value, label: capabilityLabel(value as CapabilityKind) }))]}
+                        />
+                        <Select
+                            aria-label="筛选前台模型状态"
+                            className="w-36"
+                            value={statusFilter}
+                            onChange={(value) => {
+                                setStatusFilter(value);
+                                setPage(1);
+                            }}
+                            options={[
+                                { value: "all", label: "全部状态" },
+                                { value: "enabled", label: "已启用" },
+                                { value: "disabled", label: "已停用" },
+                                { value: "unavailable", label: "已启用但不可用" },
+                            ]}
+                        />
+                    </>
+                }
                 toolbar={
                     <Input
+                        aria-label="搜索前台模型"
                         prefix={<Search className="size-4 text-foreground/40" />}
                         allowClear
                         value={keyword}
@@ -309,13 +424,15 @@ export default function LogicalModelsPage() {
                         />
                     ) : null
                 }
-                toolbarActive={Boolean(keyword)}
+                toolbarActive={Boolean(keyword || capabilityFilter !== "all" || statusFilter !== "all")}
                 onReset={() => {
+                    setCapabilityFilter("all");
+                    setStatusFilter("all");
                     setKeyword("");
                     setPage(1);
                 }}
                 table={{ className: "admin-logical-model-table", rowKey: "id", size: "small", loading, pagination: false, columns: modelColumns, dataSource: paginatedModels, scroll: { x: 980 } }}
-                empty={<AdminTableEmpty filtered={Boolean(deferredKeyword)} title="暂无模型" />}
+                empty={<AdminTableEmpty filtered={Boolean(deferredKeyword || capabilityFilter !== "all" || statusFilter !== "all")} title={readError ? "暂时无法显示前台模型" : undefined} />}
                 footer={
                     <PaginationBar
                         alwaysShow
@@ -336,11 +453,14 @@ export default function LogicalModelsPage() {
                 size="min(1120px, 100vw)"
                 destroyOnHidden
                 mask={{ closable: !saving }}
-                onClose={() => !saving && setEditingModel(undefined)}
-                rootClassName="admin-drawer"
+                onClose={closeModel}
+                closable={!saving}
+                keyboard={!saving}
+                rootClassName="admin-drawer admin-logical-model-drawer"
+                focusable={{ trap: !confirmOpen }}
                 footer={
                     <div className="flex justify-end gap-2">
-                        <Button disabled={saving} onClick={() => setEditingModel(undefined)}>
+                        <Button disabled={saving} onClick={closeModel}>
                             取消
                         </Button>
                         <Button type="primary" loading={saving} onClick={() => void saveModel()}>
@@ -349,7 +469,10 @@ export default function LogicalModelsPage() {
                     </div>
                 }
             >
+                {saveError ? <Alert className="mb-4" type="error" showIcon title="前台模型未保存，输入已保留" description={saveError} /> : null}
                 <Form
+                    inert={saving}
+                    disabled={saving}
                     form={modelForm}
                     layout="vertical"
                     requiredMark={false}
@@ -397,7 +520,7 @@ export default function LogicalModelsPage() {
                             <Form.Item name="sortOrder" label="前台排序">
                                 <InputNumber className="w-full" precision={0} />
                             </Form.Item>
-                            <Form.Item name="enabled" label="启用" valuePropName="checked">
+                            <Form.Item name="enabled" label="前台启用" extra="停用后从前台目录移除；启用仍需可用供应线路和完整规格价格。" valuePropName="checked">
                                 <Switch />
                             </Form.Item>
                         </div>
@@ -428,10 +551,19 @@ export default function LogicalModelsPage() {
                 rootClassName="admin-modal-root"
                 centered
                 destroyOnHidden
-                onCancel={() => setSimulatingModel(undefined)}
+                onCancel={() => {
+                    simulationSequence.current++;
+                    setSimulatingModel(undefined);
+                }}
                 styles={{ body: { maxHeight: "min(72vh, 720px)", overflowY: "auto" } }}
                 footer={[
-                    <Button key="cancel" onClick={() => setSimulatingModel(undefined)}>
+                    <Button
+                        key="cancel"
+                        onClick={() => {
+                            simulationSequence.current++;
+                            setSimulatingModel(undefined);
+                        }}
+                    >
                         关闭
                     </Button>,
                     <Button key="submit" type="primary" icon={<FlaskConical className="size-4" />} loading={simulating} onClick={() => void runSimulation()}>
@@ -441,6 +573,8 @@ export default function LogicalModelsPage() {
             >
                 {simulatingModel && simulationIntent ? (
                     <div className="space-y-5">
+                        <Alert type="info" showIcon title="仅模拟配置匹配，不调用上游、不产生生成费用，也不代表连接测试成功。" />
+                        {simulationError ? <Alert type="error" showIcon title="路由模拟失败" description={simulationError} /> : null}
                         {simulatingModel.capabilitySpec.operations?.length ? (
                             <label className="block">
                                 <span className="mb-1 block text-xs text-foreground/55">生成方式</span>
@@ -448,7 +582,7 @@ export default function LogicalModelsPage() {
                                     className="w-full"
                                     value={simulationIntent.operation}
                                     options={simulatingModel.capabilitySpec.operations.map((value) => ({ value, label: operationLabel(value) }))}
-                                    onChange={(operation) => setSimulationIntent({ ...simulationIntent, operation })}
+                                    onChange={(operation) => changeSimulationIntent({ ...simulationIntent, operation })}
                                 />
                             </label>
                         ) : null}
@@ -456,8 +590,8 @@ export default function LogicalModelsPage() {
                             spec={simulatingModel.capabilitySpec}
                             inputs={simulationIntent.inputs || {}}
                             options={simulationIntent.options || {}}
-                            onInputsChange={(inputs) => setSimulationIntent({ ...simulationIntent, inputs })}
-                            onOptionsChange={(options) => setSimulationIntent({ ...simulationIntent, options })}
+                            onInputsChange={(inputs) => changeSimulationIntent({ ...simulationIntent, inputs })}
+                            onOptionsChange={(options) => changeSimulationIntent({ ...simulationIntent, options })}
                         />
                         {simulationResult ? (
                             <section className="pt-1">
@@ -468,7 +602,7 @@ export default function LogicalModelsPage() {
                                     </Tag>
                                 </div>
                                 {simulationResult.productMatch.reasons?.length ? <p className="mb-4 text-sm text-error">{simulationResult.productMatch.reasons.join("；")}</p> : null}
-                                <Table size="small" pagination={false} rowKey="routeId" dataSource={simulationResult.candidates} columns={simulationColumns()} />
+                                <Table size="small" pagination={false} scroll={{ x: 680 }} rowKey="routeId" dataSource={simulationResult.candidates} columns={simulationColumns()} />
                             </section>
                         ) : null}
                     </div>
@@ -480,7 +614,7 @@ export default function LogicalModelsPage() {
 
 function DrawerSection({ icon, title, description, children }: { icon?: ReactNode; title: string; description?: string; children: ReactNode }) {
     return (
-        <section className="rounded-lg bg-muted/20 p-4">
+        <section className="admin-logical-model-section">
             <div className="mb-4 flex items-center gap-2.5">
                 {icon ? <span className="grid size-7 shrink-0 place-items-center rounded-md bg-muted/50 text-foreground/55">{icon}</span> : null}
                 <div>
