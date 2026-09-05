@@ -342,6 +342,24 @@ async function shellScenario(cdp, url) {
     assert(cdp.problems.length === 0, "A8 no browser/network problems", JSON.stringify(cdp.problems));
 }
 
+async function adjacentGestureScenario(cdp) {
+    const ids = ["canvas-p0-text-story", "canvas-p0-text-shot"];
+    const positions = () => cdp.evaluate(`(${JSON.stringify(ids)}).map(id => document.querySelector('[data-node-id="' + id + '"]').style.transform)`);
+    const before = await positions();
+    for (const id of ids) await cdp.drag(`[data-node-id="${id}"] [data-canvas-node-drag-handle]`, 28, 14);
+    await sleep(350);
+    const moved = await positions();
+    assert(moved.every((value, index) => value !== before[index]), "A9 adjacent independent gestures move both nodes");
+    await cdp.shortcut("z");
+    await sleep(250);
+    const undone = await positions();
+    assert(undone[0] === moved[0] && undone[1] === before[1], "A10 undo adjacent gesture preserves preceding gesture", JSON.stringify({ before, moved, undone }));
+    await cdp.shortcut("z");
+    await sleep(250);
+    const restored = await positions();
+    assert(JSON.stringify(restored) === JSON.stringify(before), "A11 second undo restores first gesture", JSON.stringify({ before, restored }));
+}
+
 async function interactionScenario(cdp) {
     console.log("\n=== B. drag, history, copy, search and viewport controls ===");
     const activate = (selector) => cdp.evaluate(`(() => {
@@ -375,14 +393,9 @@ async function interactionScenario(cdp) {
         return transform === 'none' ? 1 : new DOMMatrixReadOnly(transform).a;
     })()`);
     assert(await cdp.hover('[data-node-id="canvas-p0-image-reference"] .canvas-node-shell'), "B0d media node can receive hover");
-    await cdp.poll(`(() => {
-        const element = document.querySelector('[data-node-id="canvas-p0-image-reference"] .canvas-node-shell');
-        if (!(element instanceof HTMLElement)) return false;
-        const transform = getComputedStyle(element).transform;
-        return transform !== 'none' && new DOMMatrixReadOnly(transform).a > 1.006;
-    })()`, "node hover scale settles", 3000, 80);
+    await sleep(240);
     const hoverScale = await shellScale('[data-node-id="canvas-p0-image-reference"] .canvas-node-shell');
-    assert(hoverScale > 1.006 && hoverScale < 1.03, "B0e node hover uses a restrained visual scale", `scale=${hoverScale}`);
+    assert(hoverScale === 1, "B0e node hover preserves media and hit-test geometry", `scale=${hoverScale}`);
     const blankHoverPoint = await cdp.evaluate(`(() => {
         const nodes = [...document.querySelectorAll('.node-element')];
         const candidates = [[4, 4], [innerWidth - 4, 4], [4, innerHeight - 4], [innerWidth - 4, innerHeight - 4], [innerWidth / 2, 4]];
@@ -973,6 +986,7 @@ async function main() {
         cdp = await connectCdp(cdpPort);
         if (!process.env.CANVAS_PERF_ONLY) {
             await shellScenario(cdp, url);
+            await adjacentGestureScenario(cdp);
             const movedTransform = await interactionScenario(cdp);
             await persistenceScenario(cdp, url, movedTransform);
             await compactViewportScenario(cdp);

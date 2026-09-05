@@ -186,7 +186,7 @@ function InfiniteCanvasPage() {
     const size = useCanvasViewportMeasurement({ projectId, projectLoaded, containerRef, nodeCount: nodes.length, nodesRef, viewportRef, setViewport });
     const historyRestoreUiRef = useRef<() => void>(() => undefined);
 
-    const { cleanupCanvasFiles, historyPausedRef, historyState, prepareExternalHistoryUpdate, redoCanvas, resetHistory, undoCanvas } = useCanvasHistory({
+    const { cleanupCanvasFiles, commitPendingHistory, historyPausedRef, historyState, prepareExternalHistoryUpdate, redoCanvas, resetHistory, undoCanvas } = useCanvasHistory({
         projectLoaded,
         nodes,
         connections,
@@ -1037,6 +1037,7 @@ function InfiniteCanvasPage() {
                 data-assistant-open={assistantOpen ? "true" : "false"}
                 data-focus-mode={focusMode ? "true" : "false"}
                 data-workspace-mode={workspaceMode}
+                onPointerDownCapture={commitPendingHistory}
                 style={{ background: theme.canvas.background, color: theme.node.text }}
                 aria-label="画布编辑工作台"
                 aria-describedby={viewport.k < CANVAS_NODE_DETAIL_MIN_SCALE ? "canvas-keyboard-overview-hint" : undefined}

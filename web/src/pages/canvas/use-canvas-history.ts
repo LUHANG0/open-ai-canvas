@@ -218,7 +218,7 @@ export function useCanvasHistory({
         if (applyTimerRef.current) clearTimeout(applyTimerRef.current);
     }, [clearCommitTimer]);
 
-    return { cleanupCanvasFiles, historyPausedRef, historyState, prepareExternalHistoryUpdate, redoCanvas, resetHistory, undoCanvas };
+    return { cleanupCanvasFiles, commitPendingHistory, historyPausedRef, historyState, prepareExternalHistoryUpdate, redoCanvas, resetHistory, undoCanvas };
 }
 
 function snapshotsShareReferences(before: CanvasHistorySnapshot, after: CanvasHistorySnapshot) {
@@ -232,7 +232,7 @@ function snapshotsShareReferences(before: CanvasHistorySnapshot, after: CanvasHi
 
 export function createCanvasHistoryPatch(before: CanvasHistorySnapshot, after: CanvasHistorySnapshot): CanvasHistoryPatch | null {
     const patch: CanvasHistoryPatch = {};
-    patch.nodes = createEntityPatch(before.nodes, after.nodes);
+    patch.nodes = createEntityPatch(before.nodes, after.nodes, sameHistoryNode);
     patch.connections = createEntityPatch(before.connections, after.connections);
     patch.chatSessions = createEntityPatch(before.chatSessions, after.chatSessions);
     if (before.activeChatId !== after.activeChatId) patch.activeChatId = { before: before.activeChatId, after: after.activeChatId };
@@ -241,7 +241,14 @@ export function createCanvasHistoryPatch(before: CanvasHistorySnapshot, after: C
     return Object.values(patch).some(Boolean) ? patch : null;
 }
 
-function createEntityPatch<T extends { id: string }>(before: T[], after: T[]): EntityPatch<T> | undefined {
+// 恢复节点会由状态层更新 updatedAt；单独的时间戳更新不构成新的用户编辑。
+function sameHistoryNode(before: CanvasNodeData, after: CanvasNodeData) {
+    if (before === after) return true;
+    const keys = new Set([...Object.keys(before), ...Object.keys(after)]);
+    return [...keys].every((key) => key === "updatedAt" || before[key as keyof CanvasNodeData] === after[key as keyof CanvasNodeData]);
+}
+
+function createEntityPatch<T extends { id: string }>(before: T[], after: T[], sameEntity = (left: T, right: T) => left === right): EntityPatch<T> | undefined {
     if (before === after) return undefined;
     const beforeById = new Map(before.map((item) => [item.id, item]));
     const afterById = new Map(after.map((item) => [item.id, item]));
@@ -250,7 +257,7 @@ function createEntityPatch<T extends { id: string }>(before: T[], after: T[]): E
     ids.forEach((id) => {
         const beforeItem = beforeById.get(id);
         const afterItem = afterById.get(id);
-        if (beforeItem !== afterItem) changes.push({ id, before: beforeItem, after: afterItem });
+        if (!beforeItem || !afterItem || !sameEntity(beforeItem, afterItem)) changes.push({ id, before: beforeItem, after: afterItem });
     });
 
     const beforeOrder = before.map((item) => item.id);

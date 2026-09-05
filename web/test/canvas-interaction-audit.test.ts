@@ -85,6 +85,18 @@ test("node edits skip unchanged connection and session collections and remain un
     expect(applyCanvasHistoryPatch(before, patch!, "after").nodes).toEqual(after.nodes);
 });
 
+test("history ignores timestamp stamping after undo but retains the next real edit", () => {
+    const first = node("first", CanvasNodeType.Image);
+    const before: CanvasHistorySnapshot = { nodes: [first], connections: [], chatSessions: [], activeChatId: null, backgroundMode: "lines", showImageInfo: false };
+    const stamped = { ...first, updatedAt: "2026-09-05T12:00:00.000Z" };
+    expect(createCanvasHistoryPatch(before, { ...before, nodes: [stamped] })).toBeNull();
+    const resized = { ...stamped, width: first.width + 40 };
+    const after = { ...before, nodes: [resized] };
+    const patch = createCanvasHistoryPatch(before, after);
+    expect(patch).not.toBeNull();
+    expect(applyCanvasHistoryPatch(after, patch!, "before").nodes[0].width).toBe(first.width);
+});
+
 test("history still detects reordered references and ignores copied no-op arrays", () => {
     const first = node("first", CanvasNodeType.Image);
     const second = node("second", CanvasNodeType.Text);
