@@ -1,4 +1,4 @@
-/* Projects PC UI. Rules are scoped so the existing mobile layout and other libraries keep their contracts. */
+/* 项目详情框架与附属视图；品牌表面跨屏共用，断点只调整布局。 */
 
 .pc-project-detail-state .workspace-state-action {
     display: none;
@@ -8,7 +8,7 @@
     display: none;
 }
 
-@media (min-width: 1024px) {
+@media all {
     .pc-projects-import-dialog .ant-modal-container {
         border: 1px solid var(--app-border-default);
         border-radius: var(--app-surface-radius, 12px);
@@ -155,16 +155,16 @@
         height: 32px;
         flex: 0 0 auto;
         padding-inline: 10px;
-        color: var(--app-action-primary-fg);
-        background: var(--app-action-primary-bg);
-        border-color: var(--app-action-primary-bg);
+        color: var(--app-text-primary);
+        background: var(--app-surface-1);
+        border-color: var(--app-border-default);
     }
 
     .pc-project-topbar-create:hover,
     .pc-project-topbar-create:focus-visible {
-        color: var(--app-action-primary-fg);
-        background: var(--app-action-primary-hover, var(--app-action-primary-bg));
-        border-color: var(--app-action-primary-hover, var(--app-action-primary-bg));
+        color: var(--app-text-primary);
+        background: var(--app-action-secondary-hover);
+        border-color: var(--app-border-strong);
     }
 
     .pc-project-overview {
@@ -618,4 +618,12 @@
         flex: 0 0 auto;
         padding-left: 16px;
     }
+}
+
+@media (max-width: 1023px) {
+    .pc-project-view-scroll { padding: 16px; }
+    .pc-project-overview .project-overview-status { border-left: 0; border-top: 1px solid var(--app-border-subtle); }
+    .pc-project-overview .project-standard-flow-track.is-compact { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .pc-project-assets .project-assets-layout { grid-template-columns: minmax(0, 1fr); }
+    .pc-project-assets-nav { position: static; max-height: none; }
 }

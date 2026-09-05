@@ -122,7 +122,7 @@ export default function ProjectDetailPage() {
         />
     ) : null);
     if (coreQuery.isLoading || unitsQuery.isLoading) return <WorkspacePage><WorkspaceLoadingState label="正在打开项目工作台" detail="读取项目与章节索引" /></WorkspacePage>;
-    if (coreQuery.isError || unitsQuery.isError || !detail) return <WorkspacePage><WorkspaceErrorState title="项目不可用" description="项目不存在、已被删除，或当前账号没有访问权限。" actionLabel="返回项目中心" onRetry={() => navigate("/projects")} /></WorkspacePage>;
+    if (coreQuery.isError || unitsQuery.isError || !detail) return <WorkspacePage><WorkspaceErrorState title="项目读取失败" description="服务暂时不可用，或当前账号无法访问此项目。重试后仍不可用时，可返回项目列表。" onRetry={() => { void coreQuery.refetch(); void unitsQuery.refetch(); }} /><div className="flex justify-center"><Button onClick={() => navigate("/projects")}>返回项目列表</Button></div></WorkspacePage>;
     if (!chapterId && !unitId && (!view || !views.some((item) => item.key === view))) return <Navigate to={`/projects/${projectId}/overview`} replace />;
     if (chapterId && !units.some((unit) => unit.id === chapterId)) return <Navigate to={firstUnitId ? `/projects/${projectId}/chapters/${firstUnitId}` : `/projects/${projectId}/chapters`} replace />;
     if (unitId && !units.some((unit) => unit.id === unitId)) return <Navigate to={firstUnitId ? `/projects/${projectId}/workflow/${firstUnitId}/${stage || "video"}` : `/projects/${projectId}/workflow`} replace />;
@@ -156,7 +156,7 @@ function ProjectWorkspaceTopBar({ detail, projectId, activeView, unitId, stage, 
             <div className="pc-project-topbar-identity hidden min-w-0 items-center gap-2 md:flex lg:w-44 xl:w-56">
                 <span className="pc-short-drama-project-mark" aria-hidden="true"><Clapperboard className="size-3.5" /></span>
                 <div className="pc-short-drama-project-copy min-w-0">
-                    <span className="pc-short-drama-project-kicker">SHORT DRAMA</span>
+                    <span className="pc-short-drama-project-kicker">短剧制作</span>
                     <div className="pc-short-drama-project-title-row">
                         <h1 className="min-w-0 truncate text-[var(--fs-caption)] font-semibold text-foreground/90">{detail.project.name}</h1>
                         <span className={`pc-project-status-dot size-1.5 shrink-0 rounded-full ${detail.project.status === "archived" ? "is-archived bg-foreground/30" : "is-active bg-[var(--workspace-accent)]"}`} aria-hidden="true" />

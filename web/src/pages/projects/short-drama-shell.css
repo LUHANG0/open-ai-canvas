@@ -1,16 +1,20 @@
-/* Short-drama PC shell. Keep helpers inert below the PC breakpoint. */
+/* 项目详情顶栏通过 extension 渲染，样式直接限定到项目顶栏。 */
+
+.app-workspace-topbar:has(.pc-project-topbar) .app-workspace-page-context {
+    display: none;
+}
 
 .pc-short-drama-project-kicker {
     display: none;
 }
 
-@media (min-width: 1024px) {
+@media all {
 
-    .pc-short-drama-workbench .pc-project-topbar {
+    .pc-project-topbar {
         gap: 10px;
     }
 
-    .pc-short-drama-workbench .pc-project-topbar-identity {
+    .pc-project-topbar-identity {
         min-height: 38px;
         gap: 9px;
     }
@@ -50,7 +54,7 @@
         gap: 7px;
     }
 
-    .pc-short-drama-workbench .pc-project-topbar-nav {
+    .pc-project-topbar-nav {
         gap: 3px;
         padding: 3px;
         background: color-mix(in srgb, var(--app-surface-2) 76%, transparent);
@@ -58,11 +62,16 @@
         border-radius: var(--app-control-radius, 8px);
     }
 
-    .pc-short-drama-workbench .pc-project-topbar-link {
+    .pc-project-topbar-link {
         height: 30px;
     }
 
-    .pc-short-drama-workbench .pc-project-topbar-link.is-active::after {
+    .pc-project-topbar-link.is-active::after {
         content: none;
     }
+}
+
+@media (max-width: 767px) {
+    .pc-project-topbar { gap: 4px; }
+    .pc-project-topbar .pc-project-topbar-identity { display: none; }
 }

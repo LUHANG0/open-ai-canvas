@@ -52,7 +52,7 @@ describe("short-drama PC shell regression gates", () => {
         expect(library).toContain("@media (prefers-reduced-motion: reduce)");
         expect(library).toContain("@media (max-width: 640px)");
         expect(detail).not.toContain(".pc-short-drama-create-launcher");
-        expect(detail).toContain(".pc-short-drama-workbench");
+        expect(detail).toContain(".pc-project-topbar");
     });
 
     test("reduces the overview to one current task and one compact production path", async () => {
