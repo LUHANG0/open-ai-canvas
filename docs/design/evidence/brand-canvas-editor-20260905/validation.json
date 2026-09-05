@@ -1,0 +1,23 @@
+{
+  "combinedCode": "16ff884c",
+  "unit": {
+    "pass": 1810,
+    "fail": 0,
+    "assertions": 10488,
+    "files": 257
+  },
+  "typecheck": true,
+  "buildBudgetsPassed": 7,
+  "canvasChrome": {
+    "pass": 98,
+    "fail": 0
+  },
+  "isolatedBrowser": {
+    "pass": 57,
+    "fail": 0
+  },
+  "deliveryChrome": {
+    "pass": 20,
+    "fail": 0
+  }
+}

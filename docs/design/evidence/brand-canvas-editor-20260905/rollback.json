@@ -1,0 +1,16 @@
+{
+  "start": "16ff884c",
+  "baselinePreserved": "4000af5d",
+  "reverted": [
+    "239224a1",
+    "794b05af",
+    "93f86995",
+    "4c79ca2f",
+    "10b1d41f",
+    "1471b013",
+    "2e4b2491"
+  ],
+  "result": "d3ff32c1658eaf8db49f4fd38b5514be7d307d4b",
+  "webDiffExitCode": 0,
+  "workingTreeClean": true
+}

@@ -1,0 +1,56 @@
+[
+  {
+    "id": "canvas-p0-text-story",
+    "position": {
+      "x": 140.29296875,
+      "y": 121.2451171875
+    },
+    "width": 320,
+    "height": 210
+  },
+  {
+    "id": "canvas-p0-text-shot",
+    "position": {
+      "x": 80,
+      "y": 380
+    },
+    "width": 320,
+    "height": 190
+  },
+  {
+    "id": "d2-image",
+    "position": {
+      "x": 510,
+      "y": 80
+    },
+    "width": 480,
+    "height": 270
+  },
+  {
+    "id": "d2-video-a",
+    "position": {
+      "x": 510,
+      "y": 400
+    },
+    "width": 400,
+    "height": 225
+  },
+  {
+    "id": "d2-video-b",
+    "position": {
+      "x": 1010,
+      "y": 80
+    },
+    "width": 320,
+    "height": 180
+  },
+  {
+    "id": "d2-locked",
+    "position": {
+      "x": 1010,
+      "y": 400
+    },
+    "width": 320,
+    "height": 180
+  }
+]

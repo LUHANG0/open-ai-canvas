@@ -1,0 +1,981 @@
+{
+  "passed": 57,
+  "failed": 0,
+  "checks": [
+    {
+      "scenario": "seed",
+      "ok": true,
+      "name": "隔离账号上传图片与有声 WebM、保存六节点画布",
+      "data": {
+        "id": "d2-brand-fixture",
+        "count": 6
+      }
+    },
+    {
+      "scenario": "interactions",
+      "ok": true,
+      "name": "刷新进入两个视频封面 ready"
+    },
+    {
+      "scenario": "interactions",
+      "ok": true,
+      "name": "静止时不挂载完整播放器"
+    },
+    {
+      "scenario": "interactions",
+      "ok": true,
+      "name": "悬停原声播放且真实解码",
+      "data": [
+        {
+          "time": 0.52562,
+          "paused": false,
+          "muted": false,
+          "volume": 1,
+          "w": 320,
+          "h": 180,
+          "audio": 1918
+        }
+      ]
+    },
+    {
+      "scenario": "interactions",
+      "ok": true,
+      "name": "真实首帧呈现后揭盖"
+    },
+    {
+      "scenario": "interactions",
+      "ok": true,
+      "name": "移开释放播放器"
+    },
+    {
+      "scenario": "interactions",
+      "ok": true,
+      "name": "快速切换请求隔离"
+    },
+    {
+      "scenario": "interactions",
+      "ok": true,
+      "name": "桌面 light 主题表面与空间",
+      "data": {
+        "node": "rgb(255, 255, 255)",
+        "panel": "rgb(255, 255, 255)",
+        "semantic": "#ffffff",
+        "overflow": 0
+      }
+    },
+    {
+      "scenario": "interactions",
+      "ok": true,
+      "name": "主题切换不改变节点几何 light"
+    },
+    {
+      "scenario": "interactions",
+      "ok": true,
+      "name": "桌面 dark 主题表面与空间",
+      "data": {
+        "node": "rgb(25, 27, 34)",
+        "panel": "rgb(34, 37, 46)",
+        "semantic": "#191b22",
+        "overflow": 0
+      }
+    },
+    {
+      "scenario": "interactions",
+      "ok": true,
+      "name": "主题切换不改变节点几何 dark"
+    },
+    {
+      "scenario": "interactions",
+      "ok": true,
+      "name": "中文组合输入 Enter 不提前提交画布标题"
+    },
+    {
+      "scenario": "interactions",
+      "ok": true,
+      "name": "标题提交并保存"
+    },
+    {
+      "scenario": "interactions",
+      "ok": true,
+      "name": "Escape 取消标题草稿"
+    },
+    {
+      "scenario": "interactions",
+      "ok": true,
+      "name": "文本弹窗滚动与编辑撤销不触发画布缩放"
+    },
+    {
+      "scenario": "interactions",
+      "ok": true,
+      "name": "富文本弹窗保存回节点"
+    },
+    {
+      "scenario": "interactions",
+      "ok": true,
+      "name": "节点拖动落位"
+    },
+    {
+      "scenario": "interactions",
+      "ok": true,
+      "name": "独立撤销拖动"
+    },
+    {
+      "scenario": "interactions",
+      "ok": true,
+      "name": "独立重做拖动"
+    },
+    {
+      "scenario": "interactions",
+      "ok": true,
+      "name": "图片尺寸调整保持原比例",
+      "data": [
+        480,
+        270
+      ]
+    },
+    {
+      "scenario": "interactions",
+      "ok": true,
+      "name": "单次撤销尺寸调整"
+    },
+    {
+      "scenario": "interactions",
+      "ok": true,
+      "name": "Escape 取消尺寸预览"
+    },
+    {
+      "scenario": "interactions",
+      "ok": true,
+      "name": "锁定节点不被键盘移动"
+    },
+    {
+      "scenario": "interactions",
+      "ok": true,
+      "name": "右键菜单滚动不触发画布手势"
+    },
+    {
+      "scenario": "interactions",
+      "ok": true,
+      "name": "Escape 关闭右键菜单"
+    },
+    {
+      "scenario": "interactions",
+      "ok": true,
+      "name": "助手面板打开"
+    },
+    {
+      "scenario": "interactions",
+      "ok": true,
+      "name": "同用户刷新恢复位置与手工尺寸"
+    },
+    {
+      "scenario": "interactions",
+      "ok": true,
+      "name": "刷新恢复画布名称"
+    },
+    {
+      "scenario": "responsive",
+      "ok": true,
+      "name": "手机默认专注模式提供退出入口"
+    },
+    {
+      "scenario": "responsive",
+      "ok": true,
+      "name": "手机退出专注后画布菜单可达"
+    },
+    {
+      "scenario": "responsive",
+      "ok": true,
+      "name": "手机退出偏好刷新保留"
+    },
+    {
+      "scenario": "responsive",
+      "ok": true,
+      "name": "断点 390 light 控件完整无横向溢出",
+      "data": {
+        "overflow": 0,
+        "boxes": [
+          {
+            "label": "返回画布列表",
+            "x": 17,
+            "y": 13,
+            "w": 36,
+            "h": 36
+          },
+          {
+            "label": "打开画布菜单",
+            "x": 61,
+            "y": 13,
+            "w": 36,
+            "h": 36
+          },
+          {
+            "label": "重命名画布",
+            "x": 184.5625,
+            "y": 17,
+            "w": 28,
+            "h": 28
+          },
+          {
+            "label": "导入第三方画布",
+            "x": 132,
+            "y": 63,
+            "w": 38,
+            "h": 40
+          },
+          {
+            "label": "保存中。正在保存到此设备",
+            "x": 170,
+            "y": 63,
+            "w": 40,
+            "h": 40
+          },
+          {
+            "label": "查看积分明细",
+            "x": 210,
+            "y": 65,
+            "w": 40,
+            "h": 36
+          },
+          {
+            "label": "进入专注模式",
+            "x": 250,
+            "y": 63,
+            "w": 40,
+            "h": 40
+          },
+          {
+            "label": "分享画布",
+            "x": 290,
+            "y": 63,
+            "w": 40,
+            "h": 40
+          },
+          {
+            "label": "打开 Agent",
+            "x": 331,
+            "y": 63,
+            "w": 42,
+            "h": 40
+          }
+        ]
+      }
+    },
+    {
+      "scenario": "responsive",
+      "ok": true,
+      "name": "断点 390 dark 控件完整无横向溢出",
+      "data": {
+        "overflow": 0,
+        "boxes": [
+          {
+            "label": "返回画布列表",
+            "x": 17,
+            "y": 13,
+            "w": 36,
+            "h": 36
+          },
+          {
+            "label": "打开画布菜单",
+            "x": 61,
+            "y": 13,
+            "w": 36,
+            "h": 36
+          },
+          {
+            "label": "重命名画布",
+            "x": 184.5625,
+            "y": 17,
+            "w": 28,
+            "h": 28
+          },
+          {
+            "label": "导入第三方画布",
+            "x": 132,
+            "y": 63,
+            "w": 38,
+            "h": 40
+          },
+          {
+            "label": "保存中。正在保存到此设备",
+            "x": 170,
+            "y": 63,
+            "w": 40,
+            "h": 40
+          },
+          {
+            "label": "查看积分明细",
+            "x": 210,
+            "y": 65,
+            "w": 40,
+            "h": 36
+          },
+          {
+            "label": "进入专注模式",
+            "x": 250,
+            "y": 63,
+            "w": 40,
+            "h": 40
+          },
+          {
+            "label": "分享画布",
+            "x": 290,
+            "y": 63,
+            "w": 40,
+            "h": 40
+          },
+          {
+            "label": "打开 Agent",
+            "x": 331,
+            "y": 63,
+            "w": 42,
+            "h": 40
+          }
+        ]
+      }
+    },
+    {
+      "scenario": "responsive",
+      "ok": true,
+      "name": "断点 1023 light 控件完整无横向溢出",
+      "data": {
+        "overflow": 0,
+        "boxes": [
+          {
+            "label": "返回画布列表",
+            "x": 17,
+            "y": 15,
+            "w": 36,
+            "h": 36
+          },
+          {
+            "label": "打开画布菜单",
+            "x": 61,
+            "y": 15,
+            "w": 36,
+            "h": 36
+          },
+          {
+            "label": "重命名画布",
+            "x": 184.5625,
+            "y": 19,
+            "w": 28,
+            "h": 28
+          },
+          {
+            "label": "导入第三方画布",
+            "x": 765,
+            "y": 13,
+            "w": 38,
+            "h": 40
+          },
+          {
+            "label": "同步中。本地已保存，正在同步到云端",
+            "x": 803,
+            "y": 13,
+            "w": 40,
+            "h": 40
+          },
+          {
+            "label": "查看积分明细",
+            "x": 843,
+            "y": 15,
+            "w": 40,
+            "h": 36
+          },
+          {
+            "label": "进入专注模式",
+            "x": 883,
+            "y": 13,
+            "w": 40,
+            "h": 40
+          },
+          {
+            "label": "分享画布",
+            "x": 923,
+            "y": 13,
+            "w": 40,
+            "h": 40
+          },
+          {
+            "label": "打开 Agent",
+            "x": 964,
+            "y": 13,
+            "w": 42,
+            "h": 40
+          }
+        ]
+      }
+    },
+    {
+      "scenario": "responsive",
+      "ok": true,
+      "name": "断点 1023 dark 控件完整无横向溢出",
+      "data": {
+        "overflow": 0,
+        "boxes": [
+          {
+            "label": "返回画布列表",
+            "x": 17,
+            "y": 15,
+            "w": 36,
+            "h": 36
+          },
+          {
+            "label": "打开画布菜单",
+            "x": 61,
+            "y": 15,
+            "w": 36,
+            "h": 36
+          },
+          {
+            "label": "重命名画布",
+            "x": 184.5625,
+            "y": 19,
+            "w": 28,
+            "h": 28
+          },
+          {
+            "label": "导入第三方画布",
+            "x": 765,
+            "y": 13,
+            "w": 38,
+            "h": 40
+          },
+          {
+            "label": "已保存。最近保存于 23:47",
+            "x": 803,
+            "y": 13,
+            "w": 40,
+            "h": 40
+          },
+          {
+            "label": "查看积分明细",
+            "x": 843,
+            "y": 15,
+            "w": 40,
+            "h": 36
+          },
+          {
+            "label": "进入专注模式",
+            "x": 883,
+            "y": 13,
+            "w": 40,
+            "h": 40
+          },
+          {
+            "label": "分享画布",
+            "x": 923,
+            "y": 13,
+            "w": 40,
+            "h": 40
+          },
+          {
+            "label": "打开 Agent",
+            "x": 964,
+            "y": 13,
+            "w": 42,
+            "h": 40
+          }
+        ]
+      }
+    },
+    {
+      "scenario": "responsive",
+      "ok": true,
+      "name": "断点 1024 light 控件完整无横向溢出",
+      "data": {
+        "overflow": 0,
+        "boxes": [
+          {
+            "label": "返回画布列表",
+            "x": 17,
+            "y": 12,
+            "w": 36,
+            "h": 36
+          },
+          {
+            "label": "打开画布菜单",
+            "x": 61,
+            "y": 12,
+            "w": 36,
+            "h": 36
+          },
+          {
+            "label": "重命名画布",
+            "x": 184.5625,
+            "y": 16,
+            "w": 28,
+            "h": 28
+          },
+          {
+            "label": "导入第三方画布",
+            "x": 740,
+            "y": 10,
+            "w": 38,
+            "h": 40
+          },
+          {
+            "label": "已保存。最近保存于 23:47",
+            "x": 786,
+            "y": 10,
+            "w": 40,
+            "h": 40
+          },
+          {
+            "label": "查看积分明细",
+            "x": 830,
+            "y": 12,
+            "w": 40,
+            "h": 36
+          },
+          {
+            "label": "进入专注模式",
+            "x": 874,
+            "y": 10,
+            "w": 40,
+            "h": 40
+          },
+          {
+            "label": "分享画布",
+            "x": 918,
+            "y": 10,
+            "w": 40,
+            "h": 40
+          },
+          {
+            "label": "打开 Agent",
+            "x": 967,
+            "y": 10,
+            "w": 40,
+            "h": 40
+          }
+        ]
+      }
+    },
+    {
+      "scenario": "responsive",
+      "ok": true,
+      "name": "断点 1024 dark 控件完整无横向溢出",
+      "data": {
+        "overflow": 0,
+        "boxes": [
+          {
+            "label": "返回画布列表",
+            "x": 17,
+            "y": 12,
+            "w": 36,
+            "h": 36
+          },
+          {
+            "label": "打开画布菜单",
+            "x": 61,
+            "y": 12,
+            "w": 36,
+            "h": 36
+          },
+          {
+            "label": "重命名画布",
+            "x": 184.5625,
+            "y": 16,
+            "w": 28,
+            "h": 28
+          },
+          {
+            "label": "导入第三方画布",
+            "x": 740,
+            "y": 10,
+            "w": 38,
+            "h": 40
+          },
+          {
+            "label": "已保存。最近保存于 23:47",
+            "x": 786,
+            "y": 10,
+            "w": 40,
+            "h": 40
+          },
+          {
+            "label": "查看积分明细",
+            "x": 830,
+            "y": 12,
+            "w": 40,
+            "h": 36
+          },
+          {
+            "label": "进入专注模式",
+            "x": 874,
+            "y": 10,
+            "w": 40,
+            "h": 40
+          },
+          {
+            "label": "分享画布",
+            "x": 918,
+            "y": 10,
+            "w": 40,
+            "h": 40
+          },
+          {
+            "label": "打开 Agent",
+            "x": 967,
+            "y": 10,
+            "w": 40,
+            "h": 40
+          }
+        ]
+      }
+    },
+    {
+      "scenario": "responsive",
+      "ok": true,
+      "name": "断点 1440 light 控件完整无横向溢出",
+      "data": {
+        "overflow": 0,
+        "boxes": [
+          {
+            "label": "返回画布列表",
+            "x": 21,
+            "y": 12,
+            "w": 36,
+            "h": 36
+          },
+          {
+            "label": "打开画布菜单",
+            "x": 65,
+            "y": 12,
+            "w": 36,
+            "h": 36
+          },
+          {
+            "label": "重命名画布",
+            "x": 188.5625,
+            "y": 16,
+            "w": 28,
+            "h": 28
+          },
+          {
+            "label": "搜索画布节点",
+            "x": 874.390625,
+            "y": 10,
+            "w": 40,
+            "h": 40
+          },
+          {
+            "label": "导入第三方画布",
+            "x": 918.390625,
+            "y": 10,
+            "w": 137,
+            "h": 40
+          },
+          {
+            "label": "媒体性能模式",
+            "x": 1059.390625,
+            "y": 10,
+            "w": 40,
+            "h": 40
+          },
+          {
+            "label": "已保存。最近保存于 23:47",
+            "x": 1103.390625,
+            "y": 10,
+            "w": 40,
+            "h": 40
+          },
+          {
+            "label": "查看积分明细",
+            "x": 1147.390625,
+            "y": 12,
+            "w": 88,
+            "h": 36
+          },
+          {
+            "label": "进入专注模式",
+            "x": 1239.390625,
+            "y": 10,
+            "w": 40,
+            "h": 40
+          },
+          {
+            "label": "分享画布",
+            "x": 1283.390625,
+            "y": 10,
+            "w": 40,
+            "h": 40
+          },
+          {
+            "label": "打开 Agent",
+            "x": 1332.390625,
+            "y": 10,
+            "w": 86.609375,
+            "h": 40
+          }
+        ]
+      }
+    },
+    {
+      "scenario": "responsive",
+      "ok": true,
+      "name": "断点 1440 dark 控件完整无横向溢出",
+      "data": {
+        "overflow": 0,
+        "boxes": [
+          {
+            "label": "返回画布列表",
+            "x": 21,
+            "y": 12,
+            "w": 36,
+            "h": 36
+          },
+          {
+            "label": "打开画布菜单",
+            "x": 65,
+            "y": 12,
+            "w": 36,
+            "h": 36
+          },
+          {
+            "label": "重命名画布",
+            "x": 188.5625,
+            "y": 16,
+            "w": 28,
+            "h": 28
+          },
+          {
+            "label": "搜索画布节点",
+            "x": 874.390625,
+            "y": 10,
+            "w": 40,
+            "h": 40
+          },
+          {
+            "label": "导入第三方画布",
+            "x": 918.390625,
+            "y": 10,
+            "w": 137,
+            "h": 40
+          },
+          {
+            "label": "媒体性能模式",
+            "x": 1059.390625,
+            "y": 10,
+            "w": 40,
+            "h": 40
+          },
+          {
+            "label": "已保存。最近保存于 23:47",
+            "x": 1103.390625,
+            "y": 10,
+            "w": 40,
+            "h": 40
+          },
+          {
+            "label": "查看积分明细",
+            "x": 1147.390625,
+            "y": 12,
+            "w": 88,
+            "h": 36
+          },
+          {
+            "label": "进入专注模式",
+            "x": 1239.390625,
+            "y": 10,
+            "w": 40,
+            "h": 40
+          },
+          {
+            "label": "分享画布",
+            "x": 1283.390625,
+            "y": 10,
+            "w": 40,
+            "h": 40
+          },
+          {
+            "label": "打开 Agent",
+            "x": 1332.390625,
+            "y": 10,
+            "w": 86.609375,
+            "h": 40
+          }
+        ]
+      }
+    },
+    {
+      "scenario": "responsive",
+      "ok": true,
+      "name": "手机助手可打开"
+    },
+    {
+      "scenario": "large-media",
+      "ok": true,
+      "name": "大型媒体画布保留96节点并按视口裁剪、静止仅封面",
+      "data": {
+        "mounted": 20,
+        "posters": 8,
+        "players": 0
+      }
+    },
+    {
+      "scenario": "large-media",
+      "ok": true,
+      "name": "大型媒体画布仅悬停项挂载播放器"
+    },
+    {
+      "scenario": "large-media",
+      "ok": true,
+      "name": "大型媒体总览不批量挂载完整播放器",
+      "data": {
+        "mounted": 96,
+        "posters": 48,
+        "players": 0
+      }
+    },
+    {
+      "scenario": "save-retry",
+      "ok": true,
+      "name": "云端失败保留本地编辑并提供重试"
+    },
+    {
+      "scenario": "save-retry",
+      "ok": true,
+      "name": "点击重试后真实云端保存成功"
+    },
+    {
+      "scenario": "save-retry",
+      "ok": true,
+      "name": "失败重试后同用户刷新恢复"
+    },
+    {
+      "scenario": "custom-brand",
+      "ok": true,
+      "name": "自定义品牌 light 选中节点消费真实公共配置",
+      "data": {
+        "expected": "#138153",
+        "border": "rgb(19, 129, 83)",
+        "shadow": "rgba(15, 23, 42, 0.18) 0px 4px 14px 0px"
+      }
+    },
+    {
+      "scenario": "custom-brand",
+      "ok": true,
+      "name": "自定义品牌 light 不改变几何"
+    },
+    {
+      "scenario": "custom-brand",
+      "ok": true,
+      "name": "自定义品牌 dark 选中节点消费真实公共配置",
+      "data": {
+        "expected": "#52bc90",
+        "border": "rgb(82, 188, 144)",
+        "shadow": "rgba(0, 0, 0, 0.6) 0px 4px 14px 0px"
+      }
+    },
+    {
+      "scenario": "custom-brand",
+      "ok": true,
+      "name": "自定义品牌 dark 不改变几何"
+    },
+    {
+      "scenario": "selection-connection",
+      "ok": true,
+      "name": "Shift 点击选择两个节点",
+      "data": 2
+    },
+    {
+      "scenario": "selection-connection",
+      "ok": true,
+      "name": "真实指针框选多个节点",
+      "data": 2
+    },
+    {
+      "scenario": "selection-connection",
+      "ok": true,
+      "name": "从输出点真实拖动建立连线",
+      "data": [
+        {
+          "id": "conn-1788623798168",
+          "fromNodeId": "canvas-p0-text-story",
+          "toNodeId": "d2-image",
+          "fromAnchorRatio": 0.5,
+          "toAnchorRatio": 0.5
+        }
+      ]
+    },
+    {
+      "scenario": "selection-connection",
+      "ok": true,
+      "name": "撤销恢复连线状态"
+    },
+    {
+      "scenario": "history-after-complete",
+      "ok": true,
+      "name": "两次紧邻拖动均落位",
+      "data": {
+        "before": [
+          {
+            "x": 263.14453125,
+            "y": 182.4853515625
+          },
+          {
+            "x": 80,
+            "y": 380
+          }
+        ],
+        "both": [
+          {
+            "x": 304.08203125,
+            "y": 203.7158203125
+          },
+          {
+            "x": 120.29296875,
+            "y": 400
+          }
+        ]
+      }
+    },
+    {
+      "scenario": "history-after-complete",
+      "ok": true,
+      "name": "紧邻独立手势只撤销最后一次",
+      "data": {
+        "undone": [
+          {
+            "x": 304.08203125,
+            "y": 203.7158203125
+          },
+          {
+            "x": 80,
+            "y": 380
+          }
+        ]
+      }
+    },
+    {
+      "scenario": "history-after-complete",
+      "ok": true,
+      "name": "第二次撤销恢复第一手势",
+      "data": {
+        "before": [
+          {
+            "x": 263.14453125,
+            "y": 182.4853515625
+          },
+          {
+            "x": 80,
+            "y": 380
+          }
+        ],
+        "restored": [
+          {
+            "x": 263.14453125,
+            "y": 182.4853515625
+          },
+          {
+            "x": 80,
+            "y": 380
+          }
+        ]
+      }
+    }
+  ]
+}
