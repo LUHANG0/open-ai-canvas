@@ -295,6 +295,7 @@ export default function SettingsPage() {
                                     ? "修改后需保存到当前账号"
                                     : activeTab === "diagnostics" ? "按当前账号收集诊断信息"
                                     : activeTab === "local-cli" ? "连接状态以本机检测结果为准"
+                                    : activeTab === "comfyui" || activeTab === "runninghub" ? "连接信息存本机，工作流按面板提示保存"
                                     : "修改自动保存在当前账号的本机配置"}
                             </span>
                         </header>

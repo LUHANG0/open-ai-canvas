@@ -219,6 +219,11 @@
 }
 
 .settings-page .settings-pane-header {
+    display: flex;
+    min-width: 0;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: var(--app-space-3);
     position: relative;
     align-items: flex-start;
     margin-bottom: var(--app-space-5, 20px);
@@ -253,6 +258,7 @@
 }
 
 .settings-page .settings-section {
+    min-width: 0;
     padding: var(--app-space-5, 20px);
     background: color-mix(in srgb, var(--app-surface-2, var(--surface-card)) 88%, var(--app-surface-1));
     border: 1px solid var(--app-border-subtle, var(--border));
@@ -279,6 +285,9 @@
 }
 
 .settings-page .settings-field-group-label {
+    display: flex;
+    align-items: center;
+    gap: var(--app-space-2);
     color: var(--app-selection-fg);
     font-family: var(--app-font-mono);
     font-size: 11px;
@@ -418,6 +427,8 @@
 }
 
 .settings-page .model-default-option {
+    border: 1px solid var(--app-border-subtle);
+    color: var(--app-text-primary);
     min-height: 82px;
     background: var(--app-surface-1, var(--background));
     border-color: var(--app-border-subtle, var(--border));
@@ -490,8 +501,7 @@
 .settings-page .settings-channel-pane > .workspace-state {
     min-height: 300px;
     padding: var(--app-space-8, 32px);
-    background: linear-gradient(var(--app-border-subtle) 1px, transparent 1px), linear-gradient(90deg, var(--app-border-subtle) 1px, transparent 1px), var(--app-surface-2);
-    background-size: 28px 28px;
+    background: var(--app-surface-2);
     border: 1px dashed var(--settings-accent-line);
     border-radius: var(--app-surface-radius, 12px);
 }
@@ -503,10 +513,6 @@
     z-index: 1;
 }
 
-.settings-page .settings-pane-header { display: flex; min-width: 0; flex-wrap: wrap; justify-content: space-between; gap: var(--app-space-3); }
-.settings-page .settings-field-group-label { display: flex; align-items: center; gap: var(--app-space-2); }
-.settings-page .settings-section { min-width: 0; }
-.settings-page .model-default-option { border: 1px solid var(--app-border-subtle); color: var(--app-text-primary); }
 .settings-page .model-default-option-icon { background: var(--app-surface-2); }
 .settings-page .model-default-option-scope, .settings-page .model-default-price { color: var(--app-text-secondary); font-size: var(--app-font-size-label); }
 .settings-page .model-default-option-check { background: var(--app-surface-2); }

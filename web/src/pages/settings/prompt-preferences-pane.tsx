@@ -96,7 +96,7 @@ export function PromptPreferencesPane() {
     };
 
     const save = async () => {
-        if (!selected) return;
+        if (!selected || saving) return;
         const content = mode === "append" ? appendContent : mode === "rewrite" ? rewriteContent : "";
         if (mode !== "inherit" && !content.trim()) {
             message.warning("请填写个人提示词内容");
@@ -122,12 +122,15 @@ export function PromptPreferencesPane() {
             okText: "恢复平台模板",
             cancelText: "取消",
             onOk: async () => {
+                setSaving(true);
                 try {
                     await resetUserPromptCustomization(selected.definition.operation);
                     await reload(selected.definition.operation);
                     message.success("已恢复平台模板");
                 } catch (error) {
                     message.error(error instanceof Error ? error.message : "恢复平台模板失败");
+                } finally {
+                    setSaving(false);
                 }
             },
         });
@@ -159,6 +162,7 @@ export function PromptPreferencesPane() {
                             id="prompt-template-select"
                             className="w-full max-w-md"
                             value={selectedOperation}
+                            disabled={saving}
                             onChange={selectOperation}
                             options={preferences.map((item) => ({
                                 value: item.definition.operation,
@@ -183,7 +187,7 @@ export function PromptPreferencesPane() {
                         </div>
                         <p className="mt-1 text-xs leading-5 text-foreground/55">{selected.definition.description}</p>
                     </div>
-                    <Segmented value={mode} options={modeOptions} onChange={(value) => setMode(value as CustomizationMode)} />
+                    <Segmented aria-label="提示词定制方式" disabled={saving} value={mode} options={modeOptions} onChange={(value) => setMode(value as CustomizationMode)} />
                 </div>
             </header>
 
@@ -201,6 +205,8 @@ export function PromptPreferencesPane() {
                         <Input.TextArea
                             className="min-h-96 resize-none"
                             value={appendContent}
+                            aria-label="追加个人要求"
+                            disabled={saving}
                             maxLength={12000}
                             showCount
                             placeholder="例如：仙侠项目采用明亮、宏大、高清的休闲剧质感；避免阴森恐怖色调，人物表演自然、轻松。"
@@ -210,7 +216,7 @@ export function PromptPreferencesPane() {
                         <div className="min-h-96 flex-1 overflow-hidden rounded-md bg-surface-active">
                             <PromptCodeEditor
                                 value={mode === "inherit" ? templateContent : rewriteContent}
-                                readOnly={mode === "inherit"}
+                                readOnly={saving || mode === "inherit"}
                                 ariaLabel={mode === "inherit" ? "平台提示词模板" : "个人提示词改写"}
                                 onChange={mode === "rewrite" ? setRewriteContent : undefined}
                             />
