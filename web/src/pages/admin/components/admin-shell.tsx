@@ -161,7 +161,7 @@ export function AdminShell() {
                         {collapsed ? <ChevronRight className="size-3.5" aria-hidden="true" /> : <ChevronLeft className="size-3.5" aria-hidden="true" />}
                     </button>
                 </Tooltip>
-                <section className="flex min-w-0 flex-1 flex-col overflow-hidden">
+                <section className="admin-content-stage flex min-w-0 flex-1 flex-col overflow-hidden">
                     <MobileAdminNavigation />
                     <Outlet />
                 </section>

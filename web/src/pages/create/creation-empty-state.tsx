@@ -52,7 +52,7 @@ export function CreationEmptyIntro({ mode }: { mode: CreationMode }) {
     return (
         <header className="creation-empty-intro">
             <span className="creation-empty-kicker">
-                <i aria-hidden="true" /> LIGHTFRAME CREATIVE STAGE
+                <i aria-hidden="true" /> YOUR CREATIVE WORKSPACE
             </span>
             <h1>
                 <span className="creation-empty-title-mobile">

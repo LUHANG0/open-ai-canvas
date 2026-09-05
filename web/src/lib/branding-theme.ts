@@ -47,8 +47,12 @@ export function applyBrandPalette(primaryColor: string) {
     root.style.setProperty("--app-brand-rgb", `${primaryRGB.r} ${primaryRGB.g} ${primaryRGB.b}`);
     root.style.setProperty("--app-brand-on-500", readableForeground(palette[500]));
     root.style.setProperty("--app-brand-on-700", readableForeground(palette[700]));
-    root.style.setProperty("--app-brand-accent-light", brandAccent(palette, false));
-    root.style.setProperty("--app-brand-accent-dark", brandAccent(palette, true));
+    for (const mode of ["light", "dark"] as const) {
+        const accent = brandAccent(palette, mode === "dark");
+        const rgb = hexToRGB(accent);
+        root.style.setProperty(`--app-brand-accent-${mode}`, accent);
+        root.style.setProperty(`--app-brand-accent-rgb-${mode}`, `${rgb.r} ${rgb.g} ${rgb.b}`);
+    }
     return palette;
 }
 
@@ -57,8 +61,8 @@ export function withBrandingAntTheme(base: ThemeConfig, primaryColor: string, da
     const primary = brandAccent(palette, dark);
     const hover = accessibleAccent(dark ? palette[300] : palette[600], dark);
     const active = accessibleAccent(dark ? palette[500] : palette[800], dark);
-    const selection = alpha(palette[500], dark ? 0.18 : 0.11);
-    const selectionHover = alpha(palette[500], dark ? 0.24 : 0.16);
+    const selection = alpha(primary, dark ? 0.18 : 0.11);
+    const selectionHover = alpha(primary, dark ? 0.24 : 0.16);
 
     return {
         ...base,

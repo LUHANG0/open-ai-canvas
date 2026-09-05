@@ -134,15 +134,7 @@
 }
 
 .app-workspace-shell.is-spatial .app-workspace-brand-mark::after {
-    position: absolute;
-    right: -2px;
-    bottom: -2px;
-    width: 7px;
-    height: 7px;
-    border: 2px solid var(--workspace-sidebar);
-    border-radius: var(--r-full);
-    background: var(--app-status-running-fg, var(--app-action-primary-bg, #ff6347));
-    content: "";
+    content: none;
 }
 
 .app-workspace-shell.is-spatial .app-workspace-sidebar-search > button {
@@ -527,7 +519,7 @@
         --workspace-border-strong: var(--app-border-default, rgba(24, 26, 38, 0.14));
         --workspace-nav-active-bg: var(--app-selection-bg, rgba(109, 93, 251, 0.1));
         --workspace-nav-active-hover-bg: var(--app-selection-hover, rgba(109, 93, 251, 0.14));
-        --workspace-nav-active-indicator: var(--app-brand-600, #6d5dfb);
+        --workspace-nav-active-indicator: var(--app-brand-accent);
         background-color: var(--workspace-canvas);
         background-image: none;
     }
@@ -543,7 +535,7 @@
         --workspace-border-strong: var(--app-border-default, rgba(255, 255, 255, 0.14));
         --workspace-nav-active-bg: var(--app-selection-bg, rgba(139, 124, 246, 0.16));
         --workspace-nav-active-hover-bg: var(--app-selection-hover, rgba(139, 124, 246, 0.22));
-        --workspace-nav-active-indicator: var(--app-brand-500, #8b7cf6);
+        --workspace-nav-active-indicator: var(--app-brand-accent);
     }
 
     .app-user-workspace.app-spatial-workspace .app-workspace-shell.is-spatial {
@@ -596,22 +588,22 @@
     }
 
     .app-user-workspace.app-spatial-workspace .app-workspace-page-context .app-workspace-context-section {
-        color: var(--app-brand-700, #5b4bdb);
+        color: var(--app-brand-accent);
         font-size: var(--app-font-size-label, 12px);
         font-weight: 700;
         letter-spacing: 0.075em;
     }
 
     .dark .app-user-workspace.app-spatial-workspace .app-workspace-page-context .app-workspace-context-section {
-        color: var(--app-brand-300, #c4baff);
+        color: var(--app-brand-accent);
     }
 
     .app-user-workspace.app-spatial-workspace .app-workspace-page-context .app-workspace-context-section:hover {
-        color: var(--app-brand-800, #4438a8);
+        color: var(--app-brand-accent);
     }
 
     .dark .app-user-workspace.app-spatial-workspace .app-workspace-page-context .app-workspace-context-section:hover {
-        color: var(--app-brand-200, #dcd6ff);
+        color: var(--app-brand-accent);
     }
 
     .app-user-workspace.app-spatial-workspace .app-workspace-page-context .app-workspace-context-divider {
@@ -663,33 +655,16 @@
     }
 
     .app-user-workspace.app-spatial-workspace .app-workspace-shell.is-spatial .app-workspace-brand-mark {
-        position: relative;
-        overflow: visible;
-        border: 1px solid color-mix(in srgb, var(--app-brand-400, #a79bff) 62%, transparent);
-        border-radius: var(--app-radius-3, 10px);
-        background: linear-gradient(145deg, var(--app-brand-500, #8b7cf6), var(--app-brand-700, #5b4bdb));
-        color: #ffffff;
-        box-shadow:
-            0 8px 22px color-mix(in srgb, var(--app-brand-600, #6d5dfb) 24%, transparent),
-            inset 0 1px 0 color-mix(in srgb, #ffffff 34%, transparent);
+        padding: 0;
+        border: 0;
+        border-radius: var(--app-control-radius);
+        background: transparent;
+        box-shadow: none;
     }
 
-    .dark .app-user-workspace.app-spatial-workspace .app-workspace-shell.is-spatial .app-workspace-brand-mark {
-        border-color: color-mix(in srgb, var(--app-brand-400, #a79bff) 58%, transparent);
-        background: linear-gradient(145deg, var(--app-brand-400, #a79bff), var(--app-brand-600, #6d5dfb));
-        color: var(--app-action-primary-fg, #11131d);
-        box-shadow:
-            0 8px 24px color-mix(in srgb, var(--app-brand-500, #8b7cf6) 30%, transparent),
-            inset 0 1px 0 color-mix(in srgb, #ffffff 26%, transparent);
-    }
-
-    .app-user-workspace.app-spatial-workspace .app-workspace-shell.is-spatial .app-workspace-brand-mark::after {
-        right: -3px;
-        bottom: -3px;
-        width: 8px;
-        height: 8px;
-        border: 2px solid var(--workspace-sidebar);
-        background: var(--app-ai-500, #1aa8b4);
+    .app-user-workspace.app-spatial-workspace .app-workspace-brand-mark > img {
+        width: 100%;
+        height: 100%;
     }
 
     .app-user-workspace.app-spatial-workspace .app-workspace-brand-wordmark {
@@ -872,14 +847,14 @@
 
     .app-user-workspace.app-spatial-workspace .app-page-header-eyebrow {
         margin-bottom: var(--app-space-1, 4px);
-        color: var(--app-brand-700, #5b4bdb);
+        color: var(--app-brand-accent);
         font-size: 10px;
         font-weight: 720;
         letter-spacing: 0.105em;
     }
 
     .dark .app-user-workspace.app-spatial-workspace .app-page-header-eyebrow {
-        color: var(--app-brand-300, #c4baff);
+        color: var(--app-brand-accent);
     }
 
     .app-user-workspace.app-spatial-workspace .app-page-header-description {

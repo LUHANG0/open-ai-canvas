@@ -18,6 +18,8 @@
     --app-brand-rgb: 139 124 246;
     --app-brand-accent-light: #5b4bdb;
     --app-brand-accent-dark: #b1a4ff;
+    --app-brand-accent-rgb-light: 91 75 219;
+    --app-brand-accent-rgb-dark: 177 164 255;
     --app-ai-50: #eafbfc;
     --app-ai-100: #d0f4f6;
     --app-ai-400: #5dd6df;
@@ -105,15 +107,16 @@
     --app-action-secondary-active: rgba(17, 17, 17, 0.09);
     --app-action-secondary-fg: #171717;
     --app-action-secondary-border: rgba(17, 17, 17, 0.18);
-    --app-selection-bg: rgb(var(--app-brand-rgb) / 0.11);
-    --app-selection-hover: rgb(var(--app-brand-rgb) / 0.16);
-    --app-selection-active: rgb(var(--app-brand-rgb) / 0.2);
+    --app-selection-bg: rgb(var(--app-brand-accent-rgb) / 0.11);
+    --app-selection-hover: rgb(var(--app-brand-accent-rgb) / 0.16);
+    --app-selection-active: rgb(var(--app-brand-accent-rgb) / 0.2);
     --app-selection-fg: var(--app-brand-accent);
     --app-selection-border: color-mix(in srgb, var(--app-brand-accent) 38%, transparent);
     --app-focus-ring: color-mix(in srgb, var(--app-brand-accent) 35%, transparent);
     --app-focus-shadow: 0 0 0 2px var(--app-focus-ring);
 
     --app-brand-accent: var(--app-brand-accent-light);
+    --app-brand-accent-rgb: var(--app-brand-accent-rgb-light);
     --app-border-interactive: var(--app-brand-accent);
     --app-surface-subtle: rgba(17, 17, 17, 0.035);
     --app-action-check-bg: var(--app-action-primary-bg);
@@ -172,6 +175,7 @@
 
 .dark {
     --app-brand-accent: var(--app-brand-accent-dark);
+    --app-brand-accent-rgb: var(--app-brand-accent-rgb-dark);
     --app-surface-subtle: rgba(255, 255, 255, 0.055);
     --app-switch-off-bg: rgba(255, 255, 255, 0.22);
     --app-switch-off-hover: rgba(255, 255, 255, 0.3);
@@ -199,9 +203,9 @@
     --app-action-secondary-active: rgba(255, 255, 255, 0.12);
     --app-action-secondary-fg: #f0f1f5;
     --app-action-secondary-border: rgba(255, 255, 255, 0.24);
-    --app-selection-bg: rgb(var(--app-brand-rgb) / 0.18);
-    --app-selection-hover: rgb(var(--app-brand-rgb) / 0.24);
-    --app-selection-active: rgb(var(--app-brand-rgb) / 0.28);
+    --app-selection-bg: rgb(var(--app-brand-accent-rgb) / 0.18);
+    --app-selection-hover: rgb(var(--app-brand-accent-rgb) / 0.24);
+    --app-selection-active: rgb(var(--app-brand-accent-rgb) / 0.28);
     --app-selection-fg: var(--app-brand-accent);
     --app-selection-border: color-mix(in srgb, var(--app-brand-accent) 46%, transparent);
     --app-focus-ring: color-mix(in srgb, var(--app-brand-accent) 35%, transparent);

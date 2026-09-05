@@ -1,36 +1,36 @@
 /* /create 专属视觉合同：上方提供创作起点，生成 Composer 稳定停靠在内容区底部。 */
 
 .creation-home {
-    --creation-accent: #1493ad;
-    --creation-accent-strong: #087f99;
-    --creation-accent-soft: rgba(20, 147, 173, 0.1);
-    --creation-bg: #f6f7f8;
-    --creation-surface: #ffffff;
-    --creation-surface-muted: rgba(25, 29, 34, 0.045);
-    --creation-surface-hover: rgba(25, 29, 34, 0.07);
-    --creation-surface-selected: rgba(25, 29, 34, 0.1);
-    --creation-border: rgba(25, 29, 34, 0.1);
-    --creation-border-strong: rgba(25, 29, 34, 0.18);
-    --creation-text: #1a1d21;
-    --creation-muted: #737b84;
-    --creation-faint: #a7adb4;
+    --creation-accent: var(--app-action-primary-bg);
+    --creation-accent-strong: var(--app-action-primary-bg);
+    --creation-accent-soft: var(--app-selection-bg);
+    --creation-bg: var(--app-bg-page);
+    --creation-surface: var(--app-surface-1);
+    --creation-surface-muted: var(--app-surface-2);
+    --creation-surface-hover: var(--app-action-secondary-hover);
+    --creation-surface-selected: var(--app-selection-bg);
+    --creation-border: var(--app-border-subtle);
+    --creation-border-strong: var(--app-border-default);
+    --creation-text: var(--app-text-primary);
+    --creation-muted: var(--app-text-secondary);
+    --creation-faint: var(--app-text-muted);
     background: var(--creation-bg);
 }
 
 .dark .creation-home {
-    --creation-accent: #4bbbd0;
-    --creation-accent-strong: #75cede;
-    --creation-accent-soft: rgba(75, 187, 208, 0.12);
-    --creation-bg: #111214;
-    --creation-surface: #1a1c1f;
-    --creation-surface-muted: rgba(255, 255, 255, 0.05);
-    --creation-surface-hover: rgba(255, 255, 255, 0.08);
-    --creation-surface-selected: rgba(255, 255, 255, 0.11);
-    --creation-border: rgba(255, 255, 255, 0.085);
-    --creation-border-strong: rgba(255, 255, 255, 0.16);
-    --creation-text: #f2f2ef;
-    --creation-muted: #979da5;
-    --creation-faint: #646970;
+    --creation-accent: var(--app-action-primary-bg);
+    --creation-accent-strong: var(--app-action-primary-bg);
+    --creation-accent-soft: var(--app-selection-bg);
+    --creation-bg: var(--app-bg-page);
+    --creation-surface: var(--app-surface-1);
+    --creation-surface-muted: var(--app-surface-2);
+    --creation-surface-hover: var(--app-action-secondary-hover);
+    --creation-surface-selected: var(--app-selection-bg);
+    --creation-border: var(--app-border-subtle);
+    --creation-border-strong: var(--app-border-default);
+    --creation-text: var(--app-text-primary);
+    --creation-muted: var(--app-text-secondary);
+    --creation-faint: var(--app-text-muted);
 }
 
 .creation-home .creation-top-actions {

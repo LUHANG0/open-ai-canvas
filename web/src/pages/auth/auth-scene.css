@@ -1,10 +1,10 @@
 .pc-auth-scene {
-    --auth-brand: var(--app-brand-400, #b1a4ff);
+    --auth-brand: var(--app-brand-accent);
     --auth-brand-soft: color-mix(in srgb, var(--auth-brand) 18%, transparent);
     --auth-panel: var(--app-bg-page);
     --auth-ink: var(--app-text-primary);
-    --auth-text-secondary: #d4d6df;
-    --auth-text-muted: #a4a7b2;
+    --auth-text-secondary: var(--app-text-secondary);
+    --auth-text-muted: var(--app-text-muted);
     --auth-line: #ffffff1f;
     position: relative;
     isolation: isolate;

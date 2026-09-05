@@ -1,9 +1,9 @@
 .pc-home-page {
     --home-chart-ai: var(--app-status-running-fg);
     --home-chart-brand: var(--app-text-secondary);
-    --home-primary-bg: var(--app-brand-700);
-    --home-primary-fg: var(--app-text-inverse);
-    --home-primary-hover: var(--app-brand-800);
+    --home-primary-bg: var(--app-action-primary-bg);
+    --home-primary-fg: var(--app-action-primary-fg);
+    --home-primary-hover: var(--app-action-primary-hover);
     background: radial-gradient(ellipse 70% 34% at 18% -4%, color-mix(in srgb, var(--app-text-primary) 7%, transparent), transparent 72%), linear-gradient(180deg, color-mix(in srgb, var(--app-bg-page) 88%, var(--app-surface-2)), var(--app-bg-page) 480px);
 }
 
@@ -15,8 +15,8 @@
 }
 
 .dark .pc-home-page {
-    --home-primary-bg: var(--app-brand-400);
-    --home-primary-hover: var(--app-brand-300);
+    --home-primary-bg: var(--app-action-primary-bg);
+    --home-primary-hover: var(--app-action-primary-hover);
 }
 
 .pc-home-page__content {

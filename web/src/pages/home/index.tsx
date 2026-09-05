@@ -10,6 +10,7 @@ import { useBranding } from "@/components/branding/branding-provider";
 import { WorkspacePage } from "@/components/ui/pc/page";
 import { WorkspaceLoadingState } from "@/components/ui/pc/workspace-state";
 import { parseStyleProfile } from "@/lib/canvas/style-profile";
+import { BRAND_CONCEPT_POSTER } from "@/lib/public-site-content";
 import { projectSummaryCompletion, projectSummaryStage } from "@/lib/project-workbench";
 import { listProjects, type ProjectSummary } from "@/services/api/projects";
 import { resourceFileUrl } from "@/services/api/resources";
@@ -251,6 +252,7 @@ function HomeWorkspace(props: HomeWorkspaceProps) {
 }
 
 function HeroVisual({ mode, activeProject, latestPreview, canvas, task }: { mode: ReturnType<typeof deriveHomeMode>; activeProject?: ProjectSummary; latestPreview?: string; canvas?: CanvasProject; task?: GenerationTask }) {
+    const showBrandVisual = !latestPreview && !activeProject && !canvas && !task;
     const title = activeProject?.project.name || canvas?.title || taskTitle(task) || "你的下一幕，从这里开始";
     const meta = activeProject
         ? `${projectStyleTitle(activeProject.project)} · ${activeProject.project.aspectRatio}`
@@ -263,6 +265,8 @@ function HeroVisual({ mode, activeProject, latestPreview, canvas, task }: { mode
         <div className={`home-hero-visual is-${mode}`} aria-label={activeProject || canvas || task ? `最近创作：${title}` : "创作预览"}>
             {latestPreview ? (
                 <img src={latestPreview} alt="" />
+            ) : showBrandVisual ? (
+                <img src={BRAND_CONCEPT_POSTER} alt="《最后一班》品牌概念视觉" />
             ) : (
                 <span className="home-hero-visual__placeholder" aria-hidden="true">
                     <i />
@@ -272,7 +276,7 @@ function HeroVisual({ mode, activeProject, latestPreview, canvas, task }: { mode
             )}
             <span className="home-hero-visual__scrim" aria-hidden="true" />
             <span className="home-hero-visual__caption">
-                <span>{activeProject ? "正在制作" : mode === "returning" ? "最近创作" : "创作场景"}</span>
+                <span>{showBrandVisual ? "AI 品牌概念视觉" : activeProject ? "正在制作" : mode === "returning" ? "最近创作" : "创作场景"}</span>
                 <strong>{title}</strong>
                 <small>{meta}</small>
             </span>
