@@ -23,7 +23,7 @@ import { useAssetStore, type Asset, type AssetCategory, type AssetKind, type Ima
 import { exportAssets, readAssetPackage } from "./asset-transfer";
 import { AssetStorageUsage, assetStorageUsageQueryKey } from "./asset-storage-usage";
 import { formatAssetDimensions, mergeLoadedVideoMetadata, type LoadedVideoMetadata } from "./video-metadata";
-import { deleteAssetWithRemoteSync } from "@/services/user-data-sync";
+import { deleteAssetWithRemoteSync, getRemoteUserDataSyncStatus, saveRemoteUserDataNow } from "@/services/user-data-sync";
 
 import "./assets-pc.css";
 
@@ -92,6 +92,9 @@ export default function AssetsPage() {
     const [pageSize, setPageSize] = useState(35);
     const [editingAsset, setEditingAsset] = useState<LibraryAsset | null>(null);
     const [isAssetOpen, setIsAssetOpen] = useState(false);
+    const [assetSaving, setAssetSaving] = useState(false);
+    const assetSavePendingRef = useRef(false);
+    const pendingAssetIdRef = useRef<string | null>(null);
     const [previewAsset, setPreviewAsset] = useState<LibraryAsset | null>(null);
     const [deletingAsset, setDeletingAsset] = useState<LibraryAsset | null>(null);
     const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -143,6 +146,7 @@ export default function AssetsPage() {
     }, [validAssets]);
 
     const openCreate = () => {
+        pendingAssetIdRef.current = null;
         setEditingAsset(null);
         setImageDraft(null);
         setImageFile(null);
@@ -154,6 +158,7 @@ export default function AssetsPage() {
     };
 
     const openEdit = (asset: LibraryAsset) => {
+        pendingAssetIdRef.current = asset.id;
         setEditingAsset(asset);
         setImageFile(null);
         setImageUploading(false);
@@ -174,53 +179,69 @@ export default function AssetsPage() {
     };
 
     const saveAsset = async () => {
-        const values = await form.validateFields();
-        let imageData = imageDraft;
-        if (values.kind === "image" && imageFile) {
-            setImageUploading(true);
-            setImageUploadProgress({ phase: "uploading", percent: 0 });
-            try {
-                const image = await uploadImage(imageFile);
-                setImageUploadProgress({ phase: "confirming" });
-                imageData = { dataUrl: image.url, storageKey: image.storageKey, width: image.width, height: image.height, bytes: image.bytes, mimeType: image.mimeType };
-                setImageDraft(imageData);
-                setImageFile(null);
-                void queryClient.invalidateQueries({ queryKey: assetStorageUsageQueryKey });
-            } catch (error) {
-                message.error(error instanceof Error ? error.message : "图片上传失败，请重试");
-                return;
-            } finally {
-                setImageUploading(false);
-                setImageUploadProgress(null);
+        if (assetSavePendingRef.current) return;
+        assetSavePendingRef.current = true;
+        setAssetSaving(true);
+        try {
+            const values = await form.validateFields();
+            let imageData = imageDraft;
+            if (values.kind === "image" && imageFile) {
+                setImageUploading(true);
+                setImageUploadProgress({ phase: "uploading", percent: 0 });
+                try {
+                    const image = await uploadImage(imageFile);
+                    setImageUploadProgress({ phase: "confirming" });
+                    imageData = { dataUrl: image.url, storageKey: image.storageKey, width: image.width, height: image.height, bytes: image.bytes, mimeType: image.mimeType };
+                    setImageDraft(imageData);
+                    setImageFile(null);
+                    void queryClient.invalidateQueries({ queryKey: assetStorageUsageQueryKey });
+                } catch (error) {
+                    message.error(error instanceof Error ? error.message : "图片上传失败，请重试");
+                    return;
+                } finally {
+                    setImageUploading(false);
+                    setImageUploadProgress(null);
+                }
             }
-        }
 
-        const base = {
-            title: values.title.trim(),
-            category: values.category,
-            status: editingAsset?.status || ("confirmed" as const),
-            primaryVersionId: editingAsset?.primaryVersionId,
-            coverUrl: values.coverUrl?.trim() || (values.kind === "image" && imageData ? imageData.dataUrl : ""),
-            tags: values.tags || [],
-            source: values.source?.trim(),
-            note: values.note?.trim(),
-            metadata: editingAsset?.metadata || { source: "manual" },
-        };
+            const base = {
+                title: values.title.trim(),
+                category: values.category,
+                status: editingAsset?.status || ("confirmed" as const),
+                primaryVersionId: editingAsset?.primaryVersionId,
+                coverUrl: values.coverUrl?.trim() || (values.kind === "image" && imageData ? imageData.dataUrl : ""),
+                tags: values.tags || [],
+                source: values.source?.trim(),
+                note: values.note?.trim(),
+                metadata: editingAsset?.metadata || { source: "manual" },
+            };
 
-        if (values.kind === "text") {
-            const asset = { ...base, kind: "text" as const, data: { content: (values.content || "").trim() } };
-            editingAsset ? updateAsset(editingAsset.id, asset) : addAsset(asset);
-        } else {
-            if (!imageData) {
-                message.error("请选择图片文件");
-                return;
+            if (values.kind === "text") {
+                const asset = { ...base, kind: "text" as const, data: { content: (values.content || "").trim() } };
+                if (pendingAssetIdRef.current) updateAsset(pendingAssetIdRef.current, asset);
+                else pendingAssetIdRef.current = addAsset(asset);
+            } else {
+                if (!imageData) {
+                    message.error("请选择图片文件");
+                    return;
+                }
+                const asset = { ...base, kind: "image" as const, data: imageData };
+                if (pendingAssetIdRef.current) updateAsset(pendingAssetIdRef.current, asset);
+                else pendingAssetIdRef.current = addAsset(asset);
             }
-            const asset = { ...base, kind: "image" as const, data: imageData };
-            editingAsset ? updateAsset(editingAsset.id, asset) : addAsset(asset);
-        }
 
-        message.success(editingAsset ? "素材已更新" : "素材已保存");
-        setIsAssetOpen(false);
+            // The login snapshot replaces the cache, so explicit save must finish remotely before closing.
+            if (getRemoteUserDataSyncStatus().phase === "inactive") throw new Error("尚未建立云端同步会话");
+            await saveRemoteUserDataNow();
+            message.success(editingAsset ? "素材已更新到服务端" : "素材已保存到服务端");
+            setIsAssetOpen(false);
+        } catch (error) {
+            if (error && typeof error === "object" && "errorFields" in error) return;
+            message.error(`素材未同步，输入已保留：${error instanceof Error ? error.message : "请重试保存"}`);
+        } finally {
+            assetSavePendingRef.current = false;
+            setAssetSaving(false);
+        }
     };
 
     const readCoverFile = async (file?: File) => {
@@ -550,18 +571,18 @@ export default function AssetsPage() {
                 subtitle="编辑素材的基本信息、分类、内容与封面"
                 open={isAssetOpen}
                 onCancel={() => {
-                    if (!imageUploading) setIsAssetOpen(false);
+                    if (!assetSavePendingRef.current) setIsAssetOpen(false);
                 }}
                 onOk={() => void saveAsset()}
-                okText={imageUploading ? "正在上传" : "保存"}
+                okText={imageUploading ? "正在上传" : assetSaving ? "正在保存" : "保存"}
                 cancelText="取消"
-                confirmLoading={imageUploading}
-                cancelButtonProps={{ disabled: imageUploading }}
-                closable={!imageUploading}
+                confirmLoading={assetSaving}
+                cancelButtonProps={{ disabled: assetSaving }}
+                closable={!assetSaving}
                 destroyOnHidden
             >
                 <div className="asset-editor-layout grid gap-4 lg:grid-cols-[minmax(0,1fr)_280px]">
-                    <Form className="asset-editor-form" form={form} layout="vertical" requiredMark={false} initialValues={{ kind: "text", category: "other", tags: [] }}>
+                    <Form className="asset-editor-form" form={form} disabled={assetSaving} layout="vertical" requiredMark={false} initialValues={{ kind: "text", category: "other", tags: [] }}>
                         <Form.Item name="kind" label="类型">
                             <Select
                                 options={[
@@ -603,7 +624,7 @@ export default function AssetsPage() {
                         ) : (
                             <Form.Item label="图片内容" required>
                                 <div className="asset-image-dropzone">
-                                    <Button disabled={imageUploading} icon={<Upload className="size-4" />} onClick={() => imageInputRef.current?.click()}>
+                                    <Button disabled={assetSaving} icon={<Upload className="size-4" />} onClick={() => imageInputRef.current?.click()}>
                                         {imageUploading ? "正在上传图片" : "选择图片文件"}
                                     </Button>
                                     {imageFile ? (
