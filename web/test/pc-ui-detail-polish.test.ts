@@ -16,9 +16,9 @@ describe("PC detail polish regression gates", () => {
         expect(compact(create.slice(0, create.indexOf("@media (min-width: 1024px)")))).toContain(".creation-home .creation-empty-suggest .suggest-copy > .creation-starter-action { display: none; }");
         expect(compact(create.slice(create.indexOf("@media (min-width: 1024px)")))).toContain(".creation-home .creation-empty-suggest .suggest-copy > .creation-starter-action { display: inline-flex;");
         expect(compact(projects.slice(0, projects.indexOf("@media (min-width: 1024px)")))).toContain(".pc-project-detail-state .workspace-state-action { display: none; } .pc-project-detail-empty-action { display: none; }");
-        expect(compact(canvas.slice(0, canvas.indexOf("@media (min-width: 1024px)")))).toContain(
-            ".pc-canvas-library-page .pc-canvas-library-only, .pc-canvas-library-dialog-pc-only, .pc-canvas-folder__preview-count, .pc-canvas-opening__pulse, .pc-canvas-opening small, .pc-canvas-library__empty-guide { display: none; }",
-        );
+        expect(canvas).not.toContain("pc-canvas-library-mobile-only");
+        expect(canvas).not.toContain("pc-canvas-opening__pulse");
+        expect(canvas).toContain("@media (max-width: 640px)");
     });
 
     test("shares task and asset feedback across viewports while preserving wallet behavior", async () => {

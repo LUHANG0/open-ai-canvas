@@ -4700,7 +4700,7 @@
     .library-page .app-page-header:hover .workspace-signal-icon { transform: rotate(-6deg) scale(1.04); }
     /* 页面头部按钮优化 - 去除重边框 */
     html:not(.dark) .library-page:not(.assets-library-page):not(.task-library-page) .app-page-header .ant-btn,
-    html:not(.dark) .canvas-library-page:not(.assets-library-page):not(.task-library-page) .app-page-header .ant-btn {
+    html:not(.dark) .canvas-library-page:not(.assets-library-page):not(.task-library-page):not(.pc-canvas-library-page) .app-page-header .ant-btn {
         border: 1px solid rgba(17, 17, 17, 0.08) !important;
         background: #ffffff !important;
         color: #171717 !important;
@@ -4708,7 +4708,7 @@
         transition: all 180ms ease-out !important;
     }
     html:not(.dark) .library-page:not(.assets-library-page):not(.task-library-page) .app-page-header .ant-btn:hover,
-    html:not(.dark) .canvas-library-page:not(.assets-library-page):not(.task-library-page) .app-page-header .ant-btn:hover {
+    html:not(.dark) .canvas-library-page:not(.assets-library-page):not(.task-library-page):not(.pc-canvas-library-page) .app-page-header .ant-btn:hover {
         border-color: rgba(17, 17, 17, 0.12) !important;
         background: #ffffff !important;
         color: #171717 !important;

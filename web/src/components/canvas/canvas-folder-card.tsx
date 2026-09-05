@@ -53,8 +53,8 @@ export function CanvasFolderCard({ project, projectName, onClick }: CanvasFolder
         >
             <div
                 className="canvas-folder-open"
-                role="button"
-                tabIndex={0}
+                role={editing ? undefined : "button"}
+                tabIndex={editing ? undefined : 0}
                 aria-label={`打开画布 ${project.title}`}
                 aria-describedby={metadataId}
                 onClick={() => !editing && onClick()}
@@ -81,7 +81,7 @@ export function CanvasFolderCard({ project, projectName, onClick }: CanvasFolder
                                 autoFocus
                             />
                         ) : (
-                            <span id={titleId} className="canvas-folder-title">{project.title}</span>
+                            <span id={titleId} className="canvas-folder-title" title={project.title}>{project.title}</span>
                         )}
                     </div>
                     <div id={metadataId} className="canvas-folder-meta">
@@ -96,14 +96,14 @@ export function CanvasFolderCard({ project, projectName, onClick }: CanvasFolder
                 </div>
             </div>
 
-            <span className={cn("canvas-folder-select", selected && "is-visible")} onClick={(event) => event.stopPropagation()}>
+            <label className={cn("canvas-folder-select", selected && "is-visible")} onClick={(event) => event.stopPropagation()}>
                 <input
                     type="checkbox"
                     checked={selected}
                     onChange={(event) => toggleSelected(project.id, event.target.checked)}
                     aria-label={`选择 ${project.title}`}
                 />
-            </span>
+            </label>
 
             <div className="canvas-folder-actions" role="group" aria-label={`${project.title} 画布操作`} onClick={(event) => event.stopPropagation()}>
                 {!editing ? (

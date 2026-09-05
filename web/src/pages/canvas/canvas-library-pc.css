@@ -1,719 +1,606 @@
-/* Canvas library PC contract. New visual rules are isolated to >= 1024px. */
+/* Shared canvas library presentation at every viewport. Editor styling stays separate. */
 
-.pc-canvas-library-page .pc-canvas-library-only,
-.pc-canvas-library-dialog-pc-only,
-.pc-canvas-folder__preview-count,
-.pc-canvas-opening__pulse,
-.pc-canvas-opening small,
-.pc-canvas-library__empty-guide {
-    display: none;
+.pc-canvas-library-page {
+    --pc-canvas-library-card-min: 272px;
+    --pc-canvas-library-preview-ratio: 16 / 9;
+    --pc-canvas-library-accent-soft: color-mix(in srgb, var(--app-brand-accent) 8%, transparent);
+    --pc-canvas-library-accent-line: color-mix(in srgb, var(--app-brand-accent) 38%, var(--app-border-default));
 }
 
-.pc-canvas-opening strong {
+.pc-canvas-library-page .app-workspace-page-content {
+    display: flex;
+    flex-direction: column;
+    gap: var(--app-space-5, 20px);
+}
+
+.pc-canvas-library-page .pc-canvas-library__header {
+    display: flex;
+    flex-direction: column;
+    gap: var(--app-space-3, 12px);
+}
+
+.pc-canvas-library-page .app-page-header {
+    position: static;
+    min-height: 64px;
+    padding: var(--app-space-1, 4px) 0 var(--app-space-2, 8px);
+}
+
+.pc-canvas-library-page .app-page-header-title {
+    color: var(--app-text-primary);
+    font-size: 24px;
+    font-weight: 680;
+    letter-spacing: -0.02em;
+}
+
+.pc-canvas-library-page .app-page-header-description {
+    max-width: 640px;
+    color: var(--app-text-secondary);
+    font-size: 14px;
+}
+
+.pc-canvas-library-page .canvas-library-header-actions {
+    gap: var(--app-space-2, 8px);
+}
+
+.pc-canvas-library-page .canvas-library-header-action.is-primary {
+    order: 1;
+}
+
+.pc-canvas-library-page .canvas-library-header-action.is-import {
+    order: 2;
+}
+
+.pc-canvas-library-page .canvas-library-header-action.is-icon {
+    order: 3;
+}
+
+.pc-canvas-library-page .pc-canvas-library__mode {
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    min-height: 44px;
+    align-items: center;
+    gap: var(--app-space-3, 12px);
+    color: var(--app-text-secondary);
+    font-size: 13px;
+}
+
+.pc-canvas-library-page .pc-canvas-library__toolbar-surface {
+    overflow: visible;
+    border-color: var(--app-border-subtle);
+    border-radius: var(--app-surface-radius, 12px);
+    background: var(--app-surface-1);
+    box-shadow: none;
+}
+
+.pc-canvas-library-page .pc-canvas-library__toolbar {
+    min-height: 60px;
+    gap: var(--app-space-3, 12px);
+    border-bottom: 0;
+    padding: var(--app-space-3, 12px) var(--app-space-4, 16px);
+}
+
+.pc-canvas-library-page .pc-canvas-library__toolbar .pc-filter-bar__main {
+    flex-wrap: wrap;
+    gap: var(--app-space-2, 8px) var(--app-space-3, 12px);
+}
+
+.pc-canvas-library-page .pc-canvas-library__toolbar .pc-filter-bar__leading {
+    flex: 1 1 304px;
+}
+
+.pc-canvas-library-page .pc-canvas-library__toolbar .pc-search-field {
+    width: min(100%, 420px);
+    min-width: 240px;
+    background: var(--app-surface-2);
+}
+
+.pc-canvas-library-page .pc-canvas-library__toolbar .pc-filter-bar__controls {
+    flex: 0 1 auto;
+}
+
+.pc-canvas-library-page .pc-canvas-library__toolbar .pc-filter-bar__active {
+    flex: 1 1 100%;
+    padding-top: var(--app-space-1, 4px);
+}
+
+.pc-canvas-library__filter,
+.pc-canvas-library__reset {
+    display: inline-flex;
+    height: var(--app-control-height, 36px);
+    cursor: pointer;
+    align-items: center;
+    justify-content: center;
+    gap: var(--app-space-2, 8px);
+    border: 1px solid var(--app-border-default);
+    border-radius: var(--app-control-radius, 8px);
+    background: var(--app-surface-1);
+    padding: 0 var(--app-space-3, 12px);
+    color: var(--app-text-secondary);
+    font-size: 13px;
+    font-weight: 560;
+    line-height: 1;
+    transition:
+        border-color var(--app-duration-fast, 120ms) ease,
+        background-color var(--app-duration-fast, 120ms) ease,
+        color var(--app-duration-fast, 120ms) ease;
+}
+
+.pc-canvas-library__filter {
+    max-width: 220px;
+}
+
+.pc-canvas-library__filter > span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.pc-canvas-library__filter > svg {
+    width: 15px;
+    height: 15px;
+    flex: 0 0 auto;
+}
+
+.pc-canvas-library__filter .pc-canvas-library__filter-chevron {
+    width: 13px;
+    height: 13px;
+    color: var(--app-text-muted);
+}
+
+.pc-canvas-library__filter:hover,
+.pc-canvas-library__reset:hover {
+    border-color: var(--app-border-strong);
+    background: var(--app-action-secondary-hover);
+    color: var(--app-text-primary);
+}
+
+.pc-canvas-library__filter.is-active {
+    border-color: var(--app-selection-border);
+    background: var(--app-selection-bg);
+    color: var(--app-selection-fg);
+}
+
+.pc-canvas-library__reset {
+    border-color: transparent;
+    background: transparent;
+    color: var(--app-text-muted);
+}
+
+.pc-canvas-library__filter:focus-visible,
+.pc-canvas-library__reset:focus-visible,
+.pc-canvas-library__project-warning button:focus-visible {
+    outline: 0;
+    box-shadow: var(--app-focus-shadow);
+}
+
+.pc-canvas-library__result-count {
+    display: flex;
+    min-width: max-content;
+    align-items: baseline;
+    color: var(--app-text-muted);
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+}
+
+.pc-canvas-library__result-count strong {
+    color: var(--app-text-primary);
+    font-size: 18px;
+    font-weight: 650;
+}
+
+.pc-canvas-library__project-warning {
+    display: flex;
+    min-height: 40px;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--app-space-3, 12px);
+    border-top: 1px solid var(--app-status-warning-border);
+    background: var(--app-status-warning-bg);
+    padding: var(--app-space-2, 8px) var(--app-space-4, 16px);
+    color: var(--app-status-warning-fg);
+    font-size: 13px;
+}
+
+.pc-canvas-library__project-warning button {
+    flex: 0 0 auto;
+    cursor: pointer;
+    border: 0;
+    border-radius: var(--app-control-radius-sm, 6px);
+    background: transparent;
+    padding: var(--app-space-1, 4px) var(--app-space-2, 8px);
+    color: inherit;
     font: inherit;
+    font-weight: 650;
+}
+
+.pc-canvas-library__project-warning button:hover {
+    background: color-mix(in srgb, currentColor 10%, transparent);
+}
+
+.pc-canvas-library-page .pc-canvas-library__content {
+    display: flex;
+    min-height: 360px;
+    flex-direction: column;
+}
+
+
+.pc-canvas-library-page .pc-canvas-library__selection {
+    display: flex;
+    margin: 0 0 var(--app-space-4, 16px);
+}
+
+.pc-canvas-library-page .pc-canvas-library__selection .ant-btn {
+    min-height: 30px;
+    border-radius: var(--app-control-radius-sm, 6px);
+}
+
+.pc-canvas-library-page .canvas-library-grid {
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, var(--pc-canvas-library-card-min)), 1fr));
+    align-items: stretch;
+    gap: var(--app-space-5, 20px);
+    margin-top: 0;
+}
+
+.pc-canvas-library-page .app-canvas-create-card,
+.pc-canvas-library-page .canvas-folder-card {
+    min-height: 0;
+    overflow: hidden;
+    border: 1px solid var(--app-border-subtle);
+    border-radius: var(--app-radius-media, 12px);
+    background: var(--app-surface-1);
+    box-shadow: var(--app-shadow-surface);
+    transform: none;
+    transition:
+        border-color var(--app-duration-base, 180ms) ease,
+        box-shadow var(--app-duration-base, 180ms) ease,
+        transform var(--app-duration-base, 180ms) ease;
+}
+
+.pc-canvas-library-page .app-canvas-create-card:hover:not(:disabled),
+.pc-canvas-library-page .app-canvas-create-card:focus-visible,
+.pc-canvas-library-page .canvas-folder-card:hover,
+.pc-canvas-library-page .canvas-folder-card:focus-within {
+    border-color: var(--pc-canvas-library-accent-line);
+    background: var(--app-surface-1);
+    box-shadow:
+        0 0 0 2px var(--pc-canvas-library-accent-soft),
+        var(--app-shadow-raised);
+    transform: translateY(-1px);
+}
+
+.pc-canvas-library-page .app-canvas-create-card:active:not(:disabled),
+.pc-canvas-library-page .canvas-folder-card:active {
+    transform: translateY(0);
+}
+
+.pc-canvas-library-page .app-canvas-create-card:focus-visible,
+.pc-canvas-library-page .canvas-folder-open:focus-visible,
+.pc-canvas-library-page :is(.canvas-folder-rename, .canvas-folder-more):focus-visible,
+.pc-canvas-library-page .canvas-folder-select input:focus-visible {
+    outline: 0;
+    box-shadow: var(--app-focus-shadow);
+}
+
+.pc-canvas-library-page .app-canvas-create-preview,
+.pc-canvas-library-page .canvas-folder-preview {
+    aspect-ratio: var(--pc-canvas-library-preview-ratio);
+    border-radius: 0;
+    background: linear-gradient(var(--app-border-subtle) 1px, transparent 1px), linear-gradient(90deg, var(--app-border-subtle) 1px, transparent 1px), var(--app-surface-2);
+    background-size: 24px 24px;
+}
+
+.pc-canvas-library-page .app-canvas-create-preview {
+    border-bottom: 1px solid var(--app-border-subtle);
+}
+
+.pc-canvas-library-page .app-canvas-create-icon {
+    width: 40px;
+    height: 40px;
+    border: 1px solid var(--app-selection-border);
+    border-radius: var(--app-control-radius, 8px);
+    background: color-mix(in srgb, var(--app-surface-1) 84%, var(--app-selection-bg));
+    padding: var(--app-space-3, 12px);
+    color: var(--app-brand-accent);
+}
+
+.dark .pc-canvas-library-page .app-canvas-create-icon {
+    color: var(--app-brand-accent);
+}
+
+.pc-canvas-library-page .app-canvas-create-title {
+    margin: var(--app-space-4, 16px) var(--app-space-4, 16px) 0;
+    color: var(--app-text-primary);
+    font-size: 16px;
+    font-weight: 650;
+}
+
+.pc-canvas-library-page .app-canvas-create-meta {
+    margin: var(--app-space-1, 4px) var(--app-space-4, 16px) var(--app-space-4, 16px);
+    color: var(--app-text-muted);
+    font-size: 12px;
+}
+
+.pc-canvas-library-page .canvas-folder-card.is-selected {
+    border-color: var(--app-selection-border);
+    box-shadow:
+        0 0 0 2px var(--pc-canvas-library-accent-soft),
+        inset 0 0 0 1px var(--app-selection-border),
+        var(--app-shadow-surface);
+}
+
+.pc-canvas-library-page .canvas-folder-preview .canvas-project-preview-canvas,
+.pc-canvas-library-page .canvas-folder-preview .canvas-project-empty,
+.pc-canvas-library-page .canvas-folder-preview .canvas-project-video {
+    background: linear-gradient(var(--app-border-subtle) 1px, transparent 1px), linear-gradient(90deg, var(--app-border-subtle) 1px, transparent 1px), color-mix(in srgb, var(--app-surface-2) 88%, var(--app-selection-bg));
+    background-size: 24px 24px;
+}
+
+.pc-canvas-library-page .canvas-folder-preview .canvas-project-preview-node {
+    color: var(--app-text-secondary);
+    background: color-mix(in srgb, var(--app-surface-overlay) 92%, transparent);
+    border: 1px solid color-mix(in srgb, var(--app-selection-border) 48%, var(--app-border-subtle));
+    box-shadow: 0 8px 18px color-mix(in srgb, var(--app-text-primary) 8%, transparent);
+}
+
+.pc-canvas-library-page .canvas-folder-preview .canvas-project-preview-node-icon,
+.pc-canvas-library-page .canvas-folder-preview .canvas-project-empty-icon,
+.pc-canvas-library-page .canvas-folder-preview .canvas-project-video {
+    color: var(--app-brand-accent);
+}
+
+.dark .pc-canvas-library-page .canvas-folder-preview .canvas-project-preview-node-icon,
+.dark .pc-canvas-library-page .canvas-folder-preview .canvas-project-empty-icon,
+.dark .pc-canvas-library-page .canvas-folder-preview .canvas-project-video {
+    color: var(--app-brand-accent);
+}
+
+.pc-canvas-library-page .canvas-folder-card:hover .canvas-folder-open,
+.pc-canvas-library-page .canvas-folder-card:focus-within .canvas-folder-open {
+    transform: none;
+}
+
+.pc-canvas-library-page .pc-canvas-folder__preview-count {
+    position: absolute;
+    z-index: 2;
+    right: var(--app-space-3, 12px);
+    bottom: var(--app-space-3, 12px);
+    display: inline-flex;
+    min-height: 24px;
+    align-items: center;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: var(--app-control-radius-sm, 6px);
+    background: rgba(7, 9, 12, 0.56);
+    padding: 0 var(--app-space-2, 8px);
+    color: rgba(255, 255, 255, 0.92);
+    font-size: 11px;
+    font-weight: 600;
+    backdrop-filter: blur(8px);
+}
+
+.pc-canvas-library-page .canvas-folder-body {
+    gap: var(--app-space-2, 8px);
+    padding: var(--app-space-4, 16px);
+}
+
+.pc-canvas-library-page .canvas-folder-title {
+    display: block;
+    min-width: 0;
+    max-width: 100%;
+    color: var(--app-text-primary);
+    font-size: 16px;
+    font-weight: 650;
+    line-height: 1.4;
+}
+
+.pc-canvas-library-page .canvas-folder-title-input {
+    height: var(--app-control-height-sm, 30px);
+    border-radius: var(--app-control-radius-sm, 6px);
+}
+
+.pc-canvas-library-page .canvas-folder-meta {
+    gap: var(--app-space-1, 4px) var(--app-space-2, 8px);
+    color: var(--app-text-secondary);
+    font-size: 12px;
+}
+
+.pc-canvas-library-page .canvas-folder-meta-item:first-child {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.pc-canvas-library-page .canvas-folder-meta-separator {
+    color: var(--app-text-muted);
+}
+
+.pc-canvas-library-page .canvas-folder-dates {
+    gap: var(--app-space-3, 12px);
+    border-top: 1px solid var(--app-border-subtle);
+    padding-top: var(--app-space-3, 12px);
+    color: var(--app-text-secondary);
+    font-size: 11px;
+}
+
+.pc-canvas-library-page .canvas-folder-dates small {
+    color: var(--app-text-muted);
+    font-size: 11px;
+}
+
+.pc-canvas-library-page .canvas-folder-select,
+.pc-canvas-library-page .canvas-folder-actions {
+    top: var(--app-space-3, 12px);
+    border-color: rgba(255, 255, 255, 0.22);
+    border-radius: var(--app-control-radius, 8px);
+    background: color-mix(in srgb, var(--app-surface-overlay) 82%, transparent);
+    box-shadow: var(--app-shadow-surface);
+}
+
+.pc-canvas-library-page .canvas-folder-select {
+    left: var(--app-space-3, 12px);
+    width: 32px;
+    height: 32px;
+}
+
+.pc-canvas-library-page .canvas-folder-actions {
+    right: var(--app-space-3, 12px);
+    gap: 0;
+    padding: 2px;
+}
+
+.pc-canvas-library-page :is(.canvas-folder-rename, .canvas-folder-more) {
+    width: 30px;
+    height: 30px;
+    border-radius: var(--app-control-radius-sm, 6px);
+    color: var(--app-text-secondary);
+}
+
+.pc-canvas-library-page :is(.canvas-folder-rename, .canvas-folder-more):hover {
+    background: var(--app-action-secondary-hover);
+    color: var(--app-text-primary);
+}
+
+.pc-canvas-library-page .pc-canvas-library__empty {
+    display: flex;
+    min-height: 304px;
+    border: 1px dashed var(--pc-canvas-library-accent-line);
+    border-radius: var(--app-surface-radius, 12px);
+    background: linear-gradient(var(--app-border-subtle) 1px, transparent 1px), linear-gradient(90deg, var(--app-border-subtle) 1px, transparent 1px), var(--app-surface-2);
+    background-size: 24px 24px;
+}
+
+.pc-canvas-library-page .pc-canvas-library__empty .workspace-signal-icon rect {
+    fill: var(--app-surface-1);
+    stroke: var(--app-selection-border);
+}
+
+.pc-canvas-library-page .pc-canvas-library__empty .workspace-signal-icon path {
+    stroke: var(--app-brand-accent);
+}
+
+.pc-canvas-library-page .pc-canvas-library__empty .workspace-signal-icon circle {
+    fill: var(--app-brand-accent);
+}
+
+.pc-canvas-library__empty-actions {
+    display: flex;
+    min-width: min(560px, calc(100vw - 96px));
+    flex-wrap: wrap;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--app-space-4, 16px);
 }
 
 .pc-canvas-library__empty-buttons {
-    display: contents;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: var(--app-space-2, 8px);
 }
 
-@media (min-width: 1024px) {
-    .pc-canvas-library-page {
-        --pc-canvas-library-card-min: 272px;
-        --pc-canvas-library-preview-ratio: 16 / 9;
-        --pc-canvas-library-accent-soft: color-mix(in srgb, var(--app-brand-600) 8%, transparent);
-        --pc-canvas-library-accent-line: color-mix(in srgb, var(--app-brand-600) 38%, var(--app-border-default));
-    }
-
-    .pc-canvas-opening {
-        gap: var(--app-space-3, 12px);
-        color: var(--app-text-secondary);
-        background: var(--app-bg-page);
-    }
-
-    .pc-canvas-opening__pulse {
-        position: relative;
-        display: block;
-        width: 34px;
-        height: 34px;
-        flex: 0 0 auto;
-        border: 1px solid var(--app-selection-border);
-        border-radius: var(--app-control-radius);
-        background: var(--app-selection-bg);
-    }
-
-    .pc-canvas-opening__pulse::before,
-    .pc-canvas-opening__pulse::after {
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        content: "";
-        border-radius: 50%;
-        transform: translate(-50%, -50%);
-    }
-
-    .pc-canvas-opening__pulse::before {
-        width: 8px;
-        height: 8px;
-        background: var(--app-action-primary-bg);
-    }
-
-    .pc-canvas-opening__pulse::after {
-        width: 20px;
-        height: 20px;
-        border: 1px solid var(--app-action-primary-bg);
-        animation: pc-canvas-opening-pulse 1.4s var(--app-ease-standard) infinite;
-    }
-
-    .pc-canvas-opening > span:last-child {
-        display: grid;
-        gap: 2px;
-    }
-
-    .pc-canvas-opening strong {
-        color: var(--app-text-primary);
-        font-size: var(--app-font-size-body);
-        font-weight: 650;
-    }
-
-    .pc-canvas-opening small {
-        display: block;
-        max-width: 540px;
-        color: var(--app-text-muted);
-        font-size: var(--app-font-size-label);
-    }
-
-    .pc-canvas-library-page .app-workspace-page-content {
-        display: flex;
-        flex-direction: column;
-        gap: var(--app-space-5, 20px);
-    }
-
-    .pc-canvas-library-page .pc-canvas-library-mobile-only {
-        display: none;
-    }
-
-    .pc-canvas-library-page .pc-canvas-library-only {
-        display: block;
-    }
-
-    .pc-canvas-library-page .pc-status-badge.pc-canvas-library-only {
-        display: inline-flex;
-    }
-
-    .pc-canvas-library-page .pc-canvas-library__header {
-        display: flex;
-        flex-direction: column;
-        gap: var(--app-space-3, 12px);
-    }
-
-    .pc-canvas-library-page .app-page-header {
-        min-height: 64px;
-        padding: var(--app-space-1, 4px) 0 var(--app-space-2, 8px);
-    }
-
-    .pc-canvas-library-page .app-page-header-title {
-        color: var(--app-text-primary);
-        font-size: 24px;
-        font-weight: 680;
-        letter-spacing: -0.02em;
-    }
-
-    .pc-canvas-library-page .app-page-header-description {
-        max-width: 640px;
-        color: var(--app-text-secondary);
-        font-size: 14px;
-    }
-
-    .pc-canvas-library-page .canvas-library-header-actions {
-        gap: var(--app-space-2, 8px);
-    }
-
-    .pc-canvas-library-page .canvas-library-header-action.is-primary {
-        order: 1;
-    }
-
-    .pc-canvas-library-page .canvas-library-header-action.is-import {
-        order: 2;
-    }
-
-    .pc-canvas-library-page .canvas-library-header-action.is-icon {
-        order: 3;
-    }
-
-    .pc-canvas-library-page .pc-canvas-library__mode {
-        position: relative;
-        overflow: hidden;
-        display: flex;
-        min-height: 44px;
-        align-items: center;
-        gap: var(--app-space-3, 12px);
-        color: var(--app-text-secondary);
-        font-size: 13px;
-    }
-
-    .pc-canvas-library-page .pc-canvas-library__mode::before {
-        width: 3px;
-        align-self: stretch;
-        margin: calc(var(--app-space-3, 12px) * -1) 0 calc(var(--app-space-3, 12px) * -1) calc(var(--app-space-3, 12px) * -1);
-        background: var(--app-brand-gradient);
-        content: "";
-    }
-
-    .pc-canvas-library-page .pc-canvas-library__toolbar-surface {
-        overflow: visible;
-        border-color: var(--app-border-subtle);
-        border-radius: var(--app-surface-radius, 12px);
-        background: var(--app-surface-1);
-        box-shadow:
-            inset 0 1px 0 color-mix(in srgb, var(--app-brand-400) 14%, transparent),
-            var(--app-shadow-surface);
-    }
-
-    .pc-canvas-library-page .pc-canvas-library__toolbar {
-        min-height: 60px;
-        gap: var(--app-space-3, 12px);
-        border-bottom: 0;
-        padding: var(--app-space-3, 12px) var(--app-space-4, 16px);
-    }
-
-    .pc-canvas-library-page .pc-canvas-library__toolbar .pc-filter-bar__main {
-        flex-wrap: wrap;
-        gap: var(--app-space-2, 8px) var(--app-space-3, 12px);
-    }
-
-    .pc-canvas-library-page .pc-canvas-library__toolbar .pc-filter-bar__leading {
-        flex: 1 1 304px;
-    }
-
-    .pc-canvas-library-page .pc-canvas-library__toolbar .pc-search-field {
-        width: min(100%, 420px);
-        min-width: 240px;
-        background: var(--app-surface-2);
-    }
-
-    .pc-canvas-library-page .pc-canvas-library__toolbar .pc-filter-bar__controls {
-        flex: 0 1 auto;
-    }
-
-    .pc-canvas-library-page .pc-canvas-library__toolbar .pc-filter-bar__active {
-        flex: 1 1 100%;
-        padding-top: var(--app-space-1, 4px);
-    }
-
-    .pc-canvas-library__filter,
-    .pc-canvas-library__reset {
-        display: inline-flex;
-        height: var(--app-control-height, 36px);
-        cursor: pointer;
-        align-items: center;
-        justify-content: center;
-        gap: var(--app-space-2, 8px);
-        border: 1px solid var(--app-border-default);
-        border-radius: var(--app-control-radius, 8px);
-        background: var(--app-surface-1);
-        padding: 0 var(--app-space-3, 12px);
-        color: var(--app-text-secondary);
-        font-size: 13px;
-        font-weight: 560;
-        line-height: 1;
-        transition:
-            border-color var(--app-duration-fast, 120ms) ease,
-            background-color var(--app-duration-fast, 120ms) ease,
-            color var(--app-duration-fast, 120ms) ease;
-    }
-
-    .pc-canvas-library__filter {
-        max-width: 220px;
-    }
-
-    .pc-canvas-library__filter > span {
-        min-width: 0;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-    }
-
-    .pc-canvas-library__filter > svg {
-        width: 15px;
-        height: 15px;
-        flex: 0 0 auto;
-    }
-
-    .pc-canvas-library__filter .pc-canvas-library__filter-chevron {
-        width: 13px;
-        height: 13px;
-        color: var(--app-text-muted);
-    }
-
-    .pc-canvas-library__filter:hover,
-    .pc-canvas-library__reset:hover {
-        border-color: var(--app-border-strong);
-        background: var(--app-action-secondary-hover);
-        color: var(--app-text-primary);
-    }
-
-    .pc-canvas-library__filter.is-active {
-        border-color: var(--app-selection-border);
-        background: var(--app-selection-bg);
-        color: var(--app-selection-fg);
-    }
-
-    .pc-canvas-library__reset {
-        border-color: transparent;
-        background: transparent;
-        color: var(--app-text-muted);
-    }
-
-    .pc-canvas-library__filter:focus-visible,
-    .pc-canvas-library__reset:focus-visible,
-    .pc-canvas-library__project-warning button:focus-visible {
-        outline: 0;
-        box-shadow: var(--app-focus-shadow);
-    }
-
-    .pc-canvas-library__result-count {
-        display: flex;
-        min-width: max-content;
-        align-items: baseline;
-        color: var(--app-text-muted);
-        font-size: 12px;
-        font-variant-numeric: tabular-nums;
-    }
-
-    .pc-canvas-library__result-count strong {
-        color: var(--app-text-primary);
-        font-size: 18px;
-        font-weight: 650;
-    }
-
-    .pc-canvas-library__project-warning {
-        display: flex;
-        min-height: 40px;
-        align-items: center;
-        justify-content: space-between;
-        gap: var(--app-space-3, 12px);
-        border-top: 1px solid var(--app-status-warning-border);
-        background: var(--app-status-warning-bg);
-        padding: var(--app-space-2, 8px) var(--app-space-4, 16px);
-        color: var(--app-status-warning-fg);
-        font-size: 13px;
-    }
-
-    .pc-canvas-library__project-warning button {
-        flex: 0 0 auto;
-        cursor: pointer;
-        border: 0;
-        border-radius: var(--app-control-radius-sm, 6px);
-        background: transparent;
-        padding: var(--app-space-1, 4px) var(--app-space-2, 8px);
-        color: inherit;
-        font: inherit;
-        font-weight: 650;
-    }
-
-    .pc-canvas-library__project-warning button:hover {
-        background: color-mix(in srgb, currentColor 10%, transparent);
-    }
-
-    .pc-canvas-library-page .pc-canvas-library__content {
-        display: flex;
-        min-height: 360px;
-        flex-direction: column;
-        border: 1px solid var(--app-border-subtle);
-        border-radius: var(--app-surface-radius, 12px);
-        background: var(--app-surface-1);
-        padding: var(--app-space-5, 20px);
-        box-shadow: inset 0 1px 0 color-mix(in srgb, var(--app-text-primary) 3%, transparent);
-    }
-
-    .pc-canvas-library-page .pc-canvas-library__selection {
-        display: flex;
-        margin: 0 0 var(--app-space-4, 16px);
-    }
-
-    .pc-canvas-library-page .pc-canvas-library__selection .ant-btn {
-        min-height: 30px;
-        border-radius: var(--app-control-radius-sm, 6px);
-    }
-
-    .pc-canvas-library-page .canvas-library-grid {
-        grid-template-columns: repeat(auto-fill, minmax(min(100%, var(--pc-canvas-library-card-min)), 1fr));
-        align-items: stretch;
-        gap: var(--app-space-5, 20px);
-        margin-top: 0;
-    }
-
-    .pc-canvas-library-page .app-canvas-create-card,
-    .pc-canvas-library-page .canvas-folder-card {
-        min-height: 0;
-        overflow: hidden;
-        border: 1px solid var(--app-border-subtle);
-        border-radius: var(--app-radius-media, 12px);
-        background: var(--app-surface-1);
-        box-shadow: var(--app-shadow-surface);
-        transform: none;
-        transition:
-            border-color var(--app-duration-base, 180ms) ease,
-            box-shadow var(--app-duration-base, 180ms) ease,
-            transform var(--app-duration-base, 180ms) ease;
-    }
-
-    .pc-canvas-library-page .app-canvas-create-card:hover:not(:disabled),
-    .pc-canvas-library-page .app-canvas-create-card:focus-visible,
-    .pc-canvas-library-page .canvas-folder-card:hover,
-    .pc-canvas-library-page .canvas-folder-card:focus-within {
-        border-color: var(--pc-canvas-library-accent-line);
-        background: var(--app-surface-1);
-        box-shadow:
-            0 0 0 2px var(--pc-canvas-library-accent-soft),
-            var(--app-shadow-raised);
-        transform: translateY(-1px);
-    }
-
-    .pc-canvas-library-page .app-canvas-create-card:active:not(:disabled),
-    .pc-canvas-library-page .canvas-folder-card:active {
-        transform: translateY(0);
-    }
-
-    .pc-canvas-library-page .app-canvas-create-card:focus-visible,
-    .pc-canvas-library-page .canvas-folder-open:focus-visible,
-    .pc-canvas-library-page :is(.canvas-folder-rename, .canvas-folder-more):focus-visible,
-    .pc-canvas-library-page .canvas-folder-select input:focus-visible {
-        outline: 0;
-        box-shadow: var(--app-focus-shadow);
-    }
-
-    .pc-canvas-library-page .app-canvas-create-preview,
-    .pc-canvas-library-page .canvas-folder-preview {
-        aspect-ratio: var(--pc-canvas-library-preview-ratio);
-        border-radius: 0;
-        background: linear-gradient(var(--app-border-subtle) 1px, transparent 1px), linear-gradient(90deg, var(--app-border-subtle) 1px, transparent 1px), var(--app-surface-2);
-        background-size: 24px 24px;
-    }
-
-    .pc-canvas-library-page .app-canvas-create-preview {
-        border-bottom: 1px solid var(--app-border-subtle);
-    }
-
-    .pc-canvas-library-page .app-canvas-create-icon {
-        width: 40px;
-        height: 40px;
-        border: 1px solid var(--app-selection-border);
-        border-radius: var(--app-control-radius, 8px);
-        background: color-mix(in srgb, var(--app-surface-1) 84%, var(--app-selection-bg));
-        padding: var(--app-space-3, 12px);
-        color: var(--app-brand-700, var(--app-selection-fg));
-    }
-
-    .dark .pc-canvas-library-page .app-canvas-create-icon {
-        color: var(--app-brand-300);
-    }
-
-    .pc-canvas-library-page .app-canvas-create-title {
-        margin: var(--app-space-4, 16px) var(--app-space-4, 16px) 0;
-        color: var(--app-text-primary);
-        font-size: 16px;
-        font-weight: 650;
-    }
-
-    .pc-canvas-library-page .app-canvas-create-meta {
-        margin: var(--app-space-1, 4px) var(--app-space-4, 16px) var(--app-space-4, 16px);
-        color: var(--app-text-muted);
-        font-size: 12px;
-    }
-
-    .pc-canvas-library-page .canvas-folder-card.is-selected {
-        border-color: var(--app-selection-border);
-        box-shadow:
-            0 0 0 2px var(--pc-canvas-library-accent-soft),
-            inset 0 0 0 1px var(--app-selection-border),
-            var(--app-shadow-surface);
-    }
-
-    .pc-canvas-library-page .canvas-folder-preview .canvas-project-preview-canvas,
-    .pc-canvas-library-page .canvas-folder-preview .canvas-project-empty,
-    .pc-canvas-library-page .canvas-folder-preview .canvas-project-video {
-        background: linear-gradient(var(--app-border-subtle) 1px, transparent 1px), linear-gradient(90deg, var(--app-border-subtle) 1px, transparent 1px), color-mix(in srgb, var(--app-surface-2) 88%, var(--app-selection-bg));
-        background-size: 24px 24px;
-    }
-
-    .pc-canvas-library-page .canvas-folder-preview .canvas-project-preview-node {
-        color: var(--app-text-secondary);
-        background: color-mix(in srgb, var(--app-surface-overlay) 92%, transparent);
-        border: 1px solid color-mix(in srgb, var(--app-selection-border) 48%, var(--app-border-subtle));
-        box-shadow: 0 8px 18px color-mix(in srgb, var(--app-text-primary) 8%, transparent);
-    }
-
-    .pc-canvas-library-page .canvas-folder-preview .canvas-project-preview-node-icon,
-    .pc-canvas-library-page .canvas-folder-preview .canvas-project-empty-icon,
-    .pc-canvas-library-page .canvas-folder-preview .canvas-project-video {
-        color: var(--app-brand-700, var(--app-selection-fg));
-    }
-
-    .dark .pc-canvas-library-page .canvas-folder-preview .canvas-project-preview-node-icon,
-    .dark .pc-canvas-library-page .canvas-folder-preview .canvas-project-empty-icon,
-    .dark .pc-canvas-library-page .canvas-folder-preview .canvas-project-video {
-        color: var(--app-brand-300);
-    }
-
-    .pc-canvas-library-page .canvas-folder-card:hover .canvas-folder-open,
-    .pc-canvas-library-page .canvas-folder-card:focus-within .canvas-folder-open {
-        transform: none;
-    }
-
-    .pc-canvas-library-page .canvas-folder-preview::after {
-        position: absolute;
-        inset: auto 0 0;
-        height: 56px;
-        background: linear-gradient(180deg, transparent, rgba(7, 9, 12, 0.5));
-        content: "";
-        pointer-events: none;
-    }
-
-    .pc-canvas-library-page .pc-canvas-folder__preview-count {
-        position: absolute;
-        z-index: 2;
-        right: var(--app-space-3, 12px);
-        bottom: var(--app-space-3, 12px);
-        display: inline-flex;
-        min-height: 24px;
-        align-items: center;
-        border: 1px solid rgba(255, 255, 255, 0.2);
-        border-radius: var(--app-control-radius-sm, 6px);
-        background: rgba(7, 9, 12, 0.56);
-        padding: 0 var(--app-space-2, 8px);
-        color: rgba(255, 255, 255, 0.92);
-        font-size: 11px;
-        font-weight: 600;
-        backdrop-filter: blur(8px);
-    }
-
-    .pc-canvas-library-page .canvas-folder-body {
-        gap: var(--app-space-2, 8px);
-        padding: var(--app-space-4, 16px);
-    }
-
-    .pc-canvas-library-page .canvas-folder-title {
-        color: var(--app-text-primary);
-        font-size: 16px;
-        font-weight: 650;
-        line-height: 1.4;
-    }
-
-    .pc-canvas-library-page .canvas-folder-title-input {
-        height: var(--app-control-height-sm, 30px);
-        border-radius: var(--app-control-radius-sm, 6px);
-    }
-
-    .pc-canvas-library-page .canvas-folder-meta {
-        gap: var(--app-space-1, 4px) var(--app-space-2, 8px);
-        color: var(--app-text-secondary);
-        font-size: 12px;
-    }
-
-    .pc-canvas-library-page .canvas-folder-meta-item:first-child {
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-    }
-
-    .pc-canvas-library-page .canvas-folder-meta-separator {
-        color: var(--app-text-muted);
-    }
-
-    .pc-canvas-library-page .canvas-folder-dates {
-        gap: var(--app-space-3, 12px);
-        border-top: 1px solid var(--app-border-subtle);
-        padding-top: var(--app-space-3, 12px);
-        color: var(--app-text-secondary);
-        font-size: 11px;
-    }
-
-    .pc-canvas-library-page .canvas-folder-dates small {
-        color: var(--app-text-muted);
-        font-size: 11px;
-    }
-
-    .pc-canvas-library-page .canvas-folder-select,
-    .pc-canvas-library-page .canvas-folder-actions {
-        top: var(--app-space-3, 12px);
-        border-color: rgba(255, 255, 255, 0.22);
-        border-radius: var(--app-control-radius, 8px);
-        background: color-mix(in srgb, var(--app-surface-overlay) 82%, transparent);
-        box-shadow: var(--app-shadow-surface);
-    }
-
-    .pc-canvas-library-page .canvas-folder-select {
-        left: var(--app-space-3, 12px);
-        width: 32px;
-        height: 32px;
-    }
-
-    .pc-canvas-library-page .canvas-folder-actions {
-        right: var(--app-space-3, 12px);
-        gap: 0;
-        padding: 2px;
-    }
-
-    .pc-canvas-library-page :is(.canvas-folder-rename, .canvas-folder-more) {
-        width: 30px;
-        height: 30px;
-        border-radius: var(--app-control-radius-sm, 6px);
-        color: var(--app-text-secondary);
-    }
-
-    .pc-canvas-library-page :is(.canvas-folder-rename, .canvas-folder-more):hover {
-        background: var(--app-action-secondary-hover);
-        color: var(--app-text-primary);
-    }
-
-    .pc-canvas-library-page .pc-canvas-library__empty {
-        display: flex;
-        min-height: 304px;
-        border: 1px dashed var(--pc-canvas-library-accent-line);
-        border-radius: var(--app-surface-radius, 12px);
-        background: linear-gradient(var(--app-border-subtle) 1px, transparent 1px), linear-gradient(90deg, var(--app-border-subtle) 1px, transparent 1px), var(--app-surface-2);
-        background-size: 24px 24px;
-    }
-
-    .pc-canvas-library-page .pc-canvas-library__empty .workspace-signal-icon rect {
-        fill: var(--app-surface-1);
-        stroke: var(--app-selection-border);
-    }
-
-    .pc-canvas-library-page .pc-canvas-library__empty .workspace-signal-icon path {
-        stroke: var(--app-brand-600);
-    }
-
-    .pc-canvas-library-page .pc-canvas-library__empty .workspace-signal-icon circle {
-        fill: var(--app-ai-500);
-    }
-
-    .pc-canvas-library__empty-actions {
-        display: flex;
-        min-width: min(560px, calc(100vw - 96px));
-        flex-wrap: wrap;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        gap: var(--app-space-4, 16px);
-    }
-
-    .pc-canvas-library__empty-buttons {
-        display: flex;
-        flex-wrap: wrap;
-        justify-content: center;
-        gap: var(--app-space-2, 8px);
-    }
-
-    .pc-canvas-library__empty-guide {
-        display: grid;
-        width: 100%;
-        grid-template-columns: max-content 1fr max-content 1fr max-content;
-        align-items: center;
-        gap: var(--app-space-3, 12px);
-        color: var(--app-text-muted);
-        font-size: 11px;
-    }
-
-    .pc-canvas-library__empty-guide > span {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        white-space: nowrap;
-    }
-
-    .pc-canvas-library__empty-guide b {
-        color: var(--app-brand-700);
-        font-family: var(--app-font-mono);
-        font-size: 9px;
-        letter-spacing: 0.05em;
-    }
-
-    .dark .pc-canvas-library__empty-guide b {
-        color: var(--app-brand-300);
-    }
-
-    .pc-canvas-library__empty-guide i {
-        height: 1px;
-        background: var(--app-border-default);
-    }
-
-    .pc-canvas-library-page .pc-canvas-library__loading {
-        min-height: 320px;
-    }
-
-    .pc-canvas-library-page .pc-canvas-library__load-more {
-        min-height: 48px;
-        margin-top: var(--app-space-5, 20px);
-        border-top: 1px solid var(--app-border-subtle);
-        padding: var(--app-space-4, 16px) 0 0;
-        color: var(--app-text-muted);
-        font-size: 12px;
-    }
-
-    .pc-canvas-library-association-root :is(.ant-modal-container, .ant-modal-content) {
-        overflow: hidden;
-        border: 1px solid var(--app-border-subtle);
-        border-radius: var(--app-surface-radius, 12px);
-        background: var(--app-surface-overlay);
-        box-shadow: var(--app-shadow-overlay);
-    }
-
-    .pc-canvas-library-association-root .ant-modal-header {
-        margin: 0;
-        border-bottom: 1px solid var(--app-border-subtle);
-        background: transparent;
-        padding: var(--app-space-4, 16px) var(--app-space-5, 20px);
-    }
-
-    .pc-canvas-library-association-root .ant-modal-body {
-        padding: var(--app-space-5, 20px);
-    }
-
-    .pc-canvas-library-association-root .ant-modal-footer {
-        margin: 0;
-        border-top: 1px solid var(--app-border-subtle);
-        padding: var(--app-space-3, 12px) var(--app-space-5, 20px);
-    }
-
-    .pc-canvas-library__dialog-warning {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: var(--app-space-3, 12px);
-        margin-bottom: var(--app-space-3, 12px);
-        border: 1px solid var(--app-status-warning-border);
-        border-radius: var(--app-control-radius, 8px);
-        background: var(--app-status-warning-bg);
-        padding: var(--app-space-2, 8px) var(--app-space-3, 12px);
-        color: var(--app-status-warning-fg);
-        font-size: 12px;
-    }
-
-    .pc-canvas-library-card-menu {
-        border: 1px solid var(--app-border-subtle);
-        border-radius: var(--app-control-radius, 8px);
-        background: var(--app-surface-overlay);
-        box-shadow: var(--app-shadow-overlay);
-    }
-
-    @keyframes pc-canvas-opening-pulse {
-        0% {
-            opacity: 0.82;
-            transform: translate(-50%, -50%) scale(0.72);
-        }
-
-        70%,
-        100% {
-            opacity: 0;
-            transform: translate(-50%, -50%) scale(1.35);
-        }
-    }
+.pc-canvas-library__empty-guide {
+    display: grid;
+    width: 100%;
+    grid-template-columns: max-content 1fr max-content 1fr max-content;
+    align-items: center;
+    gap: var(--app-space-3, 12px);
+    color: var(--app-text-muted);
+    font-size: 11px;
 }
 
-@media (min-width: 1024px) and (max-width: 1199px) {
+.pc-canvas-library__empty-guide > span {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+}
+
+.pc-canvas-library__empty-guide b {
+    color: var(--app-brand-accent);
+    font-family: var(--app-font-mono);
+    font-size: 9px;
+    letter-spacing: 0.05em;
+}
+
+.dark .pc-canvas-library__empty-guide b {
+    color: var(--app-brand-accent);
+}
+
+.pc-canvas-library__empty-guide i {
+    height: 1px;
+    background: var(--app-border-default);
+}
+
+.pc-canvas-library-page .pc-canvas-library__loading {
+    min-height: 320px;
+}
+
+.pc-canvas-library-page .pc-canvas-library__load-more {
+    min-height: 48px;
+    margin-top: var(--app-space-5, 20px);
+    border-top: 1px solid var(--app-border-subtle);
+    padding: var(--app-space-4, 16px) 0 0;
+    color: var(--app-text-muted);
+    font-size: 12px;
+}
+
+.pc-canvas-library-association-root .ant-modal-container {
+    display: flex;
+    flex-direction: column;
+    max-height: calc(100dvh - 32px);
+    padding: 0;
+    overflow: hidden;
+    border: 1px solid var(--app-border-subtle);
+    border-radius: var(--app-surface-radius, 12px);
+    background: var(--app-surface-overlay);
+    box-shadow: var(--app-shadow-overlay);
+}
+
+.pc-canvas-library-association-root .ant-modal-header {
+    margin: 0;
+    border-bottom: 1px solid var(--app-border-subtle);
+    background: transparent;
+    padding: var(--app-space-4, 16px) var(--app-space-5, 20px);
+}
+
+.pc-canvas-library-association-root .ant-modal-body {
+    min-height: 0;
+    overflow-y: auto;
+    padding: var(--app-space-5, 20px);
+}
+
+.pc-canvas-library-association-root .ant-modal-footer {
+    margin: 0;
+    border-top: 1px solid var(--app-border-subtle);
+    padding: var(--app-space-3, 12px) var(--app-space-5, 20px);
+}
+
+.pc-canvas-library__dialog-warning {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--app-space-3, 12px);
+    margin-bottom: var(--app-space-3, 12px);
+    border: 1px solid var(--app-status-warning-border);
+    border-radius: var(--app-control-radius, 8px);
+    background: var(--app-status-warning-bg);
+    padding: var(--app-space-2, 8px) var(--app-space-3, 12px);
+    color: var(--app-status-warning-fg);
+    font-size: 12px;
+}
+
+.pc-canvas-library-card-menu {
+    border: 1px solid var(--app-border-subtle);
+    border-radius: var(--app-control-radius, 8px);
+    background: var(--app-surface-overlay);
+    box-shadow: var(--app-shadow-overlay);
+}
+
+
+
+@media (max-width: 1199px) {
     .pc-canvas-library-page {
         --pc-canvas-library-card-min: 248px;
     }
@@ -728,12 +615,7 @@
     }
 }
 
-@media (min-width: 1024px) and (prefers-reduced-motion: reduce) {
-    .pc-canvas-opening__pulse::after {
-        animation: none;
-        opacity: 0.4;
-    }
-
+@media (prefers-reduced-motion: reduce) {
     .pc-canvas-library__filter,
     .pc-canvas-library__reset,
     .pc-canvas-library-page .app-canvas-create-card,
@@ -748,4 +630,44 @@
     .pc-canvas-library-page .canvas-folder-card:active {
         transform: none;
     }
+}
+
+.pc-canvas-opening {
+    display: grid;
+    height: 100%;
+    min-height: 320px;
+    place-items: center;
+    padding: 24px;
+    background: var(--app-bg-page);
+}
+
+.pc-canvas-library-page .app-workspace-page-content { padding: 24px; }
+.pc-canvas-library-page .canvas-folder-open { transform: none; }
+.pc-canvas-library-page .canvas-folder-select { opacity: 1; transform: none; }
+.pc-canvas-library-page .canvas-folder-actions { opacity: 1; transform: none; }
+.pc-canvas-library-page .canvas-folder-meta-item { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pc-canvas-library-page .pc-canvas-library__empty-actions { min-width: 0; width: 100%; }
+
+@media (max-width: 640px) {
+    .pc-canvas-library-page .app-workspace-page-content { padding: 16px; gap: 20px; }
+    .pc-canvas-library-page .app-page-header { align-items: flex-start; flex-direction: column; gap: 16px; }
+    .pc-canvas-library-page .app-page-header-title { font-size: 24px; }
+    .pc-canvas-library-page .app-page-header-actions { width: 100%; }
+    .pc-canvas-library-page .canvas-library-header-actions { justify-content: flex-start; }
+    .pc-canvas-library-page .pc-canvas-library__toolbar { padding: 12px; }
+    .pc-canvas-library-page .pc-canvas-library__toolbar .pc-search-field { min-width: 0; }
+    .pc-canvas-library-page .pc-canvas-library__toolbar .pc-filter-bar__controls { flex-wrap: wrap; }
+    .pc-canvas-library-page .pc-canvas-library__toolbar .pc-filter-bar__trailing { margin-left: 0; }
+    .pc-canvas-library-page .pc-canvas-library__selection { align-items: flex-start; flex-wrap: wrap; }
+    .pc-canvas-library-page .pc-canvas-library__selection .pc-selection-bar__actions { flex-wrap: wrap; }
+    .pc-canvas-library-page .pc-canvas-library__empty { padding: 28px 16px; }
+    .pc-canvas-library-page .pc-canvas-library__empty-guide { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; }
+    .pc-canvas-library__empty-guide > i { display: none; }
+    .pc-canvas-library__project-warning, .pc-canvas-library__dialog-warning { flex-wrap: wrap; }
+    .pc-canvas-library-page .pc-canvas-library__mode { align-items: flex-start; flex-wrap: wrap; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .pc-canvas-library-page .canvas-folder-preview .canvas-project-media img { transition: none; transform: none; }
+    .pc-canvas-library-page .canvas-folder-open { transition: none; }
 }
