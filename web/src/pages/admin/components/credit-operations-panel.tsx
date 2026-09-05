@@ -135,7 +135,7 @@ export default function CreditOperationsPanel({ users, activeOperation, onOperat
                     })),
                 });
                 setPolicyReady(true);
-                policySnapshotRef.current = JSON.stringify(policyForm.getFieldsValue(true));
+                policySnapshotRef.current = policyDraftSignature(policyForm.getFieldsValue(true));
             })
             .catch((error) => {
                 if (active) setPolicyError(error instanceof Error ? error.message : "读取积分策略失败");
@@ -554,7 +554,7 @@ export default function CreditOperationsPanel({ users, activeOperation, onOperat
                         form={policyForm}
                         inert={savingPolicy}
                         disabled={savingPolicy}
-                        onValuesChange={() => setPolicyDirty(JSON.stringify(policyForm.getFieldsValue(true)) !== policySnapshotRef.current)}
+                        onValuesChange={(_, values) => setPolicyDirty(policyDraftSignature(values) !== policySnapshotRef.current)}
                         layout="vertical"
                         requiredMark={false}
                         initialValues={{ modelMultipliers: [] }}
@@ -827,6 +827,10 @@ export default function CreditOperationsPanel({ users, activeOperation, onOperat
             </Modal>
         </div>
     );
+}
+
+function policyDraftSignature(values: PolicyFormValues) {
+    return JSON.stringify([values.signupBonus, values.checkinBonus, values.defaultMultiplier, (values.modelMultipliers || []).map((row) => [row.model, row.multiplier])]);
 }
 
 function CreditAccountSummary({ user }: { user: AdjustmentUser }) {
