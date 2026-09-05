@@ -1,4 +1,21 @@
 .workflow-page-root {
+    --workspace-content: var(--app-bg-canvas, #f3f4f6);
+    --workspace-surface: var(--app-surface-1, #ffffff);
+    --workspace-surface-strong: var(--app-surface-2, #f7f8fa);
+    --workspace-border: var(--app-border-subtle, rgba(17, 24, 39, 0.09));
+    --workspace-border-strong: var(--app-border-default, rgba(17, 24, 39, 0.14));
+    --workspace-accent: var(--app-brand-accent);
+    --workspace-accent-soft: var(--app-selection-bg, rgba(17, 17, 17, 0.09));
+    --surface-hover: var(--app-action-secondary-hover, rgba(17, 17, 17, 0.05));
+    --foreground: var(--app-text-primary, #171717);
+    --ring: var(--app-focus-ring, rgba(17, 17, 17, 0.24));
+    --r-sm: var(--app-control-radius-sm, 6px);
+    --r-md: var(--app-control-radius, 8px);
+    --r-lg: var(--app-surface-radius-sm, 10px);
+    --motion-instant: var(--app-duration-fast, 120ms);
+    --motion-state: var(--app-duration-base, 180ms);
+    --motion-panel: var(--app-duration-slow, 240ms);
+    color: var(--app-text-primary);
     display: flex;
     width: 100%;
     height: 100%;
@@ -1315,26 +1332,6 @@
 }
 
 @media (min-width: 1024px) {
-    .workflow-page-root {
-        --workspace-content: var(--app-bg-canvas, #f3f4f6);
-        --workspace-surface: var(--app-surface-1, #ffffff);
-        --workspace-surface-strong: var(--app-surface-2, #f7f8fa);
-        --workspace-border: var(--app-border-subtle, rgba(17, 24, 39, 0.09));
-        --workspace-border-strong: var(--app-border-default, rgba(17, 24, 39, 0.14));
-        --workspace-accent: var(--app-action-primary-bg, #171717);
-        --workspace-accent-soft: var(--app-selection-bg, rgba(17, 17, 17, 0.09));
-        --surface-hover: var(--app-action-secondary-hover, rgba(17, 17, 17, 0.05));
-        --foreground: var(--app-text-primary, #171717);
-        --ring: var(--app-focus-ring, rgba(17, 17, 17, 0.24));
-        --r-sm: var(--app-control-radius-sm, 6px);
-        --r-md: var(--app-control-radius, 8px);
-        --r-lg: var(--app-surface-radius-sm, 10px);
-        --motion-instant: var(--app-duration-fast, 120ms);
-        --motion-state: var(--app-duration-base, 180ms);
-        --motion-panel: var(--app-duration-slow, 240ms);
-        color: var(--app-text-primary);
-    }
-
     .workflow-stage-rail {
         display: flex;
         min-width: 0;
@@ -1440,9 +1437,9 @@
     }
 
     .workflow-stage-link.is-active .workflow-stage-index {
-        color: var(--app-action-primary-fg);
-        background: var(--app-action-primary-bg);
-        border-color: var(--app-action-primary-bg);
+        color: var(--app-selection-fg);
+        background: var(--app-selection-bg);
+        border-color: var(--app-selection-border);
     }
 
     .workflow-stage-index.is-completed {

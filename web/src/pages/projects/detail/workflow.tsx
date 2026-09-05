@@ -1,9 +1,10 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { App, Button, Empty } from "antd";
+import { App, Button } from "antd";
 import { Link } from "react-router";
 
 import { saveProjectShot, type ProjectDetail } from "@/services/api/projects";
+import { WorkspaceLoadingState, WorkspaceState } from "@/components/ui/pc/workspace-state";
 
 import { AssetsStage, DeliveryStage, StoryStage } from "./workflow-stage-views";
 import { type ShortDramaWorkflowStage, WorkflowStageLink, workflowStages } from "./workflow-shared";
@@ -65,7 +66,7 @@ export default function ProjectWorkflowView({ detail, projectId, unitId, stage }
         onError: (error) => message.error(error instanceof Error ? error.message : "新增分镜失败"),
     });
     if (!unit) {
-        return <div className="grid h-full place-items-center"><Empty description="先添加一个章节，再进入分镜制作"><Link to={`/projects/${projectId}/chapters`}><Button type="primary">添加章节</Button></Link></Empty></div>;
+        return <WorkspaceState icon="projects" title="先添加一个章节" description="章节正文和分镜结果会归属于当前项目。" action={<Link to={`/projects/${projectId}/chapters`}><Button type="primary">添加章节</Button></Link>} />;
     }
 
     return (
@@ -89,7 +90,7 @@ export default function ProjectWorkflowView({ detail, projectId, unitId, stage }
             <main className={`workflow-stage-content ${productionStage ? "is-production" : ""}`}>
                 {activeStage === "story" ? <div className="workflow-overview-scroll thin-scrollbar"><StoryStage detail={detail} projectId={projectId} unitId={unit.id} /></div> : null}
                 {activeStage === "assets" ? <div className="workflow-overview-scroll thin-scrollbar"><AssetsStage detail={detail} projectId={projectId} unitId={unit.id} /></div> : null}
-                {productionStage ? <Suspense fallback={<div className="workflow-workbench-loading">正在准备分镜工作台…</div>}><WorkflowProductionWorkbench activeStage={activeStage} detail={detail} projectId={projectId} unitId={unit.id} workflowStep={activeStep} selectedShot={selectedShot} onSelectShot={setSelectedShotId} onRefresh={refresh} onAddShot={() => addShot.mutate()} addingShot={addShot.isPending} /></Suspense> : null}
+                {productionStage ? <Suspense fallback={<WorkspaceLoadingState label="正在准备分镜工作台" detail="加载当前章节的镜头编辑与预览" />}><WorkflowProductionWorkbench activeStage={activeStage} detail={detail} projectId={projectId} unitId={unit.id} workflowStep={activeStep} selectedShot={selectedShot} onSelectShot={setSelectedShotId} onRefresh={refresh} onAddShot={() => addShot.mutate()} addingShot={addShot.isPending} /></Suspense> : null}
                 {activeStage === "delivery" ? <div className="workflow-overview-scroll thin-scrollbar"><DeliveryStage detail={detail} unitId={unit.id} /></div> : null}
             </main>
         </div>

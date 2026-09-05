@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { App, Button, Empty, Form, Input, Segmented } from "antd";
+import { App, Button, Form, Input, Segmented } from "antd";
 import { Activity, CheckCircle2, ChevronLeft, ChevronRight, CircleDashed, Clapperboard, Play, Plus, Save, Trash2 } from "lucide-react";
 
 import { CreditSymbol, requestCreditCost } from "@/constant/credits";
@@ -17,6 +17,7 @@ import { configuredModelMatchesCapability, modelDisplayName, modelOptionName, re
 import { useUserStore } from "@/stores/use-user-store";
 import { useSkillRuntimeCatalog } from "@/components/skills/skill-runtime-picker";
 import { StatusBadge } from "@/components/ui/pc";
+import { WorkspaceState } from "@/components/ui/pc/workspace-state";
 
 import { artifactTypeForStage, currentRevision, type ShortDramaWorkflowStage } from "./workflow-shared";
 import { buildShotAssetReferenceContext, ensureShotAssetMentionPrompt, resolveShotAssetMentionPrompt } from "./workflow-shot-references";
@@ -408,11 +409,11 @@ export default function WorkflowProductionWorkbench(props: Props) {
     if (!selectedShot) {
         return (
             <div className="workflow-empty-shot">
-                <Empty description="当前章节还没有分镜">
+                <WorkspaceState icon="projects" title="当前章节还没有分镜" description="手动添加镜头脚本，或返回剧情章节生成本章分镜。" action={
                     <Button type="primary" icon={<Plus className="size-4" />} loading={addingShot} onClick={onAddShot}>
                         新增第一个分镜
                     </Button>
-                </Empty>
+                } />
             </div>
         );
     }
