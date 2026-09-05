@@ -1,0 +1,37 @@
+{
+  "checks": [
+    {
+      "path": "/admin/plugins",
+      "passed": true
+    },
+    {
+      "path": "/admin/prompt-templates",
+      "passed": true
+    },
+    {
+      "path": "/admin/resources",
+      "passed": true
+    },
+    {
+      "path": "/admin/settings/runtime-policy",
+      "passed": true
+    },
+    {
+      "path": "/admin/settings/system-update",
+      "passed": true
+    },
+    {
+      "path": "/share/canvas/missing",
+      "passed": true
+    },
+    {
+      "path": "/test-voice-recording",
+      "passed": true
+    },
+    {
+      "path": "/missing",
+      "passed": true
+    }
+  ],
+  "errors": []
+}

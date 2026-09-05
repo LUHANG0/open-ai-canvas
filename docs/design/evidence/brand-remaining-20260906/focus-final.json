@@ -1,0 +1,140 @@
+{
+  "checks": [
+    {
+      "route": "drawing-engine",
+      "width": 390,
+      "theme": "light",
+      "passed": true
+    },
+    {
+      "route": "runtime-policy",
+      "width": 390,
+      "theme": "light",
+      "passed": true
+    },
+    {
+      "route": "ark-private-assets",
+      "width": 390,
+      "theme": "light",
+      "passed": true
+    },
+    {
+      "route": "response-interception",
+      "width": 390,
+      "theme": "light",
+      "passed": true
+    },
+    {
+      "route": "third-party",
+      "width": 390,
+      "theme": "light",
+      "passed": true
+    },
+    {
+      "route": "drawing-engine",
+      "width": 390,
+      "theme": "dark",
+      "passed": true
+    },
+    {
+      "route": "runtime-policy",
+      "width": 390,
+      "theme": "dark",
+      "passed": true
+    },
+    {
+      "route": "ark-private-assets",
+      "width": 390,
+      "theme": "dark",
+      "passed": true
+    },
+    {
+      "route": "response-interception",
+      "width": 390,
+      "theme": "dark",
+      "passed": true
+    },
+    {
+      "route": "third-party",
+      "width": 390,
+      "theme": "dark",
+      "passed": true
+    },
+    {
+      "route": "drawing-engine",
+      "width": 1440,
+      "theme": "light",
+      "passed": true
+    },
+    {
+      "route": "runtime-policy",
+      "width": 1440,
+      "theme": "light",
+      "passed": true
+    },
+    {
+      "route": "ark-private-assets",
+      "width": 1440,
+      "theme": "light",
+      "passed": true
+    },
+    {
+      "route": "response-interception",
+      "width": 1440,
+      "theme": "light",
+      "passed": true
+    },
+    {
+      "route": "third-party",
+      "width": 1440,
+      "theme": "light",
+      "passed": true
+    },
+    {
+      "route": "drawing-engine",
+      "width": 1440,
+      "theme": "dark",
+      "passed": true
+    },
+    {
+      "route": "runtime-policy",
+      "width": 1440,
+      "theme": "dark",
+      "passed": true
+    },
+    {
+      "route": "ark-private-assets",
+      "width": 1440,
+      "theme": "dark",
+      "passed": true
+    },
+    {
+      "route": "response-interception",
+      "width": 1440,
+      "theme": "dark",
+      "passed": true
+    },
+    {
+      "route": "third-party",
+      "width": 1440,
+      "theme": "dark",
+      "passed": true
+    },
+    {
+      "alias": "/admin/storyboard-prompts",
+      "target": "/admin/prompt-templates",
+      "passed": true
+    },
+    {
+      "alias": "/admin/settings/concurrency",
+      "target": "/admin/settings/runtime-policy",
+      "passed": true
+    },
+    {
+      "alias": "/admin/settings/libtv",
+      "target": "/admin/settings/third-party",
+      "passed": true
+    }
+  ],
+  "errors": []
+}

@@ -1,0 +1,69 @@
+{
+  "checks": [
+    {
+      "name": "/admin error state",
+      "passed": true
+    },
+    {
+      "name": "/admin retry recovered",
+      "passed": true
+    },
+    {
+      "name": "/admin/plugins error state",
+      "passed": true
+    },
+    {
+      "name": "/admin/plugins retry recovered",
+      "passed": true
+    },
+    {
+      "name": "/admin/prompt-templates error state",
+      "passed": true
+    },
+    {
+      "name": "/admin/prompt-templates retry recovered",
+      "passed": true
+    },
+    {
+      "name": "/admin/resources error state",
+      "passed": true
+    },
+    {
+      "name": "/admin/resources retry recovered",
+      "passed": true
+    },
+    {
+      "name": "plugin availability saved across refresh",
+      "passed": true
+    },
+    {
+      "name": "plugin filtered empty",
+      "passed": true
+    },
+    {
+      "name": "template create through editor",
+      "passed": true
+    },
+    {
+      "name": "template filter readback",
+      "passed": true
+    },
+    {
+      "name": "template discard cancel retains draft",
+      "passed": true
+    },
+    {
+      "name": "resource image preview",
+      "passed": true
+    },
+    {
+      "name": "resource reference refuses delete",
+      "passed": true
+    },
+    {
+      "name": "resource filtered empty",
+      "passed": true
+    }
+  ],
+  "errors": []
+}

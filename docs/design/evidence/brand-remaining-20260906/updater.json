@@ -1,0 +1,53 @@
+{
+  "checks": [
+    {
+      "name": "update confirmation 390 light",
+      "passed": true
+    },
+    {
+      "name": "update confirmation 390 dark",
+      "passed": true
+    },
+    {
+      "name": "update confirmation 1440 light",
+      "passed": true
+    },
+    {
+      "name": "update confirmation 1440 dark",
+      "passed": true
+    },
+    {
+      "name": "update starts once",
+      "passed": true
+    },
+    {
+      "name": "update disconnect retains phase",
+      "passed": true
+    },
+    {
+      "name": "update reconnect manual intervention visible",
+      "passed": true
+    },
+    {
+      "name": "rollback textarea reachable",
+      "passed": true
+    },
+    {
+      "name": "rollback fake protocol once",
+      "passed": true
+    },
+    {
+      "name": "stale status blocks update",
+      "passed": true
+    },
+    {
+      "name": "stale status blocks rollback",
+      "passed": true
+    },
+    {
+      "name": "refresh recovers actions",
+      "passed": true
+    }
+  ],
+  "errors": []
+}
