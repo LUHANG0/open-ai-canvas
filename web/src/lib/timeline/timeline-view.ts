@@ -56,6 +56,11 @@ export function getRulerTickStep(pxPerMs: number): number {
     return steps.find((step) => step >= target) ?? steps[steps.length - 1];
 }
 
+/** 标尺与片段使用同一比例；轨道最小宽度和尾部留白不参与时间换算。 */
+export function getTimelineTimeAtOffset(offsetPx: number, pxPerMs: number, durationMs: number): number {
+    return Math.round(Math.min(Math.max(0, durationMs), Math.max(0, offsetPx) / Math.max(pxPerMs, 1e-6)));
+}
+
 /** 毫秒 → 标尺/播放头时间文案（mm:ss.d）。 */
 export function formatTimelineTime(ms: number): string {
     const safeMs = Math.max(0, Math.round(ms));
