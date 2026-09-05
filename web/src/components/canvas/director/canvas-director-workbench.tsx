@@ -6,6 +6,7 @@ import { nanoid } from "nanoid";
 import { Euler, Quaternion } from "three";
 import type { AnimationClip } from "three";
 
+import { CanvasToolConfirmContent } from "@/components/canvas/canvas-tool-confirm-content";
 import { CanvasDirectorOnboarding } from "@/components/canvas/director/canvas-director-onboarding";
 import { DirectorViewport, type DirectorViewportHandle } from "@/components/canvas/director/director-viewport";
 import { DirectorViewportDock } from "@/components/canvas/director/director-viewport-dock";
@@ -170,6 +171,7 @@ export function CanvasDirectorWorkbench({ open, scene, imageNodes, onboardingSco
         if (!shouldOfferDirectorDraftRecovery({ candidate, authoritativeScene: scene })) return;
 
         modal.confirm({
+            modalRender: (content) => <CanvasToolConfirmContent>{content}</CanvasToolConfirmContent>,
             title: "发现未保存的本地草稿",
             content: `这个镜头存在一份比项目更新的本地草稿（修订 ${candidate.revision}）。恢复后会立即写回项目并保存。`,
             okText: "恢复草稿",
@@ -345,10 +347,12 @@ export function CanvasDirectorWorkbench({ open, scene, imageNodes, onboardingSco
 
             // 确认框存续期间保持上锁，否则重复点击会叠出多个弹窗。
             modal.confirm({
+                modalRender: (content) => <CanvasToolConfirmContent>{content}</CanvasToolConfirmContent>,
                 title: "远端保存失败",
                 content: decision.message,
                 okText: "仍然离开",
                 cancelText: "留在导演台",
+                autoFocusButton: "cancel",
                 closable: false,
                 mask: { closable: false },
                 keyboard: false,

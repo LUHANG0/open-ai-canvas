@@ -552,7 +552,7 @@
     color: var(--app-selection-fg);
 }
 
-.director-workbench { font-family: var(--app-font-family); }
+.director-workbench { font-family: var(--app-font-sans); }
 .director-workbench-header { white-space: nowrap; }
 .director-workbench-header > * { flex-shrink: 0; }
 .director-workbench-title { width: 180px; }
