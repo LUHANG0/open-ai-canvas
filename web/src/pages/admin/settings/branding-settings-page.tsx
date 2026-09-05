@@ -312,11 +312,11 @@ export default function BrandingSettingsPage() {
                                         <div className="admin-branding-subsection">
                                             <div>
                                                 <strong>主题颜色</strong>
-                                                <p>用于链接、焦点和选中状态。</p>
+                                                <p>同步到官网、登录页、工作台与管理后台的链接、焦点和选中状态。</p>
                                             </div>
                                             <div className="admin-branding-color-row">
                                                 <input aria-label="选择品牌主题色" type="color" value={draft.theme.primaryColor} onChange={(event) => updateDraft("theme", "primaryColor", event.target.value.toUpperCase())} />
-                                                <Input value={draft.theme.primaryColor} maxLength={7} onChange={(event) => updateDraft("theme", "primaryColor", event.target.value.toUpperCase())} />
+                                                <Input aria-label="品牌主题色十六进制值" value={draft.theme.primaryColor} maxLength={7} onChange={(event) => updateDraft("theme", "primaryColor", event.target.value.toUpperCase())} />
                                                 <span style={{ background: draft.theme.primaryColor }} aria-hidden="true" />
                                             </div>
                                         </div>

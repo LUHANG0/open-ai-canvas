@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 import { applyBrandPalette, DEFAULT_BRAND_PRIMARY, normalizeBrandPrimary } from "@/lib/branding-theme";
 import { getPublicBranding, resolveBrandAssetURL, type PublicBrandingSetting } from "@/services/api/branding";
@@ -52,17 +52,21 @@ const BrandingContext = createContext<BrandingContextValue | null>(null);
 export function BrandingProvider({ children }: { children: ReactNode }) {
     const [branding, setBranding] = useState(readCachedBranding);
     const [refreshing, setRefreshing] = useState(false);
+    const refreshVersion = useRef(0);
 
     const replace = useCallback((setting: PublicBrandingSetting) => {
+        refreshVersion.current++;
         const normalized = normalizePublicBranding(setting);
         setBranding(normalized);
         writeCachedBranding(normalized);
     }, []);
 
     const refresh = useCallback(async () => {
+        const version = ++refreshVersion.current;
         setRefreshing(true);
         try {
-            replace(await getPublicBranding());
+            const next = await getPublicBranding();
+            if (version === refreshVersion.current) replace(next);
         } catch {
             // The embedded or last successful brand remains authoritative for
             // this render; a branding outage must never block authentication.
@@ -73,6 +77,14 @@ export function BrandingProvider({ children }: { children: ReactNode }) {
 
     useEffect(() => {
         void refresh();
+        const onStorage = (event: StorageEvent) => {
+            if (event.key === BRANDING_CACHE_KEY && event.newValue !== event.oldValue) void refresh();
+        };
+        window.addEventListener("storage", onStorage);
+        return () => {
+            refreshVersion.current++;
+            window.removeEventListener("storage", onStorage);
+        };
     }, [refresh]);
 
     useEffect(() => {

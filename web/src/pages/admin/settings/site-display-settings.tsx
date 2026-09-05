@@ -10,7 +10,7 @@ function publishedDisplay(setting: AdminPublicSiteSetting): SiteDisplaySettings 
 
 export function SiteDisplaySettingsEditor({ onDirtyChange, onBusyChange }: { onDirtyChange: (dirty: boolean) => void; onBusyChange: (busy: boolean) => void }) {
     const { message } = App.useApp();
-    const { refresh } = usePublicSite();
+    const { replace } = usePublicSite();
     const [setting, setSetting] = useState<AdminPublicSiteSetting | null>(null);
     const [draft, setDraft] = useState<SiteDisplaySettings | null>(null);
     const [loading, setLoading] = useState(true);
@@ -56,7 +56,7 @@ export function SiteDisplaySettingsEditor({ onDirtyChange, onBusyChange }: { onD
             const { setting: next } = await updateAdminSiteDisplay(setting.revision, draft);
             setSetting(next);
             setDraft(publishedDisplay(next));
-            await refresh();
+            replace({ revision: next.publishedRevision, config: next.published });
             message.success("网站封面、联系与备案设置已生效");
         } catch (cause) {
             const detail = cause instanceof Error ? cause.message : "保存网站设置失败";

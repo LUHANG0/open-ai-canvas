@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 import { getPublicSite, type PublicSiteConfig, type PublicSiteSetting } from "@/services/api/public-site";
 import { BRAND_CONCEPT_SHOWCASES } from "@/lib/public-site-content";
@@ -42,6 +42,7 @@ const DEFAULT_PUBLIC_SITE: PublicSiteSetting = { revision: 0, config: DEFAULT_PU
 type PublicSiteContextValue = {
     site: PublicSiteSetting;
     refresh: () => Promise<void>;
+    replace: (setting: PublicSiteSetting) => void;
     refreshing: boolean;
 };
 
@@ -50,29 +51,45 @@ const PublicSiteContext = createContext<PublicSiteContextValue | null>(null);
 export function PublicSiteProvider({ children }: { children: ReactNode }) {
     const [site, setSite] = useState(readCachedPublicSite);
     const [refreshing, setRefreshing] = useState(false);
+    const refreshVersion = useRef(0);
+
+    const replace = useCallback((setting: PublicSiteSetting) => {
+        refreshVersion.current++;
+        const next = normalizePublicSite(setting);
+        setSite(next);
+        try {
+            window.localStorage.setItem(PUBLIC_SITE_CACHE_KEY, JSON.stringify(next));
+        } catch {
+            // Public content still renders from memory when storage is restricted.
+        }
+    }, []);
 
     const refresh = useCallback(async () => {
+        const version = ++refreshVersion.current;
         setRefreshing(true);
         try {
-            const next = normalizePublicSite(await getPublicSite());
-            setSite(next);
-            try {
-                window.localStorage.setItem(PUBLIC_SITE_CACHE_KEY, JSON.stringify(next));
-            } catch {
-                // Public content still renders from memory when storage is restricted.
-            }
+            const next = await getPublicSite();
+            if (version === refreshVersion.current) replace(next);
         } catch {
             // Public marketing content must not block login or the application shell.
         } finally {
             setRefreshing(false);
         }
-    }, []);
+    }, [replace]);
 
     useEffect(() => {
         void refresh();
+        const onStorage = (event: StorageEvent) => {
+            if (event.key === PUBLIC_SITE_CACHE_KEY && event.newValue !== event.oldValue) void refresh();
+        };
+        window.addEventListener("storage", onStorage);
+        return () => {
+            refreshVersion.current++;
+            window.removeEventListener("storage", onStorage);
+        };
     }, [refresh]);
 
-    const value = useMemo(() => ({ site, refresh, refreshing }), [refresh, refreshing, site]);
+    const value = useMemo(() => ({ site, refresh, refreshing, replace }), [refresh, refreshing, replace, site]);
     return <PublicSiteContext.Provider value={value}>{children}</PublicSiteContext.Provider>;
 }
 

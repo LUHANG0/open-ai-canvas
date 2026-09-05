@@ -26,6 +26,8 @@ test("site display saves only exposed settings and leaves legacy publishing out 
     expect(admin).toContain("setting.published.hero.posterUrl");
     expect(admin).not.toContain("publishAdminPublicSite");
     expect(admin).not.toContain("updateAdminPublicSiteDraft");
+    expect(admin).toContain("replace({ revision: next.publishedRevision, config: next.published })");
+    expect(admin).not.toContain("await refresh()");
     expect(provider).toContain("PUBLIC_SITE_CACHE_KEY");
     expect(provider).toContain("Public marketing content must not block login");
 });
