@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { App, Button, DatePicker, Drawer, Form, Input, InputNumber, Modal, Select, Tabs, Tag, Tooltip } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import dayjs, { type Dayjs } from "dayjs";
@@ -21,6 +21,7 @@ import {
     type ModelPricing,
 } from "@/services/api/auth";
 import { AdminDataTable, AdminExportButton, AdminFilterChip, AdminRowActions, AdminStatusBadge, AdminTableEmpty, type AdminStatusTone } from "./admin-ui";
+import { WorkspaceLoadingState, WorkspaceErrorState } from "@/components/ui/pc/workspace-state";
 
 type Props = {
     users: AdminReferenceData["users"];
@@ -61,6 +62,8 @@ export default function AnalyticsPanel({ users, channels }: Props) {
     const [data, setData] = useState<AdminAnalytics | null>(null);
     const [pricings, setPricings] = useState<ModelPricing[]>([]);
     const [loading, setLoading] = useState(false);
+    const [loadError, setLoadError] = useState("");
+    const requestRef = useRef(0);
     const [pricingModalOpen, setPricingModalOpen] = useState(false);
     const [editingPricing, setEditingPricing] = useState<ModelPricing | null>(null);
     const [savingPricing, setSavingPricing] = useState(false);
@@ -89,15 +92,19 @@ export default function AnalyticsPanel({ users, channels }: Props) {
     );
 
     const reload = useCallback(async () => {
+        const sequence = ++requestRef.current;
         setLoading(true);
+        setLoadError("");
+        setData(null);
         try {
             const [analytics, pricingData] = await Promise.all([getAdminAnalytics(filters), listAdminModelPricings()]);
+            if (sequence !== requestRef.current) return;
             setData(analytics);
             setPricings(pricingData.pricings);
         } catch (error) {
-            message.error(error instanceof Error ? error.message : "读取统计数据失败");
+            if (sequence === requestRef.current) setLoadError(error instanceof Error ? error.message : "读取统计数据失败");
         } finally {
-            setLoading(false);
+            if (sequence === requestRef.current) setLoading(false);
         }
     }, [filters, message]);
 
@@ -109,6 +116,7 @@ export default function AnalyticsPanel({ users, channels }: Props) {
         }
         setSearchParams(next, { replace: true });
         void reload();
+        return () => { requestRef.current += 1; };
     }, [filters]);
 
     useEffect(() => {
@@ -385,6 +393,7 @@ export default function AnalyticsPanel({ users, channels }: Props) {
                 </div>
             </ListToolbar>
 
+            {loading ? <WorkspaceLoadingState label="正在读取统计数据" /> : loadError ? <WorkspaceErrorState title="统计数据读取失败" description={loadError} onRetry={() => void reload()} /> : <>
             <section className="admin-analytics-health-grid" aria-label="运营健康指标">
                 <AnalyticsHealthCard
                     icon={<UsersRound className="size-4" />}
@@ -403,10 +412,10 @@ export default function AnalyticsPanel({ users, channels }: Props) {
                 <AnalyticsHealthCard
                     icon={<Gauge className="size-4" />}
                     label="服务质量"
-                    value={data ? percent(data.kpi.successRate) : "--"}
+                    value={data?.kpi.upstreamRequests ? percent(data.kpi.successRate) : "--"}
                     trend={formatRateDelta(currentTrend?.requestSuccessRate, previousTrend?.requestSuccessRate)}
                     detail={data ? `P95 ${formatDuration(data.kpi.p95DurationMs)}` : undefined}
-                    tone={data && data.kpi.successRate < 90 ? "warning" : "success"}
+                    tone={!data?.kpi.upstreamRequests ? "neutral" : data.kpi.successRate < 90 ? "warning" : "success"}
                 />
                 <AnalyticsHealthCard
                     icon={<CircleDollarSign className="size-4" />}
@@ -560,11 +569,13 @@ export default function AnalyticsPanel({ users, channels }: Props) {
                 />
             </section>
 
+            </>}
             <Drawer
                 rootClassName="admin-secondary-drawer admin-analytics-pricing-drawer"
                 title="模型价格配置"
                 open={pricingWorkspaceOpen}
-                width="min(1120px, calc(100vw - 48px))"
+                size="min(1120px, 100vw)"
+                focusable={{ trap: !pricingModalOpen }}
                 onClose={() => setPricingWorkspaceOpen(false)}
                 extra={
                     <Button type="primary" icon={<Plus className="size-4" />} onClick={() => openPricing()}>
@@ -581,8 +592,8 @@ export default function AnalyticsPanel({ users, channels }: Props) {
                 />
             </Drawer>
 
-            <Modal title={editingPricing ? "编辑模型价格" : "新增模型价格"} open={pricingModalOpen} onCancel={() => setPricingModalOpen(false)} onOk={() => void savePricing()} confirmLoading={savingPricing} okText="保存" cancelText="取消" width={760}>
-                <Form form={form} layout="vertical" requiredMark={false}>
+            <Modal rootClassName="admin-modal-root" title={editingPricing ? "编辑模型价格" : "新增模型价格"} open={pricingModalOpen} onCancel={() => { if (!savingPricing) setPricingModalOpen(false); }} onOk={() => void savePricing()} confirmLoading={savingPricing} okText="保存" cancelText="取消" width={640}>
+                <Form form={form} layout="vertical" requiredMark={false} disabled={savingPricing}>
                     <div className="grid grid-cols-1 gap-x-4 sm:grid-cols-2">
                         <Form.Item name="model" label="模型" rules={[{ required: true, message: "请填写模型名" }]}>
                             <Input />
