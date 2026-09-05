@@ -8,6 +8,7 @@ import "./logical-models-page.css";
 import { PaginationBar } from "@/components/layout/workspace-page";
 import { ModelIconPicker, ModelLogo } from "@/components/model-logo";
 import { CapabilityCardPicker } from "@/components/model-protocol-picker";
+import { refreshSystemChannels } from "@/lib/user-session";
 import { AdminPageFrame } from "@/pages/admin/components/admin-shell";
 import { AdminDataTable, AdminFilterChip, AdminRowActions, AdminStatusBadge, AdminTableEmpty } from "@/pages/admin/components/admin-ui";
 import { listAdminChannels } from "@/services/api/auth";
@@ -193,6 +194,7 @@ export default function LogicalModelsPage() {
             }
             const payload = logicalModelPayload(values, modelSourceSpecs);
             await (editingModel ? updateAdminLogicalModel(editingModel.id, payload) : createAdminLogicalModel(payload));
+            await syncFrontendCatalog();
             setEditingModel(undefined);
             await reload();
             message.success(editingModel ? "前台模型已更新" : "前台模型已创建");
@@ -209,6 +211,7 @@ export default function LogicalModelsPage() {
         mutationIds.current.add(item.id);
         try {
             await updateAdminLogicalModel(item.id, logicalModelPayload({ ...logicalModelToForm(item), enabled: !item.enabled }));
+            await syncFrontendCatalog();
             await reload();
             message.success(item.enabled ? "前台模型已停用" : "前台模型已启用");
         } catch (error) {
@@ -222,6 +225,7 @@ export default function LogicalModelsPage() {
         setDeletingModelId(item.id);
         try {
             await deleteAdminLogicalModel(item.id);
+            await syncFrontendCatalog();
             setModels((current) => current.filter((model) => model.id !== item.id));
             if (paginatedModels.length === 1 && page > 1) setPage(page - 1);
             message.success("前台模型已归档");
@@ -230,6 +234,14 @@ export default function LogicalModelsPage() {
             throw error;
         } finally {
             setDeletingModelId(undefined);
+        }
+    };
+
+    const syncFrontendCatalog = async () => {
+        try {
+            await refreshSystemChannels();
+        } catch (error) {
+            message.warning(error instanceof Error ? `前台模型配置已保存，但目录同步失败：${error.message}` : "前台模型配置已保存，但目录同步失败，请刷新后查看。");
         }
     };
 
