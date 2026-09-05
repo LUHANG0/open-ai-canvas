@@ -71,11 +71,13 @@ function fullScreenDeferred(element: ReactNode) {
  * 若把 lazy 提到模块顶层，动态 import 会被静态分析成真实 chunk 并打进 dist。
  */
 function devRoutes() {
+    const BrandLoadingLab = lazy(() => import("@/pages/dev/brand-loading-lab"));
     const FolderPreviewLab = lazy(() => import("@/pages/dev/folder-preview-lab"));
     const DirectorReproLab = lazy(() => import("@/pages/dev/director-repro-lab"));
     const CanvasReproLab = lazy(() => import("@/pages/dev/canvas-repro-lab"));
     const ProjectDeliveryReproLab = lazy(() => import("@/pages/dev/project-delivery-repro-lab"));
     return [
+        { path: "/dev/brand-loading", element: fullScreenDeferred(<BrandLoadingLab />), errorElement: <RouteErrorPage /> },
         { path: "/dev/folders", element: fullScreenDeferred(<FolderPreviewLab />), errorElement: <RouteErrorPage /> },
         { path: "/dev/director-repro", element: fullScreenDeferred(<DirectorReproLab />), errorElement: <RouteErrorPage /> },
         { path: "/dev/canvas-repro/:id", element: fullScreenDeferred(<CanvasReproLab />), errorElement: <RouteErrorPage /> },
