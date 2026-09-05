@@ -1,5 +1,5 @@
 import { App, Button, Form, Input, InputNumber, Select } from "antd";
-import { ArrowLeft, Boxes, Bug, CheckCircle2, Cloud, MessageSquareText, MonitorUp, RadioTower, SlidersHorizontal, SquareTerminal, Workflow } from "lucide-react";
+import { ArrowLeft, Boxes, Bug, Info, Cloud, MessageSquareText, MonitorUp, RadioTower, SlidersHorizontal, SquareTerminal, Workflow } from "lucide-react";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 
@@ -114,7 +114,7 @@ export default function SettingsPage() {
             message.error(customChannelsEnabled ? (shouldPromptContinue ? "请先完成至少一个渠道的 Base URL、API Key 和模型配置" : "当前没有可用渠道，请先完成连接信息和模型配置") : "当前没有可用的系统模型，请联系管理员配置系统渠道");
             return;
         }
-        message.success("配置已保存，正在返回创作页面");
+        message.success("本机配置检查通过，正在返回创作页面");
         navigate(-1);
     };
 
@@ -244,8 +244,8 @@ export default function SettingsPage() {
     return (
         <WorkspacePage className="settings-page" contentClassName="settings-page-content">
             <PageHeader
-                eyebrow="PERSONAL SETTINGS"
-                title="设置"
+                eyebrow="账户与偏好"
+                title="个人设置"
                 description="管理本机工具、模型渠道、工作流、生成偏好与个人存储。"
                 actions={
                     shouldPromptContinue ? (
@@ -254,7 +254,7 @@ export default function SettingsPage() {
                                 返回创作
                             </Button>
                             <Button type="primary" onClick={finishConfig}>
-                                保存并返回
+                                完成并返回
                             </Button>
                         </>
                     ) : undefined
@@ -290,8 +290,12 @@ export default function SettingsPage() {
                                 <small>{activeSectionMeta.description}</small>
                             </div>
                             <span className="settings-section-save-note">
-                                <CheckCircle2 className="size-3.5" aria-hidden="true" />
-                                修改保存到当前账号的本机配置
+                                <Info className="size-3.5" aria-hidden="true" />
+                                {activeTab === "storage" || activeTab === "prompts"
+                                    ? "修改后需保存到当前账号"
+                                    : activeTab === "diagnostics" ? "按当前账号收集诊断信息"
+                                    : activeTab === "local-cli" ? "连接状态以本机检测结果为准"
+                                    : "修改自动保存在当前账号的本机配置"}
                             </span>
                         </header>
                     ) : null}

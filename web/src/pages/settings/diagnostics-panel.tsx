@@ -26,6 +26,7 @@ export default function DiagnosticsPanel({ taskId, projectId }: DiagnosticsPanel
     const [preview, setPreview] = useState<DiagnosticPreview | null>(null);
     const [loadingPreview, setLoadingPreview] = useState(false);
     const [previewError, setPreviewError] = useState(false);
+    const [previewAttempt, setPreviewAttempt] = useState(0);
     const [exporting, setExporting] = useState(false);
     const [bundleId, setBundleId] = useState("");
 
@@ -49,7 +50,7 @@ export default function DiagnosticsPanel({ taskId, projectId }: DiagnosticsPanel
         return () => {
             cancelled = true;
         };
-    }, [projectId, range, taskId]);
+    }, [projectId, range, taskId, previewAttempt]);
 
     const handleExport = async () => {
         setExporting(true);
@@ -118,9 +119,10 @@ export default function DiagnosticsPanel({ taskId, projectId }: DiagnosticsPanel
                                     <DiagnosticMetric label="上游调用" value={loadingPreview ? "读取中" : preview ? String(preview.apiCallCount) : "待统计"} />
                                 </div>
                                 {previewError ? (
-                                    <p className="settings-diagnostics-preview-error" role="alert">
+                                    <div className="settings-diagnostics-preview-error" role="alert">
                                         暂时无法读取数量预览，不影响导出本机诊断信息。
-                                    </p>
+                                        <Button size="small" onClick={() => setPreviewAttempt((value) => value + 1)}>重新读取</Button>
+                                    </div>
                                 ) : null}
                             </div>
                         </div>

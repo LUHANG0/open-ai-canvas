@@ -1,8 +1,9 @@
-import { Alert, App, Button, Input, Segmented, Select, Skeleton, Tabs, Tag } from "antd";
+import { Alert, App, Button, Input, Segmented, Select, Tabs, Tag } from "antd";
 import { RotateCcw, Save, ShieldCheck, Undo2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { PromptCodeEditor } from "@/components/prompt/prompt-code-editor";
+import { WorkspaceState, WorkspaceLoadingState } from "@/components/ui/pc/workspace-state";
 import {
     listUserPromptPreferences,
     resetUserPromptCustomization,
@@ -132,7 +133,7 @@ export function PromptPreferencesPane() {
         });
     };
 
-    if (loading && preferences.length === 0) return <Skeleton active paragraph={{ rows: 10 }} />;
+    if (loading && preferences.length === 0) return <WorkspaceLoadingState label="正在读取提示词偏好" rows={2} />;
     if (loadError && preferences.length === 0) {
         return (
             <div className="flex flex-col items-center justify-center gap-3 py-16">
@@ -141,7 +142,7 @@ export function PromptPreferencesPane() {
             </div>
         );
     }
-    if (!selected) return <div className="py-16 text-center text-sm text-foreground/50">暂无可配置的提示词模板</div>;
+    if (!selected) return <WorkspaceState compact title="暂无可配置的提示词模板" description="平台提供模板后，可在这里追加个人要求。" />;
 
     const templateContent = selected.template?.content || "当前没有启用的平台模板";
     const previewCreative = mode === "inherit" ? templateContent : mode === "append" ? `${templateContent}\n\n【用户个性化创作要求】\n${appendContent}` : rewriteContent;
@@ -149,6 +150,7 @@ export function PromptPreferencesPane() {
 
     return (
         <div className="settings-prompt-preferences flex min-h-full flex-col">
+            {loadError ? <Alert type="warning" showIcon title="提示词偏好未能刷新" description={loadError} action={<Button onClick={() => void reload()}>重试</Button>} /> : null}
             <header className="settings-prompt-toolbar shrink-0 pb-4">
                 <div className="flex flex-wrap items-end justify-between gap-4">
                     <div className="min-w-0 flex-1">

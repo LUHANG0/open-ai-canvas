@@ -1,4 +1,4 @@
-/* Settings remains functionally responsive; the new information hierarchy is applied to PC only. */
+/* Personal settings share brand surfaces across desktop and mobile. */
 
 .settings-page-content {
     min-height: 100%;
@@ -34,557 +34,504 @@
     min-width: 0;
 }
 
-.settings-section-context {
+.settings-page {
+    --settings-accent-soft: color-mix(in srgb, var(--app-brand-600) 9%, transparent);
+    --settings-accent-line: color-mix(in srgb, var(--app-brand-600) 42%, var(--app-border-default));
+}
+
+.settings-page .app-page-header {
+    padding-bottom: var(--app-space-4, 16px);
+    border-bottom: 1px solid var(--app-border-subtle, var(--border));
+}
+
+.settings-page .settings-subnav {
+    grid-template-columns: 224px minmax(0, 1fr);
+    gap: var(--app-space-6, 24px);
+    align-items: start;
+}
+
+.settings-page .pc-subnav-layout__rail {
+    position: sticky;
+    top: var(--app-space-4, 16px);
+    overflow: hidden;
+    background: var(--app-surface-1, var(--background));
+    border-color: var(--app-border-subtle, var(--border));
+    border-radius: var(--app-surface-radius, 12px);
+    box-shadow:
+        inset 0 1px 0 color-mix(in srgb, var(--app-brand-400) 18%, transparent),
+        var(--app-shadow-surface, 0 1px 2px rgba(0, 0, 0, 0.04));
+}
+
+.settings-page .pc-subnav-layout__rail-header {
+    position: relative;
+    padding: var(--app-space-3, 12px) var(--app-space-4, 16px);
+    background: color-mix(in srgb, var(--app-surface-2, var(--surface-card)) 82%, var(--app-selection-bg));
+}
+
+.settings-page .settings-subnav-heading::before {
+    width: 3px;
+    height: 16px;
+    flex: 0 0 auto;
+    background: var(--app-brand-gradient);
+    border-radius: var(--app-radius-1, 6px);
+    content: "";
+}
+
+.settings-page .settings-subnav-heading > span {
+    margin-right: auto;
+}
+
+.settings-page .pc-subnav-layout__nav {
+    gap: var(--app-space-1, 4px);
+    padding: var(--app-space-2, 8px);
+}
+
+.settings-page .pc-subnav-layout__item {
+    position: relative;
+    min-height: 54px;
+    padding: var(--app-space-2, 8px) var(--app-space-3, 12px);
+}
+
+.settings-page .pc-subnav-layout__item.is-active::before {
+    position: absolute;
+    inset: 9px auto 9px 0;
+    width: 3px;
+    content: "";
+    background: var(--app-brand-gradient, var(--app-action-primary-bg, var(--primary)));
+    border-radius: 0 4px 4px 0;
+}
+
+.settings-page .pc-subnav-layout__item.is-active {
+    background: var(--app-selection-bg);
+}
+
+.settings-page .pc-subnav-layout__item-icon {
+    display: grid;
+    width: 28px;
+    height: 28px;
+    margin-top: 0;
+    place-items: center;
+    color: var(--app-text-muted, var(--muted-foreground));
+    background: var(--app-surface-2, var(--surface-card));
+    border-radius: var(--app-control-radius-sm, 6px);
+}
+
+.settings-page .pc-subnav-layout__item.is-active .pc-subnav-layout__item-icon {
+    color: var(--app-selection-fg);
+    background: color-mix(in srgb, var(--app-surface-1, var(--background)) 78%, var(--app-brand-100));
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--app-brand-600) 18%, transparent);
+}
+
+.dark .settings-page .pc-subnav-layout__item.is-active .pc-subnav-layout__item-icon {
+    color: var(--app-selection-fg);
+    background: color-mix(in srgb, var(--app-surface-2) 78%, var(--app-brand-900));
+}
+
+.settings-page .pc-subnav-layout__content {
+    min-height: 560px;
+    background: var(--app-surface-1, var(--background));
+    border-color: var(--app-border-subtle, var(--border));
+    border-radius: var(--app-surface-radius, 12px);
+    box-shadow:
+        inset 0 1px 0 color-mix(in srgb, var(--app-text-primary) 3%, transparent),
+        var(--app-shadow-surface, 0 1px 2px rgba(0, 0, 0, 0.04));
+}
+
+.settings-page .pc-subnav-layout__content-body {
+    padding: var(--app-space-6, 24px);
+}
+
+.settings-page .settings-section-context {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    gap: var(--app-space-3, 12px);
+    margin: calc(var(--app-space-2, 8px) * -1) calc(var(--app-space-2, 8px) * -1) var(--app-space-5, 20px);
+    padding: var(--app-space-3, 12px);
+    background: linear-gradient(100deg, color-mix(in srgb, var(--app-selection-bg) 76%, transparent), transparent 60%), var(--app-surface-2);
+    border: 1px solid var(--app-border-subtle);
+    border-radius: var(--app-control-radius, 8px);
+}
+
+.settings-page .settings-section-context-icon {
+    display: grid;
+    width: 38px;
+    height: 38px;
+    flex: 0 0 auto;
+    place-items: center;
+    color: var(--app-selection-fg);
+    background: color-mix(in srgb, var(--app-surface-1) 82%, var(--app-selection-bg));
+    border: 1px solid var(--app-selection-border);
+    border-radius: var(--app-control-radius, 8px);
+}
+
+.dark .settings-page .settings-section-context-icon {
+    color: var(--app-selection-fg);
+}
+
+.settings-page .settings-section-context-copy {
+    display: grid;
+    min-width: 0;
+    gap: 1px;
+}
+
+.settings-page .settings-section-context-copy > span {
+    color: var(--app-text-muted);
+    font-family: var(--app-font-mono);
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.settings-page .settings-section-context-copy strong {
+    color: var(--app-text-primary);
+    font-size: 14px;
+    font-weight: 650;
+}
+
+.settings-page .settings-section-context-copy small {
+    overflow: hidden;
+    color: var(--app-text-muted);
+    font-size: 11px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.settings-page .settings-section-save-note {
+    display: inline-flex;
+    min-height: 28px;
+    align-items: center;
+    gap: var(--app-space-1, 4px);
+    margin-left: auto;
+    padding: 3px var(--app-space-2, 8px);
+    color: var(--app-text-secondary);
+    background: var(--app-surface-1);
+    border: 1px solid var(--app-border-subtle);
+    border-radius: var(--app-control-radius-sm, 6px);
+    font-size: var(--app-font-size-label);
+    font-weight: 500;
+    white-space: normal;
+}
+
+.settings-page .settings-pane-root.is-editor {
+    min-height: 650px;
+}
+
+.settings-page .settings-pane-header {
+    position: relative;
+    align-items: flex-start;
+    margin-bottom: var(--app-space-5, 20px);
+    padding: 0 0 var(--app-space-4, 16px) var(--app-space-4, 16px);
+    border-bottom: 1px solid var(--app-border-subtle, var(--border));
+}
+
+.settings-page .settings-pane-header::before {
+    position: absolute;
+    top: 3px;
+    bottom: calc(var(--app-space-4, 16px) + 3px);
+    left: 0;
+    width: 3px;
+    background: var(--app-brand-gradient);
+    border-radius: var(--app-radius-1, 6px);
+    content: "";
+}
+
+.settings-page .settings-pane-header h2 {
+    color: var(--app-text-primary, var(--foreground));
+    font-size: 18px;
+    font-weight: 650;
+    line-height: 1.4;
+}
+
+.settings-page .settings-pane-header p {
+    max-width: 72ch;
+    margin-top: var(--app-space-1, 4px);
+    color: var(--app-text-secondary, var(--muted-foreground));
+    font-size: 13px;
+    line-height: 1.6;
+}
+
+.settings-page .settings-section {
+    padding: var(--app-space-5, 20px);
+    background: color-mix(in srgb, var(--app-surface-2, var(--surface-card)) 88%, var(--app-surface-1));
+    border: 1px solid var(--app-border-subtle, var(--border));
+    border-radius: var(--app-surface-radius, 12px);
+    box-shadow: inset 0 1px 0 color-mix(in srgb, var(--app-text-primary) 3%, transparent);
+}
+
+.settings-page .settings-section:hover {
+    border-color: var(--app-border-default, var(--border));
+}
+
+.settings-page .settings-section + .settings-section {
+    margin-top: var(--app-space-4, 16px);
+}
+
+.settings-page .settings-local-cli .settings-section {
+    margin-top: 0;
+}
+
+.settings-page .settings-runtime-summary {
+    padding: var(--app-space-4, 16px);
+    background: var(--app-status-info-bg, var(--app-surface-2, var(--surface-card)));
+    border-color: var(--app-status-info-border, var(--app-border-subtle, var(--border)));
+}
+
+.settings-page .settings-field-group-label {
+    color: var(--app-selection-fg);
+    font-family: var(--app-font-mono);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.055em;
+    text-transform: uppercase;
+}
+
+.dark .settings-page .settings-field-group-label {
+    color: var(--app-selection-fg);
+}
+
+.settings-page .settings-cli-card {
+    padding: var(--app-space-5, 20px);
+}
+
+.settings-page .settings-model-group + .settings-model-group {
+    border-top: 1px solid var(--app-border-subtle, var(--border));
+}
+
+.settings-page .settings-prompt-toolbar {
+    padding-bottom: var(--app-space-5, 20px);
+    border-bottom: 1px solid var(--app-border-subtle, var(--border));
+}
+
+.settings-page .settings-prompt-workspace {
+    gap: var(--app-space-5, 20px);
+    padding-top: var(--app-space-5, 20px);
+}
+
+.settings-page .settings-prompt-editor,
+.settings-page .settings-prompt-reference {
+    padding: var(--app-space-4, 16px);
+    background: var(--app-surface-2, var(--surface-card));
+    border: 1px solid var(--app-border-subtle, var(--border));
+    border-radius: var(--app-surface-radius, 12px);
+}
+
+.settings-page .settings-prompt-reference {
+    padding-top: var(--app-space-4, 16px);
+    padding-left: var(--app-space-4, 16px);
+}
+
+.settings-page .settings-diagnostics {
+    max-width: none;
+}
+
+.settings-page .settings-diagnostics-preview-error {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--app-space-2);
+    margin-top: var(--app-space-3);
+    padding-top: var(--app-space-2);
+    color: var(--app-status-warning-fg);
+    border-top: 1px solid var(--app-status-warning-border);
+    font-size: 11px;
+    line-height: 1.5;
+}
+
+.settings-page .settings-diagnostics > header {
+    padding-top: 0;
+}
+
+.settings-page .settings-preference-block + .settings-preference-block {
+    margin-top: 0;
+    border-top: 1px solid var(--app-border-subtle, var(--border));
+}
+
+.settings-page .settings-channel {
+    padding: var(--app-space-4, 16px);
+    background: var(--app-surface-1, var(--background));
+    border: 1px solid var(--app-border-subtle, var(--border));
+    border-radius: var(--app-control-radius, 8px);
+}
+
+.settings-page .settings-channel[hidden] {
     display: none;
 }
 
-.settings-diagnostics-preview-error {
-    display: none;
+.settings-page .settings-channel:hover,
+.settings-page .settings-channel:focus-within {
+    background: var(--app-surface-1, var(--background));
+    border-color: var(--settings-accent-line);
+    box-shadow:
+        0 0 0 2px var(--settings-accent-soft),
+        var(--app-shadow-surface, 0 1px 2px rgba(0, 0, 0, 0.04));
 }
 
-@media (max-width: 1023px) {
-    .settings-page .settings-subnav {
-        gap: 0;
-        margin-top: var(--app-space-2, 8px);
-    }
-
-    .settings-page .pc-subnav-layout__rail,
-    .settings-page .pc-subnav-layout__content {
-        background: transparent;
-        border: 0;
-        border-radius: 0;
-    }
-
-    .settings-page .pc-subnav-layout__rail-header {
-        display: none;
-    }
-
-    .settings-page .pc-subnav-layout__content-body {
-        padding: var(--app-space-4, 16px) 0 0;
-    }
-
-    .settings-page .pc-subnav-layout__item-description {
-        display: none;
-    }
+.settings-page .settings-model-capabilities {
+    padding-top: var(--app-space-4, 16px);
+    border-top: 1px solid var(--app-border-subtle, var(--border));
 }
 
-@media (min-width: 768px) and (max-width: 1023px) {
-    .settings-page .settings-subnav {
-        display: grid;
-        grid-template-columns: 200px minmax(0, 1fr);
-        align-items: start;
-    }
-
-    .settings-page .pc-subnav-layout__rail {
-        align-self: stretch;
-        border-right: 1px solid var(--app-border-subtle, var(--border));
-    }
-
-    .settings-page .pc-subnav-layout__nav {
-        flex-direction: column;
-        overflow: visible;
-    }
-
-    .settings-page .pc-subnav-layout__item {
-        width: 100%;
-        min-width: 0;
-    }
-
-    .settings-page .pc-subnav-layout__item-description {
-        display: block;
-    }
-
-    .settings-page .pc-subnav-layout__content-body {
-        padding: var(--app-space-4, 16px) var(--app-space-6, 24px);
-    }
+.settings-page .settings-model-capability-row {
+    min-height: 58px;
+    background: var(--app-surface-2, var(--surface-card));
+    border: 1px solid transparent;
 }
 
-@media (min-width: 1024px) {
-    .settings-page {
-        --settings-accent-soft: color-mix(in srgb, var(--app-brand-600) 9%, transparent);
-        --settings-accent-line: color-mix(in srgb, var(--app-brand-600) 42%, var(--app-border-default));
-    }
-
-    .settings-page .app-page-header {
-        padding-bottom: var(--app-space-4, 16px);
-        border-bottom: 1px solid var(--app-border-subtle, var(--border));
-    }
-
-    .settings-page .settings-subnav {
-        grid-template-columns: 224px minmax(0, 1fr);
-        gap: var(--app-space-6, 24px);
-        align-items: start;
-    }
-
-    .settings-page .pc-subnav-layout__rail {
-        position: sticky;
-        top: var(--app-space-4, 16px);
-        overflow: hidden;
-        background: var(--app-surface-1, var(--background));
-        border-color: var(--app-border-subtle, var(--border));
-        border-radius: var(--app-surface-radius, 12px);
-        box-shadow:
-            inset 0 1px 0 color-mix(in srgb, var(--app-brand-400) 18%, transparent),
-            var(--app-shadow-surface, 0 1px 2px rgba(0, 0, 0, 0.04));
-    }
-
-    .settings-page .pc-subnav-layout__rail-header {
-        position: relative;
-        padding: var(--app-space-3, 12px) var(--app-space-4, 16px);
-        background: color-mix(in srgb, var(--app-surface-2, var(--surface-card)) 82%, var(--app-selection-bg));
-    }
-
-    .settings-page .settings-subnav-heading::before {
-        width: 3px;
-        height: 16px;
-        flex: 0 0 auto;
-        background: var(--app-brand-gradient);
-        border-radius: var(--app-radius-1, 6px);
-        content: "";
-    }
-
-    .settings-page .settings-subnav-heading > span {
-        margin-right: auto;
-    }
-
-    .settings-page .pc-subnav-layout__nav {
-        gap: var(--app-space-1, 4px);
-        padding: var(--app-space-2, 8px);
-    }
-
-    .settings-page .pc-subnav-layout__item {
-        position: relative;
-        min-height: 54px;
-        padding: var(--app-space-2, 8px) var(--app-space-3, 12px);
-    }
-
-    .settings-page .pc-subnav-layout__item.is-active::before {
-        position: absolute;
-        inset: 9px auto 9px 0;
-        width: 3px;
-        content: "";
-        background: var(--app-brand-gradient, var(--app-action-primary-bg, var(--primary)));
-        border-radius: 0 4px 4px 0;
-    }
-
-    .settings-page .pc-subnav-layout__item.is-active {
-        background: var(--app-selection-bg);
-    }
-
-    .settings-page .pc-subnav-layout__item-icon {
-        display: grid;
-        width: 28px;
-        height: 28px;
-        margin-top: 0;
-        place-items: center;
-        color: var(--app-text-muted, var(--muted-foreground));
-        background: var(--app-surface-2, var(--surface-card));
-        border-radius: var(--app-control-radius-sm, 6px);
-    }
-
-    .settings-page .pc-subnav-layout__item.is-active .pc-subnav-layout__item-icon {
-        color: var(--app-brand-700, var(--app-selection-fg, var(--foreground)));
-        background: color-mix(in srgb, var(--app-surface-1, var(--background)) 78%, var(--app-brand-100));
-        box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--app-brand-600) 18%, transparent);
-    }
-
-    .dark .settings-page .pc-subnav-layout__item.is-active .pc-subnav-layout__item-icon {
-        color: var(--app-brand-300);
-        background: color-mix(in srgb, var(--app-surface-2) 78%, var(--app-brand-900));
-    }
-
-    .settings-page .pc-subnav-layout__content {
-        min-height: 560px;
-        background: var(--app-surface-1, var(--background));
-        border-color: var(--app-border-subtle, var(--border));
-        border-radius: var(--app-surface-radius, 12px);
-        box-shadow:
-            inset 0 1px 0 color-mix(in srgb, var(--app-text-primary) 3%, transparent),
-            var(--app-shadow-surface, 0 1px 2px rgba(0, 0, 0, 0.04));
-    }
-
-    .settings-page .pc-subnav-layout__content-body {
-        padding: var(--app-space-6, 24px);
-    }
-
-    .settings-page .settings-section-context {
-        display: flex;
-        min-width: 0;
-        align-items: center;
-        gap: var(--app-space-3, 12px);
-        margin: calc(var(--app-space-2, 8px) * -1) calc(var(--app-space-2, 8px) * -1) var(--app-space-5, 20px);
-        padding: var(--app-space-3, 12px);
-        background: linear-gradient(100deg, color-mix(in srgb, var(--app-selection-bg) 76%, transparent), transparent 60%), var(--app-surface-2);
-        border: 1px solid var(--app-border-subtle);
-        border-radius: var(--app-control-radius, 8px);
-    }
-
-    .settings-page .settings-section-context-icon {
-        display: grid;
-        width: 38px;
-        height: 38px;
-        flex: 0 0 auto;
-        place-items: center;
-        color: var(--app-brand-700);
-        background: color-mix(in srgb, var(--app-surface-1) 82%, var(--app-selection-bg));
-        border: 1px solid var(--app-selection-border);
-        border-radius: var(--app-control-radius, 8px);
-    }
-
-    .dark .settings-page .settings-section-context-icon {
-        color: var(--app-brand-300);
-    }
-
-    .settings-page .settings-section-context-copy {
-        display: grid;
-        min-width: 0;
-        gap: 1px;
-    }
-
-    .settings-page .settings-section-context-copy > span {
-        color: var(--app-text-muted);
-        font-family: var(--app-font-mono);
-        font-size: 9px;
-        font-weight: 700;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-    }
-
-    .settings-page .settings-section-context-copy strong {
-        color: var(--app-text-primary);
-        font-size: 14px;
-        font-weight: 650;
-    }
-
-    .settings-page .settings-section-context-copy small {
-        overflow: hidden;
-        color: var(--app-text-muted);
-        font-size: 11px;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-    }
-
-    .settings-page .settings-section-save-note {
-        display: inline-flex;
-        min-height: 28px;
-        align-items: center;
-        gap: var(--app-space-1, 4px);
-        margin-left: auto;
-        padding: 3px var(--app-space-2, 8px);
-        color: var(--app-status-success-fg);
-        background: var(--app-status-success-bg);
-        border: 1px solid var(--app-status-success-border);
-        border-radius: var(--app-control-radius-sm, 6px);
-        font-size: 10px;
-        font-weight: 600;
-        white-space: nowrap;
-    }
-
-    .settings-page .settings-pane-root.is-editor {
-        min-height: 650px;
-    }
-
-    .settings-page .settings-pane-header {
-        position: relative;
-        align-items: flex-start;
-        margin-bottom: var(--app-space-5, 20px);
-        padding: 0 0 var(--app-space-4, 16px) var(--app-space-4, 16px);
-        border-bottom: 1px solid var(--app-border-subtle, var(--border));
-    }
-
-    .settings-page .settings-pane-header::before {
-        position: absolute;
-        top: 3px;
-        bottom: calc(var(--app-space-4, 16px) + 3px);
-        left: 0;
-        width: 3px;
-        background: var(--app-brand-gradient);
-        border-radius: var(--app-radius-1, 6px);
-        content: "";
-    }
-
-    .settings-page .settings-pane-header h2 {
-        color: var(--app-text-primary, var(--foreground));
-        font-size: 18px;
-        font-weight: 650;
-        line-height: 1.4;
-    }
-
-    .settings-page .settings-pane-header p {
-        max-width: 72ch;
-        margin-top: var(--app-space-1, 4px);
-        color: var(--app-text-secondary, var(--muted-foreground));
-        font-size: 13px;
-        line-height: 1.6;
-    }
-
-    .settings-page .settings-section {
-        padding: var(--app-space-5, 20px);
-        background: color-mix(in srgb, var(--app-surface-2, var(--surface-card)) 88%, var(--app-surface-1));
-        border: 1px solid var(--app-border-subtle, var(--border));
-        border-radius: var(--app-surface-radius, 12px);
-        box-shadow: inset 0 1px 0 color-mix(in srgb, var(--app-text-primary) 3%, transparent);
-    }
-
-    .settings-page .settings-section:hover {
-        border-color: var(--app-border-default, var(--border));
-    }
-
-    .settings-page .settings-section + .settings-section {
-        margin-top: var(--app-space-4, 16px);
-    }
-
-    .settings-page .settings-local-cli .settings-section {
-        margin-top: 0;
-    }
-
-    .settings-page .settings-runtime-summary {
-        padding: var(--app-space-4, 16px);
-        background: var(--app-status-info-bg, var(--app-surface-2, var(--surface-card)));
-        border-color: var(--app-status-info-border, var(--app-border-subtle, var(--border)));
-    }
-
-    .settings-page .settings-field-group-label {
-        color: var(--app-brand-700, var(--app-text-secondary));
-        font-family: var(--app-font-mono);
-        font-size: 11px;
-        font-weight: 700;
-        letter-spacing: 0.055em;
-        text-transform: uppercase;
-    }
-
-    .dark .settings-page .settings-field-group-label {
-        color: var(--app-brand-300);
-    }
-
-    .settings-page .settings-cli-card {
-        padding: var(--app-space-5, 20px);
-    }
-
-    .settings-page .settings-model-group + .settings-model-group {
-        border-top: 1px solid var(--app-border-subtle, var(--border));
-    }
-
-    .settings-page .settings-prompt-toolbar {
-        padding-bottom: var(--app-space-5, 20px);
-        border-bottom: 1px solid var(--app-border-subtle, var(--border));
-    }
-
-    .settings-page .settings-prompt-workspace {
-        gap: var(--app-space-5, 20px);
-        padding-top: var(--app-space-5, 20px);
-    }
-
-    .settings-page .settings-prompt-editor,
-    .settings-page .settings-prompt-reference {
-        padding: var(--app-space-4, 16px);
-        background: var(--app-surface-2, var(--surface-card));
-        border: 1px solid var(--app-border-subtle, var(--border));
-        border-radius: var(--app-surface-radius, 12px);
-    }
-
-    .settings-page .settings-prompt-reference {
-        padding-top: var(--app-space-4, 16px);
-        padding-left: var(--app-space-4, 16px);
-    }
-
-    .settings-page .settings-diagnostics {
-        max-width: none;
-    }
-
-    .settings-page .settings-diagnostics-preview-error {
-        display: block;
-        margin-top: var(--app-space-3);
-        padding-top: var(--app-space-2);
-        color: var(--app-status-warning-fg);
-        border-top: 1px solid var(--app-status-warning-border);
-        font-size: 11px;
-        line-height: 1.5;
-    }
-
-    .settings-page .settings-diagnostics > header {
-        padding-top: 0;
-    }
-
-    .settings-page .settings-preference-block + .settings-preference-block {
-        margin-top: 0;
-        border-top: 1px solid var(--app-border-subtle, var(--border));
-    }
-
-    .settings-page .settings-channel {
-        padding: var(--app-space-4, 16px);
-        background: var(--app-surface-1, var(--background));
-        border: 1px solid var(--app-border-subtle, var(--border));
-        border-radius: var(--app-control-radius, 8px);
-    }
-
-    .settings-page .settings-channel[hidden] {
-        display: none;
-    }
-
-    .settings-page .settings-channel:hover,
-    .settings-page .settings-channel:focus-within {
-        background: var(--app-surface-1, var(--background));
-        border-color: var(--settings-accent-line);
-        box-shadow:
-            0 0 0 2px var(--settings-accent-soft),
-            var(--app-shadow-surface, 0 1px 2px rgba(0, 0, 0, 0.04));
-    }
-
-    .settings-page .settings-model-capabilities {
-        padding-top: var(--app-space-4, 16px);
-        border-top: 1px solid var(--app-border-subtle, var(--border));
-    }
-
-    .settings-page .settings-model-capability-row {
-        min-height: 58px;
-        background: var(--app-surface-2, var(--surface-card));
-        border: 1px solid transparent;
-    }
-
-    .settings-page .settings-model-capability-row:hover,
-    .settings-page .settings-model-capability-row:focus-within {
-        background: var(--app-action-secondary-hover, var(--surface-card-hover));
-        border-color: var(--settings-accent-line);
-    }
-
-    .settings-page .settings-channel-status {
-        display: inline-flex;
-        min-height: 22px;
-        align-items: center;
-        gap: 5px;
-        padding: 2px 7px;
-        background: var(--app-surface-2);
-        border: 1px solid var(--app-border-subtle);
-        border-radius: var(--app-control-radius-sm, 6px);
-        line-height: 1.3;
-    }
-
-    .settings-page .settings-channel-status i {
-        width: 6px;
-        height: 6px;
-        flex: 0 0 auto;
-        border-radius: 50%;
-        background: currentColor;
-    }
-
-    .settings-page .settings-channel-status.is-ready {
-        color: var(--app-status-success-fg);
-        background: var(--app-status-success-bg);
-        border-color: var(--app-status-success-border);
-    }
-
-    .settings-page .settings-channel-status.is-warning {
-        color: var(--app-status-warning-fg);
-        background: var(--app-status-warning-bg);
-        border-color: var(--app-status-warning-border);
-    }
-
-    .settings-page .model-default-option {
-        min-height: 82px;
-        background: var(--app-surface-1, var(--background));
-        border-color: var(--app-border-subtle, var(--border));
-        border-radius: var(--app-control-radius, 8px);
-    }
-
-    .settings-page .model-default-option:hover {
-        background: var(--app-action-secondary-hover, var(--surface-card-hover));
-        border-color: var(--app-border-default, var(--border));
-    }
-
-    .settings-page .model-default-option.is-selected {
-        background: var(--app-selection-bg, var(--control-selected-bg));
-        border-color: var(--app-selection-border, var(--control-selected-border));
-        box-shadow: inset 3px 0 0 var(--app-brand-600);
-    }
-
-    .settings-page .model-default-option.is-selected .model-default-option-icon,
-    .settings-page .model-default-option.is-selected .model-default-option-check {
-        color: var(--app-selection-fg);
-        background: color-mix(in srgb, var(--app-selection-bg) 72%, var(--app-surface-1));
-    }
-
-    .settings-page .workflow-json-details {
-        padding: var(--app-space-3, 12px) var(--app-space-4, 16px);
-        background: var(--app-surface-1, var(--background));
-        border: 1px solid var(--app-border-subtle, var(--border));
-        border-radius: var(--app-control-radius, 8px);
-    }
-
-    .settings-page .workflow-json-details > summary {
-        color: var(--app-text-secondary, var(--muted-foreground));
-        font-size: 13px;
-        font-weight: 600;
-        cursor: pointer;
-    }
-
-    .settings-page .workflow-graph-editor {
-        min-height: 600px;
-        background: var(--app-surface-1, var(--background));
-        border: 1px solid var(--app-border-subtle, var(--border));
-        border-radius: var(--app-control-radius, 8px);
-    }
-
-    .settings-page :where(.ant-input, .ant-input-affix-wrapper, .ant-input-number, .ant-select-selector, .ant-input-textarea-affix-wrapper):focus-within,
-    .settings-page :where(.ant-select-focused .ant-select-selector) {
-        border-color: var(--app-border-interactive);
-        box-shadow: var(--app-focus-shadow);
-    }
-
-    .settings-page :where(.ant-form-item-label > label) {
-        color: var(--app-text-secondary, var(--muted-foreground));
-        font-size: 13px;
-        font-weight: 600;
-    }
-
-    .settings-page :where(.ant-form-item-extra, .ant-form-item-explain) {
-        margin-top: var(--app-space-1, 4px);
-        color: var(--app-text-muted, var(--muted-foreground));
-        font-size: 12px;
-        line-height: 1.55;
-    }
-
-    .settings-page :where(.ant-input[disabled], .ant-input-affix-wrapper-disabled, .ant-input-number-disabled, .ant-select-disabled .ant-select-selector) {
-        color: var(--app-text-muted);
-        background: color-mix(in srgb, var(--app-surface-2) 78%, transparent);
-        cursor: not-allowed;
-    }
-
-    .settings-page .settings-channel-pane > .workspace-state {
-        min-height: 300px;
-        padding: var(--app-space-8, 32px);
-        background: linear-gradient(var(--app-border-subtle) 1px, transparent 1px), linear-gradient(90deg, var(--app-border-subtle) 1px, transparent 1px), var(--app-surface-2);
-        background-size: 28px 28px;
-        border: 1px dashed var(--settings-accent-line);
-        border-radius: var(--app-surface-radius, 12px);
-    }
-
-    .settings-page .settings-channel-pane > .workspace-state .workspace-state-title,
-    .settings-page .settings-channel-pane > .workspace-state .workspace-state-description,
-    .settings-page .settings-channel-pane > .workspace-state .workspace-state-action {
-        position: relative;
-        z-index: 1;
-    }
+.settings-page .settings-model-capability-row:hover,
+.settings-page .settings-model-capability-row:focus-within {
+    background: var(--app-action-secondary-hover, var(--surface-card-hover));
+    border-color: var(--settings-accent-line);
 }
 
-@media (min-width: 1024px) and (max-width: 1180px) {
-    .settings-page .settings-section-save-note {
-        width: 28px;
-        overflow: hidden;
-        gap: 0;
-        justify-content: center;
-        padding: 0;
-        color: var(--app-status-success-fg);
-        font-size: 0;
-    }
-
-    .settings-page .settings-section-save-note svg {
-        flex: 0 0 auto;
-    }
+.settings-page .settings-channel-status {
+    display: inline-flex;
+    min-height: 22px;
+    align-items: center;
+    gap: 5px;
+    padding: 2px 7px;
+    background: var(--app-surface-2);
+    border: 1px solid var(--app-border-subtle);
+    border-radius: var(--app-control-radius-sm, 6px);
+    line-height: 1.3;
 }
 
+.settings-page .settings-channel-status i {
+    width: 6px;
+    height: 6px;
+    flex: 0 0 auto;
+    border-radius: 50%;
+    background: currentColor;
+}
+
+.settings-page .settings-channel-status.is-ready {
+    color: var(--app-status-success-fg);
+    background: var(--app-status-success-bg);
+    border-color: var(--app-status-success-border);
+}
+
+.settings-page .settings-channel-status.is-warning {
+    color: var(--app-status-warning-fg);
+    background: var(--app-status-warning-bg);
+    border-color: var(--app-status-warning-border);
+}
+
+.settings-page .model-default-option {
+    min-height: 82px;
+    background: var(--app-surface-1, var(--background));
+    border-color: var(--app-border-subtle, var(--border));
+    border-radius: var(--app-control-radius, 8px);
+}
+
+.settings-page .model-default-option:hover {
+    background: var(--app-action-secondary-hover, var(--surface-card-hover));
+    border-color: var(--app-border-default, var(--border));
+}
+
+.settings-page .model-default-option.is-selected {
+    background: var(--app-selection-bg, var(--control-selected-bg));
+    border-color: var(--app-selection-border, var(--control-selected-border));
+    box-shadow: inset 3px 0 0 var(--app-brand-600);
+}
+
+.settings-page .model-default-option.is-selected .model-default-option-icon,
+.settings-page .model-default-option.is-selected .model-default-option-check {
+    color: var(--app-selection-fg);
+    background: color-mix(in srgb, var(--app-selection-bg) 72%, var(--app-surface-1));
+}
+
+.settings-page .workflow-json-details {
+    padding: var(--app-space-3, 12px) var(--app-space-4, 16px);
+    background: var(--app-surface-1, var(--background));
+    border: 1px solid var(--app-border-subtle, var(--border));
+    border-radius: var(--app-control-radius, 8px);
+}
+
+.settings-page .workflow-json-details > summary {
+    color: var(--app-text-secondary, var(--muted-foreground));
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.settings-page .workflow-graph-editor {
+    min-height: 600px;
+    background: var(--app-surface-1, var(--background));
+    border: 1px solid var(--app-border-subtle, var(--border));
+    border-radius: var(--app-control-radius, 8px);
+}
+
+.settings-page :where(.ant-input, .ant-input-affix-wrapper, .ant-input-number, .ant-select-selector, .ant-input-textarea-affix-wrapper):focus-within,
+.settings-page :where(.ant-select-focused .ant-select-selector) {
+    border-color: var(--app-border-interactive);
+    box-shadow: var(--app-focus-shadow);
+}
+
+.settings-page :where(.ant-form-item-label > label) {
+    color: var(--app-text-secondary, var(--muted-foreground));
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.settings-page :where(.ant-form-item-extra, .ant-form-item-explain) {
+    margin-top: var(--app-space-1, 4px);
+    color: var(--app-text-muted, var(--muted-foreground));
+    font-size: 12px;
+    line-height: 1.55;
+}
+
+.settings-page :where(.ant-input[disabled], .ant-input-affix-wrapper-disabled, .ant-input-number-disabled, .ant-select-disabled .ant-select-selector) {
+    color: var(--app-text-muted);
+    background: color-mix(in srgb, var(--app-surface-2) 78%, transparent);
+    cursor: not-allowed;
+}
+
+.settings-page .settings-channel-pane > .workspace-state {
+    min-height: 300px;
+    padding: var(--app-space-8, 32px);
+    background: linear-gradient(var(--app-border-subtle) 1px, transparent 1px), linear-gradient(90deg, var(--app-border-subtle) 1px, transparent 1px), var(--app-surface-2);
+    background-size: 28px 28px;
+    border: 1px dashed var(--settings-accent-line);
+    border-radius: var(--app-surface-radius, 12px);
+}
+
+.settings-page .settings-channel-pane > .workspace-state .workspace-state-title,
+.settings-page .settings-channel-pane > .workspace-state .workspace-state-description,
+.settings-page .settings-channel-pane > .workspace-state .workspace-state-action {
+    position: relative;
+    z-index: 1;
+}
+
+.settings-page .settings-pane-header { display: flex; min-width: 0; flex-wrap: wrap; justify-content: space-between; gap: var(--app-space-3); }
+.settings-page .settings-field-group-label { display: flex; align-items: center; gap: var(--app-space-2); }
+.settings-page .settings-section { min-width: 0; }
+.settings-page .model-default-option { border: 1px solid var(--app-border-subtle); color: var(--app-text-primary); }
+.settings-page .model-default-option-icon { background: var(--app-surface-2); }
+.settings-page .model-default-option-scope, .settings-page .model-default-price { color: var(--app-text-secondary); font-size: var(--app-font-size-label); }
+.settings-page .model-default-option-check { background: var(--app-surface-2); }
+.settings-page .model-default-option-check.is-selected { color: var(--control-check-fg); background: var(--control-check-bg); }
+.settings-page :where(button, a):focus-visible { outline: 2px solid var(--app-focus-ring); outline-offset: 3px; }
+@media (min-width: 768px) and (max-width: 1279px) {
+    .settings-page .settings-subnav { grid-template-columns: 190px minmax(0, 1fr); gap: var(--app-space-4); }
+}
+@media (max-width: 1279px) {
+    .settings-page .settings-section-context { flex-wrap: wrap; }
+    .settings-page .settings-section-save-note { width: 100%; margin-left: 0; }
+}
+@media (max-width: 767px) {
+    .settings-page .settings-subnav { grid-template-columns: minmax(0, 1fr); gap: var(--app-space-4); }
+    .settings-page .pc-subnav-layout__rail { position: static; }
+    .settings-page .pc-subnav-layout__rail-header { display: none; }
+    .settings-page .pc-subnav-layout__nav { flex-direction: row; overflow-x: auto; }
+    .settings-page .pc-subnav-layout__item { flex: 0 0 auto; min-height: 44px; }
+    .settings-page .pc-subnav-layout__item-description { display: none; }
+    .settings-page .pc-subnav-layout__content-body { padding: var(--app-space-4); }
+    .settings-page .settings-section { padding: var(--app-space-3); }
+    .settings-page .settings-section-context { margin: 0 0 var(--app-space-4); }
+    .settings-page .settings-section-context-copy small { white-space: normal; }
+    .settings-page .settings-pane-root.is-editor { min-height: 0; }
+}
 @media (prefers-reduced-motion: reduce) {
-    .settings-page .settings-channel {
-        transition: none;
-    }
+    .settings-page .settings-channel { transition: none; }
 }

@@ -45,7 +45,7 @@ export function ModelDefaultGrid({ config, onChange }: { config: AiConfig; onCha
                             <span className="ml-auto shrink-0 text-xs tabular-nums text-foreground/38">{models.length} 个可用</span>
                         </div>
                         {models.length ? (
-                            <div role="radiogroup" aria-label={group.title} className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+                            <div role="group" aria-label={group.title} className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
                                 {models.map((model) => {
                                     const channel = resolveModelChannel(config, model);
                                     const selected = config[group.modelKey] === model;
@@ -54,8 +54,7 @@ export function ModelDefaultGrid({ config, onChange }: { config: AiConfig; onCha
                                         <button
                                             key={model}
                                             type="button"
-                                            role="radio"
-                                            aria-checked={selected}
+                                            aria-pressed={selected}
                                             className={cn(
                                                 "model-default-option group relative overflow-hidden rounded-md px-3 py-2.5 text-left transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none",
                                                 selected && "is-selected",

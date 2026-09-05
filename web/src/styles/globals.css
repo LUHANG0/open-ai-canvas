@@ -3878,49 +3878,6 @@
         min-height: 0;
     }
 
-    .settings-library-frame {
-        overflow: hidden;
-        border-radius: 0;
-        border: 0;
-        background: transparent;
-        padding: 0;
-    }
-
-    /* 设置页：导航是稳定区域，内容使用连续 section，不再用卡片套卡片表达层级。 */
-    .settings-page .settings-topbar {
-        display: flex;
-        min-height: 40px;
-        align-items: center;
-        justify-content: space-between;
-        gap: 12px;
-        padding: 0 14px;
-        background: transparent;
-    }
-
-    .settings-nav-panel {
-        background: color-mix(in srgb, var(--foreground) 1.5%, transparent);
-    }
-
-    .settings-nav-item {
-        position: relative;
-    }
-
-    .settings-nav-item.is-active {
-        background: var(--workspace-accent-soft);
-        color: var(--foreground);
-    }
-
-    .settings-pane-root { min-height: 100%; }
-    .settings-pane { min-width: 0; }
-    .settings-section { min-width: 0; }
-    .settings-channel { border: 0; border-radius: var(--r-lg); background: var(--library-surface); transition: background-color var(--motion-state) ease-out; }
-    .settings-channel:hover, .settings-channel:focus-within { background: var(--library-surface-hover); }
-    .settings-channel-status { display: inline-flex; min-width: 0; align-items: center; gap: var(--space-1-half); color: color-mix(in srgb, var(--foreground) 52%, transparent); }
-    .settings-channel-status i { width: var(--space-1-half); height: var(--space-1-half); flex: 0 0 auto; border-radius: var(--r-full); background: currentColor; }
-    .settings-channel-status.is-ready { color: color-mix(in srgb, var(--palette-status-success) 74%, var(--foreground)); }
-    .settings-channel-status.is-warning { color: color-mix(in srgb, var(--palette-status-warning) 78%, var(--foreground)); }
-    .settings-preference-block + .settings-preference-block { margin-top: var(--space-2); }
-
     .workflow-workspace-tabs {
         display: flex;
         justify-content: center;
@@ -4570,78 +4527,6 @@
         margin-top: var(--space-2);
     }
 
-    .settings-pane-header {
-        display: flex;
-        min-width: 0;
-        flex-wrap: wrap;
-        align-items: flex-end;
-        justify-content: space-between;
-        gap: 10px 14px;
-        margin-bottom: 14px;
-    }
-
-    .settings-pane-header h2 {
-        margin: 0;
-        font-size: var(--fs-body-lg);
-        font-weight: 620;
-        letter-spacing: 0;
-    }
-
-    .settings-pane-header p {
-        margin: 4px 0 0;
-        color: color-mix(in srgb, var(--foreground) 48%, transparent);
-        font-size: var(--fs-caption);
-        line-height: 1.6;
-    }
-
-    .settings-field-group-label {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        margin: 4px 0 2px;
-        color: color-mix(in srgb, var(--foreground) 42%, transparent);
-        font-size: var(--fs-tiny);
-        font-weight: 560;
-        letter-spacing: 0.02em;
-    }
-
-    .settings-channel-list {
-        padding-top: 2px;
-    }
-
-    .model-default-option { min-height: var(--settings-model-option-min-height); background: color-mix(in srgb, var(--foreground) 2.5%, transparent); color: var(--foreground); }
-    .model-default-option:hover { background: color-mix(in srgb, var(--foreground) 5%, transparent); }
-    .model-default-option.is-selected { background: var(--workspace-accent-soft); }
-    .model-default-option-icon { background: color-mix(in srgb, var(--foreground) 5%, transparent); }
-    .model-default-option.is-selected .model-default-option-icon { background: color-mix(in srgb, var(--workspace-surface-strong) 72%, transparent); }
-    .model-default-option-scope, .model-default-price { color: color-mix(in srgb, var(--foreground) 48%, transparent); font-size: var(--fs-micro); font-variant-numeric: tabular-nums; }
-    .model-default-option-check { background: color-mix(in srgb, var(--foreground) 7%, transparent); }
-    .model-default-option-check.is-selected { background: var(--control-check-bg); color: var(--control-check-fg); }
-
-    .settings-page :where(.ant-input, .ant-input-affix-wrapper, .ant-select-selector, .ant-input-number, .ant-picker) {
-        min-height: 34px;
-        border-radius: var(--r-md) !important;
-    }
-
-    .settings-page :where(.ant-input, .ant-input-affix-wrapper, .ant-select-selector) {
-        border-color: color-mix(in srgb, var(--foreground) 14%, transparent) !important;
-        background: color-mix(in srgb, var(--foreground) 2.5%, transparent) !important;
-        box-shadow: none !important;
-    }
-
-    .settings-page :where(.ant-input:hover, .ant-input-affix-wrapper:hover, .ant-select-selector:hover) {
-        border-color: color-mix(in srgb, var(--foreground) 24%, transparent) !important;
-    }
-
-    .settings-page :where(.ant-input:focus, .ant-input-affix-wrapper-focused, .ant-select-focused .ant-select-selector) {
-        border-color: color-mix(in srgb, var(--workspace-accent) 46%, transparent) !important;
-        box-shadow: 0 0 0 3px color-mix(in srgb, var(--workspace-accent) 10%, transparent) !important;
-    }
-
-    .settings-page .ant-btn {
-        border-radius: var(--r-md);
-    }
-
     .workflow-entry-actions-field .ant-form-item-control-input {
         min-height: 34px;
     }
@@ -4656,13 +4541,6 @@
 
     .workflow-entry-actions .ant-btn {
         white-space: nowrap;
-    }
-
-    .settings-page .ant-form-item-explain-error,
-    .settings-page .ant-form-item-explain-warning {
-        border-radius: var(--r-sm);
-        padding: 4px 8px;
-        font-size: var(--fs-tiny);
     }
 
     .canvas-library-page .canvas-library-discovery {

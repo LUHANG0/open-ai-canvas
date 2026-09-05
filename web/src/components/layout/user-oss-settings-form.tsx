@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { changesRequireOSSRetest, DEFAULT_OSS_PATH_PREFIX, getS3PresetHints, S3_PRESET_OPTIONS, type OSSConnectionTestResult, type OSSProvider, type S3Preset } from "@/lib/oss-settings";
 import { getUserOSSSetting, testUserOSSConnection, updateUserOSSSetting, type UserOSSSetting } from "@/services/api/resources";
 import { useUserStore } from "@/stores/use-user-store";
+import { WorkspaceErrorState, WorkspaceLoadingState } from "@/components/ui/pc/workspace-state";
 
 type OSSFormValues = {
     enabled?: boolean;
@@ -26,7 +27,9 @@ export function UserOSSSettingsForm() {
     const { message } = App.useApp();
     const [form] = Form.useForm<OSSFormValues>();
     const [setting, setSetting] = useState<UserOSSSetting | null>(null);
-    const [loading, setLoading] = useState(false);
+    const [loading, setLoading] = useState(true);
+    const [loadError, setLoadError] = useState("");
+    const [loadAttempt, setLoadAttempt] = useState(0);
     const [saving, setSaving] = useState(false);
     const [testing, setTesting] = useState(false);
     const [testResult, setTestResult] = useState<OSSConnectionTestResult | null>(null);
@@ -45,6 +48,7 @@ export function UserOSSSettingsForm() {
         if (!actor?.id) return;
         let active = true;
         setLoading(true);
+        setLoadError("");
         void getUserOSSSetting()
             .then((data) => {
                 if (!active) return;
@@ -52,16 +56,21 @@ export function UserOSSSettingsForm() {
                 form.setFieldsValue(toFormValues(data.setting));
                 setTestResult(data.setting.testedAt ? { ok: true, testedAt: data.setting.testedAt, testedDigest: data.setting.testedDigest } : null);
             })
-            .catch((error) => active && message.error(error instanceof Error ? error.message : "读取个人对象存储配置失败"))
+            .catch((error) => {
+                if (active) setLoadError(error instanceof Error ? error.message : "读取个人对象存储配置失败");
+            })
             .finally(() => active && setLoading(false));
         return () => {
             active = false;
         };
-    }, [actor?.id, form, message]);
+    }, [actor?.id, form, loadAttempt]);
 
     if (!actor) {
         return <div className="rounded-md border border-dashed border-border px-5 py-10 text-center text-sm text-foreground/55">登录后可配置个人对象存储。</div>;
     }
+
+    if (loading) return <WorkspaceLoadingState label="正在读取个人对象存储" rows={2} />;
+    if (loadError) return <WorkspaceErrorState compact title="个人对象存储读取失败" description={loadError} onRetry={() => setLoadAttempt((value) => value + 1)} />;
 
     const save = async () => {
         const values = await form.validateFields();
@@ -111,7 +120,7 @@ export function UserOSSSettingsForm() {
     };
 
     return (
-        <Form form={form} layout="vertical" requiredMark={false} disabled={loading} onValuesChange={(changed) => changesRequireOSSRetest(changed) && setTestStale(true)}>
+        <Form form={form} layout="vertical" requiredMark={false} disabled={saving || testing} onValuesChange={(changed) => changesRequireOSSRetest(changed) && setTestStale(true)}>
             <div className="mb-3 flex flex-wrap items-start justify-between gap-3 border-b border-border pb-3">
                 <div className="min-w-0">
                     <div className="flex items-center gap-2 text-sm font-semibold">
