@@ -1,8 +1,8 @@
 .pc-auth-scene {
     --auth-brand: var(--app-brand-400, #b1a4ff);
     --auth-brand-soft: color-mix(in srgb, var(--auth-brand) 18%, transparent);
-    --auth-panel: #101115;
-    --auth-ink: #f0f1f5;
+    --auth-panel: var(--app-bg-page);
+    --auth-ink: var(--app-text-primary);
     --auth-text-secondary: #d4d6df;
     --auth-text-muted: #a4a7b2;
     --auth-line: #ffffff1f;
@@ -17,7 +17,7 @@
     color-scheme: dark;
     background: var(--auth-panel);
     color: var(--auth-ink);
-    font-family: "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+    font-family: var(--app-font-sans);
 }
 .pc-auth-scene * {
     box-sizing: border-box;

@@ -1,10 +1,10 @@
 .public-site-shell {
-    --ps-ink: #f0f1f5;
-    --ps-paper: #101115;
-    --ps-surface: #191b22;
-    --ps-raised: #22252e;
-    --ps-muted: #a4a7b2;
-    --ps-accent: #b1a4ff;
+    --ps-ink: var(--app-text-primary);
+    --ps-paper: var(--app-bg-page);
+    --ps-surface: var(--app-surface-1);
+    --ps-raised: var(--app-surface-2);
+    --ps-muted: var(--app-text-muted);
+    --ps-accent: var(--app-brand-accent);
     --ps-line: #ffffff1f;
     --ps-gutter: clamp(24px, 6vw, 96px);
     width: 100%;
@@ -17,7 +17,7 @@
     background: var(--ps-paper);
     color: var(--ps-ink);
     color-scheme: dark;
-    font-family: "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+    font-family: var(--app-font-sans);
     font-size: 16px;
     line-height: 1.7;
 }

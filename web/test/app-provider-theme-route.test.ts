@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import { createMemoryRouter } from "react-router";
 
-import { APP_THEME_COLORS, PC_USER_THEME_COLORS } from "../src/lib/app-theme";
-import { createAppThemePathnameStore, getAntThemeConfigForPathname, isAdminThemePathname } from "../src/lib/app-theme-route";
+import { APP_THEME_COLORS } from "../src/lib/app-theme";
+import { createAppThemePathnameStore, getAntThemeConfigForPathname, isAdminThemePathname, isDarkThemeForPathname } from "../src/lib/app-theme-route";
 
 describe("app provider route theme", () => {
     test("matches only the Admin route boundary", () => {
@@ -14,21 +14,31 @@ describe("app provider route theme", () => {
         expect(isAdminThemePathname("/create")).toBe(false);
     });
 
-    test("keeps Brand V2 on desktop user routes and the legacy palette on Admin", () => {
-        const user = getAntThemeConfigForPathname(false, true, "/create");
-        const admin = getAntThemeConfigForPathname(false, true, "/admin/channels");
-        const mobileUser = getAntThemeConfigForPathname(false, false, "/create");
-        const darkUser = getAntThemeConfigForPathname(true, true, "/create");
-        const darkAdmin = getAntThemeConfigForPathname(true, true, "/admin/logs");
+    test("shares surfaces, controls and brand accents across user and Admin routes", () => {
+        for (const dark of [false, true]) {
+            const user = getAntThemeConfigForPathname(dark, "/create");
+            const admin = getAntThemeConfigForPathname(dark, "/admin/channels");
+            const color = APP_THEME_COLORS[dark ? "dark" : "light"];
+            expect(user.token?.colorBgContainer).toBe(color.surface.one);
+            expect(admin.token?.colorBgContainer).toBe(user.token?.colorBgContainer);
+            expect(admin.token?.colorPrimary).toBe(user.token?.colorPrimary);
+            expect(admin.token?.borderRadius).toBe(user.token?.borderRadius);
+            expect(admin.components?.Button).toEqual(user.components?.Button);
+            expect(user.components?.Button?.colorPrimary).toBe(color.action.primary.bg);
+            expect(admin.components?.Menu?.itemHeight).toBe(34);
+            expect(user.components?.Menu?.itemHeight).toBe(36);
+        }
+    });
 
-        expect(user.token?.colorPrimary).toBe(PC_USER_THEME_COLORS.light.action.primary.bg);
-        expect(admin.token?.colorPrimary).toBe(APP_THEME_COLORS.light.action.primary.bg);
-        expect(admin.components?.Menu?.itemHeight).toBe(34);
-        expect(mobileUser.token?.colorPrimary).toBe(APP_THEME_COLORS.light.action.primary.bg);
-        expect(mobileUser.components?.Menu?.itemHeight).toBe(36);
-        expect(darkUser.token?.colorPrimary).toBe(PC_USER_THEME_COLORS.dark.action.primary.bg);
-        expect(darkAdmin.token?.colorPrimary).toBe(APP_THEME_COLORS.dark.action.primary.bg);
-        expect(darkAdmin.components?.Menu?.itemHeight).toBe(34);
+    test("keeps public and auth feedback dark without changing workspace preferences", () => {
+        for (const path of ["/", "/product", "/showcase/", "/about", "/login", "/register"]) {
+            expect(isDarkThemeForPathname(false, path)).toBe(true);
+            expect(getAntThemeConfigForPathname(false, path).token?.colorBgContainer).toBe(APP_THEME_COLORS.dark.surface.one);
+        }
+        for (const path of ["/home", "/create", "/admin", "/login-other"]) {
+            expect(isDarkThemeForPathname(false, path)).toBe(false);
+            expect(isDarkThemeForPathname(true, path)).toBe(true);
+        }
     });
 
     test("places App-level feedback holders inside the route-aware theme", async () => {

@@ -2,7 +2,7 @@ import type { ThemeConfig } from "antd";
 import { theme as antdTheme } from "antd";
 
 /**
- * PC 用户端的 TypeScript Foundation 映射。
+ * 官网、用户端和管理端共用的 TypeScript Foundation 映射。
  * CSS 同名值位于 styles/pc-user-foundation.css；AntD 只从此对象派生，
  * 避免组件配置再分散维护颜色、尺寸、圆角和动效字面值。
  */
@@ -162,20 +162,20 @@ export const APP_THEME_COLORS = {
     },
     dark: {
         background: {
-            canvas: "#111315",
-            page: "#111315",
+            canvas: "#101115",
+            page: "#101115",
         },
         surface: {
-            one: "#1a1d20",
-            two: "#22262a",
-            three: "#2b3035",
-            overlay: "#1f1f20",
+            one: "#191b22",
+            two: "#22252e",
+            three: "#2b2e38",
+            overlay: "#22252e",
             subtle: "rgba(255, 255, 255, 0.055)",
         },
         text: {
-            primary: "#f5f5f5",
-            secondary: "rgba(245, 245, 245, 0.74)",
-            muted: "rgba(245, 245, 245, 0.54)",
+            primary: "#f0f1f5",
+            secondary: "#d4d6df",
+            muted: "#a4a7b2",
             inverse: "#171717",
         },
         border: {
@@ -186,7 +186,7 @@ export const APP_THEME_COLORS = {
         },
         action: {
             primary: {
-                bg: "#f5f5f5",
+                bg: "#f0f1f5",
                 hover: "#ffffff",
                 active: "#e5e5e5",
                 fg: "#171717",
@@ -195,16 +195,16 @@ export const APP_THEME_COLORS = {
                 bg: "transparent",
                 hover: "rgba(255, 255, 255, 0.07)",
                 active: "rgba(255, 255, 255, 0.12)",
-                fg: "#f5f5f5",
+                fg: "#f0f1f5",
             },
             check: {
-                bg: "#f5f5f5",
+                bg: "#f0f1f5",
                 hover: "#ffffff",
                 active: "#e5e5e5",
                 fg: "#131313",
             },
             switchChecked: {
-                bg: "#f5f5f5",
+                bg: "#f0f1f5",
                 hover: "#ffffff",
                 handle: "#131313",
             },
@@ -213,7 +213,7 @@ export const APP_THEME_COLORS = {
             bg: "rgba(255, 255, 255, 0.12)",
             hover: "rgba(255, 255, 255, 0.16)",
             active: "rgba(255, 255, 255, 0.2)",
-            fg: "#f5f5f5",
+            fg: "#f0f1f5",
         },
         control: {
             bg: "rgba(255, 255, 255, 0.035)",
@@ -223,7 +223,7 @@ export const APP_THEME_COLORS = {
             focus: "rgba(255, 255, 255, 0.28)",
             switchOffBg: "rgba(255, 255, 255, 0.22)",
             switchOffHover: "rgba(255, 255, 255, 0.3)",
-            switchOffHandle: "#f5f5f5",
+            switchOffHandle: "#f0f1f5",
         },
         status: {
             info: {
@@ -254,7 +254,7 @@ export const APP_THEME_COLORS = {
             },
         },
         menu: {
-            bg: "#262626",
+            bg: "#22252e",
             text: "#fafafa",
             activeBg: "rgba(255, 255, 255, 0.055)",
             selectedBg: "rgba(255, 255, 255, 0.09)",
@@ -275,347 +275,54 @@ export const APP_THEME_COLORS = {
     },
 } as const;
 
-/**
- * Brand V2 primitives are intentionally separate from the frozen neutral
- * palette above. User-facing semantic colors may reference these values,
- * while Admin continues to derive its theme exclusively from APP_THEME_COLORS.
- */
-export const PC_USER_BRAND_COLORS = {
-    50: "#f5f3ff",
-    100: "#ece9ff",
-    200: "#dcd6ff",
-    300: "#c4baff",
-    400: "#a79bff",
-    500: "#8b7cf6",
-    600: "#6d5dfb",
-    700: "#5b4bdb",
-    800: "#4438a8",
-    900: "#302779",
-} as const;
-
-export const PC_USER_AI_COLORS = {
-    50: "#eafbfc",
-    100: "#d0f4f6",
-    400: "#5dd6df",
-    500: "#1aa8b4",
-    600: "#0e7f8c",
-} as const;
-
-/**
- * PC user-facing semantic palette for the "Lightframe Director Console".
- * Keep this object synchronized with the scoped variables in
- * styles/pc-user-foundation.css.
- */
-export const PC_USER_THEME_COLORS = {
-    light: {
-        background: {
-            canvas: "#eff1f7",
-            page: "#f7f8fb",
-        },
-        surface: {
-            one: "#ffffff",
-            two: "#f3f5fa",
-            three: "#e9ecf4",
-            overlay: "#ffffff",
-            subtle: "rgba(48, 55, 78, 0.04)",
-        },
-        text: {
-            primary: "#181a26",
-            secondary: "rgba(24, 26, 38, 0.72)",
-            muted: "rgba(24, 26, 38, 0.52)",
-            inverse: "#ffffff",
-        },
-        border: {
-            subtle: "rgba(48, 55, 78, 0.1)",
-            default: "rgba(48, 55, 78, 0.15)",
-            strong: "rgba(48, 55, 78, 0.22)",
-            interactive: "rgba(91, 75, 219, 0.38)",
-        },
-        action: {
-            primary: {
-                bg: PC_USER_BRAND_COLORS[700],
-                hover: "#4e3fc6",
-                active: PC_USER_BRAND_COLORS[800],
-                fg: "#ffffff",
-            },
-            secondary: {
-                bg: "transparent",
-                hover: "rgba(91, 75, 219, 0.07)",
-                active: "rgba(91, 75, 219, 0.12)",
-                fg: "#181a26",
-            },
-            check: {
-                bg: PC_USER_BRAND_COLORS[600],
-                hover: PC_USER_BRAND_COLORS[700],
-                active: PC_USER_BRAND_COLORS[800],
-                fg: "#ffffff",
-            },
-            switchChecked: {
-                bg: PC_USER_BRAND_COLORS[600],
-                hover: PC_USER_BRAND_COLORS[700],
-                handle: "#ffffff",
-            },
-        },
-        selection: {
-            bg: "rgba(91, 75, 219, 0.1)",
-            hover: "rgba(91, 75, 219, 0.14)",
-            active: "rgba(91, 75, 219, 0.18)",
-            fg: PC_USER_BRAND_COLORS[800],
-        },
-        control: {
-            bg: "#ffffff",
-            border: "rgba(48, 55, 78, 0.18)",
-            disabledBg: "rgba(48, 55, 78, 0.06)",
-            disabledFg: "rgba(24, 26, 38, 0.36)",
-            focus: "rgba(91, 75, 219, 0.26)",
-            switchOffBg: "rgba(48, 55, 78, 0.22)",
-            switchOffHover: "rgba(48, 55, 78, 0.3)",
-            switchOffHandle: "#ffffff",
-        },
-        status: {
-            info: {
-                bg: "rgba(68, 56, 168, 0.07)",
-                hover: "rgba(68, 56, 168, 0.11)",
-                border: "rgba(68, 56, 168, 0.2)",
-                fg: PC_USER_BRAND_COLORS[800],
-            },
-            success: {
-                bg: "rgba(21, 128, 61, 0.09)",
-                border: "rgba(21, 128, 61, 0.24)",
-                fg: "#15803d",
-            },
-            warning: {
-                bg: "rgba(180, 83, 9, 0.1)",
-                border: "rgba(180, 83, 9, 0.26)",
-                fg: "#b45309",
-            },
-            error: {
-                bg: "rgba(220, 38, 38, 0.09)",
-                border: "rgba(220, 38, 38, 0.24)",
-                fg: "#dc2626",
-            },
-            running: {
-                bg: "rgba(14, 127, 140, 0.1)",
-                border: "rgba(14, 127, 140, 0.26)",
-                fg: PC_USER_AI_COLORS[600],
-            },
-        },
-        menu: {
-            bg: "rgba(91, 75, 219, 0.1)",
-            text: PC_USER_BRAND_COLORS[800],
-            activeBg: "rgba(91, 75, 219, 0.1)",
-            selectedBg: "rgba(91, 75, 219, 0.14)",
-        },
-        table: {
-            headerText: "rgba(24, 26, 38, 0.58)",
-            rowHover: "rgba(91, 75, 219, 0.035)",
-            selectedBg: "rgba(91, 75, 219, 0.08)",
-            selectedHover: "rgba(91, 75, 219, 0.12)",
-        },
-        shadow: {
-            overlay: "0 24px 68px rgba(35, 38, 57, 0.16)",
-        },
-        skeleton: {
-            from: "rgba(48, 55, 78, 0.055)",
-            to: "rgba(48, 55, 78, 0.11)",
-        },
-    },
-    dark: {
-        background: {
-            canvas: "#0a0c13",
-            page: "#0e1018",
-        },
-        surface: {
-            one: "#151824",
-            two: "#1b1f2d",
-            three: "#232838",
-            overlay: "#1b1f2d",
-            subtle: "rgba(255, 255, 255, 0.055)",
-        },
-        text: {
-            primary: "#f5f5fb",
-            secondary: "rgba(245, 245, 251, 0.74)",
-            muted: "rgba(245, 245, 251, 0.54)",
-            inverse: "#11131d",
-        },
-        border: {
-            subtle: "rgba(226, 229, 255, 0.1)",
-            default: "rgba(226, 229, 255, 0.16)",
-            strong: "rgba(226, 229, 255, 0.24)",
-            interactive: "rgba(167, 155, 255, 0.46)",
-        },
-        action: {
-            primary: {
-                bg: PC_USER_BRAND_COLORS[500],
-                hover: "#9b8eff",
-                active: "#8172ef",
-                fg: "#11131d",
-            },
-            secondary: {
-                bg: "transparent",
-                hover: "rgba(139, 124, 246, 0.1)",
-                active: "rgba(139, 124, 246, 0.16)",
-                fg: "#f5f5fb",
-            },
-            check: {
-                bg: PC_USER_BRAND_COLORS[500],
-                hover: "#9b8eff",
-                active: "#8172ef",
-                fg: "#11131d",
-            },
-            switchChecked: {
-                bg: PC_USER_BRAND_COLORS[500],
-                hover: "#9b8eff",
-                handle: "#11131d",
-            },
-        },
-        selection: {
-            bg: "rgba(139, 124, 246, 0.16)",
-            hover: "rgba(139, 124, 246, 0.22)",
-            active: "rgba(139, 124, 246, 0.28)",
-            fg: "#c7c0ff",
-        },
-        control: {
-            bg: "rgba(255, 255, 255, 0.04)",
-            border: "rgba(226, 229, 255, 0.24)",
-            disabledBg: "rgba(255, 255, 255, 0.06)",
-            disabledFg: "rgba(245, 245, 251, 0.38)",
-            focus: "rgba(167, 155, 255, 0.34)",
-            switchOffBg: "rgba(226, 229, 255, 0.22)",
-            switchOffHover: "rgba(226, 229, 255, 0.3)",
-            switchOffHandle: "#f5f5fb",
-        },
-        status: {
-            info: {
-                bg: "rgba(199, 192, 255, 0.1)",
-                hover: "rgba(199, 192, 255, 0.14)",
-                border: "rgba(199, 192, 255, 0.22)",
-                fg: "#c7c0ff",
-            },
-            success: {
-                bg: "rgba(74, 222, 128, 0.1)",
-                border: "rgba(74, 222, 128, 0.26)",
-                fg: "#4ade80",
-            },
-            warning: {
-                bg: "rgba(251, 191, 36, 0.11)",
-                border: "rgba(251, 191, 36, 0.28)",
-                fg: "#fbbf24",
-            },
-            error: {
-                bg: "rgba(248, 113, 113, 0.1)",
-                border: "rgba(248, 113, 113, 0.26)",
-                fg: "#f87171",
-            },
-            running: {
-                bg: "rgba(93, 214, 223, 0.12)",
-                border: "rgba(93, 214, 223, 0.28)",
-                fg: PC_USER_AI_COLORS[400],
-            },
-        },
-        menu: {
-            bg: "rgba(139, 124, 246, 0.16)",
-            text: "#c7c0ff",
-            activeBg: "rgba(139, 124, 246, 0.16)",
-            selectedBg: "rgba(139, 124, 246, 0.22)",
-        },
-        table: {
-            headerText: "rgba(245, 245, 251, 0.62)",
-            rowHover: "rgba(139, 124, 246, 0.055)",
-            selectedBg: "rgba(139, 124, 246, 0.12)",
-            selectedHover: "rgba(139, 124, 246, 0.18)",
-        },
-        shadow: {
-            overlay: "0 26px 76px rgba(0, 0, 0, 0.56)",
-        },
-        skeleton: {
-            from: "rgba(226, 229, 255, 0.06)",
-            to: "rgba(226, 229, 255, 0.13)",
-        },
-    },
-} as const;
-
-type AppThemeMode = keyof typeof APP_THEME_COLORS;
-
-const LEGACY_INFO = {
-    light: {
-        bg: "rgba(17, 17, 17, 0.045)",
-        hover: "rgba(17, 17, 17, 0.07)",
-        border: "rgba(17, 17, 17, 0.14)",
-        fg: "#3f3f46",
-        hoverFg: "#27272a",
-        activeFg: "#52525b",
-        text: "#27272a",
-        textHover: "#27272a",
-        textActive: "#3f3f46",
-    },
-    dark: {
-        bg: "rgba(255, 255, 255, 0.08)",
-        hover: "rgba(255, 255, 255, 0.11)",
-        border: "rgba(255, 255, 255, 0.2)",
-        fg: "#e4e4e7",
-        hoverFg: "#ffffff",
-        activeFg: "#d4d4d8",
-        text: "#f4f4f5",
-        textHover: "#fafafa",
-        textActive: "#e4e4e7",
-    },
-} as const;
-
-function createAntThemeConfig(dark: boolean, pcUserSemantics: boolean, pcBrandV2: boolean = pcUserSemantics): ThemeConfig {
-    const mode: AppThemeMode = dark ? "dark" : "light";
-    const color = pcUserSemantics && pcBrandV2 ? PC_USER_THEME_COLORS[mode] : APP_THEME_COLORS[mode];
-    const darkColor = pcUserSemantics && pcBrandV2 ? PC_USER_THEME_COLORS.dark : APP_THEME_COLORS.dark;
-    const info = pcUserSemantics
-        ? {
-              ...color.status.info,
-              hoverFg: color.status.info.fg,
-              activeFg: color.status.info.fg,
-              text: color.status.info.fg,
-              textHover: color.status.info.fg,
-              textActive: color.status.info.fg,
-          }
-        : LEGACY_INFO[mode];
-    const controlFocus = pcUserSemantics ? color.control.focus : dark ? "rgba(255, 255, 255, 0.24)" : "rgba(17, 17, 17, 0.24)";
-    const focusShadow = pcUserSemantics ? `0 0 0 2px ${controlFocus}` : "none";
-    const secondaryHover = pcUserSemantics ? color.action.secondary.hover : color.selection.bg;
-    const secondaryActive = pcUserSemantics ? color.action.secondary.active : color.selection.hover;
-
-    const semanticToken = pcUserSemantics
-        ? {
-              colorBgBase: color.background.page,
-              colorBgLayout: color.background.canvas,
-              colorBgContainer: color.surface.one,
-              colorBgContainerDisabled: color.control.disabledBg,
-              colorBgElevated: color.surface.overlay,
-              colorFillSecondary: color.surface.two,
-              colorFillTertiary: color.surface.three,
-              colorText: color.text.primary,
-              colorTextSecondary: color.text.secondary,
-              colorTextTertiary: color.text.muted,
-              colorTextDisabled: color.control.disabledFg,
-              colorBorder: color.border.default,
-              colorBorderSecondary: color.border.subtle,
-              colorSuccess: color.status.success.fg,
-              colorSuccessBg: color.status.success.bg,
-              colorSuccessBorder: color.status.success.border,
-              colorSuccessText: color.status.success.fg,
-              colorWarning: color.status.warning.fg,
-              colorWarningBg: color.status.warning.bg,
-              colorWarningBorder: color.status.warning.border,
-              colorWarningText: color.status.warning.fg,
-              colorError: color.status.error.fg,
-              colorErrorBg: color.status.error.bg,
-              colorErrorBorder: color.status.error.border,
-              colorErrorText: color.status.error.fg,
-              fontFamily: APP_THEME_FOUNDATION.fontFamily,
-              borderRadiusXS: APP_THEME_FOUNDATION.radius.controlSmall,
-              borderRadiusSM: APP_THEME_FOUNDATION.radius.controlSmall,
-              borderRadius: APP_THEME_FOUNDATION.radius.control,
-              borderRadiusLG: APP_THEME_FOUNDATION.radius.surfaceSmall,
-              borderRadiusOuter: APP_THEME_FOUNDATION.radius.surface,
-          }
-        : {};
+function createAntThemeConfig(dark: boolean): ThemeConfig {
+    const color = APP_THEME_COLORS[dark ? "dark" : "light"];
+    const darkColor = APP_THEME_COLORS.dark;
+    const info = {
+        ...color.status.info,
+        hoverFg: color.status.info.fg,
+        activeFg: color.status.info.fg,
+        text: color.status.info.fg,
+        textHover: color.status.info.fg,
+        textActive: color.status.info.fg,
+    };
+    const controlFocus = color.control.focus;
+    const focusShadow = `0 0 0 2px ${controlFocus}`;
+    const secondaryHover = color.action.secondary.hover;
+    const secondaryActive = color.action.secondary.active;
+    const semanticToken = {
+        colorBgBase: color.background.page,
+        colorBgLayout: color.background.canvas,
+        colorBgContainer: color.surface.one,
+        colorBgContainerDisabled: color.control.disabledBg,
+        colorBgElevated: color.surface.overlay,
+        colorFillSecondary: color.surface.two,
+        colorFillTertiary: color.surface.three,
+        colorText: color.text.primary,
+        colorTextSecondary: color.text.secondary,
+        colorTextTertiary: color.text.muted,
+        colorTextDisabled: color.control.disabledFg,
+        colorBorder: color.border.default,
+        colorBorderSecondary: color.border.subtle,
+        colorSuccess: color.status.success.fg,
+        colorSuccessBg: color.status.success.bg,
+        colorSuccessBorder: color.status.success.border,
+        colorSuccessText: color.status.success.fg,
+        colorWarning: color.status.warning.fg,
+        colorWarningBg: color.status.warning.bg,
+        colorWarningBorder: color.status.warning.border,
+        colorWarningText: color.status.warning.fg,
+        colorError: color.status.error.fg,
+        colorErrorBg: color.status.error.bg,
+        colorErrorBorder: color.status.error.border,
+        colorErrorText: color.status.error.fg,
+        fontFamily: APP_THEME_FOUNDATION.fontFamily,
+        borderRadiusXS: APP_THEME_FOUNDATION.radius.controlSmall,
+        borderRadiusSM: APP_THEME_FOUNDATION.radius.controlSmall,
+        borderRadius: APP_THEME_FOUNDATION.radius.control,
+        borderRadiusLG: APP_THEME_FOUNDATION.radius.surfaceSmall,
+        borderRadiusOuter: APP_THEME_FOUNDATION.radius.surface,
+    };
 
     return {
         algorithm: dark ? antdTheme.darkAlgorithm : antdTheme.defaultAlgorithm,
@@ -640,12 +347,7 @@ function createAntThemeConfig(dark: boolean, pcUserSemantics: boolean, pcBrandV2
             colorLinkHover: color.action.primary.hover,
             colorLinkActive: color.action.primary.active,
             colorTextLightSolid: color.action.primary.fg,
-            colorBgElevated: color.surface.overlay,
-            colorBorderSecondary: dark ? "rgba(255, 255, 255, 0.1)" : "rgba(17, 17, 17, 0.09)",
             boxShadowSecondary: color.shadow.overlay,
-            borderRadius: 6,
-            borderRadiusLG: 8,
-            borderRadiusSM: 5,
             controlHeight: APP_THEME_FOUNDATION.controlHeight.default,
             controlHeightLG: APP_THEME_FOUNDATION.controlHeight.large,
             controlHeightSM: APP_THEME_FOUNDATION.controlHeight.small,
@@ -731,7 +433,7 @@ function createAntThemeConfig(dark: boolean, pcUserSemantics: boolean, pcBrandV2
                 controlOutline: controlFocus,
             },
             Menu: {
-                itemHeight: pcUserSemantics ? APP_THEME_FOUNDATION.controlHeight.default : 40,
+                itemHeight: APP_THEME_FOUNDATION.controlHeight.default,
                 itemMarginBlock: 2,
                 itemActiveBg: color.menu.bg,
                 itemHoverBg: color.menu.bg,
@@ -743,7 +445,7 @@ function createAntThemeConfig(dark: boolean, pcUserSemantics: boolean, pcBrandV2
             },
             Select: {
                 selectorBg: color.surface.overlay,
-                optionHeight: pcUserSemantics ? APP_THEME_FOUNDATION.controlHeight.default : 40,
+                optionHeight: APP_THEME_FOUNDATION.controlHeight.default,
                 optionPadding: "8px 12px",
                 multipleItemHeight: 26,
                 activeBorderColor: color.border.interactive,
@@ -758,7 +460,7 @@ function createAntThemeConfig(dark: boolean, pcUserSemantics: boolean, pcBrandV2
                 headerColor: color.table.headerText,
                 headerBorderRadius: 0,
                 rowHoverBg: color.table.rowHover,
-                borderColor: pcUserSemantics ? color.border.subtle : dark ? "rgba(255, 255, 255, 0.08)" : "rgba(17, 17, 17, 0.075)",
+                borderColor: color.border.subtle,
                 cellPaddingBlockMD: 13,
                 cellPaddingInlineMD: 14,
                 rowSelectedBg: color.table.selectedBg,
@@ -808,27 +510,19 @@ function createAntThemeConfig(dark: boolean, pcUserSemantics: boolean, pcBrandV2
     };
 }
 
-export function getAntThemeConfig(dark: boolean, pcBrandV2 = true): ThemeConfig {
-    return createAntThemeConfig(dark, true, pcBrandV2);
+export function getAntThemeConfig(dark: boolean): ThemeConfig {
+    return createAntThemeConfig(dark);
 }
 
-/**
- * Admin 使用原有基础主题和更高密度的控件节奏。这里不注入 PC 用户端新增的
- * 背景、文字、圆角和状态别名，避免本次重构间接改变 Admin 的现有合同。
- */
+/** 管理端沿用共享主题，仅保留高密度表格与表单节奏。 */
 export function getAdminAntThemeConfig(dark: boolean): ThemeConfig {
-    const base = createAntThemeConfig(dark, false);
-    const mutedForeground = dark ? "rgba(250, 250, 250, 0.58)" : "rgba(23, 23, 23, 0.58)";
+    const base = createAntThemeConfig(dark);
+    const color = APP_THEME_COLORS[dark ? "dark" : "light"];
 
     return {
         ...base,
         token: {
             ...base.token,
-            borderRadius: 6,
-            borderRadiusLG: 8,
-            colorBgContainer: "var(--color-surface)",
-            colorBorder: "var(--color-border)",
-            fontFamily: "var(--font-sans)",
             padding: 12,
             paddingSM: 8,
             fontSize: 13,
@@ -842,7 +536,7 @@ export function getAdminAntThemeConfig(dark: boolean): ThemeConfig {
             },
             Drawer: {
                 ...base.components?.Drawer,
-                colorBgElevated: "var(--color-surface)",
+                colorBgElevated: color.surface.overlay,
             },
             Form: {
                 ...base.components?.Form,
@@ -862,9 +556,9 @@ export function getAdminAntThemeConfig(dark: boolean): ThemeConfig {
                 cellPaddingInlineMD: 12,
                 cellPaddingInlineSM: 8,
                 headerBg: "transparent",
-                headerColor: mutedForeground,
+                headerColor: color.table.headerText,
                 headerSplitColor: "transparent",
-                borderColor: "var(--color-border)",
+                borderColor: color.border.subtle,
             },
         },
     };

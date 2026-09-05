@@ -2,7 +2,6 @@ import { ConfigProvider, Tabs } from "antd";
 import { useMemo } from "react";
 import { Link, useLocation, useNavigate } from "react-router";
 import { useBranding } from "@/components/branding/branding-provider";
-import { usePcBrandViewport } from "@/hooks/use-pc-brand-viewport";
 import { getAntThemeConfig } from "@/lib/app-theme";
 import { withBrandingAntTheme } from "@/lib/branding-theme";
 import type { AuthMode, AuthPageComponent } from "./auth-route-loader";
@@ -12,7 +11,6 @@ import "./auth-form.css";
 export function AuthPanel({ mode, Page }: { mode: AuthMode; Page: AuthPageComponent }) {
     const location = useLocation();
     const navigate = useNavigate();
-    const desktop = usePcBrandViewport();
     const { branding } = useBranding();
     const { settings, error, refresh } = useAuthSettings();
     const inviteFlow = mode === "register" && (new URLSearchParams(location.search).has("invite") || new URLSearchParams(location.search).get("invited") === "1");
@@ -35,7 +33,7 @@ export function AuthPanel({ mode, Page }: { mode: AuthMode; Page: AuthPageCompon
     return (
         <div className="pc-auth-workspace">
             <section className="pc-auth-panel" aria-label={`${branding.config.identity.displayName}账号入口`}>
-                <ConfigProvider theme={withBrandingAntTheme(getAntThemeConfig(true, desktop), branding.config.theme.primaryColor, true)}>
+                <ConfigProvider theme={withBrandingAntTheme(getAntThemeConfig(true), branding.config.theme.primaryColor, true)}>
                     <header className="pc-auth-brand-head">
                         <span className="pc-auth-eyebrow">{mode === "login" ? "WELCOME BACK" : "YOUR FIRST STORY"}</span>
                         <h1>{inviteFlow ? `你已受邀加入${branding.config.identity.displayName}` : settings?.firstUser ? "创建第一个管理员" : mode === "login" ? `登录${branding.config.identity.shortName}` : "创建账号"}</h1>

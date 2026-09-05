@@ -7,7 +7,7 @@ const DEFAULT_BRAND_PALETTE = {
     100: "#ece9ff",
     200: "#dcd6ff",
     300: "#c4baff",
-    400: "#a79bff",
+    400: "#b1a4ff",
     500: "#8b7cf6",
     600: "#6d5dfb",
     700: "#5b4bdb",
@@ -47,15 +47,16 @@ export function applyBrandPalette(primaryColor: string) {
     root.style.setProperty("--app-brand-rgb", `${primaryRGB.r} ${primaryRGB.g} ${primaryRGB.b}`);
     root.style.setProperty("--app-brand-on-500", readableForeground(palette[500]));
     root.style.setProperty("--app-brand-on-700", readableForeground(palette[700]));
+    root.style.setProperty("--app-brand-accent-light", brandAccent(palette, false));
+    root.style.setProperty("--app-brand-accent-dark", brandAccent(palette, true));
     return palette;
 }
 
 export function withBrandingAntTheme(base: ThemeConfig, primaryColor: string, dark: boolean): ThemeConfig {
     const palette = createBrandPalette(primaryColor);
-    const primary = dark ? palette[500] : palette[700];
-    const hover = dark ? palette[400] : palette[600];
-    const active = dark ? palette[600] : palette[800];
-    const foreground = readableForeground(primary);
+    const primary = brandAccent(palette, dark);
+    const hover = accessibleAccent(dark ? palette[300] : palette[600], dark);
+    const active = accessibleAccent(dark ? palette[500] : palette[800], dark);
     const selection = alpha(palette[500], dark ? 0.18 : 0.11);
     const selectionHover = alpha(palette[500], dark ? 0.24 : 0.16);
 
@@ -71,27 +72,36 @@ export function withBrandingAntTheme(base: ThemeConfig, primaryColor: string, da
             colorLink: primary,
             colorLinkHover: hover,
             colorLinkActive: active,
-            colorTextLightSolid: foreground,
+            controlOutline: alpha(primary, 0.35),
         },
         components: {
             ...base.components,
-            Button: { ...base.components?.Button, colorPrimary: primary, colorPrimaryHover: hover, colorPrimaryActive: active, primaryColor: foreground },
-            Switch: { ...base.components?.Switch, colorPrimary: primary, colorPrimaryActive: active, colorPrimaryHover: hover },
-            Checkbox: { ...base.components?.Checkbox, colorPrimary: primary, colorPrimaryActive: active, colorPrimaryHover: hover },
-            Radio: {
-                ...base.components?.Radio,
-                colorPrimary: primary,
-                colorPrimaryActive: active,
-                colorPrimaryHover: hover,
-                buttonSolidCheckedBg: primary,
-                buttonSolidCheckedHoverBg: hover,
-                buttonSolidCheckedActiveBg: active,
-                buttonSolidCheckedColor: foreground,
-            },
-            Pagination: { ...base.components?.Pagination, itemActiveBg: primary, itemActiveColor: foreground, itemActiveColorHover: foreground },
-            Segmented: { ...base.components?.Segmented, itemSelectedBg: selection, itemSelectedColor: dark ? palette[200] : palette[800] },
+            Input: { ...base.components?.Input, activeBorderColor: primary, hoverBorderColor: primary, activeShadow: `0 0 0 2px ${alpha(primary, 0.35)}` },
+            InputNumber: { ...base.components?.InputNumber, activeBorderColor: primary, hoverBorderColor: primary, activeShadow: `0 0 0 2px ${alpha(primary, 0.35)}` },
+            Select: { ...base.components?.Select, activeBorderColor: primary, hoverBorderColor: primary, activeOutlineColor: alpha(primary, 0.35), optionSelectedBg: selection, optionSelectedColor: primary },
+            Menu: { ...base.components?.Menu, itemSelectedBg: selection, itemSelectedColor: primary, darkItemSelectedBg: selection, darkItemSelectedColor: primary },
+            Table: { ...base.components?.Table, rowSelectedBg: selection, rowSelectedHoverBg: selectionHover },
+            Pagination: { ...base.components?.Pagination, itemActiveBg: selection, itemActiveColor: primary, itemActiveColorHover: hover },
+            Segmented: { ...base.components?.Segmented, itemSelectedBg: selection, itemSelectedColor: primary },
         },
     };
+}
+
+function brandAccent(palette: BrandPalette, dark: boolean) {
+    return accessibleAccent(dark ? palette[400] : palette[700], dark);
+}
+
+// 自定义品牌色可能接近白色或黑色；链接和焦点色需在当前表面上仍然可读。
+function accessibleAccent(value: string, dark: boolean) {
+    const surface = relativeLuminance(dark ? "#22252e" : "#ffffff");
+    const rgb = hexToRGB(value);
+    const target = dark ? { r: 255, g: 255, b: 255 } : { r: 0, g: 0, b: 0 };
+    for (let step = 0; step <= 20; step++) {
+        const candidate = mixRGB(rgb, target, step / 20);
+        const luminance = relativeLuminance(candidate);
+        if ((Math.max(surface, luminance) + 0.05) / (Math.min(surface, luminance) + 0.05) >= 4.5) return candidate;
+    }
+    return dark ? "#ffffff" : "#000000";
 }
 
 function hexToRGB(value: string) {
@@ -120,13 +130,17 @@ function alpha(value: string, opacity: number) {
     return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${opacity})`;
 }
 
-function readableForeground(value: string) {
+function relativeLuminance(value: string) {
     const { r, g, b } = hexToRGB(value);
     const luminance = [r, g, b].map((channel) => {
         const normalized = channel / 255;
         return normalized <= 0.03928 ? normalized / 12.92 : ((normalized + 0.055) / 1.055) ** 2.4;
     });
-    const relative = luminance[0] * 0.2126 + luminance[1] * 0.7152 + luminance[2] * 0.0722;
+    return luminance[0] * 0.2126 + luminance[1] * 0.7152 + luminance[2] * 0.0722;
+}
+
+function readableForeground(value: string) {
+    const relative = relativeLuminance(value);
     const whiteContrast = 1.05 / (relative + 0.05);
     const blackContrast = (relative + 0.05) / 0.05;
     return whiteContrast >= blackContrast ? "#ffffff" : "#11131d";

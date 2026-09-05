@@ -28,29 +28,29 @@
 .admin-secondary-drawer,
 .admin-modal-root,
 .admin-channel-modal-root {
-    --admin-layer-0: #f3f4f6;
-    --admin-layer-1: #ffffff;
-    --admin-layer-2: #f7f8fa;
-    --admin-layer-3: #eceff3;
+    --admin-layer-0: var(--app-bg-page);
+    --admin-layer-1: var(--app-surface-1);
+    --admin-layer-2: var(--app-surface-2);
+    --admin-layer-3: var(--app-surface-3);
     --admin-sidebar: var(--admin-layer-0);
-    --admin-text-primary: var(--foreground);
-    --admin-text-secondary: color-mix(in srgb, var(--foreground) 72%, transparent);
-    --admin-text-muted: color-mix(in srgb, var(--foreground) 52%, transparent);
+    --admin-text-primary: var(--app-text-primary);
+    --admin-text-secondary: var(--app-text-secondary);
+    --admin-text-muted: var(--app-text-muted);
     --admin-text-placeholder: color-mix(in srgb, var(--foreground) 42%, transparent);
-    --admin-control-border: color-mix(in srgb, var(--foreground) 18%, transparent);
-    --admin-divider: rgba(17, 24, 39, 0.12);
-    --admin-card-border: rgba(17, 24, 39, 0.15);
-    --admin-row-border: rgba(17, 24, 39, 0.09);
-    --admin-row-hover: #f3f5f7;
-    --admin-card-shadow: 0 1px 2px rgba(17, 24, 39, 0.04);
-    --admin-status-success: oklch(0.52 0.14 155);
-    --admin-status-warning: oklch(0.62 0.14 78);
-    --admin-status-error: var(--destructive);
-    --admin-status-info: var(--foreground);
-    --admin-chart-primary: var(--workspace-accent);
+    --admin-control-border: var(--app-control-border);
+    --admin-divider: var(--app-border-default);
+    --admin-card-border: var(--app-border-default);
+    --admin-row-border: var(--app-border-subtle);
+    --admin-row-hover: var(--app-surface-2);
+    --admin-card-shadow: var(--app-shadow-surface);
+    --admin-status-success: var(--app-status-success-fg);
+    --admin-status-warning: var(--app-status-warning-fg);
+    --admin-status-error: var(--app-status-error-fg);
+    --admin-status-info: var(--app-status-info-fg);
+    --admin-chart-primary: var(--app-brand-accent);
     --admin-chart-secondary: oklch(0.55 0.11 180);
     --admin-chart-warning: oklch(0.64 0.14 78);
-    --admin-sidebar-width: 224px;
+    --admin-sidebar-width: var(--app-sidebar-width);
 }
 
 .dark .admin-shell,
@@ -58,24 +58,24 @@
 .dark .admin-secondary-drawer,
 .dark .admin-modal-root,
 .dark .admin-channel-modal-root {
-    --admin-layer-0: #111315;
-    --admin-layer-1: #1a1d20;
-    --admin-layer-2: #22262a;
-    --admin-layer-3: #2b3035;
+    --admin-layer-0: var(--app-bg-page);
+    --admin-layer-1: var(--app-surface-1);
+    --admin-layer-2: var(--app-surface-2);
+    --admin-layer-3: var(--app-surface-3);
     --admin-sidebar: var(--admin-layer-0);
-    --admin-text-primary: var(--foreground);
-    --admin-text-secondary: color-mix(in srgb, var(--foreground) 74%, transparent);
-    --admin-text-muted: color-mix(in srgb, var(--foreground) 54%, transparent);
+    --admin-text-primary: var(--app-text-primary);
+    --admin-text-secondary: var(--app-text-secondary);
+    --admin-text-muted: var(--app-text-muted);
     --admin-text-placeholder: color-mix(in srgb, var(--foreground) 43%, transparent);
-    --admin-control-border: color-mix(in srgb, var(--foreground) 18%, transparent);
-    --admin-divider: rgba(255, 255, 255, 0.12);
-    --admin-card-border: rgba(255, 255, 255, 0.16);
-    --admin-row-border: rgba(255, 255, 255, 0.085);
-    --admin-row-hover: #252a2f;
-    --admin-card-shadow: 0 1px 2px rgba(0, 0, 0, 0.32);
-    --admin-status-success: oklch(0.72 0.14 155);
-    --admin-status-warning: oklch(0.78 0.14 78);
-    --admin-status-info: var(--foreground);
+    --admin-control-border: var(--app-control-border);
+    --admin-divider: var(--app-border-default);
+    --admin-card-border: var(--app-border-default);
+    --admin-row-border: var(--app-border-subtle);
+    --admin-row-hover: var(--app-surface-2);
+    --admin-card-shadow: var(--app-shadow-surface);
+    --admin-status-success: var(--app-status-success-fg);
+    --admin-status-warning: var(--app-status-warning-fg);
+    --admin-status-info: var(--app-status-info-fg);
     --admin-chart-secondary: oklch(0.72 0.11 180);
     --admin-chart-warning: oklch(0.78 0.14 78);
 }

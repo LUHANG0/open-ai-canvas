@@ -2,7 +2,7 @@ import type { ThemeConfig } from "antd";
 import type { RouterProviderProps } from "react-router";
 
 import { getAdminAntThemeConfig, getAntThemeConfig } from "@/lib/app-theme";
-import { withBrandingAntTheme } from "@/lib/branding-theme";
+import { DEFAULT_BRAND_PRIMARY, withBrandingAntTheme } from "@/lib/branding-theme";
 
 export type AppThemeRouter = Pick<RouterProviderProps["router"], "state" | "subscribe">;
 
@@ -11,10 +11,14 @@ export function isAdminThemePathname(pathname: string) {
     return normalized === "/admin" || normalized.startsWith("/admin/");
 }
 
-export function getAntThemeConfigForPathname(dark: boolean, pcBrandV2: boolean, pathname: string, brandPrimaryColor?: string): ThemeConfig {
-    if (isAdminThemePathname(pathname)) return getAdminAntThemeConfig(dark);
-    const base = getAntThemeConfig(dark, pcBrandV2);
-    return brandPrimaryColor ? withBrandingAntTheme(base, brandPrimaryColor, dark) : base;
+export function isDarkThemeForPathname(preferDark: boolean, pathname: string) {
+    return ["/", "/product", "/showcase", "/about", "/login", "/register"].includes(pathname.toLowerCase().replace(/\/$/, "") || "/") || preferDark;
+}
+
+export function getAntThemeConfigForPathname(preferDark: boolean, pathname: string, brandPrimaryColor = DEFAULT_BRAND_PRIMARY): ThemeConfig {
+    const dark = isDarkThemeForPathname(preferDark, pathname);
+    const base = isAdminThemePathname(pathname) ? getAdminAntThemeConfig(dark) : getAntThemeConfig(dark);
+    return withBrandingAntTheme(base, brandPrimaryColor, dark);
 }
 
 /**

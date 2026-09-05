@@ -1,4 +1,4 @@
-import { ConfigProvider, Dropdown, Tooltip } from "antd";
+import { Dropdown, Tooltip } from "antd";
 import type { MenuProps } from "antd";
 import {
     ArrowLeft,
@@ -37,7 +37,6 @@ import { Link, NavLink, Outlet, useLocation } from "react-router";
 import { AppChangelogButton } from "@/components/layout/app-changelog-modal";
 import { WorkspacePage } from "@/components/layout/workspace-page";
 import { publishWorkspaceSidebarCollapsed, readWorkspaceSidebarCollapsed, subscribeWorkspaceSidebarCollapsed } from "@/components/layout/workspace-sidebar-state";
-import { getAdminAntThemeConfig } from "@/lib/app-theme";
 import { cn } from "@/lib/utils";
 import "@/styles/admin-ui.css";
 import { useThemeStore } from "@/stores/use-theme-store";
@@ -105,7 +104,6 @@ function isAdminNavigationPath(pathname: string, navigationPath: string) {
 
 export function AdminShell() {
     const [collapsed, setCollapsed] = useState(readWorkspaceSidebarCollapsed);
-    const dark = useThemeStore((state) => state.theme === "dark");
     const { branding } = useBranding();
 
     useEffect(() => {
@@ -124,7 +122,7 @@ export function AdminShell() {
     };
 
     return (
-        <ConfigProvider theme={getAdminAntThemeConfig(dark)}>
+        <>
             <main className="admin-shell app-user-workspace flex h-full min-h-0 overflow-hidden text-foreground">
                 <aside className={cn("app-workspace-sidebar admin-sidebar hidden shrink-0 flex-col overflow-hidden lg:flex", collapsed && "is-collapsed")}>
                     <div className="admin-sidebar-identity shrink-0">
@@ -168,7 +166,7 @@ export function AdminShell() {
                     <Outlet />
                 </section>
             </main>
-        </ConfigProvider>
+        </>
     );
 }
 

@@ -12,15 +12,35 @@ describe("website branding theme", () => {
         expect(normalizeBrandPrimary("not-a-color")).toBe(DEFAULT_BRAND_PRIMARY);
     });
 
-    test("derives a full palette and applies it only outside Admin", () => {
+    test("applies custom accents to the website and Admin while keeping primary commands neutral", () => {
         const palette = createBrandPalette("#18A56B");
-        const user = getAntThemeConfigForPathname(false, true, "/login", "#18A56B");
-        const admin = getAntThemeConfigForPathname(false, true, "/admin/settings/branding", "#18A56B");
+        const user = getAntThemeConfigForPathname(false, "/create", "#18A56B");
+        const admin = getAntThemeConfigForPathname(false, "/admin/settings/branding", "#18A56B");
 
         expect(palette[500]).toBe("#18a56b");
         expect(new Set(Object.values(palette)).size).toBe(10);
         expect(user.token?.colorPrimary).toBe(palette[700]);
-        expect(admin.token?.colorPrimary).toBe(APP_THEME_COLORS.light.action.primary.bg);
+        expect(admin.token?.colorPrimary).toBe(user.token?.colorPrimary);
+        expect(admin.components?.Button?.colorPrimary).toBe(APP_THEME_COLORS.light.action.primary.bg);
+        expect(user.components?.Button?.colorPrimary).toBe(APP_THEME_COLORS.light.action.primary.bg);
+        expect(admin.components?.Input?.activeBorderColor).toBe(user.token?.colorPrimary);
+        expect(admin.token?.colorError).toBe(APP_THEME_COLORS.light.status.error.fg);
+    });
+
+    test("keeps extreme custom accent colors readable in both appearances", () => {
+        const luminance = (hex: string) => hex.slice(1).match(/../g)!.map((channel) => {
+            const n = parseInt(channel, 16) / 255;
+            return n <= 0.04045 ? n / 12.92 : ((n + 0.055) / 1.055) ** 2.4;
+        }).reduce((sum, channel, i) => sum + channel * [0.2126, 0.7152, 0.0722][i], 0);
+        for (const primary of ["#FFFFFF", "#000000", "#FFFF00", "#0000FF", "#18A56B"]) {
+            for (const dark of [false, true]) {
+                const theme = getAntThemeConfigForPathname(dark, "/admin", primary);
+                const a = luminance(theme.token!.colorLink!);
+                const b = luminance(dark ? "#22252e" : "#ffffff");
+                expect((Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05)).toBeGreaterThanOrEqual(4.5);
+                expect(theme.components?.Button?.colorPrimary).toBe(APP_THEME_COLORS[dark ? "dark" : "light"].action.primary.bg);
+            }
+        }
     });
 });
 
