@@ -34,6 +34,7 @@ import { CreateChapterDialog, ImportNovelDialog, plainTextToHtml } from "./chapt
 import { ChapterAssetExtractionDialog, ChapterStoryboardGenerationDialog, MoveChapterDialog } from "./chapter-generation-dialogs";
 import { chapterOperationFromTask, chapterOperationKey, chapterTaskResultAlreadyApplied, formatOperationElapsed, readStoredScroll, type ChapterOperation, type ChapterOperationKind } from "./chapter-operation-state";
 import "./short-drama-content.css";
+import { projectDraftConfirmProps } from "./project-draft-confirm";
 
 const CHAPTER_ROW_HEIGHT = 62;
 type ChapterEditorDraft = { title: string; html: string };
@@ -270,6 +271,7 @@ export default function ProjectChaptersView({ detail, refreshProject }: ProjectD
         navigationConfirmOpenRef.current = true;
         modal.confirm({
             title: "离开未保存的章节？",
+            ...projectDraftConfirmProps,
             content: "当前修改已暂存在本机，返回本章时会自动恢复；服务端内容只有点击保存后才会更新。",
             okText: "保留草稿并离开",
             cancelText: "继续编辑",

@@ -6,6 +6,7 @@ import { loadProjectEditorDraft, removeProjectEditorDraft, saveProjectEditorDraf
 import type { ProjectShot, ShotRevision } from "@/services/api/projects";
 
 import { shotEditorValuesEqual, workflowShotEditorInitiallyDirty, type ShotEditorValues } from "./workflow-production-types";
+import { projectDraftConfirmProps } from "./project-draft-confirm";
 
 type Args = {
     form: FormInstance<ShotEditorValues>;
@@ -94,6 +95,7 @@ export function useWorkflowShotDraft({ form, projectId, selectedShot, revision, 
         navigationConfirmOpenRef.current = true;
         modal.confirm({
             title: "离开未保存的镜头脚本？",
+            ...projectDraftConfirmProps,
             content: "当前修改已暂存在本机，返回这个镜头时会自动恢复；服务端版本只有点击保存或提交生成后才会更新。",
             okText: "保留草稿并离开",
             cancelText: "继续编辑",
