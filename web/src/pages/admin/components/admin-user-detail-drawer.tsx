@@ -1,91 +1,31 @@
 import { useEffect, useState } from "react";
-import { App, Button, Descriptions, Drawer, Empty, Progress, Skeleton, Tabs } from "antd";
+import { Alert, Button, Descriptions, Drawer, Progress, Skeleton, Tabs } from "antd";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 import { PaginationBar } from "@/components/layout/workspace-page";
 import { formatCredits } from "@/constant/credits";
 import { AdminDataTable, AdminStatusBadge, AdminTableEmpty, type AdminStatusTone } from "./admin-ui";
-import { getAdminUserDetail, listAdminUserAuditEvents, listAdminUserLedger, listAdminUserTasks, type AdminAuditEvent, type AdminUserDetail, type AdminUserTask } from "@/services/api/auth";
-import type { CreditLedgerEntry } from "@/services/api/wallet";
+import { getAdminUserDetail, listAdminUserAuditEvents, listAdminUserLedger, listAdminUserTasks, type AdminUserDetail } from "@/services/api/auth";
+import { useAdminUserResource } from "../users/use-admin-user-resource";
 
 export function AdminUserDetailDrawer({ userId, onClose, previousUserId, nextUserId, onNavigate }: { userId: string | null; onClose: () => void; previousUserId?: string; nextUserId?: string; onNavigate?: (userId: string) => void }) {
-    const { message } = App.useApp();
-    const [detail, setDetail] = useState<AdminUserDetail | null>(null);
-    const [ledger, setLedger] = useState<CreditLedgerEntry[]>([]);
-    const [tasks, setTasks] = useState<AdminUserTask[]>([]);
-    const [events, setEvents] = useState<AdminAuditEvent[]>([]);
-    const [loading, setLoading] = useState(false);
+    const [reload, setReload] = useState(0);
     const [ledgerPage, setLedgerPage] = useState(1);
-    const [ledgerTotal, setLedgerTotal] = useState(0);
     const [taskPage, setTaskPage] = useState(1);
-    const [taskTotal, setTaskTotal] = useState(0);
     const [auditPage, setAuditPage] = useState(1);
-    const [auditTotal, setAuditTotal] = useState(0);
+    const overview = useAdminUserResource(userId, 1, reload, getAdminUserDetail);
+    const ledgerState = useAdminUserResource(userId, ledgerPage, reload, listAdminUserLedger);
+    const taskState = useAdminUserResource(userId, taskPage, reload, listAdminUserTasks);
+    const auditState = useAdminUserResource(userId, auditPage, reload, listAdminUserAuditEvents);
+    const detail = overview.data;
+    const retry = () => setReload((value) => value + 1);
+    const emptyRecords = (error: string) => (error ? <Alert type="error" showIcon title="记录读取失败" description={error} action={<Button onClick={retry}>重新读取</Button>} /> : <AdminTableEmpty />);
 
     useEffect(() => {
-        if (!userId) return;
-        let active = true;
-        setLoading(true);
-        setDetail(null);
         setLedgerPage(1);
         setTaskPage(1);
         setAuditPage(1);
-        void getAdminUserDetail(userId)
-            .then((nextDetail) => {
-                if (active) setDetail(nextDetail);
-            })
-            .catch((error) => active && message.error(error instanceof Error ? error.message : "读取用户详情失败"))
-            .finally(() => active && setLoading(false));
-        return () => {
-            active = false;
-        };
-    }, [message, userId]);
-
-    useEffect(() => {
-        if (!userId) return;
-        let active = true;
-        void listAdminUserLedger(userId, { page: ledgerPage, limit: 20 })
-            .then((result) => {
-                if (active) {
-                    setLedger(result.entries);
-                    setLedgerTotal(result.total);
-                }
-            })
-            .catch((error) => active && message.error(error instanceof Error ? error.message : "读取积分流水失败"));
-        return () => {
-            active = false;
-        };
-    }, [ledgerPage, message, userId]);
-    useEffect(() => {
-        if (!userId) return;
-        let active = true;
-        void listAdminUserTasks(userId, { page: taskPage, limit: 20 })
-            .then((result) => {
-                if (active) {
-                    setTasks(result.tasks);
-                    setTaskTotal(result.total);
-                }
-            })
-            .catch((error) => active && message.error(error instanceof Error ? error.message : "读取任务记录失败"));
-        return () => {
-            active = false;
-        };
-    }, [message, taskPage, userId]);
-    useEffect(() => {
-        if (!userId) return;
-        let active = true;
-        void listAdminUserAuditEvents(userId, { page: auditPage, limit: 20 })
-            .then((result) => {
-                if (active) {
-                    setEvents(result.events);
-                    setAuditTotal(result.total);
-                }
-            })
-            .catch((error) => active && message.error(error instanceof Error ? error.message : "读取管理操作失败"));
-        return () => {
-            active = false;
-        };
-    }, [auditPage, message, userId]);
+    }, [userId]);
 
     return (
         <Drawer
@@ -94,15 +34,17 @@ export function AdminUserDetailDrawer({ userId, onClose, previousUserId, nextUse
             onClose={onClose}
             size="min(920px, 100vw)"
             destroyOnHidden
-            rootClassName="admin-drawer"
-            extra={onNavigate ? (
-                <div className="flex items-center gap-1">
-                    <Button type="text" size="small" aria-label="上一条用户" disabled={!previousUserId} icon={<ChevronLeft className="size-4" />} onClick={() => previousUserId && onNavigate(previousUserId)} />
-                    <Button type="text" size="small" aria-label="下一条用户" disabled={!nextUserId} icon={<ChevronRight className="size-4" />} onClick={() => nextUserId && onNavigate(nextUserId)} />
-                </div>
-            ) : null}
+            rootClassName="admin-drawer admin-user-drawer"
+            extra={
+                onNavigate ? (
+                    <div className="flex items-center gap-1">
+                        <Button type="text" size="small" aria-label="上一条用户" disabled={!previousUserId} icon={<ChevronLeft className="size-4" />} onClick={() => previousUserId && onNavigate(previousUserId)} />
+                        <Button type="text" size="small" aria-label="下一条用户" disabled={!nextUserId} icon={<ChevronRight className="size-4" />} onClick={() => nextUserId && onNavigate(nextUserId)} />
+                    </div>
+                ) : null
+            }
         >
-            {loading && !detail ? (
+            {overview.loading ? (
                 <Skeleton active paragraph={{ rows: 10 }} />
             ) : detail ? (
                 <Tabs
@@ -144,7 +86,7 @@ export function AdminUserDetailDrawer({ userId, onClose, previousUserId, nextUse
                                                         <span className="text-foreground/60">{item.label}</span>
                                                         <span className="shrink-0 tabular-nums text-foreground/75">{item.display}</span>
                                                     </div>
-                                                    <Progress percent={Math.min(100, item.limit > 0 ? Math.round(item.value / item.limit * 100) : 0)} size="small" showInfo={false} status={item.value >= item.limit ? "exception" : "normal"} />
+                                                    <Progress percent={Math.min(100, item.limit > 0 ? Math.round((item.value / item.limit) * 100) : 0)} size="small" showInfo={false} status={item.value >= item.limit ? "exception" : "normal"} />
                                                 </div>
                                             ))}
                                         </div>
@@ -160,18 +102,19 @@ export function AdminUserDetailDrawer({ userId, onClose, previousUserId, nextUse
                                     table={{
                                         rowKey: "id",
                                         size: "small",
-                                        dataSource: ledger,
+                                        dataSource: ledgerState.data?.entries || [],
+                                        loading: ledgerState.loading,
                                         pagination: false,
                                         columns: [
-                                        { title: "时间", dataIndex: "createdAt", width: 170, render: formatTime },
-                                        { title: "类型", dataIndex: "type", width: 130 },
-                                        { title: "变化", dataIndex: "amountMicrocredits", width: 120, align: "right", render: (value) => formatCredits(value) },
-                                        { title: "说明", dataIndex: "note", ellipsis: true },
+                                            { title: "时间", dataIndex: "createdAt", width: 170, render: formatTime },
+                                            { title: "类型", dataIndex: "type", width: 130 },
+                                            { title: "变化", dataIndex: "amountMicrocredits", width: 120, align: "right", render: (value) => formatCredits(value) },
+                                            { title: "说明", dataIndex: "note", ellipsis: true },
                                         ],
                                         scroll: { x: 720 },
                                     }}
-                                    empty={<AdminTableEmpty />}
-                                    footer={<PaginationBar alwaysShow current={ledgerPage} pageSize={20} total={ledgerTotal} onChange={(page) => setLedgerPage(page)} pageSizeOptions={[20]} />}
+                                    empty={emptyRecords(ledgerState.error)}
+                                    footer={ledgerState.data ? <PaginationBar alwaysShow current={ledgerPage} pageSize={20} total={ledgerState.data.total} onChange={(page) => setLedgerPage(page)} pageSizeOptions={[20]} /> : undefined}
                                 />
                             ),
                         },
@@ -183,19 +126,20 @@ export function AdminUserDetailDrawer({ userId, onClose, previousUserId, nextUse
                                     table={{
                                         rowKey: "id",
                                         size: "small",
-                                        dataSource: tasks,
+                                        dataSource: taskState.data?.tasks || [],
+                                        loading: taskState.loading,
                                         pagination: false,
                                         columns: [
-                                        { title: "时间", dataIndex: "createdAt", width: 170, render: formatTime },
-                                        { title: "类型", dataIndex: "type", width: 180 },
-                                        { title: "模型", dataIndex: "model", width: 180, ellipsis: true },
-                                        { title: "状态", dataIndex: "status", width: 100, render: (value) => <AdminStatusBadge label={value || "未知"} tone={taskStatusTone(value)} /> },
-                                        { title: "阶段", dataIndex: "stage", ellipsis: true },
+                                            { title: "时间", dataIndex: "createdAt", width: 170, render: formatTime },
+                                            { title: "类型", dataIndex: "type", width: 180 },
+                                            { title: "模型", dataIndex: "model", width: 180, ellipsis: true },
+                                            { title: "状态", dataIndex: "status", width: 100, render: (value) => <AdminStatusBadge label={value || "未知"} tone={taskStatusTone(value)} /> },
+                                            { title: "阶段", dataIndex: "stage", ellipsis: true },
                                         ],
                                         scroll: { x: 820 },
                                     }}
-                                    empty={<AdminTableEmpty />}
-                                    footer={<PaginationBar alwaysShow current={taskPage} pageSize={20} total={taskTotal} onChange={(page) => setTaskPage(page)} pageSizeOptions={[20]} />}
+                                    empty={emptyRecords(taskState.error)}
+                                    footer={taskState.data ? <PaginationBar alwaysShow current={taskPage} pageSize={20} total={taskState.data.total} onChange={(page) => setTaskPage(page)} pageSizeOptions={[20]} /> : undefined}
                                 />
                             ),
                         },
@@ -207,25 +151,26 @@ export function AdminUserDetailDrawer({ userId, onClose, previousUserId, nextUse
                                     table={{
                                         rowKey: "id",
                                         size: "small",
-                                        dataSource: events,
+                                        dataSource: auditState.data?.events || [],
+                                        loading: auditState.loading,
                                         pagination: false,
                                         columns: [
-                                        { title: "时间", dataIndex: "createdAt", width: 170, render: formatTime },
-                                        { title: "管理员", dataIndex: "actorUserId", width: 160, ellipsis: true },
-                                        { title: "动作", dataIndex: "action", width: 160 },
-                                        { title: "摘要", dataIndex: "summary", ellipsis: true },
+                                            { title: "时间", dataIndex: "createdAt", width: 170, render: formatTime },
+                                            { title: "管理员", dataIndex: "actorUserId", width: 160, ellipsis: true },
+                                            { title: "动作", dataIndex: "action", width: 160 },
+                                            { title: "摘要", dataIndex: "summary", ellipsis: true },
                                         ],
                                         scroll: { x: 720 },
                                     }}
-                                    empty={<AdminTableEmpty />}
-                                    footer={<PaginationBar alwaysShow current={auditPage} pageSize={20} total={auditTotal} onChange={(page) => setAuditPage(page)} pageSizeOptions={[20]} />}
+                                    empty={emptyRecords(auditState.error)}
+                                    footer={auditState.data ? <PaginationBar alwaysShow current={auditPage} pageSize={20} total={auditState.data.total} onChange={(page) => setAuditPage(page)} pageSizeOptions={[20]} /> : undefined}
                                 />
                             ),
                         },
                     ]}
                 />
             ) : (
-                <Empty description="没有用户详情" />
+                <Alert type="error" showIcon title="无法读取用户详情" description={overview.error || "请重新读取后继续。"} action={<Button onClick={retry}>重新读取</Button>} />
             )}
         </Drawer>
     );
@@ -245,7 +190,7 @@ function taskStatusTone(value?: string): AdminStatusTone {
 
 function quotaUsageItems(detail: AdminUserDetail) {
     const structuredBytes = detail.storageUsage.assetBytes + detail.storageUsage.canvasBytes + detail.storageUsage.sessionBytes;
-    const bytes = (value: number) => value >= 1024 ** 3 ? `${(value / 1024 ** 3).toFixed(2)} GB` : `${(value / 1024 ** 2).toFixed(1)} MB`;
+    const bytes = (value: number) => (value >= 1024 ** 3 ? `${(value / 1024 ** 3).toFixed(2)} GB` : `${(value / 1024 ** 2).toFixed(1)} MB`);
     const number = (value: number) => new Intl.NumberFormat("zh-CN").format(value);
     return [
         { label: "资源与附件", value: detail.storedFileBytes, limit: detail.quota.storedFileGB * 1024 ** 3, display: `${bytes(detail.storedFileBytes)} / ${detail.quota.storedFileGB} GB` },

@@ -1,6 +1,7 @@
-import { App, Button, Drawer, Empty, Input, InputNumber, Modal, Pagination, Popconfirm, Segmented, Select, Spin, Tabs, Tag } from "antd";
+import { Alert, App, Button, Drawer, Empty, Input, InputNumber, Modal, Pagination, Popconfirm, Segmented, Select, Spin, Tabs } from "antd";
 import { Check, Clipboard, Link2, RefreshCw, RotateCcw, ShieldAlert, UserCheck } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { AdminStatusBadge, type AdminStatusTone } from "../components/admin-ui";
 
 import { createRegistrationInvite, listRegistrationInvites, revokeRegistrationInvite, type RegistrationInvite, type RegistrationInviteStatus } from "@/services/api/auth";
 import { formatCredits } from "@/constant/credits";
@@ -8,11 +9,11 @@ import { formatCredits } from "@/constant/credits";
 const pageSize = 10;
 const microcreditsPerCredit = 1_000_000;
 const maxInviteCredits = 1_000_000;
-const statusCopy: Record<RegistrationInvite["status"], { label: string; color: string }> = {
-    pending: { label: "待使用", color: "blue" },
-    used: { label: "已使用", color: "green" },
-    expired: { label: "已过期", color: "orange" },
-    revoked: { label: "已撤销", color: "red" },
+const statusCopy: Record<RegistrationInvite["status"], { label: string; tone: AdminStatusTone }> = {
+    pending: { label: "待使用", tone: "info" },
+    used: { label: "已使用", tone: "success" },
+    expired: { label: "已过期", tone: "warning" },
+    revoked: { label: "已撤销", tone: "neutral" },
 };
 
 export function RegistrationInviteDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -32,22 +33,32 @@ export function RegistrationInviteDrawer({ open, onClose }: { open: boolean; onC
     const [invites, setInvites] = useState<RegistrationInvite[]>([]);
     const [total, setTotal] = useState(0);
     const [loading, setLoading] = useState(false);
+    const [loadError, setLoadError] = useState("");
+    const [createError, setCreateError] = useState("");
+    const sequence = useRef(0);
 
     const loadInvites = useCallback(async () => {
+        const current = ++sequence.current;
         setLoading(true);
+        setLoadError("");
+        setInvites([]);
         try {
             const result = await listRegistrationInvites({ status, page, limit: pageSize });
+            if (current !== sequence.current) return;
             setInvites(result.invites);
             setTotal(result.total);
         } catch (error) {
-            message.error(error instanceof Error ? error.message : "读取邀请记录失败");
+            if (current === sequence.current) setLoadError(error instanceof Error ? error.message : "读取邀请记录失败");
         } finally {
-            setLoading(false);
+            if (current === sequence.current) setLoading(false);
         }
-    }, [message, page, status]);
+    }, [page, status]);
 
     useEffect(() => {
         if (open) void loadInvites();
+        return () => {
+            sequence.current++;
+        };
     }, [loadInvites, open]);
 
     useEffect(() => {
@@ -63,9 +74,12 @@ export function RegistrationInviteDrawer({ open, onClose }: { open: boolean; onC
         setCloseConfirmationOpen(false);
         setStatus("all");
         setPage(1);
+        setTotal(0);
+        setCreateError("");
     }, [open]);
 
     const requestClose = () => {
+        if (creating) return;
         const hasDraft = note.trim() !== "" || expiresInDays !== 7 || creditPreset !== "100" || customCredits !== null;
         if (!generatedLink && !hasDraft) {
             onClose();
@@ -75,12 +89,14 @@ export function RegistrationInviteDrawer({ open, onClose }: { open: boolean; onC
     };
 
     const createInvite = async () => {
+        if (creating || generatedLink) return;
         const creditAmount = creditPreset === "custom" ? customCredits : Number(creditPreset);
         if (!Number.isInteger(creditAmount) || !creditAmount || creditAmount < 1 || creditAmount > maxInviteCredits) {
             message.error("请输入 1–1,000,000 之间的整数积分");
             return;
         }
         setCreating(true);
+        setCreateError("");
         try {
             const result = await createRegistrationInvite({ expiresInDays, creditAmountMicrocredits: creditAmount * microcreditsPerCredit, note: note.trim() || undefined });
             const url = new URL("/register", window.location.origin);
@@ -94,7 +110,7 @@ export function RegistrationInviteDrawer({ open, onClose }: { open: boolean; onC
             await loadInvites();
             message.success("邀请链接已生成");
         } catch (error) {
-            message.error(error instanceof Error ? error.message : "创建邀请失败");
+            setCreateError(error instanceof Error ? error.message : "创建邀请失败");
         } finally {
             setCreating(false);
         }
@@ -116,13 +132,14 @@ export function RegistrationInviteDrawer({ open, onClose }: { open: boolean; onC
             const result = await revokeRegistrationInvite(invite.id);
             setInvites((items) => items.map((item) => (item.id === invite.id ? result.invite : item)));
             message.success("邀请已撤销");
+            await loadInvites();
         } catch (error) {
             message.error(error instanceof Error ? error.message : "撤销邀请失败");
         }
     };
 
     return (
-        <Drawer title="邀请注册" open={open} size="min(640px, 100vw)" onClose={requestClose} keyboard destroyOnHidden styles={{ body: { padding: 0 } }}>
+        <Drawer title="邀请注册" open={open} size="min(640px, 100vw)" onClose={requestClose} keyboard={!creating} mask={{ closable: !creating }} rootClassName="admin-drawer admin-user-drawer" destroyOnHidden styles={{ body: { padding: 0 } }}>
             <Tabs
                 activeKey={tab}
                 onChange={setTab}
@@ -134,7 +151,7 @@ export function RegistrationInviteDrawer({ open, onClose }: { open: boolean; onC
                         label: "创建邀请",
                         children: (
                             <div className="space-y-5 p-4 sm:p-6">
-                                <div className="rounded-xl border border-border bg-muted/25 p-4">
+                                <div className="admin-invite-note">
                                     <div className="mb-2 flex items-center gap-2 text-sm font-medium">
                                         <ShieldAlert className="size-4 text-primary" />
                                         单次安全邀请
@@ -208,12 +225,13 @@ export function RegistrationInviteDrawer({ open, onClose }: { open: boolean; onC
                                         disabled={creating || Boolean(generatedLink)}
                                     />
                                 </div>
+                                {createError ? <Alert type="error" showIcon title="邀请未生成" description={createError} /> : null}
                                 <Button type="primary" block size="large" icon={<Link2 className="size-4" />} loading={creating} disabled={Boolean(generatedLink)} onClick={() => void createInvite()}>
                                     生成邀请链接
                                 </Button>
 
                                 {generatedLink ? (
-                                    <div className="space-y-3 rounded-xl border border-primary/25 bg-primary/[0.04] p-4" role="status" aria-live="polite">
+                                    <div className="admin-invite-result space-y-3" role="status" aria-live="polite">
                                         <div className="flex items-center gap-2 text-sm font-medium text-primary">
                                             <UserCheck className="size-4" />
                                             邀请链接已就绪
@@ -252,23 +270,25 @@ export function RegistrationInviteDrawer({ open, onClose }: { open: boolean; onC
                                     </Button>
                                 </div>
                                 <Spin spinning={loading}>
-                                    {invites.length ? (
+                                    {loadError ? (
+                                        <Alert type="error" showIcon title="无法读取邀请记录" description={loadError} action={<Button onClick={() => void loadInvites()}>重新读取</Button>} />
+                                    ) : invites.length ? (
                                         <div className="space-y-3">
                                             {invites.map((invite) => {
                                                 const copy = statusCopy[invite.status];
                                                 return (
-                                                    <article key={invite.id} className="rounded-xl border border-border p-4">
+                                                    <article key={invite.id} className="admin-invite-record">
                                                         <div className="flex flex-wrap items-start justify-between gap-2">
                                                             <div className="min-w-0">
                                                                 <div className="flex items-center gap-2">
-                                                                    <Tag color={copy.color}>{copy.label}</Tag>
+                                                                    <AdminStatusBadge label={copy.label} tone={copy.tone} />
                                                                     <span className="truncate text-xs text-muted-foreground">{invite.id}</span>
                                                                 </div>
                                                                 <p className="mb-0 mt-2 break-words text-sm">{invite.note || "无备注"}</p>
                                                                 <p className="mb-0 mt-1 text-xs font-medium text-primary">注册积分：{formatCredits(invite.creditAmountMicrocredits)}</p>
                                                             </div>
                                                             {invite.status === "pending" ? (
-                                                                <Popconfirm title="撤销这条邀请？" description="撤销后该链接立即失效。" okText="撤销" cancelText="取消" onConfirm={() => void revoke(invite)}>
+                                                                <Popconfirm title="撤销这条邀请？" description="撤销后该链接立即失效。" okText="撤销" cancelText="取消" okButtonProps={{ danger: true }} onConfirm={() => revoke(invite)}>
                                                                     <Button danger size="small" icon={<RotateCcw className="size-3.5" />}>
                                                                         撤销
                                                                     </Button>
@@ -301,7 +321,7 @@ export function RegistrationInviteDrawer({ open, onClose }: { open: boolean; onC
                                         <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={loading ? "正在读取" : "暂无邀请记录"} />
                                     )}
                                 </Spin>
-                                {total > pageSize ? <Pagination responsive current={page} pageSize={pageSize} total={total} showSizeChanger={false} onChange={setPage} /> : null}
+                                {!loading && !loadError && total > pageSize ? <Pagination responsive current={page} pageSize={pageSize} total={total} showSizeChanger={false} onChange={setPage} /> : null}
                             </div>
                         ),
                     },

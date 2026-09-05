@@ -35,22 +35,32 @@ export function createUserColumns({
         {
             key: "user",
             title: "用户",
+            width: 220,
             dataIndex: "username",
             render: (_, user) => (
                 <div>
-                    <div className="flex items-center gap-1.5"><button type="button" className="admin-table-primary-link font-medium" onClick={() => onView(user)}>{user.displayName || user.username}</button><IdentityProviderBadge user={user} /></div>
+                    <div className="flex items-center gap-1.5">
+                        <button type="button" className="admin-table-primary-link font-medium" onClick={() => onView(user)}>
+                            {user.displayName || user.username}
+                        </button>
+                        <IdentityProviderBadge user={user} />
+                    </div>
                     <div className="text-xs text-foreground/45">@{user.username}</div>
                 </div>
             ),
         },
-        { key: "email", title: "邮箱", dataIndex: "email", align: "center", render: (email) => email || <span className="text-foreground/40">未填写</span> },
+        { key: "email", title: "邮箱", dataIndex: "email", width: 200, ellipsis: true, render: (email) => email || <span className="text-foreground/40">未填写</span> },
         {
             key: "credits",
             title: "当前积分",
             dataIndex: "availableMicrocredits",
             width: 130,
-            align: "center",
-            render: (value, user) => <span className="tabular-nums" title={`冻结积分：${formatCredits(user.reservedMicrocredits)}`}>{formatCredits(value)}</span>,
+            align: "right",
+            render: (value, user) => (
+                <span className="tabular-nums" title={`冻结积分：${formatCredits(user.reservedMicrocredits)}`}>
+                    {formatCredits(value)}
+                </span>
+            ),
         },
         { key: "role", title: "角色", dataIndex: "role", width: 110, align: "center", render: (role) => <AdminStatusBadge label={role === "admin" ? "管理员" : "普通用户"} tone={role === "admin" ? "info" : "neutral"} /> },
         { key: "status", title: "状态", dataIndex: "status", width: 110, align: "center", render: (status) => <AdminStatusBadge label={status === "active" ? "已启用" : "已停用"} tone={status === "active" ? "success" : "neutral"} /> },
@@ -58,7 +68,7 @@ export function createUserColumns({
         {
             key: "actions",
             title: "操作",
-            width: 280,
+            width: 220,
             align: "center",
             render: (_, user) => (
                 <AdminRowActions
