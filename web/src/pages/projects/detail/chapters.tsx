@@ -251,7 +251,7 @@ export default function ProjectChaptersView({ detail, refreshProject }: ProjectD
             refreshProject();
             message.success(unchangedSinceSubmit ? "章节已保存" : "章节已保存，提交期间的新修改仍保留在本地草稿");
         },
-        onError: (error) => message.error(error instanceof Error ? error.message : "章节保存失败"),
+        onError: (error) => { message.error(error instanceof Error ? error.message : "章节保存失败"); },
     });
     const navigationBlocker = useBlocker(dirty);
 
@@ -292,7 +292,7 @@ export default function ProjectChaptersView({ detail, refreshProject }: ProjectD
             navigate(`/projects/${detail.project.id}/chapters/${unit.id}`);
             message.success("章节已创建");
         },
-        onError: (error) => message.error(error instanceof Error ? error.message : "章节创建失败"),
+        onError: (error) => { message.error(error instanceof Error ? error.message : "章节创建失败"); },
     });
     const importMutation = useMutation({
         mutationFn: (chapters: Array<{ title: string; plainText: string }>) =>
@@ -309,7 +309,7 @@ export default function ProjectChaptersView({ detail, refreshProject }: ProjectD
             refreshProject();
             message.success(`已导入 ${units.length} 章`);
         },
-        onError: (error) => message.error(error instanceof Error ? error.message : "小说导入失败"),
+        onError: (error) => { message.error(error instanceof Error ? error.message : "小说导入失败"); },
     });
     const reorderMutation = useMutation({
         mutationFn: (unitIds: string[]) => reorderProjectUnits(detail.project.id, unitIds),
@@ -336,7 +336,7 @@ export default function ProjectChaptersView({ detail, refreshProject }: ProjectD
             refreshProject();
             message.success("章节已删除");
         },
-        onError: (error) => message.error(error instanceof Error ? error.message : "章节删除失败"),
+        onError: (error) => { message.error(error instanceof Error ? error.message : "章节删除失败"); },
     });
 
     const editor = useEditor({
