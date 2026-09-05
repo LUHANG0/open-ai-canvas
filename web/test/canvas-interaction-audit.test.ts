@@ -270,12 +270,9 @@ test("viewport culling follows dragged geometry and does not pin ordinary select
     expect(renderModel).not.toContain("selectedNodeIds.has(node.id) || canvasNodeIntersectsRenderBounds");
 });
 
-test("poster work is shared, abortable, and performance mode removes duplicate cover effects", async () => {
-    const posterCache = await Bun.file(new URL("../src/services/canvas-video-poster-cache.ts", import.meta.url)).text();
+// 共享与取消由 canvas-video-poster-requests.test.ts 的生命周期行为测试覆盖。
+test("performance mode removes duplicate cover effects", async () => {
     const content = await Bun.file(new URL("../src/components/canvas/canvas-node-content.tsx", import.meta.url)).text();
-    expect(posterCache).toContain("consumers: Set<symbol>");
-    expect(posterCache).toContain("task.controller.abort()");
-    expect(posterCache).toContain('signal?.addEventListener("abort", onAbort, { once: true })');
     expect(content).toContain("!policy?.reduceEffects ? <img");
     expect(content).toContain('policy?.reduceEffects ? "object-cover" : "object-contain"');
 });
