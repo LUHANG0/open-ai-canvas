@@ -1,12 +1,14 @@
-import "./admin-configuration.css";
+import { configurationConfirmProps } from "./configuration-confirm";
+import { BrandLoader } from "@/components/ui/brand-loader";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
-import { App, Button, Skeleton, Switch } from "antd";
+import { App, Button, Switch } from "antd";
 import { AlertTriangle, Clapperboard, Coins, ListChecks, LockKeyhole, MonitorCog, PlugZap, RadioTower, RefreshCw, ShieldCheck, Sparkles } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { getAdminFeatureAvailability, updateAdminFeatureAvailability } from "@/services/api/auth";
 import { useUserStore, type FeatureAvailability } from "@/stores/use-user-store";
 import { AdminStatusBadge } from "./admin-ui";
+import "./admin-configuration.css";
 
 type FeatureKey = "shortDramaEnabled" | "taskCenterEnabled" | "creditsEnabled" | "customChannelsEnabled" | "frontendModelsEnabled" | "pluginCenterEnabled" | "systemPluginsVisibleToUsers";
 type FeatureRow = {
@@ -85,6 +87,7 @@ export default function FeatureAvailabilityPanel() {
     const [loadError, setLoadError] = useState("");
     const [saveError, setSaveError] = useState("");
     const requestVersionRef = useRef(0);
+    const writingRef = useRef(false);
 
     const load = useCallback(
         async (initial = false, announce = false) => {
@@ -124,7 +127,9 @@ export default function FeatureAvailabilityPanel() {
     }, [load]);
 
     const setFeature = async (key: FeatureKey, enabled: boolean) => {
-        if (!savedFeatures || saving || savedFeatures[key] === enabled) return;
+        if (!savedFeatures || writingRef.current || loading || refreshing || loadError || savedFeatures[key] === enabled) return;
+        writingRef.current = true;
+        const version = requestVersionRef.current;
         const previous = savedFeatures;
         const expected = { ...savedFeatures, [key]: enabled };
         setDraftFeatures(expected);
@@ -132,6 +137,7 @@ export default function FeatureAvailabilityPanel() {
         setSaveError("");
         try {
             const result = await updateAdminFeatureAvailability(toEditablePayload(expected));
+            if (version !== requestVersionRef.current) return;
             const value = parseFeatureAvailability(result.features);
             if (!sameEditableFeatures(value, expected)) throw new Error("服务端返回的功能状态与本次保存内容不一致，请重新读取后核对");
             setSavedFeatures(value);
@@ -139,11 +145,13 @@ export default function FeatureAvailabilityPanel() {
             setGlobalFeatures(value);
             message.success(`${featureByKey.get(key)?.title || "功能"}已${enabled ? "开启" : "关闭"}`);
         } catch (error) {
+            if (version !== requestVersionRef.current) return;
             const errorMessage = error instanceof Error ? error.message : "保存功能开放配置失败";
             setDraftFeatures(previous);
             setSaveError(`${errorMessage}。已恢复修改前状态。`);
             message.error(errorMessage);
         } finally {
+            writingRef.current = false;
             setSaving(false);
         }
     };
@@ -152,6 +160,7 @@ export default function FeatureAvailabilityPanel() {
         if (!savedFeatures || saving || savedFeatures[key] === enabled) return;
         if (key === "creditsEnabled" && !enabled) {
             modal.confirm({
+                ...configurationConfirmProps,
                 title: "关闭用户积分功能？",
                 content: "保存后新创建的任务和系统渠道请求将不再扣减积分；已经冻结的计费订单仍按原规则结算，已有余额和流水继续保留。",
                 okText: "确认关闭",
@@ -163,6 +172,7 @@ export default function FeatureAvailabilityPanel() {
         }
         if (key === "frontendModelsEnabled" && !enabled) {
             modal.confirm({
+                ...configurationConfirmProps,
                 title: "关闭前台模型功能？",
                 content: "关闭后用户将直接使用系统渠道中配置的模型；管理后台仍保留前台模型配置入口，重新开启后即可继续使用。",
                 okText: "确认关闭",
@@ -178,18 +188,8 @@ export default function FeatureAvailabilityPanel() {
     if (loading && !draftFeatures) {
         return (
             <div className="admin-settings-stack admin-feature-availability" aria-label="正在读取功能开放配置" role="status">
-                <div className="admin-feature-command-bar">
-                    <Skeleton active title={{ width: 180 }} paragraph={false} />
-                </div>
-                <div className="admin-feature-board is-loading">
-                    {Array.from({ length: 3 }).map((_, index) => (
-                        <div key={index} className="admin-feature-domain">
-                            <Skeleton active title={{ width: 120 }} paragraph={{ rows: 3 }} />
-                        </div>
-                    ))}
-                </div>
                 <div className="admin-feature-loading-card">
-                    <Skeleton active paragraph={{ rows: 2 }} />
+                    <BrandLoader label="正在读取功能开放配置" detail="读取完成后即可调整开放范围" />
                 </div>
             </div>
         );
@@ -222,7 +222,7 @@ export default function FeatureAvailabilityPanel() {
             <div className="admin-feature-command-bar">
                 <div className="admin-feature-command-copy" aria-live="polite">
                     <div className="flex flex-wrap items-center gap-2">
-                        <strong>{saving ? "正在保存更改" : "开关切换后立即生效"}</strong>
+                        <strong>{saving ? "正在保存更改" : "切换后立即保存，成功后生效"}</strong>
                         <AdminStatusBadge label={saving ? "提交中" : savedFeatures.configured ? "服务端配置" : "系统默认"} tone={saving ? "warning" : "neutral"} />
                     </div>
                 </div>
@@ -248,7 +248,7 @@ export default function FeatureAvailabilityPanel() {
                     status={<AdminStatusBadge label={`${enabledWorkspaceFeatures}/4 开放`} tone={enabledWorkspaceFeatures === 4 ? "success" : "neutral"} />}
                 >
                     {workspaceFeatureRows.map((row) => (
-                        <FeatureSettingRow key={row.key} row={row} saved={savedFeatures} draft={draftFeatures} saving={saving} onChange={requestFeatureChange} />
+                        <FeatureSettingRow key={row.key} row={row} saved={savedFeatures} draft={draftFeatures} saving={saving || refreshing || Boolean(loadError)} onChange={requestFeatureChange} />
                     ))}
                 </FeatureDomainPanel>
 
@@ -258,8 +258,8 @@ export default function FeatureAvailabilityPanel() {
                     icon={<PlugZap className="size-4" aria-hidden="true" />}
                     status={<AdminStatusBadge label={`${enabledPluginFeatures}/2 生效`} tone={enabledPluginFeatures === 2 ? "success" : "neutral"} />}
                 >
-                    <FeatureSettingRow row={pluginFeatureRows[0]} saved={savedFeatures} draft={draftFeatures} saving={saving} onChange={requestFeatureChange} step={1} />
-                    {draftFeatures.pluginCenterEnabled ? <FeatureSettingRow row={pluginFeatureRows[1]} saved={savedFeatures} draft={draftFeatures} saving={saving} onChange={requestFeatureChange} step={2} /> : null}
+                    <FeatureSettingRow row={pluginFeatureRows[0]} saved={savedFeatures} draft={draftFeatures} saving={saving || refreshing || Boolean(loadError)} onChange={requestFeatureChange} step={1} />
+                    {draftFeatures.pluginCenterEnabled ? <FeatureSettingRow row={pluginFeatureRows[1]} saved={savedFeatures} draft={draftFeatures} saving={saving || refreshing || Boolean(loadError)} onChange={requestFeatureChange} step={2} /> : null}
                 </FeatureDomainPanel>
 
                 <FeatureDomainPanel
@@ -268,7 +268,7 @@ export default function FeatureAvailabilityPanel() {
                     icon={<Sparkles className="size-4" aria-hidden="true" />}
                     status={<AdminStatusBadge label={draftFeatures.frontendModelsEnabled ? "前台模型目录" : "系统渠道"} tone="info" />}
                 >
-                    <FeatureSourceRow row={modelFeatureRows[0]} saved={savedFeatures} draft={draftFeatures} saving={saving} onChange={requestFeatureChange} />
+                    <FeatureSourceRow row={modelFeatureRows[0]} saved={savedFeatures} draft={draftFeatures} saving={saving || refreshing || Boolean(loadError)} onChange={requestFeatureChange} />
                     <FeatureRuntimeRow enabled={draftFeatures.desktopLocalChannelsEnabled} />
                 </FeatureDomainPanel>
             </div>
@@ -306,7 +306,7 @@ function FeatureSettingRow({ row, saved, draft, saving, onChange, step }: { row:
                     <strong>{row.title}</strong>
                     <span>{row.description}</span>
                 </span>
-                {changed ? <span className="admin-feature-board-row-dirty">待保存</span> : null}
+                {changed ? <span className="admin-feature-board-row-dirty">提交中</span> : null}
             </div>
             <div className="admin-feature-board-row-control">
                 <span>{dependencyDisabled ? "依赖未开启" : enabled ? "已开放" : "已关闭"}</span>
@@ -327,7 +327,7 @@ function FeatureSourceRow({ row, saved, draft, saving, onChange }: { row: Featur
                     <strong>用户模型目录</strong>
                     <span>{row.description}</span>
                 </span>
-                {changed ? <span className="admin-feature-board-row-dirty">待保存</span> : null}
+                {changed ? <span className="admin-feature-board-row-dirty">提交中</span> : null}
             </div>
             <div className="admin-feature-board-source-selector" role="radiogroup" aria-label="选择用户模型目录来源">
                 <button type="button" role="radio" aria-checked={!draft.frontendModelsEnabled} disabled={saving} className={cn(!draft.frontendModelsEnabled && "is-selected")} onClick={() => onChange("frontendModelsEnabled", false)}>
