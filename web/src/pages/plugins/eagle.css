@@ -1,32 +1,5 @@
-.eagle-library-page .eagle-folder-sidebar {
-    min-width: 0;
-}
-
 .eagle-upload-progress {
     display: none;
-}
-
-.eagle-library-page .eagle-folder-sidebar-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--space-2);
-    min-height: 32px;
-    padding-inline: 4px;
-}
-
-.eagle-library-page .eagle-folder-sidebar-label {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--space-2);
-    margin-top: var(--space-4);
-    padding-inline: 4px;
-    color: color-mix(in srgb, var(--foreground) 38%, transparent);
-    font-size: var(--fs-tiny);
-    font-weight: 650;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
 }
 
 .eagle-library-page .eagle-folder-tree {
@@ -55,17 +28,6 @@
     flex-basis: 0;
     width: 0;
 }
-.eagle-library-page .eagle-folder-tree .ant-tree-node-content-wrapper {
-    display: flex;
-    min-width: 0;
-    flex: 1;
-    align-items: center;
-    border-radius: var(--r-md);
-    padding: 6px 4px;
-    transition:
-        background-color var(--motion-state) ease-out,
-        color var(--motion-state) ease-out;
-}
 
 .eagle-library-page .eagle-folder-tree-title {
     display: block;
@@ -75,21 +37,6 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-}
-
-.eagle-library-page .eagle-folder-tree .ant-tree-node-content-wrapper:hover {
-    background: color-mix(in srgb, var(--foreground) 6%, transparent);
-}
-
-.eagle-library-page .eagle-folder-tree .ant-tree-node-content-wrapper.ant-tree-node-selected {
-    background: var(--control-selected-bg);
-    color: var(--control-selected-fg);
-    font-weight: 560;
-}
-
-.eagle-library-page .eagle-folder-tree .ant-tree-node-content-wrapper:focus-visible {
-    outline: 2px solid var(--ring);
-    outline-offset: 1px;
 }
 
 .eagle-library-page .eagle-folder-collapse {
@@ -120,10 +67,6 @@
     color: color-mix(in srgb, var(--foreground) 42%, transparent);
     font-size: var(--fs-label);
 }
-.eagle-library-page .eagle-folder-create {
-    width: 100%;
-    margin-top: var(--space-3);
-}
 
 .eagle-library-page .eagle-cover-download {
     position: absolute;
@@ -143,9 +86,11 @@
         opacity var(--motion-state) ease-out;
 }
 
-.eagle-library-page .asset-library-card:hover .eagle-cover-download,
-.eagle-library-page .asset-library-card:focus-within .eagle-cover-download,
-.eagle-library-page .eagle-cover-download:focus-visible {
+.eagle-library-page .asset-library-card:hover .eagle-cover-download {
+    opacity: 1;
+}
+
+.eagle-library-page .asset-library-card:focus-within .eagle-cover-download {
     opacity: 1;
 }
 
@@ -154,41 +99,9 @@
 }
 
 .eagle-library-page .eagle-cover-download:focus-visible {
+    opacity: 1;
     outline: 2px solid var(--ring);
     outline-offset: 2px;
-}
-
-.eagle-library-page .eagle-empty-state {
-    display: grid;
-    min-height: 16rem;
-    place-items: center;
-    border-radius: var(--r-lg);
-    background: color-mix(in srgb, var(--foreground) 2%, transparent);
-}
-
-.eagle-library-page .eagle-inline-error {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px;
-    margin-bottom: 12px;
-    border: 1px solid color-mix(in srgb, var(--destructive) 28%, var(--border));
-    border-radius: var(--r-md);
-    padding: 8px 10px;
-    background: color-mix(in srgb, var(--destructive) 8%, var(--background));
-    color: var(--destructive);
-    font-size: 12px;
-    line-height: 1.5;
-}
-
-:is(.eagle-library-page, .eagle-asset-drawer) .eagle-drawer-preview {
-    display: grid;
-    min-height: 220px;
-    max-height: 52vh;
-    place-items: center;
-    overflow: hidden;
-    border-radius: var(--r-lg);
-    background: color-mix(in srgb, var(--foreground) 5%, transparent);
 }
 
 :is(.eagle-library-page, .eagle-asset-drawer) .eagle-drawer-preview img {
@@ -211,6 +124,254 @@
     color: var(--primary-foreground);
 }
 
+.eagle-library-page {
+    --eagle-accent-soft: color-mix(in srgb, var(--app-brand-600) 8%, transparent);
+    --eagle-accent-line: color-mix(in srgb, var(--app-brand-600) 38%, var(--app-border-default));
+}
+
+.eagle-library-page .eagle-inline-error {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 42px;
+    gap: var(--app-space-3, 12px);
+    margin-bottom: var(--app-space-4, 16px);
+    border: 1px solid var(--app-status-error-border);
+    border-radius: var(--app-control-radius);
+    padding: var(--app-space-2, 8px) var(--app-space-3, 12px);
+    background: var(--app-status-error-bg);
+    color: var(--app-status-error-fg);
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+.eagle-library-page .studio-band {
+    padding-bottom: var(--app-space-4, 16px);
+    border-bottom: 1px solid var(--app-border-subtle, var(--border));
+}
+
+.eagle-library-page .eagle-enable-surface {
+    overflow: hidden;
+    background: var(--app-surface-2);
+    background-size: 28px 28px;
+    border: 1px dashed var(--eagle-accent-line);
+    border-radius: var(--app-surface-radius);
+}
+
+.eagle-library-page .eagle-library-frame {
+    padding: var(--app-space-4, 16px);
+    background: var(--app-surface-1, var(--background));
+    border: 1px solid var(--app-border-subtle, var(--border));
+    border-radius: var(--app-surface-radius, 12px);
+    box-shadow: none;
+}
+
+.eagle-library-page .eagle-library-frame > .grid {
+    grid-template-columns: 208px minmax(0, 1fr);
+    gap: var(--app-space-5, 20px);
+}
+
+.eagle-library-page .eagle-folder-sidebar-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2);
+    padding-inline: 4px;
+    position: relative;
+    min-height: 36px;
+    padding: 0 var(--app-space-2, 8px) var(--app-space-2, 8px) var(--app-space-4, 16px);
+    border-bottom: 1px solid var(--app-border-subtle, var(--border));
+}
+
+.eagle-library-page .assets-filter-item {
+    min-height: 36px;
+    border-radius: var(--app-control-radius-sm, 6px);
+}
+
+.eagle-library-page .assets-filter-item.is-active {
+    color: var(--app-selection-fg, var(--foreground));
+    background: var(--app-selection-bg, var(--control-selected-bg));
+    box-shadow: none;
+}
+
+.eagle-library-page .eagle-folder-sidebar-label {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2);
+    font-weight: 650;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin-top: var(--app-space-4, 16px);
+    padding-inline: var(--app-space-2, 8px);
+    color: var(--app-text-muted, var(--muted-foreground));
+    font-size: 11px;
+}
+
+.eagle-library-page .eagle-folder-tree .ant-tree-node-content-wrapper {
+    display: flex;
+    min-width: 0;
+    flex: 1;
+    align-items: center;
+    padding: 6px 4px;
+    transition:
+        background-color var(--motion-state) ease-out,
+        color var(--motion-state) ease-out;
+    min-height: 32px;
+    color: var(--app-text-secondary, var(--muted-foreground));
+    border-radius: var(--app-control-radius-sm, 6px);
+}
+
+.eagle-library-page .eagle-folder-tree .ant-tree-node-content-wrapper:hover {
+    color: var(--app-text-primary, var(--foreground));
+    background: var(--app-action-secondary-hover, var(--surface-card-hover));
+}
+
+.eagle-library-page .eagle-folder-tree .ant-tree-node-content-wrapper.ant-tree-node-selected {
+    font-weight: 560;
+    color: var(--app-selection-fg, var(--foreground));
+    background: var(--app-selection-bg, var(--control-selected-bg));
+    box-shadow: none;
+}
+
+.eagle-library-page .eagle-folder-tree .ant-tree-node-content-wrapper:focus-visible {
+    outline-offset: 1px;
+    outline: none;
+    box-shadow: var(--app-focus-shadow);
+}
+
+.eagle-library-page :where(.eagle-folder-collapse, .eagle-folder-create, .eagle-cover-download):focus-visible {
+    outline: none;
+    box-shadow: var(--app-focus-shadow);
+}
+
+.eagle-library-page .eagle-folder-create {
+    width: 100%;
+    min-height: var(--app-control-height, 36px);
+    margin-top: var(--app-space-3, 12px);
+}
+
+.eagle-library-page .eagle-breadcrumb {
+    min-height: 34px;
+    margin-bottom: var(--app-space-3);
+    padding: 4px var(--app-space-2);
+    overflow-x: auto;
+    background: var(--app-surface-2);
+    border: 1px solid var(--app-border-subtle);
+    border-radius: var(--app-control-radius-sm);
+    scrollbar-width: none;
+}
+
+.eagle-library-page .eagle-breadcrumb::-webkit-scrollbar {
+    display: none;
+}
+
+.eagle-library-page .eagle-breadcrumb button {
+    min-height: 26px;
+    color: var(--app-text-secondary);
+    border-radius: var(--app-control-radius-sm);
+}
+
+.eagle-library-page .eagle-breadcrumb button:hover {
+    color: var(--app-selection-fg);
+    background: var(--app-selection-bg);
+}
+
+.eagle-library-page .eagle-breadcrumb button:focus-visible {
+    outline: none;
+    box-shadow: var(--app-focus-shadow);
+}
+
+.eagle-library-page .eagle-content-header {
+    min-height: 58px;
+    align-items: center;
+    padding-bottom: var(--app-space-3);
+    border-bottom: 1px solid var(--app-border-subtle);
+}
+
+.eagle-library-page .eagle-create-folder-panel {
+    position: relative;
+    padding: var(--app-space-3);
+    background: var(--app-selection-bg);
+    border: 1px solid var(--app-selection-border);
+    border-radius: var(--app-control-radius);
+    box-shadow: none;
+}
+
+.eagle-library-page .eagle-empty-state {
+    display: grid;
+    place-items: center;
+    min-height: 320px;
+    background: var(--app-surface-2);
+    background-size: 24px 24px;
+    border: 1px dashed var(--eagle-accent-line);
+    border-radius: var(--app-surface-radius, 12px);
+}
+
+.eagle-library-page .eagle-assets-grid .asset-library-card {
+    border-color: var(--app-border-subtle);
+    box-shadow: none;
+    transition:
+        border-color var(--app-duration-base) var(--app-ease-standard),
+        box-shadow var(--app-duration-base) var(--app-ease-standard),
+        transform var(--app-duration-base) var(--app-ease-standard);
+}
+
+.eagle-library-page .eagle-assets-grid .asset-library-card:hover {
+    border-color: var(--eagle-accent-line);
+    box-shadow: none;
+    transform: none;
+}
+
+.eagle-library-page .eagle-assets-grid .asset-library-card:focus-within {
+    border-color: var(--eagle-accent-line);
+    box-shadow: none;
+    transform: none;
+}
+
+:is(.eagle-library-page, .eagle-asset-drawer) .eagle-drawer-preview {
+    display: grid;
+    max-height: 52vh;
+    place-items: center;
+    overflow: hidden;
+    min-height: 260px;
+    background: var(--app-surface-2);
+    background-size: 20px 20px;
+    border: 1px solid var(--app-border-subtle, var(--border));
+    border-radius: var(--app-radius-media, 12px);
+}
+
+.eagle-asset-drawer .asset-archive-header {
+    padding-bottom: var(--app-space-4, 16px);
+    border-bottom: 1px solid var(--app-border-subtle, var(--border));
+}
+
+.eagle-asset-drawer .eagle-drawer-download {
+    min-height: var(--app-control-height-lg, 42px);
+    color: var(--app-text-inverse, #fff);
+    background: var(--app-action-primary-bg, var(--primary));
+    border-radius: var(--app-control-radius, 8px);
+}
+
+.eagle-asset-drawer .eagle-fact {
+    min-height: 40px;
+    padding: var(--app-space-2) var(--app-space-3);
+    background: var(--app-surface-2);
+    border: 1px solid var(--app-border-subtle);
+    border-radius: var(--app-control-radius-sm);
+}
+
+.eagle-asset-drawer .eagle-fact-label {
+    color: var(--app-text-muted);
+    font-size: 12px;
+}
+
+.eagle-asset-drawer .eagle-fact-value {
+    color: var(--app-text-primary);
+    font-family: var(--app-font-mono);
+    font-size: 11px;
+}
+
 @media (max-width: 640px) {
     .eagle-library-page .eagle-folder-tree {
         max-height: 14rem;
@@ -222,266 +383,77 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .eagle-library-page .eagle-folder-tree .ant-tree-node-content-wrapper,
-    .eagle-library-page .eagle-cover-download,
+    .eagle-library-page .eagle-folder-tree .ant-tree-node-content-wrapper {
+        transition: none;
+    }
+    .eagle-library-page .eagle-cover-download {
+        transition: none;
+    }
     .eagle-library-page .eagle-drawer-download {
         transition: none;
     }
 }
 
-@media (min-width: 1024px) {
-    .eagle-library-page {
-        --eagle-accent-soft: color-mix(in srgb, var(--app-brand-600) 8%, transparent);
-        --eagle-accent-line: color-mix(in srgb, var(--app-brand-600) 38%, var(--app-border-default));
-    }
-
-    .eagle-library-page .eagle-inline-error {
-        min-height: 42px;
-        gap: var(--app-space-3, 12px);
-        margin-bottom: var(--app-space-4, 16px);
-        border: 1px solid var(--app-status-error-border);
-        border-radius: var(--app-control-radius);
-        padding: var(--app-space-2, 8px) var(--app-space-3, 12px);
-        background: var(--app-status-error-bg);
-        color: var(--app-status-error-fg);
-        font-size: 12px;
-        line-height: 1.5;
-    }
-
-    .eagle-library-page .studio-band {
-        padding-bottom: var(--app-space-4, 16px);
-        border-bottom: 1px solid var(--app-border-subtle, var(--border));
-    }
-
-    .eagle-library-page .eagle-enable-surface {
-        overflow: hidden;
-        background: linear-gradient(var(--app-border-subtle) 1px, transparent 1px), linear-gradient(90deg, var(--app-border-subtle) 1px, transparent 1px), var(--app-surface-1);
-        background-size: 28px 28px;
-        border: 1px dashed var(--eagle-accent-line);
-        border-radius: var(--app-surface-radius);
-    }
-
-    .eagle-library-page .eagle-upload-progress {
-        display: inline-flex;
-        max-width: 280px;
-        min-height: var(--app-control-height-sm);
-        align-items: center;
-        overflow: hidden;
-        padding: 2px var(--app-space-2);
-        color: var(--app-ai-running-fg);
-        background: var(--app-ai-running-bg);
-        border: 1px solid var(--app-ai-running-border);
-        border-radius: var(--app-control-radius-sm);
-        font-size: 11px;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-    }
-
-    .eagle-library-page .eagle-library-frame {
-        padding: var(--app-space-4, 16px);
-        background: var(--app-surface-1, var(--background));
-        border: 1px solid var(--app-border-subtle, var(--border));
-        border-radius: var(--app-surface-radius, 12px);
-        box-shadow:
-            inset 0 1px 0 color-mix(in srgb, var(--app-brand-400) 12%, transparent),
-            var(--app-shadow-surface, 0 1px 2px rgba(0, 0, 0, 0.04));
-    }
-
-    .eagle-library-page .eagle-library-frame > .grid {
-        grid-template-columns: 208px minmax(0, 1fr);
-        gap: var(--app-space-5, 20px);
-    }
-
-    .eagle-library-page .eagle-folder-sidebar {
-        max-height: calc(100vh - 220px);
-        padding: var(--app-space-3, 12px);
-        background: var(--app-surface-2, var(--surface-card));
-        border: 1px solid var(--app-border-subtle, var(--border));
-        border-radius: var(--app-control-radius, 8px);
-    }
-
-    .eagle-library-page .eagle-folder-sidebar-header {
-        position: relative;
-        min-height: 36px;
-        padding: 0 var(--app-space-2, 8px) var(--app-space-2, 8px) var(--app-space-4, 16px);
-        border-bottom: 1px solid var(--app-border-subtle, var(--border));
-    }
-
-    .eagle-library-page .eagle-folder-sidebar-header::before {
-        position: absolute;
-        top: 7px;
-        bottom: 13px;
-        left: var(--app-space-2, 8px);
-        width: 3px;
-        background: var(--app-brand-gradient);
-        border-radius: var(--app-radius-1, 6px);
-        content: "";
-    }
-
-    .eagle-library-page .assets-filter-item {
-        min-height: 36px;
-        border-radius: var(--app-control-radius-sm, 6px);
-    }
-
-    .eagle-library-page .assets-filter-item.is-active {
-        color: var(--app-selection-fg, var(--foreground));
-        background: var(--app-selection-bg, var(--control-selected-bg));
-        box-shadow: inset 3px 0 0 var(--app-brand-600);
-    }
-
-    .eagle-library-page .eagle-folder-sidebar-label {
-        margin-top: var(--app-space-4, 16px);
-        padding-inline: var(--app-space-2, 8px);
-        color: var(--app-text-muted, var(--muted-foreground));
-        font-size: 11px;
-    }
-
-    .eagle-library-page .eagle-folder-tree .ant-tree-node-content-wrapper {
-        min-height: 32px;
-        color: var(--app-text-secondary, var(--muted-foreground));
-        border-radius: var(--app-control-radius-sm, 6px);
-    }
-
-    .eagle-library-page .eagle-folder-tree .ant-tree-node-content-wrapper:hover {
-        color: var(--app-text-primary, var(--foreground));
-        background: var(--app-action-secondary-hover, var(--surface-card-hover));
-    }
-
-    .eagle-library-page .eagle-folder-tree .ant-tree-node-content-wrapper.ant-tree-node-selected {
-        color: var(--app-selection-fg, var(--foreground));
-        background: var(--app-selection-bg, var(--control-selected-bg));
-        box-shadow: inset 2px 0 0 var(--app-brand-600);
-    }
-
-    .eagle-library-page .eagle-folder-tree .ant-tree-node-content-wrapper:focus-visible,
-    .eagle-library-page :where(.eagle-folder-collapse, .eagle-folder-create, .eagle-cover-download):focus-visible {
-        outline: none;
-        box-shadow: var(--app-focus-shadow);
-    }
-
-    .eagle-library-page .eagle-folder-create {
-        min-height: var(--app-control-height, 36px);
-        margin-top: var(--app-space-3, 12px);
-    }
-
-    .eagle-library-page .eagle-breadcrumb {
-        min-height: 34px;
-        margin-bottom: var(--app-space-3);
-        padding: 4px var(--app-space-2);
-        overflow-x: auto;
-        background: var(--app-surface-2);
-        border: 1px solid var(--app-border-subtle);
-        border-radius: var(--app-control-radius-sm);
-        scrollbar-width: none;
-    }
-
-    .eagle-library-page .eagle-breadcrumb::-webkit-scrollbar {
-        display: none;
-    }
-
-    .eagle-library-page .eagle-breadcrumb button {
-        min-height: 26px;
-        color: var(--app-text-secondary);
-        border-radius: var(--app-control-radius-sm);
-    }
-
-    .eagle-library-page .eagle-breadcrumb button:hover {
-        color: var(--app-selection-fg);
-        background: var(--app-selection-bg);
-    }
-
-    .eagle-library-page .eagle-breadcrumb button:focus-visible {
-        outline: none;
-        box-shadow: var(--app-focus-shadow);
-    }
-
-    .eagle-library-page .eagle-content-header {
-        min-height: 58px;
-        align-items: center;
-        padding-bottom: var(--app-space-3);
-        border-bottom: 1px solid var(--app-border-subtle);
-    }
-
-    .eagle-library-page .eagle-create-folder-panel {
-        position: relative;
-        padding: var(--app-space-3);
-        background: var(--app-selection-bg);
-        border: 1px solid var(--app-selection-border);
-        border-radius: var(--app-control-radius);
-        box-shadow: inset 3px 0 0 var(--app-brand-600);
-    }
-
-    .eagle-library-page .eagle-empty-state {
-        min-height: 320px;
-        background: linear-gradient(var(--app-border-subtle) 1px, transparent 1px), linear-gradient(90deg, var(--app-border-subtle) 1px, transparent 1px), var(--app-surface-2, var(--surface-card));
-        background-size: 24px 24px;
-        border: 1px dashed var(--eagle-accent-line);
-        border-radius: var(--app-surface-radius, 12px);
-    }
-
+@media (prefers-reduced-motion: reduce) {
     .eagle-library-page .eagle-assets-grid .asset-library-card {
-        border-color: var(--app-border-subtle);
-        box-shadow: var(--app-shadow-surface);
-        transition:
-            border-color var(--app-duration-base) var(--app-ease-standard),
-            box-shadow var(--app-duration-base) var(--app-ease-standard),
-            transform var(--app-duration-base) var(--app-ease-standard);
+        transition: none;
+        transform: none;
     }
-
-    .eagle-library-page .eagle-assets-grid .asset-library-card:hover,
-    .eagle-library-page .eagle-assets-grid .asset-library-card:focus-within {
-        border-color: var(--eagle-accent-line);
-        box-shadow:
-            0 0 0 2px var(--eagle-accent-soft),
-            var(--app-shadow-raised);
-        transform: translateY(-1px);
+    .eagle-library-page .eagle-assets-grid .asset-library-card:hover {
+        transition: none;
+        transform: none;
     }
-
-    :is(.eagle-library-page, .eagle-asset-drawer) .eagle-drawer-preview {
-        min-height: 260px;
-        background: linear-gradient(var(--app-border-subtle) 1px, transparent 1px), linear-gradient(90deg, var(--app-border-subtle) 1px, transparent 1px), var(--app-surface-2, var(--surface-card));
-        background-size: 20px 20px;
-        border: 1px solid var(--app-border-subtle, var(--border));
-        border-radius: var(--app-radius-media, 12px);
-    }
-
-    .eagle-asset-drawer .asset-archive-header {
-        padding-bottom: var(--app-space-4, 16px);
-        border-bottom: 1px solid var(--app-border-subtle, var(--border));
-    }
-
-    .eagle-asset-drawer .eagle-drawer-download {
-        min-height: var(--app-control-height-lg, 42px);
-        color: var(--app-text-inverse, #fff);
-        background: var(--app-action-primary-bg, var(--primary));
-        border-radius: var(--app-control-radius, 8px);
-    }
-
-    .eagle-asset-drawer .eagle-fact {
-        min-height: 40px;
-        padding: var(--app-space-2) var(--app-space-3);
-        background: var(--app-surface-2);
-        border: 1px solid var(--app-border-subtle);
-        border-radius: var(--app-control-radius-sm);
-    }
-
-    .eagle-asset-drawer .eagle-fact-label {
-        color: var(--app-text-muted);
-        font-size: 12px;
-    }
-
-    .eagle-asset-drawer .eagle-fact-value {
-        color: var(--app-text-primary);
-        font-family: var(--app-font-mono);
-        font-size: 11px;
-    }
-}
-
-@media (min-width: 1024px) and (prefers-reduced-motion: reduce) {
-    .eagle-library-page .eagle-assets-grid .asset-library-card,
-    .eagle-library-page .eagle-assets-grid .asset-library-card:hover,
     .eagle-library-page .eagle-assets-grid .asset-library-card:focus-within {
         transition: none;
         transform: none;
+    }
+}
+
+.eagle-library-page .eagle-upload-progress {
+    max-width: 280px;
+    min-height: var(--app-control-height-sm);
+    align-items: center;
+    overflow: hidden;
+    padding: 2px var(--app-space-2);
+    color: var(--app-ai-running-fg);
+    background: var(--app-ai-running-bg);
+    border: 1px solid var(--app-ai-running-border);
+    border-radius: var(--app-control-radius-sm);
+    font-size: 11px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    display: inline-flex;
+}
+
+.eagle-library-page .eagle-folder-sidebar {
+    min-width: 0;
+    max-height: calc(100vh - 220px);
+    padding: var(--app-space-3, 12px);
+    background: var(--app-surface-2, var(--surface-card));
+    border: 1px solid var(--app-border-subtle, var(--border));
+    border-radius: var(--app-control-radius, 8px);
+    display: block;
+}
+
+@media (max-width: 1023px) {
+    .eagle-library-page .eagle-library-frame > .grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+    .eagle-library-page .eagle-folder-sidebar {
+        position: static;
+        max-height: none;
+    }
+    .eagle-library-page .eagle-folder-tree {
+        max-height: 180px;
+    }
+    .eagle-library-page .eagle-folder-tree-title {
+        width: auto;
+        max-width: 100%;
+    }
+    .eagle-library-page .eagle-library-frame {
+        padding: 12px;
+    }
+    .eagle-library-page .eagle-cover-download {
+        opacity: 1;
     }
 }

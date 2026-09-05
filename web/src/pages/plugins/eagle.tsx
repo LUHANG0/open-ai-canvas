@@ -14,18 +14,17 @@ import { WorkspaceErrorState, WorkspaceLoadingState, WorkspaceState } from "@/co
 import { DrawerFrame, StatusBadge, Surface } from "@/components/ui/pc";
 import { PathBreadcrumb } from "@/components/ui/pc/path-breadcrumb";
 import { AssetLibraryCard, AssetLibraryCardMedia } from "@/components/assets/asset-library-card";
-import { usePcBrandViewport } from "@/hooks/use-pc-brand-viewport";
 import "./eagle.css";
 
 export default function EagleLibraryPage() {
     const navigate = useNavigate();
     const { message } = App.useApp();
-    const pcBrandV2 = usePcBrandViewport();
     const installations = usePluginStore((state) => state.installations);
     const hydrated = usePluginStore((state) => state.hydrated);
     const ensurePlugin = usePluginStore((state) => state.ensurePlugin);
     const installation = installations.find((item) => item.manifest.id === eagleAssetPlugin.manifest.id);
-    const enabled = Boolean(installation?.enabled);
+    const pluginState = usePluginStore((state) => state.pluginStates[eagleAssetPlugin.manifest.id]);
+    const enabled = pluginState?.effectiveEnabled ?? Boolean(installation?.enabled);
     const savedBaseUrl = installation?.config.baseUrl;
     const baseUrl = typeof savedBaseUrl === "string" && savedBaseUrl.trim() ? savedBaseUrl.trim() : EAGLE_DEFAULT_BASE_URL;
     const provider = useMemo(() => createEagleAssetSource(baseUrl), [baseUrl]);
@@ -44,6 +43,8 @@ export default function EagleLibraryPage() {
     const [pageSize, setPageSize] = useState(40);
     const [previewItem, setPreviewItem] = useState<ExternalAssetItem | null>(null);
     const [foldersExpanded, setFoldersExpanded] = useState(true);
+    const [connected, setConnected] = useState(false);
+    const loadRequest = useRef(0);
 
     const treeData = useMemo<DataNode[]>(() => renderFolderNodes(folders), [folders]);
     const folderPath = useMemo(() => externalFolderPath(folders, selectedFolder), [folders, selectedFolder]);
@@ -56,26 +57,35 @@ export default function EagleLibraryPage() {
     }, [ensurePlugin]);
 
     const load = async (folderId = selectedFolder, search = keyword) => {
+        const request = ++loadRequest.current;
         setLoading(true);
         setError("");
         try {
             const [nextFolders, nextItems] = await Promise.all([provider.listFolders?.(), provider.list?.({ folderId: folderId || undefined, keyword: search.trim() || undefined, limit: 100, offset: 0 })]);
+            if (request !== loadRequest.current) return;
             setFolders(nextFolders || []);
             setItems(nextItems || []);
             setPage(1);
+            setConnected(true);
         } catch (reason) {
+            if (request !== loadRequest.current) return;
             setError(reason instanceof Error ? reason.message : "连接 Eagle 失败，请确认 Eagle 已启动");
             setItems([]);
+            setConnected(false);
         } finally {
-            setLoading(false);
+            if (request === loadRequest.current) setLoading(false);
         }
     };
 
     useEffect(() => {
+        setConnected(false);
         if (!enabled) return;
         setSelectedFolder("");
         setKeyword("");
         void load("", "");
+        return () => {
+            loadRequest.current += 1;
+        };
         // provider 随本机 API 地址变化；页面进入或配置变化时重新读取 Eagle。
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [enabled, provider]);
@@ -134,7 +144,7 @@ export default function EagleLibraryPage() {
         return (
             <WorkspacePage grid className="library-page eagle-library-page">
                 <PageHeader
-                    eyebrow={pcBrandV2 ? "EXTERNAL ASSET SOURCE" : undefined}
+                    eyebrow="外部素材"
                     title="Eagle 素材库"
                     description="把 Eagle 作为影策的外部素材来源，直接浏览和管理 Eagle 原始文件。"
                     actions={
@@ -146,8 +156,8 @@ export default function EagleLibraryPage() {
                 <Surface className="eagle-enable-surface mt-4" padding="none">
                     <WorkspaceState
                         icon="settings"
-                        title="先启用 Eagle 素材来源"
-                        description="启用后，这里会直接显示 Eagle 原本的文件夹和文件，不会把素材复制成影策本地素材。"
+                        title={pluginState?.blockedReason || "先启用 Eagle 素材来源"}
+                        description="请在插件中心确认平台可用性与个人开关，再连接已打开的 Eagle 资料库。"
                         action={
                             <Button type="primary" icon={<Settings2 className="size-4" />} onClick={() => navigate("/plugins")}>
                                 去插件中心启用
@@ -164,18 +174,18 @@ export default function EagleLibraryPage() {
             <WorkspacePage grid className="library-page assets-library-page canvas-library-page eagle-library-page">
                 <div className="studio-band">
                     <PageHeader
-                        eyebrow={pcBrandV2 ? "EXTERNAL ASSET SOURCE" : undefined}
+                        eyebrow="外部素材"
                         title="Eagle 素材库"
                         description="Eagle 是影策的外部素材来源；这里复用影策素材库的浏览方式，直接读取和写入 Eagle 原始文件。"
                         meta={
-                            <StatusBadge dot tone={error ? "error" : "success"} live>
-                                {error ? "Eagle · 连接异常" : "Eagle · 已连接"}
+                            <StatusBadge dot tone={loading ? "running" : error ? "error" : connected ? "success" : "neutral"} live>
+                                {loading ? "Eagle · 正在连接" : error ? "Eagle · 操作异常" : connected ? "Eagle · 已连接" : "Eagle · 尚未连接"}
                             </StatusBadge>
                         }
                         actions={
                             <div className="assets-header-actions">
                                 <div className="assets-header-action-buttons">
-                                    <Button className="library-primary-action" type="primary" icon={<Upload className="size-3.5" />} onClick={() => fileInputRef.current?.click()} disabled={working}>
+                                    <Button className="library-primary-action" type="primary" icon={<Upload className="size-3.5" />} onClick={() => fileInputRef.current?.click()} disabled={working || loading || !connected}>
                                         写入素材
                                     </Button>
                                     <Button icon={<ArrowLeft className="size-3.5" />} onClick={() => navigate("/assets")}>
@@ -215,6 +225,7 @@ export default function EagleLibraryPage() {
                             prefix={<Search className="size-4 text-foreground/40" />}
                             value={keyword}
                             placeholder="搜索 Eagle 素材标题、标签或文件夹"
+                            aria-label="搜索 Eagle 素材"
                             onChange={(event) => {
                                 setPage(1);
                                 setKeyword(event.target.value);
@@ -251,7 +262,7 @@ export default function EagleLibraryPage() {
                                     <div className="eagle-folder-empty">Eagle 中还没有文件夹</div>
                                 )
                             ) : null}
-                            <Button className="eagle-folder-create" icon={<FolderPlus className="size-3.5" />} onClick={() => setFolderName((value) => (value ? "" : "新文件夹"))}>
+                            <Button className="eagle-folder-create" disabled={!connected || loading || working} icon={<FolderPlus className="size-3.5" />} onClick={() => setFolderName((value) => (value ? "" : "新文件夹"))}>
                                 新建文件夹
                             </Button>
                         </aside>
@@ -275,7 +286,7 @@ export default function EagleLibraryPage() {
                                     <p className="mt-1 text-xs text-foreground/48">{currentFolder ? "当前文件夹由 Eagle 管理，影策只负责展示和调用。" : "当前展示 Eagle 素材库中的全部文件。"}</p>
                                 </div>
                                 <div className="flex flex-wrap items-center gap-2">
-                                    <Button icon={<FolderPlus className="size-3.5" />} onClick={() => setFolderName((value) => (value ? "" : "新文件夹"))}>
+                                    <Button disabled={!connected || loading || working} icon={<FolderPlus className="size-3.5" />} onClick={() => setFolderName((value) => (value ? "" : "新文件夹"))}>
                                         新建文件夹
                                     </Button>
                                     <Button
