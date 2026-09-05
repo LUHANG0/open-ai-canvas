@@ -2,9 +2,12 @@ import { Coins } from "lucide-react";
 
 import { formatCredits } from "@/constant/credits";
 import { CONTENT_MODERATION_ERROR_CODE, generationErrorMessage, isContentModerationError } from "@/lib/generation-error";
-import { generationTaskStageLabel } from "@/lib/generation-task-display";
-import type { GenerationTask, TaskStatus } from "@/services/api/task-center";
+import { generationTaskStageLabel, generationTaskStatusLabel, isGenerationTaskSubmissionUncertain } from "@/lib/generation-task-display";
+import type { GenerationTask } from "@/services/api/task-center";
 import { modelDisplayName, type AiConfig } from "@/stores/use-config-store";
+import { statusDotClassName, taskStatusTone } from "./task-display";
+
+export { isTaskFailed, taskStatusTone } from "./task-display";
 
 export function getTaskCanvasContext(task: GenerationTask, canvasById: Map<string, { title: string; projectId?: string }>, projectNameById: Map<string, string>) {
     if (!task.projectId) return { canvasName: "未绑定画布", projectName: "" };
@@ -14,11 +17,8 @@ export function getTaskCanvasContext(task: GenerationTask, canvasById: Map<strin
     return projectName ? { canvasName: "项目级任务", projectName } : { canvasName: "画布已移除", projectName: "" };
 }
 
-export function isTaskFailed(task: GenerationTask) {
-    return task.status === "failed" || task.status === "cancelled";
-}
-
 export function taskAttentionReason(task: GenerationTask) {
+    if (isGenerationTaskSubmissionUncertain(task)) return generationTaskStageLabel(task);
     if (task.status === "cancelled") return providerCancelStatusLabel(task);
     if (task.errorCode === CONTENT_MODERATION_ERROR_CODE || isContentModerationError(task.error)) return "内容审核未通过，请修改输入后新建任务";
     if (task.error) return generationErrorMessage(task.error);
@@ -36,12 +36,13 @@ export function providerCancelStatusLabel(task: GenerationTask) {
     return task.billing?.status === "refunded" ? "任务在生成开始前取消，积分已退回" : "任务已取消，可按原输入重新提交";
 }
 
-export function statusDotClassName(status: TaskStatus) {
-    if (status === "succeeded") return "task-record-dot is-success";
-    if (status === "running") return "task-record-dot is-active is-pulsing";
-    if (status === "queued") return "task-record-dot is-queued";
-    if (status === "failed") return "task-record-dot is-failed";
-    return "task-record-dot is-idle";
+export function TaskStatusBadge({ task, className }: { task: GenerationTask; className: string }) {
+    return (
+        <span className={`${className} is-${taskStatusTone(task)}`}>
+            <i className={statusDotClassName(task)} aria-hidden="true" />
+            {generationTaskStatusLabel(task)}
+        </span>
+    );
 }
 
 export function taskMediaKind(task: GenerationTask): "text" | "image" | "video" {
@@ -52,9 +53,9 @@ export function taskMediaKind(task: GenerationTask): "text" | "image" | "video" 
 }
 
 export function TaskDate({ value }: { value?: string }) {
-    if (!value) return <span className="text-xs text-foreground/38">-</span>;
+    if (!value) return <span className="task-record-date-value">-</span>;
     const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return <span className="text-xs text-foreground/38">-</span>;
+    if (Number.isNaN(date.getTime())) return <span className="task-record-date-value">-</span>;
     const compact = `${date.getFullYear()}/${date.getMonth() + 1}/${date.getDate()} ${date.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}`;
     return (
         <time className="task-record-date-value" dateTime={date.toISOString()} title={date.toLocaleString()}>

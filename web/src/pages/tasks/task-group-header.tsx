@@ -1,3 +1,4 @@
+import { Button } from "antd";
 import { FolderKanban, RotateCcw } from "lucide-react";
 
 import { CONTENT_MODERATION_ERROR_CODE, isContentModerationError } from "@/lib/generation-error";
@@ -26,17 +27,16 @@ export function TaskGroupHeader({ group, retrying = false, onRetryFailed }: { gr
                 <span className="task-group-sub">
                     {active ? <span>{active} 运行中</span> : null}
                     {active && failed ? <span aria-hidden="true"> · </span> : null}
-                    {failed ? <b className="is-bad">{failed} 失败</b> : null}
+                    {failed ? <span>{failed} 失败/取消</span> : null}
                     {(active || failed) && succeeded ? <span aria-hidden="true"> · </span> : null}
                     {succeeded ? <span>{succeeded} 已完成</span> : null}
                     {!active && !failed && !succeeded ? "暂无进行中的任务" : null}
                 </span>
             </div>
             {failed ? (
-                <button type="button" className="task-group-reset" disabled={retrying} onClick={onRetryFailed}>
-                    <RotateCcw className={retrying ? "animate-spin" : undefined} />
+                <Button type="default" size="small" className="task-group-reset" loading={retrying} icon={<RotateCcw className="size-3.5" />} onClick={onRetryFailed}>
                     {retrying ? "重试中..." : "重试失败任务"}
-                </button>
+                </Button>
             ) : null}
         </div>
     );

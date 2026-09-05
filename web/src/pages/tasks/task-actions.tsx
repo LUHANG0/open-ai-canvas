@@ -11,20 +11,25 @@ export type TaskActionsProps = {
     actingId: string;
     onOpen: () => void;
     onRetry: () => void;
+    showLabels?: boolean;
 };
 
-export function TaskActions({ task, actingId, onOpen, onRetry }: TaskActionsProps) {
+export function TaskActions({ task, actingId, onOpen, onRetry, showLabels = false }: TaskActionsProps) {
     const isFailed = isTaskFailed(task);
     const retryDisabled = task.errorCode === CONTENT_MODERATION_ERROR_CODE || isContentModerationError(task.error);
 
     return (
         <>
             <Tooltip title="查看详情">
-                <Button type="text" size="small" icon={<Eye className="size-3.5" />} aria-label="查看详情" onClick={onOpen} />
+                <Button type="text" size="small" icon={<Eye className="size-3.5" />} aria-label="查看详情" onClick={onOpen}>
+                    {showLabels ? "查看详情" : null}
+                </Button>
             </Tooltip>
             {isFailed ? (
                 <Tooltip title={retryDisabled ? "内容审核未通过，请修改输入后新建任务" : "按原参数重试任务"}>
-                    <Button type="text" size="small" icon={<RotateCcw className="size-3.5" />} aria-label="重试任务" loading={actingId === task.id} disabled={retryDisabled} onClick={onRetry} />
+                    <Button type="text" size="small" icon={<RotateCcw className="size-3.5" />} aria-label="重试任务" loading={actingId === task.id} disabled={retryDisabled} onClick={onRetry}>
+                        {showLabels ? "重试任务" : null}
+                    </Button>
                 </Tooltip>
             ) : null}
         </>

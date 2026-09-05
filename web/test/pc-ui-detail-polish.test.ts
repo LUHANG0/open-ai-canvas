@@ -21,14 +21,15 @@ describe("PC detail polish regression gates", () => {
         );
     });
 
-    test("gates content-chain error and busy states to the PC viewport", async () => {
+    test("shares task feedback across viewports while preserving other content-chain behavior", async () => {
         const [assets, tasks, wallet] = await Promise.all([read("../src/pages/assets/index.tsx"), read("../src/pages/tasks/index.tsx"), read("../src/pages/wallet/index.tsx")]);
 
         expect(assets).toContain('loading={isPcBrandViewport && transferBusy === "export-all"}');
         expect(assets).toContain("disabled: isPcBrandViewport && Boolean(transferBusy)");
         expect(assets).toContain("isPcBrandViewport && !assetsHydrated");
-        expect(tasks).toContain("isPcBrandViewport && !loading && loadError && !tasks.length");
-        expect(tasks).toContain("(!isPcBrandViewport || !loadError || tasks.length)");
+        expect(tasks).not.toContain("usePcBrandViewport");
+        expect(tasks).toContain("!loading && loadError && !tasks.length");
+        expect(tasks).toContain("(!loadError || tasks.length)");
         expect(wallet).toContain("!account && isPcBrandViewport && (loading || loadError)");
         expect(wallet).toContain("scroll={{ x: isPcBrandViewport ? 1000 : 990 }}");
         expect(wallet).toContain("locale={");
@@ -59,7 +60,7 @@ describe("PC detail polish regression gates", () => {
         const [tasks, filter] = await Promise.all([read("../src/pages/tasks/index.tsx"), read("../src/pages/tasks/task-status-filter.tsx")]);
 
         expect(tasks).toContain('id="task-results"');
-        expect(tasks).toContain('aria-label="任务明细表，可横向滚动查看全部七列"');
+        expect(tasks).toContain('aria-label="任务明细"');
         expect(filter).toContain('aria-controls="task-results"');
         expect(filter).toContain('role="tab"');
     });

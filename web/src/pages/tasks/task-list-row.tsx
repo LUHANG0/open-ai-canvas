@@ -2,12 +2,11 @@ import { Eye, FileText, FolderKanban, Image as ImageIcon, Play, Video } from "lu
 import { useState } from "react";
 
 import { MediaPreview } from "@/components/media-preview";
-import { generationErrorMessage } from "@/lib/generation-error";
-import { formatTaskKind, generationTaskStageLabel, statusLabel } from "@/lib/generation-task-display";
+import { formatTaskKind, generationTaskStageLabel } from "@/lib/generation-task-display";
 import type { GenerationTask } from "@/services/api/task-center";
 import type { AiConfig } from "@/stores/use-config-store";
 import { TaskActions } from "./task-actions";
-import { formatModelName, getTaskCanvasContext, isTaskFailed, statusDotClassName, taskAttentionReason, TaskBilling, TaskDate } from "./task-shared";
+import { formatModelName, getTaskCanvasContext, isTaskFailed, taskAttentionReason, TaskBilling, TaskDate, TaskStatusBadge, taskStatusTone } from "./task-shared";
 
 export function TaskListRow({
     task,
@@ -36,19 +35,16 @@ export function TaskListRow({
     const kind = formatTaskKind(task);
     const model = formatModelName(effectiveConfig, task);
     const canvasLabel = context.projectName ? `${context.canvasName} · ${context.projectName}` : context.canvasName;
-    const rowTone = isFailed ? "is-failed" : isActive ? "is-active" : "is-success";
+    const tone = taskStatusTone(task);
     return (
-        <article className={`task-record-row group ${rowTone}`} aria-busy={isActive}>
+        <article className={`task-record-row group is-${tone}`} aria-busy={isActive}>
             <div className="task-record-identity">
                 <TaskPreviewThumbnail task={task} onOpen={onPreview} />
                 <div className="task-record-main">
                     <div className="task-record-state-line">
-                        <span className={`task-record-status ${isFailed ? "is-failed" : isActive ? "is-active" : "is-success"}`}>
-                            <i className={statusDotClassName(task.status)} />
-                            {statusLabel[task.status]}
-                        </span>
-                        {isFailed ? (
-                            <p className="task-record-error" title={task.error ? generationErrorMessage(task.error) : undefined}>
+                        <TaskStatusBadge task={task} className="task-record-status" />
+                        {isFailed || tone === "warning" ? (
+                            <p className={`task-record-error is-${tone}`} title={taskAttentionReason(task)}>
                                 {taskAttentionReason(task)}
                             </p>
                         ) : null}
@@ -61,7 +57,7 @@ export function TaskListRow({
                         <span>{model}</span>
                         <span>{canvasLabel}</span>
                     </div>
-                    {isActive ? (
+                    {isActive && tone !== "warning" ? (
                         <div className="task-record-progress">
                             <span>{generationTaskStageLabel(task)}</span>
                             <span>{task.progress || 0}%</span>

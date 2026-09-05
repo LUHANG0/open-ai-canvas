@@ -5,11 +5,10 @@ import { useNavigate, useSearchParams } from "react-router";
 
 import { MediaPreview } from "@/components/media-preview";
 import { ListToolbar, PageHeader, PaginationBar, WorkspacePage } from "@/components/ui/pc/page";
-import { WorkspaceState } from "@/components/ui/pc/workspace-state";
+import { WorkspaceLoadingState, WorkspaceState } from "@/components/ui/pc/workspace-state";
 import { DialogFrame, DrawerFrame, SearchField, Surface, ViewToggle } from "@/components/ui/pc";
-import { usePcBrandViewport } from "@/hooks/use-pc-brand-viewport";
-import { CONTENT_MODERATION_ERROR_CODE, generationErrorMessage, isContentModerationError } from "@/lib/generation-error";
-import { formatTaskKind, isGenerationTaskSubmissionUncertain, operationOptions, statusLabel } from "@/lib/generation-task-display";
+import { CONTENT_MODERATION_ERROR_CODE, isContentModerationError } from "@/lib/generation-error";
+import { formatTaskKind, isGenerationTaskSubmissionUncertain, operationOptions } from "@/lib/generation-task-display";
 import { backendProviderConfig, logicalModelIDForConfig } from "@/services/api/generation-task";
 
 import {
@@ -35,7 +34,7 @@ import { listProjects, type ProjectSummary } from "@/services/api/projects";
 import { TaskGridCard } from "./task-grid-card";
 import { TaskGroupHeader, type TaskGroup } from "./task-group-header";
 import { TaskListRow } from "./task-list-row";
-import { formatModelName, getTaskCanvasContext, isTaskFailed, providerCancelStatusLabel, statusDotClassName, TaskBilling, taskMediaKind } from "./task-shared";
+import { formatModelName, getTaskCanvasContext, isTaskFailed, providerCancelStatusLabel, taskAttentionReason, TaskBilling, taskMediaKind, TaskStatusBadge, taskStatusTone } from "./task-shared";
 import { TaskStatusFilterBar, type TaskStatusFilter } from "./task-status-filter";
 
 import "./tasks-pc.css";
@@ -72,7 +71,6 @@ function taskStatusFilter(value: string | null): TaskStatusFilter {
 export default function TasksPage() {
     const { message } = App.useApp();
     const navigate = useNavigate();
-    const isPcBrandViewport = usePcBrandViewport();
     const [searchParams, setSearchParams] = useSearchParams();
     const effectiveConfig = useEffectiveConfig();
     const isAiConfigReady = useConfigStore((state) => state.isAiConfigReady);
@@ -109,6 +107,17 @@ export default function TasksPage() {
     const [mediaPreview, setMediaPreview] = useState<{ url: string; kind: "image" | "video"; title: string } | null>(null);
     const [tasks, setTasks] = useState<GenerationTask[]>([]);
     const [loadError, setLoadError] = useState("");
+    const detailStatusTone = detailTask ? taskStatusTone(detailTask) : "info";
+    const detailAttentionTitle = detailStatusTone === "warning" ? "提交结果待确认" : detailTask?.status === "cancelled" ? "取消说明" : "失败原因";
+    const hasSearchFilters = Boolean(keyword.trim() || projectFilter !== "all" || kindFilter !== "all" || modelFilter !== "all");
+    const resetFilters = () => {
+        setKeyword("");
+        setProjectFilter("all");
+        setKindFilter("all");
+        setModelFilter("all");
+        setStatusFilter("all");
+        setPage(1);
+    };
     const syncedCanvasTaskIdsRef = useRef(new Set<string>());
     const tasksRef = useRef<GenerationTask[]>([]);
     const canvasById = useMemo(() => new Map(projects.map((project) => [project.id, project])), [projects]);
@@ -488,7 +497,7 @@ export default function TasksPage() {
                         eyebrow="生产管理"
                         meta={<span className="task-page-total">共 {taskStats.total} 条记录</span>}
                         actions={
-                            <Button className="library-primary-action task-create-action" type="primary" icon={<Plus className="size-3.5" />} onClick={() => setCreateOpen(true)}>
+                            <Button className="task-create-action" type="primary" icon={<Plus className="size-3.5" />} onClick={() => setCreateOpen(true)}>
                                 新建任务
                             </Button>
                         }
@@ -503,17 +512,10 @@ export default function TasksPage() {
                     />
                     <ListToolbar
                         className="library-toolbar task-library-toolbar"
-                        active={Boolean(keyword || projectFilter !== "all" || kindFilter !== "all" || modelFilter !== "all" || statusFilter !== "all")}
-                        onReset={() => {
-                            setKeyword("");
-                            setProjectFilter("all");
-                            setKindFilter("all");
-                            setModelFilter("all");
-                            setStatusFilter("all");
-                            setPage(1);
-                        }}
+                        active={hasSearchFilters || statusFilter !== "all"}
+                        onReset={resetFilters}
                         trailing={
-                            <div className="flex flex-wrap items-center gap-2.5">
+                            <div className="task-toolbar-actions">
                                 {viewMode === "list" ? (
                                     <Button
                                         type="default"
@@ -594,7 +596,7 @@ export default function TasksPage() {
 
                 <Surface id="task-results" className="canvas-library-frame task-library-frame" padding="none">
                     {loadError && tasks.length ? (
-                        <div className="task-load-warning hidden" role="alert">
+                        <div className="task-load-warning" role="alert">
                             <span>任务记录暂时未能更新：{loadError}</span>
                             <Button size="small" icon={<RefreshCw className="size-3.5" />} loading={loading} onClick={() => void loadTasks(true)}>
                                 重试
@@ -602,15 +604,13 @@ export default function TasksPage() {
                         </div>
                     ) : null}
                     {loading && !tasks.length ? (
-                        <div className="library-loading-grid" aria-label="正在加载任务">
-                            {Array.from({ length: 8 }, (_, index) => (
-                                <div key={index} className="library-skeleton" />
-                            ))}
-                        </div>
+                        <WorkspaceLoadingState label="正在加载任务" detail="读取生成进度与历史记录" rows={3} />
                     ) : null}
-                    {isPcBrandViewport && !loading && loadError && !tasks.length ? (
+                    {!loading && loadError && !tasks.length ? (
                         <WorkspaceState
                             compact
+                            icon="error"
+                            role="alert"
                             title="任务记录加载失败"
                             description={loadError}
                             action={
@@ -620,7 +620,7 @@ export default function TasksPage() {
                             }
                         />
                     ) : null}
-                    {(!loading || tasks.length) && (!isPcBrandViewport || !loadError || tasks.length) ? (
+                    {(!loading || tasks.length) && (!loadError || tasks.length) ? (
                         visibleTasks.length ? (
                             viewMode === "grid" ? (
                                 <div className="task-grid-view">{visibleTasks.map(renderTaskGridCard)}</div>
@@ -639,7 +639,7 @@ export default function TasksPage() {
                             ) : (
                                 <div className="task-record-scroll-shell">
                                     <TaskScrollHint />
-                                    <div className="task-record-table" tabIndex={0} aria-label="任务明细表，可横向滚动查看全部七列">
+                                    <div className="task-record-table" tabIndex={0} aria-label="任务明细">
                                         <TaskTableHeader creditsEnabled={creditsEnabled} />
                                         <div className="task-record-list">{visibleTasks.map(renderTaskRow)}</div>
                                     </div>
@@ -648,12 +648,16 @@ export default function TasksPage() {
                         ) : (
                             <WorkspaceState
                                 compact
-                                title={taskEmptyState(statusFilter).title}
-                                description={taskEmptyState(statusFilter).description}
+                                title={hasSearchFilters ? "没有符合筛选条件的任务" : taskEmptyState(statusFilter).title}
+                                description={hasSearchFilters ? "试试其他关键词，或清除筛选查看全部记录。" : taskEmptyState(statusFilter).description}
                                 action={
-                                    <Button className="library-primary-action" type="primary" icon={<Plus className="size-3.5" />} onClick={() => setCreateOpen(true)}>
-                                        新建任务
-                                    </Button>
+                                    hasSearchFilters ? (
+                                        <Button onClick={resetFilters}>清除筛选</Button>
+                                    ) : (
+                                        <Button type="primary" icon={<Plus className="size-3.5" />} onClick={() => setCreateOpen(true)}>
+                                            新建任务
+                                        </Button>
+                                    )
                                 }
                             />
                         )
@@ -704,10 +708,7 @@ export default function TasksPage() {
                         <header className={`task-detail-summary is-${detailTask.status}`}>
                             <div className="task-detail-summary-copy">
                                 <div className="task-detail-summary-status">
-                                    <span className={`task-detail-status is-${detailTask.status}`}>
-                                        <i className={statusDotClassName(detailTask.status)} aria-hidden="true" />
-                                        {statusLabel[detailTask.status]}
-                                    </span>
+                                    <TaskStatusBadge task={detailTask} className="task-detail-status" />
                                     <span>{formatTaskKind(detailTask)}</span>
                                 </div>
                                 <h2>{formatModelName(effectiveConfig, detailTask)}</h2>
@@ -761,7 +762,7 @@ export default function TasksPage() {
                         </div>
                         {detailTask.provider === "dreamina-cli" ? <p className="task-detail-provider-note">官方状态采用最终一致轮询；转入后台后仍会继续等待并同步官方状态。官方即梦 CLI 当前不支持可靠的官方取消。</p> : null}
                         {detailError ? (
-                            <section className="task-detail-load-error hidden" role="alert">
+                            <section className="task-detail-load-error" role="alert">
                                 <div>
                                     <strong>任务详情未能完整加载</strong>
                                     <p>{detailError}</p>
@@ -771,10 +772,10 @@ export default function TasksPage() {
                                 </Button>
                             </section>
                         ) : null}
-                        {detailTask.error ? (
-                            <section className="task-detail-error" aria-label="失败原因">
-                                <strong>失败原因</strong>
-                                <p>{generationErrorMessage(detailTask.error)}</p>
+                        {detailTask.error || detailStatusTone === "warning" || detailTask.status === "cancelled" ? (
+                            <section className={`task-detail-error is-${detailStatusTone}`} aria-label={detailAttentionTitle}>
+                                <strong>{detailAttentionTitle}</strong>
+                                <p>{taskAttentionReason(detailTask)}</p>
                             </section>
                         ) : null}
 
@@ -817,6 +818,7 @@ export default function TasksPage() {
                 centered
                 destroyOnHidden
                 className="task-media-preview-modal"
+                styles={{ body: { padding: 0 } }}
             >
                 {mediaPreview ? (
                     <MediaPreview
@@ -849,7 +851,7 @@ function TaskTableHeader({ creditsEnabled }: { creditsEnabled: boolean }) {
 
 function TaskScrollHint() {
     return (
-        <div className="task-record-scroll-hint hidden" role="note">
+        <div className="task-record-scroll-hint" role="note">
             <MoveHorizontal aria-hidden="true" />
             <span>表格内横向滚动，可查看模型、画布、时间与积分明细</span>
         </div>
