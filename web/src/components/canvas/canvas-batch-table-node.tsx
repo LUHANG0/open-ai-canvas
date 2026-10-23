@@ -334,7 +334,7 @@ export function CanvasBatchTableNodeContent({ node, nodes, connections, batch, t
                 </div>
             </div>
             {editingRow ? (
-                <AppModal
+                <AppModal rootClassName="workspace-utility-overlay"
                     open centered width="min(860px, calc(100vw - 32px))"
                     title={`任务 ${editingRowIndex + 1} · ${readOnly ? "查看" : "编辑"}提示词`}
                     onCancel={() => setEditingRowId(null)}

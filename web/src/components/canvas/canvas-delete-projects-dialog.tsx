@@ -1,4 +1,5 @@
-import { App, Button, Modal } from "antd";
+import { App, Button } from "antd";
+import { AppModal } from "@/components/ui/product/app-modal";
 import { useState } from "react";
 
 import { useAssetStore } from "@/stores/use-asset-store";
@@ -27,7 +28,8 @@ export function CanvasDeleteProjectsDialog() {
     };
 
     return (
-        <Modal
+        <AppModal
+            destroyOnHidden={false}
             title="删除画布？"
             open={ids.length > 0}
             centered
@@ -42,6 +44,6 @@ export function CanvasDeleteProjectsDialog() {
             }
         >
             <p className="text-sm text-stone-500">将删除 {ids.length} 个画布，里面的节点和连线也会一起移除。</p>
-        </Modal>
+        </AppModal>
     );
 }

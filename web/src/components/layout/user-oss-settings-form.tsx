@@ -8,6 +8,7 @@ import { getUserOSSSetting, testUserOSSConnection, updateUserOSSSetting, type Us
 import { useUserStore } from "@/stores/use-user-store";
 import { StatusBadge } from "@/components/ui/base/badges";
 import { Select } from "@/components/ui/base/select";
+import { Callout } from "@/components/ui/product/callout";
 
 type OSSFormValues = {
     enabled?: boolean;
@@ -32,7 +33,8 @@ export function UserOSSSettingsForm() {
     const { message } = App.useApp();
     const [form] = Form.useForm<OSSFormValues>();
     const [setting, setSetting] = useState<UserOSSSetting | null>(null);
-    const [loading, setLoading] = useState(false);
+    const [loading, setLoading] = useState(true);
+    const [loadError, setLoadError] = useState("");
     const [saving, setSaving] = useState(false);
     const [testing, setTesting] = useState(false);
     const [testResult, setTestResult] = useState<OSSConnectionTestResult | null>(null);
@@ -51,6 +53,7 @@ export function UserOSSSettingsForm() {
         if (!actor?.id) return;
         let active = true;
         setLoading(true);
+        setLoadError("");
         void getUserOSSSetting()
             .then((data) => {
                 if (!active) return;
@@ -58,7 +61,12 @@ export function UserOSSSettingsForm() {
                 form.setFieldsValue(toFormValues(data.setting));
                 setTestResult(data.setting.testedAt ? { ok: true, testedAt: data.setting.testedAt, testedDigest: data.setting.testedDigest } : null);
             })
-            .catch((error) => active && message.error(error instanceof Error ? error.message : "读取个人对象存储配置失败"))
+            .catch((error) => {
+                if (!active) return;
+                const detail = error instanceof Error ? error.message : "读取个人对象存储配置失败";
+                setLoadError(detail);
+                message.error(detail);
+            })
             .finally(() => active && setLoading(false));
         return () => {
             active = false;
@@ -92,6 +100,7 @@ export function UserOSSSettingsForm() {
                 pathStyle: values.pathStyle === true,
             });
             setSetting(data.setting);
+            setLoadError("");
             form.setFieldsValue(toFormValues(data.setting));
             setTestResult(data.setting.testedAt ? { ok: true, testedAt: data.setting.testedAt, testedDigest: data.setting.testedDigest } : null);
             setTestStale(false);
@@ -125,29 +134,32 @@ export function UserOSSSettingsForm() {
     };
 
     return (
-        <Form form={form} layout="vertical" requiredMark={false} disabled={loading} onValuesChange={(changed) => changesRequireOSSRetest(changed) && setTestStale(true)}>
+        <Form className="settings-storage-pane" aria-busy={loading || saving || testing} form={form} layout="vertical" requiredMark={false} disabled={loading} onValuesChange={(changed) => changesRequireOSSRetest(changed) && setTestStale(true)}>
             <div className="mb-3 flex flex-wrap items-start justify-between gap-3 border-b border-border pb-3">
                 <div className="min-w-0">
-                    <div className="flex items-center gap-2 text-sm font-semibold">
-                        <Cloud className="size-4" />
+                    <h2 className="settings-storage-title flex items-center gap-2 text-sm font-semibold">
+                        <Cloud className="size-4" aria-hidden="true" />
                         我的对象存储
-                    </div>
-                    <p className="mt-1 max-w-3xl text-xs leading-5 text-foreground/55">启用后，新上传和新生成的媒体优先写入你的存储桶；停用时回退到平台存储。</p>
+                    </h2>
+                    <p className="settings-storage-description mt-1 max-w-3xl text-xs leading-5 text-foreground/55">启用后，新上传和新生成的媒体优先写入你的存储桶；停用时回退到平台存储。</p>
                 </div>
                 <div className="flex shrink-0 gap-2">
-                    <StatusBadge tone={setting?.enabled ? "success" : "neutral"} label={setting?.enabled ? "已启用" : "未启用"} />
-                    <Tag color={setting?.hasAccessKeySecret ? "processing" : "warning"} icon={<ShieldCheck className="size-3" />}>
-                        {setting?.hasAccessKeySecret ? "密钥已加密" : "未保存密钥"}
+                    <StatusBadge tone={!loading && !loadError && setting?.enabled ? "success" : "neutral"} label={loading ? "读取中" : loadError ? "读取失败" : setting?.enabled ? "已启用" : "未启用"} />
+                    <Tag color={loading || loadError ? "default" : setting?.hasAccessKeySecret ? "processing" : "warning"} icon={<ShieldCheck className="size-3" aria-hidden="true" />}>
+                        {loading ? "正在读取密钥状态" : loadError ? "密钥状态未确认" : setting?.hasAccessKeySecret ? "密钥已加密" : "未保存密钥"}
                     </Tag>
                 </div>
             </div>
 
+            {loadError ? <Callout className="settings-storage-feedback mb-3" tone="error" role="alert" title="个人对象存储配置读取失败">{loadError}，当前表单不能代表服务端已保存配置，请刷新页面后重试。</Callout> : null}
+
             <div className="grid grid-cols-1 gap-x-4 md:grid-cols-2 xl:grid-cols-3">
                 <Form.Item name="enabled" label="启用个人对象存储" valuePropName="checked" className="mb-3">
-                    <Switch checkedChildren="启用" unCheckedChildren="停用" />
+                    <Switch aria-label="启用个人对象存储" checkedChildren="启用" unCheckedChildren="停用" />
                 </Form.Item>
                 <Form.Item name="provider" label="存储服务" rules={[{ required: true, message: "请选择存储服务" }]} className="mb-3">
                     <Select
+                        ariaLabel="存储服务"
                         options={[{ label: "阿里云 OSS", value: "aliyun" }, { label: "腾讯云 COS", value: "tencent" }, { label: "七牛云 Kodo", value: "qiniu" }, { label: "S3 兼容存储", value: "s3", disabled: setting?.allowUserS3 === false }]}
                         onChange={(nextProvider: OSSFormValues["provider"]) => {
                             if (nextProvider !== provider) form.setFieldsValue({ s3Preset: "custom", region: "", endpoint: "", cdnBaseUrl: "", cdnAuthMode: "", requireCDN: false, allowPrivateProxy: false, bucket: "", accessKeyId: "", accessKeySecret: "", sessionToken: "", pathStyle: false });
@@ -156,7 +168,7 @@ export function UserOSSSettingsForm() {
                 </Form.Item>
                 {isS3 ? (
                     <Form.Item name="s3Preset" label="S3 预设" className="mb-3">
-                        <Select options={S3_PRESET_OPTIONS} onChange={(preset: S3Preset) => form.setFieldsValue(getS3PresetHints(preset))} />
+                        <Select ariaLabel="S3 预设" options={S3_PRESET_OPTIONS} onChange={(preset: S3Preset) => form.setFieldsValue(getS3PresetHints(preset))} />
                     </Form.Item>
                 ) : null}
                 <Form.Item name="region" label="Region" className="mb-3">
@@ -184,13 +196,13 @@ export function UserOSSSettingsForm() {
                     extra={isQiniuKodo ? "七牛私有 CDN 可选择七牛签名；公开绑定域名选择公开 CDN。阿里云/腾讯云私有 CDN 暂不自动签名。" : "公开 CDN 适合 CDN 自行鉴权；平台目前不会自动签发阿里云/腾讯云私有 CDN URL。"}
                     className="mb-3"
                 >
-                    <Select options={[{ label: "未配置", value: "" }, { label: "公开 CDN", value: "public" }, { label: "七牛私有下载签名", value: "qiniu", disabled: !isQiniuKodo }]} />
+                    <Select ariaLabel="CDN 访问鉴权" options={[{ label: "未配置", value: "" }, { label: "公开 CDN", value: "public" }, { label: "七牛私有下载签名", value: "qiniu", disabled: !isQiniuKodo }]} />
                 </Form.Item>
                 <Form.Item name="requireCDN" label="必须走 CDN" valuePropName="checked" extra="开启后 CDN 鉴权未配置或不支持时直接失败，不会静默回源。" className="mb-3">
-                    <Switch checkedChildren="必须" unCheckedChildren="允许回源" />
+                    <Switch aria-label="必须走 CDN" checkedChildren="必须" unCheckedChildren="允许回源" />
                 </Form.Item>
                 <Form.Item name="allowPrivateProxy" label="允许模型输入代理" valuePropName="checked" extra="仅允许服务端向第三方模型提交参考素材时读取私有源站。浏览器展示、复制、下载和本地处理始终直连 OSS/CDN，不会经平台中转媒体正文。" className="mb-3">
-                    <Switch checkedChildren="允许" unCheckedChildren="禁止" />
+                    <Switch aria-label="允许模型输入代理" checkedChildren="允许" unCheckedChildren="禁止" />
                 </Form.Item>
                 <Form.Item name="bucket" label="Bucket" className="mb-3">
                     <Input spellCheck={false} placeholder={isTencentCOS ? "my-canvas-assets-1250000000" : isQiniuKodo ? "七牛云存储空间名称" : "my-canvas-assets"} />
@@ -210,14 +222,14 @@ export function UserOSSSettingsForm() {
                             <Input.Password autoComplete="new-password" spellCheck={false} placeholder={setting?.hasSessionToken ? "留空保留已加密 Token" : "临时凭证使用的 Session Token"} />
                         </Form.Item>
                         <Form.Item name="pathStyle" label="Path Style" valuePropName="checked" extra="开启后强制 path-style；关闭时自动选择。" className="mb-3">
-                            <Switch checkedChildren="强制" unCheckedChildren="自动" />
+                            <Switch aria-label="强制使用 Path Style" checkedChildren="强制" unCheckedChildren="自动" />
                         </Form.Item>
                     </>
                 ) : null}
             </div>
 
             <div className="mt-2 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-3">
-                <div className="flex flex-wrap items-center gap-2"><span className="text-xs text-foreground/50">{savedAt ? `上次保存：${savedAt}` : "尚未保存个人对象存储配置"}</span><ConnectionTestStatus result={testResult} stale={testStale} /></div>
+                <div className="settings-storage-saved-status flex flex-wrap items-center gap-2" role="status" aria-live="polite"><span className="text-xs text-foreground/50">{loading ? "正在读取个人对象存储配置" : loadError ? "服务端配置状态尚未确认" : savedAt ? `上次保存：${savedAt}` : "尚未保存个人对象存储配置"}</span>{!loading && !loadError ? <ConnectionTestStatus result={testResult} stale={testStale} /> : null}</div>
                 <div className="flex flex-wrap gap-2"><Button loading={testing} onClick={() => void testConnection()}>测试连接</Button><Button type="primary" loading={saving} onClick={() => void save()}>保存个人对象存储</Button></div>
             </div>
         </Form>

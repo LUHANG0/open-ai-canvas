@@ -81,7 +81,7 @@ export function CanvasCharacterLibraryModal({
     };
 
     return (
-        <AppModal open={open} title="角色卡" okButtonProps={{ style: { display: "none" } }} cancelText="关闭" onCancel={onClose} destroyOnHidden width={720}>
+        <AppModal rootClassName="workspace-utility-overlay" open={open} title="角色卡" okButtonProps={{ style: { display: "none" } }} cancelText="关闭" onCancel={onClose} destroyOnHidden width={720}>
             <div className="space-y-4">
                 <div className="rounded-md border border-border bg-foreground/[.03] p-3">
                     <div className="text-sm font-medium">新建角色卡</div>

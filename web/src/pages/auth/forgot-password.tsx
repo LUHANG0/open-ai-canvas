@@ -183,7 +183,7 @@ export default function ForgotPasswordPage() {
 function AuthField({ label, htmlFor, children }: { label: string; htmlFor: string; children: ReactNode }) {
     return (
         <div className="space-y-2">
-            <label htmlFor={htmlFor} className="auth-scene-label block text-xs font-medium">
+            <label htmlFor={htmlFor} className="auth-scene-label block text-sm font-medium">
                 {label}
             </label>
             {children}
@@ -194,7 +194,7 @@ function AuthField({ label, htmlFor, children }: { label: string; htmlFor: strin
 function BackToLogin({ to }: { to: string }) {
     return (
         <div className="text-center">
-            <Link to={to} className="auth-scene-link inline-flex min-h-8 items-center gap-1.5 rounded-sm text-xs transition-colors">
+            <Link to={to} className="auth-scene-link inline-flex min-h-8 items-center gap-1.5 rounded-sm text-xs transition-colors duration-150 motion-reduce:transition-none">
                 <ArrowLeft className="size-3.5" />
                 返回登录
             </Link>

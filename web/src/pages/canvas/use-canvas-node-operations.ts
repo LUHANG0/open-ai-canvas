@@ -41,6 +41,7 @@ type UseCanvasNodeOperationsOptions = {
     setSelectedConnectionId: Dispatch<SetStateAction<string | null>>;
     setContextMenu: Dispatch<SetStateAction<ContextMenuState | null>>;
     setDialogNodeId: Dispatch<SetStateAction<string | null>>;
+    setToolbarNodeId: Dispatch<SetStateAction<string | null>>;
     onNodesDeleted: (removedIds: Set<string>, nextNodes: CanvasNodeData[], removedNodes: CanvasNodeData[]) => void;
 };
 
@@ -57,6 +58,7 @@ export function useCanvasNodeOperations({
     setSelectedConnectionId,
     setContextMenu,
     setDialogNodeId,
+    setToolbarNodeId,
     onNodesDeleted,
 }: UseCanvasNodeOperationsOptions) {
     const { message } = App.useApp();
@@ -128,7 +130,8 @@ export function useCanvasNodeOperations({
         selectedNodeIdsRef.current = ids;
         setSelectedNodeIds(ids);
         setSelectedConnectionId(null);
-    }, [selectedNodeIdsRef, setSelectedConnectionId, setSelectedNodeIds]);
+        setToolbarNodeId(ids.size === 1 ? [...ids][0] : null);
+    }, [selectedNodeIdsRef, setSelectedConnectionId, setSelectedNodeIds, setToolbarNodeId]);
 
     const createNode = useCallback((type: CanvasNodeTypeId, position?: Position, workflowProvider?: "runninghub") => {
         if (type === CanvasNodeType.Drawing && !isDrawingEngineAvailable(defaultDrawingEngine, tldrawLicenseKey)) {

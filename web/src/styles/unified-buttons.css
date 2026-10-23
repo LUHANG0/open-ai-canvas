@@ -1,18 +1,83 @@
-/* 鼠标点击后 Chrome 仍可能给按钮 :focus-visible。统一按钮只在键盘导航时显示焦点。 */
-:where(button, .ant-btn):focus:not(:focus-visible),
-:where(button, .ant-btn):focus-visible:not([data-input-modality="keyboard"]) {
+/* 原生 :focus-visible 决定键盘焦点；不再维护逐页放行名单。 */
+:where(button, .ant-btn):focus:not(:focus-visible) {
     outline: none !important;
     box-shadow: none !important;
 }
 
-:where(button, .ant-btn):focus-visible[data-input-modality="keyboard"] {
-    outline: 1px solid color-mix(in srgb, var(--foreground) 36%, transparent) !important;
-    outline-offset: 1px !important;
-    box-shadow: none !important;
+/* 共享原生控件的显式槽位；不猜测按钮是否只有一个 svg。 */
+:where([data-slot="icon-button"], [data-slot="tool-button"], [data-slot="control-item"]) {
+    transition: var(--control-state-transition);
 }
 
-.ant-select.app-unified-select[data-input-modality="keyboard"]:not(.ant-select-open) {
-    outline: none !important;
+:where([data-slot="icon-button"], [data-slot="tool-button"], [data-slot="control-item"]):focus-visible {
+    outline: 2px solid var(--control-focus-ring);
+    outline-offset: 2px;
+}
+
+/* background 而非 background-color：沿用皮肤已验证的渐变主操作能力。 */
+[data-slot="icon-button"][data-variant="solid"]:not([data-active="true"]) { background: var(--button-primary-bg); color: var(--button-primary-fg); }
+[data-slot="icon-button"][data-variant="solid"]:not([data-active="true"]):hover { background: var(--button-primary-hover-bg); }
+[data-slot="icon-button"][data-variant="solid"]:not([data-active="true"]):active { background: var(--button-primary-active-bg); }
+
+:where([data-slot="icon-button"], [data-slot="tool-button"])[data-active="true"] {
+    background: var(--control-selected-bg);
+    color: var(--control-selected-fg);
+}
+
+:where([data-slot="icon-button"], [data-slot="tool-button"])[data-active="true"]:hover {
+    background: var(--control-selected-hover-bg);
+}
+
+[data-slot="icon-button"][data-variant="danger"], [data-slot="tool-button"][data-tone="danger"][data-active="true"] { color: var(--status-error); }
+
+/* 仅共享视觉；tab / filter / radio 的语义、ID、键盘与状态由调用方负责。 */
+.app-control-group {
+    display: inline-flex;
+    max-width: 100%;
+    min-width: 0;
+    align-items: center;
+    gap: var(--space-half);
+    overflow-x: auto;
+    padding: var(--space-half);
+    border: 1px solid var(--border);
+    border-radius: var(--r-lg);
+    background: var(--bg-tertiary);
+    scrollbar-width: thin;
+}
+
+.app-control-group > [data-slot="control-item"] {
+    display: inline-flex;
+    height: var(--control-item-height);
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-1-half);
+    padding-inline: var(--space-3);
+    border: 0;
+    border-radius: var(--r-md);
+    background: transparent;
+    color: var(--muted-foreground);
+    font-size: var(--control-label-size);
+    font-weight: 500;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.app-control-group[data-density="compact"] > [data-slot="control-item"] { height: var(--control-item-height-compact); padding-inline: var(--space-2-half); font-size: var(--fs-caption); }
+.app-control-group[data-slot="segmented-control"] { border: 0; }
+.app-control-group[data-slot="segmented-control"] > [data-slot="control-item"] { height: 100%; }
+.app-control-group[data-slot="segmented-control"].w-full > [data-slot="control-item"] { flex: 1 1 0%; }
+.app-control-group > [data-slot="control-item"]:not(:disabled):hover { background: var(--surface-hover); color: var(--foreground); }
+.app-control-group > [data-slot="control-item"]:is([aria-selected="true"], [aria-pressed="true"], [aria-checked="true"]) { background: var(--control-selected-bg); color: var(--control-selected-fg); }
+.app-control-group > [data-slot="control-item"]:not(:disabled):is([aria-selected="true"], [aria-pressed="true"], [aria-checked="true"]):hover { background: var(--control-selected-hover-bg); }
+.app-control-group > [data-slot="control-item"]:disabled { opacity: .45; cursor: not-allowed; }
+.app-control-group > [data-slot="control-item"]:focus-visible { outline-offset: -2px; }
+.app-control-group [data-slot="control-icon"], .app-control-group > [data-slot="control-item"] > svg { width: var(--control-icon-size); height: var(--control-icon-size); flex: none; }
+[data-slot="control-count"] { padding-inline: var(--space-1-half); border-radius: var(--r-sm); background: var(--control-selected-bg); color: inherit; font-size: var(--control-count-size); font-variant-numeric: tabular-nums; line-height: 1.5; }
+
+.ant-select.app-unified-select[data-input-modality="keyboard"]:not(.ant-select-open):not(.ant-select-disabled) {
+    outline: var(--workspace-select-keyboard-outline, 1px solid var(--control-focus-ring)) !important;
+    outline-offset: 2px;
     box-shadow: none !important;
 }
 
@@ -20,4 +85,8 @@
 .ant-select.app-unified-select .ant-select-selection-item,
 .ant-select.app-unified-select .ant-select-placeholder {
     padding-inline-start: 10px !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    :where([data-slot="icon-button"], [data-slot="tool-button"], [data-slot="control-item"], [data-slot="select"]) { transition-duration: 0s !important; }
 }

@@ -138,6 +138,7 @@ export default function SettingsPage() {
                             label="默认生图张数"
                             control={
                                 <InputNumber
+                                    aria-label="默认生图张数"
                                     min={1}
                                     max={15}
                                     precision={0}
@@ -177,7 +178,7 @@ export default function SettingsPage() {
     };
 
     return (
-        <main className="settings-page app-workspace-page app-user-workspace flex h-full min-h-0 flex-col text-foreground">
+        <main className="settings-page settings-workspace app-workspace-page app-user-workspace flex h-full min-h-0 flex-col text-foreground" data-settings-section={activeTab}>
             {shouldPromptContinue ? (
                 <div className="settings-topbar shrink-0">
                     <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
@@ -187,29 +188,30 @@ export default function SettingsPage() {
                 </div>
             ) : null}
             <div className="settings-library-frame flex min-h-0 flex-1 flex-col md:flex-row">
-                <aside className="settings-nav-panel w-full shrink-0 md:w-[200px]">
+                <aside className="settings-nav-panel settings-workspace-nav w-full shrink-0 md:w-[200px]">
                     <nav className="thin-scrollbar flex gap-1 overflow-x-auto p-2 md:block md:space-y-1 md:p-2.5" aria-label="配置分类">
                         {visibleConfigSections.map((item) => {
                             const selected = item.key === activeTab;
                             return (
                                 <button
                                     key={item.key}
+                                    id={`settings-section-${item.key}`}
                                     type="button"
-                                    className={`settings-nav-item flex h-9 shrink-0 items-center gap-2 rounded-md px-3 text-left text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:h-auto md:w-full md:items-start md:gap-3 md:py-2.5 ${selected ? "is-active" : "text-foreground/58 hover:bg-muted/55 hover:text-foreground"}`}
+                                    className={`settings-nav-item flex h-9 shrink-0 items-center gap-2 rounded-md px-3 text-left text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:h-auto md:w-full md:items-start md:gap-3 md:py-2.5 duration-[var(--motion-dur-fast)] motion-reduce:transition-none ${selected ? "is-active" : "text-foreground/58 hover:bg-muted/55 hover:text-foreground"}`}
                                     onClick={() => selectSection(item.key)}
                                     aria-current={selected ? "page" : undefined}
                                 >
-                                    <span className={`shrink-0 md:mt-0.5 ${selected ? "text-[var(--workspace-accent)]" : ""}`}>{item.icon}</span>
+                                    <span className="settings-nav-icon shrink-0 md:mt-0.5" aria-hidden="true">{item.icon}</span>
                                     <span className="min-w-0">
                                         <span className="block whitespace-nowrap text-sm font-medium">{item.label}</span>
-                                        <span className="mt-1 hidden text-[var(--fs-label)] leading-4 text-current opacity-65 md:block">{item.description}</span>
+                                        <span className="settings-nav-description mt-1 hidden text-[12px] leading-4 text-[var(--user-ink-muted)] md:block">{item.description}</span>
                                     </span>
                                 </button>
                             );
                         })}
                     </nav>
                 </aside>
-                <section className="settings-content flex min-h-0 min-w-0 flex-1 flex-col">
+                <section className="settings-content flex min-h-0 min-w-0 flex-1 flex-col" aria-labelledby={`settings-section-${activeTab}`}>
                     <div className="app-workspace-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 md:px-6 md:py-5">
                         <div className={`settings-pane-root ${activeTab === "prompts" ? "h-full w-full" : "mx-auto w-full max-w-none"}`}>
                             {panes[activeTab]}

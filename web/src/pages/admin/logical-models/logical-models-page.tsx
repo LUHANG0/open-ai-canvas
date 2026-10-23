@@ -1,4 +1,6 @@
-import { Alert, App, Button, Form, Input, InputNumber, Modal, Segmented, Switch, Table, Tag } from "antd";
+import { AdminModal } from "@/pages/admin/ui/overlays";
+import { Alert, App, Button, Form, Input, InputNumber, Switch, Table, Tag } from "antd";
+import { AdminSegmented } from "@/pages/admin/ui/controls";
 import type { FormInstance } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { Archive, FlaskConical, GitBranch, Layers3, Pencil, Plus, Search } from "lucide-react";
@@ -420,7 +422,8 @@ export default function LogicalModelsPage() {
                                         <Input.TextArea autoSize={{ minRows: 2, maxRows: 4 }} placeholder="说明适合的创作场景，不描述供应渠道。" />
                                     </Form.Item>
                                     <Form.Item name="capability" label="类型">
-                                        <Segmented
+                                        <AdminSegmented
+                                            ariaLabel="前台模型类型"
                                             block
                                             options={[
                                                 { label: "文本", value: "text" },
@@ -491,7 +494,7 @@ export default function LogicalModelsPage() {
                 )}
             </ModelEditorModal>
 
-            <Modal
+            <AdminModal
                 title={simulatingModel ? `供应线路匹配模拟 - ${simulatingModel.name}` : "供应线路匹配模拟"}
                 open={Boolean(simulatingModel)}
                 className="workspace-modal workspace-modal-wide admin-simulation-modal"
@@ -543,7 +546,7 @@ export default function LogicalModelsPage() {
                         ) : null}
                     </div>
                 ) : null}
-            </Modal>
+            </AdminModal>
         </AdminPageFrame>
     );
 }

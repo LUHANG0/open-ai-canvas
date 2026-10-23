@@ -125,6 +125,8 @@ function AgentMemoryCompactCard({ compact = false, onApplied }: { compact?: bool
     const { message } = App.useApp();
     const config = useEffectiveConfig();
     const [settings, setSettings] = useState<AgentMemoryCompactView | null>(null);
+    const [settingsLoading, setSettingsLoading] = useState(true);
+    const [settingsError, setSettingsError] = useState("");
     const [model, setModel] = useState("");
     const [saving, setSaving] = useState(false);
     const [compacting, setCompacting] = useState(false);
@@ -137,11 +139,18 @@ function AgentMemoryCompactCard({ compact = false, onApplied }: { compact?: bool
             const next = await getAgentMemorySettings();
             if (seq !== seqRef.current) return null;
             setSettings(next);
+            setSettingsError("");
             setModel((current) => restoreCompactModel(next, current || config.textModel || ""));
             return next;
         } catch (error) {
-            if (seq === seqRef.current) message.error(error instanceof Error ? error.message : "读取压缩设置失败");
+            if (seq === seqRef.current) {
+                const detail = error instanceof Error ? error.message : "读取压缩设置失败";
+                setSettingsError(detail);
+                message.error(detail);
+            }
             return null;
+        } finally {
+            if (seq === seqRef.current) setSettingsLoading(false);
         }
     }, [config.textModel, message]);
 
@@ -167,6 +176,7 @@ function AgentMemoryCompactCard({ compact = false, onApplied }: { compact?: bool
                 ...compactModelFields(config, selectedModel),
             });
             setSettings(next);
+            setSettingsError("");
             setModel(restoreCompactModel(next, selectedModel));
         } catch (error) {
             message.error(error instanceof Error ? error.message : "保存压缩设置失败");
@@ -185,6 +195,7 @@ function AgentMemoryCompactCard({ compact = false, onApplied }: { compact?: bool
         try {
             const next = await compactAgentMemories(compactModelFields(config, selected));
             setSettings(next);
+            setSettingsError("");
             message.success("已提交提案生成任务，完成后请查看差异并批准");
         } catch (error) {
             message.error(error instanceof Error ? error.message : "提交压缩失败");
@@ -197,7 +208,7 @@ function AgentMemoryCompactCard({ compact = false, onApplied }: { compact?: bool
     const failed = settings?.lastStatus === "failed";
 
     return (
-        <section className={compact ? "space-y-2.5" : "space-y-3 rounded-2xl bg-surface-secondary/80 px-4 py-3.5"}>
+        <section className={compact ? "space-y-2.5" : "settings-memory-compact space-y-3 rounded-2xl bg-surface-secondary/80 px-4 py-3.5"}>
             <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                     <h3 className="text-sm font-medium text-foreground">压缩优化</h3>
@@ -208,7 +219,7 @@ function AgentMemoryCompactCard({ compact = false, onApplied }: { compact?: bool
                 </Button>
             </div>
             <div className="flex min-w-0 flex-col gap-2">
-                <SegmentedControl size="sm" ariaLabel="压缩周期" value={settings?.compactInterval || "off"} disabled={saving || busy} options={COMPACT_INTERVALS} onChange={(value) => void persist(value, model)} />
+                <SegmentedControl indicator={compact ? "slide" : "static"} size="sm" ariaLabel="压缩周期" value={settings?.compactInterval || "off"} disabled={saving || busy} options={COMPACT_INTERVALS} onChange={(value) => void persist(value, model)} />
                 <div className="min-w-0 overflow-hidden rounded-xl bg-surface-tertiary">
                     <ModelPicker
                         config={config}
@@ -227,7 +238,11 @@ function AgentMemoryCompactCard({ compact = false, onApplied }: { compact?: bool
                     />
                 </div>
             </div>
-            {failed && settings?.lastError ? (
+            {!compact && settingsError ? (
+                <Callout tone="error" role="alert" title="压缩设置读取失败">{settingsError}</Callout>
+            ) : !compact && settingsLoading ? (
+                <p className="text-caption leading-5 text-muted-foreground" role="status">正在读取压缩设置…</p>
+            ) : failed && settings?.lastError ? (
                 <Callout tone="warning" title="上次压缩未完成">
                     {settings.lastError}
                 </Callout>
@@ -235,6 +250,7 @@ function AgentMemoryCompactCard({ compact = false, onApplied }: { compact?: bool
                 <p className="text-caption leading-5 text-muted-foreground">{statusText}</p>
             ) : null}
             <AgentMemoryProposalPanel
+                settingsWorkspace={!compact}
                 refreshKey={`${settings?.proposalId || ""}:${settings?.lastStatus || ""}`}
                 onApplied={async () => {
                     await Promise.all([loadSettings(), onApplied()]);
@@ -248,6 +264,7 @@ export default function AgentMemoryPane({ compact = false }: { compact?: boolean
     const { message, modal } = App.useApp();
     const [items, setItems] = useState<AgentMemory[]>([]);
     const [loading, setLoading] = useState(true);
+    const [loadError, setLoadError] = useState("");
     const [status, setStatus] = useState<string>("all");
     const [busyId, setBusyId] = useState<string | null>(null);
     const [editorOpen, setEditorOpen] = useState(false);
@@ -264,8 +281,13 @@ export default function AgentMemoryPane({ compact = false }: { compact?: boolean
             const data = await listAgentMemories(status === "all" ? undefined : status, 200);
             if (seq !== seqRef.current) return;
             setItems(data.memories || []);
+            setLoadError("");
         } catch (error) {
-            if (seq === seqRef.current) message.error(error instanceof Error ? error.message : "读取记忆失败");
+            if (seq === seqRef.current) {
+                const detail = error instanceof Error ? error.message : "读取记忆失败";
+                setLoadError(detail);
+                message.error(detail);
+            }
         } finally {
             if (seq === seqRef.current) setLoading(false);
         }
@@ -335,6 +357,7 @@ export default function AgentMemoryPane({ compact = false }: { compact?: boolean
 
     const remove = (record: AgentMemory) => {
         modal.confirm({
+            rootClassName: compact ? undefined : "settings-workspace-overlay",
             title: `删除记忆「${record.topic}」`,
             content: "删除后不会再出现在你的 Agent 上下文里。确认删除？",
             okText: "删除",
@@ -381,9 +404,9 @@ export default function AgentMemoryPane({ compact = false }: { compact?: boolean
     }));
 
     return (
-        <div className={compact ? "flex min-h-0 flex-1 flex-col gap-3 overflow-hidden" : "flex flex-col gap-5"}>
+        <div className={compact ? "flex min-h-0 flex-1 flex-col gap-3 overflow-hidden" : "settings-agent-memory-pane flex flex-col gap-5"}>
             <div className="flex shrink-0 flex-wrap items-center gap-2">
-                <SegmentedControl size="sm" ariaLabel="记忆状态" value={status} options={statusFilters} onChange={setStatus} />
+                <SegmentedControl indicator={compact ? "slide" : "static"} size="sm" ariaLabel="记忆状态" value={status} options={statusFilters} onChange={setStatus} />
                 <div className="ml-auto flex items-center gap-1">
                     <IconButton variant="ghost" size="sm" icon={Download} aria-label="导出记忆" onClick={() => void onExport()} />
                     <IconButton variant="ghost" size="sm" icon={Upload} aria-label="导入记忆" onClick={() => fileRef.current?.click()} />
@@ -396,6 +419,7 @@ export default function AgentMemoryPane({ compact = false }: { compact?: boolean
                     type="file"
                     accept="application/json,.json"
                     className="hidden"
+                    aria-label="导入个人记忆文件"
                     onChange={(event) => {
                         const file = event.target.files?.[0];
                         event.target.value = "";
@@ -408,13 +432,18 @@ export default function AgentMemoryPane({ compact = false }: { compact?: boolean
 
             <div className={compact ? "thin-scrollbar flex min-h-0 flex-1 flex-col overflow-y-auto" : undefined}>
                 {loading ? (
-                    <div className="space-y-2" aria-busy="true" aria-live="polite">
+                    <div className="space-y-2" aria-busy="true" aria-live="polite" role={compact ? undefined : "status"} aria-label={compact ? undefined : "正在读取个人记忆"}>
                         {[0, 1, 2].map((index) => (
-                            <div key={index} className="h-[72px] animate-pulse rounded-2xl bg-surface-secondary" />
+                            <div key={index} className={`h-[72px] animate-pulse rounded-2xl bg-surface-secondary ${compact ? "" : "motion-reduce:animate-none"}`} />
                         ))}
                     </div>
                 ) : null}
-                {!loading && items.length === 0 ? (
+                {!compact && !loading && loadError ? (
+                    <Callout className="settings-memory-feedback" tone="error" role="alert" title={items.length ? "记忆列表更新失败" : "个人记忆读取失败"} action={<Button size="small" onClick={() => void load()}>重试</Button>}>
+                        {items.length ? "当前显示上次读取的记录，服务端状态尚未确认。" : loadError}
+                    </Callout>
+                ) : null}
+                {!loading && items.length === 0 && (compact || !loadError) ? (
                     <WorkspaceState
                         compact
                         icon="empty"
@@ -433,13 +462,13 @@ export default function AgentMemoryPane({ compact = false }: { compact?: boolean
                 {!loading && items.length ? (
                     <div className="space-y-2">
                         {items.map((record) => (
-                            <article key={record.id} className="group rounded-2xl bg-surface-secondary/80 px-3.5 py-3 transition-[background,transform] duration-[var(--motion-state)] hover:bg-surface-hover motion-reduce:transition-none">
+                            <article key={record.id} className={`group rounded-2xl bg-surface-secondary/80 px-3.5 py-3 ${compact ? "transition-[background,transform] duration-[var(--motion-state)]" : "settings-memory-card transition-colors duration-[var(--motion-dur-fast)]"} hover:bg-surface-hover motion-reduce:transition-none`}>
                                 <div className="flex items-start gap-3">
                                     <div className="min-w-0 flex-1">
                                         <div className="flex flex-wrap items-center gap-2">
                                             <h3 className="text-sm font-medium text-foreground">{record.topic}</h3>
                                             <StatusBadge size="sm" tone={memoryStatusTone(record.status)} label={memoryStatusLabel(record.status)} />
-                                            <span className="text-[11px] text-muted-foreground">{agentMemoryCategoryLabel(record.category)}</span>
+                                            <span className={`${compact ? "text-[11px]" : "settings-memory-meta text-xs"} text-muted-foreground`}>{agentMemoryCategoryLabel(record.category)}</span>
                                         </div>
                                         <p className="mt-1 text-caption leading-5 text-muted-foreground">{record.situation}</p>
                                         {record.lesson ? <p className="mt-1 text-caption leading-5 text-foreground/80">{record.lesson}</p> : null}
@@ -463,7 +492,7 @@ export default function AgentMemoryPane({ compact = false }: { compact?: boolean
                                             </details>
                                         ) : null}
                                         {record.steps?.length ? (
-                                            <ol className="mt-1.5 ml-4 list-decimal space-y-0.5 text-[11px] leading-5 text-muted-foreground">
+                                            <ol className={`mt-1.5 ml-4 list-decimal space-y-0.5 ${compact ? "text-[11px]" : "settings-memory-meta text-xs"} leading-5 text-muted-foreground`}>
                                                 {record.steps.map((step, index) => (
                                                     <li key={`${record.id}-${index}`}>
                                                         <span className="font-medium text-foreground/80">{step.tool}</span>
@@ -502,7 +531,7 @@ export default function AgentMemoryPane({ compact = false }: { compact?: boolean
                 </div>
             ) : null}
 
-            <AppModal open={editorOpen} title={editing ? "编辑记忆" : "添加记忆"} okText={editing ? "保存" : "添加"} confirmLoading={saving} onOk={() => void save()} onCancel={() => setEditorOpen(false)}>
+            <AppModal rootClassName={compact ? undefined : "settings-workspace-overlay"} open={editorOpen} title={editing ? "编辑记忆" : "添加记忆"} okText={editing ? "保存" : "添加"} confirmLoading={saving} onOk={() => void save()} onCancel={() => setEditorOpen(false)}>
                 <Form form={form} layout="vertical" className="pt-2">
                     <Form.Item name="topic" label="主题" rules={[{ required: true, message: "请填写主题" }]}>
                         <Input maxLength={120} placeholder="例如 canvas.snapshot-hash" />

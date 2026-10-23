@@ -1,4 +1,11 @@
 @layer utilities {
+    .editor-workbench :where(button, select, input, textarea) {
+        transition: background-color var(--control-motion-duration) ease, color var(--control-motion-duration) ease, border-color var(--control-motion-duration) ease, box-shadow var(--control-motion-duration) ease;
+    }
+    @media (prefers-reduced-motion: reduce) {
+        .editor-workbench :where(button, select, input, textarea),
+        .editor-slider::-webkit-slider-thumb { transition: none; }
+    }
     .editor-clip-label {
         position: relative;
         z-index: 1;
@@ -85,10 +92,10 @@
         background: var(--previs-dock-fg-strong);
         border: 2px solid var(--previs-sequencer-surface);
         box-shadow: 0 1px 3px rgb(0 0 0 / 0.45);
-        transition: transform 0.12s ease;
+        transition: opacity var(--control-motion-duration) ease;
     }
     .editor-slider::-webkit-slider-thumb:hover {
-        transform: scale(1.15);
+        opacity: 0.8;
     }
     .editor-slider::-moz-range-track {
         height: 4px;

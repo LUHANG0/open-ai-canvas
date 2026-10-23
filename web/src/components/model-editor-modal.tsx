@@ -37,7 +37,7 @@ export function ModelEditorModal({
             centered
             width={1120}
             destroyOnHidden
-            rootClassName={`${admin ? "admin-modal-root " : ""}model-editor-modal`}
+            rootClassName={`${admin ? "admin-modal-root " : "settings-workspace-overlay "}model-editor-modal`}
             title={
                 <div>
                     {title}

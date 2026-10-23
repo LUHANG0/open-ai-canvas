@@ -16,13 +16,14 @@
     --admin-head-h: 32px;
     --admin-sidebar-width: 208px;
     --admin-sidebar-collapsed: 64px;
-    --admin-motion: 120ms ease;
+    --admin-motion-duration: 150ms;
+    --admin-motion: var(--admin-motion-duration) ease;
     --admin-shadow-overlay: 0 16px 40px rgba(15, 23, 42, 0.16);
 
-    --admin-canvas: #f7f8fa;
-    --admin-sidebar: #f7f8fa;
+    --admin-canvas: #f5f5f5;
+    --admin-sidebar: #f5f5f5;
     --admin-surface: #ffffff;
-    --admin-surface-2: #f2f4f7;
+    --admin-surface-2: #f0f0f0;
     --admin-surface-3: #ececec;
     --admin-text: #111111;
     --admin-text-secondary: #525252;
@@ -37,8 +38,10 @@
     --admin-nav-active: #ececec;
     --admin-nav-active-border: transparent;
     --admin-accent: #111111;
+    --admin-accent-hover: #303030;
+    --admin-accent-active: #404040;
     --admin-accent-fg: #ffffff;
-    --admin-focus: rgba(17, 17, 17, 0.28);
+    --admin-focus: var(--admin-text-secondary);
     --admin-status-success: #15803d;
     --admin-status-warning: #b45309;
     --admin-status-error: #dc2626;
@@ -67,6 +70,18 @@
     --muted: var(--admin-surface-2);
     --popover: var(--admin-surface);
     --ring: var(--admin-focus);
+    --control-focus-ring: var(--admin-focus);
+    --control-motion-duration: var(--admin-motion-duration);
+    --control-state-transition: background-color var(--admin-motion), color var(--admin-motion), border-color var(--admin-motion);
+    --control-selected-bg: var(--admin-nav-active);
+    --control-selected-hover-bg: var(--admin-surface-3);
+    --control-selected-fg: var(--admin-text);
+    --control-check-bg: var(--admin-accent);
+    --control-check-fg: var(--admin-accent-fg);
+    --button-primary-bg: var(--admin-accent);
+    --button-primary-hover-bg: var(--admin-accent-hover);
+    --button-primary-active-bg: var(--admin-accent-active);
+    --button-primary-fg: var(--admin-accent-fg);
     --font-sans: var(--admin-font);
     --workspace-content: var(--admin-canvas);
     --workspace-surface: var(--admin-surface);
@@ -85,8 +100,8 @@
     --r-lg: var(--admin-radius-lg);
     --r-xl: var(--admin-radius-lg);
     --r-2xl: var(--admin-radius-lg);
-    --motion-instant: var(--admin-motion);
-    --motion-state: var(--admin-motion);
+    --motion-instant: var(--admin-motion-duration);
+    --motion-state: var(--admin-motion-duration);
     --motion-ease-out: ease;
 
     color: var(--admin-text);
@@ -100,10 +115,10 @@
 
 .dark :is([data-admin-root], .admin-drawer, .admin-secondary-drawer, .admin-modal-root, .admin-channel-modal-root, .admin-mobile-navigation-menu),
 .dark body.admin-overlays {
-    --admin-canvas: #111317;
-    --admin-sidebar: #111317;
-    --admin-surface: #191c21;
-    --admin-surface-2: #23272e;
+    --admin-canvas: #0f0f0f;
+    --admin-sidebar: #0f0f0f;
+    --admin-surface: #181818;
+    --admin-surface-2: #222222;
     --admin-surface-3: #2a2a2a;
     --admin-text: #f5f5f5;
     --admin-text-secondary: #c4c4c4;
@@ -118,8 +133,10 @@
     --admin-nav-active: #222222;
     --admin-nav-active-border: transparent;
     --admin-accent: #f5f5f5;
+    --admin-accent-hover: #ffffff;
+    --admin-accent-active: #e5e5e5;
     --admin-accent-fg: #0f0f0f;
-    --admin-focus: rgba(245, 245, 245, 0.28);
+    --admin-focus: var(--admin-text-secondary);
     --admin-status-success: #4ade80;
     --admin-status-warning: #fbbf24;
     --admin-status-error: #f87171;
@@ -135,4 +152,10 @@
     --admin-row-h: 44px;
     --admin-row-padding: 8px;
     --admin-head-h: 36px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    :is([data-admin-root], body.admin-overlays, .admin-drawer, .admin-secondary-drawer, .admin-modal-root, .admin-channel-modal-root, .admin-mobile-navigation-menu) {
+        --admin-motion-duration: 0s;
+    }
 }

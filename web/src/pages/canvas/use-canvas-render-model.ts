@@ -26,6 +26,7 @@ type UseCanvasRenderModelOptions = {
     viewport: ViewportTransform;
     viewportSize: { width: number; height: number };
     selectedNodeIds: Set<string>;
+    toolbarNodeId: string | null;
     hoveredNodeId: string | null;
     dragPreview: DragPreview;
     collapsingBatchIds: Set<string>;
@@ -56,6 +57,7 @@ export function useCanvasRenderModel({
     viewport,
     viewportSize,
     selectedNodeIds,
+    toolbarNodeId,
     hoveredNodeId,
     dragPreview,
     collapsingBatchIds,
@@ -265,7 +267,7 @@ export function useCanvasRenderModel({
     }, [nodes]);
 
     const selectedNodeIdForToolbar = selectedNodeIds.size === 1 ? [...selectedNodeIds][0] : null;
-    const toolbarCandidate = selectedNodeIdForToolbar ? nodeById.get(selectedNodeIdForToolbar) || null : null;
+    const toolbarCandidate = selectedNodeIdForToolbar && selectedNodeIdForToolbar === toolbarNodeId ? nodeById.get(selectedNodeIdForToolbar) || null : null;
     const toolbarNode = isFrameNode(toolbarCandidate) ? null : toolbarCandidate;
     const infoNode = infoNodeId ? nodeById.get(infoNodeId) || null : null;
     const cropNode = cropNodeId ? nodeById.get(cropNodeId) || null : null;

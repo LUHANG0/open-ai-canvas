@@ -102,6 +102,8 @@ export default function AdminPluginsPage() {
 
     const remove = (item: AdminPluginItem) => {
         modal.confirm({
+            rootClassName: "admin-modal-root",
+            className: "admin-modal-panel",
             title: `卸载 ${item.manifest.name}？`,
             content: "插件包、平台状态和所有用户的启用记录都会删除。此操作不可撤销。",
             okText: "确认卸载",

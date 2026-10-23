@@ -1,9 +1,8 @@
-import { AnimatePresence, motion } from "motion/react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from "react";
 import { Compass, Eye, EyeOff, Focus, HelpCircle, LayoutTemplate, Minus, Plus } from "lucide-react";
 
 import { FloatingDock, type FloatingDockEntry } from "@/components/ui/aceternity/floating-dock";
-import { aceternityMotion } from "@/lib/aceternity-motion";
 import { canvasDockStyle } from "@/lib/canvas/canvas-aceternity-style";
 import { canvasThemes } from "@/lib/canvas-theme";
 import { subscribeCanvasViewportPreview } from "@/lib/canvas/canvas-live-viewport";
@@ -26,6 +25,7 @@ const QUICK_ZOOM_LEVELS = [0.25, 0.5, 1, 2] as const;
 
 export function CanvasZoomControls({ scale, onScaleChange, onFitContent, onAutoArrange, hideNodeConnections = false, onHideNodeConnectionsChange, isMiniMapOpen, onToggleMiniMap, onOpenShortcuts, containerRef }: CanvasZoomControlsProps) {
     const theme = canvasThemes[useActiveTheme()];
+    const reducedMotion = useReducedMotion();
     const rootRef = useRef<HTMLDivElement>(null);
     const liveScaleRef = useRef(scale);
     const rangeRef = useRef<HTMLInputElement>(null);
@@ -120,10 +120,10 @@ export function CanvasZoomControls({ scale, onScaleChange, onFitContent, onAutoA
             <AnimatePresence>
                 {precisionOpen ? (
                     <motion.div
-                        initial={{ opacity: 0, y: 14, scale: 0.92 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, y: 9, scale: 0.96 }}
-                        transition={aceternityMotion.spring.panel}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: reducedMotion ? 0 : 0.15 }}
                         className="aceternity-floating-panel absolute bottom-[var(--canvas-dock-popover-offset)] left-0 w-[220px] overflow-hidden rounded-[var(--panel-radius)] border p-2.5 backdrop-blur-2xl"
                         style={{ background: theme.spatial.elevated, borderColor: theme.toolbar.border, color: theme.node.text, boxShadow: `0 28px 80px ${theme.spatial.shadow}` }}
                     >
@@ -151,18 +151,15 @@ export function CanvasZoomControls({ scale, onScaleChange, onFitContent, onAutoA
                         />
                         <div className="mt-2.5 grid grid-cols-4 gap-1">
                             {QUICK_ZOOM_LEVELS.map((level) => (
-                                <motion.button
+                                <button
                                     key={level}
                                     type="button"
-                                    whileHover={{ y: -1 }}
-                                    whileTap={{ scale: 0.95 }}
-                                    transition={aceternityMotion.spring.dock}
                                     className="h-7 rounded-[var(--dock-item-radius)] border text-[var(--fs-micro)] font-semibold tabular-nums outline-none focus-visible:ring-2"
                                     style={{ background: theme.spatial.surface, borderColor: theme.toolbar.border, color: theme.node.muted }}
                                     onClick={() => commitScale(level)}
                                 >
                                     {Math.round(level * 100)}%
-                                </motion.button>
+                                </button>
                             ))}
                         </div>
                     </motion.div>

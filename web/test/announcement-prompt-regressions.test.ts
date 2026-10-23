@@ -4,7 +4,8 @@ test("announcement prompts preserve lazy loading and dismiss even when read sync
     const source = await Bun.file(new URL("../src/components/layout/system-announcement-center.tsx", import.meta.url)).text();
     expect(source).toContain('lazy(() => import("@/components/ui/aceternity/announcement-timeline-modal")');
     expect(source).toContain("{open ? (");
-    expect(source).toContain("<Suspense fallback={null}>");
+    expect(source).toContain("<Suspense fallback=");
+    expect(source).toContain('role="status">正在打开系统公告');
     expect(source).toContain("automaticPrompt={automaticPrompt}");
     expect(source).toContain('onClose={() => dismissAutomaticPrompt("once")}');
     expect(source).toContain('onDismissToday={() => dismissAutomaticPrompt("today")}');

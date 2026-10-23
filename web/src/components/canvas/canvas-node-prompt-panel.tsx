@@ -1,4 +1,5 @@
-import { Button, InputNumber, Modal } from "antd";
+import { AppModal } from "@/components/ui/product/app-modal";
+import { Button, InputNumber } from "antd";
 import { Tooltip } from "@/components/ui/base/tooltip";
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
 import { ArrowUp, ChevronDown, FileText, ImagePlus, LayoutList, LoaderCircle, Maximize2, Music2, SlidersHorizontal, Video, WandSparkles, X } from "lucide-react";
@@ -627,7 +628,7 @@ export function CanvasNodePromptPanel({ projectId, node, isRunning, onPromptChan
 
             {renderComposerControls(false)}
 
-            <Modal
+            <AppModal rootClassName="workspace-utility-overlay"
                 className="canvas-prompt-editor-modal"
                 open={expandedPromptOpen}
                 title={null}
@@ -659,7 +660,7 @@ export function CanvasNodePromptPanel({ projectId, node, isRunning, onPromptChan
                     </div>
                     <PromptModalResizeHandle size={expandedModalSize} measure={measureExpandedModalSize} onResize={setExpandedModalSize} accent={theme.node.muted} />
                 </div>
-            </Modal>
+            </AppModal>
 
             </div>
         </CanvasPromptOptimizerDrawer>

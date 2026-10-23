@@ -12,6 +12,7 @@ import { useAppearanceStore } from "@/stores/use-appearance-store";
 import { AdminStatusBadge, configuredSecretText, SettingsSectionCard } from "../components/admin-ui";
 import { accessKeySecretLabel, formValues, formatSettingTime, hasStorageChanges, isAdminOSSSetting, normalizeStoragePayload, providerDraftValues, storageProviderLabel, storageResponseMatches, type StoragePayload, validateStorageDraft, connectionInput, storageConfigurationReady, providerGuidance, accessKeyIdLabel } from "./storage-settings-model";
 import { type OSSFormValues, type StorageMode } from "./storage-settings-model";
+import { handleAdminRadioKeyDown } from "@/pages/admin/ui/radio-navigation";
 
 export { type OSSFormValues, type StorageMode, type StoragePayload } from "./storage-settings-model";
 
@@ -103,6 +104,8 @@ export default function StorageSettingsPage() {
         navigationConfirmOpenRef.current = true;
         navigationTriggerRef.current = document.activeElement instanceof HTMLElement && document.activeElement !== document.body ? document.activeElement : null;
         modal.confirm({
+            rootClassName: "admin-modal-root",
+            className: "admin-modal-panel",
             title: "放弃存储服务调整？",
             content: "当前页面有尚未保存的存储位置或接入配置，离开后这些草稿会丢失。服务端正在使用的存储配置不会改变。",
             okText: "放弃并离开",
@@ -145,6 +148,8 @@ export default function StorageSettingsPage() {
             return;
         }
         modal.confirm({
+            rootClassName: "admin-modal-root",
+            className: "admin-modal-panel",
             title: "放弃调整并重新读取？",
             content: "重新读取会丢弃当前存储表单中的未保存内容，并以服务端配置为准。",
             okText: "放弃并刷新",
@@ -338,13 +343,14 @@ export default function StorageSettingsPage() {
                         status={<AdminStatusBadge label={dirty ? "待保存" : "当前设置"} tone={dirty ? "warning" : "info"} />}
                     >
                         <div className="admin-storage-mode-content">
-                            <div className="admin-storage-mode-grid" role="radiogroup" aria-label="新增资源存储位置">
+                            <div className="admin-storage-mode-grid" role="radiogroup" aria-label="新增资源存储位置" onKeyDown={handleAdminRadioKeyDown}>
                                 {STORAGE_MODES.map((item) => (
                                     <button
                                         key={item.mode}
                                         type="button"
                                         role="radio"
                                         aria-checked={draftMode === item.mode}
+                                        tabIndex={!loading && !refreshing && !saving && draftMode === item.mode ? 0 : -1}
                                         className={cn("admin-storage-mode-choice", draftMode === item.mode && "is-selected")}
                                         disabled={loading || refreshing || saving}
                                         onClick={() => requestModeChange(item.mode)}

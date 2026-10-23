@@ -1,4 +1,5 @@
-import { Button, Input, InputNumber, Segmented, Slider } from "antd";
+import { SegmentedControl } from "@/components/ui/base/segmented-control";
+import { Button, Input, InputNumber, Slider } from "antd";
 import { Tooltip } from "@/components/ui/base/tooltip";
 import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import { ChevronDown, Dice5, Image as ImageIcon, LoaderCircle, MessageSquare, Music2, Play, Sparkles, Video, Workflow as WorkflowIcon } from "lucide-react";
@@ -157,8 +158,8 @@ export function CanvasConfigNodePanel({ node, isRunning, inputSummary, onConfigC
             <div className="flex min-h-9 items-center justify-between gap-3">
                 <div className="shrink-0 text-sm font-semibold">{simpleMode ? "快速生成" : workflowProvider === "model" ? "生成配置" : "工作流生成"}</div>
                 {simpleMode ? <span className="rounded-md px-2 py-1 text-[var(--fs-tiny)]" style={{ background: theme.node.fill, color: theme.node.muted }}>自动配置</span> : <div className="cursor-default" data-canvas-no-zoom onMouseDown={(event) => event.stopPropagation()} onPointerDown={(event) => event.stopPropagation()}>
-                    <Segmented
-                        size="small"
+                    <SegmentedControl
+                        size="sm"
                         className="canvas-config-mode !rounded-md !p-0.5"
                         value={mode}
                         onChange={(value) => onConfigChange(node.id, { generationMode: value as CanvasGenerationMode, runningHubWorkflowId: undefined, runningHubWorkflowKind: undefined, workflowParameters: {} })}
@@ -230,9 +231,9 @@ export function CanvasConfigNodePanel({ node, isRunning, inputSummary, onConfigC
                 <div className="flex min-w-0 flex-col gap-3">
                     <div className="flex items-center gap-3" data-canvas-no-zoom onMouseDown={(event) => event.stopPropagation()} onPointerDown={(event) => event.stopPropagation()}>
                         <span className="shrink-0 text-[var(--fs-tiny)] font-medium" style={{ color: theme.node.muted }}>生成来源</span>
-                        <Segmented
+                        <SegmentedControl
                             block
-                            size="small"
+                            size="sm"
                             className="canvas-config-provider min-w-0 flex-1"
                             value={workflowProvider}
                             options={[
@@ -369,11 +370,11 @@ export function WorkflowParameterControls({ fields, node, theme, onConfigChange,
                 const numericValue = value === "" || !Number.isFinite(Number(value)) ? undefined : Number(value);
                 const valueError = randomEnabled ? "" : workflowFieldValueError(field, value);
                 const control = ratioOptions ? (
-                    <div className="flex min-w-0 flex-wrap gap-1">
+                    <div className="app-control-group flex min-w-0 flex-wrap gap-1" data-density="compact" role="group" aria-label={field.label || field.fieldName}>
                         {selectOptions.map((option) => {
                             const optionValue = workflowFieldOptionValue(option);
                             const selected = optionValue === workflowFieldOptionValue(value);
-                            return <button key={optionValue} type="button" className="min-h-7 rounded-md px-2 py-1 text-[var(--fs-label)] font-medium transition-colors hover:brightness-110 focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-1" style={{ background: selected ? theme.accent.primary : "transparent", color: selected ? theme.accent.onPrimary : theme.node.text, outlineColor: theme.node.muted }} aria-pressed={selected} onClick={() => update(field, optionValue)}>{optionValue}</button>;
+                            return <button key={optionValue} type="button" data-slot="control-item" aria-pressed={selected} onClick={() => update(field, optionValue)}><span data-slot="control-label">{optionValue}</span></button>;
                         })}
                     </div>
                 ) : fieldType === "SELECT" || selectOptions.length ? (
@@ -397,7 +398,7 @@ export function WorkflowParameterControls({ fields, node, theme, onConfigChange,
                             {control}
                             {field.randomEnabled ? (
                                 <Tooltip title={randomEnabled ? "每次生成使用随机值，点击改为固定值" : "当前使用固定值，点击恢复随机"}>
-                                    <Button type="text" size="small" className="!size-7 !p-0" style={{ background: randomEnabled ? theme.accent.primarySoft : "transparent", color: randomEnabled ? theme.accent.primary : theme.node.muted }} icon={<Dice5 className="size-3.5" />} aria-pressed={randomEnabled} onClick={(event) => { event.preventDefault(); updateRandom(field, !randomEnabled); }} />
+                                    <Button type="text" size="small" className="!size-7 !p-0" style={{ background: randomEnabled ? "var(--control-selected-bg)" : "transparent", color: randomEnabled ? "var(--control-selected-fg)" : theme.node.muted }} icon={<Dice5 className="size-3.5" />} aria-pressed={randomEnabled} onClick={(event) => { event.preventDefault(); updateRandom(field, !randomEnabled); }} />
                                 </Tooltip>
                             ) : null}
                         </div>

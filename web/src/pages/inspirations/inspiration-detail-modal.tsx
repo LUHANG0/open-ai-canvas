@@ -3,6 +3,7 @@ import { Copy, ExternalLink, Heart, Pencil, Trash2, Wand2 } from "lucide-react";
 import { useState } from "react";
 
 import { Tooltip } from "@/components/ui/base/tooltip";
+import { IconButton } from "@/components/ui/base/buttons";
 import { AppModal } from "@/components/ui/product/app-modal";
 import { MediaPlaceholder } from "@/components/ui/product/media-placeholder";
 import { catalogIdOf, inspirationSourceOf, type CreationInspiration } from "@/lib/inspirations/catalog";
@@ -12,9 +13,9 @@ import { useUserStore } from "@/stores/use-user-store";
 
 function MetaRow({ label, children }: { label: string; children: React.ReactNode }) {
     return (
-        <div className="flex min-w-0 items-baseline gap-3 text-xs leading-5">
-            <span className="w-12 shrink-0 text-foreground/45">{label}</span>
-            <span className="min-w-0 flex-1 text-foreground/78">{children}</span>
+        <div className="flex min-w-0 items-baseline gap-3 text-[length:var(--fs-caption)] leading-5">
+            <span className="w-12 shrink-0 text-[var(--user-ink-muted)]">{label}</span>
+            <span className="min-w-0 flex-1 text-[var(--user-ink)]">{children}</span>
         </div>
     );
 }
@@ -50,6 +51,7 @@ export function InspirationDetailModal({
             open={Boolean(item)}
             onCancel={onClose}
             width={880}
+            rootClassName="workspace-utility-overlay inspiration-detail-modal"
             title={null}
             footer={null}
             flush
@@ -67,30 +69,18 @@ export function InspirationDetailModal({
                     <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-5">
                         <div className="flex flex-wrap items-start justify-between gap-3">
                             <div className="min-w-0">
-                                <h2 className="text-[var(--fs-heading,16px)] font-semibold leading-6 text-foreground">{item.title}</h2>
-                                {item.description ? <p className="mt-1 text-xs leading-5 text-foreground/58">{item.description}</p> : null}
+                                <h2 className="text-[length:var(--typ-title-md)] font-semibold leading-6 text-[var(--user-ink)]">{item.title}</h2>
+                                {item.description ? <p className="mt-1 text-[length:var(--typ-caption)] leading-5 text-[var(--user-ink-muted)]">{item.description}</p> : null}
                             </div>
                             <div className="flex shrink-0 items-center gap-1.5">
                                 <Tooltip title={favorite ? "取消收藏" : "收藏"}>
-                                    <button type="button" data-icon-only className="inspiration-icon-button" aria-label={favorite ? "取消收藏灵感" : "收藏灵感"} aria-pressed={favorite} onClick={() => onToggleFavorite(item)}>
-                                        <span aria-hidden="true">
-                                            <Heart className="size-4" fill={favorite ? "currentColor" : "none"} />
-                                        </span>
-                                    </button>
+                                    <IconButton icon={Heart} variant="default" className="inspiration-icon-button" aria-label={favorite ? "取消收藏灵感" : "收藏灵感"} active={favorite} onClick={() => onToggleFavorite(item)} />
                                 </Tooltip>
                                 <Tooltip title="编辑">
-                                    <button type="button" data-icon-only className="inspiration-icon-button" aria-label="编辑灵感" onClick={() => onEdit(item)}>
-                                        <span aria-hidden="true">
-                                            <Pencil className="size-4" />
-                                        </span>
-                                    </button>
+                                    <IconButton icon={Pencil} variant="default" className="inspiration-icon-button" aria-label="编辑灵感" onClick={() => onEdit(item)} />
                                 </Tooltip>
                                 <Tooltip title={custom ? "删除" : "从库中隐藏"}>
-                                    <button type="button" data-icon-only className="inspiration-icon-button" aria-label={custom ? "删除灵感" : "隐藏灵感"} onClick={() => onDelete(item)}>
-                                        <span aria-hidden="true">
-                                            <Trash2 className="size-4" />
-                                        </span>
-                                    </button>
+                                    <IconButton icon={Trash2} variant="default" className="inspiration-icon-button" aria-label={custom ? "删除灵感" : "隐藏灵感"} onClick={() => onDelete(item)} />
                                 </Tooltip>
                             </div>
                         </div>
@@ -160,12 +150,12 @@ function PromptSection({ label, text, onCopy }: { label: string; text: string; o
     return (
         <section className="flex flex-col gap-2">
             <div className="flex items-center justify-between gap-2">
-                <h3 className="text-xs font-medium text-foreground/58">{label}</h3>
+                <h3 className="text-[length:var(--fs-body)] font-medium text-[var(--user-ink)]">{label}</h3>
                 <Button size="small" icon={<Copy className="size-3.5" />} onClick={() => onCopy(text, label)}>
                     复制
                 </Button>
             </div>
-            <div className="inspiration-prompt-block">{text}</div>
+            <div className="inspiration-prompt-block" role="region" aria-label={label} tabIndex={0}>{text}</div>
         </section>
     );
 }

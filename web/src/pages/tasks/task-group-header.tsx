@@ -13,12 +13,12 @@ export function TaskGroupHeader({ group, retrying = false, onRetryFailed }: { gr
     const title = group.projectName ? `${group.title} · ${group.projectName}` : group.title;
     return (
         <div className="task-group-head">
-            <span className="task-group-ic">
+            <span className="task-group-ic" aria-hidden="true">
                 <FolderKanban />
             </span>
             <div className="min-w-0">
                 <div className="task-group-name">
-                    <span>{title}</span>
+                    <span title={title}>{title}</span>
                     <span className="task-group-count">
                         共 {group.tasks.length} 项 · 完成 {succeeded}
                     </span>
@@ -33,8 +33,8 @@ export function TaskGroupHeader({ group, retrying = false, onRetryFailed }: { gr
                 </span>
             </div>
             {failed ? (
-                <button type="button" className="task-group-reset" disabled={retrying} onClick={onRetryFailed}>
-                    <RotateCcw className={retrying ? "animate-spin" : undefined} />
+                <button type="button" className="task-group-reset" disabled={retrying} aria-busy={retrying} onClick={onRetryFailed}>
+                    <RotateCcw aria-hidden="true" className={retrying ? "animate-spin motion-reduce:animate-none" : undefined} />
                     {retrying ? "重试中..." : "重试失败任务"}
                 </button>
             ) : null}

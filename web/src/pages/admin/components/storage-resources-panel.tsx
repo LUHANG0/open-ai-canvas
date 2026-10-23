@@ -1,4 +1,5 @@
-import { App, Button, Input, Modal } from "antd";
+import { App, Button, Input } from "antd";
+import { AdminModal } from "@/pages/admin/ui/overlays";
 import type { ColumnsType } from "antd/es/table";
 import { Download, Eye, Search, Trash2 } from "lucide-react";
 import { saveAs } from "file-saver";
@@ -162,6 +163,8 @@ export default function StorageResourcesPanel() {
     const confirmDelete = (resourceIds: string[]) => {
         const uniqueIds = Array.from(new Set(resourceIds));
         modal.confirm({
+            rootClassName: "admin-modal-root",
+            className: "admin-modal-panel",
             title: uniqueIds.length > 1 ? `删除选中的 ${uniqueIds.length} 个资源？` : "删除这个资源？",
             content: "系统会先批量检查公告、素材、画布、项目、工作流和镜头产物引用。仍被引用的资源会保留；无引用资源的记录、清理任务和审计事件会在同一事务提交。",
             okText: uniqueIds.length > 1 ? "检查并删除" : "确认删除",
@@ -176,6 +179,8 @@ export default function StorageResourcesPanel() {
                     if (result.deleted.length > 0) message.success(`已删除 ${result.deleted.length} 个资源`);
                     if (result.blocked.length > 0) {
                         modal.warning({
+                            rootClassName: "admin-modal-root",
+                            className: "admin-modal-panel",
                             title: result.deleted.length > 0 ? "部分资源未删除" : "资源未删除",
                             content: <DeleteBlockedSummary blocked={result.blocked} />,
                             okText: "知道了",
@@ -259,7 +264,7 @@ export default function StorageResourcesPanel() {
                 empty={<AdminTableEmpty filtered={hasFilters} title={hasFilters ? undefined : "暂无资源记录"} description={hasFilters ? undefined : "资源上传或生成后会显示在这里。"} />}
                 footer={<PaginationBar alwaysShow current={page} pageSize={pageSize} total={total} onChange={(nextPage, nextSize) => updateUrl({ page: nextSize !== pageSize ? 1 : nextPage, pageSize: nextSize })} />}
             />
-            <Modal
+            <AdminModal
                 title={previewing ? fileName(previewing.objectKey) || "资源预览" : "资源预览"}
                 open={Boolean(previewing)}
                 width={880}
@@ -274,7 +279,7 @@ export default function StorageResourcesPanel() {
                 destroyOnHidden
             >
                 {previewing ? <ResourcePreview resource={previewing} /> : null}
-            </Modal>
+            </AdminModal>
         </div>
     );
 }

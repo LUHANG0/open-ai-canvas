@@ -20,6 +20,7 @@ export function CanvasToolPopover({ open, onOpenChange, content, label, ...props
             open={actualOpen}
             onOpenChange={change}
             arrow={false}
+            classNames={{ root: "workspace-utility-overlay" }}
             getPopupContainer={() => document.body}
             align={{ offset: [0, 0], overflow: { shiftX: true, shiftY: true } }}
             styles={{ container: { padding: 0, background: "transparent", boxShadow: "none" } }}

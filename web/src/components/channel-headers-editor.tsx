@@ -1,5 +1,6 @@
 import { Button, Input } from "antd";
 import { Tooltip } from "@/components/ui/base/tooltip";
+import { IconButton } from "@/components/ui/base/buttons";
 
 import { Plus, Trash2 } from "lucide-react";
 import type { ChangeEvent } from "react";
@@ -71,7 +72,7 @@ export function ChannelHeadersEditor({ value = [], onChange, disabled }: Props) 
                                 <Input aria-label={`请求头 ${index + 1} 名称`} disabled={disabled} value={header.name} placeholder="Header 名称" onChange={(event) => updateHeader(index, { name: event.target.value })} />
                                 {/token|key|secret/i.test(header.name) ? <Input.Password {...inputProps} /> : <Input {...inputProps} />}
                                 <Tooltip title="删除请求头">
-                                    <Button aria-label={`删除请求头 ${index + 1}`} className="size-8 p-0" disabled={disabled} icon={<Trash2 className="size-3.5" />} onClick={() => onChange?.(headers.filter((_, itemIndex) => itemIndex !== index))} />
+                                    <IconButton aria-label={`删除请求头 ${index + 1}`} disabled={disabled} icon={Trash2} onClick={() => onChange?.(headers.filter((_, itemIndex) => itemIndex !== index))} />
                                 </Tooltip>
                             </div>
                         );

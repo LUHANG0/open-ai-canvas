@@ -223,7 +223,7 @@ export function useCanvasSelectionController({
         }
         if (!dragRef.current.isDraggingNode) return;
         const shouldOpenPanelOnClick = dragRef.current.openPanelOnClick;
-        const wasClick = shouldOpenPanelOnClick && !dragRef.current.hasMoved && dragRef.current.draggedNodeIds.length === 1;
+        const wasClick = clientX != null && clientY != null && shouldOpenPanelOnClick && !dragRef.current.hasMoved && dragRef.current.draggedNodeIds.length === 1;
         const clickedNodeId = dragRef.current.draggedNodeIds[0];
         const currentViewport = viewportRef.current;
         const rawOffset = { x: clientX == null ? 0 : (clientX - dragRef.current.startX) / currentViewport.k, y: clientY == null ? 0 : (clientY - dragRef.current.startY) / currentViewport.k };

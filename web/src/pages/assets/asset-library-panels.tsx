@@ -1,6 +1,7 @@
 // 素材库的批量操作条、空态、筛选组、详情抽屉与图片放大。
 
-import { Button, Drawer, Tag } from "antd";
+import { Button, Tag } from "antd";
+import { AppDrawer } from "@/components/ui/product/app-drawer";
 import { Box, CheckCheck, Clapperboard, Copy, Download, FileText, FileUp, Link2, Maximize2, Mic, Plus, RotateCcw, Trash2, ZoomIn, ZoomOut } from "lucide-react";
 import { AudioPlayButton, CharacterAssetCover } from "@/components/assets/asset-rich-cover";
 import { useAppearanceStore } from "@/stores/use-appearance-store";
@@ -38,8 +39,8 @@ export function AssetsBatchBar({
     onDelete: () => void;
 }) {
     return (
-        <div className="assets-batch-bar" role="toolbar" aria-label="批量操作">
-            <span className="assets-batch-count">
+        <div className="assets-batch-bar" role="toolbar" aria-label="素材批量操作" aria-busy={busy}>
+            <span className="assets-batch-count" role="status" aria-live="polite" aria-atomic="true">
                 已选择 <strong>{count}</strong> 个素材 · 点击卡片多选，Shift 连选
             </span>
             <div className="assets-batch-actions">
@@ -82,7 +83,7 @@ export const assetsEmptyBannerFrames = [
     { src: "/short-drama-styles/suspense-noir.jpg", caption: "ASSET.03 · 暗巷追逐" },
 ];
 
-export function AssetsEmptyState({ onNew, onImport, onGoCanvas }: { onNew: () => void; onImport: () => void; onGoCanvas: () => void }) {
+export function AssetsEmptyState({ onNew, onImport, onGoCanvas }: { onNew: (trigger?: HTMLElement) => void; onImport: () => void; onGoCanvas: () => void }) {
     const brandName = useAppearanceStore((state) => state.appearance.brandName);
     return (
         <div className="assets-empty">
@@ -98,7 +99,7 @@ export function AssetsEmptyState({ onNew, onImport, onGoCanvas }: { onNew: () =>
                 </span>
             </div>
             <div className="assets-empty-cards">
-                <button type="button" className="assets-empty-card" onClick={onNew}>
+                <button type="button" className="assets-empty-card" onClick={(event) => onNew(event.currentTarget)}>
                     <span className="assets-empty-card-icon">
                         <Plus />
                     </span>
@@ -146,7 +147,7 @@ export function AssetFilterGroup({
                 {options.map((option) => {
                     const active = value === option.value;
                     return (
-                        <button key={option.value} type="button" aria-pressed={active} className={`assets-filter-item ${active ? "is-active" : ""}`} onClick={() => onChange(option.value)}>
+                        <button key={option.value} type="button" aria-pressed={active} aria-label={`${title}：${option.label}，${counts.get(option.value) || 0} 个素材`} className={`assets-filter-item ${active ? "is-active" : ""}`} onClick={() => onChange(option.value)}>
                             <span className="assets-filter-item-label">{option.label}</span>
                             <span className="assets-filter-count">{counts.get(option.value) || 0}</span>
                         </button>
@@ -231,7 +232,7 @@ export function AssetDrawer({ asset, onClose, onCopy, onDownload }: { asset: Lib
     const kind = asset && isKnownAssetKind(asset.kind) ? asset.kind : undefined;
     const KindIcon = asset ? (kind ? assetKindIcons[kind] : FileText) : Clapperboard;
     return (
-        <Drawer className="library-drawer" title="素材档案" open={Boolean(asset)} size="large" onClose={onClose}>
+        <AppDrawer className="library-drawer" title="素材档案" open={Boolean(asset)} size="large" destroyOnHidden={false} onClose={onClose}>
             {asset ? (
                 <div className="space-y-4">
                     <div className="asset-archive-header">
@@ -322,7 +323,7 @@ export function AssetDrawer({ asset, onClose, onCopy, onDownload }: { asset: Lib
                     </div>
                 </div>
             ) : null}
-        </Drawer>
+        </AppDrawer>
     );
 }
 

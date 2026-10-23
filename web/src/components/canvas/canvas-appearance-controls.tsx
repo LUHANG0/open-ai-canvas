@@ -1,5 +1,6 @@
+import { SegmentedControl } from "@/components/ui/base/segmented-control";
 import { useEffect, useId, useState } from "react";
-import { Button, ColorPicker, Input, Segmented, Slider } from "antd";
+import { Button, ColorPicker, Input, Slider } from "antd";
 import { ChevronDown, CircleDot, Grid2x2, Moon, Paintbrush, RotateCcw, Square, Sun } from "lucide-react";
 
 import {
@@ -110,7 +111,7 @@ export function CanvasAppearanceControls({ appearance, backgroundMode, colorThem
             </div> : null}
             <div className="flex items-center gap-2">
                 <span className="w-[60px] shrink-0">网格样式</span>
-                <Segmented block size="small" className="min-w-0 flex-1" aria-label="网格样式" value={backgroundMode} onChange={(value) => onBackgroundModeChange(value as CanvasBackgroundMode)} options={[
+                <SegmentedControl block size="sm" className="min-w-0 flex-1" ariaLabel="网格样式" value={backgroundMode} onChange={(value) => onBackgroundModeChange(value as CanvasBackgroundMode)} options={[
                     { value: "dots", label: <span className="inline-flex items-center gap-1"><CircleDot className="size-3" />点</span> },
                     { value: "lines", label: <span className="inline-flex items-center gap-1"><Grid2x2 className="size-3" />线</span> },
                     { value: "blank", label: <span className="inline-flex items-center gap-1"><Square className="size-3" />空白</span> },

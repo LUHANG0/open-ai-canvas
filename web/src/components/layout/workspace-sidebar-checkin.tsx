@@ -65,7 +65,7 @@ export function WorkspaceSidebarCheckin({ collapsed }: { collapsed: boolean }) {
                     今日<em>{amount}</em>积分
                 </span>
             </div>
-            <button type="button" className={cn("app-workspace-sidebar-checkin-claim", claiming && "is-loading")} disabled={claiming} aria-label={`立即领取 ${amount} 积分`} onClick={() => void claim()}>
+            <button type="button" className={cn("app-workspace-sidebar-checkin-claim", claiming && "is-loading")} disabled={claiming} aria-busy={claiming} aria-label={`立即领取 ${amount} 积分`} onClick={() => void claim()}>
                 {claiming ? "领取中" : "立即领取"}
             </button>
         </aside>

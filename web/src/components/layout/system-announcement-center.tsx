@@ -1,10 +1,8 @@
-import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { Tag } from "antd";
 import { Bell } from "lucide-react";
-import { lazy, Suspense, useEffect, useState, type CSSProperties } from "react";
+import { lazy, Suspense, useEffect, useRef, useState, type CSSProperties } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { aceternityMotion } from "@/lib/aceternity-motion";
 import { getAnnouncementFeed, markAnnouncementsRead } from "@/services/api/announcements";
 
 const AnnouncementTimelineModal = lazy(() => import("@/components/ui/aceternity/announcement-timeline-modal").then((module) => ({ default: module.AnnouncementTimelineModal })));
@@ -26,12 +24,14 @@ type SystemAnnouncementCenterProps = {
     autoOpen?: boolean;
 };
 
-export function SystemAnnouncementCenter({ userId, className, style, showLabel = false, labelClassName, staticMotion = false, autoOpen = false }: SystemAnnouncementCenterProps) {
-    const reducedMotion = useReducedMotion();
+export function SystemAnnouncementCenter({ userId, className, style, showLabel = false, labelClassName, autoOpen = false }: SystemAnnouncementCenterProps) {
     const queryClient = useQueryClient();
     const [open, setOpen] = useState(false);
     const [automaticPrompt, setAutomaticPrompt] = useState(false);
     const [dismissedFingerprint, setDismissedFingerprint] = useState("");
+    const triggerRef = useRef<HTMLButtonElement>(null);
+    const returnFocusRef = useRef<HTMLElement | null>(null);
+    const wasOpenRef = useRef(false);
     const queryKey = ["system-announcements", userId] as const;
     const feedQuery = useQuery({
         queryKey,
@@ -47,14 +47,24 @@ export function SystemAnnouncementCenter({ userId, className, style, showLabel =
     const error = feedQuery.error instanceof Error ? feedQuery.error.message : feedQuery.error ? "读取公告失败" : "";
 
     useEffect(() => {
+        if (wasOpenRef.current && !open) {
+            if (returnFocusRef.current?.isConnected) returnFocusRef.current.focus({ preventScroll: true });
+            returnFocusRef.current = null;
+        }
+        wasOpenRef.current = open;
+    }, [open]);
+
+    useEffect(() => {
         if (!autoOpen || open || !feedQuery.isSuccess || announcements.length === 0) return;
         const fingerprint = announcementFeedFingerprint(announcements);
         if (!fingerprint || fingerprint === dismissedFingerprint || announcementAutoPromptSuppressed(userId, fingerprint)) return;
+        returnFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
         setAutomaticPrompt(true);
         setOpen(true);
     }, [announcements, autoOpen, dismissedFingerprint, feedQuery.isSuccess, open, unreadCount, userId]);
 
     const openAnnouncements = async () => {
+        returnFocusRef.current = triggerRef.current;
         setAutomaticPrompt(false);
         setOpen(true);
         const feed = (await feedQuery.refetch()).data;
@@ -80,33 +90,21 @@ export function SystemAnnouncementCenter({ userId, className, style, showLabel =
 
     return (
         <>
-            <motion.button
+            <button
+                ref={triggerRef}
                 type="button"
                 className={className}
                 style={style}
-                whileHover={reducedMotion || staticMotion ? undefined : { y: -1, scale: 1.035 }}
-                whileTap={reducedMotion || staticMotion ? undefined : { scale: 0.94 }}
-                transition={aceternityMotion.spring.dock}
                 onClick={() => void openAnnouncements()}
                 aria-label={unreadCount ? `系统公告，${unreadCount} 条未读` : "系统公告"}
+                aria-haspopup="dialog"
+                aria-expanded={open}
                 title="系统公告"
                 data-icon-only={showLabel ? undefined : true}
             >
                 <span className="relative shrink-0">
-                    <Bell className="size-4" />
-                    <AnimatePresence initial={false}>
-                        {unreadCount > 0 ? (
-                            <motion.span
-                                key="unread-dot"
-                                initial={reducedMotion ? false : { opacity: 0, scale: 0.5 }}
-                                animate={{ opacity: 1, scale: 1 }}
-                                exit={{ opacity: 0, scale: 0.6 }}
-                                transition={aceternityMotion.spring.dock}
-                                className="absolute -right-1 -top-1 size-2 rounded-full border border-background bg-red-500"
-                                aria-hidden
-                            />
-                        ) : null}
-                    </AnimatePresence>
+                    <Bell className="size-4" aria-hidden="true" />
+                    {unreadCount > 0 ? <span className="absolute -right-1 -top-1 size-2 rounded-full border border-background bg-[var(--status-error)]" aria-hidden="true" /> : null}
                 </span>
                 {showLabel ? (
                     <span className={`min-w-0 flex-1 items-center justify-between gap-2 whitespace-nowrap ${labelClassName || ""}`}>
@@ -114,9 +112,9 @@ export function SystemAnnouncementCenter({ userId, className, style, showLabel =
                         <Tag color={unreadCount > 0 ? "gold" : undefined} className="!m-0 !min-w-6 !px-1.5 !text-center !text-[var(--fs-micro)] !font-medium !leading-[18px] tabular-nums">{announcements.length}</Tag>
                     </span>
                 ) : null}
-            </motion.button>
+            </button>
             {open ? (
-                <Suspense fallback={null}>
+                <Suspense fallback={<span className="sr-only" role="status">正在打开系统公告</span>}>
                     <AnnouncementTimelineModal
                         open
                         announcements={announcements}

@@ -39,7 +39,7 @@ const trackRemoveBlockedReason = (kind: TimelineTrack["kind"]) => `${TRACK_KIND_
 // 工具条按钮颜色角色（唯一来源，各按钮内不得重复字面量颜色）：
 // 常态 = 次级前景 + hover 弱背景；选中/按下 = 反白块 + 强前景（中性，无 accent 蓝图标）。
 const TOOL_FG_IDLE = "text-[var(--previs-dock-fg)] hover:bg-[var(--previs-control-hover)]";
-const TOOL_FG_ACTIVE = "bg-[var(--previs-dock-active-surface)] text-[var(--previs-dock-fg-strong)]";
+const TOOL_FG_ACTIVE = "bg-[var(--control-selected-bg)] text-[var(--control-selected-fg)]";
 
 type GestureMode = "move" | "trim-start" | "trim-end" | null;
 
@@ -166,7 +166,7 @@ export function EditorTimelinePanel() {
             {/* 工具条：左侧编辑工具，右侧缩放/时码（撤销/重做在宿主顶栏） */}
             <div className="flex h-10 shrink-0 items-center gap-2 border-b border-[var(--previs-sequencer-border)] bg-[var(--previs-sequencer-surface-raised)] px-3">
                 {/* 工具模式：选择 / 剃刀 */}
-                <div className="flex items-center gap-0.5 rounded-md bg-[var(--previs-control-hover)] p-0.5">
+                <div role="group" aria-label="时间线工具" className="flex items-center gap-0.5 rounded-md bg-[var(--previs-control-hover)] p-0.5">
                     <button
                         type="button"
                         aria-label="选择工具"
@@ -783,7 +783,7 @@ function ClipItem({
             data-editor-clip-id={clip.id}
             className={`group absolute top-1.5 bottom-1.5 overflow-hidden select-none rounded-md border text-xs shadow-sm ${
                 selected
-                    ? "border-[var(--previs-accent)] ring-1 ring-[var(--previs-accent)]/60 bg-[var(--previs-accent)]/25 text-[var(--previs-dock-fg-strong)]"
+                    ? "border-[var(--control-selected-border)] ring-1 ring-[var(--control-selected-border)] bg-[var(--control-selected-bg)] text-[var(--control-selected-fg)]"
                     : isSubtitle
                       ? "border-[var(--previs-warning)]/40 bg-[var(--previs-warning)]/15 text-[var(--previs-warning)]"
                       : isAudio

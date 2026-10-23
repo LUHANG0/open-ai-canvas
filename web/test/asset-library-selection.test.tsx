@@ -7,13 +7,15 @@ import { selectAssetIds } from "@/pages/assets/asset-library-selection";
 import type { Asset } from "@/stores/use-asset-store";
 
 const asset: Asset = { id: "remote-page-2", kind: "text", title: "第二页素材", coverUrl: "", tags: [], createdAt: "2026-10-01", updatedAt: "2026-10-01", data: { content: "正文" } };
-const click = (keys: Partial<MouseEvent<HTMLButtonElement>> = {}) => ({ shiftKey: false, ctrlKey: false, metaKey: false, ...keys }) as MouseEvent<HTMLButtonElement>;
+const click = (keys: Partial<MouseEvent<HTMLButtonElement>> = {}) => ({ currentTarget: { focus: mock(() => {}) }, shiftKey: false, ctrlKey: false, metaKey: false, ...keys }) as MouseEvent<HTMLButtonElement>;
 
 function card(selected: boolean, selectionMode: boolean) {
     const onSelect = mock(() => {});
     const onOpen = mock(() => {});
     const element = AssetCard({ asset, selected, selectionMode, onSelect, onOpen, onEdit: () => {}, onCopy: () => {}, onDownload: () => {}, onDelete: () => {}, folderOptions: [], onMoveToFolder: () => {} });
-    const [cover, body] = element.props.children;
+    const [cover, bodyTooltip] = element.props.children;
+    const body = bodyTooltip.props.children;
+    expect(body.type).toBe("button");
     return { onSelect, onOpen, cover: AssetCover(cover.props).props.children[0], body };
 }
 
@@ -39,8 +41,14 @@ describe("素材库分页多选", () => {
 
     test("普通模式点击封面和文字仍打开预览", () => {
         const entry = card(false, false);
-        entry.cover.props.onClick(click());
-        entry.body.props.onClick(click());
+        const coverClick = click();
+        const bodyClick = click();
+        entry.cover.props.onClick(coverClick);
+        entry.body.props.onClick(bodyClick);
+        expect(coverClick.currentTarget.focus).toHaveBeenCalledTimes(1);
+        expect(coverClick.currentTarget.focus).toHaveBeenCalledWith({ preventScroll: true });
+        expect(bodyClick.currentTarget.focus).toHaveBeenCalledTimes(1);
+        expect(bodyClick.currentTarget.focus).toHaveBeenCalledWith({ preventScroll: true });
         expect(entry.onOpen).toHaveBeenCalledTimes(2);
         expect(entry.onSelect).not.toHaveBeenCalled();
     });

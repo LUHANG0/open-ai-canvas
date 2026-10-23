@@ -3,6 +3,8 @@ import { requestGeneration, requestImageQuestion } from "@/services/api/image";
 import { createVideoGenerationTask } from "@/services/api/video";
 import { defaultConfig, encodeChannelModel, type ModelCapability, type ModelChannel } from "@/stores/use-config-store";
 import type { ModelProtocol } from "@/lib/model-protocols";
+import { modelCapabilityConfigFor } from "@/lib/model-capabilities";
+import { runBackendGenerationTask } from "@/services/api/generation-task";
 
 export async function testChannelModelConnection(channel: ModelChannel, model: string, capability: ModelCapability, protocol: ModelProtocol) {
     if (!channel.baseUrl.trim()) throw new Error("请先填写 Base URL");
@@ -49,6 +51,20 @@ export async function testChannelModelConnection(channel: ModelChannel, model: s
         vquality: "720",
         videoGenerateAudio: "false",
     };
+
+    if (protocol === "yezonghui-image" || protocol === "yezonghui-video") {
+        const profile = modelCapabilityConfigFor(config, selectedModel);
+        const mode = protocol === "yezonghui-image" ? "image" : "video";
+        const testConfig = {
+            ...config,
+            size: mode === "image" ? profile.image!.size.default : profile.video!.defaultRatio,
+            imageResolution: profile.image!.resolution.default,
+            vquality: profile.video!.defaultResolution,
+            videoSeconds: String(profile.video!.duration.default),
+        };
+        await runBackendGenerationTask({ mode, config: testConfig, prompt: "A simple gray circle on a white background." });
+        return mode === "image" ? "图片生成正常" : "视频生成正常";
+    }
 
     switch (capability) {
         case "text":

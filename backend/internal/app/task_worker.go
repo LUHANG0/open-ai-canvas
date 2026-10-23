@@ -427,7 +427,7 @@ func (s *Service) shouldDeferProviderTask(task model.Task, decryptedInput string
 		return false
 	}
 	if isVideoTaskType(task.Type) || input.Mode == "video" {
-		return resolved.InterfaceType == string(model.ChannelInterfaceNewAPIChannel2)
+		return resolved.InterfaceType == string(model.ChannelInterfaceNewAPIChannel2) || resolved.InterfaceType == "yezonghui-video"
 	}
 	if input.Mode != "image" && !strings.HasPrefix(task.Type, "canvas_image") {
 		return false

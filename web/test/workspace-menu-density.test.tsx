@@ -4,8 +4,28 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { ConfigProvider, Select } from "antd";
 import { useContext } from "react";
 import { CollectionToolbar } from "@/components/layout/collection-toolbar";
+import { Select as UnifiedSelect } from "@/components/ui/base/select";
+import { SegmentedControl } from "@/components/ui/base/segmented-control";
 import { getWorkspaceAntThemeConfig } from "@/lib/app-theme";
 import { assetGridCardMinWidth, assetGridDensityOptions, parseAssetGridDensity } from "@/pages/assets/asset-grid-density";
+
+test("unified selects retain native accessible names and support the compatibility prop", () => {
+    const options = [{ value: "all", label: "全部" }];
+    expect(renderToStaticMarkup(<UnifiedSelect aria-label="插件状态" value="all" options={options} />)).toContain('aria-label="插件状态"');
+    const compatibility = renderToStaticMarkup(<UnifiedSelect ariaLabel="技能排序" aria-label="旧名称" value="all" options={options} />);
+    expect(compatibility).toContain('aria-label="技能排序"');
+    expect(compatibility).not.toContain('aria-label="旧名称"');
+});
+
+test("segments keep radio selection and roving focus with the same static default", () => {
+    const options = [{ value: "all", label: "全部" }, { value: "active", label: "运行中" }];
+    const html = renderToStaticMarkup(<SegmentedControl indicator="static" ariaLabel="任务状态" value="active" options={options} />);
+    expect(html).toContain('role="radiogroup" aria-label="任务状态"');
+    expect(html).toMatch(/role="radio" aria-checked="true"[^>]*tabindex="0"/);
+    expect(html).toMatch(/role="radio" aria-checked="false"[^>]*tabindex="-1"/);
+    expect(html).toContain('data-slot="control-item"');
+    expect(renderToStaticMarkup(<SegmentedControl value="active" options={options} />)).toBe(html.replace(' aria-label="任务状态"', ""));
+});
 
 test("density restores all saved choices and defaults invalid preferences to standard", () => {
     for (const value of [6, 8, 10] as const) {
@@ -88,7 +108,9 @@ test("menu surfaces are explicitly scoped and old account inner overrides are re
     expect(css).toContain("box-shadow: none !important");
     expect(css).not.toContain(".ant-modal");
     expect(globals).not.toContain(".workspace-account-popover .ant-popover-inner");
-    expect(globals).toContain('.app-unified-select[data-input-modality="keyboard"]:not(.ant-select-open)');
+    const controls = readFileSync(new URL("../src/styles/unified-buttons.css", import.meta.url), "utf8");
+    expect(controls).toContain('.app-unified-select[data-input-modality="keyboard"]:not(.ant-select-open)');
+    expect(globals.includes('.app-unified-select[data-input-modality="keyboard"]:not(.ant-select-open)')).toBe(false);
     expect(globals).toMatch(/:where\(\.ant-select-dropdown, \.ant-dropdown-menu,[^)]*\)\s*\{\s*border: 0 !important;/);
     expect(globals).toContain("body.app-spatial-overlays :where(.ant-dropdown-menu, .ant-select-dropdown, .ant-cascader-menus, .ant-mentions-dropdown) {\n        border: 0 !important;");
 });

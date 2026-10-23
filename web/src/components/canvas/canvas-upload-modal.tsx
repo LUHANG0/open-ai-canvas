@@ -41,7 +41,7 @@ export function CanvasUploadModal({ open, onClose, onUpload }: CanvasUploadModal
     };
 
     return (
-        <AppModal
+        <AppModal rootClassName="workspace-utility-overlay"
             open={open}
             title={null}
             footer={null}

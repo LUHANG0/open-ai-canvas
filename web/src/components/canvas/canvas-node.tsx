@@ -7,7 +7,6 @@ import { CanvasImageLayerControls } from "./canvas-image-layer-controls";
 
 import { canvasThemes } from "@/lib/canvas-theme";
 import type { CanvasNodeRenderLOD } from "@/lib/canvas/canvas-node-lod";
-import { canvasConnectionTilt } from "@/lib/canvas/canvas-connection-tilt";
 import { storyboardMinNodeHeight } from "@/lib/canvas/canvas-storyboard-layout";
 import { resourceStorageLabel, resourceStorageLocation, resourceStorageTitle } from "@/lib/canvas/resource-storage-status";
 import { useActiveTheme } from "@/stores/canvas/use-canvas-theme-store";
@@ -17,7 +16,6 @@ import { ART_CRITIQUE_NODE_TYPE } from "@/lib/art-critique/contracts";
 import { getNodeDefinition } from "@/lib/canvas/node-registry";
 import type { NodeResizeCorner } from "@/lib/canvas/node-resize-geometry";
 import { useCanvasNodeResize } from "./use-canvas-node-resize";
-import { useCanvasConnectionTilt } from "./use-canvas-connection-tilt";
 import { useCanvasNodeResizeStyle } from "./canvas-node-resize-motion";
 import { CanvasNodeContent, CanvasNodeImageInfo, CanvasNodeProducedModel } from "./canvas-node-content";
 
@@ -83,7 +81,6 @@ export const CanvasNode = React.memo(function CanvasNode({
     isFocusRelated,
     isConnectionTarget,
     isConnecting = false,
-    connectionApproach,
     forceInputMounted = false,
     showImageInfo,
     disableMediaEffects = false,
@@ -146,7 +143,6 @@ export const CanvasNode = React.memo(function CanvasNode({
     const scriptMinHeight = data.type === CanvasNodeType.Script ? storyboardMinNodeHeight(data.metadata?.storyboardComposerHeight) : null;
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const nodeRef = useRef<HTMLDivElement>(null);
-    const shellRef = useRef<HTMLDivElement>(null);
     const resizeMotion = useCanvasNodeResizeStyle(nodeRef, data, dragOffset);
     const handleResizePointerDown = useCanvasNodeResize(data, scale, scriptMinHeight, onResize, readOnly);
 
@@ -195,10 +191,6 @@ export const CanvasNode = React.memo(function CanvasNode({
         if (next !== data.title) onTitleChange?.(data.id, next);
     };
 
-    const connectionTilt = isConnectionTarget && !disableMediaEffects && !dragOffset
-        ? canvasConnectionTilt(data, connectionApproach) : undefined;
-    useCanvasConnectionTilt(nodeRef, shellRef, connectionTilt);
-
     return (
         <div
             ref={nodeRef}
@@ -238,17 +230,16 @@ export const CanvasNode = React.memo(function CanvasNode({
                 onCancel={() => { setTitleDraft(data.title); setIsEditingTitle(false); }}
             /> : null}
             <div
-                ref={shellRef}
                 className="canvas-node-shell relative h-full w-full overflow-visible rounded-[var(--node-radius)]"
                 data-node-state={nodeState}
-                data-connection-tilt={connectionTilt ? "true" : undefined}
                 data-state={data.metadata?.status || (isActive ? "active" : isRelated ? "related" : "idle")}
                 style={{
                     background: hasImageContent || hasVideoContent ? "transparent" : theme.node.fill,
                     // 固定占位但不绘制描边，避免聚焦切换时边框宽度变化造成白边跳动。
                     border: isComposerNode ? "0" : "1px solid transparent",
                     boxShadow: isComposerNode || !showChrome ? "none" : isSelected || isFocusRelated ? theme.node.hoverShadow : theme.node.shadow,
-                    outline: !showChrome && isActive ? `1px solid ${theme.node.activeStroke}` : undefined,
+                    outline: isConnectionTarget || (!showChrome && isActive) ? `1px solid ${theme.node.activeStroke}` : undefined,
+                    outlineWidth: isConnectionTarget ? `calc(2px * var(--canvas-live-inverse-scale, ${1 / Math.max(scale, 0.05)}))` : undefined,
                 } as React.CSSProperties}
                 onMouseDown={(event) => onMouseDown(event, data.id)}
                 onDoubleClick={(event) => {

@@ -5,6 +5,13 @@ description: 从产品功能快速定位主要代码入口
 
 # 代码功能地图
 
+## 夜总会独立渠道协议
+
+- 插件：`plugin-packages/yezonghui/manifest.json`、`docs/interface.md`；分发包 `plugin-packages/yezonghui.yingce-plugin`。
+- 宿主：`internal/protocol/{types,manifest}.go` 校验流式格式与轮询声明；`app/provider_protocol.go` 应用查询策略，`provider_text.go` / `provider_text_agent.go` 复用 SSE，`provider_protocol_result.go` 鉴权下载，`task_worker.go` 允许已有夜总会视频任务超时后恢复查询。
+- 默认能力：`app/model_capability_defaults.go`、`web/src/lib/model-capabilities.ts`；媒体连接测试：`web/src/lib/model-connection-test.ts`。
+- 专项：`internal/protocol/yezonghui_test.go`、`internal/app/yezonghui_test.go`、`web/test/yezonghui-capabilities.test.ts`。配置见[夜总会协议插件](/docs/backend/yezonghui)。
+
 ## 画布实时会话
 
 - 传输入口：`backend/internal/handler/canvas_realtime.go` 校验登录与 Origin、管理 WebSocket；`app/canvas_realtime.go` 校验画布归属，`internal/canvas/realtime.go` 负责临时 Presence、房间隔离与 Redis 分发，`realtime_devices.go` 管理跨实例统一窗口编号及临时租期。

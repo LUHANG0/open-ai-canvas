@@ -4,6 +4,7 @@ import { Check, CheckCircle2, ChevronRight, FolderTree, Plus, RefreshCw, Search,
 import { AdminPageFrame } from "./components/admin-shell";
 import { AdminStatusBadge, AdminTableEmpty, SettingsSectionCard } from "./components/admin-ui";
 import { AdminSwitch } from "./ui/controls";
+import { handleAdminRadioKeyDown } from "./ui/radio-navigation";
 import { getSkillCuration, updateSkillCuration, type CurationCategory, type CurationChange, type CurationRoot, type SkillCuration } from "@/services/api/skill-curation";
 import { curationIcon, curationIconKeys, curationIconLabels } from "@/components/skills/skill-curation-browser";
 import { listSkills, type Skill } from "@/services/api/skills";
@@ -39,6 +40,9 @@ export default function SkillCurationPage() {
 
     const sortedRoots = useMemo(() => [...(data?.roots || [])].sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name)), [data?.roots]);
     const sortedCategories = useMemo(() => [...(data?.categories || [])].sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name)), [data?.categories]);
+    const rootIconEntry = curationIconKeys.find((key) => key === (root.iconKey || "shapes")) ?? curationIconKeys[0];
+    const categoryRootEntry = sortedRoots.find((item) => item.enabled && item.id === category.rootTag)?.id ?? sortedRoots.find((item) => item.enabled)?.id;
+    const assignedRootEntry = sortedRoots.find((item) => item.enabled && item.id === assignedRoot)?.id ?? "";
     const categoriesByRoot = useMemo(() => {
         const grouped = new Map<string, CurationCategory[]>();
         sortedCategories.forEach((item) => {
@@ -380,12 +384,12 @@ export default function SkillCurationPage() {
                                         </div>
                                         <div className="admin-skill-curation-field admin-skill-curation-icon-field">
                                             <span>分类图示</span>
-                                            <div className="admin-skill-curation-icon-grid" role="radiogroup" aria-label="一级分类图示">
+                                            <div className="admin-skill-curation-icon-grid" role="radiogroup" aria-label="一级分类图示" onKeyDown={handleAdminRadioKeyDown}>
                                                 {curationIconKeys.map((key) => {
                                                     const Icon = curationIcon(key);
                                                     const selected = (root.iconKey || "shapes") === key;
                                                     return (
-                                                        <button key={key} type="button" role="radio" aria-checked={selected} className={`admin-skill-curation-icon-choice${selected ? " is-selected" : ""}`} onClick={() => setRoot({ ...root, iconKey: key })}>
+                                                        <button key={key} type="button" role="radio" aria-checked={selected} tabIndex={key === rootIconEntry ? 0 : -1} className={`admin-skill-curation-icon-choice${selected ? " is-selected" : ""}`} onClick={() => setRoot({ ...root, iconKey: key })}>
                                                             <Icon className="size-4" aria-hidden="true" />
                                                             <span>{curationIconLabels[key]}</span>
                                                         </button>
@@ -416,7 +420,7 @@ export default function SkillCurationPage() {
                                     <div className="admin-skill-curation-fields admin-skill-curation-fields-category">
                                         <div className="admin-skill-curation-field admin-skill-curation-parent-field">
                                             <span>所属一级分类</span>
-                                            <div className="admin-skill-curation-direct-list" role="radiogroup" aria-label="所属一级分类">
+                                            <div className="admin-skill-curation-direct-list" role="radiogroup" aria-label="所属一级分类" onKeyDown={handleAdminRadioKeyDown}>
                                                 {sortedRoots.length ? (
                                                     sortedRoots.map((item) => {
                                                         const Icon = curationIcon(item.iconKey);
@@ -428,6 +432,7 @@ export default function SkillCurationPage() {
                                                                 role="radio"
                                                                 aria-checked={selected}
                                                                 className={`admin-skill-curation-direct-choice${selected ? " is-selected" : ""}`}
+                                                                tabIndex={!category.id && item.enabled && item.id === categoryRootEntry ? 0 : -1}
                                                                 disabled={Boolean(category.id) || !item.enabled}
                                                                 onClick={() => setCategory({ ...category, rootTag: item.id })}
                                                             >
@@ -530,11 +535,12 @@ export default function SkillCurationPage() {
                                         <span>技能一级分类</span>
                                         <small>{assignedRoot ? selectedRoot?.name || "已指定分类" : "沿用原始分类"}</small>
                                     </div>
-                                    <div className="admin-skill-curation-assign-chips" role="radiogroup" aria-label="技能一级分类">
+                                    <div className="admin-skill-curation-assign-chips" role="radiogroup" aria-label="技能一级分类" onKeyDown={handleAdminRadioKeyDown}>
                                         <button
                                             type="button"
                                             role="radio"
                                             aria-checked={!assignedRoot}
+                                            tabIndex={assignedRootEntry === "" ? 0 : -1}
                                             className={`admin-skill-curation-assign-chip${!assignedRoot ? " is-selected" : ""}`}
                                             onClick={() => {
                                                 setAssignedRoot("");
@@ -554,6 +560,7 @@ export default function SkillCurationPage() {
                                                     role="radio"
                                                     aria-checked={selected}
                                                     className={`admin-skill-curation-assign-chip${selected ? " is-selected" : ""}`}
+                                                    tabIndex={item.enabled && item.id === assignedRootEntry ? 0 : -1}
                                                     disabled={!item.enabled}
                                                     onClick={() => {
                                                         setAssignedRoot(item.id);

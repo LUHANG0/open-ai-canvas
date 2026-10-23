@@ -129,11 +129,11 @@ export function WorkflowFieldMappingEditor({ fields, onChange, disabled = false 
                                 </label>
                                 <label className="grid gap-1 text-xs text-foreground/60">
                                     参数类型
-                                    <Select value={fieldType} disabled={fieldDisabled} options={fieldTypeOptions.map((item) => ({ ...item }))} onChange={(value) => updateField(index, { fieldType: value })} />
+                                    <Select aria-label={`${field.label || field.fieldName} 参数类型`} value={fieldType} disabled={fieldDisabled} options={fieldTypeOptions.map((item) => ({ ...item }))} onChange={(value) => updateField(index, { fieldType: value })} />
                                 </label>
                                 <label className="grid gap-1 text-xs text-foreground/60">
                                     输入来源
-                                    <Select showSearch value={source} disabled={fieldDisabled} options={sourceOptions.map((item) => ({ ...item }))} optionFilterProp="label" onChange={(value) => updateField(index, sourcePatch(field, value))} />
+                                    <Select aria-label={`${field.label || field.fieldName} 输入来源`} showSearch value={source} disabled={fieldDisabled} options={sourceOptions.map((item) => ({ ...item }))} optionFilterProp="label" onChange={(value) => updateField(index, sourcePatch(field, value))} />
                                 </label>
                                 {fieldType === "SELECT" || choices.length || presetOptions.length ? (
                                     <label className="grid gap-1 text-xs text-foreground/60 md:col-span-2 lg:col-span-3">
@@ -192,12 +192,12 @@ export function WorkflowFieldMappingEditor({ fields, onChange, disabled = false 
                                 ) : null}
                                 <label className="flex items-center justify-between gap-3 text-xs text-foreground/60">
                                     缺失时阻止生成
-                                    <Switch checked={field.required === true} disabled={fieldDisabled || !source} onChange={(required) => updateField(index, { required })} />
+                                    <Switch aria-label={`${field.label || field.fieldName} 缺失时阻止生成`} checked={field.required === true} disabled={fieldDisabled || !source} onChange={(required) => updateField(index, { required })} />
                                 </label>
                                 {fieldType === "NUMBER" ? (
                                     <label className="flex items-center justify-between gap-3 text-xs text-foreground/60">
                                         每次随机数字
-                                        <Switch checked={field.randomEnabled === true} disabled={fieldDisabled || Boolean(source)} onChange={(randomEnabled) => updateField(index, { randomEnabled })} />
+                                        <Switch aria-label={`${field.label || field.fieldName} 每次随机数字`} checked={field.randomEnabled === true} disabled={fieldDisabled || Boolean(source)} onChange={(randomEnabled) => updateField(index, { randomEnabled })} />
                                     </label>
                                 ) : null}
                                 {!source ? (
@@ -224,6 +224,7 @@ function DefaultValueInput({ field, disabled, onChange }: { field: WorkflowField
     if (fieldType === "BOOLEAN" || typeof value === "boolean") {
         return (
             <Select
+                aria-label={`${field.label || field.fieldName} 工作流默认值`}
                 value={Boolean(value)}
                 disabled={disabled}
                 options={[
@@ -235,12 +236,12 @@ function DefaultValueInput({ field, disabled, onChange }: { field: WorkflowField
         );
     }
     if (choices.length) {
-        return <Select showSearch value={value} disabled={disabled} options={choices.map((option) => ({ label: workflowOptionText(option), value: workflowOptionValue(option) }))} onChange={onChange} />;
+        return <Select aria-label={`${field.label || field.fieldName} 工作流默认值`} showSearch value={value} disabled={disabled} options={choices.map((option) => ({ label: workflowOptionText(option), value: workflowOptionValue(option) }))} onChange={onChange} />;
     }
     if (fieldType === "NUMBER" || typeof value === "number" || bounds.min !== undefined || bounds.max !== undefined || bounds.step !== undefined) {
-        return <InputNumber className="w-full" value={numberOrUndefined(value)} disabled={disabled} min={bounds.min} max={bounds.max} step={bounds.step} onChange={onChange} />;
+        return <InputNumber aria-label={`${field.label || field.fieldName} 工作流默认值`} className="w-full" value={numberOrUndefined(value)} disabled={disabled} min={bounds.min} max={bounds.max} step={bounds.step} onChange={onChange} />;
     }
-    return <Input.TextArea autoSize={{ minRows: 1, maxRows: 4 }} value={displayValue(value)} disabled={disabled} onChange={(event) => onChange(event.target.value)} />;
+    return <Input.TextArea aria-label={`${field.label || field.fieldName} 工作流默认值`} autoSize={{ minRows: 1, maxRows: 4 }} value={displayValue(value)} disabled={disabled} onChange={(event) => onChange(event.target.value)} />;
 }
 
 function sourcePatch(field: WorkflowFieldMapping, source: string): Partial<WorkflowFieldMapping> {

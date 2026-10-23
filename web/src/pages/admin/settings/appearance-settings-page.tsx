@@ -11,7 +11,7 @@ import { CanvasAppearanceEditor } from "./components/canvas-appearance-editor";
 import { UpdateAnnouncementEditor } from "./components/update-announcement-editor";
 import { DEFAULT_UPDATE_ANNOUNCEMENT, normalizeUpdateAnnouncement, validateUpdateAnnouncement, type UpdateAnnouncement } from "@/lib/update-announcement";
 import { App, Button, Tabs, Form, Input } from "antd";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { useBlocker } from "react-router";
 import { cloneSkinDefinition, DEFAULT_CLASSIC_SKIN, normalizeSkinDefinition, type SkinDefinition, duplicateSkinDefinition } from "@/lib/skin-themes";
 import { DEFAULT_CANVAS_APPEARANCE, type CanvasAppearance } from "@/lib/canvas/agent-appearance";
@@ -26,6 +26,7 @@ const EMPTY_RESETS: ResetState = { logo: false, "logo-dark": false, video: false
 
 export default function AppearanceSettingsPage() {
     const { message, modal } = App.useApp();
+    const footerCopyrightId = useId();
     const [activeTab, setActiveTab] = useState("brand");
     const [setting, setSetting] = useState<AdminAppearance | null>(null);
     const [brandName, setBrandName] = useState("");
@@ -144,6 +145,8 @@ export default function AppearanceSettingsPage() {
     useEffect(() => {
         if (blocker.state !== "blocked") return;
         modal.confirm({
+            rootClassName: "admin-modal-root",
+            className: "admin-modal-panel",
             title: "放弃站点及外观调整？",
             content: "当前品牌、画布 Agent、更新公告、SEO、备案、皮肤或媒体配置尚未保存，离开后草稿会丢失。线上站点不会改变。",
             okText: "放弃并离开",
@@ -233,6 +236,8 @@ export default function AppearanceSettingsPage() {
             return;
         }
         modal.confirm({
+            rootClassName: "admin-modal-root",
+            className: "admin-modal-panel",
             title: "放弃调整并重新读取？",
             content: "重新读取会丢弃当前品牌、画布 Agent、更新公告、SEO、备案、皮肤和待上传文件。",
             okText: "放弃并刷新",
@@ -245,6 +250,8 @@ export default function AppearanceSettingsPage() {
     const restoreBuiltInAppearance = () => {
         if (!setting?.configured || saving || refreshing || restoring || canvasUploading) return;
         modal.confirm({
+            rootClassName: "admin-modal-root",
+            className: "admin-modal-panel",
             title: "恢复影策默认品牌标识？",
             content: "品牌名称、英文标识、Logo、画布 Agent 名称/文案/形象、更新公告、登录页文案、视频、封面、SEO、备案和皮肤主题会立即恢复为项目内置值；自定义公告会清空并关闭，展示原有更新日志。已上传文件仍保留在存储资源中，不会被删除。",
             okText: "恢复默认",
@@ -436,6 +443,8 @@ export default function AppearanceSettingsPage() {
         const target = skinThemes.find((theme) => theme.id === targetID);
         if (!target || target.locked) return;
         modal.confirm({
+            rootClassName: "admin-modal-root",
+            className: "admin-modal-panel",
             title: `删除主题“${target.name}”？`,
             content: "删除会随本页其他调整一起保存；保存前仍可点击“撤销调整”恢复。若它当前启用，将自动切回经典黑白。",
             okText: "删除主题",
@@ -738,8 +747,9 @@ export default function AppearanceSettingsPage() {
                                     >
                                         <div className="admin-appearance-section-form admin-appearance-footer-settings">
                                             <Form className="admin-appearance-form" layout="vertical" requiredMark={false} disabled={saving || refreshing || restoring}>
-                                                <Form.Item label="版权信息" extra="留空时自动使用当前年份和站点名称。">
+                                                <Form.Item label="版权信息" htmlFor={footerCopyrightId} extra="留空时自动使用当前年份和站点名称。">
                                                     <Input
+                                                        id={footerCopyrightId}
                                                         prefix={<Copyright className="size-3.5" aria-hidden="true" />}
                                                         value={footerCopyright}
                                                         maxLength={160}

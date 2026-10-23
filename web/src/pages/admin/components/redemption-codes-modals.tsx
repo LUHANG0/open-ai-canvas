@@ -1,6 +1,7 @@
 // 兑换码批次的创建抽屉、生成结果与批次明细弹窗。
 
-import { App, Button, Drawer, Form, Input, InputNumber, Modal, Popconfirm, Space } from "antd";
+import { App, Button, Form, Input, InputNumber, Popconfirm, Space } from "antd";
+import { AdminDrawer, AdminModal } from "@/pages/admin/ui/overlays";
 import { Ban, Copy, KeyRound, TicketCheck } from "lucide-react";
 import { formatCredits } from "@/constant/credits";
 import { type AdminRedeemCode, disableAdminRedeemCode, listAdminRedeemBatchCodes, type RedeemBatch } from "@/services/api/wallet";
@@ -50,7 +51,7 @@ export function CreateRedeemBatchDrawer({
 }) {
     return (
         <>
-            <Drawer
+            <AdminDrawer
                 title="生成兑换码批次"
                 open={open && !pending}
                 size="min(600px, 100vw)"
@@ -151,9 +152,9 @@ export function CreateRedeemBatchDrawer({
                         </dl>
                     </section>
                 </Form>
-            </Drawer>
+            </AdminDrawer>
 
-            <Modal
+            <AdminModal
                 title="确认生成兑换码批次"
                 open={Boolean(pending)}
                 okText="确认生成"
@@ -196,7 +197,7 @@ export function CreateRedeemBatchDrawer({
                         </dl>
                     </div>
                 ) : null}
-            </Modal>
+            </AdminModal>
         </>
     );
 }
@@ -225,7 +226,7 @@ export function GeneratedCodesModal({ codes, batchId, onClose }: { codes: string
         }
     };
     return (
-        <Modal
+        <AdminModal
             title={`已生成 ${codes.length} 个兑换码`}
             open={codes.length > 0}
             onCancel={onClose}
@@ -256,7 +257,7 @@ export function GeneratedCodesModal({ codes, batchId, onClose }: { codes: string
                 </p>
             ) : null}
             <Input.TextArea aria-label="新生成的兑换码预览" value={previewContent} readOnly autoSize={{ minRows: 10, maxRows: 18 }} className="font-mono text-xs" />
-        </Modal>
+        </AdminModal>
     );
 }
 
@@ -405,7 +406,7 @@ export function RedeemBatchCodesModal({ batch, onClose, onBatchChanged }: { batc
     ];
 
     return (
-        <Modal
+        <AdminModal
             title={batchSummary ? `兑换码明细 · ${batchSummary.note || formatTime(batchSummary.createdAt)}` : "兑换码明细"}
             open={Boolean(batch)}
             onCancel={() => {
@@ -474,6 +475,6 @@ export function RedeemBatchCodesModal({ batch, onClose, onBatchChanged }: { batc
                     }
                 />
             </div>
-        </Modal>
+        </AdminModal>
     );
 }

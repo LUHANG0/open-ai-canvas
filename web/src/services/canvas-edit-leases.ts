@@ -20,6 +20,8 @@ type Dependencies = {
     sessionId: () => string;
 };
 
+const MAX_CONCURRENT_LEASE_RELEASES = 4;
+
 // Presence is transient and separate from document persistence. Only a server
 // response grants ownership; local expiry merely permits another acquisition.
 export function createCanvasEditLeaseClient(deps: Dependencies) {
@@ -246,27 +248,36 @@ export function createCanvasEditLeaseClient(deps: Dependencies) {
         async yield(canvasId: string) {
             checkScope();
             const startedScope = scope;
-            for (const [nodeId, entry] of own.get(canvasId) || []) {
-                while (entry.pending) await entry.pending;
-                if (!valid(canvasId, nodeId, entry, startedScope) || !entry.proof.token || entry.expires <= deps.now()) continue;
-                const pending = deps.change(canvasId, entry.proof, "release")
-                    .then(() => {
-                        if (!valid(canvasId, nodeId, entry, startedScope)) return;
-                        entry.expires = 0;
-                        entry.proof = { ...entry.proof, token: "" };
-                        entry.error = undefined;
-                        if (remote.get(canvasId)?.get(nodeId)?.sessionId === sessionId) remote.get(canvasId)?.delete(nodeId);
-                    })
-                    .catch((error: unknown) => {
-                        if (valid(canvasId, nodeId, entry, startedScope)) entry.error = error instanceof Error ? error : new Error("编辑租约释放失败");
-                    })
-                    .finally(() => {
-                        if (entry.pending === pending) entry.pending = undefined;
-                        emit();
-                    });
-                entry.pending = pending;
-                await pending;
-            }
+            // Node leases are independent. Bound concurrent releases while still
+            // awaiting every response before save completion and the next turn.
+            const entries = [...(own.get(canvasId) || [])];
+            let next = 0;
+            const results = await Promise.allSettled(Array.from({ length: Math.min(MAX_CONCURRENT_LEASE_RELEASES, entries.length) }, async () => {
+                while (next < entries.length) {
+                    const [nodeId, entry] = entries[next++];
+                    while (entry.pending) await entry.pending;
+                    if (!valid(canvasId, nodeId, entry, startedScope) || !entry.proof.token || entry.expires <= deps.now()) continue;
+                    const pending = deps.change(canvasId, entry.proof, "release")
+                        .then(() => {
+                            if (!valid(canvasId, nodeId, entry, startedScope)) return;
+                            entry.expires = 0;
+                            entry.proof = { ...entry.proof, token: "" };
+                            entry.error = undefined;
+                            if (remote.get(canvasId)?.get(nodeId)?.sessionId === sessionId) remote.get(canvasId)?.delete(nodeId);
+                        })
+                        .catch((error: unknown) => {
+                            if (valid(canvasId, nodeId, entry, startedScope)) entry.error = error instanceof Error ? error : new Error("编辑租约释放失败");
+                        })
+                        .finally(() => {
+                            if (entry.pending === pending) entry.pending = undefined;
+                            emit();
+                        });
+                    entry.pending = pending;
+                    await pending;
+                }
+            }));
+            const failure = results.find((result) => result.status === "rejected");
+            if (failure?.status === "rejected") throw failure.reason;
         },
         pending(canvasId: string, nodeId: string) {
             const entry = own.get(canvasId)?.get(nodeId);

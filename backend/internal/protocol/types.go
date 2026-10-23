@@ -183,6 +183,8 @@ type Metadata struct {
 	Installable             bool             `json:"installable"`
 	Execution               string           `json:"-"`
 	RequiresPublicMediaURLs bool             `json:"-"`
+	StreamingFormat         string           `json:"-"`
+	Polling                 *ManifestPolling `json:"-"`
 	UnavailableReason       string           `json:"-"`
 	// Kind 区分生成类与处理类 provider；处理类以输入媒体为主体，不要求 prompt。
 	Kind ProviderKind `json:"kind,omitempty"`
@@ -352,6 +354,8 @@ type ManifestProvider struct {
 	Scopes                  []Surface              `json:"scopes"`
 	BaseURL                 string                 `json:"baseUrl,omitempty"`
 	RequiresPublicMediaURLs bool                   `json:"requiresPublicMediaUrls,omitempty"`
+	StreamingFormat         string                 `json:"streamingFormat,omitempty"`
+	Polling                 *ManifestPolling       `json:"polling,omitempty"`
 	Auth                    ManifestAuth           `json:"auth,omitempty"`
 	Parameters              []Parameter            `json:"parameters,omitempty"`
 	ImageParameters         []ImageParameter       `json:"imageParameters,omitempty"`
@@ -363,6 +367,12 @@ type ManifestProvider struct {
 	Result                  *ManifestOperation     `json:"result,omitempty"`
 	Response                ManifestResponse       `json:"response"`
 	AgentResponse           *ManifestAgentResponse `json:"agentResponse,omitempty"`
+}
+
+// ManifestPolling only controls queries of an accepted task; it never retries creation.
+type ManifestPolling struct {
+	IntervalSeconds     int `json:"intervalSeconds"`
+	TransientRetryLimit int `json:"transientRetryLimit,omitempty"`
 }
 
 type ManifestAuth struct {

@@ -1,7 +1,7 @@
 import { createClientUUID } from "@/lib/client-id";
 import { App, Button, Input, Skeleton } from "antd";
-import { Check, ChevronLeft, ChevronRight, CircleAlert, Coins, CreditCard, History, RefreshCw, TicketCheck, WalletCards } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Check, ChevronLeft, ChevronRight, CircleAlert, Coins, CreditCard, History, RefreshCw, TicketCheck } from "lucide-react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router";
 
 import { PaymentCheckoutCode } from "@/components/payment-checkout-code";
@@ -14,8 +14,7 @@ import { cn } from "@/lib/utils";
 import { openWorkspaceWallet, WORKSPACE_WALLET_OPEN_EVENT, type WorkspaceWalletOpenDetail } from "@/lib/workspace-wallet";
 import { useAppearanceStore } from "@/stores/use-appearance-store";
 import { useUserStore } from "@/stores/use-user-store";
-
-type WalletModalTab = "topup" | "redeem" | "history";
+import { WorkspaceWalletTabs, type WalletModalTab } from "./workspace-wallet-tabs";
 
 export function WorkspaceWalletHost() {
     const creditsEnabled = useUserStore((state) => state.features.creditsEnabled);
@@ -69,6 +68,7 @@ export function WorkspaceWalletModal({ open, onClose, pendingPaymentOrderId, pay
     const { message } = App.useApp();
     const redeemPurchaseUrl = useAppearanceStore((state) => state.appearance.redeemPurchaseUrl);
     const [tab, setTab] = useState<WalletModalTab>("topup");
+    const walletId = useId();
     const [wallet, setWallet] = useState<WalletSummary | null>(null);
     const [walletLoading, setWalletLoading] = useState(false);
     const [walletError, setWalletError] = useState("");
@@ -263,7 +263,7 @@ export function WorkspaceWalletModal({ open, onClose, pendingPaymentOrderId, pay
 
     return (
         <>
-            <AppModal flush open={open} title={null} footer={null} centered width="min(880px, calc(100vw - 28px))" onCancel={onClose} rootClassName="workspace-wallet-modal">
+            <AppModal flush destroyOnHidden={true} open={open} title={null} footer={null} centered width="min(880px, calc(100vw - 28px))" onCancel={onClose} rootClassName="workspace-wallet-modal" aria-labelledby={`${walletId}-title`}>
                 <div className="workspace-wallet-shell">
                     <header className="workspace-wallet-header">
                         <div>
@@ -271,7 +271,7 @@ export function WorkspaceWalletModal({ open, onClose, pendingPaymentOrderId, pay
                                 <Coins />
                                 积分中心
                             </span>
-                            <h2>充值、兑换与消费记录</h2>
+                            <h2 id={`${walletId}-title`}>充值、兑换与消费记录</h2>
                             <p>为下一次创作补充积分，随时查看每一笔收支。</p>
                         </div>
                         <div className="workspace-wallet-balance">
@@ -281,23 +281,10 @@ export function WorkspaceWalletModal({ open, onClose, pendingPaymentOrderId, pay
                         </div>
                     </header>
 
-                    <div className="workspace-wallet-tabs" role="tablist" aria-label="积分中心">
-                        <button type="button" role="tab" aria-selected={tab === "topup"} onClick={() => setTab("topup")}>
-                            <WalletCards />
-                            充值
-                        </button>
-                        <button type="button" role="tab" aria-selected={tab === "redeem"} onClick={() => setTab("redeem")}>
-                            <TicketCheck />
-                            兑换
-                        </button>
-                        <button type="button" role="tab" aria-selected={tab === "history"} onClick={() => setTab("history")}>
-                            <History />
-                            积分消耗历史
-                        </button>
-                    </div>
+                    <WorkspaceWalletTabs value={tab} onChange={setTab} idPrefix={walletId} />
 
-                    {tab === "topup" ? (
-                        <div className="workspace-wallet-content is-topup">
+                    <div className="workspace-wallet-content is-topup" role="tabpanel" id={`${walletId}-panel-topup`} aria-labelledby={`${walletId}-tab-topup`} tabIndex={0} hidden={tab !== "topup"} style={tab === "topup" ? undefined : { display: "none" }}>
+                        {tab === "topup" ? (
                             <section className="workspace-wallet-section">
                                 <div className="workspace-wallet-section-heading">
                                     <div>
@@ -375,9 +362,10 @@ export function WorkspaceWalletModal({ open, onClose, pendingPaymentOrderId, pay
                                     </div>
                                 )}
                             </section>
-                        </div>
-                    ) : tab === "redeem" ? (
-                        <div className="workspace-wallet-content is-redeem">
+                        ) : null}
+                    </div>
+                    <div className="workspace-wallet-content is-redeem" role="tabpanel" id={`${walletId}-panel-redeem`} aria-labelledby={`${walletId}-tab-redeem`} tabIndex={0} hidden={tab !== "redeem"} style={tab === "redeem" ? undefined : { display: "none" }}>
+                        {tab === "redeem" ? (
                             <section className="workspace-wallet-section is-redeem">
                                 <div className="workspace-wallet-section-heading">
                                     <div>
@@ -394,15 +382,17 @@ export function WorkspaceWalletModal({ open, onClose, pendingPaymentOrderId, pay
                                     <TicketCheck />
                                 </div>
                                 <div className="workspace-wallet-redeem-row">
-                                    <Input size="large" value={code} maxLength={32} placeholder="输入 32 位兑换码" onChange={(event) => setCode(event.target.value.replace(/\s/g, ""))} onPressEnter={() => void redeem()} />
+                                    <Input aria-label="32 位兑换码" size="large" value={code} maxLength={32} placeholder="输入 32 位兑换码" onChange={(event) => setCode(event.target.value.replace(/\s/g, ""))} onPressEnter={() => void redeem()} />
                                     <Button size="large" loading={redeeming} disabled={code.trim().length !== 32} onClick={() => void redeem()}>
                                         确认兑换
                                     </Button>
                                 </div>
                             </section>
-                        </div>
-                    ) : (
-                        <div className="workspace-wallet-content is-history">
+                        ) : null}
+                    </div>
+                    <div className="workspace-wallet-content is-history" role="tabpanel" id={`${walletId}-panel-history`} aria-labelledby={`${walletId}-tab-history`} tabIndex={0} hidden={tab !== "history"} style={tab === "history" ? undefined : { display: "none" }}>
+                        {tab === "history" ? (
+                            <>
                             <div className="workspace-wallet-history-toolbar">
                                 <div>
                                     <h3>积分消耗历史</h3>
@@ -467,12 +457,14 @@ export function WorkspaceWalletModal({ open, onClose, pendingPaymentOrderId, pay
                                     <ChevronRight />
                                 </button>
                             </div>
-                        </div>
-                    )}
+                            </>
+                        ) : null}
+                    </div>
                 </div>
             </AppModal>
 
             <AppModal
+                destroyOnHidden={true}
                 open={paymentOpen}
                 title={paymentOrder?.status === "credited" ? "充值完成" : paymentOrder?.checkout.mode === "qr_code" ? "扫码支付" : "确认支付结果"}
                 centered

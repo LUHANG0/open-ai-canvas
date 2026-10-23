@@ -6,6 +6,7 @@ import { useMemo, useState } from "react";
 import { SKIN_COLOR_GROUPS, SKIN_COMPONENT_NUMBER_FIELDS, SKIN_BUTTON_COLOR_FIELDS, getSkinButtonAppearance, skinSwatches, type SkinButtonFill, type SkinComponentTokens, type SkinDefinition, type SkinModeTokens, type SkinThemeMode } from "@/lib/skin-themes";
 import { cn } from "@/lib/utils";
 import { AdminStatusBadge } from "@/pages/admin/components/admin-ui";
+import { handleAdminRadioKeyDown } from "@/pages/admin/ui/radio-navigation";
 
 export function SkinThemeEditor({
     themes,
@@ -60,13 +61,13 @@ export function SkinThemeEditor({
                 </div>
             </div>
 
-            <div className="admin-skin-library" role="radiogroup" aria-label="选择全站皮肤主题">
+            <div className="admin-skin-library" role="radiogroup" aria-label="选择全站皮肤主题" onKeyDown={handleAdminRadioKeyDown}>
                 {themes.map((theme) => {
                     const active = theme.id === selected.id;
                     const swatches = skinSwatches(theme);
                     return (
                         <article key={theme.id} className={cn("admin-skin-card", active && "is-selected")}>
-                            <button type="button" className="admin-skin-card-select" role="radio" aria-checked={active} disabled={disabled} onClick={() => onSelect(theme.id)}>
+                            <button type="button" className="admin-skin-card-select" role="radio" aria-checked={active} tabIndex={!disabled && active ? 0 : -1} disabled={disabled} onClick={() => onSelect(theme.id)}>
                                 <span className="admin-skin-card-preview" aria-hidden="true" style={{ background: theme.tokens.dark.canvas, borderRadius: theme.tokens.components.cardRadius }}>
                                     <span style={{ background: theme.tokens.dark.surface, borderRadius: theme.tokens.components.inputRadius }}>
                                         {swatches.map((color, index) => (

@@ -56,7 +56,7 @@
     border-radius: 10px;
     background: transparent;
     color: inherit;
-    transition: background-color 160ms cubic-bezier(0.16, 1, 0.3, 1);
+    transition: background-color var(--admin-motion);
 }
 
 [data-admin-root] .admin-sidebar-brand-button:hover,
@@ -199,11 +199,9 @@
     height: 18px;
 }
 
-[data-admin-root] .admin-nav-link:focus-visible,
-[data-admin-root] .admin-icon-button:focus-visible,
-[data-admin-root] .admin-sidebar-collapse-toggle:focus-visible {
+:is([data-admin-root], .admin-drawer, .admin-secondary-drawer, .admin-modal-root) :is(button, a, [role="button"], [tabindex="0"]):focus-visible {
     outline: 2px solid var(--admin-focus);
-    outline-offset: 1px;
+    outline-offset: 2px;
 }
 
 [data-admin-root] .admin-sidebar-footer {
@@ -559,6 +557,7 @@
     background: transparent;
     color: var(--admin-text-secondary);
     font-size: 12px;
+    transition: background-color var(--admin-motion), color var(--admin-motion);
 }
 
 [data-admin-root] .admin-pagination-btn:hover:not(:disabled) {
@@ -567,14 +566,58 @@
 }
 
 [data-admin-root] .admin-pagination-btn.is-active {
-    background: var(--admin-accent);
-    color: var(--admin-accent-fg);
+    background: var(--admin-nav-active);
+    color: var(--admin-text);
     font-weight: 650;
 }
 
 [data-admin-root] .admin-pagination-btn:disabled {
     opacity: 0.38;
 }
+
+.admin-segmented {
+    display: inline-flex;
+    max-width: 100%;
+    height: var(--admin-control-h);
+    align-items: stretch;
+    gap: 2px;
+    overflow-x: auto;
+    padding: 2px;
+    border-radius: var(--admin-radius);
+    background: var(--admin-surface-2);
+    vertical-align: middle;
+}
+
+.admin-segmented.is-block,
+.admin-segmented.w-full {
+    display: flex;
+    width: 100%;
+}
+
+.admin-segmented > button {
+    display: inline-flex;
+    min-width: 0;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 0 10px;
+    border: 0;
+    border-radius: var(--admin-radius-sm);
+    background: transparent;
+    color: var(--admin-text-secondary);
+    font-size: 13px;
+    font-weight: 500;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background-color var(--admin-motion), color var(--admin-motion);
+}
+
+.admin-segmented:is(.is-block, .w-full) > button { flex: 1 1 0%; }
+.admin-segmented > button:hover:not(:disabled) { background: var(--admin-surface-3); color: var(--admin-text); }
+.admin-segmented > button[aria-checked="true"] { background: var(--admin-surface); color: var(--admin-text); }
+.admin-segmented > button:disabled { opacity: 0.45; cursor: not-allowed; }
+.admin-segmented > button:focus-visible { outline-offset: -2px; }
+.admin-segmented > button > span > svg { width: 16px; height: 16px; }
 
 [data-admin-root] .admin-batch-bar {
     margin: 0 0 8px;
@@ -994,7 +1037,7 @@
     gap: 4px;
 }
 
-[data-admin-root] .admin-unauthorized {
+[data-admin-root].admin-unauthorized {
     display: grid;
     min-height: 100%;
     place-items: center;
@@ -1089,8 +1132,8 @@
 @media (prefers-reduced-motion: reduce) {
     [data-admin-root] *,
     body.admin-overlays * {
-        transition-duration: 0.01ms !important;
-        animation-duration: 0.01ms !important;
+        transition-duration: 0s !important;
+        animation-duration: 0s !important;
         animation-iteration-count: 1 !important;
     }
     /* transition-property 默认为 all：上面的规则会让浮层根节点的 left/top 也过渡，

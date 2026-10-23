@@ -28,6 +28,16 @@ func DefaultImageCapabilityConfig(protocol string, modelName string) *ImageCapab
 		MaxOutputs:            15,
 	}
 	switch model.ChannelInterfaceType(protocol) {
+	case "yezonghui-image":
+		// 档位和比例依赖令牌分组，必须在模型上明确配置，不猜测上游能力。
+		image.References.MaskSupported = false
+		image.Size = ImageSizeConfig{Parameter: "aspect_ratio", Values: []string{}, AllowCustom: true}
+		image.Resolution = ImageResolutionConfig{Supported: true, Values: []string{}}
+		image.Quality = ImageQualityConfig{Supported: false, Default: "auto"}
+		image.TransparentBackground = VideoBooleanConfig{}
+		image.ResponseFormat = ParameterSupport{}
+		image.OutputFormat = ParameterSupport{}
+		image.MaxOutputs = 1
 	case model.ChannelInterfaceOpenAIImage:
 		// OpenAI Images 只收 WIDTHxHEIGHT：默认配置声明了 1K/2K/4K，就必须自带档位换算表，
 		// 否则运行时换算会被静默跳过（见 imageSizePresetMissing），实际出图档位与所选档位不一致。
@@ -169,6 +179,10 @@ func DefaultModelCapabilityConfigForModel(protocol string, modelName string) *Mo
 		DefaultOperation:  "text_to_video",
 	}
 	switch model.ChannelInterfaceType(protocol) {
+	case "yezonghui-video":
+		video.Resolutions, video.DefaultResolution = []string{}, ""
+		video.GenerateAudio = VideoBooleanConfig{Supported: true, Default: false}
+		video.Operations = append(video.Operations, "reference_to_video", "audio_to_video")
 	case model.ChannelInterfaceVolcengineJiMengVideo:
 		video.Duration = VideoDurationConfig{Selection: "enum", Values: []int{5, 10}, Default: 5}
 		video.Resolutions = []string{"720p"}

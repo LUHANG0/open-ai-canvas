@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { App, Button, Skeleton } from "antd";
 import { Switch } from "@/pages/admin/ui/controls";
+import { handleAdminRadioKeyDown } from "@/pages/admin/ui/radio-navigation";
 import { AlertTriangle, Clapperboard, Coins, ListChecks, MonitorCog, PlugZap, RadioTower, RefreshCw, ShieldCheck, Sparkles } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -182,6 +183,8 @@ export default function FeatureAvailabilityPanel() {
         if (!savedFeatures || saving || savedFeatures[key] === enabled) return;
         if (key === "creditsEnabled" && !enabled) {
             modal.confirm({
+                rootClassName: "admin-modal-root",
+                className: "admin-modal-panel",
                 title: "关闭用户积分功能？",
                 content: "保存后新创建的任务和系统渠道请求将不再扣减积分；已经冻结的计费订单仍按原规则结算，已有余额和流水继续保留。",
                 okText: "确认关闭",
@@ -193,6 +196,8 @@ export default function FeatureAvailabilityPanel() {
         }
         if (key === "frontendModelsEnabled" && !enabled) {
             modal.confirm({
+                rootClassName: "admin-modal-root",
+                className: "admin-modal-panel",
                 title: "关闭前台模型功能？",
                 content: "关闭后用户将直接使用系统渠道中配置的模型；管理后台仍保留前台模型配置入口，重新开启后即可继续使用。",
                 okText: "确认关闭",
@@ -358,11 +363,11 @@ function FeatureSourceRow({ row, saved, draft, saving, onChange }: { row: Featur
                 </span>
                 {changed ? <span className="admin-feature-board-row-dirty">待保存</span> : null}
             </div>
-            <div className="admin-feature-board-source-selector" role="radiogroup" aria-label="选择用户模型目录来源">
-                <button type="button" role="radio" aria-checked={!draft.frontendModelsEnabled} disabled={saving} className={cn(!draft.frontendModelsEnabled && "is-selected")} onClick={() => onChange("frontendModelsEnabled", false)}>
+            <div className="admin-feature-board-source-selector" role="radiogroup" aria-label="选择用户模型目录来源" onKeyDown={handleAdminRadioKeyDown}>
+                <button type="button" role="radio" aria-checked={!draft.frontendModelsEnabled} tabIndex={!saving && !draft.frontendModelsEnabled ? 0 : -1} disabled={saving} className={cn(!draft.frontendModelsEnabled && "is-selected")} onClick={() => onChange("frontendModelsEnabled", false)}>
                     系统渠道
                 </button>
-                <button type="button" role="radio" aria-checked={draft.frontendModelsEnabled} disabled={saving} className={cn(draft.frontendModelsEnabled && "is-selected")} onClick={() => onChange("frontendModelsEnabled", true)}>
+                <button type="button" role="radio" aria-checked={draft.frontendModelsEnabled} tabIndex={!saving && draft.frontendModelsEnabled ? 0 : -1} disabled={saving} className={cn(draft.frontendModelsEnabled && "is-selected")} onClick={() => onChange("frontendModelsEnabled", true)}>
                     前台目录
                 </button>
             </div>

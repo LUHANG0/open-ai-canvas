@@ -8,7 +8,7 @@ import { canvasThemes } from "@/lib/canvas-theme";
 import { type ClipboardEvent as ReactClipboardEvent, type KeyboardEvent as ReactKeyboardEvent, type ReactNode, type PointerEvent as ReactPointerEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CanvasResourceReference } from "@/lib/canvas/canvas-resource-references";
 import { buildSkillMentionReferences } from "@/services/skill-runtime";
-import { motion, useReducedMotion } from "motion/react";
+import { useReducedMotion } from "motion/react";
 import { WorkingGlow } from "@/components/ai/working-indicator";
 import { CanvasResourceMentionTextarea } from "./canvas-resource-mention-textarea";
 import { Tooltip } from "@/components/ui/base/tooltip";
@@ -349,7 +349,7 @@ export function AgentChatComposer({
                 {/* 整卡模式下发送光环包住整张卡，避免画在输入区与连接器之间形成一条线。 */}
                 {footer && sending && !reducedMotion ? <WorkingGlow active color={theme.accent.primary} radius={22} /> : null}
                 <div
-                    className="agent-composer-surface group/composer relative transition-[background-color,box-shadow] duration-200"
+                    className="agent-composer-surface group/composer relative transition-colors duration-[var(--control-motion-duration)] motion-reduce:transition-none"
                     style={{
                         color: theme.accent.primary,
                     }}
@@ -471,7 +471,8 @@ export function AgentChatComposer({
                                         <Button
                                             type="text"
                                             shape="circle"
-                                            className="!h-8 !w-8 !min-w-8 !transition-transform hover:!scale-105 active:!scale-95"
+                                            className="!h-8 !w-8 !min-w-8"
+                                            aria-label="上传图片"
                                             disabled={sending}
                                             style={{ color: theme.node.muted }}
                                             icon={<ImagePlus className="size-4" />}
@@ -485,49 +486,36 @@ export function AgentChatComposer({
                         <div className="agent-composer-submit flex items-center gap-2">
                             {submitAccessory}
                             {canStop ? (
-                                <motion.button
+                                <button
                                     type="button"
                                     disabled={stopping}
                                     aria-label="停止本轮"
                                     title="停止当前 Agent 运行"
                                     onClick={() => void onStop?.()}
-                                    whileHover={!reducedMotion && !stopping ? { scale: 1.06, y: -1 } : undefined}
-                                    whileTap={!reducedMotion && !stopping ? { scale: 0.9, y: 1 } : undefined}
-                                    animate={stopping && !reducedMotion ? { scale: [1, 0.94, 1] } : { scale: 1 }}
-                                    transition={{ type: "spring", stiffness: 420, damping: 24 }}
-                                    className="grid size-7 shrink-0 place-items-center rounded-full p-0 outline-none transition-[background-color,box-shadow,color,transform] duration-200 focus-visible:ring-2 focus-visible:ring-current/35 disabled:cursor-not-allowed"
+                                    data-slot="icon-button"
+                                    aria-busy={stopping}
+                                    className="grid size-7 shrink-0 place-items-center rounded-full p-0 disabled:cursor-not-allowed"
                                     style={{ background: theme.accent.danger, color: theme.accent.onPrimary }}
                                 >
-                                    {stopping ? <LoaderCircle className="size-4 animate-spin" /> : <Square className="size-3.5" fill="currentColor" />}
-                                </motion.button>
+                                    {stopping ? <LoaderCircle className="size-4 animate-spin motion-reduce:animate-none" /> : <Square className="size-3.5" fill="currentColor" />}
+                                </button>
                             ) : null}
-                            <motion.button
+                            <button
                                 type="button"
                                 disabled={!canSubmit}
                                 aria-label={sending ? "发送中" : canStop ? "插话" : "发送"}
                                 title={canStop ? "插话：Agent 下一次开口时看到它" : "点击发送；Enter 或 ⌘/Ctrl+Enter 发送"}
                                 onClick={() => onSubmit()}
-                                whileHover={canSubmit && !reducedMotion ? { scale: 1.06, y: -1 } : undefined}
-                                whileTap={canSubmit && !reducedMotion ? { scale: 0.9, y: 1 } : undefined}
-                                animate={stopping && !reducedMotion ? { scale: [1, 0.94, 1] } : { scale: 1, rotate: 0 }}
-                                transition={sending && !reducedMotion ? { duration: 0.42, ease: "easeOut" } : { type: "spring", stiffness: 420, damping: 24 }}
-                                data-icon-only
-                                className="agent-composer-send grid size-7 shrink-0 place-items-center rounded-full p-0 outline-none transition-[background-color,box-shadow,color,transform] duration-200 focus-visible:ring-2 focus-visible:ring-current/35 disabled:cursor-not-allowed"
-                                style={{
-                                    background: canSubmit || sending ? theme.accent.primary : theme.spatial.surface,
-                                    color: canSubmit || sending ? theme.accent.onPrimary : theme.node.muted,
-                                }}
+                                data-slot="icon-button"
+                                data-variant={canSubmit || sending ? "solid" : undefined}
+                                aria-busy={sending}
+                                className="agent-composer-send grid size-7 shrink-0 place-items-center rounded-full p-0 disabled:cursor-not-allowed"
+                                style={canSubmit || sending ? undefined : { background: theme.spatial.surface, color: theme.node.muted }}
                             >
-                                <motion.span
-                                    key={stopping ? "stopping" : sending ? "sending" : "ready"}
-                                    initial={reducedMotion ? false : { opacity: 0, scale: 0.65, rotate: sending ? -25 : 25 }}
-                                    animate={{ opacity: 1, scale: 1, rotate: 0 }}
-                                    transition={{ duration: reducedMotion ? 0 : 0.18, ease: "easeOut" }}
-                                    className="grid place-items-center"
-                                >
-                                    {sending ? <LoaderCircle className="size-3.5 animate-spin" /> : <ArrowUp className="size-3.5" />}
-                                </motion.span>
-                            </motion.button>
+                                <span className="grid place-items-center">
+                                    {sending ? <LoaderCircle className="size-3.5 animate-spin motion-reduce:animate-none" /> : <ArrowUp className="size-3.5" />}
+                                </span>
+                            </button>
                         </div>
                     </div>
                 </div>

@@ -22,7 +22,7 @@ function SplitEditor({ dataUrl, onClose, onConfirm }: SplitDialogProps) {
         setGrid((previous) => ({ ...previous, [axis]: Math.min(MAX_IMAGE_GRID, Math.max(1, Math.round(value))) }));
     };
     return (
-        <AppModal open title="宫格切分" width={780} centered onCancel={onClose} okText={`生成 ${grid.rows * grid.columns} 个子节点`} onOk={() => valid && onConfirm(grid)} okButtonProps={{ disabled: !valid }}>
+        <AppModal rootClassName="workspace-utility-overlay" open title="宫格切分" width={780} centered onCancel={onClose} okText={`生成 ${grid.rows * grid.columns} 个子节点`} onOk={() => valid && onConfirm(grid)} okButtonProps={{ disabled: !valid }}>
             <p className="mb-4 text-sm text-muted-foreground">按行、列拆分原图，子节点保持网格顺序。</p>
             <div className="grid gap-4 md:grid-cols-[1fr_220px]">
                 <figure className="m-0 flex min-w-0 flex-col items-center gap-3 rounded-lg border border-border bg-surface-active p-3">

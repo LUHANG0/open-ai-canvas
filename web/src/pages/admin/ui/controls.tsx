@@ -1,8 +1,9 @@
-import { Button, Checkbox as AntCheckbox, Segmented, Switch as AntSwitch, Tooltip as AntTooltip } from "antd";
+import { Button, Checkbox as AntCheckbox, ConfigProvider, Switch as AntSwitch, Tooltip as AntTooltip } from "antd";
 import type { CheckboxChangeEvent } from "antd/es/checkbox";
 import type { ButtonProps } from "antd";
 import type { LucideIcon } from "lucide-react";
-import type { CSSProperties, InputHTMLAttributes, ReactNode } from "react";
+import type { CSSProperties, HTMLAttributes, InputHTMLAttributes, ReactNode } from "react";
+import { useRef, useState } from "react";
 
 import { Select as UnifiedSelect } from "@/components/ui/base/select";
 
@@ -110,7 +111,7 @@ export function AdminIconButton({
     "aria-label"?: string;
     onClick?: ButtonProps["onClick"];
 }) {
-    return <Button type="text" size="small" className={cn("admin-icon-button", className)} icon={<Icon className={size === "sm" ? "size-3.5" : "size-4"} />} {...props} />;
+    return <Button type="text" size="small" className={cn("admin-icon-button", className)} icon={<Icon aria-hidden="true" className={size === "sm" ? "size-3.5" : "size-4"} />} {...props} />;
 }
 
 export function IconButton(props: Parameters<typeof AdminIconButton>[0]) {
@@ -123,14 +124,64 @@ export function AdminSegmented<V extends string = string>({
     options,
     ariaLabel,
     className,
-}: {
+    block = false,
+    disabled,
+    id,
+    ...props
+}: Omit<HTMLAttributes<HTMLDivElement>, "onChange" | "children" | "defaultValue" | "role"> & {
     value?: V;
     onChange?: (value: V) => void;
     options: Array<{ value: V; label?: ReactNode; icon?: ReactNode; disabled?: boolean }>;
     ariaLabel?: string;
     className?: string;
+    block?: boolean;
+    disabled?: boolean;
+    id?: string;
 }) {
-    return <Segmented className={cn("admin-segmented", className)} value={value} options={options.map((option) => ({ ...option, label: option.label ?? option.value }))} onChange={(next) => onChange?.(String(next) as V)} aria-label={ariaLabel} />;
+    const { componentDisabled } = ConfigProvider.useConfig();
+    const unavailable = disabled ?? componentDisabled ?? false;
+    const [innerValue, setInnerValue] = useState(options[0]?.value);
+    const selectedValue = value !== undefined ? value : options.some((option) => option.value === innerValue) ? innerValue : options[0]?.value;
+    const refs = useRef<Array<HTMLButtonElement | null>>([]);
+    const selectedIndex = options.findIndex((option) => option.value === selectedValue);
+    const entryIndex = selectedIndex >= 0 && !options[selectedIndex].disabled ? selectedIndex : options.findIndex((option) => !option.disabled);
+    const select = (index: number) => {
+        const option = options[index];
+        if (unavailable || !option || option.disabled || option.value === selectedValue) return;
+        if (value === undefined) setInnerValue(option.value);
+        onChange?.(option.value);
+    };
+    return (
+        <div {...props} id={id} role="radiogroup" aria-label={ariaLabel ?? props["aria-label"]} aria-disabled={unavailable || undefined} className={cn("admin-segmented", block && "is-block", className)}>
+            {options.map((option, index) => (
+                <button
+                    key={option.value}
+                    ref={(element) => { refs.current[index] = element; }}
+                    type="button"
+                    role="radio"
+                    aria-checked={selectedValue === option.value}
+                    aria-label={option.label ? undefined : option.value}
+                    disabled={unavailable || option.disabled}
+                    tabIndex={!unavailable && index === entryIndex ? 0 : -1}
+                    onClick={() => select(index)}
+                    onKeyDown={(event) => {
+                        if (!["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End"].includes(event.key)) return;
+                        event.preventDefault();
+                        const available = options.flatMap((item, itemIndex) => item.disabled ? [] : [itemIndex]);
+                        const position = available.indexOf(index);
+                        const direction = event.key === "ArrowLeft" || event.key === "ArrowUp" ? -1 : 1;
+                        const nextIndex = event.key === "Home" ? available[0] : event.key === "End" ? available.at(-1) : available[(position + direction + available.length) % available.length];
+                        if (nextIndex === undefined || unavailable) return;
+                        refs.current[nextIndex]?.focus();
+                        select(nextIndex);
+                    }}
+                >
+                    {option.icon ? <span aria-hidden="true">{option.icon}</span> : null}
+                    {option.label ?? option.value}
+                </button>
+            ))}
+        </div>
+    );
 }
 
 export function SegmentedControl<V extends string = string>(props: Parameters<typeof AdminSegmented<V>>[0]) {

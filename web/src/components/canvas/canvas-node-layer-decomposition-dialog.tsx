@@ -91,7 +91,7 @@ export function CanvasNodeLayerDecompositionDialog({
     };
 
     return (
-        <AppModal flush open={open && Boolean(dataUrl)} onCancel={onClose} footer={null} centered width={1120} title="AI 图层拆分">
+        <AppModal rootClassName="workspace-utility-overlay" flush open={open && Boolean(dataUrl)} onCancel={onClose} footer={null} centered width={1120} title="AI 图层拆分">
             <div className="grid max-h-[82vh] gap-6 overflow-y-auto p-5 md:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]" data-canvas-no-zoom>
                 <div className="grid min-h-[260px] place-items-center overflow-hidden rounded-xl bg-black/5 p-3 dark:bg-white/[0.04] md:min-h-[480px]">
                     <div

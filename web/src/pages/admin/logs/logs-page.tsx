@@ -1,5 +1,6 @@
-import { Alert, App, Button, Input, Modal, Segmented } from "antd";
-import { IconButton } from "@/pages/admin/ui/controls";
+import { Alert, App, Button, Input } from "antd";
+import { IconButton, AdminSegmented } from "@/pages/admin/ui/controls";
+import { AdminModal } from "@/pages/admin/ui/overlays";
 import type { ColumnsType } from "antd/es/table";
 import { Download, Eye, Play, Search, RefreshCw } from "lucide-react";
 import { saveAs } from "file-saver";
@@ -39,6 +40,7 @@ export default function LogsPage() {
     const [selectedIds, setSelectedIds] = useState<string[]>([]);
     const [detailLogId, setDetailLogId] = useState<string | null>(null);
     const [batchRecovering, setBatchRecovering] = useState(false);
+    const [batchRecoveryResult, setBatchRecoveryResult] = useState<(Awaited<ReturnType<typeof batchRecoverAdminApiLogs>> & { totalSkipped: number }) | null>(null);
     const [mediaPreview, setMediaPreview] = useState<{ url: string; kind: "image" | "video"; title: string } | null>(null);
     const requestSequence = useRef(0);
     const hasFilters = Boolean(keyword || status !== "all" || recordType !== "request" || capability !== "all");
@@ -175,7 +177,7 @@ export default function LogsPage() {
         try {
             const result = await batchRecoverAdminApiLogs(videoIds);
             const totalSkipped = skipped + result.skipped;
-            Modal.info({ title: "批量恢复处理结果", width: 560, content: <div className="max-h-[50vh] space-y-2 overflow-auto"><div className="mb-3">成功 {result.success} 条，失败 {result.failed} 条，跳过 {totalSkipped} 条</div>{result.items.map((item) => <div key={item.logId} className="rounded border border-border/70 px-3 py-2 text-xs"><div className="font-mono">{item.logId}</div><div>{item.recovered ? "成功" : item.error?.startsWith("跳过") ? item.error : item.providerStatus ? `仍在生成中（${item.providerStatus}）` : `失败：${item.error || "未恢复"}`}</div></div>)}</div> });
+            setBatchRecoveryResult({ ...result, totalSkipped });
             if (result.success > 0) window.dispatchEvent(new CustomEvent("wallet:updated"));
             setRetry((value) => value + 1);
         } catch (error) { message.error(error instanceof Error ? error.message : "批量恢复失败"); }
@@ -202,7 +204,7 @@ export default function LogsPage() {
             {loadError ? <Alert type="error" showIcon title="请求明细读取失败" description={loadError} action={<Button size="small" onClick={() => setRetry((value) => value + 1)}>重试</Button>} /> : null}
             <AdminDataTable
                 className={view === "all" ? "admin-logs-full" : "admin-logs-compact"}
-                trailing={<Segmented aria-label="请求明细视图" value={view} onChange={(value) => updateUrl({ view: value })} options={[{ label: "排障", value: "troubleshoot" }, { label: "计费", value: "billing" }, { label: "全部字段", value: "all" }]} />}
+                trailing={<AdminSegmented ariaLabel="请求明细视图" value={view} onChange={(value) => updateUrl({ view: value })} options={[{ label: "排障", value: "troubleshoot" }, { label: "计费", value: "billing" }, { label: "全部字段", value: "all" }]} />}
                 toolbar={
                     <AdminSearchInput
                         allowClear
@@ -277,7 +279,7 @@ export default function LogsPage() {
                 footer={<PaginationBar alwaysShow current={page} pageSize={pageSize} total={total} onChange={(nextPage, nextSize) => updateUrl({ page: nextSize !== pageSize ? 1 : nextPage, pageSize: nextSize })} />}
             />
             <ApiLogDetailDrawer logId={detailLogId} onClose={() => setDetailLogId(null)} onLogUpdated={(next) => setLogs((items) => items.map((item) => (item.id === next.id ? next : item)))} />
-            <Modal
+            <AdminModal
                 title={mediaPreview?.title || "媒体预览"}
                 open={Boolean(mediaPreview)}
                 width={880}
@@ -301,7 +303,24 @@ export default function LogsPage() {
                         fallbackClassName="min-h-[360px] rounded-lg bg-black/90 text-white/55"
                     />
                 ) : null}
-            </Modal>
+            </AdminModal>
+            <AdminModal
+                title="批量恢复处理结果"
+                width={560}
+                open={Boolean(batchRecoveryResult)}
+                destroyOnHidden={true}
+                closable={false}
+                mask={{ closable: false }}
+                onCancel={() => setBatchRecoveryResult(null)}
+                footer={<Button type="primary" onClick={() => setBatchRecoveryResult(null)}>确定</Button>}
+            >
+                {batchRecoveryResult ? (
+                    <div className="max-h-[50vh] space-y-2 overflow-auto">
+                        <div className="mb-3">成功 {batchRecoveryResult.success} 条，失败 {batchRecoveryResult.failed} 条，跳过 {batchRecoveryResult.totalSkipped} 条</div>
+                        {batchRecoveryResult.items.map((item) => <div key={item.logId} className="rounded border border-border/70 px-3 py-2 text-xs"><div className="font-mono">{item.logId}</div><div>{item.recovered ? "成功" : item.error?.startsWith("跳过") ? item.error : item.providerStatus ? `仍在生成中（${item.providerStatus}）` : `失败：${item.error || "未恢复"}`}</div></div>)}
+                    </div>
+                ) : null}
+            </AdminModal>
         </AdminPageFrame>
     );
 }

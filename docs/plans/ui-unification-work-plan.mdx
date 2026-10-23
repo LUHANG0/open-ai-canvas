@@ -1,0 +1,389 @@
+---
+title: 全站 UI 统一工作计划
+description: 共享基础、页面归属、生产路由覆盖及真实验收边界
+---
+
+# 全站 UI 统一工作计划
+
+## 有效安排与实施边界
+
+用户已指定本实施会话“影策 UI 第一轮：保留布局，统一视觉与交互”继续修改代码。协调讨论会话“检查影策本地开发环境”负责分析、审阅和调度。用户最新要求覆盖全部生产界面，最多五个会话，由协调者跟进进度；此安排取代此前说明阅读单项交付后的停止状态。AGENTS.md 的讨论边界仍适用于讨论会话，不阻止本已指定的实施会话完成分配范围。
+
+M0 共享基线已交付并经协调者审阅：实际组件 / 主题 / 样式差异、接入 README、checks.json 及浅色 / 深色窄屏截图相符，类型与 30 项专项有通过记录，独立只读组件审阅未发现阻断。这表示共享基础可供接入，不表示全站完成。
+
+当前进入最终集成收尾。A1—A7、B、C、D 已分配视觉与交互源码均有收敛和审阅记录，原已符合实现保持；B 最终有限覆盖、C 风格返修及空态回焦追加、D3 及标签补齐的有限实测已接受。A7 窄短屏三 section 共同滚动和顶部账户→钱包三条稳定回焦路径已接受，C 空态新建四条修复后路径已接受。此前待窗口 / 待最终审阅已由独立补证接续，原失败不删除。
+
+| 类别 | 当前含义 |
+| --- | --- |
+| 源码已收敛 | 已改真实调用或原已符合并保持，有独立基线、差异、合同或审阅依据；这个状态本身不证明构建或业务通过，本轮构建结果另列 |
+| 有限真实已接受 | 仅覆盖报告中的实际路径、数据、主题、尺寸、键盘 / 指针及稳定退场样本 |
+| 待验收 | 分别记录缺数据 / 权限 / 功能服务条件、持久化或业务副作用、以及本窗口未测；可达但未测不能统称缺数据 |
+| 合理排除 | 非生产入口、无生产调用旧实现、重定向重复入口，以及本轮视觉之外的后端 / 协议 / 算法 |
+
+生产构建已完成失败→修正→复建的独立证据链：首次执行 `docker exec -w /workspace/web open-ai-canvas-dev-web-1 bun run build`（`tsc --noEmit && vite build`）退出 1，在 `canvas-style-picker-modal.tsx:718:595` 报 TS2740，Vite 未执行。C 仅对空态按钮 handler 增加 `instanceof HTMLButtonElement` 类型收窄（+1/-1），协调者及独立审阅接受，同一 15 项 / 368 断言专项通过；未改原 15 块或旧浏览器证据。随后经明确接续，第二次同命令实际退出 0，类型检查及 Vite 生产构建通过（总命令耗时 5.676s；Vite 4.29s）。两次记录各自独立保留于 `.local/ui-review/final-integration/` 和 `attempt-2/`，不能称只运行一次成功。第二次构建前后 1985 项非忽略前端输入 hash 完全一致；两轮输入之间仅 C 已接受的这一行源码变化。
+
+第二次构建保留两类非阻断警告：`canvas-generation-consumer.ts` 同时静态 / 动态导入，动态导入不能独立分包；部分 minified chunks 大于 500 kB。本轮不扩做打包优化。C 修正源码 hash 为 `b96555e24eaa8d8858cca6800b0ba9fca7da8313ed116717db0339d80bf4bb83`；旧四路径浏览器证据对应 `aaadc79…`，仅按原版本有限接受，不重标为新 hash 已现场复验。新版本依据是已审阅的同一原生按钮路径类型守卫、同专项和实际生产构建，未再使用浏览器。
+
+用户已授权自动推进，协调者负责有限子批调度、五分钟进度跟进和最终审阅交付，不设置新的逐批用户批准闸。不得提交、推送、部署或修改 AGENTS.md。
+
+保留现有布局、200px / 64px 侧栏、页面宽度、网格、区块顺序、入口及业务流程。保留前六批和技能 / 插件说明阅读改动。DocumentMarkdown、document-reading.css、skill-document 本阶段不改。不得用独立 HTML 或伪造应用状态代替真实实现验收。
+
+## 四组归属
+
+| 组 | 独占范围 | 当前阶段 |
+| --- | --- | --- |
+| A 共享基础（本会话） | 共享 UI / 主题 token / 全局样式 / 外壳与总文档 | A1—A7 源与追加、所列有限真实已接受；两份总文档及构建归档已交付。首次失败保留，C 单行修正后第二次生产构建 exit0，等待协调者最终审阅 |
+| B 列表与资源 | 四列表 / 技能 / 插件与共享素材 | 最终有限覆盖、80 JPEG 元数据 / 29 源冻结接受；B3 浅深空选择器接受。非空 / Eagle / 写状态受限，idle |
+| C 创作与编辑 | 创作 / 工具台 / 画布分享 / Agent / 项目剪辑 | C1—C3 源与限定实测、风格返修 / 空态回焦及最后单行类型修正已接受，修正后专项 15/368 与生产构建通过；七视图八插槽缺正文，idle |
+| D 设置与账户后台 | 设置钱包 / 认证通知 / Admin* | D1—D3、404 两增量、两标签源与有限真实已接受；A5 / A6 钱包、六深层页签和两抽屉稳定回焦接受；数据 / 副作用 / 未测保留，idle |
+
+协调者负责联系 B / C / D；本会话不另建会话或增加写入者。后台保留 Admin* 和 --admin-* 隔离。合理密度差异可以保留，不全局放大时间线或改变画布几何。
+
+跨域文件的独占归属已明确，不再作为未分配项反复等待：
+
+| 实现文件 / 能力 | 唯一 owner 与调用边界 |
+| --- | --- |
+| pages/plugins/plugin-documentation-modals.tsx 内 UploadPluginModal | B；虽然 /admin/plugins 调用，D 只修改调用，不改该组件内部 |
+| components/assets/** | B；C 的首页、画布、项目资产 / 角色 / 设置等保留调用 API，由 B 处理组件内部 |
+| components/canvas/canvas-folder-card.tsx、canvas-project-card.tsx、canvas-history-drawer.tsx、canvas-delete-projects-dialog.tsx | B；C 的项目画布列表也调用 CanvasProjectCard，不因位于画布目录而改归 C |
+| components/channel-headers-editor.tsx、workflow-graph-editor.tsx、workflow-field-mapping-editor.tsx、workflow-test-workbench.tsx | D；个人渠道 / RunningHub / 后台共同调用，保留原协议和业务处理 |
+| components/payment-checkout-code.css 及其已分配的二维码展示组件 | D；保留深色码与白底的可扫描对比 |
+| components/model-editor-modal.tsx、model-picker 共享实现 | A；个人渠道、模型及后台只在各自 owner 文件内调整调用 |
+| lib/canvas-theme.ts、lib/canvas/canvas-aceternity-style.ts 的语义映射 | 先归 A；C 提出具体调用需求，由协调者转交，不自行改映射源 |
+| 所有全局 CSS（包括后台专用的 styles/admin-ui.css）、总计划与 pending-test | A 单一写入；各组只改已分配的局部 CSS，并交精确汇总条目 |
+
+B / C / D 分别在 Git 忽略的 `.local/ui-review/full-b1/`、`full-c1/`、`full-d1/` 等目录保留各批原样、hash 和差异；最终交接为 `group-b-final/report.md`、`group-c-final.md`、`group-d-final.md` 及独立追加报告。不得把相对 HEAD 的全部既有未提交差异算作本批，也不得用线程 active / idle 替代验收。原报告中的当时待办按最新独立证据链解释，原失败不回写。
+
+## 最终有限覆盖与验收状态
+
+| 子批 | 本轮接入状态与范围 | 本轮真实验收 | 缺少条件及不得扩大结论的边界 |
+| --- | --- | --- | --- |
+| B1 | 已审阅通过：技能 Tabs / 插件过滤和相关浮层接共享合同，详情指针 / 键盘关闭回焦已修复；协调者核对本批 diff / hash / checks / 真实截图 | 73 个公开技能、115 个插件，浅深 1280×720 / 深色 390×600、导航键盘 / 局部滚动、详情 / 安装取消 / 编辑空壳 / 设置取消 / 后台上传说明已验收；窗口已释放。skills-final.png 加载误截图排除，使用 skills-final-loaded.png | 非空私有 / 创建 / 收藏列表、实际安装 / 上传 / 启停 / 保存及失败锁定未验收；分类范围卡 A2 新颜色已由 B2 真测 / 审阅。B1 通过不代表 B2 / B3 完成 |
+| C1 | portal颜色位置与入口回焦源已审阅 | 新建入口真实指针取消 /Enter-Escape稳定回焦的有限证据现已接受 | 初始退场图排除、settled才作闭合证据；非空对话 /附件 /工具台正文 /200%仍受限 |
+| D1 | 代码 / 同值导航 / 专项已审阅；浏览器 16 图与 evidence 的 hash 已核对，窗口已释放 | 设置与认证可达 / 禁用状态按报告通过；原账户 Esc / InputNumber 时长缺口由 A3 修复，新有限运行已审阅接受，原限制保留 | 账户截图仅操作区，不能证明完整窄卡可容纳；渠道 / 模型 / RunningHub / 活跃认证流程缺条件；无即时保存写入验收 |
+| A1 | 代码 / 检查已审阅，九文件 hash / 独立组件 / 14 项及最终认证五项 / 类型 / CSS 合同有记录 | A 未做浏览器；C1 报告覆盖其列明范围，D1 可达范围已交付，限制按报告保留 | 非空模式、认证 / SVG / 模型 portal 分别验收，不从共享代码推出全通过 |
+| A2 | 旧技能规则 / 范围卡 / 来源卡唯一源静态审阅通过 | B2 已真测范围卡 / 来源卡选中、hover、150ms / reduced 0 与安全回焦，协调者已审阅 | 三列 / 58px / 图文 / 边框 / 回调保留；分类保存与项目创建写状态未验收 |
+| B2 | 四列表 / 浮层代码及合同已审阅；16 浮层 / 28 函数 / 12 产品 hash 记录保留 | 可达空态、安全浮层、项目嵌套回焦及 A2 真测已审阅，窗口已释放 | 四列表非空 / 写状态受限；A4共享映射与项目创建有限实色真测已接受，其他危险/非空状态不外推 |
+| B3 | 产品 /selection适配与最终B覆盖已审阅；独立8pass25及C旧菜单断言6pass26保留 | 有限浅色空选择器 /禁用 /筛选 /焦点 /回焦 /150-reduced0已接受；C新深色稳定补证的有限范围已接受 | 原8pass5fail联测日志保留，不声称重联跑全绿；Eagle副作用未进入，非空 /音频受限，旧遮罩深色图继续无效 |
+| C2 / C3 | 原源范围、风格三修及空态回焦追加已接受 | 系统风格 24 条 / 详情 / Agent 空态、策略名称、Tabs 键盘与 panel 关联、A7 合并布局及空态新建四条修复后稳定路径有限真实已接受 | 无 canvas / token / 媒体 / 预演 / Agent 运行；C3 七视图八插槽未运行；全部焦点守卫 / 保存应用不外推。首次类型错误经单行收窄及同专项关闭，第二次构建通过 |
+| D2 / D3 | D2 / D3、404 两增量及两个标签源补齐已接受；33 pass / 334 与 type0 属当轮记录 | A5 middle32/r6 / 原生主题 / 三实际卡片、A6 钱包、29 后台入口有限可达、六外观深层页签两条件 12 正文、两抽屉稳定回焦及两个 label.click 接受 | models 仅关闭态；Select small/large / 共享 multiple 无真实样本；商品/provider0，无 CTA / 订单二维码；深层、全部命名、写状态不外推 |
+
+本轮归属检查未发现新的无 owner 生产实现项；已接受补证不再重复列待窗口。首次 TS2740 已由 C 单行修正并经专项与第二次生产构建通过，当前没有已知可执行的源码 / 构建阻断。剩余仍含缺数据 / 权限 / 功能、业务副作用及本窗口未测的可达显示 / 交互，不能全部统称外部条件，也不以构建成功外推业务通过。
+
+## A1—A7 实施历史与最终接续
+
+以下保留各批实现和检查的当时边界；本批未浏览器 / 未 build 等仅指当轮执行。最新实测以首节、覆盖表与独立追加为准；原失败、快照和日志不覆盖。
+
+## A7：窄短风格编辑器与账户→钱包持久焦点
+
+本批仅globals、workspace-account-menu、真实账户专项和两份总文档，独立原样before /hash /精确diff /合同与日志在 `.local/ui-review/full-a7/`。钱包CSS /ModelPicker /Dock与所有A4/A5/A6既有声明保持，不改C/D页面、钱包Host或事件协议、sidebar。
+
+- 唯一新增样式限定max-width639且max-height700：原workspace仍grid /flex-1 /min-height0，两个内容行用max-content、align-content:start、overflow-y:auto /overscroll contain；直属preview /main取消内滚动及preview220cap，随同一workspace一起滚动。header/footer不shrink，原header→nav→preview/main→footer顺序、字段列数、16:9、1120居中 /共享style-center-height、所有正常断点与390×844 /1920×873行为声明不改。没有旧before运行对照，不声称32px问题由C2新引入。
+- 顶部账户onWallet保原setMenuOpen(false)，同步focus有效persistent trigger({preventScroll:true})后只调用一次原openWorkspaceWallet()。原connected /disabled /inert /hidden /aria-hidden /可见rect /visibility条件复用于helper；无效只跳focus，不阻止打开。A3 Escape /IME /defaultPrevented /日志 /CmdK门控与时序不改，无新增timer /microtask /afterClose /capture。sidebar无稳定证据，不改也不宣称修复。
+- 账户与命令面板18pass155断言，含新增pointer /Enter-Space激活前同步焦点 /一次打开，以及7类不可用trigger仍打开；原8项账户回归全文保留。HappyDOM不执行键盘默认激活，测试明确在按键后发原生button激活click；钱包目标是无业务fixture，仅证明打开前交接，不能冒充真实Modal关闭回焦。
+- CSS 解析 / 精确全树对照 / 639—640 与 700—701 边界 / 冻结合同通过，目标 media 外既有声明不变。A7 实施批未浏览器或整包 build；随后 C 已有限真实接受 390×600 三 section 首末控制 / 预览 / footer、真实 Tab / 共同滚动、断点与 390×844 / 1920×873 保持。长 textarea 需滚动看末端，部分 Tab 中间态仅部分可见，不称整字段同时显示。顶部账户经指针→Escape、Enter→关闭、Space→Escape，退场后严格回同一原持久 trigger；不外推 sidebar 或支付业务。
+
+A7 源及上述有限真实已接受，见 `full-a7/browser-verification-by-c/`。该原报告中 C 空态指针取消落 BODY 的失败保留，后由 `full-c2/empty-create-return-focus-followup/` 独立修复与四路径复验接续。A5 / A6 钱包与 D3 有限实测已接受，无样本限制保留。A7 原报告“五文件 scoped git diff --check”有误：实际命令只有 globals、账户组件和两总文档四路径；测试文件有独立基线及 18 pass / 155，未列入该命令。勘误与原报告 hash 见 `final-integration/a7-diff-scope-erratum.md`，原证据不改。
+
+## A6：钱包 / ModelPicker / FloatingDock有限共享收尾
+
+Dock呈现追加已完成，独立证据在 `full-a6/switch-color-followup/`，原A6检查与报告保留。原checked条件挂载的背景无法从父按钮继承transition；现每项保留同一aria-hidden /pointer-events-none静态span，默认透明、aria-checked=true的直接子节点使用原thumb底色，背景承载节点自身走共享150/reduced0。文字 /图标原.62/.9/1对比保持，并显式按control-motion-duration过渡opacity，不再瞬变。未恢复layoutId /位移 /缩放。
+
+新增DOM身份断言证明切值前后每项span不重建；原ref /currentTarget /disabled /radio焦点 /同值 /受控 /tooltip断言全部保留，真实组件5pass67，既有Dock SSR两文件12pass54。只将旧单thumb数量断言适配为每项持久背景，未重跑ModelPicker /全画布 /type /build。精确CSS合同核对实际span默认 /选中 /hover组合及其transition，其他全树规则不变；钱包当批接受 hash 未变，随后 D 有限真实已接受。
+
+独立before /hash /精确diff与检查位于 `.local/ui-review/full-a6/`，只改globals、独立model-picker.css、FloatingDock及最小组件专项和总文档。A4/A5已接受源范围保留，D钱包Tabs /内容、C风格编辑器与canvas-theme/aceternity映射不改，无浏览器。
+
+- 钱包源先完成并稳定：40px Tabs /三列与全部显式几何、商品媒体 /二维码 /状态配色保持，中性选中 /独立焦点 /150-reduced0，普通10/11px阅读字调12，图标尺寸保留，portal根四token接现有实色主命令。审阅发现hover:not(:disabled)权重高于selected后，明确追加改为hover:where(:not(:disabled))，同权重且selected后置保底色；禁用不hover。初次稳定证据保留，wallet-hover-followup保存单行精确增量 /级联断言 /更新冻结hash，wallet-only.diff已更新。随后 A6 不再改钱包；D 桌面 / 窄屏、Tabs 键盘 / 互斥 panel / 中性反馈 / reduced 有限实测已接受，商品/provider0 限制保留。
+- ModelPicker实际加载CSS的trigger /brand /option十处过渡接共享150/0（含首页!important），普通模型选中6%accent改中性，brand /option /optimizer用focus token。无hover预选、两级目录 /滚动 /价格和可用性颜色 /报价 /回调存储保持。顶栏积分pill只改180ms为原地共享颜色，尺寸与图标不变。
+- Dock删command whileTap缩放和spring引用；选中thumb保留静态span /aria-hidden /pointer-events /class /几何，取消layoutId滑动。Tooltip仅原位opacity150/reduced0、即时退出，bottom/left/translateX、hover /focus-visible及粗指针原生title保持。command/switch颜色过渡接共享token，焦点为单一2px ring无阴影叠层，Dock从原0.01ms reduce组单独归0，其余画布动效不改。左右键移动目标radio焦点，真实值变化才通知，受控语义与预演scale业务值保留。
+- 新真实组件专项5 pass/63断言；既有canvas-toolbar-mode-switch /pointer-guard /ModelPicker源合同17 pass/111断言，分别运行，不是全画布测试。真实Motion使用JS fallback绕过HappyDOM取消动画模拟器错误，初始失败日志保留；常规提示定位 /显焦 /退出与实际reduce即时透明度、原生title有断言。CSS两阶段精确AST /钱包冻结 /级联 /只读API合同通过。未全量type/build，不能当真实Dock /钱包 /非空模型运行通过。
+
+A6 父批、钱包 hover 与 Dock 持久背景追加均已接受；D 钱包有限实测及 A7 顶部交接三条回焦路径已接受。ModelPicker 非空与 Dock 完整实际调用仍未验收，组件专项和钱包实测不能替代。C 风格三修 / 空态回焦有限真实已接受；C3 七视图八插槽仍缺项目正文。
+
+## A5：共享 Select / 后台反馈 / 项目导航源
+
+本批仅 globals.css、admin-ui.css 与两份总文档，独立 before / hash / 精确 diff / CSS 解析与级联合同保存于 `.local/ui-review/full-a5/`。不改组件行为、D-owned theme / 页面、C3冻结源码或A4已接受规则，无浏览器。
+
+- Select 在原 AntD6 根规则读取现有 admin-control-h / admin-control-h-sm / admin-radius：后台 middle32 / small28 / r6；large保留原36px最小高度，与后台现有large36一致。普通域保留原36px最小高度及soft / pill / field圆角回退，不加单行height，multiple / tags仍自然增高；disabled、1px焦点、公开API和admin浮层根继承保持。无需D追加反向补丁。
+- 主题入口是真实原生button，改它自身width / height / min-height到admin-control-h、圆角到admin-radius，颜色过渡用共享150ms / reduced0。旁边.admin-page-actions .ant-btn不命中它且未改，纠正旧归因。四卡CSS源去hover位移 / transform过渡与硬编码180ms，保留几何、预览配色、选择 / 禁用；appearance-skin-card目前无TS/TSX调用，标为授权旧源清理，另外三类有真实调用。后置存储尺寸 / 响应式 / reduced规则均核对保留。
+- 项目back / create / tab和章节导航 / item过渡接150ms / reduced0，普通选中 / index / 当前标记接control-selected，中性边框；焦点接control-focus-ring，滚动标签 / 紧凑导航用内侧outline避免裁切。32 /34 /40、所有断点 / 网格 /宽高 /顺序、链接ARIA与回调、project active / archived业务状态保持。
+- 两CSS解析、精确允许声明差异 / 全部其余规则保持、Select尺寸 / 圆角回退、真实调用 / token继承、A4冻结与项目几何合同通过。检查器两次初始选择定位假设修正保留日志；未改产品来迁就检查。纯CSS / 文档，无typecheck / 测试 / build。
+
+A3 / C1 / B3 原有限运行已接受，旧退场 / 过渡图仍排除最终视觉；B3 旧遮罩深色图继续无效，C 后补稳定深色空选择器另有接受记录。A5 后台 middle32/r6 / disabled、原生主题按钮、三实际卡片有限实测已接受；small/large / 共享 multiple 与项目正文导航无样本。A6 钱包和 A7 回焦各按独立报告，不互相替代；Eagle 挂载与非空 / 音频限制保留。
+
+## A4：普通业务浮层主命令与风格卡共享源
+
+A4代码与C的library /风格卡有限真实均已审阅接受，current卡片 /danger等无样本边界保留；源规则在本轮验收期间冻结。本批只改 workspace-product.css、globals.css 和两份总文档。独立 before / hash、精确 diff、CSS 解析 / 调用 / token 继承合同在 `.local/ui-review/full-a4/`；不改 B / C 页面、Admin 样式 / Select 或画布整体映射。
+
+- 从共享大变量块提取四个 button-primary token，原九个作用域全部保留，仅补 library-modal / library-drawer；classic 同样只补这两个组件类。完整工作区变量、focus / active 与几何规则不挂过去，未扩 app-ui-modal / app-ui-drawer / 全局 ant-modal。primary-buttons 继续消费既有 token，disabled / danger / ghost 守卫不变，admin=true ModelEditor 仍 admin-modal-root。
+- assets / projects / tasks / skills 的真实 portal 调用已核对，token 可在真实内容祖先继承。B2 稳定渐变图只证明改前问题，不能算改后通过。
+- globals 唯一源仅保留风格卡 border-color 150ms / reduced 0，去 transform 过渡 / hover 上移、cover::after 渐变遮罩和 img scale1.015。16:9、网格、宽高 / object-fit / 圆角、媒体和焦点保持。旧 is-active accent 阴影已被 C 当前 inline 中性 boxShadow 覆盖，本批只清失效源，不声称旧阴影当时生效。
+- 单数 style-profile-editor-tab 全部 src TS / TSX 无调用，清旧 focus 分支和两条 underline 规则；复数 style-profile-editor-tabs 高48、tab / panel IDs 和 ARIA 保留。未改 globals-3 等未加载副本。
+- 两份 CSS PostCSS 解析 / 精确 AST 增量 / 调用与 token 合同通过，其余规则完全保持。仅 CSS / 文档，不重复 typecheck、测试或 build；A 实施批未浏览器；随后 C 对项目创建实色 / 风格卡的有限真实已接受，其他无样本状态保留。
+
+A4 两项代码已接受并冻结；随后 Select / 原生主题按钮 / 四卡源和项目导航明确派 A5。A4项目创建实色与风格卡有限运行已接受，不沿用改前截图或外推无样本状态。
+
+## A3：账户键盘关闭、控件时长与首页经典皮肤
+
+### 原生事件时序追加：代码与有限真实已接受
+
+协调者已接受两项 CSS、实际依赖解析纠正和原生时序追加代码，初轮 microtask 过早失效的阻断已解除；随后 B 对真实按键 / InputNumber 时长 / 首页 token 的有限复验已接受。root 到 window 的微任务检查点已由新专项覆盖，旧同步 14 项不能替代该证据。
+
+本追加仅改账户菜单、专项和两份总文档，独立原样 before / hash / 精确增量保存在 `.local/ui-review/full-a3/native-event-timing/`，原 A3 证据不覆盖。未消费的 Escape 意图现用下一任务 setTimeout(0) 失效，并核对原生事件身份；changeOpen 读取后立即清空，再判断 DOM 来源、defaultPrevented、IME 与回焦资格。用于实际关闭后的回焦微任务保留；不加全局 capture，不阻止全部 Escape，不使用 Popover 私有回调参数。
+
+新增两项真实组件回归，延后实际注册的 window 冒泡监听，在 root 处理结束后显式 await 一次微任务检查点，再调用同一原生事件的实际关闭回调。隔离的改前菜单负对照在此时关闭但未回 trigger，明确失败；最终账户 8 项与既有命令面板 8 项共 16 pass / 0 fail / 115 断言，跨检查点覆盖普通回焦、keyCode229、后续 preventDefault 和上层日志实际关闭 / 下层保持 / 不抢焦点；旧有效断言全部保留。追加类型检查与限定差异检查见独立报告，不重做 CSS、依赖或其他 A3 范围。
+
+A3时序代码与有限真实按键已审阅接受；A未操作浏览器，账户整卡 /钱包 /启用生成等未覆盖边界保留。A4 已审阅接受并冻结，C有限真实已接受；D2 Select / 主题按钮、四卡源与项目导航已明确派 A5。
+
+
+本批精确范围为 workspace-account-menu.tsx、globals.css、workspace-product.css、新增真实组件回归和两份总文档。原样 before / hash、逐文件增量、失败日志及最终检查保存在 `.local/ui-review/full-a3/`。app-top-nav.tsx 保持本批前 hash，不改侧栏账户实现、C / D 组件、依赖或锁文件。
+
+- 顶部账户只记录触发器 / 内容的 Escape 意图，通过 Popover 公开 boolean onOpenChange 判断关闭；有效本地键盘取消时在同一任务微队列回实际触发器。保留外部指针、路由、钱包、Ctrl / Cmd+K 交接；隐藏 / inert / 不可见触发器不回焦，没有无条件 afterClose 回焦。
+- 上层日志 React portal 的键盘事件会冒泡到菜单组件，但其 DOM 不属于账户内容；本地门控阻止这类事件关闭下层账户。已消费、IME composing / keyCode229 同样不关闭 / 回焦。锁文件确有 trigger 3.10.1 的 portal 2.2.1 与根 portal 2.2.0，但本容器实际 Popover 经 tooltip 的 trigger 3.9.0 和 dialog 1.10.0 均解析到根 portal 2.2.0；不能用锁文件中的双版本证明此菜单的双栈运行故障。初轮 test 环境固定 test-id 造成浮层身份碰撞与错误关闭 / 停滞，专项改在 development 环境使用真实 React useId 后通过并恢复环境。未改依赖；随后 B 已有限实测日志上层关闭、下层保持和键盘交接，不外推全部事件边界。
+- globals.css 只在 utilities 中的输入 / affix / InputNumber / Select 内容原规则使用 control-state-transition，公共时长 150ms / reduced 0；同名 reduced media 规则与 motion-instant 源不改。workspace-product.css 只将 creation-home 加入已有 classic 主命令四 token 映射；保留 creation-command 别名与 disabled / enabled-hover 规则。
+- 初轮同步派发检查为 14 项 / 94 断言通过，不能覆盖原生回调间微任务时序；最终以本节追加返修 16 项为准。原 14 项覆盖：6 项真实账户 / Popover / 日志 Modal，8 项既有命令面板。覆盖 Escape 回焦、外指针 / 路由 / 钱包 / Ctrl+CmdK、上层日志确实关闭而账户仍开、IME / 已消费以及隐藏触发器。钱包接无业务目标，余额仅测试缓存，日志只隔离网络刷新；未发生业务写入。typecheck 通过，新增 IME 门控后再核对最终源；两份 CSS PostCSS 解析和精确源差异合同通过。初始失败、身份碰撞导致的停滞及新增 keyCode229 失败均保留，不删有效断言。
+- A 未操作浏览器，无新截图，不将 Happy DOM / 源合同写作真实运行验收。B 有限运行报告已覆盖并经协调审阅接受：顶部内部管理员链接 Escape、嵌套日志、账户 / 命令面板交接、InputNumber 普通 / reduced 时长，以及首页 classic DOM token 与实际 disabled 按钮的区别；不配置模型或触发生成。侧栏账户没有本轮真实失败或实现改动，不宣称其浏览器通过。
+
+## A2 共享旧规则收拢与 B1 验收交接
+
+B1 已由协调者依据 full-b1 的 before / diff / hash / checks 及真实截图审阅通过。技能范围 Tabs、插件分类与后台上传说明的共享视觉和语义分别保留；四范围导航、方向键 / Home / End / 唯一 Tab 入口、窄屏局部横向滚动通过。技能详情最终六条焦点回归路径和插件详情三条路径已通过，安装 / 分类取消及安全编辑切换保持焦点。私有非空内容与实际安装 / 上传 / 失败锁定不在通过范围。
+
+截图证据纠正必须保留：full-b1/skills-final.png 误截“正在恢复工作区”加载状态，明确排除，不能作为最终页面证据；新 skills-final-loaded.png 已由协调者查看确认，screenshot-proof.json 记录标题 / 四范围导航 / 公开卡片入口可见、20 张公开卡片和技能广场 73、恢复遮罩已隐藏。B 的最终干净加载控制台错误为 0，结束时恢复浅色、1280×720、默认动态效果并释放标签。
+
+A2 只修改 globals.css、workspace-product.css 和本计划 / pending-test，before/hash、精确增量和简短报告保存于 `.local/ui-review/full-a2/`：
+
+- 实际加载链是 application.tsx → globals.css、UserLayout → workspace-product.css；未机械同步 globals-* 未加载副本。
+- TS / TSX 中四个旧完整类名无真实调用；skills-tab-* 仍作为 tab / panel 无障碍关联 ID 保留，不按 ID 前缀误删。
+- 删除 globals.css 的 16 条和 workspace-product.css 的 5 条旧 .skills-tabs / .skills-tab / .skills-tab-count / .skills-tabs-indicator 规则，包含 dark / 作用域 / 响应式；保留 skills-navigation、skills-browse-bar、网格 / 容器及全部其他规则。
+- 分类范围卡唯一源实际在 workspace-product.css，globals.css 没有这组源规则。原规则改用 control-selected 的中性表面 / 文字 / 边界，图标与勾选保持原角色和尺寸，focus-visible 使用共享 ring，transition 使用 control-state-transition（普通 150ms / reduced-motion 源变量 0）。卡片布局 / 尺寸与 B 的 group + aria-pressed 互斥、权限和提交处理保持。
+- 最小检查：两份 CSS PostCSS 解析通过；全部 src TS / TSX 精确旧类名命中为 0；CSS AST 对比证明除删除规则与范围卡目标外的其余规则完全不变，范围卡除 transition 外的基础声明完全保留。未运行浏览器、类型、全量测试或 build。
+
+分类范围卡与来源卡已由 B2 真测并经协调者审阅，旧 B1 改前图不用于本批结论。分类保存与项目创建写状态未验收，原 A2 与来源卡追加基线分别保留。
+
+## A2 独立追加：项目来源卡级联
+
+本项不覆盖原 A2 基线，另存 `.local/ui-review/full-a2/story-source-followup/` 的当前 before / hash、精确增量与报告。只改 globals.css 的 app-story-source 原规则及总文档，不改 B2 JSX、ToolButton 实现、邻近 app-story-modal-style 或其他页面。
+
+真实三个 ToolButton 均传 active，仍有三列和 app-story-source 的纵向图文 / 58px 最小高 / 边框。加载链 globals.css → primary-buttons.css → unified-buttons.css 让共享状态规则先出现；原后置 .app-story-source 的背景 / 文字与共享 data-active 规则同优先级，实际会覆盖选中，旧 hover 也会覆盖选中文字，不能只改 180ms。
+
+原 source 基础规则现只保留结构、边框、字级和 control-state-transition；背景 / 文字限定到 :not([data-active="true"])，文字 hover 同样限定未选中。删除无 JSX 调用的 is-active，卡片 data-active 规则仅保留边框和字重；选中背景 / 文字、选中 hover 及原生焦点由前面的共享 ToolButton 规则负责，不增加全局特例或页面强覆盖。共享时长源为 150ms，reduced-motion 为 0。
+
+最小检查：CSS 解析、三个真实调用、import 链、静态级联合同通过；选中及选中 hover 时后置 source 规则不再有背景 / 文字 / 焦点覆盖，原几何和全部非 source 规则（包括邻近画风按钮）完全相同。未浏览器、类型、整套测试或 build，不能当作运行计算样式通过。B2 随后窗口核对选中、hover、150ms / reduced 0、打开关闭回焦，并抽查原 A2 分类范围卡。
+
+C1 两处灵感 portal 实色与桌面 / 窄矮定位已短复查接受，旧渐变 / 全屏 centered 图失效。new-trigger-focus 一行代码与指针 / 键盘稳定回焦有限真实已接受。非空对话 / 附件、工具台正文、200% 仍未验收；A3 有限真实按键已接受。各补验窗口已恢复并释放，原排队安排是历史记录，不重复分配。
+
+## A1 共享收尾交付（历史代码检查，真实边界见当前覆盖表）
+
+本批保存基线与 SHA-256 于 `.local/ui-review/full-a1/before/` 和 before-manifest.json；a1-only.patch、after-manifest.json、changes.json 只比较本批前后，不包含此前成果或 C / D 的 JSX 修改。四个产品源码文件、两个专项测试和三份文档实际变更；候选 model-editor-modal.css 保持原样。
+
+- **SegmentedControl 回归修复**：select 与鼠标入口统一经过禁用 / 同值检查。同值点击、Home / End、单个可用项的方向键保持焦点但不调用 onChange；真实切换一次、跳过禁用项。防止 D1 迁移后重复当前选项触发验证码 / ticket 清空或能力计费配置重置；没有在页面堆防御判断，也没有在真实配置页测试写入。公共 README 已明确合同。
+- **创作参考过滤**：globals.css 删除过滤与 panel-actions 混绑的旧按钮视觉及 is-active::after 下划线，保留 header、actions、min-width / flex / 横向溢出。C 的真实 JSX 已有 app-control-group / compact / control-item / label / count；仍为 group + aria-pressed，项高 28px、标签 12px，由共享样式负责状态。
+- **创作模式密度**：workspace-product.css 保留聊天 28px、移动 26px 项高、纵向 76px 宽、原网格及首页 38px；仅将移动 10px / 纵向 11px 标签收拢至 caption 12px，聊天图标改共享 16px，删除两条无 DOM 的 indicator 规则。
+- **认证输入**：原 auth-scene-card / auth-code-field 规则改消费 control-state-transition，源变量普通为 150ms、reduced-motion 为 0；删除装饰焦点阴影，普通 / affix / 验证码输入由外层画一次 1px 焦点边界。验证码整行仅在 input:focus-visible 时画线；键盘移至独立发送按钮时，整行边界消失，按钮显示自身 2px 焦点且不清除分隔线。保留发送按钮、禁用 / 冷却规则和行几何；autofill 的大 inset 色面用于遮盖浏览器自动填充底色，继续保留。核对 TS / TSX 无 auth-card-tabs 调用后仅清理真实 globals.css 的旧 Ant Tabs 规则，不改未加载副本。
+- **工作流节点**：selected rect 使用 control-selected 表面 / 边界，focus-visible 在 SVG g 外壳使用 control-focus-ring，保留 rect 的宽度 / 高度 / 位置 / stroke-width，以及 loader / output / video / sampler / has-fields 分类信号。真实已有 SVG 节点的完整焦点 / 分类状态仍未覆盖，不能由源码推定。
+- **模型编辑器**：核对设置渠道、模型能力与后台模型三处调用。root 的 control-selected、motion token、共享输入及按钮焦点已经存在；缺少的是 settings-workspace 祖先不会跨 body portal 传来的普通工作区主操作作用域。因此只给非 admin 的真实 ModelEditorModal 根增加已有 settings-workspace-overlay 类，不新增 CSS 覆盖或 token 副本；admin 分支不加该类。1120 宽、forceRender、destroyOnHidden、busy 关闭限制、布局和 model-editor-modal.css 均保留。
+
+检查证据：既有 Docker 前端首次运行 shared-controls / auth-theme / account-settings-controls 三组共 14 项、125 次断言通过；验证码焦点修正后，auth-theme 五项 / 50 断言复跑通过，globals.css 再解析及 input / send 焦点作用域核对通过。本批真实 TSX 改动后仅运行一次 typecheck，通过；PostCSS 解析 globals.css / workspace-product.css 通过。CSS AST 对比确认 15 个 panel-actions / header / 验证码发送与禁用 / 工作流分类选择器的声明保持；模型编辑器严格比较仅一处根作用域差异，其配套 CSS 未变。限定本批文件的 diff 空白检查通过。日志、preserved-contracts.json 和 focus-scope-check.json 保存于 full-a1。上述为代码检查，未运行浏览器、完整测试、生产 build 或后端检查。
+
+A1 未覆盖场景：已有参考素材的 compact 过滤、非空对话的紧凑 / 纵向模式与窄屏换行；活跃认证验证码冷却 / 错误 / 提交；已有工作流节点和模型编辑器非空 portal。D1 可达或关闭态、A3 键盘和输入焦点有限真实已接受。部分完整字段 / 长内容 / 焦点属于本窗口未测，不能全部称缺数据；不执行上传、配置、认证或计费造条件。
+
+## 生产路由覆盖
+
+按已完成的 `web/src/router.tsx` 归属检查合并重定向和共用实现，未发现新的未分配生产项；本轮不重扫扩改。每行只记录源码收敛及报告列明的有限实测，关闭态 / 首屏 / 共享专项不等于所有正文和业务通过。
+
+| 生产路由 / 共用实现 | 组 | 当前覆盖状态 |
+| --- | --- | --- |
+| /、/create（CreatePage） | C | 源码收敛；C1 空首页 / 历史 / 灵感、portal / 新建稳定回焦、风格三修、A7 布局与 C 空态新建四路径有限真实已接受；非空对话 / 生成 / 附件仍受限或未测 |
+| /toolbox/image、/toolbox/video（WorkbenchPage） | C | C1 报告已记录实际功能关闭边界；此前关闭状态保留，正文未因此通过 |
+| /tasks | B | B2 空态 / 新建安全表单 / 取消回焦真测已审阅；非空任务与运行写状态受限；A4映射 /项目创建有限实色真测已接受，本页其他状态不外推 |
+| /assets | B | B2 空态 / 新建 / 分类 / 批量上传安全开关已审阅；未实际上传，非空资产受限；A4映射 /项目创建有限实色真测已接受，本页其他状态不外推，B3浅色空选择器有限真实已接受；旧深色图无效、C新稳定图有限范围已接受 |
+| /skills | B | B1 导航 / 公开列表 / 详情阅读 / 安全浮层及回焦已验收并审阅；私有非空 / 安装上传状态受限；A2 范围卡新视觉经 B2 真测 / 审阅 |
+| /plugins | B | B1 导航 / 列表 / 详情 / 设置取消及后台上传说明已验收并审阅；实际启停 / 保存 / 上传与失败锁定未执行 |
+| /plugins/eagle | B | B3 代码 / selection适配已审阅；Eagle 挂载有安装持久化 / 连接副作用未进入，无运行通过；非空 / 音频受限 |
+| /projects | B | B2 空态 / 创建安全表单 / 来源卡 / 嵌套画风回焦真测已审阅；非空项目与写状态受限；A4映射 /项目创建有限实色真测已接受，本页其他状态不外推 |
+| /projects/:projectId、/projects/:projectId/:view、/projects/:projectId/chapters/:chapterId、/projects/:projectId/workflow/:unitId/:stage（共用 ProjectDetailPage） | C | C3 36基线18改 / 25 pass 84 / type0与双独立代码审阅已接受；真实无project/chapter/unit链接，七视图八插槽未运行；A5共享导航无正文样本 |
+| /canvas | B | B2 空态 / 历史抽屉 / 安全回焦真测已审阅；非空画布卡片与写状态受限 |
+| /canvas/:id、/share/canvas/:token | C | C2 源码与当轮 72 文件 / 生命周期 / 57 项记录已接受；风格中心 / Agent 有限实测另列，不替代画布。无真实 canvas ID / 有效 token / 媒体，核心画布与分享正文未运行 |
+| /settings（profile、models、preferences、prompts、agent-memory、storage、diagnostics） | D | 源码收敛；D1 所列结构 / 空态 / 焦点有限真实已接受。models 无可用模型；其余部分完整字段 / 长内容 / provider / 焦点是未测，不统称缺数据；未改配置或验证保存 |
+| /settings（channels、runninghub） | D | D1 源码已接受；个人渠道实际为空，空态 / 导航有限真实接受，新增安全空壳未测；RunningHub 入口不可见且访问回 profile，工作流正文未验收，不启插件造条件 |
+| /wallet（全局积分浮层入口） | D / A | D 三 Tabs / 键盘 / 互斥 panel / 空兑换与已有历史结构、A6 视觉有限真实已接受；A7 顶部账户三路径稳定回同一持久 trigger 已接受。商品/provider0，无 CTA / 订单二维码业务验收，不外推 sidebar |
+| /login、/register、/forgot-password | D | D1 代码 / 同值导航修复及 A1 共享修复已审阅；可达 / 禁用状态按 D1 实测记录，活跃认证与长协议正文仍缺条件 |
+| /admin（AnalyticsPage） | D | D2 可达范围实测已审阅；A5 middle 共享尺寸有限复验已接受，非空数据与写状态限制保留 |
+| /admin/users、/admin/login-logs | D | D2 可达范围实测已审阅；A5 middle 共享尺寸有限复验已接受，非空数据与写状态限制保留 |
+| /admin/channels、/admin/models | D | D2 可达范围及渠道局部滚动修复已审阅；models 功能关闭 / 无数据边界保留，A5 middle 尺寸有限复验已接受 |
+| /admin/plugins、/admin/workbench-tools、/admin/skill-curation | D | D2 共享壳已审阅；D3 有限可达正文已接受，深层/写状态受限 |
+| /admin/payments、/admin/credit-operations、/admin/redemption-codes | D | payments 属 D2 可达范围已审阅 / 业务数据受限；积分 / 兑换码正文 D3 有限可达运行已接受，深层/写状态受限 |
+| /admin/prompt-templates（/admin/storyboard-prompts 重定向） | D | D2 共享壳已审阅；D3 有限可达正文已接受，深层/写状态受限 |
+| /admin/announcements、/admin/banner-announcements、/admin/agent-lessons | D | D2 共享壳已审阅；D3 有限可达正文已接受，深层/写状态受限 |
+| /admin/resources、/admin/logs | D | logs 属 D2 可达范围已审阅 / 非空数据受限；resources 正文 D3 有限可达运行已接受，深层/写状态受限 |
+| /admin/settings/runtime-policy（/admin/settings、/admin/settings/concurrency 重定向） | D | D2 共享壳已审阅；D3 有限可达正文已接受，深层/写状态受限 |
+| /admin/settings/appearance、/admin/settings/drawing-engine | D | D2 共享壳已审阅；D3 有限可达正文已接受，深层/写状态受限 |
+| /admin/settings/features、/admin/settings/access、/admin/settings/email | D | D2 共享壳已审阅；D3 有限可达正文已接受，深层/写状态受限 |
+| /admin/settings/storage、/admin/settings/ark-private-assets | D | D2 共享壳已审阅；D3 有限可达正文已接受，深层/写状态受限 |
+| /admin/settings/response-interception、/admin/settings/third-party（/admin/settings/libtv 重定向） | D | D2 共享壳已审阅；D3 有限可达正文已接受，深层/写状态受限 |
+| /admin/settings/system-update、/admin/settings/system-performance | D | D2 共享壳已审阅；D3 有限可达正文已接受，深层/写状态受限 |
+| *（NotFound）、RouteErrorPage | D | D3自修404局部scope /链接reset级联，实色 / 尺寸 / 焦点等有限结果已接受；RouteError缺真实触发条件 |
+| /dev/folders、/dev/previs-repro、/test-voice-recording、未被生产路由引用的废弃页面 | — | 范围外 |
+
+## 真实调用面补充清单
+
+以下保留各组已完成的真实调用面清单，对照最终报告区分源码归属 / 收敛、有限实测、受限与未测；不以目录、线程状态或共享壳推导完整正文通过。
+
+### B：列表、资源与同页浮层
+
+| 入口 / 共用件 | 必须覆盖的实际调用面 | 状态及真实条件 |
+| --- | --- | --- |
+| /skills | 技能广场 / 我的技能 / 我创建的 / 我的收藏的 Tabs，分类过滤；新建分类、技能详情、安装、编辑、删除确认 | B1 已审阅：四范围切换、公开内容和安全浮层 / 回焦已验收；原文 / metadata / Markdown 保留。非空私有 / 创建 / 收藏及安装 / 上传 / 删除写状态未验收；A2 范围卡颜色已由 B2 真测 / 审阅，保存未验收 |
+| /plugins | 分类过滤、详情与文档、插件设置；plugin-documentation-modals.tsx 内后台复用的上传浮层 | B1 已审阅：过滤 / 搜索、详情与设置取消、后台上传说明已验收；启停 / 保存 / 实际上传不执行。UploadPluginModal 由 B 管内部、D 管后台调用 |
+| /assets | 新增 / 编辑素材、素材档案、批量上传、分类新建 / 重命名、移入回收站与彻底删除确认 | B2 可达空态 / 安全浮层 / 回焦已审阅，A4 library 映射已收敛且项目创建有限实色接受，其他无样本状态不外推；旧空态不代表非空卡片 / 档案 / 媒体。只开关安全表单，不上传、移动或删除 |
+| /tasks | 列表 / 网格、分组、状态筛选；新建任务、任务详情、媒体预览与操作确认 | B2 可达空态 / 安全浮层 / 回焦已审阅，A4 library 映射已收敛且项目创建有限实色接受，其他无样本状态不外推；taskCenterEnabled、运行 / 失败 / 完成任务条件保留，不生成 |
+| /canvas | 列表与文件夹；关联短剧项目、历史抽屉、删除确认 | B2 空态 / 历史筛选 / 回焦真测已审阅。mode=new/recent/handoff 不作普通浏览入口 |
+| /projects | 故事启动区、创建项目、来源选项、画风选择器调用、AI 生成进度、删除确认 | B2 可达空态 / 安全浮层 / 回焦已审阅，A4 library 映射已收敛且项目创建有限实色接受，其他无样本状态不外推；shortDramaEnabled、来源选中及跨域画风调用保留，不创建 / 生成来验收 |
+| /plugins/eagle | 文件夹Tree、素材 / 档案及媒体 | B3 产品 / selection适配已代码审阅，原联测失败保留；挂载有安装持久化 / 连接副作用未进入，运行仍未验 |
+| components/assets/** | 选择器 / 卡片 / rich-cover / 音频 | B3代码与独立selection 8 pass25已审阅；浅色空选择器有限真实已接受；旧深色图无效，C新稳定深色图有限范围已接受；非空 / 音频受限 |
+| 四个 canvas 列表件 | folder-card、project-card、history-drawer、delete-projects-dialog | B 独占；CanvasProjectCard 被项目详情的画布列表实际调用，不按画布首页未用排除 |
+
+共享素材选择器的真实调用还包括 pages/create/index.tsx、项目详情 assets.tsx / settings.tsx、components/canvas/asset-picker-modal.tsx 与 canvas-project-asset-modal.tsx。B 管组件内部，C 保持这些调用方的 props / 回调；项目资产 / 角色等非空跨页影响仍未实测，不从浅深空选择器推导通过。列表卡片标题入口、描述截断、元信息、菜单、错误重试及分页已有成果保留，只处理明确差异。
+
+### C：创作、画布、Agent、项目及剪辑器
+
+| 入口 / 层次 | 实际正文、浮层和编辑面 | 当前阶段与条件 |
+| --- | --- | --- |
+| / 与 /create | 同一 CreatePage；空会话首页、非空对话、模式 / 输入区、历史、最近画布、结果和附件预览、参考内容、登录提示；首页嵌入 InspirationHall | C1 浏览器报告已交付且已释放窗口；灵感非独立路由。非空消息 / 长内容 / 媒体需已有数据，原有限范围已接受，非空条件保留 |
+| 首页附属层 | 生成设置 / 时长 Popover、CanvasPromptOptimizerDrawer、灵感筛选 / 详情 / 编辑表单、消息图片 / 视频预览 | C1 浏览器报告已交付，所列结果 / portal 颜色位置已接受，新增入口有限真实回焦已审阅接受；保留宽度 / 内容 / 表单挂载，不提交或生成。聊天不替换为 DocumentMarkdown |
+| /toolbox/image 与 /toolbox/video | 共用 WorkbenchPage(kind)；工具、提示词、模型、参数、预设、参考内容、结果舞台、任务历史、详情与选择浮层 | C1 报告已记录当前关闭边界，未以此前关闭状态证明正文；不启用开关来验收 |
+| /canvas/:id 外壳 | project top-bar / context-menu / selection-toolbar / feedback / status-dialogs / media-dialogs / world-layers；快捷键、刷新壳、同步状态、专注、缩放、搜索、分享、上传、LibTV / TapNow 导入 | C2 源码与当轮 72 文件 / 生命周期 / 57 项检查已接受；本行真实正文缺现有记录且有持久化副作用，未验收；必须已有可访问 canvas ID。节点和视口会持久化，拖拽 / 缩放 / 改参数不默认当作只读 |
+| 画布工作区与节点 | 节点 / 资产 / 任务 / 历史面板；节点工具栏、上下文 / 创建菜单；文本、图片、视频、音频、画框、角色引用、分镜脚本、批次表格和配置节点；Markdown / HTML / SVG / 图表 / 对比 / 调色 / 转换 / 全景 / 评图扩展展示 | C2 源码与当轮 72 文件 / 生命周期 / 57 项检查已接受；本行真实正文缺现有记录且有持久化副作用，未验收；按已有节点与媒体记录内容，不能用空画布代表全部节点通过。四个列表件与 assets 内部仍归 B |
+| 画布参数与媒体编辑 | 提示词普通 / 放大、提及 / 引用、风格 / 运镜 / 特效 / 预设及图像 / 视频 / 音频设置；裁剪、标注、蒙版、图片编辑、图层分解、文字编辑、超分、分割、角度 / 灯光 / 表情 / 质感 / 机位；视频抽帧 / 分段 / 增强、字幕、时间线及 Excalidraw / Tldraw 绘图 | C2 源码与当轮 72 文件 / 生命周期 / 57 项检查已接受；本行真实正文缺现有记录且有持久化副作用，未验收；保留 pointer / wheel / no-zoom 边界和浮层定位；保存编辑、字幕 / 转写、转换或增强均非只读，不执行来造数据 |
+| CanvasPrevisWorkbench | 场景列表、添加浮层、道具库、对象 / 灯光 / 机位检查器、视口工具栏、序列器、模板 / 引导与监看展示 | C2 源码与当轮 72 文件 / 生命周期 / 57 项检查已接受；本行真实正文缺现有记录且有持久化副作用，未验收；保留场景几何、摄像机、关键帧和时间线算法。对象添加 / 姿态改变会写状态 |
+| /share/canvas/:token | 复用节点、查看提示、信息与工具栏、缩放、分享失效状态 | C2 源码与当轮 72 文件 / 生命周期 / 57 项检查已接受；本行真实正文缺现有记录且有持久化副作用，未验收；需要已有未失效 token，不创建 / 轮换 / 停止分享。页面会临时应用画布主题，必须占用协调后的浏览器窗口 |
+| 全局 Agent | UserLayout 懒加载 CanvasCloudAgentPanel；parts / chat-ui / composer / settings / connectors、消息 / 工具 / 审批、技能库、欢迎 / 头像及 creative-agent-cards | C2 源码收敛；桌面 / 窄屏浅深空态、未发送输入壳、只读设置 / 技能过滤有限真实已接受；消息 / 工具 / 审批 / SSE 无运行样本。连接器 / 记忆 / 设置 / 新建画布会写入。初始 Agent 几何无改前记录，自动夹取 / 保存视口偏好的可能影响保留为限制 |
+| 项目七视图 | overview、chapters、workflow、canvases、editor、assets、settings；统计、章节、分镜制作、关联画布、剪辑、角色 / 视觉资产、目录 / 版本 / 预览 / 声音绑定、默认模型 / 封面 / 画风 / 归档确认 | C3 源码收敛、36 基线 / 18 改、25 pass / 84、当轮 type0 与双审已接受；缺合法 project / chapter / unit / media，真实未运行；ProjectDetailPage 共用入口，不能以概览首屏代表七个正文视图。需要真实 project ID、权限、功能开放及对应内容 |
+| 章节与 workflow 深层 | 章节导航 / 正文 / 富文本工具栏、新增 / 移动 / 导入 / 提取 / 分镜配置；workflow 的 unit / stage、章节切换、阶段导航、制作台、镜头参数 / 引用、产物历史和预览 | C3 源码收敛、36 基线 / 18 改、25 pass / 84、当轮 type0 与双审已接受；缺合法 project / chapter / unit / media，真实未运行；需要真实 chapter / unit / 镜头 / 产物。保留富文本焦点、生产状态及协议，新增 / 生成等不执行 |
+| 项目剪辑器外壳 | 顶部工具栏、面板切换、全屏、保存状态；下列八个真实插件插槽 | C3 源码收敛、36 基线 / 18 改、25 pass / 84、当轮 type0 与双审已接受；缺合法 project / chapter / unit / media，真实未运行；需要真实项目、允许的插槽、已有时间线和媒体；不改 manifest、权限、注册与算法 |
+
+剪辑器八插槽依据 lib/plugins/builtin/editor/editor-shell.tsx 的真实注册关系，C3 代码已审阅接受，逐项仍待真实条件验收：
+
+| 插槽 | 需覆盖的展示 | 不能以浏览方式执行的动作 |
+| --- | --- | --- |
+| 素材（asset-ingest） | EditorAssetIngest；素材面板、列表与选择反馈 | 插入 / 关联 / 上传素材 |
+| 预览（preview-renderer） | EditorPreviewMonitor；播放预览、空态与可用控件 | 为准备内容执行编辑或生成 |
+| 时间线（timeline-panel） | EditorTimelinePanel；轨道、片段、刻度、选中与滚动 | 拖拽片段、改变时长 / 几何或素材关系 |
+| 检查器（inspector） | EditorInspector；当前选中对象的参数与状态 | 改参数后触发保存 |
+| 字幕（subtitle-tool） | EditorSubtitleTools；已有字幕、工具和状态 | 生成 / 修改字幕 |
+| 转写（transcription-provider） | EditorTranscription；转写入口、进度及已有结果展示 | 发送转写请求 |
+| 导出（export-renderer） | EditorExport；导出参数与状态展示 | 执行导出 |
+| AI 编辑（ai-assistant） | EditorAiAssistant；已有建议 / 结果、命令与状态展示 | 提交生成或应用修改 |
+
+剪辑器 `store.load()` 清除 dirty，修改命令会安排保存，卸载会 flushSave；页面还有条件性的 linkProjectAsset 自动关联。静态盘点时路由构造的 shotArtifacts 为空，但不能据此保证所有真实项目打开均无写入。C3 浏览前应核对实际数据及触发条件。共享 ModelPicker / model-editor-modal、FloatingDock、SpotlightSurface 和画布语义映射由 A 管理；C 只改分配范围内调用参数，具体共享需求由协调者转交。
+
+### D：账户、个人设置、业务浮层及后台
+
+认证覆盖三个页面的 AuthScene、验证码字段、注册协议层及 Linux.do 入口；保留认证、限流、OAuth、协议来源和同意限制。个人设置覆盖九分区；D1 的渠道 / RunningHub 作用域、名称关联、同值导航等代码与专项已审阅，七个既有分区保留。A1 共享同值修复已解除阻断，D1 浏览器报告 / 16 图 / evidence 已交付并释放窗口，真实可达与受限条件见上表。customChannelsEnabled、RunningHub 插件状态及 frontendModelsEnabled 的真实可见性继续保留。
+
+下表为 29 个后台生产入口，四重定向别名不重复计数。D2 / D3 源码与有限真实已接受；models 仅关闭态，其余按实际正文 / 安全浮层记录，不外推全部非空 / 深层 / 写状态。A5 middle 尺寸有限接受，small/large / 共享 multiple 未测。外观六深层页签两条件 12 正文、两抽屉稳定回焦、标签补齐后两个真实 label.click 有独立接受证据；共享上传说明的 B1 结果不等于后台插件全页通过。
+
+| # | 后台入口 | 正文与关联调用面 | 当前接入 / 验收状态 |
+| --- | --- | --- | --- |
+| 1 | /admin | 总览、统计和状态 | 源码收敛；D2 本页有限可达接受；A5 共享尺寸抽查另记，本页非空 / 深层 / 写状态未验收 |
+| 2 | /admin/users | 用户列表、详情与编辑层 | 源码收敛；D2 本页有限可达接受；A5 共享尺寸抽查另记，本页非空 / 深层 / 写状态未验收 |
+| 3 | /admin/login-logs | 登录日志、登录详情 Drawer | 源码收敛；D2 本页有限可达接受；A5 共享尺寸抽查另记，本页非空 / 深层 / 写状态未验收 |
+| 4 | /admin/channels | 渠道列表 / 编辑、请求头编辑器、目录向导 / 导入、模型与关联表单 | 源码收敛；D2 本页有限可达及渠道局部滚动接受；A5 共享尺寸抽查另记，非空 / 深层 / 写状态未验收 |
+| 5 | /admin/models | 前台模型列表 / 编辑、排序 / 批量改价；frontendModelsEnabled 限制 | 源码收敛；仅真实功能关闭态已接受，模型正文 / 非空 / 写状态未验收 |
+| 6 | /admin/plugins | 插件列表、详情 / 说明与上传调用；上传组件内部归 B | 源码收敛；D3 有限可达正文已接受，其他非空状态 / 深层未测与写状态受限保留 |
+| 7 | /admin/workbench-tools | 工具列表与编辑层 | 源码收敛；D3 有限可达正文已接受，其他非空状态 / 深层未测与写状态受限保留 |
+| 8 | /admin/skill-curation | 技能分类维护 | 源码收敛；D3 有限可达正文已接受，其他非空状态 / 深层未测与写状态受限保留 |
+| 9 | /admin/payments | 支付配置、订单 / 对账展示与关联浮层 | 源码收敛；D2 本页有限可达接受；A5 共享尺寸抽查另记，非空订单 / 深层 / 支付与写状态未验收 |
+| 10 | /admin/prompt-templates | 提示词列表与编辑；storyboard-prompts 为重定向别名 | 源码收敛；D3 有限可达正文已接受，其他非空状态 / 深层未测与写状态受限保留 |
+| 11 | /admin/announcements | 公告编辑与确认 | 源码收敛；D3 有限可达正文已接受，其他非空状态 / 深层未测与写状态受限保留 |
+| 12 | /admin/banner-announcements | 常驻通知编辑与预览 | 源码收敛；D3 有限可达正文已接受，其他非空状态 / 深层未测与写状态受限保留 |
+| 13 | /admin/agent-lessons | 个人记忆只读及相关状态 | 源码收敛；D3 有限可达正文已接受，其他非空状态 / 深层未测与写状态受限保留 |
+| 14 | /admin/resources | 资源列表、档案 / 媒体预览 | 源码收敛；D3 有限可达正文已接受，其他非空状态 / 深层未测与写状态受限保留 |
+| 15 | /admin/credit-operations | 积分策略、记录及调账展示 | 源码收敛；D3 有限正文及本页安全抽屉原触发器稳定回焦接受；确认 / 创建 / 调账 / 兑换与其它深层未验收 |
+| 16 | /admin/redemption-codes | 兑换码批次及关联浮层 | 源码收敛；D3 有限正文及本页安全抽屉原触发器稳定回焦接受；确认 / 创建 / 调账 / 兑换与其它深层未验收 |
+| 17 | /admin/logs | 请求明细、日志详情 / 媒体预览、恢复结果展示 | 源码收敛；D2 有限可达及 A5 middle 尺寸已接受，数据 / 深层 / 写状态及其它尺寸未测保留 |
+| 18 | /admin/settings/appearance | 外观设置内品牌、画布、皮肤与更新公告编辑器 | 源码收敛；D3 及六深层页签桌面浅 / 窄屏深两条件 12 正文接受；助手名称 / 版权信息真实 label.click 与六字段唯一关联接受，非全部命名或写状态 |
+| 19 | /admin/settings/drawing-engine | 绘图引擎设置 | 源码收敛；D3 有限可达正文已接受，其他非空状态 / 深层未测与写状态受限保留 |
+| 20 | /admin/settings/runtime-policy | 运行策略；settings 与 settings/concurrency 为重定向别名 | 源码收敛；D3 有限可达正文已接受，其他非空状态 / 深层未测与写状态受限保留 |
+| 21 | /admin/settings/features | 功能可用性设置 | 源码收敛；D3 有限可达正文已接受，其他非空状态 / 深层未测与写状态受限保留 |
+| 22 | /admin/settings/access | 访问 / 注册等设置 | 源码收敛；D3 有限可达正文已接受，其他非空状态 / 深层未测与写状态受限保留 |
+| 23 | /admin/settings/email | 邮件配置展示 | 源码收敛；D3 有限可达正文已接受，其他非空状态 / 深层未测与写状态受限保留 |
+| 24 | /admin/settings/storage | 存储配置及状态 | 源码收敛；D3 有限可达正文已接受，其他非空状态 / 深层未测与写状态受限保留 |
+| 25 | /admin/settings/ark-private-assets | Ark 私有素材相关配置与状态 | 源码收敛；D3 有限可达正文已接受，其他非空状态 / 深层未测与写状态受限保留 |
+| 26 | /admin/settings/response-interception | 响应拦截设置 | 源码收敛；D3 有限可达正文已接受，其他非空状态 / 深层未测与写状态受限保留 |
+| 27 | /admin/settings/third-party | 第三方设置；settings/libtv 为重定向别名 | 源码收敛；D3 有限可达正文已接受，其他非空状态 / 深层未测与写状态受限保留 |
+| 28 | /admin/settings/system-update | 更新设置、状态与公告相关入口 | 源码收敛；D3 有限可达正文已接受，其他非空状态 / 深层未测与写状态受限保留 |
+| 29 | /admin/settings/system-performance | 系统性能、状态展示 | 源码收敛；D3 有限可达正文已接受，其他非空状态 / 深层未测与写状态受限保留 |
+
+第一轮静态盘点的 16 处裸 Modal、9 处裸 Drawer，以及目录向导 / 登录详情的用户端外壳、请求明细 Modal.info 为迁移基线，不当作当前剩余数量。D2 已迁其分配范围的 13 处用户端 / 裸浮层，19 处生命周期声明合同与 120 函数已审阅，结果展示改受控；原几何、销毁 / 草稿、关闭锁与业务顺序保留。后台无权限根的 CSS 选择器问题也已由 D2 修正，权限条件未改。D3 后续已收敛分配的 22 正文、14 裸弹层、32 hook 确认框作用域并接受有限实测；这些历史迁移数量不是当前剩余数，也不是全状态通过数。
+
+业务浮层另计：WorkspaceWalletHost 的积分中心、三个钱包标签及面板、支付二维码、账户卡、签到、模型配置引导、系统公告、常驻通知、更新日志，以及 404 / RouteErrorPage / 功能关闭 / 后台无权限状态。D3已补钱包标签方向键 /Home-End /单一Tab与ARIA，源冻结归D；A6仅共享视觉，保留顺序；无 paymentOrder 参数才能做安全展示审查，不创建 / 补查 / 对账订单，不兑换或签到。
+
+副作用边界：渠道 / RunningHub 的输入、连接类型、启停、工作流 / 用途 / 名称等可能立即持久化；记忆配置不得改值试验。后台即时开关、保存 / 发布、密钥测试、目录拉取、恢复任务、调账退款、更新检查 / 更新 / 回滚均不执行。系统公告手动打开会 markAnnouncementsRead；关闭自动提示、通知和模型引导可能写入本地 / 会话偏好，应先核对具体路径。支付二维码保留深色码和白底，不因深色主题降低扫描对比。
+
+### 共享需求登记与明确排除
+
+A1—A7 共享需求均有归属与接受记录：认证 / 工作流语义 / ModelEditor、技能旧源 / 范围来源卡、首页经典 token、library / 风格卡、Select / 原生主题 / 三实际卡片 / 项目导航、钱包 / ModelPicker / Dock、窄短编辑器 / 顶部钱包交接。项目 / previs / RunningHub / 画布语义映射按已审阅 import 与合理几何 / 业务差异保持，无调用旧源明确排除；没有新的无 owner 视觉项，不继续扩扫美化或叠覆盖。首次 TS2740 经 C 单行类型收窄、同专项与第二次构建关闭；真实剩余按数据 / 权限 / 功能 / 写副作用 / 未测登记。
+
+明确排除项保持独立：/dev/*、/test-voice-recording；静态盘点未找到生产调用链的 CanvasCreateCard、creation-inspiration-tunnel.tsx / css、creation-gallery-gesture.ts、creation-inspirations.ts、canvas-workspace-tool-panel.tsx、canvas-creative-interaction.tsx、canvas-size-picker.tsx、previs-viewport-dock.tsx，不因目录存在而重做。InspirationHall 实际嵌入首页，creative-agent-cards 仍有真实调用，不能连同这些未调用文件一起排除。后端、权限、数据结构、模型协议、编辑器 manifest / 注册 / 算法及业务写路径不属于本轮视觉重构。
+
+## 剩余验收与实现缺口的区别
+
+本轮没有新发现的无 owner 视觉实现项。首次构建类型阻断已关闭，当前没有已知可执行源码 / 构建缺口；剩余并非全部外部条件，既有数据 / 功能 / 权限限制，也有本窗口未测的可达显示交互，以及不能按只读方式执行的业务动作。
+
+| 剩余类型 | 具体范围 |
+| --- | --- |
+| 缺现有数据 / 可见性条件 | 四列表非空；画布 / 分享 token / 预演 / 媒体；项目七视图、章节 workflow 与剪辑八插槽；非空聊天 / Agent 运行；可用模型、开放工具台 / RunningHub、活跃认证、商品 / provider / 现有订单二维码 |
+| 本窗口未测 | 部分设置完整正文 / 长内容 / 字段焦点、完整账户卡边界、共享 Select small/large / multiple、复杂嵌套与全部焦点守卫、自定义皮肤 / 200% / 其它浏览器；SEO 名称误定位样本排除，不能推断整页命名通过或失败 |
+| 业务 / 持久化副作用 | 创建 / 生成 / 保存应用 / 上传删除、插件技能安装、Eagle 挂载、渠道即时配置、剪辑器自动保存 / 关联、公告标已读、认证、支付兑换 / 退款调账和系统更新；均未为补图执行 |
+| 独立业务验证 | whisper 转写、真实模型生成、后端持久化、SSE 断线重连等不能由本轮 UI 收敛证明 |
+
+## 共享合同与阶段
+
+M0 统一同一角色的控件反馈：150ms 原地背景 / 文字 / 边框颜色过渡；无额外点击缩放、图标上跳和跨项滑动选中层。系统减少动态效果时控件过渡为 0。保留加载指示和业务进度，减少动态效果时不旋转装饰 spinner。
+
+主操作使用 button-primary token；普通持久选中使用 control-selected token；危险状态、Checkbox / Radio 和 Switch 保留各自语义。按钮直接消费原生 :focus-visible，不能依赖控件内部先收到 keydown 才显示焦点。
+
+基础 token / theme 为唯一源；仅修改实际 import 链中的样式。浮层挂载到 body 时使用 rootClassName / 共享外壳明确作用域，不依赖页面祖先。ConfigProvider 通过 React 上下文传递，CSS 变量则按实际 DOM 继承；二者不可混同。不增加全局 AntD 覆盖补丁或不断扩大的页面白名单。
+
+密度保留：通用 AntD 36px / 6px 圆角；工作区 38px / 12px 圆角；紧凑画布工具有独立尺寸，后台继续使用自己的 Admin* / --admin-*。共享过滤与标签页统一表面、14px 标签、16px 图标、12px 计数、32px 项高（compact 28px），轨道可横向滚动，不改两页布局。
+
+Tabs 使用 tablist / tab / tabpanel，过滤使用 aria-pressed，SegmentedControl 使用 radiogroup / radio；只共用视觉层，不能互换语义。Select 保留 AntD 原有泛型、多选、搜索、受控 open、回调、ref 和表单行为；Modal / Drawer 保留 flush、销毁及表单生命周期。
+
+M0 精确 API 和历史见下文。M1 分配源码已收拢，M2 安全可达有限实测与追加已接受；缺条件留待验收，不造数据或无限等待。M3 两份总文档、覆盖归属、首次构建失败、C 单行类型修正及第二次成功构建的独立归档已交付协调者最终审阅。没有新增逐批批准闸，有限实测与构建通过均不能写成全部生产状态通过。
+
+## M0 交付与接入点（历史基线）
+
+精确 import、props、尺寸、槽位、Tabs / filter 示例及 portal 规则见 `web/src/components/ui/README.md` 的“M0 公共 API”和“Tabs 与过滤的共用视觉层”。本轮没有新增按钮框架或标签页状态实现：文字按钮继续使用 AntD；真实 Select 继续透传完整 AntD 能力；Tabs / filter 以页面已有状态和键盘处理接入共享 CSS。
+
+已实现：
+
+- 根 / 工作区 AntD 时长统一为 0.15s；CSS control-motion-duration 为 150ms，系统减少动态效果时从变量源头变为 0s，避免 Select 的具体规则覆盖通用 reduced-motion 声明。
+- 移除 useWorkspaceButtonFeedback 的全局监听及纯装饰 hook，删除统一样式根据 button:has(svg) 猜测语义的上移 / 缩放 / 光晕规则、对应补丁例外，以及共用卡片的错峰入场和图片模糊入场。
+- IconButton / ToolButton 直接透传原生事件与 React 19 ref，使用原生 focus-visible；区分主命令、持久选中、危险角色；ToolButton 恢复 children，补 count 和明确的 false 状态。
+- SegmentedControl 删除移动测量和滑动层，保持 radio 键盘合同、禁用值、单一 Tab 入口及原组高；保留 indicator 参数类型以便现有调用方继续编译。
+- `.app-control-group` / `data-slot="control-item"` 已为真实 Segmented 消费；control-icon / control-label / control-count 为页面组提供共用槽位。同一视觉合同可供技能 Tabs 与插件过滤接入，M0 当时两个页面尚未接入；后续 B1 已接入并有限真实接受，不再是当前待办。
+- 统一输入的原生 focus-visible，复合输入由外壳画一次焦点边界；Select 三份重复键盘焦点合并为 unified-buttons.css 的唯一源。AppModal / AppDrawer 增加稳定根命名空间，保留已有样式合并、flush、destroyOnHidden 与表单行为。
+
+本阶段实际修改文件（不含工作区已有其他批次修改）：
+
+- components/ui/base/buttons/icon-button.tsx、tool-button.tsx；base/segmented-control/segmented-control.tsx；base/select/select.tsx；product/app-modal/app-modal.tsx；product/app-drawer/app-drawer.tsx；components/ui/README.md。
+- lib/app-theme.ts；layouts/user-layout.tsx；hooks/use-workspace-button-feedback.ts（删除）；styles/globals.css、unified-buttons.css、unified-inputs.css、workspace-product.css。
+- test/shared-controls.test.tsx、app-theme.test.ts、workspace-icon-button-hover.test.ts、workspace-menu-density.test.tsx；本计划和 progress/pending-test.mdx。
+
+各组最终接续与边界：
+
+- B：最终覆盖 /80 JPEG元数据 /29源码冻结已root与独立审阅接受，等待具体集成；B3有限浅色空选择器已接受，原联测失败与Eagle /非空 /音频限制保留，C新深色稳定补证有限真实已接受，组idle等待具体集成。
+- C：创作 / 工具台 / 画布 / 项目 / 剪辑器源码与限定返修已接受；首次类型阻断经单 handler 收窄和同专项关闭，A 第二次生产构建通过。合法正文 / 媒体 / token、非空运行与保存 / 生成未验收。
+- D：D2 / D3、A5 / A6 钱包、六深层页签、两抽屉和两个标签有限真实已接受；顶部钱包交接由 A7 三路径补齐，不外推 sidebar。权限 / 即存配置 / 账务 / 非空和未测保留，无待重复窗口。
+- 不扩大白名单。DocumentMarkdown、document-reading.css、skill-document 保持。B1 的 Tabs / filter 语义与局部横向滚动已有真实证据，其他新调用方仍需分别验收，不从共享组件推导全部通过。
+- Select 多选 / 搜索 / 受控 open / 外部 ref 的原实现未改，当前有类型和静态合同依据，本轮真实浏览器只验证已有单选调用；其他状态由真实调用页面补验。
+- M0 的技能详情指针关闭回 body 问题已由 B1 修复并完成最终焦点回归，协调者已审阅通过；初轮失败记录保留为历史，最终结论以 full-b1/checks.json 的 final-focus-regression 为准。
+- 自定义皮肤、200% 缩放、复杂嵌套浮层、非空 / 错误业务状态和其他浏览器未验收。没有修改账号 / 渠道 / 密钥 / 记忆配置、安装技能插件、创建数据或付费生成。
+
+## M0 验证记录（当时执行，非当前整包结果）
+
+- 已运行验收：真实 /skills 的 Select 单选键盘展开 / 关闭、首次 Tab、角色设计详情中 radio 方向键 / Home / End，1280×720 浅深主题与 390×600 深色矮窗口。弹窗 374×540、x=8 / y=38，无整页横向溢出。普通反馈为 0.15s，减少动态效果下 Select 与 radio 为 0s；没有额外位移。键盘 Enter 打开、Escape 关闭后焦点回原详情按钮。
+- 已运行验收：真实 /settings?section=agent-memory 的图标按钮仅键盘聚焦，28×28、2px 焦点；空白添加表单只打开 / 聚焦 / 关闭，输入 1px 焦点。没有执行导入 / 导出或保存。浏览器最终恢复浅色、1280×720 和默认动态效果。
+- 已验证检查：既有 Docker 前端 bun run typecheck、git diff --check；七个专项共 30 项通过：shared-controls、app-theme、workspace-icon-button-hover、workspace-menu-density、tooltip-trigger、http-ownership、workspace-sidebar-state。未运行完整测试、生产构建或后端测试。
+- 已实现待真实数据 / 待接入：M0 交付时两个页面的新 Tabs / filter 尚未接入，随后 B1 已接入、真实验收并审阅，不能沿用 M0 旧待办。M0 证据仍在 .local/ui-review/m0/；B1 见 full-b1，加载误截图排除。A1 已审阅，A2 范围卡 / 来源卡已由 B2 真测并审阅；普通library映射与项目创建有限实测由A4接受，其他状态不外推，非空 / 写状态限制保留，不扩 owner 范围。

@@ -120,6 +120,19 @@ export default function CreatePage() {
     const [historyOpen, setHistoryOpen] = useState(false);
     const [loginDialogOpen, setLoginDialogOpen] = useState(false);
     const [libraryOpen, setLibraryOpen] = useState(false);
+    const libraryTriggerRef = useRef<HTMLElement | null>(null);
+    const libraryWasOpenRef = useRef(false);
+    const openLibrary = () => {
+        libraryTriggerRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+        setLibraryOpen(true);
+    };
+    useEffect(() => {
+        // The lazy picker unmounts on close, before AntD can restore its trigger.
+        if (libraryWasOpenRef.current && !libraryOpen && libraryTriggerRef.current?.isConnected) {
+            libraryTriggerRef.current.focus({ preventScroll: true });
+        }
+        libraryWasOpenRef.current = libraryOpen;
+    }, [libraryOpen]);
     const externalAssetSources = useExternalAssetSources(libraryOpen);
     const abortRef = useRef<AbortController | null>(null);
     const composerFocusRef = useRef<HTMLTextAreaElement>(null);
@@ -1022,7 +1035,7 @@ export default function CreatePage() {
         onReorderAttachments: reorderAttachments,
         onReplaceAttachment: replaceReferenceFromTrack,
         onReplaceReferenceFiles: replaceReferenceFromFiles,
-        onOpenLibrary: () => setLibraryOpen(true),
+        onOpenLibrary: openLibrary,
         onModeChange: selectMode,
         model: selectedModel,
         modelRequirements,
@@ -1087,7 +1100,7 @@ export default function CreatePage() {
                     </div>
                     <CreationEmptySuggest
                         onStartPrompt={startPrompt}
-                        onOpenLibrary={() => { setAgentMode(false); selectMode("image"); setLibraryOpen(true); }}
+                        onOpenLibrary={() => { setAgentMode(false); selectMode("image"); openLibrary(); }}
                     />
                 </section>
                 <CreationRecentCanvases onRequireLogin={() => setLoginDialogOpen(true)} />

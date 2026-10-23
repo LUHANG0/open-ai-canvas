@@ -52,6 +52,140 @@ const settle = async () => {
 };
 const nodes = new Set(["node"]);
 
+function releaseFixture(count: number) {
+    let scope = "release-account-a";
+    let sequence = 0;
+    let active = 0;
+    let peak = 0;
+    const calls: { nodeId: string; action: string }[] = [];
+    const gates = new Map<string, (error?: Error) => void>();
+    const client = createCanvasEditLeaseClient({
+        now: () => 0,
+        scope: () => scope,
+        sessionId: () => scope,
+        change: (async (_canvas, proof, action) => {
+            calls.push({ nodeId: proof.nodeId, action });
+            if (action === "release") {
+                active++;
+                peak = Math.max(peak, active);
+                try {
+                    await new Promise<void>((resolve, reject) => gates.set(proof.nodeId, error => {
+                        gates.delete(proof.nodeId);
+                        if (error) reject(error);
+                        else resolve();
+                    }));
+                } finally { active--; }
+                return { serverTime: new Date(0).toISOString() };
+            }
+            return { token: `grant-${++sequence}`, serverTime: new Date(0).toISOString(), lease: { nodeId: proof.nodeId, sessionId: proof.sessionId, expiresAt: new Date(30_000).toISOString() } };
+        }) as typeof changeCanvasEditLease,
+    });
+    const ids = new Set(Array.from({ length: count }, (_, index) => `node-${index}`));
+    ids.forEach(id => client.input("canvas", id));
+    const ready = async () => {
+        await client.proofs("canvas", ids);
+        client.acknowledged("canvas", client.versions("canvas"));
+    };
+    const drain = async (done: () => boolean) => {
+        for (let round = 0; round < 40 && !done(); round++) {
+            [...gates.values()].forEach(resolve => resolve());
+            await settle();
+        }
+    };
+    return { client, calls, gates, ids, ready, drain, peak: () => peak, active: () => active, switchScope: () => { scope = "release-account-b"; client.reset(); } };
+}
+
+test("save completion releases independent nodes with bounded concurrency and waits for every response", async () => {
+    const f = releaseFixture(8);
+    await f.ready();
+    let done = false;
+    const saving = f.client.yield("canvas").then(() => { done = true; });
+    await settle();
+    const firstWave = f.gates.size;
+    expect(done).toBe(false);
+    // Drain before assertions so the old serial implementation also terminates.
+    await f.drain(() => done);
+    await saving;
+    expect(firstWave).toBe(4);
+    expect(f.peak()).toBe(4);
+    expect(f.active()).toBe(0);
+    expect(f.calls.filter(call => call.action === "release")).toHaveLength(8);
+    expect([...f.ids].every(id => !f.client.state("canvas", id).typing)).toBe(true);
+});
+
+test("input during release stays pending and proofs wait for release before acquiring a fresh grant", async () => {
+    const f = releaseFixture(1);
+    await f.ready();
+    const savedVersions = f.client.versions("canvas");
+    const releasing = f.client.yield("canvas");
+    await settle();
+    f.client.input("canvas", "node-0");
+    let proofDone = false;
+    const proving = f.client.proofs("canvas", f.ids).then(proofs => { proofDone = true; return proofs; });
+    await settle();
+    expect(proofDone).toBe(false);
+    expect(f.calls.map(call => call.action)).toEqual(["acquire", "release"]);
+    f.gates.get("node-0")!();
+    await releasing;
+    const proofs = await proving;
+    expect(f.calls.map(call => call.action)).toEqual(["acquire", "release", "acquire"]);
+    expect(proofs[0].token).toBe("grant-2");
+    f.client.acknowledged("canvas", savedVersions);
+    expect(f.client.pending("canvas", "node-0")).toBe(true);
+    expect(f.client.versions("canvas")["node-0"]).toBe(2);
+});
+
+test("release failure does not block other nodes or resolve the batch before their responses", async () => {
+    const f = releaseFixture(8);
+    await f.ready();
+    let done = false;
+    const releasing = f.client.yield("canvas").then(() => { done = true; });
+    await settle();
+    f.gates.get("node-0")!(new Error("release offline"));
+    await settle();
+    expect(done).toBe(false);
+    await f.drain(() => done);
+    await releasing;
+    expect(f.calls.filter(call => call.action === "release")).toHaveLength(8);
+    expect(f.client.state("canvas", "node-0").error).toBe("release offline");
+    expect([...f.ids].slice(1).every(id => !f.client.state("canvas", id).typing)).toBe(true);
+    f.client.input("canvas", "node-0");
+    expect(f.client.pending("canvas", "node-0")).toBe(true);
+    const proofs = await f.client.proofs("canvas", new Set(["node-0"]));
+    expect(proofs).toHaveLength(1);
+    expect(f.client.state("canvas", "node-0").error).toBeUndefined();
+    expect(f.client.pending("canvas", "node-0")).toBe(true);
+});
+
+test("scope reset skips queued old releases and old responses cannot clear the new account grant", async () => {
+    const f = releaseFixture(8);
+    await f.ready();
+    let done = false;
+    const releasing = f.client.yield("canvas").then(() => { done = true; });
+    await settle();
+    f.switchScope();
+    f.client.input("canvas", "node-0");
+    const fresh = await f.client.proofs("canvas", new Set(["node-0"]));
+    await f.drain(() => done);
+    await releasing;
+    expect(f.calls.filter(call => call.action === "release")).toHaveLength(4);
+    expect(await f.client.proofs("canvas", new Set(["node-0"]))).toEqual(fresh);
+    expect(f.client.pending("canvas", "node-0")).toBe(true);
+    expect(f.client.state("canvas", "node-0").typing).toBe(true);
+});
+
+test("overlapping release passes keep each node request mutually exclusive", async () => {
+    const f = releaseFixture(1);
+    await f.ready();
+    const first = f.client.yield("canvas");
+    const second = f.client.yield("canvas");
+    await settle();
+    f.gates.get("node-0")!();
+    await Promise.all([first, second]);
+    expect(f.calls.filter(call => call.action === "release")).toHaveLength(1);
+    expect(f.active()).toBe(0);
+});
+
 test("admission rejection immediately blocks a different run and an older poll cannot unlock it", () => {
     const f = fixture();
     const status = {

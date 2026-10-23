@@ -2,6 +2,46 @@
 
 本文件是影策仓库中 AI、自动化工具和协作者的工作约定。用户当前任务优先于本文件；本文件优先于个人习惯。所有结论应能回溯到代码、配置、测试、日志或文档，不用历史印象替代现状。
 
+## 当前 Fork 的工作交接
+
+本节记录当前开发安排和交接入口。新会话先阅读本节及存在时的 `.local/README.md`，再检查 `git status --short`、`git branch -vv` 和 `git remote -v`；不要假设服务、账号或模型配置仍保持初始化时的状态。
+
+### 讨论与实施分开（用户已确认）
+
+- 讨论任务默认只读查看页面、源码和配置；用户明确要求实施、修复或同步 Git 后，按该次授权范围执行，不把旧的讨论限制当作撤销新授权。
+- 已有协调与实施会话分工时继续遵守文件归属；未经用户授权，不自行创建实施会话或增加代码写入者。维护本文件可按用户明确请求直接进行。
+- “可以改善吗”“这个方向可以”、选择优先页面、确认设计建议等，均不构成开始编码的授权；先把方案讨论清楚。
+- 需要实施时，先明确方案和范围，再由用户指定的实施会话执行；已明确授权的必要接续无需逐批重新确认。提交、推送、PR 和部署分别遵守当前任务授权，不从其中一项推定其余各项。
+
+### 已确认的范围与 Git 工作流
+
+- 用户要基于现有代码二次开发，并方便向原项目提 PR；当前先完成本地开发，服务器信息由用户之后提供，暂不实施上线。
+- 已创建 Fork：`https://github.com/LUHANG0/open-ai-canvas`。`origin` 指向该 Fork；`upstream` 指向 `https://github.com/ddcat-ai/open-ai-canvas.git`。
+- 初始化基线为 `a934a655f175b1bc41af8d92fa8c26493699ef70`，对应作者更新 `v1.6.9.1` 元数据与日志的提交；这是搭建时的基线，不代表上游永远最新。
+- `main` 用于跟随上游；`my-product` 为已建立的产品开发分支，本地跟踪 `origin/my-product`。准备贡献上游时，从更新后的 `upstream/main` 创建聚焦功能分支，避免夹带产品定制及本节交接说明。
+- 后续上线已选择运行自己修改的源码及自己构建的镜像，沿用项目 Compose 能力；自行管理发布、备份和升级。未经用户重新选择，不切换为官方 Release 在线更新覆盖定制版本。
+
+### 本地开发入口
+
+- 本机使用 Docker Desktop 开发，不依赖宿主机安装 Bun 或 Go。采用 `docker-compose.dev.yml`，叠加 Git 忽略的 `.local/compose.override.yml`；优先复用已有环境。
+- 本地前端镜像使用 Node 24 运行 Vite，Bun 1.3.13 用于依赖安装和专项命令；具体固定版本见 `.local/Dockerfile.web`。不要改回 Bun 直接运行 Vite：此前出现 WebSocket upgrade 导致开发前端退出，已通过本地 Node 运行方式修复。通用 Compose 不承载这份机器专用配置。
+- 在仓库根目录运行 `bash .local/dev.sh status` 检查现有服务；需要启动、停止或查看日志时分别使用 `bash .local/dev.sh start`、`bash .local/dev.sh stop`、`bash .local/dev.sh logs`。不要重复启动另一套宿主机服务。
+- 前端为 `http://localhost:3000`，首次注册入口为 `/register`；前后端端口仅绑定 `127.0.0.1`（3000、8080），Vite 代理 `/api` 到后端。
+- 本地使用 SQLite，数据位于 `.local/project-workbench-debug`，缓存位于 `.local/cache`；这不是 PostgreSQL/Redis 的服务器部署。停止服务使用现有脚本，保留数据库、上传素材和数据卷。
+- 本地后端镜像 `yingce-local-dev-backend` 补充 Node.js、npm、ffmpeg；内嵌 Agent 依赖按锁文件安装，锁文件未变化时复用缓存。未设置 `YINGCE_AGENT_URL`，无需另启独立 Agent 容器。
+- `.local/backend-start.sh` 仅在容器内信任 Git 目录 `/workspace`，解决挂载目录所有者差异；`.local/air.toml` 排除 Agent 的 `node_modules` 热更新监听。
+- 本机已验证的网络安排：镜像构建及后端通过 Docker Desktop 代理 `http://http.docker.internal:3128`；前端 Bun 直接下载，下载并发为 16。Bun 显式使用该代理曾发生超时，不要无依据给前端添加同样代理。
+- `.local` 的脚本、配置、数据和缓存不提交 Git。新克隆或其他机器上可能不存在，先检查文件，不把机器专用配置写入通用源码或上游 PR。
+
+### 当前实现与验证入口
+
+- 全站 UI 统一的一轮源码收敛及允许条件下的有限真实检查已完成；生产构建曾先报 TS2740，修正后复建通过。覆盖与受限项目见 [总计划](docs/plans/ui-unification-work-plan.mdx)，不能把这次历史构建当作后续新源码的验证。
+- 本次 Git 同步前，包含后续画布修复和夜总会插件的当前前端再次在现有容器执行 `bun run build`，类型检查与 Vite 构建均退出 0；这不扩大专项或浏览器验收范围，也不代表真实模型、全部业务状态或生产部署通过。
+- 后续已处理画布新增后删空、输入区滚轮边界、Agent 面板布局与四角无图标缩放、浅色连线反馈、同步状态区分，以及节点仅点击打开上下操作区、拖移结束保持关闭和连接目标取消整卡倾斜。各批专项、类型检查、有限真实结果及未覆盖状态统一见 [待测试](docs/content/docs/progress/pending-test.mdx)。
+- 夜总会独立协议插件及宿主支持已实现，专项结果与真实模型限制见 [插件说明](docs/content/docs/backend/yezonghui.mdx) 和待测试记录；未做真实收费模型验收，不代用户生成任务。
+- 原用户现场长期同步问题未直接复现，不宣称全部同步故障已解决；非空业务、合法画布 / 项目数据、媒体生成、权限和有写入副作用的状态按各批记录保留待验收。字幕转写仍需 whisper 服务。
+- 详细本机证据保存在 Git 忽略的 `.local/ui-review/`、`.local/dev-proxy-investigation/`；其他机器可能不存在，不把本地证据路径当作可随仓库分发的附件。初始化时的账号和 schema 状态不再作为当前事实，必要时重新检查，且不保存凭据。
+
 ## 1. 项目边界
 
 影策（`ddcat-ai/open-ai-canvas`）是面向 AI 影视与短剧创作的工作台，当前仍在快速开发。公开接口、数据结构和部署配置可能直接调整；除非任务明确要求，不为旧字段、旧 API 或旧数据增加兼容层。
@@ -14,29 +54,15 @@
 | `backend/` | Go 1.25、Gin、GORM、SQLite/PostgreSQL、Redis 协调 | `backend/cmd/server/main.go` | 登录、权限、业务 API、任务队列、资源、模型中转和后台管理 |
 | `docs/` | Next.js、Fumadocs、MDX | `docs/content/docs/` | 面向用户和开发者的专题文档；构建配置见 `docs/source.config.ts` |
 
-根目录的 `Dockerfile` 构建前端静态镜像；`nginx.conf` 托管 SPA 并代理后端。`docker-compose.dev.yml` 是源码热更新开发编排，根 `docker-compose.yml` 和 `docker-compose.local.yml` 是本地构建运行。服务器默认使用官方 Release 镜像、`docker-compose.deploy.yml`（PostgreSQL、Redis、独立 Agent、迁移服务）和宿主机 Host Updater，详细说明见 [Docker 部署](docs/content/docs/overview/docker.mdx)。
+根目录的 `Dockerfile` 构建前端静态镜像；`nginx.conf` 托管 SPA 并代理后端。`docker-compose.dev.yml` 是源码热更新开发编排，根 `docker-compose.yml` 和 `docker-compose.local.yml` 是本地构建运行。服务器默认使用官方 Release 镜像、`docker-compose.deploy.yml`（PostgreSQL、Redis、独立 Agent、迁移服务）和宿主机 Host Updater；当前 Fork 的源码构建选择见上文。
 
 ## 2. 开始工作前
 
 ### Agent 本地开发
 
-详细说明请参考 [docs/AGENT_LOCAL_DEVELOPMENT.md](docs/AGENT_LOCAL_DEVELOPMENT.md)。
+当前机器复用上文 Docker 开发入口，不另起宿主机前后端。内嵌 Agent 运行文件位于 `backend/agent-runtime/pi/`；依赖由现有容器启动流程按锁文件处理，不因文档整理重复安装。本地未设置 `YINGCE_AGENT_URL` 时，由后端启动 Node 子进程运行 Agent，无需另启独立 yingce-agent 容器。
 
-**快速启动**：
-
-```bash
-# 1. 安装 Agent runtime 依赖
-cd backend/agent-runtime/pi && npm install && cd ../../..
-
-# 2. 启动后端（自动使用嵌入模式）
-cd backend
-CANVAS_BACKEND_DATA_DIR=../.local/project-workbench-debug go run ./cmd/server
-
-# 3. 启动前端
-cd web && bun run dev
-```
-
-本地开发不设置 `YINGCE_AGENT_URL` 时，后端在本进程内启动 Node，无需单独启动 yingce-agent。
+提示词维护约定见 [prompts/AGENTS.md](backend/internal/prompts/AGENTS.md)，运行策略见 [Agent 提示词策略](docs/content/docs/backend/agent-prompt-policy.mdx)。这些是仍在使用的不同职责，不能作为“旧 Agent”删除。
 
 生产 Compose 设置 `YINGCE_AGENT_URL` 后只调用 yingce-agent 容器。远程服务失败时不要回退到内嵌进程，否则同一步可能执行两次。不要删除 `yingce-agent/` 或把它从发布流程里撤掉。
 

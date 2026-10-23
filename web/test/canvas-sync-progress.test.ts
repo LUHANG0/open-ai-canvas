@@ -172,6 +172,90 @@ function live(): CanvasProject {
 function edit(patch: Partial<CanvasProject>) {
     useCanvasStore.setState({ projects: [{ ...live(), ...patch }] });
 }
+
+test("resource images keep media references through consecutive position saves and in-flight input", async () => {
+    const first = base().nodes[0]!;
+    const project = { ...base(), nodes: [first, { ...first, id: "image-2", position: { ...first.position }, metadata: { ...first.metadata, storageKey: "resource:image-2", assetId: "asset-2", content: "/api/resources/image-2/file" } }, { id: "text", type: "text", title: "Note", position: { x: 0, y: 300 }, width: 100, height: 100, metadata: { content: "fixture" } }] } as CanvasProject;
+    fixture.remote = structuredClone(project);
+    useCanvasStore.setState({ projects: [project] });
+    await reloadSession();
+    const move = (x: number) => edit({ nodes: live().nodes.map((node) => node.type === "image" ? { ...node, position: { x, y: x + 10 } } : node) });
+    move(10); move(20); move(30);
+    await sync.saveRemoteUserDataNow("canvas");
+    expect(fixture.writes).toHaveLength(1);
+    expect(fixture.writes[0].operations).toHaveLength(2);
+    for (const operation of fixture.writes[0].operations) {
+        expect(operation.type).toBe("patch_node");
+        expect(Object.keys(operation.patch).sort()).toEqual(["position.x", "position.y"]);
+    }
+    fixture.afterPostHook = () => { fixture.afterPostHook = undefined; move(80); };
+    move(50);
+    await sync.saveRemoteUserDataNow("canvas");
+    expect(fixture.writes).toHaveLength(3);
+    expect(fixture.remote.nodes.filter((node: CanvasProject["nodes"][number]) => node.type === "image").every((node: CanvasProject["nodes"][number]) => node.position.x === 80)).toBe(true);
+    expect(live().nodes.filter((node) => node.type === "image").map((node) => node.metadata?.storageKey)).toEqual(["resource:image", "resource:image-2"]);
+    expect(fixture.assetWrites).toHaveLength(0);
+    expect(useSyncProgressStore.getState().syncingProjects.canvas).toMatchObject({ phase: "done", pendingChanges: 0 });
+    const count = fixture.writes.length;
+    await sync.saveRemoteUserDataNow("canvas");
+    expect(fixture.writes).toHaveLength(count);
+    // Blob reads and upload transport are unexpected fixture calls, so any media reupload fails this pipeline test.
+});
+
+test("viewport-only input schedules no cloud work even when the canvas contains uploaded media", async () => {
+    fixture.manualTimers = true;
+    fixture.timers.clear();
+    useSyncProgressStore.getState().setProjectProgress("canvas", { phase: "done", localPhase: "saved", errorKind: undefined });
+    edit({ viewport: { x: 40, y: 70, k: 1 } });
+    edit({ viewport: { x: 60, y: 90, k: 1 } });
+    expect(fixture.timers.size).toBe(0);
+    expect(fixture.writes).toHaveLength(0);
+    expect(useSyncProgressStore.getState().syncingProjects.canvas.phase).toBe("done");
+});
+
+test.each(["load", "refresh", "patch"] as const)("a confirmed %s clears an old cloud failure only when no local edits remain", async (mode) => {
+    await sync.loadCanvasProjectForEditing("canvas");
+    fixture.readHook = () => { throw new ApiError("offline", { status: 503, retryable: true }); };
+    await expect(sync.refreshCanvasAfterAgent("canvas")).rejects.toThrow("offline");
+    // The editing/Agent caller records the rejected observation in the shared progress store.
+    useSyncProgressStore.getState().setProjectProgress("canvas", { phase: "pending", errorKind: "network", message: "画布同步失败：offline" });
+    const before = structuredClone(fixture.remote.nodes[0]);
+    const after = { ...before, title: "Cloud confirmed" };
+    fixture.remote = { ...fixture.remote, revision: 8, nodes: [after] };
+    if (mode === "load") await sync.loadCanvasProjectForEditing("canvas");
+    else if (mode === "refresh") await sync.refreshCanvasAfterAgent("canvas");
+    else await sync.applyAgentCanvasPatches("canvas", [{ canvasId: "canvas", baseRevision: 7, revision: 8, updatedAt: "2026-01-02", nodes: [{ before, after }], connections: [] }]);
+    expect(live().nodes[0]!.title).toBe("Cloud confirmed");
+    expect(useSyncProgressStore.getState().syncingProjects.canvas).toMatchObject({ phase: "done", pendingChanges: 0 });
+    expect(useSyncProgressStore.getState().syncingProjects.canvas.errorKind).toBeUndefined();
+});
+
+test("a successful cloud observation keeps errors on still-unconfirmed local edits", async () => {
+    await sync.loadCanvasProjectForEditing("canvas");
+    edit({ title: "Local unconfirmed" });
+    useSyncProgressStore.getState().setProjectProgress("canvas", { phase: "pending", errorKind: "network", message: "画布同步失败：offline" });
+    fixture.remote = { ...fixture.remote, revision: 8, nodes: fixture.remote.nodes.map((node: CanvasProject["nodes"][number]) => ({ ...node, title: "Cloud confirmed" })) };
+    await sync.refreshCanvasAfterAgent("canvas");
+    expect(live().title).toBe("Local unconfirmed");
+    expect(useSyncProgressStore.getState().syncingProjects.canvas).toMatchObject({ phase: "pending", errorKind: "network" });
+});
+
+test.each(["load", "refresh", "patch"] as const)("%s confirmation does not clear errors or finish over a newer position edit", async (mode) => {
+    await sync.loadCanvasProjectForEditing("canvas");
+    useSyncProgressStore.getState().setProjectProgress("canvas", { phase: "pending", errorKind: "network", message: "画布同步失败：offline" });
+    const before = structuredClone(fixture.remote.nodes[0]);
+    const after = { ...before, title: "Cloud confirmed" };
+    fixture.remote = { ...fixture.remote, revision: 8, nodes: [after] };
+    const move = () => edit({ nodes: live().nodes.map((node) => ({ ...node, position: { x: 400, y: 300 } })) });
+    if (mode === "patch") fixture.saveHook = (key: string) => { if (key === "yingce:canvas-confirmed-baselines") { fixture.saveHook = undefined; move(); } };
+    else fixture.beforeFlush = move;
+    if (mode === "load") await sync.loadCanvasProjectForEditing("canvas");
+    else if (mode === "refresh") await sync.refreshCanvasAfterAgent("canvas");
+    else await sync.applyAgentCanvasPatches("canvas", [{ canvasId: "canvas", baseRevision: 7, revision: 8, updatedAt: "2026-01-02", nodes: [{ before, after }], connections: [] }]);
+    expect(live().nodes[0]!.position).toEqual({ x: 400, y: 300 });
+    expect(fixture.remote.nodes[0].position).toEqual({ x: 0, y: 0 });
+    expect(useSyncProgressStore.getState().syncingProjects.canvas).toMatchObject({ phase: "pending", pendingChanges: 1, errorKind: "network" });
+});
 const journalKey = "yingce:canvas-mutation-journal";
 const journal = () => JSON.parse(fixture.data.get(journalKey) ?? "[]");
 
@@ -412,6 +496,48 @@ afterEach(() => { sync.resetRemoteUserDataSync(); peerSync.resetRemoteUserDataSy
 afterAll(() => {
     if (!resolve(dir).startsWith(resolve(tmpdir()) + sep)) throw new Error("unexpected fixture directory");
     rmSync(dir, { recursive: true, force: true });
+});
+
+test.each([false, true])("真实租约释放结束前保持 saving，期间新输入继续提交（新输入：%s）", async (newerInput) => {
+    fixture.manualTimers = true;
+    const enteredRelease = deferred();
+    const release = deferred();
+    const leases = createCanvasEditLeaseClient({
+        now: () => 0,
+        scope: () => fixture.scope,
+        sessionId: () => "progress-release-session",
+        change: (async (_id, proof, action) => {
+            if (action === "release") {
+                enteredRelease.resolve();
+                await release.promise;
+                return { serverTime: new Date(0).toISOString() };
+            }
+            return { token: "progress-grant", serverTime: new Date(0).toISOString(), lease: { nodeId: proof.nodeId, sessionId: proof.sessionId, expiresAt: new Date(30_000).toISOString() } };
+        }) as typeof changeCanvasEditLease,
+    });
+    setLeaseClient(leases);
+    leases.input("canvas", "image");
+    await leases.proofs("canvas", new Set(["image"]));
+    edit({ title: "First cloud edit" });
+    let done = false;
+    const saving = sync.saveRemoteUserDataNow("canvas").then(() => { done = true; });
+    await enteredRelease.promise;
+    expect(fixture.remote.title).toBe("First cloud edit");
+    expect(fixture.flushes).toBeGreaterThan(0);
+    expect(journal()).toEqual([]);
+    expect(useSyncProgressStore.getState().syncingProjects.canvas.phase).toBe("saving");
+    expect(done).toBe(false);
+    if (newerInput) {
+        leases.input("canvas", "image");
+        edit({ title: "Input during release" });
+        expect(leases.pending("canvas", "image")).toBe(true);
+    }
+    release.resolve();
+    await saving;
+    expect(fixture.writes).toHaveLength(newerInput ? 2 : 1);
+    expect(fixture.remote.title).toBe(newerInput ? "Input during release" : "First cloud edit");
+    expect(leases.pending("canvas", "image")).toBe(false);
+    expect(useSyncProgressStore.getState().syncingProjects.canvas).toMatchObject({ phase: "done", pendingChanges: 0 });
 });
 
 describe("定向保存与旧 journal 的真实同步集成", () => {

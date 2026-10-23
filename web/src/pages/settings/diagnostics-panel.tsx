@@ -25,19 +25,24 @@ export default function DiagnosticsPanel({ taskId, projectId }: DiagnosticsPanel
     const [range, setRange] = useState<DiagnosticRange>("30m");
     const [description, setDescription] = useState("");
     const [preview, setPreview] = useState<DiagnosticPreview | null>(null);
-    const [loadingPreview, setLoadingPreview] = useState(false);
+    const [loadingPreview, setLoadingPreview] = useState(true);
+    const [previewError, setPreviewError] = useState("");
     const [exporting, setExporting] = useState(false);
     const [bundleId, setBundleId] = useState("");
 
     useEffect(() => {
         let cancelled = false;
         setLoadingPreview(true);
+        setPreviewError("");
         void previewDiagnosticBundle(buildInput(range, undefined, taskId, projectId))
             .then((result) => {
                 if (!cancelled) setPreview(result);
             })
             .catch(() => {
-                if (!cancelled) setPreview(null);
+                if (!cancelled) {
+                    setPreview(null);
+                    setPreviewError("统计读取失败，暂时无法确认可用记录，请稍后刷新页面重试。");
+                }
             })
             .finally(() => {
                 if (!cancelled) setLoadingPreview(false);
@@ -62,17 +67,17 @@ export default function DiagnosticsPanel({ taskId, projectId }: DiagnosticsPanel
     };
 
     return (
-        <div className="settings-pane diagnostics-page">
+        <div className="settings-pane diagnostics-page settings-diagnostics-pane">
             <div className="settings-section max-w-4xl pb-8">
-                <header className="border-b border-border/60 pb-6 pt-1">
-                    <div className="mb-3 flex items-center gap-2 text-[var(--fs-tiny)] font-semibold tracking-[0.12em] text-foreground/42">
+                <header className="settings-diagnostics-header border-b border-border/60 pb-6 pt-1">
+                    <div className="settings-diagnostics-eyebrow mb-3 flex items-center gap-2 text-[var(--fs-tiny)] font-semibold tracking-[0.12em] text-foreground/42">
                         <span className="h-px w-6 bg-[var(--workspace-accent)]" aria-hidden="true" />
                         <span>排障工具</span>
                     </div>
                     <div className="grid gap-5 md:grid-cols-[minmax(0,1fr)_minmax(240px,0.72fr)] md:items-end md:gap-10">
                         <div className="min-w-0">
-                            <h2 className="text-xl font-semibold tracking-[-0.02em] text-foreground sm:text-2xl">问题诊断</h2>
-                            <p className="mt-2 max-w-xl text-sm leading-6 text-foreground/55">遇到报错、任务失败或生成卡住时，导出一份给开发人员排查。</p>
+                            <h2 className="settings-diagnostics-title text-xl font-semibold tracking-[-0.02em] text-foreground sm:text-2xl">问题诊断</h2>
+                            <p className="settings-diagnostics-description mt-2 max-w-xl text-sm leading-6 text-foreground/55">遇到报错、任务失败或生成卡住时，导出一份给开发人员排查。</p>
                         </div>
                         <div className="flex items-start gap-3 rounded-xl border border-emerald-500/20 bg-emerald-500/[.06] px-3.5 py-3">
                             <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-emerald-500/[.12] text-emerald-600 dark:text-emerald-400">
@@ -80,7 +85,7 @@ export default function DiagnosticsPanel({ taskId, projectId }: DiagnosticsPanel
                             </span>
                             <div className="min-w-0">
                                 <div className="text-sm font-semibold text-foreground/85">默认已脱敏</div>
-                                <p className="mt-1 text-xs leading-5 text-foreground/55">不包含 API Key、Cookie、完整提示词或原始媒体。</p>
+                                <p className="settings-diagnostics-help mt-1 text-xs leading-5 text-foreground/55">不包含 API Key、Cookie、完整提示词或原始媒体。</p>
                             </div>
                         </div>
                     </div>
@@ -94,13 +99,13 @@ export default function DiagnosticsPanel({ taskId, projectId }: DiagnosticsPanel
                                     <Clock3 className="size-4 text-foreground/55" strokeWidth={1.8} aria-hidden="true" />
                                     <h3 id="diagnostic-window-heading">收集范围</h3>
                                 </div>
-                                <p className="mt-1 text-xs leading-5 text-foreground/48">选择问题发生前后的日志时间窗口。</p>
+                                <p className="settings-diagnostics-help mt-1 text-xs leading-5 text-foreground/48">选择问题发生前后的日志时间窗口。</p>
                             </div>
-                            <span className="rounded-full bg-foreground/[.045] px-2.5 py-1 text-[var(--fs-tiny)] font-medium text-foreground/48">最长 24 小时</span>
+                            <span className="settings-diagnostics-help rounded-full bg-foreground/[.045] px-2.5 py-1 text-[var(--fs-tiny)] font-medium text-foreground/48">最长 24 小时</span>
                         </div>
                         <div className="mt-4 grid gap-4 md:grid-cols-[minmax(0,230px)_minmax(0,1fr)] md:items-end">
                             <label className="block">
-                                <span className="mb-2 block text-xs font-semibold text-foreground/65">时间范围</span>
+                                <span className="settings-diagnostics-field-label mb-2 block text-xs font-semibold text-foreground/65">时间范围</span>
                                 <Select
                                     ariaLabel="时间范围"
                                     className="w-full"
@@ -112,16 +117,17 @@ export default function DiagnosticsPanel({ taskId, projectId }: DiagnosticsPanel
                                     }}
                                 />
                             </label>
-                            <div className="rounded-lg border border-border/55 bg-foreground/[.025] px-3.5 py-3" aria-live="polite">
+                            <div className="settings-diagnostics-records rounded-lg border border-border/55 bg-foreground/[.025] px-3.5 py-3" role="status" aria-live="polite" aria-busy={loadingPreview}>
                                 <div className="flex items-center gap-2 text-sm font-medium text-foreground/78">
                                     <Activity className="size-4 text-emerald-500" strokeWidth={1.8} aria-hidden="true" />
                                     <span>当前账号的可用记录</span>
                                 </div>
                                 <div className="mt-3 grid grid-cols-3 divide-x divide-border/55">
                                     <DiagnosticMetric label="前端事件" value={loadingPreview ? "读取中" : "最多 500"} />
-                                    <DiagnosticMetric label="任务" value={loadingPreview ? "读取中" : preview ? String(preview.taskCount) : "待统计"} />
-                                    <DiagnosticMetric label="上游调用" value={loadingPreview ? "读取中" : preview ? String(preview.apiCallCount) : "待统计"} />
+                                    <DiagnosticMetric label="任务" value={loadingPreview ? "读取中" : previewError ? "读取失败" : preview ? String(preview.taskCount) : "待统计"} />
+                                    <DiagnosticMetric label="上游调用" value={loadingPreview ? "读取中" : previewError ? "读取失败" : preview ? String(preview.apiCallCount) : "待统计"} />
                                 </div>
+                                {previewError ? <p className="settings-diagnostics-feedback mt-3 text-xs leading-5 text-status-error" role="alert">{previewError}</p> : null}
                             </div>
                         </div>
                     </section>
@@ -132,9 +138,9 @@ export default function DiagnosticsPanel({ taskId, projectId }: DiagnosticsPanel
                             <div>
                                 <div className="flex items-center gap-2 text-sm font-semibold text-foreground/85">
                                     <h3 id="diagnostic-description-heading">问题描述</h3>
-                                    <span className="rounded-full bg-foreground/[.045] px-2 py-0.5 text-[var(--fs-tiny)] font-medium text-foreground/42">可选</span>
+                                    <span className="settings-diagnostics-help rounded-full bg-foreground/[.045] px-2 py-0.5 text-[var(--fs-tiny)] font-medium text-foreground/42">可选</span>
                                 </div>
-                                <p className="mt-1 text-xs leading-5 text-foreground/48">用一句话说明现象，帮助开发人员更快定位。</p>
+                                <p className="settings-diagnostics-help mt-1 text-xs leading-5 text-foreground/48">用一句话说明现象，帮助开发人员更快定位。</p>
                             </div>
                         </div>
                         <label className="mt-4 block" htmlFor="diagnostic-description">
@@ -145,7 +151,7 @@ export default function DiagnosticsPanel({ taskId, projectId }: DiagnosticsPanel
                 </div>
 
                 <footer className="mt-5 flex flex-col-reverse gap-4 border-t border-border/60 pt-4 sm:flex-row sm:items-center sm:justify-between">
-                    <p className="max-w-md text-xs leading-5 text-foreground/48">下载后请把 ZIP 文件和诊断编号一起提交。诊断包不会自动上传到服务器。</p>
+                    <p className="settings-diagnostics-help max-w-md text-xs leading-5 text-foreground/48">下载后请把 ZIP 文件和诊断编号一起提交。诊断包不会自动上传到服务器。</p>
                     <div className="flex flex-wrap items-center gap-2.5 sm:justify-end">
                         {bundleId ? (
                             <span className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/25 bg-emerald-500/[.06] px-2.5 py-2 text-xs font-medium text-emerald-700 dark:text-emerald-300" role="status">
@@ -166,8 +172,8 @@ export default function DiagnosticsPanel({ taskId, projectId }: DiagnosticsPanel
 function DiagnosticMetric({ label, value }: { label: string; value: string }) {
     return (
         <div className="min-w-0 px-3 first:pl-0 last:pr-0">
-            <div className="truncate text-[var(--fs-tiny)] text-foreground/45">{label}</div>
-            <div className="mt-1 truncate text-sm font-semibold tabular-nums text-foreground/78">{value}</div>
+            <div className="settings-diagnostics-metric-label truncate text-[var(--fs-tiny)] text-foreground/45">{label}</div>
+            <div className="settings-diagnostics-metric-value mt-1 truncate text-sm font-semibold tabular-nums text-foreground/78">{value}</div>
         </div>
     );
 }

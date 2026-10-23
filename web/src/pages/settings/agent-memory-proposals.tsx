@@ -89,7 +89,7 @@ export function AgentMemoryRevisionChanges({ revision }: { revision: AgentMemory
     );
 }
 
-export function AgentMemoryProposalPanel({ refreshKey, onApplied }: { refreshKey: string; onApplied: () => Promise<void> }) {
+export function AgentMemoryProposalPanel({ refreshKey, onApplied, settingsWorkspace = false }: { refreshKey: string; onApplied: () => Promise<void>; settingsWorkspace?: boolean }) {
     const { message } = App.useApp();
     const [proposals, setProposals] = useState<AgentMemoryProposal[]>([]);
     const [revisions, setRevisions] = useState<AgentMemoryRevision[]>([]);
@@ -176,6 +176,7 @@ export function AgentMemoryProposalPanel({ refreshKey, onApplied }: { refreshKey
                 </p>
             ) : null}
             <AppModal
+                rootClassName={settingsWorkspace ? "settings-workspace-overlay" : undefined}
                 open={open}
                 title={proposal ? "查看压缩提案" : revision ? "恢复记忆版本" : "压缩提案与历史"}
                 width={800}

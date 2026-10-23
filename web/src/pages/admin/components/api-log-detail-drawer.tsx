@@ -1,5 +1,6 @@
+import { AdminDrawer } from "@/pages/admin/ui/overlays";
 import { useEffect, useState, type ReactNode } from "react";
-import { Alert, App, Button, Drawer, Input, Skeleton, Tabs, Typography } from "antd";
+import { Alert, App, Button, Input, Skeleton, Tabs, Typography } from "antd";
 import { AdminEmpty, AdminStatusBadge } from "@/pages/admin/components/admin-ui";
 import { Activity, Clipboard, Link2, RefreshCw, Save, Video } from "lucide-react";
 import { formatCredits } from "@/constant/credits";
@@ -95,9 +96,9 @@ export function ApiLogDetailDrawer({ logId, onClose, onLogUpdated }: { logId: st
     ) : "请求日志详情";
 
     return (
-        <Drawer title={title} open={Boolean(logId)} onClose={onClose} size="min(1120px, 66vw)" destroyOnHidden className="api-log-detail-drawer-panel" rootClassName="admin-drawer api-log-detail-drawer">
+        <AdminDrawer title={title} open={Boolean(logId)} onClose={onClose} size="min(1120px, 66vw)" destroyOnHidden className="api-log-detail-drawer-panel" rootClassName="admin-drawer api-log-detail-drawer">
             {loading ? <Skeleton active paragraph={{ rows: 10 }} /> : log ? <LogDetail log={log} providerRequestId={providerRequestId} videoURL={videoURL} resultText={resultText} querying={querying} onProviderRequestIdChange={setProviderRequestId} onVideoURLChange={setVideoURL} onQuery={runQuery} onRecoverURL={runURLRecovery} /> : <AdminEmpty size="compact" title="没有请求详情" />}
-        </Drawer>
+        </AdminDrawer>
     );
 }
 

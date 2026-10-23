@@ -1,8 +1,8 @@
 import { App, Button, Dropdown, Table } from "antd";
-import type { ButtonProps, MenuProps, TableProps } from "antd";
+import type { ButtonProps, GetRef, MenuProps, TableProps } from "antd";
 import { saveAs } from "file-saver";
 import { CheckSquare2, ChevronDown, ChevronLeft, ChevronRight, Download, ListFilter, RotateCcw, SearchX, X } from "lucide-react";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
 import { Select } from "@/components/ui/base/select";
@@ -317,6 +317,7 @@ export type AdminRowAction = {
 
 export function AdminRowActions({ primary, actions, visibleActionCount }: { primary?: { label: ReactNode; icon?: ReactNode; onClick: () => void | Promise<void>; disabled?: boolean }; actions: AdminRowAction[]; visibleActionCount?: number }) {
     const { modal } = App.useApp();
+    const moreTriggerRef = useRef<GetRef<typeof Button>>(null);
     const resolvedVisibleActionCount = visibleActionCount ?? (actions.length <= 1 ? actions.length : 1);
     const visibleActions = actions.slice(0, Math.max(0, resolvedVisibleActionCount));
     const menuActions = actions.slice(Math.max(0, resolvedVisibleActionCount));
@@ -364,11 +365,15 @@ export function AdminRowActions({ primary, actions, visibleActionCount }: { prim
                         items,
                         onClick: ({ key }) => {
                             const action = actions.find((item) => item.key === key);
-                            if (action) runAction(action);
+                            if (action) {
+                                // 菜单项关闭后会移除；让后续弹层记住仍存在的返回目标。
+                                moreTriggerRef.current?.focus({ preventScroll: true });
+                                runAction(action);
+                            }
                         },
                     }}
                 >
-                    <Button type="text" size="small" className="admin-row-action admin-row-action-more" aria-label="更多操作">
+                    <Button ref={moreTriggerRef} type="text" size="small" className="admin-row-action admin-row-action-more" aria-label="更多操作">
                         <span>更多</span>
                         <ChevronDown className="admin-row-action-chevron" aria-hidden="true" />
                     </Button>

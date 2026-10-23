@@ -35,7 +35,7 @@ describe("canvas toolbar mode switch", () => {
 
         expect(html).toContain(`data-dock-size="${size}"`);
         expect(html).toContain(size === "compact" ? "--dock-item-size:28px" : "--dock-item-size:32px");
-        expect(html.match(/aceternity-dock-switch-thumb/g)).toHaveLength(1);
+        expect(html.match(/aceternity-dock-switch-thumb/g)).toHaveLength(modeSwitch.options.length);
         expect(html).toContain("absolute inset-0 rounded-[var(--dock-item-radius)]");
         expect(html).toContain("grid shrink-0 place-items-center");
         expect(html).not.toContain("is-labeled");

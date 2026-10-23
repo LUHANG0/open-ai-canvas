@@ -1,26 +1,24 @@
 import type { ThemeConfig } from "antd";
 import { theme as antdTheme } from "antd";
-import { getSkinAntOverrides } from "@/lib/skin-themes";
 
-/** 后台保留独立密度与表面，主操作颜色继承站点皮肤。 */
-export function getIsolatedAdminAntTheme(dark: boolean, skinID: unknown = "classic"): ThemeConfig {
-    const skin = getSkinAntOverrides(skinID, dark ? "dark" : "light");
+/** 后台独立使用中性表面、32px 密度及语义状态，不读取用户工作区皮肤。 */
+export function getIsolatedAdminAntTheme(dark: boolean, reducedMotion = false): ThemeConfig {
     const text = dark ? "#f5f5f5" : "#111111";
     const textSecondary = dark ? "#c4c4c4" : "#525252";
-    const canvas = dark ? "#111317" : "#f7f8fa";
-    const surface = dark ? "#191c21" : "#ffffff";
-    const surfaceMuted = dark ? "#23272e" : "#f2f4f7";
+    const canvas = dark ? "#0f0f0f" : "#f5f5f5";
+    const surface = dark ? "#181818" : "#ffffff";
+    const surfaceMuted = dark ? "#222222" : "#f0f0f0";
     const border = dark ? "rgba(245, 245, 245, 0.12)" : "rgba(17, 17, 17, 0.12)";
-    const primary = skin.primary || (dark ? "#f5f5f5" : "#171717");
-    const primaryFg = skin.primaryForeground || (dark ? "#171717" : "#ffffff");
-    const hover = skin.primaryHover || (dark ? "#ffffff" : "#303030");
-    const active = skin.primaryActive || (dark ? "#e5e5e5" : "#404040");
+    const primary = dark ? "#f5f5f5" : "#111111";
+    const primaryFg = dark ? "#0f0f0f" : "#ffffff";
+    const hover = dark ? "#ffffff" : "#303030";
+    const active = dark ? "#e5e5e5" : "#404040";
     const danger = dark ? "#f87171" : "#dc2626";
     const success = dark ? "#4ade80" : "#15803d";
     const warning = dark ? "#fbbf24" : "#b45309";
     const info = dark ? "#60a5fa" : "#2563eb";
     const switchOn = dark ? "#22c55e" : "#16a34a";
-    const switchOff = dark ? "#3f4b5a" : "#cbd5e1";
+    const switchOff = dark ? "#404040" : "#d4d4d4";
 
     return {
         algorithm: dark ? antdTheme.darkAlgorithm : antdTheme.defaultAlgorithm,
@@ -57,9 +55,10 @@ export function getIsolatedAdminAntTheme(dark: boolean, skinID: unknown = "class
             colorLinkHover: hover,
             boxShadow: "none",
             boxShadowSecondary: dark ? "0 22px 56px rgba(0, 0, 0, 0.48)" : "0 16px 40px rgba(15, 23, 42, 0.16)",
-            motionDurationFast: "0.12s",
-            motionDurationMid: "0.12s",
-            motionDurationSlow: "0.18s",
+            motion: !reducedMotion,
+            motionDurationFast: reducedMotion ? "0s" : "0.15s",
+            motionDurationMid: reducedMotion ? "0s" : "0.15s",
+            motionDurationSlow: reducedMotion ? "0s" : "0.15s",
         },
         components: {
             Button: {

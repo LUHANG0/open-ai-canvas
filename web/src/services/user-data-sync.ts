@@ -322,8 +322,9 @@ export async function loadCanvasProjectForEditing(id: string, options: { onLoad?
         useCanvasStore.setState((state) => ({ projects: local ? state.projects.map((item) => (item.id === id ? project : item)) : [...state.projects, project] }));
         await flushCanvasStorePersistence();
         await persistConfirmedCanvasBaselines();
-        const pending = pendingCanvasMutations.has(id) || !sameCanvasContent(remote, project);
-        useSyncProgressStore.getState().setProjectProgress(id, { phase: pending ? "pending" : "done", cloudRevision: project.revision, pendingChanges: pending ? 1 : 0, message: pending ? "云端更新已合并，保留本地未确认操作" : "已确认云端画布基线" });
+        if (epoch !== sessionEpoch) throw new Error("账号已切换，已停止旧会话保存");
+        const pending = pendingCanvasMutations.has(id) || !sameCanvasContent(remote, useCanvasStore.getState().openProject(id) || undefined);
+        useSyncProgressStore.getState().setProjectProgress(id, { phase: pending ? "pending" : "done", ...(!pending ? { errorKind: undefined } : {}), cloudRevision: project.revision, pendingChanges: pending ? 1 : 0, message: pending ? "云端更新已合并，保留本地未确认操作" : "已确认云端画布基线" });
         if (pending) scheduleRemoteUserDataSync();
         return project;
     });
@@ -400,8 +401,9 @@ export async function refreshCanvasAfterAgent(id: string, source: "sync" | "agen
         useCanvasStore.setState((state) => ({ projects: [...state.projects.filter((candidate) => candidate.id !== id), projected] }));
         await flushCanvasStorePersistence();
         await persistConfirmedCanvasBaselines();
-        const pending = !sameCanvasContent(project, projected);
-        useSyncProgressStore.getState().setProjectProgress(id, { phase: pending ? "pending" : "done", message: pending ? "Agent 结果已合并，本地修改等待保存" : "已同步 Agent 画布结果" });
+        if (epoch !== sessionEpoch) throw new Error("账号已切换，已停止旧会话保存");
+        const pending = !sameCanvasContent(project, useCanvasStore.getState().openProject(id) || undefined);
+        useSyncProgressStore.getState().setProjectProgress(id, { phase: pending ? "pending" : "done", ...(!pending ? { errorKind: undefined } : {}), cloudRevision: project.revision, pendingChanges: pending ? 1 : 0, message: pending ? "Agent 结果已合并，本地修改等待保存" : "已同步 Agent 画布结果" });
         if (pending) scheduleRemoteUserDataSync();
         return projected;
     });
@@ -450,7 +452,9 @@ export async function applyAgentCanvasPatches(id: string, patches: AgentCanvasPa
         // Zustand persistence already coalesces store writes behind a short timer.
         // Agent output can arrive in bursts; waiting here would serialize every
         // patch batch behind a full-canvas IndexedDB write and compete with paint.
-        useSyncProgressStore.getState().setProjectProgress(id, { phase: sameCanvasContent(remote, projected) ? "done" : "pending", message: "已同步 Agent 画布结果" });
+        if (epoch !== sessionEpoch) throw new Error("账号已切换，已停止旧会话保存");
+        const pending = !sameCanvasContent(remote, useCanvasStore.getState().openProject(id) || undefined);
+        useSyncProgressStore.getState().setProjectProgress(id, { phase: pending ? "pending" : "done", ...(!pending ? { errorKind: undefined } : {}), cloudRevision: remote.revision, pendingChanges: pending ? 1 : 0, message: pending ? "Agent 结果已合并，本地修改等待保存" : "已同步 Agent 画布结果" });
         return projected;
     });
 }

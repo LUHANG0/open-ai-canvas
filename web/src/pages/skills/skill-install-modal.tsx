@@ -1,4 +1,5 @@
-import { App, Button, Form, Input, Modal, Upload, type UploadFile } from "antd";
+import { App, Button, Form, Input, Upload, type UploadFile } from "antd";
+import { AppModal } from "@/components/ui/product/app-modal";
 import { Select } from "@/components/ui/base/select";
 import { Switch } from "@/components/ui/base/switch";
 import { SegmentedControl } from "@/components/ui/base/segmented-control";
@@ -22,30 +23,35 @@ type InstallFormValues = {
 };
 
 const modeOptions = [
-    { value: "markdown", label: <span className="inline-flex items-center gap-1.5"><FileText className="size-3.5" />Markdown</span> },
-    { value: "zip", label: <span className="inline-flex items-center gap-1.5"><FileArchive className="size-3.5" />ZIP 技能包</span> },
-    { value: "github", label: <span className="inline-flex items-center gap-1.5"><GitBranch className="size-3.5" />GitHub</span> },
+    { value: "markdown", label: <span className="inline-flex items-center gap-1.5"><FileText className="size-3.5" aria-hidden="true" />Markdown</span> },
+    { value: "zip", label: <span className="inline-flex items-center gap-1.5"><FileArchive className="size-3.5" aria-hidden="true" />ZIP 技能包</span> },
+    { value: "github", label: <span className="inline-flex items-center gap-1.5"><GitBranch className="size-3.5" aria-hidden="true" />GitHub</span> },
 ];
 
-export function SkillInstallModal({ open, onClose, onInstalled, onManualCreate }: { open: boolean; onClose: () => void; onInstalled: (skill: Skill) => void; onManualCreate: () => void }) {
+export function SkillInstallModal({ open, onClose, afterClose, onInstalled, onManualCreate }: { open: boolean; onClose: () => void; afterClose: () => void; onInstalled: (skill: Skill) => void; onManualCreate: () => void }) {
     const { message } = App.useApp();
     const [form] = Form.useForm<InstallFormValues>();
     const [mode, setMode] = useState<InstallMode>("markdown");
     const [fileList, setFileList] = useState<UploadFile[]>([]);
     const [installing, setInstalling] = useState(false);
+    const [installError, setInstallError] = useState("");
 
     useEffect(() => {
         if (!open) return;
         setMode("markdown");
         setFileList([]);
+        setInstallError("");
         form.setFieldsValue({ tag: "creative", is_public: true, autoUpdate: true, name: "", description: "", url: "", ref: "", subdir: "" });
     }, [form, open]);
 
     const install = async () => {
+        setInstallError("");
         const values = await form.validateFields();
         const file = fileList[0]?.originFileObj;
         if (mode !== "github" && !file) {
-            message.warning(`请选择一个 ${mode === "zip" ? "ZIP 技能包" : "Markdown 文件"}`);
+            const errorMessage = `请选择一个 ${mode === "zip" ? "ZIP 技能包" : "Markdown 文件"}`;
+            setInstallError(errorMessage);
+            message.warning(errorMessage);
             return;
         }
         setInstalling(true);
@@ -70,36 +76,43 @@ export function SkillInstallModal({ open, onClose, onInstalled, onManualCreate }
             message.success("技能已安装");
             onInstalled(result.skill);
         } catch (error) {
-            message.error(error instanceof Error ? error.message : "技能安装失败");
+            const errorMessage = error instanceof Error ? error.message : "技能安装失败";
+            setInstallError(errorMessage);
+            message.error(errorMessage);
         } finally {
             setInstalling(false);
         }
     };
 
     return (
-        <Modal
+        <AppModal
             className="skill-install-modal"
+            rootClassName="collection-detail-overlay"
             open={open}
             width={680}
             destroyOnHidden
             mask={{ closable: !installing }}
             title="安装技能"
             onCancel={onClose}
+            focusable={{ focusTriggerAfterClose: false }}
+            afterClose={afterClose}
             footer={(
-                <div className="flex items-center justify-between gap-3">
+                <div className="skill-install-footer flex items-center justify-between gap-3">
                     <Button type="text" onClick={onManualCreate}>从空白创建单文件技能</Button>
-                    <div className="flex gap-2"><Button onClick={onClose}>取消</Button><Button type="primary" loading={installing} onClick={() => void install()}>安装技能</Button></div>
+                    <div className="skill-install-footer-actions flex gap-2"><Button onClick={onClose}>取消</Button><Button type="primary" loading={installing} aria-busy={installing} onClick={() => void install()}>{installing ? "正在安装" : "安装技能"}</Button></div>
                 </div>
             )}
         >
-            <p className="mb-4 text-sm leading-6 text-foreground/55">支持标准 <code>SKILL.md</code>、包含多层目录的 ZIP 技能包，或公开 GitHub 仓库。名称和简介会优先从技能入口自动读取。</p>
-<SegmentedControl className="skill-install-mode" block options={modeOptions} value={mode} onChange={(value) => { setMode(value as InstallMode); setFileList([]); }} />
+            <p className="skill-install-intro mb-4 text-sm leading-6 text-foreground/55">支持标准 <code>SKILL.md</code>、包含多层目录的 ZIP 技能包，或公开 GitHub 仓库。名称和简介会优先从技能入口自动读取。</p>
+            <SegmentedControl className="skill-install-mode" indicator="static" ariaLabel="技能安装方式" block options={modeOptions} value={mode} onChange={(value) => { setMode(value as InstallMode); setFileList([]); setInstallError(""); }} />
 
-            <Form form={form} layout="vertical" requiredMark="optional" className="skill-install-form">
+            {installError ? <div className="skill-install-feedback" role="alert">{installError}</div> : null}
+            <span className="sr-only" role="status" aria-live="polite">{installing ? "正在安装技能，请稍候" : ""}</span>
+            <Form form={form} layout="vertical" requiredMark="optional" className="skill-install-form" aria-busy={installing}>
                 {mode === "github" ? (
                     <>
-                        <Form.Item name="url" label="GitHub 地址" rules={[{ required: true, message: "请填写 GitHub 仓库地址" }, { type: "url", message: "请输入有效链接" }]}>
-                            <Input type="url" inputMode="url" spellCheck={false} prefix={<GitBranch className="size-4 text-foreground/35" />} placeholder="https://github.com/owner/repository" />
+                        <Form.Item name="url" label="GitHub 仓库地址" rules={[{ required: true, message: "请填写 GitHub 仓库地址" }, { type: "url", message: "请输入有效链接" }]}>
+                            <Input type="url" inputMode="url" spellCheck={false} prefix={<GitBranch className="size-4 text-foreground/35" aria-hidden="true" />} placeholder="https://github.com/owner/repository" />
                         </Form.Item>
                         <div className="grid gap-x-3 sm:grid-cols-2">
                             <Form.Item name="ref" label="分支或标签" extra="留空时使用默认分支"><Input spellCheck={false} placeholder="main" /></Form.Item>
@@ -114,35 +127,37 @@ export function SkillInstallModal({ open, onClose, onInstalled, onManualCreate }
                             fileList={fileList}
                             beforeUpload={(file) => {
                                 if (file.size > 20 * 1024 * 1024) {
+                                    setInstallError("技能文件不能超过 20MB");
                                     message.error("技能文件不能超过 20MB");
                                     return Upload.LIST_IGNORE;
                                 }
+                                setInstallError("");
                                 return false;
                             }}
                             onChange={({ fileList: next }) => setFileList(next.slice(-1))}
                             onRemove={() => { setFileList([]); return true; }}
                         >
-                            <UploadCloud className="mx-auto mb-3 size-8 text-foreground/38" />
+                            <UploadCloud className="mx-auto mb-3 size-8 text-foreground/38" aria-hidden="true" />
                             <div className="text-sm font-medium">拖入或选择 {mode === "zip" ? "ZIP 技能包" : "Markdown 文件"}</div>
                             <div className="mt-1 text-xs text-foreground/45">{mode === "zip" ? "根目录或唯一子目录中必须包含 SKILL.md" : "普通 .md 会作为技能入口 SKILL.md 安装"}</div>
                         </Upload.Dragger>
                         <div className="mt-4 grid gap-x-3 sm:grid-cols-2">
-                            <Form.Item name="name" label="覆盖名称" extra="可选，留空时自动读取"><Input maxLength={80} autoComplete="off" /></Form.Item>
-                            <Form.Item name="description" label="覆盖简介" extra="可选，留空时自动读取"><Input maxLength={500} autoComplete="off" /></Form.Item>
+                            <Form.Item name="name" label="技能名称" extra="留空时自动读取，填写后替换原名称"><Input maxLength={80} autoComplete="off" /></Form.Item>
+                            <Form.Item name="description" label="技能简介" extra="留空时自动读取，填写后替换原简介"><Input maxLength={500} autoComplete="off" /></Form.Item>
                         </div>
                     </>
                 )}
 
                 <div className="grid gap-x-3 sm:grid-cols-2">
                     <Form.Item name="tag" label="技能分类" rules={[{ required: true, message: "请选择技能分类" }]}>
-                        <Select options={fallbackSkillCategories} />
+                        <Select ariaLabel="技能分类" options={fallbackSkillCategories} />
                     </Form.Item>
                     <Form.Item name="is_public" label="公开状态" valuePropName="checked" extra="公开后其他用户可以加入使用。">
-                        <Switch checkedChildren="公开" unCheckedChildren="私有" />
+                        <Switch aria-label="公开技能" checkedChildren="公开" unCheckedChildren="私有" />
                     </Form.Item>
                 </div>
-                {mode === "github" ? <Form.Item name="autoUpdate" label="自动同步" valuePropName="checked" extra="后台每 6 小时检查一次提交版本，并记录最近检查与同步时间。"><Switch checkedChildren="开启" unCheckedChildren="关闭" /></Form.Item> : null}
+                {mode === "github" ? <Form.Item name="autoUpdate" label="自动同步" valuePropName="checked" extra="后台每 6 小时检查一次提交版本，并记录最近检查与同步时间。"><Switch aria-label="自动同步 GitHub 技能" checkedChildren="开启" unCheckedChildren="关闭" /></Form.Item> : null}
             </Form>
-        </Modal>
+        </AppModal>
     );
 }

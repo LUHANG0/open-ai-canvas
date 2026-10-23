@@ -1,5 +1,6 @@
+import { AppModal } from "@/components/ui/product/app-modal";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
-import { App, Button, InputNumber, Modal } from "antd";
+import { App, Button, InputNumber } from "antd";
 import { Check, Image as ImageIcon, SkipBack, SkipForward, Trash2 } from "lucide-react";
 import { nanoid } from "nanoid";
 
@@ -95,7 +96,7 @@ export function CanvasVideoFrameDialog({ node, open, onClose, onConfirm }: Canva
     );
 
     return (
-        <Modal title={title} open={open} onCancel={onClose} footer={null} width={760} centered destroyOnHidden>
+        <AppModal rootClassName="workspace-utility-overlay" title={title} open={open} onCancel={onClose} footer={null} width={760} centered destroyOnHidden>
             <div className="space-y-4">
                 <div className="flex min-h-0 items-center justify-center overflow-hidden rounded-xl bg-black">
                     {videoUrl ? (
@@ -200,6 +201,6 @@ export function CanvasVideoFrameDialog({ node, open, onClose, onConfirm }: Canva
                     </div>
                 </div>
             </div>
-        </Modal>
+        </AppModal>
     );
 }

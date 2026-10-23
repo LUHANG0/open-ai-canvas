@@ -146,7 +146,7 @@ export function CanvasWorkspacePanel({
                 ) : null}
             </div>
             {open && !screens.lg ? (
-                <AppDrawer flush open placement="left" title={null} closable={false} size={320} onClose={onClose}>
+                <AppDrawer rootClassName="workspace-utility-overlay" flush open placement="left" title={null} closable={false} size={320} onClose={onClose}>
                     {content}
                 </AppDrawer>
             ) : null}

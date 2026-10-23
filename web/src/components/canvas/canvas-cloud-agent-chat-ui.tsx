@@ -2,7 +2,6 @@ import { agentCanvasActions, agentCanvasActionLabel } from "@/lib/canvas/agent-c
 import { Button } from "antd";
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type CSSProperties, type ReactNode, type SyntheticEvent } from "react";
 
-import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { CheckCircle2, ChevronDown, ChevronUp, CircleAlert, CircleDot, Eye, HelpCircle, List, ListChecks, LoaderCircle, Pencil, Plus, RotateCcw, Sparkles, Undo2, Wrench, XCircle } from "lucide-react";
 
 import { canvasThemes } from "@/lib/canvas-theme";
@@ -933,7 +932,6 @@ export function AgentOperationFeed({
     live?: boolean;
 }) {
     const [userExpanded, setUserExpanded] = useState<boolean | null>(null);
-    const reducedMotion = useReducedMotion();
     const listId = useId();
     const latest = items[items.length - 1];
     if (!latest) return null;
@@ -963,19 +961,7 @@ export function AgentOperationFeed({
                 <span className="agent-operation-kind">
                     <span>{categoryLabel}</span>
                 </span>
-                {/* 换步时旧文案高模糊淡出、新文案从下方上浮（先快后慢的非线性曲线）。 */}
-                <AnimatePresence mode="wait" initial={false}>
-                    <motion.span
-                        key={label}
-                        className="agent-operation-latest"
-                        initial={reducedMotion ? { opacity: 0 } : { opacity: 0, y: 12, filter: "blur(6px)" }}
-                        animate={reducedMotion ? { opacity: 1 } : { opacity: 1, y: 0, filter: "blur(0px)" }}
-                        exit={reducedMotion ? { opacity: 0 } : { opacity: 0, y: -8, filter: "blur(8px)" }}
-                        transition={reducedMotion ? { duration: 0 } : { duration: 0.34, ease: [0.16, 1, 0.3, 1] }}
-                    >
-                        {label}
-                    </motion.span>
-                </AnimatePresence>
+                <span className="agent-operation-latest">{label}</span>
                 {items.length > 1 ? <span className="agent-operation-count">{items.length} 步</span> : null}
                 <ChevronDown className="agent-operation-chevron" aria-hidden="true" />
             </button>

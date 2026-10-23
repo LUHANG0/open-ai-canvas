@@ -31,11 +31,36 @@ describe("Agent window layout", () => {
         expect(changeAgentPanelLayout(start, "west", -60, 150, viewport)).toEqual({ ...start, left: 756, width: 508 });
         expect(changeAgentPanelLayout(start, "north", -60, 150, viewport)).toEqual({ ...start, top: 218, height: 570 });
     });
+    for (const [corner, dx, dy, left, top] of [
+        ["northwest", -60, -40, 140, 60],
+        ["northeast", 60, -40, 200, 60],
+        ["southwest", -60, 40, 140, 100],
+        ["southeast", 60, 40, 200, 100],
+    ] as const) {
+        it(`${corner} expands outward, shrinks inward and preserves the opposite corner`, () => {
+            const centered = { left: 200, top: 100, width: 500, height: 600 };
+            const enlarged = changeAgentPanelLayout(centered, corner, dx, dy, viewport);
+            expect(enlarged).toEqual({ left, top, width: 560, height: 640 });
+            const shrunken = changeAgentPanelLayout(centered, corner, -dx, -dy, viewport);
+            expect(shrunken.width).toBe(440);
+            expect(shrunken.height).toBe(560);
+            expect(corner.includes("west") ? enlarged.left + enlarged.width : enlarged.left).toBe(corner.includes("west") ? centered.left + centered.width : centered.left);
+            expect(corner.includes("north") ? enlarged.top + enlarged.height : enlarged.top).toBe(corner.includes("north") ? centered.top + centered.height : centered.top);
+            const smallest = changeAgentPanelLayout(centered, corner, -dx * 1000, -dy * 1000, viewport);
+            expect(smallest.width).toBe(360);
+            expect(smallest.height).toBe(520);
+            const largest = changeAgentPanelLayout(centered, corner, dx * 1000, dy * 1000, viewport);
+            expect(largest.left).toBeGreaterThanOrEqual(12);
+            expect(largest.top).toBeGreaterThanOrEqual(12);
+            expect(largest.left + largest.width).toBeLessThanOrEqual(viewport.width - 12);
+            expect(largest.top + largest.height).toBeLessThanOrEqual(viewport.height - 12);
+        });
+    }
     it("limits resize to viewport and minimum readable size", () => {
         expect(changeAgentPanelLayout(start, "northwest", -10000, -10000, viewport)).toEqual({ left: 12, top: 12, width: 1252, height: 776 });
         const small = changeAgentPanelLayout(start, "northwest", 10000, 10000, viewport);
         expect(small.width).toBe(360);
-        expect(small.height).toBe(420);
+        expect(small.height).toBe(520);
     });
     it("keeps the title bar reachable when dragging beyond the screen", () => {
         expect(changeAgentPanelLayout(start, "move", -10000, -10000, viewport)).toEqual({ ...start, left: 12, top: 12 });

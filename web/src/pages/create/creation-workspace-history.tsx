@@ -4,7 +4,7 @@ import { conversationTimeFormatter, type CreationConversation, type CreationMess
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useAppearanceStore } from "@/stores/use-appearance-store";
 import { useUserStore } from "@/stores/use-user-store";
-import { App, Dropdown } from "antd";
+import { App, Dropdown, Tooltip } from "antd";
 import { displayCreationPrompt } from "./creation-references";
 import { AppDrawer } from "@/components/ui/product/app-drawer";
 import { Clapperboard, Download, Image as ImageIcon, MessageSquareText, MoreHorizontal, Pencil, Plus, Search, Sparkles, Trash2, X } from "lucide-react";
@@ -128,7 +128,7 @@ export function CreationHistoryDrawer({
                 </label>
 
                 <button type="button" className="creation-history-new" onClick={onNew}>
-                    <span className="creation-history-new-icon">
+                    <span className="creation-history-new-icon" aria-hidden="true">
                         <Plus />
                     </span>
                     <span className="creation-history-new-copy">
@@ -172,6 +172,7 @@ export function CreationHistoryDrawer({
                                         </div>
                                     ) : (
                                         <div className={menuOpenId === conversation.id ? "creation-history-row is-menu-open" : "creation-history-row"}>
+                                            <Tooltip title={conversation.title.trim() || "新创作"} trigger={["hover", "focus"]} placement="left">
                                             <button
                                                 type="button"
                                                 className="creation-history-item-main"
@@ -201,6 +202,7 @@ export function CreationHistoryDrawer({
                                                     </span>
                                                 </span>
                                             </button>
+                                            </Tooltip>
                                             <span className="creation-history-time-slot" aria-hidden={menuOpenId === conversation.id}>
                                                 <time dateTime={conversation.updatedAt}>{formatHistoryRelativeTime(conversation.updatedAt)}</time>
                                             </span>
@@ -233,6 +235,8 @@ export function CreationHistoryDrawer({
                                                     type="button"
                                                     className={menuOpenId === conversation.id ? "creation-history-more is-open" : "creation-history-more"}
                                                     aria-label={`更多操作：${conversation.title.trim() || "新创作"}`}
+                                                    aria-expanded={menuOpenId === conversation.id}
+                                                    aria-haspopup="menu"
                                                     onClick={(event) => event.preventDefault()}
                                                 >
                                                     <MoreHorizontal />

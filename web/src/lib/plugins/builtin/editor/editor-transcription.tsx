@@ -115,12 +115,12 @@ export function EditorTranscription() {
                     <div className="flex h-full flex-col items-center justify-center gap-2 p-4 text-center">
                         <AudioLines className="size-5 text-[var(--previs-dock-fg)]/40" />
                         <p className="text-xs text-[var(--previs-dock-fg)]/60">项目暂无音视频素材</p>
-                        <p className="max-w-[200px] text-[11px] leading-relaxed text-[var(--previs-dock-fg)]/45">素材库加入音频或视频后可转写自动字幕</p>
+                        <p className="max-w-[200px] text-xs leading-relaxed text-[var(--previs-dock-fg)]/45">素材库加入音频或视频后可转写自动字幕</p>
                     </div>
                 ) : (
                     <>
                         <label className="mb-2 block">
-                            <span className="mb-1 block text-[11px] text-[var(--previs-dock-fg)]/70">音视频素材</span>
+                            <span className="mb-1 block text-xs text-[var(--previs-dock-fg)]/70">音视频素材</span>
                             <select
                                 value={selectedId ?? ""}
                                 onChange={(e) => setSelectedId(e.target.value)}
@@ -138,21 +138,21 @@ export function EditorTranscription() {
                             type="button"
                             onClick={transcribe}
                             disabled={!selected || running}
-                            className="flex w-full items-center justify-center gap-2 rounded-md bg-[var(--previs-accent)] px-2 py-1.5 text-xs font-medium text-[var(--previs-on-accent)] hover:bg-[var(--previs-accent-hover)] disabled:opacity-40"
+                            className="flex w-full items-center justify-center gap-2 rounded-md bg-[var(--button-primary-bg)] px-2 py-1.5 text-xs font-medium text-[var(--button-primary-fg)] hover:bg-[var(--button-primary-hover-bg)] active:bg-[var(--button-primary-active-bg)] disabled:opacity-40"
                         >
                             {running && <Loader2 className="size-3.5 animate-spin" />}
                             {running ? "转写中…" : "转写自动字幕"}
                         </button>
 
                         {running && progressLabel && (
-                            <p className="mt-2 text-[11px] text-[var(--previs-dock-fg)]/60">{progressLabel}</p>
+                            <p className="mt-2 text-xs text-[var(--previs-dock-fg)]/60">{progressLabel}</p>
                         )}
                         {message && (
-                            <p className={`mt-2 text-[11px] ${failed ? "text-[var(--previs-danger)]" : "text-[var(--previs-dock-fg)]/70"}`}>
+                            <p className={`mt-2 text-xs ${failed ? "text-[var(--previs-danger)]" : "text-[var(--previs-dock-fg)]/70"}`}>
                                 {message}
                             </p>
                         )}
-                        <p className="mt-2 text-[11px] leading-relaxed text-[var(--previs-dock-fg)]/45">
+                        <p className="mt-2 text-xs leading-relaxed text-[var(--previs-dock-fg)]/45">
                             由本地 whisper.cpp 识别，音视频不出本机；识别结果写入字幕轨道，可再编辑。
                         </p>
                     </>

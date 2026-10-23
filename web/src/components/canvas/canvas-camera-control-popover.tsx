@@ -34,7 +34,7 @@ export function CanvasCameraControlPopover({ cameraControl, onCameraControlChang
                 {!compact ? <span>摄像机</span> : null}
             </button>
             {open ? (
-                <AppModal title={null} closable={false} open centered footer={null} width={780} flush onCancel={() => setOpen(false)}>
+                <AppModal rootClassName="workspace-utility-overlay" title={null} closable={false} open centered footer={null} width={780} flush onCancel={() => setOpen(false)}>
                     <CanvasNodeCameraPanel
                         cameraControl={cameraControl}
                         onClose={() => setOpen(false)}

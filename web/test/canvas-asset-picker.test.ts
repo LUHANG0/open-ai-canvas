@@ -89,8 +89,8 @@ describe("asset picker media kind", () => {
     });
 });
 
-describe("canvas context menu motion", () => {
-    test("keeps hover feedback stationary while retaining spotlight surfaces", () => {
+describe("canvas context menu feedback and overlay boundaries", () => {
+    test("keeps hover feedback stationary", () => {
         const styles = readFileSync(resolve(import.meta.dir, "../src/styles/globals.css"), "utf8");
         const menu = readFileSync(resolve(import.meta.dir, "../src/components/canvas/canvas-context-menu.tsx"), "utf8");
         const menuRule = styles.match(/\.canvas-menu-item\s*\{([\s\S]*?)\}/)?.[1] || "";
@@ -100,6 +100,27 @@ describe("canvas context menu motion", () => {
         expect(styles).not.toContain(".canvas-menu-item:not(:disabled):active");
         expect(menu).not.toContain("group-hover:translate-x");
         expect(menu).not.toContain("scale: 0.97");
-        expect(menu).toContain("<SpotlightSurface");
+    });
+
+    test("uses static isolated surfaces and preserves pointer and popover boundaries", () => {
+        const menu = readFileSync(resolve(import.meta.dir, "../src/components/canvas/canvas-context-menu.tsx"), "utf8");
+        const surfaces = [...menu.matchAll(/<div\n([\s\S]*?)\n\s*>/g)]
+            .map((match) => match[1])
+            .filter((attributes) => attributes.includes("aceternity-floating-panel"));
+
+        // Both the main menu and its create submenu must retain their own event boundary.
+        expect(surfaces).toHaveLength(2);
+        expect(menu).not.toContain("SpotlightSurface");
+        for (const attributes of surfaces) {
+            const classes = attributes.match(/className="([^"]+)"/)?.[1].split(/\s+/) || [];
+            expect(classes).toContain("isolate");
+            expect(classes).toContain("workspace-utility-overlay");
+            expect(classes).toContain("fixed");
+            expect(attributes).toMatch(/onPointerDown=\{\(event\)\s*=>\s*event\.stopPropagation\(\)\}/);
+            expect(attributes).toMatch(/onContextMenu=\{\(event\)\s*=>\s*event\.preventDefault\(\)\}/);
+        }
+        expect(surfaces[0]).toContain("data-canvas-context-menu");
+        expect(menu).toContain('target.closest(".ant-popover")');
+        expect(menu).toMatch(/if\s*\(target instanceof Element && target\.closest\("\.ant-popover"\)\)\s*return;/);
     });
 });

@@ -101,7 +101,7 @@ function EnhanceEditor({ node, config, onClose, onConfirm }: Props) {
     const quoteText = creditsEnabled && quote ? modelQuoteDescription(quote) : "";
 
     return (
-        <AppModal
+        <AppModal rootClassName="workspace-utility-overlay"
             open
             centered
             title="视频画质增强"

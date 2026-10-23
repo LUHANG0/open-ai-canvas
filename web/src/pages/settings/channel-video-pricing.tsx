@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { App, Button, Segmented, Tag } from "antd";
+import { App, Button, Tag } from "antd";
+import { SegmentedControl } from "@/components/ui/base/segmented-control";
 import { ChevronRight, FlaskConical, Settings2 } from "lucide-react";
 
 import { ModelEditorModal } from "@/components/model-editor-modal";
@@ -72,7 +73,7 @@ export function ChannelModelSettings({ channel, onChange }: { channel: ModelChan
                     <div className="text-xs font-medium">模型能力与请求协议</div>
                     <div className="mt-0.5 text-[var(--fs-tiny)] text-foreground/42">与运营后台使用同一能力目录；测试会发起真实请求并可能产生供应商费用</div>
                 </div>
-                <span className="text-[var(--fs-tiny)] text-foreground/35">{channel.models.length} 个模型</span>
+                <span className="text-[length:var(--fs-caption)] text-muted-foreground">{channel.models.length} 个模型</span>
             </div>
             <div className="space-y-2">
                 {channel.models.map((rawModel) => {
@@ -82,19 +83,19 @@ export function ChannelModelSettings({ channel, onChange }: { channel: ModelChan
                     const capability = cost?.capability || modelProtocolCapability(protocol, availableProtocols) || inferCapabilityFromModel(model);
                     const displayName = cost?.displayName?.trim() || model;
                     return (
-                        <div key={model} className="flex min-w-0 items-center gap-3 rounded-md bg-surface-active px-3 py-2.5 transition-colors hover:bg-surface-hover">
+                        <div key={model} className="flex min-w-0 items-center gap-3 rounded-md bg-surface-active px-3 py-2.5 transition-colors duration-150 motion-reduce:transition-none hover:bg-surface-hover">
                             <span className="grid size-8 shrink-0 place-items-center rounded-md bg-foreground/[.045] text-foreground/65">
                                 <Settings2 className="size-4" />
                             </span>
                             <div className="min-w-0 flex-1">
-                                <div className="truncate text-xs font-medium" title={displayName === model ? model : `${displayName} (${model})`}>
+                                <div className="truncate text-sm font-medium" title={displayName === model ? model : `${displayName} (${model})`}>
                                     {displayName}
                                 </div>
                                 <div className="mt-1 flex min-w-0 flex-wrap items-center gap-1.5">
-                                    <Tag className="mr-0 text-[var(--fs-tiny)]" bordered={false}>
+                                    <Tag className="mr-0 text-[length:var(--fs-caption)]" bordered={false}>
                                         {capabilityLabel(capability)}
                                     </Tag>
-                                    <span className="truncate font-mono text-[var(--fs-tiny)] text-foreground/40" title={modelProtocolDefinition(protocol, availableProtocols)?.create}>
+                                    <span className="truncate font-mono text-[length:var(--fs-caption)] text-muted-foreground" title={modelProtocolDefinition(protocol, availableProtocols)?.create}>
                                         {modelProtocolDefinition(protocol, availableProtocols)?.create || "待配置请求协议"}
                                     </span>
                                 </div>
@@ -137,7 +138,8 @@ export function ChannelModelSettings({ channel, onChange }: { channel: ModelChan
                         children: <div className="space-y-4" inert={Boolean(testingModel)}>
                             <section className="space-y-2">
                                 <div className="text-xs font-medium">模型能力</div>
-                                <Segmented<ModelCapabilityChoice>
+                                <SegmentedControl<ModelCapabilityChoice>
+                                    ariaLabel="模型能力"
                                     block
                                     options={[{ label: "文本", value: "text" }, { label: "图片", value: "image" }, { label: "视频", value: "video" }, { label: "音频", value: "audio" }]}
                                     value={activeCapability}

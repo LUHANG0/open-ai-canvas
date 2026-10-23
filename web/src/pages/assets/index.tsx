@@ -10,7 +10,7 @@ import { Select } from "@/components/ui/base/select";
 import { AssetFilterGroup, AssetsBatchBar, AssetsEmptyState, AssetDrawer } from "./asset-library-panels";
 import { DeleteButton } from "@/components/ui/base/buttons/delete-button";
 import { cn } from "@/lib/utils";
-import { WorkspaceState } from "@/components/layout/workspace-state";
+import { WorkspaceErrorState, WorkspaceLoadingState, WorkspaceState } from "@/components/layout/workspace-state";
 import { AssetCard } from "./asset-library-cards";
 import { Switch } from "@/components/ui/base/switch";
 import { resourceStorageTitle, resourceStorageLabel } from "@/lib/canvas/resource-storage-status";
@@ -18,7 +18,8 @@ import { AssetBatchUploadModal } from "./asset-batch-upload-modal";
 import { assetGridCardMinWidth, type AssetGridDensity, assetGridDensityOptions, parseAssetGridDensity } from "./asset-grid-density";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
-import { App, Form, Popconfirm, Button, Dropdown, Input, Modal, Space, Tag, Typography, Progress } from "antd";
+import { App, Form, Popconfirm, Button, Dropdown, Input, Space, Tag, Tooltip, Typography, Progress } from "antd";
+import { AppModal } from "@/components/ui/product/app-modal";
 import { useNavigate } from "react-router";
 import { useCopyText } from "@/hooks/use-copy-text";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
@@ -71,6 +72,9 @@ export default function AssetsPage() {
     const queryClient = useQueryClient();
     const copyText = useCopyText();
     const [form] = Form.useForm<AssetFormValues>();
+    const assetFormTriggerRef = useRef<HTMLElement | null>(null);
+    const folderTriggerRef = useRef<HTMLElement | null>(null);
+    const batchUploadTriggerRef = useRef<HTMLElement | null>(null);
     const coverInputRef = useRef<HTMLInputElement>(null);
     const imageInputRef = useRef<HTMLInputElement>(null);
     const assetInputRef = useRef<HTMLInputElement>(null);
@@ -261,7 +265,9 @@ export default function AssetsPage() {
         }
     };
 
-    const openCreate = () => {
+    const openCreate = (trigger?: HTMLElement) => {
+        assetFormTriggerRef.current = trigger ?? null;
+        trigger?.focus({ preventScroll: true });
         setEditingAsset(null);
         setImageDraft(null);
         setImageFile(null);
@@ -273,6 +279,7 @@ export default function AssetsPage() {
     };
 
     const openEdit = async (asset: LibraryAsset) => {
+        assetFormTriggerRef.current = null;
         let editableAsset = useAssetStore.getState().assets.find((item) => item.id === asset.id);
         if (!editableAsset) {
             try {
@@ -538,7 +545,7 @@ export default function AssetsPage() {
 
     return (
         <>
-            <WorkspacePage grid className="library-page assets-library-page canvas-library-page">
+            <WorkspacePage grid className="library-page assets-library-page canvas-library-page collection-workspace">
                 <div className="studio-band">
                     <PageHeader
                         title={viewMode === "trash" ? "素材库 / 回收站" : "素材库"}
@@ -576,8 +583,8 @@ export default function AssetsPage() {
                                         </>
                                     ) : (
                                         <>
-                                            <Button type="primary" icon={<Plus />} onClick={openCreate}>新增素材</Button>
-                                            <Button icon={<Images />} onClick={() => setBatchUploadOpen(true)}>上传图片</Button>
+                                            <Button type="primary" icon={<Plus />} onClick={(event) => openCreate(event.currentTarget)}>新增素材</Button>
+                                            <Button icon={<Images />} onClick={(event) => { batchUploadTriggerRef.current = event.currentTarget; event.currentTarget.focus({ preventScroll: true }); setBatchUploadOpen(true); }}>上传图片</Button>
                                             <Dropdown trigger={["click"]} menu={{ items: [
                                                 { key: "eagle", icon: <FolderOpen />, label: "Eagle 素材库", onClick: () => navigate("/plugins/eagle") },
                                                 { key: "package", icon: <FileUp />, label: "导入素材包", onClick: () => assetInputRef.current?.click() },
@@ -604,9 +611,10 @@ export default function AssetsPage() {
                         }}
                     >
                         <Input
+                            aria-label="搜索素材"
                             allowClear
                             className="w-full sm:w-80"
-                            prefix={<Search className="size-4 text-foreground/40" />}
+                            prefix={<Search className="size-4 text-foreground/40" aria-hidden="true" />}
                             value={keyword}
                             placeholder="搜索标题、内容、标签或来源"
                             onChange={(event) => {
@@ -615,7 +623,7 @@ export default function AssetsPage() {
                             }}
                             />
                             <Select
-                                aria-label="素材显示密度"
+                                ariaLabel="素材显示密度"
                                 value={gridDensity}
                                 className="w-full sm:w-32"
                                 prefix={<LayoutGrid aria-hidden className="size-3.5" />}
@@ -661,7 +669,7 @@ export default function AssetsPage() {
                             <section className="collection-filter-group assets-folder-filter">
                                 <div className="collection-folder-heading">
                                     <span className="collection-filter-label">我的分类</span>
-                                    <button type="button" className="assets-folder-add" title="新建分类" aria-label="新建分类" onClick={() => { setFolderName(""); setFolderEditor("new"); }}><FolderPlus className="size-3.5" /></button>
+                                    <button type="button" className="assets-folder-add" title="新建分类" aria-label="新建分类" onClick={(event) => { folderTriggerRef.current = event.currentTarget; event.currentTarget.focus({ preventScroll: true }); setFolderName(""); setFolderEditor("new"); }}><FolderPlus className="size-3.5" /></button>
                                 </div>
                                 <div className="collection-folder-list">
                                     <button type="button" aria-pressed={folderFilter === "all"} className={`assets-filter-item ${folderFilter === "all" ? "is-active" : ""}`} onClick={() => { setFolderFilter("all"); setPage(1); }}>
@@ -672,10 +680,12 @@ export default function AssetsPage() {
                                     </button>
                                     {folders.map((folder) => (
                                         <div key={folder.id} className="assets-folder-row">
-                                            <button type="button" aria-pressed={folderFilter === folder.id} className={`assets-filter-item min-w-0 flex-1 ${folderFilter === folder.id ? "is-active" : ""}`} onClick={() => { setFolderFilter(folder.id); setPage(1); }}>
-                                                <span className="assets-filter-item-label min-w-0 truncate">{folder.name}</span><span className="assets-filter-count">{folderCounts[folder.id] ?? activeAssets.filter((asset) => asset.folderId === folder.id).length}</span>
-                                            </button>
-                                            <button type="button" className="product-icon-button" aria-label={`重命名分类 ${folder.name}`} onClick={() => { setFolderName(folder.name); setFolderEditor(folder); }}><PencilLine /></button>
+                                            <Tooltip title={folder.name} trigger={["hover", "focus"]}>
+                                                <button type="button" aria-pressed={folderFilter === folder.id} className={`assets-filter-item min-w-0 flex-1 ${folderFilter === folder.id ? "is-active" : ""}`} onClick={() => { setFolderFilter(folder.id); setPage(1); }}>
+                                                    <span className="assets-filter-item-label min-w-0 truncate">{folder.name}</span><span className="assets-filter-count">{folderCounts[folder.id] ?? activeAssets.filter((asset) => asset.folderId === folder.id).length}</span>
+                                                </button>
+                                            </Tooltip>
+                                            <button type="button" className="product-icon-button" aria-label={`重命名分类 ${folder.name}`} onClick={(event) => { folderTriggerRef.current = event.currentTarget; event.currentTarget.focus({ preventScroll: true }); setFolderName(folder.name); setFolderEditor(folder); }}><PencilLine /></button>
                                             <DeleteButton label={`删除分类 ${folder.name}`} description="分类删除后，其中的素材会移至未分类，素材文件会保留。" onConfirm={() => removeFolder(folder)} />
                                         </div>
                                     ))}
@@ -688,7 +698,7 @@ export default function AssetsPage() {
                                     aria-pressed={viewMode === "trash"}
                                     className={cn(
                                         "assets-filter-item w-full transition-colors",
-                                        viewMode === "trash" ? "is-active !bg-amber-500/15 !text-amber-600 dark:!text-amber-400 font-semibold shadow-sm" : "text-foreground/65 hover:text-foreground",
+                                        viewMode === "trash" && "is-active",
                                     )}
                                     onClick={() => {
                                         if (viewMode === "trash") {
@@ -710,11 +720,11 @@ export default function AssetsPage() {
                                 </button>
                             </div>
                         </aside>
-                        <section className="min-w-0">
+                        <section className="min-w-0" aria-label={viewMode === "trash" ? "回收站素材" : "素材列表"} aria-busy={assetPageQuery.isFetching}>
                             {viewMode === "trash" ? (
-                                <div className="mb-4 flex items-center justify-between gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-xs text-amber-600 dark:text-amber-300">
+                                <div className="assets-trash-notice mb-4 flex items-center justify-between gap-3 rounded-xl border px-4 py-3 text-xs">
                                     <div className="flex items-center gap-2">
-                                        <AlertTriangle className="size-4 shrink-0 text-amber-500" />
+                                        <AlertTriangle className="size-4 shrink-0" aria-hidden="true" />
                                         <span>{retentionDays > 0 ? `回收站内的素材将在 ${retentionDays} 天后自动彻底清除。您可以随时还原素材，或手动彻底删除释放空间。` : "回收站内的素材当前设置为永久保留，您可以随时还原素材或手动彻底清除。"}</span>
                                     </div>
                                 </div>
@@ -734,7 +744,17 @@ export default function AssetsPage() {
                                     onDelete={() => setBatchDeleteOpen(true)}
                                 />
                             ) : null}
-                            {validAssets.length === 0 && totalAssets === 0 ? (
+                            {assetPageQuery.isError && visibleAssets.length > 0 ? (
+                                <div className="collection-feedback is-error" role="status">
+                                    <span>素材同步失败，当前显示本地缓存，服务端状态尚未确认。</span>
+                                    <Button size="small" loading={assetPageQuery.isFetching} onClick={() => void assetPageQuery.refetch()}>重新加载</Button>
+                                </div>
+                            ) : null}
+                            {assetPageQuery.isLoading && visibleAssets.length === 0 ? (
+                                <WorkspaceLoadingState label="正在加载素材" rows={6} />
+                            ) : assetPageQuery.isError && visibleAssets.length === 0 ? (
+                                <div role="status"><WorkspaceErrorState compact title="素材暂时无法加载" description="未能获取服务端素材列表，请检查网络连接后重新加载。" onRetry={() => void assetPageQuery.refetch()} /></div>
+                            ) : validAssets.length === 0 && totalAssets === 0 ? (
                                 viewMode === "trash" ? (
                                     <WorkspaceState icon="assets" compact title="回收站是空的" description="删除画布或手动移入回收站的素材会暂存到这里，可在需要时随时还原。" />
                                 ) : (
@@ -785,10 +805,12 @@ export default function AssetsPage() {
                 </div>
             </WorkspacePage>
 
-            <Modal
+            <AppModal
                 className="workspace-modal workspace-modal-wide library-modal"
                 title={editingAsset ? "编辑素材" : "新增素材"}
                 open={isAssetOpen}
+                focusable={{ focusTriggerAfterClose: !assetFormTriggerRef.current }}
+                afterClose={() => { if (assetFormTriggerRef.current?.isConnected) assetFormTriggerRef.current.focus({ preventScroll: true }); }}
                 onCancel={() => {
                     if (!imageUploading) setIsAssetOpen(false);
                 }}
@@ -932,24 +954,27 @@ export default function AssetsPage() {
                         event.target.value = "";
                     }}
                 />
-            </Modal>
+            </AppModal>
 
             <AssetDrawer asset={previewAsset} onClose={() => setPreviewAsset(null)} onCopy={copyAssetText} onDownload={downloadImage} />
 
-            <AssetBatchUploadModal open={batchUploadOpen} defaultFolderId={folderFilter !== "all" && folderFilter !== "uncategorized" ? folderFilter : ""} folders={folders} onClose={() => setBatchUploadOpen(false)} onComplete={async () => { setBatchUploadOpen(false); await invalidateAssetLibrary(); }} />
+            <AssetBatchUploadModal open={batchUploadOpen} defaultFolderId={folderFilter !== "all" && folderFilter !== "uncategorized" ? folderFilter : ""} folders={folders} onClose={() => setBatchUploadOpen(false)} afterClose={() => { if (batchUploadTriggerRef.current?.isConnected) batchUploadTriggerRef.current.focus({ preventScroll: true }); }} onComplete={async () => { setBatchUploadOpen(false); await invalidateAssetLibrary(); }} />
 
-            <Modal
+            <AppModal
+                destroyOnHidden={false}
                 className="library-modal library-confirm-modal"
                 title={folderEditor === "new" ? "新建分类" : "重命名分类"}
                 open={Boolean(folderEditor)}
+                focusable={{ focusTriggerAfterClose: false }}
+                afterClose={() => { if (folderTriggerRef.current?.isConnected) folderTriggerRef.current.focus({ preventScroll: true }); }}
                 confirmLoading={folderSaving}
                 onCancel={() => { if (!folderSaving) setFolderEditor(null); }}
                 onOk={() => void saveFolder()}
                 okText="保存"
                 cancelText="取消"
             >
-                <Input autoFocus value={folderName} maxLength={40} placeholder="例如：角色参考、场景灵感" onChange={(event) => setFolderName(event.target.value)} onPressEnter={() => void saveFolder()} />
-            </Modal>
+                <Input aria-label="素材分类名称" autoFocus value={folderName} maxLength={40} placeholder="例如：角色参考、场景灵感" onChange={(event) => setFolderName(event.target.value)} onPressEnter={() => void saveFolder()} />
+            </AppModal>
 
             <input ref={assetInputRef} type="file" accept="application/zip,.zip" className="hidden" onChange={(event) => void importAssetZip(event.target.files?.[0])} />
             <input
@@ -963,7 +988,8 @@ export default function AssetsPage() {
                 }}
             />
 
-            <Modal
+            <AppModal
+                destroyOnHidden={false}
                 className="library-modal library-confirm-modal"
                 title="移入回收站"
                 open={Boolean(archivingAsset)}
@@ -979,8 +1005,9 @@ export default function AssetsPage() {
                 cancelText="取消"
             >
                 确定将「{archivingAsset?.title}」移入回收站吗？移入后不会出现在正常素材库中，可在回收站随时还原。
-            </Modal>
-            <Modal
+            </AppModal>
+            <AppModal
+                destroyOnHidden={false}
                 className="library-modal library-confirm-modal"
                 title="批量移入回收站"
                 open={batchArchiveOpen}
@@ -992,8 +1019,9 @@ export default function AssetsPage() {
                 cancelText="取消"
             >
                 确定将已选择的 {selectedIds.length} 个素材移入回收站吗？移入后可随时在回收站批量还原。
-            </Modal>
-            <Modal
+            </AppModal>
+            <AppModal
+                destroyOnHidden={false}
                 className="library-modal library-confirm-modal"
                 title="彻底删除素材"
                 open={Boolean(deletingAsset)}
@@ -1004,8 +1032,9 @@ export default function AssetsPage() {
                 cancelText="取消"
             >
                 确定彻底删除「{deletingAsset?.title}」吗？未被其他素材复用的服务器文件会直接释放，原画布或任务中的旧引用可能失效，操作不可恢复。
-            </Modal>
-            <Modal
+            </AppModal>
+            <AppModal
+                destroyOnHidden={false}
                 className="library-modal library-confirm-modal"
                 title="批量彻底删除素材"
                 open={batchDeleteOpen}
@@ -1018,7 +1047,7 @@ export default function AssetsPage() {
                 cancelText="取消"
             >
                 确定彻底删除已选择的 {selectedIds.length} 个素材吗？未被其他素材复用的服务器文件会直接释放，原画布或任务中的旧引用可能失效，操作不可恢复。
-            </Modal>
+            </AppModal>
         </>
     );
 }

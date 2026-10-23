@@ -1,22 +1,19 @@
-import { motion, useReducedMotion } from "motion/react";
 import { ScrollText } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 
 import { AppModal } from "@/components/ui/product/app-modal/app-modal";
-import { aceternityMotion } from "@/lib/aceternity-motion";
 import { useAppearanceStore } from "@/stores/use-appearance-store";
 import { updateAnnouncementVersion } from "@/lib/update-announcement";
 import { UpdateAnnouncementContent } from "./update-announcement-content";
 
 export function AppChangelogDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
-    const reducedMotion = useReducedMotion();
     const updates = useAppearanceStore((state) => state.appearance.updates);
     const custom = Boolean(updates?.enabled);
     const version = updateAnnouncementVersion(updates, __APP_VERSION__);
 
     return (
         <AppModal
-            rootClassName="app-spatial-modal app-changelog-modal"
+            rootClassName="app-spatial-modal app-changelog-modal workspace-utility-overlay"
             title={
                 <div className="app-changelog-heading">
                     <span className="app-changelog-heading-icon">
@@ -34,16 +31,12 @@ export function AppChangelogDialog({ open, onClose }: { open: boolean; onClose: 
             footer={null}
             centered
             onCancel={onClose}
-            modalRender={(node) => (
-                <motion.div initial={reducedMotion ? false : { opacity: 0, y: 14, scale: 0.975 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ duration: aceternityMotion.duration.panel, ease: aceternityMotion.easing.enter }}>
-                    {node}
-                </motion.div>
-            )}
+            focusTriggerAfterClose
         >
-            <div className="app-changelog-scroll thin-scrollbar">
+            <div className="app-changelog-scroll thin-scrollbar" role="region" aria-label={custom ? "更新公告内容" : "更新日志内容"} tabIndex={0}>
                 {custom && updates ? (
-                    <UpdateAnnouncementContent value={updates} />
-                ) : (
+                    updates.releases.length ? <UpdateAnnouncementContent value={updates} /> : <p className="app-changelog-paragraph" role="status">暂无更新公告，后续发布的更新会展示在这里。</p>
+                ) : __APP_CHANGELOG__.trim() ? (
                     <ReactMarkdown
                         components={{
                             h1: () => null,
@@ -67,7 +60,7 @@ export function AppChangelogDialog({ open, onClose }: { open: boolean; onClose: 
                     >
                         {__APP_CHANGELOG__}
                     </ReactMarkdown>
-                )}
+                ) : <p className="app-changelog-paragraph" role="status">暂无更新日志，后续版本变化会展示在这里。</p>}
             </div>
         </AppModal>
     );

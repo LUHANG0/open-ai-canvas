@@ -509,7 +509,7 @@ export function EditorPreviewMonitor() {
                         disabled={durationMs <= 0}
                         className={`grid size-7 place-items-center rounded-md transition-colors disabled:pointer-events-none disabled:opacity-40 ${
                             playing
-                                ? "bg-[var(--previs-dock-active-surface)] text-[var(--previs-dock-fg-strong)]"
+                                ? "bg-[var(--control-selected-bg)] text-[var(--control-selected-fg)]"
                                 : "text-[var(--previs-dock-fg)] hover:bg-[var(--previs-control-hover)]"
                         }`}
                     >
@@ -540,6 +540,7 @@ export function EditorPreviewMonitor() {
                     <button
                         type="button"
                         aria-label="播放速度"
+                        aria-expanded={speedMenuOpen}
                         title="播放速度"
                         onClick={() => setSpeedMenuOpen((v) => !v)}
                         className="flex h-7 items-center gap-1 rounded-md px-1.5 text-[11px] font-medium text-[var(--previs-dock-fg)] hover:bg-[var(--previs-control-hover)]"
@@ -553,11 +554,12 @@ export function EditorPreviewMonitor() {
                     {speedMenuOpen && (
                         <>
                             <div className="fixed inset-0 z-40" onClick={() => setSpeedMenuOpen(false)} />
-                            <div className="absolute bottom-full right-0 z-50 mb-1 w-24 overflow-hidden rounded-md border border-[var(--previs-sequencer-border)] bg-[var(--previs-sequencer-surface-raised)] py-1 shadow-xl">
+                            <div role="group" aria-label="播放速度" className="absolute bottom-full right-0 z-50 mb-1 w-24 overflow-hidden rounded-md border border-[var(--previs-sequencer-border)] bg-[var(--previs-sequencer-surface-raised)] py-1 shadow-xl">
                                 {[0.5, 1, 1.5, 2].map((s) => (
                                     <button
                                         key={s}
                                         type="button"
+                                        aria-pressed={s === speed}
                                         onClick={() => {
                                             changeSpeed(s);
                                             setSpeedMenuOpen(false);

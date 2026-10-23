@@ -1,4 +1,5 @@
 import { AudioLines, Check, Film, Image, MessageSquareText } from "lucide-react";
+import { Tooltip } from "antd";
 
 import { ModelIcon } from "@/components/model-picker";
 import { cn } from "@/lib/utils";
@@ -30,60 +31,61 @@ const groups: Array<{
 export function ModelDefaultGrid({ config, onChange }: { config: AiConfig; onChange: (key: DefaultModelKey, model: string) => void }) {
     const creditsEnabled = useUserStore((state) => state.features.creditsEnabled);
     return (
-        <div className="space-y-1">
+        <div className="settings-model-default-grid space-y-1">
             {groups.map((group) => {
                 const models = filterModelsByCapability(config.models, group.capability, config.channels);
                 const Icon = group.icon;
                 return (
                     <section key={group.capability} className="py-5 first:pt-0 last:pb-0" aria-labelledby={`default-${group.capability}-title`}>
                         <div className="mb-3 flex items-start gap-3">
-                            <span className="grid size-8 shrink-0 place-items-center rounded-md bg-surface-active text-foreground/65"><Icon className="size-4" /></span>
+                            <span className="grid size-8 shrink-0 place-items-center rounded-md bg-surface-active text-[var(--user-ink-muted)]" aria-hidden="true"><Icon className="size-4" /></span>
                             <div className="min-w-0">
                                 <h3 id={`default-${group.capability}-title`} className="text-sm font-semibold">{group.title}</h3>
-                                <p className="mt-0.5 text-xs text-foreground/48">{group.description}</p>
+                                <p id={`default-${group.capability}-description`} className="settings-model-description mt-0.5 text-xs text-[var(--user-ink-muted)]">{group.description}</p>
                             </div>
-                            <span className="ml-auto shrink-0 text-xs tabular-nums text-foreground/38">{models.length} 个可用</span>
+                            <span className="settings-model-count ml-auto shrink-0 text-xs tabular-nums text-[var(--user-ink-muted)]">{models.length} 个可用</span>
                         </div>
                         {models.length ? (
-                            <div role="radiogroup" aria-label={group.title} className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+                            <div role="radiogroup" aria-label={group.title} aria-describedby={`default-${group.capability}-description`} className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
                                 {models.map((model) => {
                                     const channel = resolveModelChannel(config, model);
                                     const selected = config[group.modelKey] === model;
                                     const cost = channel.modelCosts?.find((item) => item.model === modelOptionName(model));
                                     return (
-                                        <button
-                                            key={model}
-                                            type="button"
-                                            role="radio"
-                                            aria-checked={selected}
-                                            className={cn(
-                                                "model-default-option group relative overflow-hidden rounded-md px-3 py-2.5 text-left transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none",
-                                                selected && "is-selected",
-                                            )}
-                                            onClick={() => onChange(group.modelKey, model)}
-                                        >
-                                            <span className="flex min-w-0 items-start gap-2.5">
-                                                <span className="model-default-option-icon grid size-8 shrink-0 place-items-center rounded-md">
-                                                    <ModelIcon config={config} model={model} />
-                                                </span>
-                                                <span className="min-w-0 flex-1">
-                                                    <span className="block truncate text-xs font-semibold">{modelDisplayName(config, model)}</span>
-                                                    <span className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1 text-[var(--fs-tiny)] text-foreground/45">
-                                                        <span className="max-w-full truncate">{channel.scope === "system" ? "系统模型" : channel.name || "未命名渠道"}</span>
-                                                        <span className="model-default-option-scope">{channel.scope === "system" ? "系统" : "自定义"}</span>
-                                                        {creditsEnabled && cost ? <span className="model-default-price">{formatPrice(cost.billingMode === "token" ? (cost.outputTokenPriceMicrocredits || 0) : cost.unitPriceMicrocredits)} /{cost.billingMode === "token" ? "百万 Token" : cost.billingMode === "per_second" ? "秒" : "次"}</span> : null}
+                                        <Tooltip key={model} title={modelDisplayName(config, model)} trigger={["hover", "focus"]}>
+                                            <button
+                                                type="button"
+                                                role="radio"
+                                                aria-checked={selected}
+                                                className={cn(
+                                                    "model-default-option group relative overflow-hidden rounded-md px-3 py-2.5 text-left transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none",
+                                                    selected && "is-selected",
+                                                )}
+                                                onClick={() => onChange(group.modelKey, model)}
+                                            >
+                                                <span className="flex min-w-0 items-start gap-2.5">
+                                                    <span className="model-default-option-icon grid size-8 shrink-0 place-items-center rounded-md" aria-hidden="true">
+                                                        <ModelIcon config={config} model={model} />
+                                                    </span>
+                                                    <span className="min-w-0 flex-1">
+                                                        <span className="settings-model-name block truncate text-sm font-semibold">{modelDisplayName(config, model)}</span>
+                                                        <span className="settings-model-meta flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1 text-xs text-[var(--user-ink-muted)]">
+                                                            <span className="max-w-full truncate" title={channel.scope === "system" ? "系统模型" : channel.name || "未命名渠道"}>{channel.scope === "system" ? "系统模型" : channel.name || "未命名渠道"}</span>
+                                                            <span className="model-default-option-scope">{channel.scope === "system" ? "系统" : "自定义"}</span>
+                                                            {creditsEnabled && cost ? <span className="model-default-price">{formatPrice(cost.billingMode === "token" ? (cost.outputTokenPriceMicrocredits || 0) : cost.unitPriceMicrocredits)} /{cost.billingMode === "token" ? "百万 Token" : cost.billingMode === "per_second" ? "秒" : "次"}</span> : null}
+                                                        </span>
+                                                    </span>
+                                                    <span className={cn("model-default-option-check grid size-5 shrink-0 place-items-center rounded-full", selected ? "is-selected" : "text-transparent")} aria-hidden="true">
+                                                        <Check className="size-3" strokeWidth={2.5} />
                                                     </span>
                                                 </span>
-                                                <span className={cn("model-default-option-check grid size-5 shrink-0 place-items-center rounded-full", selected ? "is-selected" : "text-transparent")}>
-                                                    <Check className="size-3" strokeWidth={2.5} />
-                                                </span>
-                                            </span>
-                                        </button>
+                                            </button>
+                                        </Tooltip>
                                     );
                                 })}
                             </div>
                         ) : (
-                            <div className="rounded-md bg-surface-active px-4 py-6 text-center text-xs text-foreground/45">当前渠道中没有可用的{capabilityLabel(group.capability)}模型</div>
+                            <div className="settings-model-empty rounded-md bg-surface-active px-4 py-6 text-center text-xs text-[var(--user-ink-muted)]">当前渠道中没有可用的{capabilityLabel(group.capability)}模型</div>
                         )}
                     </section>
                 );

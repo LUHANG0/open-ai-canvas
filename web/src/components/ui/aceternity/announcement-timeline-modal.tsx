@@ -1,8 +1,6 @@
-import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { Button, Image as AntImage, Modal } from "antd";
 import { Bell, BellOff, CircleAlert, Info, Pin, ShieldAlert, Wrench } from "lucide-react";
 
-import { aceternityMotion } from "@/lib/aceternity-motion";
 import { AnnouncementContent } from "@/components/ui/announcement-content";
 import { announcementImageUrl, type AnnouncementLevel, type SystemAnnouncement } from "@/services/api/announcements";
 
@@ -26,10 +24,9 @@ const levelMeta: Record<AnnouncementLevel, { label: string; dot: string; icon: t
 };
 
 export function AnnouncementTimelineModal({ open, announcements, loading = false, error = "", automaticPrompt = false, onClose, onDismissOnce, onDismissToday, onRetry }: AnnouncementTimelineModalProps) {
-    const reducedMotion = useReducedMotion();
-
     return (
         <Modal
+            rootClassName="system-announcement-modal workspace-utility-overlay"
             open={open}
             width={960}
             centered
@@ -40,72 +37,62 @@ export function AnnouncementTimelineModal({ open, announcements, loading = false
                 </div>
             ) : null}
             onCancel={onClose}
+            focusTriggerAfterClose
             title={
                 <div className="flex min-w-0 items-center gap-3 pr-8">
                     <span className="grid size-9 shrink-0 place-items-center rounded-full border border-border bg-muted/45 text-foreground">
-                        <Bell className="size-4.5" />
+                        <Bell className="size-4.5" aria-hidden="true" />
                     </span>
                     <div className="min-w-0">
                         <div className="text-lg font-semibold tracking-normal text-foreground">系统公告</div>
-                        <div className="mt-0.5 text-xs font-normal text-foreground/45">{announcements.length ? `${announcements.length} 条当前公告` : "当前没有进行中的公告"}</div>
+                        <div className="mt-0.5 text-[13px] font-normal text-[var(--user-ink-muted)]">{loading ? "正在读取当前公告" : error ? "暂时无法读取公告" : announcements.length ? `${announcements.length} 条当前公告` : "当前没有进行中的公告"}</div>
                     </div>
                 </div>
             }
             styles={{ body: { paddingTop: 8, maxHeight: "min(72vh, 720px)", overflowY: "auto", overscrollBehavior: "contain" } }}
-            modalRender={(node) => (
-                <motion.div
-                    initial={reducedMotion ? false : { opacity: 0, y: 14, scale: 0.975 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    transition={{ duration: aceternityMotion.duration.panel, ease: aceternityMotion.easing.enter }}
-                >
-                    {node}
-                </motion.div>
-            )}
         >
-            <AnimatePresence mode="wait" initial={false}>
+            <div aria-busy={loading}>
                 {loading ? (
-                    <motion.div key="loading" role="status" className="grid min-h-60 place-items-center" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                        <div className="flex flex-col items-center gap-3 text-sm text-foreground/50">
-                            <motion.span aria-hidden className="size-7 rounded-full border-2 border-foreground/15 border-t-foreground/70" animate={reducedMotion ? undefined : { rotate: 360 }} transition={{ duration: 0.8, repeat: Infinity, ease: "linear" }} />
+                    <div role="status" className="grid min-h-60 place-items-center">
+                        <div className="flex flex-col items-center gap-3 text-sm text-[var(--user-ink-muted)]">
+                            <span aria-hidden="true" className="size-7 animate-spin rounded-full border-2 border-foreground/15 border-t-foreground/70 motion-reduce:animate-none" />
                             正在读取公告
                         </div>
-                    </motion.div>
+                    </div>
                 ) : error ? (
-                    <motion.div key="error" className="grid min-h-60 place-items-center text-center" initial={reducedMotion ? false : { opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
+                    <div className="grid min-h-60 place-items-center text-center" role="alert">
                         <div>
-                            <CircleAlert className="mx-auto size-7 text-red-500" />
+                            <CircleAlert className="mx-auto size-7 text-[var(--status-error)]" aria-hidden="true" />
                             <p className="mt-3 text-sm font-medium text-foreground">公告读取失败</p>
-                            <p className="mt-1 max-w-sm text-xs leading-5 text-foreground/50">{error}</p>
-                            {onRetry ? <button type="button" className="mt-4 h-8 rounded-md border border-border px-3 text-xs font-medium text-foreground transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" onClick={onRetry}>重新加载</button> : null}
+                            <p className="mt-1 max-w-sm break-words text-[13px] leading-5 text-[var(--user-ink-muted)]">{error}</p>
+                            {onRetry ? <button type="button" className="mt-4 h-8 rounded-md border border-border px-3 text-[13px] font-medium text-foreground transition-colors duration-150 hover:bg-muted" onClick={onRetry}>重新加载</button> : null}
                         </div>
-                    </motion.div>
+                    </div>
                 ) : announcements.length ? (
-                    <motion.div key="timeline" className="py-3 sm:px-2" initial="hidden" animate="visible" variants={{ hidden: {}, visible: { transition: { staggerChildren: reducedMotion ? 0 : 0.055 } } }}>
+                    <div className="py-3 sm:px-2">
                         {announcements.map((announcement, index) => (
-                            <AnnouncementTimelineItem key={announcement.id} announcement={announcement} last={index === announcements.length - 1} reducedMotion={Boolean(reducedMotion)} />
+                            <AnnouncementTimelineItem key={announcement.id} announcement={announcement} last={index === announcements.length - 1} />
                         ))}
-                    </motion.div>
+                    </div>
                 ) : (
-                    <motion.div key="empty" className="grid min-h-60 place-items-center text-center" initial={reducedMotion ? false : { opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
+                    <div className="grid min-h-60 place-items-center text-center" role="status">
                         <div>
-                            <span className="mx-auto grid size-12 place-items-center rounded-full border border-border bg-muted/40 text-foreground/45"><BellOff className="size-5" /></span>
+                            <span className="mx-auto grid size-12 place-items-center rounded-full border border-border bg-muted/40 text-[var(--user-ink-muted)]"><BellOff className="size-5" aria-hidden="true" /></span>
                             <p className="mt-3 text-sm font-medium text-foreground">暂无系统公告</p>
-                            <p className="mt-1 text-xs text-foreground/45">有新的服务动态时会在这里展示</p>
+                            <p className="mt-1 text-[13px] text-[var(--user-ink-muted)]">有新的服务动态时会在这里展示</p>
                         </div>
-                    </motion.div>
+                    </div>
                 )}
-            </AnimatePresence>
+            </div>
         </Modal>
     );
 }
 
-function AnnouncementTimelineItem({ announcement, last, reducedMotion }: { announcement: SystemAnnouncement; last: boolean; reducedMotion: boolean }) {
+function AnnouncementTimelineItem({ announcement, last }: { announcement: SystemAnnouncement; last: boolean }) {
     const meta = levelMeta[announcement.level] || levelMeta.info;
     const Icon = meta.icon;
     return (
-        <motion.article
-            variants={{ hidden: { opacity: 0, y: 10 }, visible: { opacity: 1, y: 0, transition: { duration: aceternityMotion.duration.state, ease: aceternityMotion.easing.enter } } }}
-            whileHover={reducedMotion ? undefined : { x: 2 }}
+        <article
             className="relative grid grid-cols-[26px_minmax(0,1fr)] gap-3 pb-7 last:pb-2 sm:grid-cols-[32px_minmax(0,1fr)] sm:gap-4"
         >
             <div className="relative flex justify-center pt-1.5" aria-hidden>
@@ -114,15 +101,15 @@ function AnnouncementTimelineItem({ announcement, last, reducedMotion }: { annou
             </div>
             <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                    <h3 className="text-[var(--fs-body-lg)] font-semibold leading-6 tracking-normal text-foreground sm:text-base">{announcement.title}</h3>
-                    <span className="inline-flex items-center gap-1 text-[var(--fs-label)] font-medium text-foreground/45"><Icon className="size-3" />{meta.label}</span>
-                    {announcement.pinned ? <span className="inline-flex items-center gap-1 text-[var(--fs-label)] font-medium text-amber-500"><Pin className="size-3" />置顶</span> : null}
+                    <h3 className="break-words text-[var(--fs-body-lg)] font-semibold leading-6 tracking-normal text-foreground">{announcement.title}</h3>
+                    <span className="inline-flex items-center gap-1 text-[var(--fs-caption)] font-medium text-[var(--user-ink-muted)]"><Icon className="size-3" aria-hidden="true" />{meta.label}</span>
+                    {announcement.pinned ? <span className="inline-flex items-center gap-1 text-[var(--fs-caption)] font-medium text-[var(--user-ink-muted)]"><Pin className="size-3" aria-hidden="true" />置顶</span> : null}
                 </div>
                 {announcement.imageUrl ? <AntImage src={announcementImageUrl(announcement)} alt={`${announcement.title} 配图`} preview className="mt-3 max-h-36 w-56 max-w-full rounded-lg border border-border/70 bg-muted/20 object-contain p-1" /> : null}
-                {announcement.content ? <AnnouncementContent content={announcement.content} className="mt-1 text-sm leading-6 text-foreground/75 sm:text-[var(--fs-body-lg)]" /> : null}
-                <time dateTime={announcement.publishedAt} className="mt-2 block text-xs tabular-nums text-foreground/40">{relativeTime(announcement.publishedAt)} · {formatDateTime(announcement.publishedAt)}</time>
+                {announcement.content ? <AnnouncementContent content={announcement.content} className="mt-1 text-sm leading-6 text-foreground/75" /> : null}
+                <time dateTime={announcement.publishedAt} className="mt-2 block text-xs tabular-nums text-[var(--user-ink-muted)]">{relativeTime(announcement.publishedAt)} · {formatDateTime(announcement.publishedAt)}</time>
             </div>
-        </motion.article>
+        </article>
     );
 }
 

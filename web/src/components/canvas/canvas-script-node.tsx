@@ -1,4 +1,6 @@
-import { Button, Input, InputNumber, Modal, Segmented, Table } from "antd";
+import { SegmentedControl } from "@/components/ui/base/segmented-control";
+import { AppModal } from "@/components/ui/product/app-modal";
+import { Button, Input, InputNumber, Table } from "antd";
 import { CanvasAnchoredDropdown as Dropdown } from "./canvas-anchored-dropdown";
 import { Tooltip } from "@/components/ui/base/tooltip";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
@@ -288,9 +290,9 @@ export function CanvasScriptNodeContent({
                 </Dropdown>
             </div>
             {batch ? (
-                <Modal title="批次详情" open={batchDetailsOpen} onCancel={() => setBatchDetailsOpen(false)} footer={null} width={560} centered destroyOnHidden>
+                <AppModal rootClassName="workspace-utility-overlay" title="批次详情" open={batchDetailsOpen} onCancel={() => setBatchDetailsOpen(false)} footer={null} width={560} centered destroyOnHidden>
                     <GenerationBatchDetails batch={batch} rows={rows} onRetryItem={(itemId) => onRetryBatchItem(batch.id, itemId)} />
-                </Modal>
+                </AppModal>
             ) : null}
             <StoryboardMiniPipeline pipeline={pipeline} theme={theme} rows={rows} />
             <div className="storyboard-header-gutter grid h-9 shrink-0 items-center border-b text-xs font-semibold" style={{ borderColor: theme.node.stroke, color: theme.node.muted, gridTemplateColumns: SCRIPT_GRID_TEMPLATE }}>
@@ -607,7 +609,7 @@ export function CanvasScriptEditor({
     });
 
     return (
-        <Modal title={node?.title || "分镜脚本"} open={open} onCancel={onClose} footer={null} width="min(1480px, calc(100vw - 40px))" centered destroyOnHidden>
+        <AppModal rootClassName="workspace-utility-overlay" title={node?.title || "分镜脚本"} open={open} onCancel={onClose} footer={null} width="min(1480px, calc(100vw - 40px))" centered destroyOnHidden>
             <div className="mb-3 flex flex-wrap items-center gap-2">
                 <Input.Search className="w-72" allowClear placeholder="筛选画面、台词或提示词" value={query} onChange={(event) => setQuery(event.target.value)} />
                     <CheckboxGroup className="script-column-picker" options={columnOptions} value={visibleColumns} onChange={(values) => onVisibleColumnsChange(values)} />
@@ -618,7 +620,7 @@ export function CanvasScriptEditor({
                 <Button icon={<ImageIcon className="size-4" />} disabled={!selectedIds.length} onClick={() => onGenerateImages(selectedIds)}>
                     生成{videoInputMode === "keyframe" ? "首帧" : "分镜图"}
                 </Button>
-                <Segmented<StoryboardVideoInputMode>
+                <SegmentedControl<StoryboardVideoInputMode>
                     value={videoInputMode}
                     options={[
                         { value: "direct", label: "直接生成" },
@@ -641,7 +643,7 @@ export function CanvasScriptEditor({
                 columns={columns}
                 rowSelection={{ selectedRowKeys: selectedIds, onChange: (keys) => setSelectedIds(keys.map(String)) }}
             />
-        </Modal>
+        </AppModal>
     );
 }
 

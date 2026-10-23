@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { App, Button, Input, Segmented } from "antd";
+import { useEffect, useMemo, useState, type KeyboardEvent, type ReactNode } from "react";
+import { App, Button, Input } from "antd";
+import { SegmentedControl } from "@/components/ui/base/segmented-control";
 import { AppModal } from "@/components/ui/product/app-modal";
 import { Braces, Image, Layers3, Save, Sparkles } from "lucide-react";
 
@@ -8,16 +9,18 @@ import { createStyleProfileSnapshot, styleProfileValidationMessage, type StylePr
 import { Select } from "@/components/ui/base/select";
 
 type EditorSection = "identity" | "prompt" | "execution";
+const editorSections: EditorSection[] = ["identity", "prompt", "execution"];
 
 type StyleProfileEditorModalProps = {
     open: boolean;
     initialProfile: StyleProfileSnapshot | null;
     saving?: boolean;
     onClose: () => void;
+    afterClose?: () => void;
     onSave: (profile: StyleProfileSnapshot, applyToProject: boolean) => void;
 };
 
-export function StyleProfileEditorModal({ open, initialProfile, saving = false, onClose, onSave }: StyleProfileEditorModalProps) {
+export function StyleProfileEditorModal({ open, initialProfile, saving = false, onClose, afterClose, onSave }: StyleProfileEditorModalProps) {
     const { message, modal } = App.useApp();
     const [section, setSection] = useState<EditorSection>("identity");
     const [draft, setDraft] = useState<StyleProfileSnapshot | null>(initialProfile);
@@ -37,6 +40,22 @@ export function StyleProfileEditorModal({ open, initialProfile, saving = false, 
     if (!draft) return null;
 
     const update = (patch: Partial<StyleProfileSnapshot>) => setDraft((current) => current ? { ...current, ...patch } : current);
+    const changeSectionWithKeyboard = (event: KeyboardEvent<HTMLElement>) => {
+        if (event.defaultPrevented || event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229 || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
+        const target = event.target as HTMLElement;
+        if (target.parentElement !== event.currentTarget || target.getAttribute("role") !== "tab") return;
+        const index = editorSections.findIndex((value) => target.id === `style-profile-tab-${value}`);
+        if (index < 0) return;
+        let next: EditorSection;
+        if (event.key === "ArrowRight") next = editorSections[(index + 1) % editorSections.length];
+        else if (event.key === "ArrowLeft") next = editorSections[(index + editorSections.length - 1) % editorSections.length];
+        else if (event.key === "Home") next = editorSections[0];
+        else if (event.key === "End") next = editorSections[editorSections.length - 1];
+        else return;
+        event.preventDefault();
+        setSection(next);
+        event.currentTarget.querySelector<HTMLButtonElement>(`#style-profile-tab-${next}`)?.focus();
+    };
     const requestClose = () => {
         if (JSON.stringify(draft) === baseline) {
             onClose();
@@ -55,13 +74,14 @@ export function StyleProfileEditorModal({ open, initialProfile, saving = false, 
     return (
         <>
             <AppModal
-                rootClassName="style-profile-editor-modal"
+                rootClassName="workspace-utility-overlay style-profile-editor-modal"
                 open={open}
                 title={null}
                 footer={null}
                 centered
                 width="min(1120px, calc(100vw - 24px))"
                 onCancel={requestClose}
+                afterClose={afterClose}
                 flush
             >
                 <div className="flex max-h-dvh min-h-0 flex-col overflow-hidden bg-background text-foreground">
@@ -77,7 +97,7 @@ export function StyleProfileEditorModal({ open, initialProfile, saving = false, 
                         </div>
                     </header>
 
-                    <nav className="style-profile-editor-tabs grid shrink-0 grid-cols-3 border-b border-border px-2 sm:flex sm:px-4" role="tablist" aria-label="风格编辑器分区">
+                    <nav className="style-profile-editor-tabs app-control-group flex shrink-0 border-b border-border px-2 sm:px-4" role="tablist" aria-label="风格编辑器分区" onKeyDown={changeSectionWithKeyboard}>
                         <EditorTab id="style-profile-tab-identity" panelId="style-profile-panel-identity" active={section === "identity"} icon={<Image className="size-3.5" />} label="基本信息" onClick={() => setSection("identity")} />
                         <EditorTab id="style-profile-tab-prompt" panelId="style-profile-panel-prompt" active={section === "prompt"} icon={<Braces className="size-3.5" />} label="Prompt 规则" onClick={() => setSection("prompt")} />
                         <EditorTab id="style-profile-tab-execution" panelId="style-profile-panel-execution" active={section === "execution"} icon={<Layers3 className="size-3.5" />} label="执行配置" onClick={() => setSection("execution")} />
@@ -181,14 +201,17 @@ function ExecutionFields({ profile, onChange, onEditAssets }: EditorFieldsProps 
     return (
         <div className="space-y-5">
             <SectionHeading title="生成执行" description="控制模型资产不兼容时是继续使用 Prompt，还是阻止任务" />
-            <Field label="执行策略">
-                <Segmented
+            <div className="grid gap-1.5 text-xs">
+                <span className="font-medium text-foreground/62">执行策略</span>
+                <SegmentedControl
                     block
+                    size="sm"
+                    ariaLabel="执行策略"
                     value={profile.executionPolicy || "compatible-fallback"}
                     options={[{ value: "compatible-fallback", label: "兼容降级" }, { value: "strict-assets", label: "严格阻止" }]}
                     onChange={(executionPolicy) => onChange({ executionPolicy: executionPolicy as StyleProfileSnapshot["executionPolicy"] })}
                 />
-            </Field>
+            </div>
             <div className="flex flex-col gap-3 border-y border-border py-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                     <h4 className="text-sm font-medium">执行资产</h4>
@@ -222,13 +245,16 @@ function EditorTab({ id, panelId, active, icon, label, onClick }: { id: string; 
             type="button"
             id={id}
             role="tab"
+            tabIndex={active ? 0 : -1}
+            data-slot="control-item"
             aria-selected={active}
             aria-controls={panelId}
-            className={`style-profile-editor-tab relative flex h-11 min-w-0 items-center justify-center gap-2 px-3 text-xs font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-inset sm:justify-start ${active ? "is-active text-foreground" : "text-foreground/45 hover:text-foreground/75"}`}
+            className="relative min-w-0 outline-none"
+            style={{ flex: "1 1 0%" }}
             onClick={onClick}
         >
             {icon}
-            <span className="truncate">{label}</span>
+            <span data-slot="control-label" className="truncate">{label}</span>
         </button>
     );
 }

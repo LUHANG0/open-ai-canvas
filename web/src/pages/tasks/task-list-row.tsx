@@ -1,11 +1,11 @@
-import { Button } from "antd";
+import { Button, Tooltip as TitleTooltip } from "antd";
 import { IconButton } from "@/components/ui/base/buttons";
 import { Tooltip } from "@/components/ui/base/tooltip";
 import { Eye, FileText, FolderKanban, Image as ImageIcon, Play, RotateCcw, Video } from "lucide-react";
 import { useState } from "react";
 
 import { MediaPreview } from "@/components/media-preview";
-import { CONTENT_MODERATION_ERROR_CODE, generationErrorMessage, isContentModerationError } from "@/lib/generation-error";
+import { CONTENT_MODERATION_ERROR_CODE, isContentModerationError } from "@/lib/generation-error";
 import { formatTaskKind, generationTaskShowsProgress, generationTaskStageLabel, generationTaskStatusLabel } from "@/lib/generation-task-display";
 import type { GenerationTask } from "@/services/api/task-center";
 import type { AiConfig } from "@/stores/use-config-store";
@@ -45,26 +45,28 @@ export function TaskListRow({
             <div className="task-record-main">
                 <div className="task-record-heading">
                     <span className={`task-record-status ${isFailed ? "is-failed" : isActive ? "is-active" : "is-success"}`}>
-                        <i className={statusDotClassName(task.status)} />
+                        <i className={statusDotClassName(task.status)} aria-hidden="true" />
                         {generationTaskStatusLabel(task)}
                     </span>
-                    <button type="button" className="task-record-title" title={task.prompt} onClick={onOpen}>
-                        {task.prompt || "未命名任务"}
-                    </button>
+                    <TitleTooltip title={task.prompt || "未命名任务"} trigger={["hover", "focus"]}>
+                        <button type="button" className="task-record-title" aria-haspopup="dialog" onClick={(event) => { event.currentTarget.focus({ preventScroll: true }); onOpen(); }}>
+                            {task.prompt || "未命名任务"}
+                        </button>
+                    </TitleTooltip>
                 </div>
                 <div className="task-record-meta">
                     <span>{formatTaskKind(task)}</span>
                     <span aria-hidden="true">·</span>
-                    <span>{formatModelName(effectiveConfig, task)}</span>
-                    <span className="task-record-meta-canvas">
-                        <FolderKanban className="size-3" />
+                    <span title={formatModelName(effectiveConfig, task)}>{formatModelName(effectiveConfig, task)}</span>
+                    <span className="task-record-meta-canvas" title={[context.canvasName, context.projectName].filter(Boolean).join(" · ")}>
+                        <FolderKanban className="size-3" aria-hidden="true" />
                         {context.canvasName}
                         {context.projectName ? ` · ${context.projectName}` : ""}
                     </span>
                 </div>
                 {isActive && !showsProgress ? <p>{stageLabel}</p> : isActive ? (
                     <div className="task-record-progress" role="progressbar" aria-label={stageLabel} aria-valuemin={0} aria-valuemax={100} aria-valuenow={task.progress || 0}>
-                        <span>{stageLabel}</span>
+                        <span title={stageLabel}>{stageLabel}</span>
                         <span>{task.progress || 0}%</span>
                         <i>
                             <b style={{ width: `${task.progress || 0}%` }} />
@@ -72,7 +74,7 @@ export function TaskListRow({
                     </div>
                 ) : null}
                 {isFailed ? (
-                    <p className="task-record-error" title={task.error ? generationErrorMessage(task.error) : undefined}>
+                    <p className="task-record-error" title={taskAttentionReason(task)}>
                         {taskAttentionReason(task)}
                     </p>
                 ) : null}
@@ -83,7 +85,7 @@ export function TaskListRow({
             {creditsEnabled ? <TaskBilling billing={task.billing} /> : <span className="task-record-billing-empty" aria-hidden="true" />}
             <div className="task-record-actions">
                 <Tooltip title="查看详情">
-                    <IconButton size="sm" variant="ghost" icon={Eye} aria-label="查看详情" onClick={onOpen} />
+                    <IconButton size="sm" variant="ghost" icon={Eye} aria-label={`查看任务详情：${task.prompt || "未命名任务"}`} aria-haspopup="dialog" onClick={(event) => { event.currentTarget.focus({ preventScroll: true }); onOpen(); }} />
                 </Tooltip>
                 {isFailed ? (
                     <Tooltip title={retryDisabled ? "内容审核失败，无法自动重试" : task.canRecoverMedia ? "重试保存，不重新生成" : "重试任务"}>
@@ -120,7 +122,8 @@ function TaskPreviewThumbnail({ task, onOpen }: { task: GenerationTask; onOpen: 
     return (
         <button
             type="button"
-            onClick={onOpen}
+            onClick={(event) => { event.currentTarget.focus({ preventScroll: true }); onOpen(); }}
+            aria-haspopup="dialog"
             disabled={previewUnavailable}
             className="task-record-thumb group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             aria-label={previewUnavailable ? "预览不可用，素材可能已删除" : isVideo ? "放大预览生成视频" : "放大预览生成图片"}

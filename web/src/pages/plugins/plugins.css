@@ -53,88 +53,16 @@
 .plugins-sidebar-heading h1 {
     margin-top: var(--space-2);
     color: var(--foreground);
-    font-size: var(--fs-title);
+    font-size: 20px;
     font-weight: 700;
     line-height: 1.3;
 }
 
 .plugins-sidebar-heading p {
     margin-top: var(--space-2);
-    color: color-mix(in srgb, var(--foreground) 44%, transparent);
-    font-size: var(--fs-label);
+    color: var(--user-ink-muted);
+    font-size: 13px;
     line-height: 1.55;
-}
-
-.plugins-sidebar-nav {
-    display: flex;
-    overflow-x: auto;
-    gap: var(--space-1);
-}
-
-.plugins-sidebar-item {
-    display: flex;
-    width: auto;
-    flex-shrink: 0;
-    white-space: nowrap;
-    min-height: 36px;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--space-2);
-    border: 1px solid transparent;
-    border-radius: var(--r-sm);
-    background: transparent;
-    padding: 0 var(--space-2);
-    color: color-mix(in srgb, var(--foreground) 53%, transparent);
-    font-size: var(--fs-caption);
-    text-align: left;
-    cursor: pointer;
-    transition:
-        background-color var(--motion-state) ease-out,
-        color var(--motion-state) ease-out;
-}
-
-.plugins-sidebar-item:hover {
-    background: color-mix(in srgb, var(--foreground) 6%, transparent);
-    color: var(--foreground);
-}
-
-.plugins-sidebar-item:focus-visible {
-    background: color-mix(in srgb, var(--foreground) 6%, transparent);
-    color: var(--foreground);
-    outline: 2px solid color-mix(in srgb, var(--foreground) 58%, transparent);
-    outline-offset: 2px;
-}
-
-.plugins-sidebar-item.is-active {
-    border-color: transparent;
-    border-radius: var(--user-radius-control);
-    background: var(--user-surface-muted);
-    color: var(--user-ink);
-    font-weight: 600;
-    box-shadow: none;
-}
-
-.plugins-sidebar-item > span:last-child {
-    min-width: 22px;
-    border-radius: var(--r-sm);
-    background: transparent;
-    padding: 2px 5px;
-    color: color-mix(in srgb, var(--foreground) 36%, transparent);
-    font-size: var(--fs-label);
-    font-variant-numeric: tabular-nums;
-    text-align: right;
-}
-
-.plugins-sidebar-item.is-active > span:last-child {
-    color: color-mix(in srgb, var(--foreground) 62%, transparent);
-    background: transparent;
-}
-
-.plugins-sidebar-item-label {
-    display: inline-flex;
-    min-width: 0;
-    align-items: center;
-    gap: var(--space-2);
 }
 
 .plugins-toolbar {
@@ -227,8 +155,8 @@
 
 .plugin-section-heading p {
     margin-top: var(--space-half);
-    color: color-mix(in srgb, var(--foreground) 46%, transparent);
-    font-size: var(--fs-label);
+    color: var(--user-ink-muted);
+    font-size: var(--fs-caption);
     line-height: 1.45;
 }
 
@@ -240,8 +168,8 @@
     place-items: center;
     border-radius: var(--r-full);
     background: color-mix(in srgb, var(--foreground) 7%, transparent);
-    color: color-mix(in srgb, var(--foreground) 56%, transparent);
-    font-size: var(--fs-label);
+    color: var(--user-ink-muted);
+    font-size: var(--fs-caption);
     font-variant-numeric: tabular-nums;
 }
 
@@ -262,8 +190,8 @@
     border-radius: var(--plugins-card-radius);
     border: 1px dashed var(--user-border);
     background: color-mix(in srgb, var(--foreground) 2%, transparent);
-    color: color-mix(in srgb, var(--foreground) 45%, transparent);
-    font-size: var(--fs-label);
+    color: var(--user-ink-muted);
+    font-size: 13px;
 }
 
 .plugin-card {
@@ -305,8 +233,8 @@
 
 .plugin-card-main:focus-visible {
     border-radius: var(--r-md);
-    outline: 1px solid color-mix(in srgb, var(--foreground) 38%, transparent);
-    outline-offset: -1px;
+    outline: 2px solid var(--workspace-focus-ring);
+    outline-offset: 3px;
 }
 
 .plugin-card-main:focus:not(:focus-visible) {
@@ -357,7 +285,7 @@
     min-width: 0;
     overflow: hidden;
     color: var(--foreground);
-    font-size: var(--fs-body-lg);
+    font-size: var(--fs-body);
     font-weight: 650;
     line-height: 1.35;
     text-overflow: ellipsis;
@@ -366,8 +294,8 @@
 
 .plugin-version {
     flex: 0 0 auto;
-    color: color-mix(in srgb, var(--foreground) 40%, transparent);
-    font-size: var(--fs-tiny);
+    color: var(--user-ink-muted);
+    font-size: var(--fs-caption);
     font-variant-numeric: tabular-nums;
 }
 
@@ -394,24 +322,24 @@
     border-radius: var(--r-sm);
     background: color-mix(in srgb, var(--foreground) 6%, transparent);
     padding: var(--space-half) var(--space-2);
-    color: color-mix(in srgb, var(--foreground) 50%, transparent);
-    font-size: var(--fs-micro);
+    color: var(--user-ink-muted);
+    font-size: var(--fs-caption);
     line-height: 1.4;
 }
 
 .plugin-source-label {
     background: color-mix(in srgb, var(--foreground) 7%, transparent);
-    color: color-mix(in srgb, var(--foreground) 58%, transparent);
+    color: var(--user-ink-muted);
     font-weight: 600;
 }
 
 .plugin-source-label.is-system {
     background: color-mix(in srgb, var(--foreground) 7%, transparent);
-    color: color-mix(in srgb, var(--foreground) 58%, transparent);
+    color: var(--user-ink-muted);
 }
 
 .plugin-trust-label {
-    font-size: var(--fs-micro);
+    font-size: var(--fs-caption);
 }
 
 .plugin-card-description {
@@ -419,8 +347,8 @@
     min-height: 2.9em;
     margin-top: var(--space-3);
     overflow: hidden;
-    color: color-mix(in srgb, var(--foreground) 52%, transparent);
-    font-size: var(--fs-caption);
+    color: var(--user-ink-muted);
+    font-size: 13px;
     line-height: 1.6;
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 2;
@@ -429,8 +357,8 @@
 .plugin-card-meta {
     gap: var(--space-3);
     margin-top: var(--space-3);
-    color: color-mix(in srgb, var(--foreground) 43%, transparent);
-    font-size: var(--fs-label);
+    color: var(--user-ink-muted);
+    font-size: var(--fs-caption);
 }
 
 .plugin-card-meta span {
@@ -475,9 +403,17 @@
 }
 
 .plugin-details-title > span:nth-child(2) {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    min-width: 0;
+    overflow-wrap: anywhere;
+    white-space: normal;
+}
+
+.plugin-details-description {
+    margin: 0 0 var(--space-4);
+    color: var(--user-ink-muted);
+    font-size: 13px;
+    line-height: 1.7;
+    overflow-wrap: anywhere;
 }
 
 .workspace-modal.plugin-details-modal {
@@ -499,40 +435,6 @@
     margin-bottom: var(--space-4);
     padding-bottom: var(--space-3);
     border-bottom: 1px solid var(--workspace-border);
-}
-
-.plugin-upload-tabs-nav {
-    display: inline-flex;
-    align-items: center;
-    padding: 3px;
-    border-radius: var(--r-md);
-    background: color-mix(in srgb, var(--foreground) 6%, transparent);
-    gap: 2px;
-}
-
-.plugin-upload-tab-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 5px 12px;
-    border: none;
-    border-radius: var(--r-sm);
-    background: transparent;
-    color: color-mix(in srgb, var(--foreground) 60%, transparent);
-    font-size: var(--fs-label);
-    font-weight: 550;
-    cursor: pointer;
-    transition: all 0.18s ease;
-}
-
-.plugin-upload-tab-btn:hover {
-    color: var(--foreground);
-}
-
-.plugin-upload-tab-btn.is-active {
-    background: var(--workspace-surface-strong, #ffffff);
-    color: var(--workspace-accent, #1677ff);
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .plugin-upload-badge {
@@ -731,151 +633,9 @@
     color: var(--status-success);
 }
 
-.plugin-markdown {
-    max-width: none;
-    color: color-mix(in srgb, var(--foreground) 72%, transparent);
-    font-size: var(--fs-caption);
-    line-height: 1.7;
-}
-
 .plugin-details-document {
     width: 100%;
     padding: var(--space-2) 0 var(--space-6);
-}
-
-.plugin-details-document > p,
-.plugin-details-document > ul,
-.plugin-details-document > ol,
-.plugin-details-document > blockquote {
-    max-width: 88ch;
-}
-
-.plugin-markdown h1,
-.plugin-markdown h2,
-.plugin-markdown h3 {
-    color: var(--foreground);
-    font-weight: 700;
-    line-height: 1.35;
-}
-
-.plugin-markdown h1 {
-    margin: 0 0 var(--space-3);
-    font-size: var(--fs-title);
-}
-
-.plugin-markdown h2 {
-    margin: var(--space-6) 0 var(--space-3);
-    padding-top: var(--space-4);
-    border-top: 1px solid var(--workspace-border);
-    font-size: var(--fs-body-lg);
-}
-
-.plugin-markdown h3 {
-    margin: var(--space-4) 0 var(--space-2);
-    font-size: var(--fs-body);
-}
-
-.plugin-markdown p {
-    margin: var(--space-2) 0;
-}
-
-.plugin-markdown ul {
-    margin: var(--space-2) 0;
-    padding-left: var(--space-5);
-}
-
-.plugin-markdown ol {
-    margin: var(--space-2) 0;
-    padding-left: var(--space-5);
-}
-
-.plugin-markdown a {
-    color: var(--workspace-accent);
-    text-decoration: underline;
-    text-underline-offset: 2px;
-}
-
-.plugin-markdown li + li {
-    margin-top: var(--space-1);
-}
-
-.plugin-markdown strong {
-    color: var(--foreground);
-    font-weight: 650;
-}
-
-.plugin-markdown code {
-    border-radius: var(--r-sm);
-    background: color-mix(in srgb, var(--foreground) 7%, transparent);
-    padding: 2px 5px;
-    color: color-mix(in srgb, var(--workspace-accent) 78%, var(--foreground));
-    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
-    font-size: 0.92em;
-}
-
-.plugin-markdown pre {
-    overflow-x: auto;
-    margin: var(--space-3) 0;
-    border: 1px solid var(--workspace-border);
-    border-radius: var(--r-md);
-    background: color-mix(in srgb, var(--foreground) 5%, var(--workspace-surface-strong));
-    padding: var(--space-3);
-}
-
-.plugin-markdown pre code {
-    display: block;
-    padding: 0;
-    background: transparent;
-    color: var(--foreground);
-    line-height: 1.6;
-    white-space: pre;
-}
-
-.plugin-markdown-table-wrap {
-    overflow-x: auto;
-    margin: var(--space-3) 0;
-    border: 1px solid var(--workspace-border);
-    border-radius: var(--r-md);
-}
-
-.plugin-markdown table {
-    width: 100%;
-    min-width: 620px;
-    border-collapse: collapse;
-    font-size: var(--fs-label);
-}
-
-.plugin-markdown th,
-.plugin-markdown td {
-    padding: var(--space-2) var(--space-3);
-    border-bottom: 1px solid var(--workspace-border);
-    text-align: left;
-    vertical-align: top;
-}
-
-.plugin-markdown th {
-    background: color-mix(in srgb, var(--foreground) 5%, transparent);
-    color: var(--foreground);
-    font-weight: 650;
-    white-space: nowrap;
-}
-
-.plugin-markdown tr:last-child td {
-    border-bottom: 0;
-}
-
-.plugin-markdown blockquote {
-    margin: var(--space-3) 0;
-    border-left: 3px solid var(--workspace-accent);
-    background: color-mix(in srgb, var(--workspace-accent) 7%, transparent);
-    padding: var(--space-2) var(--space-3);
-    color: color-mix(in srgb, var(--foreground) 64%, transparent);
-}
-
-.plugin-markdown hr {
-    margin: var(--space-5) 0;
-    border: 0;
-    border-top: 1px solid var(--workspace-border);
 }
 
 .plugin-settings-panel {
@@ -907,8 +667,8 @@
 .plugin-settings-heading p,
 .plugin-settings-fields p {
     margin-top: var(--space-1);
-    color: color-mix(in srgb, var(--foreground) 44%, transparent);
-    font-size: var(--fs-label);
+    color: var(--user-ink-muted);
+    font-size: var(--fs-caption);
     line-height: 1.55;
 }
 
@@ -920,8 +680,8 @@
 
 .plugin-settings-fields label {
     display: block;
-    color: color-mix(in srgb, var(--foreground) 62%, transparent);
-    font-size: var(--fs-label);
+    color: var(--user-ink);
+    font-size: 13px;
     font-weight: 600;
 }
 
@@ -959,21 +719,23 @@
     display: grid;
     gap: var(--space-2);
     margin-top: var(--space-4);
-    color: color-mix(in srgb, var(--foreground) 52%, transparent);
-    font-size: var(--fs-label);
+    color: var(--user-ink-muted);
+    font-size: var(--fs-caption);
     line-height: 1.6;
 }
 
 .plugin-permissions span {
     display: inline-block;
     margin-right: var(--space-2);
-    color: color-mix(in srgb, var(--foreground) 36%, transparent);
+    color: var(--user-ink-muted);
 }
 
 .plugin-error {
     display: block;
     margin-top: var(--space-3);
-    font-size: var(--fs-label);
+    color: var(--status-error);
+    font-size: var(--fs-caption);
+    overflow-wrap: anywhere;
 }
 
 @media (max-width: 900px) {
@@ -997,20 +759,6 @@
 
     .plugins-sidebar-heading p {
         margin-top: 0;
-    }
-
-    .plugins-sidebar-nav {
-        display: flex;
-        gap: var(--space-1);
-        overflow-x: auto;
-        padding-bottom: var(--space-3);
-    }
-
-    .plugins-sidebar-item {
-        width: auto;
-        flex: 0 0 auto;
-        padding-inline: var(--space-3);
-        white-space: nowrap;
     }
 
     .plugins-toolbar {

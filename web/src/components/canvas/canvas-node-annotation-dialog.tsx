@@ -1,4 +1,5 @@
-import { Button, Modal, Slider } from "antd";
+import { AppModal } from "@/components/ui/product/app-modal";
+import { Button, Slider } from "antd";
 import { Tooltip } from "@/components/ui/base/tooltip";
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 
@@ -106,7 +107,7 @@ export function CanvasNodeAnnotationDialog({ image, open, onClose, onConfirm, ed
     };
 
     return (
-        <Modal title={null} open={open} onCancel={onClose} footer={null} width="min(1120px, calc(100vw - 32px))" centered destroyOnHidden>
+        <AppModal rootClassName="workspace-utility-overlay" title={null} open={open} onCancel={onClose} footer={null} width="min(1120px, calc(100vw - 32px))" centered destroyOnHidden>
             <div className="flex flex-col gap-3">
                 <div className="flex flex-wrap items-center gap-2 rounded-lg border p-2" style={{ borderColor: "rgba(127,127,127,.22)" }}>
                     <span className="px-1 text-sm font-semibold">{editMode ? "标注编辑" : "标注"}</span>
@@ -133,7 +134,7 @@ export function CanvasNodeAnnotationDialog({ image, open, onClose, onConfirm, ed
                     ) : <span className="text-sm opacity-50">正在读取图片...</span>}
                 </div>
             </div>
-        </Modal>
+        </AppModal>
     );
 }
 

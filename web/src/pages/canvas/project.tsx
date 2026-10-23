@@ -7,6 +7,7 @@ import { useCanvasImageLayerMaterials } from "./use-canvas-image-layer-materials
 import { isCanvasNodeGenerating } from "@/lib/canvas/canvas-node-task-state";
 import { createCanvasStateWriter } from "@/lib/canvas/canvas-editor-state";
 import { useCanvasImageWheelResize } from "./use-canvas-image-wheel-resize";
+import { useCanvasNodeControls } from "./use-canvas-node-controls";
 import { canCancelGenerationTask } from "@/lib/generation-task-display";
 import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { MouseEvent as ReactMouseEvent } from "react";
@@ -222,7 +223,6 @@ function CanvasViewportPage() {
     const canvasStorageScope = getActiveUserScope();
     const containerRef = useRef<HTMLDivElement>(null);
     const didInitialCenterRef = useRef(false);
-    const toolbarHideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const assetHandoffRef = useRef("");
 
     const effectiveConfig = useEffectiveConfig();
@@ -274,10 +274,9 @@ function CanvasViewportPage() {
     const [shareModalOpen, setShareModalOpen] = useState(false);
     const [tapNowImportOpen, setTapNowImportOpen] = useState(false);
     const [nodeSearchOpen, setNodeSearchOpen] = useState(false);
-    const [toolbarNodeId, setToolbarNodeId] = useState<string | null>(null);
+    const { toolbarNodeId, setToolbarNodeId, dialogNodeId, setDialogNodeId, closeNodeControls } = useCanvasNodeControls();
     const [arkPrivateAssetUploadNodeId, setArkPrivateAssetUploadNodeId] = useState<string | null>(null);
     const [nodeImageSettingsOpen, setNodeImageSettingsOpen] = useState(false);
-    const [dialogNodeId, setDialogNodeId] = useState<string | null>(null);
     const [textEditorNodeId, setTextEditorNodeId] = useState<string | null>(null);
     const [characterReferenceNodeId, setCharacterReferenceNodeId] = useState<string | null>(null);
     const [characterLibraryOpen, setCharacterLibraryOpen] = useState(false);
@@ -1032,6 +1031,7 @@ function CanvasViewportPage() {
         setSelectedConnectionId,
         setContextMenu,
         setDialogNodeId,
+        setToolbarNodeId,
         onNodesDeleted: handleNodesDeleted,
     });
 
@@ -1152,6 +1152,7 @@ function CanvasViewportPage() {
 
     const handleSelectedNodeClick = useCallback(
         (node: CanvasNodeData) => {
+            setToolbarNodeId(node.id);
             // Selection is transient, but the LibTV-style paint order survives
             // deselection so a clicked lower node stays above its neighbours.
             if (node.type !== CanvasNodeType.Frame) bringNodeToFront(node.id);
@@ -1193,27 +1194,7 @@ function CanvasViewportPage() {
         [bringNodeToFront, nodesRef],
     );
 
-    const handleNodeDragEnd = useCallback(
-        (nodeId: string) => {
-            const node = nodesRef.current.find((item) => item.id === nodeId);
-            if (
-                !node ||
-                node.type === CanvasNodeType.Script ||
-                node.type === CanvasNodeType.Drawing ||
-                node.type === CanvasNodeType.Panorama ||
-                node.type === ART_CRITIQUE_NODE_TYPE ||
-                (node.metadata?.workflowKind === "character" && node.metadata.characterAssetId)
-            ) {
-                setDialogNodeId(null);
-                return;
-            }
-            // A drag selects a new node even though it is not a click. Keep the
-            // generation editor bound to the node most recently moved so a stale
-            // panel from the previous node cannot reappear after mouse-up.
-            setDialogNodeId(node.id);
-        },
-        [nodesRef],
-    );
+    const handleNodeDragEnd = closeNodeControls;
 
     const handleCanvasDeselect = useCallback(() => {
         setContextMenu(null);
@@ -1242,26 +1223,6 @@ function CanvasViewportPage() {
         onLinkedFolderDrop: archiveNodesToLinkedFolder,
         onDeselect: handleCanvasDeselect,
     });
-
-    const keepNodeToolbar = useCallback(
-        (nodeId: string) => {
-            if (nodeDraggingRef.current || nodeImageSettingsOpen) return;
-            if (toolbarHideTimerRef.current) {
-                clearTimeout(toolbarHideTimerRef.current);
-                toolbarHideTimerRef.current = null;
-            }
-            setToolbarNodeId(nodeId);
-        },
-        [nodeImageSettingsOpen],
-    );
-
-    const hideNodeToolbar = useCallback(() => {
-        if (toolbarHideTimerRef.current) clearTimeout(toolbarHideTimerRef.current);
-        toolbarHideTimerRef.current = setTimeout(() => {
-            setToolbarNodeId(null);
-            toolbarHideTimerRef.current = null;
-        }, 120);
-    }, []);
 
     const {
         collapsingBatchIds,
@@ -1449,6 +1410,7 @@ function CanvasViewportPage() {
         viewport,
         viewportSize: size,
         selectedNodeIds,
+        toolbarNodeId,
         hoveredNodeId,
         dragPreview,
         collapsingBatchIds,
@@ -2442,16 +2404,14 @@ function CanvasViewportPage() {
         (nodeId: string) => {
             if (nodeDraggingRef.current) return;
             setHoveredNodeId(nodeId);
-            keepNodeToolbar(nodeId);
         },
-        [keepNodeToolbar],
+        [],
     );
     const handleCanvasNodeHoverEnd = useCallback(
         (nodeId: string) => {
             setHoveredNodeId((current) => (current === nodeId ? null : current));
-            hideNodeToolbar();
         },
-        [hideNodeToolbar],
+        [],
     );
     const retryCanvasNode = useCallback(
         (node: CanvasNodeData) => {
@@ -2949,7 +2909,7 @@ function CanvasViewportPage() {
                             ) : null}
 
                             {lightingNode?.metadata?.content ? (
-                                <AppModal flush open centered title={null} closable={false} footer={null} width={720} onCancel={() => setLightingNodeId(null)}>
+                                <AppModal rootClassName="workspace-utility-overlay" flush open centered title={null} closable={false} footer={null} width={720} onCancel={() => setLightingNodeId(null)}>
                                     <CanvasNodeLightingPanel
                                         dataUrl={lightingNode.metadata.content}
                                         onClose={() => setLightingNodeId(null)}
@@ -3064,8 +3024,6 @@ function CanvasViewportPage() {
                                 workspaceMode={workspaceMode}
                                 viewport={viewport}
                                 containerRef={containerRef}
-                                onKeep={keepNodeToolbar}
-                                onLeave={hideNodeToolbar}
                                 onInfo={(node) => (node.metadata?.workflowKind === "character" && node.metadata.characterAssetId ? openTextNodeEditor(node) : setInfoNodeId(node.id))}
                                 onEditText={openTextNodeEditor}
                                 onDecreaseFont={(node) => handleFontSizeChange(node.id, Math.max(10, (node.metadata?.fontSize || 14) - 2))}

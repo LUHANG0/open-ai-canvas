@@ -635,7 +635,7 @@ export function CanvasTimelineDialog({
     );
 
     return (
-        <AppModal
+        <AppModal rootClassName="workspace-utility-overlay"
             className="canvas-timeline-dialog"
             title={title}
             open={open}

@@ -62,7 +62,7 @@ export function CanvasCharacterReferenceModal({ node, canvasNodes, open, onClose
         return titles;
     }, [canvasNodes]);
     return (
-        <AppModal open={open && Boolean(node)} title={null} footer={null} destroyOnHidden width="min(1120px, calc(100vw - 32px))" onCancel={onClose} flush>
+        <AppModal rootClassName="workspace-utility-overlay" open={open && Boolean(node)} title={null} footer={null} destroyOnHidden width="min(1120px, calc(100vw - 32px))" onCancel={onClose} flush>
             {node?.metadata?.characterAssetId ? <CharacterStudio key={node.id} node={node} assetId={node.metadata.characterAssetId} canvasTitles={canvasTitles} onUpdated={onUpdated} /> : null}
         </AppModal>
     );

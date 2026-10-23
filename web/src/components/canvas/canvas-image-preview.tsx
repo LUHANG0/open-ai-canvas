@@ -48,7 +48,7 @@ export function CanvasImagePreview({ src = "", storageKey, alt = "图片", onClo
     if (!src && !storageKey) return null;
 
     return (
-        <AppModal
+        <AppModal rootClassName="workspace-utility-overlay"
             open
             flush
             title={

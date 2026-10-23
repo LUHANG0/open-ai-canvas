@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Radio, Select } from "antd";
+import { Radio } from "antd";
+import { Select } from "@/components/ui/base/select";
 import { AppModal } from "@/components/ui/product/app-modal";
 import { MAX_UPSCALE_LONG_EDGE, resolveUpscaleSize, type ImageUpscaleAlgorithm, type ImageUpscaleParams } from "@/lib/canvas/image-operation-plan";
 import { useImageToolSource } from "./use-image-tool-source";
@@ -21,7 +22,7 @@ function ResizeEditor({ dataUrl, onClose, onConfirm }: UpscaleDialogProps) {
     const output = size ? resolveUpscaleSize(size.width, size.height, target) : null;
     const ready = Boolean(size && target > edge);
     return (
-        <AppModal open centered title="调整图片尺寸" width={760} onCancel={onClose} okText="生成放大图" okButtonProps={{ disabled: !ready }} onOk={() => ready && onConfirm({ targetLongEdge: target, algorithm })}>
+        <AppModal rootClassName="workspace-utility-overlay" open centered title="调整图片尺寸" width={760} onCancel={onClose} okText="生成放大图" okButtonProps={{ disabled: !ready }} onOk={() => ready && onConfirm({ targetLongEdge: target, algorithm })}>
             <p className="mb-4 text-sm text-muted-foreground">插值放大并另存为新图片，原图保留。此操作不生成新的真实细节。</p>
             <div className="grid gap-5 md:grid-cols-2">
                 <figure className="m-0 flex flex-col items-center justify-center gap-3 rounded-lg border border-border bg-surface-active p-3">

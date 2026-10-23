@@ -109,6 +109,8 @@ export default function DrawingEngineSettingsPage() {
         navigationConfirmOpenRef.current = true;
         navigationTriggerRef.current = document.activeElement instanceof HTMLElement && document.activeElement !== document.body ? document.activeElement : null;
         modal.confirm({
+            rootClassName: "admin-modal-root",
+            className: "admin-modal-panel",
             title: "放弃绘图工具调整？",
             content: `当前有 ${dirtyFields.length} 项调整尚未保存，离开后暂存内容会丢失。`,
             okText: "放弃并离开",
@@ -150,6 +152,8 @@ export default function DrawingEngineSettingsPage() {
             return;
         }
         modal.confirm({
+            rootClassName: "admin-modal-root",
+            className: "admin-modal-panel",
             title: "放弃调整并重新读取？",
             content: `当前有 ${dirtyFields.length} 项调整尚未保存。重新读取会丢弃暂存内容，并以服务端当前配置为准。`,
             okText: "放弃并刷新",

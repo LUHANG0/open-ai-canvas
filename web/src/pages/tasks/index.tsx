@@ -1,5 +1,7 @@
 import { CollectionToolbar } from "@/components/layout/collection-toolbar";
-import { App, Button, Drawer, Form, Input, Modal, Typography } from "antd";
+import { App, Button, Form, Input, Typography } from "antd";
+import { AppModal } from "@/components/ui/product/app-modal";
+import { AppDrawer } from "@/components/ui/product/app-drawer";
 import { Switch } from "@/components/ui/base/switch";
 import { SegmentedControl } from "@/components/ui/base/segmented-control";
 import { Bug, LayoutGrid, List, Plus, RefreshCw, Search, Trash2 } from "lucide-react";
@@ -8,7 +10,7 @@ import { useNavigate, useSearchParams } from "react-router";
 
 import { MediaPreview } from "@/components/media-preview";
 import { PageHeader, PaginationBar, WorkspacePage } from "@/components/layout/workspace-page";
-import { WorkspaceState } from "@/components/layout/workspace-state";
+import { WorkspaceErrorState, WorkspaceState } from "@/components/layout/workspace-state";
 import { CONTENT_MODERATION_ERROR_CODE, generationErrorMessage, isContentModerationError } from "@/lib/generation-error";
 import { formatTaskKind, generationTaskStatusLabel, mediaDeliverySummary, operationOptions, statusLabel } from "@/lib/generation-task-display";
 import { buildVideoOperationPrompt } from "@/lib/prompts";
@@ -68,9 +70,11 @@ export default function TasksPage() {
     const [form] = Form.useForm<CreateTaskInput & { operation: string }>();
     const { view: viewPreferenceKey, group: groupPreferenceKey } = preferenceKeys();
     const [domainProjects, setDomainProjects] = useState<ProjectSummary[]>([]);
-    const [loading, setLoading] = useState(false);
+    const [loading, setLoading] = useState(true);
+    const [loadError, setLoadError] = useState("");
     const [actingId, setActingId] = useState("");
     const [createOpen, setCreateOpen] = useState(false);
+    const createTriggerRef = useRef<HTMLElement | null>(null);
     const [creating, setCreating] = useState(false);
     const statusFilter = taskStatusFilter(searchParams.get("status"));
     const setStatusFilter = (value: TaskStatusFilter) => {
@@ -241,15 +245,16 @@ export default function TasksPage() {
         try {
             const next = await listGenerationTasks();
             setTasks((current) => reconcileTaskSummaries(current, next));
+            setLoadError("");
             void syncCompletedCanvasTasks(next);
             return next;
         } catch (error) {
-            if (showLoading) message.error(error instanceof Error ? error.message : "任务加载失败");
+            setLoadError(error instanceof Error ? error.message : "任务加载失败");
             return undefined;
         } finally {
             if (showLoading) setLoading(false);
         }
-    }, [message, syncCompletedCanvasTasks]);
+    }, [syncCompletedCanvasTasks]);
 
     const openTaskDetail = useCallback(
         async (task: GenerationTask) => {
@@ -386,14 +391,14 @@ export default function TasksPage() {
 
     return (
         <>
-            <WorkspacePage grid className="library-page task-library-page">
+            <WorkspacePage grid className="library-page task-library-page collection-workspace">
                 <div className="studio-band">
                     <PageHeader
                         title="创作历史"
                         description="查看文本、图片和视频生成任务，跟踪进度并处理失败任务。"
                         meta={<span className="app-projects-header-meta">{taskStats.total} 个任务</span>}
                         actions={
-                            <Button type="primary" icon={<Plus className="size-3.5" />} onClick={() => setCreateOpen(true)}>
+                            <Button type="primary" icon={<Plus className="size-3.5" />} onClick={(event) => { createTriggerRef.current = event.currentTarget; event.currentTarget.focus({ preventScroll: true }); setCreateOpen(true); }}>
                                 新建任务
                             </Button>
                         }
@@ -405,12 +410,13 @@ export default function TasksPage() {
                             <div className="flex flex-wrap items-center gap-2.5">
                                 {viewMode === "list" ? (
                                     <label className="inline-flex cursor-pointer items-center gap-2 text-xs text-foreground/55">
-                                        <Switch size="sm" checked={groupEnabled} onChange={changeGroupEnabled} />
+                                        <Switch aria-label="按画布分组" size="sm" checked={groupEnabled} onChange={changeGroupEnabled} />
                                         <span>按画布分组</span>
                                     </label>
                                 ) : null}
                                 <div className="task-view-switch">
                                     <SegmentedControl<TaskViewMode>
+                                        indicator="static"
                                         ariaLabel="任务视图"
                                         size="sm"
                                         value={viewMode}
@@ -425,15 +431,21 @@ export default function TasksPage() {
                         )}
                     >
                         <TaskStatusFilterBar stats={taskStats} value={statusFilter} onChange={(value) => { setStatusFilter(value); setPage(1); }} />
-                        <Input id="task-search" name="taskSearch" allowClear className="app-list-search" prefix={<Search className="size-4 text-foreground/40" />} value={keyword} placeholder="搜索任务、模型或画布" onChange={(event) => { setKeyword(event.target.value); setPage(1); }} />
-                        <Select className="w-full sm:w-48" value={projectFilter} onChange={(value) => { setProjectFilter(value); setPage(1); }} options={[{ label: "全部画布", value: "all" }, ...projectOptions]} />
-                        <Select className="w-full sm:w-32" value={kindFilter} onChange={(value) => { setKindFilter(value as TaskKindFilter); setPage(1); }} options={[{ label: "全部类型", value: "all" }, { label: "文本", value: "text" }, { label: "图片", value: "image" }, { label: "视频", value: "video" }]} />
-                        <Select className="w-full sm:w-44" value={modelFilter} onChange={(value) => { setModelFilter(value); setPage(1); }} options={[{ label: "全部模型", value: "all" }, ...modelOptions.map((model) => ({ label: model, value: model }))]} />
+                        <Input id="task-search" name="taskSearch" aria-label="搜索任务" allowClear className="app-list-search" prefix={<Search aria-hidden="true" className="size-4 text-foreground/40" />} value={keyword} placeholder="搜索任务、模型或画布" onChange={(event) => { setKeyword(event.target.value); setPage(1); }} />
+                        <Select ariaLabel="按画布筛选任务" className="w-full sm:w-48" value={projectFilter} onChange={(value) => { setProjectFilter(value); setPage(1); }} options={[{ label: "全部画布", value: "all" }, ...projectOptions]} />
+                        <Select ariaLabel="按类型筛选任务" className="w-full sm:w-32" value={kindFilter} onChange={(value) => { setKindFilter(value as TaskKindFilter); setPage(1); }} options={[{ label: "全部类型", value: "all" }, { label: "文本", value: "text" }, { label: "图片", value: "image" }, { label: "视频", value: "video" }]} />
+                        <Select ariaLabel="按模型筛选任务" className="w-full sm:w-44" value={modelFilter} onChange={(value) => { setModelFilter(value); setPage(1); }} options={[{ label: "全部模型", value: "all" }, ...modelOptions.map((model) => ({ label: model, value: model }))]} />
                     </CollectionToolbar>
                 </div>
 
-                <div className="collection-content task-collection-content">
-                    {loading && !tasks.length ? <div className="library-loading-grid" aria-label="正在加载任务">{Array.from({ length: 8 }, (_, index) => <div key={index} className="library-skeleton" />)}</div> : null}
+                <div className="collection-content task-collection-content" aria-busy={loading}>
+                    {loading && !tasks.length ? <div className="library-loading-grid" role="status" aria-label="正在加载任务">{Array.from({ length: 8 }, (_, index) => <div key={index} className="library-skeleton" aria-hidden="true" />)}</div> : null}
+                    {loadError && tasks.length > 0 ? (
+                        <div className="collection-feedback is-error" role="status">
+                            <span>任务列表更新失败，当前显示上次加载的记录。</span>
+                            <Button size="small" loading={loading} onClick={() => void loadTasks(true)}>重新加载</Button>
+                        </div>
+                    ) : null}
                     {!loading || tasks.length ? (
                         visibleTasks.length ? (
                             viewMode === "grid" ? (
@@ -454,19 +466,21 @@ export default function TasksPage() {
                             ) : (
                                 <div className="task-record-list">{visibleTasks.map(renderTaskRow)}</div>
                             )
+                        ) : loadError && !tasks.length ? (
+                            <div role="status"><WorkspaceErrorState compact title="任务暂时无法加载" description={loadError} onRetry={() => void loadTasks(true)} /></div>
                         ) : (
                             <WorkspaceState
                                 compact
                                 title={taskEmptyState(statusFilter).title}
                                 description={taskEmptyState(statusFilter).description}
-                                action={<Button className="library-primary-action" type="primary" icon={<Plus className="size-3.5" />} onClick={() => setCreateOpen(true)}>新建任务</Button>}
+                                action={<Button className="library-primary-action" type="primary" icon={<Plus className="size-3.5" />} onClick={(event) => { createTriggerRef.current = event.currentTarget; event.currentTarget.focus({ preventScroll: true }); setCreateOpen(true); }}>新建任务</Button>}
                             />
                         )
                     ) : null}
                     {!groupingActive ? <PaginationBar current={page} pageSize={pageSize} total={filteredTasks.length} pageSizeOptions={[20, 50, 100]} onChange={(nextPage, nextPageSize) => { setPage(nextPageSize !== pageSize ? 1 : nextPage); setPageSize(nextPageSize); }} /> : null}
                 </div>
             </WorkspacePage>
-            <Modal className="library-modal" title="新建异步生成任务" open={createOpen} onCancel={() => setCreateOpen(false)} onOk={submitTask} confirmLoading={creating} okText="创建任务">
+            <AppModal className="library-modal" title="新建异步生成任务" open={createOpen} destroyOnHidden={false} focusable={{ focusTriggerAfterClose: false }} afterClose={() => { if (createTriggerRef.current?.isConnected) createTriggerRef.current.focus({ preventScroll: true }); }} onCancel={() => setCreateOpen(false)} onOk={submitTask} confirmLoading={creating} okText="创建任务">
                 <Form form={form} layout="vertical" initialValues={{ operation: "text_to_video" }}>
                     <Form.Item name="operation" label="任务类型" rules={[{ required: true, message: "请选择任务类型" }]}>
                         <Select options={operationOptions} />
@@ -481,8 +495,8 @@ export default function TasksPage() {
                         <Input placeholder="可选，例如 seedance、kling、wan、nano-banana" />
                     </Form.Item>
                 </Form>
-            </Modal>
-            <Drawer className="library-drawer" title="任务详情" open={Boolean(detailTask)} onClose={() => setDetailTask(null)} size="large" destroyOnHidden>
+            </AppModal>
+            <AppDrawer className="library-drawer" title="任务详情" open={Boolean(detailTask)} onClose={() => setDetailTask(null)} size="large" destroyOnHidden>
                 {detailTask ? (
                     <div className="space-y-5">
                         <div className="task-detail-facts grid text-sm sm:grid-cols-2">
@@ -511,14 +525,14 @@ export default function TasksPage() {
                         <DetailBlock title="结果" value={detailLoading ? "详情加载中..." : formatTaskJson(detailTask.resultJson)} />
                         <div>
                             <Typography.Text strong>日志</Typography.Text>
-                            <div className="mt-2 max-h-60 overflow-auto rounded-lg bg-slate-950 p-3 text-xs text-slate-100">
+                            <div className="mt-2 max-h-60 overflow-auto rounded-lg bg-surface-secondary p-3 text-xs text-foreground">
                                 {logsLoading ? "日志加载中..." : taskLogs.length ? taskLogs.map((log) => `[${new Date(log.createdAt).toLocaleString()}] ${log.level.toUpperCase()} ${formatTaskLog(log)}`).join("\n\n") : "暂无日志"}
                             </div>
                         </div>
                     </div>
                 ) : null}
-            </Drawer>
-            <Modal
+            </AppDrawer>
+            <AppModal
                 title={<span className="block truncate pr-8">{mediaPreview?.title || "生成结果预览"}</span>}
                 open={Boolean(mediaPreview)}
                 onCancel={() => setMediaPreview(null)}
@@ -538,7 +552,7 @@ export default function TasksPage() {
                         fallbackClassName="task-media-preview-unavailable"
                     />
                 ) : null}
-            </Modal>
+            </AppModal>
         </>
     );
 }

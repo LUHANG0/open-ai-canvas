@@ -1,11 +1,10 @@
-import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type RefObject } from "react";
 import { createPortal } from "react-dom";
 import { LoaderCircle, ScanFace, SquareDashedMousePointer, X } from "lucide-react";
 
 import { CanvasNodeEmotionPanel, type CanvasEmotionCharacter, type CanvasImageEmotionPayload } from "@/components/canvas/canvas-node-emotion-panel";
 import { CanvasNodePanelOverlay } from "@/components/canvas/canvas-workspace-overlays";
-import { SpotlightSurface } from "@/components/ui/aceternity/spotlight-surface";
 import { aceternityMotion } from "@/lib/aceternity-motion";
 import { canvasThemes } from "@/lib/canvas-theme";
 import { buildEmotionImageArtifacts, buildEmotionPrompt, neutralEmotionPreset, type CanvasEmotionPreset, type CanvasFaceBox } from "@/lib/canvas/canvas-emotion";
@@ -297,8 +296,6 @@ function FaceSelectionOverlay({
                             borderColor: active ? theme.accent.primary : "rgba(255,255,255,.94)",
                             boxShadow: active ? `0 0 0 3px ${theme.accent.primarySoft}, 0 8px 24px rgba(0,0,0,.24)` : "0 8px 20px rgba(0,0,0,.18)",
                         }}
-                        whileHover={{ scale: 1.025 }}
-                        whileTap={{ scale: 0.985 }}
                         transition={aceternityMotion.spring.dock}
                         onPointerDown={(event) => event.stopPropagation()}
                         onClick={(event) => {
@@ -353,23 +350,19 @@ function SelectionToolbar({
     onClose: () => void;
 }) {
     const theme = canvasThemes[useActiveTheme()];
-    const reducedMotion = useReducedMotion();
     const toolbarRef = useRef<HTMLDivElement>(null);
     useScreenAnchor(toolbarRef, node, viewport, containerRef, (next, container) => toolbarScreenRect(node, next, container, toolbarRef.current));
     if (status === "editing" || status === "generating") return null;
     const label = status === "detecting" ? "正在识别人脸" : status === "manual" ? "拖动鼠标框选需要调节的人脸" : status === "selecting" ? `识别到 ${faceCount} 张人脸，请选择人物` : error || "请选择人物";
     return (
-        <SpotlightSurface
+        <div
             ref={toolbarRef}
             data-canvas-no-zoom
-            spotlightColor={theme.toolbar.itemHover}
-            initial={reducedMotion ? { opacity: 0 } : { opacity: 0, y: -5, scale: 0.96 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            transition={reducedMotion ? { duration: 0 } : aceternityMotion.spring.panel}
-            className="aceternity-floating-panel absolute z-[var(--z-modal-overlay)] flex h-12 w-[420px] max-w-[calc(100%_-_24px)] items-center rounded-[var(--dock-radius-tight)] border px-2 backdrop-blur-2xl"
+            className="isolate workspace-utility-overlay aceternity-floating-panel absolute z-[var(--z-modal-overlay)] flex h-12 w-[420px] max-w-[calc(100%_-_24px)] items-center rounded-[var(--dock-radius-tight)] border px-2 backdrop-blur-2xl"
             style={{ left: 12, top: 76, background: theme.spatial.elevated, borderColor: theme.toolbar.border, color: theme.node.text, boxShadow: `0 22px 60px ${theme.spatial.shadow}` }}
             onPointerDown={(event) => event.stopPropagation()}
         >
+            <div className="relative z-[1] flex min-h-0 flex-1 flex-col">
             <div className="flex size-full items-center">
                 <button type="button" aria-label="关闭情绪调节" className="grid size-8 shrink-0 place-items-center rounded-full hover:bg-black/5 dark:hover:bg-white/10" onClick={onClose}>
                     <X className="size-4" />
@@ -390,7 +383,8 @@ function SelectionToolbar({
                     </button>
                 ) : null}
             </div>
-        </SpotlightSurface>
+        </div>
+        </div>
     );
 }
 

@@ -27,3 +27,47 @@ test("real sync status has no recovery card, buttons or alternate-canvas actions
         useSyncProgressStore.getState().setProjectProgress("status-test", null);
     }
 });
+
+test("local persistence, cloud waiting and failures have distinct truthful status labels", async () => {
+    const { Window } = await import("happy-dom");
+    const dom = new Window({ url: "http://localhost/" });
+    const originals = new Map<string, PropertyDescriptor | undefined>();
+    for (const [key, value] of Object.entries({ window: dom, document: dom.document, navigator: dom.navigator, HTMLElement: dom.HTMLElement, Element: dom.Element, Node: dom.Node, Event: dom.Event, IS_REACT_ACT_ENVIRONMENT: true })) {
+        originals.set(key, Object.getOwnPropertyDescriptor(globalThis, key));
+        Object.defineProperty(globalThis, key, { configurable: true, writable: true, value });
+    }
+    const { act } = await import("react");
+    const { createRoot } = await import("react-dom/client");
+    const host = document.createElement("div"); document.body.append(host);
+    const root = createRoot(host);
+    const cases = [
+        { patch: { phase: "done", localPhase: "pending" }, label: "正在保存到本地", spinning: false },
+        { patch: { phase: "local", localPhase: "saved" }, label: "已保存到本地，尚未确认云端", spinning: false },
+        { patch: { phase: "pending", localPhase: "saved" }, label: "等待同步到云端", spinning: false },
+        { patch: { phase: "saving", localPhase: "saved" }, label: "正在同步画布", spinning: true },
+        { patch: { phase: "uploading", localPhase: "saved" }, label: "正在上传画布媒体", spinning: true },
+        { patch: { phase: "pending", errorKind: "network", message: "画布同步失败：网络中断" }, label: "画布同步失败：网络中断", spinning: false },
+        { patch: { phase: "done", localPhase: "error", localError: "空间不足" }, label: "本地保存失败：空间不足", spinning: false },
+        { patch: { phase: "done", localPhase: "saved" }, label: "已同步", spinning: false },
+    ] as const;
+    try {
+        for (const { patch, label, spinning } of cases) {
+            await act(async () => {
+                useSyncProgressStore.getState().setProjectProgress("status-stages", null);
+                useSyncProgressStore.getState().setProjectProgress("status-stages", patch);
+                root.render(<CanvasSyncStatus projectId="status-stages" />);
+            });
+            const markup = host.innerHTML;
+            expect(markup).toContain(`aria-label="${label}"`);
+            expect(markup.includes("animate-spin")).toBe(spinning);
+        }
+    } finally {
+        await act(async () => root.unmount());
+        useSyncProgressStore.getState().setProjectProgress("status-stages", null);
+        await dom.happyDOM.abort();
+        for (const [key, descriptor] of originals) {
+            if (descriptor) Object.defineProperty(globalThis, key, descriptor);
+            else Reflect.deleteProperty(globalThis, key);
+        }
+    }
+});

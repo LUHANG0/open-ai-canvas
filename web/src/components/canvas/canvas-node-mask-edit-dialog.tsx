@@ -1,5 +1,6 @@
+import { SegmentedControl } from "@/components/ui/base/segmented-control";
 import { useEffect, useRef, useState, type PointerEvent } from "react";
-import { Button, Collapse, Input, Segmented, Slider } from "antd";
+import { Button, Collapse, Input, Slider } from "antd";
 import { AppModal } from "@/components/ui/product/app-modal";
 import { ImageSettingsPanel } from "@/components/image-settings-panel";
 import { ModelPicker } from "@/components/model-picker";
@@ -68,7 +69,7 @@ function MaskEditor({ dataUrl, config, onClose, onConfirm }: MaskEditorProps) {
         onConfirm({ prompt: prompt.trim(), maskDataUrl, generationConfig: { model, imageModel: model, size: settings.size, quality, count, transparentBackground } });
     };
     return (
-        <AppModal open centered title="局部重绘" className="workspace-modal workspace-modal-wide" onCancel={onClose} onOk={submit} okText="AI 修改" okButtonProps={{ disabled: !size }}>
+        <AppModal rootClassName="workspace-utility-overlay" open centered title="局部重绘" className="workspace-modal workspace-modal-wide" onCancel={onClose} onOk={submit} okText="AI 修改" okButtonProps={{ disabled: !size }}>
             <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
                 <section className="flex min-w-0 flex-col items-center justify-center gap-3 rounded-lg bg-surface-active p-3">
                     <div className="relative max-w-full select-none overflow-hidden rounded-lg">
@@ -91,7 +92,7 @@ function MaskEditor({ dataUrl, config, onClose, onConfirm }: MaskEditorProps) {
                     <p className="text-sm text-muted-foreground">{size ? `${size.width} × ${size.height} px · 蓝色区域将被重新生成` : loadError || "正在读取图片…"}</p>
                 </section>
                 <section className="flex max-h-[68vh] flex-col gap-4 overflow-y-auto pr-1">
-                    <Segmented block value={mode} onChange={setMode} options={[{ label: "画笔", value: "paint" }, { label: "擦除", value: "erase" }]} />
+                    <SegmentedControl block value={mode} onChange={setMode} options={[{ label: "画笔", value: "paint" }, { label: "擦除", value: "erase" }]} />
                     <label className="text-sm">笔刷直径 · {diameter} px<Slider min={8} max={160} step={2} value={diameter} onChange={setDiameter} /></label>
                     <div className="flex gap-2">
                         <Button disabled={!strokeCount} onClick={() => { strokes.current.pop(); setStrokeCount(strokes.current.length); repaint(); }}>撤销笔画</Button>

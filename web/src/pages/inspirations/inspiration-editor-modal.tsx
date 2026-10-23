@@ -1,6 +1,7 @@
-import { Button, Form, Input, Select } from "antd";
+import { Button, Form, Input } from "antd";
 
 import { AppModal } from "@/components/ui/product/app-modal";
+import { Select } from "@/components/ui/base/select";
 import type { CreationInspiration } from "@/lib/inspirations/catalog";
 import { normalizeDraft, type InspirationDraft } from "@/stores/use-inspiration-store";
 
@@ -75,8 +76,9 @@ export function InspirationEditorModal({
     return (
         <AppModal
             open={open}
-            title={item ? "编辑灵感" : "新建灵感"}
+            title={<span className="text-[length:var(--typ-title-md)] font-semibold">{item ? "编辑灵感" : "新建灵感"}</span>}
             width={720}
+            rootClassName="workspace-utility-overlay inspiration-editor-modal"
             onCancel={() => {
                 form.resetFields();
                 onClose();
@@ -129,13 +131,13 @@ export function InspirationEditorModal({
                             <Input placeholder="例如 16:9" maxLength={12} />
                         </Form.Item>
                     </div>
-                    <Form.Item name="tags" label="标签" extra="用逗号分隔，最多六个">
+                    <Form.Item name="tags" label="标签" extra={<span className="text-[length:var(--fs-caption)] text-[var(--user-ink-muted)]">用逗号分隔，最多六个</span>}>
                         <Input placeholder="电商产品，海报排版" maxLength={120} />
                     </Form.Item>
                     <Form.Item name="prompt" label="提示词正文" rules={[{ required: true, message: "请填写提示词正文" }]}>
                         <Input.TextArea rows={6} placeholder="粘贴完整提示词；外部英文提示词也可以直接放这里" />
                     </Form.Item>
-                    <Form.Item name="promptZh" label="中文正文（可选）" extra="填了以后，卡片和「用这个创意创作」会优先用中文这版">
+                    <Form.Item name="promptZh" label="中文正文（可选）" extra={<span className="text-[length:var(--fs-caption)] text-[var(--user-ink-muted)]">填了以后，卡片和「用这个创意创作」会优先用中文这版</span>}>
                         <Input.TextArea rows={4} placeholder="中文改写版，留空则只用上面的正文" />
                     </Form.Item>
                 </div>

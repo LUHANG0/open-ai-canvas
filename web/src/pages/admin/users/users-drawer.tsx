@@ -1,4 +1,5 @@
-import { App, Button, Drawer, Form, Input } from "antd";
+import { AdminDrawer } from "@/pages/admin/ui/overlays";
+import { App, Button, Form, Input } from "antd";
 import { Select } from "@/pages/admin/ui/controls";
 import { useEffect, useState } from "react";
 
@@ -63,7 +64,7 @@ export function AdminUserEditDrawer({ user, actorId, onClose, onSaved }: { user:
     };
 
     return (
-        <Drawer
+        <AdminDrawer
             title={user ? `编辑用户 · ${user.displayName || user.username}` : "编辑用户"}
             open={Boolean(user)}
             size="min(520px, 100vw)"
@@ -78,7 +79,7 @@ export function AdminUserEditDrawer({ user, actorId, onClose, onSaved }: { user:
         >
             <Form form={form} layout="vertical" requiredMark={false}>
                 <Form.Item label="用户名">
-                    <Input value={user ? `@${user.username}` : ""} disabled />
+                    <Input aria-label="用户名" value={user ? `@${user.username}` : ""} disabled />
                 </Form.Item>
                 <Form.Item name="displayName" label="显示名称" rules={[{ required: true, whitespace: true, message: "请填写显示名称" }]}>
                     <Input placeholder="用户在产品内显示的名称" />
@@ -108,7 +109,7 @@ export function AdminUserEditDrawer({ user, actorId, onClose, onSaved }: { user:
                     />
                 </Form.Item>
             </Form>
-        </Drawer>
+        </AdminDrawer>
     );
 }
 
@@ -172,7 +173,7 @@ export function AdminUserCreateDrawer({ open, onClose, onCreated }: { open: bool
     };
 
     return (
-        <Drawer
+        <AdminDrawer
             title={"\u6dfb\u52a0\u7528\u6237"}
             open={open}
             size="min(520px, 100vw)"
@@ -215,6 +216,6 @@ export function AdminUserCreateDrawer({ open, onClose, onCreated }: { open: bool
                     />
                 </Form.Item>
             </Form>
-        </Drawer>
+        </AdminDrawer>
     );
 }

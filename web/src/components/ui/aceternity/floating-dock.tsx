@@ -1,8 +1,7 @@
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { forwardRef, useEffect, useState, type CSSProperties, type FocusEvent, type MouseEvent, type ReactNode } from "react";
+import { forwardRef, useEffect, useRef, useState, type CSSProperties, type FocusEvent, type MouseEvent, type ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
-import { aceternityMotion } from "@/lib/aceternity-motion";
 
 export type FloatingDockCommand = {
     kind?: "command";
@@ -59,7 +58,7 @@ function coarsePointerQuery(): MediaQueryList | undefined {
 /**
  * 固定尺寸 Dock。旧版的 macOS 式放大会在每次 pointermove 时对每个按钮读取
  * getBoundingClientRect 并改变宽高，导致整条 dock 重排、相邻按钮抖动；这里改为
- * 固定格子 + 纯色 hover，只保留按压反馈与提示气泡。
+ * 固定格子 + 原地颜色反馈与提示气泡。
  */
 export const FloatingDock = forwardRef<HTMLDivElement, FloatingDockProps>(function FloatingDock({ items, size = "default", embedded = false, className, style, ariaLabel = "画布工具", showLabels = false }, forwardedRef) {
     const reducedMotion = useReducedMotion();
@@ -154,15 +153,15 @@ function renderDockItems(items: FloatingDockEntry[], props: DockItemRenderProps)
     return result;
 }
 
-function DockTooltip({ show, label, compact }: { show: boolean; label: string; compact: boolean }) {
+function DockTooltip({ show, label, compact, motionEnabled }: { show: boolean; label: string; compact: boolean; motionEnabled: boolean }) {
     return (
         <AnimatePresence>
             {show ? (
                 <motion.span
-                    initial={{ opacity: 0, y: 4 }}
-                    animate={{ opacity: 1, y: 0 }}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
                     exit={{ opacity: 0, transition: { duration: 0 } }}
-                    transition={{ duration: aceternityMotion.duration.instant, ease: aceternityMotion.easing.enter }}
+                    transition={{ duration: motionEnabled ? 0.15 : 0, ease: "easeOut" }}
                     className={cn(
                         "aceternity-dock-tooltip pointer-events-none absolute bottom-full left-1/2 z-[var(--dock-tooltip-z)] mb-2 -translate-x-1/2 whitespace-nowrap rounded-md border font-medium shadow-lg",
                         compact ? "px-1.5 py-0.5 text-[var(--fs-micro)]" : "px-2 py-1 text-[var(--fs-tiny)]",
@@ -195,11 +194,10 @@ function DockCommandButton({ command, compact, showLabel, nativeTitle, motionEna
     const tooltip = useDockTooltip();
     const pressed = command.expands ? undefined : command.active || undefined;
     const expanded = command.expands ? command.active || undefined : undefined;
-    const tap = motionEnabled && !command.disabled ? { scale: 0.92 } : undefined;
 
     if (showLabel) {
         return (
-            <motion.button
+            <button
                 type="button"
                 aria-label={command.label}
                 aria-expanded={expanded}
@@ -210,20 +208,18 @@ function DockCommandButton({ command, compact, showLabel, nativeTitle, motionEna
                     command.active && "is-active",
                     command.danger && "is-danger",
                 )}
-                whileTap={motionEnabled && !command.disabled ? { scale: 0.96 } : undefined}
-                transition={aceternityMotion.spring.dock}
                 onClick={command.onClick}
             >
                 <span className="grid size-3.5 shrink-0 place-items-center">{command.icon}</span>
                 <span className="inline-flex h-4 items-center text-[var(--fs-label)] font-medium leading-none">{command.displayLabel || command.label}</span>
                 {command.badge !== undefined ? <span className="aceternity-dock-command-badge inline-flex min-w-4 items-center justify-center rounded-full px-1 text-[var(--fs-micro)] font-bold leading-4">{command.badge}</span> : null}
-            </motion.button>
+            </button>
         );
     }
 
     return (
         <span className="relative inline-flex shrink-0">
-            <motion.button
+            <button
                 type="button"
                 aria-label={command.label}
                 title={nativeTitle ? command.label : undefined}
@@ -238,14 +234,12 @@ function DockCommandButton({ command, compact, showLabel, nativeTitle, motionEna
                     command.active && "is-active",
                     command.danger && "is-danger",
                 )}
-                whileTap={tap}
-                transition={aceternityMotion.spring.dock}
                 onClick={command.onClick}
                 {...tooltip.handlers}
             >
                 <span className={cn("grid place-items-center", command.wide ? "h-4 w-full" : compact ? "size-[15px]" : "size-4")}>{command.icon}</span>
-            </motion.button>
-            {!nativeTitle ? <DockTooltip show={tooltip.visible && !command.disabled} label={command.label} compact={compact} /> : null}
+            </button>
+            {!nativeTitle ? <DockTooltip show={tooltip.visible && !command.disabled} label={command.label} compact={compact} motionEnabled={motionEnabled} /> : null}
         </span>
     );
 }
@@ -253,6 +247,7 @@ function DockCommandButton({ command, compact, showLabel, nativeTitle, motionEna
 function DockSwitch({ entry, compact, showLabel, nativeTitle, motionEnabled }: { entry: FloatingDockSwitch } & DockItemRenderProps) {
     const [hoveredId, setHoveredId] = useState<string | null>(null);
     const [focusedId, setFocusedId] = useState<string | null>(null);
+    const optionRefs = useRef<Array<HTMLButtonElement | null>>([]);
     const labeled = showLabel || entry.options.some((option) => option.displayLabel);
 
     return (
@@ -265,16 +260,20 @@ function DockSwitch({ entry, compact, showLabel, nativeTitle, motionEnabled }: {
                 event.preventDefault();
                 const selectedIndex = Math.max(0, entry.options.findIndex((option) => option.value === entry.value));
                 const direction = event.key === "ArrowRight" ? 1 : -1;
-                const next = entry.options[(selectedIndex + direction + entry.options.length) % entry.options.length];
-                if (next) entry.onChange(next.value);
+                const nextIndex = (selectedIndex + direction + entry.options.length) % entry.options.length;
+                const next = entry.options[nextIndex];
+                if (!next) return;
+                optionRefs.current[nextIndex]?.focus();
+                if (next.value !== entry.value) entry.onChange(next.value);
             }}
         >
-            {entry.options.map((option) => {
+            {entry.options.map((option, index) => {
                 const checked = option.value === entry.value;
                 const showTooltip = !labeled && !nativeTitle && (hoveredId === option.id || focusedId === option.id);
                 return (
                     <span key={option.id} className="relative inline-flex shrink-0">
                         <button
+                            ref={(element) => { optionRefs.current[index] = element; }}
                             type="button"
                             role="radio"
                             aria-checked={checked}
@@ -296,18 +295,14 @@ function DockSwitch({ entry, compact, showLabel, nativeTitle, motionEnabled }: {
                                 if (!checked) entry.onChange(option.value);
                             }}
                         >
-                            {checked ? (
-                                <motion.span
-                                    aria-hidden
-                                    layoutId={`dock-switch-thumb-${entry.id}`}
-                                    className="aceternity-dock-switch-thumb pointer-events-none absolute inset-0 rounded-[var(--dock-item-radius)]"
-                                    transition={motionEnabled ? aceternityMotion.spring.dock : { duration: 0 }}
-                                />
-                            ) : null}
+                            <span
+                                aria-hidden
+                                className="aceternity-dock-switch-thumb pointer-events-none absolute inset-0 rounded-[var(--dock-item-radius)]"
+                            />
                             <span className={cn("relative z-[1] grid shrink-0 place-items-center", compact ? "size-[15px]" : "size-4")}>{option.icon}</span>
                             {labeled ? <span className="relative z-[1] shrink-0 whitespace-nowrap text-[length:var(--fs-micro)] font-semibold leading-none">{option.displayLabel || option.label}</span> : null}
                         </button>
-                        <DockTooltip show={showTooltip} label={option.label} compact={compact} />
+                        <DockTooltip show={showTooltip} label={option.label} compact={compact} motionEnabled={motionEnabled} />
                     </span>
                 );
             })}

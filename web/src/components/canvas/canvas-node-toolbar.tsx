@@ -1,5 +1,6 @@
+import { AppModal } from "@/components/ui/product/app-modal";
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from "react";
-import { App, Button, Input, Modal, Tag, Tooltip } from "antd";
+import { App, Button, Input, Tag, Tooltip } from "antd";
 import { CanvasAnchoredDropdown as Dropdown } from "./canvas-anchored-dropdown";
 import type { MenuProps } from "antd";
 import { Camera, Check, ChevronDown, ChevronRight, Ellipsis, Grid3x3, Images, Plus, SlidersHorizontal, UserRound } from "lucide-react";
@@ -28,8 +29,8 @@ type CanvasNodeToolbarProps = {
     node: CanvasNodeData | null;
     viewport: ViewportTransform;
     containerRef: RefObject<HTMLDivElement | null>;
-    onKeep: (nodeId: string) => void;
-    onLeave: () => void;
+    onKeep?: (nodeId: string) => void;
+    onLeave?: () => void;
     onInfo: (node: CanvasNodeData) => void;
     onEditText: (node: CanvasNodeData) => void;
     onDecreaseFont: (node: CanvasNodeData) => void;
@@ -345,8 +346,8 @@ export function CanvasNodeToolbar({
     const processMenuLabel = compact ? "工具" : isVideo ? "提取素材" : isImage ? "图片工具" : isAudio ? "音频处理" : "文本调整";
     const handleMenuOpenChange = (menuId: string, open: boolean) => {
         setOpenMenuId((current) => open ? menuId : current === menuId ? null : current);
-        if (open) onKeep(node.id);
-        else if (!toolbarRef.current?.contains(document.activeElement)) onLeave();
+        if (open) onKeep?.(node.id);
+        else if (!toolbarRef.current?.contains(document.activeElement)) onLeave?.();
     };
     const dockStyle = canvasDockStyle(theme, theme.node.text);
 
@@ -356,14 +357,14 @@ export function CanvasNodeToolbar({
             data-popover-anchor-container
             className="canvas-node-toolbar absolute z-[var(--z-node-toolbar)] -translate-x-1/2 -translate-y-full"
             style={{ left: 0, top: 0, transform: `translate3d(${anchor.left}px, ${anchor.top}px, 0)`, width: "max-content", maxWidth: containerWidth, color: theme.node.text }}
-            onMouseEnter={() => onKeep(node.id)}
-            onMouseLeave={() => { if (!openMenuId) onLeave(); }}
+            onMouseEnter={() => onKeep?.(node.id)}
+            onMouseLeave={() => { if (!openMenuId) onLeave?.(); }}
             onMouseDown={(event) => event.stopPropagation()}
             onPointerDown={(event) => event.stopPropagation()}
             data-canvas-no-zoom
             onKeyDown={(event) => event.stopPropagation()}
-            onFocus={() => onKeep(node.id)}
-            onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget) && !openMenuId) onLeave(); }}
+            onFocus={() => onKeep?.(node.id)}
+            onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget) && !openMenuId) onLeave?.(); }}
         >
             <div
                 role="toolbar"
@@ -646,7 +647,7 @@ export function CanvasNodeInfoModal({ node, open, onClose, onMetadataChange, rea
     );
 
     return (
-        <Modal
+        <AppModal rootClassName="workspace-utility-overlay" destroyOnHidden={false}
             className="workspace-modal canvas-node-info-modal"
             title={title}
             open={open && Boolean(node)}
@@ -753,7 +754,7 @@ export function CanvasNodeInfoModal({ node, open, onClose, onMetadataChange, rea
                         </div>
                 </div>
             ) : null}
-        </Modal>
+        </AppModal>
     );
 }
 

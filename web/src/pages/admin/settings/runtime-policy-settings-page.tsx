@@ -230,6 +230,8 @@ export default function RuntimePolicySettingsPage() {
         navigationConfirmOpenRef.current = true;
         navigationTriggerRef.current = document.activeElement instanceof HTMLElement && document.activeElement !== document.body ? document.activeElement : null;
         modal.confirm({
+            rootClassName: "admin-modal-root",
+            className: "admin-modal-panel",
             title: "放弃资源与策略调整？",
             content: `当前有 ${dirtyFields.length} 项调整尚未保存，离开后暂存内容会丢失。`,
             okText: "放弃并离开",
@@ -268,6 +270,8 @@ export default function RuntimePolicySettingsPage() {
             return;
         }
         modal.confirm({
+            rootClassName: "admin-modal-root",
+            className: "admin-modal-panel",
             title: "放弃调整并重新读取？",
             content: `当前有 ${dirtyFields.length} 项调整尚未保存。重新读取会丢弃暂存内容，并以服务端当前配置为准。`,
             okText: "放弃并刷新",
@@ -279,7 +283,8 @@ export default function RuntimePolicySettingsPage() {
 
     const requestSelfMode = () => {
         modal.confirm({
-            rootClassName: "admin-runtime-policy-confirm-modal",
+            className: "admin-modal-panel",
+            rootClassName: "admin-modal-root admin-runtime-policy-confirm-modal",
             width: 580,
             icon: <AlertTriangle className="size-5" aria-hidden="true" />,
             title: "填入自用模式上限？",
@@ -315,7 +320,8 @@ export default function RuntimePolicySettingsPage() {
     const requestReset = () => {
         if (!savedSetting?.configured || resetting) return;
         modal.confirm({
-            rootClassName: "admin-runtime-policy-confirm-modal",
+            className: "admin-modal-panel",
+            rootClassName: "admin-modal-root admin-runtime-policy-confirm-modal",
             width: 580,
             icon: <AlertTriangle className="size-5" aria-hidden="true" />,
             title: "恢复全部系统默认策略？",

@@ -173,17 +173,22 @@ function setCanvasLocalPersistenceProgress(projects: CanvasProject[], patch: Par
     }
 }
 
-function markCanvasLocalPersistencePending(projects: CanvasProject[], error?: string) {
-    setCanvasLocalPersistenceProgress(projects, {
+function markCanvasLocalPersistencePending(projects: CanvasProject[], error?: string, scope = getActiveUserScope()) {
+    if (getActiveUserScope() !== scope) return;
+    const saved = new Map(observedCanvasPersists.get(scope)?.projects.map((project) => [project.id, project]));
+    const changed = projects.filter((project) => {
+        const previous = saved.get(project.id);
+        return !sameCanvasContent(previous, project) || !samePersistenceValue(previous?.viewport, project.viewport);
+    });
+    setCanvasLocalPersistenceProgress(changed, {
         localPhase: error ? "error" : "pending",
         localError: error,
-        errorKind: error ? "local" : undefined,
         pendingWrites: 1,
     });
 }
 
 function markCanvasLocalPersistenceSaved(projects: CanvasProject[], savedAt: string) {
-    setCanvasLocalPersistenceProgress(projects, { localPhase: "saved", localSavedAt: savedAt, localError: undefined, errorKind: undefined, pendingWrites: 0 });
+    setCanvasLocalPersistenceProgress(projects, { localPhase: "saved", localSavedAt: savedAt, localError: undefined, pendingWrites: 0 });
 }
 
 function recordCanvasNodePersistenceCounts(before: CanvasProject[], after: CanvasProject[]) {
@@ -284,7 +289,7 @@ export function recordCanvasStorageDocument(scope: string, document: CanvasStora
     const queued = queuedCanvasPersists.get(scope);
     if (queued || failedCanvasJournalRecoveries.has(scope)) {
         if (failedCanvasJournalRecoveries.has(scope)) return;
-        markCanvasLocalPersistencePending(queued!.state.projects);
+        markCanvasLocalPersistencePending(queued!.state.projects, undefined, scope);
     } else {
         markCanvasLocalPersistenceSaved(document.state.projects, savedAt);
     }
@@ -332,7 +337,7 @@ async function writeQueuedCanvasPersist(scope: string, _token: number) {
         await withCanvasStorePersistenceLock(scope, () => commitPendingCanvasStorePersistenceLocked(scope));
     } catch (error) {
         const queued = queuedCanvasPersists.get(scope);
-        if (queued) markCanvasLocalPersistencePending(queued.state.projects, error instanceof Error ? error.message : "本地画布保存失败");
+        if (queued) markCanvasLocalPersistencePending(queued.state.projects, error instanceof Error ? error.message : "本地画布保存失败", scope);
         throw error;
     }
 }
@@ -588,7 +593,7 @@ async function recoverCanvasPersistenceJournal(scope: string, name: string, init
             for (const project of journal.projects) projects.set(project.id, project);
         }
         const recoveredProjects = [...projects.values()];
-        if (getActiveUserScope() === scope) markCanvasLocalPersistencePending(recoveredProjects, error instanceof Error ? error.message : "本地恢复记录写入失败");
+        if (getActiveUserScope() === scope) markCanvasLocalPersistencePending(recoveredProjects, error instanceof Error ? error.message : "本地恢复记录写入失败", scope);
         return { ...initial, state: { projects: recoveredProjects } };
     }
 }
@@ -637,7 +642,7 @@ const canvasStorage: PersistStorage<CanvasStore> = {
             token,
             journal: journalWritten ? journal || undefined : undefined,
         });
-        markCanvasLocalPersistencePending(nextState.projects, journal && !journalWritten ? "本地快速恢复记录写入失败，正在等待完整画布保存" : undefined);
+        markCanvasLocalPersistencePending(nextState.projects, journal && !journalWritten ? "本地快速恢复记录写入失败，正在等待完整画布保存" : undefined, scope);
         clearCanvasSaveTimer(scope);
         const timer = setTimeout(() => {
             if (canvasSaveTimers.get(scope) === timer) canvasSaveTimers.delete(scope);

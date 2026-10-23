@@ -1,5 +1,5 @@
 import { createClientUUID } from "@/lib/client-id";
-import { App, Button, Input, InputNumber, Modal, Progress, Segmented, Select, Spin, Switch, Tooltip } from "antd";
+import { App, Button, Input, InputNumber, Progress, Spin, Switch, Tooltip } from "antd";
 import { Check, Camera, ChevronDown, Clapperboard, Expand, FileImage, History, ImagePlus, Images, LoaderCircle, Mic, Palette, Plus, RotateCcw, Search, ShoppingBag, Sparkles, Upload, UserRound, Video, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router";
@@ -7,8 +7,10 @@ import { useSearchParams } from "react-router";
 import { ImageSizePicker } from "@/components/image-size-picker";
 import { MediaPreview } from "@/components/media-preview";
 import { ModelPicker } from "@/components/model-picker";
-import { SpotlightSurface } from "@/components/ui/aceternity/spotlight-surface";
 import { WorkspacePage } from "@/components/layout/workspace-page";
+import { Select } from "@/components/ui/base/select";
+import { SegmentedControl } from "@/components/ui/base/segmented-control";
+import { AppModal } from "@/components/ui/product/app-modal";
 import { CanvasResourceMentionTextarea } from "@/components/canvas/canvas-resource-mention-textarea";
 import { normalizeCanvasNodeMentionTokens, type CanvasResourceReference } from "@/lib/canvas/canvas-resource-references";
 import { imageResolutionUsesQuality } from "@/lib/image-size-presets";
@@ -838,6 +840,7 @@ export function WorkbenchPage({ kind }: { kind: WorkbenchKind }) {
                     <label className="workbench-setting-row">
                         <span>图片质量</span>
                         <Select
+                            aria-label="图片质量"
                             value={quality}
                             onChange={(value) => {
                                 setQuality(value);
@@ -896,13 +899,13 @@ export function WorkbenchPage({ kind }: { kind: WorkbenchKind }) {
                         {videoProfile.generateAudio.supported ? (
                             <label>
                                 <span>生成音频</span>
-                                <Switch checked={config.videoGenerateAudio === "true"} onChange={(value) => updateConfig("videoGenerateAudio", String(value))} />
+                                <Switch aria-label="生成音频" checked={config.videoGenerateAudio === "true"} onChange={(value) => updateConfig("videoGenerateAudio", String(value))} />
                             </label>
                         ) : null}
                         {videoProfile.watermark.supported ? (
                             <label>
                                 <span>添加水印</span>
-                                <Switch checked={config.videoWatermark === "true"} onChange={(value) => updateConfig("videoWatermark", String(value))} />
+                                <Switch aria-label="添加水印" checked={config.videoWatermark === "true"} onChange={(value) => updateConfig("videoWatermark", String(value))} />
                             </label>
                         ) : null}
                     </div>
@@ -924,19 +927,20 @@ export function WorkbenchPage({ kind }: { kind: WorkbenchKind }) {
                 ) : null}
             </div>
             <Input aria-label="搜索创作工具" prefix={<Search className="size-4" />} value={toolSearch} onChange={(event) => setToolSearch(event.target.value)} placeholder="搜索工具" allowClear />
-            <div className="workbench-tool-categories" role="tablist" aria-label="工具分类">
+            <div className="workbench-tool-categories app-control-group" role="group" aria-label="工具分类">
                 {[{ value: "all", label: "全部" }, ...workbenchCategories].map((category) => (
-                    <button type="button" key={category.value} role="tab" aria-selected={toolCategory === category.value} className={toolCategory === category.value ? "is-active" : ""} onClick={() => setToolCategory(category.value)}>
-                        {category.label}
+                    <button type="button" key={category.value} data-slot="control-item" aria-pressed={toolCategory === category.value} onClick={() => setToolCategory(category.value)}>
+                        <span data-slot="control-label">{category.label}</span>
                     </button>
                 ))}
             </div>
             {directoryLoading ? (
-                <div className="workbench-picker-state">
+                <div className="workbench-picker-state" role="status">
                     <Spin size="small" />
+                    <span>正在加载创作工具</span>
                 </div>
             ) : directoryError ? (
-                <div className="workbench-tool-library-error">
+                <div className="workbench-tool-library-error" role="alert">
                     <span>{directoryError}</span>
                     <Button
                         size="small"
@@ -961,7 +965,7 @@ export function WorkbenchPage({ kind }: { kind: WorkbenchKind }) {
                     {filteredTools.map((item) => (
                         <ToolCard key={item.id} tool={item} selected={item.id === tool?.id} onClick={() => { chooseTool(item); setToolLibraryOpen(false); }} />
                     ))}
-                    {!filteredTools.length ? <div className="workbench-picker-state">没有找到匹配的创作工具</div> : null}
+                    {!filteredTools.length ? <div className="workbench-picker-state" role="status">没有找到匹配的创作工具</div> : null}
                 </div>
             )}
         </div>
@@ -992,7 +996,8 @@ export function WorkbenchPage({ kind }: { kind: WorkbenchKind }) {
                 </div>
                 <section className={`workbench-columns ${mobileTab !== "generate" ? "is-mobile-secondary" : ""}`}>
                     <div className="workbench-mobile-tabs">
-                        <Segmented
+                        <SegmentedControl
+                            ariaLabel="工具台视图"
                             value={mobileTab}
                             onChange={(value) => setMobileTab(String(value))}
                             options={[
@@ -1016,16 +1021,18 @@ export function WorkbenchPage({ kind }: { kind: WorkbenchKind }) {
                                     <ChevronDown className={toolLibraryOpen ? "is-open" : ""} />
                                 </button>
                             </div>
-                            <Modal
+                            <AppModal
+                                destroyOnHidden={false}
                                 title="选择创作工具"
                                 open={toolLibraryOpen}
                                 onCancel={() => setToolLibraryOpen(false)}
                                 footer={null}
                                 width="min(1120px, calc(100vw - 32px))"
                                 className="workbench-picker-modal"
+                                rootClassName="workbench-overlay"
                             >
                                 {toolLibrary}
-                            </Modal>
+                            </AppModal>
                             {!tool && tools.length ? (
                                 <section className="workbench-goal-picker" aria-label="快速选择出品目标">
                                     <div className="workbench-goal-heading">
@@ -1247,9 +1254,9 @@ export function WorkbenchPage({ kind }: { kind: WorkbenchKind }) {
                                         placeholder={`选择${kind === "image" ? "图片" : "视频"}模型`}
                                     />
                                 ) : (
-                                    <div className="workbench-model-empty">
+                                    <div className="workbench-model-empty" role="status">
                                         <span>暂无可用的{kind === "image" ? "图片" : "视频"}模型</span>
-                                        <a href="/settings?section=models" target="_blank" rel="noreferrer">
+                                        <a href="/settings?section=models" target="_blank" rel="noreferrer" aria-label="在新窗口打开模型设置">
                                             模型设置
                                         </a>
                                     </div>
@@ -1264,10 +1271,11 @@ export function WorkbenchPage({ kind }: { kind: WorkbenchKind }) {
                                     className="workbench-submit"
                                     type="primary"
                                     loading={busy}
+                                    aria-busy={busy}
                                     disabled={(promptRequired && !prompt.trim()) || Boolean(missingInput) || !selectedModel || references.some((reference) => reference.uploading || Boolean(reference.error))}
                                     onClick={() => void submit()}
                                 >
-                                    <Sparkles />
+                                    <Sparkles aria-hidden="true" />
                                     <span>{kind === "image" ? "生成图片" : "生成视频"}</span>
                                 </Button>
                             </div>
@@ -1391,8 +1399,10 @@ export function WorkbenchPage({ kind }: { kind: WorkbenchKind }) {
                                     </button>
                                 </Tooltip>
                             </div>
-                            <div className="workbench-task-list">
-                                {activeTasks.length ? (
+                            <div className="workbench-task-list" aria-busy={tasksLoading}>
+                                {tasksLoading && !activeTasks.length ? (
+                                    <div role="status"><Spin size="small" /><span className="sr-only">正在加载进行中的任务</span></div>
+                                ) : activeTasks.length ? (
                                     activeTasks.map((task) => <TaskRow key={task.id} task={task} kind={kind} modelLabel={taskModelLabel(task)} busy={taskBusyId === task.id} onOpen={() => void openDetail(task)} onCancel={() => void cancelTask(task)} />)
                                 ) : (
                                     <p className="workbench-list-empty">暂无进行中的任务</p>
@@ -1407,9 +1417,9 @@ export function WorkbenchPage({ kind }: { kind: WorkbenchKind }) {
                                 </div>
                                 <Input aria-label="搜索历史任务" prefix={<Search className="size-3.5" />} value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜索提示词" allowClear />
                             </div>
-                            <div className="workbench-task-list">
+                            <div className="workbench-task-list" aria-busy={tasksLoading}>
                                 {tasksLoading ? (
-                                    <Spin size="small" />
+                                    <div role="status"><Spin size="small" /><span className="sr-only">正在加载历史任务</span></div>
                                 ) : (
                                     historyTasks
                                         .filter((task) => !query.trim() || task.prompt.toLowerCase().includes(query.trim().toLowerCase()))
@@ -1423,7 +1433,8 @@ export function WorkbenchPage({ kind }: { kind: WorkbenchKind }) {
                 </section>
             </div>
 
-            <Modal
+            <AppModal
+                destroyOnHidden={false}
                 title={detailTask ? (detailTask.previewKind === "video" || kind === "video" ? "视频任务详情" : "图片任务详情") : "任务详情"}
                 open={Boolean(detailTask)}
                 onCancel={() => {
@@ -1434,6 +1445,7 @@ export function WorkbenchPage({ kind }: { kind: WorkbenchKind }) {
                 footer={null}
                 width={960}
                 className="workbench-detail-modal"
+                rootClassName="workbench-overlay"
             >
                 {detailTask ? (
                     <div className="workbench-detail-grid">
@@ -1448,13 +1460,13 @@ export function WorkbenchPage({ kind }: { kind: WorkbenchKind }) {
                                 <div className="workbench-guide-empty">{displayTaskState(detailTask)}</div>
                             )}
                         </div>
-                        <div className="workbench-detail-info">
+                        <div className="workbench-detail-info" aria-busy={detailLoading}>
                             <span className={`workbench-status is-${detailTask.status}`}>{displayTaskState(detailTask)}</span>
                             <h3>{taskModelLabel(detailTask)}</h3>
-                            <label>提示词</label>
-                            <p className="workbench-detail-prompt">{detailTask.prompt}</p>
-                            <label>参数</label>
-                            <pre>{detailLoading ? "正在加载任务参数…" : JSON.stringify(workbenchTaskSnapshot(detailTask)?.parameters || {}, null, 2)}</pre>
+                            <span className="workbench-detail-label">提示词</span>
+                            <p className="workbench-detail-prompt" role="region" aria-label="任务提示词" tabIndex={0}>{detailTask.prompt || "此任务没有提示词"}</p>
+                            <span className="workbench-detail-label">参数</span>
+                            <pre tabIndex={0} aria-label="任务参数">{detailLoading ? "正在加载任务参数…" : JSON.stringify(workbenchTaskSnapshot(detailTask)?.parameters || {}, null, 2)}</pre>
                             <dl>
                                 <div>
                                     <dt>耗时</dt>
@@ -1482,10 +1494,12 @@ export function WorkbenchPage({ kind }: { kind: WorkbenchKind }) {
                         </div>
                     </div>
                 ) : null}
-            </Modal>
+            </AppModal>
 
-            <Modal
+            <AppModal
+                destroyOnHidden={false}
                 title="提示词已有内容"
+                rootClassName="workbench-overlay"
                 open={Boolean(presetPending)}
                 onCancel={() => setPresetPending(null)}
                 footer={[
@@ -1501,7 +1515,7 @@ export function WorkbenchPage({ kind }: { kind: WorkbenchKind }) {
                 ]}
             >
                 {presetPending ? <p>将应用“{presetPending.name}”提示词。你可以替换当前内容，也可以追加到末尾。</p> : null}
-            </Modal>
+            </AppModal>
         </WorkspacePage>
     );
 }
@@ -1512,9 +1526,9 @@ function CountPicker({ value, max, onChange }: { value: string; max: number; onC
     return (
         <div className="workbench-count-picker">
             <span>生成数量</span>
-            <div>
+            <div role="group" aria-label="生成数量">
                 {Array.from({ length: limit }, (_, index) => index + 1).map((item) => (
-                    <button key={item} type="button" aria-pressed={current === item} className={current === item ? "is-active" : ""} onClick={() => onChange(String(item))}>
+                    <button key={item} type="button" aria-label={`生成 ${item} 张图片`} aria-pressed={current === item} className={current === item ? "is-active" : ""} onClick={() => onChange(String(item))}>
                         {item}
                     </button>
                 ))}
@@ -1536,9 +1550,9 @@ function ParameterChips({ label, value, options, onChange }: { label: string; va
     return (
         <div className="workbench-chip-field">
             <span>{label}</span>
-            <div role="radiogroup" aria-label={label}>
+            <div role="group" aria-label={label}>
                 {options.map((option) => (
-                    <button key={option.value} type="button" role="radio" aria-checked={value === option.value} className={value === option.value ? "is-active" : ""} onClick={() => onChange(option.value)}>
+                    <button key={option.value} type="button" aria-pressed={value === option.value} className={value === option.value ? "is-active" : ""} onClick={() => onChange(option.value)}>
                         {option.label}
                     </button>
                 ))}
@@ -1550,7 +1564,7 @@ function ParameterChips({ label, value, options, onChange }: { label: string; va
 function QuickGoalCard({ tool, kind, onClick }: { tool: WorkbenchTool; kind: WorkbenchKind; onClick: () => void }) {
     const visual = toolVisual(tool, kind);
     return (
-        <button type="button" className={`workbench-goal-card is-${visual.tone}`} onClick={onClick}>
+        <button type="button" className={`workbench-goal-card is-${visual.tone}`} title={`${tool.name} · ${tool.subtitle || visual.label}`} onClick={onClick}>
             <span className="workbench-goal-icon">{tool.coverUrl || tool.iconUrl ? <img src={tool.coverUrl || tool.iconUrl} alt="" /> : visual.icon}</span>
             <span className="workbench-goal-copy">
                 <strong>{tool.name}</strong>
@@ -1565,19 +1579,21 @@ function ToolCard({ tool, selected, onClick }: { tool: WorkbenchTool; selected: 
     const visual = toolVisual(tool, tool.kind);
     const subtitle = isModelIdLike(tool.subtitle) ? tool.description || "" : tool.subtitle || tool.description;
     return (
-        <button type="button" className={`workbench-tool-card ${selected ? "is-selected" : ""} is-${visual.tone}`} aria-pressed={selected} onClick={onClick}>
-            <SpotlightSurface className="workbench-tool-card-spotlight" contentClassName="workbench-tool-card-surface relative z-[1]" spotlightColor="color-mix(in srgb, var(--user-ink) 5%, transparent)">
-                <span className="workbench-tool-card-image">{tool.coverUrl || tool.iconUrl ? <img src={tool.coverUrl || tool.iconUrl} alt="" /> : visual.icon}</span>
-                <span className="workbench-tool-card-copy">
-                    <strong>{tool.name}</strong>
-                    <small>{subtitle}</small>
-                </span>
-                {selected ? (
-                    <span className="workbench-tool-check">
-                        <Check />
+        <button type="button" className={`workbench-tool-card ${selected ? "is-selected" : ""} is-${visual.tone}`} aria-pressed={selected} title={`${tool.name}${subtitle ? ` · ${subtitle}` : ""}`} onClick={onClick}>
+            <div className="group/spotlight relative isolate workbench-tool-card-spotlight">
+                <div className="workbench-tool-card-surface relative z-[1]">
+                    <span className="workbench-tool-card-image">{tool.coverUrl || tool.iconUrl ? <img src={tool.coverUrl || tool.iconUrl} alt="" /> : visual.icon}</span>
+                    <span className="workbench-tool-card-copy">
+                        <strong>{tool.name}</strong>
+                        <small>{subtitle}</small>
                     </span>
-                ) : null}
-            </SpotlightSurface>
+                    {selected ? (
+                        <span className="workbench-tool-check">
+                            <Check />
+                        </span>
+                    ) : null}
+                </div>
+            </div>
         </button>
     );
 }
@@ -1606,6 +1622,7 @@ function ReferenceCard({ reference, kind, onRemove, onRoleChange }: { reference:
             {kind === "video" && reference.kind === "image" && !reference.slotKey ? (
                 <Select
                     size="small"
+                    aria-label={`${reference.name} 的图片用途`}
                     value={reference.role}
                     onChange={onRoleChange}
                     options={[

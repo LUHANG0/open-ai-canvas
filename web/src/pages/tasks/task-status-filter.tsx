@@ -16,14 +16,16 @@ export function TaskStatusFilterBar({ stats, value, onChange }: { stats: TaskSta
         <div className="task-status-filter">
             <span className="task-status-today">今日生成 <strong>{stats.today}</strong></span>
             <SegmentedControl<TaskStatusFilter>
+                indicator="static"
+                ariaLabel="任务状态"
                 size="sm"
                 value={value}
                 options={options.map((option) => ({
                     value: option.value,
                     label: (
-                        <span>
+                        <span className="task-status-filter-label">
                             {option.label}
-                            <b>{option.count}</b>
+                            <b className="task-status-filter-count">{option.count}</b>
                         </span>
                     ),
                 }))}

@@ -2,7 +2,7 @@
 //
 // 纯展示组件，数据与操作回调由素材库页面传入。
 
-import { Dropdown, type MenuProps } from "antd";
+import { Dropdown, Tooltip, type MenuProps } from "antd";
 import type { MouseEvent } from "react";
 import { AlertTriangle, AudioLines, Box, Copy, Download, FileText, FolderOpen, MoreHorizontal, PencilLine, Play, RotateCcw, Trash2 } from "lucide-react";
 import { AssetLibraryCard, AssetLibraryCardMedia } from "@/components/assets/asset-library-card";
@@ -83,34 +83,37 @@ export function AssetCard({
             onSelect(!selected, event.shiftKey);
             return;
         }
+        event.currentTarget.focus({ preventScroll: true });
         onOpen();
     };
     return (
         <AssetLibraryCard selected={selected}>
-            <AssetCover asset={asset} selected={selected} isTrash={isTrash} onSelect={onSelect} onOpen={handleCardClick} menuItems={menuItems} />
-            <button type="button" className="asset-collection-body block w-full px-2.5 py-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--workspace-accent)]" onClick={handleCardClick}>
-                <div className="flex min-w-0 items-center justify-between gap-2">
-                    <h2 className="truncate text-[var(--fs-body)] font-semibold text-foreground" title={asset.title}>
-                        {asset.title}
-                    </h2>
-                    <span className="asset-collection-date shrink-0 tabular-nums">{formatAssetTime(asset.updatedAt)}</span>
-                </div>
-                {isTrash ? (
-                    <div className="mt-1 flex items-center gap-1 text-[var(--fs-tiny)] font-medium text-amber-600 dark:text-amber-400" title={formatExpirationDate(asset.updatedAt, retentionDays)}>
-                        <AlertTriangle className="size-3 shrink-0" />
-                        <span>{formatExpirationHint(asset.updatedAt, retentionDays)}</span>
+            <AssetCover asset={asset} selected={selected} isTrash={isTrash} selectionMode={selectionMode} onSelect={onSelect} onOpen={handleCardClick} menuItems={menuItems} />
+            <Tooltip title={asset.title} trigger={["hover", "focus"]}>
+                <button type="button" className="asset-collection-body block w-full px-2.5 py-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring" aria-label={`${selectionMode ? "选择素材" : "查看素材"}：${asset.title}`} aria-pressed={selectionMode ? selected : undefined} onClick={handleCardClick}>
+                    <div className="flex min-w-0 items-center justify-between gap-2">
+                        <h2 className="truncate text-[var(--fs-body)] font-semibold text-foreground">
+                            {asset.title}
+                        </h2>
+                        <span className="asset-collection-date shrink-0 tabular-nums">{formatAssetTime(asset.updatedAt)}</span>
                     </div>
-                ) : (
-                    <div className="asset-collection-summary mt-1 truncate" title={summary}>
-                        {summary}
+                    {isTrash ? (
+                        <div className="mt-1 flex items-center gap-1 text-[var(--fs-tiny)] font-medium text-amber-600 dark:text-amber-400" title={formatExpirationDate(asset.updatedAt, retentionDays)}>
+                            <AlertTriangle className="size-3 shrink-0" aria-hidden="true" />
+                            <span>{formatExpirationHint(asset.updatedAt, retentionDays)}</span>
+                        </div>
+                    ) : (
+                        <div className="asset-collection-summary mt-1 truncate" title={summary}>
+                            {summary}
+                        </div>
+                    )}
+                    <div className="asset-collection-source mt-1 flex min-w-0 items-center gap-1.5">
+                        <span className="truncate" title={asset.source || "未标注来源"}>{asset.source || "未标注来源"}</span>
+                        <span aria-hidden="true">·</span>
+                        <span className="truncate" title={assetProjectLabel(asset)}>{assetProjectLabel(asset)}</span>
                     </div>
-                )}
-                <div className="asset-collection-source mt-1 flex min-w-0 items-center gap-1.5">
-                    <span className="truncate">{asset.source || "未标注来源"}</span>
-                    <span aria-hidden="true">·</span>
-                    <span className="truncate">{assetProjectLabel(asset)}</span>
-                </div>
-            </button>
+                </button>
+            </Tooltip>
         </AssetLibraryCard>
     );
 }
@@ -123,6 +126,7 @@ export function AssetCover({
     asset,
     selected,
     isTrash = false,
+    selectionMode = false,
     onSelect,
     onOpen,
     menuItems,
@@ -130,6 +134,7 @@ export function AssetCover({
     asset: LibraryAsset;
     selected: boolean;
     isTrash?: boolean;
+    selectionMode?: boolean;
     onSelect: (selected: boolean, range?: boolean) => void;
     onOpen: (event: MouseEvent<HTMLButtonElement>) => void;
     menuItems: MenuProps["items"];
@@ -141,7 +146,7 @@ export function AssetCover({
     const isLight = asset.kind === "audio" || asset.kind === "text" || asset.kind === "model";
     return (
         <AssetLibraryCardMedia className={isLight ? "assets-cover is-light" : "assets-cover"}>
-            <button type="button" className="assets-cover-link" onClick={onOpen} aria-label={`查看素材：${asset.title}`}>
+            <button type="button" className="assets-cover-link" onClick={onOpen} aria-label={`${selectionMode ? "选择素材" : "查看素材"}：${asset.title}`} aria-pressed={selectionMode ? selected : undefined}>
                 {asset.kind === "audio" ? (
                     <AudioWaveCover asset={asset} />
                 ) : asset.kind === "entity" && (asset.category === "environment" || asset.category === "prop") ? (
@@ -178,7 +183,7 @@ export function AssetCover({
                     <KindIcon />
                     {kind ? assetKindLabel(kind, asset.category) : "素材"}
                 </span>
-                {isTrash ? <span className="assets-cover-badge is-category !bg-amber-500/85 !text-white">回收站</span> : asset.kind === "entity" ? null : <span className="assets-cover-badge is-category">{assetCategoryLabel(asset.category)}</span>}
+                {isTrash ? <span className="assets-cover-badge is-category is-trash">回收站</span> : asset.kind === "entity" ? null : <span className="assets-cover-badge is-category">{assetCategoryLabel(asset.category)}</span>}
                 {asset.portraitCertified ? <span className="assets-cover-badge is-category">人像认证</span> : null}
             </span>
             {clock ? <span className="assets-cover-clock">{clock}</span> : null}
@@ -192,7 +197,7 @@ export function AssetCover({
                 aria-label={`选择 ${asset.title}`}
             />
             <Dropdown trigger={["click"]} menu={{ items: menuItems }}>
-                <button type="button" className="assets-cover-more" aria-label="更多素材操作" title="更多操作">
+                <button type="button" className="assets-cover-more" aria-label={`更多素材操作：${asset.title}`} title="更多操作">
                     <MoreHorizontal className="size-4" />
                 </button>
             </Dropdown>

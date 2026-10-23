@@ -1,4 +1,4 @@
-import { App, Input } from "antd";
+import { App, Input, Tooltip } from "antd";
 import { CanvasAnchoredDropdown as Dropdown } from "./canvas-anchored-dropdown";
 import { Download, LoaderCircle, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 import type { KeyboardEvent } from "react";
@@ -61,6 +61,7 @@ export function CanvasFolderCard({ project, projectName, onClick, onPrefetch, op
 
     return (
         <article className={cn("product-collection-card canvas-collection-card", selected && "is-selected", editing && "is-editing", opening && "is-opening")} onPointerEnter={onPrefetch} onPointerDown={onPrefetch} onFocusCapture={onPrefetch}>
+            <Tooltip title={editing ? null : `${project.title}${projectName ? ` · 所属项目：${projectName}` : " · 自由画布"}`} trigger={["hover", "focus"]}>
             <div className="canvas-collection-open" role="button" tabIndex={0} aria-label={`打开画布 ${project.title}`} aria-busy={opening} onClick={() => !editing && !opening && onClick()} onKeyDown={handleOpenKeyDown}>
                 <div className="canvas-collection-preview" aria-hidden="true">
                     <ProjectPreview project={{ id: project.id, nodes: project.previewNodes }} preferLatestImage />
@@ -71,6 +72,7 @@ export function CanvasFolderCard({ project, projectName, onClick, onPrefetch, op
                         {editing ? (
                             <Input
                                 className="canvas-collection-title-input"
+                                aria-label="画布名称"
                                 value={editingTitle}
                                 onChange={(event) => setEditingTitle(event.target.value)}
                                 onClick={(event) => event.stopPropagation()}
@@ -93,6 +95,7 @@ export function CanvasFolderCard({ project, projectName, onClick, onPrefetch, op
                     <time className="canvas-collection-updated" dateTime={project.updatedAt} title={`创建于 ${formatCanvasDate(project.createdAt)}`}>{formatCanvasDate(project.updatedAt)} 更新</time>
                 </div>
             </div>
+            </Tooltip>
 
             <span className={cn("canvas-collection-select", selected && "is-visible")} onClick={(event) => event.stopPropagation()}>
                 <input

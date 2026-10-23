@@ -431,6 +431,7 @@
 
     .admin-channel-sidebar {
         max-height: 360px;
+        overflow-y: auto;
     }
 
     .admin-channel-list {

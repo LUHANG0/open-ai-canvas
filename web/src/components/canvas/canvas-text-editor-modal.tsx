@@ -132,7 +132,7 @@ export function CanvasTextEditorModal({ node, open, onClose, onChange }: CanvasT
     const close = () => onClose();
 
     return (
-        <AppModal
+        <AppModal rootClassName="workspace-utility-overlay"
             className="canvas-text-editor-modal"
             open={open && Boolean(node)}
             title={null}

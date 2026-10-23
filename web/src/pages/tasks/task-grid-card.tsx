@@ -1,4 +1,4 @@
-import { Button } from "antd";
+import { Button, Tooltip as TitleTooltip } from "antd";
 import { IconButton } from "@/components/ui/base/buttons";
 import { Tooltip } from "@/components/ui/base/tooltip";
 import { Eye, FileText, Image as ImageIcon, RotateCcw, Video } from "lucide-react";
@@ -32,7 +32,7 @@ export function TaskGridCard({ task, actingId, onOpen, onRetry }: { task: Genera
                 )}
                 <div className="task-grid-overlay">
                     <Tooltip title="查看详情">
-                        <IconButton size="sm" variant="ghost" icon={Eye} aria-label="查看详情" onClick={onOpen} />
+                        <IconButton size="sm" variant="ghost" icon={Eye} aria-label={`查看任务详情：${task.prompt || "未命名任务"}`} aria-haspopup="dialog" onClick={(event) => { event.currentTarget.focus({ preventScroll: true }); onOpen(); }} />
                     </Tooltip>
                     {isFailed ? (
                         <Tooltip title={retryDisabled ? "内容审核失败，无法自动重试" : task.canRecoverMedia ? "重试保存，不重新生成" : "重试任务"}>
@@ -50,12 +50,14 @@ export function TaskGridCard({ task, actingId, onOpen, onRetry }: { task: Genera
                 </div>
             </div>
             <div className="task-grid-body">
-                <button type="button" className="task-grid-title" title={task.prompt} onClick={onOpen}>
-                    {task.prompt || "未命名任务"}
-                </button>
+                <TitleTooltip title={task.prompt || "未命名任务"} trigger={["hover", "focus"]}>
+                    <button type="button" className="task-grid-title" aria-haspopup="dialog" onClick={(event) => { event.currentTarget.focus({ preventScroll: true }); onOpen(); }}>
+                        {task.prompt || "未命名任务"}
+                    </button>
+                </TitleTooltip>
                 <div className="task-grid-meta">
                     <span className={`task-grid-status ${isFailed ? "is-failed" : isActive ? "is-active" : task.status === "succeeded" ? "is-success" : ""}`}>
-                        <i className={statusDotClassName(task.status)} />
+                        <i className={statusDotClassName(task.status)} aria-hidden="true" />
                         {generationTaskStatusLabel(task)}
                     </span>
                     <span className="task-grid-date">
@@ -64,12 +66,12 @@ export function TaskGridCard({ task, actingId, onOpen, onRetry }: { task: Genera
                 </div>
                 {isActive && !showsProgress ? <p>{stageLabel}</p> : isActive ? (
                     <div className="task-grid-progress" role="progressbar" aria-label={stageLabel} aria-valuemin={0} aria-valuemax={100} aria-valuenow={task.progress || 0}>
-                        <span>{stageLabel}</span>
+                        <span title={stageLabel}>{stageLabel}</span>
                         <strong>{task.progress || 0}%</strong>
                         <i><b style={{ width: `${task.progress || 0}%` }} /></i>
                     </div>
                 ) : null}
-                {isFailed ? <p className="task-grid-error" title={task.error || undefined}>{taskAttentionReason(task)}</p> : null}
+                {isFailed ? <p className="task-grid-error" title={taskAttentionReason(task)}>{taskAttentionReason(task)}</p> : null}
             </div>
         </article>
     );

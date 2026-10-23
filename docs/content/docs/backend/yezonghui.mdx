@@ -1,0 +1,42 @@
+---
+title: 夜总会协议插件
+description: 聊天、异步生图与视频的独立渠道协议、参数配置和验收边界
+---
+
+# 夜总会协议插件
+
+`yezonghui.yingce-plugin` 提供“夜总会聊天”“夜总会异步生图”“夜总会视频”三个独立协议。源码在 `plugin-packages/yezonghui/`，完整字段合同在包内 `docs/interface.md`，不改变已有 NewAPI 或 OpenAI 协议。
+
+## 配置
+
+1. 使用包含新宿主支持的源码版本，在插件中心启用“夜总会”。仓库分发包在后端启动时加载；已运行的后端需重新加载插件运行时或重启才能发现新包。也可通过现有上传入口安装。
+2. Base URL 填 `https://new.yezonghui.org`，密钥填 API Key。服务商要求密钥只用于服务端时，使用管理员系统渠道保存，由后端发送 Bearer 请求头。
+3. 从当前令牌的 `/v1/models` 获取模型 ID，按用途选择 `yezonghui-chat`、`yezonghui-image`、`yezonghui-video`。
+4. 图片参数配置实际允许的比例与分辨率，数量固定 1；视频配置实际允许的比例、分辨率、整数时长与参考上限。初始不猜测分辨率列表。视频/音频参考默认关闭，确认模型支持后配置对应上限。
+5. 参考素材必须是公网 HTTP(S) 直链或对象存储签名地址；本机服务未公开时不能直接提交本地素材地址。运行时超时建议图片至少 10 分钟、视频至少 30 分钟。
+
+## 接口与限制
+
+| 协议 | 创建 | 查询与下载 |
+| --- | --- | --- |
+| 夜总会聊天 | `/v1/chat/completions` | 标准 JSON / SSE，含 Agent 工具请求与响应映射 |
+| 夜总会异步生图 | `/v1/images` | `/v1/images/{id}`、`/v1/images/{id}/content` |
+| 夜总会视频 | `/v1/videos` | `/v1/videos/{id}`、`/v1/videos/{id}/content` |
+
+图片仅发送 `model`、`prompt`、`ratio`、`resolution`、`image_urls`，分辨率必填且不能是 auto，拒绝一次多张、蒙版及视频/音频参考。视频使用 JSON，时长映射字符串 `seconds`，比例映射 `size`，分辨率映射 `resolution`，声音开关映射布尔 `audio`。参考数组分别为 `image_urls`、`video_urls`、`audio_urls`，保持各类型的顺序。可选厂商字段通过视频协议命名空间的五个白名单扩展提供。
+
+按顶层 status 判断任务状态，未知值继续查询，completed 才下载，failed 显示真实错误。即使返回临时 url，插件也使用同账号鉴权的 content 端点下载，交由宿主保存。图片每 15 秒、视频每 60 秒查询；临时查询错误最多连续重试三次，创建失败不自动重放。不包含同步图片接口；仅开通 `/v1/images/generations` 的模型继续选择 OpenAI Images。
+
+## 新增宿主声明
+
+- Provider `streamingFormat`：仅文本可声明，值为 `chat-completion`、`responses` 或 `claude-api`。普通文本与 Agent 复用相应 SSE 解析器，仍按插件路径与请求模板发送；不声明时保留原行为。
+- Provider `polling.intervalSeconds`：1～300 秒，必须同时声明 poll；控制首次等待及正常查询间隔。
+- Provider `polling.transientRetryLimit`：0～10 次，控制同一任务的连续临时查询错误重试，不控制创建。不声明 polling 时保持其他渠道策略。
+
+凭证、出站校验、任务截止时间、结果保存和恢复仍由宿主掌握。夜总会视频在已有上游任务 ID 的超时场景可恢复查询；异步图片沿用声明式图片恢复机制，不因恢复创建第二个收费任务。
+
+## 验收边界
+
+专项覆盖分发包请求白名单、素材顺序、输入拒绝、状态与错误映射、鉴权下载及源码/包一致性。本地 HTTP 模拟覆盖创建一次、临时查询错误重试、未知状态继续查询、二进制下载、聊天 SSE 和工具分片，前端专项覆盖能力默认值。
+
+公开服务商文档只说明媒体合同，聊天按 OpenAI 兼容方式实现，远端普通对话、流式、工具能力仍需实际模型确认。尚未进行真实计费生成与画布持久化验收，详见[待测试](/docs/progress/pending-test)。来源：[服务商接口文档](https://new.yezonghui.org/docs)。

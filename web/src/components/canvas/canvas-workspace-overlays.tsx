@@ -127,6 +127,17 @@ export function CanvasNodePanelOverlay({
     const initialPosition = getNodePanelPosition(node, viewport, { width: containerRef.current?.clientWidth || 0, height: containerRef.current?.clientHeight || 0 }, initialWidth, panelHeight, dragOffset);
 
     useLayoutEffect(() => {
+        const panel = panelRef.current;
+        if (!panel) return;
+        // 面板是 viewport 的同级元素；原生非 passive 捕获才能取消浏览器默认缩放。
+        const preventPageZoom = (event: WheelEvent) => {
+            if (event.ctrlKey || event.metaKey) event.preventDefault();
+        };
+        panel.addEventListener("wheel", preventPageZoom, { passive: false, capture: true });
+        return () => panel.removeEventListener("wheel", preventPageZoom, { capture: true });
+    }, []);
+
+    useLayoutEffect(() => {
         bringToFront();
     }, [bringToFront]);
 

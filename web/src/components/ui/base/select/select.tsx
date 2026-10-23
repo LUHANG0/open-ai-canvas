@@ -51,12 +51,13 @@ export const Select = forwardRef<RefSelectProps, SelectProps>(function Select({ 
     return (
         <AntSelect
             ref={selectRef}
+            data-slot="select"
             {...props}
             open={actualOpen}
             onOpenChange={changeOpen}
             variant={variant ?? "filled"}
             size={normalizedSize as AntSelectProps["size"]}
-            aria-label={ariaLabel}
+            aria-label={ariaLabel ?? props["aria-label"]}
             className={cn("app-unified-select", `app-unified-select--${appearance}`, className)}
             data-input-modality={inputModality}
             onMouseDown={(event) => {

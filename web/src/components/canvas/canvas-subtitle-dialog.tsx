@@ -1,5 +1,6 @@
+import { SegmentedControl } from "@/components/ui/base/segmented-control";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { App, Button, ColorPicker, Input, InputNumber, Progress, Segmented } from "antd";
+import { App, Button, ColorPicker, Input, InputNumber, Progress } from "antd";
 import { AppModal } from "@/components/ui/product/app-modal";
 import { Switch } from "@/components/ui/base/switch";
 import { Captions, FileDown, FileUp, ListPlus, LoaderCircle, Plus, Scissors, Sparkles, Trash2 } from "lucide-react";
@@ -348,9 +349,9 @@ export function CanvasSubtitleDialog({ node, open, projectId, config, onClose, o
             </label>
             <div className="text-xs opacity-70">
                 <div className="mb-1">位置</div>
-                <Segmented
+                <SegmentedControl
                     block
-                    size="small"
+                    size="sm"
                     value={style.position}
                     options={[
                         { label: "顶部", value: "top" },
@@ -483,7 +484,7 @@ export function CanvasSubtitleDialog({ node, open, projectId, config, onClose, o
     );
 
     return (
-        <AppModal className="canvas-subtitle-dialog" title={title} open={open} centered footer={null} width={1120} destroyOnHidden onCancel={onClose} flush>
+        <AppModal rootClassName="workspace-utility-overlay" className="canvas-subtitle-dialog" title={title} open={open} centered footer={null} width={1120} destroyOnHidden onCancel={onClose} flush>
             <div className="flex h-[min(72vh,680px)] min-h-[420px] flex-col text-sm" style={{ color: theme.node.text }}>
                 <div className="flex flex-wrap items-center gap-2 border-b px-4 py-3" style={{ borderColor: theme.toolbar.border, background: theme.toolbar.panel }}>
                     <input

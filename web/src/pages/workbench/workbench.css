@@ -25,7 +25,7 @@
     --wb-text: var(--user-ink, var(--foreground));
     --wb-text-muted: var(--user-ink-muted, var(--muted-foreground));
     --wb-text-soft: var(--user-ink-soft, var(--muted-foreground));
-    --wb-warning: #8a3b12;
+    --wb-warning: var(--status-error);
     display: flex;
     flex: 1 1 auto;
     flex-direction: column;
@@ -133,7 +133,7 @@
     width: 16px;
     height: 16px;
     color: var(--wb-text-muted);
-    transition: transform 160ms ease;
+    transition: transform 150ms ease;
 }
 .workbench-tool-choice > svg.is-open {
     transform: rotate(180deg);
@@ -193,13 +193,13 @@
     color: var(--wb-text);
 }
 .workbench-tool-choice-trigger:focus-visible {
-    outline: 2px solid var(--user-focus-ring, var(--user-ink));
+    outline: 2px solid var(--control-focus-ring);
     outline-offset: 2px;
 }
 .workbench-tool-choice-trigger svg {
     width: 15px;
     height: 15px;
-    transition: transform 160ms ease;
+    transition: transform 150ms ease;
 }
 .workbench-tool-choice-trigger svg.is-open {
     transform: rotate(180deg);
@@ -439,8 +439,8 @@
     font-size: 12px;
     cursor: pointer;
     transition:
-        background-color 140ms ease,
-        border-color 140ms ease;
+        background-color 150ms ease,
+        border-color 150ms ease;
 }
 .workbench-slot-upload svg {
     width: 15px;
@@ -478,8 +478,8 @@
     text-align: left;
     cursor: pointer;
     transition:
-        background-color 140ms ease,
-        border-color 140ms ease;
+        background-color 150ms ease,
+        border-color 150ms ease;
 }
 .workbench-reference-slot-empty:hover:not(:disabled) {
     border-color: var(--user-primary, #5b5fc7);
@@ -766,14 +766,14 @@
     height: 48px;
     padding-inline: 18px;
     border-radius: 14px !important;
-    background: linear-gradient(110deg, var(--user-primary, #6c82dc), color-mix(in srgb, var(--user-primary, #6c82dc) 72%, #8b78e8)) !important;
-    box-shadow: 0 12px 28px color-mix(in srgb, var(--user-primary, #6c82dc) 22%, transparent) !important;
-    color: #fff !important;
+    background: var(--button-primary-bg) !important;
+    box-shadow: none !important;
+    color: var(--button-primary-fg) !important;
     font-size: 14px !important;
     font-weight: 640;
     letter-spacing: 0.02em;
     white-space: nowrap;
-    transition: transform 160ms ease, box-shadow 160ms ease;
+    transition: background-color 150ms ease, color 150ms ease;
 }
 
 .workbench-submit.ant-btn > svg {
@@ -782,8 +782,11 @@
 }
 
 .workbench-submit.ant-btn:hover:not(:disabled) {
-    transform: translateY(-1px);
-    box-shadow: 0 16px 32px color-mix(in srgb, var(--user-primary, #6c82dc) 32%, transparent) !important;
+    background: var(--button-primary-hover-bg) !important;
+    box-shadow: none !important;
+}
+.workbench-submit.ant-btn:active:not(:disabled) {
+    background: var(--button-primary-active-bg) !important;
 }
 
 .workbench-submit.ant-btn:disabled,
@@ -1112,7 +1115,7 @@
     min-width: 0;
     padding: 5px;
     border-radius: 12px;
-    transition: background 0.16s ease;
+    transition: background-color 150ms ease;
 }
 .workbench-task-row:hover {
     background: var(--wb-muted);
@@ -1157,16 +1160,16 @@
     white-space: nowrap;
 }
 .workbench-task-copy strong {
-    font-size: 11px;
+    font-size: 13px;
     font-weight: 600;
 }
 .workbench-task-copy small {
     color: var(--wb-text-muted);
-    font-size: 10px;
+    font-size: 12px;
 }
 .workbench-task-copy em {
     color: var(--wb-text-soft);
-    font-size: 9px;
+    font-size: 12px;
     font-style: normal;
 }
 .workbench-task-row > .ant-btn {
@@ -1177,10 +1180,11 @@
 .workbench-list-empty {
     margin: 8px 4px 0;
     color: var(--wb-text-muted);
-    font-size: 11px;
+    font-size: 12px;
     line-height: 1.5;
 }
-.workbench-picker-modal {
+.workbench-picker-modal,
+.workbench-detail-modal {
     --wb-page: var(--user-page-bg, var(--workspace-page, #f8f8fa));
     --wb-surface: var(--user-surface, #fff);
     --wb-raised: var(--user-surface-raised, var(--user-surface, #fff));
@@ -1191,7 +1195,7 @@
     --wb-text: var(--user-ink, var(--foreground));
     --wb-text-muted: var(--user-ink-muted, var(--muted-foreground));
     --wb-text-soft: var(--user-ink-soft, var(--muted-foreground));
-    --wb-warning: #8a3b12;
+    --wb-warning: var(--status-error);
     --wb-accent-product: #e49a58;
     --wb-accent-people: #8b78e8;
     --wb-accent-scene: #4caeb5;
@@ -1200,9 +1204,9 @@
     --wb-accent-creative: #6c82dc;
     --wb-panel-glow: color-mix(in srgb, var(--user-primary, #6c82dc) 8%, transparent);
 }
-.workbench-picker-modal .ant-modal-content,
-.workbench-settings-modal .ant-modal-content,
-.workbench-detail-modal .ant-modal-content {
+.workbench-picker-modal .ant-modal-container,
+.workbench-settings-modal .ant-modal-container,
+.workbench-detail-modal .ant-modal-container {
     overflow: hidden;
     border-radius: 18px;
 }
@@ -1252,22 +1256,23 @@
     padding: 0;
     border: 1px solid color-mix(in srgb, var(--user-ink) 8%, transparent);
     border-radius: 16px;
-    background: color-mix(in srgb, var(--wb-surface) 90%, var(--wb-panel-glow));
+    background: var(--wb-surface);
     color: inherit;
     text-align: left;
-    transition: border-color 160ms ease, background-color 160ms ease, box-shadow 160ms ease;
+    transition: border-color 150ms ease, background-color 150ms ease, color 150ms ease;
 }
 
 .workbench-tool-card:hover {
-    border-color: color-mix(in srgb, var(--user-primary, var(--wb-accent-creative)) 30%, var(--user-ink) 8%);
-    background: color-mix(in srgb, var(--user-primary, var(--wb-accent-creative)) 5%, var(--wb-surface));
-    box-shadow: 0 9px 22px color-mix(in srgb, var(--user-ink) 8%, transparent);
+    border-color: var(--wb-edge);
+    background: var(--wb-hover);
+    box-shadow: none;
 }
 
 .workbench-tool-card.is-selected {
-    border-color: color-mix(in srgb, var(--user-primary, var(--wb-accent-creative)) 70%, transparent);
-    background: color-mix(in srgb, var(--user-primary, var(--wb-accent-creative)) 9%, var(--wb-surface));
-    box-shadow: 0 0 0 2px color-mix(in srgb, var(--user-primary, var(--wb-accent-creative)) 18%, transparent);
+    border-color: var(--control-selected-border);
+    background: var(--control-selected-bg);
+    color: var(--control-selected-fg);
+    box-shadow: none;
 }
 
 .workbench-tool-card-spotlight {
@@ -1332,7 +1337,7 @@
     display: -webkit-box;
     overflow: hidden;
     color: color-mix(in srgb, var(--foreground) 56%, transparent);
-    font-size: 10px;
+    font-size: 12px;
     line-height: 1.5;
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 2;
@@ -1347,8 +1352,8 @@
     height: 22px;
     place-items: center;
     border-radius: 50%;
-    background: var(--user-primary, var(--wb-accent-creative));
-    color: var(--user-surface, #fff);
+    background: var(--control-check-bg);
+    color: var(--control-check-fg);
 }
 .workbench-tool-check svg {
     width: 14px;
@@ -1414,10 +1419,11 @@
 .workbench-detail-info h3 {
     margin: 0;
     font-size: 15px;
+    overflow-wrap: anywhere;
 }
-.workbench-detail-info > label {
+.workbench-detail-label {
     color: color-mix(in srgb, var(--foreground) 50%, transparent);
-    font-size: 11px;
+    font-size: 12px;
 }
 .workbench-detail-prompt {
     max-height: 130px;
@@ -1429,6 +1435,7 @@
     font-size: 12px;
     line-height: 1.6;
     white-space: pre-wrap;
+    overflow-wrap: anywhere;
 }
 .workbench-detail-info pre {
     max-height: 100px;
@@ -1437,7 +1444,7 @@
     padding: 8px;
     border-radius: 9px;
     background: var(--wb-muted);
-    font-size: 10px;
+    font-size: 12px;
 }
 .workbench-detail-info dl {
     display: grid;
@@ -1448,7 +1455,7 @@
     display: flex;
     justify-content: space-between;
     gap: 10px;
-    font-size: 11px;
+    font-size: 12px;
 }
 .workbench-detail-info dt {
     color: color-mix(in srgb, var(--foreground) 52%, transparent);
@@ -1469,15 +1476,16 @@
     padding: 4px 8px;
     border-radius: 99px;
     background: var(--wb-muted);
-    font-size: 10px;
+    font-size: 12px;
+    overflow-wrap: anywhere;
 }
 .workbench-status.is-succeeded {
-    color: #287a58;
-    background: color-mix(in srgb, #51ad80 13%, var(--wb-surface));
+    color: var(--status-success);
+    background: color-mix(in srgb, var(--status-success) 10%, var(--wb-surface));
 }
 .workbench-status.is-failed {
-    color: #ae473e;
-    background: color-mix(in srgb, #cb5f52 12%, var(--wb-surface));
+    color: var(--status-error);
+    background: color-mix(in srgb, var(--status-error) 10%, var(--wb-surface));
 }
 .workbench-mobile-tabs {
     display: none;
@@ -1503,10 +1511,14 @@
         background: var(--wb-surface);
         box-shadow: 0 18px 55px color-mix(in srgb, #000 20%, transparent);
         transform: translateX(calc(100% + 24px));
-        transition: transform 0.22s ease;
+        transition: none;
+        visibility: hidden;
+        pointer-events: none;
     }
-    .workbench-columns:has(.workbench-mobile-tabs .ant-segmented-item-selected:nth-child(3)) .workbench-task-column {
+    .workbench-task-column.is-mobile-active {
         transform: translateX(0);
+        visibility: visible;
+        pointer-events: auto;
     }
     .workbench-mobile-tabs {
         position: absolute;
@@ -1514,9 +1526,6 @@
         top: 14px;
         right: 14px;
         display: block;
-    }
-    .workbench-mobile-tabs .ant-segmented {
-        background: var(--wb-raised);
     }
     .workbench-result-column {
         grid-template-rows: minmax(300px, 1fr) minmax(220px, 0.7fr);
@@ -1632,7 +1641,7 @@
         max-width: calc(100vw - 20px);
         margin: 10px auto;
     }
-    .workbench-picker-modal .ant-modal-content {
+    .workbench-picker-modal .ant-modal-container {
         padding: 17px 13px;
     }
     .workbench-picker-toolbar {
@@ -1667,7 +1676,7 @@
         font-size: 12px;
     }
     .workbench-tool-card-copy small {
-        font-size: 9px;
+        font-size: 12px;
     }
     .workbench-detail-grid {
         grid-template-columns: 1fr;
@@ -1683,30 +1692,19 @@
         scroll-behavior: auto !important;
         animation-duration: 0.01ms !important;
         animation-iteration-count: 1 !important;
-        transition-duration: 0.01ms !important;
+        transition-duration: 0s !important;
+    }
+    .workbench-overlay *,
+    .workbench-overlay *::before,
+    .workbench-overlay *::after {
+        scroll-behavior: auto !important;
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0s !important;
     }
 }
 .workbench-tool-categories {
     display: flex;
-    gap: 6px;
-    overflow-x: auto;
-    padding: 2px 0 4px;
-}
-.workbench-tool-categories button {
-    border: 0;
-    border-radius: 999px;
-    background: transparent;
-    color: var(--user-text-muted);
-    padding: 6px 10px;
-    white-space: nowrap;
-    font-size: 12px;
-    cursor: pointer;
-}
-.workbench-tool-categories button:hover,
-.workbench-tool-categories button.is-active {
-    background: var(--user-layer-2);
-    color: var(--user-ink);
-    font-weight: 600;
 }
 .workbench-parameters {
     display: grid;
@@ -1750,18 +1748,33 @@
     font: inherit;
     font-size: 12px;
     cursor: pointer;
+    transition: background-color 150ms ease, color 150ms ease;
 }
 .workbench-chip-field button:hover,
 .workbench-chip-field button:focus-visible {
     background: var(--wb-hover);
 }
 .workbench-chip-field button.is-active {
-    background: var(--user-ink);
-    color: var(--user-surface, #fff);
+    background: var(--control-selected-bg);
+    color: var(--control-selected-fg);
     font-weight: 650;
 }
 .workbench-chip-field button:focus-visible {
-    outline: 2px solid var(--user-focus-ring, var(--user-ink));
+    outline: 2px solid var(--control-focus-ring);
+    outline-offset: 2px;
+}
+.workbench-tool-choice:focus-visible,
+.workbench-direct-create:focus-visible,
+.workbench-tool-card:focus-visible,
+.workbench-preset-chip:focus-visible,
+.workbench-task-main:focus-visible,
+.workbench-model-empty a:focus-visible,
+.workbench-detail-prompt:focus-visible,
+.workbench-detail-info pre:focus-visible,
+.workbench-tool-library .ant-input-affix-wrapper:has(input:focus-visible),
+.workbench-count-picker .ant-input-number:has(input:focus-visible),
+.workbench-prompt-surface:has(:is(textarea, [contenteditable="true"]):focus-visible) {
+    outline: 2px solid var(--control-focus-ring);
     outline-offset: 2px;
 }
 .workbench-switch-row {
@@ -1814,7 +1827,7 @@
     margin: 0 0 12px;
     padding: 0 14px;
     border-radius: 15px;
-    background: color-mix(in srgb, var(--wb-surface) 82%, var(--wb-panel-glow));
+    background: var(--wb-surface);
 }
 
 .workbench-flow-reset {
@@ -1826,23 +1839,22 @@
     padding: 0 11px;
     border: 0;
     border-radius: 999px;
-    background: color-mix(in srgb, var(--user-primary, var(--wb-accent-creative)) 10%, var(--wb-surface));
-    color: var(--user-primary, var(--wb-accent-creative));
+    background: var(--wb-muted);
+    color: var(--wb-text-muted);
     font: inherit;
     font-size: 11px;
     font-weight: 620;
     cursor: pointer;
-    transition: background-color 160ms ease, transform 160ms ease, box-shadow 160ms ease;
+    transition: background-color 150ms ease, color 150ms ease;
 }
 
 .workbench-flow-reset:hover {
-    background: color-mix(in srgb, var(--user-primary, var(--wb-accent-creative)) 17%, var(--wb-surface));
-    transform: translateY(-1px);
-    box-shadow: 0 6px 14px color-mix(in srgb, var(--user-primary, var(--wb-accent-creative)) 18%, transparent);
+    background: var(--wb-hover);
+    color: var(--wb-text);
 }
 
 .workbench-flow-reset:focus-visible {
-    outline: 2px solid var(--user-primary, var(--wb-accent-creative));
+    outline: 2px solid var(--control-focus-ring);
     outline-offset: 2px;
 }
 
@@ -2012,18 +2024,18 @@
     padding: 0 12px;
     border: 0;
     border-radius: 999px;
-    background: color-mix(in srgb, var(--user-primary, var(--wb-accent-creative)) 10%, var(--wb-surface));
-    color: var(--user-primary, var(--wb-accent-creative));
+    background: var(--wb-muted);
+    color: var(--wb-text-muted);
     font: inherit;
     font-size: 12px;
     font-weight: 620;
     cursor: pointer;
-    transition: background-color 160ms ease, transform 160ms ease;
+    transition: background-color 150ms ease, color 150ms ease;
 }
 
 .workbench-goal-heading > button:hover {
-    background: color-mix(in srgb, var(--user-primary, var(--wb-accent-creative)) 17%, var(--wb-surface));
-    transform: translateY(-1px);
+    background: var(--wb-hover);
+    color: var(--wb-text);
 }
 
 .workbench-goal-heading > button svg {
@@ -2052,7 +2064,7 @@
     font-size: 12px;
     font-weight: 560;
     cursor: pointer;
-    transition: background-color 160ms ease, color 160ms ease, box-shadow 160ms ease;
+    transition: background-color 150ms ease, color 150ms ease;
 }
 
 .workbench-preset-chip:hover {
@@ -2060,10 +2072,10 @@
 }
 
 .workbench-preset-chip.is-active {
-    background: color-mix(in srgb, var(--user-primary, var(--wb-accent-creative)) 14%, var(--wb-surface));
-    color: var(--user-primary, var(--wb-accent-creative));
+    background: var(--control-selected-bg);
+    color: var(--control-selected-fg);
     font-weight: 660;
-    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--user-primary, var(--wb-accent-creative)) 36%, transparent);
+    box-shadow: none;
 }
 
 .workbench-goal-grid {
@@ -2088,18 +2100,17 @@
     color: var(--wb-text);
     text-align: left;
     cursor: pointer;
-    transition: transform 180ms ease, background-color 180ms ease;
+    transition: background-color 150ms ease, color 150ms ease;
 }
 
 .workbench-goal-card:hover,
 .workbench-goal-card:focus-visible {
     background: var(--wb-hover);
-    transform: translateY(-2px);
 }
 
 .workbench-goal-card:focus-visible,
 .workbench-goal-heading > button:focus-visible {
-    outline: 2px solid var(--user-focus-ring, var(--user-primary, var(--wb-accent-creative)));
+    outline: 2px solid var(--control-focus-ring);
     outline-offset: 2px;
 }
 
@@ -2108,8 +2119,8 @@
     display: grid;
     place-items: center;
     overflow: hidden;
-    background: color-mix(in srgb, var(--wb-goal-accent, var(--wb-accent-creative)) 13%, var(--wb-surface));
-    color: var(--wb-goal-accent, var(--wb-accent-creative));
+    background: var(--wb-muted);
+    color: var(--wb-text-muted);
 }
 
 .workbench-goal-icon {
@@ -2156,12 +2167,11 @@
 .workbench-goal-arrow {
     color: var(--wb-text-soft);
     font-size: 16px;
-    transition: transform 180ms ease, color 180ms ease;
+    transition: color 150ms ease;
 }
 
 .workbench-goal-card:hover .workbench-goal-arrow {
-    color: var(--wb-goal-accent, var(--wb-accent-creative));
-    transform: translateX(2px);
+    color: var(--wb-text);
 }
 
 .workbench-goal-card.is-product,
@@ -2261,16 +2271,16 @@
 .workbench-stage-frame {
     width: min(100%, 520px, 44svh);
     border-radius: 22px;
-    background: linear-gradient(145deg, color-mix(in srgb, var(--user-primary, var(--wb-accent-creative)) 8%, var(--wb-muted)), var(--wb-muted));
-    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--wb-edge) 55%, transparent), 0 16px 40px color-mix(in srgb, var(--user-ink) 8%, transparent);
+    background: var(--wb-muted);
+    box-shadow: none;
 }
 
 .workbench-empty-mark {
     width: 62px;
     height: 62px;
     border-radius: 19px;
-    background: color-mix(in srgb, var(--user-primary, var(--wb-accent-creative)) 13%, var(--wb-surface));
-    color: var(--user-primary, var(--wb-accent-creative));
+    background: var(--wb-surface);
+    color: var(--wb-text-muted);
 }
 
 .workbench-empty-mark svg {
@@ -2321,11 +2331,11 @@
 }
 
 .workbench-history-panel .workbench-task-copy small {
-    font-size: 11px;
+    font-size: 12px;
 }
 
 .workbench-history-panel .workbench-task-copy em {
-    font-size: 10px;
+    font-size: 12px;
 }
 
 @media (max-width: 1439px) {
@@ -2350,8 +2360,8 @@
     padding: 18px 19px 10px;
     border: 0;
     border-radius: 18px;
-    background: linear-gradient(145deg, color-mix(in srgb, var(--wb-surface) 98%, var(--wb-panel-glow)), color-mix(in srgb, var(--wb-muted) 86%, var(--wb-surface)));
-    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--user-primary, var(--wb-accent-creative)) 10%, var(--wb-edge)), 0 12px 30px color-mix(in srgb, var(--user-ink) 5%, transparent);
+    background: var(--wb-muted);
+    box-shadow: none;
 }
 
 .workbench-prompt-surface textarea.ant-input,

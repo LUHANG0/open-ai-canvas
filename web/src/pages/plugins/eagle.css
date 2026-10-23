@@ -58,7 +58,7 @@
     align-items: center;
     border-radius: var(--r-md);
     padding: 6px 4px;
-    transition: background-color var(--motion-state) ease-out, color var(--motion-state) ease-out;
+    transition: var(--control-state-transition);
 }
 
 .eagle-library-page .eagle-folder-tree-title {
@@ -82,31 +82,10 @@
 }
 
 .eagle-library-page .eagle-folder-tree .ant-tree-node-content-wrapper:focus-visible {
-    outline: 2px solid var(--ring);
+    outline: 2px solid var(--control-focus-ring);
     outline-offset: 1px;
 }
 
-.eagle-library-page .eagle-folder-collapse {
-    display: grid;
-    width: 28px;
-    height: 28px;
-    place-items: center;
-    border: 0;
-    border-radius: var(--r-md);
-    background: transparent;
-    color: inherit;
-    transition: background-color var(--motion-state) ease-out, color var(--motion-state) ease-out;
-}
-
-.eagle-library-page .eagle-folder-collapse:hover {
-    background: color-mix(in srgb, var(--foreground) 7%, transparent);
-    color: var(--foreground);
-}
-
-.eagle-library-page .eagle-folder-collapse:focus-visible {
-    outline: 2px solid var(--ring);
-    outline-offset: 1px;
-}
 .eagle-library-page .eagle-folder-empty {
     padding: var(--space-3) 4px;
     color: color-mix(in srgb, var(--foreground) 42%, transparent);
@@ -130,7 +109,7 @@
     background: rgba(10, 10, 10, .62);
     color: #fff;
     opacity: 0;
-    transition: background-color var(--motion-state) ease-out, opacity var(--motion-state) ease-out;
+    transition: var(--control-state-transition), opacity var(--control-motion-duration) ease-out;
 }
 
 .eagle-library-page .asset-library-card:hover .eagle-cover-download,
@@ -144,7 +123,7 @@
 }
 
 .eagle-library-page .eagle-cover-download:focus-visible {
-    outline: 2px solid var(--ring);
+    outline: 2px solid var(--control-focus-ring);
     outline-offset: 2px;
 }
 
@@ -156,7 +135,7 @@
     background: color-mix(in srgb, var(--foreground) 2%, transparent);
 }
 
-.eagle-library-page .eagle-drawer-preview {
+.eagle-library-overlay .eagle-drawer-preview {
     display: grid;
     min-height: 220px;
     max-height: 52vh;
@@ -166,7 +145,7 @@
     background: color-mix(in srgb, var(--foreground) 5%, transparent);
 }
 
-.eagle-library-page .eagle-drawer-preview img {
+.eagle-library-overlay .eagle-drawer-preview img {
     display: block;
     width: 100%;
     height: 100%;
@@ -174,16 +153,24 @@
     object-fit: contain;
 }
 
-.eagle-library-page .eagle-drawer-download {
+.eagle-library-overlay .eagle-drawer-download {
     width: 100%;
-    background: var(--primary);
-    color: var(--primary-foreground);
-    transition: background-color var(--motion-state) ease-out;
+    background: var(--button-primary-bg);
+    color: var(--button-primary-fg);
+    transition: var(--control-state-transition);
 }
 
-.eagle-library-page .eagle-drawer-download:hover {
-    background: color-mix(in srgb, var(--primary) 88%, var(--foreground));
-    color: var(--primary-foreground);
+.eagle-library-overlay .eagle-drawer-download:hover {
+    background: var(--button-primary-hover-bg);
+}
+
+.eagle-library-overlay .eagle-drawer-download:active {
+    background: var(--button-primary-active-bg);
+}
+
+.eagle-library-overlay .eagle-drawer-download:focus-visible {
+    outline: 2px solid var(--control-focus-ring);
+    outline-offset: 2px;
 }
 
 @media (max-width: 640px) {
@@ -199,7 +186,7 @@
 @media (prefers-reduced-motion: reduce) {
     .eagle-library-page .eagle-folder-tree .ant-tree-node-content-wrapper,
     .eagle-library-page .eagle-cover-download,
-    .eagle-library-page .eagle-drawer-download {
+    .eagle-library-overlay .eagle-drawer-download {
         transition: none;
     }
 

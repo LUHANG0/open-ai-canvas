@@ -80,7 +80,7 @@ export function StyleAssetBindingModal({ open, profile, onClose, onApply }: Styl
 
     return (
         <AppModal
-            rootClassName="style-asset-binding-modal"
+            rootClassName="workspace-utility-overlay style-asset-binding-modal"
             open={open}
             title={null}
             footer={null}

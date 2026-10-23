@@ -1,4 +1,5 @@
 import { Check } from "lucide-react";
+import { handleAdminRadioKeyDown } from "@/pages/admin/ui/radio-navigation";
 
 import { BANNER_NOTICE_TYPES, normalizeBannerNoticeType, type BannerNoticeType } from "@/lib/announcements/banner-notice";
 
@@ -10,7 +11,7 @@ export function BannerNoticeTypeSelector({ value, onChange }: { value: string; o
     const active = normalizeBannerNoticeType(value);
 
     return (
-        <div className="admin-banner-type-grid" role="radiogroup" aria-label="通知类型">
+        <div className="admin-banner-type-grid" role="radiogroup" aria-label="通知类型" onKeyDown={handleAdminRadioKeyDown}>
             {BANNER_NOTICE_TYPES.map((type) => {
                 const selected = active === type.key;
                 return (
@@ -19,6 +20,7 @@ export function BannerNoticeTypeSelector({ value, onChange }: { value: string; o
                         type="button"
                         role="radio"
                         aria-checked={selected}
+                        tabIndex={selected ? 0 : -1}
                         data-banner-type={type.key}
                         className={`admin-banner-type-card${selected ? " is-active" : ""}`}
                         onClick={() => onChange(type.key)}

@@ -1,5 +1,6 @@
+import { AppModal } from "@/components/ui/product/app-modal";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { App, Button, Input, Modal, Spin } from "antd";
+import { App, Button, Input, Spin } from "antd";
 import { Copy, Link2, RefreshCw, Share2, Unlink } from "lucide-react";
 
 import { canvasThemes } from "@/lib/canvas-theme";
@@ -68,7 +69,7 @@ export function CanvasShareModal({ projectId, open, onClose, beforeCreate }: { p
     });
 
     return (
-        <Modal title={<span className="inline-flex items-center gap-2"><Share2 className="size-4" />分享画布</span>} open={open} onCancel={onClose} footer={null} centered width={520} destroyOnHidden>
+        <AppModal rootClassName="workspace-utility-overlay" title={<span className="inline-flex items-center gap-2"><Share2 className="size-4" />分享画布</span>} open={open} onCancel={onClose} footer={null} centered width={520} destroyOnHidden>
             <Spin spinning={loading}>
                 <div className="border-t pt-5" style={{ borderColor: theme.node.stroke }}>
                     <p className="mb-4 text-sm leading-6" style={{ color: theme.node.muted }}>
@@ -93,6 +94,6 @@ export function CanvasShareModal({ projectId, open, onClose, beforeCreate }: { p
                     )}
                 </div>
             </Spin>
-        </Modal>
+        </AppModal>
     );
 }

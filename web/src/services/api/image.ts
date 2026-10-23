@@ -244,7 +244,7 @@ export async function requestImageQuestion(config: AiConfig, messages: AiTextMes
             if (answer === "没有返回内容") onDelta(answer);
             return answer;
         }
-        if (requestConfig.interfaceType === "chat-completion" || !requestConfig.interfaceType) {
+        if (requestConfig.interfaceType === "chat-completion" || requestConfig.interfaceType === "yezonghui-chat" || !requestConfig.interfaceType) {
             const answer =
                 (
                     await requestStreamingChatCompletion(
@@ -286,7 +286,7 @@ export async function requestToolResponse(config: AiConfig, messages: ResponseIn
             return await requestGeminiStreamingResponse(requestConfig, toGeminiBody(requestConfig, messages, toGeminiToolOptions(tools, toolChoice)), onDelta, options);
         }
         if (requestConfig.interfaceType === "claude-api") return await requestStreamingClaude(requestConfig, toClaudeBody(requestConfig, messages, tools), onDelta, options);
-        if (requestConfig.interfaceType === "chat-completion" || !requestConfig.interfaceType) {
+        if (requestConfig.interfaceType === "chat-completion" || requestConfig.interfaceType === "yezonghui-chat" || !requestConfig.interfaceType) {
             const chatPayload: Record<string, unknown> = {
                 model: requestConfig.model,
                 messages: toChatCompletionMessages(withSystemMessage(requestConfig, messages)),

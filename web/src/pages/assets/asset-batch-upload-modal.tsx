@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from "react";
-import { App, Button, Modal, Progress } from "antd";
+import { App, Button, Progress } from "antd";
+import { AppModal } from "@/components/ui/product/app-modal";
 import { StatusBadge } from "@/components/ui/base/badges";
 import { FileImage, UploadCloud, X } from "lucide-react";
 
@@ -12,7 +13,7 @@ import { Select } from "@/components/ui/base/select";
 
 type BatchItem = { id: string; file: File; status: "queued" | "uploading" | "done" | "error"; error?: string; percent?: number };
 
-export function AssetBatchUploadModal({ open, defaultFolderId, folders, onClose, onComplete }: { open: boolean; defaultFolderId: string; folders: AssetFolder[]; onClose: () => void; onComplete: () => Promise<void> }) {
+export function AssetBatchUploadModal({ open, defaultFolderId, folders, onClose, afterClose, onComplete }: { open: boolean; defaultFolderId: string; folders: AssetFolder[]; onClose: () => void; afterClose?: () => void; onComplete: () => Promise<void> }) {
     const { message } = App.useApp();
     const addAsset = useAssetStore((state) => state.addAsset);
     const [items, setItems] = useState<BatchItem[]>([]);
@@ -88,12 +89,12 @@ export function AssetBatchUploadModal({ open, defaultFolderId, folders, onClose,
         else onClose();
     };
 
-    return <Modal className="library-modal library-batch-upload-modal" title="批量上传图片" open={open} onCancel={close} footer={null} destroyOnHidden>
+    return <AppModal className="library-modal library-batch-upload-modal" title="批量上传图片" open={open} onCancel={close} footer={null} destroyOnHidden focusable={afterClose ? { focusTriggerAfterClose: false } : undefined} afterClose={afterClose}>
         <div className="space-y-4">
             <div className="grid gap-3 sm:grid-cols-3">
-                <label className="text-xs font-medium text-foreground/65">业务分类<Select className="mt-1 w-full" value={category} options={ASSET_CATEGORY_OPTIONS} onChange={(value) => setCategory(value)} /></label>
-                <label className="text-xs font-medium text-foreground/65">自定义分类<Select className="mt-1 w-full" value={folderId} options={folderOptions} onChange={setFolderId} /></label>
-                <label className="text-xs font-medium text-foreground/65">公共标签<Select mode="tags" className="mt-1 w-full" value={tags} tokenSeparators={[",", "，"]} onChange={setTags} placeholder="输入后回车" /></label>
+                <label className="text-xs font-medium text-foreground/65">业务分类<Select ariaLabel="批量上传业务分类" className="mt-1 w-full" value={category} options={ASSET_CATEGORY_OPTIONS} onChange={(value) => setCategory(value)} /></label>
+                <label className="text-xs font-medium text-foreground/65">自定义分类<Select ariaLabel="批量上传自定义分类" className="mt-1 w-full" value={folderId} options={folderOptions} onChange={setFolderId} /></label>
+                <label className="text-xs font-medium text-foreground/65">公共标签<Select ariaLabel="批量上传公共标签" mode="tags" className="mt-1 w-full" value={tags} tokenSeparators={[",", "，"]} onChange={setTags} placeholder="输入后回车" /></label>
             </div>
             <button
                 type="button"
@@ -113,5 +114,5 @@ export function AssetBatchUploadModal({ open, defaultFolderId, folders, onClose,
             </div> : null}
             <div className="flex justify-end gap-2"><Button onClick={close} disabled={uploading}>取消</Button><Button type="primary" icon={<UploadCloud className="size-4" />} onClick={() => void uploadBatch()} disabled={!items.some((item) => item.status === "queued" || item.status === "error")} loading={uploading}>{failedItems.length ? `重试失败项 (${failedItems.length})` : "开始上传"}</Button></div>
         </div>
-    </Modal>;
+    </AppModal>;
 }

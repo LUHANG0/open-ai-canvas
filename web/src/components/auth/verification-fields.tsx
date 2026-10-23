@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { App, Button, Input } from "antd";
 import { startVerification, type VerificationDraft, type VerificationMethod, type VerificationPurpose } from "@/services/api/verification";
 
@@ -10,13 +10,15 @@ function CodeField({ label, value, onChange, onSend, sending, remaining, targetR
     onSend: () => void; sending: boolean; remaining: number; targetReady: boolean;
     disabled: boolean; placeholder: string; autoComplete: string; inputMode: "text" | "email" | "tel" | "numeric"; sendLabel: string;
 }) {
+    const inputId = useId();
     const counting = remaining > 0;
     const blocked = disabled || sending || counting || !targetReady;
     return (
-        <label className="block space-y-2">
-            <span className="auth-scene-label text-xs font-medium">{label}</span>
+        <div className="space-y-2">
+            <label htmlFor={inputId} className="auth-scene-label block text-sm font-medium">{label}</label>
             <span className={`auth-code-field${sending ? " is-busy" : ""}`}>
                 <Input
+                    id={inputId}
                     size="large"
                     variant="borderless"
                     value={value}
@@ -38,7 +40,7 @@ function CodeField({ label, value, onChange, onSend, sending, remaining, targetR
                     {counting ? `${remaining} 秒后重发` : sendLabel}
                 </Button>
             </span>
-        </label>
+        </div>
     );
 }
 
@@ -76,8 +78,8 @@ export function VerificationFields({ purpose, method, value, onChange, disabled 
     };
     const sendLabel = method === "sms_email" ? "获取验证码" : "获取验证码";
     return <div className="space-y-4">
-        {sms && <label className="block space-y-2"><span className="auth-scene-label text-xs font-medium">手机号</span><Input size="large" value={value.phone} onChange={(e) => changeTarget("phone", e.target.value)} autoComplete="tel" inputMode="tel" placeholder="中国大陆手机号，支持 +86" required disabled={disabled || sending} /></label>}
-        {email && <label className="block space-y-2"><span className="auth-scene-label text-xs font-medium">邮箱</span><Input size="large" type="email" value={value.email} onChange={(e) => changeTarget("email", e.target.value)} autoComplete="email" placeholder="请输入邮箱" required disabled={disabled || sending} /></label>}
+        {sms && <label className="block space-y-2"><span className="auth-scene-label text-sm font-medium">手机号</span><Input size="large" value={value.phone} onChange={(e) => changeTarget("phone", e.target.value)} autoComplete="tel" inputMode="tel" placeholder="中国大陆手机号，支持 +86" required disabled={disabled || sending} /></label>}
+        {email && <label className="block space-y-2"><span className="auth-scene-label text-sm font-medium">邮箱</span><Input size="large" type="email" value={value.email} onChange={(e) => changeTarget("email", e.target.value)} autoComplete="email" placeholder="请输入邮箱" required disabled={disabled || sending} /></label>}
         {/* 双通道（sms_email）一次请求同时下发两种验证码，此时按钮文案不区分通道。 */}
         {(sms || email) && (
             <CodeField

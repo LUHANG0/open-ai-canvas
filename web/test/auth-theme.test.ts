@@ -56,7 +56,10 @@ describe("authentication follows the application theme", () => {
         expect(css).toContain("-webkit-text-fill-color: var(--foreground) !important");
         expect(css).toContain("box-shadow: 0 0 0 1000px var(--auth-card-bg) inset !important");
         expect(css).toContain(".auth-scene-link:focus-visible");
-        expect(css).toContain("box-shadow: 0 0 0 var(--focus-ring-width) color-mix(in srgb, var(--ring) 18%, transparent)");
+        expect(css).toContain(".auth-scene-card .ant-input-affix-wrapper:has(input:focus-visible)");
+        expect(css).toContain("outline: 1px solid var(--control-focus-ring) !important");
+        expect(css).toContain(".auth-code-field:has(input:focus-visible)");
+        expect(css).toContain(".auth-code-field .auth-code-send:focus-visible");
     });
 
     test("custom auth palettes are preserved per mode", () => {

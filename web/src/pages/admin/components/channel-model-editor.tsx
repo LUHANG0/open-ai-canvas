@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
-import { Alert, App, AutoComplete, Button, Form, Input, Segmented, Switch, Tabs } from "antd";
+import { Alert, App, AutoComplete, Button, Form, Input, Switch, Tabs } from "antd";
+import { AdminSegmented } from "@/pages/admin/ui/controls";
 import { useAdminContext } from "../admin-context";
 import { AdminModal } from "@/pages/admin/ui/overlays";
 import { FlaskConical, Plus } from "lucide-react";
@@ -333,7 +334,8 @@ export function ChannelModelEditor({
                                         <SectionHeading title="能力与协议" description="先选任务类型，再选择对应的调用协议；更换后请核对参数与价格。" />
                                         <div className="admin-model-editor-section-content admin-model-protocol-grid">
                                             <Form.Item name="capability" label="模型能力" rules={[{ required: true }]}>
-                                                <Segmented
+                                                <AdminSegmented
+                                                    ariaLabel="模型能力"
                                                     block
                                                     options={[
                                                         { label: "文本", value: "text" },

@@ -54,7 +54,7 @@
 .profile-overview-identity strong {
     overflow: hidden;
     color: var(--user-ink);
-    font-size: var(--fs-title);
+    font-size: var(--fs-body-lg);
     font-weight: 650;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -99,8 +99,8 @@
     align-items: center;
     justify-content: center;
     border-radius: var(--user-radius-control);
-    background: var(--user-accent-soft);
-    color: var(--user-accent);
+    background: var(--user-surface-muted);
+    color: var(--user-ink-muted);
 }
 .profile-card-heading h4 {
     margin: 0;
@@ -235,27 +235,31 @@
     font-size: var(--fs-caption);
     transition:
         background-color var(--motion-dur-fast) var(--motion-ease-out),
-        border-color var(--motion-dur-fast) var(--motion-ease-out);
+        border-color var(--motion-dur-fast) var(--motion-ease-out),
+        color var(--motion-dur-fast) var(--motion-ease-out);
 }
-.profile-default-avatar-choice:hover {
+.profile-default-avatar-choice:not(:disabled):hover {
     background: var(--user-surface-hover);
 }
 .profile-default-avatar-choice[aria-pressed="true"] {
-    border-color: var(--user-accent);
-    background: var(--user-accent-soft);
-    color: var(--user-accent);
+    border-color: var(--control-selected-border);
+    background: var(--control-selected-bg);
+    color: var(--control-selected-fg);
+}
+.profile-default-avatar-choice[aria-pressed="true"]:not(:disabled):hover {
+    background: var(--control-selected-hover-bg);
 }
 .profile-default-avatar-choice:focus-visible {
-    outline: 2px solid var(--user-accent);
+    outline: 2px solid var(--control-focus-ring);
     outline-offset: 2px;
 }
 .profile-default-avatar-choice:disabled {
     cursor: wait;
-    opacity: 0.65;
+    color: var(--user-ink-muted);
 }
 .profile-default-avatar-icon.ant-avatar {
-    color: var(--user-accent);
-    background: var(--user-accent-soft);
+    color: var(--user-ink-muted);
+    background: var(--user-surface-muted);
 }
 @media (prefers-reduced-motion: reduce) {
     .profile-default-avatar-choice {

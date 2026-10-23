@@ -9,7 +9,6 @@ import { agentAvatarClipForState, agentAvatarStateForRunStatus, agentCopy, DEFAU
 import { type CSSProperties, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { usePopoverAnchorAlign } from "@/hooks/use-popover-anchor-align";
 import { useAgentLauncherPosition } from "./use-agent-launcher-position";
-import { motion } from "motion/react";
 import { cn } from "@/lib/utils";
 import { Live2DAvatar } from "./live2d-avatar";
 import { agentAvatarBundleFileURL, live2DModelURL } from "@/services/api/appearance";
@@ -104,7 +103,7 @@ export function AgentLauncher({
     const width = keepsAvatarSize ? Math.round(height * aspectRatio) : 76;
     const { position, dragging, handlers } = useAgentLauncherPosition(onOpen, width, height);
     return (
-        <motion.button
+        <button
             type="button"
             aria-label={`打开${appearance.agentName}`}
             title={live && live2DError ? live2DError : `${approvalPending ? "Agent 等待你的审批" : "打开 Agent 助手"} · 拖动可调整位置，聚焦后可用方向键移动`}
@@ -120,9 +119,6 @@ export function AgentLauncher({
             data-canvas-no-zoom
             onDragStart={(event) => event.preventDefault()}
             {...handlers}
-            whileHover={reducedMotion || dragging ? undefined : { scale: 1.035 }}
-            whileTap={reducedMotion || dragging ? undefined : { scale: 0.96 }}
-            transition={{ duration: reducedMotion ? 0 : 0.18 }}
         >
             {live ? (
                 <Live2DAvatar
@@ -152,7 +148,7 @@ export function AgentLauncher({
             ) : null}
             <span className={cn("canvas-agent-launcher-status", approvalPending && "is-pending")} style={{ "--canvas-agent-status-color": statusColor } as CSSProperties} />
             {approvalPending ? <span className="canvas-agent-launcher-badge">待审批</span> : null}
-        </motion.button>
+        </button>
     );
 }
 
@@ -185,8 +181,8 @@ export function AgentHeader({
 }) {
     const appearance = useAppearanceStore((state) => state.appearance.canvas) || DEFAULT_CANVAS_APPEARANCE;
     return (
-        <header data-agent-drag-handle className="agent-panel-header flex shrink-0 items-center gap-3">
-            <div className="min-w-0 flex-1">
+        <header data-agent-drag-handle className="agent-panel-header agent-panel-header--conversation flex shrink-0 items-center gap-3">
+            <div className="agent-panel-heading min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                     <span className="agent-panel-title">
                         {agentCopy(appearance.panelTitle, appearance.agentName)}

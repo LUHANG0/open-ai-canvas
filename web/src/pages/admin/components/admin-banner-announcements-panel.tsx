@@ -1,4 +1,5 @@
-import { App, Button, DatePicker, Form, Input, InputNumber, Modal, Popconfirm, Switch } from "antd";
+import { App, Button, DatePicker, Form, Input, InputNumber, Popconfirm, Switch } from "antd";
+import { AdminModal } from "@/pages/admin/ui/overlays";
 import type { ColumnsType } from "antd/es/table";
 import { Trash2, Edit3, Search } from "lucide-react";
 import dayjs, { type Dayjs } from "dayjs";
@@ -127,6 +128,8 @@ export default function AdminBannerAnnouncementsPanel({
             return;
         }
         modal.confirm({
+            rootClassName: "admin-modal-root",
+            className: "admin-modal-panel",
             title: "放弃未保存的修改？",
             content: "关闭后本次编辑的内容不会保留。",
             okText: "放弃修改",
@@ -362,7 +365,7 @@ export default function AdminBannerAnnouncementsPanel({
                 }}
             />
 
-            <Modal
+            <AdminModal
                 title={dialog?.mode === "edit" ? "编辑常驻通知" : "新建常驻通知"}
                 open={Boolean(dialog)}
                 onCancel={requestClose}
@@ -440,7 +443,7 @@ export default function AdminBannerAnnouncementsPanel({
                         <DatePicker.RangePicker showTime format="YYYY-MM-DD HH:mm" className="w-full" />
                     </Form.Item>
                 </Form>
-            </Modal>
+            </AdminModal>
         </div>
     );
 }

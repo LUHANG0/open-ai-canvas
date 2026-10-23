@@ -1,4 +1,5 @@
-import { Modal } from "antd";
+import { AppModal } from "@/components/ui/product/app-modal";
+
 
 import { PREVIS_TEMPLATES, type PrevisTemplateId } from "@/lib/canvas/previs/previs-templates";
 
@@ -11,7 +12,7 @@ import { PREVIS_TEMPLATES, type PrevisTemplateId } from "@/lib/canvas/previs/pre
  */
 export function CanvasPrevisTemplateModal({ open, onClose, onSelect }: { open: boolean; onClose: () => void; onSelect: (templateId: PrevisTemplateId) => void }) {
     return (
-        <Modal open={open} onCancel={onClose} footer={null} width={560} title="选择镜头模板" destroyOnHidden>
+        <AppModal rootClassName="workspace-utility-overlay" open={open} onCancel={onClose} footer={null} width={560} title="选择镜头模板" destroyOnHidden>
             <div className="previs-template-grid">
                 {PREVIS_TEMPLATES.map((template) => (
                     <button
@@ -29,6 +30,6 @@ export function CanvasPrevisTemplateModal({ open, onClose, onSelect }: { open: b
                     </button>
                 ))}
             </div>
-        </Modal>
+        </AppModal>
     );
 }

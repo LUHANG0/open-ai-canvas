@@ -338,6 +338,16 @@ func ValidateManifest(manifest Manifest) error {
 				return fmt.Errorf("provider %q agent response mapping is required when agent operation is declared", provider.ID)
 			}
 		}
+		if provider.StreamingFormat != "" {
+			if len(provider.Capabilities) != 1 || provider.Capabilities[0] != CapabilityText || (provider.StreamingFormat != "chat-completion" && provider.StreamingFormat != "responses" && provider.StreamingFormat != "claude-api") {
+				return fmt.Errorf("provider %q has unsupported streaming format %q", provider.ID, provider.StreamingFormat)
+			}
+		}
+		if policy := provider.Polling; policy != nil {
+			if provider.Poll == nil || policy.IntervalSeconds < 1 || policy.IntervalSeconds > 300 || policy.TransientRetryLimit < 0 || policy.TransientRetryLimit > 10 {
+				return fmt.Errorf("provider %q has invalid polling policy", provider.ID)
+			}
+		}
 		if provider.Poll != nil {
 			if err := validateManifestOperation(*provider.Poll); err != nil {
 				return fmt.Errorf("provider %q poll operation: %w", provider.ID, err)
@@ -425,6 +435,8 @@ func normalizeManifestForProvider(manifest *Manifest, index int) error {
 	manifest.Metadata.Cancel = operationSummaryPtr(provider.Cancel)
 	manifest.Metadata.ContentType = provider.Create.ContentType
 	manifest.Metadata.RequiresPublicMediaURLs = provider.RequiresPublicMediaURLs
+	manifest.Metadata.StreamingFormat = provider.StreamingFormat
+	manifest.Metadata.Polling = provider.Polling
 	manifest.Metadata.Kind = provider.Kind
 	manifest.Metadata.Execution = manifest.Runtime.Backend
 	manifest.Create = provider.Create

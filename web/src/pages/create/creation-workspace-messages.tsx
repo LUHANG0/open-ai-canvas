@@ -46,7 +46,8 @@ export function CreationMessageView({
     const brandName = useAppearanceStore((state) => state.appearance.brandName);
     if (item.role === "user") return <CreationUserMessage item={item} shotNumber={shotNumber} onEditUserMessage={onEditUserMessage} />;
     const mode = item.mode || "text";
-    const stateLabel = item.status === "pending" ? "生成中" : item.status === "cancelled" ? "已停止" : item.status === "error" ? "生成失败" : "";
+    const generating = item.status === "pending" || item.status === "streaming";
+    const stateLabel = generating ? "生成中" : item.status === "cancelled" ? "已停止" : item.status === "error" ? "生成失败" : item.status === "done" && mode === "text" ? "已完成" : "";
     const heading =
         mode !== "text" ? (
             <>
@@ -84,7 +85,7 @@ export function CreationMessageView({
         );
     const toolStatus: GenerationToolStatus = item.status === "pending" ? "running" : item.status === "error" ? "error" : item.status === "cancelled" ? "cancelled" : "completed";
     return (
-        <article className={`creation-assistant-message is-${mode}`}>
+        <article className={`creation-assistant-message is-${mode}`} aria-busy={generating}>
             {mode === "text" ? (
                 <>
                     <div className="creation-message-heading">{heading}</div>
@@ -96,12 +97,12 @@ export function CreationMessageView({
                     <div className="creation-message-content">
                         {item.content ? (
                             <AIMessageMarkdown isStreaming={item.status === "streaming"}>{item.content}</AIMessageMarkdown>
-                        ) : (
-                            <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                        ) : generating ? (
+                            <span className="creation-text-pending" role="status">
                                 <WorkingDots dotSize={5} gap={2} />
                                 <span>正在生成…</span>
                             </span>
-                        )}
+                        ) : item.status === "cancelled" || item.status === "error" ? null : <span>没有返回文本内容</span>}
                     </div>
                 </>
             ) : (
@@ -109,9 +110,9 @@ export function CreationMessageView({
                     <MediaResult item={item} onRetryFailure={onRetryFailure} onCreateVariant={onCreateVariant} onContinueCanvas={onContinueCanvas} openingCanvas={openingCanvas} />
                 </GenerationToolCard>
             )}
-            {item.error && mode === "text" ? (
-                <div className="creation-message-error">
-                    <span>{generationErrorMessage(item.error)}</span>
+            {(item.error || item.status === "error") && mode === "text" ? (
+                <div className="creation-message-error" role="status">
+                    <span>{generationErrorMessage(item.error || "生成失败")}</span>
                     <button type="button" onClick={onRetryFailure}>
                         <RefreshCw />
                         重新生成
@@ -283,7 +284,7 @@ export function MediaResult({
     if (item.status === "pending") return <CreationMediaPending mode={item.mode || "image"} ratio={item.settings?.ratio} />;
     if ((item.status === "error" || item.status === "cancelled") && !expectedResultCount)
         return (
-            <div className="creation-media-error">
+            <div className="creation-media-error" role="status">
                 <span>{item.status === "cancelled" ? item.content || "已停止" : generationErrorMessage(item.error || "生成失败")}</span>
                 <button type="button" onClick={onRetryFailure}>
                     <RefreshCw />
@@ -291,6 +292,7 @@ export function MediaResult({
                 </button>
             </div>
         );
+    if (resolving && !displayResultUrls.length) return <div className="creation-media-empty" role="status"><WorkingDots /><span>正在加载生成结果…</span></div>;
     // 远端结果首次解析中不显示空态，避免先闪「没有返回可预览结果」再出现结果。
     if (!expectedResultCount || (!displayResultUrls.length && !resolving))
         return (
@@ -367,11 +369,11 @@ export function MediaResult({
 export function CreationMediaPending({ mode, ratio }: { mode: CreationMode; ratio?: string }) {
     const brandName = useAppearanceStore((state) => state.appearance.brandName);
     return (
-        <div className={`creation-media-pending is-${mode}`} style={{ aspectRatio: creationMediaAspectRatio(ratio, mode) }} aria-live="polite">
+        <div className={`creation-media-pending is-${mode}`} style={{ aspectRatio: creationMediaAspectRatio(ratio, mode) }} role="status">
             <span className="creation-media-pending-icon">
                 <WorkingDots dotSize={7} gap={3} minOpacity={0.3} />
             </span>
-            <span className="sr-only">
+            <span className="creation-media-pending-label">
                 {brandName}正在生成{mode === "video" ? "视频" : "图像"}
             </span>
         </div>

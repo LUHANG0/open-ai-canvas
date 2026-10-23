@@ -25,16 +25,6 @@
     pointer-events: none;
 }
 
-.canvas-entry-ripple::before {
-    content: "";
-    position: absolute;
-    width: 720px;
-    height: 720px;
-    border-radius: var(--r-full);
-    background: radial-gradient(circle, color-mix(in srgb, var(--canvas-entry-text) 7%, transparent) 0%, transparent 62%);
-    transform: translate(-50%, -50%);
-}
-
 .canvas-entry-ripple > span {
     position: absolute;
     width: 920px;
@@ -159,16 +149,16 @@
     border: 1px solid var(--canvas-entry-border);
     border-radius: var(--r-3xl);
     background: var(--canvas-entry-surface);
-    box-shadow: 0 1px 2px color-mix(in srgb, black 6%, transparent), 0 18px 48px var(--canvas-entry-shadow);
+    box-shadow: none;
     text-align: left;
     -webkit-backdrop-filter: blur(16px);
     backdrop-filter: blur(16px);
-    transition: border-color var(--motion-state) ease, box-shadow var(--motion-state) ease;
+    transition: border-color var(--control-motion-duration) ease, box-shadow var(--control-motion-duration) ease;
 }
 
 .canvas-entry-composer:focus-within {
     border-color: color-mix(in srgb, var(--canvas-entry-text) 28%, transparent);
-    box-shadow: 0 0 0 4px color-mix(in srgb, var(--canvas-entry-text) 6%, transparent), 0 18px 48px var(--canvas-entry-shadow);
+    box-shadow: 0 0 0 2px var(--canvas-entry-accent);
 }
 
 .canvas-entry-composer textarea {
@@ -207,7 +197,7 @@
     background: transparent;
     color: var(--canvas-entry-muted);
     font-size: var(--fs-caption);
-    transition: background-color var(--motion-state) ease, color var(--motion-state) ease;
+    transition: background-color var(--control-motion-duration) ease, color var(--control-motion-duration) ease;
 }
 
 .canvas-entry-ghost svg { width: 14px; height: 14px; }
@@ -230,12 +220,11 @@
     border-radius: var(--r-full);
     background: var(--canvas-entry-accent);
     color: var(--canvas-entry-on-accent);
-    transition: opacity var(--motion-state) ease, transform var(--motion-state) var(--motion-ease-out);
+    transition: opacity var(--control-motion-duration) ease, background-color var(--control-motion-duration) ease;
 }
 
 .canvas-entry-send svg { width: 16px; height: 16px; stroke-width: 2.2; }
-.canvas-entry-send:not(:disabled):hover { transform: translateY(-1px); }
-.canvas-entry-send:not(:disabled):active { transform: none; }
+.canvas-entry-send:not(:disabled):hover { opacity: 0.85; }
 .canvas-entry-shell .canvas-entry-send:disabled { cursor: not-allowed; opacity: 0.28; }
 
 /* ---------- 灵感示例 ---------- */
@@ -256,7 +245,7 @@
     color: var(--canvas-entry-muted);
     font-size: var(--fs-label);
     white-space: nowrap;
-    transition: background-color var(--motion-state) ease, color var(--motion-state) ease;
+    transition: background-color var(--control-motion-duration) ease, color var(--control-motion-duration) ease;
 }
 
 .canvas-entry-suggestions button:hover { background: var(--canvas-entry-chip-hover); color: var(--canvas-entry-text); }
@@ -281,13 +270,12 @@
     background: color-mix(in srgb, var(--canvas-entry-surface) 60%, transparent);
     color: var(--canvas-entry-text);
     text-align: left;
-    transition: background-color var(--motion-state) ease, border-color var(--motion-state) ease, transform var(--motion-state) var(--motion-ease-out);
+    transition: background-color var(--control-motion-duration) ease, border-color var(--control-motion-duration) ease;
 }
 
 .canvas-entry-paths button:hover {
     border-color: color-mix(in srgb, var(--canvas-entry-text) 20%, transparent);
     background: var(--canvas-entry-surface);
-    transform: translateY(-1px);
 }
 
 .canvas-entry-paths svg {

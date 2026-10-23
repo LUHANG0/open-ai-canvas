@@ -222,9 +222,9 @@ export function CanvasViewport({
                 event.preventDefault();
                 return;
             }
-            if (target?.closest(CANVAS_WHEEL_IGNORE_SELECTOR) && !isPinchZoom) {
-                // 内部区域保留纵向滚动，但横向手势不能泄漏为 macOS 浏览器前进/后退。
-                if (event.shiftKey || absX > absY) event.preventDefault();
+            if (target?.closest(CANVAS_WHEEL_IGNORE_SELECTOR)) {
+                // 内部区域保留纵向滚动，缩放及横向手势不能泄漏为页面缩放或浏览器前进/后退。
+                if (isPinchZoom || event.shiftKey || absX > absY) event.preventDefault();
                 return;
             }
 

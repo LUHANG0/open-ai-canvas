@@ -1,16 +1,18 @@
 export type AgentPanelLayout = { left: number; top: number; width: number; height: number };
 export type AgentPanelViewport = { width: number; height: number };
-export type AgentPanelGesture = "move" | "north" | "west" | "northwest";
+export type AgentPanelGesture = "move" | "north" | "west" | "northwest" | "northeast" | "southwest" | "southeast";
 
 export const AGENT_PANEL_LAYOUT_KEY = "canvas:agent-panel-layout:v1";
 const MARGIN = 12;
+const MIN_WIDTH = 360;
+const MIN_HEIGHT = 520;
 const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
 
 export function clampAgentPanelLayout(layout: AgentPanelLayout, viewport: AgentPanelViewport): AgentPanelLayout {
     const maxWidth = Math.max(1, viewport.width - MARGIN * 2);
     const maxHeight = Math.max(1, viewport.height - MARGIN * 2);
-    const width = clamp(layout.width, Math.min(360, maxWidth), maxWidth);
-    const height = clamp(layout.height, Math.min(420, maxHeight), maxHeight);
+    const width = clamp(layout.width, Math.min(MIN_WIDTH, maxWidth), maxWidth);
+    const height = clamp(layout.height, Math.min(MIN_HEIGHT, maxHeight), maxHeight);
     return {
         width,
         height,
@@ -41,9 +43,11 @@ export function defaultAgentPanelLayout(viewport: AgentPanelViewport): AgentPane
 
 export function changeAgentPanelLayout(start: AgentPanelLayout, gesture: AgentPanelGesture, dx: number, dy: number, viewport: AgentPanelViewport): AgentPanelLayout {
     if (gesture === "move") return clampAgentPanelLayout({ ...start, left: start.left + dx, top: start.top + dy }, viewport);
-    const right = start.left + start.width;
-    const bottom = start.top + start.height;
-    const left = gesture === "north" ? start.left : clamp(start.left + dx, MARGIN, right - Math.min(360, start.width));
-    const top = gesture === "west" ? start.top : clamp(start.top + dy, MARGIN, bottom - Math.min(420, start.height));
+    const minWidth = Math.min(MIN_WIDTH, Math.max(1, viewport.width - MARGIN * 2));
+    const minHeight = Math.min(MIN_HEIGHT, Math.max(1, viewport.height - MARGIN * 2));
+    const left = gesture.includes("west") ? clamp(start.left + dx, MARGIN, start.left + start.width - minWidth) : start.left;
+    const top = gesture.includes("north") ? clamp(start.top + dy, MARGIN, start.top + start.height - minHeight) : start.top;
+    const right = gesture.includes("east") ? clamp(start.left + start.width + dx, start.left + minWidth, viewport.width - MARGIN) : start.left + start.width;
+    const bottom = gesture.includes("south") ? clamp(start.top + start.height + dy, start.top + minHeight, viewport.height - MARGIN) : start.top + start.height;
     return { left, top, width: right - left, height: bottom - top };
 }

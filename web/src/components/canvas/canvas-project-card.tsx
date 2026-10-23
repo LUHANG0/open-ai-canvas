@@ -67,6 +67,7 @@ export function CanvasProjectCard({ project, projectName, variant = "library", r
             <div className="app-canvas-project-preview relative">
                 <button
                     type="button"
+                    aria-label={`打开画布 ${project.title}`}
                     className={cn("canvas-project-preview-button block w-full overflow-hidden text-left", compact ? "aspect-[16/10]" : "aspect-video")}
                     onClick={(event) => {
                         event.stopPropagation();
@@ -90,6 +91,7 @@ export function CanvasProjectCard({ project, projectName, variant = "library", r
                     {editing && !readOnly ? (
                         <Input
                             className="canvas-project-title-input"
+                            aria-label="画布名称"
                             value={editingTitle}
                             onClick={(event) => event.stopPropagation()}
                             onChange={(event) => setEditingTitle(event.target.value)}

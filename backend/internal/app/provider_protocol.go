@@ -28,7 +28,18 @@ func runDeclarativeProtocolTask(ctx context.Context, input canvasGenerationInput
 }
 
 func runProtocolAdapterTask(ctx context.Context, input canvasGenerationInput, adapter protocol.Adapter) (map[string]interface{}, error) {
-	return runProtocolAdapterTaskWithPolicy(ctx, input, adapter, declarativeProtocolPollPolicy(input.Mode))
+	return runProtocolAdapterTaskWithPolicy(ctx, input, adapter, protocolAdapterPollPolicy(input.Mode, adapter))
+}
+
+func protocolAdapterPollPolicy(mode string, adapter protocol.Adapter) videoPollPolicy {
+	policy := declarativeProtocolPollPolicy(mode)
+	if declared := adapter.Metadata().Polling; declared != nil {
+		policy.Interval = time.Duration(declared.IntervalSeconds) * time.Second
+		policy.InitialDelay = policy.Interval
+		policy.RetryTransient = false
+		policy.TransientRetryLimit = declared.TransientRetryLimit
+	}
+	return policy
 }
 
 func declarativeProtocolPollPolicy(mode string) videoPollPolicy {

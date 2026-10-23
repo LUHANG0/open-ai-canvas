@@ -224,7 +224,7 @@ export function WorkflowTestWorkbench({ provider, workflowId, workflowKind = "wo
                     </svg>
 
                     <WorkflowNode id="prompt" title="提示词" icon={<WandSparkles />} position={positions.prompt} onMove={(point) => setPositions((current) => ({ ...current, prompt: point }))}>
-                        <Input.TextArea value={prompt} autoSize={{ minRows: 4, maxRows: 7 }} placeholder="输入本次测试提示词" onChange={(event) => setPrompt(event.target.value)} />
+                        <Input.TextArea aria-label="工作流测试提示词" value={prompt} autoSize={{ minRows: 4, maxRows: 7 }} placeholder="输入本次测试提示词" onChange={(event) => setPrompt(event.target.value)} />
                     </WorkflowNode>
 
                     {visibleMediaKinds.map((kind) => (
@@ -318,10 +318,11 @@ function WorkflowLine({ from, to, fromWidth, fromOffsetY = 54, toOffsetY }: { fr
 
 function MediaPicker({ kind, limit, files, maskIndex, onChange }: { kind: MediaKind; limit: number; files: TestFile[]; maskIndex?: number; onChange: (files: FileList | null) => void }) {
     return (
-        <label className="workflow-test-upload">
+        <label className="workflow-test-upload focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[var(--control-focus-ring)]">
             <input
                 type="file"
-                hidden
+                className="sr-only"
+                aria-label={`选择${mediaName(kind)}（最多 ${limit} 个）`}
                 multiple={limit > 1}
                 accept={kind === "image" ? "image/*" : kind === "video" ? "video/*" : "audio/*"}
                 onChange={(event) => {
@@ -361,7 +362,7 @@ function WorkflowParameter({ field, value, onChange }: { field: WorkflowFieldMap
                         {field.nodeId}.{field.fieldName}
                     </small>
                 </span>
-                <Input value="每次运行随机生成" disabled />
+                <Input aria-label={label} value="每次运行随机生成" disabled />
             </label>
         );
     return (
@@ -373,13 +374,13 @@ function WorkflowParameter({ field, value, onChange }: { field: WorkflowFieldMap
                 </small>
             </span>
             {Array.isArray(field.options) && field.options.length ? (
-                <Select showSearch value={value} options={field.options.map((option) => ({ label: String(option), value: option }))} onChange={onChange} />
+                <Select aria-label={label} showSearch value={value} options={field.options.map((option) => ({ label: String(option), value: option }))} onChange={onChange} />
             ) : type === "BOOLEAN" || typeof value === "boolean" ? (
-                <Switch checked={value === true || value === "true"} onChange={onChange} />
+                <Switch aria-label={label} checked={value === true || value === "true"} onChange={onChange} />
             ) : type === "NUMBER" || typeof value === "number" ? (
-                <InputNumber className="w-full" value={numberValue(value)} min={numberValue(field.min)} max={numberValue(field.max)} step={numberValue(field.step)} onChange={onChange} />
+                <InputNumber aria-label={label} className="w-full" value={numberValue(value)} min={numberValue(field.min)} max={numberValue(field.max)} step={numberValue(field.step)} onChange={onChange} />
             ) : (
-                <Input value={displayValue(value)} onChange={(event) => onChange(event.target.value)} />
+                <Input aria-label={label} value={displayValue(value)} onChange={(event) => onChange(event.target.value)} />
             )}
         </label>
     );

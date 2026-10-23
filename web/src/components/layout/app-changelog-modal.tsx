@@ -1,5 +1,5 @@
 import { ScrollText } from "lucide-react";
-import { lazy, Suspense, useState, type CSSProperties, type ReactNode } from "react";
+import { lazy, Suspense, useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { useAppearanceStore } from "@/stores/use-appearance-store";
 import { updateAnnouncementVersion } from "@/lib/update-announcement";
 import { refreshPublicAppearance } from "@/services/appearance-bootstrap";
@@ -21,12 +21,20 @@ type AppChangelogButtonProps = {
 
 export function AppChangelogButton({ className, style, showVersion = false, showLabel = false, labelClassName, versionClassName, icon, label }: AppChangelogButtonProps) {
     const [open, setOpen] = useState(false);
+    const triggerRef = useRef<HTMLButtonElement>(null);
+    const wasOpenRef = useRef(false);
     const updates = useAppearanceStore((state) => state.appearance.updates);
     const title = updates?.enabled ? "更新公告" : "更新日志";
+
+    useEffect(() => {
+        if (wasOpenRef.current && !open && triggerRef.current?.isConnected) triggerRef.current.focus({ preventScroll: true });
+        wasOpenRef.current = open;
+    }, [open]);
 
     return (
         <>
             <button
+                ref={triggerRef}
                 type="button"
                 className={className}
                 style={style}
@@ -35,6 +43,8 @@ export function AppChangelogButton({ className, style, showVersion = false, show
                     setOpen(true);
                 }}
                 aria-label={`查看${title}`}
+                aria-haspopup="dialog"
+                aria-expanded={open}
                 title={title}
             >
                 {icon ?? <ScrollText className="size-4 shrink-0" />}
@@ -46,7 +56,7 @@ export function AppChangelogButton({ className, style, showVersion = false, show
                 ) : null}
             </button>
             {open ? (
-                <Suspense fallback={null}>
+                <Suspense fallback={<span className="sr-only" role="status">正在打开{title}</span>}>
                     <AppChangelogDialog open onClose={() => setOpen(false)} />
                 </Suspense>
             ) : null}

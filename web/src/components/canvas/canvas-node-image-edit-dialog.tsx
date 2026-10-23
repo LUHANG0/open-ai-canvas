@@ -1,5 +1,6 @@
+import { AppModal } from "@/components/ui/product/app-modal";
 import { useEffect, useState } from "react";
-import { Button, Input, Modal } from "antd";
+import { Button, Input } from "antd";
 import { WandSparkles, X } from "lucide-react";
 import { ModelPicker } from "@/components/model-picker";
 import type { AiConfig } from "@/stores/use-config-store";
@@ -31,7 +32,7 @@ export function CanvasNodeImageEditDialog({
     }, [config, open, dataUrl]);
 
     return (
-        <Modal open={open && Boolean(dataUrl)} onCancel={onClose} footer={null} centered destroyOnHidden width={860} title={preset === "remove-background" ? "去除背景" : "图片编辑"}>
+        <AppModal rootClassName="workspace-utility-overlay" open={open && Boolean(dataUrl)} onCancel={onClose} footer={null} centered destroyOnHidden width={860} title={preset === "remove-background" ? "去除背景" : "图片编辑"}>
             <div className="grid gap-5 md:grid-cols-[minmax(0,1fr)_300px]">
                 <div className="grid min-h-[320px] place-items-center overflow-hidden rounded-xl bg-black/5 p-3 dark:bg-white/[0.04]">
                     <img src={dataUrl} alt="待编辑图片" className="max-h-[58vh] max-w-full object-contain" draggable={false} />
@@ -67,6 +68,6 @@ export function CanvasNodeImageEditDialog({
                     </div>
                 </div>
             </div>
-        </Modal>
+        </AppModal>
     );
 }

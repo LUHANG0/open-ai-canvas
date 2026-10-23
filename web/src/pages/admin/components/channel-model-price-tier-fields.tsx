@@ -1,4 +1,5 @@
-import { Alert, Button, Form, Input, InputNumber, Segmented, Switch, type FormInstance } from "antd";
+import { Alert, Button, Form, Input, InputNumber, Switch, type FormInstance } from "antd";
+import { AdminSegmented } from "@/pages/admin/ui/controls";
 import { Trash2 } from "lucide-react";
 import type { ModelCapabilityConfig } from "@/lib/model-capabilities";
 import { modelProtocolSupportsTokenBilling, type ModelProtocol } from "@/lib/model-protocols";
@@ -92,7 +93,7 @@ export function PriceTierFields({
                         </div>
                     </div>
                     <Form.Item className="admin-price-tier-mode-control mb-0" name={[index, "matchMode"]} rules={[{ required: true }]}>
-                        <Segmented
+                        <AdminSegmented
                             block
                             aria-label="价格规则适用范围"
                             options={[
@@ -169,7 +170,8 @@ export function PriceTierFields({
                         </div>
                         <div className="admin-price-tier-billing-grid">
                             <Form.Item className="admin-price-tier-billing-mode mb-0" name={[index, "billingMode"]} label="计费方式" rules={[{ required: true }]}>
-                                <Segmented
+                                <AdminSegmented
+                                    ariaLabel="计费方式"
                                     className="w-full"
                                     options={[
                                         { label: "按次", value: "fixed_request" },

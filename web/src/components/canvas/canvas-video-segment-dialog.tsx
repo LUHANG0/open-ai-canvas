@@ -1,5 +1,7 @@
+import { SegmentedControl } from "@/components/ui/base/segmented-control";
+import { AppModal } from "@/components/ui/product/app-modal";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { App, Button, Input, InputNumber, Modal, Segmented } from "antd";
+import { App, Button, Input, InputNumber } from "antd";
 import { AudioLines, Check, ListVideo, Plus, Scissors, SkipBack, SkipForward, Trash2 } from "lucide-react";
 import { nanoid } from "nanoid";
 
@@ -219,7 +221,7 @@ export function CanvasVideoSegmentDialog({ node, nodes, connections, open, mode,
     );
 
     return (
-        <Modal title={title} open={open} onCancel={onClose} footer={null} width={680} centered destroyOnHidden>
+        <AppModal rootClassName="workspace-utility-overlay" title={title} open={open} onCancel={onClose} footer={null} width={680} centered destroyOnHidden>
             <div className="space-y-4">
                 <div className="flex min-h-0 items-center justify-center overflow-hidden rounded-xl border bg-black" style={{ borderColor: theme.toolbar.border }}>
                     {videoUrl ? (
@@ -328,7 +330,7 @@ export function CanvasVideoSegmentDialog({ node, nodes, connections, open, mode,
                                     <div className="text-sm font-medium">截取后</div>
                                     <div className="mt-0.5 text-xs opacity-45">默认只创建片段，生成由你稍后决定。</div>
                                 </div>
-                                <Segmented size="small" value={videoAction} options={[{ label: "仅创建片段", value: "extract" }, { label: "创建生成节点", value: "create-generation-nodes" }]} onChange={(value) => setVideoAction(value as "extract" | "create-generation-nodes")} />
+                                <SegmentedControl size="sm" value={videoAction} options={[{ label: "仅创建片段", value: "extract" }, { label: "创建生成节点", value: "create-generation-nodes" }]} onChange={(value) => setVideoAction(value as "extract" | "create-generation-nodes")} />
                             </div>
                         </div>
 
@@ -412,7 +414,7 @@ export function CanvasVideoSegmentDialog({ node, nodes, connections, open, mode,
                     </Button>
                 </div>
             </div>
-        </Modal>
+        </AppModal>
     );
 }
 

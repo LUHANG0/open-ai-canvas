@@ -168,7 +168,7 @@ export const CanvasProjectWorldLayers = memo(function CanvasProjectWorldLayers(p
                         onMediaPlayRequest={setActiveMediaNodeId}
                         isRelated={props.relatedNodeIds.has(node.id)}
                         isFocusRelated={props.activeNodeId === node.id}
-                        isConnectionTarget={props.connectionTargetNodeId === node.id || props.batchConnectionPreview?.targetNodeId === node.id}
+                        isConnectionTarget={props.connectionTargetNodeId === node.id || (props.batchConnectionPreview?.targetNodeId === node.id && props.batchConnectionPreview.status !== "invalid")}
                         isConnecting={props.isConnecting}
                         connectionApproach={props.connectionApproach?.nodeId === node.id ? props.connectionApproach.point : undefined}
                         forceInputMounted={Boolean(props.batchConnectionPreview)}
@@ -265,8 +265,8 @@ function BatchConnectionTail({ item, top, scroll, fromScrollTop, fromBatchScroll
     if (!cell) return null;
     const path = canvasConnectionPath(item.connection, from, to, fromScrollTop, 0, fromBatchScroll, scroll);
     return <g>
-        <path d={path.pathD} fill="none" stroke={theme.connection.stroke} strokeWidth={CANVAS_CONNECTION_STROKE_WIDTH} strokeOpacity={0.8} vectorEffect="non-scaling-stroke" />
-        {active ? <CanvasConnectionBeam pathD={path.pathD} color={theme.connection.beam} /> : null}
+        <path d={path.pathD} fill="none" stroke={active ? theme.connection.emphasisStroke : theme.connection.stroke} strokeWidth={CANVAS_CONNECTION_STROKE_WIDTH} strokeOpacity={0.8} vectorEffect="non-scaling-stroke" />
+        {active ? <CanvasConnectionBeam pathD={path.pathD} color={theme.connection.beam} contrast={theme.connection.beamContrast} /> : null}
         <circle cx={cell.x} cy={cell.y} r={3} fill={theme.connection.beam} fillOpacity={active ? 1 : 0.65} />
         {active && cell.clipped ? <text x={cell.x + 8} y={cell.y <= top + 8 ? cell.y + 15 : cell.y - 8} fill="var(--foreground)" fontSize={12}>{cell.label} · 滚动查看</text> : null}
     </g>;

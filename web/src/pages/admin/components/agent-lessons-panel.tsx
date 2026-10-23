@@ -74,6 +74,8 @@ export default function AgentLessonsPanel() {
 
     const remove = (record: AdminAgentLesson) => {
         modal.confirm({
+            rootClassName: "admin-modal-root",
+            className: "admin-modal-panel",
             title: `删除「${record.topic}」`,
             content: `这是 ${authorLabel(record)} 的个人记忆。删除后该用户的 Agent 也无法召回。确认删除？`,
             okText: "删除",
@@ -185,6 +187,7 @@ export default function AgentLessonsPanel() {
                 toolbar={
                     <div className="flex flex-wrap items-center gap-2">
                         <Select
+                            aria-label="筛选记忆审批状态"
                             value={status}
                             onChange={setStatus}
                             className="w-[120px]"
@@ -196,6 +199,7 @@ export default function AgentLessonsPanel() {
                             ]}
                         />
                         <Select
+                            aria-label="筛选记忆所属用户"
                             allowClear
                             showSearch
                             filterOption={false}
@@ -210,7 +214,7 @@ export default function AgentLessonsPanel() {
                                 label: user.displayName ? `${user.displayName}（${user.username}）` : user.username,
                             }))}
                         />
-                        <Input.Search allowClear placeholder="主题、内容或用户名" className="w-[220px]" value={keyword} onChange={(event) => setKeyword(event.target.value)} />
+                        <Input.Search aria-label="搜索记忆主题、内容或用户名" allowClear placeholder="主题、内容或用户名" className="w-[220px]" value={keyword} onChange={(event) => setKeyword(event.target.value)} />
                         <Button icon={<RefreshCw className="size-4" />} onClick={() => void load()}>
                             刷新
                         </Button>

@@ -77,7 +77,7 @@ export function AudioWaveArt({ seed, active = false }: { seed: string; active?: 
     return (
         <span className="relative flex h-full w-full items-center justify-center gap-[3px] bg-[linear-gradient(135deg,color-mix(in_srgb,var(--foreground)_8%,transparent),color-mix(in_srgb,var(--foreground)_2%,transparent))] px-[14%]" aria-hidden>
             {waveBars(seed).map((height, index) => (
-                <span key={index} className={`w-[3px] shrink rounded-full transition-colors duration-200 ${active ? "bg-[var(--workspace-accent)]" : "bg-foreground/30"}`} style={{ height: `${height}%` }} />
+                <span key={index} className={`w-[3px] shrink rounded-full transition-colors duration-150 motion-reduce:transition-none ${active ? "bg-[var(--workspace-accent)]" : "bg-foreground/30"}`} style={{ height: `${height}%` }} />
             ))}
         </span>
     );
@@ -117,7 +117,7 @@ export function AudioPlayButton({ asset, className = "", onPlayingChange }: { as
                 event.stopPropagation();
                 void toggle();
             }}
-            className={`z-[3] grid size-9 place-items-center rounded-full bg-black/60 text-white outline-none backdrop-blur transition hover:scale-105 hover:bg-black/75 focus-visible:ring-2 focus-visible:ring-white/70 motion-reduce:transition-none ${className}`}
+            className={`z-[3] grid size-9 place-items-center rounded-full bg-black/60 text-white outline-none backdrop-blur transition-colors duration-150 hover:bg-black/75 focus-visible:ring-2 focus-visible:ring-white/70 motion-reduce:transition-none ${className}`}
         >
             {playing ? <Pause className="size-4" /> : <Play className="size-4 translate-x-px" />}
         </button>

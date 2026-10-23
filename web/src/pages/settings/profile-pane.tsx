@@ -275,7 +275,7 @@ export function ProfilePane() {
     };
 
     return (
-        <div className="profile-pane">
+        <div className="profile-pane" aria-busy={profileQuery.isFetching || !!pending}>
             <div className="settings-pane-header">
                 <div className="min-w-0">
                     <h2>个人信息</h2>
@@ -286,7 +286,7 @@ export function ProfilePane() {
                 </Button>
             </div>
             {profileQuery.isPending ? (
-                <Skeleton active paragraph={{ rows: 7 }} />
+                <div role="status" aria-label="正在加载个人信息"><Skeleton active paragraph={{ rows: 7 }} /></div>
             ) : profileQuery.isError ? (
                 <Callout
                     tone="error"
@@ -310,8 +310,8 @@ export function ProfilePane() {
                         <div className="profile-overview-main">
                             <UserAvatar user={profile.user} className="profile-avatar-preview" />
                             <div className="profile-overview-identity">
-                                <strong>{profile.user.displayName || profile.user.username}</strong>
-                                <span>账号 · {profile.user.username}</span>
+                                <strong title={profile.user.displayName || profile.user.username}>{profile.user.displayName || profile.user.username}</strong>
+                                <span title={profile.user.username}>账号 · {profile.user.username}</span>
                             </div>
                             <Button type="primary" icon={<ImagePlus className="size-4" />} disabled={!!pending} onClick={openAvatarDialog}>
                                 更换头像
@@ -352,7 +352,7 @@ export function ProfilePane() {
                     <div className="profile-security-grid">
                         <section className="profile-security-card" aria-labelledby="profile-password-title">
                             <div className="profile-card-heading">
-                                <span className="profile-card-icon">
+                                <span className="profile-card-icon" aria-hidden="true">
                                     <KeyRound className="size-5" />
                                 </span>
                                 <div>
@@ -417,7 +417,7 @@ export function ProfilePane() {
 
                         <section className="profile-security-card" aria-labelledby="profile-email-title">
                             <div className="profile-card-heading">
-                                <span className="profile-card-icon">
+                                <span className="profile-card-icon" aria-hidden="true">
                                     <Mail className="size-5" />
                                 </span>
                                 <div>
@@ -506,6 +506,7 @@ export function ProfilePane() {
             ) : null}
             {profile ? (
                 <AppModal
+                    rootClassName="settings-workspace-overlay"
                     open={avatarDialogOpen}
                     centered
                     width={560}
@@ -522,6 +523,7 @@ export function ProfilePane() {
                 >
                     <div className="profile-avatar-dialog-body">
                         <SegmentedControl<AvatarTab>
+                            indicator="static"
                             block
                             ariaLabel="头像来源"
                             value={avatarTab}
@@ -572,7 +574,7 @@ export function ProfilePane() {
                                 <div className="profile-default-avatar-grid" role="group" aria-label="系统头像">
                                     {DEFAULT_USER_AVATARS.map((preset) => (
                                         <button key={preset.id} type="button" className="profile-default-avatar-choice" aria-pressed={defaultAvatarDraft === preset.id} disabled={!!pending} onClick={() => setDefaultAvatarDraft(preset.id)}>
-                                            <Avatar size={56} className="profile-default-avatar-icon" icon={<UserAvatar user={{ ...profile.user, avatarUrl: undefined, avatarMode: "default", avatarPreset: preset.id }} className="size-8" />} />
+                                            <Avatar size={56} className="profile-default-avatar-icon" aria-hidden="true" icon={<UserAvatar user={{ ...profile.user, avatarUrl: undefined, avatarMode: "default", avatarPreset: preset.id }} className="size-8" />} />
                                             <span>{preset.label}</span>
                                         </button>
                                     ))}

@@ -120,7 +120,7 @@ export default function ProjectDetailPage() {
     if (unitId && !units.some((unit) => unit.id === unitId)) return <Navigate to={firstUnitId ? `/projects/${projectId}/workflow/${firstUnitId}/${stage || "video"}` : `/projects/${projectId}/workflow`} replace />;
     if (activeView === "workflow" && !unitId && detail.units.length) return <Navigate to={`/projects/${projectId}/workflow/${detail.units.slice().sort((left, right) => left.position - right.position)[0].id}/video`} replace />;
     return (
-        <WorkspacePage className="project-workbench-page !overflow-hidden" fluid>
+        <WorkspacePage className="workspace-utility-overlay project-workbench-page !overflow-hidden" fluid>
             <div className="flex h-full min-h-0 flex-col">
                 <ProjectWorkspaceHeader
                     detail={detail}

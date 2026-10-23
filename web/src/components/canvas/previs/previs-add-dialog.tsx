@@ -1,6 +1,7 @@
+import { AppModal } from "@/components/ui/product/app-modal";
 import { Canvas, useThree } from "@react-three/fiber";
 import { Grid, OrbitControls } from "@react-three/drei";
-import { ColorPicker, Modal } from "antd";
+import { ColorPicker } from "antd";
 import { Box, Camera, FileUp, Lightbulb, UserRound, Users } from "lucide-react";
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { Color, Object3D, type PerspectiveCamera } from "three";
@@ -107,7 +108,7 @@ export function PrevisAddDialog({
     const category = PREVIS_PROP_LIBRARY.find((item) => item.id === propCategory) ?? PREVIS_PROP_LIBRARY[0];
 
     return (
-        <Modal open={open} onCancel={onClose} footer={null} width={880} title="添加到场景" destroyOnHidden rootClassName="previs-add-dialog-root" centered>
+        <AppModal open={open} onCancel={onClose} footer={null} width={880} title="添加到场景" destroyOnHidden rootClassName="workspace-utility-overlay previs-add-dialog-root" centered>
             <div className="previs-add-dialog">
                 <div className="previs-add-dialog__tabs" role="tablist" aria-label="添加类型">
                     {TABS.map((tab) => (
@@ -208,7 +209,7 @@ export function PrevisAddDialog({
                     </button>
                 </div>
             </div>
-        </Modal>
+        </AppModal>
     );
 }
 

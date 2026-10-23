@@ -1,4 +1,5 @@
-import { Button, Input, Modal } from "antd";
+import { AppModal } from "@/components/ui/product/app-modal";
+import { Button, Input } from "antd";
 import { Check, Library, Search, X } from "lucide-react";
 import { useMemo, useState } from "react";
 
@@ -51,7 +52,7 @@ export function StoryboardAssetPickerModal({
         });
     return (
         <>
-            <Modal open title={`镜头 ${shotNumber} · 关联资产`} width={760} centered onCancel={onClose} footer={null}>
+            <AppModal rootClassName="workspace-utility-overlay" destroyOnHidden={false} open title={`镜头 ${shotNumber} · 关联资产`} width={760} centered onCancel={onClose} footer={null}>
                 <div data-canvas-no-zoom data-canvas-wheel-scroll onPointerDown={(event) => event.stopPropagation()} onWheel={(event) => event.stopPropagation()}>
                     <p className="mb-4 text-sm text-foreground/55">选择当前镜头使用的角色、场景、道具或参考媒体。尚未引入的资产可从项目资产中选择。</p>
                     <div className="mb-4 flex flex-wrap gap-2">
@@ -139,7 +140,7 @@ export function StoryboardAssetPickerModal({
                         </Button>
                     </div>
                 </div>
-            </Modal>
+            </AppModal>
             {libraryOpen ? (
                 <CanvasProjectAssetModal
                     open

@@ -29,12 +29,15 @@ test("world-space approach is independent of viewport scaling", () => {
         expect(canvasConnectionTilt(node, { x: (screen.x - 30) / scale, y: (screen.y + 70) / scale })).toEqual(result);
     }
 });
-test("only connection targets receive approach data; memo tracks it and selection does not activate tilt", () => {
+test("connection targets stay flat while the shell retains target feedback", () => {
     const source = readFileSync(new URL("../src/components/canvas/canvas-node.tsx", import.meta.url), "utf8");
     const layers = readFileSync(new URL("../src/pages/canvas/canvas-project-world-layers.tsx", import.meta.url), "utf8");
-    expect(source).toContain("isConnectionTarget && !disableMediaEffects && !dragOffset");
+    expect(source).not.toContain("useCanvasConnectionTilt");
     expect(source).toContain("previous.connectionApproach?.x === next.connectionApproach?.x");
-    expect(source).toContain('data-connection-tilt={connectionTilt ? "true" : undefined}');
+    expect(source).not.toContain("data-connection-tilt=");
+    expect(source).toContain("outline: isConnectionTarget || (!showChrome && isActive)");
+    expect(source).toContain("outlineWidth: isConnectionTarget ? `calc(2px * var(--canvas-live-inverse-scale,");
+    expect(layers).toContain('props.batchConnectionPreview.status !== "invalid"');
     expect(layers).toContain("props.connectionApproach?.nodeId === node.id ? props.connectionApproach.point : undefined");
     expect(layers).not.toMatch(/connectionApproach=\{[^\n]*mouseWorld/);
 });

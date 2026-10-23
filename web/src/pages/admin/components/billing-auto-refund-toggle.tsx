@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
-import { App, Modal } from "antd";
+import { App } from "antd";
 
-import { Switch } from "@/components/ui/base/switch";
+import { Switch } from "@/pages/admin/ui/controls";
+import { AdminModal } from "@/pages/admin/ui/overlays";
 import { getAdminBillingAutoRefund, updateAdminBillingAutoRefund } from "@/services/api/wallet";
 
 /**
@@ -62,7 +63,7 @@ export function BillingAutoRefundToggle() {
                     }}
                 />
             </label>
-            <Modal
+            <AdminModal
                 title="开启冻结积分自动退回"
                 open={confirmOpen}
                 okText="确认开启"
@@ -80,7 +81,7 @@ export function BillingAutoRefundToggle() {
             >
                 <p className="admin-operation-confirmation-copy">开启后，系统每分钟会把“待核对队列”中的订单（费用待核对、运行超时、任务已失败或取消但仍冻结）自动退回预授权积分，不再等待人工核对。</p>
                 <p className="admin-operation-confirmation-copy">这些订单中可能有已在上游产生费用的请求，自动退回后平台将承担这部分成本。退回会写入积分流水，可随时关闭。</p>
-            </Modal>
+            </AdminModal>
         </>
     );
 }

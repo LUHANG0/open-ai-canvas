@@ -46,7 +46,7 @@ export function BatchGenerationSettingsDialog({ open, config, rowCount, concurre
     const imageModel = generationConfig.imageModel || generationConfig.model;
 
     return (
-        <AppModal
+        <AppModal rootClassName="workspace-utility-overlay"
             open={open}
             onCancel={onClose}
             footer={null}

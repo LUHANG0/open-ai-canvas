@@ -26,8 +26,8 @@
     background: var(--unified-input-surface) !important;
     box-shadow: none !important;
     transition:
-        background-color var(--motion-state, 180ms) ease,
-        color var(--motion-state, 180ms) ease !important;
+        background-color var(--control-motion-duration) ease,
+        color var(--control-motion-duration) ease !important;
 }
 
 :where(textarea.ant-input, .ant-input-textarea textarea.ant-input) {
@@ -51,7 +51,7 @@
 :where(.ant-input:focus, .ant-input-focused, .ant-input-affix-wrapper-focused, .ant-input-number-focused, .ant-input-number-affix-wrapper-focused) {
     border-color: transparent !important;
     background: var(--unified-input-surface-focus) !important;
-    outline: none !important;
+    outline: var(--unified-input-keyboard-outline, none) !important;
     box-shadow: none !important;
 }
 
@@ -103,17 +103,20 @@
     box-shadow: none !important;
 }
 
-/* 鼠标点击只改变表面；键盘导航才显示焦点。 */
-:where(.ant-input, .ant-input-affix-wrapper, .ant-input-number, .ant-input-number-affix-wrapper):focus:not(:focus-visible),
-:where(.ant-input, .ant-input-affix-wrapper, .ant-input-number, .ant-input-number-affix-wrapper):focus-visible:not([data-input-modality="keyboard"]) {
-    outline: none !important;
+/* 输入框和其外壳直接消费原生焦点，首次 Tab 不需要先触发自身 keydown。 */
+:where(.ant-input, .ant-input-number-input):focus-visible,
+:where(.ant-input-affix-wrapper, .ant-input-number-affix-wrapper, .ant-input-number):has(input:focus-visible) {
+    outline: var(--unified-input-keyboard-outline, 1px solid var(--control-focus-ring)) !important;
+    outline-offset: 2px !important;
     box-shadow: none !important;
 }
 
-:where(.ant-input, .ant-input-affix-wrapper, .ant-input-number, .ant-input-number-affix-wrapper):focus-visible[data-input-modality="keyboard"] {
-    outline: 1px solid var(--unified-input-focus) !important;
-    outline-offset: 1px !important;
-    box-shadow: none !important;
+/* 只有外壳画线，避免前后缀与数字输入框出现两层焦点边界。 */
+:where(.ant-input-affix-wrapper > .ant-input, .ant-input-number .ant-input-number-input, .ant-input-number-affix-wrapper .ant-input-number-input):focus-visible,
+.ant-input-number-affix-wrapper .ant-input-number:has(input:focus-visible) { outline: none !important; }
+
+@media (prefers-reduced-motion: reduce) {
+    :where(.ant-input, .ant-input-affix-wrapper, .ant-input-number, .ant-input-number-affix-wrapper) { transition-duration: 0s !important; }
 }
 
 /* inset：父容器已经是输入表面，子输入框退成纯文字区。 */

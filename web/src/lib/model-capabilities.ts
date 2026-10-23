@@ -299,6 +299,17 @@ export function defaultImageCapabilityConfig(protocol?: ModelProtocol, model = "
         outputFormat: { supported: true },
         maxOutputs: 15,
     };
+    if (protocol === "yezonghui-image") {
+        image.references.maskSupported = false;
+        image.size = { parameter: "aspect_ratio", values: [], default: "", allowCustom: true };
+        image.resolution = { supported: true, values: [], default: "" };
+        image.quality = { supported: false, values: [], default: "auto" };
+        image.transparentBackground = { supported: false, default: false };
+        image.responseFormat = { supported: false };
+        image.outputFormat = { supported: false };
+        image.maxOutputs = 1;
+        return image;
+    }
     if (protocol === "km-kemei-seedream") {
         const presets = kemeiSeedreamPresets();
         image.references = { ...image.references, maxImages: 10, maskSupported: false };
@@ -472,6 +483,12 @@ export function defaultModelCapabilityConfig(protocol?: ModelProtocol, model = "
         operations: ["text_to_video", "image_to_video"],
         defaultOperation: "text_to_video",
     };
+    if (protocol === "yezonghui-video") {
+        video.resolutions = [];
+        video.defaultResolution = "";
+        video.generateAudio = { supported: true, default: false };
+        video.operations.push("reference_to_video", "audio_to_video");
+    }
     if (protocol === "volcengine-jimeng-video") {
         video.duration = { selection: "enum", values: [5, 10], default: 5 };
         video.resolutions = ["720p"];

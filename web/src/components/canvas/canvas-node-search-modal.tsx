@@ -1,5 +1,6 @@
+import { AppModal } from "@/components/ui/product/app-modal";
 import { memo, useEffect, useMemo, useState, type KeyboardEvent } from "react";
-import { Input, Modal } from "antd";
+import { Input } from "antd";
 import { AudioLines, BookOpenText, Clock3, FileText, Image, Pencil, Search, Video } from "lucide-react";
 
 import { CanvasVideoPreviewImage } from "@/components/canvas/canvas-video-preview-image";
@@ -40,7 +41,7 @@ export function CanvasNodeSearchModal({ open, nodes, onClose, onFocus }: { open:
     };
 
     return (
-        <Modal
+        <AppModal rootClassName="workspace-utility-overlay" destroyOnHidden={false}
             title="搜索画布节点"
             open={open}
             footer={null}
@@ -78,7 +79,7 @@ export function CanvasNodeSearchModal({ open, nodes, onClose, onFocus }: { open:
                     />
                 )) : <WorkspaceState icon="canvas" compact title="没有匹配节点" description="换一个节点、章节、镜头、模型或标签继续搜索。" />}
             </div>
-        </Modal>
+        </AppModal>
     );
 }
 

@@ -3,9 +3,7 @@
 import { useAppearanceStore } from "@/stores/use-appearance-store";
 import type { CreationMode } from "./creation-assets";
 import { ArrowUp, ChevronDown, Clapperboard, FileText, Image as ImageIcon, Sparkles } from "lucide-react";
-import { LayoutGroup, motion, useReducedMotion } from "motion/react";
 import { useState } from "react";
-import { aceternityMotion } from "@/lib/aceternity-motion";
 import { curatedInspirations, inspirationSourceOf, inspirationSources } from "@/lib/inspirations/catalog";
 import { modeLabels } from "./creation-types";
 import { Button } from "antd";
@@ -41,41 +39,27 @@ export const creationEmptySuggestions: Array<{ mode: CreationMode; icon: typeof 
 ];
 
 export function CreationEmptySuggest({ onStartPrompt, onOpenLibrary }: { onStartPrompt: (mode: CreationMode, prompt: string) => void; onOpenLibrary: () => void }) {
-    const reducedMotion = useReducedMotion();
-    const [hovered, setHovered] = useState<string | null>(null);
     return (
-        <LayoutGroup id="creation-empty-suggest">
-            <div className="creation-empty-suggest" aria-label="快捷创作入口">
-                {creationEmptySuggestions.map((item) => {
-                    const Icon = item.icon;
-                    const start = () => {
-                        if (item.openLibrary) onOpenLibrary();
-                        else onStartPrompt(item.mode, item.prompt);
-                    };
-                    return (
-                        <motion.button
-                            key={item.title}
-                            type="button"
-                            className="suggest-card"
-                            onClick={start}
-                            onHoverStart={() => setHovered(item.title)}
-                            onHoverEnd={() => setHovered(null)}
-                            whileHover={reducedMotion ? undefined : { y: -2 }}
-                            transition={aceternityMotion.spring.surface}
-                        >
-                            {hovered === item.title ? <motion.span layoutId="creation-suggest-hover" className="suggest-card-hover" aria-hidden transition={reducedMotion ? { duration: 0 } : aceternityMotion.spring.surface} /> : null}
-                            <span className="library-icon-tile suggest-icon">
-                                <Icon size={18} strokeWidth={2} />
-                            </span>
-                            <span className="suggest-copy">
-                                <strong>{item.title}</strong>
-                                <span>{item.hint}</span>
-                            </span>
-                        </motion.button>
-                    );
-                })}
-            </div>
-        </LayoutGroup>
+        <div className="creation-empty-suggest" aria-label="快捷创作入口">
+            {creationEmptySuggestions.map((item) => {
+                const Icon = item.icon;
+                const start = () => {
+                    if (item.openLibrary) onOpenLibrary();
+                    else onStartPrompt(item.mode, item.prompt);
+                };
+                return (
+                    <button key={item.title} type="button" className="suggest-card" onClick={start}>
+                        <span className="library-icon-tile suggest-icon" aria-hidden>
+                            <Icon size={18} strokeWidth={2} />
+                        </span>
+                        <span className="suggest-copy">
+                            <strong>{item.title}</strong>
+                            <span>{item.hint}</span>
+                        </span>
+                    </button>
+                );
+            })}
+        </div>
     );
 }
 

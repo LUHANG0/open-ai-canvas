@@ -1,4 +1,6 @@
-import { Drawer, Button, Input, Popconfirm } from "antd";
+import { Button, Input, Popconfirm } from "antd";
+import { AppDrawer } from "@/components/ui/product/app-drawer";
+import { IconButton } from "@/components/ui/base/buttons";
 import { Tooltip } from "@/components/ui/base/tooltip";
 import { useMemo, useState } from "react";
 
@@ -75,7 +77,8 @@ export function CanvasHistoryDrawer({ open, onClose }: { open: boolean; onClose:
     };
 
     return (
-        <Drawer
+        <AppDrawer
+            destroyOnHidden={false}
             title={
                 <div className="flex items-center justify-between gap-2 pr-2">
                     <div className="flex items-center gap-2">
@@ -104,41 +107,31 @@ export function CanvasHistoryDrawer({ open, onClose }: { open: boolean; onClose:
             <div className="space-y-4">
                 {/* 搜索与筛选 */}
                 <div className="space-y-3">
-                    <Input allowClear prefix={<Search className="size-3.5 text-stone-400" />} value={keyword} onChange={(e) => setKeyword(e.target.value)} placeholder="搜索画布名称..." className="text-xs" />
-                    <div className="flex items-center gap-2 text-xs">
+                    <Input aria-label="搜索画布历史" allowClear prefix={<Search aria-hidden="true" className="size-3.5 text-muted-foreground" />} value={keyword} onChange={(e) => setKeyword(e.target.value)} placeholder="搜索画布名称..." className="text-xs" />
+                    <div className="app-control-group" role="group" aria-label="画布历史范围">
                         <button
                             type="button"
-                            className={cn(
-                                "cursor-pointer rounded-lg px-3 py-1.5 font-medium transition-all",
-                                filter === "all"
-                                    ? "!bg-stone-900 !text-white shadow-sm dark:!bg-stone-100 dark:!text-stone-900 font-semibold"
-                                    : "bg-stone-100 text-stone-700 hover:bg-stone-200 dark:bg-stone-800 dark:text-stone-300 dark:hover:bg-stone-700",
-                            )}
+                            data-slot="control-item"
+                            aria-pressed={filter === "all"}
                             onClick={() => setFilter("all")}
                         >
-                            全部 ({timelineItems.length})
+                            <span data-slot="control-label">全部</span><span data-slot="control-count">{timelineItems.length}</span>
                         </button>
                         <button
                             type="button"
-                            className={cn(
-                                "cursor-pointer rounded-lg px-3 py-1.5 font-medium transition-all",
-                                filter === "active"
-                                    ? "!bg-emerald-600 !text-white shadow-sm font-semibold"
-                                    : "bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-200/60 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/50",
-                            )}
+                            data-slot="control-item"
+                            aria-pressed={filter === "active"}
                             onClick={() => setFilter("active")}
                         >
-                            活跃中 ({activeProjects.length})
+                            <span data-slot="control-label">活跃中</span><span data-slot="control-count">{activeProjects.length}</span>
                         </button>
                         <button
                             type="button"
-                            className={cn(
-                                "cursor-pointer rounded-lg px-3 py-1.5 font-medium transition-all",
-                                filter === "deleted" ? "!bg-rose-600 !text-white shadow-sm font-semibold" : "bg-rose-50 text-rose-800 hover:bg-rose-100 border border-rose-200/60 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800/50",
-                            )}
+                            data-slot="control-item"
+                            aria-pressed={filter === "deleted"}
                             onClick={() => setFilter("deleted")}
                         >
-                            已删除 ({deletedProjects.length})
+                            <span data-slot="control-label">已删除</span><span data-slot="control-count">{deletedProjects.length}</span>
                         </button>
                     </div>
                 </div>
@@ -205,16 +198,16 @@ export function CanvasHistoryDrawer({ open, onClose }: { open: boolean; onClose:
 
                                             <div className="flex items-center gap-1 shrink-0 pt-0.5">
                                                 {!isDeleted ? (
-                                                    <Button
-                                                        type="text"
-                                                        size="small"
-                                                        icon={<ExternalLink className="size-4 text-stone-500 hover:text-stone-800 dark:text-stone-400 dark:hover:text-stone-100" />}
+                                                    <IconButton
+                                                        size="sm"
+                                                        icon={ExternalLink}
+                                                        aria-label={`打开画布 ${item.title}`}
                                                         onClick={() => openProject(item.id)}
                                                         title="打开画布"
                                                     />
                                                 ) : (
                                                     <Tooltip title="从历史列表中移除此条记录">
-                                                        <Button type="text" size="small" danger icon={<X className="size-4" />} onClick={() => removeDeletedItem(item.id)} />
+                                                        <IconButton size="sm" variant="danger" icon={X} aria-label={`从历史列表移除 ${item.title}`} onClick={() => removeDeletedItem(item.id)} />
                                                     </Tooltip>
                                                 )}
                                             </div>
@@ -226,7 +219,7 @@ export function CanvasHistoryDrawer({ open, onClose }: { open: boolean; onClose:
                     </div>
                 )}
             </div>
-        </Drawer>
+        </AppDrawer>
     );
 }
 

@@ -1,5 +1,6 @@
 import { Drawer, type DrawerProps } from "antd";
 import type { CSSProperties } from "react";
+import { cn } from "@/lib/utils";
 
 // 用途：产品侧栏壳。消费 token 由内容自己负责。默认 destroyOnHidden，可选 flush 去内边距。
 export type AppDrawerProps = DrawerProps & {
@@ -18,5 +19,5 @@ export function AppDrawer({ flush = false, destroyOnHidden = true, styles, class
             ? (info: { props: DrawerProps }) => mergeResolvedStyles(styles(info))
             : mergeResolvedStyles(styles);
 
-    return <Drawer destroyOnHidden={destroyOnHidden} className={className} rootClassName={rootClassName} {...props} styles={mergedStyles as DrawerProps["styles"]} />;
+    return <Drawer destroyOnHidden={destroyOnHidden} className={className} rootClassName={cn("app-ui-drawer", rootClassName)} {...props} styles={mergedStyles as DrawerProps["styles"]} />;
 }

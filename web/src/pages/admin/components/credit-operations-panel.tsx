@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { App, Button, Drawer, Form, Input, InputNumber, Modal } from "antd";
+import { App, Button, Form, Input, InputNumber } from "antd";
+import { AdminDrawer, AdminModal } from "@/pages/admin/ui/overlays";
 import type { ColumnsType } from "antd/es/table";
 import { BadgeCheck, Coins, Plus, RefreshCw, Search, Trash2, Undo2 } from "lucide-react";
 
@@ -467,7 +468,7 @@ export default function CreditOperationsPanel({ users, activeOperation, onOperat
                 />
             </section>
 
-            <Drawer
+            <AdminDrawer
                 title="积分策略"
                 open={activeOperation === "policy"}
                 size="min(700px, 100vw)"
@@ -585,9 +586,9 @@ export default function CreditOperationsPanel({ users, activeOperation, onOperat
                         </section>
                     </Form>
                 )}
-            </Drawer>
+            </AdminDrawer>
 
-            <Drawer
+            <AdminDrawer
                 title="人工调账"
                 open={activeOperation === "adjustment"}
                 size="min(580px, 100vw)"
@@ -649,9 +650,9 @@ export default function CreditOperationsPanel({ users, activeOperation, onOperat
                         </Form.Item>
                     </section>
                 </Form>
-            </Drawer>
+            </AdminDrawer>
 
-            <Modal
+            <AdminModal
                 title={pendingAdjustment?.amount && pendingAdjustment.amount < 0 ? "确认扣减用户积分" : "确认增加用户积分"}
                 open={Boolean(pendingAdjustment)}
                 okText={pendingAdjustment?.amount && pendingAdjustment.amount < 0 ? "确认扣减" : "确认增加"}
@@ -701,9 +702,9 @@ export default function CreditOperationsPanel({ users, activeOperation, onOperat
                         </dl>
                     </div>
                 ) : null}
-            </Modal>
+            </AdminModal>
 
-            <Modal
+            <AdminModal
                 title={resolutionTitle}
                 open={Boolean(resolutionTarget)}
                 okText={resolutionTarget?.action === "settle" ? "确认结算" : "退回预授权"}
@@ -759,7 +760,7 @@ export default function CreditOperationsPanel({ users, activeOperation, onOperat
                         <Input.TextArea rows={4} maxLength={500} showCount placeholder="例如：供应商后台确认任务未产生费用" />
                     </Form.Item>
                 </Form>
-            </Modal>
+            </AdminModal>
         </div>
     );
 }

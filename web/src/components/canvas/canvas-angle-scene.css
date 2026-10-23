@@ -426,8 +426,8 @@
 }
 
 .canvas-angle-seg button[aria-pressed="true"] {
-    background: var(--fg);
-    color: var(--bg);
+    background: var(--control-selected-bg);
+    color: var(--control-selected-fg);
 }
 
 .canvas-angle-tab {
@@ -448,9 +448,9 @@
 }
 
 .canvas-angle-tab[aria-pressed="true"] {
-    background: var(--fg);
-    color: var(--bg);
-    border-color: var(--fg);
+    background: var(--control-selected-bg);
+    color: var(--control-selected-fg);
+    border-color: var(--control-selected-border);
 }
 
 .canvas-angle-preset {
@@ -469,8 +469,8 @@
 }
 
 .canvas-angle-preset[aria-pressed="true"] {
-    background: var(--fg);
-    color: var(--bg);
+    background: var(--control-selected-bg);
+    color: var(--control-selected-fg);
 }
 
 .canvas-angle-generate {

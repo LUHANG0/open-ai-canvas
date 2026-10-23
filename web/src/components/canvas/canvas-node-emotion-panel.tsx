@@ -7,7 +7,6 @@ import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { KTX2Loader } from "three/examples/jsm/loaders/KTX2Loader.js";
 import { MeshoptDecoder } from "three/examples/jsm/libs/meshopt_decoder.module.js";
 
-import { SpotlightSurface } from "@/components/ui/aceternity/spotlight-surface";
 import { aceternityMotion } from "@/lib/aceternity-motion";
 import { canvasThemes } from "@/lib/canvas-theme";
 import {
@@ -55,34 +54,27 @@ type CanvasNodeEmotionPanelProps = {
 
 export function CanvasNodeEmotionPanel({ dataUrl, imageWidth, imageHeight, characters, activeCharacterId, preset, generating, error, onSelectCharacter, onManualSelect, onPresetChange, onClose, onConfirm }: CanvasNodeEmotionPanelProps) {
     const theme = canvasThemes[useActiveTheme()];
-    const reducedMotion = useReducedMotion();
     return (
-        <SpotlightSurface
+        <div
             data-canvas-no-zoom
-            spotlightColor={theme.toolbar.itemHover}
-            initial={reducedMotion ? { opacity: 0 } : { opacity: 0, y: 8, scale: 0.97 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={reducedMotion ? { opacity: 0 } : { opacity: 0, y: 5, scale: 0.98 }}
-            transition={reducedMotion ? { duration: 0 } : aceternityMotion.spring.panel}
-            className="aceternity-floating-panel w-[580px] max-w-full overflow-hidden rounded-[var(--r-2xl)] border backdrop-blur-2xl"
+            className="relative isolate workspace-utility-overlay aceternity-floating-panel w-[580px] max-w-full overflow-hidden rounded-[var(--r-2xl)] border backdrop-blur-2xl"
             style={{ background: theme.spatial.elevated, borderColor: theme.toolbar.border, color: theme.node.text, boxShadow: `0 28px 80px ${theme.spatial.shadow}` }}
         >
+            <div className="relative z-[1] flex min-h-0 flex-1 flex-col">
             <div className="flex h-11 items-center gap-1.5 border-b px-2.5" style={{ borderColor: theme.toolbar.border }}>
                 <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                     {characters.map((character) => (
-                        <motion.button
+                        <button
                             key={character.id}
                             type="button"
-                            layout
-                            whileTap={reducedMotion ? undefined : { scale: 0.96 }}
+                            aria-pressed={activeCharacterId === character.id}
                             className="relative flex h-8 shrink-0 items-center gap-1.5 rounded-[var(--dock-item-radius)] border px-1.5 pr-2 text-[var(--fs-label)] font-medium outline-none"
-                            style={{ background: activeCharacterId === character.id ? theme.toolbar.activeBg : theme.spatial.surface, borderColor: activeCharacterId === character.id ? theme.spatial.glowStrong : theme.toolbar.border }}
+                            style={{ background: activeCharacterId === character.id ? "var(--control-selected-bg)" : theme.spatial.surface, color: activeCharacterId === character.id ? "var(--control-selected-fg)" : undefined, borderColor: activeCharacterId === character.id ? "var(--control-selected-border)" : theme.toolbar.border }}
                             onClick={() => onSelectCharacter(character.id)}
                         >
-                            {activeCharacterId === character.id ? <motion.span layoutId="emotion-active-character" className="absolute inset-0 -z-10 rounded-[var(--r-md)]" style={{ boxShadow: `inset 0 0 0 1px ${theme.accent.primarySoft}` }} transition={aceternityMotion.spring.dock} /> : null}
                             <FaceThumbnail dataUrl={dataUrl} imageWidth={imageWidth} imageHeight={imageHeight} box={character.faceBox} />
                             <span>{character.name}</span>
-                        </motion.button>
+                        </button>
                     ))}
                     <button type="button" className="flex h-8 shrink-0 items-center gap-1.5 rounded-[var(--dock-item-radius)] border px-2 text-[var(--fs-label)] font-medium opacity-70 transition hover:opacity-100" style={{ background: theme.spatial.surface, borderColor: theme.toolbar.border }} onClick={onManualSelect}>
                         <ScanFace className="size-3.5" />手动框选
@@ -98,23 +90,19 @@ export function CanvasNodeEmotionPanel({ dataUrl, imageWidth, imageHeight, chara
 
             <div className="flex min-h-11 items-center gap-2 border-t px-3" style={{ borderColor: theme.toolbar.border }}>
                 <span className="text-[var(--fs-tiny)]" style={{ color: theme.node.muted }}>情绪定位</span>
-                <AnimatePresence mode="wait" initial={false}>
-                    <motion.span key={preset.id} initial={reducedMotion ? false : { opacity: 0, y: 4, filter: "blur(4px)" }} animate={{ opacity: 1, y: 0, filter: "blur(0px)" }} exit={reducedMotion ? undefined : { opacity: 0, y: -3, filter: "blur(3px)" }} transition={{ duration: reducedMotion ? 0 : 0.18 }} className="text-xs font-semibold">{preset.label}</motion.span>
-                </AnimatePresence>
+                <span className="text-xs font-semibold">{preset.label}</span>
                 {error ? <span className="min-w-0 flex-1 truncate text-right text-[var(--fs-tiny)]" style={{ color: theme.accent.danger }} title={error}>{error}</span> : <span className="flex-1" />}
-                <motion.button
+                <button
                     type="button"
                     disabled={generating}
-                    whileHover={reducedMotion || generating ? undefined : { y: -1 }}
-                    whileTap={reducedMotion || generating ? undefined : { scale: 0.97 }}
-                    className="flex h-8 shrink-0 items-center gap-1.5 rounded-[var(--dock-item-radius)] px-3 text-[var(--fs-label)] font-semibold disabled:cursor-wait disabled:opacity-55"
-                    style={{ background: theme.node.activeStroke, color: theme.node.panel }}
+                    className="bg-[var(--button-primary-bg)] text-[var(--button-primary-fg)] hover:bg-[var(--button-primary-hover-bg)] active:bg-[var(--button-primary-active-bg)] transition-colors duration-[var(--control-motion-duration)] motion-reduce:transition-none flex h-8 shrink-0 items-center gap-1.5 rounded-[var(--dock-item-radius)] px-3 text-[var(--fs-label)] font-semibold disabled:cursor-wait disabled:opacity-55"
                     onClick={onConfirm}
                 >
                     <Sparkles className={`size-3.5 ${generating ? "animate-pulse" : ""}`} />{generating ? "准备生成" : "生成"}
-                </motion.button>
+                </button>
             </div>
-        </SpotlightSurface>
+        </div>
+        </div>
     );
 }
 

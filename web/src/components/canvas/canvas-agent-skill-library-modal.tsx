@@ -160,7 +160,7 @@ export function CanvasAgentSkillLibraryModal({
 
     return (
         <AppModal
-            rootClassName="canvas-agent-skill-library-modal"
+            rootClassName="workspace-utility-overlay canvas-agent-skill-library-modal"
             open={open}
             title={null}
             footer={null}

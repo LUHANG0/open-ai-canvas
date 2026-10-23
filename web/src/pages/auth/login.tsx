@@ -1,5 +1,6 @@
 import { type FormEvent, useEffect, useState, type ReactNode } from "react";
-import { App, Button, Divider, Input, Segmented } from "antd";
+import { App, Button, Divider, Input } from "antd";
+import { SegmentedControl } from "@/components/ui/base/segmented-control";
 import { ArrowRight, LockKeyhole, UserRound } from "lucide-react";
 import { Link, useNavigate, useSearchParams } from "react-router";
 
@@ -66,7 +67,7 @@ export default function LoginPage() {
 
     return (
         <form onSubmit={submit} className="space-y-5">
-            {methods.length > 0 && <Segmented block aria-label="登录方式" value={method} disabled={submitting} options={[{ value: "password", label: "密码登录" }, ...methods.map((value) => ({ value, label: methodLabels[value] }))]} onChange={(value) => { setMethod(value as typeof method); setVerification({ ...emptyVerification }); }} />}
+            {methods.length > 0 && <SegmentedControl block ariaLabel="登录方式" value={method} disabled={submitting} options={[{ value: "password", label: "密码登录" }, ...methods.map((value) => ({ value, label: methodLabels[value] }))]} onChange={(value) => { setMethod(value as typeof method); setVerification({ ...emptyVerification }); }} />}
             {method !== "password" ? <VerificationFields key={method} purpose="login" method={method} value={verification} onChange={setVerification} disabled={submitting} /> : <>
             <AuthField label="用户名 / 邮箱" htmlFor="login-account">
                 <Input id="login-account" size="large" prefix={<UserRound className="auth-scene-icon size-4" />} value={username} onChange={(event) => setUsername(event.target.value)} placeholder="用户名或邮箱" autoComplete="username" required />
@@ -77,7 +78,7 @@ export default function LoginPage() {
                 action={
                     <Link
                         to={forgotPasswordURL}
-                        className="auth-scene-link -my-2 inline-flex min-h-8 items-center rounded-sm text-xs font-medium transition-colors"
+                        className="auth-scene-link -my-2 inline-flex min-h-8 items-center rounded-sm text-xs font-medium transition-colors duration-150 motion-reduce:transition-none"
                     >
                         忘记密码？
                     </Link>
@@ -116,7 +117,7 @@ function AuthField({ label, htmlFor, action, children }: { label: string; htmlFo
     return (
         <div className="space-y-2">
             <div className="flex items-center justify-between gap-3">
-                <label htmlFor={htmlFor} className="auth-scene-label text-xs font-medium">
+                <label htmlFor={htmlFor} className="auth-scene-label text-sm font-medium">
                     {label}
                 </label>
                 {action}

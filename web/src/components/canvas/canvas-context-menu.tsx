@@ -4,8 +4,6 @@ import { ArrowLeft, AtSign, Check, ChevronRight, Clipboard, CloudUpload, Copy, F
 
 import { CanvasCreateMenu, type CanvasCreateCommand } from "@/components/canvas/canvas-create-menu";
 import { ASSET_CATEGORY_OPTIONS } from "@/lib/asset-category";
-import { aceternityMotion } from "@/lib/aceternity-motion";
-import { SpotlightSurface } from "@/components/ui/aceternity/spotlight-surface";
 import { canvasThemes } from "@/lib/canvas-theme";
 import { canvasNodeAssetCategory } from "@/lib/canvas/canvas-node-asset";
 import { isCanvasFolderNode } from "@/lib/canvas/canvas-frame";
@@ -150,17 +148,14 @@ export function CanvasNodeContextMenu({
 
     return (
         <>
-            <SpotlightSurface
-                spotlightColor={theme.toolbar.itemHover}
+            <div
                 data-canvas-context-menu
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: aceternityMotion.duration.instant, ease: aceternityMotion.easing.enter }}
-                className="aceternity-floating-panel fixed z-[var(--z-popover)] flex w-[224px] max-h-[calc(100vh-56px)] origin-top-left flex-col overflow-hidden rounded-xl border p-1.5 backdrop-blur-2xl"
+                className="isolate workspace-utility-overlay aceternity-floating-panel fixed z-[var(--z-popover)] flex w-[224px] max-h-[calc(100vh-56px)] origin-top-left flex-col overflow-hidden rounded-xl border p-1.5 backdrop-blur-2xl"
                 style={{ left: position.left, top: position.top, background: theme.spatial.elevated, borderColor: theme.toolbar.border, color: theme.node.text }}
                 onContextMenu={(event) => event.preventDefault()}
                 onPointerDown={(event) => event.stopPropagation()}
             >
+            <div className="relative z-[1] flex min-h-0 flex-1 flex-col">
                 <div className="absolute inset-x-8 top-0 h-px" style={{ background: `linear-gradient(90deg, transparent, ${theme.toolbar.border}, transparent)` }} />
                 <div className="thin-scrollbar min-h-0 overflow-y-auto">
                     {menu.type === "node" && isMedia && categoryOpen ? (
@@ -262,7 +257,8 @@ export function CanvasNodeContextMenu({
                         </>
                     )}
                 </div>
-            </SpotlightSurface>
+            </div>
+        </div>
 
             <AnimatePresence>
                 {menu.type === "canvas" && addOpen ? (
@@ -321,19 +317,16 @@ function AddNodeContextMenu({ parentPosition, workspaceMode, isProjectLinked, on
     }));
 
     return (
-        <SpotlightSurface
-            spotlightColor={theme.toolbar.itemHover}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: aceternityMotion.duration.instant, ease: aceternityMotion.easing.enter }}
-            className="aceternity-floating-panel fixed z-[var(--z-popover)] w-[360px] origin-top overflow-hidden rounded-[var(--dock-radius)] border p-2 backdrop-blur-2xl"
+        <div
+            className="isolate workspace-utility-overlay aceternity-floating-panel fixed z-[var(--z-popover)] w-[360px] origin-top overflow-hidden rounded-[var(--dock-radius)] border p-2 backdrop-blur-2xl"
             style={{ left, top: parentPosition.top, background: theme.spatial.elevated, borderColor: theme.toolbar.border, color: theme.node.text }}
             onContextMenu={(event) => event.preventDefault()}
             onPointerDown={(event) => event.stopPropagation()}
         >
+            <div className="relative z-[1] flex min-h-0 flex-1 flex-col">
             <CanvasCreateMenu commands={commands} />
-        </SpotlightSurface>
+        </div>
+        </div>
     );
 }
 

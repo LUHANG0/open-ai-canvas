@@ -1,4 +1,5 @@
-import { App, Button, Form, Input, InputNumber, Modal, Spin, Switch } from "antd";
+import { AdminModal } from "@/pages/admin/ui/overlays";
+import { App, Button, Form, Input, InputNumber, Spin, Switch } from "antd";
 import { ChevronRight, Copy, Download, Pencil, Plus, Power, Search, Trash2, Upload } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router";
@@ -457,7 +458,7 @@ export default function ChannelsPage() {
                     )}
                 </section>
             </div>
-            <Modal
+            <AdminModal
                 className="workspace-modal workspace-modal-wide admin-channel-modal"
                 rootClassName="admin-channel-modal-root"
                 title={editingChannel ? "编辑系统渠道" : "新增系统渠道"}
@@ -527,7 +528,7 @@ export default function ChannelsPage() {
                         <Switch />
                     </Form.Item>
                 </Form>
-            </Modal>
+            </AdminModal>
             <ProviderCatalogWizard
                 open={wizardOpen}
                 onClose={() => setWizardOpen(false)}

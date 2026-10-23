@@ -44,4 +44,16 @@ describe("shared action colors and focus feedback", () => {
         expect(theme.components?.Button?.primaryColor).toBeUndefined();
         expect(theme.components?.Input?.activeShadow).toBe("none");
     });
+
+    test("shared motion has one duration while each surface retains its density", () => {
+        for (const theme of [getAntThemeConfig(false, DEFAULT_CLASSIC_SKIN), getWorkspaceAntThemeConfig()]) {
+            expect(theme.token?.motionDurationFast).toBe("0.15s");
+            expect(theme.token?.motionDurationMid).toBe("0.15s");
+            expect(theme.token?.motionDurationSlow).toBe("0.15s");
+        }
+        expect(getAntThemeConfig(false, DEFAULT_CLASSIC_SKIN).token?.controlHeight).toBe(36);
+        expect(getWorkspaceAntThemeConfig().token?.controlHeight).toBe(38);
+        expect(getWorkspaceAntThemeConfig().token?.borderRadius).toBe(12);
+        expect(getIsolatedAdminAntTheme(false, DEFAULT_CLASSIC_SKIN).token?.controlHeight).toBe(32);
+    });
 });

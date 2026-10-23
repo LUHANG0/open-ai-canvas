@@ -35,7 +35,8 @@ export function CanvasConnectionDrafts(props: CanvasConnectionDraftsProps) {
         return subscribeCanvasGraphicsViewportPreview(container as HTMLDivElement, sync);
     }, [active, props.containerRef, props.viewport]);
     if (!active) return null;
-    const stroke = batch?.status === "invalid" ? props.theme.accent.danger : batch?.status === "partial" ? props.theme.node.activeStroke : props.theme.connection.stroke;
+    const strongContrast = props.theme.connection.beamContrast === "strong";
+    const stroke = batch?.status === "invalid" ? props.theme.accent.danger : batch?.status === "partial" ? props.theme.node.activeStroke : strongContrast ? props.theme.connection.emphasisStroke : props.theme.connection.stroke;
     // 与节点世界层分开，整条草稿（底线和流光）都覆盖卡片；复用实时视口变换。
     return (
         <div data-canvas-connection-drafts aria-hidden className="pointer-events-none absolute inset-0 z-[var(--z-canvas-overlay)] overflow-hidden">
@@ -46,8 +47,8 @@ export function CanvasConnectionDrafts(props: CanvasConnectionDraftsProps) {
                             const pathD = activeConnectionPath(props.nodeById.get(handle.nodeId), handle, batch?.mouseWorld || props.mouseWorld, props.scriptScrollTopById[handle.nodeId] || 0, props.batchScrollById?.[handle.nodeId]);
                             return pathD ? (
                                 <g key={handle.nodeId}>
-                                    <path d={pathD} fill="none" stroke={stroke} strokeWidth={CANVAS_CONNECTION_STROKE_WIDTH} strokeOpacity={0.72} strokeLinecap="round" vectorEffect="non-scaling-stroke" />
-                                    <CanvasConnectionBeam pathD={pathD} color={props.theme.connection.beam} />
+                                    <path d={pathD} fill="none" stroke={stroke} strokeWidth={CANVAS_CONNECTION_STROKE_WIDTH} strokeOpacity={strongContrast ? 0.88 : 0.72} strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+                                    <CanvasConnectionBeam pathD={pathD} color={props.theme.connection.beam} contrast={props.theme.connection.beamContrast} />
                                 </g>
                             ) : null;
                         })}

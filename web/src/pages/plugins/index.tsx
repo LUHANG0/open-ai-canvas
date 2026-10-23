@@ -1,5 +1,6 @@
 import { CollectionToolbar } from "@/components/layout/collection-toolbar";
-import { App, Button, Input, Modal, Typography } from "antd";
+import { App, Button, Input, Typography } from "antd";
+import { AppModal } from "@/components/ui/product/app-modal";
 import { Switch } from "@/components/ui/base/switch";
 import { AudioLines, CalendarDays, CheckCircle2, Clock3, CreditCard, ExternalLink, Film, FolderOpen, Image as ImageIcon, MessageSquareText, PlugZap, RefreshCw, Search, Settings2, ShieldCheck, SlidersHorizontal } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -7,6 +8,7 @@ import { useNavigate } from "react-router";
 
 import { EmptyState } from "@/components/ui/product/empty-state";
 import { PageHeader } from "@/components/layout/workspace-page";
+import { WorkspaceErrorState, WorkspaceLoadingState } from "@/components/layout/workspace-state";
 import { listRegisteredPlugins } from "@/lib/plugins/plugin-registry";
 import "@/lib/plugins/builtin";
 import { EAGLE_PLUGIN_ID } from "@/lib/plugins/builtin/eagle";
@@ -82,10 +84,10 @@ export default function PluginsPage() {
     const updateConfig = usePluginStore((state) => state.updateConfig);
     const builtinPlugins = useMemo(() => listRegisteredPlugins(), []);
     const [backendPlugins, setBackendPlugins] = useState<BackendPlugin[]>([]);
-    const [backendPluginsLoading, setBackendPluginsLoading] = useState(false);
+    const [backendPluginsLoading, setBackendPluginsLoading] = useState(true);
+    const [backendPluginsError, setBackendPluginsError] = useState("");
     const [settingsPluginId, setSettingsPluginId] = useState<string | null>(null);
     const [detailsPluginId, setDetailsPluginId] = useState<string | null>(null);
-    const [detailsRestoreFocus, setDetailsRestoreFocus] = useState(false);
     const [search, setSearch] = useState("");
     const [categoryFilter, setCategoryFilter] = useState("all");
     const [statusFilter, setStatusFilter] = useState<"all" | "enabled" | "disabled">("all");
@@ -103,12 +105,15 @@ export default function PluginsPage() {
 
     const reloadBackendPlugins = async () => {
         setBackendPluginsLoading(true);
+        setBackendPluginsError("");
         try {
             const result = await fetchPlugins();
             setBackendPlugins(result.plugins);
             setPluginStates(result.states);
         } catch (error) {
-            message.error(error instanceof Error ? error.message : "读取插件中心失败");
+            const errorMessage = error instanceof Error ? error.message : "读取插件中心失败";
+            message.error(errorMessage);
+            setBackendPluginsError(errorMessage);
             setBackendPlugins([]);
         } finally {
             setBackendPluginsLoading(false);
@@ -237,20 +242,18 @@ export default function PluginsPage() {
     };
 
     return (
-        <main className="app-workspace-page plugins-page flex h-full min-h-0 flex-col text-foreground">
+        <main className="app-workspace-page plugins-page collection-workspace flex h-full min-h-0 flex-col text-foreground">
             <div ref={scrollContainerRef} className="app-workspace-scroll min-h-0 flex-1 overflow-y-auto">
                 <div className="plugins-page-layout">
                     <aside className="plugins-sidebar" aria-label="插件分类">
                         <div className="plugins-sidebar-heading">
                             <PageHeader title="插件中心" description="连接模型、素材与工作流，拓展你的创作工具。" />
                         </div>
-                        <nav className="plugins-sidebar-nav">
-                            <button type="button" className={`plugins-sidebar-item${categoryFilter === "all" ? " is-active" : ""}`} aria-current={categoryFilter === "all" ? "page" : undefined} onClick={() => selectCategory("all")}>
-                                <span className="plugins-sidebar-item-label">
-                                    <PlugZap className="size-4" />
-                                    全部插件
-                                </span>
-                                <span>{categoryCounts.all}</span>
+                        <nav className="app-control-group" aria-label="按插件分类筛选">
+                            <button type="button" data-slot="control-item" aria-pressed={categoryFilter === "all"} onClick={() => selectCategory("all")}>
+                                <PlugZap data-slot="control-icon" aria-hidden="true" />
+                                <span data-slot="control-label">全部插件</span>
+                                <span data-slot="control-count">{categoryCounts.all}</span>
                             </button>
                             {protocolSectionMeta.map((section) => {
                                 const SectionIcon = section.icon;
@@ -258,24 +261,20 @@ export default function PluginsPage() {
                                     <button
                                         key={section.key}
                                         type="button"
-                                        className={`plugins-sidebar-item${categoryFilter === section.key ? " is-active" : ""}`}
-                                        aria-current={categoryFilter === section.key ? "page" : undefined}
+                                        data-slot="control-item"
+                                        aria-pressed={categoryFilter === section.key}
                                         onClick={() => selectCategory(section.key)}
                                     >
-                                        <span className="plugins-sidebar-item-label">
-                                            <SectionIcon className="size-4" />
-                                            {section.label}
-                                        </span>
-                                        <span>{categoryCounts[section.key] || 0}</span>
+                                        <SectionIcon data-slot="control-icon" aria-hidden="true" />
+                                        <span data-slot="control-label">{section.label}</span>
+                                        <span data-slot="control-count">{categoryCounts[section.key] || 0}</span>
                                     </button>
                                 );
                             })}
-                            <button type="button" className={`plugins-sidebar-item${categoryFilter === "other" ? " is-active" : ""}`} aria-current={categoryFilter === "other" ? "page" : undefined} onClick={() => selectCategory("other")}>
-                                <span className="plugins-sidebar-item-label">
-                                    <PlugZap className="size-4" />
-                                    应用插件
-                                </span>
-                                <span>{categoryCounts.other}</span>
+                            <button type="button" data-slot="control-item" aria-pressed={categoryFilter === "other"} onClick={() => selectCategory("other")}>
+                                <PlugZap data-slot="control-icon" aria-hidden="true" />
+                                <span data-slot="control-label">应用插件</span>
+                                <span data-slot="control-count">{categoryCounts.other}</span>
                             </button>
                         </nav>
                     </aside>
@@ -292,6 +291,7 @@ export default function PluginsPage() {
                             </div>}>
                             <Input
                                 className="plugins-search"
+                                aria-label="搜索插件名称、描述或作者"
                                 prefix={<Search className="size-4 text-foreground/38" aria-hidden="true" />}
                                 value={search}
                                 allowClear
@@ -321,8 +321,10 @@ export default function PluginsPage() {
                             />
                         </CollectionToolbar>
 
+                        <span className="sr-only" role="status">{backendPluginsLoading ? "正在加载插件" : backendPluginsError ? "服务器插件加载失败" : `找到 ${filteredPlugins.length} 个插件`}</span>
+                        {backendPluginsError && filteredPlugins.length ? <p className="plugin-error" role="alert">服务器插件加载失败：{backendPluginsError}。可点击“刷新插件”重试。</p> : null}
                         {filteredPlugins.length ? (
-                            <div className="plugins-sections">
+                            <div className="plugins-sections" aria-busy={backendPluginsLoading}>
                                 {pluginSections.map((section) => {
                                     const SectionIcon = section.icon;
                                     return (
@@ -357,12 +359,12 @@ export default function PluginsPage() {
                                                                 <button
                                                                     type="button"
                                                                     className="plugin-card-main"
-                                                                    aria-label={`查看${plugin.manifest.name}文档`}
+                                                                    aria-label={`查看${plugin.manifest.name}详情与文档`}
+                                                                    aria-haspopup="dialog"
+                                                                    title={`${plugin.manifest.name}\n${plugin.manifest.description || "暂无插件简介"}`}
                                                                     onClick={(event) => {
-                                                                        const openedByKeyboard = event.detail === 0;
-                                                                        setDetailsRestoreFocus(openedByKeyboard);
+                                                                        event.currentTarget.focus({ preventScroll: true });
                                                                         setDetailsPluginId(plugin.manifest.id);
-                                                                        if (!openedByKeyboard) event.currentTarget.blur();
                                                                     }}
                                                                 >
                                                                     <div className="plugin-card-heading">
@@ -391,7 +393,7 @@ export default function PluginsPage() {
                                                                         </div>
                                                                     </div>
 
-                                                                    <p className="plugin-card-description">{plugin.manifest.description}</p>
+                                                                    <p className="plugin-card-description">{plugin.manifest.description || "暂无插件简介"}</p>
 
                                                                     <div className="plugin-card-meta">
                                                                         <span>
@@ -435,7 +437,7 @@ export default function PluginsPage() {
                                                                             icon={<Settings2 className="size-4" />}
                                                                             aria-expanded={settingsPluginId === plugin.manifest.id}
                                                                             aria-haspopup="dialog"
-                                                                            onClick={() => setSettingsPluginId(plugin.manifest.id)}
+                                                                            onClick={(event) => { event.currentTarget.focus({ preventScroll: true }); setSettingsPluginId(plugin.manifest.id); }}
                                                                         >
                                                                             设置
                                                                         </Button>
@@ -460,6 +462,10 @@ export default function PluginsPage() {
                                     );
                                 })}
                             </div>
+                        ) : backendPluginsLoading ? (
+                            <WorkspaceLoadingState label="正在加载插件" detail="正在读取插件信息与可用状态。" rows={4} />
+                        ) : backendPluginsError ? (
+                            <WorkspaceErrorState compact title="插件加载失败" description={backendPluginsError} onRetry={() => void reloadBackendPlugins()} />
                         ) : (
                             <EmptyState
                                 className="min-h-[260px] rounded-[var(--plugins-card-radius)] bg-foreground/[0.03]"
@@ -481,8 +487,9 @@ export default function PluginsPage() {
                             />
                         )}
 
-                        <Modal
+                        <AppModal
                             className="workspace-modal workspace-modal-wide plugin-settings-modal"
+                            rootClassName="collection-detail-overlay"
                             title={settingsPlugin ? `${settingsPlugin.manifest.name} 设置` : null}
                             open={Boolean(settingsPlugin)}
                             centered
@@ -596,8 +603,8 @@ export default function PluginsPage() {
                                     </div>
                                 </div>
                             ) : null}
-                        </Modal>
-                        <PluginDetailsModal plugin={detailsPlugin} restoreFocus={detailsRestoreFocus} onClose={() => setDetailsPluginId(null)} />
+                        </AppModal>
+                        <PluginDetailsModal plugin={detailsPlugin} onClose={() => setDetailsPluginId(null)} />
                     </div>
                 </div>
             </div>

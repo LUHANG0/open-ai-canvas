@@ -1,11 +1,12 @@
-import { App, Modal, Upload } from "antd";
+import { App, Upload } from "antd";
+import { AppModal } from "@/components/ui/product/app-modal";
 import { CloudUpload, FileText, ShieldCheck } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import type { RegisteredPlugin } from "@/lib/plugins/plugin-types";
 
 import pluginDevelopmentGuideMarkdown from "./plugin-development-guide.md?raw";
-import { getPluginDocumentation } from "./plugin-documentation";
+import { getPluginDocumentation, getPluginDocumentationDisplaySource } from "./plugin-documentation";
 import { PluginMarkdown } from "./plugin-markdown";
 import "./plugins.css";
 
@@ -88,7 +89,7 @@ export function UploadPluginModal({ open, onClose, onUpload }: UploadPluginModal
     const isCompact = activeTab === "install";
 
     return (
-        <Modal
+        <AppModal
             className={`workspace-modal plugin-upload-modal ${isCompact ? "plugin-upload-modal-compact" : "workspace-modal-wide"}`}
             title="上传插件"
             open={open}
@@ -101,14 +102,14 @@ export function UploadPluginModal({ open, onClose, onUpload }: UploadPluginModal
             styles={{ body: { maxHeight: "min(84vh, 900px)", overflowY: "auto", overscrollBehavior: "contain", padding: "16px 20px 24px" } }}
         >
             <div className="plugin-upload-tabs-bar">
-                <div className="plugin-upload-tabs-nav">
-                    <button type="button" className={`plugin-upload-tab-btn ${activeTab === "install" ? "is-active" : ""}`} aria-pressed={activeTab === "install"} onClick={() => setActiveTab("install")}>
-                        <CloudUpload className="size-4" />
-                        <span>安装插件包</span>
+                <div className="app-control-group" role="group" aria-label="插件安装与开发说明">
+                    <button type="button" data-slot="control-item" aria-pressed={activeTab === "install"} onClick={() => setActiveTab("install")}>
+                        <CloudUpload data-slot="control-icon" aria-hidden="true" />
+                        <span data-slot="control-label">安装插件包</span>
                     </button>
-                    <button type="button" className={`plugin-upload-tab-btn ${activeTab === "guide" ? "is-active" : ""}`} aria-pressed={activeTab === "guide"} onClick={() => setActiveTab("guide")}>
-                        <FileText className="size-4" />
-                        <span>开发规范与示例</span>
+                    <button type="button" data-slot="control-item" aria-pressed={activeTab === "guide"} onClick={() => setActiveTab("guide")}>
+                        <FileText data-slot="control-icon" aria-hidden="true" />
+                        <span data-slot="control-label">开发规范与示例</span>
                     </button>
                 </div>
                 {activeTab === "guide" ? (
@@ -192,20 +193,20 @@ export function UploadPluginModal({ open, onClose, onUpload }: UploadPluginModal
                     </section>
                 </div>
             )}
-        </Modal>
+        </AppModal>
     );
 }
 
 type PluginDetailsModalProps = {
     plugin?: RegisteredPlugin;
-    restoreFocus: boolean;
     onClose: () => void;
 };
 
-export function PluginDetailsModal({ plugin, restoreFocus, onClose }: PluginDetailsModalProps) {
+export function PluginDetailsModal({ plugin, onClose }: PluginDetailsModalProps) {
     return (
-        <Modal
+        <AppModal
             className="workspace-modal workspace-modal-wide plugin-details-modal"
+            rootClassName="collection-detail-overlay"
             title={
                 plugin ? (
                     <div className="plugin-details-title">
@@ -219,11 +220,13 @@ export function PluginDetailsModal({ plugin, restoreFocus, onClose }: PluginDeta
             centered
             footer={null}
             destroyOnHidden
-            focusTriggerAfterClose={restoreFocus}
             onCancel={onClose}
             styles={{ body: { maxHeight: "min(78vh, 820px)", overflowY: "auto", overscrollBehavior: "contain" } }}
         >
-            {plugin ? <PluginMarkdown className="plugin-details-document" source={getPluginDocumentation(plugin.manifest)} /> : null}
-        </Modal>
+            {plugin ? <>
+                {plugin.manifest.description || plugin.manifest.documentation?.trim() ? <p className="plugin-details-description">{plugin.manifest.description || "暂无插件简介"}</p> : null}
+                <PluginMarkdown className="plugin-details-document" source={getPluginDocumentationDisplaySource(getPluginDocumentation(plugin.manifest), plugin.manifest)} />
+            </> : null}
+        </AppModal>
     );
 }

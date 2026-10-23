@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, Clock3, Copy, Eye, Palette, Pencil, Plus, Search, SlidersHorizontal, Star, Trash2, UserRound } from "lucide-react";
 import { App, Button, Input } from "antd";
@@ -425,6 +425,16 @@ type SystemStyleLibraryItem = { kind: "system"; preset: CanvasStylePreset };
 type UserStyleLibraryItem = { kind: "user"; preset: CanvasStylePreset; entity: UserStyleProfile };
 type StyleLibraryItem = SystemStyleLibraryItem | UserStyleLibraryItem;
 type StyleEditorState = { profile: StyleProfileSnapshot; entityId?: string };
+type EmptyStyleReturnTarget = { session: StyleEditorState; target: HTMLButtonElement };
+type PendingStyleReturn = EmptyStyleReturnTarget & { overlays: Set<Element> };
+
+const styleFocusOverlaySelector = '[role="dialog"], [role="alertdialog"], [role="menu"], [role="listbox"], .ant-popover, .ant-dropdown, .ant-select-dropdown';
+
+function isStyleFocusVisible(element: Element) {
+    if (!element.isConnected || element.closest('[hidden], [inert], [aria-hidden="true"]') || !element.getClientRects().length) return false;
+    const style = getComputedStyle(element);
+    return style.visibility === "visible" && style.display !== "none";
+}
 
 export function CanvasStylePickerModal({ open, value, currentProfile, startInEditor = false, applying = false, onClose, onSelect }: {
     open: boolean;
@@ -444,8 +454,29 @@ export function CanvasStylePickerModal({ open, value, currentProfile, startInEdi
     const [category, setCategory] = useState("全部");
     const [systemFavoriteIds, setSystemFavoriteIds] = useState<string[]>([]);
     const [recentIds, setRecentIds] = useState<string[]>([]);
-    const [editor, setEditor] = useState<StyleEditorState | null>(null);
+    const [editor, setEditorState] = useState<StyleEditorState | null>(null);
+    const [closingEditor, setClosingEditor] = useState<StyleEditorState | null>(null);
+    const parentOpenRef = useRef(open);
+    const editorSessionRef = useRef<StyleEditorState | null>(null);
+    const emptyReturnRef = useRef<EmptyStyleReturnTarget | null>(null);
+    const pendingReturnRef = useRef<PendingStyleReturn | null>(null);
+    const setEditor = useCallback((next: StyleEditorState | null) => {
+        emptyReturnRef.current = null;
+        pendingReturnRef.current = null;
+        setClosingEditor(null);
+        editorSessionRef.current = next;
+        setEditorState(next);
+    }, []);
     const profilesQuery = useQuery({ queryKey: ["style-profiles"], queryFn: listStyleProfiles, enabled: open });
+
+    useLayoutEffect(() => {
+        parentOpenRef.current = open;
+        if (open) return;
+        emptyReturnRef.current = null;
+        pendingReturnRef.current = null;
+        editorSessionRef.current = null;
+        setClosingEditor(null);
+    }, [open]);
 
     useEffect(() => {
         if (!open) return;
@@ -528,6 +559,38 @@ export function CanvasStylePickerModal({ open, value, currentProfile, startInEdi
     function createNewStyle() {
         setEditor({ profile: blankUserStyle() });
     }
+    function createEmptyStyle(target: HTMLButtonElement) {
+        const session = { profile: blankUserStyle() };
+        setEditor(session);
+        emptyReturnRef.current = { session, target };
+    }
+    function closeEditor() {
+        const candidate = emptyReturnRef.current;
+        const pending = candidate && candidate.session === editorSessionRef.current && parentOpenRef.current
+            ? { ...candidate, overlays: new Set([...document.querySelectorAll(styleFocusOverlaySelector)].filter((element) => element.contains(candidate.target) || isStyleFocusVisible(element))) }
+            : null;
+        pendingReturnRef.current = pending;
+        emptyReturnRef.current = null;
+        setClosingEditor(pending?.session || null);
+        editorSessionRef.current = null;
+        setEditorState(null);
+    }
+    function returnEmptyStyleFocus(session: StyleEditorState) {
+        const pending = pendingReturnRef.current;
+        if (!pending || pending.session !== session) return;
+        pendingReturnRef.current = null;
+        setClosingEditor(null);
+        const { target } = pending;
+        if (!parentOpenRef.current || editorSessionRef.current || target.disabled || target.matches(":disabled") || target.getAttribute("aria-disabled") === "true" || !isStyleFocusVisible(target) || document.activeElement !== document.body) return;
+        if ([...document.querySelectorAll(styleFocusOverlaySelector)].some((element) => !pending.overlays.has(element) && isStyleFocusVisible(element))) return;
+        target.focus({ preventScroll: true });
+    }
+    function saveEditor(profile: StyleProfileSnapshot, apply: boolean) {
+        emptyReturnRef.current = null;
+        pendingReturnRef.current = null;
+        setClosingEditor(null);
+        saveMutation.mutate({ profile, apply });
+    }
     function copyPreset(preset: CanvasStylePreset) {
         setEditor({ profile: editableCopy(preset.profile || createStyleProfileSnapshot(preset), undefined, `${preset.title} 副本`, preset.imageUrl) });
     }
@@ -537,8 +600,8 @@ export function CanvasStylePickerModal({ open, value, currentProfile, startInEdi
 
     return (
         <>
-            <AppModal rootClassName="canvas-style-picker-modal" open={open} title={null} footer={null} centered width="min(1240px, calc(100vw - 24px))" onCancel={onClose} flush>
-                <div className="canvas-style-center-shell flex min-h-0 flex-col overflow-hidden" style={{ color: theme.node.text, background: theme.node.panel }}>
+            <AppModal rootClassName="workspace-utility-overlay canvas-style-picker-modal" open={open} title={null} footer={null} centered width="min(1240px, calc(100vw - 24px))" onCancel={onClose} flush>
+                <div className="canvas-style-center-shell flex min-h-0 flex-col overflow-hidden" style={{ color: theme.node.text, background: theme.node.panel }} onFocusCapture={() => { pendingReturnRef.current = null; }}>
                     <header className="flex min-h-16 flex-col gap-3 border-b px-4 py-3 pr-12 sm:flex-row sm:items-center sm:justify-between sm:px-5 sm:pr-14" style={{ borderColor: theme.node.stroke }}>
                         <div className="min-w-0">
                             <h2 className="text-base font-semibold">风格中心</h2>
@@ -546,7 +609,7 @@ export function CanvasStylePickerModal({ open, value, currentProfile, startInEdi
                         </div>
                         <div className="flex min-w-0 gap-2 sm:items-center">
                             <Input allowClear className="style-center-search min-w-0 flex-1" prefix={<Search className="size-3.5 text-foreground/35" />} value={query} placeholder="搜索风格、题材或媒介" onChange={(event) => setQuery(event.target.value)} />
-                            <Button type="primary" className="shrink-0" icon={<Plus className="size-3.5" />} onClick={createNewStyle}>新建风格</Button>
+                            <Button type="primary" className="shrink-0" icon={<Plus className="size-3.5" />} onClick={(event) => { event.currentTarget.focus({ preventScroll: true }); createNewStyle(); }}>新建风格</Button>
                         </div>
                     </header>
                     <div className="style-center-workspace grid min-h-0 flex-1">
@@ -588,14 +651,14 @@ export function CanvasStylePickerModal({ open, value, currentProfile, startInEdi
                                     onDelete={item.kind === "user" ? () => confirmDelete(item.entity) : undefined}
                                 />
                             ))}
-                            {!visibleItems.length ? <EmptyStyleCenter tab={tab} loading={profilesQuery.isLoading} failed={profilesQuery.isError} color={theme.node.muted} onCreate={createNewStyle} onBrowse={() => { setTab("system"); setQuery(""); }} /> : null}
+                            {!visibleItems.length ? <EmptyStyleCenter tab={tab} loading={profilesQuery.isLoading} failed={profilesQuery.isError} color={theme.node.muted} onCreate={createEmptyStyle} onBrowse={() => { setTab("system"); setQuery(""); }} /> : null}
                             </div>
                         </main>
                     </div>
                 </div>
             </AppModal>
             <CanvasStyleDetailModal open={Boolean(detailPreset)} preset={detailPreset} selected={detailPreset?.id === value} onClose={() => setDetailPreset(null)} onSelect={(preset) => { setDetailPreset(null); const item = [...systemItems, ...userItems].find((candidate) => candidate.preset.id === preset.id); if (item) selectItem(item); }} />
-            <StyleProfileEditorModal open={Boolean(editor)} initialProfile={editor?.profile || null} saving={saveMutation.isPending} onClose={() => setEditor(null)} onSave={(profile, apply) => saveMutation.mutate({ profile, apply })} />
+            <StyleProfileEditorModal open={Boolean(editor)} initialProfile={editor?.profile || null} saving={saveMutation.isPending} onClose={closeEditor} afterClose={closingEditor ? () => returnEmptyStyleFocus(closingEditor) : undefined} onSave={saveEditor} />
         </>
     );
 }
@@ -612,15 +675,15 @@ function readStyleIds(key: string) {
 function StyleCenterCard({ item, active, applying, favorite, theme, onApply, onDetail, onFavorite, onCopy, onEdit, onDelete }: { item: StyleLibraryItem; active: boolean; applying: boolean; favorite: boolean; theme: (typeof canvasThemes)[keyof typeof canvasThemes]; onApply: () => void; onDetail: () => void; onFavorite: () => void; onCopy: () => void; onEdit?: () => void; onDelete?: () => void }) {
     const { preset } = item;
     return (
-        <article className={`style-center-card group flex min-w-0 flex-col overflow-hidden rounded-md border ${active ? "is-active" : ""}`} style={{ background: theme.canvas.background, borderColor: active ? theme.node.activeStroke : theme.node.stroke, boxShadow: active ? `inset 0 0 0 1px ${theme.node.activeStroke}` : undefined }}>
+        <article className={`style-center-card group flex min-w-0 flex-col overflow-hidden rounded-md border ${active ? "is-active" : ""}`} style={{ background: theme.canvas.background, borderColor: active ? "var(--control-selected-border)" : theme.node.stroke, boxShadow: active ? "inset 0 0 0 1px var(--control-selected-border)" : undefined }}>
             <div className="relative overflow-hidden border-b" style={{ borderColor: theme.node.stroke }}>
                 <button type="button" className="style-center-card-cover block w-full overflow-hidden outline-none focus-visible:ring-2 focus-visible:ring-inset" style={{ "--tw-ring-color": theme.node.activeStroke } as CSSProperties} onClick={onDetail} aria-label={`查看${preset.title}规范`}>
-                    <img src={preset.imageUrl} width="640" height="360" alt={`${preset.title}画风示意`} className="h-full w-full object-cover transition-transform" />
+                    <img src={preset.imageUrl} width="640" height="360" alt={`${preset.title}画风示意`} className="h-full w-full object-cover" />
                 </button>
                 <button type="button" className={`style-center-favorite-action absolute right-2 top-2 grid size-8 place-items-center rounded-md outline-none focus-visible:ring-2 ${favorite ? "is-active" : ""}`} onClick={onFavorite} aria-label={favorite ? "取消收藏" : "收藏"} title={favorite ? "取消收藏" : "收藏"}><Star className="size-3.5" fill={favorite ? "currentColor" : "none"} /></button>
             </div>
             <div className="flex min-h-0 flex-1 flex-col px-3 pt-3">
-                <div className="flex min-w-0 items-center gap-2 text-[var(--fs-tiny)]" style={{ color: theme.node.muted }}><span className="truncate">{item.kind === "user" ? "我的风格" : preset.category}</span>{active ? <span className="ml-auto flex shrink-0 items-center gap-1 font-medium" style={{ color: theme.node.activeStroke }}><Check className="size-3" />当前</span> : null}</div>
+                <div className="flex min-w-0 items-center gap-2 text-[var(--fs-tiny)]" style={{ color: theme.node.muted }}><span className="truncate">{item.kind === "user" ? "我的风格" : preset.category}</span>{active ? <span className="ml-auto flex shrink-0 items-center gap-1 font-medium" style={{ color: "var(--control-selected-fg)" }}><Check className="size-3" />当前</span> : null}</div>
                 <h3 className="mt-1.5 truncate text-sm font-semibold">{preset.title}</h3>
                 <p className="mt-1.5 line-clamp-2 text-xs leading-5" style={{ color: theme.node.muted }}>{preset.description}</p>
                 <div className="mt-2 flex min-h-6 flex-wrap gap-1">{preset.tags.slice(0, 3).map((tag) => <span key={tag} className="rounded bg-foreground/5 px-1.5 py-0.5 text-[var(--fs-tiny)]" style={{ color: theme.node.muted }}>{tag}</span>)}</div>
@@ -651,8 +714,8 @@ function styleCenterViewTitle(tab: StyleCenterTab, category: string) {
     return category === "全部" ? "全部系统风格" : category;
 }
 
-function EmptyStyleCenter({ tab, loading, failed, color, onCreate, onBrowse }: { tab: StyleCenterTab; loading: boolean; failed: boolean; color: string; onCreate: () => void; onBrowse: () => void }) {
-    return <div className="col-span-full grid min-h-64 place-items-center text-center"><div><Search className="mx-auto size-5" style={{ color }} /><p className="mt-2 text-xs font-medium">{loading ? "正在加载风格库" : failed && tab !== "system" ? "我的风格加载失败，请检查登录状态或后端服务" : tab === "mine" ? "还没有自己的风格" : tab === "favorites" ? "还没有收藏风格" : tab === "recent" ? "还没有使用记录" : "没有匹配的系统风格"}</p><div className="mt-3 flex justify-center gap-2">{tab === "mine" && !failed ? <Button size="small" icon={<Plus className="size-3.5" />} onClick={onCreate}>新建风格</Button> : null}<Button size="small" onClick={onBrowse}>浏览系统风格</Button></div></div></div>;
+function EmptyStyleCenter({ tab, loading, failed, color, onCreate, onBrowse }: { tab: StyleCenterTab; loading: boolean; failed: boolean; color: string; onCreate: (trigger: HTMLButtonElement) => void; onBrowse: () => void }) {
+    return <div className="col-span-full grid min-h-64 place-items-center text-center"><div><Search className="mx-auto size-5" style={{ color }} /><p className="mt-2 text-xs font-medium">{loading ? "正在加载风格库" : failed && tab !== "system" ? "我的风格加载失败，请检查登录状态或后端服务" : tab === "mine" ? "还没有自己的风格" : tab === "favorites" ? "还没有收藏风格" : tab === "recent" ? "还没有使用记录" : "没有匹配的系统风格"}</p><div className="mt-3 flex justify-center gap-2">{tab === "mine" && !failed ? <Button size="small" icon={<Plus className="size-3.5" />} onClick={(event) => { const trigger = event.currentTarget; if (!(trigger instanceof HTMLButtonElement)) return; trigger.focus({ preventScroll: true }); onCreate(trigger); }}>新建风格</Button> : null}<Button size="small" onClick={onBrowse}>浏览系统风格</Button></div></div></div>;
 }
 
 export function userStylePreset(entity: UserStyleProfile): CanvasStylePreset | null {
@@ -673,7 +736,7 @@ export function CanvasStyleDetailModal({ open, preset, selected = false, onClose
     const theme = canvasThemes[useActiveTheme()];
     const sections = preset ? parseStyleSections(preset.prompt) : [];
     return (
-        <AppModal rootClassName="canvas-style-detail-modal" open={open} title={null} footer={null} centered destroyOnHidden width="min(820px, calc(100vw - 24px))" onCancel={onClose} flush>
+        <AppModal rootClassName="workspace-utility-overlay canvas-style-detail-modal" open={open} title={null} footer={null} centered destroyOnHidden width="min(820px, calc(100vw - 24px))" onCancel={onClose} flush>
             {preset ? <div className="canvas-style-detail-shell flex flex-col overflow-hidden" style={{ color: theme.node.text, background: theme.node.panel }}>
                 <div className="flex h-44 shrink-0 items-center justify-center overflow-hidden border-b sm:h-52" style={{ borderColor: theme.node.stroke, background: theme.canvas.background }}>
                     <img src={preset.imageUrl} width="960" height="540" alt={`${preset.title}画风示意`} className="h-full w-full object-contain" style={preset.id === "black-white-noir" ? { filter: "grayscale(1) contrast(1.08)" } : undefined} />

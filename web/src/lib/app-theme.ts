@@ -3,6 +3,9 @@ import { theme as antdTheme } from "antd";
 
 import { getSkinAntOverrides, normalizeSkinID } from "@/lib/skin-themes";
 
+// AntD 生成动画样式需要具体时长；与 CSS --control-motion-duration 同步。
+const CONTROL_MOTION_DURATION = "0.15s";
+
 // 主操作、普通选择和开关是不同交互语义，必须各自维护成对的背景/前景色。
 const controlTheme = {
     light: {
@@ -191,9 +194,9 @@ export function getAntThemeConfig(dark: boolean, skinID: unknown = "classic"): T
             controlHeightSM: skin.controlHeightSmall || 30,
             fontSize: 13,
             fontSizeSM: 12,
-            motionDurationFast: `${skin.motionFast ?? 120}ms`,
-            motionDurationMid: `${skin.motionNormal ?? 180}ms`,
-            motionDurationSlow: `${Math.max(skin.motionNormal ?? 180, 240)}ms`,
+            motionDurationFast: CONTROL_MOTION_DURATION,
+            motionDurationMid: CONTROL_MOTION_DURATION,
+            motionDurationSlow: CONTROL_MOTION_DURATION,
         },
         components: {
             Button: {
@@ -379,16 +382,13 @@ export function getAntThemeConfig(dark: boolean, skinID: unknown = "classic"): T
     };
 }
 
-/**
- * 管理后台使用更高密度的控件节奏；只在 AdminShell 内挂载，避免改变创作端的视觉契约。
- */
 /** 用户端与后台共享业务控件，但使用独立的产品尺寸和柔和表面。 */
 export function getWorkspaceAntThemeConfig(): ThemeConfig {
     return {
         token: {
             borderRadius: 12, borderRadiusLG: 16, borderRadiusSM: 8,
             controlHeight: 38, controlHeightSM: 30, controlHeightLG: 44,
-            motionDurationFast: "0.12s", motionDurationMid: "0.18s", motionDurationSlow: "0.36s",
+            motionDurationFast: CONTROL_MOTION_DURATION, motionDurationMid: CONTROL_MOTION_DURATION, motionDurationSlow: CONTROL_MOTION_DURATION,
             motionEaseInOut: "cubic-bezier(0.16, 1, 0.3, 1)",
             motionEaseOut: "cubic-bezier(0.16, 1, 0.3, 1)",
         },

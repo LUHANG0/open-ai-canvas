@@ -31,7 +31,7 @@ export function CanvasShortcutsModal({ open, onClose }: { open: boolean; onClose
     );
 
     return (
-        <AppModal
+        <AppModal rootClassName="workspace-utility-overlay"
             className="workspace-modal workspace-modal-wide canvas-shortcuts-modal"
             open={open}
             onCancel={onClose}

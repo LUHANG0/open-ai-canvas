@@ -39,6 +39,7 @@ import {
     UsersRound,
 } from "lucide-react";
 import { Suspense, useEffect, useState, type ReactNode } from "react";
+import { useReducedMotion } from "motion/react";
 import { Link, NavLink, Outlet, useLocation } from "react-router";
 
 import { AppChangelogButton } from "@/components/layout/app-changelog-modal";
@@ -136,6 +137,7 @@ export function AdminShell() {
 }
 
 function AdminShellLayout() {
+    const reducedMotion = useReducedMotion();
     const { density } = useAdminDensity();
     const appearance = useAppearanceStore((state) => state.appearance);
     const [collapsed, setCollapsed] = useState(readWorkspaceSidebarCollapsed);
@@ -157,7 +159,7 @@ function AdminShellLayout() {
     };
 
     return (
-        <ConfigProvider theme={getIsolatedAdminAntTheme(dark, appearance.activeSkin)} getPopupContainer={(node) => adminPopupContainer(node)}>
+        <ConfigProvider theme={getIsolatedAdminAntTheme(dark, Boolean(reducedMotion))} getPopupContainer={(node) => adminPopupContainer(node)}>
             <App>
                 <main id="admin-root" data-admin-root data-admin-density={density} className="admin-shell flex h-full min-h-0 overflow-hidden">
                     <aside className={cn("admin-sidebar hidden shrink-0 flex-col overflow-hidden lg:flex", collapsed && "is-collapsed")}>

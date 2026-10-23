@@ -1,5 +1,6 @@
+import { AdminModal } from "@/pages/admin/ui/overlays";
 import { useEffect, useState } from "react";
-import { App, Button, Checkbox, Input, Modal, Popconfirm, Space, Tooltip } from "antd";
+import { App, Button, Checkbox, Input, Popconfirm, Space, Tooltip } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { Copy, Pencil, Plus, RefreshCw, Search, Trash2 } from "lucide-react";
 
@@ -440,14 +441,15 @@ export function ChannelModelManager({ channel, onChanged }: { channel: ModelChan
                 await reload();
                 await onChanged();
             }} />}
-            <Modal
+            <AdminModal
+                destroyOnHidden={false}
                 title="选择要导入的模型"
                 open={fetchPreviewOpen}
                 centered
                 width={720}
                 rootClassName="admin-modal-root admin-model-import-modal"
                 onCancel={closeFetchPreview}
-                maskClosable={!importing}
+                mask={{ closable: !importing }}
                 closable={!importing}
                 footer={[
                     <Button key="cancel" disabled={importing} onClick={closeFetchPreview}>
@@ -513,7 +515,7 @@ export function ChannelModelManager({ channel, onChanged }: { channel: ModelChan
                         {selectedExistingFetchCount > 0 ? `，另有 ${selectedExistingFetchCount} 个已存在模型已勾选` : ""}
                     </div>
                 </div>
-            </Modal>
+            </AdminModal>
             {editorOpen && (
                 <ChannelModelEditor
                     channel={channel}

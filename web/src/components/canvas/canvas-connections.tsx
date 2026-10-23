@@ -43,7 +43,8 @@ export const ConnectionPath = React.memo(function ConnectionPath({
     const { pathD, startX, startY, endX, endY } = canvasConnectionPath(connection, from, to, fromScrollTop, toScrollTop, fromBatchScroll, toBatchScroll);
     const targetCell = batchCellAnchor(to, connection.toHandleId, toBatchScroll);
     const emphasized = active || hovered;
-    const showVisual = !hideVisual && (visualMode === "full" || hovered);
+    const strongContrast = theme.connection.beamContrast === "strong";
+    const showVisual = !hideVisual && (visualMode === "full" || hovered || (strongContrast && active));
     const showEmphasis = !hideVisual && emphasized;
     if (!pathD) return null;
 
@@ -73,7 +74,7 @@ export const ConnectionPath = React.memo(function ConnectionPath({
             />
             {showVisual ? <path
                 d={pathD}
-                stroke={theme.connection.stroke}
+                stroke={strongContrast && emphasized ? theme.connection.emphasisStroke : theme.connection.stroke}
                 strokeWidth={CANVAS_CONNECTION_STROKE_WIDTH}
                 vectorEffect="non-scaling-stroke"
                 strokeOpacity={0.8}
@@ -86,7 +87,7 @@ export const ConnectionPath = React.memo(function ConnectionPath({
                 <circle cx={startX} cy={startY} r={2.5} fill={emphasized ? theme.connection.beam : theme.connection.stroke} fillOpacity={0.8} vectorEffect="non-scaling-stroke" style={{ pointerEvents: "none" }} />
                 <circle cx={endX} cy={endY} r={2.5} fill={emphasized ? theme.connection.beam : theme.connection.stroke} fillOpacity={0.8} vectorEffect="non-scaling-stroke" style={{ pointerEvents: "none" }} />
             </> : null}
-            {showEmphasis ? <CanvasConnectionBeam pathD={pathD} color={theme.connection.beam} /> : null}
+            {showEmphasis ? <CanvasConnectionBeam pathD={pathD} color={theme.connection.beam} contrast={theme.connection.beamContrast} /> : null}
         </g>
     );
 }, (previous, next) => previous.connection === next.connection && previous.from === next.from && previous.to === next.to && previous.active === next.active && previous.visualMode === next.visualMode && previous.hideVisual === next.hideVisual && previous.fromScrollTop === next.fromScrollTop && previous.toScrollTop === next.toScrollTop && previous.fromBatchScroll?.top === next.fromBatchScroll?.top && previous.fromBatchScroll?.left === next.fromBatchScroll?.left && previous.toBatchScroll?.top === next.toBatchScroll?.top && previous.toBatchScroll?.left === next.toBatchScroll?.left);
@@ -98,12 +99,18 @@ const BEAM_LAYERS = [0.35, 0.6, 0.9, 1.2, CANVAS_CONNECTION_STROKE_WIDTH, 1.65, 
     opacity: 0.14 + index * 0.07,
 }));
 
-export function CanvasConnectionBeam({ pathD, color }: { pathD: string; color: string }) {
+const LIGHT_BEAM_LAYERS = [0.65, 0.9, 1.2, 1.5, 1.75, 2.05, 2.35, 2.65].map((width, index) => ({
+    ...BEAM_LAYERS[index],
+    width,
+    opacity: Number((0.24 + index * 0.1).toFixed(2)),
+}));
+
+export function CanvasConnectionBeam({ pathD, color, contrast }: { pathD: string; color: string; contrast: "normal" | "strong" }) {
     // 前缘对齐，靠近头部的短层逐渐加宽、加深，形成圆头细尾的水滴轮廓。
     // 各层都沿原曲线行进，转弯时尾部自然贴线，底线宽度不受影响。
     // 统一周期为路径的三分之一，循环无跳帧；动画由 CSS 驱动，不逐帧更新 React。
     return <g data-connection-beam aria-hidden="true" style={{ pointerEvents: "none" }}>
-        {BEAM_LAYERS.map(({ length, offset, width, opacity }) => <path
+        {(contrast === "strong" ? LIGHT_BEAM_LAYERS : BEAM_LAYERS).map(({ length, offset, width, opacity }) => <path
             key={length}
             className="canvas-connection-comet"
             d={pathD}

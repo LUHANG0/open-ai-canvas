@@ -210,8 +210,8 @@ export function InspirationHall({ onUse }: { onUse: (item: CreationInspiration) 
                 value: option.value,
                 label: (
                     <>
-                        <span>{option.label}</span>
-                        {catalog ? <span className="inspiration-mode-count">{modeCounts[option.value].toLocaleString("zh-CN")}</span> : null}
+                        <span data-slot="control-label">{option.label}</span>
+                        {catalog ? <span data-slot="control-count" className="inspiration-mode-count">{modeCounts[option.value].toLocaleString("zh-CN")}</span> : null}
                     </>
                 ),
                 title: catalog ? `${option.label} ${modeCounts[option.value]} 条` : option.label,
@@ -353,7 +353,8 @@ export function InspirationHall({ onUse }: { onUse: (item: CreationInspiration) 
                     <Button
                         disabled={!hydrated}
                         icon={<Plus className="size-4" />}
-                        onClick={() => {
+                        onClick={(event) => {
+                            event.currentTarget.focus({ preventScroll: true });
                             setEditing(null);
                             setEditorOpen(true);
                         }}

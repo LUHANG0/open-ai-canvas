@@ -102,6 +102,8 @@ export default function SystemPerformancePage() {
 
     const requestClear = () => {
         modal.confirm({
+            rootClassName: "admin-modal-root",
+            className: "admin-modal-panel",
             title: "清理运行时缓存？",
             width: 560,
             icon: <AlertTriangle className="size-5 text-warning" />,
@@ -153,7 +155,7 @@ export default function SystemPerformancePage() {
             title="系统性能"
             description="紧凑查看主机、数据库、Redis、画布 Agent 和安全运行时缓存；敏感连接信息不会在此展示。"
             scroll
-            actions={<><label className="admin-performance-auto"><Switch size="small" checked={autoRefresh} onChange={setAutoRefresh} /><span>15 秒刷新</span></label><Button icon={<RefreshCw className="size-4" />} loading={refreshing} onClick={() => void load(false)}>刷新</Button></>}
+            actions={<><label className="admin-performance-auto"><Switch aria-label="每 15 秒自动刷新性能数据" size="small" checked={autoRefresh} onChange={setAutoRefresh} /><span>15 秒刷新</span></label><Button icon={<RefreshCw className="size-4" />} loading={refreshing} onClick={() => void load(false)}>刷新</Button></>}
         >
             <div className="admin-settings-stack admin-system-performance">
                 {loadError ? <div className="admin-performance-alert" role="alert"><AlertTriangle className="size-4" /><span>刷新失败，以下为上次采集的快照，非当前状态：{loadError}</span><Button size="small" onClick={() => void load(false)}>重试</Button></div> : null}
@@ -217,7 +219,7 @@ export default function SystemPerformancePage() {
 
                 {(data.agents || []).map((agent) => {
                     const draft = agentLimitDraft ?? agent.configuredLimit;
-                    return <SettingsSectionCard key={agent.id} layout="stacked" icon={<Bot className="size-4" />} title="画布 Agent 服务" description="同时进行中的对话占用一个名额。审批等待不占用。降低上限不会中断已经开始的对话，也不会在这台机器上再启动容器。" status={{ label: agent.healthy ? "服务可连接" : "服务不可达", color: agent.healthy ? "success" : "error" }} footer={<><span className="admin-performance-cache-note"><Gauge className="size-3.5" />新安装默认 30，一般不用再改</span><span style={{ display: "flex", gap: 8, alignItems: "center" }}><InputNumber min={1} max={64} precision={0} value={draft} onChange={(value) => setAgentLimitDraft(typeof value === "number" ? value : draft)} /><Button type="primary" loading={savingAgentLimit} disabled={draft === agent.configuredLimit} onClick={() => {
+                    return <SettingsSectionCard key={agent.id} layout="stacked" icon={<Bot className="size-4" />} title="画布 Agent 服务" description="同时进行中的对话占用一个名额。审批等待不占用。降低上限不会中断已经开始的对话，也不会在这台机器上再启动容器。" status={{ label: agent.healthy ? "服务可连接" : "服务不可达", color: agent.healthy ? "success" : "error" }} footer={<><span className="admin-performance-cache-note"><Gauge className="size-3.5" />新安装默认 30，一般不用再改</span><span style={{ display: "flex", gap: 8, alignItems: "center" }}><InputNumber aria-label={`${agent.name} 同时对话上限`} min={1} max={64} precision={0} value={draft} onChange={(value) => setAgentLimitDraft(typeof value === "number" ? value : draft)} /><Button type="primary" loading={savingAgentLimit} disabled={draft === agent.configuredLimit} onClick={() => {
                         setSavingAgentLimit(true);
                         void updateAgentSessionLimit(draft).then(() => {
                             message.success("已应用 Agent 同时对话上限");

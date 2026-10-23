@@ -39,6 +39,7 @@ export function CanvasSettingsPopover({ label, summary, children, placement = "t
             // 无箭头时不保留 placement 的负间距，避免原生 shift 后仍有边缘越界。
             align={autoAdjustOverflow ? { offset: [0, 0], overflow: { shiftX: true, shiftY: true } } : undefined}
             arrow={false}
+            classNames={{ root: "workspace-utility-overlay" }}
             destroyOnHidden
             styles={{ root: { zIndex: "var(--z-dialog-popover)" }, container: { background: theme.canvas.background, color: theme.node.text, padding: 12 } }}
             content={

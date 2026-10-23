@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { Alert, App, Button, Form, Input, InputNumber, Radio, Select } from "antd";
 import { ExternalLink, Upload } from "lucide-react";
 import { useReducedMotion } from "motion/react";
@@ -21,6 +21,7 @@ import { AgentAvatarVideo } from "@/components/canvas/agent-avatar-video";
 export function CanvasAppearanceEditor({ value, onChange, disabled, onUploading }: { value: CanvasAppearance; onChange: (value: CanvasAppearance) => void; disabled: boolean; onUploading: (value: boolean) => void }) {
     const { message } = App.useApp();
     const reducedMotion = useReducedMotion() ?? false;
+    const textFieldId = useId();
     const input = useRef<HTMLInputElement>(null);
     const bundleInput = useRef<HTMLInputElement>(null);
     const [uploading, setUploading] = useState(false);
@@ -122,8 +123,8 @@ export function CanvasAppearanceEditor({ value, onChange, disabled, onUploading 
                             ["inputPlaceholder", "输入框提示", 160],
                         ] as const
                     ).map(([key, label, max]) => (
-                        <Form.Item key={key} label={label}>
-                            <Input value={value[key]} maxLength={max} showCount onChange={(event) => change({ [key]: event.target.value })} />
+                        <Form.Item key={key} label={label} htmlFor={`${textFieldId}-${key}`}>
+                            <Input id={`${textFieldId}-${key}`} value={value[key]} maxLength={max} showCount onChange={(event) => change({ [key]: event.target.value })} />
                         </Form.Item>
                     ))}
                 </Form>

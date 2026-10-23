@@ -90,6 +90,8 @@ export default function SystemUpdatePage() {
         if (!status?.latestRelease) return;
         const target = status.latestRelease.version;
         modal.confirm({
+            rootClassName: "admin-modal-root",
+            className: "admin-modal-panel",
             title: `更新到 ${target}？`,
             width: 560,
             content: (
@@ -120,12 +122,14 @@ export default function SystemUpdatePage() {
         if (!status?.rollbackVersion) return;
         let reason = "";
         modal.confirm({
+            rootClassName: "admin-modal-root",
+            className: "admin-modal-panel",
             title: `回退到 ${status.rollbackVersion}？`,
             width: 520,
             content: (
                 <div className="space-y-3">
                     <p className="text-sm text-foreground/65">回退会停止当前服务、恢复最近一次已校验数据库备份并重新启动旧镜像。请先确认备份时间与业务影响。</p>
-                    <Input.TextArea rows={3} maxLength={300} showCount placeholder="填写回退原因（必填）" onChange={(event) => (reason = event.target.value)} />
+                    <Input.TextArea aria-label="回退原因（必填）" rows={3} maxLength={300} showCount placeholder="填写回退原因（必填）" onChange={(event) => (reason = event.target.value)} />
                 </div>
             ),
             okText: "开始回退",

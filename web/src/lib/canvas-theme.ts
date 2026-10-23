@@ -7,7 +7,9 @@ export const canvasThemes = {
     light: {
         connection: {
             stroke: "#a3a3a3",
-            beam: "#404040",
+            emphasisStroke: "#737373",
+            beam: "#262626",
+            beamContrast: "strong" as const,
         },
         canvas: {
             background: "#f0f0f0",
@@ -78,7 +80,9 @@ export const canvasThemes = {
     dark: {
         connection: {
             stroke: "#737373",
+            emphasisStroke: "#737373",
             beam: "#e5e5e5",
+            beamContrast: "normal" as const,
         },
         canvas: {
             background: "#000000",

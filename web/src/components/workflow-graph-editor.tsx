@@ -164,6 +164,7 @@ export function WorkflowGraphEditor({ workflowJson, workflowGraph, fields, onCha
                 <label className="workflow-graph-node-select">
                     <span>正在设置的节点</span>
                     <Select
+                        aria-label="正在设置的节点"
                         showSearch
                         value={selectedNodeId || undefined}
                         placeholder="选择节点"
@@ -221,6 +222,8 @@ export function WorkflowGraphEditor({ workflowJson, workflowGraph, fields, onCha
                                             className={`workflow-graph-node is-${node.category}${fieldCount ? " has-fields" : ""}${selectedNodeId === node.id ? " is-selected" : ""}`}
                                             transform={`translate(${node.x},${node.y})`}
                                             role="button"
+                                            aria-label={`${node.title} · ${node.classType} · 节点 ${node.id}`}
+                                            aria-pressed={selectedNodeId === node.id}
                                             tabIndex={0}
                                             onClick={() => setSelectedNodeId(node.id)}
                                             onKeyDown={(event) => {

@@ -96,15 +96,18 @@ function PanelTabs({
     trailing?: React.ReactNode;
 }) {
     return (
-        <div className="flex h-9 shrink-0 items-center gap-0.5 border-b border-[var(--previs-sequencer-border)] bg-[var(--previs-sequencer-surface-raised)] px-1.5">
+        <div role="group" aria-label="剪辑器面板视图" className="flex h-9 shrink-0 items-center gap-0.5 border-b border-[var(--previs-sequencer-border)] bg-[var(--previs-sequencer-surface-raised)] px-1.5">
             {tabs.map((tab) => (
                 <button
                     key={tab.id}
                     type="button"
+                    data-slot="tool-button"
+                    data-active={active === tab.id}
+                    aria-pressed={active === tab.id}
                     onClick={() => onChange(tab.id)}
                     className={`h-7 rounded-md px-2.5 text-xs transition-colors ${
                         active === tab.id
-                            ? "bg-[var(--previs-dock-active-surface)] text-[var(--previs-dock-fg-strong)]"
+                            ? "bg-[var(--control-selected-bg)] text-[var(--control-selected-fg)]"
                             : "text-[var(--previs-dock-fg)] hover:bg-[var(--previs-control-hover)]"
                     }`}
                 >
@@ -173,12 +176,14 @@ function EditorTopBar({
                 <button
                     type="button"
                     aria-label="AI 剪辑助手"
+                    data-slot="icon-button"
+                    data-active={aiOpen}
                     aria-pressed={aiOpen}
                     title="AI 剪辑助手（编辑意图转时间线指令）"
                     onClick={onToggleAi}
                     className={`grid size-8 place-items-center rounded-md transition-colors ${
                         aiOpen
-                            ? "bg-[var(--previs-dock-active-surface)] text-[var(--previs-dock-fg-strong)]"
+                            ? "bg-[var(--control-selected-bg)] text-[var(--control-selected-fg)]"
                             : "text-[var(--previs-dock-fg)] hover:bg-[var(--previs-control-hover)]"
                     }`}
                 >
@@ -428,7 +433,7 @@ export default function ProjectEditorView({ detail }: { detail: ProjectDetail })
 
     return (
         <EditorStoreProvider store={store} host={{ projectId, assets, refreshAssets }}>
-            <div ref={workbenchRef} className="editor-workbench relative flex h-full min-h-0 flex-col bg-[var(--previs-workspace-bg)]">
+            <div ref={workbenchRef} className="workspace-utility-overlay editor-workbench relative flex h-full min-h-0 flex-col bg-[var(--previs-workspace-bg)]">
                 <EditorTopBar
                     onExport={() => setRightTab("export")}
                     isFullscreen={isFullscreen}

@@ -1,4 +1,5 @@
-import { Modal } from "antd";
+import { AppModal } from "@/components/ui/product/app-modal";
+
 import { Switch } from "@/components/ui/base/switch";
 import { GripVertical, RotateCcw, X } from "lucide-react";
 import { motion, useReducedMotion } from "motion/react";
@@ -133,7 +134,7 @@ export function ToolbarSettingsModal({ open, onClose, toolbar }: ToolbarSettings
     };
 
     return (
-        <Modal
+        <AppModal rootClassName="workspace-utility-overlay"
             className="canvas-toolbar-settings-modal"
             open={open}
             onCancel={onClose}
@@ -190,7 +191,7 @@ export function ToolbarSettingsModal({ open, onClose, toolbar }: ToolbarSettings
                     />
                 ))}
             </div>
-        </Modal>
+        </AppModal>
     );
 }
 

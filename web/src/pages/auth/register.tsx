@@ -1,5 +1,7 @@
 import { type FormEvent, useEffect, useRef, useState, type ReactNode } from "react";
-import { App, Button, Checkbox, Divider, Input, Modal, Segmented } from "antd";
+import { App, Button, Checkbox, Divider, Input } from "antd";
+import { SegmentedControl } from "@/components/ui/base/segmented-control";
+import { AppModal } from "@/components/ui/product/app-modal";
 import { ArrowRight, FileText, Info, LockKeyhole, Mail, TriangleAlert, UserRound } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router";
 
@@ -139,7 +141,7 @@ export default function RegisterPage() {
                     disabled={disabled}
                 />
             </AuthField> : <>
-                {methods.length > 1 && <Segmented block aria-label="注册验证方式" options={methods.map((value) => ({ value, label: methodLabels[value] }))} value={method} disabled={submitting} onChange={(value) => { setMethod(value as VerificationMethod); setVerification({ ...emptyVerification }); }} />}
+                {methods.length > 1 && <SegmentedControl block ariaLabel="注册验证方式" options={methods.map((value) => ({ value, label: methodLabels[value] }))} value={method} disabled={submitting} onChange={(value) => { setMethod(value as VerificationMethod); setVerification({ ...emptyVerification }); }} />}
                 {methods.length > 0 && <VerificationFields key={method} purpose="register" method={method} value={verification} onChange={setVerification} disabled={disabled || submitting} />}
             </>}
 
@@ -174,7 +176,7 @@ export default function RegisterPage() {
                 <Notice icon={<TriangleAlert className="size-3.5" />} tone="amber">
                     <span>
                         读取注册设置失败，暂时无法确认服务协议名称与条款。
-                        <button type="button" className="auth-scene-link ml-1 transition" onClick={() => setSettingsReloadKey((value) => value + 1)}>
+                        <button type="button" className="auth-scene-link ml-1 transition-colors duration-150 motion-reduce:transition-none" onClick={() => setSettingsReloadKey((value) => value + 1)}>
                             重新读取
                         </button>
                     </span>
@@ -205,7 +207,7 @@ export default function RegisterPage() {
                     </Button>
                 </>
             ) : null}
-            <Modal
+            <AppModal
                 className="workspace-modal workspace-modal-compact auth-agreement-modal"
                 title={agreementTitle}
                 open={agreementOpen}
@@ -237,7 +239,7 @@ export default function RegisterPage() {
                     <LockKeyhole className="size-3 shrink-0" aria-hidden />
                     继续注册即表示你已阅读并接受本协议全部条款。
                 </p>
-            </Modal>
+            </AppModal>
         </form>
     );
 }
@@ -245,7 +247,7 @@ export default function RegisterPage() {
 function AuthField({ label, children }: { label: string; children: ReactNode }) {
     return (
         <label className="block space-y-2">
-            <span className="auth-scene-label text-xs font-medium">{label}</span>
+            <span className="auth-scene-label text-sm font-medium">{label}</span>
             {children}
         </label>
     );

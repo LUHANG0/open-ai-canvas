@@ -1,4 +1,4 @@
-import { useState, type ButtonHTMLAttributes, type ReactNode } from "react";
+import type { ComponentPropsWithRef, ReactNode } from "react";
 import { cva, type VariantProps } from "class-variance-authority";
 import { Loader2 } from "lucide-react";
 
@@ -10,21 +10,21 @@ import { cn } from "@/lib/utils";
  * 用途：工具类按钮——画布工具 Dock、面板工具组：被按下时保持高亮（aria-pressed），
  *   或展开浮层面板（expands → aria-expanded）。active 持久态与 hover/按压态区分
  *   明显，配合画布 ToolDefinition（active/expands/disabled 谓词）渲染。
- * token：active 态 bg-surface-active + text-foreground，常态 bg-transparent +
- *   text-muted-foreground，hover bg-surface-hover；焦点环 ring-ring；
+ * token：active 态 control-selected，常态 bg-transparent +
+ *   text-muted-foreground，hover bg-surface-hover；焦点环 control-focus-ring；
  *   danger 态激活文字用 text-status-error。间距由 size 档位控制。
  * 图标契约：`icon` 传 ReactNode（内联 JSX 或组件元素），与画布 tool-registry 的
  *   ToolDefinition.icon 字段一致（icons 是内联 JSX 如 <Undo2 />）；尺寸由本组件
  *   [&_svg] 规则统一控制。禁传 icon className 改尺寸。
  * 对标：接管画布工具 Dock 中按钮渲染（aria-pressed 语义）；AntD Tooltip+Button
  *   组合的工具按钮场景。参考 BoardUI tool 切换语义。
- * 明暗：全部颜色走 token；active 用按压底语义 token，明暗自动适配。
+ * 明暗由 token 切换；原生焦点和原地颜色反馈由 unified-buttons.css 负责。
  */
 export const toolButtonVariants = cva(
     [
         "inline-flex select-none items-center justify-center gap-1.5 rounded-md px-3",
         "font-medium transition-colors",
-        "outline-none focus-visible:outline-none data-[input-modality=keyboard]:focus-visible:ring-2 data-[input-modality=keyboard]:focus-visible:ring-ring",
+        "outline-none",
         "disabled:pointer-events-none disabled:opacity-45",
     ],
     {
@@ -36,10 +36,10 @@ export const toolButtonVariants = cva(
                 default: "bg-surface-secondary text-muted-foreground hover:bg-surface-hover hover:text-foreground",
             },
             size: {
-                xs: "h-6 px-1.5 text-tiny [&_svg]:size-3.5",
-                sm: "h-7 px-2 text-caption [&_svg]:size-4",
-                default: "h-8 px-2.5 text-caption [&_svg]:size-4",
-                lg: "h-9 px-3 text-body [&_svg]:size-[18px]",
+                xs: "h-6 px-1.5 text-[length:var(--fs-tiny)] [&_svg]:size-3.5",
+                sm: "h-7 px-2 text-[length:var(--fs-caption)] [&_svg]:size-4",
+                default: "h-8 px-2.5 text-[length:var(--fs-caption)] [&_svg]:size-4",
+                lg: "h-9 px-3 text-[length:var(--fs-body)] [&_svg]:size-[18px]",
             },
             tone: {
                 default: "",
@@ -66,7 +66,7 @@ export const toolButtonVariants = cva(
     },
 );
 
-export type ToolButtonProps = ButtonHTMLAttributes<HTMLButtonElement> &
+export type ToolButtonProps = ComponentPropsWithRef<"button"> &
     VariantProps<typeof toolButtonVariants> & {
         /** 图标内容：ReactNode（内联 JSX，与 tool-registry ToolDefinition.icon 对齐） */
         icon?: ReactNode;
@@ -77,39 +77,27 @@ export type ToolButtonProps = ButtonHTMLAttributes<HTMLButtonElement> &
         loading?: boolean;
         /** 显式文本标签（提供时按带标签布局渲染） */
         label?: ReactNode;
+        /** 过滤结果等辅助计数，不参与独立交互。 */
+        count?: ReactNode;
     };
 
-export function ToolButton({ variant, size, tone, icon, active = false, expands = false, loading = false, label, className, type = "button", disabled, onPointerDown, onKeyDown, onBlur, ...props }: ToolButtonProps) {
-    const [inputModality, setInputModality] = useState<"pointer" | "keyboard">("pointer");
-    const pressed = !expands && active;
-    const expanded = expands && active;
+export function ToolButton({ variant, size, tone, icon, active, expands = false, loading = false, label, count, children, className, type = "button", disabled, ...props }: ToolButtonProps) {
     return (
         <button
             data-slot="tool-button"
-            data-input-modality={inputModality}
+            data-tone={tone ?? "default"}
             type={type}
             disabled={disabled || loading}
-            aria-pressed={pressed || undefined}
-            aria-expanded={expanded || undefined}
+            aria-pressed={expands ? undefined : active}
+            aria-expanded={expands ? Boolean(active) : undefined}
             aria-busy={loading || undefined}
             data-active={active || undefined}
             className={cn(toolButtonVariants({ variant, size, tone, active }), className)}
-            onPointerDown={(event) => {
-                setInputModality("pointer");
-                onPointerDown?.(event);
-            }}
-            onKeyDown={(event) => {
-                if (event.key === "Tab" || event.key === "Enter" || event.key === " ") setInputModality("keyboard");
-                onKeyDown?.(event);
-            }}
-            onBlur={(event) => {
-                setInputModality("pointer");
-                onBlur?.(event);
-            }}
             {...props}
         >
-            {loading ? <Loader2 aria-hidden className="animate-spin" /> : icon}
-            {label != null ? <span>{label}</span> : null}
+            {loading ? <Loader2 aria-hidden className="animate-spin motion-reduce:animate-none" /> : icon}
+            {label != null ? <span data-slot="control-label">{label}</span> : children}
+            {count != null ? <span data-slot="control-count">{count}</span> : null}
         </button>
     );
 }

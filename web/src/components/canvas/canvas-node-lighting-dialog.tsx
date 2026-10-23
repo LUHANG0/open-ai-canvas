@@ -1,12 +1,9 @@
 import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { Slider } from "antd";
 
-import { motion, useReducedMotion } from "motion/react";
 import { RotateCcw, Send, Sun, X } from "lucide-react";
 
-import { SpotlightSurface } from "@/components/ui/aceternity/spotlight-surface";
 import { Tooltip } from "@/components/ui/base/tooltip";
-import { aceternityMotion } from "@/lib/aceternity-motion";
 import { canvasThemes } from "@/lib/canvas-theme";
 import { useCopyText } from "@/hooks/use-copy-text";
 import { useActiveTheme } from "@/stores/canvas/use-canvas-theme-store";
@@ -142,7 +139,6 @@ function buildLightingPrompt(input: {
 
 export function CanvasNodeLightingPanel({ dataUrl, onClose, onConfirm }: { dataUrl: string; onClose: () => void; onConfirm: (options: CanvasImageLightingOptions, prompt: string) => void }) {
     const theme = canvasThemes[useActiveTheme()];
-    const reducedMotion = useReducedMotion();
     const copyText = useCopyText();
     const [options, setOptions] = useState(defaultLightingOptions);
     const [smartDesc, setSmartDesc] = useState("");
@@ -199,17 +195,14 @@ export function CanvasNodeLightingPanel({ dataUrl, onClose, onConfirm }: { dataU
     const secondaryButtonClass = "flex h-8 items-center gap-1.5 rounded-[var(--dock-item-radius)] px-3 text-[var(--fs-label)] font-medium transition hover:bg-black/5 dark:hover:bg-white/10";
 
     return (
-        <SpotlightSurface
+        <div
             data-canvas-no-zoom
-            spotlightColor={theme.toolbar.itemHover}
-            initial={reducedMotion ? { opacity: 0 } : { opacity: 0, y: 8, scale: 0.97 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            transition={reducedMotion ? { duration: 0 } : aceternityMotion.spring.panel}
-            className="w-full max-w-full overflow-hidden rounded-[var(--r-2xl)] border backdrop-blur-2xl"
+            className="relative isolate workspace-utility-overlay w-full max-w-full overflow-hidden rounded-[var(--r-2xl)] border backdrop-blur-2xl"
             style={{ background: theme.spatial.elevated, borderColor: theme.toolbar.border, color: theme.node.text, boxShadow: `0 28px 80px ${theme.spatial.shadow}` }}
             onMouseDown={(event) => event.stopPropagation()}
             onPointerDown={(event) => event.stopPropagation()}
         >
+            <div className="relative z-[1] flex min-h-0 flex-1 flex-col">
             <div className="flex h-14 items-center justify-between border-b px-5" style={{ borderColor: theme.toolbar.border }}>
                 <h2 className="text-[var(--fs-title)] font-semibold leading-none">打光效果</h2>
                 <button
@@ -280,7 +273,7 @@ export function CanvasNodeLightingPanel({ dataUrl, onClose, onConfirm }: { dataU
                                     aria-pressed={isPositionActive(position)}
                                     onClick={() => setOptions((current) => ({ ...current, azimuth: position.azimuth, elevation: position.elevation }))}
                                     className="rounded-[var(--r-md)] py-1.5 text-xs font-medium transition-colors"
-                                    style={isPositionActive(position) ? { background: theme.node.activeStroke, color: theme.node.panel } : { background: theme.toolbar.itemHover, color: theme.node.text }}
+                                    style={isPositionActive(position) ? { background: "var(--control-selected-bg)", color: "var(--control-selected-fg)" } : { background: theme.toolbar.itemHover, color: theme.node.text }}
                                 >
                                     {position.label}
                                 </button>
@@ -330,16 +323,14 @@ export function CanvasNodeLightingPanel({ dataUrl, onClose, onConfirm }: { dataU
                     <button type="button" className={secondaryButtonClass} onClick={() => copyText(buildPrompt(), "打光提示词已复制")}>复制提示词</button>
                 </Tooltip>
                 <button type="button" className={secondaryButtonClass} onClick={() => setIsTemplateDialogOpen(true)}>设置提示词</button>
-                <motion.button
+                <button
                     type="button"
-                    whileHover={reducedMotion ? undefined : { y: -1 }}
-                    whileTap={reducedMotion ? undefined : { scale: 0.97 }}
                     className="flex h-8 items-center gap-1.5 rounded-[var(--dock-item-radius)] border px-3 text-[var(--fs-label)] font-semibold transition-colors"
                     style={{ borderColor: theme.node.activeStroke, color: theme.node.activeStroke, background: "transparent" }}
                     onClick={handleApply}
                 >
                     <Send className="size-3.5" />生成打光效果
-                </motion.button>
+                </button>
             </div>
 
             <PromptTemplateDialog
@@ -353,7 +344,8 @@ export function CanvasNodeLightingPanel({ dataUrl, onClose, onConfirm }: { dataU
                 onClose={() => setIsTemplateDialogOpen(false)}
                 onChange={setPromptTemplate}
             />
-        </SpotlightSurface>
+        </div>
+        </div>
     );
 }
 
@@ -465,7 +457,7 @@ function PromptTemplateDialog({ isOpen, title, description, value, defaultValue,
                     </button>
                     <div className="flex items-center gap-2">
                         <button type="button" className="rounded-[var(--r-md)] px-3 py-1.5 text-xs transition hover:opacity-80" style={{ background: theme.toolbar.itemHover }} onClick={onClose}>关闭</button>
-                        <button type="button" className="rounded-[var(--r-md)] px-3 py-1.5 text-xs font-medium transition hover:opacity-90" style={{ background: theme.node.activeStroke, color: theme.node.panel }} onClick={() => { onChange(draft); onClose(); }}>保存</button>
+                        <button type="button" className="bg-[var(--button-primary-bg)] text-[var(--button-primary-fg)] hover:bg-[var(--button-primary-hover-bg)] active:bg-[var(--button-primary-active-bg)] transition-colors duration-[var(--control-motion-duration)] motion-reduce:transition-none rounded-[var(--r-md)] px-3 py-1.5 text-xs font-medium" onClick={() => { onChange(draft); onClose(); }}>保存</button>
                     </div>
                 </div>
             </div>

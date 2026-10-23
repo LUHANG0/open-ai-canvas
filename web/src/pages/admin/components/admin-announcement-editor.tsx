@@ -1,7 +1,8 @@
 // 公告编辑器与弹层焦点管理（打开时锁定焦点，关闭后还原到触发元素）。
 
 import { type AnnouncementLevel, type SystemAnnouncement } from "@/services/api/announcements";
-import { Button, Form, Input, type InputRef, Modal } from "antd";
+import { Button, Form, Input, type InputRef } from "antd";
+import { AdminModal } from "@/pages/admin/ui/overlays";
 import { type ChangeEvent, useEffect, useRef } from "react";
 import { Pin, Send, Upload, X } from "lucide-react";
 import { Select } from "@/components/ui/base/select";
@@ -59,7 +60,8 @@ export function AnnouncementEditor({
     useAnnouncementOverlayFocus(activeOverlay, titleInputRef, returnFocusElement);
     return (
         <>
-            <Modal
+            <AdminModal
+                destroyOnHidden={false}
                 title={editingAnnouncement ? "编辑并重新发布公告" : "发布系统公告"}
                 open={open && !pending}
                 centered
@@ -169,9 +171,9 @@ export function AnnouncementEditor({
                         </section>
                     </div>
                 </Form>
-            </Modal>
+            </AdminModal>
 
-            <Modal
+            <AdminModal
                 title={pending?.mode === "update" ? "确认编辑并重新发布" : "确认发布系统公告"}
                 open={Boolean(pending)}
                 okText={pending?.mode === "update" ? "确认重新发布" : "确认发布"}
@@ -223,7 +225,7 @@ export function AnnouncementEditor({
                         </dl>
                     </div>
                 ) : null}
-            </Modal>
+            </AdminModal>
         </>
     );
 }

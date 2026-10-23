@@ -1,11 +1,8 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { ChevronUp, ChevronDown, Camera as CameraIcon, RotateCcw, X } from "lucide-react";
-import { motion, useReducedMotion } from "motion/react";
 
-import { SpotlightSurface } from "@/components/ui/aceternity/spotlight-surface";
 import { Tooltip } from "@/components/ui/base/tooltip";
-import { aceternityMotion } from "@/lib/aceternity-motion";
 import { canvasThemes } from "@/lib/canvas-theme";
 import { useCopyText } from "@/hooks/use-copy-text";
 import { useActiveTheme } from "@/stores/canvas/use-canvas-theme-store";
@@ -283,7 +280,6 @@ export function CanvasNodeCameraPanel({
     onConfirm: (options: CameraControlOptions, prompt: string) => void;
 }) {
     const theme = canvasThemes[useActiveTheme()];
-    const reducedMotion = useReducedMotion();
     const copyText = useCopyText();
 
     const [enabled, setEnabled] = useState(cameraControl?.enabled ?? defaultCameraControl.enabled);
@@ -344,17 +340,14 @@ export function CanvasNodeCameraPanel({
     const secondaryButtonClass = "flex h-8 items-center gap-1.5 rounded-[var(--dock-item-radius)] px-3 text-[var(--fs-label)] font-medium transition hover:bg-black/5 dark:hover:bg-white/10";
 
     return (
-        <SpotlightSurface
+        <div
             data-canvas-no-zoom
-            spotlightColor={theme.toolbar.itemHover}
-            initial={reducedMotion ? { opacity: 0 } : { opacity: 0, y: 8, scale: 0.97 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            transition={reducedMotion ? { duration: 0 } : aceternityMotion.spring.panel}
-            className="w-full overflow-hidden rounded-[var(--r-xl)] border backdrop-blur-2xl"
+            className="relative isolate workspace-utility-overlay w-full overflow-hidden rounded-[var(--r-xl)] border backdrop-blur-2xl"
             style={{ background: theme.spatial.elevated, borderColor: theme.toolbar.border, color: theme.node.text, boxShadow: `0 28px 80px ${theme.spatial.shadow}` }}
             onMouseDown={(event) => event.stopPropagation()}
             onPointerDown={(event) => event.stopPropagation()}
         >
+            <div className="relative z-[1] flex min-h-0 flex-1 flex-col">
             <div className="flex items-center justify-between gap-3 border-b px-4 py-3" style={{ borderColor: theme.toolbar.border }}>
                 <div className="min-w-0">
                     <div className="text-sm font-semibold tracking-tight">摄像机控制</div>
@@ -471,17 +464,16 @@ export function CanvasNodeCameraPanel({
                         />
                     </button>
                 </div>
-                <motion.button
+                <button
                     type="button"
-                    whileHover={reducedMotion ? undefined : { y: -1 }}
-                    whileTap={reducedMotion ? undefined : { scale: 0.97 }}
                     className="canvas-node-camera-apply flex h-7 items-center gap-1.5 rounded-[var(--dock-item-radius)] border px-3.5 text-[var(--fs-label)] font-semibold transition-colors"
                     style={{ borderColor: theme.node.activeStroke, color: theme.node.activeStroke, background: "transparent" }}
                     onClick={handleApply}
                 >
                     <CameraIcon className="size-3.5" />应用
-                </motion.button>
+                </button>
             </div>
-        </SpotlightSurface>
+        </div>
+        </div>
     );
 }

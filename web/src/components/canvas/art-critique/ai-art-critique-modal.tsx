@@ -271,7 +271,7 @@ export function AiArtCritiqueModal({ node, upstreamNodes, open, onClose, onUpdat
     const modelInlineLabel = selectedCritiqueModel || visibleState.report?.modelLabel ? `${modelStatusLabel} · ${displayedModelLabel}` : "请到设置中选择支持图片理解的文本模型";
 
     return (
-        <AppModal
+        <AppModal rootClassName="workspace-utility-overlay"
             open={open}
             title={null}
             closable={false}
