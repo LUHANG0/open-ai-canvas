@@ -18,11 +18,12 @@ import (
 )
 
 type VerificationRequest struct {
-	Purpose  string `json:"purpose"`
-	Method   string `json:"method"`
-	Email    string `json:"email"`
-	Phone    string `json:"phone"`
-	Password string `json:"password"`
+	Purpose        string `json:"purpose"`
+	Method         string `json:"method"`
+	Email          string `json:"email"`
+	Phone          string `json:"phone"`
+	Password       string `json:"password"`
+	InvitationCode string `json:"invitationCode"`
 }
 type VerificationTicket struct {
 	Ticket     string `json:"ticket"`
@@ -48,18 +49,16 @@ func (s *Service) verificationHash(value string) (string, error) {
 	h.Write([]byte(value))
 	return hex.EncodeToString(h.Sum(nil)), nil
 }
-func (s *Service) checkVerificationPolicy(p VerificationPolicy, purpose, method string) error {
+func (s *Service) checkVerificationPolicy(p VerificationPolicy, purpose, method string, invitationCodes ...string) error {
 	if !p.allows(purpose, method) {
 		return kernel.Forbidden("此验证方式未开启，请刷新页面")
 	}
 	if purpose == "register" {
-		enabled, err := s.RegistrationEnabled()
-		if err != nil {
-			return err
+		code := ""
+		if len(invitationCodes) > 0 {
+			code = invitationCodes[0]
 		}
-		if !enabled {
-			return kernel.Forbidden("管理员未开放新用户注册")
-		}
+		return s.registrationAllowed(code)
 	}
 	return nil
 }
@@ -68,7 +67,7 @@ func (s *Service) StartVerification(ctx context.Context, actor *model.User, req 
 	if err != nil {
 		return nil, err
 	}
-	if err := s.checkVerificationPolicy(p, req.Purpose, req.Method); err != nil {
+	if err := s.checkVerificationPolicy(p, req.Purpose, req.Method, req.InvitationCode); err != nil {
 		return nil, err
 	}
 	email, phone := "", ""
@@ -233,7 +232,7 @@ func (s *Service) contactAvailable(email, phone, ownID string) error {
 func invalidVerification() error {
 	return kernel.BadAuthRequest("验证码错误、已失效或验证次数已用尽，请重新获取")
 }
-func (s *Service) verifyTicket(purpose string, req VerificationConfirm) (*model.AuthVerification, error) {
+func (s *Service) verifyTicket(purpose string, req VerificationConfirm, invitationCodes ...string) (*model.AuthVerification, error) {
 	id, secret, ok := strings.Cut(req.Ticket, ".")
 	if !ok || len(secret) != 64 || len(id) > 36 {
 		return nil, invalidVerification()
@@ -252,7 +251,7 @@ func (s *Service) verifyTicket(purpose string, req VerificationConfirm) (*model.
 	if err != nil {
 		return nil, err
 	}
-	if err := s.checkVerificationPolicy(p, v.Purpose, v.Method); err != nil {
+	if err := s.checkVerificationPolicy(p, v.Purpose, v.Method, invitationCodes...); err != nil {
 		return nil, err
 	}
 	if p.hash() != v.PolicyHash {

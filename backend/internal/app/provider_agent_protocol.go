@@ -66,7 +66,7 @@ func expandCanonicalAgentRequest(source *canonicalAgentRequest, config providerC
 			return nil, errors.New("画布 Agent 工具定义缺少名称")
 		}
 	}
-	if err := validateCanonicalAgentHistory(source, config.InterfaceType == string(model.ChannelInterfaceOpenAIResponse)); err != nil {
+	if err := validateCanonicalAgentHistory(source, config.InterfaceType == string(model.ChannelInterfaceOpenAIResponse) || config.InterfaceType == "4stoken-responses"); err != nil {
 		return nil, err
 	}
 	switch choice := source.ToolChoice.(type) {

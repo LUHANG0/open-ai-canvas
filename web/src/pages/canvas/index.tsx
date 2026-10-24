@@ -8,7 +8,8 @@ import { ArrowDownAZ, Clock3, Download, FileUp, History, ListFilter, MoreHorizon
 
 import { CollectionGrid, PageHeader, WorkspacePage } from "@/components/layout/workspace-page";
 import { CollectionToolbar } from "@/components/layout/collection-toolbar";
-import { WorkspaceErrorState, WorkspaceLoadingState, WorkspaceState } from "@/components/layout/workspace-state";
+import { WorkspaceErrorState, WorkspaceState } from "@/components/layout/workspace-state";
+import { WorkspaceEntryPending } from "@/components/layout/workspace-entry-pending";
 
 import { readZip } from "@/lib/zip";
 import { setMediaBlob } from "@/services/file-storage";
@@ -413,7 +414,7 @@ export default function CanvasPage() {
         <WorkspacePage className="studio-collection-page collection-workspace">
             <div className="studio-band">
                 <PageHeader
-                    title="我的画布"
+                    title="创作画布"
                     description="把镜头、素材和想法留在同一张画布里。"
                     meta={<span className="app-projects-header-meta">{totalProjects} 个画布</span>}
                     actions={
@@ -497,7 +498,7 @@ export default function CanvasPage() {
                 {userId && libraryQuery.isError ? (
                     <div role="alert"><WorkspaceErrorState title="画布列表读取失败" description="暂时无法读取画布，请检查网络连接后重试。" onRetry={() => void libraryQuery.refetch()} /></div>
                 ) : !hydrated || (userId && libraryQuery.isPending) ? (
-                    <WorkspaceLoadingState label="正在恢复画布" detail="读取本地缓存与账号同步状态" />
+                    <WorkspaceEntryPending />
                 ) : visibleProjects.length ? (
                     <CollectionGrid className="canvas-collection-grid">
                         {visibleProjects.map((project) => (

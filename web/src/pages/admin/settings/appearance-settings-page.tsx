@@ -1,8 +1,8 @@
-import { commitPublicAppearance, DEFAULT_PUBLIC_APPEARANCE } from "@/stores/use-appearance-store";
+import { commitPublicAppearance } from "@/stores/use-appearance-store";
 import { deleteAdminResources } from "@/services/api/admin-storage";
 import { AdminStatusBadge, SettingsSectionCard } from "@/pages/admin/components/admin-ui";
 import { AdminPageFrame } from "@/pages/admin/components/admin-shell";
-import { Palette, RefreshCw, Undo2, RotateCcw, Save, Sun, Moon, MonitorPlay, Globe2, Search, Copyright, Type } from "lucide-react";
+import { Palette, RefreshCw, Undo2, RotateCcw, Save, Sun, Moon, LogIn, Globe2, Search, Copyright, Type } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Switch } from "@/pages/admin/ui/controls";
 import { WelcomeSetting } from "@/pages/admin/settings/components/welcome-setting";
@@ -21,8 +21,8 @@ import { type DraftFiles, FILE_RULES, type ResetState } from "./appearance-setti
 
 export { type DraftFiles, FILE_RULES, type ResetState } from "./appearance-settings-parts";
 
-const EMPTY_FILES: DraftFiles = { logo: null, "logo-dark": null, video: null, poster: null };
-const EMPTY_RESETS: ResetState = { logo: false, "logo-dark": false, video: false, poster: false };
+const EMPTY_FILES: DraftFiles = { logo: null, "logo-dark": null };
+const EMPTY_RESETS: ResetState = { logo: false, "logo-dark": false };
 
 export default function AppearanceSettingsPage() {
     const { message, modal } = App.useApp();
@@ -34,9 +34,6 @@ export default function AppearanceSettingsPage() {
     const [updates, setUpdates] = useState<UpdateAnnouncement>(DEFAULT_UPDATE_ANNOUNCEMENT);
     const [canvasUploading, setCanvasUploading] = useState(false);
     const [brandSlug, setBrandSlug] = useState("");
-    const [authHeroTitle, setAuthHeroTitle] = useState("");
-    const [authHeroDescription, setAuthHeroDescription] = useState("");
-    const [authVideoAutoplay, setAuthVideoAutoplay] = useState(true);
     const [logoFrameEnabled, setLogoFrameEnabled] = useState(true);
     const [skinId, setSkinId] = useState("classic");
     const [skinThemes, setSkinThemes] = useState<SkinDefinition[]>([DEFAULT_CLASSIC_SKIN]);
@@ -58,8 +55,6 @@ export default function AppearanceSettingsPage() {
     const inputRefs = {
         logo: useRef<HTMLInputElement>(null),
         "logo-dark": useRef<HTMLInputElement>(null),
-        video: useRef<HTMLInputElement>(null),
-        poster: useRef<HTMLInputElement>(null),
     };
 
     const dirty =
@@ -69,9 +64,6 @@ export default function AppearanceSettingsPage() {
             canvasUploading ||
             brandName.trim() !== setting?.brandName ||
             brandSlug.trim().toLocaleLowerCase() !== setting?.brandSlug ||
-            normalizeDraftCopy(authHeroTitle) !== setting?.authHeroTitle ||
-            normalizeDraftCopy(authHeroDescription) !== setting?.authHeroDescription ||
-            authVideoAutoplay !== setting?.authVideoAutoplay ||
             logoFrameEnabled !== setting?.logoFrameEnabled ||
             skinId !== setting?.skinId ||
             JSON.stringify(skinThemes) !== JSON.stringify(setting?.skinThemes) ||
@@ -94,9 +86,6 @@ export default function AppearanceSettingsPage() {
         setCanvas(value.canvas || DEFAULT_CANVAS_APPEARANCE);
         setUpdates(normalizeUpdateAnnouncement(value.updates));
         setBrandSlug(value.brandSlug);
-        setAuthHeroTitle(value.authHeroTitle);
-        setAuthHeroDescription(value.authHeroDescription);
-        setAuthVideoAutoplay(value.authVideoAutoplay);
         setLogoFrameEnabled(value.logoFrameEnabled);
         setSkinThemes(themes);
         setSkinId(selectedID);
@@ -177,29 +166,23 @@ export default function AppearanceSettingsPage() {
         setFiles((current) => ({
             ...current,
             [slot]: file,
-            ...(slot === "video" ? { poster: null } : {}),
         }));
         setResets((current) => ({
             ...current,
             [slot]: false,
-            ...(slot === "video" ? { poster: true } : {}),
         }));
-        if (slot === "video" && inputRefs.poster.current) inputRefs.poster.current.value = "";
     };
 
     const resetAsset = (slot: AppearanceAssetSlot) => {
         setFiles((current) => ({
             ...current,
             [slot]: null,
-            ...(slot === "video" ? { poster: null } : {}),
         }));
         setResets((current) => ({
             ...current,
             [slot]: true,
-            ...(slot === "video" ? { poster: true } : {}),
         }));
         if (inputRefs[slot].current) inputRefs[slot].current.value = "";
-        if (slot === "video" && inputRefs.poster.current) inputRefs.poster.current.value = "";
     };
 
     const discardDraft = () => {
@@ -208,9 +191,6 @@ export default function AppearanceSettingsPage() {
         setUpdates(normalizeUpdateAnnouncement(setting.updates));
         setBrandName(setting.brandName);
         setBrandSlug(setting.brandSlug);
-        setAuthHeroTitle(setting.authHeroTitle);
-        setAuthHeroDescription(setting.authHeroDescription);
-        setAuthVideoAutoplay(setting.authVideoAutoplay);
         setLogoFrameEnabled(setting.logoFrameEnabled);
         setSkinId(setting.skinId);
         setSkinThemes(setting.skinThemes.map((theme) => cloneSkinDefinition(theme)));
@@ -252,8 +232,8 @@ export default function AppearanceSettingsPage() {
         modal.confirm({
             rootClassName: "admin-modal-root",
             className: "admin-modal-panel",
-            title: "恢复影策默认品牌标识？",
-            content: "品牌名称、英文标识、Logo、画布 Agent 名称/文案/形象、更新公告、登录页文案、视频、封面、SEO、备案和皮肤主题会立即恢复为项目内置值；自定义公告会清空并关闭，展示原有更新日志。已上传文件仍保留在存储资源中，不会被删除。",
+            title: "恢复梦层默认品牌标识？",
+            content: "品牌名称、英文标识、Logo、画布 Agent 名称/文案/形象、更新公告、SEO、备案和皮肤主题会立即恢复为项目内置值；自定义公告会清空并关闭，展示原有更新日志。已上传文件仍保留在存储资源中，不会被删除。",
             okText: "恢复默认",
             cancelText: "取消",
             okButtonProps: { danger: true },
@@ -267,7 +247,7 @@ export default function AppearanceSettingsPage() {
                     Object.values(inputRefs).forEach((ref) => {
                         if (ref.current) ref.current.value = "";
                     });
-                    message.success("已恢复影策默认品牌标识");
+                    message.success("已恢复梦层默认品牌标识");
                 } catch (error) {
                     message.error(error instanceof Error ? error.message : "恢复默认外观失败");
                     throw error;
@@ -293,8 +273,6 @@ export default function AppearanceSettingsPage() {
         }
         const nextBrandName = brandName.trim();
         const nextBrandSlug = brandSlug.trim().toLocaleLowerCase();
-        const nextAuthHeroTitle = normalizeDraftCopy(authHeroTitle);
-        const nextAuthHeroDescription = normalizeDraftCopy(authHeroDescription);
         const nextSeoTitle = normalizeSingleLine(seoTitle);
         const nextSeoDescription = normalizeDraftCopy(seoDescription);
         const nextSeoKeywords = normalizeSingleLine(seoKeywords);
@@ -309,16 +287,6 @@ export default function AppearanceSettingsPage() {
         if (!/^[a-z0-9](?:[a-z0-9-]{0,46}[a-z0-9])?$/.test(nextBrandSlug)) {
             setActiveTab("brand");
             message.error("英文品牌标识须为 1 到 48 位小写字母、数字或连字符");
-            return;
-        }
-        if (!nextAuthHeroTitle || Array.from(nextAuthHeroTitle).length > 80 || hasUnsupportedControlCharacter(nextAuthHeroTitle)) {
-            setActiveTab("auth");
-            message.error("登录页主标题必须为 1 到 80 个字符，可使用换行");
-            return;
-        }
-        if (Array.from(nextAuthHeroDescription).length > 160 || hasUnsupportedControlCharacter(nextAuthHeroDescription)) {
-            setActiveTab("auth");
-            message.error("登录页说明文案不能超过 160 个字符，可使用换行");
             return;
         }
         for (const [value, label, max, tab] of [
@@ -361,10 +329,8 @@ export default function AppearanceSettingsPage() {
             const ids: Record<AppearanceAssetSlot, string> = {
                 logo: resets.logo ? "" : setting.logoResourceId,
                 "logo-dark": resets["logo-dark"] ? "" : setting.darkLogoResourceId,
-                video: resets.video ? "" : setting.authVideoResourceId,
-                poster: resets.poster ? "" : setting.authVideoPosterResourceId,
             };
-            for (const slot of ["logo", "logo-dark", "video", "poster"] as AppearanceAssetSlot[]) {
+            for (const slot of ["logo", "logo-dark"] as AppearanceAssetSlot[]) {
                 const file = files[slot];
                 if (!file) continue;
                 const resource = await uploadAppearanceAsset(slot, file);
@@ -376,14 +342,9 @@ export default function AppearanceSettingsPage() {
                 updates,
                 brandName: nextBrandName,
                 brandSlug: nextBrandSlug,
-                authHeroTitle: nextAuthHeroTitle,
-                authHeroDescription: nextAuthHeroDescription,
                 logoResourceId: ids.logo,
                 darkLogoResourceId: ids["logo-dark"],
                 logoFrameEnabled,
-                authVideoResourceId: ids.video,
-                authVideoPosterResourceId: ids.poster,
-                authVideoAutoplay,
                 skinId,
                 skinThemes,
                 seoTitle: nextSeoTitle,
@@ -419,7 +380,6 @@ export default function AppearanceSettingsPage() {
     const lightLogoSelected = Boolean(files.logo || (!resets.logo && setting?.logoResourceId));
     const darkLogoSelected = Boolean(files["logo-dark"] || (!resets["logo-dark"] && setting?.darkLogoResourceId));
     const status = setting?.configured ? <AdminStatusBadge label="已自定义" tone="success" /> : <AdminStatusBadge label="使用原始外观" tone="neutral" />;
-    const copyCustomized = normalizeDraftCopy(authHeroTitle) !== DEFAULT_PUBLIC_APPEARANCE.authHeroTitle || normalizeDraftCopy(authHeroDescription) !== DEFAULT_PUBLIC_APPEARANCE.authHeroDescription;
     const draftBrandName = brandName.trim() || "站点名称";
     const selectedSkin = skinThemes.find((skin) => skin.id === skinId) || skinThemes[0] || DEFAULT_CLASSIC_SKIN;
 
@@ -485,7 +445,7 @@ export default function AppearanceSettingsPage() {
                                     <strong>{dirty ? "站点配置有调整待保存" : "站点及外观已与服务端同步"}</strong>
                                     <AdminStatusBadge label={dirty ? "尚未生效" : "服务端当前值"} tone={dirty ? "warning" : "neutral"} />
                                 </div>
-                                <p>{dirty ? "切换分类保留草稿；保存修改会一次应用品牌、登录页、更新公告、SEO、备案和皮肤调整。" : "按分类管理站点配置；欢迎页开关独立即时保存，其余修改统一保存。"}</p>
+                                <p>{dirty ? "切换分类保留草稿；保存修改会一次应用品牌、登录页、更新公告、SEO、备案和皮肤调整。" : "按分类管理站点配置；品牌官网的草稿与手动发布在独立入口管理。"}</p>
                             </div>
                         </div>
                         <div className="admin-appearance-command-actions">
@@ -495,7 +455,7 @@ export default function AppearanceSettingsPage() {
                                 </Button>
                             ) : null}
                             <Button icon={<RotateCcw className="size-4" />} loading={restoring} disabled={!setting.configured || saving || refreshing || canvasUploading} onClick={restoreBuiltInAppearance}>
-                                恢复影策默认
+                                恢复梦层默认
                             </Button>
                             <Button icon={<RefreshCw className="size-4" />} loading={refreshing} disabled={saving || restoring || canvasUploading} onClick={requestRefresh}>
                                 刷新状态
@@ -599,91 +559,17 @@ export default function AppearanceSettingsPage() {
                                 destroyOnHidden: true,
                                 children: (
                                     <SettingsSectionCard
-                                        className="admin-appearance-section admin-appearance-auth-section"
-                                        icon={<MonitorPlay className="size-4" aria-hidden="true" />}
-                                        title="登录页内容与媒体"
-                                        description="登录、注册与找回密码共享左侧品牌文案和影片；更换视频会同时取消旧封面，避免品牌串帧。"
-                                        status={
-                                            <AdminStatusBadge
-                                                label={copyCustomized || setting.authVideoResourceId || setting.authVideoPosterResourceId ? "已配置" : "使用原始内容"}
-                                                tone={copyCustomized || setting.authVideoResourceId || setting.authVideoPosterResourceId ? "success" : "neutral"}
-                                            />
-                                        }
+                                        className="admin-appearance-section"
+                                        icon={<LogIn className="size-4" aria-hidden="true" />}
+                                        title="登录与注册入口"
+                                        description="认证页沿用创作前台的字体、中性表面与实色操作，名称和 Logo 使用全站设置。官网内容在品牌官网中编辑。"
                                     >
-                                        <div className="admin-appearance-auth-layout">
-                                            <div className="admin-appearance-auth-controls">
-                                                <Form className="admin-appearance-form" layout="vertical" requiredMark={false} disabled={saving || refreshing || restoring}>
-                                                    <Form.Item label="登录页主标题" extra="1–80 个字符，可换行；登录、注册和找回密码页面共用。">
-                                                        <Input.TextArea value={authHeroTitle} maxLength={80} showCount autoSize={{ minRows: 2, maxRows: 4 }} placeholder="输入登录页主标题" onChange={(event) => setAuthHeroTitle(event.target.value)} />
-                                                    </Form.Item>
-                                                    <Form.Item label="登录页说明文案（可选）" extra="最多 160 个字符，可换行；留空时不显示说明。">
-                                                        <Input.TextArea
-                                                            value={authHeroDescription}
-                                                            maxLength={160}
-                                                            showCount
-                                                            autoSize={{ minRows: 2, maxRows: 5 }}
-                                                            placeholder="补充一句品牌介绍或产品定位"
-                                                            onChange={(event) => setAuthHeroDescription(event.target.value)}
-                                                        />
-                                                    </Form.Item>
-                                                </Form>
-                                                <div className="admin-appearance-media-list">
-                                                    <div className="admin-appearance-video-autoplay-option">
-                                                        <span className="admin-appearance-video-autoplay-copy">
-                                                            <strong>登录页视频自动播放</strong>
-                                                            <small>默认开启并静音循环播放；访客启用“减少动态效果”时仍尊重其系统偏好。</small>
-                                                        </span>
-                                                        <span className="admin-appearance-video-autoplay-control">
-                                                            <span>{authVideoAutoplay ? "已开启" : "已关闭"}</span>
-                                                            <Switch checked={authVideoAutoplay} disabled={saving || refreshing || restoring} aria-label="登录页视频自动播放" onChange={setAuthVideoAutoplay} />
-                                                        </span>
-                                                    </div>
-                                                    <AssetPicker
-                                                        slot="video"
-                                                        title="品牌视频"
-                                                        description="支持 MP4 或 WebM，最多 256MB；服务器运行时上传配额仍会同时生效。"
-                                                        configured={Boolean(setting.authVideoResourceId) && !resets.video}
-                                                        file={files.video}
-                                                        inputRef={inputRefs.video}
-                                                        onSelect={selectFile}
-                                                        onReset={resetAsset}
-                                                        disabled={saving || refreshing || restoring}
-                                                    />
-                                                    <AssetPicker
-                                                        slot="poster"
-                                                        title="视频封面（可选）"
-                                                        description="自定义视频未设置封面时保持中性背景，不显示原品牌封面。"
-                                                        configured={Boolean(setting.authVideoPosterResourceId) && !resets.poster}
-                                                        file={files.poster}
-                                                        inputRef={inputRefs.poster}
-                                                        onSelect={selectFile}
-                                                        onReset={resetAsset}
-                                                        disabled={saving || refreshing || restoring}
-                                                    />
-                                                </div>
-                                            </div>
-                                            <div className="admin-appearance-preview" aria-label="登录页实时预览">
-                                                <div className="admin-appearance-preview-heading">
-                                                    <div>
-                                                        <span>登录页实时预览</span>
-                                                        <strong>{brandName.trim() || "未命名品牌"}</strong>
-                                                    </div>
-                                                    <AdminStatusBadge label={dirty ? "未保存" : "线上版本"} tone={dirty ? "warning" : "success"} />
-                                                </div>
-                                                <div className="admin-appearance-preview-stage">
-                                                    <video key={`${previews.video}-${authVideoAutoplay}`} src={previews.video} poster={previews.poster || undefined} muted loop playsInline autoPlay={authVideoAutoplay} preload="metadata" />
-                                                    <span className="admin-appearance-preview-shade" />
-                                                    <span className="admin-appearance-preview-brand">
-                                                        <img src={previews.logoDark} alt="" />
-                                                        <strong>{brandName.trim() || "未命名品牌"}</strong>
-                                                    </span>
-                                                    <span className="admin-appearance-preview-copy">
-                                                        <small>{(brandSlug.trim() || "brand-studio").replace(/-+/g, " ").toLocaleUpperCase()}</small>
-                                                        <strong>{normalizeDraftCopy(authHeroTitle) || "请输入登录页主标题"}</strong>
-                                                        {normalizeDraftCopy(authHeroDescription) ? <span>{normalizeDraftCopy(authHeroDescription)}</span> : null}
-                                                    </span>
-                                                </div>
-                                                <p>预览与正式登录页使用同一文案和媒体。正式页面会先解析公开配置，再渲染品牌内容。</p>
+                                        <div className="admin-appearance-section-form">
+                                            <p>在此管理品牌名称与 Logo；账户验证方式、注册开关和服务协议由「登录与注册」统一管理。</p>
+                                            <div className="flex flex-wrap gap-3">
+                                                <Button href="/login" target="_blank" rel="noreferrer">查看登录页</Button>
+                                                <Button href="/register" target="_blank" rel="noreferrer">查看注册页</Button>
+                                                <Button href="/admin/settings/access">管理登录与注册方式</Button>
                                             </div>
                                         </div>
                                     </SettingsSectionCard>
@@ -691,9 +577,9 @@ export default function AppearanceSettingsPage() {
                             },
                             {
                                 key: "welcome",
-                                label: "欢迎页",
+                                label: "品牌官网",
                                 children: (
-                                    <SettingsSectionCard className="admin-appearance-section" icon={<Globe2 className="size-4" aria-hidden="true" />} title="欢迎页" description="控制访客是否可以访问欢迎页，开关修改后立即保存。">
+                                    <SettingsSectionCard className="admin-appearance-section" icon={<Globe2 className="size-4" aria-hidden="true" />} title="品牌官网" description="根地址固定展示品牌官网；内容草稿与发布独立管理，不影响此处皮肤与登录页设置。">
                                         <div className="admin-appearance-section-form">
                                             <WelcomeSetting />
                                         </div>

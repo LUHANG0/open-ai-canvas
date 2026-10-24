@@ -8,8 +8,6 @@ const (
 	AnnouncementImageMaxBytes          = app.AnnouncementImageMaxBytes
 	AppearanceAssetDarkLogo            = app.AppearanceAssetDarkLogo
 	AppearanceAssetLogo                = app.AppearanceAssetLogo
-	AppearanceAssetPoster              = app.AppearanceAssetPoster
-	AppearanceAssetVideo               = app.AppearanceAssetVideo
 	AssetSourceCanvas                  = app.AssetSourceCanvas
 	AssetSourceUploaded                = app.AssetSourceUploaded
 	CodeBadGateway                     = app.CodeBadGateway

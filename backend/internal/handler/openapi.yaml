@@ -28,6 +28,161 @@ tags:
   - name: skills
   - name: workbench
 paths:
+  /auth/invitation/validate:
+    post:
+      tags: [auth]
+      security: []
+      summary: 只读验证单次注册邀请
+      description: 短码区分大小写，放 JSON 中；请求不消费邀请。无效状态不返回管理员、内部备注、受邀账号或短码。网络与服务错误不能解释为邀请无效。IP、短码及全局限流；响应 no-store。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code]
+              properties:
+                code: {type: string, description: 6 位大小写字母数字；格式不符返回 invalid}
+      responses:
+        "200":
+          description: 成功信封；仅 valid 返回实际积分与注册配置
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code: {type: integer, enum: [0]}
+                  data:
+                    type: object
+                    required: [state]
+                    properties:
+                      state: {type: string, enum: [valid, expired, revoked, used, invalid]}
+                      bonusMicrocredits: {type: integer, format: int64, minimum: 0, maximum: 1000000000000}
+                      settings: {type: object, description: 当前实际验证码策略、协议及品牌注册设置；firstUser=false、registrationEnabled=true、linuxdoEnabled=false}
+        "400": {$ref: "#/components/responses/Error"}
+        "429": {$ref: "#/components/responses/Error"}
+        "500": {$ref: "#/components/responses/Error"}
+  /admin/registration-invitations:
+    get:
+      tags: [admin]
+      summary: 当前有效管理员分页查看邀请
+      parameters:
+        - {in: query, name: page, schema: {type: integer, minimum: 1, maximum: 100000, default: 1}}
+        - {in: query, name: pageSize, schema: {type: integer, minimum: 1, maximum: 100, default: 20}}
+      responses:
+        "200": {description: "成功信封 data={invitations,total}；每项含 code/note/bonusMicrocredits/createdAt/expiresAt/state，已用项含受邀用户 ID 与用户名，不返回摘要或加密值"}
+        "401": {$ref: "#/components/responses/Error"}
+        "403": {$ref: "#/components/responses/Error"}
+    post:
+      tags: [admin]
+      summary: 当前有效管理员生成一个新用户注册邀请
+      description: 仅普通用户，固定最终注册积分替代全局赠送，不叠加；安全随机 6 位短码，默认 7 天，碰撞重试。邀请与审计共同提交。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [bonusMicrocredits]
+              properties:
+                note: {type: string, maxLength: 200}
+                bonusMicrocredits: {type: integer, format: int64, minimum: 0, maximum: 1000000000000}
+                expiresInDays: {type: integer, minimum: 1, maximum: 90, default: 7}
+      responses:
+        "200": {description: "成功信封 data={invitation}，含可复制短码，响应 no-store"}
+        "400": {$ref: "#/components/responses/Error"}
+        "401": {$ref: "#/components/responses/Error"}
+        "403": {$ref: "#/components/responses/Error"}
+        "429": {$ref: "#/components/responses/Error"}
+  /admin/registration-invitations/{id}/revoke:
+    post:
+      tags: [admin]
+      summary: 当前有效管理员撤销未消费且未过期的邀请
+      parameters:
+        - {in: path, name: id, required: true, schema: {type: string}}
+      responses:
+        "200": {description: "成功信封 data={ok:true}"}
+        "401": {$ref: "#/components/responses/Error"}
+        "403": {$ref: "#/components/responses/Error"}
+        "409": {$ref: "#/components/responses/Error"}
+  /auth/register:
+    post:
+      tags: [auth]
+      security: []
+      summary: 注册账号，支持有效管理员邀请
+      description: 公开注册关闭时只允许有效邀请；原邮箱/手机号验证码、账号归属与协议仍必需。邀请注册固定普通用户；账号、验证码、邀请、唯一注册积分流水、审计与登录态共用事务。0 金额同样记录一次，后续登录不能补发。已有登录态不能提交邀请注册。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, password, acceptedTerms]
+              properties:
+                username: {type: string, minLength: 3, maxLength: 32}
+                displayName: {type: string}
+                password: {type: string, minLength: 8}
+                acceptedTerms: {type: boolean, enum: [true]}
+                email: {type: string}
+                phone: {type: string}
+                emailCode: {type: string}
+                smsCode: {type: string}
+                ticket: {type: string}
+                invitationCode: {type: string, pattern: '^[A-Za-z0-9]{6}$'}
+      responses:
+        "200": {description: "成功信封 data={user}，邀请注册另含服务端确认到账的 signupBonusMicrocredits；设置会话 Cookie"}
+        "400": {$ref: "#/components/responses/Error"}
+        "403": {$ref: "#/components/responses/Error"}
+        "409": {$ref: "#/components/responses/Error"}
+        "429": {$ref: "#/components/responses/Error"}
+  /auth/verification:
+    post:
+      tags: [auth]
+      security: []
+      summary: 按实际策略发送身份验证码
+      description: register 可附 invitationCode，仅有效邀请豁免注册开关；不豁免验证方式、联系方式归属、域名、冷却与发送配额。bind 要求会话和当前密码；login 保持不枚举账号的响应。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [purpose, method]
+              properties:
+                purpose: {type: string, enum: [register, login, bind]}
+                method: {type: string, enum: [email, sms, sms_email]}
+                email: {type: string}
+                phone: {type: string}
+                password: {type: string}
+                invitationCode: {type: string, pattern: '^[A-Za-z0-9]{6}$'}
+      responses:
+        "200": {description: "成功信封 data={ticket,expiresIn,retryAfter}，不消费邀请"}
+        "400": {$ref: "#/components/responses/Error"}
+        "403": {$ref: "#/components/responses/Error"}
+        "409": {$ref: "#/components/responses/Error"}
+        "429": {$ref: "#/components/responses/Error"}
+  /auth/email-code:
+    post:
+      tags: [auth]
+      security: []
+      summary: 旧邮箱注册验证码入口
+      description: 可附有效 invitationCode 豁免注册开关，原邮箱验证规则与发送限流保持，不消费邀请。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email: {type: string, format: email}
+                invitationCode: {type: string, pattern: '^[A-Za-z0-9]{6}$'}
+      responses:
+        "200": {description: "成功信封 data={sent:true}"}
+        "400": {$ref: "#/components/responses/Error"}
+        "403": {$ref: "#/components/responses/Error"}
+        "409": {$ref: "#/components/responses/Error"}
+        "429": {$ref: "#/components/responses/Error"}
   /projects/{id}/assets/{assetId}/image:
     put:
       tags: [projects, assets]
@@ -692,11 +847,103 @@ paths:
           description: 对象并发冲突、同一 mutationId 对应的请求摘要不同或编辑证明失效（reason 为 canvas_edit_lease_conflict）；原事务不会被覆盖
         "428":
           description: 缺少执行所需的对象基线
+  /public/brand-site:
+    get:
+      tags: [meta]
+      security: []
+      summary: 读取梦层官网当前发布内容
+      description: no-store；仅 data.content，不返回草稿、上一版本或隐藏版块。无记录时使用内置内容。
+      responses:
+        "200":
+          description: 已发布的受控首屏、可见版块、条目和页尾
+        "500":
+          description: 配置读取失败；不以草稿降级
+  /admin/settings/brand-site:
+    get:
+      tags: [admin]
+      summary: 管理员读取官网草稿与发布版本
+      responses:
+        "200":
+          description: data.setting 含 revision、draft、published、previous、draftSavedAt、publishedAt；no-store
+        "401":
+          description: 未登录
+        "403":
+          description: 非管理员
+  /admin/settings/brand-site/{action}:
+    post:
+      tags: [admin]
+      summary: 保存官网草稿、发布整版或恢复上一发布版
+      parameters:
+        - in: path
+          name: action
+          required: true
+          schema:
+            type: string
+            enum: [draft, publish, restore]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [revision]
+              properties:
+                revision:
+                  type: integer
+                  format: int64
+                content:
+                  type: object
+                  description: draft 操作必需，受控首屏与四版块结构；主按钮固定 /create，链接仅站内或 HTTPS，媒体仅私有本地就绪资源
+      responses:
+        "200":
+          description: data.setting 为新版本；整版 CAS 持久化，restore 不覆盖编辑草稿
+        "400":
+          description: 结构、链接或媒体无效；已发布内容不变
+        "401":
+          description: 未登录
+        "403":
+          description: 非管理员或媒体无权使用
+        "409":
+          description: 修订号过时或跨实例 CAS 失败，重新载入后编辑
+  /public/brand-site/media/{id}:
+    get:
+      tags: [meta]
+      security: []
+      summary: 读取当前可见官网发布引用的媒体
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: 图片或视频流，支持 Range，private no-store
+        "404":
+          description: 未被当前可见发布版本引用，包括草稿、隐藏版块和仅上一版引用
+  /admin/settings/brand-site/media/{id}:
+    get:
+      tags: [admin]
+      summary: 管理员预览自有或官网版本引用的媒体
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: 媒体流，支持 Range，private no-store
+        "401":
+          description: 未登录
+        "403":
+          description: 非管理员或非自有且未被官网引用
+        "404":
+          description: 媒体不存在
   /public/welcome:
     get:
       tags: [meta]
       security: []
-      summary: 读取欢迎页开放状态
+      summary: 读取旧欢迎页开放状态（不再控制品牌根入口）
+      deprecated: true
       responses:
         "200":
           description: 信封 data 仅包含 welcomeEnabled 布尔值，默认 true；Cache-Control 为 no-store
@@ -2005,8 +2252,76 @@ paths:
           $ref: "#/components/responses/Error"
         "404":
           $ref: "#/components/responses/Error"
+  /creation-conversations:
+    get:
+      summary: 分页列出当前账号创作历史及永久删除标记
+      parameters:
+        - {in: query, name: after, schema: {type: string, maxLength: 160}}
+        - {$ref: "#/components/parameters/ExpectedHistoryUser"}
+      responses:
+        "200":
+          description: 成功信封 data={items,next}，items 为摘要，ID 升序，每页至多 100 条；next 为空表示结束
+        "401": {description: 未登录}
+        "403": {description: 预期账号与当前登录账号不符}
+  /creation-conversations/{id}:
+    get:
+      summary: 读取当前账号创作对话及逐条消息修订
+      parameters:
+        - {in: path, name: id, required: true, schema: {type: string, maxLength: 160}}
+        - {$ref: "#/components/parameters/ExpectedHistoryUser"}
+      responses:
+        "200":
+          description: 成功信封，data 为完整一致性快照
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code: {type: integer, enum: [0]}
+                  msg: {type: string}
+                  data: {$ref: "#/components/schemas/CreationHistoryDetail"}
+        "401": {description: 未登录}
+        "404": {description: 对话不存在或不属于当前账号}
+  /creation-conversations/{id}/sync:
+    post:
+      summary: 按稳定消息 ID 和修订增量保存或永久删除创作历史
+      description: 不覆盖整数组；metadata 与每条消息独立检查修订。成功结果 conflicts 给出采用云端版本的 metadata 或消息 ID；非法输入或资源/任务越权整批回滚。delete 不混合其他修改，不级联删除任务或媒体，旧设备不得复活同 ID。
+      parameters:
+        - {in: path, name: id, required: true, schema: {type: string, maxLength: 160}}
+        - {$ref: "#/components/parameters/ExpectedHistoryUser"}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                metadata:
+                  type: object
+                  required: [revision, title]
+                  properties:
+                    revision: {type: integer, minimum: 0}
+                    title: {type: string, minLength: 1, maxLength: 120}
+                    canvasId: {type: string, description: 必须属于当前账号}
+                messages:
+                  type: array
+                  maxItems: 100
+                  items: {$ref: "#/components/schemas/CreationHistoryMessage"}
+                delete: {type: boolean, description: 永久删除标记，可先于首次上传建立}
+      responses:
+        "200":
+          description: 成功信封 data 为 CreationHistoryDetail，conflicts 非空表示部分修改冲突；删除过的 ID 返回 deleted=true
+        "400": {description: 非法字段、超限、资源/任务/画布越权或资源不可用}
+        "401": {description: 未登录}
+        "403": {description: 预期账号与登录账号不符}
+        "500": {description: 持久化失败，客户端保留本机数据并可重试}
 components:
   parameters:
+    ExpectedHistoryUser:
+      name: X-Canvas-Expected-User
+      in: header
+      description: 后台同步和媒体迁移使用的预期账号，防止 Cookie 切换后旧请求执行；不替代 Cookie 鉴权
+      schema: {type: string}
     AgentRunID:
       name: id
       in: path
@@ -2019,6 +2334,36 @@ components:
       in: cookie
       name: open_ai_canvas_session
   schemas:
+    CreationHistoryMessage:
+      type: object
+      required: [id, revision, data]
+      properties:
+        id: {type: string, maxLength: 160}
+        revision: {type: integer, minimum: 0}
+        data:
+          type: object
+          description: 单条最多 256 KiB；明确白名单的创作消息字段。附件/引用/结果只存 resource 键，禁止访问 URL、渠道配置和嵌套技能配置；taskIds 必须属于当前账号
+          required: [id, role, content, createdAt]
+          properties:
+            id: {type: string}
+            role: {type: string, enum: [user, assistant]}
+            content: {type: string}
+            createdAt: {type: string, format: date-time}
+            status: {type: string}
+            resultStorageKeys: {type: array, items: {type: string, pattern: "^resource:"}}
+            taskIds: {type: array, items: {type: string}}
+    CreationHistoryDetail:
+      type: object
+      properties:
+        id: {type: string}
+        title: {type: string}
+        canvasId: {type: string}
+        revision: {type: integer}
+        metadataRevision: {type: integer}
+        deleted: {type: boolean}
+        updatedAt: {type: string, format: date-time}
+        messages: {type: array, items: {$ref: "#/components/schemas/CreationHistoryMessage"}}
+        conflicts: {type: array, items: {type: string}, description: metadata 或发生冲突的消息 ID}
     LoginLog:
       type: object
       properties:

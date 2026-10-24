@@ -52,8 +52,8 @@ export function pendingCreationTaskIds(conversations: StoredCreationConversation
     return Array.from(new Set(taskIds));
 }
 
-export async function loadCreationConversations<T extends StoredCreationConversation>() {
-    const storage = localForageStorageForScope(getActiveUserScope());
+export async function loadCreationConversations<T extends StoredCreationConversation>(scope = getActiveUserScope()) {
+    const storage = localForageStorageForScope(scope);
     const value = await storage.getItem(CREATION_CONVERSATIONS_KEY);
     if (!value) return null;
     let parsed: unknown;
@@ -66,7 +66,7 @@ export async function loadCreationConversations<T extends StoredCreationConversa
     return parsed as T[];
 }
 
-function persistableCreationConversations<T extends StoredCreationConversation>(conversations: T[]) {
+export function persistableCreationConversations<T extends StoredCreationConversation>(conversations: T[]) {
     return conversations.map((conversation) => ({
         ...conversation,
         messages: conversation.messages.map((message) => {

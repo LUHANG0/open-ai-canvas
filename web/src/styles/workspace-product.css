@@ -241,10 +241,18 @@
     min-height: 0;
     flex: 1;
     flex-direction: column;
-    gap: 18px;
+    gap: var(--space-5);
     overflow: auto;
-    padding-right: 4px;
+    padding: var(--space-3);
+    border: 1px solid var(--user-border);
+    border-radius: var(--user-radius-card);
+    background: var(--user-surface);
 }
+.assets-collection-filter-scroll .collection-filter-label { color: var(--user-ink-muted); font-size: var(--fs-caption); font-weight: 550; }
+.assets-trash-dialog-page { height: auto; max-height: calc(100dvh - 120px); overscroll-behavior: contain; }
+.assets-trash-dialog .ant-modal-header { height: 0; min-height: 0; margin: 0; }
+.assets-trash-dialog-page .assets-collection-layout { grid-template-columns: minmax(0, 1fr); }
+.assets-trash-dialog-page .app-page-header { padding-inline-end: var(--space-10); }
 .collection-filter-group { display: flex; flex-direction: column; gap: 6px; }
 .collection-filter-label { color: var(--user-ink-soft); font-size: 11px; font-weight: 650; letter-spacing: .04em; white-space: nowrap; }
 .collection-filter-options,
@@ -259,11 +267,6 @@
 .assets-collection-filters .collection-folder-list .assets-folder-row { width: 100%; max-width: none; }
 .collection-folder-heading { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
 .collection-folder-heading .collection-filter-label { padding: 0; }
-.collection-trash-entry {
-    flex-shrink: 0;
-    padding-top: 8px;
-    border-top: 1px solid color-mix(in srgb, var(--user-ink) 8%, transparent);
-}
 .app-user-workspace .assets-collection-content .assets-library-grid { margin-top: 0; }
 
 /* Shared component material replaces legacy per-page strokes and shadows. */

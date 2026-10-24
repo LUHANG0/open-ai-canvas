@@ -1,0 +1,17 @@
+@import "../../styles/studio-palette.css";
+@import "./brand-fonts.css";
+:is(.mengceng-site, .auth-scene-simple, .mc-gallery-modal, .mc-auth-layer) {
+    --brand-text:#f3f4f7; --brand-muted:#b0b8c8; --brand-paper:#121621;
+    --brand-field:#1b2231; --brand-line:#354055; --brand-surface:#202939;
+    --brand-stage:#0c101a; --brand-stage-ink:#f3f4f7; --brand-stage-muted:#b0b8c8;
+    --brand-accent:#dce7f6; --brand-accent-hover:#eff4fc; --brand-accent-ink:#172033;
+    --brand-link:#c3d8f5; --brand-soft-hover:#283348; --brand-soft-active:#354055;
+    --brand-ease-out:cubic-bezier(0.23,1,0.32,1); --brand-ease-scene:cubic-bezier(0.77,0,0.175,1);
+    --brand-font:"Inter Variable", "Source Han Sans CN", "PingFang SC", sans-serif; --brand-display-font:"Source Han Serif CN", "Noto Serif SC", serif; --brand-radius:18px; --brand-command-radius:12px;
+}
+html:has(.mengceng-site,.auth-scene-simple)::view-transition-group(mc-cinematic-image) { animation-duration:450ms; animation-timing-function:cubic-bezier(0.23,1,0.32,1); }
+@media (prefers-reduced-motion:reduce) {
+    html:has(.mengceng-site,.auth-scene-simple)::view-transition-group(*),
+    html:has(.mengceng-site,.auth-scene-simple)::view-transition-old(*),
+    html:has(.mengceng-site,.auth-scene-simple)::view-transition-new(*) { animation-duration:0s; }
+}

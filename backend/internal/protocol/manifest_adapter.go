@@ -349,7 +349,8 @@ func (a manifestAdapter) parse(payload map[string]any, c PollContext) CreateResu
 	if status == StatusPending && (result.Text != "" || len(result.Images) > 0 || len(result.Videos) > 0 || len(result.Audios) > 0) {
 		status = StatusSucceeded
 	}
-	if result.Text == "" && result.Reasoning == "" && len(result.Images) == 0 && len(result.Videos) == 0 && len(result.Audios) == 0 {
+	// 独立下载端点稍后补齐媒体，查询返回的 usage 需要跨下载步骤保留。
+	if result.Text == "" && result.Reasoning == "" && len(result.Images) == 0 && len(result.Videos) == 0 && len(result.Audios) == 0 && (len(result.Usage) == 0 || !a.ResultAvailable()) {
 		result = nil
 	}
 	return CreateResult{TaskID: id, Status: status, Result: result, Message: message}

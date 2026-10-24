@@ -1,0 +1,53 @@
+.mc-constellation { position:absolute; inset:0; overflow:hidden; isolation:isolate; }
+.mc-constellation-layer { position:absolute; inset:0; }
+.mc-constellation::after { content:""; position:absolute; inset:0; z-index:1; pointer-events:none; background:radial-gradient(ellipse 32% 33% at 50% 48%,var(--brand-paper) 35%,transparent 100%); }
+.mc-constellation[data-variant="hero"]::after { display:none; }
+.mc-orbit { position:absolute; margin:0; transform:translate3d(var(--orbit-x,0px),var(--orbit-y,0px),0) rotate(var(--orbit-angle,0deg)); }
+.mc-orbit[data-front] { z-index:3; }
+.mc-orbit .mc-motion-media { pointer-events:none; }
+.mc-orbit-motion { display:grid; place-items:center; position:absolute; z-index:4; right:32px; bottom:24px; width:44px; height:44px; padding:0; border:1px solid #ffffff40; border-radius:50%; background:color-mix(in srgb,var(--brand-paper) 55%,transparent); color:var(--brand-text); backdrop-filter:blur(12px); }
+.mc-orbit-motion svg { width:16px; height:16px; }
+.mc-orbit-drift { display:block; width:100%; height:100%; padding:0; border:0; overflow:hidden; border-radius:20px; background:var(--brand-stage); box-shadow:0 16px 64px #0005; }
+button.mc-orbit-drift { cursor:grab; touch-action:none; user-select:none; }
+.mc-constellation[data-dragging] button.mc-orbit-drift { cursor:grabbing; }
+.mc-orbit-hint { position:absolute; width:1px; height:1px; padding:0; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
+.mc-orbit img { display:block; width:100%; height:100%; object-fit:cover; }
+.mc-orbit-world { --orbit-angle:-7deg; width:23%; height:25%; left:-6%; top:7%; }
+.mc-orbit-architecture { --orbit-angle:6deg; width:15%; height:19%; left:16%; top:-2%; }
+.mc-orbit-sky { --orbit-angle:-4deg; width:17%; height:21%; left:39%; top:1%; }
+.mc-orbit-portrait { --orbit-angle:7deg; width:31%; height:30%; right:-8%; top:5%; }
+.mc-orbit-portrait img { object-position:25% 50%; }
+.mc-orbit-character { --orbit-angle:-5deg; width:22%; height:41%; left:-3%; top:42%; }
+.mc-orbit-character img { object-position:50% 30%; }
+.mc-orbit-city { --orbit-angle:8deg; width:16%; height:34%; right:3%; top:43%; }
+.mc-orbit-wave { --orbit-angle:-4deg; width:29%; height:27%; left:27%; bottom:-3%; }
+.mc-orbit-detail { --orbit-angle:6deg; width:19%; height:23%; right:19%; bottom:3%; }
+.mc-constellation[data-variant="auth"] { opacity:.55; }
+.mc-constellation[data-variant="auth"]::after { background:radial-gradient(ellipse 34% 60% at 50% 50%,var(--brand-paper) 15%,transparent 100%); }
+.mc-constellation[data-variant="auth"] .mc-orbit-sky { left:24%; top:5%; width:15%; }
+.mc-constellation[data-variant="auth"] .mc-orbit-portrait { right:-10%; width:36%; }
+.mc-constellation[data-variant="auth"] .mc-orbit-wave { left:9%; width:26%; bottom:-5%; }
+.mc-constellation[data-variant="auth"] .mc-orbit-detail { right:3%; bottom:0; }
+@media (prefers-reduced-motion:no-preference) {
+    .mc-constellation .mc-orbit-drift { animation:mc-orbit-drift 13s ease-in-out infinite alternate; animation-play-state:var(--auth-orbit-play-state,running); }
+    .mc-constellation .mc-orbit:nth-child(2n) .mc-orbit-drift { animation-delay:-4s; animation-duration:13s; }
+    .mc-constellation .mc-orbit:nth-child(3n) .mc-orbit-drift { animation-delay:-7s; animation-duration:15s; }
+    .mc-constellation[data-visible="false"] { --auth-orbit-play-state:paused; }
+    @keyframes mc-orbit-drift { from { transform:translate3d(-3px,5px,0) rotate(-.6deg); } to { transform:translate3d(5px,-14px,0) rotate(.6deg); } }
+}
+@media (max-width:700px) {
+    .mc-orbit-drift { border-radius:15px; }
+    .mc-orbit-world { width:38%; height:21%; left:-16%; top:0; }
+    .mc-orbit-architecture { width:22%; height:16%; left:0; top:6%; }
+    .mc-orbit-sky { width:28%; height:15%; left:27%; top:3%; }
+    .mc-orbit-architecture { left:-7%; top:7%; width:26%; height:17%; }
+    .mc-orbit-portrait { width:46%; height:25%; right:-15%; top:2%; }
+    .mc-orbit-character { width:36%; height:30%; left:-19%; top:30%; }
+    .mc-orbit-city { width:33%; height:27%; right:-19%; top:37%; }
+    .mc-orbit-wave { width:48%; height:24%; left:4%; bottom:-2%; }
+    .mc-orbit-detail { width:35%; height:20%; right:-2%; bottom:4%; }
+    .mc-constellation::after { background:radial-gradient(ellipse 57% 35% at 50% 45%,var(--brand-paper) 30%,transparent 100%); }
+    .mc-constellation[data-variant="auth"] { opacity:.28; }
+    .mc-constellation[data-variant="auth"]::after { background:radial-gradient(ellipse 68% 55% at 50% 48%,var(--brand-paper) 35%,transparent 100%); }
+}
+@media (prefers-reduced-motion:reduce) { .mc-constellation-layer { transition:none; } }

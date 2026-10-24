@@ -11,6 +11,7 @@ import (
 )
 
 func RegisterAppearanceRoutes(r *gin.RouterGroup, svc *service.Service) {
+	registerBrandSiteRoutes(r, svc)
 	registerLive2DRoutes(r, svc)
 	registerAgentAvatarBundleRoutes(r, svc)
 	serveUpdateMedia := func(admin bool) gin.HandlerFunc {

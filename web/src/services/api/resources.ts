@@ -72,6 +72,9 @@ export type ArkPrivateAssetSync = {
 };
 
 export type ResourceUploadMeta = {
+    /** Scoped background work must stop if the browser changes accounts. */
+    expectedUserId?: string;
+    signal?: AbortSignal;
     width?: number;
     height?: number;
     durationMs?: number;
@@ -272,6 +275,7 @@ export async function uploadResourceFile(file: Blob, kind: "image" | "video" | "
         if (meta?.durationMs) formData.append("durationMs", String(Math.round(meta.durationMs)));
         const data = await http.post<{ resource: RemoteResource }>("/resources", formData, {
             ...uploadRequestConfig(meta?.idempotencyKey),
+            ...scopedUploadConfig(meta),
             onUploadProgress: onProgress
                 ? ({ loaded, total }) => {
                       if (total && total > 0) onProgress(Math.min(file.size, (file.size * loaded) / total), file.size);
@@ -293,6 +297,7 @@ async function uploadFileInChunks(file: Blob, name: string, kind: "image" | "vid
         try {
             return await runChunkedUpload(file, name, kind, meta, onProgress);
         } catch (error) {
+            if (meta?.signal?.aborted) throw new DOMException("请求已取消", "AbortError");
             if (attempt === CHUNK_UPLOAD_RETRIES - 1) throw error;
         }
     }
@@ -303,7 +308,7 @@ async function runChunkedUpload(file: Blob, name: string, kind: "image" | "video
     const session = await http.post<{ uploadId: string; chunkSize: number; chunkCount: number }>(
         "/resources/uploads",
         { fileName: name, kind, size: file.size, width: meta?.width, height: meta?.height, durationMs: meta?.durationMs },
-        uploadRequestConfig(meta?.idempotencyKey),
+        { ...uploadRequestConfig(meta?.idempotencyKey), ...scopedUploadConfig(meta) },
     );
     for (let index = 0; index < session.chunkCount; index++) {
         const start = index * session.chunkSize;
@@ -313,14 +318,19 @@ async function runChunkedUpload(file: Blob, name: string, kind: "image" | "video
         data.append("chunk", blob);
         // raw 二进制直传，与后端按裸 body 逐片落盘对齐（勿设手动 Content-Type，让 axios 处理）。
         await http.put<{ index: number }>(`/resources/uploads/${encodeURIComponent(session.uploadId)}/chunks/${index}`, blob, {
+            ...scopedUploadConfig(meta),
             timeout: 60_000,
-            headers: { "Content-Type": "application/octet-stream" },
+            headers: { ...scopedUploadConfig(meta).headers, "Content-Type": "application/octet-stream" },
             onUploadProgress: onProgress ? ({ loaded }) => onProgress(start + Math.min(loaded, blob.size), file.size) : undefined,
         });
         onProgress?.(Math.min(end, file.size), file.size);
     }
-    const complete = await http.post<{ resource: RemoteResource }>(`/resources/uploads/${encodeURIComponent(session.uploadId)}/complete`, undefined, { timeout: 60_000 });
+    const complete = await http.post<{ resource: RemoteResource }>(`/resources/uploads/${encodeURIComponent(session.uploadId)}/complete`, undefined, { timeout: 60_000, ...scopedUploadConfig(meta) });
     return complete.resource;
+}
+
+function scopedUploadConfig(meta?: ResourceUploadMeta) {
+    return { signal: meta?.signal, ...(meta?.expectedUserId ? { headers: { "X-Canvas-Expected-User": meta.expectedUserId } } : {}) };
 }
 
 // 失败分类直接复用 request() 已经算好的 ApiError.retryable（408/425/429/5xx 可重试），

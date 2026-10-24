@@ -4,7 +4,7 @@ import { readFileAsDataUrl, readImageMeta, formatBytes } from "@/lib/image-utils
 import { uploadMediaFile } from "@/services/file-storage";
 import { exportAssets, readAssetPackage } from "./asset-transfer";
 import { WorkspacePage, PageHeader, CollectionGrid, PaginationBar } from "@/components/layout/workspace-page";
-import { Trash2, RotateCcw, Plus, Images, FolderOpen, FileUp, Upload, Download, MoreHorizontal, Search, LayoutGrid, FolderPlus, PencilLine, AlertTriangle } from "lucide-react";
+import { Trash2, Plus, Images, FolderOpen, FileUp, Upload, Download, MoreHorizontal, Search, LayoutGrid, FolderPlus, PencilLine, AlertTriangle } from "lucide-react";
 import { CollectionToolbar } from "@/components/layout/collection-toolbar";
 import { Select } from "@/components/ui/base/select";
 import { AssetFilterGroup, AssetsBatchBar, AssetsEmptyState, AssetDrawer } from "./asset-library-panels";
@@ -66,7 +66,7 @@ const ASSET_LIBRARY_QUERY_KEY = ["asset-library"] as const;
 const ASSET_FOLDER_QUERY_KEY = ["asset-folders"] as const;
 type AssetFolderFilter = "all" | "uncategorized" | string;
 
-export default function AssetsPage() {
+export default function AssetsPage({ inTrashDialog = false }: { inTrashDialog?: boolean } = {}) {
     const { message } = App.useApp();
     const navigate = useNavigate();
     const queryClient = useQueryClient();
@@ -85,7 +85,9 @@ export default function AssetsPage() {
     const updateAsset = useAssetStore((state) => state.updateAsset);
     const userId = useUserStore((state) => state.user?.id || "");
     const retentionDays = useUserStore((state) => state.runtimeLimits.recycleBinRetentionDays ?? 30);
-    const [viewMode, setViewMode] = useState<"library" | "trash">("library");
+    const viewMode = inTrashDialog ? "trash" : "library";
+    const [trashOpen, setTrashOpen] = useState(false);
+    const trashTriggerRef = useRef<HTMLElement | null>(null);
     const [keyword, setKeyword] = useState("");
     const [kindFilter, setKindFilter] = useState<AssetKind | "all">("all");
     const [categoryFilter, setCategoryFilter] = useState<AssetCategory | "all">("all");
@@ -496,6 +498,7 @@ export default function AssetsPage() {
             await deleteAssetsWithRemoteSync(trashAssets.map((asset) => asset.id));
             setSelectedIds([]);
             message.success(`已彻底清空回收站 ${count} 个素材`);
+            void invalidateAssetLibrary();
         } catch (error) {
             message.error(error instanceof Error ? error.message : "清空回收站失败");
         }
@@ -507,6 +510,7 @@ export default function AssetsPage() {
             await deleteAssetWithRemoteSync(deletingAsset.id);
             message.success("素材已彻底删除");
             setDeletingAsset(null);
+            void invalidateAssetLibrary();
         } catch (error) {
             message.error(error instanceof Error ? error.message : "素材删除失败");
         }
@@ -536,6 +540,7 @@ export default function AssetsPage() {
             message.success(`已彻底删除 ${ids.length} 个素材`);
             setSelectedIds([]);
             setBatchDeleteOpen(false);
+            void invalidateAssetLibrary();
         } catch (error) {
             message.error(error instanceof Error ? error.message : "批量删除失败");
         } finally {
@@ -545,10 +550,10 @@ export default function AssetsPage() {
 
     return (
         <>
-            <WorkspacePage grid className="library-page assets-library-page canvas-library-page collection-workspace">
+            <WorkspacePage grid className={cn("library-page assets-library-page canvas-library-page collection-workspace", inTrashDialog && "assets-trash-dialog-page")}>
                 <div className="studio-band">
                     <PageHeader
-                        title={viewMode === "trash" ? "素材库 / 回收站" : "素材库"}
+                        title={inTrashDialog ? "回收站" : "素材库"}
                         description={viewMode === "trash" ? "已删除画布或手动归档的临时素材，可随时还原或彻底清理。" : "管理文本、图片、视频、音频和 3D 模型素材。"}
                         meta={<span className="app-projects-header-meta assets-header-meta">{totalAssets} 个素材</span>}
                         actions={
@@ -570,21 +575,16 @@ export default function AssetsPage() {
                                                     </Button>
                                                 </Popconfirm>
                                             ) : null}
-                                            <Button
-                                                icon={<RotateCcw className="size-3.5" />}
-                                                onClick={() => {
-                                                    setViewMode("library");
-                                                    setPage(1);
-                                                    setSelectedIds([]);
-                                                }}
-                                            >
-                                                返回素材库
-                                            </Button>
                                         </>
                                     ) : (
                                         <>
                                             <Button type="primary" icon={<Plus />} onClick={(event) => openCreate(event.currentTarget)}>新增素材</Button>
                                             <Button icon={<Images />} onClick={(event) => { batchUploadTriggerRef.current = event.currentTarget; event.currentTarget.focus({ preventScroll: true }); setBatchUploadOpen(true); }}>上传图片</Button>
+                                            <Button icon={<Trash2 />} aria-haspopup="dialog" onClick={(event) => {
+                                                trashTriggerRef.current = event.currentTarget;
+                                                event.currentTarget.focus({ preventScroll: true });
+                                                setTrashOpen(true);
+                                            }}>回收站 <span className="assets-filter-count">{trashAssets.length}</span></Button>
                                             <Dropdown trigger={["click"]} menu={{ items: [
                                                 { key: "eagle", icon: <FolderOpen />, label: "Eagle 素材库", onClick: () => navigate("/plugins/eagle") },
                                                 { key: "package", icon: <FileUp />, label: "导入素材包", onClick: () => assetInputRef.current?.click() },
@@ -596,7 +596,7 @@ export default function AssetsPage() {
                                         </>
                                     )}
                                 </div>
-                                <AssetStorageUsage />
+                                {!inTrashDialog ? <AssetStorageUsage /> : null}
                             </div>
                         }
                     />
@@ -642,7 +642,7 @@ export default function AssetsPage() {
 
                 <div className="collection-content assets-collection-content">
                     <div className="assets-collection-layout">
-                        <aside className="assets-collection-filters" aria-label="素材分类">
+                        {!inTrashDialog ? <aside className="assets-collection-filters" aria-label="素材分类">
                             <div className="assets-collection-filter-scroll">
                             <AssetFilterGroup
                                 title="素材类型"
@@ -650,7 +650,6 @@ export default function AssetsPage() {
                                 value={viewMode === "library" ? kindFilter : ""}
                                 counts={kindCounts}
                                 onChange={(value) => {
-                                    setViewMode("library");
                                     setKindFilter(value as AssetKind | "all");
                                     setPage(1);
                                 }}
@@ -661,7 +660,6 @@ export default function AssetsPage() {
                                 value={viewMode === "library" ? categoryFilter : ""}
                                 counts={categoryCounts}
                                 onChange={(value) => {
-                                    setViewMode("library");
                                     setCategoryFilter(value as AssetCategory | "all");
                                     setPage(1);
                                 }}
@@ -692,34 +690,7 @@ export default function AssetsPage() {
                                 </div>
                             </section>
                             </div>
-                            <div className="collection-trash-entry">
-                                <button
-                                    type="button"
-                                    aria-pressed={viewMode === "trash"}
-                                    className={cn(
-                                        "assets-filter-item w-full transition-colors",
-                                        viewMode === "trash" && "is-active",
-                                    )}
-                                    onClick={() => {
-                                        if (viewMode === "trash") {
-                                            setViewMode("library");
-                                        } else {
-                                            setViewMode("trash");
-                                            setKindFilter("all");
-                                            setCategoryFilter("all");
-                                        }
-                                        setPage(1);
-                                        setSelectedIds([]);
-                                    }}
-                                >
-                                    <span className="assets-filter-item-label flex items-center gap-1.5">
-                                        <Trash2 className="size-3.5" />
-                                        <span>回收站</span>
-                                    </span>
-                                    <span className="assets-filter-count">{trashAssets.length}</span>
-                                </button>
-                            </div>
-                        </aside>
+                        </aside> : null}
                         <section className="min-w-0" aria-label={viewMode === "trash" ? "回收站素材" : "素材列表"} aria-busy={assetPageQuery.isFetching}>
                             {viewMode === "trash" ? (
                                 <div className="assets-trash-notice mb-4 flex items-center justify-between gap-3 rounded-xl border px-4 py-3 text-xs">
@@ -804,6 +775,19 @@ export default function AssetsPage() {
                     </div>
                 </div>
             </WorkspacePage>
+            {!inTrashDialog ? <AppModal
+                flush
+                className="library-modal assets-trash-dialog"
+                title={<span className="sr-only">回收站</span>}
+                open={trashOpen}
+                footer={null}
+                width={1000}
+                onCancel={() => setTrashOpen(false)}
+                focusable={{ focusTriggerAfterClose: false }}
+                afterClose={() => { trashTriggerRef.current?.focus({ preventScroll: true }); void invalidateAssetLibrary(); }}
+            >
+                <AssetsPage inTrashDialog />
+            </AppModal> : null}
 
             <AppModal
                 className="workspace-modal workspace-modal-wide library-modal"

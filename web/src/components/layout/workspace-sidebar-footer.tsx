@@ -2,7 +2,7 @@ import { App, Popover } from "antd";
 import { Switch } from "@/components/ui/base/switch";
 import { ChevronRight, LogIn, LogOut, Moon, ShieldCheck, Sun } from "lucide-react";
 import { useState, type ReactNode } from "react";
-import { Link, useNavigate } from "react-router";
+import { Link, useLocation, useNavigate } from "react-router";
 
 import { AppChangelogButton } from "@/components/layout/app-changelog-modal";
 import { IdentityProviderBadge } from "@/components/layout/identity-provider-badge";
@@ -11,6 +11,7 @@ import { SystemAnnouncementCenter } from "@/components/layout/system-announcemen
 import { useWalletBalance } from "@/hooks/use-wallet-balance";
 import { applyUserSession } from "@/lib/user-session";
 import { cn } from "@/lib/utils";
+import { loginPath } from "@/lib/auth-navigation";
 import { logout } from "@/services/api/auth";
 import { useThemeStore } from "@/stores/use-theme-store";
 import { useUserStore, type LocalUser } from "@/stores/use-user-store";
@@ -23,6 +24,7 @@ type WorkspaceSidebarFooterProps = {
 };
 
 export function WorkspaceSidebarFooter({ expandedClassName, collapsedClassName, accountClassName, showAnnouncement = true }: WorkspaceSidebarFooterProps) {
+    const location = useLocation();
     const theme = useThemeStore((state) => state.theme);
     const setTheme = useThemeStore((state) => state.setTheme);
     const user = useUserStore((state) => state.user);
@@ -106,7 +108,7 @@ export function WorkspaceSidebarFooter({ expandedClassName, collapsedClassName, 
                     </button>
                 </Popover>
             ) : (
-                <Link to="/login" className={cn("flex h-10 items-center rounded-md text-xs text-foreground/65 hover:bg-surface-hover hover:text-foreground", collapsedClassName)} title="登录">
+                <Link to={loginPath(location.pathname + location.search + location.hash)} className={cn("flex h-10 items-center rounded-md text-xs text-foreground/65 hover:bg-surface-hover hover:text-foreground", collapsedClassName)} title="登录">
                     <LogIn className="size-4 shrink-0" /><span className={expandedClassName}>登录</span>
                 </Link>
             )}

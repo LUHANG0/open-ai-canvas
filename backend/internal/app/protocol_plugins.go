@@ -739,7 +739,7 @@ func (c *pluginRuntime) install(data []byte, fileName string) (PluginView, error
 	existing, exists := c.plugins[manifest.Metadata.ID]
 	c.mu.RUnlock()
 	if exists && isBuiltInPluginSource(existing.Source) && !isPaymentPluginManifest(manifest) {
-		return PluginView{}, fmt.Errorf("内置插件 %q 不能通过上传覆盖", manifest.Metadata.ID)
+		return PluginView{}, NewAppError(CodeConflict, fmt.Sprintf("插件“%s”已作为系统插件加载，不能通过上传覆盖；请在插件管理中查看其开放状态，并在渠道模型中选择对应协议", existing.Metadata.Name))
 	}
 	manifest.Metadata.Enabled = !exists || existing.Metadata.Enabled
 	manifestData, err := json.Marshal(manifest)

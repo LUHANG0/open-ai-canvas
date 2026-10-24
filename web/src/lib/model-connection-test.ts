@@ -52,12 +52,13 @@ export async function testChannelModelConnection(channel: ModelChannel, model: s
         videoGenerateAudio: "false",
     };
 
-    if (protocol === "yezonghui-image" || protocol === "yezonghui-video") {
+    if (["yezonghui-image", "yezonghui-video", "4stoken-image", "4stoken-seedream", "4stoken-video", "drama-image", "drama-gemini-image", "drama-seedance-a"].includes(protocol)) {
         const profile = modelCapabilityConfigFor(config, selectedModel);
-        const mode = protocol === "yezonghui-image" ? "image" : "video";
+        const mode = capability === "image" ? "image" : "video";
         const testConfig = {
             ...config,
             size: mode === "image" ? profile.image!.size.default : profile.video!.defaultRatio,
+            quality: profile.image!.quality.default,
             imageResolution: profile.image!.resolution.default,
             vquality: profile.video!.defaultResolution,
             videoSeconds: String(profile.video!.duration.default),

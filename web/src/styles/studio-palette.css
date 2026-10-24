@@ -1,0 +1,36 @@
+/* The creation workspace is the neutral surface reference for public and admin UI. */
+:root, [data-studio-theme="light"] {
+    --studio-page: #f8f8fa;
+    --studio-surface: #ffffff;
+    --studio-raised: #ffffff;
+    --studio-muted: #f1f1f3;
+    --studio-hover: #eaeaec;
+    --studio-pressed: #e1e1e5;
+    --studio-border: rgba(25, 25, 30, .10);
+    --studio-border-strong: rgba(25, 25, 30, .17);
+    --studio-ink: #1d1d21;
+    --studio-ink-muted: #686872;
+    --studio-ink-soft: #85858e;
+    --studio-command: #171717;
+    --studio-command-hover: #303030;
+    --studio-command-active: #404040;
+    --studio-command-ink: #ffffff;
+    --studio-font: "Inter Variable", "Inter", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", ui-sans-serif, system-ui, sans-serif;
+}
+.dark, [data-studio-theme="dark"] {
+    --studio-page: #151517;
+    --studio-surface: #1c1c1f;
+    --studio-raised: #222226;
+    --studio-muted: #26262a;
+    --studio-hover: #303036;
+    --studio-pressed: #3a3a40;
+    --studio-border: rgba(255, 255, 255, .09);
+    --studio-border-strong: rgba(255, 255, 255, .16);
+    --studio-ink: #f3f3f5;
+    --studio-ink-muted: #b4b4bc;
+    --studio-ink-soft: #9797a1;
+    --studio-command: #f5f5f5;
+    --studio-command-hover: #ffffff;
+    --studio-command-active: #e5e5e5;
+    --studio-command-ink: #171717;
+}

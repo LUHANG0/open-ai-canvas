@@ -1,0 +1,51 @@
+.mc-techniques-heading { display:flex; align-items:end; justify-content:space-between; gap:32px; margin-bottom:40px; }
+.mc-techniques-heading p { max-width:40em; margin-top:18px; color:var(--brand-muted); font-size:16px; line-height:1.8; }
+.mc-techniques-heading .mc-content-link { flex-shrink:0; color:var(--brand-link); font-size:14px; }
+.mc-techniques-layout { display:grid; grid-template-columns:minmax(0,1.65fr) minmax(0,1fr); gap:32px; align-items:center; }
+.mc-technique-preview { position:relative; isolation:isolate; min-width:0; min-height:500px; overflow:clip; border-radius:22px; background:var(--brand-stage); }
+.mc-technique-frames,.mc-technique-frame { position:absolute; inset:0; overflow:clip; }
+.mc-technique-frame { opacity:0; transition:opacity 450ms var(--brand-ease-out); }
+.mc-technique-frame[data-active] { opacity:1; }
+.mc-technique-frames::after { content:""; position:absolute; inset:0; background:linear-gradient(0deg,#0c101af0 0%,#0c101ad9 18%,#0c101a33 60%,transparent); }
+.mc-technique-copy { position:relative; z-index:1; padding:280px 32px 32px; }
+.mc-technique-copy h3 { font-size:28px; font-weight:500; line-height:1.4; }
+.mc-technique-copy > p { margin-top:14px; max-width:34em; min-height:3.6em; color:var(--brand-text); font-size:15px; line-height:1.8; }
+.mc-technique-steps { display:flex; flex-wrap:wrap; gap:12px; margin:24px 0 0; padding:0; list-style:none; }
+.mc-technique-steps li { display:flex; align-items:center; gap:12px; color:var(--brand-muted); font-size:13px; }
+.mc-technique-steps svg { width:16px; height:16px; color:var(--brand-link); }
+.mc-technique-playback { position:absolute; z-index:3; top:20px; right:20px; }
+.mc-technique-choices { display:flex; flex-direction:column; gap:10px; min-width:0; }
+.mc-technique-choice { display:flex; align-items:center; gap:18px; min-width:0; padding:14px; border:1px solid transparent; border-radius:16px; color:var(--brand-muted); background:transparent; text-align:left; transition:background-color 180ms ease,border-color 180ms ease,color 180ms ease,transform 180ms var(--brand-ease-out); }
+.mc-technique-choice > img { width:84px; height:68px; flex-shrink:0; object-fit:cover; border-radius:9px; }
+.mc-technique-choice > span { min-width:0; flex:1; }
+.mc-technique-choice strong { display:block; color:var(--brand-text); font-size:17px; font-weight:500; line-height:1.5; }
+.mc-technique-choice small { display:block; margin-top:7px; font-size:12px; line-height:1.6; }
+.mc-technique-choice > svg { width:18px; height:18px; flex-shrink:0; opacity:.45; transition:opacity 180ms ease,transform 180ms var(--brand-ease-out); }
+.mc-technique-choice[aria-pressed="true"] { color:var(--brand-text); border-color:var(--brand-line); background:color-mix(in srgb,var(--brand-surface) 70%,transparent); backdrop-filter:blur(18px); }
+.mc-technique-choice[aria-pressed="true"] > svg { opacity:1; transform:translateX(3px); }
+@media (hover:hover) and (pointer:fine) { .mc-technique-choice:hover { color:var(--brand-text); background:color-mix(in srgb,var(--brand-surface) 50%,transparent); transform:translateX(3px); } }
+@media (prefers-reduced-motion:no-preference) {
+    .mc-technique-frame .mc-motion-media > img { animation:mc-technique-camera 24s ease-in-out infinite alternate; animation-play-state:paused; }
+    .mc-technique-preview[data-playing] .mc-technique-frame[data-active] .mc-motion-media > img { animation-play-state:running; }
+    @keyframes mc-technique-camera { from { transform:scale(1); } to { transform:scale(1.045); } }
+}
+@container (max-width:1000px) {
+    .mc-techniques-layout { grid-template-columns:minmax(0,1.35fr) minmax(0,1fr); gap:20px; }
+    .mc-technique-choice { gap:12px; padding:12px; }
+    .mc-technique-choice > img { width:64px; height:60px; }
+    .mc-technique-choice strong { font-size:16px; }
+    .mc-technique-choice small { font-size:12px; }
+}
+@container (max-width:700px) {
+    .mc-techniques-heading { flex-direction:column; align-items:start; gap:16px; margin-bottom:24px; }
+    .mc-techniques-heading p { font-size:15px; }
+    .mc-techniques-layout { grid-template-columns:1fr; gap:20px; }
+    .mc-technique-preview { min-height:440px; border-radius:18px; }
+    .mc-technique-copy { padding:240px 24px 24px; }
+    .mc-technique-copy h3 { font-size:24px; }
+    .mc-technique-copy > p { min-height:5.4em; }
+    .mc-technique-steps { gap:10px; }
+    .mc-technique-steps li { gap:10px; font-size:12px; }
+    .mc-technique-choice > img { width:72px; height:60px; }
+    .mc-technique-choice small { font-size:13px; }
+}

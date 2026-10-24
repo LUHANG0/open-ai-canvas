@@ -3,11 +3,10 @@
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <meta name="description" content="AI 影视与短剧创作工作台" />
-        <!-- 不写内置品牌资源：首屏必须品牌中性，favicon 由 use-appearance-store 解析出外观后写入。
-             空 data URL 只是为了不让浏览器去请求 /favicon.ico（那会是一条 404）。 -->
-        <link rel="icon" href="data:," />
-        <title>正在加载</title>
+        <meta name="description" content="梦层 MengCeng，面向独立创作者与小型团队的 AI 影像创作工作台。" />
+        <!-- 梦层内置身份用于首次加载；运营自定义外观解析后会更新 metadata 与 favicon。 -->
+        <link rel="icon" type="image/svg+xml" href="/logo.svg?v=mengceng-portal" />
+        <title>梦层 MengCeng</title>
         <style>
             /* Fix layer order before production chunks can register utilities ahead of base. */
             @layer theme, base, components, utilities;

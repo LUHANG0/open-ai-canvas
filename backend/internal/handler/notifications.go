@@ -21,6 +21,9 @@ func registerNotificationRoutes(r *gin.RouterGroup, svc *service.Service) {
 			return
 		}
 		var actor *model.User
+		if req.Purpose == "register" && req.InvitationCode != "" && !invitationRequestLimit(c, "send", req.InvitationCode) {
+			return
+		}
 		if req.Purpose == "bind" {
 			var err error
 			actor, err = currentUser(c, svc)

@@ -20,6 +20,7 @@ import (
 )
 
 func RegisterAuthRoutes(r *gin.RouterGroup, svc *service.Service) {
+	registerRegistrationInvitationRoutes(r, svc)
 	registerChannelOrderRoutes(r, svc)
 	registerNotificationRoutes(r, svc)
 	registerAuthProfileRoutes(r, svc)
@@ -43,18 +44,34 @@ func RegisterAuthRoutes(r *gin.RouterGroup, svc *service.Service) {
 			return
 		}
 		req.LoginContext = loginRequestContext(c)
+		if req.InvitationCode != "" {
+			if value, _ := c.Cookie(service.SessionCookieName); value != "" {
+				if _, err := svc.CurrentUser(value); err == nil {
+					failService(c, service.Forbidden("你已登录，无需注册；请先切换账号"))
+					return
+				}
+			}
+		}
+		if req.InvitationCode != "" && !invitationRequestLimit(c, "submit", req.InvitationCode) {
+			return
+		}
 		result, err := svc.Register(req)
 		if err != nil {
 			failService(c, err)
 			return
 		}
 		setSessionCookie(c, result.Session, result.MaxAgeSecs)
-		ok(c, gin.H{"user": result.User})
+		payload := gin.H{"user": result.User}
+		if result.SignupBonusMicrocredits != nil {
+			payload["signupBonusMicrocredits"] = *result.SignupBonusMicrocredits
+		}
+		ok(c, payload)
 	})
 	r.POST("/auth/email-code", func(c *gin.Context) {
 		c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 16<<10)
 		var req struct {
-			Email string `json:"email"`
+			Email          string `json:"email"`
+			InvitationCode string `json:"invitationCode"`
 		}
 		if err := c.ShouldBindJSON(&req); err != nil {
 			fail(c, http.StatusBadRequest, err)
@@ -67,7 +84,10 @@ func RegisterAuthRoutes(r *gin.RouterGroup, svc *service.Service) {
 		if !enforceRateLimit(c, "registration-email-account:"+passwordResetRateLimitSubject(req.Email), 10, time.Hour) {
 			return
 		}
-		if err := svc.SendRegistrationEmailCode(req.Email); err != nil {
+		if req.InvitationCode != "" && !invitationRequestLimit(c, "send", req.InvitationCode) {
+			return
+		}
+		if err := svc.SendRegistrationEmailCode(req.Email, req.InvitationCode); err != nil {
 			failService(c, err)
 			return
 		}
@@ -592,7 +612,15 @@ func readPayloadModel(body []byte) string {
 }
 
 func currentUser(c *gin.Context, svc *service.Service) (*model.User, error) {
-	return svc.CurrentUser(sessionCookie(c))
+	user, err := svc.CurrentUser(sessionCookie(c))
+	if err != nil {
+		return nil, err
+	}
+	// A delayed scoped write must never execute against a newly signed-in account.
+	if expected := c.GetHeader("X-Canvas-Expected-User"); expected != "" && expected != user.ID {
+		return nil, service.Forbidden("账号已切换，请重新打开页面")
+	}
+	return user, nil
 }
 
 func sessionCookie(c *gin.Context) string {

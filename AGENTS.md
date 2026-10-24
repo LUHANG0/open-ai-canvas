@@ -1,50 +1,60 @@
 # AGENTS.md
 
-本文件是影策仓库中 AI、自动化工具和协作者的工作约定。用户当前任务优先于本文件；本文件优先于个人习惯。所有结论应能回溯到代码、配置、测试、日志或文档，不用历史印象替代现状。
+本文件是梦层 MengCeng 仓库中 AI、自动化工具和协作者的工作约定。用户当前任务优先于本文件；本文件优先于个人习惯。所有结论应能回溯到代码、配置、测试、日志或文档，不用历史印象替代现状。
 
-## 当前 Fork 的工作交接
+## 当前产品的工作交接
 
-本节记录当前开发安排和交接入口。新会话先阅读本节及存在时的 `.local/README.md`，再检查 `git status --short`、`git branch -vv` 和 `git remote -v`；不要假设服务、账号或模型配置仍保持初始化时的状态。
+本节只保留当前安排。新会话先读本节及存在时的 `.local/README.md`，再检查 `git status --short`、`git branch -vv` 和 `git remote -v`；服务、账号、模型和线上版本均须按实际状态核对。
 
-### 讨论与实施分开（用户已确认）
+### 讨论、实施与授权
 
-- 讨论任务默认只读查看页面、源码和配置；用户明确要求实施、修复或同步 Git 后，按该次授权范围执行，不把旧的讨论限制当作撤销新授权。
-- 已有协调与实施会话分工时继续遵守文件归属；未经用户授权，不自行创建实施会话或增加代码写入者。维护本文件可按用户明确请求直接进行。
-- “可以改善吗”“这个方向可以”、选择优先页面、确认设计建议等，均不构成开始编码的授权；先把方案讨论清楚。
-- 需要实施时，先明确方案和范围，再由用户指定的实施会话执行；已明确授权的必要接续无需逐批重新确认。提交、推送、PR 和部署分别遵守当前任务授权，不从其中一项推定其余各项。
+- 讨论任务默认只读；用户明确要求实施、修复或同步 Git 后，按该次范围执行，不把历史讨论限制当作撤销新授权。
+- 本总控会话负责只读检查、协调和审阅，不修改产品源码；用户明确要求的 AGENTS.md 维护与 Git 同步可直接进行。产品代码由用户指定的实施会话处理，未经授权不新建会话或增加 writer。
+- 已有分工时遵守文件归属；共享文件先协调唯一写入窗口。已授权任务的必要接续不逐批重复确认，提交、推送、PR 和部署按各自授权执行。
+- 用户认可方向、选择页面或问“可以改善吗”，不自动构成编码授权；明确方案与范围后再实施。
+- 全站 UI、品牌重构和邀请注册的历史批次已结束，不恢复旧总控派单或定时跟进。邀请上线跟进已删除；有新需求时按新授权处理。
 
-### 已确认的范围与 Git 工作流
+### 产品现状与入口
 
-- 用户要基于现有代码二次开发，并方便向原项目提 PR；当前先完成本地开发，服务器信息由用户之后提供，暂不实施上线。
-- 已创建 Fork：`https://github.com/LUHANG0/open-ai-canvas`。`origin` 指向该 Fork；`upstream` 指向 `https://github.com/ddcat-ai/open-ai-canvas.git`。
-- 初始化基线为 `a934a655f175b1bc41af8d92fa8c26493699ef70`，对应作者更新 `v1.6.9.1` 元数据与日志的提交；这是搭建时的基线，不代表上游永远最新。
-- `main` 用于跟随上游；`my-product` 为已建立的产品开发分支，本地跟踪 `origin/my-product`。准备贡献上游时，从更新后的 `upstream/main` 创建聚焦功能分支，避免夹带产品定制及本节交接说明。
-- 后续上线已选择运行自己修改的源码及自己构建的镜像，沿用项目 Compose 能力；自行管理发布、备份和升级。未经用户重新选择，不切换为官方 Release 在线更新覆盖定制版本。
+- 对外品牌为中文“梦层”、英文“MengCeng”、域名 `mengceng.com`。保留上游来源、LICENSE、技术协议、模块名和存储 key，不批量改写历史用户内容。
+- 根路由 `/` 固定展示品牌官网，登录后也不跳过；创作工作台在 `/create`，旧 `/welcome` 重定向到 `/`。工作区入口名称为“对话创作 / 短剧项目 / 创作画布”，路由保持。
+- 官网使用当前 `BrandSite`、彩色 Logo 与既有品牌媒体；此前轮播、石墨黑、剧院整图及 v2–v5 草案都不是后续必须恢复的规范。视觉以当前真实源码、CMS 发布内容和最新用户反馈为准，不用旧截图或旧像素值覆盖现状。
+- 官网认证使用原地弹窗；独立认证页与邀请页复用原表单和认证壳。登录回跳统一经 `lib/auth-navigation.ts` 校验，保留站内路径、查询和 hash。等待限制在表单或工作区内容区域，保留稳定导航与外壳。
+- 品牌后台采用“编辑、实时预览、保存草稿、手动发布”，草稿媒体私有、整版发布并保留上一版。官网、登录页与工作台皮肤职责分开；读取不覆盖 CMS 发布值。完整合同见[品牌官网](docs/content/docs/backend/mengceng-brand-site.mdx)。
+- 创作对话已实现账号隔离的跨设备同步，Schema 60 的对话、消息和资源引用三表保留；本地缓存不等于服务端保存。见[创作历史跨设备同步](docs/content/docs/backend/creation-conversation-sync.mdx)。
+- 管理员可在用户管理生成普通用户邀请，`/i/:code` 使用 6 位大小写字母数字随机码，单次成功注册消费，默认 7 天、可设 1–90 天，可撤销。公开注册关闭时官网显示“内测用户邀请”，输入短码经同一服务端校验进入邀请页；完整链接免再填码，已有账号仍可登录。
+- 邀请积分为 50 / 100 / 200 / 自定义，生成时固定，替代全局注册赠送且不叠加；0 也登记注册赠送已处理，后续登录不能补发。注册、验证码、邀请消费、流水和审计共同提交；沿用验证码与本人协议要求。数据库新增 Schema 61，见[邀请注册](docs/content/docs/backend/registration-invitations.mdx)。
 
-### 本地开发入口
+### Git 与来源
 
-- 本机使用 Docker Desktop 开发，不依赖宿主机安装 Bun 或 Go。采用 `docker-compose.dev.yml`，叠加 Git 忽略的 `.local/compose.override.yml`；优先复用已有环境。
-- 本地前端镜像使用 Node 24 运行 Vite，Bun 1.3.13 用于依赖安装和专项命令；具体固定版本见 `.local/Dockerfile.web`。不要改回 Bun 直接运行 Vite：此前出现 WebSocket upgrade 导致开发前端退出，已通过本地 Node 运行方式修复。通用 Compose 不承载这份机器专用配置。
-- 在仓库根目录运行 `bash .local/dev.sh status` 检查现有服务；需要启动、停止或查看日志时分别使用 `bash .local/dev.sh start`、`bash .local/dev.sh stop`、`bash .local/dev.sh logs`。不要重复启动另一套宿主机服务。
-- 前端为 `http://localhost:3000`，首次注册入口为 `/register`；前后端端口仅绑定 `127.0.0.1`（3000、8080），Vite 代理 `/api` 到后端。
-- 本地使用 SQLite，数据位于 `.local/project-workbench-debug`，缓存位于 `.local/cache`；这不是 PostgreSQL/Redis 的服务器部署。停止服务使用现有脚本，保留数据库、上传素材和数据卷。
-- 本地后端镜像 `yingce-local-dev-backend` 补充 Node.js、npm、ffmpeg；内嵌 Agent 依赖按锁文件安装，锁文件未变化时复用缓存。未设置 `YINGCE_AGENT_URL`，无需另启独立 Agent 容器。
-- `.local/backend-start.sh` 仅在容器内信任 Git 目录 `/workspace`，解决挂载目录所有者差异；`.local/air.toml` 排除 Agent 的 `node_modules` 热更新监听。
-- 本机已验证的网络安排：镜像构建及后端通过 Docker Desktop 代理 `http://http.docker.internal:3128`；前端 Bun 直接下载，下载并发为 16。Bun 显式使用该代理曾发生超时，不要无依据给前端添加同样代理。
-- `.local` 的脚本、配置、数据和缓存不提交 Git。新克隆或其他机器上可能不存在，先检查文件，不把机器专用配置写入通用源码或上游 PR。
+- 当前产品远端为 `https://github.com/LUHANG0/open-ai-canvas.git`；用户已要求将其转为自己的独立私有仓库。仓库关系和可见性以 GitHub 实际状态为准，不能只依据本文件宣称转换成功。
+- `origin` 为用户的产品仓库；`upstream` 保留 `https://github.com/ddcat-ai/open-ai-canvas.git` 作为来源与手工更新入口。独立仓库仍保留完整提交历史和许可，不再依赖 GitHub Fork 网络。
+- 产品开发分支为 `my-product`，跟踪 `origin/my-product`；仓库默认分支应指向产品分支。`main` 保留上游基线，不把旧 main 当当前产品版本。初始化基线 `a934a655f175b1bc41af8d92fa8c26493699ef70` 是历史事实，不代表上游最新。
+- 后续贡献上游时，应另用上游最新基线和专用 Fork 建立聚焦分支，不把私有产品定制整批提交上游。
+- `.local/`、数据库、上传内容、真实凭据、部署备份、浏览器证据和构建产物不提交 Git。用户授权 Git 同步不等于再次部署；线上对应独立的源码快照与镜像，不用 HEAD 替代未提交发布快照。
 
-### 当前实现与验证入口
+### 本地开发
 
-- 全站 UI 统一的一轮源码收敛及允许条件下的有限真实检查已完成；生产构建曾先报 TS2740，修正后复建通过。覆盖与受限项目见 [总计划](docs/plans/ui-unification-work-plan.mdx)，不能把这次历史构建当作后续新源码的验证。
-- 本次 Git 同步前，包含后续画布修复和夜总会插件的当前前端再次在现有容器执行 `bun run build`，类型检查与 Vite 构建均退出 0；这不扩大专项或浏览器验收范围，也不代表真实模型、全部业务状态或生产部署通过。
-- 后续已处理画布新增后删空、输入区滚轮边界、Agent 面板布局与四角无图标缩放、浅色连线反馈、同步状态区分，以及节点仅点击打开上下操作区、拖移结束保持关闭和连接目标取消整卡倾斜。各批专项、类型检查、有限真实结果及未覆盖状态统一见 [待测试](docs/content/docs/progress/pending-test.mdx)。
-- 夜总会独立协议插件及宿主支持已实现，专项结果与真实模型限制见 [插件说明](docs/content/docs/backend/yezonghui.mdx) 和待测试记录；未做真实收费模型验收，不代用户生成任务。
-- 原用户现场长期同步问题未直接复现，不宣称全部同步故障已解决；非空业务、合法画布 / 项目数据、媒体生成、权限和有写入副作用的状态按各批记录保留待验收。字幕转写仍需 whisper 服务。
-- 详细本机证据保存在 Git 忽略的 `.local/ui-review/`、`.local/dev-proxy-investigation/`；其他机器可能不存在，不把本地证据路径当作可随仓库分发的附件。初始化时的账号和 schema 状态不再作为当前事实，必要时重新检查，且不保存凭据。
+- 复用 Docker Desktop、`docker-compose.dev.yml` 与忽略的 `.local/compose.override.yml`，不另启宿主机前后端。存在时用 `bash .local/dev.sh status|start|stop|logs` 管理，保留数据库、素材和卷。
+- 前端 Node 24 运行 Vite，Bun 1.3.13 用于依赖和专项；不要改回 Bun 直接运行 Vite，历史 WebSocket upgrade 导致退出的问题已由本机 Node 运行方式修复。具体镜像版本以 `.local/Dockerfile.web` 为准。
+- 本地入口 `http://localhost:3000`，前后端仅绑定 `127.0.0.1:3000/8080`，Vite 将 `/api` 代理后端。本地 SQLite 数据在 `.local/project-workbench-debug`，缓存在 `.local/cache`，与生产 PostgreSQL/Redis 区分。
+- 本地后端补充 Node.js、npm、ffmpeg；未设置 `YINGCE_AGENT_URL` 时使用内嵌 Agent，不另启独立容器。锁文件未变时复用依赖；`.local/air.toml` 排除 Agent node_modules 热监听。
+- 本机镜像构建与后端使用 Docker Desktop 代理，前端 Bun 直接下载、并发 16；不要把机器专用代理和配置写进通用源码。其他机器可能没有 `.local`，先核对存在性与当前配置。
+
+### 已发布基线与验证边界
+
+- 已发布 `https://mengceng.com`，当前交接发布号 `20261024T114020Z`，build `bad41004-invitations-edc967fe038c`，源码归档 SHA-256 `edc967fe038c7e0e0fb5b96cfebc94236c0ed4faf0f0b5ac2dcea5f8f3c5cb83`，Schema 61。后续操作须实时重核，不能将本节当作永久线上事实。
+- 生产沿用自改源码、自建镜像和既有 Compose，PostgreSQL 17、Redis、独立 Agent；不切换官方 Release 覆盖定制。最近发布仅更新接受的邀请与品牌入口 53 个路径，已演练一致备份恢复、60→61 两次迁移和 115 张旧表保留，五服务健康。
+- Schema 61 后不能只回退原 Schema 60 后端；优先前向修复、保留新后端的前端回退，或使用已验证支持 61 的兼容镜像。不得用旧库覆盖上线后的新用户、任务和账务数据。
+- 邀请专项涵盖 PostgreSQL 并发一次消费、0 不补发、精确金额、失败整体回滚与重试；品牌与认证专项、类型检查及构建通过。线上有限检查涵盖无效邀请、短路由、注册关闭、登录回跳、已登录提示、管理员读取权限和日志脱敏。健康 200 与测试通过不扩大为全部业务验收。
+- 没有为验收创建生产邀请/新账号、发送真实验证码、替人同意协议或发放积分。真实投递、受邀者本人注册、有效表单和部分邀请页状态的完整手机视觉仍待人工验收；两张异常尺寸截图已排除，未当作产品布局失败。
+- 全站 UI、画布删空/滚轮/Agent 面板/连线与同步状态等历史结果及限制，统一见[待测试](docs/content/docs/progress/pending-test.mdx)。原现场长期同步未直接复现，不宣称所有同步故障已解决；媒体生成、收费模型与非空业务按各批记录保留范围，字幕转写仍需 whisper。
+- 夜总会、4stoken 与 Drama 独立协议按各自文档和专项记录处理，未获授权不代用户调用收费模型。
+- 正式本机发布证据在忽略目录 `.local/mengceng-deploy/20261024T114020Z/delivery.json`，其他机器可能没有。界面与历史专项证据在 `.local/ui-review/`、`.local/mengceng-brand-review/` 等忽略目录，不作为随仓库分发的附件，不保存或输出凭据。
 
 ## 1. 项目边界
 
-影策（`ddcat-ai/open-ai-canvas`）是面向 AI 影视与短剧创作的工作台，当前仍在快速开发。公开接口、数据结构和部署配置可能直接调整；除非任务明确要求，不为旧字段、旧 API 或旧数据增加兼容层。
+梦层 MengCeng 基于 `ddcat-ai/open-ai-canvas` 二次开发，是面向 AI 影像创作的工作台，当前仍在快速开发。公开接口、数据结构和部署配置可能直接调整；除非任务明确要求，不为旧字段、旧 API 或旧数据增加兼容层。
 
 仓库由几个边界清晰但可独立运行的单元组成：
 
@@ -54,7 +64,7 @@
 | `backend/` | Go 1.25、Gin、GORM、SQLite/PostgreSQL、Redis 协调 | `backend/cmd/server/main.go` | 登录、权限、业务 API、任务队列、资源、模型中转和后台管理 |
 | `docs/` | Next.js、Fumadocs、MDX | `docs/content/docs/` | 面向用户和开发者的专题文档；构建配置见 `docs/source.config.ts` |
 
-根目录的 `Dockerfile` 构建前端静态镜像；`nginx.conf` 托管 SPA 并代理后端。`docker-compose.dev.yml` 是源码热更新开发编排，根 `docker-compose.yml` 和 `docker-compose.local.yml` 是本地构建运行。服务器默认使用官方 Release 镜像、`docker-compose.deploy.yml`（PostgreSQL、Redis、独立 Agent、迁移服务）和宿主机 Host Updater；当前 Fork 的源码构建选择见上文。
+根目录的 `Dockerfile` 构建前端静态镜像；`nginx.conf` 托管 SPA 并代理后端。`docker-compose.dev.yml` 是源码热更新开发编排，根 `docker-compose.yml` 和 `docker-compose.local.yml` 是本地构建运行。通用服务器安装默认使用官方 Release 镜像、`docker-compose.deploy.yml`（PostgreSQL、Redis、独立 Agent、迁移服务）和宿主机 Host Updater；当前产品沿用上文已确认的源码构建部署，不因通用默认值切换线上方案。
 
 ## 2. 开始工作前
 
@@ -150,6 +160,7 @@
 
 ## 6. 画布、UI 和设计系统
 
+- 避免不必要的次级标签和说明文字，让布局本身解释内容（“Avoid unnecessary secondary labels and descriptions. Let the layout do the explaining.”）。优先通过分组、间距、对齐和视觉层级表达内容关系与操作顺序，不添加重复标题、装饰性标签或复述按钮含义的说明；保留必要的表单标签、状态与错误反馈、无障碍名称及影响操作判断的信息。
 - 画布组件、状态、算法分别放在 `web/src/components/canvas/`、`web/src/stores/canvas/`、`web/src/lib/canvas/`。事件忽略选择器必须覆盖 modal、popover、dropdown 等浮层。
 - 画布拖拽、连接、缩放和快捷键要考虑 pointer capture、滚轮冒泡、焦点以及 `data-canvas-no-zoom` / `data-canvas-wheel-scroll` 边界。
 - 节点和对象名称要有可发现的铅笔入口并支持单击编辑；双击或右键不能是唯一入口。图片节点保持原始比例，面板不能长期遮挡主要画布空间。

@@ -12,20 +12,15 @@ import { useUserStore } from "@/stores/use-user-store";
 import { useAppearanceStore } from "@/stores/use-appearance-store";
 import { useWalletBalance } from "@/hooks/use-wallet-balance";
 import { openWorkspaceWallet } from "@/lib/workspace-wallet";
+import { navigationTools } from "@/constant/navigation-tools";
 
 const PAGE_TITLES: Record<string, string> = {
-    home: "创作",
-    create: "创作",
-    projects: "短剧制作",
-    canvas: "自由画布",
-    tasks: "创作历史",
-    assets: "资产",
-    skills: "技能",
-    plugins: "插件",
+    home: "对话创作",
+    ...Object.fromEntries(navigationTools.map(({ slug, label }) => [slug, label])),
     settings: "设置",
 };
 
-export function WorkspaceTopBar({ sidebarOpen, onToggleSidebar, accountOpen, onAccountOpenChange, accountTriggerRef }: { sidebarOpen: boolean; onToggleSidebar: () => void; accountOpen: boolean; onAccountOpenChange: (open: boolean) => void; accountTriggerRef: Ref<HTMLButtonElement> }) {
+export function WorkspaceTopBar({ sidebarOpen, onToggleSidebar, accountOpen, onAccountOpenChange, accountTriggerRef, menuTriggerRef }: { sidebarOpen: boolean; onToggleSidebar: () => void; accountOpen: boolean; onAccountOpenChange: (open: boolean) => void; accountTriggerRef: Ref<HTMLButtonElement>; menuTriggerRef?: Ref<HTMLButtonElement> }) {
     const brandName = useAppearanceStore((state) => state.appearance.brandName);
     const theme = useThemeStore((state) => state.theme);
     const setTheme = useThemeStore((state) => state.setTheme);
@@ -34,12 +29,12 @@ export function WorkspaceTopBar({ sidebarOpen, onToggleSidebar, accountOpen, onA
     const { availableMicrocredits } = useWalletBalance(user?.id, creditsEnabled);
     const { pathname } = useLocation();
     const slug = pathname.split("/").filter(Boolean)[0];
-    const pageTitle = slug ? PAGE_TITLES[slug] || brandName : PAGE_TITLES.home;
+    const pageTitle = pathname.startsWith("/toolbox/image") ? "图片生成" : pathname.startsWith("/toolbox/video") ? "视频生成" : slug ? PAGE_TITLES[slug] || brandName : PAGE_TITLES.home;
     const balance = availableMicrocredits === null ? "--" : (availableMicrocredits / 1_000_000).toLocaleString("zh-CN", { maximumFractionDigits: 2 });
 
     return (
         <header className="app-workspace-topbar">
-            <button type="button" className="app-workspace-mobile-menu app-workspace-topbar-icon-button" aria-label={sidebarOpen ? "收起侧栏" : "展开侧栏"} aria-expanded={sidebarOpen} aria-controls="workspace-sidebar" onClick={onToggleSidebar}>
+            <button ref={menuTriggerRef} type="button" className="app-workspace-mobile-menu app-workspace-topbar-icon-button" aria-label={sidebarOpen ? "收起侧栏" : "展开侧栏"} aria-expanded={sidebarOpen} aria-controls="workspace-sidebar" onClick={onToggleSidebar}>
                 {sidebarOpen ? <PanelLeftClose className="size-4" /> : <PanelLeftOpen className="size-4" />}
             </button>
             <nav className="app-workspace-topbar-breadcrumb" aria-label="当前位置">

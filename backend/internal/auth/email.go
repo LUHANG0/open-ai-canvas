@@ -146,7 +146,7 @@ func (s *Service) EmailEnabled() (bool, error) {
 	return value.Enabled && value.Host != "" && value.Port > 0 && value.FromEmail != "", nil
 }
 
-func (s *Service) SendRegistrationEmailCode(rawEmail string) error {
+func (s *Service) SendRegistrationEmailCode(rawEmail string, invitationCodes ...string) error {
 	p, err := s.verificationPolicy()
 	if err != nil {
 		return err
@@ -165,12 +165,12 @@ func (s *Service) SendRegistrationEmailCode(rawEmail string) error {
 	if count == 0 {
 		return kernel.BadAuthRequest("首个管理员账号不需要邮箱验证码")
 	}
-	registrationEnabled, err := s.RegistrationEnabled()
-	if err != nil {
-		return err
+	invitationCode := ""
+	if len(invitationCodes) > 0 {
+		invitationCode = invitationCodes[0]
 	}
-	if !registrationEnabled {
-		return kernel.Forbidden("管理员未开放新用户注册")
+	if err := s.registrationAllowed(invitationCode); err != nil {
+		return err
 	}
 	if err := s.repo.CheckEmailAvailable(email, ""); err != nil {
 		return err
@@ -338,7 +338,7 @@ func normalizeEmailSetting(value EmailSettingValue) EmailSettingValue {
 }
 
 func (s *Service) publicEmailSetting(setting *model.SystemSetting, value EmailSettingValue) *PublicEmailSetting {
-	inherited := value.FromName == "" || value.FromName == DefaultBrandName
+	inherited := value.FromName == "" || value.FromName == DefaultBrandName || value.FromName == "影策"
 	value = resolveEmailSender(value, s.host.BrandName())
 	result := &PublicEmailSetting{
 		Enabled: value.Enabled, Host: value.Host, Port: value.Port, Username: value.Username, Encryption: value.Encryption,
@@ -423,7 +423,7 @@ func validateRegistrationEmailDomain(email string, allowedDomains []string) erro
 }
 
 func resolveEmailSender(value EmailSettingValue, brandName string) EmailSettingValue {
-	if value.FromName == "" || value.FromName == DefaultBrandName {
+	if value.FromName == "" || value.FromName == DefaultBrandName || value.FromName == "影策" {
 		value.FromName = brandName
 	}
 	return value

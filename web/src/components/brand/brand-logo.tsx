@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import { appearanceLogoURL, useAppearanceStore } from "@/stores/use-appearance-store";
 import type { ThemeName } from "@/stores/use-theme-store";
 import { useActiveTheme } from "@/stores/canvas/use-canvas-theme-store";
+import { MengCengMark } from "./brand-mark";
 
 type BrandLogoProps = {
     className?: string;
@@ -17,7 +18,7 @@ export function BrandLogo({ className, fallback, alt = "", theme = "auto" }: Bra
     const currentTheme = useActiveTheme();
     const source = appearanceLogoURL(appearance, theme === "auto" ? currentTheme : theme);
     const [failedSource, setFailedSource] = useState<string | null>(null);
-    if (!appearance.logoConfigured) return <>{fallback}</>;
+    if (!appearance.logoConfigured) return <span className={cn("block [&>svg]:size-full", className)}><MengCengMark /></span>;
     // A configured custom logo must never fall through to the built-in brand
     // when its file becomes unavailable. Keep its footprint neutral instead.
     if (failedSource === source) return <span className={cn("block", className)} aria-hidden="true" />;

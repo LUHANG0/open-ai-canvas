@@ -88,7 +88,7 @@ func validAgentAvatarMP4(data []byte) bool {
 	if len(sample) > 512 {
 		sample = sample[:512]
 	}
-	return detectAppearanceMIME(AppearanceAssetVideo, sample, int64(len(data))) == "video/mp4"
+	return detectAppearanceMIME(AppearanceAssetUpdateVideo, sample, int64(len(data))) == "video/mp4"
 }
 
 func validateAgentAvatarBundleArchive(reader io.ReaderAt, size int64) (AgentAvatarBundleManifest, error) {

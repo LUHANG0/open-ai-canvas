@@ -5,7 +5,7 @@ import { DEFAULT_CLASSIC_SKIN, duplicateSkinDefinition, skinCSSVariables } from 
 
 const source = (path: string) => readFileSync(new URL(`../src/${path}`, import.meta.url), "utf8");
 
-describe("authentication follows the application theme", () => {
+describe("authentication brand palette and theme boundaries", () => {
     test("classic login surfaces have distinct light and dark palettes", () => {
         // globals.css 在不同平台上可能是 LF 或 CRLF；先归一化再分段，
         // 否则按字面换行查找 .dark 段会返回 -1，把断言变成永远失败。
@@ -26,13 +26,18 @@ describe("authentication follows the application theme", () => {
         }
     });
 
-    test("auth inherits the global Ant Design provider instead of forcing dark controls", () => {
+    test("auth follows the workspace preference and configured provider", () => {
         const scene = source("pages/auth/auth-scene.tsx");
-        expect(scene).not.toContain("ConfigProvider");
-        expect(scene).not.toContain("getAntThemeConfig");
+        expect(scene).toContain("ConfigProvider");
+        expect(scene).toContain('getAntThemeConfig(theme === "dark", appearance.activeSkin)');
+        expect(scene).toContain("useThemeStore");
+        expect(scene).not.toContain('const theme = "dark"');
+        expect(source("pages/auth/auth-scene.css")).not.toMatch(/#091017|Songti|brand-blue/);
         expect(scene).not.toContain("auth-card-dark");
         expect(scene.match(/<main className="([^"]+)"/)?.[1]).not.toContain("text-white");
-        expect(scene).toContain("auth-scene-hero");
+        expect(scene).toContain("auth-scene-simple");
+        expect(scene).not.toContain("<video");
+        expect(scene).not.toContain("auth-scene-hero");
         expect(scene).toContain("<BrandLogo theme={theme}");
         expect(source("components/layout/app-providers.tsx")).toContain("getAntThemeConfig(dark, appearance.activeSkin)");
     });
@@ -52,12 +57,12 @@ describe("authentication follows the application theme", () => {
     test("focus and autofill keep theme-aware foregrounds and visible focus", () => {
         const css = source("styles/globals.css");
         expect(css).not.toContain(".auth-card-dark");
-        expect(css).toContain(".auth-scene-card input:-webkit-autofill");
+        expect(css).toContain(".auth-scene-card input.ant-input:-webkit-autofill");
         expect(css).toContain("-webkit-text-fill-color: var(--foreground) !important");
-        expect(css).toContain("box-shadow: 0 0 0 1000px var(--auth-card-bg) inset !important");
+        expect(css).toContain("box-shadow: 0 0 0 1000px var(--auth-field-bg, var(--auth-input-bg)) inset !important");
         expect(css).toContain(".auth-scene-link:focus-visible");
         expect(css).toContain(".auth-scene-card .ant-input-affix-wrapper:has(input:focus-visible)");
-        expect(css).toContain("outline: 1px solid var(--control-focus-ring) !important");
+        expect(css).toContain("outline: 2px solid var(--control-focus-ring) !important");
         expect(css).toContain(".auth-code-field:has(input:focus-visible)");
         expect(css).toContain(".auth-code-field .auth-code-send:focus-visible");
     });

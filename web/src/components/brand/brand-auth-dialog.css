@@ -1,0 +1,47 @@
+.mc-auth-layer {
+    --auth-accent:var(--brand-link); --auth-muted:var(--brand-muted); --auth-input-bg:var(--brand-field); --auth-input-hover-bg:var(--brand-surface); --auth-input-border:var(--brand-line);
+    --auth-input-hover-border:var(--brand-muted); --auth-input-focus-border:var(--brand-accent); --auth-input-focus-width:2px;
+    --auth-input-disabled-bg:var(--brand-field); --auth-input-disabled-fg:var(--brand-muted); --unified-input-placeholder:var(--brand-muted);
+    --button-primary-bg:var(--brand-accent); --button-primary-hover-bg:var(--brand-accent-hover); --button-primary-fg:var(--brand-accent-ink); --control-focus-ring:var(--brand-accent);
+    --foreground:var(--brand-text); --border:var(--brand-line); --auth-card-bg:var(--brand-paper);
+    color-scheme:dark; color:var(--brand-text); font-family:var(--brand-font);
+}
+.mc-auth-layer .ant-modal-mask { background:#080b13a6; backdrop-filter:blur(8px); }
+.mc-auth-dialog .ant-modal-container { display:flex; flex-direction:column; height:min(632px,calc(100dvh - 40px)); border-radius:16px; background:var(--brand-paper); box-shadow:0 28px 90px #03050c80; color:var(--brand-text); }
+.mc-auth-dialog .ant-modal-header { flex-shrink:0; margin:0; padding:32px 36px 0; background:var(--brand-paper); }
+.mc-auth-dialog .ant-modal-body { display:flex; flex:1; min-height:0; }
+.mc-auth-dialog .ant-modal-close { inset-block-start:20px; inset-inline-end:20px; width:40px; height:40px; border-radius:10px; color:var(--brand-muted); }
+.mc-auth-heading { display:grid; grid-template-columns:1fr; justify-items:start; }
+.mc-auth-heading .mc-auth-symbol { width:32px; height:32px; margin-bottom:24px; }
+.mc-auth-heading h2 { margin:0; color:var(--brand-text); font:450 30px/1.4 var(--brand-display-font); letter-spacing:.01em; }
+.mc-auth-heading h2:focus { outline:none; }
+.mc-auth-heading p { margin:8px 0 0; color:var(--brand-muted); font:400 14px/1.6 var(--brand-font); }
+.mc-auth-dialog .mc-auth-body { display:flex; flex-direction:column; flex:1; min-height:0; margin:0; padding:0 36px 28px; border:0; border-radius:0; background:var(--brand-paper); box-shadow:none; }
+.mc-auth-body::before { content:none; }
+.mc-auth-tabs { position:relative; display:grid; grid-template-columns:1fr 1fr; flex-shrink:0; gap:4px; margin-top:28px; padding:4px; border-radius:12px; background:var(--brand-stage); }
+.mc-auth-tabs[hidden] { display:none; }
+.mc-auth-tabs button { position:relative; z-index:1; min-height:40px; border:0; border-radius:8px; background:transparent; color:var(--brand-muted); font:500 14px/1.5 var(--brand-font); transition:color 160ms ease; }
+.mc-auth-tabs button[aria-selected="true"] { color:var(--brand-text); }
+.mc-auth-selection { position:absolute; inset:4px auto 4px 4px; width:calc(50% - 6px); border-radius:8px; background:var(--brand-surface); transition:transform 220ms var(--brand-ease-out); }
+.mc-auth-tabs[data-active="register"] .mc-auth-selection { transform:translateX(calc(100% + 4px)); }
+.mc-auth-scroll { min-height:0; overflow:auto; overscroll-behavior:contain; padding:24px 4px 4px; margin:0 -4px; scrollbar-width:thin; scrollbar-color:var(--brand-line) transparent; }
+.mc-auth-dialog .mc-auth-fields { padding:0; view-transition-name:none; }
+.mc-auth-fields > form { margin:0; }
+.mc-auth-error { display:flex; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:16px; color:var(--brand-muted); font-size:13px; }
+.mc-auth-error button { min-height:36px; color:var(--brand-link); }
+.mc-invitation-feedback { margin:0; color:var(--brand-muted); font-size:13px; line-height:1.7; }
+.mc-auth-layer :is(button,a,input):focus-visible { outline:2px solid var(--brand-accent); outline-offset:3px; }
+.mc-auth-layer ::selection { color:var(--brand-accent-ink); background:var(--brand-accent); }
+@media (hover:hover) and (pointer:fine) { .mc-auth-tabs button:hover { color:var(--brand-text); } }
+@media (max-width:520px) {
+    .mc-auth-layer .mc-auth-dialog { max-width:calc(100vw - 32px); margin-inline:auto; }
+    .mc-auth-dialog .ant-modal-header { padding:28px 24px 0; }
+    .mc-auth-dialog .mc-auth-body { padding:0 24px 24px; }
+    .mc-auth-heading h2 { font-size:28px; }
+    .mc-auth-fields input { font-size:16px; }
+    .mc-auth-heading .mc-auth-symbol { margin-bottom:20px; }
+}
+@media (prefers-reduced-motion:reduce) {
+    .mc-auth-selection,.mc-auth-tabs button { transition:none; }
+    .mc-auth-layer :is(.ant-modal,.ant-modal-mask) { animation:none !important; transition:none !important; }
+}

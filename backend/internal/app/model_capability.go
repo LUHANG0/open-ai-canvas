@@ -238,6 +238,7 @@ func NormalizeModelCapabilityConfigForModel(capability string, protocol string, 
 		if input == nil || input.Image == nil {
 			return nil, BadAuthRequest("请配置图片模型能力参数")
 		}
+		completeDramaImageCapability(input.Image, protocol)
 		if len(registries) > 0 && registries[0] != nil {
 			if adapter, ok := registries[0].Resolve(protocol); ok && adapter.Metadata().ImageParameters != nil {
 				if err := resolveImageCapabilityParameters(input.Image, adapter.Metadata().ImageParameters, modelName); err != nil {
@@ -279,6 +280,11 @@ func NormalizeModelCapabilityConfigForModel(capability string, protocol string, 
 	value := &ModelCapabilityConfig{Version: 1, Video: video}
 	if err := validateVideoCapabilityConfig(value.Video); err != nil {
 		return nil, err
+	}
+	if protocol == "drama-seedance-a" {
+		if err := validateDramaVideoCapability(value.Video, modelName); err != nil {
+			return nil, err
+		}
 	}
 	return value, nil
 }

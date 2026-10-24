@@ -4,6 +4,8 @@ import { SegmentedControl } from "@/components/ui/base/segmented-control";
 import { AppModal } from "@/components/ui/product/app-modal";
 import { ArrowRight, FileText, Info, LockKeyhole, Mail, TriangleAlert, UserRound } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router";
+import { safeAuthNext } from "@/lib/auth-navigation";
+import { useBrandAuthFlow } from "@/components/brand/brand-auth-entry";
 
 import { getAuthSession, getAuthSettings, linuxDOLoginURL, register } from "@/services/api/auth";
 import { LinuxDOIcon } from "./auth-scene";
@@ -11,19 +13,23 @@ import { ApiError } from "@/services/api/request";
 import { VerificationFields } from "@/components/auth/verification-fields";
 import { emptyVerification, methodLabels, verificationMethods, type VerificationMethod } from "@/services/api/verification";
 import { useAppearanceStore } from "@/stores/use-appearance-store";
+import { useRegistrationInvitation } from "./invitation-context";
+import { formatCredits } from "@/constant/credits";
 
 type AuthSettings = Awaited<ReturnType<typeof getAuthSettings>>;
 
 export default function RegisterPage() {
     const navigate = useNavigate();
     const [params] = useSearchParams();
+    const flow = useBrandAuthFlow();
+    const invitation = useRegistrationInvitation();
     const { message } = App.useApp();
     const brandName = useAppearanceStore((state) => state.appearance.brandName) || "平台";
-    const [settings, setSettings] = useState<AuthSettings | null>(null);
+    const [settings, setSettings] = useState<AuthSettings | null>(invitation?.settings ?? null);
     const [username, setUsername] = useState("");
     const [email, setEmail] = useState("");
     const [verification, setVerification] = useState({ ...emptyVerification });
-    const [method, setMethod] = useState<VerificationMethod>("email");
+    const [method, setMethod] = useState<VerificationMethod>(() => invitation ? verificationMethods(invitation.settings, "register")[0] ?? "email" : "email");
     const [displayName, setDisplayName] = useState("");
     const [password, setPassword] = useState("");
     const [confirmPassword, setConfirmPassword] = useState("");
@@ -32,9 +38,10 @@ export default function RegisterPage() {
     const [settingsFailed, setSettingsFailed] = useState(false);
     const [settingsReloadKey, setSettingsReloadKey] = useState(0);
     const [submitting, setSubmitting] = useState(false);
+    const [submitError, setSubmitError] = useState("");
     const [registerCountdown, setRegisterCountdown] = useState(0);
     const registering = useRef(false);
-    const next = safeNext(params.get("next"));
+    const next = invitation ? "/create" : safeAuthNext(flow?.next ?? params.get("next"));
 
     // 协议标题与条款由后台「登录与注册」配置下发。标题未配置时才回退到当前品牌名，
     // 且只在确认拿到设置（settings 非空）后回退；接口失败时不猜标题，避免展示
@@ -45,6 +52,11 @@ export default function RegisterPage() {
     const agreementParagraphs = agreementContent ? agreementContent.split(/\n\s*\n/) : [];
 
     useEffect(() => {
+        if (invitation) {
+            setSettings(invitation.settings);
+            setMethod(verificationMethods(invitation.settings, "register")[0] ?? "email");
+            return;
+        }
         let cancelled = false;
         setSettingsFailed(false);
         void getAuthSettings()
@@ -59,7 +71,7 @@ export default function RegisterPage() {
         return () => {
             cancelled = true;
         };
-    }, [message, settingsReloadKey]);
+    }, [invitation, message, settingsReloadKey]);
 
     const submit = async (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault();
@@ -74,15 +86,18 @@ export default function RegisterPage() {
         }
         registering.current = true;
         setSubmitting(true);
+        setSubmitError("");
         try {
             if (!settings?.firstUser && !verification.ticket) throw new Error("请先获取本次注册验证码");
-            await register({ username, ...(settings?.firstUser ? { email } : verification), displayName, password, acceptedTerms: agreementAccepted });
+            const result = await register({ username, ...(settings?.firstUser ? { email } : verification), displayName, password, acceptedTerms: agreementAccepted, ...(invitation ? { invitationCode: invitation.code } : {}) });
             const { applyUserSession } = await import("@/lib/user-session");
             await applyUserSession(await getAuthSession());
             if (!settings?.firstUser) window.sessionStorage.setItem("yingce:model-setup-guide", "1");
-            message.success(settings?.firstUser ? "管理员账号已创建" : "注册成功");
+            message.success(invitation && result.signupBonusMicrocredits !== undefined && result.signupBonusMicrocredits > 0 ? `注册成功，${formatCredits(result.signupBonusMicrocredits)} 积分已到账` : settings?.firstUser ? "管理员账号已创建" : "注册成功");
             navigate(next, { replace: true });
         } catch (error) {
+            setSubmitError(error instanceof Error ? error.message : "注册失败");
+            if (invitation && error instanceof ApiError && error.status === 409) invitation.reload();
             if (error instanceof ApiError && error.status === 429) setRegisterCountdown(Math.max(1, Math.ceil((error.retryAfterMs ?? 60000) / 1000)));
             message.error(error instanceof Error ? error.message : "注册失败");
         } finally {
@@ -114,7 +129,7 @@ export default function RegisterPage() {
                     当前已关闭普通注册，请联系管理员创建账号。
                 </Notice>
             ) : null}
-            {verificationUnavailable ? (
+            {verificationUnavailable && !registrationClosed ? (
                 <Notice icon={<TriangleAlert className="size-3.5" />} tone="amber">
                     当前没有可用的注册验证方式，请联系管理员检查短信及邮件配置。
                 </Notice>
@@ -142,7 +157,7 @@ export default function RegisterPage() {
                 />
             </AuthField> : <>
                 {methods.length > 1 && <SegmentedControl block ariaLabel="注册验证方式" options={methods.map((value) => ({ value, label: methodLabels[value] }))} value={method} disabled={submitting} onChange={(value) => { setMethod(value as VerificationMethod); setVerification({ ...emptyVerification }); }} />}
-                {methods.length > 0 && <VerificationFields key={method} purpose="register" method={method} value={verification} onChange={setVerification} disabled={disabled || submitting} />}
+                {methods.length > 0 && <VerificationFields key={method} purpose="register" method={method} value={verification} onChange={setVerification} disabled={disabled || submitting} invitationCode={invitation?.code} />}
             </>}
 
             <div className="grid gap-4 sm:grid-cols-2">
@@ -194,10 +209,11 @@ export default function RegisterPage() {
                 </div>
             ) : null}
 
+            {submitError && <p role="alert" className="auth-scene-notice">{submitError}</p>}
             <Button type="primary" htmlType="submit" size="large" block loading={submitting} disabled={disabled || registerCountdown > 0 || !agreementAccepted} icon={<ArrowRight className="size-4" />} iconPlacement="end">
-                {registerCountdown > 0 ? `${registerCountdown} 秒后可重试` : "创建账号"}
+                {registerCountdown > 0 ? `${registerCountdown} 秒后可重试` : invitation ? "接受邀请并注册" : "创建账号"}
             </Button>
-            {settings?.linuxdoEnabled && !settings.smsAndEmailRegistration ? (
+            {!invitation && settings?.linuxdoEnabled && !settings.smsAndEmailRegistration ? (
                 <>
                     <Divider plain className="auth-scene-divider">
                         或
@@ -260,11 +276,6 @@ function Notice({ icon, tone, children }: { icon: ReactNode; tone: "blue" | "amb
             {children}
         </div>
     );
-}
-
-function safeNext(value: string | null) {
-    if (!value || !value.startsWith("/") || value.startsWith("//")) return "/";
-    return value;
 }
 
 // 中文条款里「一、」「二、」这类条目标题常与正文写在同一个段落内（只隔一个换行）。

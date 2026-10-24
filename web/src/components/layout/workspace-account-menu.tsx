@@ -2,7 +2,7 @@ import { Popover } from "antd";
 import { Switch } from "@/components/ui/base/switch";
 import { CircleUserRound, Moon, Sun } from "lucide-react";
 import { useImperativeHandle, useRef, type KeyboardEvent as ReactKeyboardEvent, type Ref } from "react";
-import { Link } from "react-router";
+import { Link, useLocation } from "react-router";
 
 import { AppChangelogButton } from "@/components/layout/app-changelog-modal";
 import { WorkspaceAccountCard } from "./workspace-account-card";
@@ -10,9 +10,11 @@ import { UserAvatar } from "./user-avatar";
 import { openWorkspaceWallet } from "@/lib/workspace-wallet";
 import { useThemeStore } from "@/stores/use-theme-store";
 import { useUserStore } from "@/stores/use-user-store";
+import { loginPath } from "@/lib/auth-navigation";
 
 /** 顶部与侧栏复用同一账户卡片；顶部额外保留版本和主题偏好。 */
 export function WorkspaceAccountMenu({ open: menuOpen, onOpenChange: setMenuOpen, triggerRef }: { open: boolean; onOpenChange: (open: boolean) => void; triggerRef: Ref<HTMLButtonElement> }) {
+    const location = useLocation();
     const theme = useThemeStore((state) => state.theme);
     const setTheme = useThemeStore((state) => state.setTheme);
     const user = useUserStore((state) => state.user);
@@ -91,5 +93,5 @@ export function WorkspaceAccountMenu({ open: menuOpen, onOpenChange: setMenuOpen
                 <UserAvatar user={user} className="size-6" />
             </button>
         </Popover></>
-    ) : <Link to="/login" className="app-workspace-topbar-guest inline-flex items-center gap-1.5 px-1.5 text-xs text-foreground/55" aria-label="登录" title="登录"><CircleUserRound aria-hidden className="size-5" /><span className="hidden sm:inline">游客</span></Link>;
+    ) : <Link to={loginPath(location.pathname + location.search + location.hash)} className="app-workspace-topbar-guest inline-flex items-center gap-1.5 px-1.5 text-xs text-foreground/55" aria-label="登录" title="登录"><CircleUserRound aria-hidden className="size-5" /><span className="hidden sm:inline">游客</span></Link>;
 }

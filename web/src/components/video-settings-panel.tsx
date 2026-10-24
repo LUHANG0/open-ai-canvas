@@ -32,7 +32,7 @@ export function VideoSettingsPanel({ config, onConfigChange, theme, showTitle = 
     if (resolveModelRequestConfig(config, config.model).interfaceType === "volcengine-jimeng-video") {
 		return <JiMengVideoSettingsPanel config={config} profile={profile} priceTiers={priceTiers} onConfigChange={onConfigChange} theme={theme} showTitle={showTitle} className={className} />;
     }
-    if (isSeedanceVideoConfig(config)) {
+    if (isSeedanceVideoConfig(config) && resolveModelRequestConfig(config, config.model).interfaceType !== "drama-seedance-a") {
 		return <SeedanceVideoSettingsPanel config={config} profile={profile} priceTiers={priceTiers} onConfigChange={onConfigChange} theme={theme} showTitle={showTitle} className={className} />;
     }
 

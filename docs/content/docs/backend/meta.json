@@ -6,6 +6,8 @@
     "local-development",
     "canvas-agent-appearance",
     "http-api",
+    "registration-invitations",
+    "creation-conversation-sync",
     "code-map",
     "backend-database",
     "video-token-billing",

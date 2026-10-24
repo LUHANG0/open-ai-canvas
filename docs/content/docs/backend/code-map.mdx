@@ -5,6 +5,39 @@ description: 从产品功能快速定位主要代码入口
 
 # 代码功能地图
 
+## 管理员注册邀请
+
+- `model/registration_invitation.go` 与 `database/registration_invitations.go`：短码摘要／加密值、固定积分、单次消费状态和新增表；`migrations.go` 在历史表版本 60 后登记 61，`schema.go` 与 SQLite → PostgreSQL 复制清单同步。
+- `app/registration_invitations.go`、`handler/registration_invitations.go`：管理员当前权限、生成／列表／撤销和最小公开验证。`auth/auth.go`、`verification.go`、`email.go`：沿用注册／验证码规则并限定有效邀请的注册豁免；`repository/registration_invitations.go`：邀请条件消费与既有唯一积分流水、审计共用事务。
+- `web/src/pages/admin/users/invitations-drawer.tsx`：邀请创建与记录；`services/api/registration-invitations.ts`：品牌入口和邀请页共用接口／导航／状态；`pages/auth/invitation.tsx` 与 `invitation-context.tsx`：邀请状态和现有 `register.tsx` 表单复用。`nginx.conf` 脱敏邀请路径及来源日志。
+
+## 创作页历史同步
+
+- `web/src/services/creation-history-sync.ts`：账号同步会话、持久队列、逐消息修订、三方合并、冲突副本与永久删除对账；`creation-history-payload.ts` / `creation-history-media.ts` 限定云端字段、迁移媒体并恢复展示身份。
+- `web/src/services/api/creation-history.ts` 与 `web/src/pages/create/index.tsx`：业务接口、页面接入、状态和重试，仍使用原 taskIds 恢复原任务。
+- `backend/internal/handler/creation_history.go`、`app/creation_history.go`、`repository/creation_history.go`、`model/creation_history.go`：鉴权、业务校验、事务持久化与独立历史模型；`database/migrations.go` 注册 Schema 60，`repository/resource_reference.go` 保护历史资源引用。
+
+## Drama API 渠道协议
+
+- `plugin-packages/drama-api/manifest.json` 与同包 `docs/interface.md`：Chat、GPT 图片、Gemini 图片、Seedance 2.0/2.5 A 视频的四个独立映射；分发包 `drama-api.yingce-plugin`。
+- `app/model_capability_defaults.go`、`app/model_capability_drama.go` 与 `web/src/lib/model-capabilities.ts`：补齐旧图片分辨率映射、区分质量与清晰度，并按明确 A 型号给出及校验能力；Fast/Mini 由当前控制台配置。前端 `model-connection-test.ts` 媒体测试走后端插件，`services/api/image.ts` 聊天选择 Chat Completions。
+- `web/src/lib/image-parameters.ts`、`components/image-parameter-fields.tsx`、`model-capability-editor.tsx`：声明式分辨率和像素表在后台与生成界面同步。`video-settings-panel.tsx` 让 Drama 使用渠道能力控件，保留 4K/Auto 和 30 秒范围。
+- `app/task_worker.go`：保留 A 视频公开任务 ID 恢复。`protocol/manifest_adapter.go` 和 `app/provider_protocol_result.go`：无内联媒体时仍保留 usage，并传入独立二进制下载结果。
+- `protocol/drama_test.go`、`app/drama*_test.go`、`web/test/drama-capabilities.test.ts` 与 `drama-settings.test.tsx` 覆盖专项；真实收费模型与画布验收记录在待测试。
+
+## 4SToken 渠道协议
+
+- 插件：`plugin-packages/4stoken/manifest.json`、`docs/interface.md`；分发包 `plugin-packages/4stoken.yingce-plugin`，包含六个独立 Provider。
+- 宿主：`app/provider_text.go` / `provider_text_agent.go` 处理 Responses JSON 文本与工具身份；`provider_agent_protocol.go` 校验 Responses 历史 item ID；`task_worker.go` 接入已有 Gateway 视频任务恢复。其余创建、multipart、轮询与下载复用声明式宿主。
+- 模型配置：`app/model_capability_defaults.go`、`web/src/lib/model-capabilities.ts`；测试按钮走 `web/src/lib/model-connection-test.ts` 的后端插件任务。
+- 专项：`internal/protocol/fourstoken_test.go`、`internal/app/fourstoken_test.go`、`provider_declarative_text_stream_test.go` 和 `web/test/fourstoken-capabilities.test.ts`。配置见[4SToken 协议插件](/docs/backend/4stoken)。
+
+## 梦层品牌官网
+
+`main.tsx` 统一加载 `application.tsx`，不再单独挂载官网应用。`components/brand/brand-link.tsx` 处理官网站内连续导航与独立预览；`lib/auth-navigation.ts` 统一认证 next，`lib/auth-route-modules.ts` 共享认证按需加载与预加载。`pages/auth/auth-scene.tsx` 在表单展示前确认身份，`auth-form-pending.tsx` 提供局部等待。`components/layout/app-providers.tsx` 的 `WorkspaceBootstrap` 将会话和工作区能力初始化限定于工作台；`router.tsx` 在 `UserLayout` 内接住页面/功能模块等待，保留导航。
+
+`web/src/pages/welcome` 与 `components/brand/brand-site` 渲染官网，`pages/admin/settings/brand-site-settings-page.tsx` 复用同组件预览与编辑。v5 盐原巨浪、三题材画廊与同故事分镜位于 `public/brand/v5/`；`Gallery` 复用按需加载的 AppModal 查看大图，`CreationShowcase` 提供三个文本入口和聚焦预览。官网不引用前台界面截图。`pages/auth/auth-scene` 只衔接新图片，保留表单布局与业务。`services/api/brand-site.ts` 与 `app/brand_site.go` 同步新内置默认，复用 examples/entries/process/faq 和 footer，不迁移已保存配置。后端 `handler/brand_site.go` → `service` 别名 → `app/brand_site.go` → `repository/brand_site.go`，以 `system_settings.brand_site` 单记录 CAS 存储草稿、发布与上一版。品牌缺省与精确旧值迁移在 `appearance.go` / `appearance_mengceng.go`；媒体删除引用接入 `appearanceResourceReferences`。合同见[品牌官网](/docs/backend/mengceng-brand-site)。
+
 ## 夜总会独立渠道协议
 
 - 插件：`plugin-packages/yezonghui/manifest.json`、`docs/interface.md`；分发包 `plugin-packages/yezonghui.yingce-plugin`。

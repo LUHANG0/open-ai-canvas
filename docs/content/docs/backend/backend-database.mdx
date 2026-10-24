@@ -5,9 +5,23 @@ description: 影策后端核心持久化表与状态边界
 
 # 后端数据库
 
+## 用户注册邀请（Schema 61）
+
+当前结构版本为 61。迁移 `registration_invitations` 仅新增 `registration_invitations` 表：主键 `id`、唯一 `code_hash`、加密 `code_encrypted`、创建管理员 `created_by_user_id`、内部备注 `note`、固定 `bonus_microcredits`、创建/到期/撤销/使用时间，以及可空唯一的 `used_by_user_id`。摘要保证短码唯一，可空受邀账号键允许多条未消费邀请，消费账号只对应一条邀请。
+
+账号、验证码、邀请条件消费、积分流水、审计与注册登录态共用事务。积分仍通过 `credit_ledger_entries.reference_key=signup:<userID>` 入账，0 金额也留下唯一记录；不增加另一套余额或赠送表。流水备注关联邀请 ID，`actor_user_id` 与 `scene=registration_invitation` 保留管理员和场景。迁移不回填或改变历史账号/积分。详细状态与回退边界见[用户注册邀请](/docs/backend/registration-invitations)。
+
+## 创作页历史（Schema 60）
+
+迁移 60 `creation_conversation_history` 新建 `creation_conversations`（user_id/id 复合主键、元数据及整体修订、永久删除标记）、`creation_conversation_messages`（user_id/conversation_id/id 复合主键、消息修订、稳定 sequence、正文 JSON）、`creation_conversation_resources`（账号/对话/消息/资源引用索引）。写锁内同步消息和引用，删除只清理历史正文与引用。新库、版本迁移及 SQLite → PostgreSQL 复制清单均注册三表。完整合同见[创作历史跨设备同步](/docs/backend/creation-conversation-sync)。
+
+## 品牌官网版本记录
+
+复用 `system_settings` 的 `key=brand_site`，不新增表或 schema 迁移。`value_json` 保存修订号、完整草稿、当前发布版、上一发布版及保存/发布时间；发布和恢复通过对原始 JSON 的比较更新一次写入，冲突返回 409。三个版本均参与媒体引用删除保护；公开端只返回当前发布内容和其媒体。字段与接口见[梦层品牌官网](/docs/backend/mengceng-brand-site)。
+
 ## Agent 记忆审批与恢复（Schema 58）
 
-当前结构版本为 58。迁移 `agent_memory_proposals` 保留既有记忆内容，给 `agent_lessons` 增加 `origin_run_id`（来源运行、带索引）和 `evidence_json`（事件序号、调用 ID、工具名数组）；给 `agent_memory_settings` 增加 `compact_proposal_id` 和 `compact_cursor`，并创建下列两张表。新库初始化、正式迁移和 SQLite → PostgreSQL 搬迁均注册这些模型。
+迁移 58 `agent_memory_proposals` 保留既有记忆内容，给 `agent_lessons` 增加 `origin_run_id`（来源运行、带索引）和 `evidence_json`（事件序号、调用 ID、工具名数组）；给 `agent_memory_settings` 增加 `compact_proposal_id` 和 `compact_cursor`，并创建下列两张表。新库初始化、正式迁移和 SQLite → PostgreSQL 搬迁均注册这些模型。
 
 | 表 | 保存内容 | 并发与归属边界 |
 | --- | --- | --- |
@@ -165,11 +179,11 @@ docker compose -f docker-compose.deploy.yml up -d backend web
 
 ## 平台外观配置
 
-当前外观 JSON 合同版本为 8，主题参数新增 `skinThemes[].tokens.buttons.light/dark`：填充模式、角度、常态/悬停/按下双色和文字色。经典主题默认为紫蓝渐变，其余旧主题缺少此块时保持纯色；公开 `activeSkin` 使用相同结构。无表结构迁移，读取补齐只在内存执行，管理员保存时写回。回退应用版本前保留外观 JSON 备份，旧版本不支持新按钮填充参数。
+当前外观 JSON 合同版本为 13。版本 8 引入的 `skinThemes[].tokens.buttons.light/dark`（填充模式、角度、常态/悬停/按下双色和文字色）继续保留，公开 `activeSkin` 使用相同结构；后续设计系统已调整缺省主操作为实色。版本 13 完全移除旧登录宣传和视频字段及其上传/公开 slot。无表结构迁移，读取归一化只在内存执行，管理员正常保存时写回当前合同；回退应用版本前保留外观 JSON 备份。
 
-平台外观复用既有 `system_settings` 表，不新增结构迁移。键 `appearance` 的 JSON 值使用版本化合同；版本 3 保存品牌名称、英文品牌标识、登录页主标题与可选说明文案、浅色与可选深色 Logo 资源 ID、Logo 外框开关、登录页视频资源 ID、可选封面资源 ID 和预留皮肤 ID。只配置一套 Logo 时，公开投影会在浅色和深色主题复用同一资源；旧版本缺少深色 Logo 与外框字段时分别回退到单 Logo 和启用外框，不改变既有视觉。资源元数据和文件仍分别由 `resources` 表与当前资源存储承担。恢复默认外观时删除这条设置记录并回到内置值，不级联删除已经上传的资源。
+平台外观复用既有 `system_settings` 表，不新增结构迁移。键 `appearance` 的 JSON 值使用版本化合同，保存品牌名称、英文品牌标识、浅色与可选深色 Logo 资源 ID、Logo 外框开关、SEO、页脚、皮肤及各既有业务外观。只配置一套 Logo 时，公开投影会在浅色和深色主题复用同一资源；旧版本缺少深色 Logo 与外框字段时分别回退到单 Logo 和启用外框。旧 `authHero*` / `authVideo*` 不再被解析投影或序列化，原 JSON 中未知旧键在下次正常保存时移除；不会为此直接改写配置记录或删除媒体文件。资源元数据和文件仍分别由 `resources` 表与当前资源存储承担。恢复默认外观时删除这条设置记录并回到内置值，不级联删除已经上传的资源。
 
-公开接口只投影品牌名、英文品牌标识、登录页公开文案、深浅主题使用的稳定 slot 资源 URL、Logo 外框状态、配置状态和修订标识，不返回内部资源 ID、对象路径或存储凭据。管理员保存新配置前，服务层会校验文本长度与安全字符、资源为就绪状态、类型与 slot 匹配，且新绑定资源由当前管理员上传；两套 Logo、视频和封面中任何正在使用的资源都会进入管理员删除保护。品牌变更同时写入 `admin_audit_events`。
+公开接口只投影品牌、SEO、页脚、深浅主题使用的稳定 Logo slot URL、外观参数、配置状态和修订标识，不返回内部资源 ID、对象路径或存储凭据。管理员保存新配置前，服务层会校验文本长度与安全字符、资源为就绪状态、类型与 slot 匹配，且新绑定资源由当前管理员上传；正在使用的两套 Logo 等现行外观资源进入管理员删除保护，退场的登录媒体字段不再形成引用。品牌变更同时写入 `admin_audit_events`。
 
 ## 账号认证与密码找回
 

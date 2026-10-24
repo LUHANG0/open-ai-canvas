@@ -151,6 +151,17 @@ func runDeclarativeAgentTask(ctx context.Context, input canvasGenerationInput, a
 		applyAgentOutputLimit(body, agentStepOutputLimit(input), wire)
 		normalizeAgentToolChoice(body, input, wire)
 		spec.Body = body
+		if wire == "responses" && !input.StreamText {
+			data, err := executeProtocolRequest(ctx, input.Config, spec)
+			if err != nil {
+				return nil, err
+			}
+			var payload map[string]interface{}
+			if err := json.Unmarshal(data, &payload); err != nil {
+				return nil, fmt.Errorf("Agent 接口返回格式无效：%w", err)
+			}
+			return parseAgentToolPayload(payload, wire)
+		}
 		if input.StreamText {
 			body["stream"] = true
 			if wire == "chat-completion" {

@@ -8,30 +8,23 @@ import { applySkinTheme, DEFAULT_CLASSIC_SKIN, normalizeSkinDefinition } from "@
 export const DEFAULT_PUBLIC_APPEARANCE: PublicAppearance = {
     updates: DEFAULT_UPDATE_ANNOUNCEMENT,
     canvas: DEFAULT_CANVAS_APPEARANCE,
-    schemaVersion: 10,
-    brandName: "影策",
-    brandSlug: "open-ai-canvas",
-    authHeroTitle: "让一个故事，\n从文字走向银幕。",
-    authHeroDescription: "",
+    schemaVersion: 13,
+    brandName: "梦层",
+    brandSlug: "mengceng",
     logoUrl: "/logo.svg",
     darkLogoUrl: "/logo.svg",
     logoFrameEnabled: true,
-    authVideoUrl: "https://boss-shjd.biliapi.net/updream/aniforge/video/video_bbcb00bd-650d-4249-9346-5cd21fd2484c_m1hc-u0-1pu13x-3v1s.mp4",
-    authVideoPosterUrl: "https://i0.hdslb.com/bfs/aitool/aniforge/image/02933f26-5f1b-49ff-a811-b7f95ee5e5b8_m1hc-u0-sau.jpg",
-    authVideoAutoplay: true,
     skinId: "classic",
     activeSkin: DEFAULT_CLASSIC_SKIN,
-    seoTitle: "影策",
-    seoDescription: "影策，面向 AI 影视与短剧创作的工作台。",
+    seoTitle: "梦层 MengCeng",
+    seoDescription: "梦层 MengCeng，面向独立创作者与小型团队的 AI 影像创作工作台。",
     seoKeywords: "",
-    footerCopyright: `© ${new Date().getFullYear()} 影策. All rights reserved.`,
+    footerCopyright: `© ${new Date().getFullYear()} 梦层 MengCeng. All rights reserved.`,
     icpFilingEnabled: false,
     icpFilingNumber: "",
     redeemPurchaseUrl: "",
     logoConfigured: false,
     darkLogoConfigured: false,
-    authVideoConfigured: false,
-    authVideoPosterConfigured: false,
     configured: false,
     revision: "builtin",
 };
@@ -51,9 +44,6 @@ export const useAppearanceStore = create<AppearanceStore>((set) => ({
 export function normalizePublicAppearance(value?: Partial<PublicAppearance> | null): PublicAppearance {
     const brandName = String(value?.brandName || "").trim();
     const brandSlug = normalizeBrandSlug(value?.brandSlug);
-    const authHeroTitle = normalizeAppearanceCopy(value?.authHeroTitle, DEFAULT_PUBLIC_APPEARANCE.authHeroTitle);
-    const authHeroDescription = normalizeAppearanceCopy(value?.authHeroDescription, DEFAULT_PUBLIC_APPEARANCE.authHeroDescription, true);
-    const customVideo = Boolean(value?.authVideoConfigured);
     const logoUrl = safeAppearanceURL(value?.logoUrl, DEFAULT_PUBLIC_APPEARANCE.logoUrl);
     const darkLogoUrl = safeAppearanceURL(value?.darkLogoUrl, logoUrl);
     const resolvedBrandName = brandName || DEFAULT_PUBLIC_APPEARANCE.brandName;
@@ -65,20 +55,14 @@ export function normalizePublicAppearance(value?: Partial<PublicAppearance> | nu
     const redeemPurchaseUrl = typeof value?.redeemPurchaseUrl === "string" ? safeAppearanceURL(value.redeemPurchaseUrl, "") : "";
     return {
         ...DEFAULT_PUBLIC_APPEARANCE,
-        ...value,
-        schemaVersion: 10,
+        schemaVersion: 13,
         updates: normalizeUpdateAnnouncement(value?.updates),
         canvas: { ...DEFAULT_CANVAS_APPEARANCE, ...value?.canvas },
         brandName: resolvedBrandName,
         brandSlug,
-        authHeroTitle,
-        authHeroDescription,
         logoUrl,
         darkLogoUrl,
         logoFrameEnabled: value?.logoFrameEnabled !== false,
-        authVideoUrl: safeAppearanceURL(value?.authVideoUrl, DEFAULT_PUBLIC_APPEARANCE.authVideoUrl),
-        authVideoPosterUrl: safeAppearanceURL(value?.authVideoPosterUrl, customVideo ? "" : DEFAULT_PUBLIC_APPEARANCE.authVideoPosterUrl),
-        authVideoAutoplay: value?.authVideoAutoplay !== false,
         skinId: normalizeSkinDefinition(value?.activeSkin).id,
         activeSkin: normalizeSkinDefinition(value?.activeSkin),
         seoTitle,
@@ -90,10 +74,9 @@ export function normalizePublicAppearance(value?: Partial<PublicAppearance> | nu
         redeemPurchaseUrl,
         logoConfigured: Boolean(value?.logoConfigured),
         darkLogoConfigured: Boolean(value?.darkLogoConfigured),
-        authVideoConfigured: customVideo,
-        authVideoPosterConfigured: Boolean(value?.authVideoPosterConfigured),
         configured: Boolean(value?.configured),
         revision: String(value?.revision || DEFAULT_PUBLIC_APPEARANCE.revision),
+        updatedAt: value?.updatedAt,
     };
 }
 
@@ -131,7 +114,9 @@ export function applyAppearanceMetadata(appearance: PublicAppearance, targetDocu
         favicon.rel = "icon";
         targetDocument.head.appendChild(favicon);
     }
-    favicon.href = appearanceLogoURL(appearance, targetDocument.documentElement.classList.contains("dark") ? "dark" : "light");
+    favicon.href = appearance.logoConfigured ? appearanceLogoURL(appearance, targetDocument.documentElement.classList.contains("dark") ? "dark" : "light") : "/logo.svg?v=mengceng-portal";
+    if (appearance.logoConfigured) favicon.removeAttribute("type");
+    else favicon.type = "image/svg+xml";
 
     const location = targetDocument.defaultView?.location;
     if (location && (location.protocol === "http:" || location.protocol === "https:")) {
@@ -164,7 +149,7 @@ export function appearanceLogoURL(appearance: PublicAppearance, theme: "light" |
 }
 
 export function brandStudioLabel(appearance: PublicAppearance) {
-    if (appearance.brandName === DEFAULT_PUBLIC_APPEARANCE.brandName && appearance.brandSlug === DEFAULT_PUBLIC_APPEARANCE.brandSlug) return "YINGCE STUDIO";
+    if (appearance.brandName === DEFAULT_PUBLIC_APPEARANCE.brandName && appearance.brandSlug === DEFAULT_PUBLIC_APPEARANCE.brandSlug) return "MengCeng";
     return appearance.brandSlug.replace(/-+/g, " ").toLocaleUpperCase();
 }
 

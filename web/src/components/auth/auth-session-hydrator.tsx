@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 import { getAuthSession, type AuthSessionPayload } from "@/services/api/auth";
 import { FullScreenLoader } from "@/components/ui/aceternity/full-screen-loader";
@@ -9,6 +9,7 @@ import { recordDiagnosticEvent } from "@/services/diagnostics/client-diagnostics
 
 export function AuthSessionHydrator({ children }: { children: ReactNode }) {
     const hydrated = useUserStore((state) => state.hydrated);
+    const [ready, setReady] = useState(false);
 
     useEffect(() => {
         let cancelled = false;
@@ -25,7 +26,9 @@ export function AuthSessionHydrator({ children }: { children: ReactNode }) {
                     durationMs: performance.now() - startedAt,
                 });
                 if (!payload.user) {
-                    await applyAnonymousSession(payload);
+                    await applyAnonymousSession(payload, () => cancelled);
+                    if (cancelled) return;
+                    setReady(true);
                     recordDiagnosticEvent({
                         category: "navigation",
                         level: "info",
@@ -39,6 +42,8 @@ export function AuthSessionHydrator({ children }: { children: ReactNode }) {
                 const { applyUserSession } = await import("@/lib/user-session");
                 if (cancelled) return;
                 await applyUserSession(payload);
+                if (cancelled) return;
+                setReady(true);
                 recordDiagnosticEvent({
                     category: "navigation",
                     level: "info",
@@ -50,7 +55,9 @@ export function AuthSessionHydrator({ children }: { children: ReactNode }) {
             })
             .catch(async () => {
                 if (!cancelled) {
-                    await applyAnonymousSession({ user: null });
+                    await applyAnonymousSession({ user: null }, () => cancelled);
+                    if (cancelled) return;
+                    setReady(true);
                     recordDiagnosticEvent({
                         category: "navigation",
                         level: "warning",
@@ -65,10 +72,11 @@ export function AuthSessionHydrator({ children }: { children: ReactNode }) {
         };
     }, []);
 
-    return hydrated ? children : <FullScreenLoader />;
+    return ready && hydrated ? children : <FullScreenLoader />;
 }
 
-async function applyAnonymousSession(payload: AuthSessionPayload) {
+async function applyAnonymousSession(payload: AuthSessionPayload, cancelled: () => boolean) {
     const { applyUserSession } = await import("@/lib/user-session");
+    if (cancelled()) return;
     await applyUserSession({ ...payload, user: null });
 }

@@ -1,35 +1,24 @@
-import { useReducedMotion } from "motion/react";
-import { ArrowLeft, Play } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
+import { ConfigProvider } from "antd";
 import { useEffect, useRef, useState } from "react";
-import { Link, Outlet, useLocation, useNavigate } from "react-router";
+import { Link, Navigate, Outlet, useLocation, useNavigate } from "react-router";
 
 import { BrandLogo } from "@/components/brand/brand-logo";
 import { SiteComplianceFooter } from "@/components/layout/site-compliance-footer";
 import { brandStudioLabel, useAppearanceStore } from "@/stores/use-appearance-store";
+import { getAntThemeConfig } from "@/lib/app-theme";
 import { useThemeStore } from "@/stores/use-theme-store";
+import { getAuthSession } from "@/services/api/auth";
+import { loadLoginPage, loadRegisterPage, preloadAuthRoute } from "@/lib/auth-route-modules";
+import { safeAuthNext } from "@/lib/auth-navigation";
+import { AuthFormPending } from "./auth-form-pending";
+import "./auth-scene.css";
 
 const AUTH_TABS = [
     { key: "login", label: "登录" },
     { key: "register", label: "注册" },
-];
-
-const authCopy = {
-    login: {
-        eyebrow: "WELCOME BACK",
-        title: "进入创作现场",
-        description: "继续编辑你的画布、素材与生成任务。",
-    },
-    register: {
-        eyebrow: "CREATE ACCOUNT",
-        title: "建立你的创作空间",
-        description: "一个账号管理画布、素材、技能和模型偏好。",
-    },
-    recovery: {
-        eyebrow: "ACCOUNT RECOVERY",
-        title: "重新设置密码",
-        description: "验证账号邮箱后，设置一个新的登录密码。",
-    },
-} as const;
+] as const;
+const AUTH_LOADERS = { login: loadLoginPage, register: loadRegisterPage };
 
 export function LinuxDOIcon() {
     return (
@@ -49,112 +38,151 @@ export function AuthScene() {
     const theme = useThemeStore((state) => state.theme);
     const location = useLocation();
     const navigate = useNavigate();
-    const reducedMotion = useReducedMotion();
-    const videoRef = useRef<HTMLVideoElement>(null);
+    const [identity, setIdentity] = useState<"checking" | "guest" | "member" | "failed">("checking");
+    const [sessionRetry, setSessionRetry] = useState(0);
+    const [pendingTab, setPendingTab] = useState<"login" | "register" | null>(null);
+    const [routeError, setRouteError] = useState(false);
+    const [pageVisible, setPageVisible] = useState(true);
     const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
-    const [manualVideoActive, setManualVideoActive] = useState(false);
-    const [videoPlaying, setVideoPlaying] = useState(false);
-    const [failedPosterURL, setFailedPosterURL] = useState("");
+    const titleRef = useRef<HTMLHeadingElement>(null);
+    const switchRequest = useRef(0);
+    const requestedTab = useRef<"login" | "register">("login");
+    const keyboardSwitch = useRef(false);
+    const [artwork] = useState(() => {
+        const candidate = (location.state as { brandArtwork?: unknown } | null)?.brandArtwork;
+        if (typeof candidate !== "string") return "/brand/b/wave.webp";
+        if (/^\/(?:brand\/|api\/public\/brand-site\/media\/)/.test(candidate) || candidate.startsWith("https://ik.imagekit.io/ff5bkg98p/")) return candidate;
+        return "/brand/b/wave.webp";
+    });
     const recovery = location.pathname === "/forgot-password";
+    const invitation = location.pathname.startsWith("/i/");
+    const hasTabs = !recovery && !invitation;
     const activeTab = location.pathname === "/register" ? "register" : "login";
-    const copy = recovery ? authCopy.recovery : activeTab === "register" ? authCopy.register : authCopy.login;
-    const automaticVideoActive = appearance.authVideoAutoplay && !reducedMotion;
-    const videoActive = Boolean(appearance.authVideoUrl && (automaticVideoActive || manualVideoActive));
-
-    useEffect(() => {
-        setManualVideoActive(false);
-        setVideoPlaying(false);
-    }, [appearance.authVideoUrl, appearance.authVideoAutoplay]);
-
-    const playVideo = () => {
-        setManualVideoActive(true);
-        requestAnimationFrame(() => {
-            void videoRef.current?.play().catch(() => setVideoPlaying(false));
-        });
+    const title = invitation ? "加入梦层" : recovery ? "找回密码" : activeTab === "register" ? "创建账号" : `登录${appearance.brandName}`;
+    const description = invitation ? "接受邀请，开始你的创作。" : recovery ? "通过账号邮箱验证身份，重新设置密码。" : activeTab === "register" ? "准备好开始你的下一次创作。" : "继续你的故事与创作。";
+    const changeTab = async (key: "login" | "register", keyboard = false) => {
+        const request = ++switchRequest.current;
+        if (!recovery && key === activeTab) { setPendingTab(null); setRouteError(false); return; }
+        requestedTab.current = key;
+        setPendingTab(key); setRouteError(false);
+        try {
+            await AUTH_LOADERS[key]();
+            if (request !== switchRequest.current) return;
+            keyboardSwitch.current = keyboard;
+            void navigate({ pathname: `/${key}`, search: location.search }, { state: location.state, viewTransition: !window.matchMedia?.("(prefers-reduced-motion: reduce)").matches });
+        } catch { if (request === switchRequest.current) setRouteError(true); }
+        finally { if (request === switchRequest.current) setPendingTab(null); }
     };
 
+    useEffect(() => {
+        if (!keyboardSwitch.current) titleRef.current?.focus({ preventScroll: true });
+        keyboardSwitch.current = false;
+        return () => { switchRequest.current++; };
+    }, [location.pathname]);
+    useEffect(() => {
+        const change = () => setPageVisible(document.visibilityState !== "hidden");
+        change(); document.addEventListener("visibilitychange", change);
+        return () => document.removeEventListener("visibilitychange", change);
+    }, []);
+
+    useEffect(() => {
+        let active = true;
+        setIdentity("checking");
+        // Identity only: workspace caches and model data start after entering the workspace.
+        void getAuthSession().then((session) => {
+            if (active) setIdentity(session.user ? "member" : "guest");
+        }).catch(() => { if (active) setIdentity("failed"); });
+        return () => { active = false; };
+    }, [sessionRetry]);
+
+    if (location.pathname === "/login" && identity === "member") {
+        const requested = new URLSearchParams(location.search).get("next");
+        const next = safeAuthNext(requested);
+        return <Navigate to={next} replace />;
+    }
+
     return (
-        <main className="auth-scene h-dvh min-h-0 overflow-y-auto lg:overflow-hidden">
-            <div className="grid min-h-full lg:h-full lg:grid-cols-[minmax(0,1.32fr)_minmax(520px,1fr)]">
-                <section className="auth-scene-hero relative min-h-[250px] overflow-hidden sm:min-h-[320px] lg:min-h-0" aria-label={`${appearance.brandName}品牌影片`}>
-                    {videoActive && appearance.authVideoUrl ? <video ref={videoRef} className="absolute inset-0 size-full object-cover" src={appearance.authVideoUrl} poster={appearance.authVideoPosterUrl || undefined} autoPlay muted loop playsInline preload="metadata" onPlay={() => setVideoPlaying(true)} onPause={() => setVideoPlaying(false)} /> : appearance.authVideoPosterUrl && failedPosterURL !== appearance.authVideoPosterUrl ? <img className="absolute inset-0 size-full object-cover" src={appearance.authVideoPosterUrl} alt="" decoding="async" onError={() => setFailedPosterURL(appearance.authVideoPosterUrl)} /> : null}
-                    <div aria-hidden className="auth-scene-hero-overlay absolute inset-0" />
-                    <div aria-hidden className="auth-scene-video-blend absolute inset-y-0 right-0 hidden w-[clamp(120px,14vw,240px)] lg:block" />
-                    <div className="absolute inset-x-0 top-0 flex items-center justify-between gap-4 p-5 sm:p-7 lg:p-9">
-                        <Link to="/" className="auth-scene-brand inline-flex items-center gap-2.5 rounded-sm text-sm font-semibold transition-colors duration-150 motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--control-focus-ring)]">
-                            <BrandLogo theme={theme} className="size-7" alt="" fallback={<span className="size-7 bg-current" style={{ mask: "url(/logo.svg) center / contain no-repeat", WebkitMask: "url(/logo.svg) center / contain no-repeat" }} />} />
+        <ConfigProvider theme={getAntThemeConfig(true, appearance.activeSkin)}>
+            <main className="auth-scene auth-scene-simple" data-studio-theme={theme} data-page-visible={pageVisible || undefined}>
+                <header className="auth-scene-navigation">
+                    <Link to="/" viewTransition className="auth-scene-brand">
+                        <BrandLogo theme="dark" className="size-8" alt="" fallback={<span className="size-8 bg-current" style={{ mask: "url(/logo.svg) center / contain no-repeat", WebkitMask: "url(/logo.svg) center / contain no-repeat" }} />} />
+                        <span>
                             {appearance.brandName}
-                        </Link>
-                        <button type="button" className="auth-scene-hero-control inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[var(--fs-label)] backdrop-blur-xl transition-colors duration-150 motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--control-focus-ring)] disabled:cursor-default disabled:opacity-45" onClick={playVideo} disabled={videoPlaying || !appearance.authVideoUrl} aria-pressed={videoPlaying}>
-                            <Play className="size-3 fill-current" aria-hidden="true" />
-                            {videoPlaying ? "创作正在发生" : "播放品牌影片"}
-                        </button>
-                    </div>
-                    <div className="absolute inset-x-0 bottom-0 max-w-2xl p-5 sm:p-7 lg:p-10">
-                        <p className="auth-scene-hero-muted text-xs font-semibold tracking-[0.18em]">{brandStudioLabel(appearance)}</p>
-                        <h1 className="auth-scene-hero-title mt-3 max-w-xl whitespace-pre-line text-3xl font-semibold leading-tight sm:text-4xl lg:text-5xl">{appearance.authHeroTitle}</h1>
-                        {appearance.authHeroDescription ? <p className="auth-scene-hero-muted mt-4 max-w-xl whitespace-pre-line text-sm leading-6 sm:text-base sm:leading-7">{appearance.authHeroDescription}</p> : null}
-                    </div>
-                </section>
-
-                <section className="auth-scene-form-pane relative flex min-h-[660px] flex-col items-center overflow-y-auto px-4 pt-20 sm:px-8 lg:min-h-0 lg:px-10 lg:pt-20">
-                    <Link to="/" className="auth-scene-return absolute right-5 top-5 z-20 inline-flex h-9 items-center gap-2 rounded-full px-4 text-xs backdrop-blur-xl transition-colors duration-150 motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--control-focus-ring)] lg:right-8 lg:top-8">
-                        <ArrowLeft className="size-3.5" aria-hidden="true" />
-                        返回首页
+                            <small>{brandStudioLabel(appearance)}</small>
+                        </span>
                     </Link>
-
-                    <div className="flex w-full flex-1 items-center justify-center">
-                        <div className="my-auto w-full max-w-[460px]">
-                            <div className="auth-scene-card h-auto overflow-hidden rounded-lg backdrop-blur-2xl">
-                                <section aria-label={copy.title} className={`flex flex-col ${recovery ? "min-h-[600px]" : activeTab === "login" ? "" : "min-h-[620px] sm:min-h-[640px]"}`}>
-                                    <header className="px-6 pb-5 pt-6 sm:px-8 sm:pt-7">
-                                        <p className="auth-scene-eyebrow text-xs font-semibold tracking-[0.18em]">{copy.eyebrow}</p>
-                                        <h2 className="mt-2 text-3xl font-semibold">{copy.title}</h2>
-                                        <p className="auth-scene-muted mt-2 text-sm leading-6">{copy.description}</p>
-                                    </header>
-                                    {!recovery ? (
-                                        <div className="px-6 sm:px-8">
-                                            <div className="app-control-group w-full" role="tablist" aria-label="账户入口">
-                                                {AUTH_TABS.map((tab, index) => (
-                                                    <button
-                                                        key={tab.key}
-                                                        ref={(element) => { tabRefs.current[index] = element; }}
-                                                        type="button"
-                                                        id={`auth-tab-${tab.key}`}
-                                                        role="tab"
-                                                        data-slot="control-item"
-                                                        style={{ flex: "1 1 0%" }}
-                                                        aria-selected={activeTab === tab.key}
-                                                        aria-controls={`auth-panel-${tab.key}`}
-                                                        tabIndex={activeTab === tab.key ? 0 : -1}
-                                                        onClick={() => {
-                                                            if (tab.key !== activeTab) navigate({ pathname: tab.key === "register" ? "/register" : "/login", search: location.search });
-                                                        }}
-                                                        onKeyDown={(event) => {
-                                                            if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
-                                                            event.preventDefault();
-                                                            const nextIndex = event.key === "Home" ? 0 : event.key === "End" ? AUTH_TABS.length - 1 : (index + (event.key === "ArrowLeft" ? -1 : 1) + AUTH_TABS.length) % AUTH_TABS.length;
-                                                            tabRefs.current[nextIndex]?.focus();
-                                                            if (AUTH_TABS[nextIndex].key !== activeTab) navigate({ pathname: AUTH_TABS[nextIndex].key === "register" ? "/register" : "/login", search: location.search });
-                                                        }}
-                                                    >
-                                                        <span data-slot="control-label">{tab.label}</span>
-                                                    </button>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    ) : null}
-                                    {!recovery ? <div id={`auth-panel-${activeTab === "login" ? "register" : "login"}`} role="tabpanel" aria-labelledby={`auth-tab-${activeTab === "login" ? "register" : "login"}`} hidden /> : null}
-                                    <div key={location.pathname} id={recovery ? undefined : `auth-panel-${activeTab}`} role={recovery ? undefined : "tabpanel"} aria-labelledby={recovery ? undefined : `auth-tab-${activeTab}`} tabIndex={recovery ? undefined : 0} className={`${!recovery && activeTab === "login" ? "" : "flex-1"} px-6 py-6 sm:px-8 sm:py-7 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--control-focus-ring)]`}>
-                                        <Outlet />
-                                    </div>
-                                </section>
+                    <Link to="/" viewTransition className="auth-scene-return">
+                        <ArrowLeft aria-hidden="true" />
+                        返回官网
+                    </Link>
+                </header>
+                <div className="auth-scene-content">
+                    <section className="auth-scene-card" aria-labelledby="auth-scene-title">
+                        <header className="auth-scene-heading">
+                            <h1 id="auth-scene-title" ref={titleRef} tabIndex={-1}>{title}</h1>
+                            <p className="auth-scene-muted">{description}</p>
+                        </header>
+                        {hasTabs && (
+                            <div className="app-control-group auth-scene-tabs" role="tablist" aria-label="账户入口" data-active={activeTab} aria-busy={Boolean(pendingTab)}>
+                                <span className="auth-scene-tab-indicator" aria-hidden="true" />
+                                {AUTH_TABS.map((tab, index) => (
+                                    <button
+                                        key={tab.key}
+                                        ref={(element) => {
+                                            tabRefs.current[index] = element;
+                                        }}
+                                        type="button"
+                                        id={`auth-tab-${tab.key}`}
+                                        role="tab"
+                                        data-slot="control-item"
+                                        aria-selected={activeTab === tab.key}
+                                        aria-controls={`auth-panel-${tab.key}`}
+                                        tabIndex={activeTab === tab.key ? 0 : -1}
+                                        onPointerEnter={() => preloadAuthRoute(`/${tab.key}`)}
+                                        onFocus={() => preloadAuthRoute(`/${tab.key}`)}
+                                        onClick={() => { void changeTab(tab.key); }}
+                                        onKeyDown={(event) => {
+                                            if (
+                                                event.defaultPrevented ||
+                                                event.nativeEvent.isComposing ||
+                                                event.nativeEvent.keyCode === 229 ||
+                                                event.altKey ||
+                                                event.ctrlKey ||
+                                                event.metaKey ||
+                                                event.shiftKey ||
+                                                !["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)
+                                            )
+                                                return;
+                                            event.preventDefault();
+                                            const nextIndex = event.key === "Home" ? 0 : event.key === "End" ? AUTH_TABS.length - 1 : (index + (event.key === "ArrowLeft" ? -1 : 1) + AUTH_TABS.length) % AUTH_TABS.length;
+                                            tabRefs.current[nextIndex]?.focus();
+                                            void changeTab(AUTH_TABS[nextIndex].key, true);
+                                        }}
+                                    >
+                                        <span data-slot="control-label">{tab.label}</span>
+                                    </button>
+                                ))}
                             </div>
+                        )}
+                        {hasTabs && <div id={`auth-panel-${activeTab === "login" ? "register" : "login"}`} role="tabpanel" aria-labelledby={`auth-tab-${activeTab === "login" ? "register" : "login"}`} hidden />}
+                        {routeError && <div className="auth-session-notice auth-scene-notice" role="alert"><span>页面暂时无法加载，请重试。</span><button type="button" className="auth-scene-link" onClick={() => { void changeTab(requestedTab.current); }}>重新加载</button></div>}
+                        <div id={hasTabs ? `auth-panel-${activeTab}` : undefined} role={hasTabs ? "tabpanel" : undefined} aria-labelledby={hasTabs ? `auth-tab-${activeTab}` : undefined} className="auth-scene-fields">
+                            {location.pathname === "/login" && identity === "checking" ? <AuthFormPending message="正在确认登录状态" /> : <>
+                                {location.pathname === "/login" && identity === "failed" && <div className="auth-session-notice auth-scene-notice" role="alert">
+                                    <span>暂时无法确认登录状态，可重试检查或继续使用表单登录。</span>
+                                    <button type="button" className="auth-scene-link" onClick={() => setSessionRetry((value) => value + 1)}>重试检查</button>
+                                </div>}
+                                <Outlet />
+                            </>}
                         </div>
-                    </div>
-                    <SiteComplianceFooter variant="auth" className="relative inset-auto w-full shrink-0" />
-                </section>
-            </div>
-        </main>
+                    </section>
+                    <figure className="auth-scene-artwork" aria-hidden="true">
+                        <img src={artwork} alt="" fetchPriority="high" decoding="async" onError={(event) => { if (!event.currentTarget.src.endsWith("/brand/b/wave.webp")) event.currentTarget.src = "/brand/b/wave.webp"; }} />
+                    </figure>
+                </div>
+                <SiteComplianceFooter variant="auth" className="auth-scene-footer" />
+            </main>
+        </ConfigProvider>
     );
 }

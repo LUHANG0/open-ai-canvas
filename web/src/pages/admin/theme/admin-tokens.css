@@ -1,9 +1,9 @@
 /* Admin console tokens. Scoped only to admin roots.
- * Never alias --workspace-*, --user-*, or --skin-* from the product UI.
+ * Share the creation workspace's neutral foundations; retain admin density and status roles.
  * Light/dark follow the page theme class; product skins are ignored. */
 
 :is([data-admin-root], body.admin-overlays, .admin-drawer, .admin-secondary-drawer, .admin-modal-root, .admin-channel-modal-root, .admin-mobile-navigation-menu) {
-    --admin-font: ui-sans-serif, "SF Pro Text", "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", system-ui, sans-serif;
+    --admin-font: var(--studio-font);
     --admin-font-mono: ui-monospace, "SF Mono", Menlo, Monaco, Consolas, "Liberation Mono", monospace;
     --admin-space: 8px;
     --admin-radius-sm: 4px;
@@ -20,14 +20,14 @@
     --admin-motion: var(--admin-motion-duration) ease;
     --admin-shadow-overlay: 0 16px 40px rgba(15, 23, 42, 0.16);
 
-    --admin-canvas: #f5f5f5;
-    --admin-sidebar: #f5f5f5;
-    --admin-surface: #ffffff;
-    --admin-surface-2: #f0f0f0;
-    --admin-surface-3: #ececec;
-    --admin-text: #111111;
-    --admin-text-secondary: #525252;
-    --admin-text-muted: #737373;
+    --admin-canvas: var(--studio-page);
+    --admin-sidebar: var(--studio-page);
+    --admin-surface: var(--studio-surface);
+    --admin-surface-2: var(--studio-muted);
+    --admin-surface-3: var(--studio-hover);
+    --admin-text: var(--studio-ink);
+    --admin-text-secondary: var(--studio-ink-muted);
+    --admin-text-muted: var(--studio-ink-muted);
     --admin-text-placeholder: #a3a3a3;
     --admin-border: rgba(17, 17, 17, 0.1);
     --admin-border-strong: rgba(17, 17, 17, 0.16);
@@ -35,7 +35,7 @@
     --admin-row-border: rgba(17, 17, 17, 0.06);
     --admin-row-hover: #f0f0f0;
     --admin-nav-hover: rgba(17, 17, 17, 0.05);
-    --admin-nav-active: #ececec;
+    --admin-nav-active: var(--studio-pressed);
     --admin-nav-active-border: transparent;
     --admin-accent: #111111;
     --admin-accent-hover: #303030;
@@ -115,14 +115,14 @@
 
 .dark :is([data-admin-root], .admin-drawer, .admin-secondary-drawer, .admin-modal-root, .admin-channel-modal-root, .admin-mobile-navigation-menu),
 .dark body.admin-overlays {
-    --admin-canvas: #0f0f0f;
-    --admin-sidebar: #0f0f0f;
-    --admin-surface: #181818;
-    --admin-surface-2: #222222;
-    --admin-surface-3: #2a2a2a;
-    --admin-text: #f5f5f5;
-    --admin-text-secondary: #c4c4c4;
-    --admin-text-muted: #8a8a8a;
+    --admin-canvas: var(--studio-page);
+    --admin-sidebar: var(--studio-page);
+    --admin-surface: var(--studio-surface);
+    --admin-surface-2: var(--studio-muted);
+    --admin-surface-3: var(--studio-hover);
+    --admin-text: var(--studio-ink);
+    --admin-text-secondary: var(--studio-ink-muted);
+    --admin-text-muted: var(--studio-ink-muted);
     --admin-text-placeholder: #737373;
     --admin-border: rgba(245, 245, 245, 0.1);
     --admin-border-strong: rgba(245, 245, 245, 0.16);
@@ -130,7 +130,7 @@
     --admin-row-border: rgba(245, 245, 245, 0.06);
     --admin-row-hover: #1c1c1c;
     --admin-nav-hover: rgba(245, 245, 245, 0.05);
-    --admin-nav-active: #222222;
+    --admin-nav-active: var(--studio-pressed);
     --admin-nav-active-border: transparent;
     --admin-accent: #f5f5f5;
     --admin-accent-hover: #ffffff;

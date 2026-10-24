@@ -98,9 +98,9 @@ export function CanvasWorkspacePanel({
         <>
             <div className="canvas-workspace-shell" style={{ ...canvasDockStyle(theme), "--canvas-workspace-base": theme.node.panel, background: undefined } as CSSProperties}>
                 <nav className="canvas-workspace-rail" aria-label="画布左侧菜单" data-canvas-no-zoom onWheel={(event) => event.stopPropagation()} onPointerDown={(event) => event.stopPropagation()}>
-                    <Link to="/" className="canvas-workspace-rail-button" aria-label="主页" title="返回主页">
+                    <Link to="/create" className="canvas-workspace-rail-button" aria-label="返回对话创作" title="返回对话创作">
                         <Home />
-                        <span>主页</span>
+                        <span>创作台</span>
                     </Link>
                     <div className="canvas-workspace-rail-items">
                         {entries.map(({ id, label, icon: Icon }) => (

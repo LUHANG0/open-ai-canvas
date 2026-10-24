@@ -209,8 +209,8 @@ test("task-first settings reveal dependent configuration only after the primary 
     expect(featureSource).toContain('title="2. 插件开放范围"');
     expect(featureSource).toContain('title="3. 用户模型来源"');
     expect(appearanceSource).toContain("<WelcomeSetting />");
-    expect(welcomeSource).toContain("<strong>启用欢迎页</strong>");
-    expect(welcomeSource).toContain("updateAdminFeatureAvailability({ welcomeEnabled: value })");
+    expect(welcomeSource).toContain('to="/admin/settings/brand-site"');
+    expect(welcomeSource).not.toContain("updateAdminFeatureAvailability");
 
     expect(drawingSource).toContain('title="1. 选择新建绘图默认编辑器"');
     expect(drawingSource).toContain('title="2. 配置 tldraw 授权（按需）"');
@@ -364,8 +364,8 @@ test("admin console tokens and shell stay isolated from the user workspace", asy
         Bun.file(new URL("../src/styles/globals.css", import.meta.url)).text(),
     ]);
 
-    expect(tokens).toContain("--admin-canvas: #f5f5f5;");
-    expect(tokens).toContain("--admin-canvas: #0f0f0f;");
+    expect(tokens).toContain("--admin-canvas: var(--studio-page);");
+    expect(tokens).toContain("--admin-font: var(--studio-font);");
     expect(tokens).not.toContain("--admin-layer-0: var(--workspace-");
     expect(tokens).not.toContain("--admin-layer-0: var(--skin-admin-");
     expect(shell).toContain("data-admin-root");

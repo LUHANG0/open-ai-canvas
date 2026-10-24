@@ -1,0 +1,14 @@
+import { useId } from "react";
+
+export function MengCengMark() {
+    const gradient = `mengceng-${useId().replace(/:/g, "")}`;
+    return (
+        <svg viewBox="0 0 64 64" fill="none" aria-hidden="true">
+            <defs><linearGradient id={gradient} x1="4" y1="6" x2="59" y2="60" gradientUnits="userSpaceOnUse"><stop stopColor="#9b4eff" /><stop offset=".35" stopColor="#663eff" /><stop offset=".6" stopColor="#477af5" /><stop offset=".8" stopColor="#38b2e0" /><stop offset="1" stopColor="#29d2cf" /></linearGradient></defs>
+            <g fill={`url(#${gradient})`}>
+                <path d="M4 10.2C4 7.4 6.8 5.6 9.3 6.9L31 16.8C32.4 17.5 32.4 18.6 31 19.2L19.4 24.2C17.5 25 16.5 26.3 16.5 28.4V39.7C16.5 41.8 17.1 43.2 19 44.2L32.5 50.2 12.8 57.2C11.1 57.8 9.5 57.6 8 56.8L6.3 55.8C4.7 54.8 4 53.5 4 51.5Z" />
+                <path d="M28 23 54.8 12.3C57.3 11.3 60 13.4 60 16.2V56.7C60 59.3 57.7 61 55.2 60L43.8 55.1C43.2 54.8 43 54.4 43 53.6V33.7C43 31.8 42.3 30.8 40.7 30.2L30.3 26.9C29.9 26.7 29.7 26.9 29.7 27.4V45.7C29.7 46.4 29.5 46.7 28.9 46.4L26.6 45.5C26.2 45.3 26.1 45.1 26.1 44.5V25.8C26.1 24.5 26.7 23.6 28 23Z" />
+            </g>
+        </svg>
+    );
+}

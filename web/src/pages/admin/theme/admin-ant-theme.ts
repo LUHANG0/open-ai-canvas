@@ -3,11 +3,11 @@ import { theme as antdTheme } from "antd";
 
 /** 后台独立使用中性表面、32px 密度及语义状态，不读取用户工作区皮肤。 */
 export function getIsolatedAdminAntTheme(dark: boolean, reducedMotion = false): ThemeConfig {
-    const text = dark ? "#f5f5f5" : "#111111";
-    const textSecondary = dark ? "#c4c4c4" : "#525252";
-    const canvas = dark ? "#0f0f0f" : "#f5f5f5";
-    const surface = dark ? "#181818" : "#ffffff";
-    const surfaceMuted = dark ? "#222222" : "#f0f0f0";
+    const text = dark ? "#f3f3f5" : "#1d1d21";
+    const textSecondary = dark ? "#b4b4bc" : "#686872";
+    const canvas = dark ? "#151517" : "#f8f8fa";
+    const surface = dark ? "#1c1c1f" : "#ffffff";
+    const surfaceMuted = dark ? "#26262a" : "#f1f1f3";
     const border = dark ? "rgba(245, 245, 245, 0.12)" : "rgba(17, 17, 17, 0.12)";
     const primary = dark ? "#f5f5f5" : "#111111";
     const primaryFg = dark ? "#0f0f0f" : "#ffffff";
@@ -24,7 +24,7 @@ export function getIsolatedAdminAntTheme(dark: boolean, reducedMotion = false): 
         algorithm: dark ? antdTheme.darkAlgorithm : antdTheme.defaultAlgorithm,
         cssVar: { key: `admin-console-${dark ? "dark" : "light"}` },
         token: {
-            fontFamily: 'ui-sans-serif, "SF Pro Text", "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", system-ui, sans-serif',
+            fontFamily: '"Inter Variable", "Inter", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", ui-sans-serif, system-ui, sans-serif',
             fontSize: 13,
             fontSizeSM: 12,
             borderRadius: 6,

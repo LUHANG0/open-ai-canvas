@@ -46,7 +46,7 @@ export function WorkspaceWalletHost() {
             paymentOrderId: params.get("paymentOrder") || undefined,
             paymentInvalid: params.get("payment") === "invalid",
         });
-        navigate("/", { replace: true });
+        navigate("/create", { replace: true });
     }, [navigate, pathname, search]);
 
     if (!creditsEnabled) return null;

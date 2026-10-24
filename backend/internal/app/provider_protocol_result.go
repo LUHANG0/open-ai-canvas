@@ -141,6 +141,9 @@ func finishProtocolAdapterResult(ctx context.Context, input canvasGenerationInpu
 	}
 	reference := protocol.MediaReference{DataURL: dataURL(mimeType, data), MIMEType: mimeType}
 	downloaded := &protocol.Result{}
+	if result != nil {
+		downloaded.Usage = result.Usage
+	}
 	switch input.Mode {
 	case "image":
 		downloaded.Images = []protocol.MediaReference{reference}

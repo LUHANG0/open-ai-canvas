@@ -394,7 +394,7 @@ export default function TasksPage() {
             <WorkspacePage grid className="library-page task-library-page collection-workspace">
                 <div className="studio-band">
                     <PageHeader
-                        title="创作历史"
+                        title="任务记录"
                         description="查看文本、图片和视频生成任务，跟踪进度并处理失败任务。"
                         meta={<span className="app-projects-header-meta">{taskStats.total} 个任务</span>}
                         actions={

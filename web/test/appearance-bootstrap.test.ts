@@ -3,51 +3,35 @@ import { expect, test } from "bun:test";
 import { appearanceLogoURL, normalizePublicAppearance } from "../src/stores/use-appearance-store";
 import { moduleGroupSource } from "./helpers/module-group-source";
 
-test("initial HTML stays brand neutral until the public appearance is resolved", async () => {
+test("initial HTML uses MengCeng and resolves configured appearance in parallel", async () => {
     const [html, mainSource] = await Promise.all([Bun.file(new URL("../index.html", import.meta.url)).text(), Bun.file(new URL("../src/main.tsx", import.meta.url)).text()]);
 
     expect(html).not.toContain("影策");
-    expect(html).toContain("<title>正在加载</title>");
+    expect(html).toContain("<title>梦层 MengCeng</title>");
     expect(mainSource).toContain("bootstrapAppearance()");
     expect(mainSource).toContain('import("./application")');
     expect(mainSource.indexOf("bootstrapAppearance()")).toBeLessThan(mainSource.indexOf('import("./application")'));
 });
 
-test("a custom login video never falls back to the built-in poster", () => {
-    const appearance = normalizePublicAppearance({
-        brandName: "HIMA Studio",
-        brandSlug: "hima-studio",
-        authHeroTitle: "把灵感，\n变成可见的故事。",
-        authHeroDescription: "从同一个创作空间持续推进。",
-        authVideoConfigured: true,
-        authVideoUrl: "/api/public/appearance/assets/video?v=next",
-        authVideoPosterConfigured: false,
-        authVideoPosterUrl: "",
-    });
-
+test("appearance keeps custom brand identity and retires old auth media fields", () => {
+    const legacy = { brandName: "HIMA Studio", brandSlug: "hima-studio", authHeroTitle: "旧标题", authHeroDescription: "旧说明", authVideoConfigured: true, authVideoUrl: "/old.mp4", authVideoPosterUrl: "/old.jpg", authVideoAutoplay: true };
+    const appearance = normalizePublicAppearance(legacy);
     expect(appearance.brandName).toBe("HIMA Studio");
     expect(appearance.brandSlug).toBe("hima-studio");
-    expect(appearance.authHeroTitle).toBe("把灵感，\n变成可见的故事。");
-    expect(appearance.authHeroDescription).toBe("从同一个创作空间持续推进。");
-    expect(appearance.authVideoPosterUrl).toBe("");
-    expect(appearance.authVideoAutoplay).toBe(true);
-});
-
-test("login video autoplay defaults on and can be disabled explicitly", () => {
-    expect(normalizePublicAppearance({}).authVideoAutoplay).toBe(true);
-    expect(normalizePublicAppearance({ authVideoAutoplay: false }).authVideoAutoplay).toBe(false);
+    expect(appearance.schemaVersion).toBe(13);
+    for (const key of Object.keys(legacy).filter((key) => key.startsWith("auth"))) expect(appearance).not.toHaveProperty(key);
 });
 
 test("appearance URLs reject executable and insecure remote schemes", () => {
     const appearance = normalizePublicAppearance({
         logoConfigured: true,
         logoUrl: "javascript:alert(1)",
-        authVideoConfigured: true,
-        authVideoUrl: "http://example.com/brand.mp4",
+        darkLogoConfigured: true,
+        darkLogoUrl: "http://example.com/logo.png",
     });
 
     expect(appearance.logoUrl).toBe("/logo.svg");
-    expect(appearance.authVideoUrl).not.toContain("example.com");
+    expect(appearance.darkLogoUrl).not.toContain("example.com");
 });
 
 test("appearance selects theme logos and falls back to the single configured logo", () => {
@@ -68,16 +52,16 @@ test("appearance selects theme logos and falls back to the single configured log
     expect(single.logoFrameEnabled).toBe(true);
 });
 
-test("auth scene consumes resolved appearance instead of hardcoded media constants", async () => {
+test("simple auth scene keeps resolved brand identity without legacy promotional media", async () => {
     const source = await Bun.file(new URL("../src/pages/auth/auth-scene.tsx", import.meta.url)).text();
 
-    expect(source).toContain("appearance.authVideoUrl");
-    expect(source).toContain("appearance.authVideoAutoplay");
-    expect(source).toContain("appearance.authVideoPosterUrl || undefined");
+    expect(source).not.toContain("appearance.authVideoUrl");
+    expect(source).not.toContain("appearance.authVideoAutoplay");
+    expect(source).not.toContain("<video");
     expect(source).toContain("appearance.brandName");
-    expect(source).toContain("appearance.authHeroTitle");
-    expect(source).toContain("appearance.authHeroDescription");
-    expect(source).toContain("useThemeStore((state) => state.theme)");
+    expect(source).toContain("auth-scene-simple");
+    expect(source).toContain("auth-scene-title");
+    expect(source).toContain('const theme = "dark" as const');
     expect(source).toContain("theme={theme}");
     expect(source).not.toContain("让一个故事，");
     expect(source).not.toContain("AUTH_VIDEO_URL");
@@ -101,8 +85,9 @@ test("appearance management exposes light and dark logo uploads plus the frame s
     expect(pageSource).toContain("setLogoFrameEnabled(!checked)");
     expect(pageSource).not.toContain("<Checkbox");
     expect(pageSource).toContain("深浅模式 Logo 预览");
-    expect(pageSource).toContain("登录页视频自动播放");
-    expect(pageSource).toContain("authVideoAutoplay");
+    expect(pageSource).toContain("管理登录与注册方式");
+    expect(pageSource).not.toContain('aria-label="登录页视频自动播放"');
+    expect(pageSource).not.toContain("authVideoAutoplay");
     expect(brandSource).toContain("useActiveTheme");
     expect(brandSource).toContain("data-logo-frame-enabled");
     expect(brandSource).toContain("failedSource === source");
@@ -122,10 +107,10 @@ test("object storage can adopt the configured English brand identifier without r
     expect(source).toContain("setting.pathPrefix || DEFAULT_OSS_PATH_PREFIX");
 });
 
-test("appearance management exposes a server-side reset to the built-in Yingce brand", async () => {
+test("appearance management exposes a server-side reset to the built-in MengCeng brand", async () => {
     const [pageSource, apiSource] = await Promise.all([Promise.resolve(moduleGroupSource("pages/admin/settings/appearance-settings-page.tsx")), Bun.file(new URL("../src/services/api/appearance.ts", import.meta.url)).text()]);
 
-    expect(pageSource).toContain("恢复影策默认");
+    expect(pageSource).toContain("恢复梦层默认");
     expect(pageSource).toContain("resetAdminAppearance()");
     expect(pageSource).toContain("已上传文件仍保留在存储资源中");
     expect(apiSource).toContain('http.delete<{ setting: AdminAppearance }>("/admin/settings/appearance")');

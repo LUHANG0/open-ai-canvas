@@ -28,6 +28,31 @@ func DefaultImageCapabilityConfig(protocol string, modelName string) *ImageCapab
 		MaxOutputs:            15,
 	}
 	switch model.ChannelInterfaceType(protocol) {
+	case "drama-image", "drama-gemini-image":
+		image.References.MaskSupported = false
+		image.Size = ImageSizeConfig{Parameter: "size", Values: []string{"1:1", "4:3", "3:4", "16:9", "9:16", "21:9"}, Default: "1:1", AllowCustom: true, Presets: openAIImageDefaultSizePresets()}
+		image.Resolution = ImageResolutionConfig{Supported: true, Values: []string{"1k", "2k", "4k"}, Default: "1k"}
+		image.Quality = ImageQualityConfig{Supported: true, Values: []string{"low", "medium", "high"}, Default: "medium"}
+		image.TransparentBackground = VideoBooleanConfig{}
+		image.ResponseFormat = ParameterSupport{Supported: true, Default: "url"}
+		image.OutputFormat = ParameterSupport{}
+		image.MaxOutputs = 128
+		if protocol == "drama-gemini-image" {
+			image.Size.Parameter = "aspect_ratio"
+			image.Quality = ImageQualityConfig{Supported: false, Default: "auto"}
+		}
+	case "4stoken-image", "4stoken-seedream":
+		// 官转图片不能自动发送 quality；尺寸与可选输出格式由模型参数声明。
+		image.Quality = ImageQualityConfig{Supported: false, Default: "auto"}
+		image.TransparentBackground = VideoBooleanConfig{}
+		image.ResponseFormat = ParameterSupport{}
+		image.OutputFormat = ParameterSupport{Supported: true}
+		image.Size = ImageSizeConfig{Parameter: "size", Values: []string{}, Default: "1024x1024", AllowCustom: true}
+		if protocol == "4stoken-seedream" {
+			image.References.MaxImages = 14
+			image.References.MaskSupported = false
+			image.Size.Default = "2048x2048"
+		}
 	case "yezonghui-image":
 		// 档位和比例依赖令牌分组，必须在模型上明确配置，不猜测上游能力。
 		image.References.MaskSupported = false
@@ -179,6 +204,32 @@ func DefaultModelCapabilityConfigForModel(protocol string, modelName string) *Mo
 		DefaultOperation:  "text_to_video",
 	}
 	switch model.ChannelInterfaceType(protocol) {
+	case "drama-seedance-a":
+		video.GenerateAudio, video.Watermark = VideoBooleanConfig{}, VideoBooleanConfig{}
+		video.Resolutions, video.DefaultResolution = []string{}, ""
+		video.Operations = append(video.Operations, "reference_to_video", "audio_to_video")
+		video.References.MaxImages = 0
+		name := strings.ToLower(strings.TrimSpace(modelName))
+		if name == "seedance2.0-a" || name == "seedance2.5-a" {
+			video.Duration = VideoDurationConfig{Selection: "range", Min: 4, Max: 15, Step: 1, Default: 5}
+			video.Resolutions, video.DefaultResolution = []string{"480p", "720p", "1080p", "4K"}, "480p"
+			video.Ratios = append(video.Ratios, "Auto")
+			video.References.MaxImages, video.References.MaxVideos, video.References.MaxAudios = 9, 3, 3
+			video.References.MaxVideoDuration, video.References.MaxAudioDuration = 15, 15
+			video.References.MaxImageBytes, video.References.MaxVideoBytes, video.References.MaxAudioBytes = 100*1024*1024, 100*1024*1024, 100*1024*1024
+			if name == "seedance2.5-a" {
+				video.Duration.Max = 30
+				video.Resolutions = []string{"480p", "720p"}
+				video.Ratios = video.Ratios[:len(video.Ratios)-1]
+				video.References.MaxImages, video.References.MaxVideos, video.References.MaxAudios = 30, 10, 10
+				video.References.MaxVideoDuration, video.References.MaxAudioDuration = 30, 30
+			}
+		}
+	case "4stoken-video":
+		video.Resolutions, video.DefaultResolution = []string{}, ""
+		video.GenerateAudio = VideoBooleanConfig{Supported: true, Default: false}
+		video.Watermark = VideoBooleanConfig{Supported: true, Default: true}
+		video.Operations = append(video.Operations, "reference_to_video", "audio_to_video")
 	case "yezonghui-video":
 		video.Resolutions, video.DefaultResolution = []string{}, ""
 		video.GenerateAudio = VideoBooleanConfig{Supported: true, Default: false}

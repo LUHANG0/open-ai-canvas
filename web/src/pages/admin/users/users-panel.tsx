@@ -14,6 +14,7 @@ import { createUserColumns, userColumnOptions, type UserColumnKey } from "./user
 import { AdminUserCreateDrawer, AdminUserEditDrawer } from "./users-drawer";
 import { Select } from "@/components/ui/base/select";
 import { AdminSearchInput } from "../components/admin-search-input";
+import { InvitationsDrawer } from "./invitations-drawer";
 
 const columnStorageKey = "admin-users-visible-columns";
 const allColumnKeys = userColumnOptions.map((item) => item.key);
@@ -31,6 +32,7 @@ export default function UsersPanel({ onUserChanged }: { onUserChanged?: (user: L
     const [detailUserId, setDetailUserId] = useState<string | null>(null);
     const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
     const [createUserOpen, setCreateUserOpen] = useState(false);
+    const [invitationsOpen, setInvitationsOpen] = useState(false);
     const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
     const [bulkDisabling, setBulkDisabling] = useState(false);
     const [visibleColumns, setVisibleColumns] = useState<Set<UserColumnKey>>(() => {
@@ -183,6 +185,7 @@ export default function UsersPanel({ onUserChanged }: { onUserChanged?: (user: L
                 }
                 trailing={
                     <div className="flex items-center gap-2">
+                        <Button type="primary" icon={<UserPlus className="size-4" aria-hidden />} onClick={() => setInvitationsOpen(true)}>邀请用户</Button>
                         <Button icon={<UserPlus className="size-4" />} onClick={() => { setEditingUser(null); setCreateUserOpen(true); }}>{"\u6dfb\u52a0\u7528\u6237"}</Button>
                         <Dropdown
                             trigger={["click"]}
@@ -238,6 +241,7 @@ export default function UsersPanel({ onUserChanged }: { onUserChanged?: (user: L
 
             <AdminUserDetailDrawer userId={detailUserId} previousUserId={previousUserId} nextUserId={nextUserId} onNavigate={setDetailUserId} onClose={() => setDetailUserId(null)} />
             <AdminUserCreateDrawer open={createUserOpen} onClose={() => setCreateUserOpen(false)} onCreated={addUser} />
+            <InvitationsDrawer open={invitationsOpen} onClose={() => setInvitationsOpen(false)} />
             <AdminUserEditDrawer user={editingUser} actorId={actor?.id} onClose={() => setEditingUser(null)} onSaved={replaceUser} />
         </>
     );

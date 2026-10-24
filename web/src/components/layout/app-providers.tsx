@@ -27,6 +27,10 @@ function ClientRootBoundary({ children }: { children: ReactNode }) {
     );
 }
 
+export function WorkspaceBootstrap({ children }: { children: ReactNode }) {
+    return <AuthSessionHydrator><ClientRootBoundary>{children}</ClientRootBoundary></AuthSessionHydrator>;
+}
+
 export function AppProviders({ children }: { children: ReactNode }) {
     const theme = useActiveTheme();
     const dark = theme === "dark";
@@ -39,9 +43,8 @@ export function AppProviders({ children }: { children: ReactNode }) {
         applyAppearanceMetadata(appearance);
     }, [appearance, dark, theme]);
 
-    // DEV 复现台必须是同源本地确定性场景：AuthSessionHydrator 会打 /api/auth/session，
-    // ClientRootInit 会打 /api/model-catalog，没有后端时产生真实 502，与导演台无关却会污染判据。
-    // 与启动入口共用精确路径边界；生产构建中 import.meta.env.DEV 为 false，始终不启用隔离。
+    // DEV 实验室不请求外观后端；认证和工作区启动只由 WorkspaceBootstrap 挂载。
+    // 与启动入口共用精确路径边界，生产构建不启用隔离。
     const isolateDevRepro = typeof window !== "undefined" && isIsolatedPrevisRepro(import.meta.env.DEV, window.location.pathname);
 
     useEffect(() => {
@@ -61,13 +64,7 @@ export function AppProviders({ children }: { children: ReactNode }) {
         <ConfigProvider locale={zhCN} theme={getAntThemeConfig(dark, appearance.activeSkin)} wave={{ disabled: true }}>
             <App message={{ duration: 3, maxCount: 3 }} notification={{ duration: 4.5, maxCount: 3, placement: "topRight" }}>
                 <QueryClientProvider client={appQueryClient}>
-                    {isolateDevRepro ? (
-                        children
-                    ) : (
-                        <AuthSessionHydrator>
-                            <ClientRootBoundary>{children}</ClientRootBoundary>
-                        </AuthSessionHydrator>
-                    )}
+                    {children}
                 </QueryClientProvider>
             </App>
         </ConfigProvider>

@@ -1,30 +1,29 @@
 <p align="center">
-  <img src="web/public/logo.svg" width="88" alt="影策 logo">
+  <img src="web/public/brand/identity/mengceng-lockup-light.svg" width="240" alt="梦层 MengCeng">
 </p>
 
-<h1 align="center">影策</h1>
+<h1 align="center">梦层 MengCeng</h1>
 
 <p align="center">让一个故事，从文字走向银幕</p>
 
 <p align="center">
-  <a href="https://github.com/ddcat-ai/open-ai-canvas">GitHub</a> ·
+  <a href="https://github.com/LUHANG0/open-ai-canvas">产品仓库</a> ·
+  <a href="https://mengceng.com">官网</a> ·
   <a href="docs/content/docs/overview/features.mdx">功能</a> ·
   <a href="docs/content/docs/overview/quick-start.mdx">文档</a> ·
   <a href="SECURITY.md">安全策略</a>
 </p>
 
-影策是一个开源的 AI 影视与短剧创作工作台：用自由画布组织创作，用结构化工作流管理剧本、角色、场景和分镜，并通过统一的任务系统完成图片、视频、音频与文本生成。
+梦层 MengCeng 是由 LUHANG0 维护的 AI 影视与短剧创作工作台，基于 [ddcat-ai/open-ai-canvas](https://github.com/ddcat-ai/open-ai-canvas) 二次开发。使用对话创作、短剧项目与创作画布组织想法，通过统一任务系统完成图片、视频、音频与文本生成。上游许可、版权声明和提交历史保持。
 
 > 项目仍在快速开发，数据结构和外部接口可能调整。默认适合个人、本地或可信环境部署；未经安全配置，不要直接作为公网多人服务使用。
 
-在线演示：[https://yingce.tv](https://yingce.tv)
-
-账号/密码：test/test123456
+产品地址：[https://mengceng.com](https://mengceng.com)。公开注册关闭时通过管理员邀请加入；本仓库不提供公共演示账号。
 
 
-## 赞助商
+## 上游项目赞助记录
 
-感谢以下赞助商对影策项目的支持：
+以下为原影策项目的赞助记录，保留用于致谢，不表示与梦层存在新的商业合作：
 
 | LOGO | 类型 | 赞助商名称 | 说明 | 网站 |
 | --- | --- | --- | --- | --- |
@@ -71,9 +70,12 @@ GitHub 用户：[@TripsCoder](https://github.com/TripsCoder) · [@sugtex](https:
 - **多媒体生成**：文本、图片、视频、音频任务，支持参考图、首尾帧、运镜、续写、局部修改和批量生成。
 - **任务与素材管理**：异步队列、进度与日志、取消/重试、素材库、资源引用校验和登录后的跨设备同步。
 - **时间线剪辑**：片段编排、拆分、修剪、字幕转写和服务端成片导出，并支持插件化编辑面板。
-- **云端 Agent**：支持持久化对话、画布摘要和流式事件回放；当前为只读阶段，真实环境能力以文档和验收清单为准。
+- **创作历史同步**：对话和消息按账号隔离，支持跨设备加载、修订冲突处理与删除对账，区分本地缓存和服务端保存。
+- **云端 Agent**：支持持久化对话、画布上下文、审批与流式事件回放；能力与实际权限以文档和验收清单为准。
 - **Agent 技能生态**：内置技能覆盖生产流程；社区技能库 [judian-skills](https://github.com/itsWyatt-K/judian-skills) 提供 34 个场景域包索引，完整卡片通过 GitHub 安装后按需读取。安装：技能页 → 安装技能 → GitHub 标签 → 仓库地址填 `https://github.com/itsWyatt-K/judian-skills`，子目录填 `skills/drama/story-structure-engine` 这类域包路径。
 - **管理与渠道**：系统渠道、逻辑模型、用量/积分、功能开关、对象存储、响应拦截和管理后台。
+- **邀请注册**：管理员生成 6 位短码链接，单次使用、过期和撤销；支持固定注册积分，替代全局赠送、不叠加，关闭公开注册仍允许有效邀请。
+- **品牌官网管理**：官网内容实时预览、私有草稿、手动整版发布及上一版恢复。
 
 完整功能以[功能清单](docs/content/docs/overview/features.mdx)为准。
 
@@ -88,7 +90,7 @@ GitHub 用户：[@TripsCoder](https://github.com/TripsCoder) · [@sugtex](https:
 ### 宿主机启动
 
 ```bash
-git clone https://github.com/ddcat-ai/open-ai-canvas.git
+git clone https://github.com/LUHANG0/open-ai-canvas.git
 cd open-ai-canvas
 
 # 使用 Git 忽略的目录保存本地开发数据和缓存
@@ -157,7 +159,11 @@ docker compose -f docker-compose.local.yml up -d --build
 
 ## 服务器部署
 
-### 官方 Release 镜像（推荐，支持后台在线更新）
+梦层当前生产使用本仓库源码构建的镜像、PostgreSQL、Redis 与独立 Agent，自行管理发布、备份和迁移。源码叠加层为 `docker-compose.build.yml`，基础编排为 `docker-compose.deploy.yml`；不要使用上游 Release 或在线更新覆盖产品定制。私有仓库拉取需要有权访问的 GitHub 账号。
+
+邀请功能新增 Schema 61。升级前须验证一致备份恢复及迁移；升级后不能直接回退只支持 Schema 60 的旧后端，也不能用旧库覆盖新业务数据。产品交接与当前发布基线见 [AGENTS.md](AGENTS.md)，详细边界见[邀请注册](docs/content/docs/backend/registration-invitations.mdx)。
+
+### 上游官方 Release 镜像（仅上游版本）
 
 适用于使用 systemd 的 Linux 服务器。先从 [GitHub Releases](https://github.com/ddcat-ai/open-ai-canvas/releases) 选择包含镜像、Host Updater 二进制和 `SHA256SUMS` 的已发布版本，将下方 `vX.Y.Z` 替换为该版本：
 
@@ -177,9 +183,9 @@ sudo docker compose --env-file .env -f docker-compose.deploy.yml ps
 sudo docker compose --env-file .env -f docker-compose.deploy.yml logs -f --tail=200
 ```
 
-### 源码构建与已有部署
+### 上游源码安装与已有部署参考
 
-需要运行自行修改的源码时，可以使用源码安装脚本：
+以下脚本安装的是上游仓库源码，不包含梦层当前定制；仅作为上游安装方式的参考，不用于升级现有梦层生产：
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/ddcat-ai/open-ai-canvas/main/scripts/install-server.sh | sudo bash
@@ -209,6 +215,9 @@ curl -fsSL https://raw.githubusercontent.com/ddcat-ai/open-ai-canvas/main/script
 - [代码功能地图](docs/content/docs/backend/code-map.mdx)
 - [本地开发](docs/content/docs/backend/local-development.mdx)
 - [数据库结构](docs/content/docs/backend/backend-database.mdx)
+- [品牌官网](docs/content/docs/backend/mengceng-brand-site.mdx)
+- [创作历史跨设备同步](docs/content/docs/backend/creation-conversation-sync.mdx)
+- [邀请注册与积分](docs/content/docs/backend/registration-invitations.mdx)
 - [画布操作手册](docs/content/docs/canvas/canvas-node-manual.mdx)
 - [插件系统](docs/content/docs/plugins/plugin-system.mdx)
 - [待办与待测试](docs/content/docs/progress/todo.mdx) · [待测试清单](docs/content/docs/progress/pending-test.mdx)
@@ -235,9 +244,9 @@ cd docs && bun run types:check
 
 ---
 
-## 贡献者与团队
+## 上游贡献者与团队
 
-感谢参与产品设计、开发、测试、内容和社区建设的成员。以下为紧凑展示，完整保留每位成员的头像、昵称、联系方式和个性签名：
+感谢原项目在产品设计、开发、测试、内容和社区建设上的贡献。以下沿用上游成员资料，保留其头像、昵称、联系方式和个性签名：
 
 <table>
 <tr>

@@ -44,9 +44,9 @@ function CodeField({ label, value, onChange, onSend, sending, remaining, targetR
     );
 }
 
-export function VerificationFields({ purpose, method, value, onChange, disabled = false, password }: {
+export function VerificationFields({ purpose, method, value, onChange, disabled = false, password, invitationCode }: {
     purpose: VerificationPurpose; method: VerificationMethod; value: VerificationDraft;
-    onChange: (value: VerificationDraft) => void; disabled?: boolean; password?: string;
+    onChange: (value: VerificationDraft) => void; disabled?: boolean; password?: string; invitationCode?: string;
 }) {
     const { message } = App.useApp();
     const [sending, setSending] = useState(false);
@@ -69,7 +69,7 @@ export function VerificationFields({ purpose, method, value, onChange, disabled 
         setRemaining(60);
         onChange({ ...value, ticket: "", emailCode: "", smsCode: "" });
         try {
-            const result = await startVerification({ purpose, method, email: email ? value.email.trim() : undefined, phone: sms ? value.phone.trim() : undefined, password });
+            const result = await startVerification({ purpose, method, email: email ? value.email.trim() : undefined, phone: sms ? value.phone.trim() : undefined, password, ...(invitationCode ? { invitationCode } : {}) });
             onChange({ ...value, email: email ? value.email.trim().toLowerCase() : "", phone: sms ? value.phone.trim() : "", emailCode: "", smsCode: "", ticket: result.ticket });
             setRemaining(result.retryAfter);
             message.success(purpose === "login" ? "如该联系方式已验证且账号可用，验证码将发送至该联系方式" : "验证码已发送，10 分钟内有效");

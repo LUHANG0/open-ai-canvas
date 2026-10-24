@@ -1,15 +1,22 @@
-import { lazy, Suspense, type ReactNode } from "react";
+import { lazy, Suspense, type ComponentType, type ReactNode } from "react";
 import { createBrowserRouter, Navigate, Outlet, useLocation } from "react-router";
 
 import { RequireAuth } from "@/components/auth/require-auth";
 import { FullScreenLoader, WorkspaceRouteLoader } from "@/components/ui/aceternity/full-screen-loader";
-import { loadAssetsPage, loadCanvasPage, loadCanvasProjectPage, loadCreatePage, loadProjectDetailPage, loadProjectsPage } from "@/lib/workspace-route-modules";
+import { loadAssetsPage, loadCanvasPage, loadCanvasProjectPage, loadCreatePage, loadProjectDetailPage, loadProjectsPage, loadTasksPage, loadSkillsPage, loadPluginsPage, loadImageWorkbenchPage, loadVideoWorkbenchPage } from "@/lib/workspace-route-modules";
+import type { FeatureKey } from "@/components/auth/require-feature";
 import { CanvasRefreshShell } from "@/pages/canvas/canvas-refresh-shell";
 import { AuthScene } from "@/pages/auth/auth-scene";
+import { AuthFormPending } from "@/pages/auth/auth-form-pending";
+import { loadLoginPage, loadRegisterPage, loadForgotPasswordPage, loadInvitationPage } from "@/lib/auth-route-modules";
+import { WorkspaceBootstrap } from "@/components/layout/app-providers";
+import { WorkspaceEntryError } from "@/components/layout/workspace-entry-error";
+import WelcomePage from "@/pages/welcome";
 import RouteErrorPage from "@/pages/route-error";
 import { isGuestWorkspacePath } from "@/lib/guest-workspace";
 
 const AdminPage = lazy(() => import("@/pages/admin"));
+const BrandSiteSettingsPage = lazy(() => import("@/pages/admin/settings/brand-site-settings-page"));
 const AnalyticsPage = lazy(() => import("@/pages/admin/admin-route-pages").then((module) => ({ default: module.AnalyticsPage })));
 const AnnouncementsPage = lazy(() => import("@/pages/admin/admin-route-pages").then((module) => ({ default: module.AnnouncementsPage })));
 const BannerAnnouncementsPage = lazy(() => import("@/pages/admin/admin-route-pages").then((module) => ({ default: module.BannerAnnouncementsPage })));
@@ -39,22 +46,14 @@ const SystemUpdatePage = lazy(() => import("@/pages/admin/settings/system-update
 const SystemPerformancePage = lazy(() => import("@/pages/admin/settings/system-performance-page"));
 const StoryboardPromptsPage = lazy(() => import("@/pages/admin/storyboard-prompts/storyboard-prompts-page"));
 const UsersPage = lazy(() => import("@/pages/admin/users/users-page"));
-const AssetsPage = lazy(loadAssetsPage);
-const LoginPage = lazy(() => import("@/pages/auth/login"));
-const RegisterPage = lazy(() => import("@/pages/auth/register"));
-const ForgotPasswordPage = lazy(() => import("@/pages/auth/forgot-password"));
-const CanvasPage = lazy(loadCanvasPage);
+const LoginPage = lazy(loadLoginPage);
+const RegisterPage = lazy(loadRegisterPage);
+const ForgotPasswordPage = lazy(loadForgotPasswordPage);
+const InvitationPage = lazy(loadInvitationPage);
 const CanvasProjectPage = lazy(loadCanvasProjectPage);
 const SharedCanvasPage = lazy(() => import("@/pages/canvas/shared"));
-const CreatePage = lazy(loadCreatePage);
-const ImageWorkbenchPage = lazy(() => import("@/pages/workbench/image-workbench-route"));
-const VideoWorkbenchPage = lazy(() => import("@/pages/workbench/video-workbench-page"));
 const NotFound = lazy(() => import("@/pages/not-found"));
-const SkillsPage = lazy(() => import("@/pages/skills"));
-const PluginsPage = lazy(() => import("@/pages/plugins"));
 const EagleLibraryPage = lazy(() => import("@/pages/plugins/eagle"));
-const TasksPage = lazy(() => import("@/pages/tasks"));
-const ProjectsPage = lazy(loadProjectsPage);
 const ProjectDetailPage = lazy(loadProjectDetailPage);
 const SettingsPage = lazy(() => import("@/pages/settings"));
 const TestVoiceRecording = lazy(() => import("@/pages/test-voice-recording"));
@@ -69,6 +68,26 @@ function fullScreenDeferred(element: ReactNode) {
     return <Suspense fallback={<FullScreenLoader label="正在打开创作空间" detail="准备当前页面" />}>{element}</Suspense>;
 }
 
+function authDeferred(element: ReactNode, fields = 2) {
+    return <Suspense fallback={<AuthFormPending fields={fields} />}>{element}</Suspense>;
+}
+
+function workspaceEntry(loadPage: () => Promise<{ default: ComponentType }>, feature?: FeatureKey) {
+    return {
+        // Keep the entry's boundary available even when its lazy module rejects.
+        hydrateFallbackElement: <WorkspaceRouteLoader />,
+        errorElement: <WorkspaceEntryError />,
+        lazy: async () => {
+            const [{ default: Page }, featureModule] = await Promise.all([
+                loadPage(),
+                feature ? import("@/components/auth/require-feature") : Promise.resolve(undefined),
+            ]);
+            const Feature = featureModule?.RequireFeature;
+            return { element: <RequireAuth>{Feature && feature ? <Feature feature={feature}><Page /></Feature> : <Page />}</RequireAuth> };
+        },
+    };
+}
+
 function AuthenticatedWorkspaceLayout() {
     const { pathname } = useLocation();
     const isCanvasProjectRoute = pathname.startsWith("/canvas/");
@@ -77,7 +96,9 @@ function AuthenticatedWorkspaceLayout() {
         <RequireAuth allowAnonymous={isGuestWorkspacePath(pathname)}>
             <Suspense fallback={fallback}>
                 <UserLayout>
-                    <Outlet />
+                    <Suspense fallback={isCanvasProjectRoute ? <CanvasRefreshShell /> : <WorkspaceRouteLoader />}>
+                        <Outlet />
+                    </Suspense>
                 </UserLayout>
             </Suspense>
         </RequireAuth>
@@ -102,57 +123,36 @@ function devRoutes() {
 }
 
 export const router = createBrowserRouter([
+    { path: "/", element: <div className="mc-route-scroll"><WelcomePage /></div>, errorElement: <RouteErrorPage /> },
+    { path: "/welcome", element: <Navigate to="/" replace /> },
     {
         element: <AuthScene />,
         errorElement: <RouteErrorPage />,
         children: [
-            { path: "/login", element: fullScreenDeferred(<LoginPage />) },
-            { path: "/register", element: fullScreenDeferred(<RegisterPage />) },
-            { path: "/forgot-password", element: fullScreenDeferred(<ForgotPasswordPage />) },
+            { path: "/login", element: authDeferred(<LoginPage />) },
+            { path: "/register", element: authDeferred(<RegisterPage />, 4) },
+            { path: "/i/:code", element: authDeferred(<InvitationPage />, 4) },
+            { path: "/forgot-password", element: authDeferred(<ForgotPasswordPage />, 1) },
         ],
     },
     { path: "/share/canvas/:token", element: fullScreenDeferred(<SharedCanvasPage />), errorElement: <RouteErrorPage /> },
     ...(import.meta.env.DEV ? devRoutes() : []),
     {
-        element: <AuthenticatedWorkspaceLayout />,
+        element: <WorkspaceBootstrap><AuthenticatedWorkspaceLayout /></WorkspaceBootstrap>,
         errorElement: <RouteErrorPage />,
         children: [
-            { path: "/", element: deferred(<CreatePage />) },
-            { path: "/create", element: deferred(<CreatePage />) },
             {
-                path: "/toolbox/image",
-                element: (
-                    <RequireAuth>
-                        <RequireFeature feature="imageWorkbenchEnabled">{deferred(<ImageWorkbenchPage />)}</RequireFeature>
-                    </RequireAuth>
-                ),
+                path: "/create",
+                lazy: async () => ({ Component: (await loadCreatePage()).default }),
+                hydrateFallbackElement: <WorkspaceRouteLoader />,
+                errorElement: <WorkspaceEntryError />,
             },
-            {
-                path: "/toolbox/video",
-                element: (
-                    <RequireAuth>
-                        <RequireFeature feature="videoWorkbenchEnabled">{deferred(<VideoWorkbenchPage />)}</RequireFeature>
-                    </RequireAuth>
-                ),
-            },
-            {
-                path: "/tasks",
-                element: (
-                    <RequireAuth>
-                        <RequireFeature feature="taskCenterEnabled">{deferred(<TasksPage />)}</RequireFeature>
-                    </RequireAuth>
-                ),
-            },
-            { path: "/assets", element: <RequireAuth>{deferred(<AssetsPage />)}</RequireAuth> },
-            { path: "/skills", element: <RequireAuth>{deferred(<SkillsPage />)}</RequireAuth> },
-            {
-                path: "/plugins",
-                element: (
-                    <RequireAuth>
-                        <RequireFeature feature="pluginCenterEnabled">{deferred(<PluginsPage />)}</RequireFeature>
-                    </RequireAuth>
-                ),
-            },
+            { path: "/toolbox/image", ...workspaceEntry(loadImageWorkbenchPage, "imageWorkbenchEnabled") },
+            { path: "/toolbox/video", ...workspaceEntry(loadVideoWorkbenchPage, "videoWorkbenchEnabled") },
+            { path: "/tasks", ...workspaceEntry(loadTasksPage, "taskCenterEnabled") },
+            { path: "/assets", ...workspaceEntry(loadAssetsPage) },
+            { path: "/skills", ...workspaceEntry(loadSkillsPage) },
+            { path: "/plugins", ...workspaceEntry(loadPluginsPage, "pluginCenterEnabled") },
             {
                 path: "/plugins/eagle",
                 element: (
@@ -169,11 +169,15 @@ export const router = createBrowserRouter([
             { path: "/test-voice-recording", element: <RequireAuth>{deferred(<TestVoiceRecording />)}</RequireAuth> },
             {
                 path: "/projects",
-                element: (
-                    <RequireAuth>
-                        <RequireFeature feature="shortDramaEnabled">{deferred(<ProjectsPage />)}</RequireFeature>
-                    </RequireAuth>
-                ),
+                hydrateFallbackElement: <WorkspaceRouteLoader />,
+                lazy: async () => {
+                    const [{ default: Page }, { RequireFeature: Feature }] = await Promise.all([
+                        loadProjectsPage(),
+                        import("@/components/auth/require-feature"),
+                    ]);
+                    return { element: <RequireAuth><Feature feature="shortDramaEnabled"><Page /></Feature></RequireAuth> };
+                },
+                errorElement: <WorkspaceEntryError />,
             },
             {
                 path: "/projects/:projectId",
@@ -207,7 +211,15 @@ export const router = createBrowserRouter([
                     </RequireAuth>
                 ),
             },
-            { path: "/canvas", element: <RequireAuth>{deferred(<CanvasPage />)}</RequireAuth> },
+            {
+                path: "/canvas",
+                hydrateFallbackElement: <WorkspaceRouteLoader />,
+                lazy: async () => {
+                    const { default: Page } = await loadCanvasPage();
+                    return { element: <RequireAuth><Page /></RequireAuth> };
+                },
+                errorElement: <WorkspaceEntryError />,
+            },
             {
                 path: "/canvas/:id",
                 element: (
@@ -247,6 +259,7 @@ export const router = createBrowserRouter([
                     { path: "logs", element: <LogsPage /> },
                     { path: "settings", element: <Navigate to="runtime-policy" replace /> },
                     { path: "settings/appearance", element: <AppearanceSettingsPage /> },
+                    { path: "settings/brand-site", element: <BrandSiteSettingsPage /> },
                     { path: "settings/drawing-engine", element: <DrawingEngineSettingsPage /> },
                     { path: "settings/concurrency", element: <Navigate to="/admin/settings/runtime-policy" replace /> },
                     { path: "settings/runtime-policy", element: <RuntimePolicySettingsPage /> },

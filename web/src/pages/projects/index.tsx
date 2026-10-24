@@ -11,7 +11,8 @@ import { ArrowRight, BookOpenText, FileText, FolderKanban, Images, LayoutGrid, P
 import { Link, useNavigate, useSearchParams } from "react-router";
 
 import { CollectionGrid, PageHeader, WorkspacePage } from "@/components/layout/workspace-page";
-import { WorkspaceErrorState, WorkspaceLoadingState, WorkspaceState } from "@/components/layout/workspace-state";
+import { WorkspaceErrorState, WorkspaceState } from "@/components/layout/workspace-state";
+import { WorkspaceEntryPending } from "@/components/layout/workspace-entry-pending";
 import { CanvasStylePickerModal, resolveCanvasStylePreset, resolveProjectCanvasStyle, type CanvasStylePreset } from "@/components/canvas/canvas-style-picker-modal";
 import { resourceFileUrl } from "@/services/api/resources";
 import { ModelPicker } from "@/components/model-picker";
@@ -255,7 +256,7 @@ export default function ProjectsPage() {
             </CollectionToolbar>
 
             {hasInitialError ? <WorkspaceErrorState description={query.error instanceof Error ? query.error.message : "项目列表加载失败"} onRetry={() => void query.refetch()} /> : null}
-            {query.isLoading ? <WorkspaceLoadingState label="正在整理项目" detail="读取章节、画布与资产进度" /> : null}
+            {query.isLoading ? <WorkspaceEntryPending /> : null}
             {!query.isLoading && !hasInitialError && rows.length ? (
                 <CollectionGrid className="library-grid project-library-grid">
                     {rows.map((row) => <ProjectRow key={row.project.id} row={row} onDelete={() => deleteMutation.mutateAsync(row.project.id)} />)}

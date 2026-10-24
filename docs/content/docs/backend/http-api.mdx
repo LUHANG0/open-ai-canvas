@@ -5,6 +5,24 @@ description: 信封、错误码与 OpenAPI
 
 # HTTP API 合同
 
+## 管理员注册邀请
+
+`POST /api/auth/invitation/validate` 通过 JSON `{ code }` 只读验证 6 位大小写敏感短码，返回 `valid / expired / revoked / used / invalid`；有效时附固定 `bonusMicrocredits` 和当前注册验证／协议配置，不返回管理员资料、内部备注或受邀账号。网络错误是可重试失败，不是邀请码无效。
+
+当前有效管理员通过 `GET /api/admin/registration-invitations` 分页、`POST /api/admin/registration-invitations` 生成和 `POST /api/admin/registration-invitations/:id/revoke` 撤销。创建金额是必填整数 microcredits，0–1,000,000 积分，默认 7 天、可设 1–90 天。旧注册、验证码 API 可附 `invitationCode`；仅有效邀请可豁免公开注册开关，原验证和协议不豁免。注册成功后返回实际确认的 `signupBonusMicrocredits`；积分替代全局赠送而不叠加，0 也不得登录补发。完整事务、限流与部署合同见[用户注册邀请](/docs/backend/registration-invitations)。
+
+## 创作页历史
+
+`GET /api/creation-conversations` 按 ID 游标列出当前账号摘要及删除标记；`GET /api/creation-conversations/:id` 读取消息与修订；`POST /api/creation-conversations/:id/sync` 按元数据和逐条消息修订增量提交，或提交独立删除。永久 tombstone 防止旧设备复活历史；删除不级联媒体或任务。成功结果中的 `conflicts` 明确指出采用云端版本的字段或消息，本地保留副本。后台请求及迁移媒体上传使用 `X-Canvas-Expected-User` 防止延迟请求跨账号执行。接口边界、大小限制与旧历史迁移见[完整合同](/docs/backend/creation-conversation-sync)。
+
+## 梦层官网内容与发布
+
+`GET /api/public/brand-site` 仅返回当前已发布的可见官网内容，禁止返回草稿或上一版；`GET /api/admin/settings/brand-site` 需管理员。管理员以修订号调用 `POST /api/admin/settings/brand-site/{draft|publish|restore}` 保存草稿、整版发布或恢复，版本冲突为 409。公开媒体路径 `/api/public/brand-site/media/:id` 只认当前可见发布引用；管理员预览另走 `/api/admin/settings/brand-site/media/:id`。接口、限制、媒体隔离和原子存储见[完整合同](/docs/backend/mengceng-brand-site)，OpenAPI 同步维护。旧 `public/welcome` 标为弃用，不再控制 `/` 或使已登录用户跳过官网。
+
+## 插件重复上传
+
+管理员 `POST /api/plugins` 上传已经随源码加载的同 ID 系统协议时，返回 HTTP 409、业务 code=409、reason=conflict，msg 说明插件已加载且不能上传覆盖，并引导查看平台开放状态和渠道协议。该冲突不修改插件文件、注册表或开放状态。自定义插件的新装/更新以及现有支付插件规则保持原行为。
+
 ## 画布实时会话
 
 `GET /api/canvas-projects/:id/realtime` 使用登录 Cookie 升级为 WebSocket，握手校验当前用户对画布的归属和请求 Origin。首帧 `welcome` 提供服务端分配的 `selfId` 和窗口 Presence；客户端发送 `presence`，服务端推送 `peer`、`leave`、`invalidate` 和 `heartbeat`。Presence 只含有界世界坐标和拖拽矩形，不包含密钥、编辑租约 token、画布正文或实际保存指令。

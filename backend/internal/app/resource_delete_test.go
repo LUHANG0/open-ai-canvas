@@ -453,7 +453,7 @@ func TestDetachedResourceCleanupRemovesOrphanAndKeepsAssetBackedResource(t *test
 
 func TestDetachedResourceCleanupKeepsAppearanceAssets(t *testing.T) {
 	for _, setting := range []string{
-		`{"logoResourceId":"logo","darkLogoResourceId":"dark","authVideoResourceId":"video","authVideoPosterResourceId":"poster"}`,
+		`{"logoResourceId":"logo","darkLogoResourceId":"dark"}`,
 		`{invalid`,
 	} {
 		svc, db, _ := newResourceDeletionTestService(t)
@@ -461,7 +461,7 @@ func TestDetachedResourceCleanupKeepsAppearanceAssets(t *testing.T) {
 			t.Fatal(err)
 		}
 		var resources []model.Resource
-		for _, id := range []string{"logo", "dark", "video", "poster"} {
+		for _, id := range []string{"logo", "dark"} {
 			resource := model.Resource{ID: id, UserID: "admin", Status: model.ResourceStatusReady, Provider: "local", ObjectKey: id, CreatedAt: time.Now().Add(-48 * time.Hour)}
 			if err := db.Create(&resource).Error; err != nil {
 				t.Fatal(err)
@@ -474,7 +474,7 @@ func TestDetachedResourceCleanupKeepsAppearanceAssets(t *testing.T) {
 		var count, jobs int64
 		db.Model(&model.Resource{}).Count(&count)
 		db.Model(&model.ResourceDeletionJob{}).Count(&jobs)
-		if count != 4 || jobs != 0 {
+		if count != 2 || jobs != 0 {
 			t.Fatalf("appearance cleanup: resources=%d jobs=%d", count, jobs)
 		}
 	}

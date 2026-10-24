@@ -79,7 +79,7 @@ test("admin theme keeps neutral independent surfaces and density while reducing 
         const normal = getIsolatedAdminAntTheme(dark);
         const reduced = getIsolatedAdminAntTheme(dark, true);
         expect(normal.token?.controlHeight).toBe(32); expect(normal.token?.borderRadius).toBe(6);
-        expect(normal.token?.colorBgBase).toBe(dark ? "#0f0f0f" : "#f5f5f5");
+        expect(normal.token?.colorBgBase).toBe(dark ? "#151517" : "#f8f8fa");
         expect(normal.token?.colorPrimary).toBe(dark ? "#f5f5f5" : "#111111");
         expect(normal.token?.motionDurationFast).toBe("0.15s"); expect(normal.token?.motionDurationSlow).toBe("0.15s");
         expect(reduced.token?.motion).toBe(false);

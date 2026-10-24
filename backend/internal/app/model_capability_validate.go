@@ -56,7 +56,11 @@ func validateImageCapabilityConfig(value *ImageCapabilityConfig) error {
 	if value.References.MaxImages < 0 || value.References.MaxImages > 100 || value.References.MaxImageBytes < 0 {
 		return BadAuthRequest("图片引用限制无效")
 	}
-	if value.MaxOutputs < 1 || value.MaxOutputs > 100 {
+	if value.MaxOutputs < 1 {
+		return BadAuthRequest("单次图片数量必须至少为 1")
+	}
+	// 声明式数量已由插件合同校验，不能再用旧宿主的 100 张上限截断。
+	if value.Parameters == nil && value.MaxOutputs > 100 {
 		return BadAuthRequest("单次图片数量必须在 1-100 之间")
 	}
 	switch value.Size.Parameter {

@@ -15,7 +15,7 @@ describe("sidebar checkin offer", () => {
     test("uses the configured brand name instead of Buddy", () => {
         expect(sidebarCheckinTitle("影策")).toBe("影策加油站");
         expect(sidebarCheckinTitle(" 本地工作室 ")).toBe("本地工作室加油站");
-        expect(sidebarCheckinTitle("")).toBe("影策加油站");
+        expect(sidebarCheckinTitle("")).toBe("梦层加油站");
     });
 });
 
@@ -33,17 +33,18 @@ describe("workspace sidebar checkin card", () => {
         expect(rule).toContain("padding: 0;");
         expect(rule).toContain("box-shadow: none;");
     });
-    test("sits above account storage and uses the claim card colors without a light-blue stage", () => {
+    test("stays available above storage inside the account panel", () => {
         const sidebar = readFileSync(resolve(import.meta.dir, "../src/components/layout/workspace-sidebar-nav.tsx"), "utf8");
         const card = readFileSync(resolve(import.meta.dir, "../src/components/layout/workspace-sidebar-checkin.tsx"), "utf8");
         const css = readFileSync(resolve(import.meta.dir, "../src/styles/globals.css"), "utf8");
-        const checkinIndex = sidebar.indexOf("<WorkspaceSidebarCheckin collapsed={collapsed} />");
-        const storageIndex = sidebar.indexOf("<WorkspaceSidebarStorageMeter collapsed={collapsed} />");
+        const checkinIndex = sidebar.indexOf("<WorkspaceSidebarCheckin collapsed={false} />");
+        const storageIndex = sidebar.indexOf("<WorkspaceSidebarStorageMeter collapsed={false} />");
         const start = css.indexOf(".app-user-workspace .app-workspace-sidebar-checkin {");
         const end = css.indexOf(".app-user-workspace .app-workspace-sidebar-storage {", start);
         const block = css.slice(start, end);
 
         expect(checkinIndex).toBeGreaterThan(-1);
+        expect(sidebar).toContain('className="workspace-navigation-account-status"');
         expect(storageIndex).toBeGreaterThan(checkinIndex);
         expect(card).toContain("立即领取");
         expect(card).toContain("今日<em>{amount}</em>积分");

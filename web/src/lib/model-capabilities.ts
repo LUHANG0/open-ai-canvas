@@ -299,6 +299,29 @@ export function defaultImageCapabilityConfig(protocol?: ModelProtocol, model = "
         outputFormat: { supported: true },
         maxOutputs: 15,
     };
+    if (protocol === "drama-image" || protocol === "drama-gemini-image") {
+        image.references.maskSupported = false;
+        image.size = { parameter: protocol === "drama-gemini-image" ? "aspect_ratio" : "size", values: ["1:1", "4:3", "3:4", "16:9", "9:16", "21:9"], default: "1:1", allowCustom: true, presets: IMAGE_RESOLUTIONS.flatMap((tier) => IMAGE_RATIOS.map((ratio) => imagePresetForRatio(tier, ratio))) };
+        image.resolution = { supported: true, values: ["1k", "2k", "4k"], default: "1k" };
+        image.quality = { supported: true, values: ["low", "medium", "high"], default: "medium" };
+        if (protocol === "drama-gemini-image") image.quality = { supported: false, values: [], default: "auto" };
+        image.transparentBackground = { supported: false, default: false };
+        image.responseFormat = { supported: true, default: "url" };
+        image.outputFormat = { supported: false };
+        image.maxOutputs = 128;
+        return image;
+    }
+    if (protocol === "4stoken-image" || protocol === "4stoken-seedream") {
+        image.size = { parameter: "size", values: [], default: protocol === "4stoken-seedream" ? "2048x2048" : "1024x1024", allowCustom: true };
+        image.quality = { supported: false, values: [], default: "auto" };
+        image.transparentBackground = { supported: false, default: false };
+        image.responseFormat = { supported: false };
+        if (protocol === "4stoken-seedream") {
+            image.references.maxImages = 14;
+            image.references.maskSupported = false;
+        }
+        return image;
+    }
     if (protocol === "yezonghui-image") {
         image.references.maskSupported = false;
         image.size = { parameter: "aspect_ratio", values: [], default: "", allowCustom: true };
@@ -483,6 +506,32 @@ export function defaultModelCapabilityConfig(protocol?: ModelProtocol, model = "
         operations: ["text_to_video", "image_to_video"],
         defaultOperation: "text_to_video",
     };
+    if (protocol === "drama-seedance-a") {
+        video.resolutions = [];
+        video.defaultResolution = "";
+        video.operations.push("reference_to_video", "audio_to_video");
+        video.references.maxImages = 0;
+        const name = model.trim().toLowerCase();
+        if (name === "seedance2.0-a" || name === "seedance2.5-a") {
+            const newer = name === "seedance2.5-a";
+            video.duration = { selection: "range", min: 4, max: newer ? 30 : 15, step: 1, default: 5 };
+            video.resolutions = newer ? ["480p", "720p"] : ["480p", "720p", "1080p", "4K"];
+            video.defaultResolution = "480p";
+            if (!newer) video.ratios.push("Auto");
+            video.references.maxImages = newer ? 30 : 9;
+            video.references.maxVideos = newer ? 10 : 3;
+            video.references.maxAudios = newer ? 10 : 3;
+            video.references.maxImageBytes = video.references.maxVideoBytes = video.references.maxAudioBytes = 100 * 1024 * 1024;
+            video.references.maxVideoDurationSeconds = video.references.maxAudioDurationSeconds = newer ? 30 : 15;
+        }
+    }
+    if (protocol === "4stoken-video") {
+        video.resolutions = [];
+        video.defaultResolution = "";
+        video.generateAudio = { supported: true, default: false };
+        video.watermark = { supported: true, default: true };
+        video.operations.push("reference_to_video", "audio_to_video");
+    }
     if (protocol === "yezonghui-video") {
         video.resolutions = [];
         video.defaultResolution = "";

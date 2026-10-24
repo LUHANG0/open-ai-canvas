@@ -2,6 +2,8 @@ import { type FormEvent, useEffect, useState, type ReactNode } from "react";
 import { App, Button, Input } from "antd";
 import { ArrowLeft, ArrowRight, LockKeyhole, Mail, ShieldCheck, TriangleAlert } from "lucide-react";
 import { Link, useNavigate, useSearchParams } from "react-router";
+import { loginPath, safeAuthNext } from "@/lib/auth-navigation";
+import { useBrandAuthFlow } from "@/components/brand/brand-auth-entry";
 
 import { getAuthSettings, resetPassword, sendPasswordResetEmailCode } from "@/services/api/auth";
 
@@ -10,6 +12,7 @@ type RecoveryStage = "request" | "reset";
 export default function ForgotPasswordPage() {
     const navigate = useNavigate();
     const [params] = useSearchParams();
+    const flow = useBrandAuthFlow();
     const { message } = App.useApp();
     const [stage, setStage] = useState<RecoveryStage>("request");
     const [email, setEmail] = useState("");
@@ -20,8 +23,8 @@ export default function ForgotPasswordPage() {
     const [sendingCode, setSendingCode] = useState(false);
     const [submitting, setSubmitting] = useState(false);
     const [countdown, setCountdown] = useState(0);
-    const next = safeNext(params.get("next"));
-    const loginURL = `/login?next=${encodeURIComponent(next)}`;
+    const next = safeAuthNext(flow?.next ?? params.get("next"));
+    const loginURL = loginPath(next);
 
     useEffect(() => {
         let cancelled = false;
@@ -74,7 +77,8 @@ export default function ForgotPasswordPage() {
         try {
             await resetPassword({ email: email.trim(), emailCode, password });
             message.success("密码已重置，请使用新密码登录");
-            navigate(loginURL, { replace: true });
+            if (flow) flow.changeMode("login");
+            else navigate(loginURL, { replace: true, viewTransition: true });
         } catch (error) {
             message.error(error instanceof Error ? error.message : "密码重置失败");
         } finally {
@@ -179,7 +183,6 @@ export default function ForgotPasswordPage() {
         </form>
     );
 }
-
 function AuthField({ label, htmlFor, children }: { label: string; htmlFor: string; children: ReactNode }) {
     return (
         <div className="space-y-2">
@@ -192,9 +195,10 @@ function AuthField({ label, htmlFor, children }: { label: string; htmlFor: strin
 }
 
 function BackToLogin({ to }: { to: string }) {
+    const flow = useBrandAuthFlow();
     return (
         <div className="text-center">
-            <Link to={to} className="auth-scene-link inline-flex min-h-8 items-center gap-1.5 rounded-sm text-xs transition-colors duration-150 motion-reduce:transition-none">
+            <Link to={to} viewTransition onClick={(event) => { if (flow && !event.metaKey && !event.ctrlKey && !event.altKey && !event.shiftKey && event.button === 0) { event.preventDefault(); flow.changeMode("login"); } }} className="auth-scene-link inline-flex min-h-8 items-center gap-1.5 rounded-sm text-xs transition-colors duration-150 motion-reduce:transition-none">
                 <ArrowLeft className="size-3.5" />
                 返回登录
             </Link>
@@ -209,9 +213,4 @@ function Notice({ icon, children }: { icon: ReactNode; children: ReactNode }) {
             {children}
         </div>
     );
-}
-
-function safeNext(value: string | null) {
-    if (!value || !value.startsWith("/") || value.startsWith("//")) return "/";
-    return value;
 }

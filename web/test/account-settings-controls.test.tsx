@@ -33,7 +33,6 @@ afterAll(() => {
 
 test("auth tabs ignore current-item navigation and preserve route search, panel associations and keyboard focus on real changes", async () => {
     const appearance = useAppearanceStore.getState().appearance;
-    useAppearanceStore.setState({ appearance: { ...appearance, authVideoUrl: "", authVideoPosterUrl: "" } });
     const host = document.createElement("div"); document.body.append(host);
     const root = createRoot(host);
     const router = createMemoryRouter([{ element: <AuthScene />, children: [{ path: "/login", element: <RouteProbe label="登录表单" /> }, { path: "/register", element: <RouteProbe label="注册表单" /> }] }], { initialEntries: ["/login?next=%2Fsettings"] });

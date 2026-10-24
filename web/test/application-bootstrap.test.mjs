@@ -35,7 +35,7 @@ async function prepareEntry(dev, pathname) {
     const appearanceReady = new Promise((resolve) => (resolveAppearance = resolve));
     const loaded = new Promise((resolve) => (entryLoaded = resolve));
     const listeners = new Map();
-    runInNewContext(await build.outputs[0].text(), { window: { location: { pathname }, addEventListener: (name, listener) => listeners.set(name, listener) }, events, appearanceReady, entryLoaded });
+    runInNewContext(await build.outputs[0].text(), { window: { location: { pathname, hash: "", replace: (target) => events.push(`redirect:${target}`) }, addEventListener: (name, listener) => listeners.set(name, listener) }, events, appearanceReady, entryLoaded });
     expect(typeof listeners.get("vite:preloadError")).toBe("function");
     return { events, resolveAppearance, loaded };
 }
@@ -61,12 +61,12 @@ for (const [dev, pathname] of [
     });
 }
 
-for (const pathname of ["/welcome", "/welcome/"]) {
-    test(`public film entry remains independent: ${pathname}`, async () => {
+for (const pathname of ["/", "/welcome", "/welcome/"]) {
+    test(`brand root shares the router without blocking on appearance: ${pathname}`, async () => {
         const entry = await prepareEntry(false, pathname);
         await entry.loaded;
         // 欢迎页沿用站点外观（#683），但外观请求不阻塞欢迎页入口加载。
-        expect(entry.events).toEqual(["appearance", "./welcome-application"]);
+        expect(entry.events).toEqual([...(pathname === "/" ? [] : ["redirect:/"]), "appearance", "./application"]);
     });
 }
 

@@ -54,11 +54,14 @@ export function ModelCapabilityEditor({ value, onChange, protocol, capability = 
     const storedProfile = normalizeModelCapabilityConfig(value || defaultModelCapabilityConfig(protocol, model)).video!;
     const autoDL = protocol === "autodl-comfyui";
     const profile = autoDL ? resolveWorkflowVideoScreenSpec(storedProfile, workflow) : storedProfile;
+    const dramaA = protocol === "drama-seedance-a";
+    const dramaLimits = dramaA ? defaultModelCapabilityConfig(protocol, model).video : undefined;
+    const availableRatios = dramaA ? [...new Set([...(dramaLimits?.ratios || []), ...profile.ratios])] : ratioOptions;
     const update = (patch: Partial<VideoCapabilityConfig>) => onChange?.({ version: 1, video: { ...profile, ...patch } });
     const updateReferences = (patch: Partial<VideoCapabilityConfig["references"]>) => update({ references: { ...profile.references, ...patch } });
     const updateDuration = (patch: Partial<VideoCapabilityConfig["duration"]>) => update({ duration: { ...profile.duration, ...patch } });
     const durationValues = (profile.duration.values || []).join(",");
-    const resolutionOptions = Array.from(new Set([...VIDEO_RESOLUTION_CAPABILITY_OPTIONS, ...profile.resolutions]));
+    const resolutionOptions = Array.from(new Set([...(dramaLimits?.resolutions.length ? dramaLimits.resolutions : VIDEO_RESOLUTION_CAPABILITY_OPTIONS), ...profile.resolutions]));
     const autoDLSpecFields = <AutoDLScreenSpecFields profile={profile} workflow={workflow} disabled={disabled} onChange={(video) => onChange?.({ version: 1, video })} />;
     // 视频处理模型（画质增强等）：帧率策略与源视频时长上限；生成模型不显示。
     const processing = profile.processing;
@@ -107,7 +110,7 @@ export function ModelCapabilityEditor({ value, onChange, protocol, capability = 
                         <NumberField label="最大音频引用" value={profile.references.maxAudios} min={0} disabled={disabled} onChange={(value) => updateReferences({ maxAudios: value || 0 })} />
                         <NumberField label="单个音频上限 MB" value={bytesToMB(profile.references.maxAudioBytes)} min={0} disabled={disabled} onChange={(value) => updateReferences({ maxAudioBytes: mbToBytes(value) })} />
                         <NumberField label="单个音频最长秒数" value={profile.references.maxAudioDurationSeconds} min={0} disabled={disabled} onChange={(value) => updateReferences({ maxAudioDurationSeconds: value || 0 })} />
-                        <BooleanField label="同步音频" value={profile.generateAudio} disabled={disabled} onChange={(generateAudio) => update({ generateAudio })} />
+                        {!dramaA ? <BooleanField label="同步音频" value={profile.generateAudio} disabled={disabled} onChange={(generateAudio) => update({ generateAudio })} /> : null}
                     </ReferenceCard>
                     <ReferenceCard title="视频引用" description="视频数量、大小与时长限制">
                         <NumberField label="最大视频引用" value={profile.references.maxVideos} min={0} disabled={disabled} onChange={(value) => updateReferences({ maxVideos: value || 0 })} />
@@ -116,7 +119,7 @@ export function ModelCapabilityEditor({ value, onChange, protocol, capability = 
                     </ReferenceCard>
                     <ReferenceCard title="通用限制" description="所有视频请求共用的基础约束">
                         <NumberField label="提示词最大字符数" value={profile.references.promptMaxChars} min={1} disabled={disabled} onChange={(value) => updateReferences({ promptMaxChars: value || 1 })} />
-                        <BooleanField label="水印" value={profile.watermark} disabled={disabled} onChange={(watermark) => update({ watermark })} />
+                        {!dramaA ? <BooleanField label="水印" value={profile.watermark} disabled={disabled} onChange={(watermark) => update({ watermark })} /> : null}
                     </ReferenceCard>
                 </div>
             </div>
@@ -191,7 +194,7 @@ export function ModelCapabilityEditor({ value, onChange, protocol, capability = 
                                     className="w-full"
                                     disabled={disabled}
                                     value={profile.ratios}
-                                    options={ratioOptions.map((item) => ({ label: item, value: item }))}
+                                    options={availableRatios.map((item) => ({ label: item, value: item }))}
                                     onChange={(ratios) => update({ ratios, defaultRatio: ratios.includes(profile.defaultRatio) ? profile.defaultRatio : ratios[0] || "16:9" })}
                                 />
                             </Field>
@@ -308,7 +311,7 @@ export function ModelCapabilityEditor({ value, onChange, protocol, capability = 
                                 className="w-full"
                                 disabled={disabled}
                                 value={profile.ratios}
-                                options={ratioOptions.map((item) => ({ label: item, value: item }))}
+                                options={availableRatios.map((item) => ({ label: item, value: item }))}
                                 onChange={(ratios) => update({ ratios, defaultRatio: ratios.includes(profile.defaultRatio) ? profile.defaultRatio : ratios[0] || "16:9" })}
                             />
                         </Field>
@@ -375,13 +378,13 @@ export function ModelCapabilityEditor({ value, onChange, protocol, capability = 
                             <NumberField label="单个音频上限 MB" value={bytesToMB(profile.references.maxAudioBytes)} min={0} disabled={disabled} onChange={(value) => updateReferences({ maxAudioBytes: mbToBytes(value) })} />
                             <NumberField label="单个音频最长秒数" value={profile.references.maxAudioDurationSeconds} min={0} disabled={disabled} onChange={(value) => updateReferences({ maxAudioDurationSeconds: value || 0 })} />
                         </div>
-                        <BooleanField label="同步音频" value={profile.generateAudio} disabled={disabled} onChange={(generateAudio) => update({ generateAudio })} />
+                        {!dramaA ? <BooleanField label="同步音频" value={profile.generateAudio} disabled={disabled} onChange={(generateAudio) => update({ generateAudio })} /> : null}
                     </CapabilityGroup>
 
                     <CapabilityGroup title="通用限制" description="不属于单一媒体类型的请求与输出约束">
                         <div className="grid gap-3 sm:grid-cols-2">
                             <NumberField label="提示词最大字符数" value={profile.references.promptMaxChars} min={1} disabled={disabled} onChange={(value) => updateReferences({ promptMaxChars: value || 1 })} />
-                            <BooleanField label="水印" value={profile.watermark} disabled={disabled} onChange={(watermark) => update({ watermark })} />
+                            {!dramaA ? <BooleanField label="水印" value={profile.watermark} disabled={disabled} onChange={(watermark) => update({ watermark })} /> : null}
                         </div>
                     </CapabilityGroup>
                 </>
@@ -484,7 +487,7 @@ function ImageCapabilityEditor({ value, onChange, protocol, model, imageParamete
             <ImageParameterSchemaEditor definitions={definitions} parameters={profile.parameters.filter((p) => p.name === "imageResolution")} disabled={disabled} onChange={(parameters) => onChange?.({ version: 1, image: updateImageParameterSchema(profile, profile.parameters!.map((p) => parameters.find((next) => next.name === p.name) || p), definitions) })} />
             {size ? <ImageParameterSizeEditor profile={profile} definition={definitions.find((p) => p.name === "size") || size} disabled={disabled} onChange={(image) => onChange?.({ version: 1, image })} /> : null}
             <ImageParameterSchemaEditor definitions={definitions} parameters={profile.parameters.filter((p) => p.name !== "size" && p.name !== "imageResolution")} disabled={disabled} onChange={(parameters) => onChange?.({ version: 1, image: updateImageParameterSchema(profile, profile.parameters!.map((p) => parameters.find((next) => next.name === p.name) || p)) })} />
-            <ImageResponseFormatEditor value={profile.responseFormat} disabled={disabled} onChange={(responseFormat) => update({ responseFormat })} />
+            {!profile.parameters.some((p) => p.binding?.endsWith(".response_format")) ? <ImageResponseFormatEditor value={profile.responseFormat} disabled={disabled} onChange={(responseFormat) => update({ responseFormat })} /> : null}
         </div>;
     }
 

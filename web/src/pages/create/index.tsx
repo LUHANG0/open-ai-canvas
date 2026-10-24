@@ -1,5 +1,6 @@
 import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { App, Spin } from "antd";
+import { App } from "antd";
+import { WorkspaceEntryPending } from "@/components/layout/workspace-entry-pending";
 import { Tooltip } from "@/components/ui/base/tooltip";
 import { History, Sparkles, Maximize2 } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
@@ -17,7 +18,11 @@ import { inferVideoOperation, modelGroupReferenceLimits, resolveCompatibleModel,
 import type { BackendGenerationResult } from "@/services/api/generation-task";
 import type { Skill } from "@/services/api/skills";
 import type { GenerationTask } from "@/services/api/task-center";
-import { loadCreationConversations, pendingCreationTaskIds, removeCreationConversationSnapshot, saveCreationConversations, updateCreationConversationSnapshot } from "@/services/creation-conversation-store";
+import { loadCreationConversations, pendingCreationTaskIds, removeCreationConversationSnapshot, updateCreationConversationSnapshot } from "@/services/creation-conversation-store";
+import { localForageStorageForScope } from "@/lib/localforage-storage";
+import { creationHistoryAPI } from "@/services/api/creation-history";
+import { CreationHistorySync, CREATION_HISTORY_SYNC_KEY, type HistorySyncStatus } from "@/services/creation-history-sync";
+import { creationHistoryMedia, restoreHistoryMedia } from "@/services/creation-history-media";
 import { resolveModelChannel, resolveModelRequestConfig, selectableModelsByCapability, useConfigStore, useEffectiveConfig } from "@/stores/use-config-store";
 import { useCreationPreferencesStore } from "@/stores/use-creation-preferences-store";
 import { useAssetStore, type Asset } from "@/stores/use-asset-store";
@@ -98,6 +103,10 @@ export default function CreatePage() {
     const userSessionHydrated = useUserStore((state) => state.hydrated);
     const inspirationSourcesVisible = useUserStore((state) => state.features.inspirationSourcesVisible);
     const [conversationScope, setConversationScope] = useState<string | null>(null);
+    const historySessionRef = useRef<CreationHistorySync | null>(null);
+    const remoteHistorySnapshotsRef = useRef(new WeakSet<CreationConversation[]>());
+    const historyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const [historySync, setHistorySync] = useState<HistorySyncStatus>({ phase: "local" });
     const [mode, setMode] = useState<CreationMode>(() => initialComposerPreferences.mode || defaultCreationMode);
     const [prompt, setPrompt] = useState("");
     const [attachments, setAttachments] = useState<CreationAttachment[]>([]);
@@ -280,9 +289,34 @@ export default function CreatePage() {
         if (!userSessionHydrated) return;
         let cancelled = false;
         const scope = getActiveUserScope();
+        const controller = new AbortController();
+        const active = () => !cancelled && getActiveUserScope() === scope && (useUserStore.getState().user?.id || null) === userId;
+        const storage = localForageStorageForScope(scope);
+        const session = new CreationHistorySync({
+            read: async () => await storage.getItem(CREATION_HISTORY_SYNC_KEY),
+            readLegacy: () => loadCreationConversations<CreationConversation>(scope),
+            write: async (value) => { await storage.setItem(CREATION_HISTORY_SYNC_KEY, value); },
+            api: creationHistoryAPI(scope, controller.signal),
+            prepare: creationHistoryMedia(scope, controller.signal, active),
+            active,
+            cloud: Boolean(userId) && scope === userId,
+            onChange: (stored) => {
+                if (!active()) return;
+                const next = stored.length ? stored.map((conversation) => ({ ...conversation, messages: conversation.messages.map(restoreHistoryMedia) })) : [newConversation()];
+                remoteHistorySnapshotsRef.current.add(next);
+                conversationsRef.current = next;
+                setConversations(next);
+                if (!next.some((item) => item.id === activeIdRef.current)) { activeIdRef.current = next[0].id; setActiveId(next[0].id); }
+            },
+            onStatus: (status) => { if (active()) setHistorySync(status); },
+        });
+        historySessionRef.current = session;
+        abortRef.current?.abort();
+        setBusy(false);
+        setPrompt(""); setAttachments([]); setDraftReferences([]);
         setHydrated(false);
         setConversationScope(null);
-        void loadCreationConversations<CreationConversation>().then((stored) => {
+        void session.load().then((stored) => {
             if (cancelled || getActiveUserScope() !== scope || (useUserStore.getState().user?.id || null) !== userId) return;
             const next = stored?.length ? stored : [newConversation()];
             conversationsRef.current = next;
@@ -290,12 +324,38 @@ export default function CreatePage() {
             setActiveId(next[0].id);
             setConversationScope(scope);
             setHydrated(true);
+            void session.sync();
+        }).catch((error) => {
+            if (active()) { setHistorySync({ phase: "error", message: error instanceof Error ? error.message : "历史加载失败，原记录已保留" }); toast.error("创作历史暂时无法读取，原记录已保留"); }
         });
+        const refresh = () => { if (document.visibilityState === "visible" && active()) void session.sync(); };
+        window.addEventListener("online", refresh);
+        window.addEventListener("focus", refresh);
+        document.addEventListener("visibilitychange", refresh);
         return () => {
             cancelled = true;
+            controller.abort();
+            session.dispose();
+            if (historyTimerRef.current) clearTimeout(historyTimerRef.current);
+            historyTimerRef.current = null;
+            window.removeEventListener("online", refresh);
+            window.removeEventListener("focus", refresh);
+            document.removeEventListener("visibilitychange", refresh);
             // 页面卸载只停止当前页面的状态更新，后台任务由任务中心继续执行，返回页面后再恢复状态。
         };
-    }, [userId, userSessionHydrated]);
+    }, [userId, userSessionHydrated, toast]);
+
+    const saveCreationConversations = useCallback(async (value: CreationConversation[]) => {
+        if (!conversationScope || conversationScope !== getActiveUserScope() || (useUserStore.getState().user?.id || null) !== userId) return;
+        const session = historySessionRef.current;
+        if (!session) return;
+        await session.save(value);
+        // Streaming deltas must not keep postponing the initial message/task association forever.
+        if (!historyTimerRef.current) historyTimerRef.current = setTimeout(() => {
+            historyTimerRef.current = null;
+            void session.sync();
+        }, 700);
+    }, [conversationScope, userId]);
 
     useEffect(() => () => abortRef.current?.abort(), []);
 
@@ -305,8 +365,8 @@ export default function CreatePage() {
 
     useEffect(() => {
         conversationsRef.current = conversations;
-        if (hydrated && userSessionHydrated && conversationScope === getActiveUserScope()) void saveCreationConversations(conversations);
-    }, [conversations, conversationScope, hydrated, userSessionHydrated]);
+        if (!remoteHistorySnapshotsRef.current.has(conversations) && hydrated && userSessionHydrated && conversationScope === getActiveUserScope()) void saveCreationConversations(conversations).catch((error) => setHistorySync({ phase: "error", message: error instanceof Error ? error.message : "本机保存失败" }));
+    }, [conversations, conversationScope, hydrated, userSessionHydrated, saveCreationConversations]);
 
     useEffect(() => {
         if (!hydrated || !recoveryTaskKey || !pendingTaskIds.length) return;
@@ -360,7 +420,7 @@ export default function CreatePage() {
             observationController.abort();
             unsubscribe();
         };
-    }, [hydrated, recoveryTaskKey, toast]);
+    }, [hydrated, recoveryTaskKey, toast, conversationScope]);
 
     const loadAddedSkills = useCallback(() => {
         if (addedSkillsRequestedRef.current) return;
@@ -381,12 +441,14 @@ export default function CreatePage() {
     }, [activeConversation?.id, activeConversation?.messages, isEmpty]);
 
     const updateActive = useCallback((updater: (conversation: CreationConversation) => CreationConversation) => {
+        if (conversationScope !== getActiveUserScope() || (useUserStore.getState().user?.id || null) !== userId) return;
         const next = updateCreationConversationSnapshot(conversationsRef.current, activeId, updater);
         conversationsRef.current = next;
         setConversations(next);
-    }, [activeId]);
+    }, [activeId, conversationScope, userId]);
 
     const updateConversationMessage = useCallback(async (conversationId: string, id: string, updater: (item: CreationMessage) => CreationMessage) => {
+        if (conversationScope !== getActiveUserScope() || (useUserStore.getState().user?.id || null) !== userId) return;
         const next = updateCreationConversationSnapshot(conversationsRef.current, conversationId, (conversation) => ({
             ...conversation,
             updatedAt: new Date().toISOString(),
@@ -395,7 +457,7 @@ export default function CreatePage() {
         conversationsRef.current = next;
         setConversations(next);
         await saveCreationConversations(next);
-    }, []);
+    }, [conversationScope, userId, saveCreationConversations]);
 
     const selectMode = (next: CreationMode) => {
         setMode(next);
@@ -663,6 +725,9 @@ export default function CreatePage() {
             return;
         }
         const expandedPrompt = skillExecution.prompt;
+        if (conversationScope !== getActiveUserScope() || (useUserStore.getState().user?.id || null) !== userId) {
+            releaseRetryLock(); releaseSubmitGate(); return;
+        }
         const referenceMetadata = skillExecution.metadata;
         followLatestMessageRef.current = true;
         const userMessage = newMessage("user", text, { mode, model: selectedModel, attachments, references, settings });
@@ -889,6 +954,7 @@ export default function CreatePage() {
     };
 
     const confirmDeleteConversation = (conversation: CreationConversation) => {
+        const historySession = historySessionRef.current;
         const title = conversation.title.trim() || "新创作";
         const label = title.length > 32 ? `${title.slice(0, 32)}...` : title;
         modal.confirm({
@@ -900,11 +966,14 @@ export default function CreatePage() {
             cancelText: "保留",
             onOk: async () => {
                 try {
+                    if (conversationScope !== getActiveUserScope() || (useUserStore.getState().user?.id || null) !== userId || historySessionRef.current !== historySession) return;
                     const remaining = removeCreationConversationSnapshot(conversationsRef.current, conversation.id);
                     const sortedRemaining = [...remaining].sort((left, right) => conversationTimestamp(right.updatedAt) - conversationTimestamp(left.updatedAt));
                     const fallback = sortedRemaining.find((item) => item.messages.length > 0) || sortedRemaining[0] || newConversation();
                     const next = remaining.length ? remaining : [fallback];
+                    await historySession?.remove(conversation.id, next);
                     await saveCreationConversations(next);
+                    if (conversationScope !== getActiveUserScope() || historySessionRef.current !== historySession) return;
                     conversationsRef.current = next;
                     setConversations(next);
                     if (activeIdRef.current === conversation.id) {
@@ -990,7 +1059,7 @@ export default function CreatePage() {
         restoreMessageDraft(previous);
     };
 
-    if (!hydrated || !activeConversation) return <div className="grid h-full place-items-center"><Spin /></div>;
+    if (!hydrated || !activeConversation) return historySync.phase === "error" ? <div className="grid h-full place-items-center"><div role="alert"><p>{historySync.message}</p><button type="button" className="creation-history-entry" onClick={() => window.location.reload()}>重新读取历史</button></div></div> : <WorkspaceEntryPending conversation />;
 
     const handleThreadScroll = () => {
         const container = threadScrollRef.current;
@@ -1071,6 +1140,10 @@ export default function CreatePage() {
 
     return <>
         <div className="creation-home relative flex h-full min-h-0 flex-col overflow-hidden">
+        <div className="creation-history-sync" role="status" aria-live="polite">
+            <span title={historySync.message}>{historySync.phase === "local" ? "历史仅保存在本机" : historySync.phase === "pending" ? "历史待同步" : historySync.phase === "synced" ? "历史已同步" : "历史同步失败"}</span>
+            {historySync.phase === "error" ? <button type="button" onClick={() => void historySessionRef.current?.sync()} title={historySync.message}>重试</button> : null}
+        </div>
             {isEmpty ? <>
                 <AnimatePresence>
                     {launchpadCondensed && !agentMode ? <motion.div className="creation-floating-prompt" key="floating-prompt"
@@ -1085,7 +1158,7 @@ export default function CreatePage() {
                         }}><Maximize2 /></button></Tooltip>
                     </motion.div> : null}
                 </AnimatePresence>
-                <main ref={threadScrollRef} onScroll={handleThreadScroll} className="creation-home-scroll creation-scrollbar">
+                <main ref={threadScrollRef} onScroll={handleThreadScroll} className="creation-home-scroll creation-scrollbar" aria-label="对话创作">
                 <section ref={launchpadRef} className="creation-launchpad" aria-label="开始创作">
                     <header className="creation-start-heading">
                         <div>

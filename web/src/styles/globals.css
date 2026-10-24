@@ -2,6 +2,7 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 @import "./primary-buttons.css";
+@import "./studio-palette.css";
 @source "../../node_modules/streamdown/dist/*.js";
 
 @custom-variant dark (&:is(.dark *));
@@ -302,7 +303,7 @@
     --glass-alpha-strong: 0.97;
     --glass-border-alpha: 0.78;
 
-    /* 登录表单跟随全局明暗主题；品牌影片保留独立深色舞台。 */
+    /* 简洁认证表单跟随全局明暗主题与配置皮肤。 */
     --auth-page-bg: #ffffff;
     --auth-panel-bg: #f7f7f7;
     --auth-card-bg: #ffffff;
@@ -373,59 +374,14 @@
     color: var(--foreground);
 }
 
-.auth-scene-hero {
-    background: var(--auth-panel-bg);
-    color: var(--foreground);
-}
-
-.auth-scene-hero-overlay {
-    background: linear-gradient(
-        180deg,
-        color-mix(in srgb, var(--auth-panel-bg) 40%, transparent),
-        transparent 42%,
-        color-mix(in srgb, var(--auth-panel-bg) 76%, transparent)
-    );
-    pointer-events: none;
-}
-
 .auth-scene-brand,
 .auth-scene-brand:hover {
     color: inherit;
 }
 
-.auth-scene-hero-control {
-    border: 1px solid color-mix(in srgb, var(--foreground) 16%, transparent);
-    background: color-mix(in srgb, var(--auth-panel-bg) 78%, transparent);
-    color: color-mix(in srgb, var(--foreground) 82%, transparent);
-}
-
-.auth-scene-hero-control:hover {
-    background: color-mix(in srgb, var(--auth-panel-bg) 92%, transparent);
-}
-
-.auth-scene-hero-muted {
-    color: color-mix(in srgb, var(--foreground) 64%, transparent);
-}
-
-.auth-scene-hero-title {
-    color: var(--foreground);
-}
-
-.auth-scene-form-pane {
-    background: var(--auth-panel-bg);
-}
-
-.auth-scene-video-blend {
-    background: linear-gradient(90deg, transparent 0%, color-mix(in srgb, var(--auth-panel-bg) 68%, transparent) 58%, var(--auth-panel-bg) 100%);
-}
-
 .auth-scene-card {
     background: var(--auth-card-bg);
-    box-shadow: var(--elevation-card-hover);
-}
-
-.auth-scene-eyebrow {
-    color: var(--auth-accent);
+    box-shadow: none;
 }
 
 .auth-scene-muted {
@@ -1836,13 +1792,13 @@
             left: 0;
         }
 
-        .app-workspace-shell .app-workspace-sidebar {
+        .app-workspace-shell .app-workspace-sidebar:not(.workspace-sidebar-container) {
             width: 0 !important;
             border: 0 !important;
             transition: width var(--motion-state) var(--ease-aceternity);
         }
 
-        .app-workspace-shell .app-workspace-sidebar.is-mobile-expanded {
+        .app-workspace-shell .app-workspace-sidebar.is-mobile-expanded:not(.workspace-sidebar-container) {
             position: absolute;
             z-index: 40;
             inset: 6px auto 6px 6px;
@@ -7060,9 +7016,10 @@ html:not(.dark) .creation-studio-control[aria-expanded="true"] { background: #e7
         transition: var(--control-state-transition) !important;
     }
 
-    .auth-scene-card :where(.ant-input, .ant-input-affix-wrapper) {
-        border-color: transparent !important;
-        background: color-mix(in srgb, var(--foreground) 5.5%, transparent) !important;
+    .auth-scene-card :is(.ant-input-affix-wrapper, input.ant-input):where(:not(.ant-input-affix-wrapper > input):not(.auth-code-field > input)) {
+        --auth-field-bg: var(--auth-input-bg);
+        border-color: var(--auth-input-border) !important;
+        background: var(--auth-field-bg) !important;
         box-shadow: none !important;
         transition: var(--control-state-transition) !important;
     }
@@ -7074,20 +7031,18 @@ html:not(.dark) .creation-studio-control[aria-expanded="true"] { background: #e7
         box-shadow: none !important;
     }
 
-    .auth-scene-card :where(.ant-input:hover, .ant-input-affix-wrapper:hover) {
-        border-color: transparent !important;
-        background: color-mix(in srgb, var(--foreground) 7%, transparent) !important;
+    .auth-scene-card :is(.ant-input-affix-wrapper, input.ant-input):where(:not(.ant-input-affix-wrapper > input):not(.auth-code-field > input)):where(:not(:disabled):not(.ant-input-affix-wrapper-disabled):hover) {
+        --auth-field-bg: var(--auth-input-hover-bg);
+        border-color: var(--auth-muted) !important;
     }
 
-    .auth-scene-card :where(.ant-input:focus, .ant-input-focused, .ant-input-affix-wrapper-focused) {
-        border-color: transparent !important;
-        background: color-mix(in srgb, var(--foreground) 8.5%, transparent) !important;
-        box-shadow: none !important;
+    .auth-scene-card :is(.ant-input-affix-wrapper-focused, input.ant-input:focus):where(:not(.ant-input-affix-wrapper > input):not(.auth-code-field > input)) {
+        border-color: var(--auth-accent) !important;
     }
 
     .auth-scene-card .ant-input:focus-visible,
     .auth-scene-card .ant-input-affix-wrapper:has(input:focus-visible) {
-        outline: 1px solid var(--control-focus-ring) !important;
+        outline: 2px solid var(--control-focus-ring) !important;
         outline-offset: 2px !important;
     }
 
@@ -7099,10 +7054,24 @@ html:not(.dark) .creation-studio-control[aria-expanded="true"] { background: #e7
         color: var(--foreground) !important;
     }
 
-    .auth-scene-card input:-webkit-autofill,
-    .auth-scene-card input:-webkit-autofill:hover,
-    .auth-scene-card input:-webkit-autofill:focus {
-        box-shadow: 0 0 0 1000px var(--auth-card-bg) inset !important;
+    .auth-scene-card :is(.ant-input-affix-wrapper-disabled, input.ant-input:disabled):not(.ant-input-affix-wrapper > input) {
+        --auth-field-bg: var(--auth-input-disabled-bg);
+        border-color: var(--auth-input-border) !important;
+        color: var(--auth-input-disabled-fg) !important;
+    }
+
+    .auth-scene-card :is(.ant-input-status-error, .ant-input-affix-wrapper-status-error):not(.ant-input-affix-wrapper > input),
+    .auth-scene-card .ant-input-affix-wrapper:has(input:user-invalid),
+    .auth-scene-card input.ant-input:user-invalid:not(.ant-input-affix-wrapper > input) {
+        --auth-field-bg: var(--auth-error-bg);
+        border-color: var(--auth-error) !important;
+    }
+
+    /* Autofill paints the same surface as the surrounding control, including focus and hover. */
+    .auth-scene-card input.ant-input:-webkit-autofill,
+    .auth-scene-card input.ant-input:-webkit-autofill:hover,
+    .auth-scene-card input.ant-input:-webkit-autofill:focus {
+        box-shadow: 0 0 0 1000px var(--auth-field-bg, var(--auth-input-bg)) inset !important;
         -webkit-text-fill-color: var(--foreground) !important;
         caret-color: var(--foreground);
     }
@@ -7110,29 +7079,30 @@ html:not(.dark) .creation-studio-control[aria-expanded="true"] { background: #e7
     /* 验证码输入行：输入框与获取按钮同排，按钮贴右侧并用竖线分隔。
        倒计时/禁用时按钮降到弱化态，避免和主提交按钮争夺注意力。 */
     .auth-code-field {
+        --auth-field-bg: var(--auth-input-bg, color-mix(in srgb, var(--foreground) 5.5%, transparent));
         display: flex;
         align-items: stretch;
         gap: 0;
-        border: var(--control-border-width) solid transparent;
+        border: var(--control-border-width) solid var(--auth-input-border, transparent);
         border-radius: var(--radius, var(--r-sm));
-        background: color-mix(in srgb, var(--foreground) 5.5%, transparent);
+        background: var(--auth-field-bg);
         transition: var(--control-state-transition);
     }
 
     .auth-code-field:hover {
-        border-color: transparent;
-        background: color-mix(in srgb, var(--foreground) 7%, transparent);
+        --auth-field-bg: var(--auth-input-hover-bg, color-mix(in srgb, var(--foreground) 7%, transparent));
+        border-color: var(--auth-input-hover-border, transparent);
     }
 
     /* 焦点环挂在整行容器上，内部输入框不再叠加第二层高亮。 */
     .auth-code-field:focus-within {
-        border-color: transparent;
-        background: color-mix(in srgb, var(--foreground) 8.5%, transparent);
+        --auth-field-bg: var(--auth-input-bg, color-mix(in srgb, var(--foreground) 8.5%, transparent));
+        border-color: var(--auth-input-focus-border, transparent);
         box-shadow: none;
     }
 
     .auth-code-field:has(input:focus-visible) {
-        outline: 1px solid var(--control-focus-ring);
+        outline: var(--auth-input-focus-width, 1px) solid var(--control-focus-ring);
         outline-offset: 2px;
     }
 
@@ -18101,23 +18071,23 @@ html:not(.dark) .creation-home .creation-user-message-copy-wrap { box-shadow: 0 
    ======================================================================== */
 .app-user-workspace,
 .app-user-overlays {
-    --user-page-bg: #f8f8fa;
-    --user-surface: #ffffff;
-    --user-surface-raised: #ffffff;
-    --user-surface-muted: #f1f1f3;
-    --user-surface-hover: #eaeaec;
-    --user-border: rgba(25, 25, 30, .10);
-    --user-border-strong: rgba(25, 25, 30, .17);
-    --user-ink: #1d1d21;
-    --user-ink-muted: #686872;
-    --user-ink-soft: #85858e;
+    --user-page-bg: var(--studio-page);
+    --user-surface: var(--studio-surface);
+    --user-surface-raised: var(--studio-raised);
+    --user-surface-muted: var(--studio-muted);
+    --user-surface-hover: var(--studio-hover);
+    --user-border: var(--studio-border);
+    --user-border-strong: var(--studio-border-strong);
+    --user-ink: var(--studio-ink);
+    --user-ink-muted: var(--studio-ink-muted);
+    --user-ink-soft: var(--studio-ink-soft);
     --user-accent: var(--workspace-accent);
     --user-accent-soft: var(--control-selected-bg);
     --user-shadow-card: none;
     --user-shadow-hover: none;
     --user-radius-card: 16px;
     --user-radius-control: 12px;
-    --user-control-pressed: #e1e1e5;
+    --user-control-pressed: var(--studio-pressed);
     --user-control-height: 38px;
     --user-icon-size: 16px;
     --workspace-focus-ring: var(--product-accent-blue);
@@ -18130,17 +18100,6 @@ html:not(.dark) .creation-home .creation-user-message-copy-wrap { box-shadow: 0 
 
 .dark .app-user-workspace,
 .dark .app-user-overlays {
-    --user-page-bg: #151517;
-    --user-surface: #1c1c1f;
-    --user-surface-raised: #222226;
-    --user-surface-muted: #26262a;
-    --user-surface-hover: #303036;
-    --user-control-pressed: #3a3a40;
-    --user-border: rgba(255, 255, 255, .09);
-    --user-border-strong: rgba(255, 255, 255, .16);
-    --user-ink: #f3f3f5;
-    --user-ink-muted: #b4b4bc;
-    --user-ink-soft: #9797a1;
     --user-shadow-card: none;
     --user-shadow-hover: none;
 }

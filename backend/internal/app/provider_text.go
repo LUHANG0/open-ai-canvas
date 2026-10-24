@@ -4,6 +4,7 @@ package app
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -42,6 +43,24 @@ func protocolTextWire(ctx context.Context, interfaceType string) string {
 
 func executeProtocolCreateRequest(ctx context.Context, input canvasGenerationInput, spec protocol.RequestSpec) ([]byte, *protocol.Result, error) {
 	wire := protocolTextWire(ctx, input.Config.InterfaceType)
+	if input.Mode == "text" && wire == "responses" && !input.StreamText {
+		data, err := executeProtocolRequest(ctx, input.Config, spec)
+		if err != nil {
+			return nil, nil, err
+		}
+		var payload map[string]interface{}
+		if err := json.Unmarshal(data, &payload); err != nil {
+			return nil, nil, err
+		}
+		parsed, err := parseAgentToolPayload(payload, wire)
+		if err != nil {
+			return nil, nil, err
+		}
+		if strings.TrimSpace(stringField(parsed, "text")) == "" {
+			return nil, nil, errors.New("文本接口没有返回内容")
+		}
+		return data, &protocol.Result{Text: stringField(parsed, "text"), Reasoning: stringField(parsed, "reasoning")}, nil
+	}
 	if input.Mode != "text" || !input.StreamText || (wire != "chat-completion" && wire != "responses" && wire != "claude-api") {
 		data, err := executeProtocolRequest(ctx, input.Config, spec)
 		return data, nil, err

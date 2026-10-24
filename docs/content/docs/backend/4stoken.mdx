@@ -1,0 +1,49 @@
+---
+title: 4SToken 协议插件
+description: 4SToken 聊天、图片与视频的独立协议、参数和验证边界
+---
+
+# 4SToken 协议插件
+
+`4stoken.yingce-plugin` 是独立安装包，源码在 `plugin-packages/4stoken/`，完整字段见包内 `docs/interface.md`。不改变夜总会协议或把两家的媒体合同混用。
+
+## 配置
+
+默认 API 地址为 `https://api.4stoken.cn`，不是文档站点 `www.4stoken.cn`。渠道配置 Client Key，宿主通过 Bearer 请求头鉴权；模型 ID 使用当前令牌从 `/v1/models` 取得的 modelCode。新分发包在后端启动时进入插件注册表，也可通过已有上传入口安装。安装后需启用插件，并在每个模型选择实际开放的线路：
+
+| 选择 | Provider ID | 主要接口 |
+| --- | --- | --- |
+| 4SToken 聊天 | `4stoken-chat` | `/v1/chat/completions` |
+| 4SToken Responses | `4stoken-responses` | `/v1/responses` |
+| 4SToken Claude | `4stoken-claude` | `/v1/messages` |
+| 4SToken 图片任务 | `4stoken-image` | `/v1/images/generations`、`/v1/images/edits` |
+| 4SToken Seedream 原生图片 | `4stoken-seedream` | `/api/v3/images/generations` |
+| 4SToken 视频任务 | `4stoken-video` | `/v1/videos` |
+
+模型能力配置按服务商当前线路限定尺寸、比例、时长、素材数量及音频能力，不由示例模型推断。视频分辨率初始为空，需要明确配置；视频/音频参考默认关闭，确认模型支持后填写对应上限。点击模型测试会真实调用模型；本次开发没有代用户点击或创建收费任务。
+
+## 图片
+
+Gateway 图片固定 `async=true`，查询 `/v1/images/tasks/{taskId}`。没有源图时使用 JSON 文生图；有源图时使用 multipart edits，多图重复 `image` 字段，蒙版使用 `mask`，必须同时有源图片。尺寸原样映射 `size`，不发送单独 resolution。模型参数包含 size、count 及可选透明背景和输出格式；不自动发送 quality，避免服务商文档所述的官转渠道进入企业分组计费。
+
+Seedream 原生图片使用独立同步接口，参考图放 `image` 数组，默认 URL 输出后立即保存；组图用 sequential_image_generation 控制，参考最多 14 张，参考与输出合计最多 15。该接口没有蒙版，size 必须是模型允许的档位或像素尺寸，不能直接传比例。不要把它的响应当 Gateway task_id 任务处理。
+
+## 视频
+
+Gateway 视频为 JSON。时长发送 `duration`，比例发送 `aspect_ratio`，清晰度发送 `resolution`，声音为 `generate_audio`。普通参考图片映射 image_url / image_urls；首尾帧按角色映射 start_image_url / end_image_url，成对首尾帧不能混入其他参考素材。包含视频或音频时使用文档支持的 content 数组，保留类型、顺序和角色。
+
+创建保存本地 task_id，兼容 taskId；查询 `/v1/videos/{taskId}`，成功结果读取 data[].video_url 或 data[].url，不用上游任务 ID 替代查询 ID，不推测 `/content` 下载端点。视频参考必须为公网 HTTP(S) URL，素材库 asset 引用、Seedance draft/升档与 duration=-1 编辑不在该 Provider 的本次范围。
+
+## 宿主与结果
+
+三种文本声明各自 streamingFormat，复用普通文本和 Agent 的 JSON / SSE 解析。Responses JSON 同时识别 output_text 和 output 中的文本块，并保留工具 call ID 与独立 item ID，继续下一轮时仍校验身份。
+
+Gateway 图片每 10 秒、视频每 15 秒查询，临时查询错误最多连续重试三次；这是本地策略，不是服务商限流承诺。pending / running 继续，succeeded 才取结果，failed / canceled 结束；未知状态受截止时间约束继续查询。图片结果兼容文档明确提到的旧 result.data 外壳。
+
+媒体 URL 由宿主立即下载保存，下载失败不重新创建收费任务。已有异步图片与视频超时恢复时仅查询原 ID。400、401、402、404 等保留真实失败，不自动更换规格或分组。插件不接入音频、向量、审核、素材库管理或回调服务。
+
+## 验证边界
+
+后端专项覆盖真实分发包、JSON / multipart 请求、重复文件、蒙版、图片新旧结果结构、任务 ID、状态、结果 URL、查询重试与恢复；三种聊天的 SSE、JSON 和 Agent 工具回合也有本地模拟验证。前端默认能力专项与相邻回归通过，类型检查通过。
+
+尚未使用真实 Client Key 验证模型列表、线路权限、计费、真实媒体生成、远端工具支持或画布保存刷新。全站生产构建与真实浏览器模型验收未执行。待验收见[待测试](/docs/progress/pending-test)。依据：[4SToken 接口文档](https://www.4stoken.cn/docs)。

@@ -2,7 +2,12 @@
 
 面向 AI 的短索引。详细文档维护规则见 [AGENTS.md](../AGENTS.md) 第 9 节「文档与交付」。
 
+- [创作页历史跨设备同步](content/docs/backend/creation-conversation-sync.mdx)：账号历史、旧本地迁移、逐消息修订、删除防复活及媒体引用边界。
+- [用户注册邀请](content/docs/backend/registration-invitations.mdx)：管理员单次邀请、关闭公开注册时的验证、固定积分、事务与迁移回退边界。
+
 ## 部署与更新入口
+
+- [梦层自建镜像部署](content/docs/backend/mengceng-self-hosting.mdx)：当前 Fork 的自建镜像选择、共享宝塔主机隔离、构建补充层和验收边界；该明确选择优先于下述通用默认方案。
 
 用户要求部署服务器时，默认使用官方 Release 镜像、`docker-compose.deploy.yml` 和 Host Updater。本地 SQLite 构建与自定义 Compose 不属于后台在线更新管理范围。
 
@@ -61,10 +66,14 @@
 
 ## 按约定维护的文档（`docs/content/docs/`）
 
+- [梦层品牌官网与发布](content/docs/backend/mengceng-brand-site.mdx)：根入口、品牌内容、草稿隔离、原子发布与上一版恢复。
+
 功能、代码地图、待办、待测试分别维护在以下页面；尚未建立的专题会在对应任务中补齐：
 
 - [AI 审美批改画布插件](content/docs/plugins/ai-art-critique.mdx)
 - [夜总会协议插件](content/docs/backend/yezonghui.mdx)
+- [4SToken 协议插件](content/docs/backend/4stoken.mdx)
+- [Drama API 协议插件](content/docs/backend/drama-api.mdx)
 - [功能](content/docs/overview/features.mdx)
 - [本地开发](content/docs/backend/local-development.mdx)
 - [HTTP API 合同](content/docs/backend/http-api.mdx)

@@ -48,13 +48,13 @@ describe("account storage meter", () => {
 });
 
 describe("workspace sidebar storage meter", () => {
-    test("sits above the signed-in profile and shows used, remaining and total", () => {
+    test("stays available in the account panel and shows used, remaining and total", () => {
         const sidebar = readFileSync(resolve(import.meta.dir, "../src/components/layout/workspace-sidebar-nav.tsx"), "utf8");
         const meter = readFileSync(resolve(import.meta.dir, "../src/components/layout/workspace-sidebar-storage-meter.tsx"), "utf8");
         const css = readFileSync(resolve(import.meta.dir, "../src/styles/globals.css"), "utf8");
 
-        expect(sidebar).toContain("<WorkspaceSidebarStorageMeter collapsed={collapsed} />");
-        expect(sidebar.indexOf("WorkspaceSidebarStorageMeter")).toBeLessThan(sidebar.indexOf("app-workspace-sidebar-profile-row"));
+        expect(sidebar).toContain("<WorkspaceSidebarStorageMeter collapsed={false} />");
+        expect(sidebar).toContain('className="workspace-navigation-account-status"');
         expect(meter).toContain("HardDrive");
         expect(meter).toContain("app-workspace-sidebar-storage-icon");
         expect(meter).toContain("已用 ${meter.usedLabel}");

@@ -10,14 +10,9 @@ export type PublicAppearance = {
     schemaVersion: number;
     brandName: string;
     brandSlug: string;
-    authHeroTitle: string;
-    authHeroDescription: string;
     logoUrl: string;
     darkLogoUrl: string;
     logoFrameEnabled: boolean;
-    authVideoUrl: string;
-    authVideoPosterUrl: string;
-    authVideoAutoplay: boolean;
     skinId: string;
     activeSkin: SkinDefinition;
     seoTitle: string;
@@ -29,8 +24,6 @@ export type PublicAppearance = {
     redeemPurchaseUrl: string;
     logoConfigured: boolean;
     darkLogoConfigured: boolean;
-    authVideoConfigured: boolean;
-    authVideoPosterConfigured: boolean;
     configured: boolean;
     revision: string;
     updatedAt?: string;
@@ -42,14 +35,9 @@ export type AdminAppearance = {
     schemaVersion: number;
     brandName: string;
     brandSlug: string;
-    authHeroTitle: string;
-    authHeroDescription: string;
     logoResourceId: string;
     darkLogoResourceId: string;
     logoFrameEnabled: boolean;
-    authVideoResourceId: string;
-    authVideoPosterResourceId: string;
-    authVideoAutoplay: boolean;
     skinId: string;
     skinThemes: SkinDefinition[];
     seoTitle: string;
@@ -66,7 +54,7 @@ export type AdminAppearance = {
     updatedAt?: string;
 };
 
-export type AppearanceAssetSlot = "logo" | "logo-dark" | "video" | "poster";
+export type AppearanceAssetSlot = "logo" | "logo-dark";
 export type AppearanceAssetUploadSlot = AppearanceAssetSlot;
 
 export type AppearanceResource = {
@@ -99,14 +87,9 @@ export async function updateAdminAppearance(
         | "canvas"
         | "updates"
         | "brandSlug"
-        | "authHeroTitle"
-        | "authHeroDescription"
         | "logoResourceId"
         | "darkLogoResourceId"
         | "logoFrameEnabled"
-        | "authVideoResourceId"
-        | "authVideoPosterResourceId"
-        | "authVideoAutoplay"
         | "skinId"
         | "skinThemes"
         | "seoTitle"
@@ -127,7 +110,7 @@ export async function resetAdminAppearance() {
     return result.setting;
 }
 
-export async function uploadAppearanceAsset(slot: AppearanceAssetUploadSlot | "update-image" | "update-video", file: File) {
+export async function uploadAppearanceAsset(slot: AppearanceAssetUploadSlot | "update-image" | "update-video" | "brand-image" | "brand-video", file: File) {
     const body = new FormData();
     body.append("file", file);
     const result = await http.post<{ resource: AppearanceResource }>(`/admin/settings/appearance/assets/${slot}`, body);

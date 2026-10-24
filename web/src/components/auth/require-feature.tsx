@@ -7,10 +7,10 @@ import { WorkspaceErrorState, WorkspaceLoadingState, WorkspaceState } from "@/co
 import { refreshFeatureAvailability } from "@/lib/user-session";
 import { useUserStore } from "@/stores/use-user-store";
 
-type FeatureKey = "shortDramaEnabled" | "taskCenterEnabled" | "creditsEnabled" | "frontendModelsEnabled" | "pluginCenterEnabled" | "imageWorkbenchEnabled" | "videoWorkbenchEnabled";
+export type FeatureKey = "shortDramaEnabled" | "taskCenterEnabled" | "creditsEnabled" | "frontendModelsEnabled" | "pluginCenterEnabled" | "imageWorkbenchEnabled" | "videoWorkbenchEnabled";
 
 const featureNames: Record<FeatureKey, string> = {
-    shortDramaEnabled: "短剧创作",
+    shortDramaEnabled: "短剧项目",
     taskCenterEnabled: "任务中心",
     creditsEnabled: "积分中心",
     frontendModelsEnabled: "前台模型",
@@ -50,14 +50,14 @@ export function RequireFeature({ feature, children }: { feature: FeatureKey; chi
     if (error)
         return (
             <WorkspacePage>
-                <WorkspaceErrorState title="无法确认功能状态" description={error} actionLabel="返回创作台" onRetry={() => navigate("/", { replace: true })} />
+                <WorkspaceErrorState title="无法确认功能状态" description={error} actionLabel="返回对话创作" onRetry={() => navigate("/create", { replace: true })} />
             </WorkspacePage>
         );
     if (!features[feature]) {
         // 管理员页面返回到管理后台首页，用户页面返回到创作台
         const isAdminFeature = feature === "frontendModelsEnabled";
-        const backPath = isAdminFeature ? "/admin" : "/";
-        const backLabel = isAdminFeature ? "返回管理后台" : "返回创作台";
+        const backPath = isAdminFeature ? "/admin" : "/create";
+        const backLabel = isAdminFeature ? "返回管理后台" : "返回对话创作";
 
         return (
             <WorkspacePage>

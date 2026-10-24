@@ -102,6 +102,7 @@ const adminNavigation: Array<{ label: string; items: AdminNavigationItem[] }> = 
             { path: "/admin/plugins", label: "插件管理", description: "平台可用性、上传与卸载", icon: <PlugZap className="size-4" /> },
             { path: "/admin/skill-curation", label: "技能分类", description: "平台策展与分类维护", icon: <PlugZap className="size-4" /> },
             { path: "/admin/settings/appearance", label: "站点及外观", description: "品牌、SEO、备案与皮肤", icon: <Palette className="size-4" /> },
+            { path: "/admin/settings/brand-site", label: "品牌官网", description: "草稿、预览与手动发布", icon: <Layers3 className="size-4" /> },
             { path: "/admin/settings/features", label: "功能开放", description: "工作台、插件与模型能力", icon: <ToggleLeft className="size-4" /> },
             { path: "/admin/settings/drawing-engine", label: "绘图工具", description: "画布绘图节点默认引擎", icon: <Paintbrush className="size-4" /> },
             { path: "/admin/settings/runtime-policy", label: "资源与策略", description: "配额、并发、频控与超时", icon: <Settings2 className="size-4" /> },
@@ -167,7 +168,7 @@ function AdminShellLayout() {
                             <AdminTooltip title={collapsed ? (appearance.updates?.enabled ? "查看更新公告" : "查看更新日志") : undefined} placement="right">
                                 <AppChangelogButton
                                     className={cn("admin-sidebar-brand-button", collapsed && "is-collapsed")}
-                                    icon={<BrandLogoFrame className="admin-sidebar-brand-mark grid shrink-0 place-items-center bg-foreground text-background" logoClassName="size-5 object-contain" alt="" fallback={<InfinityIcon className="size-4" />} />}
+                                    icon={<BrandLogoFrame className="admin-sidebar-brand-mark grid shrink-0 place-items-center bg-muted text-foreground" logoClassName="size-5 object-contain" alt="" fallback={<InfinityIcon className="size-4" />} />}
                                     label={appearance.brandName}
                                     showLabel={!collapsed}
                                     showVersion={!collapsed}
@@ -180,7 +181,7 @@ function AdminShellLayout() {
                         <div className={cn("admin-sidebar-footer shrink-0", collapsed && "is-collapsed")}>
                             <div className="admin-sidebar-footer-row">
                                 <AdminTooltip title={collapsed ? "返回创作台" : undefined} placement="right">
-                                    <NavLink to="/" aria-label={collapsed ? "返回创作台" : undefined} className={cn("admin-nav-link", collapsed && "is-collapsed")}>
+                                    <NavLink to="/create" aria-label={collapsed ? "返回创作台" : undefined} className={cn("admin-nav-link", collapsed && "is-collapsed")}>
                                         <Home className="size-4" strokeWidth={1.6} />
                                         {!collapsed ? <span>返回创作台</span> : null}
                                     </NavLink>
@@ -321,7 +322,7 @@ function MobileAdminNavigation() {
             </Dropdown>
             <div className="flex shrink-0 items-center gap-1">
                 <AdminTooltip title="返回创作台">
-                    <Link to="/" className="admin-mobile-navigation-action" aria-label="返回创作台">
+                    <Link to="/create" className="admin-mobile-navigation-action" aria-label="返回创作台">
                         <Home className="size-4" aria-hidden="true" />
                     </Link>
                 </AdminTooltip>

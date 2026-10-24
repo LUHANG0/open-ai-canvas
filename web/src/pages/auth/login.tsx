@@ -5,14 +5,16 @@ import { ArrowRight, LockKeyhole, UserRound } from "lucide-react";
 import { Link, useNavigate, useSearchParams } from "react-router";
 
 import { getAuthSession, getAuthSettings, linuxDOLoginURL, login } from "@/services/api/auth";
-import { useUserStore } from "@/stores/use-user-store";
 import { LinuxDOIcon } from "./auth-scene";
 import { VerificationFields } from "@/components/auth/verification-fields";
+import { safeAuthNext } from "@/lib/auth-navigation";
+import { useBrandAuthFlow } from "@/components/brand/brand-auth-entry";
 import { emptyVerification, loginVerification, methodLabels, verificationMethods, type VerificationMethod } from "@/services/api/verification";
 
 export default function LoginPage() {
     const navigate = useNavigate();
     const [params] = useSearchParams();
+    const flow = useBrandAuthFlow();
     const { message } = App.useApp();
     const [username, setUsername] = useState("");
     const [password, setPassword] = useState("");
@@ -21,17 +23,8 @@ export default function LoginPage() {
     const [methods, setMethods] = useState<VerificationMethod[]>([]);
     const [method, setMethod] = useState<"password" | VerificationMethod>("password");
     const [verification, setVerification] = useState({ ...emptyVerification });
-    const next = safeNext(params.get("next"));
+    const next = safeAuthNext(flow?.next ?? params.get("next"));
     const forgotPasswordURL = `/forgot-password?next=${encodeURIComponent(next)}`;
-    const user = useUserStore((state) => state.user);
-    const hydrated = useUserStore((state) => state.hydrated);
-
-    // 如果已登录，直接跳转
-    useEffect(() => {
-        if (hydrated && user) {
-            navigate(next, { replace: true });
-        }
-    }, [hydrated, user, next, navigate]);
 
     useEffect(() => {
         void getAuthSettings()
@@ -78,6 +71,8 @@ export default function LoginPage() {
                 action={
                     <Link
                         to={forgotPasswordURL}
+                        onClick={(event) => { if (flow && !event.metaKey && !event.ctrlKey && !event.altKey && !event.shiftKey && event.button === 0) { event.preventDefault(); flow.changeMode("forgot-password"); } }}
+                        viewTransition
                         className="auth-scene-link -my-2 inline-flex min-h-8 items-center rounded-sm text-xs font-medium transition-colors duration-150 motion-reduce:transition-none"
                     >
                         忘记密码？
@@ -112,7 +107,6 @@ export default function LoginPage() {
         </form>
     );
 }
-
 function AuthField({ label, htmlFor, action, children }: { label: string; htmlFor: string; action?: ReactNode; children: ReactNode }) {
     return (
         <div className="space-y-2">
@@ -125,9 +119,4 @@ function AuthField({ label, htmlFor, action, children }: { label: string; htmlFo
             {children}
         </div>
     );
-}
-
-function safeNext(value: string | null) {
-    if (!value || !value.startsWith("/") || value.startsWith("//")) return "/";
-    return value;
 }

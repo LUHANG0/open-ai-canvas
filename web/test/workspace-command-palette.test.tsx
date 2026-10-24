@@ -137,9 +137,10 @@ test("输入框方向键选择安全路由，Enter 只激活当前条目", async
     try {
         await fixture.key(fixture.input, "ArrowDown");
         await fixture.key(fixture.input, "ArrowDown");
+        await fixture.key(fixture.input, "ArrowDown");
         await fixture.key(fixture.input, "ArrowUp");
         const selected = fixture.host.querySelector('[role="option"][aria-selected="true"]')!;
-        expect(selected.textContent).toBe("短剧创作");
+        expect(selected.textContent).toBe("短剧项目");
         expect(fixture.input.getAttribute("aria-activedescendant")).toBe(selected.id);
         expect(document.activeElement).toBe(fixture.input);
         await fixture.key(fixture.input, "Enter");

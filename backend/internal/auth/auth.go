@@ -29,16 +29,17 @@ var usernamePattern = regexp.MustCompile(`^[a-zA-Z0-9_-]{3,32}$`)
 type AuthError = kernel.AppError
 
 type RegisterRequest struct {
-	LoginContext  LoginContext `json:"-"`
-	Username      string       `json:"username"`
-	Email         string       `json:"email"`
-	EmailCode     string       `json:"emailCode"`
-	Phone         string       `json:"phone"`
-	SMSCode       string       `json:"smsCode"`
-	Ticket        string       `json:"ticket"`
-	DisplayName   string       `json:"displayName"`
-	Password      string       `json:"password"`
-	AcceptedTerms bool         `json:"acceptedTerms"`
+	LoginContext   LoginContext `json:"-"`
+	Username       string       `json:"username"`
+	Email          string       `json:"email"`
+	EmailCode      string       `json:"emailCode"`
+	Phone          string       `json:"phone"`
+	SMSCode        string       `json:"smsCode"`
+	Ticket         string       `json:"ticket"`
+	DisplayName    string       `json:"displayName"`
+	Password       string       `json:"password"`
+	AcceptedTerms  bool         `json:"acceptedTerms"`
+	InvitationCode string       `json:"invitationCode"`
 }
 
 type LoginRequest struct {
@@ -61,9 +62,10 @@ type PublicAuthSettings struct {
 }
 
 type AuthSessionResult struct {
-	User       AuthUser `json:"user"`
-	Session    string   `json:"session"`
-	MaxAgeSecs int      `json:"maxAgeSecs"`
+	User                    AuthUser `json:"user"`
+	Session                 string   `json:"session"`
+	MaxAgeSecs              int      `json:"maxAgeSecs"`
+	SignupBonusMicrocredits *int64   `json:"signupBonusMicrocredits,omitempty"`
 }
 
 type AuthUser struct {
@@ -129,6 +131,32 @@ func (s *Service) PublicAuthSettings() (*PublicAuthSettings, error) {
 }
 
 func (s *Service) Register(req RegisterRequest) (*AuthSessionResult, error) {
+	s.registrationMu.Lock()
+	defer s.registrationMu.Unlock()
+	if req.InvitationCode == "" {
+		return s.register(req)
+	}
+	var result *AuthSessionResult
+	err := s.repo.Transaction(func(tx *repository.Repository) error {
+		domain := New(tx, registrationTransactionHost{s.host}, s.mailSender)
+		domain.sms = s.sms
+		var err error
+		result, err = domain.register(req)
+		return err
+	})
+	if err != nil {
+		return nil, err
+	}
+	s.host.RecordActivity(result.User.ID, "login", 1)
+	return result, nil
+}
+
+// Activity is published only after the invitation transaction commits.
+type registrationTransactionHost struct{ Host }
+
+func (registrationTransactionHost) RecordActivity(string, string, int) {}
+
+func (s *Service) register(req RegisterRequest) (*AuthSessionResult, error) {
 	if !req.AcceptedTerms {
 		return nil, kernel.BadAuthRequest("请先同意" + s.AgreementTitleForMessage())
 	}
@@ -146,8 +174,6 @@ func (s *Service) Register(req RegisterRequest) (*AuthSessionResult, error) {
 			return nil, err
 		}
 	}
-	s.registrationMu.Lock()
-	defer s.registrationMu.Unlock()
 	count, err := s.repo.UserCount()
 	if err != nil {
 		return nil, err
@@ -155,16 +181,19 @@ func (s *Service) Register(req RegisterRequest) (*AuthSessionResult, error) {
 	var verifiedCode *model.EmailVerificationCode
 	var verification *model.AuthVerification
 	phone := ""
-	if count > 0 {
-		registrationEnabled, err := s.RegistrationEnabled()
+	var invitation *model.RegistrationInvitation
+	if req.InvitationCode != "" {
+		invitation, err = s.requireRegistrationInvitation(req.InvitationCode)
 		if err != nil {
 			return nil, err
 		}
-		if !registrationEnabled {
-			return nil, kernel.Forbidden("管理员未开放新用户注册")
+	}
+	if count > 0 || invitation != nil {
+		if err := s.registrationAllowed(req.InvitationCode); err != nil {
+			return nil, err
 		}
 		if req.Ticket != "" {
-			verification, err = s.verifyTicket("register", VerificationConfirm{Ticket: req.Ticket, EmailCode: req.EmailCode, SMSCode: req.SMSCode})
+			verification, err = s.verifyTicket("register", VerificationConfirm{Ticket: req.Ticket, EmailCode: req.EmailCode, SMSCode: req.SMSCode}, req.InvitationCode)
 			if err != nil {
 				return nil, err
 			}
@@ -222,7 +251,7 @@ func (s *Service) Register(req RegisterRequest) (*AuthSessionResult, error) {
 		CreatedAt:    now,
 		UpdatedAt:    now,
 	}
-	if count == 0 {
+	if count == 0 && invitation == nil {
 		user.Role = model.UserRoleAdmin
 	}
 	if verification != nil {
@@ -246,13 +275,25 @@ func (s *Service) Register(req RegisterRequest) (*AuthSessionResult, error) {
 	} else if err := s.repo.CreateRegisteredUser(&user); err != nil {
 		return nil, err
 	}
-	if err := s.host.EnsureSignupBonus(user.ID); err != nil {
-		return nil, err
+	if invitation != nil {
+		if err := s.repo.ConsumeRegistrationInvitation(invitation, user.ID, time.Now()); err != nil {
+			if errors.Is(err, repository.ErrInvitationUnavailable) {
+				return nil, kernel.NewAppError(409, err.Error())
+			}
+			return nil, err
+		}
+	} else {
+		if err := s.host.EnsureSignupBonus(user.ID); err != nil {
+			return nil, err
+		}
 	}
 	event := NewLoginLog("password", "registration", req.LoginContext)
 	result, err := s.createAuthSession(&user, event)
 	if err != nil {
 		return nil, s.recordLoginFailure(event, err)
+	}
+	if invitation != nil {
+		result.SignupBonusMicrocredits = &invitation.BonusMicrocredits
 	}
 	return result, nil
 }

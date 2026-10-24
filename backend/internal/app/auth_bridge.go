@@ -183,8 +183,8 @@ func (s *Service) EmailEnabled() (bool, error) {
 	return s.authDomain().EmailEnabled()
 }
 
-func (s *Service) SendRegistrationEmailCode(rawEmail string) error {
-	return s.authDomain().SendRegistrationEmailCode(rawEmail)
+func (s *Service) SendRegistrationEmailCode(rawEmail string, invitationCodes ...string) error {
+	return s.authDomain().SendRegistrationEmailCode(rawEmail, invitationCodes...)
 }
 
 func (s *Service) VerifyRegistrationEmailCode(email string, rawCode string) (*model.EmailVerificationCode, error) {

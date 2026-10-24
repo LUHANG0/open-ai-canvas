@@ -1,44 +1,14 @@
-import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
-import { test } from "node:test";
-import vm from "node:vm";
-
-const source = (path) => readFileSync(new URL(path, import.meta.url), "utf8");
-
-test("welcome entry loads configured appearance", async () => {
-    let calls = 0;
-    const imports = [];
-    const main = source("../src/main.tsx")
-        .replace(/^import .*;\n/gm, "")
-        .replace(/import\.meta\.env\.DEV/g, "false")
-        .replace(/import\(/g, "loadModule(");
-    vm.runInNewContext(main, {
-        window: { location: { pathname: "/welcome" } },
-        installChunkRecovery() {},
-        isIsolatedDirectorRepro: () => false,
-        bootstrapAppearance: async () => { calls++; },
-        loadModule: async (name) => { imports.push(name); },
-    });
-    await Promise.resolve();
-    assert.equal(calls, 1, "welcome entry must bootstrap appearance");
-    assert.deepEqual(imports, ["./welcome-application"]);
-});
-
-test("welcome effects preserve configured SEO title", () => {
-    const page = source("../src/pages/welcome/index.tsx");
-    // Run the actual mount effects with inert motion/scroll listeners.
-    const effects = [...page.matchAll(/useEffect\(\(\) => \{([\s\S]*?)\n    \}, \[([^\]]*)\]\);/g)].filter((match) => match[2] === "");
-    assert.ok(effects.length > 0);
-    for (const title of ["Custom SEO Title", "Custom Site Name"]) {
-        const document = { title };
-        for (const [, body] of effects) {
-            vm.runInNewContext(`(() => {${body}\n})()`, {
-                document,
-                window: { matchMedia: () => ({ matches: false, addEventListener() {}, removeEventListener() {} }), addEventListener() {}, removeEventListener() {} },
-                storyRef: { current: null }, restorePickerFocus: { current: false },
-                setReduced() {}, setLook() {}, getWelcomeLook() {},
-            });
-        }
-        assert.equal(document.title, title, "welcome must preserve appearance metadata title");
-    }
+import { test, expect } from "bun:test";
+import { applyAppearanceMetadata, DEFAULT_PUBLIC_APPEARANCE } from "../src/stores/use-appearance-store";
+import { Window } from "happy-dom";
+test("brand metadata retains configured identity on public and workspace pages", () => {
+    const window = new Window({ url: "http://localhost:3000/" });
+    const appearance = { ...DEFAULT_PUBLIC_APPEARANCE, seoTitle: "梦层 MengCeng", seoDescription: "创作工作台" };
+    applyAppearanceMetadata(appearance, window.document);
+    expect(window.document.title).toBe("梦层 MengCeng");
+    expect(window.document.querySelector('meta[property="og:site_name"]').content).toBe("梦层");
+    expect(window.document.querySelector('link[rel="icon"]').getAttribute("href")).toContain("logo.svg");
+    applyAppearanceMetadata({ ...appearance, seoTitle: "运营自定义 SEO" }, window.document);
+    expect(window.document.title).toBe("运营自定义 SEO");
+    window.happyDOM.cancelAsync();
 });

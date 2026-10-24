@@ -1,0 +1,54 @@
+---
+title: Drama API 协议插件
+description: 聊天、统一生图与 Seedance 2.0/2.5 A 系列独立渠道接入
+---
+
+# Drama API 协议插件
+
+`drama-api` 1.1.0 独立安装包提供四个协议：`drama-chat`（标准 Chat Completions）、`drama-image`（GPT 生图）、`drama-gemini-image`（Gemini 生图）和 `drama-seedance-a`（Seedance A 视频）。默认服务地址为 `https://drama.dafeiyangapi.top`，鉴权使用控制台创建的 New API 用户令牌。
+
+## 配置
+
+启用插件后，在渠道填写 Base URL 和 API Key，给模型选择对应协议。聊天、生图模型名以当前令牌的 `/v1/models` 和控制台为准。视频范围按本次要求限定为 `seedance2.0-A`、`seedance2.0-fast-A`、`seedance2.0-Mini-A` 和 `seedance2.5-A`，其他视频系列需独立适配。
+
+| 模型 | 时长 | 分辨率 | 图片 / 视频 / 音频参考上限 |
+| --- | --- | --- | --- |
+| seedance2.0-A | 4～15 秒 | 480p、720p、1080p、4K | 9 / 3 / 3，合计 12 |
+| seedance2.5-A | 4～30 秒 | 480p、720p | 30 / 10 / 10，合计 50 |
+| Fast-A / Mini-A | 以当前模型能力配置为准 | 必须按控制台填写 | 默认关闭，核对后配置 |
+
+标准 2.0-A 可使用 Auto 比例；2.5-A 不支持 Auto。视频不显示声音、水印或 seed 开关，这些字段未包含在 A 系列公开请求合同中。不得从其他 Seedance 渠道复制参数组合。
+
+管理端保存时校验标准版和 2.5 的时长、档位、比例与分类型引用上限。创作端直接使用当前渠道能力，不再按模型名套入旧版 Seedance 面板，因此保留 `4K`、`Auto` 的原值及 2.5 的 30 秒范围。Fast/Mini 需要先按控制台配置档位，不能保存空分辨率。
+
+## 生图与参考素材
+
+图片始终调用 `POST /v1/images/generations` JSON。参考图使用有序的 `images[].image_url`，不切换图片编辑端点，不使用 multipart，不支持蒙版。发送 n、size、quality、response_format 与固定 stream=false；不发送 resolution、background、output_format 或异步扩展。结果 URL 或 Base64 由宿主保存。
+
+GPT 选择「Drama API GPT 生图」：分辨率、画幅与质量独立配置。1K/2K/4K 和画幅通过管理员可编辑的像素表转换为 `size`，例如 4K、16:9 对应默认预设 `3840x2160`；这些是宿主尺寸预设，需按实际模型开放范围核对。质量默认提供 low、medium、high，默认 medium；xhigh/max 仅在平台明确开放的 GPT 2.5 线路按需添加。
+
+Gemini 选择「Drama API Gemini 生图」：分辨率 1K/2K/4K 转换为上游 quality=low/medium/high，size 发送比例；不再显示与清晰度重复的独立质量项。原来使用统一图片协议的 Gemini 模型应改选此协议。
+
+旧 Drama 图片模型缺少分辨率声明时自动补齐三个档位及已有比例的像素映射，保留管理员已设定的数量和比例。图片数量以插件合同为准，允许 1～128；已有的 100 张限制保持 100，不会因编辑而回退或扩大。响应格式只显示一处，参数可用于规格定价。
+
+视频调用 `POST /v1/videos` JSON，参考素材统一为 `references`，每项包含 type、role、source。全部参考素材需为公网 HTTPS 直链。图片、视频、音频分别按 order 排序，提示词中的 `@图N` / `@图片N`、`@视频N`、`@音频N` 与同类型数组顺序一一对应，每个普通参考都要引用；插件保留原提示词，引用编号与素材可达性继续由平台校验。
+
+首尾帧必须各一张，不能混普通参考图、视频或音频；标准 2.0-A 首尾帧模式必须使用 Auto。接入页单项示例中存在只有 first_frame 的片段，本包按照参数限制中的明确成对要求处理；真实模型行为仍需验收。
+
+## 异步任务与宿主支持
+
+创建后保存公开 id，兼容 task_id，之后只查询 `GET /v1/videos/{id}`。queued、in_progress 继续等待，completed 后由宿主携带同一令牌请求 `/content` 下载，failed 停止并显示原因。metadata.url 不作为成功依据或直接结果，避免临时 URL 及早期代理地址干扰。轮询间隔 15 秒，瞬时错误最多重试 3 次。
+
+创建失败或网络超时不自动重发；有公开任务 ID 时支持继续查询原任务。未取得 ID 的创建超时须先查看平台任务记录。媒体二进制下载链路保留查询返回的 usage，便于读取实际视频用量。
+
+聊天支持普通 JSON、SSE 与 Agent 工具回合。媒体连接测试走后端插件任务，按模型能力取参数。连接测试属于真实生成，可能产生费用。
+
+## 验证与边界
+
+后续已按授权完成正式站定向更新：内置版本 1.1.0、四个协议及分发包摘要与固定源码快照一致，保持原开放状态。前后端生产镜像构建通过；真实管理端确认 GPT 分辨率和已有配置保留、2.5-A 参数范围正确，重复上传内置包返回可读 HTTP 409 且不改变注册表。登录、画布持久化、实时广播与受保护资源权限补查通过。以下本地批次记录不代表最新部署状态；本次仍未调用收费模型，不能代替实际分组、生成结果、媒体链路和账单验收。
+
+已通过插件包合同、版本限制、首尾帧、参考顺序、状态机、鉴权下载、任务恢复、错误与用量保留等专项；本地 HTTP 模拟覆盖聊天 SSE/JSON/Agent、生图 JSON 参考和视频异步任务。参数完善后，前端六个文件共 39 项通过，类型检查通过；后端补充尺寸映射、Gemini 质量映射、128 张边界、旧配置补齐、实际管理保存及视频能力拒绝专项通过。没有真实令牌调用或收费模型验收，未运行全站生产构建，未代表真实画布媒体保存、上游分组或账单验收通过。
+
+源码入口：`plugin-packages/drama-api/manifest.json`；分发包：`plugin-packages/drama-api.yingce-plugin`。完整接口映射和分发包合同见同目录 `docs/interface.md`。未确认项目见[待测试](/docs/progress/pending-test)。
+
+服务商依据：[专用接入文档](https://drama.dafeiyangapi.top/docs/drama)、[模型广场](https://drama.dafeiyangapi.top/pricing)。

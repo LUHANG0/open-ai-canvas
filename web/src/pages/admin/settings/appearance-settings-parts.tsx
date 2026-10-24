@@ -2,7 +2,7 @@
 
 import { type AdminAppearance, type AppearanceAssetSlot } from "@/services/api/appearance";
 import { type ReactNode, type RefObject, useEffect, useMemo } from "react";
-import { Image as ImageIcon, MonitorPlay, Upload } from "lucide-react";
+import { Image as ImageIcon, Upload } from "lucide-react";
 import { Button, Skeleton } from "antd";
 import { DEFAULT_PUBLIC_APPEARANCE } from "@/stores/use-appearance-store";
 import { cn } from "@/lib/utils";
@@ -15,8 +15,6 @@ export type ResetState = Record<AppearanceAssetSlot, boolean>;
 export const FILE_RULES: Record<AppearanceAssetSlot, { accept: string; maxBytes: number; label: string }> = {
     logo: { accept: "image/png,image/jpeg,image/webp", maxBytes: 5 << 20, label: "浅色模式 Logo" },
     "logo-dark": { accept: "image/png,image/jpeg,image/webp", maxBytes: 5 << 20, label: "深色模式 Logo" },
-    poster: { accept: "image/png,image/jpeg,image/webp", maxBytes: 10 << 20, label: "视频封面" },
-    video: { accept: "video/mp4,video/webm", maxBytes: 256 << 20, label: "品牌视频" },
 };
 
 export function AssetPicker({
@@ -45,7 +43,7 @@ export function AssetPicker({
     const rule = FILE_RULES[slot];
     return (
         <div className="admin-appearance-asset-row">
-            <span className="admin-appearance-asset-icon">{slot === "video" ? <MonitorPlay /> : <ImageIcon />}</span>
+            <span className="admin-appearance-asset-icon"><ImageIcon /></span>
             <span className="admin-appearance-asset-copy">
                 <strong>{title}</strong>
                 <small>{description}</small>
@@ -67,20 +65,15 @@ export function AssetPicker({
 export function useAppearancePreviews(setting: AdminAppearance | null, files: DraftFiles, resets: ResetState) {
     const logoObjectURL = useObjectURL(files.logo);
     const darkLogoObjectURL = useObjectURL(files["logo-dark"]);
-    const videoObjectURL = useObjectURL(files.video);
-    const posterObjectURL = useObjectURL(files.poster);
     return useMemo(() => {
-        if (!setting) return { logoLight: DEFAULT_PUBLIC_APPEARANCE.logoUrl, logoDark: DEFAULT_PUBLIC_APPEARANCE.darkLogoUrl, video: DEFAULT_PUBLIC_APPEARANCE.authVideoUrl, poster: DEFAULT_PUBLIC_APPEARANCE.authVideoPosterUrl };
-        const customVideo = Boolean(files.video || (!resets.video && setting.authVideoResourceId));
+        if (!setting) return { logoLight: DEFAULT_PUBLIC_APPEARANCE.logoUrl, logoDark: DEFAULT_PUBLIC_APPEARANCE.darkLogoUrl };
         const lightLogo = logoObjectURL || (!resets.logo && setting.logoResourceId ? setting.public.logoUrl : "");
         const darkLogo = darkLogoObjectURL || (!resets["logo-dark"] && setting.darkLogoResourceId ? setting.public.darkLogoUrl : "");
         return {
             logoLight: lightLogo || darkLogo || DEFAULT_PUBLIC_APPEARANCE.logoUrl,
             logoDark: darkLogo || lightLogo || DEFAULT_PUBLIC_APPEARANCE.darkLogoUrl,
-            video: videoObjectURL || (resets.video ? DEFAULT_PUBLIC_APPEARANCE.authVideoUrl : setting.public.authVideoUrl),
-            poster: posterObjectURL || (resets.poster ? (customVideo ? "" : DEFAULT_PUBLIC_APPEARANCE.authVideoPosterUrl) : setting.public.authVideoPosterUrl),
         };
-    }, [darkLogoObjectURL, files.video, logoObjectURL, posterObjectURL, resets, setting, videoObjectURL]);
+    }, [darkLogoObjectURL, logoObjectURL, resets, setting]);
 }
 
 export function LogoThemePreview({ label, icon, src, dark, frameEnabled }: { label: string; icon: ReactNode; src: string; dark: boolean; frameEnabled: boolean }) {

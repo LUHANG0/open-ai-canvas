@@ -27,85 +27,68 @@ const appearanceSettingKey = "appearance"
 const (
 	AppearanceAssetLogo        = "logo"
 	AppearanceAssetDarkLogo    = "logo-dark"
-	AppearanceAssetVideo       = "video"
-	AppearanceAssetPoster      = "poster"
 	AppearanceAssetUpdateImage = "update-image"
 	AppearanceAssetUpdateVideo = "update-video"
 )
 
 const (
-	appearanceSchemaVersion        = 11
-	appearanceLogoMaxBytes   int64 = 5 << 20
-	appearancePosterMaxBytes int64 = 10 << 20
-	appearanceVideoMaxBytes  int64 = 256 << 20
+	appearanceSchemaVersion       = 13
+	appearanceLogoMaxBytes  int64 = 5 << 20
+	appearanceImageMaxBytes int64 = 10 << 20
+	appearanceVideoMaxBytes int64 = 256 << 20
 )
 
 const (
-	defaultAppearanceBrandName = "影策"
-	defaultAppearanceBrandSlug = "open-ai-canvas"
+	defaultAppearanceBrandName = "梦层"
+	defaultAppearanceBrandSlug = "mengceng"
 	defaultAppearanceSkinID    = "classic"
 	defaultAppearanceLogoURL   = "/logo.svg"
-	defaultAppearanceVideoURL  = "https://boss-shjd.biliapi.net/updream/aniforge/video/video_bbcb00bd-650d-4249-9346-5cd21fd2484c_m1hc-u0-1pu13x-3v1s.mp4"
-	defaultAppearancePosterURL = "https://i0.hdslb.com/bfs/aitool/aniforge/image/02933f26-5f1b-49ff-a811-b7f95ee5e5b8_m1hc-u0-sau.jpg"
-	defaultAppearanceHeroTitle = "让一个故事，\n从文字走向银幕。"
 	defaultRedeemPurchaseURL   = "" // 默认不配置购买链接，前端为空时不展示入口
 )
 
 type AppearanceSetting struct {
-	Updates                   UpdateAnnouncement    `json:"updates"`
-	Canvas                    CanvasAppearance      `json:"canvas"`
-	SchemaVersion             int                   `json:"schemaVersion"`
-	BrandName                 string                `json:"brandName"`
-	BrandSlug                 string                `json:"brandSlug"`
-	AuthHeroTitle             string                `json:"authHeroTitle"`
-	AuthHeroDescription       string                `json:"authHeroDescription"`
-	LogoResourceID            string                `json:"logoResourceId"`
-	DarkLogoResourceID        string                `json:"darkLogoResourceId"`
-	LogoFrameEnabled          bool                  `json:"logoFrameEnabled"`
-	AuthVideoResourceID       string                `json:"authVideoResourceId"`
-	AuthVideoPosterResourceID string                `json:"authVideoPosterResourceId"`
-	AuthVideoAutoplay         bool                  `json:"authVideoAutoplay"`
-	SkinID                    string                `json:"skinId"`
-	SkinThemes                []AppearanceSkinTheme `json:"skinThemes"`
-	SEOTitle                  string                `json:"seoTitle"`
-	SEODescription            string                `json:"seoDescription"`
-	SEOKeywords               string                `json:"seoKeywords"`
-	FooterCopyright           string                `json:"footerCopyright"`
-	ICPFilingEnabled          bool                  `json:"icpFilingEnabled"`
-	ICPFilingNumber           string                `json:"icpFilingNumber"`
-	RedeemPurchaseURL         string                `json:"redeemPurchaseUrl"`
+	Updates            UpdateAnnouncement    `json:"updates"`
+	Canvas             CanvasAppearance      `json:"canvas"`
+	SchemaVersion      int                   `json:"schemaVersion"`
+	BrandName          string                `json:"brandName"`
+	BrandSlug          string                `json:"brandSlug"`
+	LogoResourceID     string                `json:"logoResourceId"`
+	DarkLogoResourceID string                `json:"darkLogoResourceId"`
+	LogoFrameEnabled   bool                  `json:"logoFrameEnabled"`
+	SkinID             string                `json:"skinId"`
+	SkinThemes         []AppearanceSkinTheme `json:"skinThemes"`
+	SEOTitle           string                `json:"seoTitle"`
+	SEODescription     string                `json:"seoDescription"`
+	SEOKeywords        string                `json:"seoKeywords"`
+	FooterCopyright    string                `json:"footerCopyright"`
+	ICPFilingEnabled   bool                  `json:"icpFilingEnabled"`
+	ICPFilingNumber    string                `json:"icpFilingNumber"`
+	RedeemPurchaseURL  string                `json:"redeemPurchaseUrl"`
 }
 
 type PublicAppearanceSetting struct {
-	Updates                   UpdateAnnouncement  `json:"updates"`
-	Canvas                    CanvasAppearance    `json:"canvas"`
-	SchemaVersion             int                 `json:"schemaVersion"`
-	BrandName                 string              `json:"brandName"`
-	BrandSlug                 string              `json:"brandSlug"`
-	AuthHeroTitle             string              `json:"authHeroTitle"`
-	AuthHeroDescription       string              `json:"authHeroDescription"`
-	LogoURL                   string              `json:"logoUrl"`
-	DarkLogoURL               string              `json:"darkLogoUrl"`
-	LogoFrameEnabled          bool                `json:"logoFrameEnabled"`
-	AuthVideoURL              string              `json:"authVideoUrl"`
-	AuthVideoPosterURL        string              `json:"authVideoPosterUrl"`
-	AuthVideoAutoplay         bool                `json:"authVideoAutoplay"`
-	SkinID                    string              `json:"skinId"`
-	ActiveSkin                AppearanceSkinTheme `json:"activeSkin"`
-	SEOTitle                  string              `json:"seoTitle"`
-	SEODescription            string              `json:"seoDescription"`
-	SEOKeywords               string              `json:"seoKeywords"`
-	FooterCopyright           string              `json:"footerCopyright"`
-	ICPFilingEnabled          bool                `json:"icpFilingEnabled"`
-	ICPFilingNumber           string              `json:"icpFilingNumber"`
-	RedeemPurchaseURL         string              `json:"redeemPurchaseUrl"`
-	LogoConfigured            bool                `json:"logoConfigured"`
-	DarkLogoConfigured        bool                `json:"darkLogoConfigured"`
-	AuthVideoConfigured       bool                `json:"authVideoConfigured"`
-	AuthVideoPosterConfigured bool                `json:"authVideoPosterConfigured"`
-	Configured                bool                `json:"configured"`
-	Revision                  string              `json:"revision"`
-	UpdatedAt                 time.Time           `json:"updatedAt,omitempty"`
+	Updates            UpdateAnnouncement  `json:"updates"`
+	Canvas             CanvasAppearance    `json:"canvas"`
+	SchemaVersion      int                 `json:"schemaVersion"`
+	BrandName          string              `json:"brandName"`
+	BrandSlug          string              `json:"brandSlug"`
+	LogoURL            string              `json:"logoUrl"`
+	DarkLogoURL        string              `json:"darkLogoUrl"`
+	LogoFrameEnabled   bool                `json:"logoFrameEnabled"`
+	SkinID             string              `json:"skinId"`
+	ActiveSkin         AppearanceSkinTheme `json:"activeSkin"`
+	SEOTitle           string              `json:"seoTitle"`
+	SEODescription     string              `json:"seoDescription"`
+	SEOKeywords        string              `json:"seoKeywords"`
+	FooterCopyright    string              `json:"footerCopyright"`
+	ICPFilingEnabled   bool                `json:"icpFilingEnabled"`
+	ICPFilingNumber    string              `json:"icpFilingNumber"`
+	RedeemPurchaseURL  string              `json:"redeemPurchaseUrl"`
+	LogoConfigured     bool                `json:"logoConfigured"`
+	DarkLogoConfigured bool                `json:"darkLogoConfigured"`
+	Configured         bool                `json:"configured"`
+	Revision           string              `json:"revision"`
+	UpdatedAt          time.Time           `json:"updatedAt,omitempty"`
 }
 
 type AdminAppearanceSetting struct {
@@ -123,8 +106,6 @@ func defaultAppearanceSetting() AppearanceSetting {
 		SchemaVersion:     appearanceSchemaVersion,
 		BrandName:         defaultAppearanceBrandName,
 		BrandSlug:         defaultAppearanceBrandSlug,
-		AuthHeroTitle:     defaultAppearanceHeroTitle,
-		AuthVideoAutoplay: true,
 		LogoFrameEnabled:  true,
 		SkinID:            defaultAppearanceSkinID,
 		SkinThemes:        defaultAppearanceSkinThemes(),
@@ -137,9 +118,9 @@ func AppearanceAssetMaxBytes(slot string) (int64, error) {
 	switch strings.TrimSpace(slot) {
 	case AppearanceAssetLogo, AppearanceAssetDarkLogo:
 		return appearanceLogoMaxBytes, nil
-	case AppearanceAssetPoster, AppearanceAssetUpdateImage:
-		return appearancePosterMaxBytes, nil
-	case AppearanceAssetVideo, AppearanceAssetUpdateVideo:
+	case AppearanceAssetUpdateImage, "brand-image":
+		return appearanceImageMaxBytes, nil
+	case AppearanceAssetUpdateVideo, "brand-video":
 		return appearanceVideoMaxBytes, nil
 	default:
 		return 0, BadAuthRequest("外观资源类型无效")
@@ -147,11 +128,11 @@ func AppearanceAssetMaxBytes(slot string) (int64, error) {
 }
 
 func appearanceSlotIsVideo(slot string) bool {
-	return slot == AppearanceAssetVideo || slot == AppearanceAssetUpdateVideo
+	return slot == AppearanceAssetUpdateVideo || slot == "brand-video"
 }
 
 func appearanceAssetSlots() []string {
-	return []string{AppearanceAssetLogo, AppearanceAssetDarkLogo, AppearanceAssetVideo, AppearanceAssetPoster}
+	return []string{AppearanceAssetLogo, AppearanceAssetDarkLogo}
 }
 
 func (s *Service) Appearance() (*PublicAppearanceSetting, error) {
@@ -203,12 +184,8 @@ func (s *Service) UpdateAppearance(actor *model.User, value AppearanceSetting) (
 	value.Updates = updates
 	value.BrandName = strings.TrimSpace(value.BrandName)
 	value.BrandSlug = strings.ToLower(strings.TrimSpace(value.BrandSlug))
-	value.AuthHeroTitle = normalizeAppearanceCopy(value.AuthHeroTitle)
-	value.AuthHeroDescription = normalizeAppearanceCopy(value.AuthHeroDescription)
 	value.LogoResourceID = strings.TrimSpace(value.LogoResourceID)
 	value.DarkLogoResourceID = strings.TrimSpace(value.DarkLogoResourceID)
-	value.AuthVideoResourceID = strings.TrimSpace(value.AuthVideoResourceID)
-	value.AuthVideoPosterResourceID = strings.TrimSpace(value.AuthVideoPosterResourceID)
 	value.SkinID = strings.TrimSpace(value.SkinID)
 	if len(value.SkinThemes) == 0 {
 		value.SkinThemes = defaultAppearanceSkinThemes()
@@ -258,8 +235,6 @@ func (s *Service) UpdateAppearance(actor *model.User, value AppearanceSetting) (
 	}{
 		{slot: AppearanceAssetLogo, resourceID: value.LogoResourceID, currentID: before.LogoResourceID},
 		{slot: AppearanceAssetDarkLogo, resourceID: value.DarkLogoResourceID, currentID: before.DarkLogoResourceID},
-		{slot: AppearanceAssetVideo, resourceID: value.AuthVideoResourceID, currentID: before.AuthVideoResourceID},
-		{slot: AppearanceAssetPoster, resourceID: value.AuthVideoPosterResourceID, currentID: before.AuthVideoPosterResourceID},
 	} {
 		if err := s.validateAppearanceResource(actor, candidate.slot, candidate.resourceID, candidate.currentID); err != nil {
 			return nil, err
@@ -297,7 +272,7 @@ func (s *Service) ResetAppearance(actor *model.User) (*AdminAppearanceSetting, e
 		return nil, err
 	}
 	after := defaultAppearanceSetting()
-	if err := s.appendAdminAudit(actor, "appearance.reset", "system_setting", appearanceSettingKey, "恢复影策默认品牌标识", map[string]any{"before": before, "after": after}); err != nil {
+	if err := s.appendAdminAudit(actor, "appearance.reset", "system_setting", appearanceSettingKey, "恢复梦层默认品牌标识", map[string]any{"before": before, "after": after}); err != nil {
 		return nil, err
 	}
 	return s.AdminAppearance(actor)
@@ -322,7 +297,7 @@ func (s *Service) UploadAppearanceAsset(actor *model.User, slot string, header *
 	// Logos are tiny, installation-owned assets. Keep them in the server's
 	// persistent resource directory so their availability and cost do not
 	// depend on the administrator's currently selected object storage.
-	if slot == AppearanceAssetLogo || slot == AppearanceAssetDarkLogo {
+	if slot == AppearanceAssetLogo || slot == AppearanceAssetDarkLogo || slot == "brand-image" || slot == "brand-video" {
 		resource, err = s.uploadLocalResource(actor.ID, header, kind, 0, 0, 0)
 	} else {
 		resource, err = s.UploadResource(actor.ID, header, kind, 0, 0, 0)
@@ -382,7 +357,7 @@ func (s *Service) PrepareAppearanceAssetDelivery(slot string, options ResourceAc
 }
 
 func (s *Service) appearanceResourceReferences(resourceIDs []string) map[string][]AdminResourceReferenceView {
-	result := make(map[string][]AdminResourceReferenceView)
+	result := s.brandSiteResourceReferences(resourceIDs)
 	_, value, err := s.readAppearance()
 	if err != nil {
 		// Invalid appearance JSON must fail closed for deletion. The caller turns
@@ -398,8 +373,6 @@ func (s *Service) appearanceResourceReferences(resourceIDs []string) map[string]
 	}{
 		{resourceID: value.LogoResourceID, title: "浅色模式品牌 Logo"},
 		{resourceID: value.DarkLogoResourceID, title: "深色模式品牌 Logo"},
-		{resourceID: value.AuthVideoResourceID, title: "登录页品牌视频"},
-		{resourceID: value.AuthVideoPosterResourceID, title: "登录页视频封面"},
 		{resourceID: value.Canvas.Live2DResourceID, title: "画布 Agent Live2D 形象"},
 		{resourceID: value.Canvas.AvatarBundleResourceID, title: "画布 Agent 动画包"},
 	}
@@ -440,9 +413,11 @@ func (s *Service) readAppearance() (*model.SystemSetting, AppearanceSetting, err
 	// Decode stored themes without reusing built-in slice entries: omitted
 	// fields must be migrated according to each stored theme's identity.
 	value.SkinThemes = nil
+	value.SchemaVersion = 0
 	if strings.TrimSpace(setting.ValueJSON) == "" || json.Unmarshal([]byte(setting.ValueJSON), &value) != nil {
 		return nil, AppearanceSetting{}, errors.New("外观配置格式无效")
 	}
+	migrateMengCengAppearance(&value)
 	value.SchemaVersion = appearanceSchemaVersion
 	value.BrandName = strings.TrimSpace(value.BrandName)
 	if value.BrandName == "" {
@@ -452,11 +427,6 @@ func (s *Service) readAppearance() (*model.SystemSetting, AppearanceSetting, err
 	if value.BrandSlug == "" {
 		value.BrandSlug = defaultAppearanceBrandSlug
 	}
-	value.AuthHeroTitle = normalizeAppearanceCopy(value.AuthHeroTitle)
-	if value.AuthHeroTitle == "" {
-		value.AuthHeroTitle = defaultAppearanceHeroTitle
-	}
-	value.AuthHeroDescription = normalizeAppearanceCopy(value.AuthHeroDescription)
 	value.SkinID = strings.TrimSpace(value.SkinID)
 	if value.SkinID == "" {
 		value.SkinID = defaultAppearanceSkinID
@@ -489,10 +459,6 @@ func (s *Service) resolveAvailableAppearanceAssets(value AppearanceSetting) Appe
 			value.LogoResourceID = ""
 		case AppearanceAssetDarkLogo:
 			value.DarkLogoResourceID = ""
-		case AppearanceAssetVideo:
-			value.AuthVideoResourceID = ""
-		case AppearanceAssetPoster:
-			value.AuthVideoPosterResourceID = ""
 		}
 	}
 	if value.Canvas.AvatarBundleResourceID != "" && !s.agentAvatarBundleAvailable(value.Canvas.AvatarBundleResourceID) {
@@ -525,12 +491,6 @@ func validateAppearanceSetting(value AppearanceSetting) error {
 	if !validAppearanceBrandSlug(value.BrandSlug) {
 		return BadAuthRequest("英文品牌标识须为 1 到 48 位小写字母、数字或连字符，且不能以连字符开头或结尾")
 	}
-	if err := validateAppearanceCopy(value.AuthHeroTitle, "登录页主标题", 80, true); err != nil {
-		return err
-	}
-	if err := validateAppearanceCopy(value.AuthHeroDescription, "登录页说明文案", 160, false); err != nil {
-		return err
-	}
 	if err := validateAppearanceSkinThemes(value.SkinThemes, value.SkinID); err != nil {
 		return err
 	}
@@ -561,7 +521,7 @@ func validateAppearanceSetting(value AppearanceSetting) error {
 	if len(value.Canvas.AvatarBundleResourceID) > 80 {
 		return BadAuthRequest("Agent 动画包资源 ID 无效")
 	}
-	for _, resourceID := range []string{value.LogoResourceID, value.DarkLogoResourceID, value.AuthVideoResourceID, value.AuthVideoPosterResourceID} {
+	for _, resourceID := range []string{value.LogoResourceID, value.DarkLogoResourceID} {
 		if len(resourceID) > 80 {
 			return BadAuthRequest("外观资源 ID 无效")
 		}
@@ -631,7 +591,7 @@ func validateAppearanceResourceType(slot string, resource *model.Resource) error
 		return BadAuthRequest("该外观资源必须是视频")
 	}
 	if !appearanceSlotIsVideo(slot) && resource.Kind != "image" {
-		return BadAuthRequest("Logo 和视频封面必须是图片资源")
+		return BadAuthRequest("该外观资源必须是图片")
 	}
 	return nil
 }
@@ -689,10 +649,6 @@ func appearanceAssetLabel(slot string) string {
 		return "浅色模式品牌 Logo"
 	case AppearanceAssetDarkLogo:
 		return "深色模式品牌 Logo"
-	case AppearanceAssetPoster:
-		return "视频封面"
-	case AppearanceAssetVideo:
-		return "品牌视频"
 	case AppearanceAssetUpdateImage:
 		return "公告图片"
 	case AppearanceAssetUpdateVideo:
@@ -708,10 +664,6 @@ func appearanceResourceID(value AppearanceSetting, slot string) string {
 		return value.LogoResourceID
 	case AppearanceAssetDarkLogo:
 		return value.DarkLogoResourceID
-	case AppearanceAssetVideo:
-		return value.AuthVideoResourceID
-	case AppearanceAssetPoster:
-		return value.AuthVideoPosterResourceID
 	default:
 		return ""
 	}
@@ -723,30 +675,25 @@ func publicAppearanceSetting(setting *model.SystemSetting, value AppearanceSetti
 		revision = strconv.FormatInt(setting.UpdatedAt.UTC().UnixNano(), 36)
 	}
 	result := &PublicAppearanceSetting{
-		Updates:             publicUpdateAnnouncement(value.Updates, revision),
-		Canvas:              value.Canvas,
-		SchemaVersion:       appearanceSchemaVersion,
-		BrandName:           value.BrandName,
-		BrandSlug:           value.BrandSlug,
-		AuthHeroTitle:       value.AuthHeroTitle,
-		AuthHeroDescription: value.AuthHeroDescription,
-		LogoURL:             defaultAppearanceLogoURL,
-		DarkLogoURL:         defaultAppearanceLogoURL,
-		LogoFrameEnabled:    value.LogoFrameEnabled,
-		AuthVideoURL:        defaultAppearanceVideoURL,
-		AuthVideoPosterURL:  defaultAppearancePosterURL,
-		AuthVideoAutoplay:   value.AuthVideoAutoplay,
-		SkinID:              value.SkinID,
-		ActiveSkin:          activeAppearanceSkin(value.SkinThemes, value.SkinID),
-		SEOTitle:            effectiveAppearanceSEOTitle(value),
-		SEODescription:      effectiveAppearanceSEODescription(value),
-		SEOKeywords:         value.SEOKeywords,
-		FooterCopyright:     effectiveAppearanceCopyright(value),
-		ICPFilingEnabled:    value.ICPFilingEnabled && value.ICPFilingNumber != "",
-		ICPFilingNumber:     value.ICPFilingNumber,
-		RedeemPurchaseURL:   safeAppearancePurchaseURL(value.RedeemPurchaseURL),
-		Configured:          setting != nil,
-		Revision:            revision,
+		Updates:           publicUpdateAnnouncement(value.Updates, revision),
+		Canvas:            value.Canvas,
+		SchemaVersion:     appearanceSchemaVersion,
+		BrandName:         value.BrandName,
+		BrandSlug:         value.BrandSlug,
+		LogoURL:           defaultAppearanceLogoURL,
+		DarkLogoURL:       defaultAppearanceLogoURL,
+		LogoFrameEnabled:  value.LogoFrameEnabled,
+		SkinID:            value.SkinID,
+		ActiveSkin:        activeAppearanceSkin(value.SkinThemes, value.SkinID),
+		SEOTitle:          effectiveAppearanceSEOTitle(value),
+		SEODescription:    effectiveAppearanceSEODescription(value),
+		SEOKeywords:       value.SEOKeywords,
+		FooterCopyright:   effectiveAppearanceCopyright(value),
+		ICPFilingEnabled:  value.ICPFilingEnabled && value.ICPFilingNumber != "",
+		ICPFilingNumber:   value.ICPFilingNumber,
+		RedeemPurchaseURL: safeAppearancePurchaseURL(value.RedeemPurchaseURL),
+		Configured:        setting != nil,
+		Revision:          revision,
 	}
 	if setting != nil {
 		result.UpdatedAt = setting.UpdatedAt
@@ -768,19 +715,6 @@ func publicAppearanceSetting(setting *model.SystemSetting, value AppearanceSetti
 			result.LogoURL = result.DarkLogoURL
 		}
 	}
-	if value.AuthVideoResourceID != "" {
-		result.AuthVideoConfigured = true
-		result.AuthVideoURL = appearanceAssetURL(AppearanceAssetVideo, revision)
-		if value.AuthVideoPosterResourceID == "" {
-			// A custom video must not briefly reveal the built-in poster while its
-			// first frame loads. An optional custom poster may be configured below.
-			result.AuthVideoPosterURL = ""
-		}
-	}
-	if value.AuthVideoPosterResourceID != "" {
-		result.AuthVideoPosterConfigured = true
-		result.AuthVideoPosterURL = appearanceAssetURL(AppearanceAssetPoster, revision)
-	}
 	return result
 }
 
@@ -799,6 +733,9 @@ func safeAppearancePurchaseURL(value string) string {
 func effectiveAppearanceSEOTitle(value AppearanceSetting) string {
 	if value.SEOTitle != "" {
 		return value.SEOTitle
+	}
+	if value.BrandName == defaultAppearanceBrandName {
+		return "梦层 MengCeng"
 	}
 	return value.BrandName
 }

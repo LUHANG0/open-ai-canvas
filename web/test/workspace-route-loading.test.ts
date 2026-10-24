@@ -13,7 +13,7 @@ describe("workspace route loading", () => {
 
         expect(deferred).toContain("<WorkspaceRouteLoader />");
         expect(deferred).not.toContain("FullScreenLoader");
-        expect(router).toContain("fullScreenDeferred(<LoginPage />)");
+        expect(router).toContain("authDeferred(<LoginPage />)");
         expect(router).toContain("fullScreenDeferred(<SharedCanvasPage />)");
     });
 
@@ -31,19 +31,23 @@ describe("workspace route loading", () => {
         expect(navigation).toContain("onFocus={() => preloadWorkspaceRoute(linkTo)}");
     });
 
-    test("keeps the creation page at root and preserves the create compatibility route", () => {
+    test("keeps the brand at root and creation at its workspace route", () => {
         const router = source("../src/router.tsx");
         const navigation = source("../src/components/layout/workspace-sidebar-nav.tsx");
 
-        expect(router).toContain('{ path: "/", element: deferred(<CreatePage />) }');
-        expect(router).toContain('{ path: "/create", element: deferred(<CreatePage />) }');
+        expect(router).toContain('<WelcomePage />');
+        expect(router).not.toContain('{ path: "/", element: deferred(<CreatePage />) }');
+        expect(router).toContain('lazy: async () => ({ Component: (await loadCreatePage()).default })');
         expect(router).toContain("<RequireAuth allowAnonymous={isGuestWorkspacePath(pathname)}>");
-        expect(router).toContain('{ path: "/assets", element: <RequireAuth>{deferred(<AssetsPage />)}</RequireAuth> }');
+        expect(router).toContain('{ path: "/assets", ...workspaceEntry(loadAssetsPage) }');
+        expect(router).toContain('workspaceEntry(loadTasksPage, "taskCenterEnabled")');
+        expect(router).toContain('workspaceEntry(loadPluginsPage, "pluginCenterEnabled")');
+        expect(router).toContain('workspaceEntry(loadImageWorkbenchPage, "imageWorkbenchEnabled")');
+        expect(router).toContain('workspaceEntry(loadVideoWorkbenchPage, "videoWorkbenchEnabled")');
         expect(router).toMatch(/path: "\/canvas\/:id",\s+element: \(\s+<RequireAuth>\s+<CanvasProjectPage \/>\s+<\/RequireAuth>\s+\),/);
         expect(router).not.toContain('path: "/home"');
         expect(router).not.toContain("HomePage");
-        expect(navigation).toContain('{ ...toolItem("create", "/"), id: "home", title: "创作" }');
-        expect(navigation).not.toContain('to: "/create"');
+        expect(navigation).toContain('{ ...toolItem("create", "/create"), id: "home" }');
         expect(navigation).not.toContain('to: "/home"');
     });
 

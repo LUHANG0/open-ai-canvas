@@ -191,7 +191,7 @@ export function ImageParameterSchemaEditor({ definitions, parameters, disabled, 
                 const definition = definitions.find((p) => p.name === field.name) || field;
                 const isResolution = field.name === "imageResolution" && field.type === "string";
                 const baseTiers = ["1k", "1.5k", "2k", "4k"];
-                const resolutionChoices = isResolution ? (definition.values?.length ? [...new Set([...definition.values.map(String), "1.5k"])] : baseTiers.filter((tier) => imageParameterAccepts(definition, tier))) : [];
+                const resolutionChoices = isResolution ? (definition.values?.length ? [...new Set(definition.values.map(String))] : baseTiers.filter((tier) => imageParameterAccepts(definition, tier))) : [];
                 const quickResolutionChoices = isResolution ? (resolutionChoices.length ? resolutionChoices : baseTiers) : [];
                 const updateValues = (items: string[]) => {
                     const values = [

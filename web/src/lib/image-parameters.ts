@@ -253,7 +253,13 @@ export function resolveImageParameters(profile: ImageCapabilityConfig, definitio
         const field = { ...definition, enabled, values: selected };
         return { ...field, default: imageParameterAccepts(field, initial) ? initial : (selected?.[0] ?? definition.default) };
     });
-    return projectImageParameters(profile, parameters);
+    const next = projectImageParameters(profile, parameters);
+    // 插件新增独立分辨率时，旧模型保留已有比例，并初始化新档位的尺寸组。
+    if (profile.parameters && !configured.has("imageResolution") && next.resolution.supported) {
+        const ratios = next.size.values.filter((value) => /^\d+:\d+$/.test(value));
+        return initializeImageRatioDefaults(next, definitions, undefined, ratios.length ? ratios : DEFAULT_IMAGE_RATIOS);
+    }
+    return next;
 }
 
 export function imageParameterConstraints(parameters: ImageParameter[]) {

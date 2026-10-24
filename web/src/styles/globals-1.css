@@ -287,7 +287,7 @@
     --glass-alpha-strong: 0.97;
     --glass-border-alpha: 0.78;
 
-    /* 登录表单跟随全局明暗主题；品牌影片保留独立深色舞台。 */
+    /* 简洁认证表单跟随全局明暗主题与配置皮肤。 */
     --auth-page-bg: #ffffff;
     --auth-panel-bg: #f7f7f7;
     --auth-card-bg: #ffffff;
@@ -358,59 +358,14 @@
     color: var(--foreground);
 }
 
-.auth-scene-hero {
-    background: var(--auth-panel-bg);
-    color: var(--foreground);
-}
-
-.auth-scene-hero-overlay {
-    background: linear-gradient(
-        180deg,
-        color-mix(in srgb, var(--auth-panel-bg) 40%, transparent),
-        transparent 42%,
-        color-mix(in srgb, var(--auth-panel-bg) 76%, transparent)
-    );
-    pointer-events: none;
-}
-
 .auth-scene-brand,
 .auth-scene-brand:hover {
     color: inherit;
 }
 
-.auth-scene-hero-control {
-    border: 1px solid color-mix(in srgb, var(--foreground) 16%, transparent);
-    background: color-mix(in srgb, var(--auth-panel-bg) 78%, transparent);
-    color: color-mix(in srgb, var(--foreground) 82%, transparent);
-}
-
-.auth-scene-hero-control:hover {
-    background: color-mix(in srgb, var(--auth-panel-bg) 92%, transparent);
-}
-
-.auth-scene-hero-muted {
-    color: color-mix(in srgb, var(--foreground) 64%, transparent);
-}
-
-.auth-scene-hero-title {
-    color: var(--foreground);
-}
-
-.auth-scene-form-pane {
-    background: var(--auth-panel-bg);
-}
-
-.auth-scene-video-blend {
-    background: linear-gradient(90deg, transparent 0%, color-mix(in srgb, var(--auth-panel-bg) 68%, transparent) 58%, var(--auth-panel-bg) 100%);
-}
-
 .auth-scene-card {
     background: var(--auth-card-bg);
-    box-shadow: var(--elevation-card-hover);
-}
-
-.auth-scene-eyebrow {
-    color: var(--auth-accent);
+    box-shadow: none;
 }
 
 .auth-scene-muted {
