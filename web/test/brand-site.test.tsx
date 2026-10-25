@@ -73,7 +73,7 @@ describe("MengCeng public renderer", () => {
         expect(html).toContain("/admin/settings/brand-site/media/custom-second");
         expect(html).toContain("/admin/settings/brand-site/media/custom-poster");
         expect(html).toContain('href="https://example.com/creative-guide"');
-        expect(html).not.toContain("autoplay");
+        expect(html).not.toMatch(/<video\b[^>]*\sautoplay(?:[\s=>])/i);
     });
 
     test("preview renders posters without requesting decorative videos", () => {
@@ -81,7 +81,7 @@ describe("MengCeng public renderer", () => {
         const nav = html.slice(html.indexOf("<header"), html.indexOf("</header>"));
         expect(nav.match(/开始创作/g)).toHaveLength(1);
         expect(html).not.toMatch(/<video[^>]*src=/);
-        expect(html).not.toContain("autoplay");
+        expect(html).not.toMatch(/<video\b[^>]*\sautoplay(?:[\s=>])/i);
         expect(html).toContain("image01-aliyun.vidu.zone");
         expect(html).toContain("static-oiioii-sg.hogiai.cn");
         expect(html).not.toContain("<main");

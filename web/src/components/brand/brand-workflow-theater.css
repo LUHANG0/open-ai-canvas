@@ -62,3 +62,9 @@
     @keyframes mc-theater-enter { from { opacity:.65; } to { opacity:1; } }
 }
 @media (prefers-reduced-motion:reduce) { .mc-workflow-theater * { transition:none; } }
+
+.mc-theater-autoplay-status { display:flex; justify-content:space-between; gap:16px; margin-bottom:12px; color:#999; font-size:12px; font-variant-numeric:tabular-nums; }
+.mc-theater-category-track button { position:relative; overflow:hidden; }
+.mc-theater-category-progress { position:absolute; bottom:0; left:0; width:100%; height:3px; background:#797184; transform-origin:left; animation:mc-category-progress 10s linear both; pointer-events:none; }
+@keyframes mc-category-progress { from { transform:scaleX(0); } to { transform:scaleX(1); } }
+@media (prefers-reduced-motion:reduce) { .mc-theater-category-progress { animation:none; } }
