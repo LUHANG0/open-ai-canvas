@@ -12,6 +12,7 @@ import { SegmentedControl } from "@/components/ui/base/segmented-control";
 import { DEFAULT_USER_AVATARS } from "@/lib/default-user-avatars";
 import { cropProfileAvatar } from "@/services/profile-avatar";
 import { loadProfileSession } from "@/services/profile-session";
+import { clearAuthNavigation } from "@/lib/auth-navigation";
 import { applyUserSession } from "@/lib/user-session";
 import { invalidateAuthSessionCache, type LocalUser } from "@/services/api/auth";
 import { changeProfileEmail, changeProfilePassword, profileLinuxDOReauthURL, requestProfileEmailCode, selectDefaultProfileAvatar, uploadProfileAvatar, type UserProfile } from "@/services/api/profile";
@@ -196,6 +197,7 @@ export function ProfilePane() {
 
     const finishSecurityChange = async (notice: string, notificationFailed = false) => {
         if (useUserStore.getState().user?.id !== userId) return;
+        clearAuthNavigation();
         invalidateAuthSessionCache();
         passwordForm.resetFields();
         emailForm.resetFields();

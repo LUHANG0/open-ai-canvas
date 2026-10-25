@@ -7,7 +7,7 @@ import { Link, useNavigate, useSearchParams } from "react-router";
 import { getAuthSession, getAuthSettings, linuxDOLoginURL, login } from "@/services/api/auth";
 import { LinuxDOIcon } from "./auth-provider-icon";
 import { VerificationFields } from "@/components/auth/verification-fields";
-import { safeAuthNext } from "@/lib/auth-navigation";
+import { authEntry, clearAuthNavigation, safeAuthNext } from "@/lib/auth-navigation";
 import { useBrandAuthFlow } from "@/components/brand/brand-auth-entry";
 import { emptyVerification, loginVerification, methodLabels, verificationMethods, type VerificationMethod } from "@/services/api/verification";
 
@@ -24,7 +24,7 @@ export default function LoginPage() {
     const [method, setMethod] = useState<"password" | VerificationMethod>("password");
     const [verification, setVerification] = useState({ ...emptyVerification });
     const next = safeAuthNext(flow?.next ?? params.get("next"));
-    const forgotPasswordURL = `/forgot-password?next=${encodeURIComponent(next)}`;
+    const forgotPasswordEntry = authEntry(next, "/forgot-password");
 
     useEffect(() => {
         void getAuthSettings()
@@ -50,6 +50,7 @@ export default function LoginPage() {
             const { applyUserSession } = await import("@/lib/user-session");
             await applyUserSession(await getAuthSession());
             message.success("登录成功");
+            clearAuthNavigation();
             navigate(next, { replace: true });
         } catch (error) {
             message.error(error instanceof Error ? error.message : "登录失败");
@@ -70,7 +71,7 @@ export default function LoginPage() {
                 htmlFor="login-password"
                 action={
                     <Link
-                        to={forgotPasswordURL}
+                        {...forgotPasswordEntry}
                         onClick={(event) => { if (flow && !event.metaKey && !event.ctrlKey && !event.altKey && !event.shiftKey && event.button === 0) { event.preventDefault(); flow.changeMode("forgot-password"); } }}
                         viewTransition
                         className="auth-scene-link -my-2 inline-flex min-h-8 items-center rounded-sm text-xs font-medium transition-colors duration-150 motion-reduce:transition-none"

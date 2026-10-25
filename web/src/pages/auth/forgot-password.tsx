@@ -2,7 +2,7 @@ import { type FormEvent, useEffect, useState, type ReactNode } from "react";
 import { App, Button, Input } from "antd";
 import { ArrowLeft, ArrowRight, LockKeyhole, Mail, ShieldCheck, TriangleAlert } from "lucide-react";
 import { Link, useNavigate, useSearchParams } from "react-router";
-import { loginPath, safeAuthNext } from "@/lib/auth-navigation";
+import { authEntry, safeAuthNext } from "@/lib/auth-navigation";
 import { useBrandAuthFlow } from "@/components/brand/brand-auth-entry";
 
 import { getAuthSettings, resetPassword, sendPasswordResetEmailCode } from "@/services/api/auth";
@@ -24,7 +24,7 @@ export default function ForgotPasswordPage() {
     const [submitting, setSubmitting] = useState(false);
     const [countdown, setCountdown] = useState(0);
     const next = safeAuthNext(flow?.next ?? params.get("next"));
-    const loginURL = loginPath(next);
+    const loginEntry = authEntry(next);
 
     useEffect(() => {
         let cancelled = false;
@@ -78,7 +78,7 @@ export default function ForgotPasswordPage() {
             await resetPassword({ email: email.trim(), emailCode, password });
             message.success("密码已重置，请使用新密码登录");
             if (flow) flow.changeMode("login");
-            else navigate(loginURL, { replace: true, viewTransition: true });
+            else navigate(loginEntry.to, { replace: true, state: loginEntry.state, viewTransition: true });
         } catch (error) {
             message.error(error instanceof Error ? error.message : "密码重置失败");
         } finally {
@@ -115,7 +115,7 @@ export default function ForgotPasswordPage() {
                 <Button type="primary" htmlType="submit" size="large" block loading={sendingCode} disabled={emailEnabled === false} icon={<ArrowRight className="size-4" />} iconPlacement="end">
                     发送验证码
                 </Button>
-                <BackToLogin to={loginURL} />
+                <BackToLogin next={next} />
             </form>
         );
     }
@@ -179,7 +179,7 @@ export default function ForgotPasswordPage() {
             <Button type="primary" htmlType="submit" size="large" block loading={submitting} icon={<ArrowRight className="size-4" />} iconPlacement="end">
                 重置密码
             </Button>
-            <BackToLogin to={loginURL} />
+            <BackToLogin next={next} />
         </form>
     );
 }
@@ -194,11 +194,11 @@ function AuthField({ label, htmlFor, children }: { label: string; htmlFor: strin
     );
 }
 
-function BackToLogin({ to }: { to: string }) {
+function BackToLogin({ next }: { next: string }) {
     const flow = useBrandAuthFlow();
     return (
         <div className="text-center">
-            <Link to={to} viewTransition onClick={(event) => { if (flow && !event.metaKey && !event.ctrlKey && !event.altKey && !event.shiftKey && event.button === 0) { event.preventDefault(); flow.changeMode("login"); } }} className="auth-scene-link inline-flex min-h-8 items-center gap-1.5 rounded-sm text-xs transition-colors duration-150 motion-reduce:transition-none">
+            <Link {...authEntry(next)} viewTransition onClick={(event) => { if (flow && !event.metaKey && !event.ctrlKey && !event.altKey && !event.shiftKey && event.button === 0) { event.preventDefault(); flow.changeMode("login"); } }} className="auth-scene-link inline-flex min-h-8 items-center gap-1.5 rounded-sm text-xs transition-colors duration-150 motion-reduce:transition-none">
                 <ArrowLeft className="size-3.5" />
                 返回登录
             </Link>

@@ -3,6 +3,7 @@ import { useRef, useState } from "react";
 import { useNavigate } from "react-router";
 
 import { applyUserSession } from "@/lib/user-session";
+import { clearAuthNavigation } from "@/lib/auth-navigation";
 import { logout } from "@/services/api/auth";
 
 /**
@@ -21,6 +22,7 @@ export function useWorkspaceLogout(onLoggedOut?: () => void) {
         setLoggingOut(true);
         try {
             await logout();
+            clearAuthNavigation();
             await applyUserSession({ user: null });
             onLoggedOut?.();
             message.success("已退出登录");

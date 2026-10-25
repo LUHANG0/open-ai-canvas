@@ -1,12 +1,14 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { App, Button, Input } from "antd";
 import { ArrowRight, LockKeyhole, UserRound } from "lucide-react";
-import { Link } from "react-router";
+import { Link, useLocation } from "react-router";
+import { authEntry } from "@/lib/auth-navigation";
 
 import { AppModal } from "@/components/ui/product/app-modal";
 import { getAuthSession, login } from "@/services/api/auth";
 
 export function CreationLoginDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+    const location = useLocation();
     const { message } = App.useApp();
     const [username, setUsername] = useState("");
     const [password, setPassword] = useState("");
@@ -68,7 +70,7 @@ export function CreationLoginDialog({ open, onClose }: { open: boolean; onClose:
                 </form>
                 <p className="text-center text-xs text-foreground/55">
                     还没有账号？{" "}
-                    <Link className="text-primary hover:underline" to="/register?next=%2F" onClick={onClose}>
+                    <Link className="text-primary hover:underline" {...authEntry(location.pathname + location.search + location.hash, "/register")} onClick={onClose}>
                         注册
                     </Link>
                 </p>

@@ -76,7 +76,7 @@ test("welcome, real fields, agreement, primary action and existing-account link 
         expect(follows(welcome, form)).toBe(true); expect(follows(form.querySelectorAll(".auth-register-field")[3], agreement)).toBe(true);
         expect(follows(agreement, submit)).toBe(true); expect(follows(form, login)).toBe(true);
         expect([...form.querySelectorAll(".auth-register-field > .auth-scene-label")].map((node) => node.textContent)).toEqual(["用户名", "显示名称", "密码", "确认密码"]);
-        expect(login.querySelector("a")?.getAttribute("href")).toBe("/login?next=%2Fi%2FAb3xY9");
+        expect(login.querySelector("a")?.getAttribute("href")).toBe("/login");
         expect(f.host.textContent).not.toContain("Linux.do"); expect(f.host.querySelector<HTMLInputElement>('input[type="checkbox"]')?.checked).toBe(false);
     } finally { await f.close(); }
 });

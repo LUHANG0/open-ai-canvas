@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import { Button } from "antd";
-import { Link, useParams, useSearchParams } from "react-router";
+import { Link, useParams } from "react-router";
 import { getAuthSession, logout } from "@/services/api/auth";
 import { invitationPath, invitationStateMessages, validateRegistrationInvitation, type PublicRegistrationInvitation } from "@/services/api/registration-invitations";
-import { loginPath, safeAuthNext } from "@/lib/auth-navigation";
+import { authEntry, clearAuthNavigation } from "@/lib/auth-navigation";
 import { formatCredits } from "@/constant/credits";
 import { AuthFormPending } from "./auth-form-pending";
 import RegisterPage from "./register";
@@ -11,15 +11,13 @@ import { RegistrationInvitationContext } from "./invitation-context";
 
 export default function InvitationPage() {
     const { code = "" } = useParams();
-    const [params] = useSearchParams();
     const [retry, setRetry] = useState(0);
     const [loading, setLoading] = useState(true);
     const [member, setMember] = useState(false);
     const [switching, setSwitching] = useState(false);
     const [error, setError] = useState("");
     const [invitation, setInvitation] = useState<PublicRegistrationInvitation | null>(null);
-    const destination = invitationPath(code) + (params.has("next") ? `?next=${encodeURIComponent(safeAuthNext(params.get("next")))}` : "");
-    const login = loginPath(destination);
+    const loginEntry = authEntry(invitationPath(code));
 
     useEffect(() => {
         let active = true;
@@ -41,6 +39,7 @@ export default function InvitationPage() {
         setSwitching(true); setError("");
         try {
             await logout();
+            clearAuthNavigation();
             const { applyUserSession } = await import("@/lib/user-session");
             await applyUserSession(await getAuthSession());
             setMember(false);
@@ -55,16 +54,16 @@ export default function InvitationPage() {
         <Button type="primary" size="large" block href="/create">进入工作台</Button>
         <Button size="large" block loading={switching} onClick={() => void switchAccount()}>切换账号</Button>
     </div>;
-    if (error) return <div className="space-y-4"><p role="alert">{error}</p><Button onClick={() => setRetry((n) => n + 1)}>重试</Button><p><Link className="auth-scene-link" to={login}>已有账号？登录</Link></p></div>;
+    if (error) return <div className="space-y-4"><p role="alert">{error}</p><Button onClick={() => setRetry((n) => n + 1)}>重试</Button><p><Link className="auth-scene-link" {...loginEntry}>已有账号？登录</Link></p></div>;
     if (!invitation || invitation.state !== "valid" || !invitation.settings || invitation.bonusMicrocredits === undefined) {
         const state = invitation?.state;
-        return <div className="space-y-4"><p role="status">{state && state !== "valid" ? invitationStateMessages[state] : "暂时无法验证邀请，请重试。"}</p><Link className="auth-scene-link" to={login}>已有账号？登录</Link></div>;
+        return <div className="space-y-4"><p role="status">{state && state !== "valid" ? invitationStateMessages[state] : "暂时无法验证邀请，请重试。"}</p><Link className="auth-scene-link" {...loginEntry}>已有账号？登录</Link></div>;
     }
     return <RegistrationInvitationContext.Provider value={{ code, settings: invitation.settings, bonusMicrocredits: invitation.bonusMicrocredits, reload: () => setRetry((n) => n + 1) }}>
         <div className="mc-invitation-registration">
             {invitation.bonusMicrocredits > 0 && <p className="mc-invitation-welcome" role="status"><span>注册成功后获赠</span><strong>{formatCredits(invitation.bonusMicrocredits)} 积分</strong></p>}
             <RegisterPage key={code} />
-            <p className="mc-invitation-login">已有账号？<Link className="auth-scene-link" to={login}>登录</Link></p>
+            <p className="mc-invitation-login">已有账号？<Link className="auth-scene-link" {...loginEntry}>登录</Link></p>
         </div>
     </RegistrationInvitationContext.Provider>;
 }

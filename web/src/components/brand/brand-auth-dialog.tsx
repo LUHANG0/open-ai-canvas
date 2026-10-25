@@ -9,6 +9,7 @@ import { brandStudioLabel, useAppearanceStore } from "@/stores/use-appearance-st
 import { AuthFormPending } from "@/pages/auth/auth-form-pending";
 import { useAuthReducedMotion } from "@/pages/auth/use-auth-motion";
 import { BrandLogo } from "./brand-logo";
+import { clearAuthNavigation } from "@/lib/auth-navigation";
 import { BrandAuthFlow, type BrandAuthMode } from "./brand-auth-entry";
 import "@/pages/auth/auth-scene.css";
 import "./brand-auth-dialog.css";
@@ -78,7 +79,7 @@ export default function BrandAuthDialog({ next, onClosed, routeMode = "login", o
     const changeMode = async (target: BrandAuthMode, keyboard = false, fromRoute = false) => {
         const id = ++request.current;
         requested.current = target;
-        if (target === "login" && member.current) { void navigate(destination.current, { replace: true }); return; }
+        if (target === "login" && member.current) { clearAuthNavigation(); void navigate(destination.current, { replace: true }); return; }
         if (target === mode && Page) { setPage(() => Page); setMode(target); setPending(null); setError(undefined); if (!fromRoute) onModeChange?.(target); return; }
         setPending(target); setError(undefined);
         let readingPolicy = target === "register";
@@ -129,7 +130,7 @@ export default function BrandAuthDialog({ next, onClosed, routeMode = "login", o
         void getAuthSession().then((session) => {
             if (!active || dismissed.current) return;
             member.current = Boolean(session.user);
-            if (session.user && requested.current === "login") { void navigate(destination.current, { replace: true }); return; }
+            if (session.user && requested.current === "login") { clearAuthNavigation(); void navigate(destination.current, { replace: true }); return; }
             if (request.current === initialRequest) void changeMode(requested.current, false, true);
         }).catch(() => {
             if (!active || dismissed.current) return;

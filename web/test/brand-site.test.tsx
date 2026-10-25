@@ -11,7 +11,7 @@ describe("MengCeng public renderer", () => {
         expect(nav).not.toContain("探索影像");
         expect(nav).not.toContain("创作方式");
         expect(nav).not.toContain("进入工作台");
-        expect(html).toContain('href="/login?next=%2Fcreate"');
+        expect(html).toContain('href="/login"');
         expect(html).not.toContain('id="entries"');
         expect(DEFAULT_BRAND_CONTENT.primaryLink).toBe("/create");
         expect(html).toContain("MengCeng");
@@ -23,7 +23,7 @@ describe("MengCeng public renderer", () => {
         expect(html).not.toContain('id="process"');
         expect(html).toContain('id="examples"');
         expect(html).toContain('id="techniques"');
-        expect(html).toContain('href="/login?next=%2Fskills"');
+        expect(html).toContain('href="/login"');
         expect(html).not.toContain('id="faq"');
         expect(html).toContain("/brand/b/wave.webp");
         expect(html).toContain("/brand/b/architecture.webp");

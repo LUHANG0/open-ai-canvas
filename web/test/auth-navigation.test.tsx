@@ -11,13 +11,13 @@ const { act } = await import("react");
 const { createRoot } = await import("react-dom/client");
 const { MemoryRouter, Route, Routes, useLocation } = await import("react-router");
 const { BrandLink } = await import("../src/components/brand/brand-link");
-const { loginPath, safeAuthNext } = await import("../src/lib/auth-navigation");
+const { authEntry, authDestination, safeAuthNext } = await import("../src/lib/auth-navigation");
 const { RequireAuth } = await import("../src/components/auth/require-auth");
 const { useUserStore } = await import("../src/stores/use-user-store");
 
 afterAll(() => { dom.happyDOM.abort(); for (const [key, descriptor] of originals) { if (descriptor) Object.defineProperty(globalThis, key, descriptor); else Reflect.deleteProperty(globalThis, key); } });
 function Position() { const location = useLocation(); return <output>{location.pathname + location.search + location.hash}</output>; }
-function Destination() { const location = useLocation(); return <output>{new URLSearchParams(location.search).get("next")}</output>; }
+function Destination() { const location = useLocation(); return <output>{authDestination(location.state, new URLSearchParams(location.search).get("next"))}</output>; }
 async function host() {
     const element = document.createElement("div"); document.body.append(element); const root = createRoot(element);
     return { element, root, close: async () => { await act(async () => root.unmount()); element.remove(); } };
@@ -25,7 +25,8 @@ async function host() {
 
 test("login destinations preserve path, query and hash and reject non-local addresses", async () => {
     const destination = "/canvas/example?view=nodes#selected";
-    expect(new URLSearchParams(loginPath(destination).split("?")[1]).get("next")).toBe(destination);
+    expect(authEntry(destination).to).toBe("/login");
+    expect(authDestination(authEntry(destination).state)).toBe(destination);
     for (const invalid of [undefined, null, "", "https://example.com", "//example.com", "/\\example.com", "/\nexample.com"]) expect(safeAuthNext(invalid)).toBe("/create");
     const previous = useUserStore.getState(); const f = await host();
     try {
@@ -50,6 +51,6 @@ test("brand links use continuous routing, preserve modified clicks and block pre
         await act(async () => links[1].dispatchEvent(preview)); expect(preview.defaultPrevented).toBe(true);
         expect(links[2].getAttribute("href")).toBe("https://example.com"); expect(links[2].target).toBe("_blank");
         await act(async () => links[0].click());
-        expect(f.element.querySelector("output")?.textContent).toBe("/login?next=%2Fcreate"); expect(f.element.querySelector("header")).toBe(header);
+        expect(f.element.querySelector("output")?.textContent).toBe("/login"); expect(f.element.querySelector("header")).toBe(header);
     } finally { await f.close(); }
 });

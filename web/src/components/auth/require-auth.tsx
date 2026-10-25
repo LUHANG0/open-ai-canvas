@@ -3,7 +3,7 @@ import { Navigate, useLocation } from "react-router";
 
 import { FullScreenLoader } from "@/components/ui/aceternity/full-screen-loader";
 import { useUserStore } from "@/stores/use-user-store";
-import { loginPath } from "@/lib/auth-navigation";
+import { authEntry } from "@/lib/auth-navigation";
 
 export function RequireAuth({ children, allowAnonymous = false }: { children: ReactNode; allowAnonymous?: boolean }) {
     const location = useLocation();
@@ -11,6 +11,6 @@ export function RequireAuth({ children, allowAnonymous = false }: { children: Re
     const user = useUserStore((state) => state.user);
 
     if (!hydrated) return <FullScreenLoader />;
-    if (!user && !allowAnonymous) return <Navigate to={loginPath(location.pathname + location.search + location.hash)} replace />;
+    if (!user && !allowAnonymous) return <Navigate {...authEntry(location.pathname + location.search + location.hash)} replace />;
     return children;
 }

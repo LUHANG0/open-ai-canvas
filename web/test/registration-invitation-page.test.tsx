@@ -34,7 +34,7 @@ test("invitation loading does not flash closed registration or an unusable form"
 });
 for (const state of ["expired", "revoked", "used", "invalid"] as const) test(`invitation ${state} shows a clear terminal state and retains safe login context`, async () => {
     response = Promise.resolve({ state }); const f = await fixture();
-    try { expect(f.host.querySelector("form")).toBeNull(); expect(f.host.textContent).toContain(api.invitationStateMessages[state]); expect(f.host.querySelector("a")?.getAttribute("href")).toBe("/login?next=%2Fi%2FAb3xY9"); }
+    try { expect(f.host.querySelector("form")).toBeNull(); expect(f.host.textContent).toContain(api.invitationStateMessages[state]); expect(f.host.querySelector("a")?.getAttribute("href")).toBe("/login"); }
     finally { await f.close(); }
 });
 test("a network failure is retryable and does not claim the invitation is invalid", async () => {

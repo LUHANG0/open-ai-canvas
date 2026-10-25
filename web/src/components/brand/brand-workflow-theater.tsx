@@ -4,7 +4,6 @@ import { BrandCanvasDemo } from "./brand-canvas-demo";
 import { BrandLink } from "./brand-link";
 import { WORKFLOW_SCENES } from "./brand-workflow-scenes";
 import { BrandMotionMedia as MotionMedia } from "./brand-motion-media";
-import { loginPath } from "@/lib/auth-navigation";
 import "./brand-workflow-theater.css";
 
 export function BrandWorkflowTheater({ preview = false, creationLink }: { preview?: boolean; creationLink: string }) {
@@ -57,7 +56,7 @@ export function BrandWorkflowTheater({ preview = false, creationLink }: { previe
             <div className="mc-theater-background" aria-hidden="true"><MotionMedia media={scene.background} enabled={playing} visible={visible && !preview} /></div>
             <div className="mc-theater-heading"><div><h3>{scene.title}</h3><p>{scene.description}</p></div><button type="button" className="mc-theater-motion" aria-label={playing ? "暂停动态预览" : "播放动态预览"} disabled={preview} onClick={() => setIntent(!playing)}>{playing ? <Pause aria-hidden="true" /> : <Play aria-hidden="true" />}</button></div>
             <BrandCanvasDemo key={scene.id} items={items} renderMedia={(_item, index) => <MotionMedia media={scene.nodes[index].media} enabled={playing} visible={visible && !preview} />} />
-            <div className="mc-theater-footer"><BrandLink className="mc-button mc-primary" href={loginPath(creationLink)} {...blockNavigation}>开始我的创作<ArrowUpRight aria-hidden="true" /></BrandLink></div>
+            <div className="mc-theater-footer"><BrandLink className="mc-button mc-primary" href="/login" authNext={creationLink} {...blockNavigation}>开始我的创作<ArrowUpRight aria-hidden="true" /></BrandLink></div>
         </div>
     </div>;
 }

@@ -9,6 +9,10 @@ import { RouterProvider } from "react-router";
 
 import { AppProviders } from "@/components/layout/app-providers";
 import { router } from "@/router";
+import { observeAuthNavigation } from "@/lib/auth-navigation";
+
+const stopAuthNavigation = observeAuthNavigation(router);
+if (import.meta.hot) import.meta.hot.dispose(stopAuthNavigation);
 
 document.body.style.fontFamily = '"SF Pro Display","SF Pro Text","PingFang SC","Microsoft YaHei","Helvetica Neue",sans-serif';
 

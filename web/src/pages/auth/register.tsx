@@ -4,7 +4,7 @@ import { SegmentedControl } from "@/components/ui/base/segmented-control";
 import { AppModal } from "@/components/ui/product/app-modal";
 import { ArrowRight, FileText, Info, LockKeyhole, Mail, TriangleAlert, UserRound } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router";
-import { safeAuthNext } from "@/lib/auth-navigation";
+import { clearAuthNavigation, safeAuthNext } from "@/lib/auth-navigation";
 import { useBrandAuthFlow } from "@/components/brand/brand-auth-entry";
 
 import { getAuthSession, getAuthSettings, linuxDOLoginURL, register } from "@/services/api/auth";
@@ -95,6 +95,7 @@ export default function RegisterPage() {
             await applyUserSession(await getAuthSession());
             if (!settings?.firstUser) window.sessionStorage.setItem("yingce:model-setup-guide", "1");
             message.success(invitation && result.signupBonusMicrocredits !== undefined && result.signupBonusMicrocredits > 0 ? `注册成功，${formatCredits(result.signupBonusMicrocredits)} 积分已到账` : settings?.firstUser ? "管理员账号已创建" : "注册成功");
+            clearAuthNavigation();
             navigate(next, { replace: true });
         } catch (error) {
             setSubmitError(error instanceof Error ? error.message : "注册失败");

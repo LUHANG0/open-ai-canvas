@@ -13,7 +13,7 @@ import { CanvasZoomControls } from "@/components/canvas/canvas-zoom-controls";
 import { CanvasViewport } from "@/components/canvas/canvas-viewport";
 import { FullScreenLoader } from "@/components/ui/aceternity/full-screen-loader";
 import { WorkspaceState } from "@/components/layout/workspace-state";
-import { loginPath } from "@/lib/auth-navigation";
+import { authEntry } from "@/lib/auth-navigation";
 import { NODE_DEFAULT_SIZE } from "@/constant/canvas";
 import { canvasAppearanceBaseTheme, canvasAppearanceForTheme, DEFAULT_CANVAS_BACKGROUND_MODE, normalizeCanvasAppearance, resolveCanvasAppearance, type CanvasAppearance } from "@/lib/canvas/canvas-appearance";
 import { canvasThemes } from "@/lib/canvas-theme";
@@ -257,7 +257,7 @@ export default function SharedCanvasPage() {
                     <span className="max-w-[45vw] truncate text-base font-semibold">{title}</span>
                     <span className="inline-flex items-center gap-1 text-xs" style={{ color: theme.node.muted }}><Eye className="size-3.5" />只读分享</span>
                 </div>
-                <Link className="pointer-events-auto" to={loginPath(location.pathname + location.search + location.hash)}><Button type="text" icon={<LogIn className="size-4" />}>登录</Button></Link>
+                <Link className="pointer-events-auto" {...authEntry(location.pathname + location.search + location.hash)}><Button type="text" icon={<LogIn className="size-4" />}>登录</Button></Link>
             </header>
 
             <CanvasViewport containerRef={containerRef} viewport={viewport} appearance={appearance} backgroundMode={backgroundMode} onViewportChange={onViewportChange} onViewportPreviewChange={(next) => { viewportRef.current = next; }} onCanvasDeselect={() => { setSelectedNodeId(null); setContextMenu(null); }} onContextMenu={(event) => openContextMenu(event)} onDrop={(event) => { event.preventDefault(); unauthorized(); }}>

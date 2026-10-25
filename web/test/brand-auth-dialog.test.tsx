@@ -185,7 +185,7 @@ test("homepage links open the dialog while preview and modified clicks keep thei
         await act(async () => { await import("../src/components/brand/brand-auth-dialog"); });
         expect(host.querySelector('[role="dialog"]')).not.toBeNull();
         expect(host.querySelector('form output')?.textContent).toBe("/skills?view=all#catalog");
-        expect(host.querySelector("[data-location]")?.textContent).toBe("/login?next=%2Fskills%3Fview%3Dall%23catalog");
+        expect(host.querySelector("[data-location]")?.textContent).toBe("/login");
     } finally { await act(async () => root.unmount()); host.remove(); }
 });
 test("closed public registration uses the invitation entry without mounting the public register form", async () => {

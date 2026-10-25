@@ -135,7 +135,7 @@ test("real process tabs select once, keep roving focus and respect keyboard boun
         const click = new dom.MouseEvent("click", { bubbles: true, cancelable: true });
         await act(async () => link.dispatchEvent(click));
         expect(click.defaultPrevented).toBe(true);
-        expect(link.getAttribute("href")).toBe("/login?next=%2Fcreate");
+        expect(link.getAttribute("href")).toBe("/login");
     } finally { await f.close(); }
 });
 
@@ -159,7 +159,7 @@ test("creative methods match the real preset catalog, select by focus and preser
         const click = new dom.MouseEvent("click", { bubbles: true, cancelable: true });
         await act(async () => link.dispatchEvent(click));
         expect(click.defaultPrevented).toBe(true);
-        expect(link.getAttribute("href")).toBe("/login?next=%2Fskills");
+        expect(link.getAttribute("href")).toBe("/login");
     } finally { await f.close(); }
 });
 

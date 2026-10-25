@@ -1,6 +1,5 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { ArrowRight, ArrowUpRight, Pause, Play } from "lucide-react";
-import { loginPath } from "@/lib/auth-navigation";
 import { BrandLink } from "./brand-link";
 import { BrandMotionMedia } from "./brand-motion-media";
 import { WORKFLOW_SCENES, type WorkflowMedia } from "./brand-workflow-scenes";
@@ -44,7 +43,7 @@ export function BrandTechniques({ preview = false }: { preview?: boolean }) {
         return () => { observer?.disconnect(); document.removeEventListener("visibilitychange", change); clearHover(); };
     }, [preview]);
     return <section ref={root} id="techniques" className="mc-section mc-techniques" aria-labelledby={`${panel}-heading`}>
-        <div className="mc-techniques-heading"><div><h2 id={`${panel}-heading`}>灵感之外，还有方法。</h2><p>从故事开发到商业影像，把需要的创作技能连接起来。</p></div><BrandLink className="mc-content-link" href={loginPath("/skills")} onClick={preview ? (event) => event.preventDefault() : undefined}>探索技能库<ArrowUpRight aria-hidden="true" /></BrandLink></div>
+        <div className="mc-techniques-heading"><div><h2 id={`${panel}-heading`}>灵感之外，还有方法。</h2><p>从故事开发到商业影像，把需要的创作技能连接起来。</p></div><BrandLink className="mc-content-link" href="/login" authNext="/skills" onClick={preview ? (event) => event.preventDefault() : undefined}>探索技能库<ArrowUpRight aria-hidden="true" /></BrandLink></div>
         <div className="mc-techniques-layout">
             <div id={`${panel}-preview`} className="mc-technique-preview" role="region" aria-labelledby={`${panel}-title`} data-playing={playing || undefined}>
                 <div className="mc-technique-frames" aria-hidden="true">{BRAND_TECHNIQUES.map((technique, index) => <div className="mc-technique-frame" key={technique.presetId} data-active={index === selected || undefined}><BrandMotionMedia media={technique.media} visible={visible && index === selected && !preview} enabled={playing && index === selected} /></div>)}</div>

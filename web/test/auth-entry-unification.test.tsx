@@ -55,13 +55,13 @@ test("homepage entry and direct auth routes share the actual published brand tre
         const background = f.host.querySelector(".mengceng-site"); const hero = f.host.querySelector(".mc-hero");
         expect(f.host.querySelector("#examples")).not.toBeNull(); expect(f.host.querySelector("#techniques")).not.toBeNull();
         await f.click("开始创作");
-        expect(f.router.state.location.pathname).toBe("/login"); expect(f.router.state.location.search).toBe("?next=%2Fcreate");
+        expect(f.router.state.location.pathname).toBe("/login"); expect(f.router.state.location.search).toBe("");
         expect(f.host.querySelector("#login-account")).not.toBeNull();
         for (const path of ["/register", "/forgot-password", "/login"]) {
             await f.go(path + "?next=%2Fsettings#kept");
             expect(f.host.querySelector(".mengceng-site")).toBe(background); expect(f.host.querySelector(".mc-hero")).toBe(hero);
             expect(f.host.querySelectorAll('[role="dialog"]')).toHaveLength(1); expect(f.host.querySelector(".auth-scene-simple")).toBeNull();
-            expect(f.router.state.location.search).toBe("?next=%2Fsettings"); expect(f.router.state.location.hash).toBe("#kept");
+            expect(f.router.state.location.search).toBe(""); expect(f.router.state.location.hash).toBe("#kept");
         }
         expect(brandCalls).toBe(1); expect(sessionCalls).toBe(1);
     } finally { await f.close(); }
@@ -87,7 +87,7 @@ test("real tabs keep current navigation key, query/hash, roving focus and one as
         await key(1, "Home"); expect(document.activeElement).toBe(tabs[0]);
         await key(0, "End"); expect(document.activeElement).toBe(tabs[1]);
         await key(1, "ArrowRight"); expect(document.activeElement).toBe(tabs[0]);
-        expect(f.router.state.location.search).toBe("?next=%2Fsettings&oauth_error=TestError"); expect(f.router.state.location.hash).toBe("#kept");
+        expect(f.router.state.location.search).toBe("?oauth_error=TestError"); expect(f.router.state.location.hash).toBe("#kept");
         await f.click("忘记密码？"); expect(f.router.state.location.pathname).toBe("/forgot-password");
         expect(f.host.querySelector('[role="tablist"]')?.hasAttribute("hidden")).toBe(true);
         await f.click("返回登录"); expect(f.router.state.location.pathname).toBe("/login"); expect(f.router.state.location.hash).toBe("#kept");
@@ -163,7 +163,7 @@ test("case-sensitive invitation routes validate their real code, retain status/c
     try {
         expect(validated).toEqual(["Ab3xY9"]); expect(f.host.textContent).toContain(invitations.invitationStateMessages.expired);
         expect(f.host.querySelector(".mc-invitation-entry")).toBeNull();
-        expect(f.find("已有账号？登录").getAttribute("href")).toBe("/login?next=%2Fi%2FAb3xY9%3Fnext%3D%252Fsettings");
+        expect(f.find("已有账号？登录").getAttribute("href")).toBe("/login");
         invite = Promise.resolve({ state: "valid", settings, bonusMicrocredits: 0 }); await f.go("/i/Xy9Ab3");
         expect(validated).toEqual(["Ab3xY9", "Xy9Ab3"]); expect(f.host.querySelector('input[autocomplete="new-password"]')).not.toBeNull();
         expect(f.host.textContent).not.toContain("获赠"); expect(f.host.querySelector(".mc-invitation-entry")).toBeNull();

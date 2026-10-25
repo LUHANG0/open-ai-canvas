@@ -10,7 +10,7 @@ import { Tooltip } from "@/components/ui/base/tooltip";
 import { navigationTools, type NavigationToolSlug } from "@/constant/navigation-tools";
 import { cn } from "@/lib/utils";
 import { preloadWorkspaceRoute } from "@/lib/workspace-route-modules";
-import { loginPath } from "@/lib/auth-navigation";
+import { authEntry } from "@/lib/auth-navigation";
 import { useUserStore, type FeatureAvailability } from "@/stores/use-user-store";
 import { useAppearanceStore } from "@/stores/use-appearance-store";
 import { WorkspaceAccountCard } from "./workspace-account-card";
@@ -167,7 +167,7 @@ export function WorkspaceSidebarNav({ collapsed, onNavigate, onOpenSearch, onExp
                     <span className="workspace-navigation-account-copy"><strong>{profileName}</strong></span>
                     <ChevronDown className="workspace-navigation-account-chevron" aria-hidden="true" />
                 </button>
-            </Popover> : <Link to={loginPath(location.pathname + location.search + location.hash)} className="workspace-navigation-account" aria-label="登录">
+            </Popover> : <Link {...authEntry(location.pathname + location.search + location.hash)} className="workspace-navigation-account" aria-label="登录">
                 <CircleUserRound className="workspace-navigation-avatar" aria-hidden="true" /><span className="workspace-navigation-label">登录</span>
             </Link>}
             <div className="workspace-navigation-toggle-row">

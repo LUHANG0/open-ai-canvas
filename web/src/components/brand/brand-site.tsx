@@ -8,7 +8,6 @@ import { BrandWorkflowTheater } from "./brand-workflow-theater";
 import { BrandTechniques } from "./brand-techniques";
 import { useThemeStore } from "@/stores/use-theme-store";
 import { brandMediaURL, type BrandContent, type BrandMedia, type BrandItem, type BrandSection } from "@/services/api/brand-site";
-import { loginPath } from "@/lib/auth-navigation";
 import "./brand-site.css";
 
 const GalleryModal = lazy(() => import("@/components/ui/product/app-modal/app-modal").then((module) => ({ default: module.AppModal })));
@@ -73,7 +72,7 @@ function Gallery({ section, preview, linkProps }: { section: BrandSection; previ
                     {item.media.kind === "video" && item.media.resourceId ? <Media value={item.media} preview={preview} /> : <button className="mc-gallery-open" type="button" aria-label={`查看${item.title}品牌影像`} onClick={() => setOpened(index)}><Media value={item.media} preview={preview} fallback={artwork(index)} /></button>}
                     <figcaption><span>{item.title}</span><Expand aria-hidden="true" /></figcaption>
                 </figure>
-                {(item.description || item.link) && <div className="mc-gallery-copy">{item.description && <p>{item.description}</p>}{item.link && <BrandLink href={item.link.startsWith("/") ? loginPath(item.link) : item.link} {...linkProps}>进入{item.title}<ArrowUpRight aria-hidden="true" /></BrandLink>}</div>}
+                {(item.description || item.link) && <div className="mc-gallery-copy">{item.description && <p>{item.description}</p>}{item.link && <BrandLink href={item.link.startsWith("/") ? "/login" : item.link} authNext={item.link.startsWith("/") ? item.link : undefined} {...linkProps}>进入{item.title}<ArrowUpRight aria-hidden="true" /></BrandLink>}</div>}
             </article>)}
         </div>
         {opened !== undefined && <Suspense fallback={null}><GalleryModal open={Boolean(chosen)} flush centered width={1100} title={chosen?.title || "品牌影像"} footer={null} onCancel={() => setOpened(null)} rootClassName="mc-gallery-modal">{chosen && <div className="mc-lightbox"><Media key={opened} value={chosen.media} preview={preview} fallback={artwork(opened!)} />{section.items.length > 1 && <div className="mc-lightbox-controls"><button type="button" aria-label="上一张影像" onClick={() => setOpened((opened! - 1 + section.items.length) % section.items.length)}><ArrowLeft aria-hidden="true" /></button><span aria-live="polite">{opened! + 1} / {section.items.length}</span><button type="button" aria-label="下一张影像" onClick={() => setOpened((opened! + 1) % section.items.length)}><ArrowRight aria-hidden="true" /></button></div>}</div>}</GalleryModal></Suspense>}
@@ -102,7 +101,7 @@ export function BrandSite({ content, preview = false }: { content: BrandContent;
     const siteRef = useRef<HTMLDivElement>(null);
     const appearance = useAppearanceStore((state) => state.appearance);
     const theme = useThemeStore((state) => state.theme);
-    const creationEntry = loginPath(content.primaryLink);
+    const creationEntry = content.primaryLink;
     const linkProps = preview ? { onClick: (event: React.MouseEvent) => event.preventDefault() } : {};
     const ContentRoot = preview ? "div" : "main";
     const visible = content.sections.filter((section) => section.visible && section.id !== "entries");
@@ -124,12 +123,12 @@ export function BrandSite({ content, preview = false }: { content: BrandContent;
     return <div ref={siteRef} className="mengceng-site" data-studio-theme={theme} data-preview={preview || undefined}>
         <a href="#mengceng-main" className="mc-skip" {...linkProps}>跳到正文</a>
         <header className="mc-nav"><BrandLink className="mc-brand" href="/" {...linkProps}>{wordmark}</BrandLink>
-            <div className="mc-nav-actions"><BrandLink className="mc-button mc-primary" href={creationEntry} {...linkProps}>{content.primaryLabel}<ArrowUpRight aria-hidden="true" /></BrandLink></div>
+            <div className="mc-nav-actions"><BrandLink className="mc-button mc-primary" href="/login" authNext={creationEntry} {...linkProps}>{content.primaryLabel}<ArrowUpRight aria-hidden="true" /></BrandLink></div>
         </header>
         <ContentRoot id="mengceng-main" tabIndex={-1}>
             <section className={`mc-hero${content.heroMedia.resourceId ? " mc-custom-hero" : ""}`}>
                 {content.heroMedia.resourceId ? <figure className="mc-hero-custom-media"><Media value={content.heroMedia} preview={preview} priority /></figure> : <BrandFilmStage preview={preview} />}
-                <div className="mc-hero-copy"><h1>{content.title.split("\n").map((line, index) => <span key={index}>{line}</span>)}</h1><p className="mc-lead">{content.description}</p>{content.detail && <p className="mc-detail">{content.detail}</p>}<BrandLink className="mc-button mc-hero-cta" href={creationEntry} {...linkProps}>{content.primaryLabel}<ArrowUpRight aria-hidden="true" /></BrandLink></div>
+                <div className="mc-hero-copy"><h1>{content.title.split("\n").map((line, index) => <span key={index}>{line}</span>)}</h1><p className="mc-lead">{content.description}</p>{content.detail && <p className="mc-detail">{content.detail}</p>}<BrandLink className="mc-button mc-hero-cta" href="/login" authNext={creationEntry} {...linkProps}>{content.primaryLabel}<ArrowUpRight aria-hidden="true" /></BrandLink></div>
                 {visible.length > 0 && <BrandLink className="mc-explore" href={`#${visible[0].id}`} {...linkProps}>探索更多<ArrowDown aria-hidden="true" /></BrandLink>}
             </section>
             {visible.map((section) => <Fragment key={section.id}><section id={section.id} className={`mc-section mc-${section.id}`}>
@@ -139,7 +138,7 @@ export function BrandSite({ content, preview = false }: { content: BrandContent;
                     <ProcessSteps items={section.items} preview={preview} linkProps={linkProps} />
                 </>}
             </section>{section.id === "examples" && <BrandTechniques preview={preview} />}</Fragment>)}
-            {content.footer && <section className="mc-closing"><h2>{content.footer}</h2><BrandLink className="mc-button mc-primary" href={creationEntry} {...linkProps}>{content.primaryLabel}<ArrowUpRight aria-hidden="true" /></BrandLink></section>}
+            {content.footer && <section className="mc-closing"><h2>{content.footer}</h2><BrandLink className="mc-button mc-primary" href="/login" authNext={creationEntry} {...linkProps}>{content.primaryLabel}<ArrowUpRight aria-hidden="true" /></BrandLink></section>}
         </ContentRoot>
         <footer className="mc-footer"><BrandLink className="mc-brand" href="/" {...linkProps}>{wordmark}</BrandLink><div className="mc-footer-meta"><BrandLink href="https://MengCeng.com" {...linkProps}>MengCeng.com</BrandLink>{appearance.icpFilingEnabled && <BrandLink href="https://beian.miit.gov.cn/" target="_blank" rel="noreferrer" {...linkProps}>{appearance.icpFilingNumber}</BrandLink>}<small>{appearance.footerCopyright}</small></div></footer>
     </div>;
