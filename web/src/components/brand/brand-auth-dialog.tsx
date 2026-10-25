@@ -3,16 +3,17 @@ import { ConfigProvider } from "antd";
 import { useNavigate } from "react-router";
 import { AppModal } from "@/components/ui/product/app-modal";
 import { getAntThemeConfig } from "@/lib/app-theme";
-import { loadForgotPasswordPage, loadLoginPage, loadRegisterPage } from "@/lib/auth-route-modules";
+import { loadForgotPasswordPage, loadInvitationPage, loadLoginPage, loadRegisterPage } from "@/lib/auth-route-modules";
 import { getAuthSession, getAuthSettings } from "@/services/api/auth";
-import { useAppearanceStore } from "@/stores/use-appearance-store";
+import { brandStudioLabel, useAppearanceStore } from "@/stores/use-appearance-store";
 import { AuthFormPending } from "@/pages/auth/auth-form-pending";
+import { useAuthReducedMotion } from "@/pages/auth/use-auth-motion";
 import { BrandLogo } from "./brand-logo";
 import { BrandAuthFlow, type BrandAuthMode } from "./brand-auth-entry";
 import "@/pages/auth/auth-scene.css";
 import "./brand-auth-dialog.css";
 
-const loaders = { login: loadLoginPage, register: loadRegisterPage, "forgot-password": loadForgotPasswordPage };
+const loaders = { login: loadLoginPage, register: loadRegisterPage, "forgot-password": loadForgotPasswordPage, invitation: loadInvitationPage };
 const loadInvitationEntry = () => import("./brand-invitation-entry");
 const tabs = ["login", "register"] as const;
 function loopDialogTab(event: KeyboardEvent<HTMLDivElement>) {
@@ -27,12 +28,12 @@ function loopDialogTab(event: KeyboardEvent<HTMLDivElement>) {
         (event.shiftKey ? last : first)?.focus();
     }
 }
-export default function BrandAuthDialog({ next, onClosed }: { next: string; onClosed: () => void }) {
+export default function BrandAuthDialog({ next, onClosed, routeMode = "login", onModeChange }: { next: string; onClosed: () => void; routeMode?: BrandAuthMode; onModeChange?: (mode: BrandAuthMode) => void }) {
     const appearance = useAppearanceStore((state) => state.appearance);
     const navigate = useNavigate();
     const [open, setOpen] = useState(true);
-    const [mode, setMode] = useState<BrandAuthMode>("login");
-    const [pending, setPending] = useState<BrandAuthMode | null>("login");
+    const [mode, setMode] = useState<BrandAuthMode>(routeMode);
+    const [pending, setPending] = useState<BrandAuthMode | null>(routeMode);
     const [error, setError] = useState<string>();
     const [sessionFailed, setSessionFailed] = useState(false);
     const [registrationPolicy, setRegistrationPolicy] = useState<"loading" | "open" | "invitation" | "failed">("loading");
@@ -45,13 +46,19 @@ export default function BrandAuthDialog({ next, onClosed }: { next: string; onCl
     const panel = useRef<HTMLDivElement>(null);
     const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
     const animation = useRef<Animation | null>(null);
-    const initial = useRef(true);
-    const requested = useRef<BrandAuthMode>("login");
+    const transitionOrigin = useRef<number | null>(null);
+    const committedPage = useRef<ComponentType | undefined>(undefined);
+    const keyboardCommit = useRef(false);
+    const reduced = useAuthReducedMotion();
+    const requested = useRef<BrandAuthMode>(routeMode);
+    const member = useRef(false);
+    const destination = useRef(next);
+    destination.current = next;
     const titleRef = useRef<HTMLHeadingElement>(null);
     const titleId = useId();
     const invited = registrationPolicy === "invitation";
     const registerLabel = invited ? "内测用户邀请" : registrationPolicy === "open" ? "注册" : "注册入口";
-    const title = mode === "register" ? invited ? "内测用户邀请" : "创建账号" : mode === "forgot-password" ? "找回密码" : `登录${appearance.brandName}`;
+    const title = mode === "invitation" ? `加入${appearance.brandName}` : mode === "register" ? invited ? `加入${appearance.brandName}` : registrationPolicy === "open" ? "创建账号" : "注册入口" : mode === "forgot-password" ? "找回密码" : `登录${appearance.brandName}`;
     const readRegistrationSettings = () => {
         if (!registrationSettings.current) {
             if (mounted.current && !dismissed.current) setRegistrationPolicy("loading");
@@ -68,11 +75,11 @@ export default function BrandAuthDialog({ next, onClosed }: { next: string; onCl
         return registrationSettings.current;
     };
     const close = () => { dismissed.current = true; invitationCancellation.current.abort(); request.current++; animation.current?.cancel(); setOpen(false); };
-    const changeMode = async (target: BrandAuthMode, keyboard = false) => {
+    const changeMode = async (target: BrandAuthMode, keyboard = false, fromRoute = false) => {
         const id = ++request.current;
         requested.current = target;
-        animation.current?.cancel();
-        if (target === mode && Page) { setPending(null); setError(undefined); return; }
+        if (target === "login" && member.current) { void navigate(destination.current, { replace: true }); return; }
+        if (target === mode && Page) { setPage(() => Page); setMode(target); setPending(null); setError(undefined); if (!fromRoute) onModeChange?.(target); return; }
         setPending(target); setError(undefined);
         let readingPolicy = target === "register";
         try {
@@ -85,46 +92,58 @@ export default function BrandAuthDialog({ next, onClosed }: { next: string; onCl
                 module = { default: () => <InvitationPage signal={signal} canNavigate={() => !dismissed.current && requested.current === "register"} /> };
             } else module = await loaders[target]();
             if (id !== request.current) return;
-            if (Page && !keyboard && panel.current?.animate && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-                animation.current = panel.current.animate([{ opacity: 1, transform: "translateY(0)" }, { opacity: 0, transform: "translateY(-6px)" }], { duration: 120, easing: "cubic-bezier(.23,1,.32,1)", fill: "forwards" });
-                await animation.current.finished.catch(() => undefined);
-            }
-            if (id !== request.current) return;
+            transitionOrigin.current = panel.current?.parentElement?.getBoundingClientRect().top ?? null;
             animation.current?.cancel();
-            initial.current = keyboard;
+            keyboardCommit.current = keyboard;
             setPage(() => module.default); setMode(target);
+            if (!fromRoute) onModeChange?.(target);
             if (document.activeElement instanceof HTMLElement && panel.current?.contains(document.activeElement)) tabRefs.current[target === "register" ? 1 : 0]?.focus();
         } catch { if (id === request.current) setError(readingPolicy ? "暂时无法读取注册设置，请重试。" : "表单暂时无法加载，请重试。"); }
         finally { if (id === request.current) setPending(null); }
     };
+    useEffect(() => {
+        if (routeMode !== requested.current) void changeMode(routeMode, false, true);
+    }, [routeMode]);
     useLayoutEffect(() => {
+        const changed = committedPage.current !== Page;
+        const hadPage = Boolean(committedPage.current);
+        const origin = transitionOrigin.current;
+        transitionOrigin.current = null;
+        committedPage.current = Page;
+        animation.current?.cancel();
+        if (!changed) return;
         if (panel.current?.parentElement) panel.current.parentElement.scrollTop = 0;
-        if (mode === "forgot-password") titleRef.current?.focus({ preventScroll: true });
-        if (initial.current) { initial.current = false; return; }
-        if (!panel.current?.animate || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-        animation.current = panel.current.animate([{ opacity: 0, transform: "translateY(6px)" }, { opacity: 1, transform: "translateY(0)" }], { duration: 220, easing: "cubic-bezier(.23,1,.32,1)" });
-    }, [mode, Page]);
+        if (mode === "forgot-password" || mode === "invitation") titleRef.current?.focus({ preventScroll: true });
+        const area = panel.current?.parentElement;
+        if (!hadPage || keyboardCommit.current || !area?.animate || reduced || origin === null) return;
+        const offset = origin - area.getBoundingClientRect().top;
+        if (Math.abs(offset) < 1) return;
+        animation.current = area.animate([{ transform: `translateY(${offset}px)` }, { transform: "translateY(0)" }], { duration: 160, easing: "cubic-bezier(.23,1,.32,1)" });
+    }, [mode, Page, reduced]);
     useEffect(() => {
         let active = true;
         mounted.current = true;
+        if (invitationCancellation.current.signal.aborted) invitationCancellation.current = new AbortController();
         const initialRequest = request.current;
         void readRegistrationSettings().catch(() => undefined);
         void getAuthSession().then((session) => {
             if (!active || dismissed.current) return;
-            if (session.user) { void navigate(next, { replace: true }); return; }
-            if (request.current === initialRequest) void changeMode("login");
+            member.current = Boolean(session.user);
+            if (session.user && requested.current === "login") { void navigate(destination.current, { replace: true }); return; }
+            if (request.current === initialRequest) void changeMode(requested.current, false, true);
         }).catch(() => {
             if (!active || dismissed.current) return;
             setSessionFailed(true);
-            if (request.current === initialRequest) void changeMode("login");
+            if (request.current === initialRequest) void changeMode(requested.current, false, true);
         });
-        return () => { active = false; mounted.current = false; request.current++; animation.current?.cancel(); };
+        return () => { active = false; mounted.current = false; request.current++; invitationCancellation.current.abort(); animation.current?.cancel(); };
     }, []);
-    return <ConfigProvider theme={getAntThemeConfig(true, appearance.activeSkin)}>
-        <AppModal open={open} onCancel={close} afterClose={onClosed} centered flush footer={null} width={468} rootClassName="mc-auth-layer" className="mc-auth-dialog" aria-labelledby={titleId} closable={{ "aria-label": "关闭登录窗口" }} wrapProps={{ onKeyDown: loopDialogTab }}
-            title={<div className="mc-auth-heading"><BrandLogo theme="dark" alt="" className="mc-auth-symbol" fallback={null} /><h2 ref={titleRef} tabIndex={-1} id={titleId}>{title}</h2><p>{mode === "register" ? invited ? "输入管理员提供的 6 位邀请码。" : "准备好开始你的下一次创作。" : mode === "forgot-password" ? "验证账号邮箱，重新设置密码。" : "继续你的故事与创作。"}</p></div>}>
+    const theme = getAntThemeConfig(false, appearance.activeSkin);
+    return <ConfigProvider theme={reduced ? { ...theme, token: { ...theme.token, motion: false } } : theme}>
+        <AppModal open={open} onCancel={close} afterClose={onClosed} transitionName={reduced ? "" : undefined} maskTransitionName={reduced ? "" : undefined} centered flush footer={null} width={448} rootClassName="mc-auth-layer" className={mode === "invitation" ? "mc-auth-dialog mc-auth-dialog-invitation" : "mc-auth-dialog"} aria-labelledby={titleId} closable={{ "aria-label": "关闭登录窗口" }} wrapProps={{ onKeyDown: loopDialogTab }}
+            title={<div className="mc-auth-heading">{mode === "invitation" ? <div className="mc-invitation-brand"><BrandLogo theme="light" alt="" className="mc-auth-symbol" fallback={null} /><span className="mc-invitation-wordmark">{brandStudioLabel(appearance)}</span></div> : <BrandLogo theme="light" alt="" className="mc-auth-symbol" fallback={null} />}<h2 ref={titleRef} tabIndex={-1} id={titleId}>{title}</h2><p>{mode === "invitation" ? "接受邀请，开始你的创作。" : mode === "register" ? invited ? "凭邀请加入，开启你的下一幕。" : registrationPolicy === "open" ? "准备好开始你的下一次创作。" : registrationPolicy === "loading" ? "正在读取注册设置。" : "请重试读取注册设置。" : mode === "forgot-password" ? "验证账号邮箱，重新设置密码。" : "继续你的故事与创作。"}</p></div>}>
             <div className="mc-auth-body auth-scene-card">
-                <div className="mc-auth-tabs" role="tablist" aria-label="账户入口" data-active={mode === "register" ? "register" : "login"} aria-busy={Boolean(pending)} hidden={mode === "forgot-password"}>
+                <div className="mc-auth-tabs" role="tablist" aria-label="账户入口" data-active={mode === "register" ? "register" : "login"} aria-busy={Boolean(pending)} hidden={mode === "forgot-password" || mode === "invitation"}>
                     <span aria-hidden="true" className="mc-auth-selection" />
                     {tabs.map((tab, index) => <button key={tab} ref={(element) => { tabRefs.current[index] = element; }} type="button" role="tab" id={`${titleId}-${tab}`} aria-selected={mode === tab} aria-controls={`${titleId}-panel`} tabIndex={mode === tab ? 0 : -1} onPointerEnter={() => {
                         if (tab === "register") void readRegistrationSettings().then(async (settings) => { if (settings.registrationEnabled) await loadRegisterPage(); else await loadInvitationEntry(); }).catch(() => undefined);
@@ -138,8 +157,8 @@ export default function BrandAuthDialog({ next, onClosed }: { next: string; onCl
                 <div className="mc-auth-scroll">
                     {sessionFailed && mode === "login" && <p className="mc-auth-error" role="status">暂时无法确认登录状态，可继续使用表单登录。</p>}
                     {error && <div role="alert" className="mc-auth-error">{error}<button type="button" onClick={() => { void changeMode(requested.current); }}>重新加载</button></div>}
-                    <div ref={panel} id={`${titleId}-panel`} role={mode === "forgot-password" ? undefined : "tabpanel"} aria-labelledby={mode === "forgot-password" ? undefined : `${titleId}-${mode}`} className="auth-scene-fields mc-auth-fields" aria-busy={Boolean(pending)}>
-                        <BrandAuthFlow.Provider value={{ next, changeMode: (target) => { void changeMode(target); } }}>{Page ? <Page /> : <AuthFormPending message="正在准备登录" />}</BrandAuthFlow.Provider>
+                    <div ref={panel} id={`${titleId}-panel`} role={mode === "forgot-password" || mode === "invitation" ? undefined : "tabpanel"} aria-labelledby={mode === "forgot-password" || mode === "invitation" ? undefined : `${titleId}-${mode}`} className="auth-scene-fields mc-auth-fields" aria-busy={Boolean(pending)}>
+                        <BrandAuthFlow.Provider value={{ next, changeMode: (target) => { void changeMode(target); } }}>{Page ? <Page /> : <AuthFormPending message={mode === "invitation" ? "正在准备邀请" : mode === "register" ? "正在准备注册入口" : mode === "forgot-password" ? "正在准备找回密码" : "正在准备登录"} />}</BrandAuthFlow.Provider>
                     </div>
                 </div>
             </div>

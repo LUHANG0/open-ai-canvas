@@ -7,18 +7,22 @@ import { Select } from "@/components/ui/base/select";
 import { imageHostControls, imageParameterAccepts, imageParameterRequest, parseImageParameters, updateImageParameterSchema, updateImageParameterSize, type ImageParameter, type ImageParameterValue } from "@/lib/image-parameters";
 import type { ImageCapabilityConfig } from "@/lib/model-capabilities";
 import type { AiConfig } from "@/stores/use-config-store";
+import { imageResponseFormatField, imageSettingDescription, imageSettingLabel, imageSettingOption, imageSettingOrder } from "@/lib/generation-settings-presentation";
+import "./generation-settings.css";
 
 export function ImageParameterInput({
     field,
     value,
     disabled,
     inlineChoices = false,
+    presentation = "protocol",
     onChange,
 }: {
     field: ImageParameter;
     value?: ImageParameterValue;
     disabled?: boolean;
     inlineChoices?: boolean;
+    presentation?: "protocol" | "generation";
     onChange: (value: ImageParameterValue | undefined) => void;
 }) {
     const [draft, setDraft] = useState(value);
@@ -31,19 +35,21 @@ export function ImageParameterInput({
         onChange(next);
     };
     const invalid = draft !== undefined && !imageParameterAccepts(field, draft);
+    const label = presentation === "generation" ? imageSettingLabel(field) : field.label;
+    const optionLabel = (option: ImageParameterValue) => presentation === "generation" ? imageSettingOption(field, option) : typeof option === "boolean" ? (option ? "开启" : "关闭") : String(option);
     if (field.values?.length) {
         if (inlineChoices) {
             const ratios = field.encoding === "ratio" || (field.name === "size" && field.values.some((item) => typeof item === "string" && /^\d+(?:\.\d+)?:\d+(?:\.\d+)?$/.test(item)));
             return (
                 <div className="image-size-picker">
-                    <div className={ratios ? "image-size-ratios" : "image-size-tiers"} role="group" aria-label={field.label}>
+                    <div className={ratios ? "image-size-ratios" : "image-size-tiers"} role="group" aria-label={label}>
                         {field.values.map((option) => {
                             const dimensions = ratios && typeof option === "string" ? option.split(":").map(Number) : [];
                             const [width, height] = dimensions;
                             return (
                                 <button type="button" key={`${typeof option}:${option}`} disabled={disabled} aria-pressed={value === option} onClick={() => onChange(option)}>
                                     {width > 0 && height > 0 ? <span aria-hidden="true" className="image-size-ratio-icon" style={{ width: 24 * Math.min(1, width / height), height: 24 * Math.min(1, height / width) }} /> : null}
-                                    <span>{typeof option === "boolean" ? (option ? "开启" : "关闭") : String(option)}</span>
+                                    <span>{optionLabel(option)}</span>
                                 </button>
                             );
                         })}
@@ -59,22 +65,22 @@ export function ImageParameterInput({
         return (
             <Select
                 className="w-full"
-                ariaLabel={field.label}
+                ariaLabel={label}
                 disabled={disabled}
                 allowClear={!field.required}
                 value={value === undefined ? undefined : String(value)}
                 placeholder="跟随模型默认"
-                options={field.values.map((v) => ({ value: String(v), label: typeof v === "boolean" ? (v ? "开启" : "关闭") : String(v) }))}
+                options={field.values.map((v) => ({ value: String(v), label: optionLabel(v) }))}
                 onChange={(next) => onChange(field.values!.find((v) => String(v) === next))}
             />
         );
     }
-    if (field.type === "boolean") return <Switch aria-label={field.label} disabled={disabled} checked={value === true} onChange={onChange} />;
+    if (field.type === "boolean") return <Switch aria-label={label} disabled={disabled} checked={value === true} onChange={onChange} />;
     if (field.type === "integer" || field.type === "number")
         return (
             <InputNumber
                 className="w-full"
-                aria-label={field.label}
+                aria-label={label}
                 disabled={disabled}
                 value={typeof draft === "number" ? draft : null}
                 status={invalid ? "error" : undefined}
@@ -95,7 +101,7 @@ export function ImageParameterInput({
         );
     return (
         <Input
-            aria-label={field.label}
+            aria-label={label}
             disabled={disabled}
             value={typeof draft === "string" ? draft : ""}
             status={invalid ? "error" : undefined}
@@ -141,9 +147,24 @@ export function ImageParameterFields({
             (p.name !== "size" || showSize) &&
             (p.name !== "quality" || showQuality) &&
             (p.name !== "transparentBackground" || showTransparent),
-    );
+    ).sort((a, b) => imageSettingOrder(a) - imageSettingOrder(b));
+    const advanced = fields.filter(imageResponseFormatField);
+    const renderField = (field: ImageParameter) => <fieldset className="generation-settings-group" key={field.name}>
+        <legend>{imageSettingLabel(field)}</legend>
+        <ImageParameterInput field={field} presentation="generation" inlineChoices value={values[field.name]} onChange={(next) => {
+            if (imageHostControls.has(field.name)) {
+                onChange(field.name as "size" | "quality" | "imageResolution" | "transparentBackground" | "count", next === undefined ? "" : String(next));
+                return;
+            }
+            const parameters = parseImageParameters(config.imageParameters);
+            if (next === undefined) delete parameters[field.name];
+            else parameters[field.name] = next;
+            onChange("imageParameters", JSON.stringify(parameters));
+        }} />
+        {imageSettingDescription(field) ? <p className="generation-settings-note">{imageSettingDescription(field)}</p> : null}
+    </fieldset>;
     return (
-        <div className="space-y-3" data-canvas-no-zoom onPointerDown={(event) => event.stopPropagation()}>
+        <div className="generation-settings generation-settings-panel" data-canvas-no-zoom data-canvas-wheel-scroll onPointerDown={(event) => event.stopPropagation()} onWheel={(event) => event.stopPropagation()}>
             {groupedSize ? (
                 <ImageSizePicker
                     profile={profile}
@@ -156,27 +177,8 @@ export function ImageParameterFields({
                     }}
                 />
             ) : null}
-            {fields.map((field) => (
-                <div className="space-y-1.5" key={field.name}>
-                    <div className="text-xs font-medium">{field.label}</div>
-                    <ImageParameterInput
-                        field={field}
-                        inlineChoices
-                        value={values[field.name]}
-                        onChange={(next) => {
-                            if (imageHostControls.has(field.name)) {
-                                onChange(field.name as "size" | "quality" | "imageResolution" | "transparentBackground" | "count", next === undefined ? "" : String(next));
-                                return;
-                            }
-                            const parameters = parseImageParameters(config.imageParameters);
-                            if (next === undefined) delete parameters[field.name];
-                            else parameters[field.name] = next;
-                            onChange("imageParameters", JSON.stringify(parameters));
-                        }}
-                    />
-                    {field.description ? <p className="text-xs leading-relaxed text-foreground/55">{field.description}</p> : null}
-                </div>
-            ))}
+            {fields.filter((field) => !imageResponseFormatField(field)).map(renderField)}
+            {advanced.length ? <details className="generation-settings-advanced"><summary>高级设置<span>{advanced.map((field) => values[field.name] === undefined ? "跟随模型默认" : imageSettingOption(field, values[field.name])).join(" · ")}</span></summary><div className="generation-settings-panel">{advanced.map(renderField)}</div></details> : null}
         </div>
     );
 }

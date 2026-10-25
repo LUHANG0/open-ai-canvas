@@ -43,6 +43,35 @@ async function fixture(content = withProcess, scope = ".mc-process-stage", previ
     return { host, render, tabs, panel, key, close: async () => { await act(async () => root.unmount()); host.remove(); } };
 }
 
+test("homepage reads from gallery to workflow to methods and preserves saved CMS section order", async () => {
+    for (const order of [["examples", "process", "faq"], ["faq", "examples", "process"], ["process", "faq", "examples"]]) {
+        const sections = order.map((id) => {
+            const original = DEFAULT_BRAND_CONTENT.sections.find((section) => section.id === id)!;
+            return { ...original, visible: true, title: `保留${id}标题`, items: original.items.map((item, index) => index === 0 && id === "examples" ? { ...item, title: "自有作品", media: { resourceId: "owned-gallery", kind: "image" as const, alt: "保留自有影像", posterId: "" } } : item) };
+        });
+        const f = await fixture({ ...DEFAULT_BRAND_CONTENT, sections });
+        try {
+            const actual = [...f.host.querySelectorAll("#mengceng-main > section[id]")].map((section) => section.id);
+            expect(actual.filter((id) => id !== "techniques")).toEqual(order);
+            expect(actual.indexOf("techniques")).toBe(actual.indexOf("examples") + 1);
+            expect(f.host.querySelectorAll("#techniques")).toHaveLength(1);
+            expect(f.host.querySelectorAll(".mc-workflow-theater")).toHaveLength(1);
+            const gallery = f.host.querySelector("#examples .mc-gallery")!;
+            const theater = f.host.querySelector("#examples .mc-workflow-theater")!;
+            expect(gallery.compareDocumentPosition(theater) & dom.Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+            expect(gallery.querySelector("img")?.getAttribute("src")).toContain("/admin/settings/brand-site/media/owned-gallery");
+            expect(gallery.querySelector("img")?.alt).toBe("保留自有影像");
+            expect(gallery.querySelector("button")?.getAttribute("aria-label")).toBe("查看自有作品品牌影像");
+            for (const section of sections) expect(f.host.querySelector(`#${section.id} h2`)?.textContent).toBe(section.title);
+            await f.render({ ...DEFAULT_BRAND_CONTENT, sections: sections.map((section) => section.id === "examples" ? { ...section, visible: false } : section) });
+            expect(f.host.querySelector("#examples")).toBeNull();
+            expect(f.host.querySelector("#techniques")).toBeNull();
+            expect(f.host.querySelector(".mc-workflow-theater")).toBeNull();
+            expect([...f.host.querySelectorAll("#mengceng-main > section[id]")].map((section) => section.id)).toEqual(order.filter((id) => id !== "examples"));
+        } finally { await f.close(); }
+    }
+});
+
 test("real process tabs select once, keep roving focus and respect keyboard boundaries", async () => {
     const f = await fixture();
     try {
@@ -223,4 +252,41 @@ test("eight workflow types replace their canvas and preview keeps remote videos 
         expect(f.host.querySelector(".mc-theater-footer")?.textContent).not.toContain("FLORA");
         expect(f.host.querySelectorAll(".mc-orbit button")).toHaveLength(0);
     } finally { await f.close(); }
+});
+
+test("rapid workflow choices stay local and preserve the hero media and playback controls", async () => {
+    const previousTransition = Object.getOwnPropertyDescriptor(document, "startViewTransition");
+    const previousMedia = Object.getOwnPropertyDescriptor(window, "matchMedia");
+    let documentTransitions = 0;
+    Object.defineProperty(window, "matchMedia", { configurable: true, value: () => ({ matches: false, addEventListener() {}, removeEventListener() {} }) });
+    Object.defineProperty(document, "startViewTransition", { configurable: true, value: (update: () => void) => {
+        documentTransitions++;
+        update();
+        return { ready: Promise.resolve(), skipTransition() {} };
+    } });
+    const f = await fixture(DEFAULT_BRAND_CONTENT, ".mc-workflow", false);
+    try {
+        const media = [...f.host.querySelectorAll(".mc-film-screen img,.mc-film-screen video")];
+        const rail = f.host.querySelector(".mc-film-rail");
+        const playback = f.host.querySelector(".mc-film-playback");
+        const selectedHero = f.host.querySelector('.mc-film-thumb[aria-pressed="true"]');
+        expect(media.length).toBeGreaterThan(0);
+        const buttons = [...f.host.querySelectorAll<HTMLButtonElement>(".mc-theater-categories button")];
+        for (const index of [1, 5, 2, 7, 0, 6]) await act(async () => buttons[index].click());
+        expect(buttons[6].getAttribute("aria-pressed")).toBe("true");
+        expect(buttons.filter((button) => button.getAttribute("aria-pressed") === "true")).toHaveLength(1);
+        expect(f.host.querySelector(".mc-theater-heading h3")?.textContent).toContain("标识");
+        expect(documentTransitions).toBe(0);
+        expect([...f.host.querySelectorAll(".mc-film-screen img,.mc-film-screen video")]).toEqual(media);
+        expect(media.every((node) => node.isConnected)).toBe(true);
+        expect(f.host.querySelector(".mc-film-rail")).toBe(rail);
+        expect(f.host.querySelector(".mc-film-playback")).toBe(playback);
+        expect(f.host.querySelector('.mc-film-thumb[aria-pressed="true"]')).toBe(selectedHero);
+    } finally {
+        await f.close();
+        if (previousTransition) Object.defineProperty(document, "startViewTransition", previousTransition);
+        else Reflect.deleteProperty(document, "startViewTransition");
+        if (previousMedia) Object.defineProperty(window, "matchMedia", previousMedia);
+        else Reflect.deleteProperty(window, "matchMedia");
+    }
 });

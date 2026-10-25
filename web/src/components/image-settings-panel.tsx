@@ -1,17 +1,18 @@
 import { ImageSizePicker } from "./image-size-picker";
 import { ImageParameterFields } from "./image-parameter-fields";
-import { imageResolutionUsesQuality, imageSizePresets } from "@/lib/image-size-presets";
-import { type ReactNode } from "react";
+import { imageResolutionUsesQuality } from "@/lib/image-size-presets";
+import { useRef, type CSSProperties, type ReactNode } from "react";
 import { ConfigProvider } from "antd";
 import { Switch } from "@/components/ui/base/switch";
 
 import { type CanvasTheme } from "@/lib/canvas-theme";
 import { buildImageResolutionOptions, formatImageResolutionSize } from "@/lib/image-resolution-tiers";
-import { modelCapabilityConfigFor, normalizeImageValue, type ImageCapabilityConfig } from "@/lib/model-capabilities";
+import { normalizeImageValue, type ImageCapabilityConfig } from "@/lib/model-capabilities";
 import { mergedImageCapabilityConfig } from "@/lib/model-selection";
 import { imagePriceSelector, normalizeImagePriceSelector } from "@/lib/image-pricing";
 import { modelOptionName, resolveModelChannel, type AiConfig } from "@/stores/use-config-store";
 import { imageQualityLabel } from "@/lib/image-quality";
+import "./generation-settings.css";
 
 export { imageQualityLabel } from "@/lib/image-quality";
 type AspectOption = { value: string; label: string; width: number; height: number; icon: string; size?: string };
@@ -61,12 +62,12 @@ export function ImageSettingsPanel({ config, onConfigChange, theme, showTitle = 
     const activeSize = normalized.size;
     const activeQualityOptions = profile.quality.values.map((value) => ({ value, label: imageQualityLabel(value) }));
     const priceTiers = imageModelPriceTiers(config);
-    if (profile.parameters) return <ImageSettingsTheme theme={theme}><div className={className}>{showTitle ? <div className="mb-3 text-base font-semibold">图像设置</div> : null}<ImageParameterFields profile={profile} config={config} onChange={onConfigChange} showSize={showSize} showCount={showCount} showQuality={showQuality} showTransparent={showTransparent} /></div></ImageSettingsTheme>;
+    if (profile.parameters) return <ImageSettingsTheme theme={theme}><div className={`generation-settings generation-settings-panel ${className}`}>{showTitle ? <h3 className="generation-settings-title">图像设置</h3> : null}<ImageParameterFields profile={profile} config={config} onChange={onConfigChange} showSize={showSize} showCount={showCount} showQuality={showQuality} showTransparent={showTransparent} /></div></ImageSettingsTheme>;
 
     return (
         <ImageSettingsTheme theme={theme}>
             <div
-                className={className}
+                className={`generation-settings generation-settings-panel ${className}`}
                 style={{ color: theme.node.text }}
                 onMouseDown={(event) => {
                     event.stopPropagation();
@@ -74,36 +75,21 @@ export function ImageSettingsPanel({ config, onConfigChange, theme, showTitle = 
                     if (document.activeElement instanceof HTMLInputElement && event.currentTarget.contains(document.activeElement)) document.activeElement.blur();
                 }}
             >
-                {showTitle ? <div className="text-base font-semibold">图像设置</div> : null}
-                {showQuality && profile.quality.supported && !imageResolutionUsesQuality(profile) ? <div className="space-y-2">
-                    <SettingTitle color={theme.node.muted}>{isGrokResolutionQuality(profile) ? "分辨率" : "质量"}</SettingTitle>
-                    <div className={`grid gap-1.5 ${activeQualityOptions.length <= 2 ? "grid-cols-2" : "grid-cols-4"}`}>
+                {showTitle ? <h3 className="generation-settings-title">图像设置</h3> : null}
+                {showSize ? <ImageSizePicker profile={profile} size={activeSize} quality={quality} onChange={(size, nextQuality) => applyImageSizeSelection(onConfigChange, size, nextQuality)} /> : null}
+                {showQuality && profile.quality.supported && !imageResolutionUsesQuality(profile) ? <fieldset className="generation-settings-group">
+                    <legend>{isGrokResolutionQuality(profile) ? "分辨率" : "图像质量"}</legend>
+                    <div className="generation-settings-options">
 						{activeQualityOptions.map((item) => (
                             <OptionPill key={item.value} selected={quality === item.value} disabled={!bypassPriceGuard && !hasPriceTierForImageSelection(priceTiers, item.value, activeSize)} theme={theme} onClick={() => onConfigChange("quality", item.value)}>
                                 {item.label}
                             </OptionPill>
                         ))}
                     </div>
-                </div> : null}
-                {showTransparent && profile.transparentBackground.supported ? <div className="flex items-center justify-between gap-3">
-                    <div className="min-w-0">
-                        <SettingTitle color={theme.node.muted}>透明背景</SettingTitle>
-                        <div className="mt-1 text-[var(--fs-label)]" style={{ color: theme.node.muted }}>
-                            请求模型输出保留 Alpha 通道的 PNG
-                        </div>
-                    </div>
-                    <span title="是否支持透明背景由当前模型接口决定" onMouseDown={(event) => event.stopPropagation()}>
-                        <Switch
-                            size="sm"
-                            checked={transparentBackground}
-                            onChange={(checked) => onConfigChange("transparentBackground", checked ? "true" : "false")}
-                        />
-                    </span>
-                </div> : null}
-                {showSize ? <ImageSizePicker profile={profile} size={activeSize} quality={quality} onChange={(size, nextQuality) => applyImageSizeSelection(onConfigChange, size, nextQuality)} /> : null}
+                </fieldset> : null}
                 {showCount && effectiveMaxCount > 1 ? (
-                    <div className="space-y-2">
-                        <SettingTitle color={theme.node.muted}>生成张数</SettingTitle>
+                    <fieldset className="generation-settings-group">
+                        <legend>生成张数</legend>
                         <div className="grid grid-cols-4 gap-1.5">
                             {Array.from({ length: Math.min(quickCount, effectiveMaxCount) }, (_, index) => index + 1).map((value) => (
                                 <OptionPill key={value} selected={count === value} theme={theme} onClick={() => onConfigChange("count", String(value))}>
@@ -112,8 +98,9 @@ export function ImageSettingsPanel({ config, onConfigChange, theme, showTitle = 
                             ))}
                             <CountInput value={count} quickCount={quickCount} max={effectiveMaxCount} theme={theme} onChange={(value) => onConfigChange("count", String(value || 1))} />
                         </div>
-                    </div>
+                    </fieldset>
                 ) : null}
+                {showTransparent && profile.transparentBackground.supported ? <div className="generation-settings-switch"><span>透明背景</span><span title="是否支持透明背景由当前模型接口决定" onMouseDown={(event) => event.stopPropagation()}><Switch size="sm" aria-label="透明背景" checked={transparentBackground} onChange={(checked) => onConfigChange("transparentBackground", checked ? "true" : "false")} /></span></div> : null}
             </div>
         </ImageSettingsTheme>
     );
@@ -132,7 +119,7 @@ export function ImageSettingsTheme({ theme, children }: { theme: CanvasTheme; ch
                 components: { Button: { defaultBg: theme.canvas.background, defaultBorderColor: theme.node.stroke, defaultColor: theme.node.text } },
             }}
         >
-            {children}
+            <div className="generation-settings" style={{ "--generation-settings-ink": theme.node.text, "--generation-settings-muted": theme.node.muted, "--generation-settings-surface": theme.toolbar.itemHover, "--generation-settings-selected": theme.toolbar.activeBg, "--generation-settings-stroke": theme.node.stroke } as CSSProperties}>{children}</div>
         </ConfigProvider>
     );
 }
@@ -143,6 +130,7 @@ function isGrokResolutionQuality(profile: ImageCapabilityConfig) {
 }
 
 export function imageSizeLabel(size: string) {
+    if (size.toLowerCase() === "auto") return "自动";
     const resolutionLabel = formatImageResolutionSize(size, buildImageResolutionOptions([size]));
     return resolutionLabel !== size ? resolutionLabel : aspectOptions.find((item) => (item.size || item.value) === size || item.value === size)?.label || size;
 }
@@ -166,9 +154,11 @@ function OptionPill({ selected, disabled = false, theme, onClick, children }: { 
     return (
         <button
             type="button"
-			className="h-8 cursor-pointer rounded-full px-2 text-xs transition-colors hover:brightness-110 focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-1 disabled:cursor-not-allowed disabled:opacity-40"
+            className="generation-settings-option"
+			aria-pressed={selected}
 			style={{ background: selected ? theme.toolbar.activeBg : "transparent", color: theme.node.text, outlineColor: theme.node.muted }}
 			disabled={disabled}
+            title={disabled ? "当前模型或价格档位不支持此选项" : undefined}
             onMouseDown={(event) => event.stopPropagation()}
             onClick={onClick}
         >
@@ -178,13 +168,16 @@ function OptionPill({ selected, disabled = false, theme, onClick, children }: { 
 }
 
 function CountInput({ value, quickCount, max, theme, onChange }: { value: number; quickCount: number; max: number; theme: CanvasTheme; onChange: (value: number | null) => void }) {
+    const dirty = useRef(false);
     const commit = (input: HTMLInputElement) => {
+        if (!dirty.current) return;
+        dirty.current = false;
         const next = Math.max(1, Math.min(max, Math.floor(Number(input.value) || 1)));
         input.value = String(next);
-        onChange(next);
+        if (next !== value) onChange(next);
     };
     return (
-        <label className="flex h-8 overflow-hidden rounded-full text-xs" style={{ background: theme.toolbar.itemHover, color: theme.node.text }}>
+        <label className="generation-settings-input-shell flex h-8 overflow-hidden rounded-md text-xs" style={{ background: theme.toolbar.itemHover, color: theme.node.text }}>
             <input
                 key={value > quickCount ? `custom-${value}` : "quick"}
                 type="number"
@@ -195,6 +188,7 @@ function CountInput({ value, quickCount, max, theme, onChange }: { value: number
                 className="min-w-0 flex-1 bg-transparent px-2 text-center outline-none placeholder:text-current placeholder:opacity-55 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                 style={{ color: theme.node.text, WebkitTextFillColor: theme.node.text }}
                 defaultValue={value > quickCount ? value : ""}
+                onChange={() => { dirty.current = true; }}
                 onBlur={(event) => commit(event.currentTarget)}
                 onKeyDown={(event) => {
                     if (event.key === "Enter") event.currentTarget.blur();
@@ -202,13 +196,5 @@ function CountInput({ value, quickCount, max, theme, onChange }: { value: number
                 onMouseDown={(event) => event.stopPropagation()}
             />
         </label>
-    );
-}
-
-function SettingTitle({ children, color }: { children: string; color: string }) {
-    return (
-        <div className="text-xs font-medium" style={{ color }}>
-            {children}
-        </div>
     );
 }

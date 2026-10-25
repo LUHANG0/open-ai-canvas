@@ -10,70 +10,16 @@ for (const [key, value] of Object.entries({ window: dom, document: dom.document,
 const { act } = await import("react");
 const { createRoot } = await import("react-dom/client");
 const { App } = await import("antd");
-const { createMemoryRouter, RouterProvider, useLocation } = await import("react-router");
-const { AuthScene } = await import("@/pages/auth/auth-scene");
 const { VerificationFields } = await import("@/components/auth/verification-fields");
 const { RunningHubSettingsPane } = await import("@/pages/settings/runninghub-settings-pane");
-const { useAppearanceStore } = await import("@/stores/use-appearance-store");
 const { useConfigStore } = await import("@/stores/use-config-store");
 const { emptyVerification } = await import("@/services/api/verification");
-
-function RouteProbe({ label }: { label: string }) {
-    const location = useLocation();
-    return <p data-search={location.search}>{label}</p>;
-}
 
 afterAll(() => {
     dom.happyDOM.abort();
     for (const [key, value] of originals) {
         if (value) Object.defineProperty(globalThis, key, value);
         else Reflect.deleteProperty(globalThis, key);
-    }
-});
-
-test("auth tabs ignore current-item navigation and preserve route search, panel associations and keyboard focus on real changes", async () => {
-    const appearance = useAppearanceStore.getState().appearance;
-    const host = document.createElement("div"); document.body.append(host);
-    const root = createRoot(host);
-    const router = createMemoryRouter([{ element: <AuthScene />, children: [{ path: "/login", element: <RouteProbe label="登录表单" /> }, { path: "/register", element: <RouteProbe label="注册表单" /> }] }], { initialEntries: ["/login?next=%2Fsettings"] });
-    const navigationKeys = [router.state.location.key];
-    const unsubscribe = router.subscribe(({ location }) => {
-        if (navigationKeys.at(-1) !== location.key) navigationKeys.push(location.key);
-    });
-    try {
-        await act(async () => root.render(<RouterProvider router={router} />));
-        const tabs = host.querySelectorAll<HTMLButtonElement>('[role="tab"]');
-        expect(tabs.length).toBe(2);
-        const key = async (index: number, value: string) => act(async () => { tabs[index].dispatchEvent(new window.KeyboardEvent("keydown", { key: value, bubbles: true, cancelable: true })); });
-        await act(async () => tabs[0].click());
-        await key(0, "Home");
-        expect(document.activeElement).toBe(tabs[0]);
-        expect(navigationKeys).toHaveLength(1);
-        await key(0, "ArrowRight");
-        expect(navigationKeys).toHaveLength(2);
-        expect(document.activeElement).toBe(tabs[1]);
-        expect(tabs[1].getAttribute("aria-selected")).toBe("true");
-        expect([...tabs].filter((tab) => tab.tabIndex === 0)).toHaveLength(1);
-        const panel = document.getElementById(tabs[1].getAttribute("aria-controls")!)!;
-        expect(panel.getAttribute("aria-labelledby")).toBe(tabs[1].id);
-        expect(panel.textContent).toBe("注册表单");
-        expect(panel.querySelector("[data-search]")?.getAttribute("data-search")).toBe("?next=%2Fsettings");
-        expect(host.querySelectorAll('[role="tabpanel"]')).toHaveLength(2);
-        await act(async () => tabs[1].click());
-        await key(1, "End");
-        expect(document.activeElement).toBe(tabs[1]);
-        expect(navigationKeys).toHaveLength(2);
-        await key(1, "Home"); expect(document.activeElement).toBe(tabs[0]); expect(navigationKeys).toHaveLength(3);
-        await key(0, "End"); expect(document.activeElement).toBe(tabs[1]); expect(navigationKeys).toHaveLength(4);
-        await key(1, "ArrowRight"); expect(document.activeElement).toBe(tabs[0]); expect(navigationKeys).toHaveLength(5);
-        await act(async () => tabs[1].click());
-        expect(navigationKeys).toHaveLength(6);
-        expect(router.state.location.pathname).toBe("/register");
-        expect(router.state.location.search).toBe("?next=%2Fsettings");
-    } finally {
-        await act(async () => root.unmount()); host.remove();
-        unsubscribe(); router.dispose();
-        useAppearanceStore.setState({ appearance });
     }
 });
 

@@ -1,8 +1,9 @@
 import { NODE_DEFAULT_SIZE } from "@/constant/canvas";
 import { CanvasNodeType, isBuiltinCanvasNodeType, type CanvasNodeData } from "@/types/canvas";
+import { fitCanvasVideoToMedia, VIDEO_PRESENTATION_BOUNDS, videoPresentationDimensions } from "./canvas-video-presentation";
 
 export const MEDIA_NODE_MIN_SIZE = { width: 420, height: 236 } as const;
-export const VIDEO_NODE_MAX_SIZE = { width: 720, height: 520 } as const;
+export const VIDEO_NODE_MAX_SIZE = VIDEO_PRESENTATION_BOUNDS;
 export const IMAGE_NODE_MAX_SIZE = { width: 720, height: 520 } as const;
 
 /** 图片预览以最大边界为准；最短边不能反过来撑大竖图或长图。 */
@@ -92,6 +93,11 @@ export function ensureMediaNodeMinimumSize(node: CanvasNodeData) {
             || (node.width > 0 && node.height > 0 ? fitImageNodeSize(node.width, node.height) : NODE_DEFAULT_SIZE[CanvasNodeType.Image]);
         if (size.width === node.width && size.height === node.height && title === node.title) return node;
         return { ...node, title, width: size.width, height: size.height, position: { x: node.position.x + node.width / 2 - size.width / 2, y: node.position.y + node.height / 2 - size.height / 2 } };
+    }
+    if (node.metadata?.manualSize || node.metadata?.freeResize || node.metadata?.locked) return title === node.title ? node : { ...node, title };
+    if ((node.metadata?.content || node.metadata?.storageKey) && videoPresentationDimensions(node)) {
+        const fitted = fitCanvasVideoToMedia(node);
+        return title === fitted.title ? fitted : { ...fitted, title };
     }
     let width = node.width;
     let height = node.height;

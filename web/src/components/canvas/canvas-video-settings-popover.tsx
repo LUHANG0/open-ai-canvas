@@ -14,7 +14,7 @@ export function CanvasVideoSettingsPopover({ config, onConfigChange, ...popover 
     if (profile?.resolutions.length) parts.push(videoResolutionLabel(resolveVideoResolutionValue(profile, config.vquality)));
     if (profile?.ratios.length) parts.push(videoSizeLabel(resolveVideoRatioValue(profile, config.size)));
     parts.push(videoSecondsLabel(config.videoSeconds));
-    return <CanvasSettingsPopover {...popover} label="视频设置" summary={parts.join(" · ")}>
+    return <CanvasSettingsPopover {...popover} label="视频设置" summary={parts.join(" · ")} width={420}>
         <VideoSettingsPanel config={config} onConfigChange={onConfigChange} theme={theme} className="space-y-3" />
     </CanvasSettingsPopover>;
 }

@@ -4,6 +4,7 @@ import { modelCapabilityConfigFor, normalizeImageValue } from "@/lib/model-capab
 import { useActiveTheme } from "@/stores/canvas/use-canvas-theme-store";
 import type { AiConfig } from "@/stores/use-config-store";
 import { CanvasSettingsPopover, type CanvasSettingsPlacement } from "./canvas-settings-popover";
+import { settingsImageResolutionLabel } from "@/lib/generation-settings-presentation";
 
 type CanvasImageSettingsPopoverProps = {
     config: AiConfig;
@@ -24,6 +25,7 @@ export function CanvasImageSettingsPopover({ config, onConfigChange, showCount =
     const current = normalizeImageValue(profile, config);
     const parts: string[] = [];
     if (profile.size.parameter !== "none") parts.push(imageSizeLabel(current.size));
+    if (profile.resolution.supported && current.imageResolution) parts.push(settingsImageResolutionLabel(current.imageResolution));
     if (profile.quality.supported) parts.push(imageQualityLabel(current.quality));
     if (showCount && profile.maxOutputs > 1) parts.push(`${current.count} 张`);
     if (profile.transparentBackground.supported && current.transparentBackground === "true") parts.push("透明");

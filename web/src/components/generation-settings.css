@@ -1,0 +1,75 @@
+.generation-settings {
+    min-inline-size: 0;
+    max-inline-size: 100%;
+    color: var(--generation-settings-ink, var(--foreground));
+    font-size: var(--fs-caption);
+    line-height: 1.5;
+}
+.generation-settings-panel {
+    display: grid;
+    min-inline-size: 0;
+    max-inline-size: 100%;
+    gap: var(--space-4);
+}
+.generation-settings.generation-settings-panel > :not([hidden]) ~ :not([hidden]) { margin-block: 0; }
+.generation-settings-title { margin: 0; font-size: var(--fs-body); font-weight: 600; line-height: 1.5; }
+.generation-settings-group {
+    display: grid;
+    min-inline-size: 0;
+    gap: var(--space-2);
+    margin: 0;
+    padding: 0;
+    border: 0;
+}
+.generation-settings-group > legend { float: none; inline-size: 100%; margin-block-end: var(--space-2); padding: 0; font-size: var(--fs-caption); font-weight: 600; line-height: 1.5; color: var(--generation-settings-muted, var(--muted-foreground)); }
+.generation-settings-options { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 76px), 1fr)); gap: var(--space-1-half); min-inline-size: 0; }
+.generation-settings-option {
+    min-inline-size: 0;
+    min-block-size: var(--control-item-height, 36px);
+    padding: var(--space-2);
+    border: var(--stroke-1) solid transparent;
+    border-radius: var(--r-md);
+    background: var(--generation-settings-surface, var(--library-surface));
+    color: inherit;
+    font-size: var(--fs-caption);
+    font-weight: 500;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+    cursor: pointer;
+    transition: background-color var(--motion-dur-fast) var(--motion-ease-out), border-color var(--motion-dur-fast) var(--motion-ease-out);
+}
+.generation-settings-option[aria-pressed="true"] { background: var(--generation-settings-selected, var(--library-surface-hover)); border-color: var(--generation-settings-stroke, var(--library-selected-stroke)); }
+.generation-settings-option:hover:not(:disabled) { border-color: var(--generation-settings-stroke, var(--library-selected-stroke)); }
+.generation-settings-option:disabled { opacity: var(--opacity-disabled, .4); cursor: not-allowed; }
+.generation-settings :where(button, summary, input):focus-visible { outline: var(--focus-ring-width) solid var(--control-focus-ring); outline-offset: var(--space-1); }
+.generation-settings-advanced { min-inline-size: 0; border-block-start: var(--stroke-1) solid var(--generation-settings-stroke, var(--border)); padding-block-start: var(--space-3); }
+.generation-settings-advanced > summary { cursor: pointer; font-weight: 500; line-height: 1.5; overflow-wrap: anywhere; }
+.generation-settings-advanced > summary > span { margin-inline-start: var(--space-2); color: var(--generation-settings-muted, var(--muted-foreground)); font-weight: 400; }
+.generation-settings-advanced > .generation-settings-panel { margin-block-start: var(--space-3); }
+.generation-settings-note { margin: 0; color: var(--generation-settings-muted, var(--muted-foreground)); font-size: var(--fs-caption); line-height: 1.5; overflow-wrap: anywhere; }
+.generation-settings-pixels { display: block; color: var(--generation-settings-muted, var(--muted-foreground)); font-variant-numeric: tabular-nums; font-size: var(--fs-caption); line-height: 1.5; overflow-wrap: anywhere; }
+.generation-settings-switches { display: grid; gap: var(--space-2); }
+.generation-settings-switch { display: flex; min-inline-size: 0; min-block-size: var(--control-item-height, 36px); align-items: center; justify-content: space-between; gap: var(--space-3); }
+.generation-settings-switch > span:first-child { min-inline-size: 0; overflow-wrap: anywhere; }
+.generation-settings-switch > span:last-child { flex-shrink: 0; }
+.generation-settings-ratio { display: grid; place-items: center; gap: var(--space-1); }
+.generation-settings .image-size-label { font-size: var(--fs-caption); color: var(--generation-settings-muted, var(--muted-foreground)); }
+.generation-settings .image-size-tiers { grid-auto-flow: unset; grid-template-columns: repeat(auto-fit, minmax(min(100%, 64px), 1fr)); }
+.generation-settings .image-size-tiers button,
+.generation-settings .image-size-ratios button,
+.generation-settings .image-size-auto { min-block-size: 36px; font-size: var(--fs-caption); line-height: 1.5; overflow-wrap: anywhere; transition: background-color var(--motion-dur-fast) var(--motion-ease-out), box-shadow var(--motion-dur-fast) var(--motion-ease-out); }
+.generation-settings .image-size-tiers button,
+.generation-settings .image-size-ratios button,
+.generation-settings .image-size-auto { background: var(--generation-settings-surface, var(--library-surface)); color: inherit; }
+.generation-settings .image-size-tiers button[aria-pressed="true"],
+.generation-settings .image-size-ratios button[aria-pressed="true"],
+.generation-settings .image-size-auto[aria-pressed="true"] { background: var(--generation-settings-selected, var(--library-surface-hover)); box-shadow: inset 0 0 0 var(--stroke-1) var(--generation-settings-stroke, var(--library-selected-stroke)); }
+.generation-settings .image-size-picker button:disabled { opacity: var(--opacity-disabled, .4); cursor: not-allowed; }
+.generation-settings .image-size-ratios button { min-block-size: 64px; }
+.generation-settings .image-size-output { padding: 0; background: transparent; color: var(--generation-settings-muted, var(--muted-foreground)); font-size: var(--fs-caption); }
+.generation-settings .image-size-hint { font-size: var(--fs-caption); }
+.generation-settings :where(.ant-input, .ant-input-number) { min-inline-size: 0; max-inline-size: 100%; }
+.generation-settings-input-shell:focus-within { outline: var(--focus-ring-width) solid var(--control-focus-ring); outline-offset: var(--space-1); }
+@media (prefers-reduced-motion: reduce) { .generation-settings-option, .generation-settings .image-size-picker button { transition: none; } }
+.no-motion .generation-settings-option, .no-motion .generation-settings .image-size-picker button { transition: none; }
+@media (max-width: 480px) { .generation-settings :where(input:not([type="range"]), .ant-input-number-input) { font-size: 16px; } }

@@ -2143,6 +2143,15 @@ paths:
         "403":
           $ref: "#/components/responses/Error"
   /tasks:
+    get:
+      tags: [tasks]
+      summary: 读取当前用户的任务列表及安全账单摘要
+      description: billing.amountMicrocredits保留原订单金额语义；仅settled订单的billing.actualAmountMicrocredits是实际结算微积分，明确0与缺省未知有区别。金额属于整个任务，不提供每个输出的分摊。
+      responses:
+        "200":
+          $ref: "#/components/responses/Envelope"
+        "401":
+          $ref: "#/components/responses/Error"
     post:
       tags: [tasks]
       summary: 创建生成任务
@@ -2150,6 +2159,23 @@ paths:
         "200":
           $ref: "#/components/responses/Envelope"
         "400":
+          $ref: "#/components/responses/Error"
+  /tasks/{id}:
+    get:
+      tags: [tasks]
+      summary: 读取当前用户的单任务详情
+      description: 保留原任务字段与输入脱敏；成功且关联账单属于当前用户和该任务时附加billing摘要。actualAmountMicrocredits只在订单settled时返回，非结算或缺失字段不能按0或预扣金额显示。
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          $ref: "#/components/responses/Envelope"
+        "401":
+          $ref: "#/components/responses/Error"
+        "404":
           $ref: "#/components/responses/Error"
   /tasks/{id}/recover-media:
     post:

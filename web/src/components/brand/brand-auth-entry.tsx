@@ -1,35 +1,34 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { App } from "antd";
-import { safeAuthNext } from "@/lib/auth-navigation";
+import { useLocation, useNavigate } from "react-router";
+import { loadLoginPage } from "@/lib/auth-route-modules";
 
-export type BrandAuthMode = "login" | "register" | "forgot-password";
+export type BrandAuthMode = "login" | "register" | "forgot-password" | "invitation";
 export const BrandAuthFlow = createContext<{ next: string; changeMode: (mode: BrandAuthMode) => void } | null>(null);
-const BrandAuthEntry = createContext<{ open: (next: string) => void; pending: boolean } | null>(null);
-let dialog: ReturnType<typeof importDialog> | undefined;
-const importDialog = () => import("./brand-auth-dialog");
-export const preloadBrandAuthDialog = () => dialog ??= importDialog().catch((error) => { dialog = undefined; throw error; });
+const BrandAuthEntry = createContext<{ open: (href: string) => void; pending: boolean } | null>(null);
 export const useBrandAuthEntry = () => useContext(BrandAuthEntry);
 export const useBrandAuthFlow = () => useContext(BrandAuthFlow);
 
 export function BrandAuthProvider({ children }: { children: ReactNode }) {
-    const [entry, setEntry] = useState<{ next: string } | null>(null);
-    const [AuthDialog, setAuthDialog] = useState<Awaited<ReturnType<typeof importDialog>>["default"]>();
+    const location = useLocation();
+    const navigate = useNavigate();
     const [pending, setPending] = useState(false);
     const request = useRef(0);
     const { message } = App.useApp();
-    useEffect(() => () => { request.current++; }, []);
-    const open = async (next: string) => {
+    useEffect(() => { request.current++; setPending(false); return () => { request.current++; }; }, [location.key]);
+    const open = async (href: string) => {
+        const url = new URL(href, window.location.origin);
+        if (url.origin !== window.location.origin || url.pathname !== "/login") return;
         const id = ++request.current;
         setPending(true);
         try {
-            const module = await preloadBrandAuthDialog();
+            await loadLoginPage();
             if (id !== request.current) return;
-            setAuthDialog(() => module.default); setEntry({ next: safeAuthNext(next) });
+            void navigate({ pathname: url.pathname, search: url.search, hash: url.hash });
         } catch { if (id === request.current) message.error("登录窗口暂时无法打开，请重试。"); }
         finally { if (id === request.current) setPending(false); }
     };
-    return <BrandAuthEntry.Provider value={{ open: (next) => { void open(next); }, pending }}>
+    return <BrandAuthEntry.Provider value={{ open: (href) => { void open(href); }, pending }}>
         {children}
-        {entry && AuthDialog && <AuthDialog next={entry.next} onClosed={() => setEntry(null)} />}
     </BrandAuthEntry.Provider>;
 }

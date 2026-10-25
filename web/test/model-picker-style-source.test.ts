@@ -34,12 +34,13 @@ test("每次打开菜单都展开当前选中模型所属目录，无有效选�
     expect(opening).not.toContain("setActiveGroupKey(null)");
 });
 
-test("选择模型保留菜单及行内焦点，仍可通过 Escape 和外部点击关闭", async () => {
+test("兼容选择保留菜单，待确认选择先把焦点还给稳定触发器，仍可通过 Escape 和外部点击关闭", async () => {
     const component = await Bun.file(new URL("../src/components/model-picker.tsx", import.meta.url)).text();
     const selection = component.match(/onClick=\{\(\) => \{\s*if \(!model\) return;([\s\S]*?)\}\}/)?.[1] || "";
     expect(selection).toContain("onChange(model)");
-    expect(selection).not.toContain("setOpen(false)");
-    expect(selection).not.toContain("focus()");
+    expect(selection).toContain("if (onChange(model) === false)");
+    expect(selection).toContain("setOpen(false)");
+    expect(selection).toContain("triggerRef.current?.focus({ preventScroll: true })");
     expect(component).toContain('event.key === "Escape"');
     expect(component).toContain('window.addEventListener("pointerdown", closeOnOutsidePointer, true)');
 });

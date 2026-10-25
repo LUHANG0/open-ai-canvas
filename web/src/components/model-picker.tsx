@@ -15,13 +15,14 @@ import { useActiveTheme } from "@/stores/canvas/use-canvas-theme-store";
 import { useUserStore } from "@/stores/use-user-store";
 import { ModelLogo } from "@/components/model-logo";
 import { ModelTags } from "@/components/model-tags";
-import { videoReferenceCapabilityTag } from "@/lib/model-tags";
+import { formatVideoResolutionLabel } from "@/lib/video-generation-options";
+import { modelPickerVideoDescription } from "@/lib/model-picker-description";
 import { quoteModel, type LogicalModelQuote, type PublicChannelModelAvailability } from "@/services/api/logical-models";
 
 type ModelPickerProps = {
     config: AiConfig;
     value?: string;
-    onChange: (model: string) => void;
+    onChange: (model: string) => void | boolean;
     capability?: ModelCapability;
     className?: string;
     popoverClassName?: string;
@@ -220,6 +221,10 @@ export function ModelPicker({
                         })}
                     </div>
                     {optionGroups.filter((group) => group.key === activeGroupKey).map((group) => <section key={group.key} className="canvas-model-picker-group canvas-model-picker-model-pane min-w-0">
+                        <div className="canvas-model-picker-secondary-head">
+                            <button type="button" className="canvas-model-picker-back" aria-label="返回模型分组" onClick={() => { setActiveGroupKey(null); focusMenuOption(); }}><ChevronDown className="rotate-90" aria-hidden="true" /></button>
+                            <strong>{group.label}</strong>
+                        </div>
                         <div className="grid min-w-0 gap-1">
                             {group.models.map((modelGroup) => {
                                 const selected = modelGroup.models.includes(current);
@@ -239,7 +244,12 @@ export function ModelPicker({
                                         style={{ background: selected ? theme.toolbar.activeBg : "transparent", color: theme.node.text }}
                                         onClick={() => {
                                             if (!model) return;
-                                            onChange(model);
+                                            // A guarded caller returns false while confirmation is pending.
+                                            // Restore to the persistent trigger before the modal captures focus.
+                                            if (onChange(model) === false) {
+                                                setOpen(false);
+                                                triggerRef.current?.focus({ preventScroll: true });
+                                            }
                                         }}
                                     >
                                         <ModelLabel
@@ -360,16 +370,25 @@ export function ModelLabel({
     const channel = resolveModelChannel(config, model);
     const logicalCost = channel.modelCosts?.find((item) => item.model === modelOptionName(model));
     const logicalSpec = logicalCost?.logicalCapabilitySpec;
-    const videoProfile = capability === "video" ? modelCapabilityConfigFor(config, model).video : undefined;
-    const capabilityTag = videoReferenceCapabilityTag(videoProfile?.references);
-    const modelTags = capabilityTag ? [capabilityTag, ...(logicalCost?.tags || [])] : logicalCost?.tags;
-    const capabilitySummary =
-        disabledReason ||
-        logicalCost?.description?.trim() ||
-        (isDirectSystemModel(config, model) ? "" : logicalSpec ? logicalCapabilitySummary(logicalSpec) : videoProfile ? `${formatDurationSummary(videoProfile)} · ${videoProfile.resolutions.map((item) => item.toUpperCase()).join("/")}` : meta.description);
+    const profile = modelCapabilityConfigFor(config, model);
+    const videoProfile = capability === "video" ? profile.video : undefined;
+    const imageProfile = capability === "image" ? profile.image : undefined;
+    const references = logicalSpec?.inputs ? { maxImages: logicalSpec.inputs.image?.max, maxVideos: logicalSpec.inputs.video?.max, maxAudios: logicalSpec.inputs.audio?.max } : (videoProfile || imageProfile)?.references;
+    const referenceSummary = references ? [
+        ["参考图片", "张", references.maxImages], ["参考视频", "个", "maxVideos" in references ? references.maxVideos : undefined], ["参考音频", "个", "maxAudios" in references ? references.maxAudios : undefined],
+    ].flatMap(([label, unit, count]) => {
+        return typeof count === "number" && count > 0 ? [`${label}最多${count}${unit}`] : [];
+    }).join(" · ") : "";
+    const imageSizes = imageProfile?.size.values.filter((value) => value !== "*") || [];
+    const imageSizeSummary = imageSizes.length > 8 ? `${imageSizes.length} 种输出尺寸` : imageSizes.join(" / ");
+    const outputSummary = videoProfile
+        ? [videoProfile.resolutions.map(formatVideoResolutionLabel).join(" / "), formatDurationSummary(videoProfile)].filter(Boolean).join(" · ")
+        : imageProfile ? [imageProfile.resolution.supported ? imageProfile.resolution.values.map((v) => v.toUpperCase()).join(" / ") : "", imageSizeSummary].filter(Boolean).join(" · ") : "";
+    const description = videoProfile ? modelPickerVideoDescription(logicalCost?.description, references || {}, videoProfile) : logicalCost?.description?.trim();
+    const capabilitySummary = disabledReason || (!referenceSummary && !outputSummary ? (description || (logicalSpec ? logicalCapabilitySummary(logicalSpec) : meta.description)) : "");
     return (
-        <span className="flex w-full min-w-0 items-center gap-1.5 overflow-hidden py-0">
-            <span className="grid size-6 shrink-0 place-items-center rounded-md" style={{ background: theme.toolbar.itemHover }}>
+        <span className="canvas-model-picker-option-content">
+            <span className="canvas-model-picker-option-icon grid size-6 shrink-0 place-items-center rounded-md" style={{ background: theme.toolbar.itemHover }}>
                 <ModelIcon config={config} model={model} />
             </span>
             <span className="min-w-0 flex-1 overflow-hidden">
@@ -381,12 +400,15 @@ export function ModelLabel({
                             <ModelPrice price={modelMenuPrice(config, model, capability, true, requirements)} />
                         </span>
                     ) : null}
-                    <ModelAvailabilityBadge availability={modelAvailability(config, model)} available={logicalCost?.available ?? true} showAvailability={channel.scope === "system"} />
                 </span>
-                <span className={cn("canvas-model-picker-description mt-1 block", showDescription && "is-visible")} style={{ color: theme.node.muted }}>
-                    {capabilitySummary}
-                </span>
-                <ModelTags tags={modelTags} />
+                {showDescription ? <span className="canvas-model-picker-details" style={{ color: theme.node.muted }}>
+                    {referenceSummary ? <span>{referenceSummary}</span> : null}
+                    {outputSummary ? <span>{outputSummary}</span> : null}
+                    {capabilitySummary ? <span>{capabilitySummary}</span> : null}
+                    {description && (referenceSummary || outputSummary) && description !== outputSummary && description !== referenceSummary ? <span className="canvas-model-picker-note">渠道说明：{description}</span> : null}
+                </span> : null}
+                <ModelTags tags={logicalCost?.tags} />
+                <span className="canvas-model-picker-option-status"><ModelAvailabilityBadge availability={modelAvailability(config, model)} available={logicalCost?.available ?? true} showAvailability={channel.scope === "system"} /></span>
             </span>
             {!creationVariant && meta.time ? (
                 <span className="shrink-0 rounded-full px-1.5 py-0.5 text-[var(--fs-tiny)] tabular-nums" style={{ background: theme.toolbar.itemHover, color: theme.node.muted }}>
@@ -453,8 +475,12 @@ function publicScalarLabel(value: unknown) {
 
 function formatDurationSummary(profile: NonNullable<ReturnType<typeof modelCapabilityConfigFor>["video"]>) {
     const values = videoDurationOptions(profile);
-    if (profile.duration.selection === "enum") return values.map((item) => `${item}s`).join("/");
-    return `${profile.duration.min || values[0]}-${profile.duration.max || values[values.length - 1]}s`;
+    if (profile.durationSupported === false) return "";
+    if (profile.duration.selection === "enum") {
+        if (values.length > 2 && values.every((value, index) => index === 0 || value === values[index - 1] + 1)) return `${values[0]}–${values[values.length - 1]}秒`;
+        return `${values.join(" / ")}秒`;
+    }
+    return `${profile.duration.min || values[0]}–${profile.duration.max || values[values.length - 1]}秒`;
 }
 
 type ModelMenuPrice = { kind: "tiers"; label: string; compactLabel: string; title: string } | { kind: "estimate"; label?: string; title?: string } | { kind: "fixed"; value: number; unit: "次" | "秒" };
@@ -496,7 +522,8 @@ function channelTierPriceSummary(
     allTiers: NonNullable<NonNullable<AiConfig["channels"][number]["modelCosts"]>[number]["logicalPriceTiers"]>,
     capability?: ModelCapability,
 ): Extract<ModelMenuPrice, { kind: "tiers" }> {
-    const label = priceTierSummaryLabel(visibleTiers, capability);
+    // Tier summaries omit /次 elsewhere; the picker must distinguish request prices from per-second rates.
+    const label = priceTierSummaryLabel(visibleTiers, capability).replace(/ 积分(?=$| · )/g, " 积分/次");
     return {
         kind: "tiers",
         label,
@@ -588,9 +615,10 @@ export function ModelRecentHealthTrack({ availability, inPopover = false }: { av
         ? `最近 ${recentResults.length} 次调用：${successCount} 成功，${failCount} 失败`
         : "近期暂无调用记录";
 
+    if (!hasRuns) return null;
     return (
         <span className={cn("model-picker-availability-track", inPopover && "in-popover")} title={title} aria-label={title}>
-            {Array.from({ length: 10 }).map((_, idx) => {
+            {recentResults.slice(0, 10).map((_, idx) => {
                 const hasRun = idx < recentResults.length;
                 const isSuccess = hasRun ? recentResults[idx] : null;
                 const stateClass = isSuccess === true ? "is-success" : isSuccess === false ? "is-failed" : "is-empty";
@@ -637,7 +665,7 @@ function ModelAvailabilityBadge({ availability, available, showAvailability }: {
                 </span>
             </div>
             <div className="model-picker-availability-popover-meta">
-                {hasRuns ? `共记录最近 ${recentResults.length} 次执行（绿=成功 红=失败 灰=无记录）` : "该模型近期尚无调用记录，默认展示10个空槽"}
+                {hasRuns ? `共记录最近 ${recentResults.length} 次执行（绿=成功 红=失败）` : "该模型近期尚无调用记录"}
             </div>
             <div style={{ margin: "6px 0 8px" }}>
                 <ModelRecentHealthTrack availability={availability} inPopover />
@@ -653,7 +681,7 @@ function ModelAvailabilityBadge({ availability, available, showAvailability }: {
                     return <span key={item.day} className={`model-picker-availability-segment is-${item.dataState}`} title={`${item.day}：${dayLabel}，${item.sampleCount} 条`} style={item.rate === null ? undefined : { opacity: 0.35 + item.rate * 0.65 }} />;
                 })}
             </div>
-            <div className="model-picker-availability-popover-foot">绿点=成功 · 红点=失败 · 灰点=空槽</div>
+            <div className="model-picker-availability-popover-foot">绿点=成功 · 红点=失败</div>
         </div>
     ) : null;
     return (
@@ -670,7 +698,7 @@ function ModelAvailabilityBadge({ availability, available, showAvailability }: {
             >
                 <ModelRecentHealthTrack availability={availability} />
                 <span className="model-picker-availability-label">
-                    {hasRuns ? `${successCount}/${recentResults.length}` : label}
+                    {hasRuns ? `近期 ${successCount}/${recentResults.length} 成功` : label}
                 </span>
             </span>
         </Popover>

@@ -1,4 +1,4 @@
-import { type FormEvent, useEffect, useRef, useState, type ReactNode } from "react";
+import { type FormEvent, useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { App, Button, Checkbox, Divider, Input } from "antd";
 import { SegmentedControl } from "@/components/ui/base/segmented-control";
 import { AppModal } from "@/components/ui/product/app-modal";
@@ -8,7 +8,7 @@ import { safeAuthNext } from "@/lib/auth-navigation";
 import { useBrandAuthFlow } from "@/components/brand/brand-auth-entry";
 
 import { getAuthSession, getAuthSettings, linuxDOLoginURL, register } from "@/services/api/auth";
-import { LinuxDOIcon } from "./auth-scene";
+import { LinuxDOIcon } from "./auth-provider-icon";
 import { ApiError } from "@/services/api/request";
 import { VerificationFields } from "@/components/auth/verification-fields";
 import { emptyVerification, methodLabels, verificationMethods, type VerificationMethod } from "@/services/api/verification";
@@ -23,6 +23,7 @@ export default function RegisterPage() {
     const [params] = useSearchParams();
     const flow = useBrandAuthFlow();
     const invitation = useRegistrationInvitation();
+    const restrictionId = useId();
     const { message } = App.useApp();
     const brandName = useAppearanceStore((state) => state.appearance.brandName) || "平台";
     const [settings, setSettings] = useState<AuthSettings | null>(invitation?.settings ?? null);
@@ -116,26 +117,27 @@ export default function RegisterPage() {
     const methods = settings ? verificationMethods(settings, "register") : [];
     const verificationUnavailable = Boolean(settings && !settings.firstUser && methods.length === 0);
     const disabled = !settings || registrationClosed || verificationUnavailable;
+    const restrictionDescription = invitation && (registrationClosed || verificationUnavailable) ? restrictionId : undefined;
 
     return (
-        <form onSubmit={submit} className="space-y-4">
+        <form onSubmit={submit} className={invitation ? "mc-invitation-form" : "space-y-4"} aria-describedby={restrictionDescription}>
             {settings?.firstUser ? (
                 <Notice icon={<Info className="size-3.5" />} tone="blue">
                     首个账号自动成为管理员，邮箱验证码暂不要求。
                 </Notice>
             ) : null}
             {registrationClosed ? (
-                <Notice icon={<TriangleAlert className="size-3.5" />} tone="amber">
+                <Notice icon={<TriangleAlert className="size-3.5" />} tone="amber" id={restrictionDescription} role={invitation ? "status" : undefined}>
                     当前已关闭普通注册，请联系管理员创建账号。
                 </Notice>
             ) : null}
             {verificationUnavailable && !registrationClosed ? (
-                <Notice icon={<TriangleAlert className="size-3.5" />} tone="amber">
+                <Notice icon={<TriangleAlert className="size-3.5" />} tone="amber" id={restrictionDescription} role={invitation ? "status" : undefined}>
                     当前没有可用的注册验证方式，请联系管理员检查短信及邮件配置。
                 </Notice>
             ) : null}
 
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className={invitation ? "mc-invitation-fields" : "grid gap-4 sm:grid-cols-2"}>
                 <AuthField label="用户名">
                     <Input size="large" prefix={<UserRound className="auth-scene-icon size-4" />} value={username} onChange={(event) => setUsername(event.target.value)} placeholder="3-32 位字符" autoComplete="username" required disabled={disabled} />
                 </AuthField>
@@ -160,7 +162,7 @@ export default function RegisterPage() {
                 {methods.length > 0 && <VerificationFields key={method} purpose="register" method={method} value={verification} onChange={setVerification} disabled={disabled || submitting} invitationCode={invitation?.code} />}
             </>}
 
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className={invitation ? "mc-invitation-fields" : "grid gap-4 sm:grid-cols-2"}>
                 <AuthField label="密码">
                     <Input.Password
                         size="large"
@@ -210,7 +212,7 @@ export default function RegisterPage() {
             ) : null}
 
             {submitError && <p role="alert" className="auth-scene-notice">{submitError}</p>}
-            <Button type="primary" htmlType="submit" size="large" block loading={submitting} disabled={disabled || registerCountdown > 0 || !agreementAccepted} icon={<ArrowRight className="size-4" />} iconPlacement="end">
+            <Button type="primary" htmlType="submit" size="large" block loading={submitting} disabled={disabled || registerCountdown > 0 || !agreementAccepted} aria-describedby={restrictionDescription} icon={<ArrowRight className="size-4" />} iconPlacement="end">
                 {registerCountdown > 0 ? `${registerCountdown} 秒后可重试` : invitation ? "接受邀请并注册" : "创建账号"}
             </Button>
             {!invitation && settings?.linuxdoEnabled && !settings.smsAndEmailRegistration ? (
@@ -262,17 +264,17 @@ export default function RegisterPage() {
 
 function AuthField({ label, children }: { label: string; children: ReactNode }) {
     return (
-        <label className="block space-y-2">
+        <label className="auth-register-field block space-y-2">
             <span className="auth-scene-label text-sm font-medium">{label}</span>
             {children}
         </label>
     );
 }
 
-function Notice({ icon, tone, children }: { icon: ReactNode; tone: "blue" | "amber"; children: ReactNode }) {
+function Notice({ icon, tone, children, id, role }: { icon: ReactNode; tone: "blue" | "amber"; children: ReactNode; id?: string; role?: "status" }) {
     return (
-        <div data-tone={tone} className="auth-scene-notice flex items-start gap-2 rounded-lg border px-3 py-2.5 text-xs leading-5">
-            <span className="mt-0.5 shrink-0">{icon}</span>
+        <div id={id} role={role} data-tone={tone} className="auth-scene-notice flex items-start gap-2 rounded-lg border px-3 py-2.5 text-xs leading-5">
+            <span className="mt-0.5 shrink-0" aria-hidden="true">{icon}</span>
             {children}
         </div>
     );

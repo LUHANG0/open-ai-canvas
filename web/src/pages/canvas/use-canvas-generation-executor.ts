@@ -1,4 +1,4 @@
-import { isCanvasNodeGenerating } from "@/lib/canvas/canvas-node-task-state";
+import { isCanvasNodeGenerating, restoreUnsubmittedCanvasPreparation } from "@/lib/canvas/canvas-node-task-state";
 import { useCallback, useRef, type Dispatch, type SetStateAction } from "react";
 import { App } from "antd";
 
@@ -8,10 +8,12 @@ import { buildGenerationConfig, isGenerationCanceled } from "@/lib/canvas/canvas
 import { canvasGenerationPromptMetadata, canvasGenerationRequestFingerprint, runCanvasGenerationSubmissionOnce } from "@/lib/canvas/canvas-generation-submission";
 import { isGenerationTaskCapacityError } from "@/lib/canvas/canvas-generation-batch";
 import { canvasGenerationInputPrompt } from "@/lib/canvas/canvas-generation-input-prompt";
+import { readNodeGenerationSpec } from "@/lib/canvas/generation-contract";
 import { resolveCanvasBatchInputContext } from "@/lib/canvas/canvas-batch-input-snapshot";
 import { buildTextRewritePrompt } from "@/lib/prompts";
 import { resolveCanvasStyleExecution } from "@/lib/canvas/canvas-style-execution";
 import { generationErrorMessage, generationFailureMetadata } from "@/lib/generation-error";
+import { UnconfirmedMediaParametersError } from "@/lib/model-parameter-guard";
 import { modelCompatibilityError, modelGroupReferenceLimits, modelPromptLengthError, modelRequestOptions, type ModelRequirements } from "@/lib/model-selection";
 import { navigateToSettings } from "@/lib/settings-navigation";
 import type { Skill } from "@/services/api/skills";
@@ -78,6 +80,8 @@ export function useCanvasGenerationExecutor({
 }: UseCanvasGenerationExecutorOptions) {
     const { message, modal } = App.useApp();
     const effectiveConfig = useEffectiveConfig();
+    const effectiveConfigRef = useRef(effectiveConfig);
+    effectiveConfigRef.current = effectiveConfig;
     const isAiConfigReady = useConfigStore((state) => state.isAiConfigReady);
     const submissionLocksRef = useRef(new Map<string, Promise<unknown>>());
     const confirmDuplicateSubmission = useCallback(
@@ -103,6 +107,12 @@ export function useCanvasGenerationExecutor({
                 nodeId,
                 async () => {
                     const sourceNode = nodesRef.current.find((node) => node.id === nodeId);
+                    const selectedParameters = (node: CanvasNodeData | undefined) => {
+                        if (!node || (mode !== "image" && mode !== "video")) return "";
+                        const spec = readNodeGenerationSpec(node);
+                        return JSON.stringify({ modelSelection: spec?.modelSelection, options: spec?.options });
+                    };
+                    let sourceParameters = "";
                     if (isCanvasNodeGenerating(sourceNode)) {
                         message.info("该节点的生成任务仍在进行中，请等待完成后再生成");
                         return;
@@ -111,7 +121,14 @@ export function useCanvasGenerationExecutor({
                         message.info("合并成片节点不直接重新生成，请重新选择源视频合并");
                         return;
                     }
-                    let generationConfig = buildGenerationConfig(effectiveConfig, sourceNode, mode);
+                    let generationConfig;
+                    try {
+                        generationConfig = buildGenerationConfig(effectiveConfig, sourceNode, mode);
+                        sourceParameters = selectedParameters(sourceNode);
+                    } catch (error) {
+                        message.error(generationErrorMessage(error));
+                        return;
+                    }
                     const hasLiveBatchChildren =
                         sourceNode?.type === CanvasNodeType.Image && (sourceNode.metadata?.batchChildIds || []).some((childId) => nodesRef.current.some((node) => node.id === childId && node.metadata?.batchRootId === sourceNode.id));
                     const hasStaleImageBatchState =
@@ -138,6 +155,10 @@ export function useCanvasGenerationExecutor({
                     const sourceTextContent = sourceNode?.type === CanvasNodeType.Text ? sourceNode.metadata?.content?.trim() || "" : "";
                     const editingTextNode = mode === "text" && Boolean(sourceTextContent);
                     const markSourceStatus = !sourceNode?.metadata?.content && !editingTextNode;
+                    const restoreUnsubmittedSource = () => {
+                        if (!markSourceStatus) return;
+                        setNodes((nodes) => nodes.map((node) => restoreUnsubmittedCanvasPreparation(node, sourceNode)));
+                    };
                     const generationPrompt = options?.inputSnapshot?.context.prompt ?? canvasGenerationInputPrompt(sourceNode, mode, prompt);
                     const isPreparingEmptyImage = mode === "image" && sourceNode?.type === CanvasNodeType.Image && !sourceNode.metadata?.content;
                     const preparationController = startGenerationRequest(nodeId, nodeId, nodeId, options?.controller);
@@ -193,6 +214,7 @@ export function useCanvasGenerationExecutor({
                     } catch (error) {
                         const errorDetails = generationErrorMessage(error);
                         message.error(errorDetails);
+                        if (error instanceof UnconfirmedMediaParametersError) restoreUnsubmittedSource();
                         finishGenerationRequest(nodeId, preparationController);
                         setRunningNodeId(null);
                         return;
@@ -293,6 +315,13 @@ export function useCanvasGenerationExecutor({
                     }
 
                     const controller = preparationController;
+                    if (effectiveConfigRef.current !== effectiveConfig || sourceParameters !== selectedParameters(nodesRef.current.find((node) => node.id === nodeId))) {
+                        message.warning("模型目录或节点参数在准备期间已变化，请检查设置后重新生成");
+                        restoreUnsubmittedSource();
+                        finishGenerationRequest(nodeId, controller);
+                        setRunningNodeId(null);
+                        return;
+                    }
                     if (controller.signal.aborted) {
                         finishGenerationRequest(nodeId, controller);
                         setRunningNodeId(null);

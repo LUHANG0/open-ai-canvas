@@ -5,6 +5,7 @@ import { registerToolbarTools, type ToolContext, type ToolDefinition } from "@/l
 import { CanvasNodeType } from "@/types/canvas";
 import { isCanvasImageSourceNode } from "@/lib/canvas/canvas-image-source";
 import { canRotateCanvasImage, currentImageRotation } from "@/lib/canvas/canvas-image-rotation";
+import { videoPresentationDimensions } from "@/lib/canvas/canvas-video-presentation";
 
 // 节点状态判定辅助函数——从 ToolContext 派生
 function isImage(ctx: ToolContext) { return ctx.node?.type === CanvasNodeType.Image; }
@@ -292,6 +293,20 @@ export const nodeHoverToolbarTools: ToolDefinition[] = [
         nodeToolbar: { group: (ctx) => hasVideo(ctx) ? "more" : "primary", order: 45, section: "素材" },
         applicable: isVideo,
         run: (ctx) => ctx.handlers.onNodeUpload(ctx.node!),
+    },
+    {
+        id: "fitVideoFrame",
+        toolbar: "node-hover",
+        category: "node-state",
+        label: "适配视频画幅",
+        displayLabel: "适配视频画幅",
+        icon: <Maximize2 className="size-3.5" />,
+        defaultVisible: true,
+        defaultOrder: 144,
+        nodeToolbar: { group: "more", order: 15, section: "显示", description: "按视频比例适配，恢复自动尺寸并退出自由拉伸" },
+        applicable: hasVideo,
+        disabled: (ctx) => Boolean(ctx.nodeMetadata?.locked || ctx.nodeMetadata?.status === "loading" || !ctx.node || !videoPresentationDimensions(ctx.node) || !ctx.handlers.onNodeFitVideo),
+        run: (ctx) => ctx.handlers.onNodeFitVideo?.(ctx.node!),
     },
     {
         id: "subtitles",

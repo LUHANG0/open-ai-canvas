@@ -26,7 +26,7 @@ describe("Drama generation controls share the plugin parameter contract", () => 
         const html = renderToStaticMarkup(<ImageParameterFields profile={profile.image!} config={config} onChange={() => {}} />);
         expect(html).toContain("分辨率");
         for (const tier of ["1K", "2K", "4K"]) expect(html).toContain(`>${tier}</button>`);
-        expect(html).toContain("质量 / 档位");
+        expect(html).toContain("图像质量");
         expect(html).toContain("16:9");
         const values = imageParameterRequest(profile.image!, config, true)!;
         expect(values.imageResolution).toBe("4k");
@@ -43,7 +43,7 @@ describe("Drama generation controls share the plugin parameter contract", () => 
         const html = renderToStaticMarkup(<ImageParameterFields profile={profile.image!} config={config} onChange={() => {}} />);
         expect(html).toContain("分辨率");
         expect(html).toContain(">4K</button>");
-        expect(html).not.toContain("质量 / 档位");
+        expect(html).not.toContain("图像质量");
         expect(imageParameterRequest(profile.image!, config, true)!.quality).toBeUndefined();
     });
 
@@ -68,7 +68,8 @@ describe("Drama generation controls share the plugin parameter contract", () => 
         const html = renderToStaticMarkup(<VideoSettingsPanel config={config} theme={canvasThemes.light} onConfigChange={() => {}} />);
         expect(html).toContain("分辨率");
         expect(html).toMatch(/aria-pressed="true"[^>]*>4K<\/button>/);
-        expect(html).toContain("Auto");
+        expect(html).toContain("自动");
+        expect(config.size).toBe("Auto");
         expect(html).not.toContain("生成声音");
         expect(html).not.toContain("添加水印");
     });

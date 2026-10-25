@@ -1,9 +1,10 @@
 import { NODE_DEFAULT_SIZE } from "@/constant/canvas";
 import { commitCanvasGenerationResult } from "@/lib/canvas/canvas-generation-result";
+import { fitCanvasVideoToMedia } from "@/lib/canvas/canvas-video-presentation";
 import { batchOutputResultPending } from "@/lib/canvas/canvas-batch-references";
 import { findCanvasNodeAsset } from "@/lib/canvas/canvas-node-asset";
 import { findAvailableGenerationGroupPosition, imageGenerationChildPosition } from "@/lib/canvas/canvas-generation-layout";
-import { fitImageNodeSize, fitNodeSize, imageNodeSizeFromRatio, preserveImageNodeSize, VIDEO_NODE_MAX_SIZE } from "@/lib/canvas/canvas-node-size";
+import { fitImageNodeSize, imageNodeSizeFromRatio, preserveImageNodeSize } from "@/lib/canvas/canvas-node-size";
 import { compositeEmotionImage } from "@/lib/canvas/canvas-emotion";
 import { storeGeneratedAudio } from "@/services/api/audio";
 import { storeGeneratedVideo } from "@/services/api/video";
@@ -18,6 +19,7 @@ import { useCanvasStore } from "@/stores/canvas/use-canvas-store";
 import { useAssetStore } from "@/stores/use-asset-store";
 import { applyGenerationConsumerEffect, generationEffectApplied } from "@/services/generation-consumer-dedupe";
 import { commitProducedModel } from "@/lib/canvas/produced-model";
+import { completedCanvasResultRecord } from "@/lib/canvas/canvas-result-record";
 import { experimentalLayerSignature, hasUsableLayerTransparency, imageLayerCompositeSignature, validateImageLayerOutput } from "@/lib/canvas/canvas-image-layers";
 import { composeCanvasImageLayerGroup, decodeAndComposeImageLayers, inspectImageLayer, normalizeImageLayerCanvas } from "@/services/canvas-image-layer-compositor";
 import { patchImageLayerBackground } from "@/services/canvas-image-layer-source";
@@ -130,6 +132,7 @@ export function applyGeneratedMediaResultMetadata(node: CanvasNodeData, media: C
             ...workflowMetadataForResultNode(),
             ...media,
             ...extra,
+            resultRecord: extra.resultRecord || completedCanvasResultRecord(media, extra),
             ...(batchOutputResultPending(node.metadata) && media.status === "success" && (media.content || media.storageKey)
                 ? {
                       batchResultInputSignature: node.metadata?.batchInputSignature,
@@ -227,7 +230,7 @@ export async function buildGenerationTaskNodeResult(node: CanvasNodeData, task: 
             metadata: applyGeneratedMediaResultMetadata(
                 node,
                 imageMetadata(uploaded),
-                { prompt, ...completedTaskMetadata(task), generationOutputCount: 1, ...(extraction ? { layerExtraction: extraction, status: needsRemoval ? "idle" : "success" } : {}) },
+                { prompt, ...completedTaskMetadata(task, imageMetadata(uploaded), result.images?.length), generationOutputCount: 1, ...(extraction ? { layerExtraction: extraction, status: needsRemoval ? "idle" : "success" } : {}) },
                 task.model,
             ),
         };
@@ -236,20 +239,11 @@ export async function buildGenerationTaskNodeResult(node: CanvasNodeData, task: 
     if (mode === "video") {
         if (!result.video?.storageKey && !result.video?.dataUrl) throw new Error("后端任务没有返回视频");
         const video = result.video.storageKey ? await cacheGeneratedRemoteVideo({ ...result.video, storageKey: result.video.storageKey }) : await storeGeneratedVideo({ url: result.video.dataUrl, mimeType: result.video.mimeType || "video/mp4" });
-        const videoSize = fitNodeSize(video.width || node.width || VIDEO_NODE_MAX_SIZE.width, video.height || node.height || VIDEO_NODE_MAX_SIZE.height, VIDEO_NODE_MAX_SIZE.width, VIDEO_NODE_MAX_SIZE.height);
-        const geometry = node.metadata?.locked
-            ? {}
-            : {
-                  width: videoSize.width,
-                  height: videoSize.height,
-                  position: { x: node.position.x + node.width / 2 - videoSize.width / 2, y: node.position.y + node.height / 2 - videoSize.height / 2 },
-              };
-        return {
+        return fitCanvasVideoToMedia({
             ...node,
             type: CanvasNodeType.Video,
-            ...geometry,
-            metadata: applyGeneratedMediaResultMetadata(node, videoMetadata(video), { prompt, ...completedTaskMetadata(task) }, task.model),
-        };
+            metadata: applyGeneratedMediaResultMetadata(node, videoMetadata(video), { prompt, ...completedTaskMetadata(task, videoMetadata(video), 1) }, task.model),
+        });
     }
 
     if (mode === "audio") {
@@ -515,6 +509,7 @@ export async function buildImageLayerTaskResult(node: CanvasNodeData, task: Gene
                 imageLayer: { groupId: node.id, outputIndex: index, kind: decoded.layers[index].transparent ? "transparent" : "base" },
                 model: node.metadata?.model || task.model,
                 producedModel: task.model,
+                resultRecord: completedTaskMetadata(task, imageMetadata(stored), images.length).resultRecord,
             },
             task.model,
         );
@@ -718,7 +713,7 @@ function findGenerationTaskNode(nodes: CanvasNodeData[], task: GenerationTask, t
     return nodeId ? nodes.find((node) => node.id === nodeId) : nodes.find((node) => node.metadata?.taskId === task.id);
 }
 
-function completedTaskMetadata(task: GenerationTask): CanvasNodeMetadata {
+function completedTaskMetadata(task: GenerationTask, media?: CanvasNodeMetadata, outputCount?: number): CanvasNodeMetadata {
     return {
         taskId: task.id,
         taskStatus: task.status,
@@ -731,6 +726,7 @@ function completedTaskMetadata(task: GenerationTask): CanvasNodeMetadata {
         taskDurationMs: task.startedAt && task.completedAt ? Math.max(0, Date.parse(task.completedAt) - Date.parse(task.startedAt)) : undefined,
         taskCreatedAt: task.createdAt || task.created_at,
         taskUpdatedAt: task.updatedAt || task.updated_at,
+        ...(media ? { resultRecord: completedCanvasResultRecord(media, { taskId: task.id, taskStatus: task.status, taskStartedAt: task.startedAt, taskCompletedAt: task.completedAt }, task.billing, Math.max(outputCount || 0, task.outputs?.length || 0, ...(task.outputs || []).map((output) => output.outputIndex + 1))) } : {}),
         errorDetails: undefined,
         resourceReloadAvailable: undefined,
         generationErrorCode: undefined,

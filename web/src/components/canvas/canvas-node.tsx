@@ -18,6 +18,8 @@ import type { NodeResizeCorner } from "@/lib/canvas/node-resize-geometry";
 import { useCanvasNodeResize } from "./use-canvas-node-resize";
 import { useCanvasNodeResizeStyle } from "./canvas-node-resize-motion";
 import { CanvasNodeContent, CanvasNodeImageInfo, CanvasNodeProducedModel } from "./canvas-node-content";
+import { CanvasNodeResultRecord } from "./canvas-node-result-record";
+import { canvasResultRecord } from "@/lib/canvas/canvas-result-record";
 
 type CanvasTheme = (typeof canvasThemes)[keyof typeof canvasThemes];
 
@@ -129,7 +131,8 @@ export const CanvasNode = React.memo(function CanvasNode({
     const isComposerNode = data.type === CanvasNodeType.Config;
     const hasMediaContent = hasImageContent || hasVideoContent || hasAudioContent;
     const producedModelStored = data.metadata?.producedModel;
-    const showProducedModel = showImageInfo && hasMediaContent && Boolean(producedModelStored);
+    const hasResultRecord = showImageInfo && Boolean(canvasResultRecord(data));
+    const showProducedModel = showImageInfo && hasMediaContent && Boolean(producedModelStored) && !hasResultRecord;
     const isBatchRoot = data.type === CanvasNodeType.Image && Boolean(data.metadata?.isBatchRoot) && (batchCount > 1 || Boolean(data.metadata?.imageLayerGroup));
     const isBatchChild = data.type === CanvasNodeType.Image && Boolean(data.metadata?.batchRootId);
     const showStatusTrack = Boolean(resourceLabel || data.metadata?.locked || isBatchRoot || (isBatchChild && !readOnly) || (hasMediaContent && !readOnly));
@@ -203,7 +206,8 @@ export const CanvasNode = React.memo(function CanvasNode({
                 width: data.width,
                 height: data.height,
                 contain: "layout style",
-            }}
+                "--node-result-record-ink": theme.node.label,
+            } as React.CSSProperties}
             onMouseEnter={() => {
                 setHovered(true);
                 onHoverStart(data.id);
@@ -218,7 +222,7 @@ export const CanvasNode = React.memo(function CanvasNode({
             {showChrome ? <NodeExternalHeader
                 node={data}
                 scale={scale}
-                dimensionLabel={mediaDimensionLabel}
+                dimensionLabel={hasResultRecord && showImageInfo ? "" : mediaDimensionLabel}
                 active={isSelected || isFocusRelated}
                 editable={!readOnly && !data.metadata?.locked && Boolean(onTitleChange)}
                 editing={isEditingTitle}
@@ -292,7 +296,7 @@ export const CanvasNode = React.memo(function CanvasNode({
                     }
                 >
                     {/* 节点状态徽章（对应 #97 决策2：左上角 loading/success/error，近距离确认信号）*/}
-                    {showChrome && data.metadata?.status && data.metadata.status !== "idle" && data.type !== CanvasNodeType.Frame ? (
+                    {showChrome && data.metadata?.status && data.metadata.status !== "idle" && data.type !== CanvasNodeType.Frame && !(data.metadata.status === "loading" && effectiveRenderLOD === "full" && !data.metadata.previsSceneId && (data.type === CanvasNodeType.Video || data.type === CanvasNodeType.Image)) ? (
                         <NodeStatusBadge status={data.metadata.status} />
                     ) : null}
                     <CanvasNodeContent
@@ -377,13 +381,13 @@ export const CanvasNode = React.memo(function CanvasNode({
                         <BatchChildActionButton theme={theme} label={data.metadata?.imageLayerGroup ? "下载合成图" : "下载主图"} icon={<Download className="size-3.5" />} onClick={() => downloadNode?.(data)} />
                     </div>
                 ) : null}
-                {showChrome && (assetTags.length || showProducedModel || (showImageInfo && hasImageContent)) ? (
+                {showChrome && (assetTags.length || showProducedModel || (showImageInfo && hasImageContent && !hasResultRecord)) ? (
                     <div className={`pointer-events-none absolute inset-x-3 z-[var(--node-z-overlay)] flex items-end justify-between gap-2 ${mediaActive && hasVideoContent ? "bottom-16" : "bottom-3"}`}>
                         <div className="flex min-w-0 items-end gap-1">
                             {assetTags.length ? <AssetTagBadges tags={assetTags} theme={theme} /> : null}
                             {showProducedModel ? <CanvasNodeProducedModel stored={producedModelStored!} /> : null}
                         </div>
-                        {showImageInfo && hasImageContent ? <CanvasNodeImageInfo node={data} /> : null}
+                        {showImageInfo && hasImageContent && !hasResultRecord ? <CanvasNodeImageInfo node={data} /> : null}
                     </div>
                 ) : null}
 
@@ -394,6 +398,8 @@ export const CanvasNode = React.memo(function CanvasNode({
                     <ResizeHandle corner="bottom-right" onPointerDown={handleResizePointerDown} />
                 </> : null}
             </div>
+
+            {showChrome && hasResultRecord && showImageInfo ? <CanvasNodeResultRecord node={data} enabled /> : null}
 
             {(showChrome || forceInputMounted) && !readOnly && data.type !== CanvasNodeType.Script && data.type !== CanvasNodeType.BatchTable ? <ConnectionSideRail side="left" scale={scale} theme={theme} visible={showConnectionRails} onPointerDown={(event, anchorRatio) => onConnectStart(event, data.id, "target", undefined, anchorRatio)} /> : null}
             {showChrome && !readOnly && data.type !== CanvasNodeType.Script && data.type !== CanvasNodeType.Config && showOutputConnection ? <ConnectionSideRail side="right" scale={scale} theme={theme} visible={showConnectionRails} onPointerDown={(event, anchorRatio) => onConnectStart(event, data.id, "source", undefined, anchorRatio)} /> : null}

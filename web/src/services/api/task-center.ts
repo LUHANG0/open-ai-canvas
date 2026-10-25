@@ -58,8 +58,11 @@ export type GenerationTask = {
     createdAt: string;
     updatedAt: string;
     billing?: {
+        /** Original order/reservation amount; never substitute for actual settled cost. */
         amountMicrocredits: number;
         status: TaskBillingStatus;
+        /** Present only for settled orders; explicit 0 differs from absent/unknown. */
+        actualAmountMicrocredits?: number;
     };
     clientContext?: {
         conversationId?: string;

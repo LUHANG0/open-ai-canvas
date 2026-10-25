@@ -8,7 +8,8 @@ import { NODE_DEFAULT_SIZE } from "@/constant/canvas";
 import { normalizeVideoDuration, normalizeVideoResolution } from "@/lib/video-generation-options";
 import { isSeedanceVideoConfig } from "@/lib/seedance-video";
 import { modelCapabilityConfigFor, workflowFieldCurrentValue, workflowFieldHasStoredValue, workflowFieldKey, workflowFieldRandomKey, workflowFieldSubmissionValue, workflowOutputSizeValue, workflowVideoFieldsFromJson } from "@/lib/model-capabilities";
-import { modelRequestOptions, resolveCompatibleModel, resolveModelGenerationDefaults, resolveVideoOperation, type ModelGenerationDefaults, type ModelRequirements } from "@/lib/model-selection";
+import { modelRequestOptions, planMediaModelSwitch, resolveCompatibleModel, resolveModelGenerationDefaults, resolveVideoOperation, type ModelGenerationDefaults, type ModelRequirements } from "@/lib/model-selection";
+import { mediaParameterChangeMessage, UnconfirmedMediaParametersError } from "@/lib/model-parameter-guard";
 import { imageMetadata } from "@/lib/canvas/canvas-generation-task-sync";
 import { producedModelCandidateForGeneration } from "@/lib/canvas/produced-model";
 import { ensureMediaNodeMinimumSize } from "@/lib/canvas/canvas-node-size";
@@ -19,6 +20,7 @@ import { CanvasNodeType, type CanvasAssistantSession, type CanvasConnection, typ
 import type { ReferenceImage } from "@/types/image";
 import type { ReferenceAudio, ReferenceVideo } from "@/types/media";
 import { generationSpecMetadata, readNodeGenerationSpec, resolveGenerationSelection } from "@/lib/canvas/generation-contract";
+import { canvasGenerationParameterError } from "@/lib/canvas/canvas-model-parameter-guard";
 
 export async function runBackendCanvasGenerationTask(
     {
@@ -56,6 +58,10 @@ export async function runBackendCanvasGenerationTask(
     },
     dependencies?: GenerationTaskDependencies,
 ) {
+    if ((mode === "image" || mode === "video") && (!config.taskWorkflowProvider || config.taskWorkflowProvider === "model")) {
+        const parameterError = mediaParameterChangeMessage(planMediaModelSwitch(config, config.model, mode).changes);
+        if (parameterError) throw new UnconfirmedMediaParametersError(parameterError);
+    }
     if (mode === "image") assertCanvasImageReferenceLimit(config, referenceImages);
     return runBackendGenerationTask(
         {
@@ -521,7 +527,7 @@ export function buildGenerationConfig(config: AiConfig, node: CanvasNodeData | u
                   )
                 : config.runningHub.workflows,
     };
-    return {
+    const result: AiConfig = {
         ...requestedConfig,
         taskWorkflowProvider: workflowProvider,
         runningHub,
@@ -538,6 +544,11 @@ export function buildGenerationConfig(config: AiConfig, node: CanvasNodeData | u
         videoArkPrivateAssetUpload: requestedConfig.videoArkPrivateAssetUpload,
         count: generationDefaults.count || requestedConfig.count,
     };
+    if (!displayOnly) {
+        const parameterError = canvasGenerationParameterError(node, mode, result);
+        if (parameterError) throw new UnconfirmedMediaParametersError(parameterError);
+    }
+    return result;
 }
 
 export function resolveCanvasGenerationModel(config: AiConfig, model: string | undefined, mode: CanvasNodeGenerationMode): string {

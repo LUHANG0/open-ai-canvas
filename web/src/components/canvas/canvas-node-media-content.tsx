@@ -24,13 +24,14 @@ import { prepareCanvasImage } from "@/services/canvas-image-loader";
 import { getResourceAccess, refreshResource, resourceIdFromStorageKey, resolveResourceAccessURL } from "@/services/api/resources";
 import type { CanvasNodeContentProps } from "./canvas-node-content";
 import { ErrorContent, LoadingContent } from "./canvas-node-status-content";
+import { applyCanvasVideoMeasurement, applyCanvasVideoPoster, videoMeasurementSnapshot, videoPresentationDimensions } from "@/lib/canvas/canvas-video-presentation";
 
 export function ImageNodeContent(props: CanvasNodeContentProps) {
     const hasImage = Boolean(props.node.metadata?.content || props.node.metadata?.storageKey);
     if (!hasImage && props.isBatchRoot) {
         const content =
             props.node.metadata?.status === "loading" ? (
-                <LoadingContent node={props.node} theme={props.theme} />
+                <LoadingContent node={props.node} theme={props.theme} onOpenTaskDetails={props.onOpenTaskDetails} disableMediaEffects={props.disableMediaEffects} />
             ) : props.node.metadata?.status === "error" ? (
                 <ErrorContent node={props.node} theme={props.theme} onRetry={props.onRetry} onReloadResource={props.onReloadResource} />
             ) : (
@@ -105,45 +106,68 @@ export function VideoNodeContent({ node, theme, mediaActive = false, onMediaPlay
     const [currentTimeMs, setCurrentTimeMs] = useState(0);
     const [videoSize, setVideoSize] = useState<{ width: number; height: number } | null>(null);
     const [videoReady, setVideoReady] = useState(false);
+    const readySourceRef = useRef("");
+    const measuredSourceRef = useRef("");
     // 播放器身份是节点上的媒体（storageKey），不是当前签名地址：续签只换 src，不重建播放器、不退回静态预览。
-    const playerKey = node.metadata?.storageKey || node.id;
+    const playerKey = node.metadata?.storageKey || node.metadata?.content || node.id;
+    const playerScope = getActiveUserScope();
+    const livePlayerKeyRef = useRef(playerKey);
+    livePlayerKeyRef.current = playerKey;
+    const ready = videoReady && readySourceRef.current === playerKey;
 
     useEffect(() => {
         setVideoReady(false);
+        setVideoSize(null);
     }, [playerKey]);
+
+    useEffect(() => {
+        const dimensions = videoPresentationDimensions(node);
+        if (!dimensions || !updateMediaNode) return;
+        const observed = videoMeasurementSnapshot(node, getActiveUserScope());
+        updateMediaNode(node.id, (current) => applyCanvasVideoMeasurement(current, observed, dimensions, getActiveUserScope(), false));
+    }, [node.id, playerKey, node.metadata?.taskId, node.metadata?.naturalWidth, node.metadata?.naturalHeight, node.metadata?.videoPreview?.width, node.metadata?.videoPreview?.height, updateMediaNode]);
 
     useEffect(() => {
         if (!url) setVideoReady(false);
     }, [url]);
 
     useEffect(() => {
+        if (!mediaActive) setVideoReady(false);
+    }, [mediaActive]);
+
+    useEffect(() => {
         const box = playerBoxRef.current;
         const video = box?.querySelector("video");
         if (!video) return;
+        const observed = videoMeasurementSnapshot(node, getActiveUserScope());
+        let disposed = false;
         const handleLoadedMetadata = () => {
-            if (video.videoWidth <= 0 || video.videoHeight <= 0) return;
-            setVideoSize({ width: video.videoWidth, height: video.videoHeight });
-            if (node.metadata?.naturalWidth !== video.videoWidth || node.metadata?.naturalHeight !== video.videoHeight) {
-                updateMediaNode?.(node.id, (current) => ({ ...current, metadata: { ...current.metadata, naturalWidth: video.videoWidth, naturalHeight: video.videoHeight } }));
-            }
+            if (disposed || observed.scope !== getActiveUserScope() || video.videoWidth <= 0 || video.videoHeight <= 0) return;
+            const dimensions = { width: video.videoWidth, height: video.videoHeight };
+            if (livePlayerKeyRef.current !== playerKey) return;
+            measuredSourceRef.current = playerKey;
+            setVideoSize((previous) => previous && previous.width === dimensions.width && previous.height === dimensions.height ? previous : dimensions);
+            updateMediaNode?.(node.id, (current) => applyCanvasVideoMeasurement(current, observed, dimensions, getActiveUserScope()));
         };
         video.addEventListener("loadedmetadata", handleLoadedMetadata);
         handleLoadedMetadata();
-        if (!subtitleEntries.length) return () => video.removeEventListener("loadedmetadata", handleLoadedMetadata);
+        if (!subtitleEntries.length) return () => { disposed = true; video.removeEventListener("loadedmetadata", handleLoadedMetadata); };
         const handleTimeUpdate = () => setCurrentTimeMs(Math.round(video.currentTime * 1000));
         video.addEventListener("timeupdate", handleTimeUpdate);
         return () => {
+            disposed = true;
             video.removeEventListener("timeupdate", handleTimeUpdate);
             video.removeEventListener("loadedmetadata", handleLoadedMetadata);
         };
-    }, [node.id, node.metadata?.naturalHeight, node.metadata?.naturalWidth, subtitleEntries.length, updateMediaNode, url]);
+    }, [node.id, playerKey, node.metadata?.taskId, subtitleEntries.length, updateMediaNode, url, mediaActive]);
 
     if (!node.metadata?.content && !node.metadata?.storageKey) return <EmptyMediaContent icon={<Video className="size-7 opacity-35" />} label="空视频节点" color={theme.node.placeholder} />;
-    if (!mediaActive) return <InactiveVideoPreview node={node} theme={theme} onPlay={() => onMediaPlayRequest?.(node.id)} />;
+    if (!mediaActive) return <InactiveVideoPreview key={playerKey} node={node} theme={theme} onPlay={() => onMediaPlayRequest?.(node.id)} />;
 
-    const sourceRatio = (videoSize?.width || node.metadata?.naturalWidth || node.width) / Math.max(1, videoSize?.height || node.metadata?.naturalHeight || node.height);
+    const measuredSize = measuredSourceRef.current === playerKey ? videoSize : null;
+    const sourceRatio = (measuredSize?.width || node.metadata?.naturalWidth || node.width) / Math.max(1, measuredSize?.height || node.metadata?.naturalHeight || node.height);
     const fitHeight = Math.min(node.height, node.width / Math.max(0.01, sourceRatio));
-    const fitWidth = Math.round(fitHeight * sourceRatio);
+    const fitWidth = fitHeight * sourceRatio;
     const activeEntry = subtitleEntries.find((entry) => currentTimeMs >= entry.startMs && currentTimeMs < entry.endMs);
     const activeHighlight = activeEntry ? (node.metadata?.subtitleHighlights || []).find((item) => item.entryIndex === activeEntry.index) : undefined;
 
@@ -156,15 +180,15 @@ export function VideoNodeContent({ node, theme, mediaActive = false, onMediaPlay
                     loading="eager"
                     decoding="sync"
                     draggable={false}
-                    className={`absolute inset-0 size-full select-none object-contain transition-opacity duration-150 ${videoReady ? "opacity-0" : "opacity-100"}`}
+                    className={`absolute inset-0 size-full select-none object-contain transition-opacity duration-150 motion-reduce:transition-none ${ready ? "opacity-0" : "opacity-100"}`}
                     loadingFallback={<LoaderCircle className="size-5 animate-spin text-white/55" />}
                     fallback={<Video className="size-7 text-white/40" />}
                 />
-            ) : !url || loading ? (
-                <MediaLoadingState icon={<LoaderCircle className="size-5 animate-spin" />} label={loading ? "正在加载视频" : "视频资源不可用"} />
+            ) : !ready || !url || loading ? (
+                <MediaLoadingState icon={<LoaderCircle className="size-5 animate-spin motion-reduce:animate-none" />} label={loading || url ? "正在加载视频" : "视频资源不可用"} />
             ) : null}
             {url ? (
-                <div className={`relative z-[1] transition-opacity duration-150 ${videoReady ? "opacity-100" : "opacity-0"}`} style={{ width: fitWidth, height: Math.round(fitHeight) }}>
+                <div className={`relative z-[1] transition-opacity duration-150 motion-reduce:transition-none ${ready ? "opacity-100" : "opacity-0"}`} style={{ width: fitWidth, height: fitHeight }}>
                     <VideoPlayer
                         key={playerKey}
                         src={url}
@@ -177,7 +201,7 @@ export function VideoNodeContent({ node, theme, mediaActive = false, onMediaPlay
                         className="h-full w-full rounded-[var(--node-radius)] bg-black"
                         dataCanvasNoZoom
                         compactControls
-                        onCanPlay={() => setVideoReady(true)}
+                        onCanPlay={() => { if (livePlayerKeyRef.current === playerKey && playerScope === getActiveUserScope()) { readySourceRef.current = playerKey; setVideoReady(true); } }}
                         onError={onError}
                     />
                     {activeEntry && activeEntry.text.trim() ? <CanvasSubtitleOverlay text={activeEntry.text} highlight={activeHighlight} style={subtitleStyle} /> : null}
@@ -210,8 +234,8 @@ export function InactiveVideoPreview({ node, theme, onPlay }: Pick<CanvasNodeCon
     const persistedPreviewSource = persistedPreview?.src || "";
     const persistedPreviewStorageKey = persistedPreview?.storageKey || "";
     const hasPersistedPreview = Boolean(persistedPreviewSource || persistedPreviewStorageKey);
-    const { updateMetadata } = useCanvasNodeActions();
-    const updateMetadataRef = useRef(updateMetadata);
+    const { updateMediaNode } = useCanvasNodeActions();
+    const updateMediaNodeRef = useRef(updateMediaNode);
     const [hydrating, setHydrating] = useState(false);
     const [localPreviewUrl, setLocalPreviewUrl] = useState("");
     const localPreviewUrlRef = useRef("");
@@ -225,8 +249,8 @@ export function InactiveVideoPreview({ node, theme, onPlay }: Pick<CanvasNodeCon
     }, [node.metadata?.content, node.metadata?.storageKey, node.metadata?.importSource?.provider]);
 
     useEffect(() => {
-        updateMetadataRef.current = updateMetadata;
-    }, [updateMetadata]);
+        updateMediaNodeRef.current = updateMediaNode;
+    }, [updateMediaNode]);
 
     useEffect(
         () => () => {
@@ -236,7 +260,7 @@ export function InactiveVideoPreview({ node, theme, onPlay }: Pick<CanvasNodeCon
     );
 
     useEffect(() => {
-        if (hasPersistedPreview || !nearViewport || (!node.metadata?.content && !node.metadata?.storageKey) || !updateMetadataRef.current) {
+        if (hasPersistedPreview || !nearViewport || (!node.metadata?.content && !node.metadata?.storageKey) || !updateMediaNodeRef.current) {
             if (hasPersistedPreview && localPreviewUrlRef.current) {
                 URL.revokeObjectURL(localPreviewUrlRef.current);
                 localPreviewUrlRef.current = "";
@@ -251,18 +275,21 @@ export function InactiveVideoPreview({ node, theme, onPlay }: Pick<CanvasNodeCon
             setLocalPreviewUrl("");
         }
         const controller = new AbortController();
+        const observed = videoMeasurementSnapshot(node, getActiveUserScope());
         setHydrating(true);
         void hydrateCanvasVideoPreview(node, controller.signal)
             .then((hydrated) => {
-                if (!hydrated || controller.signal.aborted) {
+                if (!hydrated || controller.signal.aborted || observed.scope !== getActiveUserScope()) {
                     if (hydrated?.localUrl) URL.revokeObjectURL(hydrated.localUrl);
                     return;
                 }
                 if (localPreviewUrlRef.current) URL.revokeObjectURL(localPreviewUrlRef.current);
                 localPreviewUrlRef.current = hydrated.localUrl;
                 setLocalPreviewUrl(hydrated.localUrl);
+                const dimensions = { width: hydrated.width, height: hydrated.height };
+                updateMediaNodeRef.current?.(node.id, (current) => applyCanvasVideoMeasurement(current, observed, dimensions, getActiveUserScope()));
                 void hydrated.persisted.then((videoPreview) => {
-                    if (!controller.signal.aborted && videoPreview) updateMetadataRef.current?.(node.id, { videoPreview });
+                    if (!controller.signal.aborted && videoPreview) updateMediaNodeRef.current?.(node.id, (current) => applyCanvasVideoPoster(current, observed, videoPreview, getActiveUserScope()));
                 });
             })
             .catch(() => undefined)
@@ -272,7 +299,7 @@ export function InactiveVideoPreview({ node, theme, onPlay }: Pick<CanvasNodeCon
         return () => {
             controller.abort();
         };
-    }, [hasPersistedPreview, nearViewport, node.id, node.metadata?.content, node.metadata?.storageKey, persistedPreviewSource, persistedPreviewStorageKey]);
+    }, [hasPersistedPreview, nearViewport, node.id, node.metadata?.content, node.metadata?.storageKey, node.metadata?.taskId, persistedPreviewSource, persistedPreviewStorageKey]);
 
     if (hasPersistedPreview || localPreviewUrl) {
         return (

@@ -5,7 +5,7 @@ import { ArrowRight, LockKeyhole, UserRound } from "lucide-react";
 import { Link, useNavigate, useSearchParams } from "react-router";
 
 import { getAuthSession, getAuthSettings, linuxDOLoginURL, login } from "@/services/api/auth";
-import { LinuxDOIcon } from "./auth-scene";
+import { LinuxDOIcon } from "./auth-provider-icon";
 import { VerificationFields } from "@/components/auth/verification-fields";
 import { safeAuthNext } from "@/lib/auth-navigation";
 import { useBrandAuthFlow } from "@/components/brand/brand-auth-entry";

@@ -24,6 +24,9 @@ import { CanvasNodeType, type CanvasNodeData, type CanvasNodeMetadata, type Canv
 import { buildImageToolbarTools } from "./canvas-image-toolbar-tools";
 import { CanvasGridSplitPicker } from "./canvas-grid-split-picker";
 import { useCanvasNodeResizeMotion } from "./canvas-node-resize-motion";
+import { useCanvasNodeActions } from "./canvas-node-action-context";
+import { fitCanvasVideoToMedia, videoPresentationIdentity } from "@/lib/canvas/canvas-video-presentation";
+import { getActiveUserScope } from "@/lib/user-scope";
 
 type CanvasNodeToolbarProps = {
     node: CanvasNodeData | null;
@@ -155,6 +158,7 @@ export function CanvasNodeToolbar({
     const [anchor, setAnchor] = useState<{ left: number; top: number } | null>(null);
     const toolbarRef = useRef<HTMLDivElement>(null);
     const { message } = App.useApp();
+    const { updateNode } = useCanvasNodeActions();
     const copyText = useCopyText();
     const themeName = useActiveTheme();
     const theme = canvasThemes[themeName];
@@ -285,6 +289,10 @@ export function CanvasNodeToolbar({
         onNodeSplit: (target) => onSplit(target, { rows: 2, columns: 2 }), onNodeUpscale: onUpscale, onNodeSuperResolve: onSuperResolve, onNodeAngle: onAngle, onNodeViewImage: onViewImage,
         onNodeExtractVideoFrames: onExtractVideoFrames, onNodeExtractAudioFromVideo: onExtractAudioFromVideo, onNodeTrimVideoSegments: onTrimVideoSegments, onNodeEnhanceVideo: onEnhanceVideo, onNodeReversePrompt: onReversePrompt, onNodeToggleFreeResize: onToggleFreeResize,
         onNodeSubtitles: onSubtitles, onNodeTimeline: onTimeline, onNodeToggleLocked: onToggleLocked, onNodeCopyPrompt: copyImagePrompt,
+        onNodeFitVideo: updateNode ? (target: CanvasNodeData) => {
+            const scope = getActiveUserScope();
+            updateNode(target.id, (current) => scope === getActiveUserScope() && videoPresentationIdentity(current) === videoPresentationIdentity(target) && current.metadata?.taskId === target.metadata?.taskId ? fitCanvasVideoToMedia(current, true) : current);
+        } : undefined,
     } as Partial<ToolbarHandlers> as ToolbarHandlers;
 
     const nodeHoverCtx: ToolContext = {

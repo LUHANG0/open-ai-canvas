@@ -292,7 +292,7 @@ describe("public channel model catalog", () => {
 
         const html = renderToStaticMarkup(React.createElement(CanvasVideoSettingsPopover, { config, onConfigChange: () => undefined }));
 
-        expect(html).toContain("16:9 · 10s");
+        expect(html).toContain("16:9 · 10秒");
         expect(html).not.toContain("720P");
     });
 
@@ -307,7 +307,7 @@ describe("public channel model catalog", () => {
         const summaryHtml = renderToStaticMarkup(React.createElement(CanvasVideoSettingsPopover, { config, onConfigChange: () => undefined }));
         const panelHtml = renderToStaticMarkup(React.createElement(VideoSettingsPanel, { config, onConfigChange: () => undefined, theme: canvasThemes.dark }));
 
-        expect(summaryHtml).toContain("1080P · 10s");
+        expect(summaryHtml).toContain("1080P · 10秒");
         expect(summaryHtml).not.toContain("16:9");
         expect(panelHtml).not.toContain("尺寸");
     });

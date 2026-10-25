@@ -75,7 +75,7 @@ test("model rows preserve multiple promotional labels and colors without alterin
     expect(markup).not.toContain("官方1折");
 });
 
-test("video capability tag is derived from limits and precedes editable model tags", () => {
+test("video reference summary is derived from limits and precedes editable model tags", () => {
     const config = fixture();
     const cost = config.channels[0].modelCosts![0];
     cost.capabilityConfig = defaultModelCapabilityConfig();
@@ -87,12 +87,12 @@ test("video capability tag is derived from limits and precedes editable model ta
 
     const markup = renderToStaticMarkup(<ModelLabel config={config} model={config.model} capability="video" theme={canvasThemes.light} creationVariant showConfiguredModelName={false} showPrice showDescription />);
 
-    expect(markup).toContain('data-color="green">图×30 · 视×10 · 音×10');
-    expect(markup.indexOf("图×30 · 视×10 · 音×10")).toBeLessThan(markup.indexOf("限时特价"));
+    expect(markup).toContain('参考图片最多30张 · 参考视频最多10个 · 参考音频最多10个');
+    expect(markup.indexOf("参考图片最多30张")).toBeLessThan(markup.indexOf("限时特价"));
     expect(markup.indexOf("限时特价")).toBeLessThan(markup.indexOf("按次收费"));
 });
 
-test("video capability tag omits zero limits while preserving editable model tags", () => {
+test("video reference summary omits zero limits while preserving editable model tags", () => {
     const config = fixture();
     const cost = config.channels[0].modelCosts![0];
     cost.capabilityConfig = defaultModelCapabilityConfig();
@@ -105,6 +105,32 @@ test("video capability tag omits zero limits while preserving editable model tag
     expect(markup).not.toContain("视×");
     expect(markup).not.toContain("音×");
     expect(markup).toContain('data-color="blue">按次收费');
+});
+
+test("matching shorthand is deduplicated against structured capabilities and conflicting administrator notes remain visible", () => {
+    const config = fixture();
+    const cost = config.channels[0].modelCosts![0];
+    cost.description = "503，720p，4–15s";
+    cost.capabilityConfig = defaultModelCapabilityConfig();
+    Object.assign(cost.capabilityConfig.video!, { duration: { selection: "range", min: 4, max: 15, step: 1, default: 5 }, resolutions: ["720p"] });
+    Object.assign(cost.capabilityConfig.video!.references, { maxImages: 5, maxVideos: 0, maxAudios: 3 });
+    const markup = renderToStaticMarkup(<ModelLabel config={config} model={config.model} capability="video" theme={canvasThemes.light} creationVariant showConfiguredModelName={false} showPrice showDescription />);
+    expect(markup).toContain("参考图片最多5张 · 参考音频最多3个");
+    expect(markup).toContain("720P · 4–15秒");
+    expect(markup).not.toContain("渠道说明：503，720p，4–15s");
+    expect(markup).not.toContain("参考图片最多503");
+    expect(markup).not.toContain("图×");
+    cost.description = "900，720p，15s";
+    const conflict = renderToStaticMarkup(<ModelLabel config={config} model={config.model} capability="video" theme={canvasThemes.light} creationVariant showConfiguredModelName={false} showPrice showDescription />);
+    expect(conflict).toContain("参考图片最多5张");
+    expect(conflict).toContain("渠道说明：900，720p，15s");
+});
+
+test("fixed-request tier prices include the real per-request unit", () => {
+    const config = fixture();
+    config.channels[0].modelCosts![0].logicalPriceTiers!.forEach((tier) => { tier.billingMode = "fixed_request"; });
+    const markup = renderToStaticMarkup(<ModelLabel config={config} model={config.model} capability="video" theme={canvasThemes.light} creationVariant showConfiguredModelName={false} showPrice showDescription />);
+    expect(markup).toContain("0.1-0.2 积分/次");
 });
 
 test("the selected model and request estimate still require an exact specification match", () => {

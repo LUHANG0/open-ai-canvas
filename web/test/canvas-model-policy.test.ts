@@ -79,7 +79,9 @@ describe("逻辑模型选择", () => {
             },
         };
 
-        const generation = buildGenerationConfig(config, videoNode, "video");
+        // Cache/display recovery still normalizes legacy zero; submitting it requires an explicit adjustment.
+        const generation = buildGenerationConfig(config, videoNode, "video", undefined, true);
+        expect(() => buildGenerationConfig(config, videoNode, "video")).toThrow("确认调整后再生成");
 
         expect(generation.model).toBe("relay::cinema-text");
         expect(generation.videoSeconds).toBe("1");

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
+import { createElement, useCallback, useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { App } from "antd";
 
@@ -12,6 +12,11 @@ import { CONTENT_MODERATION_ERROR_CODE, isContentModerationError } from "@/lib/g
 import { downloadBrowserMedia } from "@/services/browser-download";
 import { ensureCanvasNodeAsset } from "@/services/project-asset-sync";
 import { canvasEditLeases } from "@/services/canvas-edit-leases";
+import { selectableModelsByCapability, useEffectiveConfig } from "@/stores/use-config-store";
+import { buildNodeConfig } from "@/components/canvas/canvas-node-prompt-config";
+import { canvasExplicitMediaParameters, canvasModelSwitchPatch } from "@/lib/canvas/canvas-model-parameter-guard";
+import { createModelSwitchCoordinator } from "@/lib/model-parameter-guard";
+import { configuredModelDisplayName, planMediaModelSwitch } from "@/lib/model-selection";
 import { CanvasNodeType, type CanvasFolderStyle, type CanvasFolderTheme, type CanvasNodeData, type CanvasNodeMetadata, type Position } from "@/types/canvas";
 
 type UseCanvasNodeEditorOptions = {
@@ -39,7 +44,13 @@ export function useCanvasNodeEditor({
     setToolbarNodeId,
     setHoveredNodeId,
 }: UseCanvasNodeEditorOptions) {
-    const { message } = App.useApp();
+    const { message, modal } = App.useApp();
+    const effectiveConfig = useEffectiveConfig();
+    const configRef = useRef(effectiveConfig);
+    configRef.current = effectiveConfig;
+    const modelSwitch = useRef(createModelSwitchCoordinator());
+    const pendingModelDialog = useRef<{ destroy: () => void } | null>(null);
+    useEffect(() => () => { modelSwitch.current.invalidate(); pendingModelDialog.current?.destroy(); }, []);
     const queryClient = useQueryClient();
     const [collapsingBatchIds, setCollapsingBatchIds] = useState<Set<string>>(new Set());
     const [openingBatchIds, setOpeningBatchIds] = useState<Set<string>>(new Set());
@@ -189,6 +200,49 @@ export function useCanvasNodeEditor({
     const handleConfigNodeChange = useCallback((nodeId: string, patch: Partial<CanvasNodeMetadata>): boolean => {
         const target = nodesRef.current.find((node) => node.id === nodeId);
         if (!target) return false;
+        modelSwitch.current.invalidate();
+        pendingModelDialog.current?.destroy();
+        pendingModelDialog.current = null;
+        if (typeof patch.model === "string" && (target.type === CanvasNodeType.Image || target.type === CanvasNodeType.Video)) {
+            if (target.metadata?.locked) return false;
+            const mode = target.type === CanvasNodeType.Video ? "video" : "image";
+            const initialConfig = configRef.current;
+            if (!selectableModelsByCapability(initialConfig, mode).includes(patch.model)) {
+                message.warning("目标模型已不可用，请重新选择");
+                return false;
+            }
+            const snapshot = { node: target, config: initialConfig };
+            return modelSwitch.current.request({
+                read: () => nodesRef.current.find((node) => node.id === nodeId) === target && configRef.current === initialConfig ? snapshot : null,
+                plan: () => {
+                    const current = { ...buildNodeConfig(initialConfig, target, mode, { capability: mode }), ...canvasExplicitMediaParameters(target, mode) };
+                    const proposed = planMediaModelSwitch(current, patch.model!, mode);
+                    // Override the legacy model-switch reset with the current values, then the accepted parameters.
+                    const accepted = canvasModelSwitchPatch(target, proposed.config, mode, patch);
+                    return { changes: proposed.changes, apply: () => {
+                        if (!canvasEditLeases.input(canvasId, nodeId)) return;
+                        setNodes((nodes) => {
+                            const next = nodes.map((node) => node.id === nodeId ? applyNodeConfigPatch(node, accepted) : node);
+                            nodesRef.current = next;
+                            return next;
+                        });
+                    } };
+                },
+                confirm: (changes, accept) => {
+                    pendingModelDialog.current = modal.confirm({
+                        title: "切换模型需要调整参数",
+                        content: createElement("div", null,
+                            createElement("p", null, `切换到 ${configuredModelDisplayName(initialConfig, patch.model!)}`),
+                            createElement("ul", null, ...changes.map((change) => createElement("li", { key: change.label }, `${change.label}：${change.before} → ${change.after}`))),
+                            createElement("p", null, "费用按新模型和调整后的规格计算。确认只更新设置，不会开始生成。")),
+                        okText: "确认调整", cancelText: "取消", centered: true, autoFocusButton: "cancel",
+                        onOk: accept,
+                        onCancel: () => modelSwitch.current.invalidate(),
+                    });
+                },
+                stale: () => message.warning("模型目录或节点设置已变化，请重新选择并确认"),
+            });
+        }
         const changesPrompt = (["prompt", "composerContent"] as const).some((key) => Object.hasOwn(patch, key) && patch[key] !== target.metadata?.[key]);
         if (changesPrompt && (target.metadata?.locked || !canvasEditLeases.input(canvasId, nodeId))) return false;
         setNodes((current) => {
@@ -209,7 +263,7 @@ export function useCanvasNodeEditor({
             })
             .catch((error) => message.error(error instanceof Error ? error.message : "资产分类更新失败"));
         return true;
-    }, [canvasId, domainProjectId, message, nodesRef, queryClient, setNodes]);
+    }, [canvasId, domainProjectId, message, modal, nodesRef, queryClient, setNodes]);
 
     const downloadNodeImage = useCallback(async (node: CanvasNodeData) => {
         if (node.metadata?.imageLayerGroup?.compositeStatus && node.metadata.imageLayerGroup.compositeStatus !== "ready") { message.warning("请等待图层合成成功后再下载"); return; }

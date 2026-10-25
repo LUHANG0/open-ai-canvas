@@ -1,5 +1,7 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 import "./image-size-picker.css";
+import "./generation-settings.css";
+import { settingsAspectLabel, settingsImageResolutionLabel } from "@/lib/generation-settings-presentation";
 import { Input, Button } from "antd";
 import type { ImageCapabilityConfig } from "@/lib/model-capabilities";
 import { imageResolutionTiers, imagePresetForRatio, imagePresetValue, imageQualityForSelection, imageQualityForTier, imageResolutionUsesQuality, imageSizePresets, imageTierAvailable } from "@/lib/image-size-presets";
@@ -22,6 +24,7 @@ export function ImageSizePicker({
     canSelectResolution?: (resolution: string) => boolean;
     onChange: (size: string, quality?: string, resolution?: string) => void;
 }) {
+    const resolutionId = useId();
     const ungrouped = Boolean(profile.parameters && !profile.resolution.supported);
     const IMAGE_RESOLUTIONS = ungrouped ? [...new Set(imageSizePresets(profile).map((p) => p.tier))] : imageResolutionTiers(profile);
     const presets = imageSizePresets(profile).filter((preset) => imageTierAvailable(profile, preset.tier));
@@ -143,23 +146,34 @@ export function ImageSizePicker({
     };
     if (profile.size.parameter === "none")
         return profile.resolution.supported ? (
-            <div className="image-size-picker">
-                <div className="image-size-label">分辨率</div>
-                <div className="image-size-tiers">
+            <div className="image-size-picker generation-settings">
+                <div className="image-size-label" id={resolutionId}>分辨率</div>
+                <div className="image-size-tiers" role="group" aria-labelledby={resolutionId}>
                     {profile.resolution.values.map((value) => (
                         <button type="button" key={value} aria-pressed={value === imageResolution} disabled={Boolean(canSelectResolution && !canSelectResolution(value))} onClick={() => onChange(size, undefined, value)}>
-                            {value.toUpperCase()}
+                            {settingsImageResolutionLabel(value)}
                         </button>
                     ))}
                 </div>
             </div>
         ) : null;
     return (
-        <div className="image-size-picker">
+        <div className="image-size-picker generation-settings">
+            <fieldset className="generation-settings-group">
+                <legend>画幅</legend>
+                {profile.size.values.includes("auto") ? <button type="button" className="image-size-auto" aria-pressed={size === "auto"} onClick={() => { setError(""); onChange("auto"); }}>自动尺寸</button> : null}
+                <div className="image-size-ratios" role="group" aria-label="画幅">
+                    {choices.map((preset) => <button type="button" key={`${preset.ratio}:${preset.size}`} title={`${preset.ratio} · ${preset.width} × ${preset.height}`} aria-pressed={size !== "auto" && active?.size === preset.size && active?.tier === tier} onClick={() => select(preset)}>
+                        <span aria-hidden="true" className="image-size-ratio-icon" style={{ width: 24 * Math.min(1, preset.width / preset.height), height: 24 * Math.min(1, preset.height / preset.width) }} />
+                        <span>{settingsAspectLabel(preset.ratio)}</span>
+                    </button>)}
+                </div>
+                {!choices.length ? <p className="image-size-hint">未配置预设尺寸{profile.size.allowCustom ? "，可输入自定义比例或尺寸" : ""}</p> : null}
+            </fieldset>
             {profile.resolution.supported ? (
                 <>
-                    <div className="image-size-label">分辨率</div>
-                    <div className="image-size-tiers">
+                    <div className="image-size-label" id={resolutionId}>分辨率</div>
+                    <div className="image-size-tiers" role="group" aria-labelledby={resolutionId}>
                         {profile.resolution.values.map((value) => (
                             <button
                                 type="button"
@@ -172,52 +186,23 @@ export function ImageSizePicker({
                                     else onChange(size, undefined, value);
                                 }}
                             >
-                                {value.toUpperCase()}
+                                {settingsImageResolutionLabel(value)}
                             </button>
                         ))}
                     </div>
                 </>
             ) : !ungrouped && visibleTiers.length && (profile.size.parameter === "size" || !profile.quality.supported || imageResolutionUsesQuality(profile)) ? (
                 <>
-                    <div className="image-size-label">分辨率</div>
-                    <div className="image-size-tiers">
+                    <div className="image-size-label" id={resolutionId}>分辨率</div>
+                    <div className="image-size-tiers" role="group" aria-labelledby={resolutionId}>
                         {visibleTiers.map((value) => (
                             <button type="button" key={value} aria-pressed={size !== "auto" && active?.tier === value} onClick={() => changeTier(value)}>
-                                {value.toUpperCase()}
+                                {settingsImageResolutionLabel(value)}
                             </button>
                         ))}
                     </div>
                 </>
             ) : null}
-            {profile.size.values.includes("auto") ? (
-                <button
-                    type="button"
-                    className="image-size-auto"
-                    aria-pressed={size === "auto"}
-                    onClick={() => {
-                        setError("");
-                        onChange("auto");
-                    }}
-                >
-                    自动尺寸
-                </button>
-            ) : null}
-            {choices.length ? <div className="image-size-label">宽高比</div> : null}
-            <div className="image-size-ratios">
-                {choices.map((preset) => (
-                    <button
-                        type="button"
-                        key={`${preset.ratio}:${preset.size}`}
-                        title={`${preset.ratio} · ${preset.width} × ${preset.height}`}
-                        aria-pressed={size !== "auto" && active?.size === preset.size && active?.tier === tier}
-                        onClick={() => select(preset)}
-                    >
-                        <span className="image-size-ratio-icon" style={{ width: 24 * Math.min(1, preset.width / preset.height), height: 24 * Math.min(1, preset.height / preset.width) }} />
-                        <span>{preset.ratio}</span>
-                    </button>
-                ))}
-            </div>
-            {!choices.length ? <p className="image-size-hint">未配置预设尺寸{profile.size.allowCustom ? "，可输入自定义比例或尺寸" : ""}</p> : null}
             <output aria-live="polite" className="image-size-output">
                 {size === "auto" ? "尺寸由模型决定" : active ? `${active.ratio} · ${active.width} × ${active.height} px` : size.replace("x", " × ")}
             </output>

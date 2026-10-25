@@ -286,13 +286,21 @@ func (s *Service) TasksWithOptions(userID string, options TaskListOptions) ([]Ta
 	return taskSummariesForOutputWithBilling(tasks, orders), nil
 }
 
-func (s *Service) Task(userID string, id string) (*model.Task, error) {
+func (s *Service) Task(userID string, id string) (*TaskDetailOutput, error) {
 	task, err := s.repo.TaskForUser(userID, id)
 	if err != nil {
 		return nil, err
 	}
 	s.hydrateTaskProviderRequestID(task)
-	return taskForOutput(*task), nil
+	output := &TaskDetailOutput{Task: taskForOutput(*task)}
+	if task.Status == model.TaskStatusSucceeded && task.BillingOrderID != "" {
+		orders, err := s.repo.BillingOrdersByTaskIDs(userID, []string{task.ID})
+		// Optional billing facts must not turn an otherwise readable result into a task failure.
+		if order, ok := orders[task.ID]; err == nil && ok && order.ID == task.BillingOrderID {
+			output.Billing = taskBillingSummary(order)
+		}
+	}
+	return output, nil
 }
 
 func (s *Service) hydrateTaskProviderRequestID(task *model.Task) {

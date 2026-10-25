@@ -13,7 +13,8 @@ describe("workspace route loading", () => {
 
         expect(deferred).toContain("<WorkspaceRouteLoader />");
         expect(deferred).not.toContain("FullScreenLoader");
-        expect(router).toContain("authDeferred(<LoginPage />)");
+        expect(router).toContain("...brandPublicRoutes");
+        expect(source("../src/pages/welcome/brand-public-routes.tsx")).toContain('{ path: "/login", element: <AuthScene /> }');
         expect(router).toContain("fullScreenDeferred(<SharedCanvasPage />)");
     });
 
@@ -35,7 +36,7 @@ describe("workspace route loading", () => {
         const router = source("../src/router.tsx");
         const navigation = source("../src/components/layout/workspace-sidebar-nav.tsx");
 
-        expect(router).toContain('<WelcomePage />');
+        expect(source("../src/pages/welcome/brand-public-routes.tsx")).toContain('<WelcomePage />');
         expect(router).not.toContain('{ path: "/", element: deferred(<CreatePage />) }');
         expect(router).toContain('lazy: async () => ({ Component: (await loadCreatePage()).default })');
         expect(router).toContain("<RequireAuth allowAnonymous={isGuestWorkspacePath(pathname)}>");

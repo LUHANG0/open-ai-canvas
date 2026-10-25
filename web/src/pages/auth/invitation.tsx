@@ -61,8 +61,10 @@ export default function InvitationPage() {
         return <div className="space-y-4"><p role="status">{state && state !== "valid" ? invitationStateMessages[state] : "暂时无法验证邀请，请重试。"}</p><Link className="auth-scene-link" to={login}>已有账号？登录</Link></div>;
     }
     return <RegistrationInvitationContext.Provider value={{ code, settings: invitation.settings, bonusMicrocredits: invitation.bonusMicrocredits, reload: () => setRetry((n) => n + 1) }}>
-        {invitation.bonusMicrocredits > 0 && <p className="auth-scene-link mb-5" role="status">注册成功后获赠 <strong>{formatCredits(invitation.bonusMicrocredits)} 积分</strong></p>}
-        <RegisterPage key={code} />
-        <p className="auth-scene-muted mt-5 text-center text-sm">已有账号？<Link className="auth-scene-link ml-1" to={login}>登录</Link></p>
+        <div className="mc-invitation-registration">
+            {invitation.bonusMicrocredits > 0 && <p className="mc-invitation-welcome" role="status"><span>注册成功后获赠</span><strong>{formatCredits(invitation.bonusMicrocredits)} 积分</strong></p>}
+            <RegisterPage key={code} />
+            <p className="mc-invitation-login">已有账号？<Link className="auth-scene-link" to={login}>登录</Link></p>
+        </div>
     </RegistrationInvitationContext.Provider>;
 }

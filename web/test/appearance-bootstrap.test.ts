@@ -52,17 +52,16 @@ test("appearance selects theme logos and falls back to the single configured log
     expect(single.logoFrameEnabled).toBe(true);
 });
 
-test("simple auth scene keeps resolved brand identity without legacy promotional media", async () => {
-    const source = await Bun.file(new URL("../src/pages/auth/auth-scene.tsx", import.meta.url)).text();
+test("shared auth overlay keeps resolved brand identity without legacy promotional media", async () => {
+    const source = await Bun.file(new URL("../src/components/brand/brand-auth-dialog.tsx", import.meta.url)).text();
 
     expect(source).not.toContain("appearance.authVideoUrl");
     expect(source).not.toContain("appearance.authVideoAutoplay");
     expect(source).not.toContain("<video");
     expect(source).toContain("appearance.brandName");
-    expect(source).toContain("auth-scene-simple");
-    expect(source).toContain("auth-scene-title");
-    expect(source).toContain('const theme = "dark" as const');
-    expect(source).toContain("theme={theme}");
+    expect(source).toContain("mc-auth-heading");
+    expect(source).toContain('getAntThemeConfig(true, appearance.activeSkin)');
+    expect(source).toContain('<BrandLogo theme="dark"');
     expect(source).not.toContain("让一个故事，");
     expect(source).not.toContain("AUTH_VIDEO_URL");
     expect(source).not.toContain("AUTH_VIDEO_POSTER");

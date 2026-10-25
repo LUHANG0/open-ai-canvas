@@ -145,16 +145,37 @@ func TestDramaVideoStatesUsePublicIDAndAuthenticatedContent(t *testing.T) {
 	}
 }
 
-func TestDramaImageReferencesStayOnSynchronousJSONEndpoint(t *testing.T) {
+func TestDramaGPTReferencesUseEditsAndTextUsesGenerations(t *testing.T) {
 	a := officialPackageAdapter(t, "drama-api.yingce-plugin", "drama-image")
-	r := GenerationRequest{Model: "gpt-image-2", Prompt: "draw", ImageCount: 2, AspectRatio: "1792x1024", Quality: "high", Resolution: "4K", Images: []MediaReference{{URL: "https://cdn.example/ref.png"}}}
+	r := GenerationRequest{Model: "gpt-image-2.5-sunburst", Prompt: "draw", ImageCount: 1, AspectRatio: "3840x2160", Quality: "max", Resolution: "4K"}
 	spec, err := a.BuildCreate(context.Background(), RequestContext{Request: r})
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := map[string]any{"model": "gpt-image-2", "prompt": "draw", "n": float64(2), "size": "1792x1024", "quality": "high", "images": []any{map[string]any{"image_url": "https://cdn.example/ref.png"}}, "response_format": "url", "stream": false}
+	want := map[string]any{"model": r.Model, "prompt": "draw", "n": float64(1), "size": "3840x2160", "quality": "max", "response_format": "url", "stream": false}
 	if spec.Path != "/v1/images/generations" || spec.ContentType != "application/json" || len(spec.Files) != 0 || !reflect.DeepEqual(manifestTestBody(t, spec), want) {
 		t.Fatalf("spec=%#v body=%#v", spec, manifestTestBody(t, spec))
+	}
+	r.Images = []MediaReference{{URL: "https://cdn.example/second.png", Order: 2, Name: "second.png"}, {URL: "https://cdn.example/first.png", Order: 1, Name: "first.png"}}
+	spec, err = a.BuildCreate(context.Background(), RequestContext{Request: r})
+	delete(want, "stream")
+	if err != nil || spec.Path != "/v1/images/edits" || spec.ContentType != "multipart/form-data" || len(spec.Files) != 2 || !reflect.DeepEqual(manifestTestBody(t, spec), want) {
+		t.Fatalf("edit=%#v err=%v", spec, err)
+	}
+	for i, name := range []string{"first.png", "second.png"} {
+		if spec.Files[i].Name != "image[]" || spec.Files[i].Reference.Name != name {
+			t.Fatalf("files=%#v", spec.Files)
+		}
+	}
+	r.Images = []MediaReference{{DataURL: "data:image/png;base64,eA=="}}
+	if _, err := a.BuildCreate(context.Background(), RequestContext{Request: r}); err != nil {
+		t.Fatalf("inline upload rejected: %v", err)
+	}
+	for _, url := range []string{"http://cdn.example/ref.png", "data:text/plain;base64,eA=="} {
+		r.Images = []MediaReference{{URL: url}}
+		if _, err := a.BuildCreate(context.Background(), RequestContext{Request: r}); err == nil {
+			t.Fatalf("invalid reference accepted: %s", url)
+		}
 	}
 	for _, payload := range []string{`{"data":[{"url":"https://cdn.example/result.png"}]}`, `{"data":[{"b64_json":"eA=="}]}`} {
 		state, err := a.ParseCreate(context.Background(), []byte(payload))
@@ -162,9 +183,23 @@ func TestDramaImageReferencesStayOnSynchronousJSONEndpoint(t *testing.T) {
 			t.Fatalf("state=%#v err=%v", state, err)
 		}
 	}
+	r.Images = []MediaReference{{URL: "https://cdn.example/ref.png"}}
 	r.Images[0].Role = "mask"
 	if _, err := a.BuildCreate(context.Background(), RequestContext{Request: r}); err == nil {
 		t.Fatal("mask accepted")
+	}
+}
+
+func TestDramaGeminiReferencesKeepJSONGenerations(t *testing.T) {
+	a := officialPackageAdapter(t, "drama-api.yingce-plugin", "drama-gemini-image")
+	r := GenerationRequest{Model: "nano-banana-2", Prompt: "draw", AspectRatio: "16:9", Resolution: "4k", Images: []MediaReference{{URL: "https://cdn.example/ref.png"}}}
+	spec, err := a.BuildCreate(context.Background(), RequestContext{Request: r})
+	if err != nil {
+		t.Fatal(err)
+	}
+	b := manifestTestBody(t, spec)
+	if spec.Path != "/v1/images/generations" || spec.ContentType != "application/json" || len(spec.Files) != 0 || b["size"] != "16:9" || b["quality"] != "high" || len(b["images"].([]any)) != 1 {
+		t.Fatalf("Gemini request changed: %#v", spec)
 	}
 }
 

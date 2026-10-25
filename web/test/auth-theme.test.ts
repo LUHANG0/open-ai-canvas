@@ -26,19 +26,22 @@ describe("authentication brand palette and theme boundaries", () => {
         }
     });
 
-    test("auth follows the workspace preference and configured provider", () => {
-        const scene = source("pages/auth/auth-scene.tsx");
+    test("brand auth uses its lightbox presentation without changing the workspace preference", () => {
+        const scene = source("components/brand/brand-auth-dialog.tsx");
         expect(scene).toContain("ConfigProvider");
-        expect(scene).toContain('getAntThemeConfig(theme === "dark", appearance.activeSkin)');
-        expect(scene).toContain("useThemeStore");
+        expect(scene).toContain('getAntThemeConfig(false, appearance.activeSkin)');
+        expect(source("components/brand/brand-site.tsx")).toContain("useThemeStore");
         expect(scene).not.toContain('const theme = "dark"');
         expect(source("pages/auth/auth-scene.css")).not.toMatch(/#091017|Songti|brand-blue/);
         expect(scene).not.toContain("auth-card-dark");
-        expect(scene.match(/<main className="([^"]+)"/)?.[1]).not.toContain("text-white");
-        expect(scene).toContain("auth-scene-simple");
+        expect(source("pages/auth/auth-scene.tsx")).toContain("BrandAuthDialog");
+        expect(source("pages/auth/auth-scene.tsx")).not.toContain("<main");
         expect(scene).not.toContain("<video");
         expect(scene).not.toContain("auth-scene-hero");
-        expect(scene).toContain("<BrandLogo theme={theme}");
+        expect(scene).toContain('<BrandLogo theme="light"');
+        expect(source("components/brand/brand-site.tsx")).toContain('data-studio-theme={theme}');
+        expect(scene).not.toContain("setTheme");
+        expect(scene).not.toContain("auth-scene-artwork");
         expect(source("components/layout/app-providers.tsx")).toContain("getAntThemeConfig(dark, appearance.activeSkin)");
     });
 

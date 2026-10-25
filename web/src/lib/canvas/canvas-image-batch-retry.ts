@@ -183,6 +183,8 @@ export function reconcileImageBatchRoot(root: CanvasNodeData, nodes: CanvasNodeD
         metadata.primaryImageId = primary.id;
         if (primary.metadata?.producedModel) metadata.producedModel = primary.metadata.producedModel;
         else delete metadata.producedModel;
+        if (primary.metadata?.resultRecord) metadata.resultRecord = primary.metadata.resultRecord;
+        else delete metadata.resultRecord;
         metadata.status = "success";
         delete metadata.errorDetails;
         delete metadata.generationErrorCode;
@@ -190,6 +192,7 @@ export function reconcileImageBatchRoot(root: CanvasNodeData, nodes: CanvasNodeD
     } else {
         delete metadata.content;
         delete metadata.producedModel;
+        delete metadata.resultRecord;
         delete metadata.storageKey;
         delete metadata.assetId;
         delete metadata.mimeType;

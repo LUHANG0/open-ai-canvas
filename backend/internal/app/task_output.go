@@ -59,8 +59,24 @@ type TaskClientContext struct {
 }
 
 type TaskBillingSummary struct {
-	AmountMicrocredits int64               `json:"amountMicrocredits"`
-	Status             model.BillingStatus `json:"status"`
+	AmountMicrocredits       int64               `json:"amountMicrocredits"`
+	Status                   model.BillingStatus `json:"status"`
+	ActualAmountMicrocredits *int64              `json:"actualAmountMicrocredits,omitempty"`
+}
+
+// TaskDetailOutput adds safe billing facts without changing the persisted Task model.
+type TaskDetailOutput struct {
+	*model.Task
+	Billing *TaskBillingSummary `json:"billing,omitempty"`
+}
+
+func taskBillingSummary(order model.BillingOrder) *TaskBillingSummary {
+	summary := &TaskBillingSummary{AmountMicrocredits: order.AmountMicrocredits, Status: order.Status}
+	if order.Status == model.BillingStatusSettled && order.ActualAmountMicrocredits >= 0 {
+		actual := order.ActualAmountMicrocredits
+		summary.ActualAmountMicrocredits = &actual
+	}
+	return summary
 }
 
 func taskSummariesForOutput(tasks []model.Task) []TaskSummary {
@@ -72,7 +88,7 @@ func taskSummariesForOutputWithBilling(tasks []model.Task, orders map[string]mod
 	for _, task := range tasks {
 		summary := taskSummaryForOutput(task)
 		if order, ok := orders[task.ID]; ok {
-			summary.Billing = &TaskBillingSummary{AmountMicrocredits: order.AmountMicrocredits, Status: order.Status}
+			summary.Billing = taskBillingSummary(order)
 			if summary.ProviderRequestID == "" {
 				summary.ProviderRequestID = order.ProviderRequestID
 			}

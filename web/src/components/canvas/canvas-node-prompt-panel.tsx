@@ -11,7 +11,8 @@ import { PROMPT_EDITOR_VIEWPORT_MARGIN } from "@/lib/canvas/canvas-prompt-editor
 import { CreditSymbol, requestCreditCost } from "@/constant/credits";
 import { canvasThemes } from "@/lib/canvas-theme";
 import { modelQuoteDescription, modelQuoteRequest } from "@/lib/model-pricing";
-import { modelRequestOptions, defaultImageParamsForModel, type ModelRequirements } from "@/lib/model-selection";
+import { modelRequestOptions, type ModelRequirements } from "@/lib/model-selection";
+import { canvasGenerationParameterError } from "@/lib/canvas/canvas-model-parameter-guard";
 import { navigateToSettings } from "@/lib/settings-navigation";
 import { useActiveTheme } from "@/stores/canvas/use-canvas-theme-store";
 import { useUserStore } from "@/stores/use-user-store";
@@ -158,6 +159,7 @@ export function CanvasNodePromptPanel({ projectId, node, isRunning, onPromptChan
         }, mode),
     };
     const config = buildNodeConfig(globalConfig, node, mode, requirements);
+    const parameterError = canvasGenerationParameterError(node, mode, config);
     const resolvedRequirements: ModelRequirements = {
         ...requirements,
         options: modelRequestOptions(config, mode),
@@ -209,7 +211,7 @@ export function CanvasNodePromptPanel({ projectId, node, isRunning, onPromptChan
         if (!rect?.width || !rect.height) return { width: PROMPT_EDITOR_MODAL_DEFAULT_WIDTH, height: PROMPT_EDITOR_MODAL_DEFAULT_HEIGHT };
         return { width: Math.round(rect.width), height: Math.round(rect.height) };
     };
-    const isSubmitDisabled = !isRunning && !prompt.trim();
+    const isSubmitDisabled = !isRunning && (!prompt.trim() || Boolean(parameterError));
     const canExpandPrompt = mode === "image" || mode === "video";
     const canOptimizePrompt = Boolean(promptOptimizerProvider) && canExpandPrompt;
     const isPortraitTexture = mode === "image" && Boolean(node.metadata?.portraitTexture);
@@ -301,7 +303,7 @@ export function CanvasNodePromptPanel({ projectId, node, isRunning, onPromptChan
 
     const submit = () => {
         const text = prompt.trim();
-        if (!text || isRunning) return false;
+        if (!text || isRunning || parameterError) return false;
         if (mode === "text" && node.metadata?.listMode && onListGenerate) onListGenerate(node.id, text);
         else onGenerate(node.id, mode, text);
         return true;
@@ -409,7 +411,7 @@ export function CanvasNodePromptPanel({ projectId, node, isRunning, onPromptChan
                 }
                 onClick={() => (expanded ? submitExpandedPrompt() : submit())}
                 aria-label={actionLabel}
-                title={routeQuote ? modelQuoteDescription(routeQuote) : actionLabel}
+                title={parameterError || (routeQuote ? modelQuoteDescription(routeQuote) : actionLabel)}
             >
                 {showCost ? (
                     <span className="canvas-node-composer-submit-cost">
@@ -448,7 +450,7 @@ export function CanvasNodePromptPanel({ projectId, node, isRunning, onPromptChan
                         fullWidth
                         config={config}
                         value={config.model}
-                        onChange={(model) => onConfigChange(node.id, mode === "image" ? { model, ...defaultImageParamsForModel(config, model) } : { model })}
+                        onChange={(model) => onConfigChange(node.id, { model })}
                         capability={mode}
                         requirements={resolvedRequirements}
                         onMissingConfig={() => navigateToSettings({ continueCreation: true })}
@@ -574,6 +576,10 @@ export function CanvasNodePromptPanel({ projectId, node, isRunning, onPromptChan
                     max={bounds.max}
                     onResize={setManualPromptHeight}
                 />}
+                {parameterError ? <div className="px-3 py-2 text-[var(--fs-caption)]" role="alert" style={{ color: theme.node.text }}>
+                    <p>{parameterError}</p>
+                    <button type="button" className="mt-1 underline underline-offset-2 focus-visible:outline" onClick={() => onConfigChange(node.id, { model: config.model })}>查看建议调整</button>
+                </div> : null}
             </>
         );
     };

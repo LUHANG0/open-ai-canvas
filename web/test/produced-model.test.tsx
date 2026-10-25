@@ -109,7 +109,7 @@ describe("produced model", () => {
 
 describe("produced model badge", () => {
     const noop = () => {};
-    function renderMedia(type: CanvasNodeType, showImageInfo: boolean, mediaActive = false, renderLOD: "full" | "compact" = "full") {
+    function renderMedia(type: CanvasNodeType, showImageInfo: boolean, mediaActive = false, renderLOD: "full" | "preview" = "full") {
         return renderToStaticMarkup(
             <CanvasNode
                 data={{
@@ -147,16 +147,19 @@ describe("produced model badge", () => {
         );
     }
 
-    test("shows the model at the lower left only while media info is enabled", () => {
+    test("shows one external generation record when media info is enabled, preserving imported and audio badges", () => {
         expect(renderMedia(CanvasNodeType.Image, false)).not.toContain("flux-dev");
         const image = renderMedia(CanvasNodeType.Image, true);
         expect(image).toContain("flux-dev");
-        expect(image).toContain("1280 x 720");
+        expect(image).toContain("1280×720");
+        expect(image).toContain('class="canvas-node-result-record"');
         const video = renderMedia(CanvasNodeType.Video, true, true);
-        expect(video).toContain("bottom-16");
+        expect(video).toContain('class="canvas-node-result-record"');
+        expect(video).toContain("720P");
         expect(video).toContain("flux-dev");
         expect(video).not.toContain("1280 x 720");
         expect(renderMedia(CanvasNodeType.Audio, true)).toContain("flux-dev");
-        expect(renderMedia(CanvasNodeType.Image, true, false, "compact")).not.toContain("flux-dev");
+        expect(renderMedia(CanvasNodeType.Image, true, false, "preview")).not.toContain("flux-dev");
+        expect((video.match(/canvas-node-result-record-model/g) || []).length).toBe(1);
     });
 });

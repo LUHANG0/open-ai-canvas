@@ -9,12 +9,12 @@ const videoNode = source.slice(start, source.indexOf("export function inferVideo
 // 以地址作为 React key 会让播放器整个卸载重建：画面先退回静态预览、从头加载并重复下载。
 test("视频节点播放器以媒体身份作 key，续签只换 src", () => {
     expect(videoNode).not.toContain("key={url}");
-    expect(videoNode).toContain("const playerKey = node.metadata?.storageKey || node.id;");
+    expect(videoNode).toContain("const playerKey = node.metadata?.storageKey || node.metadata?.content || node.id;");
     expect(videoNode).toContain("<VideoPlayer key={playerKey} src={url}");
 });
 
 test("续签地址不把播放器淡出回静态预览，只在换媒体或地址清空时重置", () => {
     expect(videoNode).not.toMatch(/useEffect\(\(\) => \{ setVideoReady\(false\); \}, \[url\]\);/);
-    expect(videoNode).toContain("useEffect(() => { setVideoReady(false); }, [playerKey]);");
+    expect(videoNode).toContain("useEffect(() => { setVideoReady(false); setVideoSize(null); }, [playerKey]);");
     expect(videoNode).toContain("useEffect(() => { if (!url) setVideoReady(false); }, [url]);");
 });

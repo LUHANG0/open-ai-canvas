@@ -339,6 +339,7 @@ type (
 	TapNowImportWarning                    = app.TapNowImportWarning
 	TaskBillingSummary                     = app.TaskBillingSummary
 	TaskClientContext                      = app.TaskClientContext
+	TaskDetailOutput                       = app.TaskDetailOutput
 	TaskListOptions                        = app.TaskListOptions
 	TaskSummary                            = app.TaskSummary
 	TextCapabilityConfig                   = app.TextCapabilityConfig

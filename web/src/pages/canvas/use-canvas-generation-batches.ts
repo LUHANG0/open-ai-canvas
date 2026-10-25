@@ -223,7 +223,13 @@ export function useCanvasGenerationBatches({ projectId, projectLoaded, nodes, no
                 const key = batchItemKey(batch.id, item.id);
                 if (controllersRef.current.has(key)) continue;
                 const generationMode: CanvasNodeGenerationMode = batch.mode === "storyboard_video" ? "video" : "image";
-                const generationConfig = buildGenerationConfig(effectiveConfig, node, generationMode);
+                let generationConfig;
+                try {
+                    generationConfig = buildGenerationConfig(effectiveConfig, node, generationMode);
+                } catch (error) {
+                    updateBatch(batch.sourceNodeId, batch.id, (current) => withUpdatedItem(current, item.id, { status: "failed", errorDetails: error instanceof Error ? error.message : "模型参数需要重新确认" }));
+                    continue;
+                }
                 if (!isAiConfigReady(generationConfig, generationConfig.model)) {
                     updateBatch(batch.sourceNodeId, batch.id, (current) => withUpdatedItem(current, item.id, { status: "failed", errorDetails: "生成模型未配置，请完成配置后重试" }));
                     continue;

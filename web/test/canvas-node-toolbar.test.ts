@@ -28,6 +28,20 @@ function createNodeContext(node: CanvasNodeData): ToolContext {
 }
 
 describe("canvas node toolbar model", () => {
+    test("video aspect fitting is discoverable, delegates once, and is disabled without dimensions or while locked/loading", () => {
+        const node: CanvasNodeData = { id: "video", type: CanvasNodeType.Video, title: "视频", position: { x: 0, y: 0 }, width: 420, height: 746, metadata: { content: "/fixture.mp4", naturalWidth: 854, naturalHeight: 480 } };
+        const ctx = createNodeContext(node);
+        const tool = resolveToolbarTools("node-hover", ctx, null).find((item) => item.id === "fitVideoFrame")!;
+        expect(tool).toBeDefined(); expect(tool.label).toBe("适配视频画幅");
+        expect(resolveNodeToolbarPlacement(tool, ctx).group).toBe("more");
+        expect(tool.disabled?.(ctx)).toBe(true);
+        const received: CanvasNodeData[] = []; ctx.handlers.onNodeFitVideo = (source) => received.push(source);
+        expect(tool.disabled?.(ctx)).toBe(false); tool.run(ctx); expect(received).toEqual([node]);
+        for (const metadata of [{ content: "/fixture.mp4" }, { ...node.metadata, locked: true }, { ...node.metadata, status: "loading" as const }]) {
+            const blocked = createNodeContext({ ...node, metadata }); blocked.handlers = ctx.handlers;
+            expect(tool.disabled?.(blocked)).toBe(true);
+        }
+    });
     test("edit copy delegates the selected image once and refuses unavailable sources", () => {
         const node: CanvasNodeData = { id: "image", type: CanvasNodeType.Image, title: "图片", position: { x: 0, y: 0 }, width: 320, height: 180, metadata: { content: "image.png" } };
         const ctx = createNodeContext(node);

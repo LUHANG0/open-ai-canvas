@@ -6,10 +6,12 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
 	"yingce/backend/internal/model"
+	"yingce/backend/internal/protocol"
 )
 
 func TestDramaRuntimePollsDownloadsWithAuthAndPreservesUsage(t *testing.T) {
@@ -127,9 +129,9 @@ func TestDramaRuntimeCreationAndTaskFailuresAreNotReplayed(t *testing.T) {
 	}
 }
 
-func TestDramaRuntimeImageUsesJSONWithReferencesAndDecodesResult(t *testing.T) {
+func TestDramaRuntimeGeminiUsesJSONWithReferencesAndDecodesResult(t *testing.T) {
 	allowLoopbackProviderTest(t)
-	a, _ := loadOfficialFallbackRegistry().Resolve("drama-image")
+	a, _ := loadOfficialFallbackRegistry().Resolve("drama-gemini-image")
 	calls := 0
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		calls++
@@ -146,10 +148,60 @@ func TestDramaRuntimeImageUsesJSONWithReferencesAndDecodesResult(t *testing.T) {
 		fmt.Fprint(w, `{"data":[{"b64_json":"iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jT1kAAAAASUVORK5CYII="}]}`)
 	}))
 	defer server.Close()
-	input := canvasGenerationInput{Mode: "image", Prompt: "draw", ReferenceImages: []providerMedia{{URL: "https://cdn.example/ref.png"}}, Config: providerConfig{BaseURL: server.URL, APIKey: "test-key", Model: "gpt-image-2", InterfaceType: "drama-image", Size: "1024x1024", Quality: "high", Count: "1"}}
+	input := canvasGenerationInput{Mode: "image", Prompt: "draw", ReferenceImages: []providerMedia{{URL: "https://cdn.example/ref.png"}}, Config: providerConfig{BaseURL: server.URL, APIKey: "test-key", Model: "nano-banana-2", InterfaceType: "drama-gemini-image", Size: "16:9", ImageResolution: "4k", Count: "1"}}
 	result, err := runProtocolAdapterTask(context.Background(), input, a)
 	if err != nil || result["mode"] != "image" || calls != 1 {
 		t.Fatalf("result=%#v err=%v calls=%d", result, err, calls)
+	}
+}
+
+func TestDramaVideoCanvasReferenceRolesUseAJSON(t *testing.T) {
+	a, _ := loadOfficialFallbackRegistry().Resolve("drama-seedance-a")
+	for _, scenario := range []string{"standard_references", "newer_references", "standard_frames", "newer_frames"} {
+		t.Run(scenario, func(t *testing.T) {
+			input := canvasGenerationInput{Mode: "video", Prompt: "@图片1 @图2 @视频1 @音频1", Config: providerConfig{Model: "seedance2.0-A", InterfaceType: "drama-seedance-a", Size: "16:9", VQuality: "4K", VideoSeconds: "8"}, ReferenceImages: []providerMedia{{ID: "first", URL: "https://cdn.example/first.png"}, {ID: "last", URL: "https://cdn.example/last.png"}}}
+			if strings.HasPrefix(scenario, "newer") {
+				input.Config.Model, input.Config.VQuality, input.Config.VideoSeconds = "seedance2.5-A", "720p", "30"
+			}
+			frames := strings.HasSuffix(scenario, "frames")
+			if frames {
+				input.Metadata = map[string]any{"videoStartFrameNodeId": "first", "videoEndFrameNodeId": "last"}
+				if input.Config.Model == "seedance2.0-A" {
+					input.Config.Size = "Auto"
+				}
+			} else {
+				input.ReferenceVideos = []providerMedia{{URL: "https://cdn.example/video.mp4"}}
+				input.ReferenceAudios = []providerMedia{{URL: "https://cdn.example/audio.mp3"}}
+			}
+			spec, err := a.BuildCreate(context.Background(), protocol.RequestContext{Request: protocolRequestFromInput(input)})
+			if err != nil {
+				t.Fatal(err)
+			}
+			encoded, _ := json.Marshal(spec.Body)
+			var body map[string]any
+			json.Unmarshal(encoded, &body)
+			if spec.Path != "/v1/videos" || spec.ContentType != "application/json" || len(spec.Files) != 0 || body["resolution"] != input.Config.VQuality || body["aspect_ratio"] != input.Config.Size {
+				t.Fatalf("wrong A transport: %#v", spec)
+			}
+			refs := body["references"].([]any)
+			wantRoles := []string{"reference", "reference", "reference", "reference"}
+			if frames {
+				wantRoles = []string{"first_frame", "last_frame"}
+			}
+			if len(refs) != len(wantRoles) {
+				t.Fatalf("references=%#v", refs)
+			}
+			for i, role := range wantRoles {
+				if refs[i].(map[string]any)["role"] != role {
+					t.Fatalf("incorrect reference role: %#v", refs)
+				}
+			}
+			for _, field := range []string{"images", "image", "input_reference", "generate_audio", "watermark"} {
+				if _, exists := body[field]; exists {
+					t.Fatalf("unexpected A field %s", field)
+				}
+			}
+		})
 	}
 }
 

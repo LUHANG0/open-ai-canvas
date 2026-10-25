@@ -1,18 +1,17 @@
-import { App, Popover } from "antd";
+import { Popover } from "antd";
 import { Switch } from "@/components/ui/base/switch";
 import { ChevronRight, LogIn, LogOut, Moon, ShieldCheck, Sun } from "lucide-react";
 import { useState, type ReactNode } from "react";
-import { Link, useLocation, useNavigate } from "react-router";
+import { Link, useLocation } from "react-router";
 
 import { AppChangelogButton } from "@/components/layout/app-changelog-modal";
 import { IdentityProviderBadge } from "@/components/layout/identity-provider-badge";
 import { UserAvatar } from "@/components/layout/user-avatar";
 import { SystemAnnouncementCenter } from "@/components/layout/system-announcement-center";
 import { useWalletBalance } from "@/hooks/use-wallet-balance";
-import { applyUserSession } from "@/lib/user-session";
 import { cn } from "@/lib/utils";
 import { loginPath } from "@/lib/auth-navigation";
-import { logout } from "@/services/api/auth";
+import { useWorkspaceLogout } from "@/hooks/use-workspace-logout";
 import { useThemeStore } from "@/stores/use-theme-store";
 import { useUserStore, type LocalUser } from "@/stores/use-user-store";
 
@@ -30,25 +29,12 @@ export function WorkspaceSidebarFooter({ expandedClassName, collapsedClassName, 
     const user = useUserStore((state) => state.user);
     const hydrated = useUserStore((state) => state.hydrated);
     const creditsEnabled = useUserStore((state) => state.features.creditsEnabled);
-    const navigate = useNavigate();
-    const { message } = App.useApp();
     const [menuOpen, setMenuOpen] = useState(false);
+    const { handleLogout, loggingOut } = useWorkspaceLogout(() => setMenuOpen(false));
     const { availableMicrocredits } = useWalletBalance(user?.id, creditsEnabled);
     const balance = availableMicrocredits === null
         ? "--"
         : (availableMicrocredits / 1_000_000).toLocaleString("zh-CN", { maximumFractionDigits: 2 });
-
-    const handleLogout = async () => {
-        try {
-            await logout();
-            await applyUserSession({ user: null });
-            setMenuOpen(false);
-            message.success("已退出登录");
-            navigate("/login", { replace: true });
-        } catch (error) {
-            message.error(error instanceof Error ? error.message : "退出失败");
-        }
-    };
 
     if (!hydrated) return <div className="h-24 animate-pulse rounded-md bg-foreground/[.035]" />;
 
@@ -94,7 +80,7 @@ export function WorkspaceSidebarFooter({ expandedClassName, collapsedClassName, 
                                 <span className="ml-2 flex-1 text-xs text-foreground/65">深色模式</span>
                                 <Switch size="sm" checked={theme === "dark"} onChange={(checked) => setTheme(checked ? "dark" : "light")} aria-label="深色模式" />
                             </div>
-                            <button type="button" className="flex h-9 w-full items-center gap-2 rounded px-2 text-xs text-foreground/55 hover:bg-surface-hover hover:text-foreground" onClick={() => void handleLogout()}><LogOut className="size-3.5" />退出登录</button>
+                            <button type="button" disabled={loggingOut} className="flex h-9 w-full items-center gap-2 rounded px-2 text-xs text-foreground/55 hover:bg-surface-hover hover:text-foreground disabled:opacity-50" onClick={() => void handleLogout()}><LogOut className="size-3.5" />{loggingOut ? "正在退出" : "退出登录"}</button>
                         </div>
                     )}
                 >

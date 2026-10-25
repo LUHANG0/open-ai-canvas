@@ -2,7 +2,12 @@ import { defaultImageCapabilityConfig, modelCapabilityConfigFor, normalizeImageV
 import { videoResolutionComparisonKey } from "@/lib/video-generation-options";
 import { imageParameterRequest, imageParameterDefaults, imageParameterAccepts } from "./image-parameters";
 import { imageSizePresets } from "@/lib/image-size-presets";
-import { modelOptionName, PUBLIC_MODEL_CATALOG_ID, resolveModelChannel, selectableModelsByCapability, type AiConfig, type ModelCapability } from "@/stores/use-config-store";
+import { modelOptionName, PUBLIC_MODEL_CATALOG_ID, resolveModelChannel, resolveModelRequestConfig, selectableModelsByCapability, type AiConfig, type ModelCapability } from "@/stores/use-config-store";
+import { planMediaParameters, type MediaParameterMode } from "@/lib/model-parameter-guard";
+
+export function planMediaModelSwitch(current: AiConfig, model: string, mode: MediaParameterMode) {
+    return planMediaParameters(current, model, mode, modelCapabilityConfigFor(current, model), resolveModelRequestConfig(current, model).interfaceType);
+}
 
 export type ModelInputSummary = {
     textCount: number;

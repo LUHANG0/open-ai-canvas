@@ -10,9 +10,9 @@ Base URL 为 `https://drama.dafeiyangapi.top`。所有请求由登录态宿主�
 
 `POST /v1/chat/completions`，采用标准 Chat Completions 的 messages / choices、SSE delta、tool_calls / tool 结构。支持历史对话、系统提示词、工具调用与推理文本；文本流由宿主管理。专用接入页没有独立聊天章节，平台模型广场标注 Chat 端点并链接 New API 文档，真实模型兼容性仍需验收。未额外声明 Responses、Claude 或 Gemini 原生文本线路。
 
-## 统一生图
+## GPT 与 Gemini 生图
 
-`POST /v1/images/generations`，始终为 JSON；有参考图也不切换端点。
+GPT 无参考图时调用 `POST /v1/images/generations` JSON；有参考图时调用 `POST /v1/images/edits` multipart/form-data。Gemini 保持 `POST /v1/images/generations` JSON。不会在生成请求失败后自动重发编辑请求，端点在发送前按参考图选择。
 
 | 宿主字段 | 上游字段 | 处理 |
 | --- | --- | --- |
@@ -20,11 +20,15 @@ Base URL 为 `https://drama.dafeiyangapi.top`。所有请求由登录态宿主�
 | imageCount | n | 1～128，未填默认 1 |
 | aspectRatio + resolution | size | GPT 按管理员配置的分辨率与比例预设换算像素；Gemini 发送比例 |
 | quality | quality | GPT 的独立质量值，空及 auto 省略；Gemini 不暴露该输入，而由 resolution 映射 |
-| images | images[].image_url | 按 order 排序，使用公网 HTTPS 地址 |
+| images | GPT：image[] 文件；Gemini：images[].image_url | 按 order 排序；GPT 由宿主将 HTTPS 或图片 Data URL 转为文件，Gemini 使用公网 HTTPS 地址 |
 | providerOptions.<对应 Provider ID>.response_format | response_format | url（默认）或 b64_json，界面仅保留一处配置 |
-| — | stream | 固定 false，使用普通 JSON 返回 |
+| — | stream | JSON 生图固定 false；GPT multipart 编辑不发送 |
 
 输出读取 `data[].url` 或 `data[].b64_json`，临时地址由宿主下载保存。蒙版、视频/音频参考在提交前拒绝。不会发送 resolution、background、output_format、async 或其它平台未声明字段。
+
+GPT 编辑保留 model、prompt、n、size、quality、response_format，文件以重复的 `image[]` 部件提交，不发送 `images` JSON 字段或 mask。GPT 的 requiresPublicMediaUrls=false 是因为由宿主读取并上传文件，URL 仍限定 HTTPS，内联仅允许 PNG/JPEG/WebP Data URL；宿主继续负责 URL、SSRF、文件解析和大小限制。Gemini 保留 requiresPublicMediaUrls=true。
+
+这一端点分流以正式站实际失败响应为依据：`gpt-image-2.5-sunburst` 明确拒绝 generations 的 images 并要求 edits。平台统一文档的参考图说明不适用于该 GPT 线路；multipart 编辑格式参考 New API 公开插件调用合同。没有真实收费请求验证其他型号的编辑结果。
 
 两个图片协议均声明 imageResolution（1k / 2k / 4k）、画幅与生成数量。GPT size 声明 encoding=pixels：例如 4K 档 16:9 的宿主默认预设为 3840x2160，quality=medium 不会被改为 high。Gemini size 声明 encoding=ratio，1K / 2K / 4K 分别生成 quality=low / medium / high，不发送独立 resolution，也不暴露第二个质量选择。GPT 2.5 的 xhigh / max 只应在当前线路明确支持时由管理员添加；其他 GPT 型号不自动启用。
 
@@ -61,6 +65,8 @@ Base URL 为 `https://drama.dafeiyangapi.top`。所有请求由登录态宿主�
 
 官方依据：[专用接入说明](https://drama.dafeiyangapi.top/docs/drama)、[模型广场](https://drama.dafeiyangapi.top/pricing)。
 
+编辑传输依据：[New API 插件使用说明](https://github.com/QuantumNous/new-api-docs-v1/blob/main/content/docs/en/plugins/usage.mdx)。
+
 <!-- YINGCE_MANIFEST_CONTRACT_START -->
 ## Manifest 完整接口定义
 
@@ -71,7 +77,7 @@ Base URL 为 `https://drama.dafeiyangapi.top`。所有请求由登录态宿主�
   "apiVersion": "yingce.plugin/v2",
   "id": "drama-api",
   "name": "Drama API",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "author": "梦层 MengCeng",
   "description": "Drama API 独立协议：聊天、统一生图、Seedance 2.0/2.5 A 系列视频。",
   "permissions": [
@@ -281,7 +287,7 @@ Base URL 为 `https://drama.dafeiyangapi.top`。所有请求由登录态宿主�
         "capabilities": [
           "image"
         ],
-        "requiresPublicMediaUrls": true,
+        "requiresPublicMediaUrls": false,
         "imageParameters": [
           {
             "name": "size",
@@ -373,40 +379,63 @@ Base URL 为 `https://drama.dafeiyangapi.top`。所有请求由登录态宿主�
                       },
                       "as": "media",
                       "where": {
-                        "$and": [
+                        "$or": [
                           {
-                            "$eq": [
+                            "$and": [
                               {
-                                "$first": {
-                                  "$split": [
-                                    {
-                                      "$ref": "media.value"
-                                    },
-                                    "://"
-                                  ]
-                                }
-                              },
-                              "https"
-                            ]
-                          },
-                          {
-                            "$gt": [
-                              {
-                                "$len": {
-                                  "$at": [
-                                    {
+                                "$eq": [
+                                  {
+                                    "$first": {
                                       "$split": [
                                         {
                                           "$ref": "media.value"
                                         },
                                         "://"
                                       ]
+                                    }
+                                  },
+                                  "https"
+                                ]
+                              },
+                              {
+                                "$gt": [
+                                  {
+                                    "$len": {
+                                      "$at": [
+                                        {
+                                          "$split": [
+                                            {
+                                              "$ref": "media.value"
+                                            },
+                                            "://"
+                                          ]
+                                        },
+                                        1
+                                      ]
+                                    }
+                                  },
+                                  0
+                                ]
+                              }
+                            ]
+                          },
+                          {
+                            "$in": [
+                              {
+                                "$first": {
+                                  "$split": [
+                                    {
+                                      "$ref": "media.value"
                                     },
-                                    1
+                                    ","
                                   ]
                                 }
                               },
-                              0
+                              [
+                                "data:image/png;base64",
+                                "data:image/jpeg;base64",
+                                "data:image/webp;base64"
+                              ]
                             ]
                           }
                         ]
@@ -421,7 +450,7 @@ Base URL 为 `https://drama.dafeiyangapi.top`。所有请求由登录态宿主�
                 }
               ]
             },
-            "message": "Drama API：参考素材必须使用公网 HTTPS 直链"
+            "message": "Drama API：GPT 参考图必须为 HTTPS 地址或 PNG/JPEG/WebP Base64 图片"
           },
           {
             "assert": {
@@ -587,23 +616,6 @@ Base URL 为 `https://drama.dafeiyangapi.top`。所有请求由登录态宿主�
                 }
               }
             },
-            "images": {
-              "$omitEmpty": {
-                "$map": {
-                  "from": {
-                    "$sortByOrder": {
-                      "$ref": "request.images"
-                    }
-                  },
-                  "as": "media",
-                  "in": {
-                    "image_url": {
-                      "$ref": "media.value"
-                    }
-                  }
-                }
-              }
-            },
             "response_format": {
               "$coalesce": [
                 {
@@ -612,8 +624,67 @@ Base URL 为 `https://drama.dafeiyangapi.top`。所有请求由登录态宿主�
                 "url"
               ]
             },
-            "stream": false
-          }
+            "stream": {
+              "$omitEmpty": {
+                "$if": {
+                  "condition": {
+                    "$gt": [
+                      {
+                        "$len": {
+                          "$ref": "request.images"
+                        }
+                      },
+                      0
+                    ]
+                  },
+                  "then": null,
+                  "else": false
+                }
+              }
+            }
+          },
+          "pathTemplate": {
+            "$if": {
+              "condition": {
+                "$gt": [
+                  {
+                    "$len": {
+                      "$ref": "request.images"
+                    }
+                  },
+                  0
+                ]
+              },
+              "then": "/v1/images/edits",
+              "else": "/v1/images/generations"
+            }
+          },
+          "contentTypeTemplate": {
+            "$if": {
+              "condition": {
+                "$gt": [
+                  {
+                    "$len": {
+                      "$ref": "request.images"
+                    }
+                  },
+                  0
+                ]
+              },
+              "then": "multipart/form-data",
+              "else": "application/json"
+            }
+          },
+          "files": [
+            {
+              "name": "image[]",
+              "source": {
+                "$sortByOrder": {
+                  "$ref": "request.images"
+                }
+              }
+            }
+          ]
         },
         "response": {
           "status": "succeeded",

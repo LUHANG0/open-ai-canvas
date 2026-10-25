@@ -11,23 +11,26 @@ for (const [key, value] of Object.entries({ window: dom, document: dom.document,
 }
 const { act, useEffect } = await import("react");
 const { createRoot } = await import("react-dom/client");
-const { MemoryRouter, useLocation } = await import("react-router");
+const { MemoryRouter, Routes, Route, useLocation } = await import("react-router");
 const { BrandAuthProvider, useBrandAuthFlow } = await import("../src/components/brand/brand-auth-entry");
 let session: Promise<{ user: object | null }> = Promise.resolve({ user: null });
 let registrationSettings: Promise<{ registrationEnabled: boolean }> = Promise.resolve({ registrationEnabled: true });
 let retainExitContent = false;
+let modalMotion: { transitionName?: string; maskTransitionName?: string } = {};
 let registerLoad = () => Promise.resolve({ default: Register });
 function Login() { const flow = useBrandAuthFlow()!; return <form aria-label="密码登录"><output>{flow.next}</output><button type="button" onClick={() => flow.changeMode("forgot-password")}>找回</button></form>; }
 function Register() { return <form aria-label="创建账号" />; }
 function Recovery() { const flow = useBrandAuthFlow()!; return <form aria-label="邮箱找回"><button type="button" onClick={() => flow.changeMode("login")}>返回登录</button></form>; }
 mock.module("../src/services/api/auth", () => ({ getAuthSession: () => session, getAuthSettings: () => registrationSettings }));
-mock.module("../src/lib/auth-route-modules", () => ({ loadLoginPage: () => Promise.resolve({ default: Login }), loadRegisterPage: () => registerLoad(), loadForgotPasswordPage: () => Promise.resolve({ default: Recovery }), preloadAuthRoute: () => undefined }));
-mock.module("../src/components/ui/product/app-modal", () => ({ AppModal: ({ open, onCancel, afterClose, title, children, wrapProps }: any) => {
+mock.module("../src/lib/auth-route-modules", () => ({ loadLoginPage: () => Promise.resolve({ default: Login }), loadRegisterPage: () => registerLoad(), loadForgotPasswordPage: () => Promise.resolve({ default: Recovery }), loadInvitationPage: () => Promise.resolve({ default: () => null }), preloadAuthRoute: () => undefined }));
+mock.module("../src/components/ui/product/app-modal", () => ({ AppModal: ({ open, onCancel, afterClose, title, children, wrapProps, transitionName, maskTransitionName }: any) => {
+    modalMotion = { transitionName, maskTransitionName };
     useEffect(() => { if (!open) afterClose(); }, [open]);
     return open || retainExitContent ? <div {...wrapProps}><section role="dialog"><button type="button" onClick={onCancel}>关闭</button>{title}{children}</section></div> : null;
 } }));
 const { default: Dialog } = await import("../src/components/brand/brand-auth-dialog");
 const { BrandLink } = await import("../src/components/brand/brand-link");
+const { AuthScene } = await import("../src/pages/auth/auth-scene");
 function Position() { const location = useLocation(); return <output data-location>{location.pathname + location.search + location.hash}</output>; }
 async function fixture() {
     const host = document.createElement("div"); document.body.append(host); const root = createRoot(host); let closed = 0;
@@ -68,6 +71,60 @@ test("a late register load cannot override a newer login selection and failed lo
         registerLoad = () => Promise.resolve({ default: Register });
         await f.click("重新加载"); expect(f.host.querySelector('form[aria-label="创建账号"]')).not.toBeNull();
     } finally { registerLoad = () => Promise.resolve({ default: Register }); await f.close(); }
+});
+
+test("forms remain visible during switching and reduced motion disables the modal transition lifecycle", async () => {
+    const previousMedia = Object.getOwnPropertyDescriptor(window, "matchMedia");
+    let reduced = false;
+    const listeners = new Set<() => void>();
+    const frames: Array<Array<{ transform: string; opacity?: number }>> = [];
+    const previousRect = Object.getOwnPropertyDescriptor(dom.Element.prototype, "getBoundingClientRect");
+    Object.defineProperty(dom.Element.prototype, "getBoundingClientRect", { configurable: true, value: function (this: Element) { return { top: this.classList.contains("mc-auth-scroll") ? this.parentElement?.querySelector(".mc-auth-tabs")?.hasAttribute("hidden") ? 100 : 172 : 0 }; } });
+    Object.defineProperty(window, "matchMedia", { configurable: true, value: () => ({ get matches() { return reduced; }, addEventListener: (_: string, fn: () => void) => listeners.add(fn), removeEventListener: (_: string, fn: () => void) => listeners.delete(fn) }) });
+    Object.defineProperty(dom.Element.prototype, "animate", { configurable: true, value: (value: Array<{ transform: string }>) => { frames.push(value); return { cancel() {} }; } });
+    const f = await fixture();
+    try {
+        expect(frames).toHaveLength(0);
+        await f.click("注册");
+        expect(f.host.querySelector('form[aria-label="创建账号"]')).not.toBeNull();
+        expect(frames).toHaveLength(0);
+        const tab = f.host.querySelector<HTMLButtonElement>('[role="tab"][aria-selected="true"]')!;
+        await act(async () => tab.dispatchEvent(new dom.KeyboardEvent("keydown", { key: "ArrowLeft", bubbles: true, cancelable: true })));
+        expect(f.host.querySelector('form[aria-label="密码登录"]')).not.toBeNull();
+        expect(frames).toHaveLength(0);
+        await f.click("找回");
+        expect(frames).toEqual([[{ transform: "translateY(72px)" }, { transform: "translateY(0)" }]]);
+        expect(frames.flat().every((frame) => frame.opacity === undefined)).toBe(true);
+        await f.click("返回登录");
+        expect(frames[1]).toEqual([{ transform: "translateY(-72px)" }, { transform: "translateY(0)" }]);
+        await act(async () => { reduced = true; listeners.forEach((fn) => fn()); });
+        expect(modalMotion).toEqual({ transitionName: "", maskTransitionName: "" });
+        await f.click("找回");
+        expect(f.host.querySelector('form[aria-label="邮箱找回"]')).not.toBeNull();
+        expect(frames).toHaveLength(2);
+        await f.click("关闭");
+        expect(f.closed()).toBe(1);
+    } finally {
+        await f.close();
+        Object.defineProperty(dom.Element.prototype, "animate", { configurable: true, value: undefined });
+        if (previousRect) Object.defineProperty(dom.Element.prototype, "getBoundingClientRect", previousRect); else Reflect.deleteProperty(dom.Element.prototype, "getBoundingClientRect");
+        if (previousMedia) Object.defineProperty(window, "matchMedia", previousMedia); else Reflect.deleteProperty(window, "matchMedia");
+    }
+});
+
+test("the final choice wins when a ready module commits during rapid reverse selection", async () => {
+    const f = await fixture();
+    try {
+        const tabs = [...f.host.querySelectorAll<HTMLButtonElement>('[role="tab"]')];
+        await act(async () => {
+            tabs[1].click();
+            await Promise.resolve(); await Promise.resolve(); await Promise.resolve();
+            tabs[0].click();
+        });
+        expect(f.host.querySelector('form[aria-label="密码登录"]')).not.toBeNull();
+        expect(f.host.querySelector('form[aria-label="创建账号"]')).toBeNull();
+        expect(f.host.querySelector('[role="tab"][aria-selected="true"]')?.textContent).toBe("登录");
+    } finally { await f.close(); }
 });
 test("signed in members enter the requested destination without mounting a login form", async () => {
     session = Promise.resolve({ user: { id: "existing" } }); const f = await fixture();
@@ -116,7 +173,7 @@ test("Tab and Shift+Tab loop at the dialog boundary without trapping nested dial
 test("homepage links open the dialog while preview and modified clicks keep their native contract", async () => {
     const host = document.createElement("div"); document.body.append(host); const root = createRoot(host);
     try {
-        await act(async () => root.render(<MemoryRouter><BrandAuthProvider><BrandLink href="/login?next=%2Fskills%3Fview%3Dall%23catalog">开始创作</BrandLink><BrandLink href="/login?next=%2Fcreate" onClick={(event) => event.preventDefault()}>预览</BrandLink></BrandAuthProvider><Position /></MemoryRouter>));
+        await act(async () => root.render(<MemoryRouter><BrandAuthProvider><Routes><Route path="/" element={<><BrandLink href="/login?next=%2Fskills%3Fview%3Dall%23catalog">开始创作</BrandLink><BrandLink href="/login?next=%2Fcreate" onClick={(event) => event.preventDefault()}>预览</BrandLink></>} /><Route path="/login" element={<AuthScene />} /></Routes></BrandAuthProvider><Position /></MemoryRouter>));
         const links = [...host.querySelectorAll("a")];
         for (const options of [{ ctrlKey: true }, { metaKey: true }, { shiftKey: true }, { button: 1 }]) {
             const event = new dom.MouseEvent("click", { bubbles: true, cancelable: true, ...options });
@@ -128,7 +185,7 @@ test("homepage links open the dialog while preview and modified clicks keep thei
         await act(async () => { await import("../src/components/brand/brand-auth-dialog"); });
         expect(host.querySelector('[role="dialog"]')).not.toBeNull();
         expect(host.querySelector('form output')?.textContent).toBe("/skills?view=all#catalog");
-        expect(host.querySelector("[data-location]")?.textContent).toBe("/");
+        expect(host.querySelector("[data-location]")?.textContent).toBe("/login?next=%2Fskills%3Fview%3Dall%23catalog");
     } finally { await act(async () => root.unmount()); host.remove(); }
 });
 test("closed public registration uses the invitation entry without mounting the public register form", async () => {
@@ -138,7 +195,8 @@ test("closed public registration uses the invitation entry without mounting the 
     try {
         expect(f.host.querySelectorAll('[role="tab"]')[1].textContent).toBe("内测用户邀请");
         await f.click("内测用户邀请"); await act(async () => { await import("../src/components/brand/brand-invitation-entry"); });
-        expect(f.host.querySelector("h2")?.textContent).toBe("内测用户邀请");
+        expect(f.host.querySelector("h2")?.textContent).toBe("加入梦层");
+        expect(f.host.textContent).toContain("凭邀请加入，开启你的下一幕。");
         expect(f.host.querySelector('input[maxlength="6"]')).not.toBeNull();
         expect(f.host.querySelector('form[aria-label="创建账号"]')).toBeNull();
         expect(f.host.textContent).not.toContain("关闭普通注册"); expect(normalRegisterLoads).toBe(0);

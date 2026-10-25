@@ -1,0 +1,78 @@
+.canvas-generation-status {
+    display: flex;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 24px;
+    padding: 24px;
+    overflow: hidden;
+    background: var(--generation-surface);
+    color: var(--generation-ink);
+    container-type: size;
+}
+
+.canvas-generation-visual { display: grid; width: min(100%, 220px); place-items: center; }
+.canvas-generation-placeholder {
+    position: relative;
+    display: grid;
+    width: 100%;
+    aspect-ratio: 16 / 10;
+    max-height: 128px;
+    place-items: center;
+    border: 1px solid var(--generation-stroke);
+    border-radius: var(--r-lg);
+    background: var(--generation-placeholder);
+    color: var(--generation-muted);
+}
+.canvas-generation-placeholder > svg { width: 32px; height: 32px; opacity: .55; }
+.canvas-generation-signal {
+    position: absolute;
+    inset-inline-start: 12px;
+    inset-block-end: 12px;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--generation-signal);
+    opacity: .65;
+}
+@media (prefers-reduced-motion: no-preference) {
+    .canvas-generation-status[data-active="true"]:not([data-reduced-motion="true"]) .canvas-generation-signal {
+        animation: canvas-generation-breathe calc(var(--motion-dur-emphasize) * 3) var(--motion-ease-in-out) infinite;
+    }
+}
+.canvas-generation-feedback { display: grid; width: min(100%, 280px); min-width: 0; min-height: 0; max-height: 100%; overflow: auto; gap: 12px; }
+.canvas-generation-message { display: grid; gap: 6px; text-align: center; overflow-wrap: anywhere; }
+.canvas-generation-message strong { font-size: var(--fs-body); font-weight: 600; line-height: 1.5; }
+.canvas-generation-message > span { color: var(--generation-muted); font-size: var(--fs-caption); line-height: 1.5; }
+.canvas-generation-footer { display: flex; min-width: 0; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px 16px; }
+.canvas-generation-elapsed { display: inline-flex; align-items: center; gap: 5px; color: var(--generation-muted); font-size: var(--fs-caption); font-variant-numeric: tabular-nums; }
+.canvas-generation-elapsed svg, .canvas-generation-details svg { width: 14px; height: 14px; flex: 0 0 14px; }
+.canvas-generation-details { display: inline-flex; min-height: 32px; align-items: center; justify-content: center; gap: 5px; border: 1px solid var(--generation-stroke); border-radius: var(--r-sm); padding: 4px 8px; background: var(--generation-placeholder); color: var(--generation-ink); font-size: var(--fs-caption); cursor: pointer; }
+.canvas-generation-details:focus-visible { outline: 2px solid var(--control-focus-ring); outline-offset: 3px; }
+.canvas-generation-progress { position: relative; width: 100%; height: 4px; margin-block: 2px 16px; border-radius: var(--r-sm); background: var(--generation-stroke); }
+.canvas-generation-progress > span { display: block; width: 100%; height: 100%; border-radius: inherit; background: var(--generation-signal); transform-origin: left center; transition: transform var(--motion-dur-fast) var(--motion-ease-out); }
+.canvas-generation-progress small { position: absolute; inset-block-start: 8px; inset-inline-end: 0; color: var(--generation-muted); font-size: var(--fs-tiny); font-variant-numeric: tabular-nums; }
+@keyframes canvas-generation-breathe { 0%, 100% { opacity: .45; } 50% { opacity: .9; } }
+@container (max-width: 220px) {
+    .canvas-generation-placeholder { max-height: 72px; }
+    .canvas-generation-feedback { gap: 8px; }
+}
+@container (max-height: 260px) {
+    .canvas-generation-visual { display: none; }
+    .canvas-generation-feedback { width: min(100%, 360px); gap: 8px; }
+    .canvas-generation-message { gap: 4px; }
+    .canvas-generation-message strong { font-size: var(--fs-caption); }
+    .canvas-generation-progress { margin-block: 0 12px; }
+    .canvas-generation-details { min-height: 28px; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .canvas-generation-status .canvas-generation-signal { animation: none; opacity: .65; }
+    .canvas-generation-progress > span { transition: none; }
+}
+.no-motion .canvas-generation-status[data-active="true"]:not([data-reduced-motion="true"]) .canvas-generation-signal,
+.canvas-generation-status[data-reduced-motion="true"] .canvas-generation-signal { animation: none; }
+.no-motion .canvas-generation-progress > span,
+.canvas-generation-status[data-reduced-motion="true"] .canvas-generation-progress > span { transition: none; }

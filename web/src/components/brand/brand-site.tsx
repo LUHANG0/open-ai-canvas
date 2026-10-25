@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useId, useRef, useState } from "react";
+import { Fragment, lazy, Suspense, useEffect, useId, useRef, useState } from "react";
 import { ArrowDown, ArrowLeft, ArrowRight, ArrowUpRight, Expand } from "lucide-react";
 import { brandStudioLabel, useAppearanceStore } from "@/stores/use-appearance-store";
 import { BrandLink } from "./brand-link";
@@ -120,7 +120,7 @@ export function BrandSite({ content, preview = false }: { content: BrandContent;
         root.querySelectorAll(".mc-gallery-picture").forEach((element) => observer.observe(element));
         return () => observer.disconnect();
     }, [preview, content]);
-    const wordmark = <><BrandLogo theme="dark" className="mc-brand-symbol" alt="" fallback={null} /><span className="mc-wordmark"><strong>{appearance.brandName}</strong><small>{brandStudioLabel(appearance).toLocaleUpperCase()}</small></span></>;
+    const wordmark = <><BrandLogo theme="light" className="mc-brand-symbol" alt="" fallback={null} /><span className="mc-wordmark"><strong>{appearance.brandName}</strong><small>{brandStudioLabel(appearance).toLocaleUpperCase()}</small></span></>;
     return <div ref={siteRef} className="mengceng-site" data-studio-theme={theme} data-preview={preview || undefined}>
         <a href="#mengceng-main" className="mc-skip" {...linkProps}>跳到正文</a>
         <header className="mc-nav"><BrandLink className="mc-brand" href="/" {...linkProps}>{wordmark}</BrandLink>
@@ -132,14 +132,13 @@ export function BrandSite({ content, preview = false }: { content: BrandContent;
                 <div className="mc-hero-copy"><h1>{content.title.split("\n").map((line, index) => <span key={index}>{line}</span>)}</h1><p className="mc-lead">{content.description}</p>{content.detail && <p className="mc-detail">{content.detail}</p>}<BrandLink className="mc-button mc-hero-cta" href={creationEntry} {...linkProps}>{content.primaryLabel}<ArrowUpRight aria-hidden="true" /></BrandLink></div>
                 {visible.length > 0 && <BrandLink className="mc-explore" href={`#${visible[0].id}`} {...linkProps}>探索更多<ArrowDown aria-hidden="true" /></BrandLink>}
             </section>
-            {visible.map((section) => <section id={section.id} className={`mc-section mc-${section.id}`} key={section.id}>
+            {visible.map((section) => <Fragment key={section.id}><section id={section.id} className={`mc-section mc-${section.id}`}>
                 <div className="mc-section-heading"><h2>{section.title}</h2>{section.description && <p>{section.description}</p>}</div>
-                {section.id === "examples" ? <><BrandWorkflowTheater preview={preview} creationLink={content.primaryLink} /><Gallery section={section} preview={preview} linkProps={linkProps} /></> : section.id === "faq" ? <div className="mc-questions">{section.items.map((item, index) => <details key={index}><summary><span>{item.title}</span><span className="mc-faq-toggle" aria-hidden="true" /></summary><p>{item.description}</p></details>)}</div> : <>
+                {section.id === "examples" ? <><Gallery section={section} preview={preview} linkProps={linkProps} /><BrandWorkflowTheater preview={preview} creationLink={content.primaryLink} /></> : section.id === "faq" ? <div className="mc-questions">{section.items.map((item, index) => <details key={index}><summary><span>{item.title}</span><span className="mc-faq-toggle" aria-hidden="true" /></summary><p>{item.description}</p></details>)}</div> : <>
                     {!content.heroMedia.resourceId && <details className="mc-story-intro"><summary>{content.storyTitle}</summary><p>{content.storyText}</p>{content.storyCaption && <p>{content.storyCaption}</p>}</details>}
                     <ProcessSteps items={section.items} preview={preview} linkProps={linkProps} />
                 </>}
-            </section>)}
-            {visible.some((section) => section.id === "examples") && <BrandTechniques preview={preview} />}
+            </section>{section.id === "examples" && <BrandTechniques preview={preview} />}</Fragment>)}
             {content.footer && <section className="mc-closing"><h2>{content.footer}</h2><BrandLink className="mc-button mc-primary" href={creationEntry} {...linkProps}>{content.primaryLabel}<ArrowUpRight aria-hidden="true" /></BrandLink></section>}
         </ContentRoot>
         <footer className="mc-footer"><BrandLink className="mc-brand" href="/" {...linkProps}>{wordmark}</BrandLink><div className="mc-footer-meta"><BrandLink href="https://MengCeng.com" {...linkProps}>MengCeng.com</BrandLink>{appearance.icpFilingEnabled && <BrandLink href="https://beian.miit.gov.cn/" target="_blank" rel="noreferrer" {...linkProps}>{appearance.icpFilingNumber}</BrandLink>}<small>{appearance.footerCopyright}</small></div></footer>

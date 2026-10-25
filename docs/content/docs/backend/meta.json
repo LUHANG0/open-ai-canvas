@@ -9,6 +9,7 @@
     "registration-invitations",
     "creation-conversation-sync",
     "code-map",
+    "model-selection-parameters",
     "backend-database",
     "video-token-billing",
     "task-runtime-stability",

@@ -6,12 +6,9 @@ import { FullScreenLoader, WorkspaceRouteLoader } from "@/components/ui/aceterni
 import { loadAssetsPage, loadCanvasPage, loadCanvasProjectPage, loadCreatePage, loadProjectDetailPage, loadProjectsPage, loadTasksPage, loadSkillsPage, loadPluginsPage, loadImageWorkbenchPage, loadVideoWorkbenchPage } from "@/lib/workspace-route-modules";
 import type { FeatureKey } from "@/components/auth/require-feature";
 import { CanvasRefreshShell } from "@/pages/canvas/canvas-refresh-shell";
-import { AuthScene } from "@/pages/auth/auth-scene";
-import { AuthFormPending } from "@/pages/auth/auth-form-pending";
-import { loadLoginPage, loadRegisterPage, loadForgotPasswordPage, loadInvitationPage } from "@/lib/auth-route-modules";
 import { WorkspaceBootstrap } from "@/components/layout/app-providers";
 import { WorkspaceEntryError } from "@/components/layout/workspace-entry-error";
-import WelcomePage from "@/pages/welcome";
+import { brandPublicRoutes } from "@/pages/welcome/brand-public-routes";
 import RouteErrorPage from "@/pages/route-error";
 import { isGuestWorkspacePath } from "@/lib/guest-workspace";
 
@@ -46,10 +43,6 @@ const SystemUpdatePage = lazy(() => import("@/pages/admin/settings/system-update
 const SystemPerformancePage = lazy(() => import("@/pages/admin/settings/system-performance-page"));
 const StoryboardPromptsPage = lazy(() => import("@/pages/admin/storyboard-prompts/storyboard-prompts-page"));
 const UsersPage = lazy(() => import("@/pages/admin/users/users-page"));
-const LoginPage = lazy(loadLoginPage);
-const RegisterPage = lazy(loadRegisterPage);
-const ForgotPasswordPage = lazy(loadForgotPasswordPage);
-const InvitationPage = lazy(loadInvitationPage);
 const CanvasProjectPage = lazy(loadCanvasProjectPage);
 const SharedCanvasPage = lazy(() => import("@/pages/canvas/shared"));
 const NotFound = lazy(() => import("@/pages/not-found"));
@@ -66,10 +59,6 @@ function deferred(element: ReactNode) {
 
 function fullScreenDeferred(element: ReactNode) {
     return <Suspense fallback={<FullScreenLoader label="正在打开创作空间" detail="准备当前页面" />}>{element}</Suspense>;
-}
-
-function authDeferred(element: ReactNode, fields = 2) {
-    return <Suspense fallback={<AuthFormPending fields={fields} />}>{element}</Suspense>;
 }
 
 function workspaceEntry(loadPage: () => Promise<{ default: ComponentType }>, feature?: FeatureKey) {
@@ -123,18 +112,8 @@ function devRoutes() {
 }
 
 export const router = createBrowserRouter([
-    { path: "/", element: <div className="mc-route-scroll"><WelcomePage /></div>, errorElement: <RouteErrorPage /> },
+    { ...brandPublicRoutes, errorElement: <RouteErrorPage /> },
     { path: "/welcome", element: <Navigate to="/" replace /> },
-    {
-        element: <AuthScene />,
-        errorElement: <RouteErrorPage />,
-        children: [
-            { path: "/login", element: authDeferred(<LoginPage />) },
-            { path: "/register", element: authDeferred(<RegisterPage />, 4) },
-            { path: "/i/:code", element: authDeferred(<InvitationPage />, 4) },
-            { path: "/forgot-password", element: authDeferred(<ForgotPasswordPage />, 1) },
-        ],
-    },
     { path: "/share/canvas/:token", element: fullScreenDeferred(<SharedCanvasPage />), errorElement: <RouteErrorPage /> },
     ...(import.meta.env.DEV ? devRoutes() : []),
     {

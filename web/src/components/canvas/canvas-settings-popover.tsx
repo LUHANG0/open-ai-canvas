@@ -1,4 +1,4 @@
-import { useId, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { Button, Popover } from "antd";
 import { Settings2 } from "lucide-react";
 import { canvasThemes } from "@/lib/canvas-theme";
@@ -22,8 +22,24 @@ export function CanvasSettingsPopover({ label, summary, children, placement = "t
     const [open, setOpen] = useState(false);
     const popoverRef = usePopoverAnchorAlign(open);
     const id = useId();
+    const triggerRef = useRef<HTMLElement | null>(null);
+    const sectionRef = useRef<HTMLElement | null>(null);
+    const openRef = useRef(open);
+    openRef.current = open;
+    const focusSection = useCallback(() => {
+        const section = sectionRef.current;
+        if (!section?.isConnected || !openRef.current) return;
+        const first = section.querySelector<HTMLElement>('button:not(:disabled), input:not(:disabled), [role="combobox"]:not([aria-disabled="true"]), summary');
+        (first || section).focus({ preventScroll: true });
+    }, []);
+    const attachSection = useCallback((section: HTMLElement | null) => {
+        sectionRef.current = section;
+        if (section) queueMicrotask(focusSection);
+    }, [focusSection]);
+    useEffect(() => { if (open) queueMicrotask(focusSection); }, [open, focusSection]);
     const theme = canvasThemes[useActiveTheme()];
     const change = (next: boolean) => {
+        if (!next && sectionRef.current?.contains(document.activeElement)) triggerRef.current?.focus({ preventScroll: true });
         setOpen(next);
         onOpenChange?.(next);
     };
@@ -44,6 +60,8 @@ export function CanvasSettingsPopover({ label, summary, children, placement = "t
             styles={{ root: { zIndex: "var(--z-dialog-popover)" }, container: { background: theme.canvas.background, color: theme.node.text, padding: 12 } }}
             content={
                 <section
+                    ref={attachSection}
+                    tabIndex={-1}
                     id={id}
                     aria-label={label}
                     data-canvas-no-zoom
@@ -53,6 +71,7 @@ export function CanvasSettingsPopover({ label, summary, children, placement = "t
                     onPointerDown={(event) => event.stopPropagation()}
                     onMouseDown={(event) => event.stopPropagation()}
                     onClick={(event) => event.stopPropagation()}
+                    onWheel={(event) => event.stopPropagation()}
                     onKeyDown={(event) => {
                         event.stopPropagation();
                         if (event.key === "Escape") change(false);
@@ -69,6 +88,7 @@ export function CanvasSettingsPopover({ label, summary, children, placement = "t
                 aria-controls={open ? id : undefined}
                 aria-label={`${label}：${summary}`}
                 title={`${label} · ${summary}`}
+                onClick={(event) => { triggerRef.current = event.currentTarget; }}
                 className={`canvas-generation-settings-trigger ${buttonClassName || "!h-8 !max-w-[180px] !justify-start !rounded-full !px-2.5"}`}
                 style={{ background: theme.node.fill, color: theme.node.text }}
                 icon={<Settings2 className="size-3.5" />}

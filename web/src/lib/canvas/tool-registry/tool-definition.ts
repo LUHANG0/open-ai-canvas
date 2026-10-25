@@ -105,6 +105,7 @@ export type ToolbarHandlers = {
     onNodeTimeline: (node: CanvasNodeData) => void;
     onNodeReversePrompt: (node: CanvasNodeData) => void;
     onNodeToggleFreeResize: (node: CanvasNodeData) => void;
+    onNodeFitVideo?: (node: CanvasNodeData) => void;
     onNodeToggleLocked: (node: CanvasNodeData) => void;
     onNodeCopyPrompt: (node: CanvasNodeData) => void;
 };
