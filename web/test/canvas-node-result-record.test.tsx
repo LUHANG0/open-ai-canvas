@@ -68,4 +68,3 @@ test("the real CanvasNode puts the sole record outside media geometry and honors
     expect(render(true, true).querySelector(".canvas-node-result-record")).not.toBeNull();
     expect(JSON.stringify(value)).toBe(before);
 });
-
