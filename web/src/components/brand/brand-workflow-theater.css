@@ -6,10 +6,10 @@
 .mc-theater-categories button:active { transform:translateY(0) scale(.97); }
 .mc-theater-categories button[aria-pressed="true"] { color:var(--brand-accent-ink); }
 .mc-theater-categories :focus-visible { outline-offset:-2px; }
-.mc-theater-scene { position:relative; isolation:isolate; overflow:hidden; border:1px solid var(--brand-stage-line); border-radius:28px; background:var(--brand-stage); box-shadow:0 18px 60px var(--brand-shadow); }
+.mc-theater-scene { position:relative; isolation:isolate; overflow:hidden; border:1px solid var(--brand-panel-line); border-radius:28px; background:var(--brand-stage); box-shadow:0 12px 32px var(--brand-shadow); }
 .mc-theater-background { position:absolute; inset:0; z-index:-2; }
 .mc-theater-background .mc-motion-media { height:100%; }
-.mc-theater-background::after { content:""; position:absolute; inset:0; background:linear-gradient(180deg,color-mix(in srgb,var(--brand-stage) 72%,transparent),color-mix(in srgb,var(--brand-stage) 50%,transparent) 40%,color-mix(in srgb,var(--brand-stage) 92%,transparent)); }
+.mc-theater-background::after { content:""; position:absolute; inset:0; background:linear-gradient(180deg,color-mix(in srgb,var(--brand-stage) 64%,transparent),color-mix(in srgb,var(--brand-stage) 38%,transparent) 40%,color-mix(in srgb,var(--brand-stage) 82%,transparent)); }
 .mc-theater-heading { position:relative; display:flex; align-items:start; justify-content:space-between; gap:24px; padding:40px 48px 0; }
 .mc-theater-heading h3 { font-size:clamp(24px,2.6cqi,30px); font-weight:500; letter-spacing:0; line-height:1.4; }
 .mc-theater-heading p { max-width:30em; margin-top:14px; color:var(--brand-text); font-size:16px; line-height:1.75; }
@@ -18,7 +18,7 @@
 .mc-theater-motion:disabled { opacity:.5; cursor:default; }
 .mc-workflow-theater .mc-demo-choices { display:none; }
 .mc-workflow-theater .mc-demo-viewport { height:600px; margin-inline:0; background-image:radial-gradient(#ffffff40 .8px,transparent .8px); background-size:24px 24px; }
-.mc-workflow-theater .mc-demo-node { background:color-mix(in srgb,var(--brand-stage) 78%,transparent); backdrop-filter:blur(18px) saturate(130%); }
+.mc-workflow-theater .mc-demo-node { background:var(--brand-stage-surface); }
 .mc-workflow-theater .mc-demo-connections path { stroke:#ffffff80; stroke-width:2; }
 .mc-workflow-theater .mc-demo-hint { position:relative; margin-top:0; padding-inline:24px; color:var(--brand-text); }
 .mc-theater-footer { display:flex; align-items:center; justify-content:flex-end; padding:24px 48px 40px; }

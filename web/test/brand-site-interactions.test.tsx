@@ -14,9 +14,40 @@ for (const [key, value] of Object.entries({
 const { act } = await import("react");
 const { createRoot } = await import("react-dom/client");
 const { BrandSite } = await import("../src/components/brand/brand-site");
+const { BrandMotionMedia } = await import("../src/components/brand/brand-motion-media");
 const { DEFAULT_BRAND_CONTENT } = await import("../src/services/api/brand-site");
 const { BRAND_TECHNIQUES } = await import("../src/components/brand/brand-techniques");
 type BrandContent = typeof DEFAULT_BRAND_CONTENT;
+
+test("reloading a previously ready video shows its poster until the new load has a frame", async () => {
+    const host = document.createElement("div");
+    document.body.append(host);
+    const root = createRoot(host);
+    const media = { image: "/poster.webp", video: "/clip.mp4" };
+    const render = async (visible: boolean) => act(async () => root.render(<BrandMotionMedia media={media} enabled={false} visible={visible} />));
+    try {
+        await render(true);
+        const video = host.querySelector("video")!;
+        await act(async () => video.dispatchEvent(new dom.Event("loadeddata")));
+        expect(video.hasAttribute("data-ready")).toBe(true);
+        await render(false);
+        expect(video.hasAttribute("src")).toBe(false);
+        expect(video.hasAttribute("data-ready")).toBe(false);
+        await render(true);
+        expect(host.querySelector("video")).toBe(video);
+        expect(video.hasAttribute("data-ready")).toBe(false);
+        await act(async () => video.dispatchEvent(new dom.Event("loadstart")));
+        expect(video.hasAttribute("data-ready")).toBe(false);
+        expect(host.querySelector("img")?.getAttribute("src")).toBe(media.image);
+        await act(async () => video.dispatchEvent(new dom.Event("loadeddata")));
+        expect(video.hasAttribute("data-ready")).toBe(true);
+        await act(async () => video.dispatchEvent(new dom.Event("emptied")));
+        expect(video.hasAttribute("data-ready")).toBe(false);
+    } finally {
+        await act(async () => root.unmount());
+        host.remove();
+    }
+});
 
 afterAll(() => {
     dom.happyDOM.abort();

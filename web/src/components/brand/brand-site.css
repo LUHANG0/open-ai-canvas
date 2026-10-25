@@ -19,7 +19,7 @@
 .mengceng-site :focus-visible { outline:2px solid var(--brand-focus); outline-offset:5px; }
 .mc-skip { position:absolute; top:-100px; }
 .mc-skip:focus { top:12px; left:12px; z-index:60; background:var(--brand-field); padding:12px; }
-.mc-nav { position:sticky; top:16px; z-index:30; display:flex; align-items:center; justify-content:space-between; gap:24px; width:var(--mc-width); min-height:64px; margin:16px auto 0; padding:8px 16px; border:1px solid var(--brand-panel-line); border-radius:12px; background:color-mix(in srgb,var(--brand-surface) 94%,transparent); backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px); }
+.mc-nav { position:sticky; top:16px; z-index:30; display:flex; align-items:center; justify-content:space-between; gap:24px; width:var(--mc-width); min-height:64px; margin:16px auto 0; padding:8px 16px; border:1px solid var(--brand-panel-line); border-radius:12px; background:var(--brand-surface); }
 .mc-brand { display:inline-flex; align-items:center; gap:10px; flex-shrink:0; line-height:1.1; }
 .mc-brand .mc-brand-symbol { width:28px; height:28px; flex-shrink:0; }
 .mc-wordmark { display:grid; gap:3px; }
@@ -33,7 +33,7 @@
 .mc-button svg { width:17px; height:17px; flex-shrink:0; transition:transform 200ms var(--brand-ease-out); }
 .mc-primary { background:var(--brand-accent); color:var(--brand-accent-ink) !important; }
 .mc-button:active { transform:scale(.97); }
-.mc-hero { --mc-muted:var(--brand-stage-muted); position:relative; isolation:isolate; display:grid; align-items:center; justify-items:start; width:var(--mc-width); min-height:520px; margin:20px auto 0; padding-block:24px 120px; overflow:clip; border:1px solid var(--brand-stage-line); border-radius:28px; box-shadow:0 18px 60px var(--brand-shadow),inset 0 1px 0 #ffffff12; }
+.mc-hero { --mc-muted:var(--brand-stage-muted); position:relative; isolation:isolate; display:grid; align-items:center; justify-items:start; width:var(--mc-width); min-height:520px; margin:20px auto 0; padding-block:24px 120px; overflow:clip; border:1px solid var(--brand-panel-line); border-radius:28px; box-shadow:0 12px 32px var(--brand-shadow); }
 .mc-hero::before { content:""; position:absolute; inset:0; background:var(--brand-stage); opacity:.55; }
 .mc-hero-copy { position:relative; z-index:2; width:min(800px,78%); padding:20px 0 24px var(--mc-hero-inset); text-align:left; pointer-events:none; }
 .mc-hero h1 { font-family:var(--brand-display-font); font-size:clamp(48px,5.4cqi,68px); font-weight:450; line-height:1.28; letter-spacing:.01em; text-shadow:0 3px 24px #0c101a80; }
