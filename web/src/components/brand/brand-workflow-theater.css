@@ -1,47 +1,64 @@
-.mc-workflow-theater { margin-block:56px 0; }
-.mc-theater-categories { overflow-x:auto; margin-bottom:24px; border:1px solid var(--brand-line); border-radius:18px; background:var(--brand-surface); scrollbar-width:thin; scrollbar-color:var(--brand-line) transparent; }
-.mc-theater-category-track { position:relative; display:grid; grid-template-columns:repeat(8,minmax(0,1fr)); width:max(100%,880px); padding:6px; isolation:isolate; }
-.mc-theater-category-track::before { content:""; position:absolute; z-index:-1; top:6px; bottom:6px; left:6px; width:calc((100% - 12px)/8); border-radius:12px; background:var(--brand-accent); transform:translateX(calc(var(--category-index)*100%)); transition:transform 420ms var(--brand-ease-out); }
-.mc-theater-categories button { min-height:46px; padding:10px 12px; border:0; border-radius:12px; background:transparent; color:var(--brand-muted); font-size:15px; font-weight:500; letter-spacing:.01em; transition:color 220ms var(--brand-ease-out),background-color 180ms var(--brand-ease-out),transform 220ms var(--brand-ease-out); }
-.mc-theater-categories button:active { transform:translateY(0) scale(.97); }
-.mc-theater-categories button[aria-pressed="true"] { color:var(--brand-accent-ink); }
-.mc-theater-categories :focus-visible { outline-offset:-2px; }
-.mc-theater-scene { position:relative; isolation:isolate; overflow:hidden; border:1px solid var(--brand-panel-line); border-radius:28px; background:var(--brand-stage); box-shadow:0 12px 32px var(--brand-shadow); }
+/* Self-contained demo styles: the retired homepage no longer supplies canvas geometry. */
+.mc-workflow-theater { --workflow-line:#ffffff26; margin-top:24px; color:#f5f5f5; }
+.mc-theater-categories { margin-bottom:24px; }
+.mc-theater-category-track { display:grid; grid-template-columns:repeat(8,minmax(0,1fr)); gap:8px; }
+.mc-theater-categories button { min-height:48px; padding:10px 8px; border:1px solid #303030; border-radius:12px; background:#111; color:#aaa; font:500 14px/1.5 var(--brand-font); transition:color 160ms,background-color 160ms,border-color 160ms; }
+.mc-theater-categories button[aria-pressed="true"] { background:#f4f4f4; border-color:#f4f4f4; color:#111; }
+.mc-workflow-theater :is(button,a):focus-visible { outline:2px solid #ddd; outline-offset:4px; }
+.mc-theater-scene { position:relative; isolation:isolate; overflow:hidden; border:1px solid #303030; border-radius:32px; background:#141414; }
 .mc-theater-background { position:absolute; inset:0; z-index:-2; }
 .mc-theater-background .mc-motion-media { height:100%; }
-.mc-theater-background::after { content:""; position:absolute; inset:0; background:linear-gradient(180deg,color-mix(in srgb,var(--brand-stage) 64%,transparent),color-mix(in srgb,var(--brand-stage) 38%,transparent) 40%,color-mix(in srgb,var(--brand-stage) 82%,transparent)); }
-.mc-theater-heading { position:relative; display:flex; align-items:start; justify-content:space-between; gap:24px; padding:40px 48px 0; }
-.mc-theater-heading h3 { font-size:clamp(24px,2.6cqi,30px); font-weight:500; letter-spacing:0; line-height:1.4; }
-.mc-theater-heading p { max-width:30em; margin-top:14px; color:var(--brand-text); font-size:16px; line-height:1.75; }
-.mc-theater-motion { display:grid; place-items:center; flex-shrink:0; width:44px; height:44px; border:1px solid #ffffff40; border-radius:50%; background:var(--brand-overlay); color:var(--brand-text); }
-.mc-theater-motion svg { width:17px; height:17px; }
+.mc-theater-background::after { content:""; position:absolute; inset:0; background:linear-gradient(#080808c9,#08080885 45%,#080808e8); }
+.mc-theater-heading { position:relative; display:flex; align-items:start; justify-content:space-between; gap:24px; padding:36px 40px 0; }
+.mc-theater-heading h3 { margin:0; font-size:28px; font-weight:500; line-height:1.4; }
+.mc-theater-heading p { max-width:36em; margin:12px 0 0; color:#c4c4c4; font-size:15px; line-height:1.7; }
+.mc-theater-motion { display:grid; place-items:center; flex-shrink:0; width:44px; height:44px; padding:0; border:1px solid #ffffff30; border-radius:50%; background:#171717d9; color:#fff; }
+.mc-theater-motion svg { width:18px; height:18px; }
 .mc-theater-motion:disabled { opacity:.5; cursor:default; }
 .mc-workflow-theater .mc-demo-choices { display:none; }
-.mc-workflow-theater .mc-demo-viewport { height:600px; margin-inline:0; background-image:radial-gradient(#ffffff40 .8px,transparent .8px); background-size:24px 24px; }
-.mc-workflow-theater .mc-demo-node { background:var(--brand-stage-surface); }
-.mc-workflow-theater .mc-demo-connections path { stroke:#ffffff80; stroke-width:2; }
-.mc-workflow-theater .mc-demo-hint { position:relative; margin-top:0; padding-inline:24px; color:var(--brand-text); }
-.mc-theater-footer { display:flex; align-items:center; justify-content:flex-end; padding:24px 48px 40px; }
+.mc-workflow-theater .mc-demo-viewport { position:relative; height:620px; overflow:hidden; touch-action:pan-y; cursor:grab; isolation:isolate; }
+.mc-workflow-theater .mc-demo-viewport:active { cursor:grabbing; }
+.mc-workflow-theater .mc-demo-plane { position:absolute; top:0; left:0; transform-origin:0 0; }
+.mc-workflow-theater .mc-demo-connections { position:absolute; inset:0; overflow:visible; pointer-events:none; }
+.mc-workflow-theater .mc-demo-connections path { fill:none; stroke:#ffffff65; stroke-width:2; }
+.mc-workflow-theater .mc-demo-connections path[data-active] { stroke:#d9cff0; }
+.mc-workflow-theater .mc-demo-node { position:absolute; top:0; left:0; width:280px; padding:8px; border:1px solid #ffffff38; border-radius:16px; background:#202024; cursor:grab; touch-action:none; box-shadow:0 8px 32px #0003; }
+.mc-workflow-theater .mc-demo-node[data-active] { border-color:#e2d6ff; z-index:2; }
+.mc-workflow-theater .mc-demo-handle { display:flex; align-items:center; justify-content:space-between; gap:12px; width:100%; min-height:40px; padding:4px 6px 8px; border:0; background:transparent; color:#eee; text-align:start; font:500 15px/24px var(--brand-font); cursor:grab; touch-action:none; }
+.mc-workflow-theater .mc-demo-handle svg { width:16px; height:16px; flex-shrink:0; color:#aaa; }
+.mc-workflow-theater .mc-demo-media { margin:0; width:100%; height:216px; overflow:hidden; border-radius:10px; background:#303035; }
+.mc-workflow-theater .mc-demo-media .mc-motion-media { height:100%; }
+.mc-workflow-theater .mc-demo-toolbar { position:absolute; z-index:5; display:flex; align-items:center; gap:4px; bottom:16px; left:50%; transform:translateX(-50%); border:1px solid #ffffff30; border-radius:14px; padding:5px; background:#19191deb; cursor:default; }
+.mc-workflow-theater .mc-demo-toolbar button { display:grid; place-items:center; width:40px; height:40px; padding:0; border:0; border-radius:8px; background:transparent; color:#eee; }
+.mc-workflow-theater .mc-demo-toolbar button:disabled { opacity:.35; cursor:default; }
+.mc-workflow-theater .mc-demo-toolbar svg { width:17px; height:17px; }
+.mc-workflow-theater .mc-demo-toolbar output { width:58px; text-align:center; font-size:13px; font-variant-numeric:tabular-nums; }
+.mc-workflow-theater .mc-demo-hint { margin:0; padding:0 24px; color:#c4c4c4; font-size:12px; line-height:1.8; text-align:center; }
+.mc-theater-footer { display:flex; align-items:center; justify-content:center; padding:24px 32px 32px; }
 @container (max-width:1000px) {
-    .mc-workflow-theater .mc-demo-choices { display:flex; padding:24px 20px 0; margin-bottom:0; }
-    .mc-workflow-theater .mc-demo-choices button { background:var(--brand-stage); color:var(--brand-muted); }
-    .mc-workflow-theater .mc-demo-choices button[aria-pressed="true"] { background:var(--brand-text); color:var(--brand-stage); }
-    .mc-workflow-theater .mc-demo-viewport { height:520px; margin-inline:0; }
+    .mc-theater-category-track { grid-template-columns:repeat(4,minmax(0,1fr)); }
+    .mc-workflow-theater .mc-demo-choices { display:flex; overflow:auto; gap:8px; padding:24px 16px 0; scrollbar-width:thin; }
+    .mc-workflow-theater .mc-demo-choices button { flex-shrink:0; min-height:44px; padding:8px 14px; border:1px solid #ffffff30; border-radius:8px; background:#1b1b1b; color:#bbb; font-size:13px; }
+    .mc-workflow-theater .mc-demo-choices button[aria-pressed="true"] { background:#eee; color:#111; }
+    .mc-workflow-theater .mc-demo-viewport { height:420px; }
 }
 @container (max-width:600px) {
-    .mc-workflow-theater { margin-block:48px 0; }
+    .mc-theater-categories { margin-bottom:16px; }
+    .mc-theater-category-track { gap:6px; }
+    .mc-theater-categories button { padding:8px 3px; font-size:12px; border-radius:8px; }
     .mc-theater-scene { border-radius:20px; }
-    .mc-theater-categories button { font-size:14px; padding-inline:12px; }
-    .mc-theater-heading { padding:28px 24px 0; gap:16px; }
-    .mc-theater-heading h3 { font-size:25px; }
-    .mc-theater-heading p { font-size:15px; line-height:1.8; }
-    .mc-theater-footer { padding:24px; }
+    .mc-theater-heading { padding:24px 18px 0; gap:12px; }
+    .mc-theater-heading h3 { font-size:22px; line-height:1.5; }
+    .mc-theater-heading p { font-size:13px; margin-top:8px; }
+    .mc-workflow-theater .mc-demo-hint { padding-inline:18px; }
+    .mc-theater-footer { padding:24px 16px; }
 }
-@media (hover:hover) and (pointer:fine) { .mc-theater-categories button:not([aria-pressed="true"]):hover { color:var(--brand-text); background:var(--brand-soft-hover); transform:translateY(-1px); } .mc-theater-motion:not(:disabled):hover { background:var(--brand-field); } }
+@media (hover:hover) and (pointer:fine) {
+    .mc-theater-categories button:not([aria-pressed="true"]):hover { color:#fff; border-color:#777; background:#252525; }
+    .mc-workflow-theater .mc-demo-toolbar button:not(:disabled):hover,.mc-theater-motion:not(:disabled):hover { background:#353535; }
+}
 @media (prefers-reduced-motion:no-preference) {
-    .mc-theater-scene { animation:mc-theater-enter 280ms var(--brand-ease-out) both; }
+    .mc-theater-scene { animation:mc-theater-enter 240ms ease-out both; }
     @keyframes mc-theater-enter { from { opacity:.65; } to { opacity:1; } }
 }
-@media (prefers-reduced-motion:reduce) {
-    .mc-theater-category-track::before,.mc-theater-categories button { transition:none; }
-}
+@media (prefers-reduced-motion:reduce) { .mc-workflow-theater * { transition:none; } }

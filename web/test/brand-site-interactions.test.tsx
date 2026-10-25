@@ -382,3 +382,77 @@ test("legacy entry copy becomes accurate product previews while custom CMS conte
         expect(f.host.querySelector("#entries img")?.getAttribute("src")).toContain("custom-entry");
     } finally { await f.close(); }
 });
+
+test("workflow gallery follows product entries, switches eight directions, and preserves canvas controls", async () => {
+    const f = await fixture();
+    try {
+        const workflow = f.host.querySelector("#workflow")!;
+        expect(f.host.querySelector("#entries")?.nextElementSibling).toBe(workflow);
+        const choices = [...workflow.querySelectorAll<HTMLButtonElement>(".mc-theater-categories button")];
+        expect(choices.map((button) => button.textContent)).toEqual(["视觉特效", "时尚影像", "商业广告", "产品摄影", "概念设计", "品牌视觉", "动态影像", "建筑空间"]);
+        for (const button of choices) {
+            await act(async () => button.click());
+            expect(button.getAttribute("aria-pressed")).toBe("true");
+            expect(workflow.querySelectorAll("[data-demo-node]").length).toBeGreaterThan(1);
+            expect(workflow.querySelectorAll("video[src]").length).toBe(0);
+        }
+        await key(choices[7], "Home");
+        expect(choices[0].getAttribute("aria-pressed")).toBe("true");
+        expect(document.activeElement).toBe(choices[0]);
+        const handle = workflow.querySelector<HTMLButtonElement>(".mc-demo-handle")!;
+        const node = handle.closest<HTMLElement>("[data-demo-node]")!;
+        const original = node.style.transform;
+        await key(handle, "ArrowRight");
+        expect(node.style.transform).not.toBe(original);
+        await key(handle, "Home");
+        expect(node.style.transform).toBe(original);
+        const output = workflow.querySelector("output")!;
+        const scale = output.textContent;
+        await act(async () => workflow.querySelector<HTMLButtonElement>('[aria-label="放大画布演示"]')!.click());
+        expect(output.textContent).not.toBe(scale);
+        await act(async () => workflow.querySelector<HTMLButtonElement>('[aria-label="重置画布演示"]')!.click());
+        expect(output.textContent).toBe(scale);
+        expect(workflow.querySelector(".mc-theater-footer a")?.getAttribute("href")).toBe("/login");
+        await f.render({ ...DEFAULT_BRAND_CONTENT, sections: DEFAULT_BRAND_CONTENT.sections.map((section) => section.id === "entries" ? { ...section, visible: false } : section) });
+        expect(f.host.querySelector("#workflow")).toBeNull();
+    } finally { await f.close(); }
+});
+
+test("workflow previews respect reduced motion, manual play, background visibility and offscreen unloading", async () => {
+    const observer = Object.getOwnPropertyDescriptor(globalThis, "IntersectionObserver");
+    const hidden = Object.getOwnPropertyDescriptor(document, "hidden");
+    const media = dom.matchMedia;
+    const play = dom.HTMLMediaElement.prototype.play;
+    const pause = dom.HTMLMediaElement.prototype.pause;
+    let emit!: (visible: boolean) => void;
+    let plays = 0, pauses = 0;
+    Object.defineProperty(globalThis, "IntersectionObserver", { configurable: true, value: class {
+        constructor(callback: (entries: { isIntersecting: boolean }[]) => void) { emit = (visible) => callback([{ isIntersecting: visible }]); }
+        observe() {} disconnect() {}
+    } });
+    Object.defineProperty(document, "hidden", { configurable: true, value: false });
+    dom.matchMedia = (() => ({ matches: true, addEventListener() {}, removeEventListener() {} })) as typeof dom.matchMedia;
+    dom.HTMLMediaElement.prototype.play = async () => { plays++; };
+    dom.HTMLMediaElement.prototype.pause = () => { pauses++; };
+    const { BrandWorkflowTheater } = await import("../src/components/brand/brand-workflow-theater");
+    const f = await mount(<BrandWorkflowTheater creationLink="/canvas" />);
+    try {
+        expect(f.host.querySelectorAll("video[src]").length).toBe(0);
+        await act(async () => emit(true));
+        expect(plays).toBe(0);
+        await act(async () => f.host.querySelector<HTMLButtonElement>('[aria-label="播放动态预览"]')!.click());
+        expect(plays).toBeGreaterThan(0);
+        const started = plays;
+        Object.defineProperty(document, "hidden", { configurable: true, value: true });
+        await act(async () => document.dispatchEvent(new dom.Event("visibilitychange")));
+        expect(plays).toBe(started);
+        expect(pauses).toBeGreaterThan(0);
+        await act(async () => emit(false));
+        expect(f.host.querySelectorAll("video[src]").length).toBe(0);
+    } finally {
+        await f.close();
+        dom.matchMedia = media; dom.HTMLMediaElement.prototype.play = play; dom.HTMLMediaElement.prototype.pause = pause;
+        if (observer) Object.defineProperty(globalThis, "IntersectionObserver", observer); else Reflect.deleteProperty(globalThis, "IntersectionObserver");
+        if (hidden) Object.defineProperty(document, "hidden", hidden); else Reflect.deleteProperty(document, "hidden");
+    }
+});

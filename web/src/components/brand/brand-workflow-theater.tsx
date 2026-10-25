@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { ArrowUpRight, Pause, Play } from "lucide-react";
 import { BrandCanvasDemo } from "./brand-canvas-demo";
 import { BrandLink } from "./brand-link";
@@ -12,6 +12,7 @@ export function BrandWorkflowTheater({ preview = false, creationLink }: { previe
     const mouseWithinCategories = useRef(false);
     const [selected, setSelected] = useState(0);
     const [visible, setVisible] = useState(false);
+    const [pageVisible, setPageVisible] = useState(true);
     const [intent, setIntent] = useState<boolean | null>(null);
     const [reduced, setReduced] = useState(true);
     const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -32,8 +33,10 @@ export function BrandWorkflowTheater({ preview = false, creationLink }: { previe
     useEffect(() => {
         const media = window.matchMedia?.("(prefers-reduced-motion: reduce)");
         const update = () => setReduced(media?.matches ?? true);
-        update(); media?.addEventListener("change", update);
-        return () => media?.removeEventListener("change", update);
+        const page = () => setPageVisible(!document.hidden);
+        update(); page(); media?.addEventListener("change", update);
+        document.addEventListener("visibilitychange", page);
+        return () => { media?.removeEventListener("change", update); document.removeEventListener("visibilitychange", page); };
     }, []);
     useEffect(() => {
         if (preview || !root.current || typeof IntersectionObserver === "undefined") return;
@@ -42,21 +45,28 @@ export function BrandWorkflowTheater({ preview = false, creationLink }: { previe
         return () => observer.disconnect();
     }, [preview]);
     const scene = WORKFLOW_SCENES[selected];
-    const playing = !preview && visible && (intent ?? !reduced);
+    const playing = !preview && visible && pageVisible && (intent ?? !reduced);
     const select = (index: number) => {
         if (index === selected) return;
         setSelected(index);
     };
     useEffect(() => () => { clearHover(); }, []);
+    const selectWithKeyboard = (event: KeyboardEvent<HTMLButtonElement>, index: number) => {
+        if (event.defaultPrevented || event.nativeEvent.isComposing || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
+        const next = event.key === "Home" ? 0 : event.key === "End" ? WORKFLOW_SCENES.length - 1 : event.key === "ArrowRight" ? (index + 1) % WORKFLOW_SCENES.length : event.key === "ArrowLeft" ? (index + WORKFLOW_SCENES.length - 1) % WORKFLOW_SCENES.length : null;
+        if (next === null) return;
+        event.preventDefault(); clearHover(); select(next);
+        categories.current?.querySelectorAll<HTMLButtonElement>("button")[next]?.focus();
+    };
     const items = scene.nodes.map((node) => ({ title: node.title }));
     const blockNavigation = preview ? { onClick: (event: React.MouseEvent) => event.preventDefault() } : {};
-    return <div className="mc-workflow-theater" ref={root}>
-        <div className="mc-theater-categories" ref={categories} aria-label="创作类型" onPointerEnter={(event) => { mouseWithinCategories.current = event.pointerType === "mouse"; }} onPointerLeave={() => { mouseWithinCategories.current = false; clearHover(); }}><div className="mc-theater-category-track" style={{ "--category-index": selected } as CSSProperties}>{WORKFLOW_SCENES.map((item, index) => <button type="button" aria-pressed={selected === index} key={item.id} onPointerEnter={(event) => { clearHover(); if (event.pointerType === "mouse") hoverTimer.current = setTimeout(() => { hoverTimer.current = null; select(index); }, 120); }} onPointerLeave={clearHover} onClick={() => { clearHover(); select(index); }}>{item.label}</button>)}</div></div>
+    return <div className="mc-workflow-theater" ref={root} data-ui>
+        <div className="mc-theater-categories" ref={categories} role="group" aria-label="创作类型" onPointerEnter={(event) => { mouseWithinCategories.current = event.pointerType === "mouse"; }} onPointerLeave={() => { mouseWithinCategories.current = false; clearHover(); }}><div className="mc-theater-category-track">{WORKFLOW_SCENES.map((item, index) => <button type="button" aria-pressed={selected === index} tabIndex={selected === index ? 0 : -1} onKeyDown={(event) => selectWithKeyboard(event, index)} key={item.id} onPointerEnter={(event) => { clearHover(); if (event.pointerType === "mouse") hoverTimer.current = setTimeout(() => { hoverTimer.current = null; select(index); }, 120); }} onPointerLeave={clearHover} onClick={() => { clearHover(); select(index); }}>{item.label}</button>)}</div></div>
         <div className="mc-theater-scene" key={scene.id}>
             <div className="mc-theater-background" aria-hidden="true"><MotionMedia media={scene.background} enabled={playing} visible={visible && !preview} /></div>
             <div className="mc-theater-heading"><div><h3>{scene.title}</h3><p>{scene.description}</p></div><button type="button" className="mc-theater-motion" aria-label={playing ? "暂停动态预览" : "播放动态预览"} disabled={preview} onClick={() => setIntent(!playing)}>{playing ? <Pause aria-hidden="true" /> : <Play aria-hidden="true" />}</button></div>
             <BrandCanvasDemo key={scene.id} items={items} renderMedia={(_item, index) => <MotionMedia media={scene.nodes[index].media} enabled={playing} visible={visible && !preview} />} />
-            <div className="mc-theater-footer"><BrandLink className="mc-button mc-primary" href="/login" authNext={creationLink} {...blockNavigation}>开始我的创作<ArrowUpRight aria-hidden="true" /></BrandLink></div>
+            <div className="mc-theater-footer"><BrandLink className="mv-button" href="/login" authNext={creationLink} {...blockNavigation}>打开创作画布<ArrowUpRight aria-hidden="true" /></BrandLink></div>
         </div>
     </div>;
 }

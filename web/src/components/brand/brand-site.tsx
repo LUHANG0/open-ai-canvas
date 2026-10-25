@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useId, useRef, useState } from "react";
+import { Fragment, lazy, Suspense, useEffect, useId, useRef, useState } from "react";
 import { ArrowDown, ArrowLeft, ArrowRight, ArrowUpRight, ChevronDown, Menu, Plus, X } from "lucide-react";
 import { brandStudioLabel, useAppearanceStore } from "@/stores/use-appearance-store";
 import { useThemeStore } from "@/stores/use-theme-store";
@@ -10,6 +10,7 @@ import { BrandInspirationGallery } from "./brand-inspiration-gallery";
 import { ReferenceFilm, VIDU_MEDIA } from "./brand-reference-media";
 import { AppLoading } from "@/components/ui/app-loading";
 import { useHeroReadiness } from "./use-hero-readiness";
+import { BrandWorkflowTheater } from "./brand-workflow-theater";
 import { BrandProductPreview, PRODUCT_ENTRIES } from "./brand-product-preview";
 import "./brand-site.css";
 
@@ -140,7 +141,13 @@ export function BrandSite({ content, preview = false }: { content: BrandContent;
             <Hero content={content} preview={preview} navigation={navigation} />
             <BrandInspirationGallery preview={preview} />
             <FeatureFilms preview={preview} navigation={navigation} />
-            {sections.map((section) => <PublishedSection key={section.id} section={section} content={content} preview={preview} navigation={navigation} />)}
+            {sections.map((section) => <Fragment key={section.id}>
+                <PublishedSection section={section} content={content} preview={preview} navigation={navigation} />
+                {section.id === "entries" && <section id="workflow" className="mv-section mv-shell mv-workflow" aria-labelledby="mv-workflow-title">
+                    <header className="mv-heading"><h2 id="mv-workflow-title">让创意，在画布上生长。</h2><p>切换一种创作方向，连接参考素材，探索画面的更多可能。</p></header>
+                    <BrandWorkflowTheater preview={preview} creationLink="/canvas" />
+                </section>}
+            </Fragment>)}
         </Main>
         <footer className="mv-footer mv-shell"><div className="mv-footer-top"><BrandLink className="mv-brand" href="/" {...navigation}>{wordmark}</BrandLink><div><strong>创作</strong>{CREATION_LINKS.slice(0, 2).map((link) => <CreationLink key={link.href} href={link.href} navigation={navigation}>{link.title}</CreationLink>)}</div><div><strong>工作空间</strong>{CREATION_LINKS.slice(2).map((link) => <CreationLink key={link.href} href={link.href} navigation={navigation}>{link.title}</CreationLink>)}</div><div><strong>了解梦层</strong>{sections.filter((section) => ["examples", "faq"].includes(section.id)).map((section) => <BrandLink key={section.id} href={"#" + section.id} {...navigation}>{section.id === "examples" ? "创意影像" : "常见问题"}</BrandLink>)}</div></div><div className="mv-footer-bottom"><small>{appearance.footerCopyright}</small>{appearance.icpFilingEnabled && <BrandLink href="https://beian.miit.gov.cn/" target="_blank" rel="noreferrer" {...navigation}>{appearance.icpFilingNumber}</BrandLink>}</div></footer>
     </div>;
