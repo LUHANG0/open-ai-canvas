@@ -52,7 +52,7 @@ async function fixture(mode: "invitation" | "login" | "register" | "forgot-passw
     return { host, close: async () => { await act(async () => root.unmount()); host.remove(); style.remove(); } };
 }
 
-test("real invitation dialog uses the brand mark, compact identity and a single-column registration form", async () => {
+test("real invitation dialog keeps full-width account and password fields in the narrow authentication pane", async () => {
     const f = await fixture();
     try {
         const dialog = f.host.querySelector('.mc-auth-dialog-invitation[role="dialog"]')!;
@@ -94,15 +94,15 @@ test("zero grant has no welcome placeholder and keeps the actual registration an
     finally { await f.close(); }
 });
 
-test("unavailable verification remains an announced restriction associated with the form and disabled action", async () => {
+test("unavailable verification leaves invitation fields editable without an initial warning or write", async () => {
     invitationResponse.settings.emailRegistration = false; const f = await fixture();
     try {
-        const form = f.host.querySelector(".mc-invitation-form")!, description = form.getAttribute("aria-describedby")!;
-        const notice = document.getElementById(description)!;
-        expect(notice.getAttribute("role")).toBe("status"); expect(notice.textContent).toContain("当前没有可用的注册验证方式"); expect(notice.textContent).toContain("请联系管理员检查短信及邮件配置");
-        const submit = form.querySelector<HTMLButtonElement>('button[type="submit"]')!;
-        expect(submit.disabled).toBe(true); expect(submit.getAttribute("aria-describedby")).toBe(description);
-        expect([...form.querySelectorAll<HTMLInputElement>('input:not([type="checkbox"])')].every((input) => input.disabled)).toBe(true);
+        const form = f.host.querySelector(".mc-invitation-form")!;
+        expect(form.getAttribute("aria-describedby")).toBeNull();
+        expect(form.textContent).not.toContain("当前没有可用的注册验证方式");
+        expect(form.querySelector<HTMLInputElement>('input[autocomplete="email"]')?.disabled).toBe(false);
+        expect(form.querySelector<HTMLInputElement>('input[autocomplete="username"]')?.disabled).toBe(false);
+        expect(form.querySelector<HTMLButtonElement>('button[type="submit"]')?.disabled).toBe(true);
         expect(f.host.querySelector<HTMLInputElement>('input[type="checkbox"]')?.checked).toBe(false); expect(writes).toBe(0);
     } finally { await f.close(); }
 });
@@ -135,7 +135,7 @@ test("a long agreement remains in the real form flow without accepting terms or 
     } finally { await f.close(); }
 });
 
-test("login, public registration and recovery do not opt into invitation surfaces or single-column overrides", async () => {
+test("login, public registration and recovery retain their own flows inside the shared authentication pane", async () => {
     publicSettings.registrationEnabled = true;
     for (const mode of ["login", "register", "forgot-password"] as const) {
         const f = await fixture(mode);

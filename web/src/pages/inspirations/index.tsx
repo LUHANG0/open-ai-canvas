@@ -50,7 +50,7 @@ function downloadText(text: string, fileName: string) {
     URL.revokeObjectURL(url);
 }
 
-export function InspirationHall({ onUse }: { onUse: (item: CreationInspiration) => void }) {
+export function InspirationHall({ onUse, eager = false, onReadyChange }: { onUse: (item: CreationInspiration) => void; eager?: boolean; onReadyChange?: (ready: boolean) => void }) {
     const { message, modal } = App.useApp();
     const inspirationSourcesVisible = useUserStore((state) => state.features.inspirationSourcesVisible);
 
@@ -88,6 +88,14 @@ export function InspirationHall({ onUse }: { onUse: (item: CreationInspiration) 
     const [editorOpen, setEditorOpen] = useState(false);
     const [editing, setEditing] = useState<CreationInspiration | null>(null);
     const importRef = useRef<HTMLInputElement>(null);
+
+    useEffect(() => { if (eager) setShouldLoadCatalog(true); }, [eager]);
+
+    const ready = Boolean(loadError || (catalog && hydrated));
+    useEffect(() => {
+        onReadyChange?.(ready);
+        return () => onReadyChange?.(false);
+    }, [ready, onReadyChange]);
 
     useEffect(() => {
         const section = sectionRef.current;

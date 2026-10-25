@@ -18,6 +18,10 @@ export default function InvitationPage() {
     const [error, setError] = useState("");
     const [invitation, setInvitation] = useState<PublicRegistrationInvitation | null>(null);
     const loginEntry = authEntry(invitationPath(code));
+    const refreshSettings = async () => {
+        const value = await validateRegistrationInvitation(code);
+        setInvitation(value);
+    };
 
     useEffect(() => {
         let active = true;
@@ -59,9 +63,9 @@ export default function InvitationPage() {
         const state = invitation?.state;
         return <div className="space-y-4"><p role="status">{state && state !== "valid" ? invitationStateMessages[state] : "暂时无法验证邀请，请重试。"}</p><Link className="auth-scene-link" {...loginEntry}>已有账号？登录</Link></div>;
     }
-    return <RegistrationInvitationContext.Provider value={{ code, settings: invitation.settings, bonusMicrocredits: invitation.bonusMicrocredits, reload: () => setRetry((n) => n + 1) }}>
+    return <RegistrationInvitationContext.Provider value={{ code, settings: invitation.settings, bonusMicrocredits: invitation.bonusMicrocredits, reload: () => setRetry((n) => n + 1), refreshSettings }}>
         <div className="mc-invitation-registration">
-            {invitation.bonusMicrocredits > 0 && <p className="mc-invitation-welcome" role="status"><span>注册成功后获赠</span><strong>{formatCredits(invitation.bonusMicrocredits)} 积分</strong></p>}
+            {invitation.bonusMicrocredits > 0 && <p className="mc-invitation-welcome" role="status"><span>注册后赠送</span><strong>{formatCredits(invitation.bonusMicrocredits)} 积分</strong></p>}
             <RegisterPage key={code} />
             <p className="mc-invitation-login">已有账号？<Link className="auth-scene-link" {...loginEntry}>登录</Link></p>
         </div>

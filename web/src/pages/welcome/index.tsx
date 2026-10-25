@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { AppLoading } from "@/components/ui/app-loading";
 import { BrandSite } from "@/components/brand/brand-site";
 import { DEFAULT_BRAND_CONTENT, getBrandSite } from "@/services/api/brand-site";
 let publishedContent: typeof DEFAULT_BRAND_CONTENT | undefined;
@@ -21,14 +22,12 @@ export default function WelcomePage() {
     }, []);
     if (!content)
         return (
-            <main className="mengceng-site" style={{ minHeight: "100vh", padding: 40 }} role="status">
-                梦层 MengCeng · 正在准备创作之旅
-            </main>
+            <AppLoading brand screen />
         );
     return (
         <>
             {unavailable && (
-                <p role="status" style={{ padding: 12, margin: 0, textAlign: "center", background: "#edf2fc", color: "#182b46" }}>
+                <p role="status" className="mc-site-unavailable">
                     官网内容暂不可用，当前显示梦层内置介绍。刷新页面可重试。
                 </p>
             )}

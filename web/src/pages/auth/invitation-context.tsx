@@ -6,5 +6,6 @@ export const RegistrationInvitationContext = createContext<{
     bonusMicrocredits: number;
     settings: Awaited<ReturnType<typeof getAuthSettings>>;
     reload: () => void;
+    refreshSettings: () => Promise<void>;
 } | null>(null);
 export const useRegistrationInvitation = () => useContext(RegistrationInvitationContext);

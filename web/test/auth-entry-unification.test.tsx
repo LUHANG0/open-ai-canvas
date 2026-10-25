@@ -31,9 +31,11 @@ mock.module("../src/components/ui/product/app-modal", () => ({ AppModal: ({ open
     useEffect(() => { if (!open) afterClose?.(); }, [open]);
     return open ? <section role="dialog" className={className}><button type="button" onClick={onCancel}>关闭登录窗口</button>{title}{children}</section> : null;
 } }));
+const realLogin = () => import("../src/pages/auth/login");
+let loadLogin = realLogin;
 const realRegister = () => import("../src/pages/auth/register");
 let loadRegister = realRegister;
-mock.module("../src/lib/auth-route-modules", () => ({ loadLoginPage: () => import("../src/pages/auth/login"), loadRegisterPage: () => loadRegister(), loadForgotPasswordPage: () => import("../src/pages/auth/forgot-password"), loadInvitationPage: () => import("../src/pages/auth/invitation"), preloadAuthRoute() {} }));
+mock.module("../src/lib/auth-route-modules", () => ({ loadLoginPage: () => loadLogin(), loadRegisterPage: () => loadRegister(), loadForgotPasswordPage: () => import("../src/pages/auth/forgot-password"), loadInvitationPage: () => import("../src/pages/auth/invitation"), preloadAuthRoute() {} }));
 const { brandPublicRoutes } = await import("../src/pages/welcome/brand-public-routes");
 
 afterAll(() => { mock.restore(); dom.happyDOM.abort(); for (const [key, descriptor] of originals) { if (descriptor) Object.defineProperty(globalThis, key, descriptor); else Reflect.deleteProperty(globalThis, key); } });
@@ -52,19 +54,55 @@ test("homepage entry and direct auth routes share the actual published brand tre
     const f = await fixture();
     try {
         expect(sessionCalls).toBe(0); expect(brandCalls).toBe(1);
-        const background = f.host.querySelector(".mengceng-site"); const hero = f.host.querySelector(".mc-hero");
-        expect(f.host.querySelector("#examples")).not.toBeNull(); expect(f.host.querySelector("#techniques")).not.toBeNull();
+        const background = f.host.querySelector(".mengceng-site"); const hero = f.host.querySelector(".mv-hero");
+        expect(background).not.toBeNull(); expect(hero).not.toBeNull();
+        for (const section of brand.DEFAULT_BRAND_CONTENT.sections.filter((section) => section.visible)) expect(f.host.querySelector(`#${section.id}`)).not.toBeNull();
         await f.click("开始创作");
         expect(f.router.state.location.pathname).toBe("/login"); expect(f.router.state.location.search).toBe("");
         expect(f.host.querySelector("#login-account")).not.toBeNull();
         for (const path of ["/register", "/forgot-password", "/login"]) {
             await f.go(path + "?next=%2Fsettings#kept");
-            expect(f.host.querySelector(".mengceng-site")).toBe(background); expect(f.host.querySelector(".mc-hero")).toBe(hero);
+            expect(f.host.querySelector(".mengceng-site") === background).toBe(true); expect(f.host.querySelector(".mv-hero") === hero).toBe(true);
             expect(f.host.querySelectorAll('[role="dialog"]')).toHaveLength(1); expect(f.host.querySelector(".auth-scene-simple")).toBeNull();
             expect(f.router.state.location.search).toBe(""); expect(f.router.state.location.hash).toBe("#kept");
         }
         expect(brandCalls).toBe(1); expect(sessionCalls).toBe(1);
     } finally { await f.close(); }
+});
+
+test("login keeps password access and shows submission failure beside the form", async () => {
+    const f = await fixture("/login");
+    try {
+        expect(f.host.querySelector(".mc-auth-showcase video")?.getAttribute("src")).toBe("https://image01-aliyun.vidu.zone/vidu/media-asset/S12-ca6d5ddb.mp4");
+        expect(f.host.querySelector(".mc-auth-heading h2")?.textContent).toBe("欢迎登录梦层");
+        expect(f.host.querySelector<HTMLButtonElement>('.mc-login-form button[type="submit"]')?.disabled).toBe(true);
+        expect(f.host.textContent).not.toContain("使用 Linux.do 登录");
+        const setInput = async (id: string, value: string) => {
+            const input = f.host.querySelector<HTMLInputElement>(id)!;
+            await act(async () => {
+                Object.getOwnPropertyDescriptor(dom.HTMLInputElement.prototype, "value")!.set!.call(input, value);
+                input.dispatchEvent(new dom.Event("input", { bubbles: true }));
+            });
+        };
+        await setInput("#login-account", "sample-user");
+        await setInput("#login-password", "sample-password");
+        expect(f.host.querySelector<HTMLButtonElement>('.mc-login-form button[type="submit"]')?.disabled).toBe(false);
+        await act(async () => f.host.querySelector(".mc-login-form")!.dispatchEvent(new dom.Event("submit", { bubbles: true, cancelable: true })));
+        expect(f.host.querySelector('[role="alert"].mc-login-feedback')?.textContent).toBe("must not submit");
+        await setInput("#login-account", "another-user");
+        expect(f.host.querySelector('[role="alert"].mc-login-feedback')).toBeNull();
+        expect(f.host.querySelector("#login-password")).not.toBeNull();
+    } finally { await f.close(); }
+});
+
+test("login settings failure leaves the password form available", async () => {
+    policy = Promise.reject(new Error("settings unavailable"));
+    const f = await fixture("/login");
+    try {
+        expect(f.host.querySelector("#login-account")).not.toBeNull();
+        expect(f.host.querySelector("#login-password")).not.toBeNull();
+        expect(f.host.querySelector('[role="status"].mc-login-feedback')?.textContent).toContain("其他登录方式暂不可用");
+    } finally { await f.close(); policy = Promise.resolve(settings); }
 });
 
 test("real tabs keep current navigation key, query/hash, roving focus and one associated panel", async () => {
@@ -180,4 +218,50 @@ test("member login uses safe next while root and invitation keep the brand shell
     const member = await fixture("/i/Ab3xY9");
     try { expect(member.router.state.location.pathname).toBe("/i/Ab3xY9"); expect(member.host.textContent).toContain("你已登录，无需注册"); expect(member.find("切换账号")).toBeDefined(); expect(member.host.querySelector(".mengceng-site")).not.toBeNull(); }
     finally { await member.close(); session = Promise.resolve({ user: null }); }
+});
+
+
+test("opening login never waits for its form chunk", async () => {
+    const waiting = defer<Awaited<ReturnType<typeof realLogin>>>();
+    loadLogin = () => waiting.promise;
+    const f = await fixture();
+    try {
+        await f.click("开始创作");
+        expect(f.router.state.location.pathname).toBe("/login");
+        expect(f.host.querySelector('[role="dialog"]')).not.toBeNull();
+        expect(f.host.textContent).toContain("正在准备登录");
+        await act(async () => waiting.resolve(await realLogin())); await settle();
+        expect(f.host.querySelector("#login-account")).not.toBeNull();
+    } finally { loadLogin = realLogin; await f.close(); }
+});
+
+test("a slow session request cannot prevent typing login details", async () => {
+    const waiting = defer<unknown>(); session = waiting.promise;
+    const f = await fixture("/login");
+    try {
+        expect(f.host.querySelector("#login-account")).not.toBeNull();
+        const input = f.host.querySelector<HTMLInputElement>("#login-account")!;
+        await act(async () => {
+            Object.getOwnPropertyDescriptor(dom.HTMLInputElement.prototype, "value")!.set!.call(input, "waiting-user");
+            input.dispatchEvent(new dom.Event("input", { bubbles: true }));
+        });
+        await act(async () => waiting.resolve({ user:null })); await settle();
+        expect(input.value).toBe("waiting-user");
+    } finally { session = Promise.resolve({user:null}); await f.close(); }
+});
+
+
+test("failed login chunks show recovery actions without an endless loading animation", async () => {
+    loadLogin = () => Promise.reject(new Error("chunk unavailable"));
+    const f = await fixture();
+    try {
+        await f.click("开始创作");
+        expect(f.router.state.location.pathname).toBe("/login");
+        expect(f.host.textContent).toContain("表单暂时无法加载");
+        expect(f.host.textContent).not.toContain("正在准备登录");
+        expect(f.find("刷新页面")).toBeDefined();
+        loadLogin = realLogin;
+        await f.click("重新加载");
+        expect(f.host.querySelector("#login-account")).not.toBeNull();
+    } finally { loadLogin = realLogin; await f.close(); }
 });

@@ -1,10 +1,5 @@
+import { AppLoading } from "@/components/ui/app-loading";
+
 export function AuthFormPending({ fields = 2, message = "正在准备表单" }: { fields?: number; message?: string }) {
-    return <div className="auth-form-pending" role="status" aria-busy="true">
-        <div aria-hidden="true">
-            {Array.from({ length: fields }, (_, index) => <div className="auth-pending-field" key={index}>
-                <span className="auth-pending-label" /><span className="auth-pending-input" />
-            </div>)}
-        </div>
-        <span className="auth-pending-status">{message}</span>
-    </div>;
+    return <div style={{ minHeight: fields * 72 + 48 }}><AppLoading compact label={message} className="auth-form-loading" /></div>;
 }

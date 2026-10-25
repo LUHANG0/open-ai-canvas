@@ -9,3 +9,7 @@ This distribution includes third-party and inherited material under permissive o
 Material changes in this repository are maintained by the Open AI Canvas contributors. They include a multi-user Go backend, task processing and analytics, private resource storage, canvas sharing, film-production workflows, canvas UI refactoring, and cloud Agent integrations.
 
 Third-party packages remain subject to the licenses declared by their respective authors. Product names and logos under web/public/icons are the property of their respective owners and do not imply endorsement.
+
+Glow Sans SC / 未来荧黑 v0.93 — SIL Open Font License 1.1
+Source: https://github.com/welai/glow-sans
+Locally hosted WOFF2 subsets; copyright and complete license: web/public/brand/fonts/GlowSans-OFL.txt

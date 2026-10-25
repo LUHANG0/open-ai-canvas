@@ -1,0 +1,9 @@
+/* The app shell clips document scrolling; public routes own a viewport-sized scroller. */
+.mc-route-scroll {
+    height: 100dvh;
+    overflow-y: auto;
+    overflow-x: hidden;
+    overscroll-behavior-y: contain;
+    background: #000;
+    color-scheme: dark;
+}

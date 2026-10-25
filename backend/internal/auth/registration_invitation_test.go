@@ -119,6 +119,30 @@ func TestInvitationClosedRegistrationAndGrantSnapshot(t *testing.T) {
 	}
 }
 
+func TestInvitationWithoutVerificationChannelCannotRegister(t *testing.T) {
+	svc, db, _, _ := invitationFixture(t, 30_000000)
+	if err := svc.repo.SaveSystemSetting(&model.SystemSetting{Key: emailSettingKey, ValueJSON: `{"enabled":false}`, UpdatedBy: "admin"}); err != nil {
+		t.Fatal(err)
+	}
+	settings, err := svc.PublicAuthSettings()
+	if err != nil || settings.EmailRegistration || settings.SMSRegistration || settings.SMSAndEmailRegistration {
+		t.Fatalf("registration methods available without delivery channel: %#v %v", settings, err)
+	}
+	if _, err := svc.StartVerification(context.Background(), nil, VerificationRequest{Purpose: "register", Method: "email", Email: "member@example.com", InvitationCode: "Ab3xY9"}); err == nil {
+		t.Fatal("verification started without email delivery")
+	}
+	if _, err := svc.Register(RegisterRequest{Username: "member", Email: "member@example.com", Password: "password-strong", AcceptedTerms: true, InvitationCode: "Ab3xY9"}); err == nil {
+		t.Fatal("invitation registration bypassed verification")
+	}
+	var count int64
+	if err := db.Model(&model.User{}).Where("username = ?", "member").Count(&count).Error; err != nil || count != 0 {
+		t.Fatalf("failed registration created user: count=%d err=%v", count, err)
+	}
+	if _, state, err := svc.RegistrationInvitation("Ab3xY9"); err != nil || state != "valid" {
+		t.Fatalf("failed registration consumed invitation: state=%s err=%v", state, err)
+	}
+}
+
 func TestInvitationValidationAndFailureRollback(t *testing.T) {
 	svc, db, item, code := invitationFixture(t, 100_000000)
 	for _, state := range []string{"expired", "revoked", "used", "invalid"} {

@@ -1,7 +1,5 @@
-import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
-import { App } from "antd";
-import { useLocation, useNavigate } from "react-router";
-import { loadLoginPage } from "@/lib/auth-route-modules";
+import { createContext, useContext, type ReactNode } from "react";
+import { useNavigate } from "react-router";
 
 export type BrandAuthMode = "login" | "register" | "forgot-password" | "invitation";
 export const BrandAuthFlow = createContext<{ next: string; changeMode: (mode: BrandAuthMode) => void } | null>(null);
@@ -10,25 +8,12 @@ export const useBrandAuthEntry = () => useContext(BrandAuthEntry);
 export const useBrandAuthFlow = () => useContext(BrandAuthFlow);
 
 export function BrandAuthProvider({ children }: { children: ReactNode }) {
-    const location = useLocation();
     const navigate = useNavigate();
-    const [pending, setPending] = useState(false);
-    const request = useRef(0);
-    const { message } = App.useApp();
-    useEffect(() => { request.current++; setPending(false); return () => { request.current++; }; }, [location.key]);
-    const open = async (href: string, state?: unknown) => {
+    const open = (href: string, state?: unknown) => {
         const url = new URL(href, window.location.origin);
         if (url.origin !== window.location.origin || url.pathname !== "/login") return;
-        const id = ++request.current;
-        setPending(true);
-        try {
-            await loadLoginPage();
-            if (id !== request.current) return;
-            void navigate({ pathname: url.pathname, search: url.search, hash: url.hash }, { state });
-        } catch { if (id === request.current) message.error("登录窗口暂时无法打开，请重试。"); }
-        finally { if (id === request.current) setPending(false); }
+        // The dialog owns loading and retry feedback. Never gate opening it on a chunk request.
+        void navigate({ pathname: url.pathname, search: url.search, hash: url.hash }, { state });
     };
-    return <BrandAuthEntry.Provider value={{ open: (href, state) => { void open(href, state); }, pending }}>
-        {children}
-    </BrandAuthEntry.Provider>;
+    return <BrandAuthEntry.Provider value={{ open, pending: false }}>{children}</BrandAuthEntry.Provider>;
 }

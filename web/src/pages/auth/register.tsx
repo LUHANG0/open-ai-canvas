@@ -38,6 +38,8 @@ export default function RegisterPage() {
     const [agreementOpen, setAgreementOpen] = useState(false);
     const [settingsFailed, setSettingsFailed] = useState(false);
     const [settingsReloadKey, setSettingsReloadKey] = useState(0);
+    const [refreshingInvitation, setRefreshingInvitation] = useState(false);
+    const [invitationRefreshError, setInvitationRefreshError] = useState("");
     const [submitting, setSubmitting] = useState(false);
     const [submitError, setSubmitError] = useState("");
     const [registerCountdown, setRegisterCountdown] = useState(0);
@@ -55,7 +57,11 @@ export default function RegisterPage() {
     useEffect(() => {
         if (invitation) {
             setSettings(invitation.settings);
-            setMethod(verificationMethods(invitation.settings, "register")[0] ?? "email");
+            const availableMethods = verificationMethods(invitation.settings, "register");
+            const nextMethod = verification.email.trim() && availableMethods.includes("email") ? "email" : availableMethods[0] ?? "email";
+            setMethod(nextMethod);
+            if (availableMethods.length > 0 && nextMethod === "sms") setVerification({ ...emptyVerification });
+            if (availableMethods.length > 0) setSubmitError("");
             return;
         }
         let cancelled = false;
@@ -74,15 +80,38 @@ export default function RegisterPage() {
         };
     }, [invitation, message, settingsReloadKey]);
 
+    const registrationClosed = settings?.registrationEnabled === false;
+    const methods = settings ? verificationMethods(settings, "register") : [];
+    const verificationUnavailable = Boolean(settings && !settings.firstUser && methods.length === 0);
+    const disabled = !settings || registrationClosed || (!invitation && verificationUnavailable);
+    const restrictionDescription = invitation && registrationClosed ? restrictionId : undefined;
+
+    const refreshInvitationSettings = async () => {
+        if (!invitation || refreshingInvitation) return;
+        setRefreshingInvitation(true);
+        setInvitationRefreshError("");
+        try {
+            await invitation.refreshSettings();
+        } catch {
+            setInvitationRefreshError("重新检查失败，请检查网络后重试。");
+        } finally {
+            setRefreshingInvitation(false);
+        }
+    };
+
     const submit = async (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault();
-        if (registering.current || registerCountdown > 0) return;
+        if (registering.current || registerCountdown > 0 || disabled) return;
         if (!agreementAccepted) {
             message.warning(`请先同意${agreementTitle}`);
             return;
         }
         if (password !== confirmPassword) {
             message.error("两次输入的密码不一致");
+            return;
+        }
+        if (verificationUnavailable) {
+            setSubmitError("验证码暂不可用，请稍后重新检查。");
             return;
         }
         registering.current = true;
@@ -114,11 +143,40 @@ export default function RegisterPage() {
         return () => window.clearInterval(timer);
     }, [registerCountdown]);
 
-    const registrationClosed = settings?.registrationEnabled === false;
-    const methods = settings ? verificationMethods(settings, "register") : [];
-    const verificationUnavailable = Boolean(settings && !settings.firstUser && methods.length === 0);
-    const disabled = !settings || registrationClosed || verificationUnavailable;
-    const restrictionDescription = invitation && (registrationClosed || verificationUnavailable) ? restrictionId : undefined;
+    const identityFields = <div className={invitation ? "mc-invitation-fields" : "grid gap-4 sm:grid-cols-2"}>
+        <AuthField label="用户名">
+            <Input size="large" prefix={invitation ? undefined : <UserRound className="auth-scene-icon size-4" />} value={username} onChange={(event) => setUsername(event.target.value)} placeholder="3-32 位字符" autoComplete="username" required disabled={disabled} />
+        </AuthField>
+        <AuthField label="显示名称">
+            <Input size="large" value={displayName} onChange={(event) => setDisplayName(event.target.value)} placeholder={invitation ? "选填" : "不填则使用用户名"} disabled={disabled} />
+        </AuthField>
+    </div>;
+
+    const contactFields = settings?.firstUser ? <AuthField label="邮箱（可选）">
+        <Input
+            size="large"
+            prefix={<Mail className="auth-scene-icon size-4" />}
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            placeholder="用于登录与安全验证"
+            autoComplete="email"
+            disabled={disabled}
+        />
+    </AuthField> : <>
+        {invitation && verificationUnavailable && !registrationClosed ? <AuthField label="邮箱">
+            <Input
+                size="large"
+                type="email"
+                value={verification.email}
+                onChange={(event) => setVerification({ ...verification, email: event.target.value, ticket: "", emailCode: "", smsCode: "" })}
+                placeholder="请输入邮箱"
+                autoComplete="email"
+                disabled={disabled}
+            />
+        </AuthField> : null}
+        {methods.length > 1 && <SegmentedControl block ariaLabel="注册验证方式" options={methods.map((value) => ({ value, label: methodLabels[value] }))} value={method} disabled={submitting} onChange={(value) => { setMethod(value as VerificationMethod); setVerification({ ...emptyVerification }); }} />}
+        {methods.length > 0 && <VerificationFields key={method} purpose="register" method={method} value={verification} onChange={setVerification} disabled={disabled || submitting} invitationCode={invitation?.code} />}
+    </>;
 
     return (
         <form onSubmit={submit} className={invitation ? "mc-invitation-form" : "space-y-4"} aria-describedby={restrictionDescription}>
@@ -132,42 +190,18 @@ export default function RegisterPage() {
                     当前已关闭普通注册，请联系管理员创建账号。
                 </Notice>
             ) : null}
-            {verificationUnavailable && !registrationClosed ? (
-                <Notice icon={<TriangleAlert className="size-3.5" />} tone="amber" id={restrictionDescription} role={invitation ? "status" : undefined}>
+            {verificationUnavailable && !registrationClosed && !invitation ? (
+                <Notice icon={<TriangleAlert className="size-3.5" />} tone="amber">
                     当前没有可用的注册验证方式，请联系管理员检查短信及邮件配置。
                 </Notice>
             ) : null}
-
-            <div className={invitation ? "mc-invitation-fields" : "grid gap-4 sm:grid-cols-2"}>
-                <AuthField label="用户名">
-                    <Input size="large" prefix={<UserRound className="auth-scene-icon size-4" />} value={username} onChange={(event) => setUsername(event.target.value)} placeholder="3-32 位字符" autoComplete="username" required disabled={disabled} />
-                </AuthField>
-                <AuthField label="显示名称">
-                    <Input size="large" value={displayName} onChange={(event) => setDisplayName(event.target.value)} placeholder="不填则使用用户名" disabled={disabled} />
-                </AuthField>
-            </div>
-
-            {settings?.firstUser ? <AuthField label="邮箱（可选）">
-                <Input
-                    size="large"
-                    prefix={<Mail className="auth-scene-icon size-4" />}
-                    value={email}
-                    onChange={(event) => setEmail(event.target.value)}
-                    placeholder="用于登录与安全验证"
-                    autoComplete="email"
-                    required={!settings?.firstUser}
-                    disabled={disabled}
-                />
-            </AuthField> : <>
-                {methods.length > 1 && <SegmentedControl block ariaLabel="注册验证方式" options={methods.map((value) => ({ value, label: methodLabels[value] }))} value={method} disabled={submitting} onChange={(value) => { setMethod(value as VerificationMethod); setVerification({ ...emptyVerification }); }} />}
-                {methods.length > 0 && <VerificationFields key={method} purpose="register" method={method} value={verification} onChange={setVerification} disabled={disabled || submitting} invitationCode={invitation?.code} />}
-            </>}
+            {invitation ? <>{contactFields}{identityFields}</> : <>{identityFields}{contactFields}</>}
 
             <div className={invitation ? "mc-invitation-fields" : "grid gap-4 sm:grid-cols-2"}>
                 <AuthField label="密码">
                     <Input.Password
                         size="large"
-                        prefix={<LockKeyhole className="auth-scene-icon size-4" />}
+                        prefix={invitation ? undefined : <LockKeyhole className="auth-scene-icon size-4" />}
                         value={password}
                         onChange={(event) => setPassword(event.target.value)}
                         placeholder="至少 8 位"
@@ -179,7 +213,7 @@ export default function RegisterPage() {
                 <AuthField label="确认密码">
                     <Input.Password
                         size="large"
-                        prefix={<LockKeyhole className="auth-scene-icon size-4" />}
+                        prefix={invitation ? undefined : <LockKeyhole className="auth-scene-icon size-4" />}
                         value={confirmPassword}
                         onChange={(event) => setConfirmPassword(event.target.value)}
                         placeholder="再次输入密码"
@@ -212,10 +246,14 @@ export default function RegisterPage() {
                 </div>
             ) : null}
 
-            {submitError && <p role="alert" className="auth-scene-notice">{submitError}</p>}
+            {!invitation && submitError && <p role="alert" className="auth-scene-notice">{submitError}</p>}
             <Button type="primary" htmlType="submit" size="large" block loading={submitting} disabled={disabled || registerCountdown > 0 || !agreementAccepted} aria-describedby={restrictionDescription} icon={<ArrowRight className="size-4" />} iconPlacement="end">
-                {registerCountdown > 0 ? `${registerCountdown} 秒后可重试` : invitation ? "接受邀请并注册" : "创建账号"}
+                {registerCountdown > 0 ? `${registerCountdown} 秒后可重试` : invitation ? verificationUnavailable ? "继续注册" : "接受邀请并注册" : "创建账号"}
             </Button>
+            {invitation && (submitError || invitationRefreshError) ? <p role="alert" className="mc-invitation-action-error">
+                <span>{invitationRefreshError || submitError}</span>
+                {verificationUnavailable ? <button type="button" className="auth-scene-link" disabled={refreshingInvitation} onClick={() => void refreshInvitationSettings()}>{refreshingInvitation ? "正在检查…" : "重新检查"}</button> : null}
+            </p> : null}
             {!invitation && settings?.linuxdoEnabled && !settings.smsAndEmailRegistration ? (
                 <>
                     <Divider plain className="auth-scene-divider">

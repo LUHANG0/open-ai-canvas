@@ -47,6 +47,7 @@ import { CreationAgentEntry } from "./creation-agent-entry";
 import { createCreationSubmitGate } from "./creation-submit-gate";
 import { creationVideoConfig } from "./creation-generation-config";
 import { CreationLoginDialog } from "./creation-login-dialog";
+import { useCreationEntry, useExploreEntryScroll } from "./use-creation-entry";
 
 const AssetLibraryPickerModal = lazy(() => import("@/components/assets/asset-library-picker-modal").then((module) => ({ default: module.AssetLibraryPickerModal })));
 const InspirationHall = lazy(() => import("@/pages/inspirations"));
@@ -147,6 +148,9 @@ export default function CreatePage() {
     const composerFocusRef = useRef<HTMLTextAreaElement>(null);
     const threadScrollRef = useRef<HTMLElement>(null);
     const launchpadRef = useRef<HTMLElement>(null);
+    const exploreEntryRef = useRef<HTMLDivElement>(null);
+    const [exploreEntryPending, setExploreEntryPending] = useState(false);
+    const [exploreHallReady, setExploreHallReady] = useState(false);
     const reducedMotion = useReducedMotion();
     const [launchpadCondensed, setLaunchpadCondensed] = useState(false);
     const followLatestMessageRef = useRef(true);
@@ -905,6 +909,31 @@ export default function CreatePage() {
         setHistoryOpen(false);
     };
 
+    useCreationEntry({
+        ready: hydrated && userSessionHydrated && composerPreferencesInitialized && conversationScope === getActiveUserScope() && Boolean(activeConversation),
+        hasDraft: Boolean(prompt.trim() || attachments.length || draftReferences.length || agentMode),
+        busy: busy || referenceReplacementBusy || openingCanvas || Boolean(activeConversation?.messages.some((message) => message.role === "assistant" && message.status === "pending")),
+        onOpen: (entry) => {
+            // A landing-page entry starts a fresh draft while retaining every saved conversation.
+            if (activeConversation?.messages.length) startNewConversation();
+            if (entry.mode) selectMode(entry.mode);
+            if (entry.prompt) {
+                setPrompt(entry.prompt);
+                window.requestAnimationFrame(() => composerFocusRef.current?.focus({ preventScroll: true }));
+            }
+            setExploreEntryPending(entry.explore);
+        },
+        onBlocked: () => { toast.info("已保留当前创作，请完成当前操作或新建创作后再切换入口"); },
+    });
+
+    useExploreEntryScroll({
+        pending: exploreEntryPending,
+        ready: isEmpty && hydrated && exploreHallReady,
+        blocked: Boolean(!isEmpty || !hydrated || prompt.trim() || attachments.length || draftReferences.length || agentMode || busy || referenceReplacementBusy || openingCanvas),
+        target: exploreEntryRef,
+        onSettled: () => setExploreEntryPending(false),
+    });
+
     const continueOnCanvas = async (selectedAssetIds?: string[]) => {
         if (!activeConversation || openingCanvasRef.current) return;
         openingCanvasRef.current = true;
@@ -1177,9 +1206,11 @@ export default function CreatePage() {
                     />
                 </section>
                 <CreationRecentCanvases onRequireLogin={() => setLoginDialogOpen(true)} />
+                <div ref={exploreEntryRef} tabIndex={-1}>
                 <Suspense fallback={<div className="creation-hall-loading" role="status">正在准备灵感大厅…</div>}>
-                    <InspirationHall onUse={(item) => startPrompt(item.mode, fillablePrompt(item))} />
+                    <InspirationHall eager={exploreEntryPending} onReadyChange={setExploreHallReady} onUse={(item) => startPrompt(item.mode, fillablePrompt(item))} />
                 </Suspense>
+                </div>
                 {inspirationSourcesVisible ? <div className="creation-source-notice">
                     <details>
                         <summary>素材来源</summary>

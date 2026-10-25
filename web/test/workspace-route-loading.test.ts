@@ -115,17 +115,17 @@ describe("workspace route loading", () => {
         expect(workflow).toContain("if (playing) return <video");
     });
 
-    test("uses a quiet workspace skeleton for initial hydration", () => {
+    test("shares one loading animation between bootstrap and workspace routes", () => {
         const loader = source("../src/components/ui/aceternity/full-screen-loader.tsx");
-        const css = source("../src/styles/globals.css");
+        const css = source("../public/loading-v1.css");
 
-        expect(loader).toContain("full-screen-loader-scene");
-        expect(loader).toContain("full-screen-loader-guide");
-        expect(loader).toContain("LoadingSignal");
+        expect(loader).toContain("AppLoading");
+        expect(source("../index.html")).toContain("app-loading__frames");
+        expect(source("../src/components/ui/app-loading.tsx")).toContain("app-loading__frames");
         expect(loader).not.toContain("YINGCE STUDIO");
         expect(loader).not.toContain("loading-cue");
-        expect(css).toContain("@keyframes loading-signal-spin");
-        expect(css).toContain("@media (prefers-reduced-motion: reduce)");
+        expect(css).toContain("@keyframes app-loading-frames");
+        expect(css).toContain("prefers-reduced-motion:reduce");
         expect(css).not.toContain("@keyframes loading-cue-pulse");
     });
 });

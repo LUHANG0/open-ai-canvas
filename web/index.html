@@ -7,6 +7,8 @@
         <!-- 梦层内置身份用于首次加载；运营自定义外观解析后会更新 metadata 与 favicon。 -->
         <link rel="icon" type="image/svg+xml" href="/logo.svg?v=mengceng-portal" />
         <title>梦层 MengCeng</title>
+        <link rel="stylesheet" href="/loading-v1.css" />
+        <link rel="preload" href="/brand/fonts/glow-sc-medium-core.woff2" as="font" type="font/woff2" crossorigin />
         <style>
             /* Fix layer order before production chunks can register utilities ahead of base. */
             @layer theme, base, components, utilities;
@@ -15,43 +17,6 @@
             body {
                 margin: 0;
                 background: #ffffff;
-            }
-            #root:empty {
-                min-height: 100vh;
-            }
-            #root:empty::before {
-                content: "";
-                position: fixed;
-                left: 50%;
-                top: 50%;
-                width: 12px;
-                height: 12px;
-                margin: -6px 0 0 -6px;
-                background: rgba(255, 255, 255, 0.84);
-                border-radius: 999px;
-                box-shadow: 0 0 0 7px rgba(255, 255, 255, 0.08);
-                animation: appearance-bootstrap-pulse 1.8s ease-in-out infinite;
-            }
-            #root:empty::after {
-                content: "";
-                position: fixed;
-                left: 50%;
-                top: 50%;
-                width: 82px;
-                height: 82px;
-                margin: -42px 0 0 -42px;
-                border: 1px solid rgba(255, 255, 255, 0.14);
-                border-right-color: transparent;
-                border-radius: 999px;
-                animation: appearance-bootstrap-orbit 2.8s linear infinite;
-            }
-            @keyframes appearance-bootstrap-pulse { 0%, 100% { opacity: .62; transform: scale(.82); } 50% { opacity: 1; transform: scale(1.08); } }
-            @keyframes appearance-bootstrap-orbit { to { transform: rotate(360deg); } }
-            @media (prefers-reduced-motion: reduce) {
-                #root:empty::before,
-                #root:empty::after {
-                    animation: none;
-                }
             }
         </style>
         <script>
@@ -64,7 +29,8 @@
         </script>
     </head>
     <body class="bg-background text-foreground antialiased" style="background:#ffffff">
-        <div id="root"></div>
+        <div id="root"><div class="app-loading app-loading--screen app-loading--boot" role="status" aria-label="正在准备画面"><div class="app-loading__content"><span class="app-loading__frames" aria-hidden="true"><i></i><i></i><i></i></span><div class="app-loading__copy"><span class="app-loading__label">正在准备画面</span></div><span class="app-loading__track" aria-hidden="true"></span></div></div></div>
+        <script>if (/^\/(?:login|register|forgot-password|i(?:\/.*)?)?\/?$/.test(location.pathname)) document.querySelector('.app-loading').classList.add('app-loading--brand');</script>
         <script type="module" src="/src/main.tsx"></script>
     </body>
 </html>
