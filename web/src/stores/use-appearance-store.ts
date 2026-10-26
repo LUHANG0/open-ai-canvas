@@ -114,9 +114,14 @@ export function applyAppearanceMetadata(appearance: PublicAppearance, targetDocu
         favicon.rel = "icon";
         targetDocument.head.appendChild(favicon);
     }
-    favicon.href = appearance.logoConfigured ? appearanceLogoURL(appearance, targetDocument.documentElement.classList.contains("dark") ? "dark" : "light") : "/logo.svg?v=mengceng-portal";
-    if (appearance.logoConfigured) favicon.removeAttribute("type");
-    else favicon.type = "image/svg+xml";
+    favicon.href = appearance.logoConfigured ? appearanceLogoURL(appearance, targetDocument.documentElement.classList.contains("dark") ? "dark" : "light") : "/favicon.png";
+    if (appearance.logoConfigured) {
+        favicon.removeAttribute("type");
+        favicon.removeAttribute("sizes");
+    } else {
+        favicon.type = "image/png";
+        favicon.setAttribute("sizes", "192x192");
+    }
 
     const location = targetDocument.defaultView?.location;
     if (location && (location.protocol === "http:" || location.protocol === "https:")) {

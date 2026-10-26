@@ -54,15 +54,17 @@ test("built-in marks stay colorful while configured logos keep their own source 
     }
 });
 
-test("metadata versions the built-in favicon without forcing SVG on custom images", () => {
+test("metadata uses the crawlable PNG favicon without forcing its type or dimensions on custom images", () => {
     const dom = new Window({ url: "http://localhost/" });
     try {
         applyAppearanceMetadata(normalizePublicAppearance({ logoConfigured: false }), dom.document as unknown as Document);
         const icon = dom.document.querySelector<HTMLLinkElement>('link[rel="icon"]')!;
-        expect(icon.href).toContain("/logo.svg?v=mengceng-portal");
-        expect(icon.type).toBe("image/svg+xml");
+        expect(icon.href).toBe("http://localhost/favicon.png");
+        expect(icon.type).toBe("image/png");
+        expect(icon.getAttribute("sizes")).toBe("192x192");
         applyAppearanceMetadata(normalizePublicAppearance({ logoConfigured: true, logoUrl: "/custom.png" }), dom.document as unknown as Document);
         expect(icon.href).toBe("http://localhost/custom.png");
         expect(icon.getAttribute("type")).toBeNull();
+        expect(icon.getAttribute("sizes")).toBeNull();
     } finally { dom.happyDOM.abort(); }
 });

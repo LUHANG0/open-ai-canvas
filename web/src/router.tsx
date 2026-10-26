@@ -35,6 +35,7 @@ const LoginLogsPage = lazy(() => import("@/pages/admin/login-logs/login-logs-pag
 const RedemptionCodesPage = lazy(() => import("@/pages/admin/redemption-codes/redemption-codes-page"));
 const RuntimePolicySettingsPage = lazy(() => import("@/pages/admin/settings/runtime-policy-settings-page"));
 const AppearanceSettingsPage = lazy(() => import("@/pages/admin/settings/appearance-settings-page"));
+const SEOSettingsPage = lazy(() => import("@/pages/admin/settings/seo-settings-page"));
 const DrawingEngineSettingsPage = lazy(() => import("@/pages/admin/settings/drawing-engine-settings-page"));
 const StorageSettingsPage = lazy(() => import("@/pages/admin/settings/storage-settings-page"));
 const ArkPrivateAssetsSettingsPage = lazy(() => import("@/pages/admin/settings/ark-private-assets-settings-page"));
@@ -240,6 +241,7 @@ export const router = createBrowserRouter([
                     { path: "logs", element: <LogsPage /> },
                     { path: "settings", element: <Navigate to="runtime-policy" replace /> },
                     { path: "settings/appearance", element: <AppearanceSettingsPage /> },
+                    { path: "settings/seo", element: <SEOSettingsPage /> },
                     { path: "settings/brand-site", element: <BrandSiteSettingsPage /> },
                     { path: "settings/drawing-engine", element: <DrawingEngineSettingsPage /> },
                     { path: "settings/concurrency", element: <Navigate to="/admin/settings/runtime-policy" replace /> },

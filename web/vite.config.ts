@@ -22,6 +22,24 @@ export default defineConfig({
     },
     server: {
         proxy: {
+            "/sitemap.xml": {
+                target: apiProxyTarget,
+                rewrite: () => "/api/public/site/sitemap.xml",
+            },
+            "/robots.txt": {
+                target: apiProxyTarget,
+                rewrite: () => "/api/public/site/robots.txt",
+            },
+            "/features": {
+                target: apiProxyTarget,
+                changeOrigin: true,
+                rewrite: (path) => "/api/public/site/render?path=" + encodeURIComponent(path.split("?")[0]),
+            },
+            "/tutorials": {
+                target: apiProxyTarget,
+                changeOrigin: true,
+                rewrite: (path) => "/api/public/site/render?path=" + encodeURIComponent(path.split("?")[0]),
+            },
             "/api": {
                 target: apiProxyTarget,
                 changeOrigin: true,

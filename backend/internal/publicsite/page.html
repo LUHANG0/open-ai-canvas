@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="zh-CN"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{.Title}}｜{{.Brand}} MengCeng</title>
+<meta name="description" content="{{.Description}}"><meta name="robots" content="index,follow">
+<link rel="canonical" href="{{.Canonical}}"><link rel="icon" href="/favicon.png" type="image/png" sizes="192x192">
+<meta property="og:type" content="{{if eq .Kind "tutorial"}}article{{else}}website{{end}}"><meta property="og:locale" content="zh_CN">
+<meta property="og:title" content="{{.Title}}｜{{.Brand}}"><meta property="og:description" content="{{.Description}}"><meta property="og:url" content="{{.Canonical}}"><meta property="og:image" content="{{.Origin}}{{.Image}}"><meta property="og:image:alt" content="{{.ImageAlt}}">
+<meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="{{.Title}}"><meta name="twitter:description" content="{{.Description}}"><meta name="twitter:image" content="{{.Origin}}{{.Image}}">
+<link rel="preload" href="/brand/fonts/glow-sc-medium-core.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/api/public/site/assets/site.css?v={{.AssetVersion}}">
+<script type="application/ld+json">{{.Schema}}</script>
+<script defer src="/api/public/site/assets/site.js?v={{.AssetVersion}}"></script>
+</head><body class="mc-public">
+<a class="skip" href="#main">跳到正文</a>
+<header class="site-nav frame"><a class="wordmark" href="/"><img src="/logo.svg" width="28" height="28" alt=""><span>{{.Brand}} MengCeng</span></a><nav aria-label="官网导航"><a href="/features" {{if eq .Parent "/features"}}aria-current="location"{{end}}>产品功能</a><a href="/tutorials" {{if eq .Parent "/tutorials"}}aria-current="location"{{end}}>创作教程</a><a class="button" href="{{.Action}}">开始创作</a></nav></header>
+<main id="main" tabindex="-1">
+<figure class="masthead frame"><div class="image-window"><img class="hero-image" src="{{.Image}}" alt="{{.ImageAlt}}" width="1600" height="700" fetchpriority="high"></div><figcaption>{{.ImageAlt}}</figcaption></figure>
+<section class="page-opening frame" aria-labelledby="page-title"><div class="opening-note"><a href="{{.Parent}}">{{.ParentName}}</a><p>从一个想法，<br>推进到下一幕。</p>{{if ne .Kind "index"}}<p class="updated">更新于 <time datetime="{{.UpdatedAt.Format "2006-01-02T15:04:05Z07:00"}}">{{.UpdatedAt.Format "2006 年 01 月 02 日"}}</time></p>{{end}}</div><div class="opening-copy"><h1 id="page-title">{{.Heading}}</h1><p class="standfirst">{{.Description}}</p>{{range .Intro}}<p>{{.}}</p>{{end}}<a class="button" href="{{.Action}}">{{.ActionLabel}} <span aria-hidden="true">↗</span></a></div></section>
+{{if .Sections}}<nav class="contents frame" aria-label="本文目录"><h2>这一页的创作方法</h2><div>{{range .Sections}}<a href="#{{.ID}}">{{.Title}} <span aria-hidden="true">↘</span></a>{{end}}<a href="#try-prompt">试写一个镜头 <span aria-hidden="true">↘</span></a></div></nav>{{end}}
+{{range .Sections}}<section class="reading-section frame" id="{{.ID}}" aria-labelledby="heading-{{.ID}}"><h2 id="heading-{{.ID}}">{{.Title}}</h2><div class="section-body">{{range .Paragraphs}}<p>{{.}}</p>{{end}}{{if .Steps}}<ol>{{range .Steps}}<li>{{.}}</li>{{end}}</ol>{{end}}{{if .Example}}<div class="example"><h3>带到工作台的描述</h3><p class="example-copy">{{.Example}}</p><button class="text-button" type="button" data-copy-example>复制这段描述</button><span class="copy-status" role="status" aria-live="polite"></span></div>{{end}}</div></section>{{end}}
+{{if ne .Kind "index"}}<section class="prompt-section" id="try-prompt" aria-labelledby="prompt-heading"><div class="frame prompt-layout"><div><h2 id="prompt-heading">试写一个镜头</h2><p>把人物、动作和镜头的关系写清楚，<br>再带到工作台继续。</p></div><div><noscript><p>启用 JavaScript 后可在这里整理描述；上方示例可以直接选取。</p></noscript><form data-prompt-composer hidden><label>画面主体<input name="subject" value="清晨站台上的旅人" maxlength="120"></label><label>一个连续动作<input name="action" value="听见列车后缓慢抬头" maxlength="120"></label><label>摄影机运动<select name="camera"><option>中景，摄影机缓慢靠近</option><option>远景，摄影机保持固定</option><option>近景，摄影机轻微跟随</option></select></label><button class="button" type="submit">整理镜头描述</button></form><p class="prompt-result" data-prompt-result role="status" aria-live="polite">清晨站台上的旅人，听见列车后缓慢抬头。中景，摄影机缓慢靠近。保持动作连贯，让观众看清这一刻的变化。</p><p>这里用于组织文字；进入工作台后选择模型、核对参数并提交生成。</p></div></div></section>{{end}}
+{{if .FAQ}}<section class="reading-section frame faq-section" aria-labelledby="faq-heading"><h2 id="faq-heading">开始前的几个问题</h2><div>{{range .FAQ}}<details><summary>{{.Question}}</summary><p>{{.Answer}}</p></details>{{end}}</div></section>{{end}}
+<section class="related-section frame" aria-labelledby="related-heading"><h2 id="related-heading">{{if eq .Kind "index"}}{{.ParentName}}{{else}}接着读，接着创作{{end}}</h2><div class="reading-list">{{range .RelatedPages}}<a href="{{.Path}}"><div><h3>{{.Title}}</h3><p>{{.Description}}</p></div><span aria-hidden="true">↗</span></a>{{end}}</div></section>
+<section class="closing"><div class="frame"><h2>把这一幕，<br>交给你的创作。</h2><a class="button" href="{{.Action}}">{{.ActionLabel}} <span aria-hidden="true">↗</span></a><p>登录方式、功能与生成价格以工作台当前显示为准。</p></div></section>
+</main><footer class="frame site-footer"><a class="footer-name" href="/">{{.Brand}} MengCeng</a><nav aria-label="页尾导航"><a href="/features">产品功能</a><a href="/tutorials">创作教程</a><a href="/">返回官网首页</a></nav></footer>
+</body></html>

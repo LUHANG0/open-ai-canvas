@@ -190,6 +190,7 @@ func (s *Service) StartWorker() {
 	s.startResourceDeletionWorker(ctx)
 	s.startSkillSyncWorker(ctx)
 	s.startPaymentWorker(ctx)
+	s.startSEOWorker(ctx)
 	s.startBillingAutoRefundWorker()
 	go s.syncAgentSessionLimit()
 	s.runWorkerLoop(func(ctx context.Context) {

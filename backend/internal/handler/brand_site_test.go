@@ -25,10 +25,11 @@ func TestBrandSitePublicRoutesNeverExposeDraft(t *testing.T) {
 		t.Fatal(err)
 	}
 	svc := service.New(repository.New(db), t.TempDir())
-	content, err := svc.PublicBrandSite()
+	draftState, err := svc.AdminBrandSite(&model.User{ID: "test-admin", Role: model.UserRoleAdmin})
 	if err != nil {
 		t.Fatal(err)
 	}
+	content := &draftState.Draft
 	content.Title = "private-draft-sentinel"
 	content.Sections[0].Visible = false
 	content.Sections[0].Title = "hidden-section-sentinel"

@@ -7,10 +7,12 @@
             document.documentElement.classList.add("app-initializing");
             if (/^\/(?:login|register|forgot-password|i(?:\/.*)?)?\/?$/.test(location.pathname)) document.documentElement.classList.add("app-boot-brand");
         </script>
+        <!--# block name="brand_default_head" -->
         <meta name="description" content="梦层 MengCeng，面向独立创作者与小型团队的 AI 影像创作工作台。" />
-        <!-- 梦层内置身份用于首次加载；运营自定义外观解析后会更新 metadata 与 favicon。 -->
-        <link rel="icon" type="image/svg+xml" href="/logo.svg?v=mengceng-portal" />
         <title>梦层 MengCeng</title>
+        <link rel="icon" type="image/png" sizes="192x192" href="/favicon.png" />
+        <!--# endblock -->
+        <!--# include virtual="/_brand-seo/head" stub="brand_default_head" -->
         <link rel="stylesheet" href="/loading-v1.css" />
         <link rel="preload" href="/brand/fonts/glow-sc-medium-core.woff2" as="font" type="font/woff2" crossorigin />
         <style>
@@ -41,8 +43,15 @@
     </head>
     <body class="bg-background text-foreground antialiased" style="background:#ffffff">
         <div id="app-boot-screen" class="app-loading app-loading--screen" role="status" aria-label="正在准备画面"><div class="app-loading__content"><span class="app-loading__frames" aria-hidden="true"><i></i><i></i><i></i></span><div class="app-loading__copy"><span class="app-loading__label">正在准备画面</span></div><span class="app-loading__track" aria-hidden="true"></span></div></div>
-        <div id="root"><div class="app-loading app-loading--screen app-loading--boot" role="status" aria-label="正在准备画面"><div class="app-loading__content"><span class="app-loading__frames" aria-hidden="true"><i></i><i></i><i></i></span><div class="app-loading__copy"><span class="app-loading__label">正在准备画面</span></div><span class="app-loading__track" aria-hidden="true"></span></div></div></div>
-        <script>if (/^\/(?:login|register|forgot-password|i(?:\/.*)?)?\/?$/.test(location.pathname)) document.querySelector('.app-loading').classList.add('app-loading--brand');</script>
+        <div id="root">
+            <!--# block name="brand_empty_body" --><!--# endblock -->
+            <!--# if expr="$canvas_seo_home = 1" -->
+            <!--# include virtual="/_brand-seo/body" stub="brand_empty_body" -->
+            <!--# else -->
+            <div class="app-loading app-loading--screen app-loading--boot" role="status" aria-label="正在准备画面"><div class="app-loading__content"><span class="app-loading__frames" aria-hidden="true"><i></i><i></i><i></i></span><div class="app-loading__copy"><span class="app-loading__label">正在准备画面</span></div><span class="app-loading__track" aria-hidden="true"></span></div></div>
+            <!--# endif -->
+        </div>
+        <script>if (/^\/(?:login|register|forgot-password|i(?:\/.*)?)?\/?$/.test(location.pathname)) document.querySelector('.app-loading')?.classList.add('app-loading--brand');</script>
         <script type="module" src="/src/main.tsx"></script>
     </body>
 </html>

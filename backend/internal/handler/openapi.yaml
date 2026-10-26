@@ -849,6 +849,136 @@ paths:
           description: 对象并发冲突、同一 mutationId 对应的请求摘要不同或编辑证明失效（reason 为 canvas_edit_lease_conflict）；原事务不会被覆盖
         "428":
           description: 缺少执行所需的对象基线
+  /public/site/render:
+    get:
+      security: []
+      summary: 服务端渲染已发布的功能页或教程
+      parameters:
+        - in: query
+          name: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: 完整 HTML，含 canonical、分享元数据与结构化数据
+          content:
+            text/html:
+              schema: { type: string }
+        '404':
+          description: 未发布或不存在的路径，noindex
+  /public/site/assets/{name}:
+    get:
+      security: []
+      summary: 公开阅读页的样式与渐进增强脚本
+      parameters:
+        - in: path
+          name: name
+          required: true
+          schema: { type: string, enum: [site.css, site.js] }
+      responses:
+        '200': { description: CSS 或 JavaScript }
+        '404': { description: 不存在的资源 }
+  /public/site/sitemap.xml:
+    get:
+      security: []
+      summary: 从已发布目录和公开首页生成 sitemap
+      responses:
+        '200':
+          description: 去重后的公开 URL 与真实内容更新时间
+          content:
+            application/xml:
+              schema: { type: string }
+  /public/site/robots.txt:
+    get:
+      security: []
+      summary: 使用显式配置域名的抓取指引
+      responses:
+        '200':
+          description: robots.txt
+          content:
+            text/plain:
+              schema: { type: string }
+  /public/site/indexnow-key:
+    get:
+      security: []
+      summary: 仅返回当前本站 IndexNow 验证文件
+      parameters:
+        - in: query
+          name: file
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: 当前验证文件正文 }
+        '404': { description: 文件名不匹配 }
+  /admin/settings/seo:
+    get:
+      summary: 管理员读取公开页面与收录状态（密钥只返回是否已配置）
+      responses:
+        '200': { description: setting 含 revision、启用状态、pages、jobs 和 providerNotBefore }
+        '401': { description: 未登录 }
+        '403': { description: 非管理员 }
+    patch:
+      summary: 管理员按 revision 保存加密收录配置并写入脱敏审计
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [revision, enabled, baiduEnabled, indexNowEnabled, googleSitemapRegistered]
+              properties:
+                revision: { type: integer, format: int64 }
+                enabled: { type: boolean }
+                baiduEnabled: { type: boolean }
+                baiduAllowHTTP: { type: boolean, default: false, description: 显式允许向百度官方 HTTP 接口明文传送推送密钥；默认 HTTPS 且不自动降级 }
+                indexNowEnabled: { type: boolean }
+                googleSitemapRegistered: { type: boolean }
+                baiduToken: { type: string, writeOnly: true, maxLength: 256, description: 空值保留原密钥 }
+                clearBaiduToken: { type: boolean, description: 显式清除原密钥 }
+      responses:
+        '200': { description: 已保存的脱敏 setting }
+        '400': { description: 参数无效或请求超过 4 KiB }
+        '401': { description: 未登录 }
+        '403': { description: 非管理员 }
+        '409': { description: revision 冲突 }
+  /admin/settings/seo/check:
+    post:
+      summary: 管理员安排一次有界收录检查
+      responses:
+        '200': { description: scheduled=true，仅表示安排检查，不代表平台已接受 }
+        '401': { description: 未登录 }
+        '403': { description: 非管理员 }
+        '409': { description: 服务正在停止 }
+  /public/brand-site/html/head:
+    get:
+      tags: [meta]
+      security: []
+      summary: 读取官网公开 SEO HTML 片段
+      description: text/html，no-store；取当前公开外观配置，供首页 SSI 使用，所有文案经 HTML 转义。
+      responses:
+        "200":
+          description: 标题、描述及分享元数据 HTML
+          content:
+            text/html:
+              schema:
+                type: string
+        "500":
+          description: 外观配置读取失败
+  /public/brand-site/html/body:
+    get:
+      tags: [meta]
+      security: []
+      summary: 读取官网已发布内容的语义 HTML
+      description: text/html，no-store；仅正式发布且可见的正文，不含草稿、上一版或私有媒体。供首页 SSI 使用。
+      responses:
+        "200":
+          description: 已发布正文 HTML
+          content:
+            text/html:
+              schema:
+                type: string
+        "500":
+          description: 发布内容读取失败
   /public/brand-site:
     get:
       tags: [meta]

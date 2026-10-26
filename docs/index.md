@@ -69,6 +69,7 @@
 ## 按约定维护的文档（`docs/content/docs/`）
 
 - [梦层品牌官网与发布](content/docs/backend/mengceng-brand-site.mdx)：根入口、品牌内容、草稿隔离、原子发布与上一版恢复。
+- [梦层官网 SEO](content/docs/backend/mengceng-seo.mdx)：线上检查证据、爬虫入口、CMS 渲染边界、公开功能页与站长平台验收。
 
 功能、代码地图、待办、待测试分别维护在以下页面；尚未建立的专题会在对应任务中补齐：
 

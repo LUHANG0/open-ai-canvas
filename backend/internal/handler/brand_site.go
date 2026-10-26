@@ -8,6 +8,8 @@ import (
 )
 
 func registerBrandSiteRoutes(r *gin.RouterGroup, svc *service.Service) {
+	registerBrandSiteHTMLRoutes(r, svc)
+	registerPublicSiteRoutes(r, svc)
 	r.GET("/public/brand-site", func(c *gin.Context) {
 		value, err := svc.PublicBrandSite()
 		if err != nil {
