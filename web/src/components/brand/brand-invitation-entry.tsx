@@ -51,10 +51,11 @@ export function BrandInvitationEntry({ validateCode, onAccepted, signal }: Props
             if (current === request.current) { submitting.current = false; setPending(false); }
         }
     };
-    return <form onSubmit={submit} className="mc-invitation-entry space-y-5" aria-busy={pending}>
-        <div className="space-y-2">
+    return <form onSubmit={submit} className="mc-invitation-entry" aria-busy={pending}>
+        <div className="mc-invitation-code-field">
             <label htmlFor={id} className="auth-scene-label text-sm font-medium">邀请码</label>
-            <Input id={id} size="large" value={code} onChange={(event) => { setCode(event.target.value); setFeedback(undefined); }} placeholder="请输入 6 位邀请码" autoComplete="off" autoCapitalize="none" spellCheck={false} minLength={6} maxLength={6} pattern="[A-Za-z0-9]{6}" required disabled={pending} status={feedback && !feedback.retry ? "error" : undefined} aria-invalid={feedback && !feedback.retry ? true : undefined} aria-describedby={feedback ? `${id}-feedback` : undefined} />
+            <Input id={id} size="large" value={code} onChange={(event) => { setCode(event.target.value); setFeedback(undefined); }} placeholder="输入邀请码" autoComplete="off" autoCapitalize="none" spellCheck={false} minLength={6} maxLength={6} pattern="[A-Za-z0-9]{6}" required disabled={pending} status={feedback && !feedback.retry ? "error" : undefined} aria-invalid={feedback && !feedback.retry ? true : undefined} aria-describedby={`${id}-hint${feedback ? ` ${id}-feedback` : ""}`} />
+            <p id={`${id}-hint`} className="mc-invitation-code-hint"><span>6 位字母或数字 · 区分大小写</span></p>
         </div>
         {feedback && <p id={`${id}-feedback`} className="mc-invitation-feedback" role="alert">{feedback.message}</p>}
         <Button type="primary" htmlType="submit" size="large" block loading={pending} icon={<ArrowRight className="size-4" />} iconPlacement="end">{pending ? "正在验证邀请" : feedback?.retry ? "重新验证" : "验证邀请"}</Button>

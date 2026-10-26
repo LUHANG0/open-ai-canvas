@@ -2,8 +2,8 @@
 
 import { type GenerationTask } from "@/services/api/task-center";
 import { generationTaskStageLabel, generationTaskStatusLabel, isGenerationTaskSubmissionUncertain } from "@/lib/generation-task-display";
-import { AlertCircle, Clock3, Download, FileText, RefreshCw } from "lucide-react";
-import { Image as ImageIcon, Music2, Video } from "lucide-react";
+import { Clock3, Download, FileText, RefreshCw } from "lucide-react";
+import { GenerationActivity } from "@/components/ai/generation-activity";
 import { useRef, useSyncExternalStore, type CSSProperties } from "react";
 import { formatTaskElapsed, idleTaskTickerSubscribe, subscribeTaskTicker, taskTickerSnapshot } from "@/lib/canvas/task-ticker";
 import { CONTENT_MODERATION_ERROR_CODE, generationErrorMessage, isContentModerationError } from "@/lib/generation-error";
@@ -15,14 +15,13 @@ export function LoadingContent({ node, theme, onOpenTaskDetails, disableMediaEff
     const taskId = node.metadata?.taskId;
     const presentation = canvasLoadingPresentation(node);
     const elapsed = useTaskElapsed(presentation.startedAt, presentation.completedAt, presentation.terminal);
-    const Icon = presentation.uncertain ? AlertCircle : node.type === "video" ? Video : node.type === "audio" ? Music2 : node.type === "image" ? ImageIcon : FileText;
     return (
         <div className="canvas-generation-status" data-active={presentation.active} data-reduced-motion={disableMediaEffects} style={{
             "--generation-surface": theme.node.fill, "--generation-ink": theme.node.text, "--generation-muted": theme.node.muted,
             "--generation-stroke": theme.node.stroke, "--generation-placeholder": theme.toolbar.itemHover, "--generation-signal": theme.node.activeStroke,
         } as CSSProperties}>
             <div className="canvas-generation-visual" aria-hidden="true" aria-busy={presentation.active}>
-                <div className="canvas-generation-placeholder"><Icon /><span className="canvas-generation-signal" /></div>
+                <GenerationActivity active={presentation.active} reduced={disableMediaEffects} />
             </div>
             <div className="canvas-generation-feedback" data-canvas-no-zoom data-canvas-wheel-scroll onWheel={(event) => event.stopPropagation()}>
                 <div role="status" aria-live="polite" aria-atomic="true" className="canvas-generation-message">
@@ -88,7 +87,8 @@ export function ErrorContent({ node, theme, onRetry, onReloadResource }: Pick<Ca
     };
     const submissionUncertain = isGenerationTaskSubmissionUncertain(errorDisplayTask);
     return (
-        <div className="flex max-w-[260px] flex-col items-center gap-3 px-5 text-center">
+        <div className="canvas-generation-failure" style={{ color: theme.node.text, "--generation-stroke": theme.node.stroke, "--generation-muted": theme.node.muted } as CSSProperties}>
+            <strong>{submissionUncertain ? "正在确认任务状态" : "本次生成未完成"}</strong>
             <div className="text-xs leading-5" style={{ color: submissionUncertain ? theme.node.text : theme.accent.danger }}>
                 {submissionUncertain ? generationTaskStatusLabel(errorDisplayTask) : generationErrorMessage(node.metadata?.errorDetails)}
             </div>

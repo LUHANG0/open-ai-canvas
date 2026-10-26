@@ -34,7 +34,8 @@ const { AuthScene } = await import("../src/pages/auth/auth-scene");
 function Position() { const location = useLocation(); return <output data-location>{location.pathname + location.search + location.hash}</output>; }
 async function fixture() {
     const host = document.createElement("div"); document.body.append(host); const root = createRoot(host); let closed = 0;
-    await act(async () => root.render(<MemoryRouter><Position /><Dialog next="/skills?view=all#catalog" onClosed={() => closed++} /></MemoryRouter>));
+    // Match the real route owner: leaving authentication unmounts its dialog.
+    await act(async () => root.render(<MemoryRouter><Position /><Routes><Route path="/" element={<Dialog next="/skills?view=all#catalog" onClosed={() => closed++} />} /><Route path="*" element={null} /></Routes></MemoryRouter>));
     return { host, closed: () => closed, click: async (text: string) => { const button = [...host.querySelectorAll("button")].find((node) => node.textContent === text)!; await act(async () => button.click()); }, close: async () => { await act(async () => root.unmount()); host.remove(); } };
 }
 afterAll(() => { mock.restore(); dom.happyDOM.abort(); for (const [key, descriptor] of originals) { if (descriptor) Object.defineProperty(globalThis, key, descriptor); else Reflect.deleteProperty(globalThis, key); } });
@@ -193,23 +194,45 @@ test("closed public registration uses the invitation entry without mounting the 
     let normalRegisterLoads = 0; registerLoad = () => { normalRegisterLoads++; return Promise.resolve({ default: Register }); };
     const f = await fixture();
     try {
-        expect(f.host.querySelectorAll('[role="tab"]')[1].textContent).toBe("内测用户邀请");
-        await f.click("内测用户邀请"); await act(async () => { await import("../src/components/brand/brand-invitation-entry"); });
-        expect(f.host.querySelector("h2")?.textContent).toBe("加入梦层");
-        expect(f.host.textContent).toContain("凭邀请加入，开启你的下一幕。");
+        expect(f.host.querySelectorAll('[role="tab"]')[1].textContent).toBe("受邀加入");
+        await f.click("受邀加入"); await act(async () => { await import("../src/components/brand/brand-invitation-entry"); });
+        expect(f.host.querySelector("h2")?.textContent).toBe("受邀加入梦层");
+        expect(f.host.textContent).toContain("梦层目前采用邀请制。输入邀请码，加入创作。");
         expect(f.host.querySelector('input[maxlength="6"]')).not.toBeNull();
         expect(f.host.querySelector('form[aria-label="创建账号"]')).toBeNull();
         expect(f.host.textContent).not.toContain("关闭普通注册"); expect(normalRegisterLoads).toBe(0);
         await f.click("登录"); expect(f.host.querySelector('form[aria-label="密码登录"]')).not.toBeNull();
     } finally { registrationSettings = Promise.resolve({ registrationEnabled: true }); registerLoad = () => Promise.resolve({ default: Register }); await f.close(); }
 });
-test("unknown or failed public policy never exposes a guessed registration state and can retry", async () => {
-    let reject!: (error: Error) => void; registrationSettings = new Promise((_, fail) => { reject = fail; });
+test("login stays usable without an actionable guessed registration entry until policy resolves", async () => {
+    const { promise, resolve } = Promise.withResolvers<{ registrationEnabled: boolean }>();
+    registrationSettings = promise;
     const f = await fixture();
     try {
-        expect(f.host.querySelectorAll('[role="tab"]')[1].textContent).toBe("注册入口");
-        await f.click("注册入口"); await act(async () => reject(new Error("offline")));
-        expect(f.host.querySelector('[role="alert"]')?.textContent).toContain("暂时无法读取注册设置");
+        const register = f.host.querySelectorAll<HTMLButtonElement>('[role="tab"]')[1];
+        expect(register.disabled).toBe(true);
+        expect(f.host.querySelector('form[aria-label="密码登录"]')).not.toBeNull();
+        await act(async () => register.click());
+        await act(async () => resolve({ registrationEnabled: false }));
+        expect(register.disabled).toBe(false);
+        expect(f.host.querySelector('form[aria-label="密码登录"]')).not.toBeNull();
+        expect(f.host.querySelector(".mc-invitation-entry")).toBeNull();
+        await act(async () => register.click());
+        // The dialog intentionally lazy-loads invitation forms; wait for that boundary.
+        await act(async () => { await import("../src/components/brand/brand-invitation-entry"); });
+        expect(f.host.querySelector('input[maxlength="6"]')).not.toBeNull();
+    } finally { registrationSettings = Promise.resolve({ registrationEnabled: true }); await f.close(); }
+});
+test("unknown or failed public policy never exposes a guessed registration state and can retry", async () => {
+    const { promise, reject } = Promise.withResolvers<{ registrationEnabled: boolean }>(); registrationSettings = promise;
+    const f = await fixture();
+    try {
+        expect(f.host.querySelectorAll<HTMLButtonElement>('[role="tab"]')[1].disabled).toBe(true);
+        await act(async () => reject(new Error("offline")));
+        const retry = f.host.querySelectorAll<HTMLButtonElement>('[role="tab"]')[1];
+        expect(retry.disabled).toBe(false);
+        await act(async () => retry.click());
+        expect(f.host.querySelector('[role="alert"]')).not.toBeNull();
         expect(f.host.querySelector('form[aria-label="创建账号"]')).toBeNull();
         registrationSettings = Promise.resolve({ registrationEnabled: false }); await f.click("重新加载");
         await act(async () => { await import("../src/components/brand/brand-invitation-entry"); });
@@ -223,7 +246,7 @@ test("clicking close immediately aborts invitation validation during retained ex
     registrationSettings = Promise.resolve({ registrationEnabled: false }); retainExitContent = true;
     const f = await fixture();
     try {
-        await f.click("内测用户邀请"); await act(async () => { await import("../src/components/brand/brand-invitation-entry"); });
+        await f.click("受邀加入"); await act(async () => { await import("../src/components/brand/brand-invitation-entry"); });
         const input = f.host.querySelector("input")!;
         await act(async () => { Object.getOwnPropertyDescriptor(dom.HTMLInputElement.prototype, "value")!.set!.call(input, "Ab3xY9"); input.dispatchEvent(new dom.Event("input", { bubbles: true })); });
         await act(async () => f.host.querySelector("form")!.dispatchEvent(new dom.Event("submit", { bubbles: true, cancelable: true })));

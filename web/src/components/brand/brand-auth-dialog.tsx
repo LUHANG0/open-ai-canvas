@@ -9,6 +9,7 @@ import { brandStudioLabel, useAppearanceStore } from "@/stores/use-appearance-st
 import { AuthFormPending } from "@/pages/auth/auth-form-pending";
 import { useAuthReducedMotion } from "@/pages/auth/use-auth-motion";
 import { BrandLogo } from "./brand-logo";
+import BrandAuthShowcase from "./brand-auth-showcase";
 import { clearAuthNavigation } from "@/lib/auth-navigation";
 import { BrandAuthFlow, type BrandAuthMode } from "./brand-auth-entry";
 import "@/pages/auth/auth-scene.css";
@@ -17,36 +18,6 @@ import "./brand-auth-dialog.css";
 const loaders = { login: loadLoginPage, register: loadRegisterPage, "forgot-password": loadForgotPasswordPage, invitation: loadInvitationPage };
 const loadInvitationEntry = () => import("./brand-invitation-entry");
 const tabs = ["login", "register"] as const;
-function AuthShowcase() {
-    const video = useRef<HTMLVideoElement>(null);
-    const reduced = useAuthReducedMotion();
-    const [paused, setPaused] = useState(false);
-    const [failed, setFailed] = useState(false);
-    const [playing, setPlaying] = useState(false);
-    const [manualPlay, setManualPlay] = useState(false);
-    useEffect(() => {
-        const element = video.current;
-        if (!element || failed) return;
-        let visible = element.getClientRects().length > 0;
-        const sync = () => {
-            if (paused || (reduced && !manualPlay) || document.hidden || !visible) element.pause();
-            else void element.play().catch(() => setPlaying(false));
-        };
-        const observer = typeof IntersectionObserver === "undefined" ? null : new IntersectionObserver(([entry]) => { visible = entry.isIntersecting; sync(); });
-        observer?.observe(element);
-        document.addEventListener("visibilitychange", sync);
-        sync();
-        return () => { observer?.disconnect(); document.removeEventListener("visibilitychange", sync); element.pause(); };
-    }, [paused, reduced, failed, manualPlay]);
-    return <aside className="mc-auth-showcase" aria-label="创作灵感">
-        {failed ? <img src="https://image01-aliyun.vidu.zone/vidu/media-asset/S12-6c353cae.webp" alt="AI 影像创作示意" /> : <video ref={video} src="https://image01-aliyun.vidu.zone/vidu/media-asset/S12-ca6d5ddb.mp4" poster="https://image01-aliyun.vidu.zone/vidu/media-asset/S12-6c353cae.webp" aria-label="AI 影像创作示意" muted loop playsInline preload="none" onPlay={() => setPlaying(true)} onPause={() => setPlaying(false)} onError={() => setFailed(true)} />}
-        <div className="mc-auth-showcase-caption">
-            <h3>让每一个想法，拥有自己的镜头</h3>
-            <p>从文字与参考素材出发，让灵感成为可见的影像。</p>
-            {!failed && <button className="mc-auth-showcase-playback" type="button" onClick={() => { if (playing) setPaused(true); else { setManualPlay(true); setPaused(false); void video.current?.play().catch(() => setPlaying(false)); } }} aria-label={playing ? "暂停创作示意视频" : "播放创作示意视频"}>{playing ? "暂停" : "播放"}<span aria-hidden="true">{playing ? "Ⅱ" : "▷"}</span></button>}
-        </div>
-    </aside>;
-}
 function loopDialogTab(event: KeyboardEvent<HTMLDivElement>) {
     if (event.key !== "Tab" || event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey) return;
     const dialog = event.currentTarget.querySelector<HTMLElement>('[role="dialog"]');
@@ -88,8 +59,11 @@ export default function BrandAuthDialog({ next, onClosed, routeMode = "login", o
     const titleRef = useRef<HTMLHeadingElement>(null);
     const titleId = useId();
     const invited = registrationPolicy === "invitation";
-    const registerLabel = invited ? "内测用户邀请" : registrationPolicy === "open" ? "注册" : "注册入口";
-    const title = mode === "invitation" ? `加入${appearance.brandName}` : mode === "register" ? invited ? `加入${appearance.brandName}` : registrationPolicy === "open" ? "创建账号" : "注册入口" : mode === "forgot-password" ? "找回密码" : `欢迎登录${appearance.brandName}`;
+    const inviteEntry = mode === "register" && invited;
+    const invitationScene = inviteEntry || mode === "invitation";
+    const hideTabs = mode === "forgot-password" || mode === "invitation" || inviteEntry;
+    const registerLabel = invited ? "受邀加入" : registrationPolicy === "open" ? "注册" : registrationPolicy === "loading" ? "正在读取…" : "重试注册设置";
+    const title = mode === "invitation" ? `欢迎加入${appearance.brandName}` : mode === "register" ? invited ? `受邀加入${appearance.brandName}` : registrationPolicy === "open" ? "创建账号" : `加入${appearance.brandName}` : mode === "forgot-password" ? "找回密码" : `欢迎登录${appearance.brandName}`;
     const readRegistrationSettings = () => {
         if (!registrationSettings.current) {
             if (mounted.current && !dismissed.current) setRegistrationPolicy("loading");
@@ -170,26 +144,27 @@ export default function BrandAuthDialog({ next, onClosed, routeMode = "login", o
     }, []);
     const theme = getAntThemeConfig(true, appearance.activeSkin);
     return <ConfigProvider theme={reduced ? { ...theme, token: { ...theme.token, motion: false } } : theme}>
-        <AppModal open={open} onCancel={close} afterClose={onClosed} transitionName={reduced ? "" : undefined} maskTransitionName={reduced ? "" : undefined} centered flush footer={null} width={900} rootClassName="mc-auth-layer" className={mode === "invitation" ? "mc-auth-dialog mc-auth-dialog-invitation" : "mc-auth-dialog mc-auth-dialog-standard"} aria-labelledby={titleId} closable={{ "aria-label": mode === "invitation" ? "关闭邀请注册窗口" : mode === "forgot-password" ? "关闭找回密码窗口" : mode === "register" ? "关闭注册窗口" : "关闭登录窗口" }} wrapProps={{ onKeyDown: loopDialogTab }}
-            title={<div className="mc-auth-heading">{mode === "invitation" ? <div className="mc-invitation-brand"><BrandLogo theme="dark" alt="" className="mc-auth-symbol" fallback={null} /><span className="mc-invitation-wordmark">{brandStudioLabel(appearance)}</span></div> : <div className="mc-auth-brand"><BrandLogo theme="dark" alt="" className="mc-auth-symbol" fallback={null} /><span aria-hidden="true">{brandStudioLabel(appearance)}</span></div>}<h2 ref={titleRef} tabIndex={-1} id={titleId}>{title}</h2><p>{mode === "invitation" ? "接受邀请，开始你的创作。" : mode === "register" ? invited ? "凭邀请加入，开启你的下一幕。" : registrationPolicy === "open" ? "创建账号，进入梦层创作台。" : registrationPolicy === "loading" ? "正在读取注册设置。" : "请重试读取注册设置。" : mode === "forgot-password" ? "验证账号邮箱，重新设置密码。" : "登录后继续创作。"}</p></div>}>
-            <AuthShowcase />
+        <AppModal open={open} onCancel={close} afterClose={onClosed} transitionName={reduced ? "" : undefined} maskTransitionName={reduced ? "" : undefined} centered flush footer={null} width={invitationScene ? 460 : 900} rootClassName="mc-auth-layer" className={mode === "invitation" ? "mc-auth-dialog mc-auth-dialog-invitation" : inviteEntry ? "mc-auth-dialog mc-auth-dialog-entry" : "mc-auth-dialog mc-auth-dialog-standard"} aria-labelledby={titleId} closable={{ "aria-label": mode === "invitation" ? "关闭邀请注册窗口" : mode === "forgot-password" ? "关闭找回密码窗口" : mode === "register" ? "关闭注册窗口" : "关闭登录窗口" }} wrapProps={{ onKeyDown: loopDialogTab }}
+            title={<div className="mc-auth-heading">{mode === "invitation" ? <div className="mc-invitation-brand"><BrandLogo theme="dark" alt="" className="mc-auth-symbol" fallback={null} /><span className="mc-invitation-wordmark">{brandStudioLabel(appearance)}</span></div> : <div className="mc-auth-brand"><BrandLogo theme="dark" alt="" className="mc-auth-symbol" fallback={null} /><span aria-hidden="true">{brandStudioLabel(appearance)}</span></div>}<h2 ref={titleRef} tabIndex={-1} id={titleId}>{title}</h2><p>{mode === "invitation" ? "接受邀请，开始你的创作。" : mode === "register" ? invited ? `${appearance.brandName}目前采用邀请制。输入邀请码，加入创作。` : registrationPolicy === "open" ? "创建账号，进入梦层创作台。" : registrationPolicy === "loading" ? "正在读取注册设置。" : "请重试读取注册设置。" : mode === "forgot-password" ? "验证账号邮箱，重新设置密码。" : "回到创作中，让灵感接着发生。"}</p></div>}>
+            {!invitationScene && <BrandAuthShowcase open={open} />}
             <div className="mc-auth-body auth-scene-card">
-                <div className="mc-auth-tabs" role="tablist" aria-label="账户入口" data-active={mode === "register" ? "register" : "login"} aria-busy={Boolean(pending)} hidden={mode === "forgot-password" || mode === "invitation"}>
-                    <span aria-hidden="true" className="mc-auth-selection" />
-                    {tabs.map((tab, index) => <button key={tab} ref={(element) => { tabRefs.current[index] = element; }} type="button" role="tab" id={`${titleId}-${tab}`} aria-selected={mode === tab} aria-controls={`${titleId}-panel`} tabIndex={mode === tab ? 0 : -1} onPointerEnter={() => {
+                <div className="mc-auth-tabs" role="tablist" aria-label="账户入口" data-active={mode === "register" ? "register" : "login"} aria-busy={Boolean(pending)} hidden={hideTabs}>
+                    {tabs.map((tab, index) => <button key={tab} ref={(element) => { tabRefs.current[index] = element; }} type="button" role="tab" id={`${titleId}-${tab}`} aria-selected={mode === tab} aria-controls={`${titleId}-panel`} disabled={tab === "register" && registrationPolicy === "loading"} tabIndex={mode === tab ? 0 : -1} onPointerEnter={() => {
                         if (tab === "register") void readRegistrationSettings().then(async (settings) => { if (settings.registrationEnabled) await loadRegisterPage(); else await loadInvitationEntry(); }).catch(() => undefined);
                         else void loadLoginPage().catch(() => undefined);
                     }} onClick={() => { void changeMode(tab); }} onKeyDown={(event) => {
                         if (event.defaultPrevented || event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229 || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey || !["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
-                        event.preventDefault(); const index = event.key === "Home" ? 0 : event.key === "End" ? 1 : tab === "login" ? 1 : 0;
+                        event.preventDefault(); const index = registrationPolicy === "loading" || event.key === "Home" ? 0 : event.key === "End" ? 1 : tab === "login" ? 1 : 0;
                         tabRefs.current[index]?.focus(); void changeMode(tabs[index], true);
                     }}>{tab === "login" ? "登录" : registerLabel}</button>)}
                 </div>
                 <div className="mc-auth-scroll">
                     {sessionFailed && mode === "login" && <p className="mc-auth-error" role="status">暂时无法确认登录状态，可继续使用表单登录。</p>}
                     {error && <div role="alert" className="mc-auth-error">{error}<button type="button" onClick={() => { void changeMode(requested.current); }}>重新加载</button><button type="button" onClick={() => window.location.reload()}>刷新页面</button></div>}
-                    <div ref={panel} id={`${titleId}-panel`} role={mode === "forgot-password" || mode === "invitation" ? undefined : "tabpanel"} aria-labelledby={mode === "forgot-password" || mode === "invitation" ? undefined : `${titleId}-${mode}`} className="auth-scene-fields mc-auth-fields" aria-busy={Boolean(pending)}>
+                    {Page && pending && pending !== mode && <p className="mc-auth-progress" role="status">{pending === "register" ? "正在准备注册方式…" : pending === "forgot-password" ? "正在准备找回密码…" : "正在准备登录…"}</p>}
+                    <div ref={panel} id={`${titleId}-panel`} role={hideTabs ? undefined : "tabpanel"} aria-labelledby={hideTabs ? undefined : `${titleId}-${mode}`} className="auth-scene-fields mc-auth-fields" aria-busy={Boolean(pending)}>
                         <BrandAuthFlow.Provider value={{ next, changeMode: (target) => { void changeMode(target); } }}>{Page ? <Page /> : !error ? <AuthFormPending message={mode === "invitation" ? "正在准备邀请" : mode === "register" ? "正在准备注册入口" : mode === "forgot-password" ? "正在准备找回密码" : "正在准备登录"} /> : null}</BrandAuthFlow.Provider>
+                        {mode === "register" && invited && Page && <p className="mc-invitation-login">已有账号？<button type="button" className="auth-scene-link" onClick={() => { void changeMode("login"); }}>登录</button></p>}
                     </div>
                 </div>
             </div>

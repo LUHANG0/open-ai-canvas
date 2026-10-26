@@ -58,7 +58,7 @@ test("real invitation dialog keeps full-width account and password fields in the
         const dialog = f.host.querySelector('.mc-auth-dialog-invitation[role="dialog"]')!;
         expect(dialog).not.toBeNull(); expect(f.host.querySelector(".mc-invitation-brand .mc-auth-symbol svg")).not.toBeNull();
         expect(f.host.querySelector(".mc-invitation-wordmark")?.textContent).toBe("MengCeng");
-        expect(f.host.querySelector(".mc-auth-heading h2")?.textContent).toBe("加入梦层");
+        expect(f.host.querySelector(".mc-auth-heading h2")?.textContent).toBe("欢迎加入梦层");
         expect(f.host.querySelector<HTMLDivElement>(".mc-auth-tabs")?.hidden).toBe(true);
         const groups = [...f.host.querySelectorAll<HTMLElement>(".mc-invitation-fields")];
         expect(groups).toHaveLength(2);

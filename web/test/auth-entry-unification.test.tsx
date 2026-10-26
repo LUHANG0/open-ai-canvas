@@ -73,7 +73,6 @@ test("homepage entry and direct auth routes share the actual published brand tre
 test("login keeps password access and shows submission failure beside the form", async () => {
     const f = await fixture("/login");
     try {
-        expect(f.host.querySelector(".mc-auth-showcase video")?.getAttribute("src")).toBe("https://image01-aliyun.vidu.zone/vidu/media-asset/S12-ca6d5ddb.mp4");
         expect(f.host.querySelector(".mc-auth-heading h2")?.textContent).toBe("欢迎登录梦层");
         expect(f.host.querySelector<HTMLButtonElement>('.mc-login-form button[type="submit"]')?.disabled).toBe(true);
         expect(f.host.textContent).not.toContain("使用 Linux.do 登录");
@@ -196,9 +195,39 @@ test("registration pending and failure do not guess policy; retry uses the share
     } finally { await failed.close(); policy = Promise.resolve(settings); }
 });
 
+test("public registration hides invitation entry while direct invitations keep registration and rewards", async () => {
+    policy = Promise.resolve(settings);
+    session = Promise.resolve({ user: null });
+    validated.length = 0;
+    const f = await fixture("/login");
+    try {
+        expect([...f.host.querySelectorAll('[role="tab"]')].map((tab) => tab.textContent)).toEqual(["登录", "注册"]);
+        expect(f.host.textContent).not.toContain("受邀加入");
+        await f.click("注册");
+        await act(async () => { await realRegister(); });
+        await settle();
+        expect(f.host.querySelector('input[autocomplete="new-password"]')).not.toBeNull();
+        expect(f.host.querySelector(".mc-invitation-entry")).toBeNull();
+        expect(f.host.querySelector('input[maxlength="6"]')).toBeNull();
+        expect(validated).toEqual([]);
+        invite = Promise.resolve({ state: "valid", settings, bonusMicrocredits: 1000000 });
+        await f.go("/i/OpenA1");
+        await act(async () => { await import("../src/pages/auth/invitation"); });
+        await settle();
+        expect(validated).toEqual(["OpenA1"]);
+        expect(f.host.querySelector(".mc-invitation-registration")).not.toBeNull();
+        expect(f.host.querySelector('input[autocomplete="new-password"]')).not.toBeNull();
+        expect(f.host.querySelector(".mc-invitation-welcome")?.textContent).toContain("注册后赠送");
+        expect(f.host.querySelector(".mc-invitation-entry")).toBeNull();
+    } finally { await f.close(); invite = Promise.resolve({ state: "invalid" }); }
+});
+
 test("case-sensitive invitation routes validate their real code, retain status/context and omit the short-code entry", async () => {
     validated.length = 0; invite = Promise.resolve({ state: "expired" }); const f = await fixture("/i/Ab3xY9?next=%2Fsettings");
     try {
+        // Await the actual lazy route boundary instead of assuming it loads within settle's 10 ms.
+        await act(async () => { await import("../src/pages/auth/invitation"); });
+        await settle();
         expect(validated).toEqual(["Ab3xY9"]); expect(f.host.textContent).toContain(invitations.invitationStateMessages.expired);
         expect(f.host.querySelector(".mc-invitation-entry")).toBeNull();
         expect(f.find("已有账号？登录").getAttribute("href")).toBe("/login");

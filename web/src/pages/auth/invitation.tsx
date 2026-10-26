@@ -52,20 +52,21 @@ export default function InvitationPage() {
     };
 
     if (loading) return <AuthFormPending fields={4} message="正在验证邀请" />;
-    if (member) return <div className="space-y-5">
+    if (member) return <div className="mc-invitation-state">
         <p role="status">你已登录，无需注册。</p>
         {error && <p role="alert">{error}</p>}
         <Button type="primary" size="large" block href="/create">进入工作台</Button>
         <Button size="large" block loading={switching} onClick={() => void switchAccount()}>切换账号</Button>
     </div>;
-    if (error) return <div className="space-y-4"><p role="alert">{error}</p><Button onClick={() => setRetry((n) => n + 1)}>重试</Button><p><Link className="auth-scene-link" {...loginEntry}>已有账号？登录</Link></p></div>;
+    if (error) return <div className="mc-invitation-state"><p role="alert">{error}</p><Button onClick={() => setRetry((n) => n + 1)}>重试</Button><p><Link className="auth-scene-link" {...loginEntry}>已有账号？登录</Link></p></div>;
     if (!invitation || invitation.state !== "valid" || !invitation.settings || invitation.bonusMicrocredits === undefined) {
         const state = invitation?.state;
-        return <div className="space-y-4"><p role="status">{state && state !== "valid" ? invitationStateMessages[state] : "暂时无法验证邀请，请重试。"}</p><Link className="auth-scene-link" {...loginEntry}>已有账号？登录</Link></div>;
+        return <div className="mc-invitation-state"><p role="status">{state && state !== "valid" ? invitationStateMessages[state] : "暂时无法验证邀请，请重试。"}</p><Link className="auth-scene-link" {...loginEntry}>已有账号？登录</Link></div>;
     }
     return <RegistrationInvitationContext.Provider value={{ code, settings: invitation.settings, bonusMicrocredits: invitation.bonusMicrocredits, reload: () => setRetry((n) => n + 1), refreshSettings }}>
         <div className="mc-invitation-registration">
-            {invitation.bonusMicrocredits > 0 && <p className="mc-invitation-welcome" role="status"><span>注册后赠送</span><strong>{formatCredits(invitation.bonusMicrocredits)} 积分</strong></p>}
+            <div className="mc-invitation-confirmed"><span className="mc-invitation-status-dot" aria-hidden="true" /><span>邀请已确认</span><span>完成注册，开启创作</span></div>
+            {invitation.bonusMicrocredits > 0 && <p className="mc-invitation-welcome" role="status"><span>创作见面礼<small>注册后赠送</small></span><strong>{formatCredits(invitation.bonusMicrocredits)} 积分</strong></p>}
             <RegisterPage key={code} />
             <p className="mc-invitation-login">已有账号？<Link className="auth-scene-link" {...loginEntry}>登录</Link></p>
         </div>
