@@ -27,7 +27,82 @@ afterAll(() => {
     }
 });
 
+test("a transient challenge failure can recover without removing the widget or rejecting the submission", async () => {
+    let options: Parameters<API["render"]>[1] | undefined;
+    let removed = 0;
+    window.turnstile = { render: (_node, value) => { options = value; return "retry-test"; }, execute: () => {}, remove: () => { removed++; } };
+    const host = document.createElement("div"); document.body.append(host); const root = createRoot(host); const ref = createRef<Handle>();
+    try {
+        await act(async () => root.render(<HumanVerification ref={ref} action="register" />));
+        let pending!: Promise<string>, result = "pending";
+        await act(async () => { pending = ref.current!.verify(); void pending.then(() => { result = "success"; }, () => { result = "rejected"; }); });
+        await act(async () => (options!["error-callback"] as (code: string) => void)("300030"));
+        expect(result).toBe("pending");
+        expect(removed).toBe(0);
+        expect(host.textContent).toContain("正在重试");
+        await act(async () => options!.callback("recovered-token"));
+        expect(await pending).toBe("recovered-token");
+        expect(removed).toBe(1);
+    } finally { await act(async () => root.unmount()); host.remove(); window.turnstile = undefined; }
+});
+
+test("configuration errors explain the actual problem and fail without retrying", async () => {
+    let options: Parameters<API["render"]>[1] | undefined;
+    window.turnstile = { render: (_node, value) => { options = value; return "hostname-test"; }, execute: () => {}, remove: () => {} };
+    const host = document.createElement("div"); document.body.append(host); const root = createRoot(host); const ref = createRef<Handle>();
+    try {
+        await act(async () => root.render(<HumanVerification ref={ref} action="register" />));
+        let pending!: Promise<string>;
+        await act(async () => { pending = ref.current!.verify(); });
+        const failure = pending.catch((cause: Error) => cause.message);
+        await act(async () => (options!["error-callback"] as (code: string) => void)("110200"));
+        expect(await failure).toContain("域名");
+        expect(host.textContent).toContain("110200");
+    } finally { await act(async () => root.unmount()); host.remove(); window.turnstile = undefined; }
+});
+
+test("cached scripts render only after the verification container is visible", async () => {
+    let hiddenAtRender = true;
+    let options: Parameters<API["render"]>[1] | undefined;
+    window.turnstile = { render: (node, value) => { hiddenAtRender = Boolean(node.closest("[hidden]")); options = value; return "visible-test"; }, execute: () => {}, remove: () => {} };
+    const host = document.createElement("div"); document.body.append(host); const root = createRoot(host); const ref = createRef<Handle>();
+    try {
+        await act(async () => root.render(<HumanVerification ref={ref} action="register" />));
+        let pending!: Promise<string>;
+        await act(async () => { pending = ref.current!.verify(); });
+        const completion = pending.catch(() => "cancelled");
+        expect(hiddenAtRender).toBe(false);
+        await act(async () => options!.callback("visible-token"));
+        expect(await completion).toBe("visible-token");
+    } finally { await act(async () => root.unmount()); host.remove(); window.turnstile = undefined; }
+});
+
+test("repeated challenge failures stop after two automatic retries and cancellation ignores late events", async () => {
+    let options: Parameters<API["render"]>[1] | undefined;
+    let removed = 0;
+    window.turnstile = { render: (_node, value) => { options = value; return "bounded-retry-test"; }, execute: () => {}, remove: () => { removed++; } };
+    const host = document.createElement("div"); document.body.append(host); const root = createRoot(host); const ref = createRef<Handle>();
+    try {
+        await act(async () => root.render(<HumanVerification ref={ref} action="register" />));
+        let pending!: Promise<string>;
+        await act(async () => { pending = ref.current!.verify(); });
+        const failure = pending.catch((cause: Error) => cause.message);
+        await act(async () => { options!["error-callback"]("300030"); options!["error-callback"]("300030"); });
+        expect(removed).toBe(0);
+        await act(async () => options!["error-callback"]("300030"));
+        expect(await failure).toContain("300030");
+        expect(removed).toBe(1);
+        await act(async () => { pending = ref.current!.verify(); });
+        const cancelled = pending.catch((cause: Error) => cause.message);
+        await act(async () => ref.current!.reset());
+        expect(await cancelled).toContain("取消");
+        await act(async () => options!["error-callback"]("300030"));
+        expect(host.querySelector<HTMLElement>(".auth-human-verification")?.hidden).toBe(true);
+    } finally { await act(async () => root.unmount()); host.remove(); window.turnstile = undefined; }
+});
+
 test("each submission gets a fresh token and reloads policy; expiry and unmount reject pending work", async () => {
+    reads = 0; enabled = true;
     let options: Parameters<API["render"]>[1] | undefined;
     let rendered = 0, removed = 0;
     window.turnstile = { render: (_node, value) => { options = value; return String(++rendered); }, execute: () => {}, remove: () => { removed++; } };

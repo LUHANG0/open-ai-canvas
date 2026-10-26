@@ -18,7 +18,9 @@ description: Cloudflare Turnstile 的配置、触发策略和验证边界
 - 密码登录：同一来源 IP 与账号在 10 分钟内失败达到阈值后，下次尝试必须验证。同一来源跨账号失败达到阈值三倍也会触发。用户名和邮箱解析为同一用户标识。成功登录清除该来源与账号计数，同源跨账号窗口保留。
 - 绑定联系方式：沿用登录态和当前密码检查，不增加公开入口的人机验证。
 
-客户端按需加载官方脚本，`execution=execute`、`appearance=interaction-only`，自动验证时显示简短状态，需要用户交互时在按钮附近展开。容器不足 300px 时使用 compact。每次操作重新获取策略与新凭证；取消、过期、失败和离开页面会销毁组件。人机验证失败保留联系方式与输入，不开启验证码发送冷却。进入实际发信请求后沿用原有冷却策略。
+客户端按需加载官方脚本，`execution=execute`、`appearance=execute`，点击获取验证码后显示验证组件。初始化前先提交可见状态，避免缓存脚本同步就绪时在隐藏容器上测量和启动。容器不足 300px 时使用 compact。每次操作重新获取策略与新凭证；取消、过期、最终失败和离开页面会销毁组件。人机验证失败保留联系方式与输入，不开启验证码发送冷却。进入实际发信请求后沿用原有冷却策略。
+
+挑战或网络临时失败时保留组件，让 Cloudflare 自动重试最多两次，重试间隔为 2 秒，并保留整体 120 秒超时和取消入口。配置或域名错误直接结束，最终错误展示相应说明和 Cloudflare 错误码，不记录凭证。国内手机网络、浏览器拦截或代理是否导致失败，必须结合实际错误码和设备现场判断，不能只凭访问地区推断。失败不会降级为免验证发信。
 
 ## 服务端合同
 
@@ -34,8 +36,8 @@ description: Cloudflare Turnstile 的配置、触发策略和验证边界
 
 ## 验证与环境
 
-专项测试覆盖用途/域名错误、缺失和超长凭证、过期/重复的上游失败、网络/格式/重定向失败、密钥加密与保留、版本冲突、权限、登录触发及成功重置。路由测试确认未验证时不创建验证码或投递记录。前端测试使用本地替身验证新凭证、策略刷新、过期、卸载取消以及脚本加载重试，不向真实用户发送消息。
+专项测试覆盖用途/域名错误、缺失和超长凭证、过期/重复的上游失败、网络/格式/重定向失败、密钥加密与保留、版本冲突、权限、登录触发及成功重置。路由测试确认未验证时不创建验证码或投递记录。前端测试使用本地替身验证新凭证、策略刷新、过期、卸载取消、脚本加载重试、隐藏容器初始化、临时错误恢复与重试上限，不向真实用户发送消息。
 
 Cloudflare 官方测试密钥会返回固定 `action=test`，本实现仍严格校验业务 action，因此不能用测试密钥宣称正式业务整链路已通过。正式组件在允许域名上的真实验证及生产部署需单独验收。
 
-参考：[Cloudflare 服务端验证](https://developers.cloudflare.com/turnstile/get-started/server-side-validation/)、[测试密钥](https://developers.cloudflare.com/turnstile/troubleshooting/testing/)。
+参考：[Cloudflare 服务端验证](https://developers.cloudflare.com/turnstile/get-started/server-side-validation/)、[客户端错误与重试](https://developers.cloudflare.com/turnstile/troubleshooting/client-side-errors/)、[错误码](https://developers.cloudflare.com/turnstile/troubleshooting/client-side-errors/error-codes/)、[测试密钥](https://developers.cloudflare.com/turnstile/troubleshooting/testing/)。

@@ -1,9 +1,10 @@
 export type TurnstileAPI = {
     render(container: HTMLElement, options: {
         sitekey: string; action: string; theme: "auto"; language: "zh-cn"; size: "flexible" | "compact";
-        appearance: "interaction-only"; execution: "execute";
+        appearance: "execute"; execution: "execute";
+        retry: "auto"; "retry-interval": number;
         callback: (token: string) => void;
-        "error-callback": () => void;
+        "error-callback": (code: string) => boolean;
         "expired-callback": () => void;
         "timeout-callback": () => void;
         "before-interactive-callback": () => void;
