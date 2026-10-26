@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { WorkflowMedia } from "./brand-workflow-scenes";
 import "./brand-motion-media.css";
 
-export function BrandMotionMedia({ media, enabled, visible }: { media: WorkflowMedia; enabled: boolean; visible: boolean }) {
+export function BrandMotionMedia({ media, enabled, visible, priority = false }: { media: WorkflowMedia; enabled: boolean; visible: boolean; priority?: boolean }) {
     const video = useRef<HTMLVideoElement>(null);
     const [ready, setReady] = useState(false);
     // A reattached source starts a new load even when its URL has not changed.
@@ -14,5 +14,5 @@ export function BrandMotionMedia({ media, enabled, visible }: { media: WorkflowM
         else element.pause();
         return () => element.pause();
     }, [enabled, visible]);
-    return <div className="mc-motion-media"><img src={media.image} alt="" loading="lazy" decoding="async" />{media.video && <video ref={video} src={visible ? media.video : undefined} poster={media.image} muted loop playsInline preload="none" aria-hidden="true" data-ready={visible && ready || undefined} onLoadStart={() => setReady(false)} onEmptied={() => setReady(false)} onLoadedData={() => setReady(true)} onError={() => setReady(false)} />}</div>;
+    return <div className="mc-motion-media"><img src={media.image} alt="" loading={priority ? "eager" : "lazy"} fetchPriority={priority ? "high" : undefined} decoding="async" />{media.video && <video ref={video} src={visible ? media.video : undefined} poster={media.image} muted loop playsInline preload="none" aria-hidden="true" data-ready={visible && ready || undefined} onLoadStart={() => setReady(false)} onEmptied={() => setReady(false)} onLoadedData={() => setReady(true)} onError={() => setReady(false)} />}</div>;
 }

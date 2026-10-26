@@ -65,7 +65,7 @@ type BrandSiteChange struct {
 func defaultBrandSiteContent() BrandSiteContent {
 	return BrandSiteContent{
 		StoryTitle: "一个不可能的场景", StoryText: "她站在盐原上。\n天空悬着一片海。\n下一刻，故事开始了。", StoryCaption: "盐原与巨浪 · AI 品牌创意示意",
-		Title: "让想象，\n不止于想象。", Description: "梦层 · AI 影像创作", PrimaryLabel: "开始创作", PrimaryLink: "/create", Footer: "下一幕，由你开始。",
+		Title: "把灵感，\n推进成画面。", Description: "面向独立创作者与小型团队的 AI 影像创作工作台。", PrimaryLabel: "开始创作", PrimaryLink: "/create", Footer: "下一幕，由你开始。",
 		Sections: []BrandSiteSection{
 			{ID: "examples", Title: "每一种想象，都有画面。", Visible: true, Items: []BrandSiteItem{{Title: "叙事"}, {Title: "人物"}, {Title: "世界"}}},
 			{ID: "entries", Title: "从第一句，到最后一镜。", Visible: true, Items: []BrandSiteItem{
@@ -79,9 +79,13 @@ func defaultBrandSiteContent() BrandSiteContent {
 				{Title: "把故事拆成镜头", Description: "盐原远景，人物的目光，指尖触碰浅水。把一个场景展开成镜头。"},
 				{Title: "向影像再走一步", Description: "在画布中组织参考，再把素材带进项目，继续打磨。"},
 			}},
-			{ID: "faq", Title: "常见问题", Visible: false, Items: []BrandSiteItem{
+			{ID: "faq", Title: "常见问题", Visible: true, Items: []BrandSiteItem{
 				{Title: "没有创作经验，也能开始吗？", Description: "可以从一句话或一组参考开始，逐步探索故事和画面。"},
+				{Title: "如何加入梦层？", Description: "已有账号可直接登录；受邀用户可打开邀请链接或输入邀请码。注册入口以页面当前显示为准。"},
+				{Title: "对话记录可以跨设备继续吗？", Description: "登录后，对话创作历史会按账号同步。其他内容请以工作台显示的保存状态为准。"},
 				{Title: "模型生成如何收费？", Description: "以工作台实际配置和提交前的提示为准。"},
+				{Title: "梦层会一键自动成片吗？", Description: "当前工作台提供对话、画布与项目工具，素材筛选和作品打磨仍由创作者决定。"},
+				{Title: "可以从自己的参考素材开始吗？", Description: "可以在支持的创作入口添加参考素材，具体格式和限制以工作台提示为准。"},
 			}},
 		},
 	}

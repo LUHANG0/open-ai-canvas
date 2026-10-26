@@ -1,21 +1,20 @@
 import { useEffect, useRef, useState } from "react";
 import { Pause, Play } from "lucide-react";
 import { BrandMotionMedia } from "./brand-motion-media";
-import { WORKFLOW_SCENES } from "./brand-workflow-scenes";
 import { useFilmPlayback } from "./use-film-playback";
 import "./brand-film-stage.css";
 
 const FILMS = [
     { name: "盐原悬海", image: "/brand/b/wave.webp" },
-    { name: "流动雪境", ...WORKFLOW_SCENES[0].background },
+    { name: "晨光街景", image: "/brand/v5/gallery-city.webp" },
     { name: "星夜列车", image: "/brand/b/train.webp" },
-    { name: "光影空间", ...WORKFLOW_SCENES[7].background },
+    { name: "远山行旅", image: "/brand/v5/gallery-world.webp" },
     { name: "云海鲸影", image: "/brand/b/whale.webp" },
     { name: "月下建筑", image: "/brand/b/architecture.webp" },
-    { name: "人物影像", ...WORKFLOW_SCENES[1].background },
+    { name: "人物特写", image: "/brand/v5/story-character.webp" },
     { name: "玻璃城市", image: "/brand/b/glass-city.webp" },
 ];
-const FILM_DURATIONS = FILMS.map((film) => "video" in film ? 10000 : 8000);
+const FILM_DURATIONS = [8000, 10000, 8000, 10000, 8000, 8000, 10000, 8000];
 
 export function BrandFilmStage({ preview = false }: { preview?: boolean }) {
     const root = useRef<HTMLDivElement>(null);
@@ -61,7 +60,8 @@ export function BrandFilmStage({ preview = false }: { preview?: boolean }) {
         if (button.offsetLeft < element.scrollLeft || button.offsetLeft + button.offsetWidth > element.scrollLeft + element.clientWidth) element.scrollTo({ left: Math.max(0, button.offsetLeft + button.offsetWidth / 2 - element.clientWidth / 2), behavior: reduced ? "auto" : "smooth" });
     }, [selected, reduced]);
     return <div ref={root} className="mc-film-stage" data-playing={playing || undefined}>
-        <div className="mc-film-screen" aria-hidden="true">{FILMS.map((film, index) => <div key={film.name} className="mc-film-frame" data-active={selected === index || undefined}><BrandMotionMedia media={film} visible={visible && selected === index && !preview} enabled={playing && selected === index} /></div>)}</div>
+        <div className="mc-film-screen" aria-hidden="true">{FILMS.map((film, index) => <div key={film.name} className="mc-film-frame" data-active={selected === index || undefined}><BrandMotionMedia media={film} visible={visible && selected === index && !preview} enabled={playing && selected === index} priority={index === 0} /></div>)}</div>
+        <div className="mc-film-meta"><p className="mc-film-note"><span aria-live="polite">{FILMS[selected].name}</span><span>AI 品牌创意示意</span></p></div>
         <div className="mc-film-controls" onPointerDownCapture={playback.pointer} onFocusCapture={(event) => { if (event.target.matches(":focus-visible")) playback.focus(); }} onBlurCapture={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) playback.blur(); }} onKeyDownCapture={playback.focus}>
             <div className="mc-film-rail" ref={rail} aria-label="首屏影像" onPointerEnter={(event) => { if (event.pointerType === "mouse") playback.enter(); }} onPointerLeave={(event) => { if (event.pointerType === "mouse") playback.leave(); }} onPointerDown={(event) => {
                 if (event.button !== 0) return;

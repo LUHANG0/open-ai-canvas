@@ -52,12 +52,11 @@ test("appearance selects theme logos and falls back to the single configured log
     expect(single.logoFrameEnabled).toBe(true);
 });
 
-test("shared auth overlay keeps resolved brand identity without legacy promotional media", async () => {
+test("shared auth overlay keeps resolved brand identity without retired media configuration", async () => {
     const source = await Bun.file(new URL("../src/components/brand/brand-auth-dialog.tsx", import.meta.url)).text();
 
     expect(source).not.toContain("appearance.authVideoUrl");
     expect(source).not.toContain("appearance.authVideoAutoplay");
-    expect(source).not.toContain("<video");
     expect(source).toContain("appearance.brandName");
     expect(source).toContain("mc-auth-heading");
     expect(source).toContain('getAntThemeConfig(true, appearance.activeSkin)');

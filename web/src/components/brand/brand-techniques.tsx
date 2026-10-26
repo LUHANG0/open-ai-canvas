@@ -2,7 +2,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import { ArrowRight, ArrowUpRight, Pause, Play } from "lucide-react";
 import { BrandLink } from "./brand-link";
 import { BrandMotionMedia } from "./brand-motion-media";
-import { WORKFLOW_SCENES, type WorkflowMedia } from "./brand-workflow-scenes";
+import { type WorkflowMedia } from "./brand-workflow-scenes";
 import "./brand-techniques.css";
 
 type BrandTechnique = { presetId: string; title: string; description: string; steps: string[]; media: WorkflowMedia };
@@ -10,9 +10,9 @@ type BrandTechnique = { presetId: string; title: string; description: string; st
 // Editorial previews of the existing preset catalog, not automatically applied workflows.
 export const BRAND_TECHNIQUES: BrandTechnique[] = [
     { presetId: "short-drama-pilot", title: "短剧立项与大纲", description: "先搭建故事结构，再让人物、弧光与对白落进同一条叙事。", steps: ["故事结构", "人物设定", "对白打磨"], media: { image: "/brand/b/train.webp" } },
-    { presetId: "ad-full-chain", title: "广告全链路", description: "从产品研究出发，让创意、文案与分镜彼此呼应。", steps: ["产品研究", "创意概念", "脚本分镜"], media: WORKFLOW_SCENES[2].background },
-    { presetId: "ai-performer", title: "AI 角色表演", description: "连接角色设定、表演节拍与视觉基调，组织人物的情绪与动作。", steps: ["角色设定", "情绪节拍", "表演设计"], media: WORKFLOW_SCENES[1].background },
-    { presetId: "ecom-image", title: "电商大图与系列图", description: "从产品参考与风格出发，规划一组有统一气质的画面。", steps: ["产品参考", "风格探索", "系列画面"], media: WORKFLOW_SCENES[3].background },
+    { presetId: "ad-full-chain", title: "广告全链路", description: "从产品研究出发，让创意、文案与分镜彼此呼应。", steps: ["产品研究", "创意概念", "脚本分镜"], media: { image: "/brand/b/architecture.webp" } },
+    { presetId: "ai-performer", title: "AI 角色表演", description: "连接角色设定、表演节拍与视觉基调，组织人物的情绪与动作。", steps: ["角色设定", "情绪节拍", "表演设计"], media: { image: "/brand/v5/story-character.webp" } },
+    { presetId: "seedance-video", title: "Seedance 生视频", description: "梳理提示词与参考素材，为镜头设计运动、节奏与画面方向。", steps: ["画面描述", "参考素材", "镜头运动"], media: { image: "/brand/v5/gallery-city.webp" } },
 ];
 
 export function BrandTechniques({ preview = false }: { preview?: boolean }) {
@@ -43,7 +43,7 @@ export function BrandTechniques({ preview = false }: { preview?: boolean }) {
         return () => { observer?.disconnect(); document.removeEventListener("visibilitychange", change); clearHover(); };
     }, [preview]);
     return <section ref={root} id="techniques" className="mc-section mc-techniques" aria-labelledby={`${panel}-heading`}>
-        <div className="mc-techniques-heading"><div><h2 id={`${panel}-heading`}>灵感之外，还有方法。</h2><p>从故事开发到商业影像，把需要的创作技能连接起来。</p></div><BrandLink className="mc-content-link" href="/login" authNext="/skills" onClick={preview ? (event) => event.preventDefault() : undefined}>探索技能库<ArrowUpRight aria-hidden="true" /></BrandLink></div>
+        <div className="mc-techniques-heading"><div><h2 id={`${panel}-heading`}>让创意，有章可循。</h2><p>广告、短剧、角色表演。用对应的创作技能，展开不同的影像方向。</p></div><BrandLink className="mc-content-link" href="/login" authNext="/skills" onClick={preview ? (event) => event.preventDefault() : undefined}>探索技能库<ArrowUpRight aria-hidden="true" /></BrandLink></div>
         <div className="mc-techniques-layout">
             <div id={`${panel}-preview`} className="mc-technique-preview" role="region" aria-labelledby={`${panel}-title`} data-playing={playing || undefined}>
                 <div className="mc-technique-frames" aria-hidden="true">{BRAND_TECHNIQUES.map((technique, index) => <div className="mc-technique-frame" key={technique.presetId} data-active={index === selected || undefined}><BrandMotionMedia media={technique.media} visible={visible && index === selected && !preview} enabled={playing && index === selected} /></div>)}</div>
