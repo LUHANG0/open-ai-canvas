@@ -11,6 +11,9 @@ const (
 )
 
 type (
+	TurnstileSettingRequest = app.TurnstileSettingRequest
+	PublicTurnstileSetting  = app.PublicTurnstileSetting
+
 	BindProjectAssetImageRequest           = app.BindProjectAssetImageRequest
 	PaymentOrderQuery                      = app.PaymentOrderQuery
 	PaymentReconciliationQuery             = app.PaymentReconciliationQuery
@@ -173,6 +176,10 @@ type (
 	EagleLibrary                           = app.EagleLibrary
 	EmailCodeCooldownError                 = app.EmailCodeCooldownError
 	EmailSettingRequest                    = app.EmailSettingRequest
+	EmailTemplatesRequest                  = app.EmailTemplatesRequest
+	PublicEmailTemplates                   = app.PublicEmailTemplates
+	EmailTemplatePreviewRequest            = app.EmailTemplatePreviewRequest
+	EmailTemplatePreview                   = app.EmailTemplatePreview
 	ErrorReason                            = app.ErrorReason
 	FeatureAvailability                    = app.FeatureAvailability
 	ImageCapabilityConfig                  = app.ImageCapabilityConfig

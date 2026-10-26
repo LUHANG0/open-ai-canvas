@@ -1,4 +1,4 @@
-import { type FormEvent, useEffect, useState, type ReactNode } from "react";
+import { type FormEvent, useEffect, useRef, useState, type ReactNode } from "react";
 import { App, Button, Input } from "antd";
 import { ArrowLeft, ArrowRight, LockKeyhole, Mail, ShieldCheck, TriangleAlert } from "lucide-react";
 import { Link, useNavigate, useSearchParams } from "react-router";
@@ -7,6 +7,8 @@ import { useBrandAuthFlow } from "@/components/brand/brand-auth-entry";
 
 import { getAuthSettings, resetPassword, sendPasswordResetEmailCode } from "@/services/api/auth";
 
+import { HumanVerification, type HumanVerificationHandle } from "@/components/auth/human-verification";
+
 type RecoveryStage = "request" | "reset";
 
 export default function ForgotPasswordPage() {
@@ -14,6 +16,7 @@ export default function ForgotPasswordPage() {
     const [params] = useSearchParams();
     const flow = useBrandAuthFlow();
     const { message } = App.useApp();
+    const humanVerification = useRef<HumanVerificationHandle>(null);
     const [stage, setStage] = useState<RecoveryStage>("request");
     const [email, setEmail] = useState("");
     const [emailCode, setEmailCode] = useState("");
@@ -43,6 +46,7 @@ export default function ForgotPasswordPage() {
     }, [countdown]);
 
     const sendCode = async (advance: boolean) => {
+        if (sendingCode || countdown > 0) return;
         const normalizedEmail = email.trim();
         if (!normalizedEmail) {
             message.warning("请先输入邮箱");
@@ -50,7 +54,8 @@ export default function ForgotPasswordPage() {
         }
         setSendingCode(true);
         try {
-            await sendPasswordResetEmailCode(normalizedEmail);
+            const turnstileToken = await humanVerification.current?.verify();
+            await sendPasswordResetEmailCode(normalizedEmail, turnstileToken);
             setEmail(normalizedEmail);
             setCountdown(60);
             if (advance) setStage("reset");
@@ -109,9 +114,10 @@ export default function ForgotPasswordPage() {
                         autoComplete="email"
                         inputMode="email"
                         required
-                        disabled={emailEnabled === false}
+                        disabled={emailEnabled === false || sendingCode}
                     />
                 </AuthField>
+                <HumanVerification ref={humanVerification} action="password_reset" />
                 <Button type="primary" htmlType="submit" size="large" block loading={sendingCode} disabled={emailEnabled === false} icon={<ArrowRight className="size-4" />} iconPlacement="end">
                     发送验证码
                 </Button>
@@ -125,11 +131,12 @@ export default function ForgotPasswordPage() {
             <AuthField label="账号邮箱" htmlFor="recovery-email-confirm">
                 <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2">
                     <Input id="recovery-email-confirm" size="large" prefix={<Mail className="auth-scene-icon size-4" />} value={email} readOnly autoComplete="email" />
-                    <Button htmlType="button" size="large" onClick={editEmail}>
+                    <Button htmlType="button" size="large" disabled={sendingCode} onClick={editEmail}>
                         修改邮箱
                     </Button>
                 </div>
             </AuthField>
+            <HumanVerification ref={humanVerification} action="password_reset" />
             <AuthField label="邮箱验证码" htmlFor="recovery-code">
                 <div className="grid grid-cols-[minmax(0,1fr)_116px] gap-2">
                     <Input

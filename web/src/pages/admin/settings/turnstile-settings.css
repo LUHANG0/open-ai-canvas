@@ -1,0 +1,20 @@
+.admin-turnstile { display: grid; gap: 20px; max-width: 1160px; margin-inline: auto; color: var(--foreground); }
+.turnstile-toolbar, .turnstile-actions, .turnstile-section-heading, .turnstile-policy-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.turnstile-actions { justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
+.turnstile-toolbar > span { font-size: 13px; color: var(--muted-foreground); }
+.turnstile-settings-grid { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 24px; }
+.turnstile-settings-section { min-width: 0; padding: 24px; border: 1px solid var(--border); border-radius: 12px; background: var(--card); }
+.turnstile-settings-section h2 { margin: 0; font-size: 16px; font-weight: 600; }
+.turnstile-section-heading { align-items: flex-start; }
+.turnstile-section-heading p, .turnstile-section-note, .turnstile-policy-row p, .turnstile-threshold p { color: var(--muted-foreground); font-size: 12px; line-height: 1.7; margin: 6px 0 0; }
+.turnstile-setting-field { display: grid; gap: 8px; margin-top: 24px; font-size: 13px; }
+.turnstile-setting-field > span:first-child { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px; font-weight: 500; }
+.turnstile-setting-field small { color: var(--muted-foreground); font-size: 12px; line-height: 1.7; font-weight: 400; }
+.turnstile-console-link { display: inline-flex; margin-top: 20px; font-size: 12px; }
+.turnstile-policy-row { padding: 22px 0; border-bottom: 1px solid var(--border); }
+.turnstile-policy-row label { font-size: 14px; font-weight: 500; cursor: pointer; }
+.turnstile-policy-row .ant-switch { flex-shrink: 0; }
+.turnstile-threshold { display: grid; gap: 10px; margin-top: 24px; }
+.turnstile-threshold label { font-size: 13px; font-weight: 500; }
+@media (max-width: 900px) { .turnstile-settings-grid { grid-template-columns: minmax(0,1fr); } }
+@media (max-width: 480px) { .turnstile-toolbar { align-items: flex-start; flex-direction: column; gap: 12px; } .turnstile-settings-section { padding: 18px; } .turnstile-actions { justify-content: flex-start; } }

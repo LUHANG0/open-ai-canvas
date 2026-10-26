@@ -194,7 +194,7 @@ func (s *Service) SendProfileEmailCode(ctx context.Context, actor *model.User, c
 		}
 		return nil, err
 	}
-	if err := s.deliverEmail(setting, email, setting.FromName+"更换邮箱验证码", "验证码："+code+"\n\n验证码 10 分钟内有效，仅用于更换本账号的邮箱。若非本人操作，请忽略本邮件。"); err != nil {
+	if err := s.deliverVerificationEmail(setting, email, "change_email", code); err != nil {
 		return nil, kernel.NewAppError(503, "邮件发送失败，请稍后重试")
 	}
 	if err := s.repo.SetAuthVerificationReady(v.ID); err != nil {

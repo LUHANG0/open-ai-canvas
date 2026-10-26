@@ -35,6 +35,16 @@ func registerNotificationRoutes(r *gin.RouterGroup, svc *service.Service) {
 				return
 			}
 		}
+		action := req.Purpose
+		if action == "login" {
+			action = "code_login"
+		}
+		if action == "register" || action == "code_login" {
+			if err := svc.CheckHumanVerification(c.Request.Context(), action, req.TurnstileToken, c.ClientIP()); err != nil {
+				failService(c, err)
+				return
+			}
+		}
 		result, err := svc.StartVerification(c.Request.Context(), actor, req)
 		if err != nil {
 			failService(c, err)
@@ -99,6 +109,28 @@ func registerNotificationRoutes(r *gin.RouterGroup, svc *service.Service) {
 		c.Next()
 	})
 	actor := func(c *gin.Context) *model.User { return c.MustGet("notificationActor").(*model.User) }
+	admin.GET("/settings/turnstile", func(c *gin.Context) {
+		result, err := svc.AdminTurnstileSetting(actor(c))
+		if err != nil {
+			failService(c, err)
+			return
+		}
+		ok(c, gin.H{"setting": result})
+	})
+	admin.PATCH("/settings/turnstile", func(c *gin.Context) {
+		c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 16<<10)
+		var req service.TurnstileSettingRequest
+		if err := c.ShouldBindJSON(&req); err != nil {
+			fail(c, 400, err)
+			return
+		}
+		result, err := svc.UpdateTurnstileSetting(actor(c), req)
+		if err != nil {
+			failService(c, err)
+			return
+		}
+		ok(c, gin.H{"setting": result})
+	})
 	admin.GET("/settings/auth-policy", func(c *gin.Context) {
 		result, err := svc.AdminVerificationPolicy(actor(c))
 		if err != nil {

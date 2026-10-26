@@ -13,9 +13,7 @@ import (
 	"log"
 	"log/slog"
 	"math/big"
-	"mime"
 	"net"
-	"net/mail"
 	"net/smtp"
 	"regexp"
 	"sort"
@@ -74,6 +72,7 @@ type PublicEmailSetting struct {
 }
 
 type EmailSettingValue struct {
+	htmlBody                   string
 	Enabled                    bool     `json:"enabled"`
 	Host                       string   `json:"host"`
 	Port                       int      `json:"port"`
@@ -207,7 +206,7 @@ func (s *Service) SendRegistrationEmailCode(rawEmail string, invitationCodes ...
 		return err
 	}
 	setting = resolveEmailSender(setting, s.host.BrandName())
-	if err := s.deliverEmail(setting, email, setting.FromName+"注册验证码", registrationEmailBody(setting.FromName, code)); err != nil {
+	if err := s.deliverVerificationEmail(setting, email, "register", code); err != nil {
 		cleanupErr := s.repo.DeleteEmailVerificationCode(record.ID)
 		if cleanupErr != nil {
 			return errors.Join(
@@ -483,10 +482,13 @@ func sendSMTPMail(setting EmailSettingValue, recipient string, subject string, b
 	if err != nil {
 		return err
 	}
-	from := mail.Address{Name: setting.FromName, Address: setting.FromEmail}
-	message := fmt.Sprintf("From: %s\r\nTo: %s\r\nSubject: %s\r\nMIME-Version: 1.0\r\nContent-Type: text/plain; charset=UTF-8\r\n\r\n%s", from.String(), recipient, mime.QEncoding.Encode("UTF-8", subject), body)
+	message, err := smtpMessage(setting, recipient, subject, body)
+	if err != nil {
+		_ = wc.Close()
+		return err
+	}
 	stage = "write_body"
-	if _, err := wc.Write([]byte(message)); err != nil {
+	if _, err := wc.Write(message); err != nil {
 		_ = wc.Close()
 		return err
 	}
@@ -518,7 +520,7 @@ var emailCodeLogPattern = regexp.MustCompile(`[0-9]{6}`)
 func smtpLogError(err error, setting EmailSettingValue, recipient, subject, body string) string {
 	// SMTP replies can echo credentials, addresses or message content. Redact
 	// those values before logging while preserving the status and failure detail.
-	secrets := []string{setting.Password, setting.Username, setting.FromEmail, recipient, subject, body,
+	secrets := []string{setting.Password, setting.Username, setting.FromEmail, recipient, subject, body, setting.htmlBody, encodedMailBody(body), encodedMailBody(setting.htmlBody),
 		"\x00" + setting.Username + "\x00" + setting.Password}
 	secrets = append(secrets, emailCodeLogPattern.FindAllString(body, -1)...)
 	values := make([]string, 0, len(secrets)*2)
@@ -542,8 +544,4 @@ func randomNumericCode(length int) (string, error) {
 		return "", err
 	}
 	return fmt.Sprintf("%0*d", length, value.Int64()), nil
-}
-
-func registrationEmailBody(brandName string, code string) string {
-	return "你正在注册" + brandName + "。\n\n验证码：" + code + "\n\n验证码 10 分钟内有效。若非本人操作，请忽略本邮件。"
 }

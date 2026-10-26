@@ -1,0 +1,12 @@
+.auth-human-verification { min-width:0; padding:12px; border-radius:8px; background:rgba(128,128,128,.08); color:inherit; font-size:12px; line-height:20px; }
+.auth-human-verification[hidden] { display:none; }
+.auth-human-verification-status { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
+.auth-human-verification-status button { flex-shrink:0; min-height:24px; border:0; background:transparent; padding:0 4px; color:inherit; font:inherit; text-decoration:underline; cursor:pointer; }
+.auth-human-verification-status button:focus-visible { outline:2px solid currentColor; outline-offset:2px; }
+.auth-human-verification-widget { min-width:0; }
+.auth-human-verification.is-interaction .auth-human-verification-widget { margin-top:8px; }
+.auth-human-verification.is-error { color:#b42318; background:rgba(180,35,24,.08); }
+.auth-human-verification.is-ready { color:#216e45; background:rgba(33,110,69,.08); }
+.dark .auth-human-verification.is-error { color:#fda29b; }
+.dark .auth-human-verification.is-ready { color:#75d6a5; }
+@media(max-width:380px) { .auth-human-verification { padding:8px 0; background:transparent; } }

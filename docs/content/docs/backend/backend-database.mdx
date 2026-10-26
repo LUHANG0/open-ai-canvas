@@ -369,3 +369,6 @@ Schema 32 为 `channel_models` 新增 `tags`（TEXT、NOT NULL、默认 `'[]'`�
 迁移 46 新增 skill_curation_settings、skill_curation_categories、skill_curation_assignments；默认关闭，不导入技能内容。表结构与事务规则见 [平台技能策展](./skill-curation)。
 
 迁移 47 依赖 46，新增 skill_curation_roots 与 skill_curation_root_assignments；保留原五个根 ID，根停用时使用派生默认桶，根表为空回落固定五类。
+
+
+账户邮件模板单独保存于 `system_settings` 的 `email_templates` 键，包含 `revision` 与五种场景的结构化文案。不改变表结构或 Schema 版本，缺少配置时从代码默认值读取。条件更新比较旧 JSON，首次插入通过主键冲突保护，避免 SQLite/PostgreSQL 并发保存覆盖。详见[账户邮件模板](./email-templates)。

@@ -48,7 +48,17 @@ type LoginRequest struct {
 	Password     string       `json:"password"`
 }
 
+type PublicTurnstileConfig struct {
+	Enabled       bool   `json:"enabled"`
+	SiteKey       string `json:"siteKey"`
+	Registration  bool   `json:"registration"`
+	PasswordReset bool   `json:"passwordReset"`
+	CodeLogin     bool   `json:"codeLogin"`
+	PasswordLogin bool   `json:"passwordLogin"`
+}
+
 type PublicAuthSettings struct {
+	Turnstile *PublicTurnstileConfig `json:"turnstile,omitempty"`
 	VerificationPolicy
 	SMSBindingAvailable   bool   `json:"smsBindingAvailable"`
 	EmailBindingAvailable bool   `json:"emailBindingAvailable"`

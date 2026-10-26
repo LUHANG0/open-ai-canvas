@@ -7,7 +7,6 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
-	"fmt"
 	"gorm.io/gorm"
 	"strings"
 	"time"
@@ -18,6 +17,7 @@ import (
 )
 
 type VerificationRequest struct {
+	TurnstileToken string `json:"turnstileToken"`
 	Purpose        string `json:"purpose"`
 	Method         string `json:"method"`
 	Email          string `json:"email"`
@@ -193,7 +193,7 @@ func (s *Service) StartVerification(ctx context.Context, actor *model.User, req 
 			return nil, err
 		}
 		setting = resolveEmailSender(setting, s.host.BrandName())
-		if err := s.deliverEmail(setting, email, setting.FromName+"身份验证码", fmt.Sprintf("您的验证码是：%s\n10 分钟内有效，仅用于本次身份验证。请勿向他人透露验证码。", emailCode)); err != nil {
+		if err := s.deliverVerificationEmail(setting, email, req.Purpose, emailCode); err != nil {
 			return nil, kernel.NewAppError(503, "邮件发送失败，请稍后重试")
 		}
 	}

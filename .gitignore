@@ -30,6 +30,7 @@ docs/content/docs/backend/*
 !docs/content/docs/backend/4stoken.mdx
 !docs/content/docs/backend/drama-api.mdx
 !docs/content/docs/backend/mengceng-brand-site.mdx
+!docs/content/docs/backend/email-templates.mdx
 !docs/content/docs/backend/registration-invitations.mdx
 !docs/content/docs/backend/creation-conversation-sync.mdx
 !docs/content/docs/backend/bailian-minimax-video.mdx
@@ -85,3 +86,5 @@ backend/tmp_*
 # Keep the runtime in source control; its optional debug map is not deployed.
 /web/public/live2d/live2dcubismcore.min.js.map
 .zocde/
+
+!docs/content/docs/backend/turnstile.mdx

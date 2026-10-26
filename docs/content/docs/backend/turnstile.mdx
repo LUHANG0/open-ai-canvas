@@ -1,0 +1,41 @@
+---
+title: 登录与注册人机验证
+description: Cloudflare Turnstile 的配置、触发策略和验证边界
+---
+
+后台入口为「登录与注册 → 人机验证设置」，地址 `/admin/settings/turnstile`。默认关闭，四个场景默认选中，密码登录默认失败三次后触发。
+
+## 配置
+
+在 Cloudflare 中创建 Managed 类型的 Turnstile 小组件，将实际访问主机名加入允许列表。后台填写 Site Key、Secret Key 和相同主机名，保存后启用。主机名不含协议、路径、端口和通配符。正式组件建议仅允许正式域名，本地调试使用独立组件。
+
+配置保存在既有 `system_settings` 的 `turnstile` JSON 中，不新增表或迁移版本。Secret Key 使用站点设置密钥加密；读取仅返回是否已配置，更新留空保留原值。`revision` 防止管理员并发覆盖。官方测试 Site Key 只能与 localhost/127.0.0.1 保存，不能用于正式域名。
+
+## 用户流程
+
+- 注册、验证码登录：在发送邮箱/短信验证码前执行验证，统一入口和旧邮箱入口均受保护。邀请不豁免人机验证。
+- 找回密码：在发送重置邮件前验证；提交已发送的邮件验证码不再重复验证。
+- 密码登录：同一来源 IP 与账号在 10 分钟内失败达到阈值后，下次尝试必须验证。同一来源跨账号失败达到阈值三倍也会触发。用户名和邮箱解析为同一用户标识。成功登录清除该来源与账号计数，同源跨账号窗口保留。
+- 绑定联系方式：沿用登录态和当前密码检查，不增加公开入口的人机验证。
+
+客户端按需加载官方脚本，`execution=execute`、`appearance=interaction-only`，自动验证时显示简短状态，需要用户交互时在按钮附近展开。容器不足 300px 时使用 compact。每次操作重新获取策略与新凭证；取消、过期、失败和离开页面会销毁组件。人机验证失败保留联系方式与输入，不开启验证码发送冷却。进入实际发信请求后沿用原有冷却策略。
+
+## 服务端合同
+
+`GET /auth/settings` 增加公开 `turnstile` 对象，仅含 enabled、siteKey 以及四个场景开关。管理员 GET/PATCH `/admin/settings/turnstile` 返回完整非敏感配置。
+
+`POST /auth/verification`、`/auth/email-code`、`/auth/password-reset-code` 与 `/auth/login` 接收可选 `turnstileToken`，启用相应场景或登录达到阈值后必需。验证码确认仍由原有票据、用途、联系方式和消费事务保护。
+
+后端通过既有受控出站客户端向固定 Siteverify 地址发 POST，带请求取消和超时，不跟随重定向。检查 `success`、完整 `hostname` 和 `action`（register/password_reset/code_login/login）。凭证最长 2048 字符，不存储、不打印。Cloudflare 负责凭证的单次消费与有效期；服务器不会因网络失败放行。
+
+缺少或无效凭证返回 403，`details.humanVerificationRequired=true` 和 action 指明重试需要新验证；上游或协调不可用返回 503。密码错误达到阈值时保留原 401/403 并附相同 details，客户端下一次提交展示验证。登录日志记录验证前被拒绝的尝试，不记录原始请求正文和凭证。
+
+失败计数复用运行协调器：SQLite 使用单进程原子计数，PostgreSQL 使用 Redis Lua 原子更新，10 分钟固定窗口不因后续失败延长。既有请求限流与审计同时保留。
+
+## 验证与环境
+
+专项测试覆盖用途/域名错误、缺失和超长凭证、过期/重复的上游失败、网络/格式/重定向失败、密钥加密与保留、版本冲突、权限、登录触发及成功重置。路由测试确认未验证时不创建验证码或投递记录。前端测试使用本地替身验证新凭证、策略刷新、过期、卸载取消以及脚本加载重试，不向真实用户发送消息。
+
+Cloudflare 官方测试密钥会返回固定 `action=test`，本实现仍严格校验业务 action，因此不能用测试密钥宣称正式业务整链路已通过。正式组件在允许域名上的真实验证及生产部署需单独验收。
+
+参考：[Cloudflare 服务端验证](https://developers.cloudflare.com/turnstile/get-started/server-side-validation/)、[测试密钥](https://developers.cloudflare.com/turnstile/troubleshooting/testing/)。

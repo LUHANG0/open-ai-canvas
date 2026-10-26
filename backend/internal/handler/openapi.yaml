@@ -149,6 +149,7 @@ paths:
               type: object
               required: [purpose, method]
               properties:
+                turnstileToken: {type: string, maxLength: 2048, description: 启用对应策略时必填；服务器验证用途与允许域名，一次使用}
                 purpose: {type: string, enum: [register, login, bind]}
                 method: {type: string, enum: [email, sms, sms_email]}
                 email: {type: string}
@@ -175,6 +176,7 @@ paths:
               type: object
               required: [email]
               properties:
+                turnstileToken: {type: string, maxLength: 2048, description: 启用对应策略时必填；服务器验证用途与允许域名，一次使用}
                 email: {type: string, format: email}
                 invitationCode: {type: string, pattern: '^[A-Za-z0-9]{6}$'}
       responses:
@@ -1921,6 +1923,7 @@ paths:
       tags: [auth]
       security: []
       summary: 登录并设置会话 Cookie
+      description: 密码登录在同一来源与账号 10 分钟内失败达到阈值后要求 Turnstile；不同账号的同源大量失败也触发。403 details.humanVerificationRequired=true 表示下次提交须带新凭证。
       requestBody:
         required: true
         content:
@@ -1929,11 +1932,14 @@ paths:
               type: object
               required: [username, password]
               properties:
+                turnstileToken: {type: string, maxLength: 2048, description: 启用对应策略时必填；服务器验证用途与允许域名，一次使用}
                 username: { type: string }
                 password: { type: string }
       responses:
         "200":
           $ref: "#/components/responses/Envelope"
+        "403": {description: 需要人机验证或账号被禁用}
+        "503": {description: 验证服务或计数协调不可用}
         "401":
           $ref: "#/components/responses/Error"
   /projects:
@@ -2341,6 +2347,124 @@ paths:
         "401": {description: 未登录}
         "403": {description: 预期账号与登录账号不符}
         "500": {description: 持久化失败，客户端保留本机数据并可重试}
+  /admin/settings/email-templates:
+    get:
+      summary: 读取账户验证码邮件模板（管理员）
+      security: [{sessionCookie: []}]
+      responses:
+        "200":
+          description: 返回 setting，未配置时使用默认模板；不返回 SMTP 密钥
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code: {type: integer}
+                  data:
+                    type: object
+                    properties:
+                      setting: {$ref: '#/components/schemas/EmailTemplates'}
+        "401": {description: 未登录}
+        "403": {description: 非管理员}
+    patch:
+      summary: 保存全部邮件场景模板（管理员）
+      description: revision 必须匹配当前版本；首次为 0。只保存结构化文案，验证码、有效期和安全提醒固定保留，不支持任意 HTML。
+      security: [{sessionCookie: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [revision, templates]
+              properties:
+                revision: {type: integer, format: int64, minimum: 0}
+                templates: {$ref: '#/components/schemas/EmailTemplateScenes'}
+      responses:
+        "200": {description: 返回 setting，新 revision 加一，后续邮件立即使用保存的文案}
+        "400": {description: 场景不全、字段为空或超长、主题换行、变量不支持}
+        "401": {description: 未登录}
+        "403": {description: 非管理员}
+        "409": {description: 模板已变化，客户端保留调整并提示重新读取}
+  /admin/settings/email-templates/preview:
+    post:
+      summary: 预览账户邮件（管理员，不发送邮件）
+      description: 使用示例验证码 123456 和实际发件品牌，返回 subject、text、html。HTML 由服务端安全转义并采用固定布局。
+      security: [{sessionCookie: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [scene, template]
+              properties:
+                scene: {type: string, enum: [register, login, password_reset, bind, change_email]}
+                template: {$ref: '#/components/schemas/EmailTemplate'}
+      responses:
+        "200": {description: 返回 preview，含 subject、text 和 html；不写库、不产生验证码票据}
+        "400": {description: 场景或文案无效}
+        "401": {description: 未登录}
+        "403": {description: 非管理员}
+  /auth/settings:
+    get:
+      tags: [auth]
+      security: []
+      summary: 读取公开认证策略
+      responses:
+        "200":
+          description: 返回现有认证策略与 turnstile（enabled、siteKey、registration、passwordReset、codeLogin、passwordLogin）；不含 Secret Key、域名列表或后台修订版本
+        "503": {description: 配置不可用}
+  /auth/password-reset-code:
+    post:
+      tags: [auth]
+      security: []
+      summary: 发送密码重置验证码
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email: {type: string, format: email}
+                turnstileToken: {type: string, maxLength: 2048}
+      responses:
+        "200": {description: 保持不枚举账号的成功响应}
+        "403": {description: 需要人机验证或凭证无效}
+        "503": {description: 验证服务不可用}
+  /admin/settings/turnstile:
+    get:
+      tags: [admin]
+      security: [{sessionCookie: []}]
+      summary: 读取人机验证配置
+      responses:
+        "200": {description: data.setting 为 TurnstileSetting；Secret Key 仅返回 hasSecretKey}
+        "401": {description: 未登录}
+        "403": {description: 非管理员}
+    patch:
+      tags: [admin]
+      security: [{sessionCookie: []}]
+      summary: 保存人机验证配置
+      description: revision 必须匹配；Secret Key 留空保留，加密存储。允许域名为完整主机名；官方测试密钥仅允许本机域名。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - {$ref: '#/components/schemas/TurnstileSetting'}
+                - type: object
+                  properties:
+                    secretKey: {type: string, writeOnly: true}
+      responses:
+        "200": {description: data.setting 返回保存后配置与新 revision，不含密钥}
+        "400": {description: 密钥、域名或失败次数无效}
+        "401": {description: 未登录}
+        "403": {description: 非管理员}
+        "409": {description: 配置已被他人更新，需重新读取}
+
 components:
   parameters:
     ExpectedHistoryUser:
@@ -2360,6 +2484,47 @@ components:
       in: cookie
       name: open_ai_canvas_session
   schemas:
+    TurnstileSetting:
+      type: object
+      required: [revision, enabled, siteKey, hostnames, registration, passwordReset, codeLogin, passwordLogin, loginFailureThreshold]
+      properties:
+        revision: {type: integer, format: int64, minimum: 0}
+        enabled: {type: boolean}
+        siteKey: {type: string}
+        hasSecretKey: {type: boolean, readOnly: true}
+        hostnames: {type: array, maxItems: 20, items: {type: string}}
+        registration: {type: boolean}
+        passwordReset: {type: boolean}
+        codeLogin: {type: boolean}
+        passwordLogin: {type: boolean}
+        loginFailureThreshold: {type: integer, minimum: 1, maximum: 10, default: 3}
+    EmailTemplate:
+      type: object
+      required: [subject, title, intro, footer]
+      description: 仅支持 {{brand}} 品牌名变量。文案按纯文本处理，HTML 自动转义。
+      properties:
+        subject: {type: string, minLength: 1, maxLength: 120}
+        title: {type: string, minLength: 1, maxLength: 80}
+        intro: {type: string, minLength: 1, maxLength: 600}
+        footer: {type: string, minLength: 1, maxLength: 400}
+    EmailTemplateScenes:
+      type: object
+      additionalProperties: false
+      required: [register, login, password_reset, bind, change_email]
+      properties:
+        register: {$ref: '#/components/schemas/EmailTemplate'}
+        login: {$ref: '#/components/schemas/EmailTemplate'}
+        password_reset: {$ref: '#/components/schemas/EmailTemplate'}
+        bind: {$ref: '#/components/schemas/EmailTemplate'}
+        change_email: {$ref: '#/components/schemas/EmailTemplate'}
+    EmailTemplates:
+      type: object
+      required: [revision, templates, defaults]
+      properties:
+        revision: {type: integer, format: int64, minimum: 0}
+        templates: {$ref: '#/components/schemas/EmailTemplateScenes'}
+        defaults: {$ref: '#/components/schemas/EmailTemplateScenes'}
+        updatedAt: {type: string, format: date-time}
     CreationHistoryMessage:
       type: object
       required: [id, revision, data]

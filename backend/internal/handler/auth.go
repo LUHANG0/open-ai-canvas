@@ -70,6 +70,7 @@ func RegisterAuthRoutes(r *gin.RouterGroup, svc *service.Service) {
 	r.POST("/auth/email-code", func(c *gin.Context) {
 		c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 16<<10)
 		var req struct {
+			TurnstileToken string `json:"turnstileToken"`
 			Email          string `json:"email"`
 			InvitationCode string `json:"invitationCode"`
 		}
@@ -87,6 +88,10 @@ func RegisterAuthRoutes(r *gin.RouterGroup, svc *service.Service) {
 		if req.InvitationCode != "" && !invitationRequestLimit(c, "send", req.InvitationCode) {
 			return
 		}
+		if err := svc.CheckHumanVerification(c.Request.Context(), "register", req.TurnstileToken, c.ClientIP()); err != nil {
+			failService(c, err)
+			return
+		}
 		if err := svc.SendRegistrationEmailCode(req.Email, req.InvitationCode); err != nil {
 			failService(c, err)
 			return
@@ -96,7 +101,8 @@ func RegisterAuthRoutes(r *gin.RouterGroup, svc *service.Service) {
 	r.POST("/auth/password-reset-code", func(c *gin.Context) {
 		c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 16<<10)
 		var req struct {
-			Email string `json:"email"`
+			Email          string `json:"email"`
+			TurnstileToken string `json:"turnstileToken"`
 		}
 		if err := c.ShouldBindJSON(&req); err != nil {
 			fail(c, http.StatusBadRequest, err)
@@ -107,6 +113,10 @@ func RegisterAuthRoutes(r *gin.RouterGroup, svc *service.Service) {
 			return
 		}
 		if !enforceRateLimit(c, "password-reset-code-account:"+passwordResetRateLimitSubject(req.Email), policy.Request.EmailCodePerHour, time.Hour) {
+			return
+		}
+		if err := svc.CheckHumanVerification(c.Request.Context(), "password_reset", req.TurnstileToken, c.ClientIP()); err != nil {
+			failService(c, err)
 			return
 		}
 		if err := svc.SendPasswordResetEmailCode(req.Email); err != nil {
@@ -137,7 +147,10 @@ func RegisterAuthRoutes(r *gin.RouterGroup, svc *service.Service) {
 	})
 	r.POST("/auth/login", rejectedLoginAudit(svc, "password"), func(c *gin.Context) {
 		c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 64<<10)
-		var req service.LoginRequest
+		var req struct {
+			service.LoginRequest
+			TurnstileToken string `json:"turnstileToken"`
+		}
 		if err := c.ShouldBindJSON(&req); err != nil {
 			fail(c, http.StatusBadRequest, err)
 			return
@@ -156,7 +169,7 @@ func RegisterAuthRoutes(r *gin.RouterGroup, svc *service.Service) {
 		}
 		req.LoginContext = loginRequestContext(c)
 		c.Set("login_audit_handled", true)
-		result, err := svc.Login(req)
+		result, err := svc.LoginWithHumanVerification(c.Request.Context(), req.LoginRequest, req.TurnstileToken)
 		if err != nil {
 			failService(c, err)
 			return

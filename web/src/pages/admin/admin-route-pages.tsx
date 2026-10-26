@@ -1,6 +1,7 @@
 import { Button } from "antd";
 import { Plus, Settings2, UserRoundCog } from "lucide-react";
 import { lazy, useState } from "react";
+import { Link } from "react-router";
 
 import { useAdminContext } from "./admin-context";
 import { AdminPageFrame } from "./components/admin-shell";
@@ -102,7 +103,7 @@ export function CreditOperationsPage() {
 
 export function AccessSettingsPage() {
     return (
-        <AdminPageFrame title="登录与注册" description="先控制账号创建，再配置第三方登录入口与服务协议" scroll>
+        <AdminPageFrame title="登录与注册" description="管理账号创建、登录方式与服务协议" scroll actions={<Link className="ant-btn ant-btn-default" to="/admin/settings/turnstile">人机验证设置</Link>}>
             <AccessSettingsPanel />
         </AdminPageFrame>
     );
@@ -110,7 +111,7 @@ export function AccessSettingsPage() {
 
 export function EmailSettingsPage() {
     return (
-        <AdminPageFrame title="邮件服务" description="先决定是否发送注册验证码，再配置 SMTP" scroll>
+        <AdminPageFrame title="邮件服务" description="先决定是否发送注册验证码，再配置 SMTP" scroll actions={<Link className="ant-btn ant-btn-default" to="/admin/settings/email-templates">编辑邮件模板</Link>}>
             <EmailSettingsPanel />
         </AdminPageFrame>
     );

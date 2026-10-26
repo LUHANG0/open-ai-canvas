@@ -448,19 +448,19 @@ export function updateAdminFeatureAvailability(
     return http.patch<{ features: FeatureAvailability }>("/admin/settings/features", features);
 }
 
-export async function login(input: { username: string; password: string }) {
+export async function login(input: { username: string; password: string; turnstileToken?: string }) {
     const result = await http.post<{ user: LocalUser }>("/auth/login", input);
     // 登录会改变服务端会话身份，不能让登录前缓存的游客 session 污染后续恢复。
     invalidateAuthSessionCache();
     return result;
 }
 
-export function sendRegistrationEmailCode(email: string) {
-    return http.post<{ sent: boolean }>("/auth/email-code", { email });
+export function sendRegistrationEmailCode(email: string, turnstileToken?: string) {
+    return http.post<{ sent: boolean }>("/auth/email-code", { email, turnstileToken });
 }
 
-export function sendPasswordResetEmailCode(email: string) {
-    return http.post<{ sent: boolean }>("/auth/password-reset-code", { email });
+export function sendPasswordResetEmailCode(email: string, turnstileToken?: string) {
+    return http.post<{ sent: boolean }>("/auth/password-reset-code", { email, turnstileToken });
 }
 
 export function resetPassword(input: { email: string; emailCode: string; password: string }) {

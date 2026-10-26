@@ -11,37 +11,41 @@ import (
 const SessionCookieName = auth.SessionCookieName
 
 type (
-	EmailCodeCooldownError     = auth.EmailCodeCooldownError
-	RegisterRequest            = auth.RegisterRequest
-	LoginRequest               = auth.LoginRequest
-	LoginContext               = auth.LoginContext
-	PublicAuthSettings         = auth.PublicAuthSettings
-	AuthSessionResult          = auth.AuthSessionResult
-	AuthUser                   = auth.AuthUser
-	RegistrationSettingRequest = auth.RegistrationSettingRequest
-	PublicRegistrationSetting  = auth.PublicRegistrationSetting
-	PasswordResetRequest       = auth.PasswordResetRequest
-	EmailSettingRequest        = auth.EmailSettingRequest
-	PublicEmailSetting         = auth.PublicEmailSetting
-	LinuxDOSettingRequest      = auth.LinuxDOSettingRequest
-	PublicLinuxDOSetting       = auth.PublicLinuxDOSetting
-	LinuxDOCallbackResult      = auth.LinuxDOCallbackResult
-	LibTVSettingRequest        = auth.LibTVSettingRequest
-	PublicLibTVSetting         = auth.PublicLibTVSetting
-	LibTVImportRequest         = auth.LibTVImportRequest
-	LibTVImportResult          = auth.LibTVImportResult
-	LibTVCanvasConnection      = auth.LibTVCanvasConnection
-	LibTVCanvasNode            = auth.LibTVCanvasNode
-	LibTVImportIssue           = auth.LibTVImportIssue
-	LibTVImportMetadata        = auth.LibTVImportMetadata
-	LibTVImportWarning         = auth.LibTVImportWarning
-	TapNowImportRequest        = auth.TapNowImportRequest
-	TapNowImportResult         = auth.TapNowImportResult
-	TapNowCanvasConnection     = auth.TapNowCanvasConnection
-	TapNowCanvasNode           = auth.TapNowCanvasNode
-	TapNowImportIssue          = auth.TapNowImportIssue
-	TapNowImportMetadata       = auth.TapNowImportMetadata
-	TapNowImportWarning        = auth.TapNowImportWarning
+	EmailCodeCooldownError      = auth.EmailCodeCooldownError
+	RegisterRequest             = auth.RegisterRequest
+	LoginRequest                = auth.LoginRequest
+	LoginContext                = auth.LoginContext
+	PublicAuthSettings          = auth.PublicAuthSettings
+	AuthSessionResult           = auth.AuthSessionResult
+	AuthUser                    = auth.AuthUser
+	RegistrationSettingRequest  = auth.RegistrationSettingRequest
+	PublicRegistrationSetting   = auth.PublicRegistrationSetting
+	PasswordResetRequest        = auth.PasswordResetRequest
+	EmailSettingRequest         = auth.EmailSettingRequest
+	EmailTemplatesRequest       = auth.EmailTemplatesRequest
+	PublicEmailTemplates        = auth.PublicEmailTemplates
+	EmailTemplatePreviewRequest = auth.EmailTemplatePreviewRequest
+	EmailTemplatePreview        = auth.EmailTemplatePreview
+	PublicEmailSetting          = auth.PublicEmailSetting
+	LinuxDOSettingRequest       = auth.LinuxDOSettingRequest
+	PublicLinuxDOSetting        = auth.PublicLinuxDOSetting
+	LinuxDOCallbackResult       = auth.LinuxDOCallbackResult
+	LibTVSettingRequest         = auth.LibTVSettingRequest
+	PublicLibTVSetting          = auth.PublicLibTVSetting
+	LibTVImportRequest          = auth.LibTVImportRequest
+	LibTVImportResult           = auth.LibTVImportResult
+	LibTVCanvasConnection       = auth.LibTVCanvasConnection
+	LibTVCanvasNode             = auth.LibTVCanvasNode
+	LibTVImportIssue            = auth.LibTVImportIssue
+	LibTVImportMetadata         = auth.LibTVImportMetadata
+	LibTVImportWarning          = auth.LibTVImportWarning
+	TapNowImportRequest         = auth.TapNowImportRequest
+	TapNowImportResult          = auth.TapNowImportResult
+	TapNowCanvasConnection      = auth.TapNowCanvasConnection
+	TapNowCanvasNode            = auth.TapNowCanvasNode
+	TapNowImportIssue           = auth.TapNowImportIssue
+	TapNowImportMetadata        = auth.TapNowImportMetadata
+	TapNowImportWarning         = auth.TapNowImportWarning
 )
 
 type authHost struct {
@@ -124,7 +128,16 @@ func (s *Service) authDomain() *auth.Service {
 }
 
 func (s *Service) PublicAuthSettings() (*PublicAuthSettings, error) {
-	return s.authDomain().PublicAuthSettings()
+	result, err := s.authDomain().PublicAuthSettings()
+	if err != nil {
+		return nil, err
+	}
+	_, value, err := s.readTurnstileSetting()
+	if err != nil {
+		return nil, err
+	}
+	result.Turnstile = &auth.PublicTurnstileConfig{Enabled: value.Enabled, SiteKey: value.SiteKey, Registration: value.Registration, PasswordReset: value.PasswordReset, CodeLogin: value.CodeLogin, PasswordLogin: value.PasswordLogin}
+	return result, nil
 }
 
 func (s *Service) Register(req RegisterRequest) (*AuthSessionResult, error) {
@@ -265,4 +278,14 @@ func hashToken(token string) string {
 
 func randomToken() string {
 	return auth.RandomToken()
+}
+
+func (s *Service) AdminEmailTemplates(actor *model.User) (*PublicEmailTemplates, error) {
+	return s.authDomain().AdminEmailTemplates(actor)
+}
+func (s *Service) UpdateEmailTemplates(actor *model.User, req EmailTemplatesRequest) (*PublicEmailTemplates, error) {
+	return s.authDomain().UpdateEmailTemplates(actor, req)
+}
+func (s *Service) PreviewEmailTemplate(actor *model.User, req EmailTemplatePreviewRequest) (*EmailTemplatePreview, error) {
+	return s.authDomain().PreviewEmailTemplate(actor, req)
 }

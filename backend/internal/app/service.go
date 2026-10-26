@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net/http"
 	"strings"
 	"sync"
 	"time"
@@ -79,6 +80,7 @@ type Service struct {
 	tools                    *tools.Service
 	prompts                  *prompts.Service
 	auth                     *auth.Service
+	turnstileClient          *http.Client
 	sms                      *sms.Service
 	canvas                   *canvas.Service
 	canvasRealtime           *canvas.RealtimeHub

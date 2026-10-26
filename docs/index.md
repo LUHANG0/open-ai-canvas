@@ -5,6 +5,8 @@
 - [创作页历史跨设备同步](content/docs/backend/creation-conversation-sync.mdx)：账号历史、旧本地迁移、逐消息修订、删除防复活及媒体引用边界。
 - [用户注册邀请](content/docs/backend/registration-invitations.mdx)：管理员单次邀请、关闭公开注册时的验证、固定积分、事务与迁移回退边界。
 
+- [账户邮件模板](content/docs/backend/email-templates.mdx)：五种验证码场景、后台文案编辑与预览、版本冲突和双格式发信。
+
 ## 部署与更新入口
 
 - [梦层自建镜像部署](content/docs/backend/mengceng-self-hosting.mdx)：当前 Fork 的自建镜像选择、共享宝塔主机隔离、构建补充层和验收边界；该明确选择优先于下述通用默认方案。
@@ -81,3 +83,5 @@
 - [代码地图](content/docs/backend/code-map.mdx)
 - [待办](content/docs/progress/todo.mdx)
 - [待测试](content/docs/progress/pending-test.mdx)
+
+- [登录与注册人机验证](content/docs/backend/turnstile.mdx)

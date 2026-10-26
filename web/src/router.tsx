@@ -20,6 +20,8 @@ const BannerAnnouncementsPage = lazy(() => import("@/pages/admin/admin-route-pag
 const StorageResourcesPage = lazy(() => import("@/pages/admin/admin-route-pages").then((module) => ({ default: module.StorageResourcesPage })));
 const CreditOperationsPage = lazy(() => import("@/pages/admin/admin-route-pages").then((module) => ({ default: module.CreditOperationsPage })));
 const AccessSettingsPage = lazy(() => import("@/pages/admin/admin-route-pages").then((module) => ({ default: module.AccessSettingsPage })));
+const TurnstileSettingsPage = lazy(() => import("@/pages/admin/settings/turnstile-settings-page"));
+const EmailTemplatesSettingsPage = lazy(() => import("@/pages/admin/settings/email-templates-settings-page"));
 const EmailSettingsPage = lazy(() => import("@/pages/admin/admin-route-pages").then((module) => ({ default: module.EmailSettingsPage })));
 const FeatureAvailabilityPage = lazy(() => import("@/pages/admin/admin-route-pages").then((module) => ({ default: module.FeatureAvailabilityPage })));
 const AgentLessonsPage = lazy(() => import("@/pages/admin/admin-route-pages").then((module) => ({ default: module.AgentLessonsPage })));
@@ -245,6 +247,8 @@ export const router = createBrowserRouter([
                     { path: "settings/features", element: <FeatureAvailabilityPage /> },
                     { path: "settings/access", element: <AccessSettingsPage /> },
                     { path: "settings/email", element: <EmailSettingsPage /> },
+                    { path: "settings/turnstile", element: <TurnstileSettingsPage /> },
+                    { path: "settings/email-templates", element: <EmailTemplatesSettingsPage /> },
                     { path: "settings/storage", element: <StorageSettingsPage /> },
                     { path: "settings/ark-private-assets", element: <ArkPrivateAssetsSettingsPage /> },
                     { path: "settings/response-interception", element: <ResponseInterceptionSettingsPage /> },

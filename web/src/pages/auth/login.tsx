@@ -1,10 +1,12 @@
-import { type FormEvent, useEffect, useState, type ReactNode } from "react";
+import { type FormEvent, useEffect, useRef, useState, type ReactNode } from "react";
 import { App, Button, Divider, Input } from "antd";
 import { SegmentedControl } from "@/components/ui/base/segmented-control";
 import { LockKeyhole, UserRound } from "lucide-react";
 import { Link, useNavigate, useSearchParams } from "react-router";
 
 import { getAuthSession, getAuthSettings, linuxDOLoginURL, login } from "@/services/api/auth";
+import { HumanVerification, type HumanVerificationHandle } from "@/components/auth/human-verification";
+import { isHumanVerificationRequired } from "@/services/api/turnstile";
 import { LinuxDOIcon } from "./auth-provider-icon";
 import { VerificationFields } from "@/components/auth/verification-fields";
 import { authEntry, clearAuthNavigation, safeAuthNext } from "@/lib/auth-navigation";
@@ -18,6 +20,8 @@ export default function LoginPage() {
     const { message } = App.useApp();
     const [username, setUsername] = useState("");
     const [password, setPassword] = useState("");
+    const humanVerification = useRef<HumanVerificationHandle>(null);
+    const [humanRequired, setHumanRequired] = useState(false);
     const [submitting, setSubmitting] = useState(false);
     const [linuxdoEnabled, setLinuxdoEnabled] = useState(false);
     const [settingsError, setSettingsError] = useState(false);
@@ -43,7 +47,10 @@ export default function LoginPage() {
         setSubmitError("");
         setSubmitting(true);
         try {
-            if (method === "password") await login({ username, password });
+            if (method === "password") {
+                const turnstileToken = humanRequired ? await humanVerification.current?.verify() : undefined;
+                await login({ username, password, turnstileToken });
+            }
             else {
                 if (!verification.ticket) throw new Error("请先获取本次登录验证码");
                 await loginVerification(verification);
@@ -54,6 +61,7 @@ export default function LoginPage() {
             clearAuthNavigation();
             navigate(next, { replace: true });
         } catch (error) {
+            if (isHumanVerificationRequired(error)) setHumanRequired(true);
             setSubmitError(error instanceof Error ? error.message : "登录失败，请重试。");
         } finally {
             setSubmitting(false);
@@ -66,7 +74,7 @@ export default function LoginPage() {
             {methods.length > 0 && <SegmentedControl block ariaLabel="登录方式" value={method} disabled={submitting} options={[{ value: "password", label: "密码登录" }, ...methods.map((value) => ({ value, label: methodLabels[value] }))]} onChange={(value) => { setMethod(value as typeof method); setVerification({ ...emptyVerification }); setSubmitError(""); }} />}
             {method !== "password" ? <VerificationFields key={method} purpose="login" method={method} value={verification} onChange={(value) => { setVerification(value); setSubmitError(""); }} disabled={submitting} /> : <>
             <AuthField label="用户名 / 邮箱" htmlFor="login-account">
-                <Input id="login-account" size="large" prefix={<UserRound className="auth-scene-icon size-4" />} value={username} onChange={(event) => { setUsername(event.target.value); setSubmitError(""); }} placeholder="用户名或邮箱" autoComplete="username" required />
+                <Input id="login-account" size="large" prefix={<UserRound className="auth-scene-icon size-4" />} value={username} onChange={(event) => { setUsername(event.target.value); setSubmitError(""); }} placeholder="用户名或邮箱" autoComplete="username" required disabled={submitting} />
             </AuthField>
             <AuthField
                 label="密码"
@@ -89,11 +97,13 @@ export default function LoginPage() {
                     value={password}
                     onChange={(event) => { setPassword(event.target.value); setSubmitError(""); }}
                     placeholder="请输入密码"
+                    disabled={submitting}
                     autoComplete="current-password"
                     required
                 />
             </AuthField>
             </>}
+            <HumanVerification ref={humanVerification} action="login" active={method === "password" && humanRequired} />
             {submitError && <p className="mc-login-feedback" data-error role="alert">{submitError}</p>}
             <Button type="primary" htmlType="submit" size="large" block loading={submitting} disabled={method === "password" ? !username.trim() || !password : !verification.ticket || !(method === "email" ? verification.emailCode : verification.smsCode)}>
                 登录
