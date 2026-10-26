@@ -7,6 +7,7 @@ import "./styles/shared/overlays.css";
 import "./styles/shared/scrollbars.css";
 import { RouterProvider } from "react-router";
 
+import { AppBootstrapReady } from "@/components/ui/app-bootstrap-ready";
 import { AppProviders } from "@/components/layout/app-providers";
 import { router } from "@/router";
 import { observeAuthNavigation } from "@/lib/auth-navigation";
@@ -18,6 +19,7 @@ document.body.style.fontFamily = '"SF Pro Display","SF Pro Text","PingFang SC","
 
 createRoot(document.getElementById("root")!).render(
     <React.StrictMode>
+        <AppBootstrapReady />
         <AppProviders>
             <RouterProvider router={router} useTransitions={false} />
         </AppProviders>
