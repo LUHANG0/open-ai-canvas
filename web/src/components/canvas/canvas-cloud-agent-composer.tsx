@@ -1,18 +1,19 @@
-// 画布 Agent 输入区：场景胶囊、输入框（附件、@ 引用、/ 技能）、发送/插话/停止按钮与图片预览。
+// 画布 Agent 输入区：技能组合栏、输入框（附件、@ 引用、/ 技能）、发送/插话/停止按钮与图片预览。
 //
 // 运行中输入框保持可用（产品约定，勿收紧）：发送走插话，停止由 running 驱动，两者互不排斥。
 
 import type { Skill, SkillPreset } from "@/services/api/skills";
-import { ArrowLeft, ArrowUp, AtSign, Bookmark, Clapperboard, ImagePlus, Layers3, LoaderCircle, Palette, Shapes, Share2, ShoppingBag, Sparkles, Square, X } from "lucide-react";
+import { ArrowUp, AtSign, Bookmark, Clapperboard, ImagePlus, LoaderCircle, Palette, Shapes, Share2, ShoppingBag, Sparkles, Square, X } from "lucide-react";
 import { canvasThemes } from "@/lib/canvas-theme";
-import { type ClipboardEvent as ReactClipboardEvent, type KeyboardEvent as ReactKeyboardEvent, type ReactNode, type PointerEvent as ReactPointerEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { type CSSProperties, type ClipboardEvent as ReactClipboardEvent, type KeyboardEvent as ReactKeyboardEvent, type ReactNode, type PointerEvent as ReactPointerEvent, useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import type { CanvasResourceReference } from "@/lib/canvas/canvas-resource-references";
 import { buildSkillMentionReferences } from "@/services/skill-runtime";
 import { useReducedMotion } from "motion/react";
 import { WorkingGlow } from "@/components/ai/working-indicator";
 import { CanvasResourceMentionTextarea } from "./canvas-resource-mention-textarea";
 import { Tooltip } from "@/components/ui/base/tooltip";
-import { Button } from "antd";
+import { Button, Popover } from "antd";
+import { usePopoverAnchorAlign } from "@/hooks/use-popover-anchor-align";
 import { agentAttachmentReferences, type CloudAgentChatAttachment } from "./canvas-cloud-agent-attachments";
 
 export const MIN_AGENT_PROMPT_HEIGHT = 60;
@@ -23,13 +24,17 @@ export function clampAgentPromptHeight(height: number) {
     return Math.min(MAX_AGENT_PROMPT_HEIGHT, Math.max(MIN_AGENT_PROMPT_HEIGHT, Math.ceil(height)));
 }
 
+export function appendAgentSkillSelection(current: string[], incoming: string[]) {
+    return [...new Set([...current, ...incoming])];
+}
+
 /**
- * 场景起步胶囊：把「我大概想做 X」一步翻译成一组技能。
+ * 本次技能统一入口：查看/移除本次已选，或按分类浏览推荐组合，并可进入原技能库。
  * 两组来源，都不限剧典技能：
  *  1) 配方组——只读消费 GET /skills/presets（随二进制内置的手工策展配方）
  *  2) 常用组——用户已装（其中可含已收藏）及自建的技能，按常用度排序（含官方种子库与自定义）
  * 选择只作用于本会话；缺失的技能会持久安装到当前用户的技能库。
- * 挂上之后具体用哪张卡由 Agent 在任务里检索判断，胶囊只负责"把对的技能送到手边"。
+ * 挂上之后具体用哪张卡由 Agent 在任务里检索判断，分类浏览本身不会绑定技能。
  */
 export type AgentSceneBucket = {
     key: string;
@@ -55,120 +60,191 @@ export function AgentSceneCapsules({
     disabled = false,
     onPick,
     onPickSkill,
+    selectedSkillIds,
+    selectedSkills,
+    open,
+    onOpenChange,
+    onRemove,
+    onClear,
+    onOpenLibrary,
 }: {
     buckets: AgentSceneBucket[];
     installedIds: Set<string>;
     theme: (typeof canvasThemes)[keyof typeof canvasThemes];
     disabled?: boolean;
-    onPick: (preset: SkillPreset) => void;
-    onPickSkill: (skill: Skill) => void;
+    selectedSkillIds: string[];
+    selectedSkills: Skill[];
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+    onRemove: (id: string) => void;
+    onClear: () => void;
+    onOpenLibrary: () => void;
+    onPick: (preset: SkillPreset) => Promise<number | false>;
+    onPickSkill: (skill: Skill) => Promise<number | false>;
 }) {
-    // 始终只占一排：默认显示场景分类，点某个场景后在同一排内就地切换内容。
+    const setOpen = onOpenChange;
+    const [applying, setApplying] = useState(false);
+    const applyingRef = useRef(false);
+    const [feedback, setFeedback] = useState<{ error: boolean; text: string } | null>(null);
+    const apply = async (action: () => Promise<number | false>) => {
+        if (disabled || applyingRef.current) return;
+        applyingRef.current = true;
+        setApplying(true);
+        setFeedback(null);
+        try {
+            const added = await action();
+            setFeedback(added === false
+                ? { error: true, text: "当前暂不能更改技能，请等待运行或会话加载完成后重试。" }
+                : { error: false, text: added > 0 ? `已加入 ${added} 项技能` : "这些技能已在本次选择中" });
+        } catch (cause) {
+            setFeedback({ error: true, text: `${cause instanceof Error ? cause.message : String(cause)}；已安装的技能仍保留在技能库，可重试。` });
+        } finally {
+            applyingRef.current = false;
+            setApplying(false);
+        }
+    };
     const [activeKey, setActiveKey] = useState<string | null>(null);
-    const capsuleClass = "agent-scene-capsule shrink-0";
+    const popoverRef = usePopoverAnchorAlign(open);
+    const triggerRef = useRef<HTMLButtonElement>(null);
+    const closeRef = useRef<HTMLButtonElement>(null);
+    const pickerId = useId();
+    const disclosureId = useId();
+    const titleId = useId();
+    const disclosure = "选择待装技能时，缺失技能会持久加入你的技能库，不随会话结束移除。";
+    const visible = buckets.filter((bucket) => bucket.presets.length + bucket.skills.length > 0);
+    const active = visible.find((bucket) => bucket.key === activeKey) || visible.find((bucket) => bucket.key === "frequent") || visible[0];
+    const hasMissing = Boolean(active?.presets.some((preset) => preset.skillIds.some((id) => !installedIds.has(id))) || active?.skills.some((skill) => !installedIds.has(skill.skillId)));
+    const close = () => {
+        setOpen(false);
+        triggerRef.current?.focus();
+    };
     const stop = {
         onMouseDown: (event: { stopPropagation(): void }) => event.stopPropagation(),
         onPointerDown: (event: { stopPropagation(): void }) => event.stopPropagation(),
+        onClick: (event: { stopPropagation(): void }) => event.stopPropagation(),
     };
-    const visible = buckets.filter((bucket) => bucket.presets.length + bucket.skills.length > 0);
-    const active = activeKey ? visible.find((bucket) => bucket.key === activeKey) || null : null;
-    if (!visible.length) return null;
     return (
-        <div className="agent-scene-capsules mx-3 mb-2 min-w-0" style={{ color: theme.node.text }}>
-            <div className="agent-scene-capsules-heading">
-                <Sparkles aria-hidden="true" />
-                <span>{active ? active.label : "技能组合推荐"}</span>
-            </div>
-            <div className="agent-scene-capsules-scroll thin-scrollbar flex gap-2 overflow-x-auto px-1 py-2">
-                {active ? (
-                    <>
-                        <button
-                            type="button"
-                            disabled={disabled}
-                            title="返回全部场景"
-                            className={capsuleClass}
-                            data-scene="back"
-                            {...stop}
-                            onClick={(event) => {
-                                event.stopPropagation();
-                                setActiveKey(null);
-                            }}
-                        >
-                            <ArrowLeft aria-hidden="true" />
-                            <span>全部场景</span>
-                        </button>
-                        {active.presets.map((preset) => {
-                            const missing = preset.skillIds.filter((id) => !installedIds.has(id)).length;
-                            return (
-                                <button
-                                    key={preset.presetId}
-                                    type="button"
-                                    disabled={disabled}
-                                    title={preset.rationale}
-                                    className={capsuleClass}
-                                    data-scene={active.key}
-                                    {...stop}
-                                    onClick={(event) => {
-                                        event.stopPropagation();
-                                        onPick(preset);
-                                    }}
-                                >
-                                    <Layers3 aria-hidden="true" />
-                                    <span className="agent-scene-capsule-label">{preset.name}</span>
-                                    <span className="agent-scene-capsule-meta">{missing > 0 ? `${preset.skillIds.length} 技能 · ${missing} 待装` : `${preset.skillIds.length} 技能`}</span>
-                                </button>
-                            );
-                        })}
-                        {active.skills.map((skill) => {
-                            const owned = skill.isOwner ? "自建" : skill.isLike ? "已收藏" : installedIds.has(skill.skillId) ? "已装" : "待装";
-                            return (
-                                <button
-                                    key={skill.skillId}
-                                    type="button"
-                                    disabled={disabled}
-                                    title={skill.description}
-                                    className={capsuleClass}
-                                    data-scene={active.key}
-                                    {...stop}
-                                    onClick={(event) => {
-                                        event.stopPropagation();
-                                        onPickSkill(skill);
-                                    }}
-                                >
-                                    <Sparkles aria-hidden="true" />
-                                    <span className="agent-scene-capsule-label">{skill.skillName}</span>
-                                    <span className="agent-scene-capsule-meta">{owned}</span>
-                                </button>
-                            );
-                        })}
-                    </>
-                ) : (
-                    visible.map((bucket) => {
-                        const count = bucket.presets.length + bucket.skills.length;
-                        const Icon = AGENT_SCENE_DEFS.find((definition) => definition.key === bucket.key)?.icon || Shapes;
-                        return (
-                            <button
-                                key={bucket.key}
-                                type="button"
-                                disabled={disabled}
-                                title={`查看「${bucket.label}」下的技能组合`}
-                                className={capsuleClass}
-                                data-scene={bucket.key}
-                                {...stop}
-                                onClick={(event) => {
-                                    event.stopPropagation();
-                                    setActiveKey(bucket.key);
-                                }}
-                            >
-                                <Icon aria-hidden="true" />
-                                <span className="agent-scene-capsule-label">{bucket.label}</span>
-                                <span className="agent-scene-capsule-meta">{count} 项</span>
-                            </button>
-                        );
-                    })
-                )}
-            </div>
-            <p className="agent-scene-capsules-note">仅本会话生效 · 缺失技能将加入技能库 · Agent 按任务调用</p>
+        <div className="agent-scene-capsules min-w-0 shrink-0" style={{ color: theme.node.text }} {...stop}>
+            <Popover
+                ref={popoverRef}
+                open={open}
+                onOpenChange={setOpen}
+                afterOpenChange={(shown) => { if (shown) closeRef.current?.focus(); }}
+                trigger="click"
+                placement="topLeft"
+                arrow={false}
+                autoAdjustOverflow
+                classNames={{ root: "agent-skill-picker-popover" }}
+                getPopupContainer={() => document.body}
+                styles={{ root: { "--agent-surface-base": theme.node.panel, "--agent-ink": theme.node.text, "--agent-accent": theme.accent.primary, "--agent-shadow-color": theme.spatial.shadow } as CSSProperties }}
+                content={
+                    <section
+                        id={pickerId}
+                        role="dialog"
+                        aria-modal="true"
+                        aria-labelledby={titleId}
+                        aria-describedby={hasMissing ? disclosureId : undefined}
+                        className="agent-skill-picker"
+                        data-canvas-no-zoom
+                        {...stop}
+                        onKeyDown={(event) => {
+                            event.stopPropagation();
+                            if (event.key === "Escape") {
+                                event.preventDefault();
+                                close();
+                            } else if (event.key === "Tab") {
+                                const controls = Array.from(event.currentTarget.querySelectorAll<HTMLButtonElement>("button:not(:disabled)"));
+                                const first = controls[0];
+                                const last = controls[controls.length - 1];
+                                if (event.shiftKey && document.activeElement === first) {
+                                    event.preventDefault();
+                                    last?.focus();
+                                } else if (!event.shiftKey && document.activeElement === last) {
+                                    event.preventDefault();
+                                    first?.focus();
+                                }
+                            }
+                        }}
+                    >
+                        <header className="agent-skill-picker-head">
+                            <div>
+                                <h3 id={titleId}>创作技能</h3>
+                                <p>选好后发送消息，助手会按需要使用</p>
+                            </div>
+                            <button ref={closeRef} type="button" className="agent-skill-picker-close" aria-label="关闭技能选择" onClick={close}><X aria-hidden="true" /></button>
+                        </header>
+                        <div className="agent-skill-picker-selected thin-scrollbar" aria-label="本次已选技能" data-canvas-wheel-scroll>
+                            {selectedSkillIds.length ? <>
+                                <div className="agent-skill-picker-selection-head"><span>已选 {selectedSkillIds.length} 项</span><button type="button" disabled={disabled || applying} onClick={() => { onClear(); setFeedback(null); }}>清空选择</button></div>
+                                <div className="agent-skill-picker-chips">{selectedSkillIds.map((id) => {
+                                    const name = selectedSkills.find((item) => item.skillId === id)?.skillName || id;
+                                    return <button key={id} type="button" disabled={disabled || applying} aria-label={`移除${name}`} title={name} onClick={() => { onRemove(id); setFeedback(null); }}><span>{name}</span><X aria-hidden="true" /></button>;
+                                })}</div>
+                            </> : <p>还未选择技能，可以直接发送，也可以按需添加</p>}
+                        </div>
+                        {feedback ? <p className="agent-skill-picker-feedback" role={feedback.error ? "alert" : "status"}>{feedback.text}</p> : null}
+                        {applying ? <p className="agent-skill-picker-feedback" role="status">正在确认安装并更新本次已选…</p> : null}
+                        <nav className="agent-skill-picker-categories thin-scrollbar" aria-label="技能分类" data-canvas-wheel-scroll>
+                            {visible.map((bucket) => {
+                                const Icon = AGENT_SCENE_DEFS.find((scene) => scene.key === bucket.key)?.icon || Shapes;
+                                return (
+                                    <button key={bucket.key} type="button" disabled={applying} aria-pressed={active?.key === bucket.key} onClick={() => setActiveKey(bucket.key)}>
+                                        <Icon aria-hidden="true" />
+                                        <span>{bucket.label}</span>
+                                        <small>{bucket.presets.length + bucket.skills.length}</small>
+                                    </button>
+                                );
+                            })}
+                        </nav>
+                        <div key={active?.key} className="agent-skill-picker-list thin-scrollbar" aria-label={`${active?.label || "推荐"}技能`} data-canvas-wheel-scroll aria-busy={applying}>
+                            {!active ? <p>暂无推荐组合，可从技能库浏览更多技能。</p> : null}
+                            {active?.presets.map((preset) => {
+                                const missing = preset.skillIds.filter((id) => !installedIds.has(id)).length;
+                                const selected = preset.skillIds.every((id) => selectedSkillIds.includes(id));
+                                return (
+                                    <div className="agent-skill-picker-row" key={preset.presetId}>
+                                        <div className="agent-skill-picker-copy">
+                                            <strong>{preset.name}</strong>
+                                            <p title={preset.rationale}>{preset.rationale}</p>
+                                            <small>{preset.skillIds.length} 项技能{missing > 0 ? ` · ${missing} 待装` : ""}</small>
+                                        </div>
+                                        <button type="button" disabled={disabled || applying || selected} aria-label={`选用组合：${preset.name}`} aria-describedby={missing ? disclosureId : undefined} onClick={() => void apply(() => onPick(preset))}>{selected ? "已选用" : "选用"}</button>
+                                    </div>
+                                );
+                            })}
+                            {active?.skills.map((skill) => {
+                                const missing = !installedIds.has(skill.skillId);
+                                const status = missing ? "待装" : skill.isOwner ? "自建" : skill.isLike ? "已收藏" : "已装";
+                                return (
+                                    <div className="agent-skill-picker-row" key={skill.skillId}>
+                                        <div className="agent-skill-picker-copy">
+                                            <strong>{skill.skillName}</strong>
+                                            <p title={skill.description}>{skill.description}</p>
+                                            <small>1 技能 · {status}{missing ? "，将持久加入技能库" : ""}</small>
+                                        </div>
+                                        <button type="button" disabled={disabled || applying || selectedSkillIds.includes(skill.skillId)} aria-label={`加入本次：${skill.skillName}`} aria-describedby={missing ? disclosureId : undefined} onClick={() => void apply(() => onPickSkill(skill))}>{selectedSkillIds.includes(skill.skillId) ? "已加入" : "加入"}</button>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                        {hasMissing ? <p id={disclosureId} className="agent-skill-picker-disclosure">{disclosure}</p> : null}
+                        <footer className="agent-skill-picker-footer"><button type="button" onClick={() => { close(); onOpenLibrary(); }}>更多技能，打开技能库</button></footer>
+                    </section>
+                }
+            >
+                <button
+                    ref={triggerRef}
+                    type="button"
+                    aria-label={selectedSkillIds.length ? `创作技能 · 已选 ${selectedSkillIds.length}` : "创作技能"}
+                    className="agent-skill-picker-trigger"
+                    aria-haspopup="dialog"
+                    aria-expanded={open}
+                    aria-controls={open ? pickerId : undefined}
+                    onKeyDown={(event) => { event.stopPropagation(); if (event.key === "Escape") close(); }}
+                >
+                    <Sparkles aria-hidden="true" />创作技能{selectedSkillIds.length ? ` · 已选 ${selectedSkillIds.length}` : ""}
+                </button>
+            </Popover>
         </div>
     );
 }
@@ -189,6 +265,7 @@ export function AgentChatComposer({
     left,
     submitAccessory,
     footer,
+    trayStatus,
     onStop,
     stopping,
     references = [],
@@ -214,6 +291,8 @@ export function AgentChatComposer({
     submitAccessory?: ReactNode;
     /** 输入区底部的附加内容（例如连接器条）。 */
     footer?: ReactNode;
+    /** 底托盘右侧状态与配置；启用助手分层布局，不改变其他调用方。 */
+    trayStatus?: ReactNode;
     /** 供「@」插入的画布节点/素材/技能引用候选（可选，默认空，缺省时退化为普通输入框） */
     references?: CanvasResourceReference[];
     /** 供「/」弹出的技能候选（可选） */
@@ -345,16 +424,16 @@ export function AgentChatComposer({
     return (
         <div className="agent-composer-wrap min-w-0 shrink-0" onWheelCapture={(event) => event.stopPropagation()}>
             {/* 有底部附加内容时，外壳托住输入卡片与底部条，形成一张整卡。 */}
-            <div className="agent-composer-shell relative" data-has-footer={footer ? "" : undefined}>
+            <div className="agent-composer-shell relative" data-has-footer={footer || trayStatus ? "" : undefined} data-layered={trayStatus ? "" : undefined}>
                 {/* 整卡模式下发送光环包住整张卡，避免画在输入区与连接器之间形成一条线。 */}
-                {footer && sending && !reducedMotion ? <WorkingGlow active color={theme.accent.primary} radius={22} /> : null}
+                {(footer || trayStatus) && sending && !reducedMotion ? <WorkingGlow active color={theme.accent.primary} radius={22} /> : null}
                 <div
                     className="agent-composer-surface group/composer relative transition-colors duration-[var(--control-motion-duration)] motion-reduce:transition-none"
                     style={{
                         color: theme.accent.primary,
                     }}
                 >
-                    {!footer && sending && !reducedMotion ? <WorkingGlow active color={theme.accent.primary} radius={22} /> : null}
+                    {!footer && !trayStatus && sending && !reducedMotion ? <WorkingGlow active color={theme.accent.primary} radius={22} /> : null}
                     {attachments.length ? (
                         <div className="thin-scrollbar mb-2 flex gap-2 overflow-x-auto pb-1">
                             {attachments.map((item, index) => (
@@ -519,7 +598,12 @@ export function AgentChatComposer({
                         </div>
                     </div>
                 </div>
-                {footer}
+                {trayStatus ? (
+                    <div className="agent-composer-tray">
+                        <div className="agent-composer-tray-status">{trayStatus}</div>
+                        {footer ? <div className="agent-composer-tray-connectors">{footer}</div> : null}
+                    </div>
+                ) : footer}
             </div>
             {previewAttachment ? <AgentImagePreview attachment={previewAttachment} onClose={() => setPreviewAttachment(null)} /> : null}
         </div>

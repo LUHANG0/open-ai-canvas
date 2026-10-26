@@ -6,7 +6,7 @@
 import type { CanvasTheme } from "@/lib/canvas-theme";
 import { useAppearanceStore } from "@/stores/use-appearance-store";
 import { agentAvatarClipForState, agentAvatarStateForRunStatus, agentCopy, DEFAULT_CANVAS_APPEARANCE, isAgentAvatarBundleManifest, type AgentAvatarBundleManifest } from "@/lib/canvas/agent-appearance";
-import { type CSSProperties, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { type CSSProperties, type ReactNode, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { usePopoverAnchorAlign } from "@/hooks/use-popover-anchor-align";
 import { useAgentLauncherPosition } from "./use-agent-launcher-position";
 import { cn } from "@/lib/utils";
@@ -14,7 +14,7 @@ import { Live2DAvatar } from "./live2d-avatar";
 import { agentAvatarBundleFileURL, live2DModelURL } from "@/services/api/appearance";
 import { AgentAvatarVideo } from "@/components/canvas/agent-avatar-video";
 import { FluidOrb } from "@/components/ui/fluid-orb";
-import { ArrowLeft, Check, CircleDot, Clock3, Download, History, LoaderCircle, MessageSquarePlus, RotateCcw, Settings2, ShieldCheck, Sparkles, Trash2, X } from "lucide-react";
+import { ArrowLeft, Check, ChevronDown, CircleDot, Clock3, Download, History, LoaderCircle, MessageSquarePlus, RotateCcw, Settings2, ShieldCheck, Sparkles, Trash2, X } from "lucide-react";
 import { Button, Input, Popover } from "antd";
 import { CanvasAnchoredDropdown as Dropdown } from "./canvas-anchored-dropdown";
 import type { AgentContextPhase, AgentContextUsageView } from "@/lib/canvas/agent-context-usage";
@@ -233,7 +233,7 @@ export function formatContextBytes(bytes: number | undefined) {
     return `${Math.round(bytes).toLocaleString("zh-CN")} 字节`;
 }
 
-export function AgentContextRing({ view, theme }: { view: AgentContextUsageView; theme: CanvasTheme }) {
+export function AgentContextRing({ view, theme, compact = false }: { view: AgentContextUsageView; theme: CanvasTheme; compact?: boolean }) {
     const [open, setOpen] = useState(false);
     const popoverRef = usePopoverAnchorAlign(open);
     const marker = view.compactRatio && view.compactRatio > 0 && view.compactRatio < 1 ? view.compactRatio : undefined;
@@ -333,7 +333,7 @@ export function AgentContextRing({ view, theme }: { view: AgentContextUsageView;
                 </div>
             }
         >
-            <button type="button" className={`agent-context-ring is-${view.phase}`} aria-label={`${usageHeading}，${phaseLabel}。点击查看明细`} aria-expanded={open} title="查看上下文用量" onPointerDown={(event) => event.stopPropagation()}>
+            <button type="button" className={`agent-context-ring${compact ? " agent-context-ring-icon" : ""} is-${view.phase}`} aria-label={`${usageHeading}，${phaseLabel}。点击查看明细`} aria-expanded={open} title={`${usageHeading}，${phaseLabel}。点击查看明细`} onPointerDown={(event) => event.stopPropagation()}>
                 <span
                     className="agent-context-ring-visual"
                     aria-hidden="true"
@@ -346,10 +346,10 @@ export function AgentContextRing({ view, theme }: { view: AgentContextUsageView;
                 >
                     {marker ? <span className="agent-context-ring-marker" /> : null}
                 </span>
-                <span className="agent-context-meter-copy">
+                {!compact ? <span className="agent-context-meter-copy">
                     <strong>{meterLabel}</strong>
                     <small>上下文</small>
-                </span>
+                </span> : null}
             </button>
         </Popover>
     );
@@ -551,26 +551,16 @@ export function AgentConversation({
 export function ComposerControls({
     config,
     selectedModel,
-    permissionMode,
     theme,
     onModelChange,
-    onPermissionChange,
-    skillsOpen,
-    onSkillsOpenChange,
-    selectedSkillCount,
+    skillControl,
 }: {
     config: ReturnType<typeof useEffectiveConfig>;
     selectedModel: string;
-    permissionMode: AgentPermissionMode;
     theme: CanvasTheme;
     onModelChange: (model: string) => void;
-    onPermissionChange: (mode: AgentPermissionMode) => void;
-    skillsOpen: boolean;
-    onSkillsOpenChange: (open: boolean) => void;
-    selectedSkillCount: number;
+    skillControl: ReactNode;
 }) {
-    const permissionVisual = agentPermissionVisual(permissionMode);
-    const PermissionIcon = permissionVisual.icon;
     return (
         <div className="agent-composer-selection flex min-w-0 flex-1 flex-nowrap items-center gap-0.5">
             <ModelPicker
@@ -586,31 +576,32 @@ export function ComposerControls({
                 showOptionPrices
                 placeholder="选择文本模型"
             />
-            <Dropdown trigger={["click"]} placement="topLeft" menu={{ items: agentPermissionMenuItems(permissionMode, onPermissionChange) }}>
-                <button
-                    type="button"
-                    className="grid size-8 shrink-0 place-items-center rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-current/25"
-                    style={{ color: theme.node.muted, background: "transparent" }}
-                    aria-label={`执行权限：${agentPermissionLabel(permissionMode)}，点击切换`}
-                    title={`执行权限：${agentPermissionLabel(permissionMode)}，点击切换`}
-                >
-                    <PermissionIcon className="size-3.5" style={{ color: permissionVisual.color }} aria-hidden="true" />
-                </button>
-            </Dropdown>
+            {skillControl}
+        </div>
+    );
+}
+
+export function ComposerPermission({ permissionMode, theme, onPermissionChange }: {
+    permissionMode: AgentPermissionMode;
+    theme: CanvasTheme;
+    onPermissionChange: (mode: AgentPermissionMode) => void;
+}) {
+    const permissionVisual = agentPermissionVisual(permissionMode);
+    const PermissionIcon = ShieldCheck;
+    return (
+        <Dropdown trigger={["click"]} placement="topLeft" menu={{ items: agentPermissionMenuItems(permissionMode, onPermissionChange) }}>
             <button
                 type="button"
-                className="flex h-8 shrink-0 items-center gap-1 rounded-md px-2 text-[11px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-current/25"
-                style={{ color: selectedSkillCount ? theme.accent.primary : theme.node.muted, background: skillsOpen ? theme.node.fill : "transparent" }}
-                aria-label={`打开 Skills 技能库${selectedSkillCount ? `，已启用 ${selectedSkillCount} 个` : ""}`}
-                aria-expanded={skillsOpen}
-                aria-haspopup="dialog"
-                title="打开 Skills 技能库"
-                onClick={() => onSkillsOpenChange(true)}
+                className="agent-composer-permission"
+                style={{ color: theme.node.muted }}
+                aria-label={`执行权限：${agentPermissionLabel(permissionMode)}，点击切换`}
+                title={`执行权限：${agentPermissionLabel(permissionMode)}，点击切换`}
             >
-                <Sparkles className="size-3.5" />
-                <span className="max-w-28 truncate">Skills({selectedSkillCount})</span>
+                <PermissionIcon className="size-3.5 shrink-0" style={{ color: permissionVisual.color }} aria-hidden="true" />
+                <span>执行设置{permissionMode === "request_approval" ? "" : ` · ${agentPermissionLabel(permissionMode)}`}</span>
+                <ChevronDown className="size-3 shrink-0 opacity-60" aria-hidden="true" />
             </button>
-        </div>
+        </Dropdown>
     );
 }
 

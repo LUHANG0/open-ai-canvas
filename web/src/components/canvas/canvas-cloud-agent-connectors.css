@@ -1,9 +1,10 @@
-/* Agent 连接器样式 - 极简紧凑版：高度压缩，图标更小，左右紧密排列 */
+/* Original bottom connector strip; match the adjacent composer control rhythm. */
 
 .agent-connectors {
+    --agent-connector-size: 32px;
     display: flex;
     align-items: center;
-    gap: var(--space-1-half);
+    gap: 8px;
     padding: var(--space-1-half) var(--space-3) var(--space-2-half);
     color: var(--agent-caption);
 }
@@ -15,7 +16,7 @@
     font-size: var(--fs-caption);
     font-weight: 500;
     flex-shrink: 0;
-    opacity: 0.7;
+    opacity: 0.9;
 }
 
 .agent-connectors-label > svg {
@@ -27,13 +28,15 @@
     display: flex;
     align-items: center;
     gap: 4px;
+    flex-wrap: nowrap;
+    overflow-x: auto;
     flex: 1;
     min-width: 0;
 }
 
 .agent-connector-item {
-    width: 24px;
-    height: 24px;
+    width: var(--agent-connector-size);
+    height: var(--agent-connector-size);
     padding: 0;
     border: 0;
     background: transparent;
@@ -58,8 +61,8 @@
 }
 
 .agent-connectors-close {
-    width: 22px;
-    height: 22px;
+    width: var(--agent-connector-size);
+    height: var(--agent-connector-size);
     padding: 0;
     border: 0;
     border-radius: 999px;
@@ -70,7 +73,7 @@
     cursor: pointer;
     flex-shrink: 0;
     transition: background-color var(--control-motion-duration) ease, opacity var(--control-motion-duration) ease;
-    opacity: 0.6;
+    opacity: 0.85;
 }
 
 .agent-connectors-close > svg {
@@ -81,6 +84,18 @@
 .agent-connectors-close:hover {
     opacity: 1;
     background: color-mix(in srgb, var(--agent-ink) 6%, transparent);
+}
+
+@container (max-width: 400px) {
+    .agent-connectors {
+        --agent-connector-size: 28px;
+        gap: 4px;
+        padding: 2px var(--space-2) 4px;
+    }
+
+    .agent-connectors-list {
+        gap: 2px;
+    }
 }
 
 @media (prefers-reduced-motion: reduce) {

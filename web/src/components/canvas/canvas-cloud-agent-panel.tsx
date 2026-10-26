@@ -1,6 +1,8 @@
 import { createClientUUID } from "@/lib/client-id";
 import { memo, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties } from "react";
 import { Button } from "antd";
+import { Cable, ChevronDown } from "lucide-react";
+import { appendAgentSkillSelection } from "./canvas-cloud-agent-composer";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { saveAs } from "file-saver";
 import { buildAgentDebugExport } from "@/lib/canvas/agent-debug-export";
@@ -63,7 +65,7 @@ import { CanvasCloudAgentSettings, type AgentContextKey } from "./canvas-cloud-a
 import { useAgentPanelLayout } from "./use-agent-panel-layout";
 import "./canvas-cloud-agent.css";
 import { appendAgentError, appendUniqueMessage, applyAgentEvent, positiveNumber, type ApprovalState } from "./canvas-cloud-agent-events";
-import { AgentContextRing, AgentConversation, AgentHeader, AgentHistory, AgentLauncher, ComposerControls } from "./canvas-cloud-agent-panel-parts";
+import { AgentContextRing, AgentConversation, AgentHeader, AgentHistory, AgentLauncher, ComposerControls, ComposerPermission } from "./canvas-cloud-agent-panel-parts";
 import { AgentConnectorsBar } from "./canvas-cloud-agent-connectors";
 import { useGlobalAgentStore, type AgentPrefillRequest } from "@/stores/use-global-agent-store";
 
@@ -114,6 +116,8 @@ export const CanvasCloudAgentPanel = memo(function CanvasCloudAgentPanel() {
     const profileRequestRef = useRef(0);
     const [skills, setSkills] = useState<Skill[]>([]);
     const [selectedSkillIds, setSelectedSkillIds] = useState<string[]>([]);
+    const selectedSkillIdsRef = useRef(selectedSkillIds);
+    selectedSkillIdsRef.current = selectedSkillIds;
     const [marketSkills, setMarketSkills] = useState<Skill[]>([]);
     const [skillSearch, setSkillSearch] = useState("");
     const [debouncedSkillSearch, setDebouncedSkillSearch] = useState("");
@@ -124,6 +128,7 @@ export const CanvasCloudAgentPanel = memo(function CanvasCloudAgentPanel() {
     const [libraryCategories, setLibraryCategories] = useState<SkillLibraryCategory[]>([]);
     const [skillTag, setSkillTag] = useState("all");
     const [skillsOpen, setSkillsOpen] = useState(false);
+    const [skillPickerOpen, setSkillPickerOpen] = useState(false);
     const curationState = useSkillCuration(skillsOpen);
     const [platformCategory, setPlatformCategory] = useState("");
     const skillBrowseKey = JSON.stringify([userId, skillTag, debouncedSkillSearch, platformCategory, curationState.curation?.revision, curationState.curation?.enabled]);
@@ -156,8 +161,8 @@ export const CanvasCloudAgentPanel = memo(function CanvasCloudAgentPanel() {
     const [scenePresets, setScenePresets] = useState<SkillPreset[]>([]);
     const [presetApplyingId, setPresetApplyingId] = useState("");
     const presetApplyingRef = useRef<string | null>(null);
-    // 连接器条默认展示，关闭后本次会话内不再显示。
-    const [connectorsVisible, setConnectorsVisible] = useState(true);
+    // 仅本次面板展开状态，不覆盖持久配置。
+    const [connectorsVisible, setConnectorsVisible] = useState(false);
     const panelLayout = useAgentPanelLayout();
     const lastSeqRef = useRef(0);
     const canvasSyncRef = useRef<ReturnType<typeof createAgentCanvasSync> | null>(null);
@@ -253,37 +258,47 @@ export const CanvasCloudAgentPanel = memo(function CanvasCloudAgentPanel() {
 
     const applyScenePreset = useCallback(
         async (preset: SkillPreset) => {
-            if (running || busy || presetApplyingRef.current || !historyHydrated || !pendingHydrated) return;
+            if (otherAgentRunning || running || busy || presetApplyingRef.current || !historyHydrated || !pendingHydrated) return false;
+            const additions = appendAgentSkillSelection([], preset.skillIds).filter((id) => !selectedSkillIds.includes(id));
+            if (!additions.length) return 0;
             const scope = conversationScope;
             const account = getActiveUserScope();
             const token = createClientUUID();
             const isCurrent = () => presetApplyingRef.current === token && currentScope.current === scope && getActiveUserScope() === account;
-            const missing = preset.skillIds.filter((id) => !installedSkillIds.has(id));
+            const missing = additions.filter((id) => !installedSkillIds.has(id));
             presetApplyingRef.current = token;
             setPresetApplyingId(preset.presetId);
             try {
                 // 安装是持久写操作；任何失败都不能谎称整个配方已挂载。
                 for (const id of missing) {
-                    if (!isCurrent()) return;
+                    if (!isCurrent()) return false;
                     await addSkill(id);
-                    if (!isCurrent()) return;
+                    if (!isCurrent()) return false;
                 }
                 const refreshed = await listAddedSkills();
-                if (!isCurrent()) return;
+                if (!isCurrent()) return false;
                 if (preset.skillIds.some((id) => !refreshed.skills.some((skill) => skill.skillId === id && skill.isAdded))) {
                     throw new Error("技能库未确认全部预设技能已安装，请刷新后重试");
                 }
                 setSkills(refreshed.skills);
-                setSelectedSkillIds(preset.skillIds);
+                setMarketSkills((current) => current.map((item) => refreshed.skills.find((added) => added.skillId === item.skillId) || item));
+                const currentSelection = selectedSkillIdsRef.current;
+                const nextSelection = appendAgentSkillSelection(currentSelection, preset.skillIds);
+                const addedCount = nextSelection.length - currentSelection.length;
+                if (!addedCount) return 0;
+                setSelectedSkillIds(nextSelection);
                 setMessages((current) =>
                     appendUniqueMessage(current, {
                         id: `preset-${preset.presetId}-${Date.now()}`,
                         role: "system",
-                        text: `已按「${preset.name}」挂上 ${preset.skillIds.length} 个技能${missing.length ? `（新装 ${missing.length} 个）` : ""}。${preset.rationale}`,
+                        text: `已加入 ${addedCount} 项技能（${preset.name}）${missing.length ? `，新装 ${missing.length} 项` : ""}。`,
                     }),
                 );
+                return addedCount;
             } catch (cause) {
                 if (isCurrent()) setMessages((current) => appendAgentError(current, `preset-${preset.presetId}`, cause, `「${preset.name}」挂载失败（已安装的技能仍在技能库中）`));
+                if (isCurrent()) throw cause;
+                return false;
             } finally {
                 if (presetApplyingRef.current === token) {
                     presetApplyingRef.current = null;
@@ -291,13 +306,14 @@ export const CanvasCloudAgentPanel = memo(function CanvasCloudAgentPanel() {
                 }
             }
         },
-        [busy, conversationScope, historyHydrated, installedSkillIds, pendingHydrated, running],
+        [busy, conversationScope, historyHydrated, installedSkillIds, pendingHydrated, running, otherAgentRunning, selectedSkillIds],
     );
 
     // 单个技能（含用户自建）挂载到本会话；未装的先补装，已挂的不重复追加。
     const applySingleSkill = useCallback(
         async (skill: Skill) => {
-            if (running || busy || presetApplyingRef.current || !historyHydrated || !pendingHydrated) return;
+            if (otherAgentRunning || running || busy || presetApplyingRef.current || !historyHydrated || !pendingHydrated) return false;
+            if (selectedSkillIds.includes(skill.skillId)) return 0;
             const scope = conversationScope;
             const account = getActiveUserScope();
             const token = createClientUUID();
@@ -307,24 +323,29 @@ export const CanvasCloudAgentPanel = memo(function CanvasCloudAgentPanel() {
             try {
                 if (!installedSkillIds.has(skill.skillId)) {
                     await addSkill(skill.skillId);
-                    if (!isCurrent()) return;
+                    if (!isCurrent()) return false;
                 }
                 const refreshed = await listAddedSkills();
-                if (!isCurrent()) return;
+                if (!isCurrent()) return false;
                 if (!refreshed.skills.some((item) => item.skillId === skill.skillId && item.isAdded)) {
                     throw new Error("技能库未确认该技能已安装，请刷新后重试");
                 }
                 setSkills(refreshed.skills);
-                setSelectedSkillIds((current) => (current.includes(skill.skillId) ? current : [...current, skill.skillId]));
+                setMarketSkills((current) => current.map((item) => refreshed.skills.find((added) => added.skillId === item.skillId) || item));
+                if (selectedSkillIdsRef.current.includes(skill.skillId)) return 0;
+                setSelectedSkillIds((current) => appendAgentSkillSelection(current, [skill.skillId]));
                 setMessages((current) =>
                     appendUniqueMessage(current, {
                         id: `skill-${skill.skillId}-${Date.now()}`,
                         role: "system",
-                        text: `已把「${skill.skillName}」挂到本会话。用哪张卡交给 Agent 按任务检索。`,
+                        text: `已加入 1 项技能（${skill.skillName}）。`,
                     }),
                 );
+                return 1;
             } catch (cause) {
                 if (isCurrent()) setMessages((current) => appendAgentError(current, `skill-${skill.skillId}`, cause, `「${skill.skillName}」挂载失败`));
+                if (isCurrent()) throw cause;
+                return false;
             } finally {
                 if (presetApplyingRef.current === token) {
                     presetApplyingRef.current = null;
@@ -332,7 +353,7 @@ export const CanvasCloudAgentPanel = memo(function CanvasCloudAgentPanel() {
                 }
             }
         },
-        [busy, conversationScope, historyHydrated, installedSkillIds, pendingHydrated, running],
+        [busy, conversationScope, historyHydrated, installedSkillIds, pendingHydrated, running, otherAgentRunning, selectedSkillIds],
     );
     const status = run?.status || "idle";
     const statusLabel =
@@ -350,7 +371,7 @@ export const CanvasCloudAgentPanel = memo(function CanvasCloudAgentPanel() {
     }, [prefillRequest]);
 
     useEffect(() => {
-        if (!open || view !== "chat") setSkillsOpen(false);
+        if (!open || view !== "chat") { setSkillsOpen(false); setSkillPickerOpen(false); }
     }, [open, view]);
 
     const reloadProfile = useCallback(async () => {
@@ -898,15 +919,7 @@ export const CanvasCloudAgentPanel = memo(function CanvasCloudAgentPanel() {
     };
 
     const installSkill = async (skill: Skill) => {
-        if (skill.isAdded) return;
-        try {
-            const result = await addSkill(skill.skillId);
-            setSkills((current) => [...current.filter((item) => item.skillId !== skill.skillId), result.skill]);
-            setMarketSkills((current) => current.map((item) => (item.skillId === skill.skillId ? result.skill : item)));
-            setSelectedSkillIds((current) => (current.includes(skill.skillId) ? current : [...current, skill.skillId]));
-        } catch (cause) {
-            setMessages((current) => appendAgentError(current, `skill-error-${Date.now()}`, cause, "添加 Skill 失败"));
-        }
+        if (!await applySingleSkill(skill)) throw new Error("当前暂不能更改技能，请等待运行或会话加载完成后重试");
     };
 
     const setModel = (model: string) => {
@@ -1069,7 +1082,7 @@ export const CanvasCloudAgentPanel = memo(function CanvasCloudAgentPanel() {
                                         onContextToggle={(value) => setContextScope((current) => (current.includes(value) ? current.filter((item) => item !== value) : [...current, value]))}
                                         onSkillSearch={setSkillSearch}
                                         onSkillToggle={(id) => setSelectedSkillIds((current) => (current.includes(id) ? current.filter((item) => item !== id) : [...current, id]))}
-                                        onSkillInstall={installSkill}
+                                        onSkillInstall={async (skill) => { try { await installSkill(skill); } catch { /* 安装错误已由操作回执展示。 */ } }}
                                         onLoadMoreSkills={loadMoreSkills}
                                         onMaxCreditsChange={setMaxCredits}
                                         onMaxGenerationTasksChange={setMaxGenerationTasks}
@@ -1137,7 +1150,7 @@ export const CanvasCloudAgentPanel = memo(function CanvasCloudAgentPanel() {
                                         approvalTargetGenerating={approval ? agentApprovalTargetGenerating(approval.detail, canvasNodes, runningNodeId) : undefined}
                                         nodeCount={canvasId ? nodeCount : null}
                                         approvalSubmitting={otherAgentRunning || approvalSubmitting || connectionStatus !== "connected"}
-                                        onChooseSkill={() => setSkillsOpen(true)}
+                                        onChooseSkill={() => setSkillPickerOpen(true)}
                                         onDraftPrompt={(draft) => setPrompt((current) => (current.trim() ? `${current}\n\n${draft}` : draft))}
                                         onApprovalReasonChange={(reason) => setApproval((current) => (current ? { ...current, reason } : current))}
                                         onApprove={(settings) => void submitApproval("approve", settings)}
@@ -1158,16 +1171,6 @@ export const CanvasCloudAgentPanel = memo(function CanvasCloudAgentPanel() {
                                             onToggle={() => setPlanMinimized((value) => !value)}
                                         />
                                     ) : null}
-                                    {historyHydrated && !messages.some((message) => message.role === "user" || message.role === "assistant") && !run ? (
-                                        <AgentSceneCapsules
-                                            buckets={sceneBuckets}
-                                            installedIds={installedSkillIds}
-                                            theme={theme}
-                                            disabled={otherAgentRunning || busy || running || !pendingHydrated || Boolean(presetApplyingId)}
-                                            onPick={(preset) => void applyScenePreset(preset)}
-                                            onPickSkill={(skill) => void applySingleSkill(skill)}
-                                        />
-                                    ) : null}
                                     {pendingQuestion ? <AgentQuestionBar question={pendingQuestion} theme={theme} disabled={otherAgentRunning || approvalSubmitting || connectionStatus !== "connected"} onAnswer={(label) => void submit(label)} /> : null}
                                     {historyHydrated && !pendingHydrated ? <div className="flex items-center gap-2 px-5 py-2 text-xs" role="status"><span>提交记录尚未确认，输入保留；画布可继续编辑。</span><Button size="small" onClick={() => setHistoryRestoreAttempt((attempt) => attempt + 1)}>重新读取记录</Button></div> : null}
                                     <AgentChatComposer
@@ -1184,19 +1187,34 @@ export const CanvasCloudAgentPanel = memo(function CanvasCloudAgentPanel() {
                                         references={[...references, ...buildSkillMentionReferences(installedSkills)]}
                                         slashSkills={installedSkills}
                                         includeAssetLibrary={false}
-                                        submitAccessory={<AgentContextRing view={presentAgentContextUsage(contextUsage)} theme={theme} />}
-                                        footer={connectorsVisible ? <AgentConnectorsBar onClose={() => setConnectorsVisible(false)} /> : null}
+                                        trayStatus={<>
+                                            <button type="button" className="agent-composer-permission agent-composer-connectors-trigger" aria-expanded={connectorsVisible} aria-controls="agent-connectors-expanded" onClick={() => setConnectorsVisible((value) => !value)}><Cable className="size-3.5" aria-hidden="true" />连接器<ChevronDown className="size-3" aria-hidden="true" /></button>
+                                            <ComposerPermission permissionMode={permissionMode} theme={theme} onPermissionChange={setPermissionMode} />
+                                            <AgentContextRing compact view={presentAgentContextUsage(contextUsage)} theme={theme} />
+                                        </>}
+                                        footer={connectorsVisible ? <div id="agent-connectors-expanded"><AgentConnectorsBar onClose={() => setConnectorsVisible(false)} /></div> : null}
                                         left={
                                             <ComposerControls
                                                 config={config}
                                                 selectedModel={selectedModel}
-                                                permissionMode={permissionMode}
                                                 theme={theme}
                                                 onModelChange={setModel}
-                                                onPermissionChange={setPermissionMode}
-                                                skillsOpen={skillsOpen}
-                                                onSkillsOpenChange={setSkillsOpen}
-                                                selectedSkillCount={selectedSkillIds.length}
+                                                skillControl={<AgentSceneCapsules
+                                                    key={`${userId}:${activeConversationId}`}
+                                                    buckets={sceneBuckets}
+                                                    installedIds={installedSkillIds}
+                                                    selectedSkillIds={selectedSkillIds}
+                                                    selectedSkills={skills}
+                                                    theme={theme}
+                                                    open={skillPickerOpen}
+                                                    onOpenChange={setSkillPickerOpen}
+                                                    disabled={otherAgentRunning || busy || running || !historyHydrated || !pendingHydrated || Boolean(presetApplyingId)}
+                                                    onPick={applyScenePreset}
+                                                    onPickSkill={applySingleSkill}
+                                                    onRemove={(id) => setSelectedSkillIds((current) => current.filter((item) => item !== id))}
+                                                    onClear={() => setSelectedSkillIds([])}
+                                                    onOpenLibrary={() => setSkillsOpen(true)}
+                                                />}
                                             />
                                         }
                                     />

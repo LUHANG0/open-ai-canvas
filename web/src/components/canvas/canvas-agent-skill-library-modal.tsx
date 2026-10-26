@@ -134,7 +134,7 @@ export function CanvasAgentSkillLibraryModal({
     );
 
     const emptyText = tab === "enabled"
-        ? selectedCount === 0 ? "本轮还没有启用技能，可在“我的技能”中选择" : "没有匹配的已启用技能"
+        ? selectedCount === 0 ? "本次还没有选择技能，可在我的技能分类中选择" : "没有匹配的本次已选技能"
         : tab === "installed"
             ? "还没有匹配的已加入技能，可前往“全部”添加"
             : "没有匹配的公开技能，换个关键词或分类试试";
@@ -253,10 +253,11 @@ export function CanvasAgentSkillLibraryModal({
                 <div className="canvas-agent-skill-library-content">
                     <header className="canvas-agent-skill-library-header">
                         <h2>技能商店</h2>
-                        <button type="button" className="canvas-agent-skill-library-count" onClick={() => changeTab("enabled")} aria-label={`查看本轮已启用的 ${selectedCount} 个技能，最多 8 个`}>
-                            已启用 <strong>{selectedCount}</strong><span> / 8</span>
+                        <button type="button" className="canvas-agent-skill-library-count" onClick={() => changeTab("enabled")} aria-label={`查看本次已选的 ${selectedCount} 个技能，最多 8 个`}>
+                            本次已选 <strong>{selectedCount}</strong><span> / 8</span>
                         </button>
                     </header>
+                    <p className="px-4 text-xs" style={{ color: theme.node.muted }}>发送后由 Agent 按任务使用，已选不代表已调用。加入未安装的技能会持久保存到技能库，取消本次选择不会卸载。</p>
 
                     <div ref={listRef} className="canvas-agent-skill-library-list thin-scrollbar" aria-label="技能列表" aria-busy={loading}>
                         {visibleSkills.map((skill) => (
@@ -321,6 +322,7 @@ function SkillLibraryCard({ skill, rootLabel, theme, categories, selected, canSe
     onInstall: () => Promise<void>;
 }) {
     const [installing, setInstalling] = useState(false);
+    const [installError, setInstallError] = useState("");
     const [coverFailed, setCoverFailed] = useState(false);
     const cover = skill.showcaseMedia?.find((item) => item.type === "image" && item.showcaseUrl)
         || skill.showcaseMedia?.find((item) => item.showcaseUrl);
@@ -335,8 +337,11 @@ function SkillLibraryCard({ skill, rootLabel, theme, categories, selected, canSe
     const install = async () => {
         if (installing) return;
         setInstalling(true);
+        setInstallError("");
         try {
             await onInstall();
+        } catch (cause) {
+            setInstallError(cause instanceof Error ? cause.message : String(cause));
         } finally {
             setInstalling(false);
         }
@@ -370,14 +375,15 @@ function SkillLibraryCard({ skill, rootLabel, theme, categories, selected, canSe
                                 title={!canSelect ? "本轮最多启用 8 个 Skills" : undefined}
                                 onClick={onToggle}
                             >
-                                {selected ? "已启用" : "使用"}
+                                {selected ? "移出本次" : "加入本次"}
                             </Button>
                         ) : (
                             <Button size="small" icon={<Plus className="size-3.5" />} loading={installing} disabled={installing || !canSelect} title={!canSelect ? "本轮最多启用 8 个 Skills" : undefined} onClick={() => void install()}>
-                                加入
+                                安装并加入本次
                             </Button>
                         )}
                     </div>
+                    {installError ? <p role="alert">{installError}</p> : null}
                 </div>
                 <div className="canvas-agent-skill-card-meta" style={{ color: theme.node.muted }}>
                     <span className="min-w-0 truncate">{author}</span>
