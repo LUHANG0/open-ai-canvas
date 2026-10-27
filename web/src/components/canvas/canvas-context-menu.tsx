@@ -139,7 +139,7 @@ export function CanvasNodeContextMenu({
     const isFolder = isCanvasFolderNode(node);
     const hasNodeContent = isText ? Boolean(nodeContent.trim()) : Boolean(nodeContent);
     const canSaveAsset = Boolean(node && !isCharacterReference && (isText ? hasNodeContent : hasNodeContent && (isImage || isVideo || isAudio)));
-    const canOpenPreview = Boolean(isMedia && hasNodeContent);
+    const canOpenPreview = Boolean(isMedia && (nodeContent || node?.metadata?.storageKey));
     const canGenerateFromText = Boolean(isText && !isCharacterReference && hasNodeContent);
     const canCopyMediaUrl = Boolean(isMedia && hasNodeContent);
     const assetCategory = node ? canvasNodeAssetCategory(node) : "other";
@@ -218,7 +218,7 @@ export function CanvasNodeContextMenu({
                                 <>
                                     <MenuHeader title={isImage ? "图片" : "视频"} description={node?.title || nodeTypeLabel(node)} />
                                     <MenuSection label="查看与归档" />
-                                    <MenuButton icon={<Maximize2 />} label="进入全景预览" disabled={!canOpenPreview} onClick={() => runAction(onViewMedia)} />
+                                    <MenuButton icon={<Maximize2 />} label="放大预览" disabled={!canOpenPreview} onClick={() => runAction(onViewMedia)} />
                                     <MenuButton icon={<Tags />} label="设置资产分类" chevron onClick={() => setCategoryOpen(true)} />
                                     {isImage ? <MenuButton icon={<CloudUpload />} label="上传到方舟素材库" onClick={() => runAction(onUploadToArkPrivateAsset)} /> : null}
                                     <MenuDivider />

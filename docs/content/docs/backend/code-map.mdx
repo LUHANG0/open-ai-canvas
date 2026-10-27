@@ -158,7 +158,9 @@ Pi SDK 执行前的参数校验失败由 `agent-runtime/pi/agent-runtime.mjs` �
 | 顶栏、反馈和 screen-space 浮层 | `web/src/pages/canvas/canvas-project-top-bar.tsx`、`canvas-project-feedback.tsx`、`canvas-project-selection-toolbar.tsx`、`components/canvas/canvas-workspace-overlays.tsx` |
 | 媒体弹窗装配 | `web/src/pages/canvas/canvas-project-media-dialogs.tsx` |
 | 画布视口、拖拽、缩放和框选 | `web/src/components/canvas/canvas-viewport.tsx`、`web/src/lib/canvas/canvas-live-viewport.ts`；`pages/canvas/use-canvas-image-wheel-resize.ts` 合并单选图片 Ctrl 滚轮尺寸、历史和保存，`lib/canvas/canvas-wheel.ts` 识别离散滚轮，角点与滚轮共用 registry 最小尺寸规则 |
-| 节点渲染与节点工具 | `web/src/components/canvas/canvas-node.tsx`、`canvas-node-hover-toolbar.tsx`、`canvas-node-toolbar.tsx` |
+| 节点渲染与节点工具 | `web/src/components/canvas/canvas-node.tsx`、`canvas-node-hover-toolbar.tsx`、`canvas-node-toolbar.tsx`；普通图片和视频菜单及选中工具栏使用“放大预览”，实际全景工具仍为独立操作；预览来源为 `content` 或 `storageKey`，不将被动封面 `previewContent` 当作可播放视频 |
+| 图片与视频放大预览 | `canvas-image-preview.tsx`、`canvas-video-preview.tsx` 共用 `canvas-media-preview.tsx`；按自然尺寸适应窗口，不默认放大小图；图片支持相对适应比例 25%–400% 和内部滚动，视频复用 `VideoPlayer` 并解析 `playback` 资源版本；关闭条件挂载的预览后回焦到仍在页面上的发起控件；共享只读路由的工具预览仍走原未授权提示，不在此扩大权限 |
+| 视频悬停首帧 | `web/src/lib/canvas/canvas-video-hover-preview.ts`；保留静态封面，收到视频帧回调后才显露视频；旧浏览器以已解码数据和双 RAF 提供绘制机会，不能保证合成器已呈现；取消时先移除视频再释放解码器 |
 | 图片多角度、宫格切分与多选框 | `canvas-node-angle-dialog.tsx`、`canvas-angle-scene.tsx`、`canvas-grid-split-picker.tsx`、`web/src/lib/canvas/canvas-grid-split.ts`、`canvas-selection.ts` |
 | 图片自然比例与默认尺寸 | `web/src/lib/canvas/canvas-node-size.ts`；上传、生成结果和派生图片共用尺寸规则，节点调整继续使用现有角点入口 |
 | 图片编辑副本与工具菜单 | `web/src/lib/canvas/tool-registry/definitions/node-hover-tools.tsx` 声明入口；`web/src/pages/canvas/use-canvas-node-operations.ts` 负责带来源连线的复制；`web/src/components/canvas/canvas-node-toolbar.tsx` 与 `canvas-grid-split-picker.css` 共用菜单布局、滚动及子面板视口约束 |

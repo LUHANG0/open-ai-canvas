@@ -24,7 +24,7 @@ type ImageToolHandlers = {
     onLighting: (node: CanvasNodeData) => void;
     onPanorama: (node: CanvasNodeData) => void;
     onPrevis: (node: CanvasNodeData) => void;
-    onViewImage: (node: CanvasNodeData) => void;
+    onViewMedia: (node: CanvasNodeData) => void;
     onCopyPrompt: (node: CanvasNodeData) => void;
     onReversePrompt: (node: CanvasNodeData) => void;
     onNineGrid: (node: CanvasNodeData, toolId: number, label: string, icon: string) => void;
@@ -234,11 +234,11 @@ const imageToolDefinitions: ImageToolDefinition[] = [
     },
     {
         id: "view",
-        label: "预览",
+        label: "放大预览",
         icon: () => <Maximize2 className="size-3.5" />,
         group: "utility",
         order: 10,
-        run: (node, handlers) => handlers.onViewImage(node),
+        run: (node, handlers) => handlers.onViewMedia(node),
     },
     {
         id: "panorama",

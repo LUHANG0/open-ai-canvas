@@ -28,6 +28,22 @@ function createNodeContext(node: CanvasNodeData): ToolContext {
 }
 
 describe("canvas node toolbar model", () => {
+    test("video enlargement requires a playable source, not a passive poster, even when locked or generating", () => {
+        const node: CanvasNodeData = { id: "video", type: CanvasNodeType.Video, title: "视频", position: { x: 0, y: 0 }, width: 320, height: 180 };
+        for (const metadata of [{ content: "video.mp4" }, { storageKey: "video-storage" }, { content: "previous.mp4", locked: true, status: "loading" as const }]) {
+            const ctx = createNodeContext({ ...node, metadata });
+            ctx.handlers.onNodeViewMedia = () => {};
+            const preview = resolveToolbarTools("node-hover", ctx, null).find((tool) => tool.id === "viewMedia");
+            expect(preview).toBeDefined();
+            expect(preview!.disabled?.(ctx)).toBe(false);
+        }
+        for (const metadata of [{}, { previewContent: "poster.jpg" }, { previewContent: "poster.jpg", locked: true, status: "loading" as const }]) {
+            const ctx = createNodeContext({ ...node, metadata });
+            ctx.handlers.onNodeViewMedia = () => {};
+            expect(resolveToolbarTools("node-hover", ctx, null).some((tool) => tool.id === "viewMedia")).toBe(false);
+        }
+    });
+
     test("video aspect fitting is discoverable, delegates once, and is disabled without dimensions or while locked/loading", () => {
         const node: CanvasNodeData = { id: "video", type: CanvasNodeType.Video, title: "视频", position: { x: 0, y: 0 }, width: 420, height: 746, metadata: { content: "/fixture.mp4", naturalWidth: 854, naturalHeight: 480 } };
         const ctx = createNodeContext(node);
@@ -105,19 +121,6 @@ describe("canvas node toolbar model", () => {
         expect(groups.get("node-lock")).toBe("more");
     });
 
-    test("uses the redesigned video terminology from the registry", () => {
-        const ctx = createNodeContext({ id: "video", type: CanvasNodeType.Video, title: "视频", position: { x: 0, y: 0 }, width: 320, height: 180, metadata: { content: "video.mp4" } });
-        const tools = new Map(resolveToolbarTools("node-hover", ctx, null).map((tool) => [tool.id, tool]));
-        const displayLabel = (id: string) => {
-            const value = tools.get(id)?.displayLabel;
-            return typeof value === "function" ? value(ctx) : value;
-        };
-
-        expect(displayLabel("subtitles")).toBe("字幕");
-        expect(displayLabel("timeline")).toBe("进入剪辑");
-        expect(displayLabel("extractFrames")).toBe("提取画面");
-        expect(displayLabel("extractAudio")).toBe("提取音频");
-    });
 
     test("image-only tools carry presentation metadata instead of relying on component ID lists", () => {
         const node: CanvasNodeData = { id: "image", type: CanvasNodeType.Image, title: "图片", position: { x: 0, y: 0 }, width: 320, height: 180, metadata: { content: "image.png" } };

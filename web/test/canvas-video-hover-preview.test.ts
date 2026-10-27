@@ -9,11 +9,26 @@ let interacting = false;
 let mutation: () => void;
 let visibility: (entries: { isIntersecting: boolean }[]) => void;
 const cleanups: (() => void)[] = [];
+let frameCallbacks = true;
+let animationFrames: Map<number, FrameRequestCallback>;
+let nextAnimationFrame = 0;
+function renderFrame() {
+    const callbacks = [...animationFrames.values()];
+    animationFrames.clear();
+    callbacks.forEach((callback) => callback(0));
+}
 class FakeVideo extends EventTarget {
     paused = true; currentTime = 0; src = ""; muted = false; playsInline = false; preload = "";
     className = ""; dataset: Record<string, string> = {}; removed = false; loads = 0;
+    style = { opacity: "" }; readyState = 0;
+    frameCallback?: () => void;
+    cancelledFrames: number[] = [];
+    releaseWasDetached = false;
+    requestVideoFrameCallback: ((callback: () => void) => number) | undefined = frameCallbacks
+        ? (callback) => { this.frameCallback = callback; return 0; } : undefined;
+    cancelVideoFrameCallback(id: number) { this.cancelledFrames.push(id); this.frameCallback = undefined; }
     setAttribute() {}
-    removeAttribute() { this.src = ""; }
+    removeAttribute() { this.releaseWasDetached = this.removed; this.src = ""; }
     load() { this.loads++; }
     remove() { this.removed = true; }
     pause() { this.paused = true; }
@@ -39,6 +54,9 @@ function enter(element: FakeElement, pointerType = "mouse", buttons = 0) {
 }
 beforeEach(() => {
     videos = []; reduced = false; interacting = false;
+    frameCallbacks = true; animationFrames = new Map(); nextAnimationFrame = 0;
+    stub("requestAnimationFrame", (callback: FrameRequestCallback) => { const id = nextAnimationFrame++; animationFrames.set(id, callback); return id; });
+    stub("cancelAnimationFrame", (id: number) => animationFrames.delete(id));
     stub("window", Object.assign(new EventTarget(), { matchMedia: () => ({ matches: reduced }) }));
     stub("document", Object.assign(new EventTarget(), { hidden: false, querySelectorAll: () => videos.filter((v) => !v.removed), createElement: () => new FakeVideo() }));
     stub("MutationObserver", class { constructor(callback: () => void) { mutation = callback; } observe() {} disconnect() {} });
@@ -87,4 +105,77 @@ test("manual playback is never competing with hover", async () => {
     const manual = new FakeVideo(); manual.paused = false; videos.push(manual);
     let calls = 0; const element = setup(async () => { calls++; return "test.mp4"; });
     enter(element); await wait(); expect(calls).toBe(0); expect(manual.paused).toBe(false);
+});
+
+test("poster remains visible until a presented video frame, not just playback or decoded data", async () => {
+    const element = setup(); enter(element); await wait();
+    const video = videos[0];
+    expect(video.style.opacity).toBe("0");
+    video.readyState = 2; video.dispatchEvent(new Event("loadeddata"));
+    renderFrame(); renderFrame();
+    expect(video.style.opacity).toBe("0");
+    video.frameCallback!();
+    expect(video.style.opacity).toBe("1");
+});
+
+test("older browsers wait for decoded data and a paint opportunity before revealing", async () => {
+    frameCallbacks = false;
+    const element = setup(); enter(element); await wait();
+    const video = videos[0];
+    renderFrame(); renderFrame(); expect(video.style.opacity).toBe("0");
+    video.readyState = 1; video.dispatchEvent(new Event("loadeddata"));
+    renderFrame(); renderFrame(); expect(video.style.opacity).toBe("0");
+    video.readyState = 2; video.dispatchEvent(new Event("loadeddata"));
+    video.dispatchEvent(new Event("playing"));
+    renderFrame(); expect(video.style.opacity).toBe("0");
+    renderFrame(); expect(video.style.opacity).toBe("1");
+});
+
+test("fallback accepts already decoded data on playback but does not reveal a lost frame", async () => {
+    frameCallbacks = false;
+    const element = setup(); enter(element); await wait();
+    const video = videos[0];
+    video.readyState = 2; video.dispatchEvent(new Event("playing"));
+    renderFrame(); video.readyState = 1; renderFrame();
+    expect(video.style.opacity).toBe("0");
+    video.readyState = 2; video.dispatchEvent(new Event("loadeddata"));
+    renderFrame(); renderFrame(); expect(video.style.opacity).toBe("1");
+});
+
+test("leave cancels frame callbacks and stale callbacks cannot reveal a reentered preview", async () => {
+    const element = setup(); enter(element); await wait();
+    const previous = videos[0]; const stale = previous.frameCallback!;
+    element.dispatchEvent(new Event("pointerleave"));
+    expect(previous.cancelledFrames).toEqual([0]);
+    expect(previous.releaseWasDetached).toBe(true);
+    enter(element); await wait(); stale();
+    expect(previous.style.opacity).toBe("0");
+    expect(videos[1].style.opacity).toBe("0");
+    videos[1].frameCallback!(); expect(videos[1].style.opacity).toBe("1");
+});
+
+test("fallback leave cancels either render stage and ignores late media events", async () => {
+    frameCallbacks = false;
+    const element = setup();
+    for (const renders of [0, 1]) {
+        enter(element); await wait(); const video = videos.at(-1)!;
+        video.readyState = 2; video.dispatchEvent(new Event("loadeddata"));
+        if (renders) renderFrame();
+        const stale = [...animationFrames.values()];
+        element.dispatchEvent(new Event("pointerleave"));
+        expect(animationFrames.size).toBe(0);
+        stale.forEach((callback) => callback(0));
+        video.dispatchEvent(new Event("loadeddata")); video.dispatchEvent(new Event("playing"));
+        renderFrame(); renderFrame();
+        expect(video.style.opacity).toBe("0"); expect(animationFrames.size).toBe(0);
+        expect(video.releaseWasDetached).toBe(true);
+    }
+});
+
+test("loading failure never covers the poster and detaches before releasing source", async () => {
+    const element = setup(); enter(element); await wait(); const video = videos[0];
+    const stale = video.frameCallback!;
+    video.dispatchEvent(new Event("error")); stale();
+    expect(video.style.opacity).toBe("0"); expect(video.removed).toBe(true);
+    expect(video.releaseWasDetached).toBe(true); expect(video.src).toBe("");
 });

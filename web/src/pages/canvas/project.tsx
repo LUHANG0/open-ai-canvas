@@ -3058,7 +3058,7 @@ function CanvasViewportPage() {
                                 }}
                                 onPanorama={openPanoramaConfig}
                                 onPrevis={sendImageToPrevisAgent}
-                                onViewImage={(node) => setPreviewNodeId(node.id)}
+                                onViewMedia={(node) => setPreviewNodeId(node.id)}
                                 onExtractVideoFrames={openVideoFrameExtractor}
                                 onExtractAudioFromVideo={(node) => void extractAudioFromVideo(node)}
                                 onTrimVideoSegments={openVideoSegmentExtractor}

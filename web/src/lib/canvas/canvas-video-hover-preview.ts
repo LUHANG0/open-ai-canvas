@@ -13,6 +13,8 @@ export function bindCanvasVideoHoverPreview(element: HTMLElement, resolveSource:
         let disposed = false;
         let video: HTMLVideoElement | undefined;
         let playbackTimer: ReturnType<typeof setTimeout> | undefined;
+        let videoFrame: number | undefined;
+        let animationFrame: number | undefined;
         const listeners = new AbortController();
         const viewport = element.closest("[data-canvas-viewport]");
         const visibility = new IntersectionObserver((entries) => {
@@ -30,11 +32,14 @@ export function bindCanvasVideoHoverPreview(element: HTMLElement, resolveSource:
             listeners.abort();
             observer.disconnect();
             visibility.disconnect();
+            if (animationFrame !== undefined) cancelAnimationFrame(animationFrame);
+            if (videoFrame !== undefined) video?.cancelVideoFrameCallback?.(videoFrame);
             if (video) {
+                // Detach before resetting the decoder so cleanup cannot paint a blank frame.
+                video.remove();
                 video.pause();
                 video.removeAttribute("src");
                 video.load();
-                video.remove();
             }
             if (stopCurrentPreview === cancel) stopCurrentPreview = undefined;
             if (stop === cancel) stop = undefined;
@@ -53,6 +58,9 @@ export function bindCanvasVideoHoverPreview(element: HTMLElement, resolveSource:
                 video.playsInline = true;
                 video.preload = "metadata";
                 video.className = "pointer-events-none absolute inset-0 size-full rounded-[var(--node-radius)] bg-black object-contain";
+                // Keep the existing poster underneath until the decoder presents a frame.
+                // Opacity (not display:none) lets the video keep participating in rendering.
+                video.style.opacity = "0";
                 video.setAttribute("aria-hidden", "true");
                 video.dataset.canvasHoverPreview = "true";
                 video.addEventListener("ended", cancel, { signal: listeners.signal });
@@ -63,6 +71,32 @@ export function bindCanvasVideoHoverPreview(element: HTMLElement, resolveSource:
                 video.addEventListener("playing", () => {
                     if (!playbackTimer) playbackTimer = setTimeout(cancel, VIDEO_HOVER_PREVIEW_MS);
                 }, { signal: listeners.signal });
+                const reveal = () => {
+                    if (!disposed && video && element.isConnected && !document.hidden) video.style.opacity = "1";
+                };
+                if (typeof video.requestVideoFrameCallback === "function") {
+                    videoFrame = video.requestVideoFrameCallback(() => {
+                        videoFrame = undefined;
+                        reveal();
+                    });
+                } else {
+                    // Older browsers expose decoded data, not presentation. Allow a paint
+                    // between two RAFs before revealing; playing alone is not frame readiness.
+                    const revealDecodedFrame = () => {
+                        if (disposed || !video || video.readyState < 2 || video.paused
+                            || animationFrame !== undefined || video.style.opacity === "1") return;
+                        animationFrame = requestAnimationFrame(() => {
+                            animationFrame = undefined;
+                            if (disposed) return;
+                            animationFrame = requestAnimationFrame(() => {
+                                animationFrame = undefined;
+                                if (video && video.readyState >= 2 && !video.paused) reveal();
+                            });
+                        });
+                    };
+                    video.addEventListener("loadeddata", revealDecodedFrame, { signal: listeners.signal });
+                    video.addEventListener("playing", revealDecodedFrame, { signal: listeners.signal });
+                }
                 video.src = src;
                 element.appendChild(video);
                 void video.play().catch(cancel);

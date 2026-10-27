@@ -1,0 +1,19 @@
+.canvas-image-preview-viewer { min-width: 0; container-type: inline-size; }
+.canvas-image-preview-stage { position: relative; overflow: auto; overscroll-behavior: contain; scrollbar-color: #555 #101010; }
+/* Auto margins center small images without making oversized edges unreachable. */
+.canvas-image-preview-image-space { display: flex; min-width: 100%; min-height: 100%; width: max-content; }
+.canvas-image-preview-image { display: block; flex: none; max-width: none; margin: auto; object-fit: contain; }
+.canvas-image-preview-spinner { animation: canvas-image-preview-spin 1s linear infinite; }
+/* A compact single row; narrow portraits use two rows without widening the image. */
+.canvas-image-preview-toolbar { box-sizing: border-box; display: grid; grid-template-columns: 44px 52px 44px minmax(0, 110px); grid-template-rows: 44px; justify-content: center; height: 44px; width: 100%; color: #e5e5e5; background: #171717; }
+.canvas-image-preview-toolbar button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-width: 0; padding: 0; overflow: hidden; border: 0; border-radius: 6px; background: transparent; color: inherit; font: inherit; font-size: 12px; cursor: pointer; }
+.canvas-image-preview-toolbar button:hover:not(:disabled) { background: #303030; color: #fff; }
+.canvas-image-preview-toolbar button:disabled { color: #858585; cursor: default; }
+.canvas-image-preview-toolbar output { min-width: 0; align-self: center; text-align: center; font-size: 11px; font-variant-numeric: tabular-nums; overflow: hidden; }
+.canvas-image-preview-toolbar .canvas-image-preview-fit { grid-column: auto; }
+@keyframes canvas-image-preview-spin { to { transform: rotate(360deg); } }
+
+@container (max-width: 239px) {
+    .canvas-image-preview-toolbar { grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: 44px 44px; height: 88px; }
+    .canvas-image-preview-toolbar .canvas-image-preview-fit { grid-column: 1 / -1; }
+}
