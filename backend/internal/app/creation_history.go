@@ -90,7 +90,7 @@ func (s *Service) GetCreationHistory(userID, id string) (*CreationHistoryDetail,
 
 // Explicit message schemas keep provider credentials, configurations and temporary URLs out of history.
 func historyPayload(input map[string]any, id string) (string, []string, time.Time, error) {
-	allowed := strings.Fields("id role mode content reasoning createdAt status model resultStorageKeys error generationErrorCode generationOperation attachments references settings taskIds clientOperationId retryOf attemptGroupId generationStage generationEffectKeys")
+	allowed := strings.Fields("id role mode content reasoning createdAt status model resultStorageKeys resultRecords error generationErrorCode generationOperation attachments references settings taskIds clientOperationId retryOf attemptGroupId generationStage generationEffectKeys")
 	allowedSet := map[string]bool{}
 	for _, key := range allowed {
 		allowedSet[key] = true
@@ -121,6 +121,10 @@ func historyPayload(input map[string]any, id string) (string, []string, time.Tim
 	}
 	for key, value := range input {
 		switch key {
+		case "resultRecords":
+			if err := validateHistoryResultRecords(input, validateKey); err != nil {
+				return "", nil, time.Time{}, err
+			}
 		case "attachments", "references":
 			items, ok := value.([]any)
 			if !ok || len(items) > 100 {
@@ -195,6 +199,68 @@ func historyPayload(input map[string]any, id string) (string, []string, time.Tim
 	}
 	sort.Strings(ids)
 	return string(encoded), ids, created, nil
+}
+
+// Snapshots are display facts, never authority for charging. Bind their task and
+// media to the same ownership-checked references as the rest of the message.
+func validateHistoryResultRecords(input map[string]any, validateKey func(any) bool) error {
+	invalid := func() error { return BadAuthRequest("无效的生成结果记录") }
+	records, ok := input["resultRecords"].([]any)
+	if !ok || len(records) > 100 {
+		return invalid()
+	}
+	contains := func(field, value string) bool {
+		items, _ := input[field].([]any)
+		for _, item := range items {
+			if item == value {
+				return true
+			}
+		}
+		return false
+	}
+	for _, raw := range records {
+		record, ok := raw.(map[string]any)
+		if !ok || !validateKey(record["mediaKey"]) || !contains("resultStorageKeys", historyString(record["mediaKey"])) || !contains("taskIds", historyString(record["taskId"])) {
+			return invalid()
+		}
+		for field, value := range record {
+			switch field {
+			case "mediaKey", "taskId", "model":
+				if text, ok := value.(string); !ok || len(text) > 512 {
+					return invalid()
+				}
+			case "createdAt", "startedAt", "completedAt":
+				if _, err := time.Parse(time.RFC3339Nano, historyString(value)); err != nil {
+					return invalid()
+				}
+			case "includesSave":
+				if _, ok := value.(bool); !ok {
+					return invalid()
+				}
+			case "width", "height", "outputCount", "durationMs":
+				number, ok := value.(float64)
+				if !ok || number < 0 || number > 9007199254740991 || (field != "durationMs" && (number < 1 || number != float64(int64(number)))) {
+					return invalid()
+				}
+			case "billingStatus":
+				if value != "pending" {
+					return invalid()
+				}
+			case "billing":
+				billing, ok := value.(map[string]any)
+				if !ok || len(billing) != 2 || (billing["scope"] != "result" && billing["scope"] != "task") {
+					return invalid()
+				}
+				amount, ok := billing["actualAmountMicrocredits"].(float64)
+				if !ok || amount < 0 || amount > 9007199254740991 || amount != float64(int64(amount)) {
+					return invalid()
+				}
+			default:
+				return invalid()
+			}
+		}
+	}
+	return nil
 }
 
 func historyString(value any) string { text, _ := value.(string); return text }

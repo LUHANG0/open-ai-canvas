@@ -3,6 +3,7 @@ import { formatVideoResolutionLabel as videoResolutionLabel, VIDEO_RESOLUTION_OP
 import { imageQualityDescription, imageQualityLabel } from "@/lib/image-quality";
 import type { CreationAttachment, CreationMode } from "./creation-assets";
 import type { CreationReference } from "./creation-references";
+import type { CanvasNodeMetadata } from "@/types/canvas";
 
 export type { CreationMode };
 
@@ -23,6 +24,8 @@ export type CreationMessage = {
     resultUrls?: string[];
     /** 生成结果对应的稳定素材定位符，不随 OSS 签名 URL 过期。 */
     resultStorageKeys?: string[];
+    /** Media-bound task facts, persisted without transient URLs or provider settings. */
+    resultRecords?: NonNullable<CanvasNodeMetadata["resultRecord"]>[];
     error?: string;
     generationErrorCode?: string;
     generationOperation?: string;

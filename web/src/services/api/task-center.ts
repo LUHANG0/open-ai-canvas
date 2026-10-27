@@ -234,9 +234,11 @@ export function createGenerationTaskSubscriptionService(dependencies: Generation
         entry.latest = task;
         for (const listener of entry.listeners) listener(task);
     };
+    const finished = (task: GenerationTask) => ["succeeded", "failed", "cancelled"].includes(task.status)
+        && !(task.status === "succeeded" && ["reserved", "running", "uncertain"].includes(task.billing?.status || ""));
     const observe = (id: string, entry: Entry) => {
         if (entry.observation || !entry.listeners.size || entry.scope !== getActiveUserScope()) return;
-        if (entry.latest && ["succeeded", "failed", "cancelled"].includes(entry.latest.status)) return;
+        if (entry.latest && finished(entry.latest)) return;
         if (entry.retry) clearTimeout(entry.retry);
         entry.retry = undefined;
         const controller = new AbortController();
@@ -258,7 +260,7 @@ export function createGenerationTaskSubscriptionService(dependencies: Generation
         }).finally(() => {
             entry.observation = undefined;
             if (controller.signal.aborted || !entry.listeners.size || entry.scope !== getActiveUserScope()) return;
-            if (entry.latest && ["succeeded", "failed", "cancelled"].includes(entry.latest.status)) return;
+            if (entry.latest && finished(entry.latest)) return;
             const delayMs = Math.min(30_000, 2_000 * 2 ** Math.min(entry.failures++, 4));
             entry.retry = setTimeout(() => observe(id, entry), delayMs);
         });

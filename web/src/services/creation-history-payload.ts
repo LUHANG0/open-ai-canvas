@@ -1,7 +1,7 @@
 import type { CreationConversation, CreationMessage } from "@/pages/create/creation-types";
 import type { HistoryDetail } from "./api/creation-history";
 
-const messageFields = "id role mode content reasoning createdAt status model resultStorageKeys error generationErrorCode generationOperation attachments references settings taskIds clientOperationId retryOf attemptGroupId generationStage generationEffectKeys".split(" ");
+const messageFields = "id role mode content reasoning createdAt status model resultStorageKeys resultRecords error generationErrorCode generationOperation attachments references settings taskIds clientOperationId retryOf attemptGroupId generationStage generationEffectKeys".split(" ");
 const referenceFields = "id name type storageKey previewStorageKey bytes width height durationMs nodeId kind label title text active sourceType assetId category mentionToken attachmentId toolId toolType toolIcon".split(" ");
 function pick(value: Record<string, unknown>, keys: string[]) {
     return Object.fromEntries(keys.filter((key) => value[key] !== undefined).map((key) => [key, value[key]]));

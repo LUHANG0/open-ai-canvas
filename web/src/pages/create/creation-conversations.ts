@@ -4,6 +4,8 @@ import type { BackendGenerationResult } from "@/services/api/generation-task";
 import type { GenerationTask } from "@/services/api/task-center";
 import { creationAttachmentKind, type CreationAttachment } from "./creation-assets";
 import type { CreationConversation, CreationMessage, CreationShotRailEntry } from "./creation-types";
+import { parseBackendGenerationResult } from "@/services/api/generation-task";
+import { completedGenerationResultRecord, reconcileResultBilling } from "@/lib/canvas/canvas-result-record";
 
 type CreationRuntime = typeof import("./creation-runtime");
 type PersistedCreationTask = GenerationTask & { creationResultUrls?: string[]; creationResultStorageKeys?: string[]; creationError?: string };
@@ -41,8 +43,25 @@ export function creationVideoShotOrdinal(shots: CreationShotRailEntry[], item: C
 
 export function completedCreationGenerationTask(runtime: CreationRuntime, input: { taskId: string; task?: GenerationTask; mode: "image" | "video"; prompt: string; result: BackendGenerationResult; conversationId: string; messageId: string; batchIndex?: number; batchCount?: number }): GenerationTask {
     const now = new Date().toISOString();
-    const task = input.task ?? { id: input.taskId, type: input.mode, status: "succeeded" as const, prompt: input.prompt, attempts: 1, createdAt: now, updatedAt: now };
+    const task = input.task ?? { id: input.taskId, type: input.mode, status: "succeeded" as const, prompt: input.prompt, attempts: 1, createdAt: "", updatedAt: now };
     return runtime.projectGenerationTaskResult({ ...task, status: "succeeded", prompt: input.prompt, clientContext: { conversationId: input.conversationId, messageId: input.messageId, ...(typeof input.batchIndex === "number" ? { batchIndex: input.batchIndex } : {}), ...(typeof input.batchCount === "number" ? { batchCount: input.batchCount } : {}) } }, input.result);
+}
+
+/** One snapshot per delivered media; task totals are deduplicated by the renderer. */
+export function creationMessageResultRecords(message: CreationMessage, task: GenerationTask, storageKeys: string[]) {
+    if (task.status !== "succeeded" || !storageKeys.length) return message.resultRecords;
+    const result = parseBackendGenerationResult(task);
+    const count = Math.max(storageKeys.length, task.outputs?.length || 0, result.images?.length || 0, result.video ? 1 : 0);
+    const records = [...(message.resultRecords || [])];
+    storageKeys.forEach((mediaKey, index) => {
+        const media = result.images?.[index] || result.video;
+        const snapshot = completedGenerationResultRecord(task, { storageKey: mediaKey, naturalWidth: media?.width, naturalHeight: media?.height, durationMs: media && "durationMs" in media && typeof media.durationMs === "number" ? media.durationMs : undefined }, count);
+        if (!snapshot) return;
+        const previous = records.findIndex((record) => record.taskId === task.id && record.mediaKey === mediaKey);
+        if (previous < 0) records.push(snapshot);
+        else records[previous] = reconcileResultBilling(records[previous], task);
+    });
+    return records;
 }
 
 export function isVideoAttachment(attachment: CreationAttachment): attachment is CreationAttachment & { url: string } {
@@ -102,7 +121,14 @@ export function reconcileCreationTaskMessages(runtime: CreationRuntime, conversa
                 changed = true;
                 return { ...message, ...recovery };
             }
-            if (message.role !== "assistant" || message.status !== "pending") return message;
+            if (message.role !== "assistant") return message;
+            const resultRecords = matches.reduce((records, task) => creationMessageResultRecords({ ...message, resultRecords: records }, task, creationTaskResultStorageKeys(task)), message.resultRecords);
+            const metadataChanged = JSON.stringify(resultRecords) !== JSON.stringify(message.resultRecords);
+            if (message.status !== "pending" && message.status !== "error") {
+                if (!metadataChanged) return message;
+                conversationChanged = changed = true;
+                return { ...message, resultRecords };
+            }
             const expectedTaskCount = Math.max(0, ...matches.map((task) => task.clientContext?.batchCount || 0));
             if (!matches.length || (expectedTaskCount > 0 && matches.length < expectedTaskCount) || matches.some((task) => task.status === "queued" || task.status === "running")) return message;
 
@@ -117,7 +143,7 @@ export function reconcileCreationTaskMessages(runtime: CreationRuntime, conversa
 
             if (resultUrls.length || resultStorageKeys.length) {
                 const content = message.mode === "video" ? "视频已生成" : failedCount ? `${resultStorageKeys.length || resultUrls.length} 张图片已生成，${failedCount} 张失败` : "图片已生成";
-                return { ...message, status: "done" as const, content, ...(resultUrls.length ? { resultUrls } : {}), ...(resultStorageKeys.length ? { resultStorageKeys } : {}), error: undefined, taskIds: nextTaskIds };
+                return { ...message, status: "done" as const, content, ...(resultUrls.length ? { resultUrls } : {}), ...(resultStorageKeys.length ? { resultStorageKeys } : {}), resultRecords, error: undefined, taskIds: nextTaskIds };
             }
             if (matches.every((task) => task.status === "cancelled")) {
                 return { ...message, status: "cancelled" as const, content: "已停止", error: undefined, taskIds: nextTaskIds };

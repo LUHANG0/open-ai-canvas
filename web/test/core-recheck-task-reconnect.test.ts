@@ -179,3 +179,28 @@ test("last subscriber aborts observation and reopening resumes the same task", a
     reopened();
     expect(signals[1].aborted).toBe(true);
 });
+
+test("shared observers reconcile succeeded pending settlement once and stop after explicit settled zero", async () => {
+    let queries = 0;
+    const seen: Array<number | undefined> = [];
+    const service = createGenerationTaskSubscriptionService({
+        async queryTask(id) {
+            expect(id).toBe(running.id);
+            queries++;
+            return { ...terminal, billing: queries === 1 ? { status: "running", amountMicrocredits: 9000000 } : { status: "settled", amountMicrocredits: 9000000, actualAmountMicrocredits: 0 } };
+        },
+        async waitTask() { throw new Error("settlement must not restart generation waiting"); },
+    });
+    const first = service.subscribe([running.id], (task) => seen.push(task.billing?.actualAmountMicrocredits));
+    const second = service.subscribe([running.id], () => {});
+    try {
+        await tick();
+        expect(queries).toBe(1);
+        window.dispatchEvent(new Event("online"));
+        await tick();
+        expect(seen).toEqual([undefined, 0]);
+        window.dispatchEvent(new Event("online"));
+        await tick();
+        expect(queries).toBe(2);
+    } finally { first(); second(); }
+});

@@ -4,7 +4,7 @@ import { resolveCanvasAppearance, resolveCanvasGridColor, type CanvasAppearance 
 import { resolveCanvasPointerIntent } from "@/lib/canvas/canvas-selection";
 import { isDiscreteCanvasWheel } from "@/lib/canvas/canvas-wheel";
 import type { CanvasBackgroundMode } from "@/lib/canvas-theme";
-import { applyCanvasLiveViewport, CANVAS_GRID_BLEED, canvasGridMetrics, subscribeCanvasViewportPreview } from "@/lib/canvas/canvas-live-viewport";
+import { applyCanvasLiveViewport, CANVAS_GRID_BLEED, CANVAS_RESULT_INFO_MIN_SCALE, canvasGridMetrics, subscribeCanvasViewportPreview } from "@/lib/canvas/canvas-live-viewport";
 import { useActiveTheme } from "@/stores/canvas/use-canvas-theme-store";
 import type { ViewportTransform } from "@/types/canvas";
 
@@ -465,6 +465,7 @@ export function CanvasViewport({
                     "--canvas-live-inverse-scale": 1 / Math.max(viewport.k, 0.05),
                     "--canvas-committed-scale": viewport.k,
                     "--canvas-live-scale-ratio": 1,
+                    "--canvas-result-info-display": viewport.k >= CANVAS_RESULT_INFO_MIN_SCALE ? "flex" : "none",
                 } as React.CSSProperties
             }
             onPointerDown={handlePointerDown}

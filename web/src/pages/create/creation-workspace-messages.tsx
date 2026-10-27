@@ -3,6 +3,7 @@
 import { conversationTimeFormatter, type CreationMessage } from "./creation-types";
 import { useAppearanceStore } from "@/stores/use-appearance-store";
 import { Copy, Download, FileText, Film, Image as ImageIcon, Maximize2, Music2, Pencil, RefreshCw, Sparkles, UserRound, X } from "lucide-react";
+import { GenerationActivity } from "@/components/ai/generation-activity";
 import { GenerationToolCard, type GenerationToolStatus } from "@/components/ai/generation-tool-card";
 import { MessageReasoning } from "@/components/ai/message-reasoning";
 import { AIMessageMarkdown } from "@/components/ai/ai-message-markdown";
@@ -25,6 +26,10 @@ import { Button } from "antd";
 import { CanvasImagePreview } from "@/components/canvas/canvas-image-preview";
 import { AppModal } from "@/components/ui/product/app-modal";
 import { creationResultEntries } from "./creation-result-urls";
+import { GenerationResultMetadata } from "@/components/ai/generation-result-metadata";
+import { generationResultPresentation, type ResultPresentation } from "@/lib/canvas/canvas-result-record";
+import { producedModelLabel } from "@/lib/canvas/produced-model";
+import { useConfigStore } from "@/stores/use-config-store";
 
 export function CreationMessageView({
     item,
@@ -225,6 +230,7 @@ export function MediaResult({
     // 展示地址按 storageKey 保存；effect 重跑（素材库更新、续签）时不回退到历史 hint。
     const [resolvedByKey, setResolvedByKey] = useState<Record<string, string>>({});
     const [failedByKey, setFailedByKey] = useState<Record<string, boolean>>({});
+    const [observedMedia, setObservedMedia] = useState<Record<string, { naturalWidth: number; naturalHeight: number; durationMs?: number }>>({});
 
     useEffect(() => {
         let active = true;
@@ -281,11 +287,11 @@ export function MediaResult({
     const resultAssetIds = alignedResultUrls.length || resultStorageKeys.length ? creationResultAssetIds(assets, { messageId: item.id, taskIds: item.taskIds || [], resultUrls: alignedResultUrls, resultStorageKeys }) : [];
     const expectedResultCount = resultStorageKeys.length || alignedResultUrls.length;
     const canContinueWithResults = expectedResultCount > 0 && resultAssetIds.length === expectedResultCount;
-    if (item.status === "pending") return <CreationMediaPending mode={item.mode || "image"} ratio={item.settings?.ratio} />;
+    if (item.status === "pending") return <CreationMediaPending mode={item.mode || "image"} ratio={item.settings?.ratio} startedAt={item.createdAt} />;
     if ((item.status === "error" || item.status === "cancelled") && !expectedResultCount)
         return (
             <div className="creation-media-error" role="status">
-                <span>{item.status === "cancelled" ? item.content || "已停止" : generationErrorMessage(item.error || "生成失败")}</span>
+                <div className="creation-media-error-copy"><strong>{item.status === "cancelled" ? "生成已停止" : "本次生成未完成"}</strong><span>{item.status === "cancelled" ? item.content || "可重新发起生成。" : generationErrorMessage(item.error || "生成失败")}</span></div>
                 <button type="button" onClick={onRetryFailure}>
                     <RefreshCw />
                     重新生成
@@ -316,7 +322,10 @@ export function MediaResult({
                     }}
                     aria-label="预览生成视频"
                 >
-                    {displayResultUrls[0] ? <video muted preload="metadata" src={displayResultUrls[0]} /> : null}
+                    {displayResultUrls[0] ? <video muted preload="metadata" src={displayResultUrls[0]} onLoadedMetadata={(event) => {
+                        const video = event.currentTarget;
+                        setObservedMedia((current) => ({ ...current, [resultEntries[0].key]: { naturalWidth: video.videoWidth, naturalHeight: video.videoHeight, durationMs: Number.isFinite(video.duration) ? video.duration * 1000 : undefined } }));
+                    }} /> : null}
                     <span>
                         <Maximize2 />
                         预览视频
@@ -335,7 +344,10 @@ export function MediaResult({
                             }}
                             aria-label="预览生成图片"
                         >
-                            <img src={url} alt="生成结果" />
+                            <img src={url} alt="生成结果" onLoad={(event) => {
+                                const image = event.currentTarget;
+                                setObservedMedia((current) => ({ ...current, [key]: { naturalWidth: image.naturalWidth, naturalHeight: image.naturalHeight } }));
+                            }} />
                             <span>
                                 <Maximize2 />
                             </span>
@@ -343,6 +355,7 @@ export function MediaResult({
                     ))}
                 </div>
             )}
+            <CreationResultMetadata item={item} entries={resultEntries} observed={observedMedia} />
             <div className="creation-media-actions">
                 <span>{isVideo ? "视频结果" : `${displayResultUrls.length} 张图片`}</span>
                 <Button type="link" size="small" loading={openingCanvas} disabled={!canContinueWithResults} title={canContinueWithResults ? undefined : "素材保存完成后才能转入画布"} onClick={() => onContinueCanvas(resultAssetIds)}>
@@ -366,18 +379,48 @@ export function MediaResult({
     );
 }
 
-export function CreationMediaPending({ mode, ratio }: { mode: CreationMode; ratio?: string }) {
-    const brandName = useAppearanceStore((state) => state.appearance.brandName);
-    return (
-        <div className={`creation-media-pending is-${mode}`} style={{ aspectRatio: creationMediaAspectRatio(ratio, mode) }} role="status">
-            <span className="creation-media-pending-icon">
-                <WorkingDots dotSize={7} gap={3} minOpacity={0.3} />
-            </span>
-            <span className="creation-media-pending-label">
-                {brandName}正在生成{mode === "video" ? "视频" : "图像"}
-            </span>
+function CreationResultMetadata({ item, entries, observed }: {
+    item: CreationMessage;
+    entries: Array<{ key: string }>;
+    observed: Record<string, { naturalWidth: number; naturalHeight: number; durationMs?: number }>;
+}) {
+    const config = useConfigStore((state) => state.config);
+    const groups = new Map<string, { record: ResultPresentation; resolutions: Set<string> }>();
+    for (const { key } of entries) {
+        const snapshot = item.resultRecords?.find((record) => record.mediaKey === key);
+        const media = observed[key] || { naturalWidth: snapshot?.width, naturalHeight: snapshot?.height, durationMs: snapshot?.durationMs };
+        const presentation = generationResultPresentation(media, snapshot, producedModelLabel(config, item.model), item.mode === "video");
+        const groupKey = snapshot?.taskId || "legacy";
+        const group = groups.get(groupKey);
+        const specifications = presentation.facts.filter((fact) => /(?:×|K$|P$)|^\d+:\d+$/.test(fact));
+        if (!group) groups.set(groupKey, { record: presentation, resolutions: new Set(specifications) });
+        else {
+            const additional = specifications.filter((value) => !group.resolutions.has(value));
+            group.record.facts.unshift(...additional);
+            additional.forEach((value) => group.resolutions.add(value));
+            group.record.details = Array.from(new Set([...group.record.details, ...presentation.details]));
+        }
+    }
+    return <>{Array.from(groups, ([key, { record }]) => <GenerationResultMetadata key={key} record={record} />)}</>;
+}
+
+export function CreationMediaPending({ mode, ratio, startedAt }: { mode: CreationMode; ratio?: string; startedAt?: string }) {
+    const [now, setNow] = useState(() => Date.now());
+    const start = startedAt ? Date.parse(startedAt) : NaN;
+    useEffect(() => {
+        if (!Number.isFinite(start)) return;
+        const timer = window.setInterval(() => setNow(Date.now()), 1000);
+        return () => window.clearInterval(timer);
+    }, [start]);
+    const seconds = Math.max(0, Math.floor((now - start) / 1000));
+    const aspectRatio = creationMediaAspectRatio(ratio, mode);
+    return <div className="creation-generation-card">
+        <div className="creation-generation-preview" style={{ aspectRatio }}><GenerationActivity /></div>
+        <div className="creation-generation-copy">
+            <div className="creation-generation-title"><strong role="status">正在生成{mode === "video" ? "视频" : "图像"}</strong><span>{Number.isFinite(start) ? `已耗时 ${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}` : ratio}</span></div>
+            <p>结果将在这里呈现，你可以继续创作。</p>
         </div>
-    );
+    </div>;
 }
 
 export function CreationMessageReferences({ references }: { references: CreationReference[] }) {

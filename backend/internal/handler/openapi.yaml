@@ -2673,6 +2673,34 @@ components:
             status: {type: string}
             resultStorageKeys: {type: array, items: {type: string, pattern: "^resource:"}}
             taskIds: {type: array, items: {type: string}}
+            resultRecords:
+              type: array
+              maxItems: 100
+              items:
+                type: object
+                additionalProperties: false
+                required: [mediaKey, taskId]
+                description: 仅展示用的媒体绑定事实；mediaKey 必须在 resultStorageKeys 中，taskId 必须在 taskIds 中，归属继续由服务端校验。不是计费依据。
+                properties:
+                  mediaKey: {type: string, pattern: "^resource:"}
+                  taskId: {type: string}
+                  model: {type: string, maxLength: 512, description: 冻结的公开模型名称，不含渠道配置}
+                  createdAt: {type: string, format: date-time}
+                  startedAt: {type: string, format: date-time}
+                  completedAt: {type: string, format: date-time}
+                  includesSave: {type: boolean}
+                  width: {type: integer, minimum: 1}
+                  height: {type: integer, minimum: 1}
+                  durationMs: {type: number, minimum: 0}
+                  outputCount: {type: integer, minimum: 1}
+                  billingStatus: {type: string, enum: [pending]}
+                  billing:
+                    type: object
+                    additionalProperties: false
+                    required: [actualAmountMicrocredits, scope]
+                    properties:
+                      actualAmountMicrocredits: {type: integer, minimum: 0, maximum: 9007199254740991, description: 已结算实际微积分，零有效；不得填预占报价}
+                      scope: {type: string, enum: [result, task]}
     CreationHistoryDetail:
       type: object
       properties:

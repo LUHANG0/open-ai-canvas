@@ -122,6 +122,10 @@ export function applyResourceReference(payload: Record<string, unknown>, storage
         throw new Error(`远端资源引用无效：${storageKey}`);
     }
     const url = resourceFileUrl(resourceId);
+    const record = payload.resultRecord;
+    if (record && typeof record === "object" && !Array.isArray(record) && "mediaKey" in record && record.mediaKey === (payload.storageKey || payload.content)) {
+        payload.resultRecord = { ...record, mediaKey: storageKey };
+    }
     payload.storageKey = storageKey;
     for (const key of preserveTextContent ? [] : ["content", "dataUrl", "url", "coverUrl"]) {
         if (typeof payload[key] === "string") payload[key] = url;

@@ -5,6 +5,9 @@ export const CANVAS_GRAPHICS_VIEWPORT_PREVIEW_EVENT = "canvas:graphics-viewport-
 export const CANVAS_SELECTION_PREVIEW_EVENT = "canvas:selection-preview";
 export const CANVAS_NODE_DRAG_PREVIEW_EVENT = "canvas:node-drag-preview";
 
+/** Completed result facts are readable at 85% zoom; no expand interaction. */
+export const CANVAS_RESULT_INFO_MIN_SCALE = 0.85;
+
 export type CanvasNodeDragPreview = {
     x: number;
     y: number;
@@ -75,7 +78,12 @@ export function applyCanvasLiveViewport(container: HTMLDivElement | null, viewpo
         if (worldLayer.style.willChange !== willChange) worldLayer.style.willChange = willChange;
     }
     if (elements.gridLayer) applyCanvasGridViewport(elements.gridLayer, viewport);
-    // 交互期不要修改根容器上的继承变量。它们会让整棵节点 DOM 子树失效并
+    // Only threshold crossings invalidate inherited result styles, not every zoom frame.
+    const resultInfoDisplay = viewport.k >= CANVAS_RESULT_INFO_MIN_SCALE ? "flex" : "none";
+    if (container.style.getPropertyValue("--canvas-result-info-display") !== resultInfoDisplay) {
+        container.style.setProperty("--canvas-result-info-display", resultInfoDisplay);
+    }
+    // 交互期不要逐帧修改缩放继承变量。它们会让整棵节点 DOM 子树失效并
     // 触发样式重算；交互结束后由 CanvasViewport 的 committed render 一次性校正。
     // 标题和选框在交互期暂时跟随世界层缩放，换取连续帧的合成路径。
     if (container.dataset.canvasViewportInteracting !== "true") {

@@ -317,8 +317,15 @@ export type CanvasNodeMetadata = {
     model?: string;
     /** 产出模型：当前图片、视频或音频内容生成成功时冻结的模型身份。 */
     producedModel?: string;
-    /** Delivered media provenance, independent of the next task; billing is actual settled charge only. */
-    resultRecord?: { mediaKey: string; taskId: string; startedAt?: string; completedAt?: string; billing?: { actualAmountMicrocredits: number; scope: "result" | "task" } };
+    /** Delivered media provenance; no quote, credentials or editable generation settings. */
+    resultRecord?: {
+        mediaKey: string; taskId: string; model?: string;
+        createdAt?: string; startedAt?: string; completedAt?: string; includesSave?: boolean;
+        outputCount?: number;
+        width?: number; height?: number; durationMs?: number;
+        billingStatus?: "pending";
+        billing?: { actualAmountMicrocredits: number; scope: "result" | "task" };
+    };
     /** 本次生成已提交、尚未成功落盘的模型身份。失败或改下拉都不改产出模型。 */
     producedModelCandidate?: string;
     workflowProvider?: "model" | "runninghub";

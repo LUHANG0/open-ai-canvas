@@ -1,0 +1,41 @@
+.generation-result-metadata {
+    position: relative;
+    display: flex;
+    flex-wrap: nowrap;
+    container-type: inline-size;
+    width: 100%;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    /* Truncation belongs to individual fields, never the trailing settled cost. */
+    color: inherit;
+    font-size: 12px;
+    line-height: 1.6;
+    font-variant-numeric: tabular-nums;
+}
+.generation-result-metadata-item {
+    min-width: 0;
+    font-size: clamp(10px, 4.5cqi, 12px);
+}
+.generation-result-metadata-model {
+    flex: 0 1000 auto;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.generation-result-metadata-fact {
+    display: flex;
+    flex: 0 1 auto;
+}
+.generation-result-metadata-fact + .generation-result-metadata-fact::before,
+.generation-result-metadata-model + .generation-result-metadata-fact::before {
+    content: "·";
+    flex: none;
+    margin-inline: clamp(2px, 1cqi, 6px);
+}
+.generation-result-metadata-value {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.generation-result-metadata { margin-block: 6px; }
+.creation-home .creation-media-result:has(.creation-image-result-grid) > .generation-result-metadata { max-width: 320px; }

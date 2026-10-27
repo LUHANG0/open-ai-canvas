@@ -20,6 +20,7 @@ import { useCanvasNodeResizeStyle } from "./canvas-node-resize-motion";
 import { CanvasNodeContent, CanvasNodeImageInfo, CanvasNodeProducedModel } from "./canvas-node-content";
 import { CanvasNodeResultRecord } from "./canvas-node-result-record";
 import { canvasResultRecord } from "@/lib/canvas/canvas-result-record";
+import { CANVAS_RESULT_INFO_MIN_SCALE } from "@/lib/canvas/canvas-live-viewport";
 
 type CanvasTheme = (typeof canvasThemes)[keyof typeof canvasThemes];
 
@@ -207,6 +208,10 @@ export const CanvasNode = React.memo(function CanvasNode({
                 height: data.height,
                 contain: "layout style",
                 "--node-result-record-ink": theme.node.label,
+                "--node-result-record-text": theme.node.text,
+                "--node-result-record-surface": theme.toolbar.panel,
+                "--node-result-record-border": theme.toolbar.border,
+                "--canvas-result-info-fallback": scale >= CANVAS_RESULT_INFO_MIN_SCALE ? "flex" : "none",
             } as React.CSSProperties}
             onMouseEnter={() => {
                 setHovered(true);

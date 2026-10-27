@@ -9,6 +9,7 @@ type PendingCreationMessage = {
     mode?: string;
     status?: string;
     taskIds?: string[];
+    resultRecords?: Array<{ billingStatus?: "pending" }>;
 };
 
 export type StoredCreationConversation = {
@@ -33,7 +34,7 @@ function isRecoverableCreationMessage(message: PendingCreationMessage) {
     if (message.mode === "text") return message.status === "streaming" || message.status === "pending";
     // 媒体消息的前端等待可能先于后端结束（例如长视频），消息被判失败但任务其实已经成功。
     // 失败态一并纳入恢复：任务确实失败时收敛结果不变，任务成功时把结果补回消息。
-    return message.status === "pending" || message.status === "error";
+    return message.status === "pending" || message.status === "error" || (message.status === "done" && message.resultRecords?.some((record) => record.billingStatus === "pending"));
 }
 
 export function pendingCreationTaskKey(conversations: StoredCreationConversation[]) {

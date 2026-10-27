@@ -60,6 +60,10 @@ export function creationHistoryMedia(scope: string, signal: AbortSignal, active:
         if (keys.length || urls.length) {
             payload.resultStorageKeys = [];
             for (let i = 0; i < (keys.length || urls.length); i++) (payload.resultStorageKeys as string[]).push(await remoteKey(keys[i], urls[i], message.mode === "video" ? "video/mp4" : "image/png"));
+            if (message.resultRecords) payload.resultRecords = message.resultRecords.flatMap((record) => {
+                const index = keys.indexOf(record.mediaKey);
+                return index < 0 ? [] : [{ ...record, mediaKey: (payload.resultStorageKeys as string[])[index] }];
+            });
         }
         assertActive();
         return payload;

@@ -21,8 +21,9 @@ test("the real completed video path persists only media-bound actual cost and re
     restores.push(() => blob.mockRestore(), () => url.mockRestore());
     const result = await buildGenerationTaskNodeResult(node(), task());
     expect(result.width / result.height).toBeCloseTo(16 / 9, 8);
-    expect(result.metadata?.resultRecord).toEqual({ mediaKey: "resource:fixture", taskId: "task", startedAt: timing.startedAt, completedAt: timing.completedAt, billing: { actualAmountMicrocredits: 8_800_000, scope: "result" } });
-    expect(canvasResultRecord(result)).toEqual({ model: "submitted-model", facts: ["720P", "16:9", "15秒", "耗时 2分38秒", "8.8积分"] });
+    expect(result.metadata?.resultRecord?.billing).toEqual({ actualAmountMicrocredits: 8_800_000, scope: "result" });
+    expect(result.metadata?.resultRecord?.model).toBe("task-model");
+    expect(canvasResultRecord(result)?.facts).toEqual(["720P", "16:9", "任务耗时 2分38秒", "8.8积分"]);
     expect(canvasPersistentNodes([result])[0].metadata?.resultRecord).toEqual(result.metadata?.resultRecord);
     const nextMedia = applyGeneratedMediaResultMetadata(result, { storageKey: "resource:other", content: "/other", status: "success" }, {}, "other-model");
     expect(nextMedia.resultRecord).toBeUndefined();
@@ -36,22 +37,23 @@ test("real multiple image results record a task total and the selected cover cop
     expect(applied.additionalNodes).toHaveLength(2);
     for (const child of applied.additionalNodes) {
         expect(child.metadata?.resultRecord?.billing?.scope).toBe("task");
-        expect(canvasResultRecord(child)?.facts.at(-1)).toBe("本次任务 8.8积分");
-        expect(canvasResultRecord(child)?.facts).not.toContain("4.4积分");
+        expect(canvasResultRecord(child)?.facts).toEqual(["2K", "1:1"]);
+        expect(canvasResultRecord(child)?.model).toBe("");
     }
+    expect(canvasResultRecord(applied.node!)?.facts.at(-1)).toBe("本次任务合计 · 8.8积分");
     const second = applied.additionalNodes[1];
     const cover = reconcileImageBatchRoot({ ...applied.node!, metadata: { ...applied.node!.metadata, primaryImageId: second.id } }, applied.nodes);
     expect(cover.metadata?.resultRecord).toBe(second.metadata?.resultRecord);
     expect(cover.metadata?.resultRecord?.mediaKey).toBe(cover.metadata?.storageKey);
 });
 
-test("a pending or unknown billing response does not turn an original order amount into a settled charge", async () => {
+test("pending and unknown billing remain distinguishable without displaying the original order amount", async () => {
     const blob = spyOn(cache, "getCachedResourceBlob").mockResolvedValue(new Blob(["fixture"]));
     const url = spyOn(files, "resolveVideoMediaUrl").mockResolvedValue("/fixture.mp4");
     restores.push(() => blob.mockRestore(), () => url.mockRestore());
     for (const billing of [undefined, { status: "settled" as const, amountMicrocredits: 10_000_000 }, { status: "reserved" as const, amountMicrocredits: 10_000_000, actualAmountMicrocredits: 8_800_000 }]) {
         const result = await buildGenerationTaskNodeResult(node(), task({ billing }));
-        expect(result.metadata?.resultRecord?.billing).toBeUndefined();
         expect(canvasResultRecord(result)?.facts.some((fact) => fact.includes("积分"))).toBe(false);
+        expect(canvasResultRecord(result)?.facts.at(-1)).toBe(billing?.status === "reserved" ? "结算中" : "费用未知");
     }
 });

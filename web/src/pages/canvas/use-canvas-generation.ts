@@ -5,6 +5,7 @@ import { App } from "antd";
 import { applyGenerationTaskResultToNodes, generationTaskCanReloadResource, generationTaskNodeId, generationTaskOutputsApplied, shouldRecoverCanvasImageOutputs } from "@/lib/canvas/canvas-generation-task-sync";
 import { commitCanvasGenerationResult } from "@/lib/canvas/canvas-generation-result";
 import { reconcileImageBatchRoot } from "@/lib/canvas/canvas-image-batch-retry";
+import { reconcileCanvasResultBilling } from "@/lib/canvas/canvas-result-record";
 import { canvasTaskBindingStatus, markCanvasTaskRecoveryUnconfirmed } from "@/lib/canvas/canvas-task-state";
 import { applyCanvasGenerationTaskNodeEffect, CanvasGenerationDurableAckError, isCanvasGenerationDurableAckError } from "@/services/canvas-generation-consumer";
 import { consumeGenerationTaskNode, ensureCanvasNodeAsset, retryCanvasAssetSyncAfterRateLimit } from "@/services/project-asset-sync";
@@ -391,6 +392,21 @@ export function useCanvasGeneration({ projectId, domainProjectId, projectLoaded,
             }),
         [],
     );
+
+    // Use the shared, account-scoped observer, never a request per result render.
+    const settlementTaskKey = Array.from(new Set(nodes.flatMap((node) => {
+        const record = node.metadata?.resultRecord;
+        return record?.billingStatus === "pending" && record.mediaKey === (node.metadata?.storageKey || node.metadata?.content) ? [record.taskId] : [];
+    }))).sort().join("|");
+    useEffect(() => {
+        if (!projectLoaded || !settlementTaskKey) return;
+        let active = true;
+        const unsubscribe = subscribeGenerationTasks(settlementTaskKey.split("|"), (task) => {
+            if (!active) return;
+            setNodes((current) => reconcileCanvasResultBilling(current, task));
+        });
+        return () => { active = false; unsubscribe(); };
+    }, [projectId, projectLoaded, settlementTaskKey, setNodes]);
 
     const recoverInterruptedGenerationTasks = useCallback(
         async (startedProjectId: string, signal: AbortSignal, isCurrentProject: () => boolean) => {

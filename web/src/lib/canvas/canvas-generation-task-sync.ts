@@ -19,7 +19,7 @@ import { useCanvasStore } from "@/stores/canvas/use-canvas-store";
 import { useAssetStore } from "@/stores/use-asset-store";
 import { applyGenerationConsumerEffect, generationEffectApplied } from "@/services/generation-consumer-dedupe";
 import { commitProducedModel } from "@/lib/canvas/produced-model";
-import { completedCanvasResultRecord } from "@/lib/canvas/canvas-result-record";
+import { completedCanvasResultRecord, completedGenerationResultRecord } from "@/lib/canvas/canvas-result-record";
 import { experimentalLayerSignature, hasUsableLayerTransparency, imageLayerCompositeSignature, validateImageLayerOutput } from "@/lib/canvas/canvas-image-layers";
 import { composeCanvasImageLayerGroup, decodeAndComposeImageLayers, inspectImageLayer, normalizeImageLayerCanvas } from "@/services/canvas-image-layer-compositor";
 import { patchImageLayerBackground } from "@/services/canvas-image-layer-source";
@@ -456,6 +456,7 @@ async function buildGenerationTaskNodeResults(node: CanvasNodeData, task: Genera
                     mimeType: primary.metadata!.mimeType || "image/png",
                 }),
                 assetId: primary.metadata?.assetId,
+                resultRecord: primary.metadata?.resultRecord,
                 isBatchRoot: true,
                 batchChildIds: children.map((child) => child.id),
                 primaryImageId: primary.id,
@@ -726,7 +727,7 @@ function completedTaskMetadata(task: GenerationTask, media?: CanvasNodeMetadata,
         taskDurationMs: task.startedAt && task.completedAt ? Math.max(0, Date.parse(task.completedAt) - Date.parse(task.startedAt)) : undefined,
         taskCreatedAt: task.createdAt || task.created_at,
         taskUpdatedAt: task.updatedAt || task.updated_at,
-        ...(media ? { resultRecord: completedCanvasResultRecord(media, { taskId: task.id, taskStatus: task.status, taskStartedAt: task.startedAt, taskCompletedAt: task.completedAt }, task.billing, Math.max(outputCount || 0, task.outputs?.length || 0, ...(task.outputs || []).map((output) => output.outputIndex + 1))) } : {}),
+        ...(media ? { resultRecord: completedGenerationResultRecord(task, media, Math.max(outputCount || 0, task.outputs?.length || 0, ...(task.outputs || []).map((output) => output.outputIndex + 1))) } : {}),
         errorDetails: undefined,
         resourceReloadAvailable: undefined,
         generationErrorCode: undefined,
