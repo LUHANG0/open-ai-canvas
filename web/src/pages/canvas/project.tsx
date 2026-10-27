@@ -6,7 +6,6 @@ import { useCanvasImageLayerGroups } from "./use-canvas-image-layer-groups";
 import { useCanvasImageLayerMaterials } from "./use-canvas-image-layer-materials";
 import { isCanvasNodeGenerating } from "@/lib/canvas/canvas-node-task-state";
 import { createCanvasStateWriter } from "@/lib/canvas/canvas-editor-state";
-import { useCanvasImageWheelResize } from "./use-canvas-image-wheel-resize";
 import { useCanvasNodeControls } from "./use-canvas-node-controls";
 import { canCancelGenerationTask } from "@/lib/generation-task-display";
 import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
@@ -34,6 +33,7 @@ import { flushCanvasStorePersistence } from "@/stores/canvas/use-canvas-store";
 import { ensureCanvasNodeAsset } from "@/services/project-asset-sync";
 import { useCanvasThemeStore, useCanvasThemeScope } from "@/stores/canvas/use-canvas-theme-store";
 import { useUserStore } from "@/stores/use-user-store";
+import { useCanvasInputEntry, useCanvasInputPreferences } from "@/stores/canvas/use-canvas-input-preferences";
 import { App, Button } from "antd";
 import { ArrowLeftRight } from "lucide-react";
 import { AppModal } from "@/components/ui/product/app-modal";
@@ -178,7 +178,6 @@ import {
     type StoryboardShotCount,
     type StoryboardShotDuration,
     type CanvasWorkspaceMode,
-    type CanvasToolMode,
     type ContextMenuState,
     type Position,
     type ViewportTransform,
@@ -259,7 +258,8 @@ function CanvasViewportPage() {
     const [canvasAppearance, setCanvasAppearance] = useState<CanvasAppearance>(() => canvasAppearanceForTheme(colorTheme));
     const [backgroundMode, setBackgroundMode] = useState<CanvasBackgroundMode>(DEFAULT_CANVAS_BACKGROUND_MODE);
     const [showImageInfo, setShowImageInfo] = useState(false);
-    const [canvasTool, setCanvasTool] = useState<CanvasToolMode>("box-select");
+    useCanvasInputEntry(projectId);
+    const { preferences: inputPreferences, canvasTool, setCanvasTool } = useCanvasInputPreferences();
     const [hideNodeConnections, setHideNodeConnections] = useState(readCanvasHideNodeConnections);
     const [projectLoaded, setProjectLoaded] = useState(false);
     useLayoutEffect(() => {
@@ -1434,7 +1434,6 @@ function CanvasViewportPage() {
         dialogNodeId,
     });
 
-    const handleSelectedImageWheel = useCanvasImageWheelResize({ projectId, nodesRef, selectedNodeIdsRef, historyPausedRef, setNodes, onResize: handleNodeResize });
     const visibleDisplayConnections = useMemo(
         () =>
             filterBatchCellConnections(
@@ -2709,7 +2708,6 @@ function CanvasViewportPage() {
                                 <div className="relative min-w-0 flex-1 overflow-clip">
                                     <CanvasViewport
                                         interactive
-                                        onSelectedImageWheel={handleSelectedImageWheel}
                                         containerRef={containerRef}
                                         viewport={viewport}
                                         appearance={canvasAppearance}
@@ -2735,6 +2733,7 @@ function CanvasViewportPage() {
                                         onViewportPreviewChange={handleViewportPreviewChange}
                                         onCanvasMouseDown={handleCanvasMouseDown}
                                         boxSelectEnabled={canvasTool === "box-select"}
+                                        mouseWheelMode={inputPreferences.mouseWheel}
                                         onCanvasDoubleClick={handleCanvasDoubleClick}
                                         onCanvasDeselect={deselectCanvas}
                                         onContextMenu={handleCanvasContextMenu}

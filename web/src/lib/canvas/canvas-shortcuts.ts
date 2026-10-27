@@ -1,3 +1,10 @@
+import { getCanvasInputPlatform, type CanvasInputPlatform } from "./canvas-input-platform";
+
+export type CanvasShortcutOptions = {
+    platform?: CanvasInputPlatform;
+    preferences?: { blankDrag: "box-select" | "pan"; mouseWheel: "zoom" | "pan" };
+};
+
 export type CanvasShortcutCategoryId = "common" | "navigation" | "selection" | "editing";
 
 export type CanvasShortcutCategory = {
@@ -24,7 +31,7 @@ export const CANVAS_SHORTCUT_CATEGORIES: CanvasShortcutCategory[] = [
     { id: "editing", label: "编辑与文件", description: "编辑、撤销与导入" },
 ];
 
-export const CANVAS_SHORTCUTS: CanvasShortcutItem[] = [
+const BASE_CANVAS_SHORTCUTS: CanvasShortcutItem[] = [
     {
         id: "search",
         category: "common",
@@ -36,8 +43,8 @@ export const CANVAS_SHORTCUTS: CanvasShortcutItem[] = [
     {
         id: "shortcuts",
         category: "common",
-        title: "打开快捷键中心",
-        description: "查看画布中的键盘和鼠标操作",
+        title: "操作与快捷键",
+        description: "调整操作偏好，查看键盘、鼠标和触控板操作",
         keys: [["?"]],
         keywords: ["帮助", "说明", "help"],
     },
@@ -69,17 +76,9 @@ export const CANVAS_SHORTCUTS: CanvasShortcutItem[] = [
         id: "zoom-wheel",
         category: "navigation",
         title: "缩放画布",
-        description: "以鼠标所在位置为中心缩放",
-        keys: [["滚轮"]],
+        description: "以鼠标所在位置为中心缩放；选中图片时仍缩放画布，图片尺寸使用边角控制点调整",
+        keys: [["滚轮"], [CANVAS_MODIFIER_KEY, "滚轮"], ["触控板捏合"]],
         keywords: ["放大", "缩小", "zoom"],
-    },
-    {
-        id: "resize-selected-image",
-        category: "navigation",
-        title: "等比例调整选中图片大小",
-        description: "单选一张未锁定的图片，按住 Ctrl 滚动滚轮；只改变画布上的显示尺寸，原图像素不变。触控板捏合仍缩放画布",
-        keys: [["Ctrl", "滚轮"]],
-        keywords: ["图片", "节点", "大小", "比例"],
     },
     {
         id: "zoom-controls",
@@ -117,17 +116,17 @@ export const CANVAS_SHORTCUTS: CanvasShortcutItem[] = [
         id: "box-select-tool",
         category: "selection",
         title: "使用区域选择工具",
-        description: "底部工具栏的胶囊开关切到区域选择后，空白处拖动可连续框选",
+        description: "在工具栏切到区域选择后，空白处拖动可连续框选",
         keys: [["区域选择", "拖动"]],
         keywords: ["工具栏", "多选", "selection"],
     },
     {
         id: "add-selection",
         category: "selection",
-        title: "追加选择节点",
-        description: "保留已有选择并加入更多节点",
+        title: "追加或切换节点选择",
+        description: "Shift 点击追加选择；Command / Ctrl 点击切换节点是否选中",
         keys: [["Shift", "点击"], [CANVAS_MODIFIER_KEY, "点击"]],
-        keywords: ["多选", "添加", "selection"],
+        keywords: ["多选", "添加", "切换", "selection"],
     },
     {
         id: "remove-selection",
@@ -211,11 +210,29 @@ export const CANVAS_SHORTCUTS: CanvasShortcutItem[] = [
     },
 ];
 
-export function filterCanvasShortcuts(query: string, category?: CanvasShortcutCategoryId | "all") {
+export function getCanvasShortcuts({ platform = getCanvasInputPlatform(), preferences }: CanvasShortcutOptions = {}): CanvasShortcutItem[] {
+    const modifier = platform === "mac" ? "⌘" : "Ctrl";
+    const alt = platform === "mac" ? "⌥" : "Alt";
+    const panDefault = preferences?.blankDrag === "pan";
+    const wheelPans = preferences?.mouseWheel === "pan";
+    return BASE_CANVAS_SHORTCUTS.map((item) => {
+        let shortcut = item;
+        if (item.id === "pan") shortcut = { ...item, description: `配置的空白拖动默认${panDefault ? "平移" : "框选"}，当前工具栏选择优先；切到抓手工具后可拖动空白处平移。也可按住 Space + 左键拖动或中键拖动。触控板双指滚动通常平移，具体取决于浏览器发送的滚动事件。`, keys: [["Space", "左键拖动"], ["中键拖动"], ["抓手工具", "空白处拖动"], ["触控板双指滚动"]] };
+        if (item.id === "zoom-wheel") shortcut = { ...item, title: wheelPans ? "滚轮平移与修饰键缩放" : "滚轮缩放画布", description: `普通鼠标滚轮当前${wheelPans ? "平移" : "缩放"}画布，选中图片时也遵循此偏好；${modifier} + 滚轮缩放。触控板捏合由浏览器发送缩放事件。滚轮不调整图片尺寸，图片尺寸使用边角控制点调整。`, keys: [["鼠标滚轮", wheelPans ? "平移" : "缩放"], [CANVAS_MODIFIER_KEY, "滚轮"], ["触控板捏合"]] };
+        if (item.id === "box-select") shortcut = { ...item, description: `配置的空白拖动默认${panDefault ? "平移" : "框选"}，当前工具栏选择优先。区域选择工具可直接框选；在抓手工具下也可按住 Shift / ${modifier} / ${alt} 拖动空白处临时框选：Shift 追加、${modifier} 切换、${alt} 移除。`, keys: [[panDefault ? "区域选择工具" : "空白处左键拖动"], ["Shift", "拖动"], [CANVAS_MODIFIER_KEY, "拖动"], ["Alt", "拖动"]] };
+        if (item.id === "add-selection") shortcut = { ...item, description: `Shift 点击追加选择；${modifier} 点击切换节点是否选中。` };
+        if (item.id === "delete" && platform === "mac") shortcut = { ...item, description: "按 Mac 键盘 Delete（退格键）删除选中的节点或连线；向前删除键同样可用。", keys: [["Delete"], ["Fn", "Delete"]] };
+        return { ...shortcut, keys: shortcut.keys.map((keys) => keys.map((key) => key === CANVAS_MODIFIER_KEY ? modifier : key === "Alt" ? alt : key)), keywords: [...(shortcut.keywords || []), ...(shortcut.keys.flat().includes(CANVAS_MODIFIER_KEY) ? ["Ctrl", "Cmd", "Command", "⌘"] : []), ...(shortcut.keys.flat().includes("Alt") ? ["Alt", "Option", "⌥"] : [])] };
+    }).concat({ id: "context-menu", category: "common", title: "打开上下文菜单", description: platform === "mac" ? "右键或 Control + 左键点击画布或节点；触控板可使用系统设置的辅助点按。" : "右键点击画布或节点；触控板可使用系统设置的辅助点按。", keys: platform === "mac" ? [["右键"], ["Control", "左键"]] : [["右键"]], keywords: ["菜单", "鼠标", "触控板", "context menu"] });
+}
+
+export const CANVAS_SHORTCUTS = getCanvasShortcuts();
+
+export function filterCanvasShortcuts(query: string, category?: CanvasShortcutCategoryId | "all", options?: CanvasShortcutOptions) {
     const normalizedQuery = query.trim().toLocaleLowerCase();
     const terms = normalizedQuery.split(/\s+/).filter(Boolean);
 
-    return CANVAS_SHORTCUTS.filter((shortcut) => {
+    return getCanvasShortcuts(options).filter((shortcut) => {
         if (category && category !== "all" && shortcut.category !== category) return false;
         if (!terms.length) return true;
 

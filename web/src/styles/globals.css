@@ -12606,7 +12606,7 @@ html:not(.dark) .creation-custom-value { background: rgba(28, 32, 37, .055) !imp
 .canvas-shortcuts-shell {
     display: flex;
     height: min(680px, 78dvh);
-    min-height: 500px;
+    min-height: 0;
     flex-direction: column;
     color: var(--foreground);
     overscroll-behavior: contain;
@@ -12732,6 +12732,20 @@ html:not(.dark) .creation-custom-value { background: rgba(28, 32, 37, .055) !imp
     font-size: var(--fs-tiny);
     font-weight: 600;
 }
+.canvas-shortcuts-modal .ant-modal-header { display: none; }
+.canvas-shortcuts-scroll { min-height: 0; flex: 1; overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable; }
+.canvas-shortcuts-scroll .canvas-shortcuts-results { overflow: visible; }
+.canvas-input-settings { padding: 18px 20px; border-bottom: 1px solid var(--border); }
+.canvas-input-settings-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.canvas-input-settings h2 { margin: 0; font-size: var(--fs-label); font-weight: 650; }
+.canvas-input-settings p { margin: 6px 0 0; color: var(--muted-foreground); font-size: var(--fs-small); line-height: 1.6; }
+.canvas-input-settings-heading button { flex-shrink: 0; min-height: 36px; padding: 0 10px; border-radius: var(--r-sm); background: var(--surface-hover); color: var(--foreground); cursor: pointer; }
+.canvas-input-settings-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 16px 0; }
+.canvas-input-settings-fields label { display: flex; min-width: 0; flex-direction: column; gap: 8px; font-size: var(--fs-label); }
+.canvas-input-settings select { min-height: 40px; width: 100%; border: 1px solid var(--border); border-radius: var(--r-sm); padding: 0 10px; background: var(--background); color: var(--foreground); }
+.canvas-input-remember { display: flex; align-items: center; gap: 8px; min-height: 36px; font-size: var(--fs-label); }
+.canvas-input-remember input { width: 18px; height: 18px; accent-color: var(--foreground); }
+.canvas-input-settings :is(button, select, input):focus-visible { outline: 2px solid var(--control-focus-ring); outline-offset: 2px; }
 .canvas-shortcuts-body {
     display: grid;
     min-height: 0;
@@ -12921,8 +12935,9 @@ html:not(.dark) .creation-custom-value { background: rgba(28, 32, 37, .055) !imp
 }
 @media (max-width: 680px) {
     .canvas-shortcuts-shell {
+        max-height: calc(100dvh - 48px);
         height: min(720px, 88dvh);
-        min-height: 440px;
+        min-height: 0;
     }
     .canvas-shortcuts-header {
         grid-template-columns: 1fr;
@@ -12947,6 +12962,10 @@ html:not(.dark) .creation-custom-value { background: rgba(28, 32, 37, .055) !imp
         gap: 7px;
         padding: 0 10px;
     }
+    .canvas-input-settings { padding: 14px; }
+    .canvas-input-settings-fields { grid-template-columns: 1fr; gap: 12px; }
+    .canvas-input-settings-heading { flex-wrap: wrap; }
+    .canvas-input-settings-heading button, .canvas-shortcuts-categories button { min-height: 44px; }
     .canvas-shortcuts-results {
         padding: 6px 10px 14px;
     }
@@ -12963,6 +12982,41 @@ html:not(.dark) .creation-custom-value { background: rgba(28, 32, 37, .055) !imp
         justify-content: flex-start;
     }
 }
+
+/* Shortcut reference: grouped rows with preferences out of the reading path. */
+.canvas-input-disclosure { border-bottom: 1px solid var(--border); }
+.canvas-input-disclosure > summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 15px 24px; cursor: pointer; list-style: none; font-size: 13px; font-weight: 600; }
+.canvas-input-disclosure > summary::-webkit-details-marker { display: none; }
+.canvas-input-disclosure > summary small { margin-left: 14px; font-size: 12px; color: var(--muted-foreground); font-weight: 400; }
+.canvas-input-disclosure-action { color: var(--muted-foreground); font-size: 12px; font-weight: 400; }
+.canvas-input-disclosure-action::after { content: ' ＋'; }
+.canvas-input-disclosure[open] .canvas-input-disclosure-action::after { content: ' −'; }
+.canvas-input-disclosure > summary:focus-visible { outline: 2px solid var(--control-focus-ring); outline-offset: -3px; }
+.canvas-input-disclosure .canvas-input-settings { border-bottom: 0; padding: 4px 24px 20px; }
+.canvas-shortcuts-group + .canvas-shortcuts-group { margin-top: 22px; }
+.canvas-shortcuts-group h2 { display: flex; align-items: center; gap: 8px; margin: 0; padding: 12px 0; border-bottom: 1px solid var(--border); font-size: 12px; font-weight: 600; color: var(--muted-foreground); }
+.canvas-shortcuts-group h2 span { font-size: 11px; font-weight: 400; opacity: .65; }
+.canvas-shortcuts-scroll .canvas-shortcuts-results { padding: 10px 24px 24px; }
+.canvas-shortcuts-categories { align-self: start; position: sticky; top: 0; padding: 16px 12px; border-right: 0; }
+.canvas-shortcuts-body { grid-template-columns: 156px minmax(0, 1fr); }
+.canvas-shortcuts-row { grid-template-columns: minmax(0, 1fr) minmax(130px, 44%); gap: 20px; padding: 14px 0; }
+.canvas-shortcuts-row-title strong { white-space: normal; font-size: 13px; font-weight: 550; }
+.canvas-shortcuts-row-copy p { white-space: normal; font-size: 12px; line-height: 1.65; color: var(--muted-foreground); margin-top: 5px; }
+.canvas-shortcuts-key-part kbd { font-family: inherit; font-size: 12px; min-height: 28px; }
+.canvas-shortcuts-combination { flex-wrap: wrap; justify-content: flex-end; }
+.canvas-shortcuts-footer { font-size: 11px; }
+@media (max-width: 680px) {
+ .canvas-input-disclosure > summary { padding: 14px 16px; }
+ .canvas-input-disclosure > summary small { display: none; }
+ .canvas-input-disclosure .canvas-input-settings { padding: 4px 16px 18px; }
+ .canvas-shortcuts-categories { position: static; align-self: stretch; padding: 8px 12px; }
+ .canvas-shortcuts-scroll .canvas-shortcuts-results { padding: 2px 16px 20px; }
+ .canvas-shortcuts-row { grid-template-columns: minmax(0, 1fr); gap: 10px; padding: 14px 0; }
+ .canvas-shortcuts-combination { justify-content: flex-start; }
+ .canvas-shortcuts-group + .canvas-shortcuts-group { margin-top: 14px; }
+ .canvas-shortcuts-footer > span:first-child { max-width: 235px; }
+}
+
 .asset-library-picker-modal { margin: 0 auto !important; }
 .asset-library-picker-modal .ant-modal-container { padding: 0 !important; }
 .asset-library-picker-modal .ant-modal-body { padding: 0 !important; }

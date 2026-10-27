@@ -1,0 +1,91 @@
+.canvas-compact-toolbar,
+.canvas-compact-panel {
+    display: none;
+}
+
+@media (max-width: 767px) {
+    /* Reserve the 64px workspace rail and a row above the 76px agent orb. */
+    .canvas-main-toolbar,
+    .canvas-main-with-workspace .canvas-workspace-zoom-controls,
+    .canvas-workspace-zoom-controls {
+        bottom: calc(env(safe-area-inset-bottom, 0px) + 104px);
+    }
+    .canvas-main-toolbar {
+        left: calc(var(--canvas-workspace-inset, 0px) + 64px);
+        right: max(12px, env(safe-area-inset-right, 0px));
+        justify-content: flex-end;
+    }
+    .canvas-main-with-workspace .canvas-workspace-zoom-controls,
+    .canvas-workspace-zoom-controls {
+        left: calc(var(--canvas-workspace-inset, 0px) + max(12px, env(safe-area-inset-left, 0px)));
+    }
+    .canvas-main-toolbar .canvas-desktop-toolbar,
+    .canvas-zoom-controls .canvas-desktop-toolbar {
+        display: none;
+    }
+    .canvas-compact-toolbar {
+        display: flex;
+        --dock-item-size: 44px !important;
+        overflow: visible;
+    }
+    .canvas-compact-toolbar .aceternity-dock-switch-option {
+        width: 44px;
+        height: 44px;
+    }
+    .canvas-view-trigger {
+        padding: 0;
+        border: 0;
+    }
+    .canvas-compact-panel {
+        display: block;
+        position: absolute;
+        bottom: calc(100% + 8px);
+        left: 0;
+        width: 100%;
+        min-width: 0;
+        z-index: var(--dock-z-popover);
+    }
+    .canvas-zoom-controls .canvas-compact-panel {
+        width: min(280px, calc(100vw - var(--canvas-workspace-inset, 0px) - 24px));
+    }
+    .canvas-compact-menu {
+        --dock-item-size: 44px !important;
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        max-height: calc(100dvh - env(safe-area-inset-bottom, 0px) - 240px);
+        overflow-x: hidden;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+    }
+    .canvas-compact-menu .aceternity-dock-command {
+        width: 100%;
+        min-height: 44px;
+        justify-content: flex-start;
+    }
+    .canvas-compact-menu .aceternity-dock-danger-group {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .canvas-compact-menu .aceternity-dock-separator {
+        display: none;
+    }
+    .canvas-main-toolbar .canvas-toolbar-popover {
+        left: 0 !important;
+        transform: none !important;
+        width: 100%;
+        max-width: 100%;
+        bottom: calc(100% + 8px);
+    }
+    .canvas-main-toolbar .canvas-toolbar-popover > div,
+    .canvas-zoom-precision {
+        max-height: calc(100dvh - env(safe-area-inset-bottom, 0px) - 240px) !important;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+    }
+    .canvas-main-toolbar .canvas-toolbar-popover button,
+    .canvas-zoom-precision button,
+    .canvas-zoom-precision input {
+        min-height: 44px;
+    }
+}

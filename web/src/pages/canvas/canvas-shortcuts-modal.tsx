@@ -2,10 +2,12 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { AppModal } from "@/components/ui/product/app-modal";
 import { Command, Search } from "lucide-react";
 import { Kbd } from "@/components/ui/base/kbd";
+import { useCanvasInputPreferences } from "@/stores/canvas/use-canvas-input-preferences";
+import { getCanvasInputPlatform } from "@/lib/canvas/canvas-input-platform";
 
 import {
     CANVAS_SHORTCUT_CATEGORIES,
-    CANVAS_SHORTCUTS,
+    getCanvasShortcuts,
     filterCanvasShortcuts,
     type CanvasShortcutCategoryId,
     type CanvasShortcutItem,
@@ -17,6 +19,9 @@ export function CanvasShortcutsModal({ open, onClose }: { open: boolean; onClose
     const inputRef = useRef<HTMLInputElement>(null);
     const [query, setQuery] = useState("");
     const [category, setCategory] = useState<ShortcutCategoryFilter>("all");
+    const { preferences, canvasTool, updatePreferences, resetPreferences } = useCanvasInputPreferences();
+    const platform = getCanvasInputPlatform();
+    const catalog = useMemo(() => getCanvasShortcuts({ platform, preferences }), [platform, preferences]);
 
     useEffect(() => {
         if (!open) return;
@@ -24,10 +29,10 @@ export function CanvasShortcutsModal({ open, onClose }: { open: boolean; onClose
         setCategory("all");
     }, [open]);
 
-    const results = useMemo(() => filterCanvasShortcuts(query, category), [category, query]);
+    const results = useMemo(() => filterCanvasShortcuts(query, category, { platform, preferences }), [category, query, platform, preferences]);
     const categoryCounts = useMemo(
-        () => new Map(CANVAS_SHORTCUT_CATEGORIES.map((entry) => [entry.id, CANVAS_SHORTCUTS.filter((shortcut) => shortcut.category === entry.id).length])),
-        [],
+        () => new Map(CANVAS_SHORTCUT_CATEGORIES.map((entry) => [entry.id, catalog.filter((shortcut) => shortcut.category === entry.id).length])),
+        [catalog],
     );
 
     return (
@@ -36,7 +41,7 @@ export function CanvasShortcutsModal({ open, onClose }: { open: boolean; onClose
             open={open}
             onCancel={onClose}
             footer={null}
-            title={null}
+            title="操作与快捷键"
             centered
             keyboard
             width="min(860px, calc(100vw - 24px))"
@@ -52,8 +57,8 @@ export function CanvasShortcutsModal({ open, onClose }: { open: boolean; onClose
                             <Command />
                         </span>
                         <span>
-                            <strong>画布快捷键</strong>
-                            <small>快速找到键盘、鼠标和视图操作</small>
+                            <strong>操作与快捷键</strong>
+                            <small>{platform === "mac" ? "Mac · ⌘ Command / ⌥ Option" : "Windows / 其他系统 · Ctrl / Alt"}</small>
                         </span>
                     </div>
                     <label className="canvas-shortcuts-search">
@@ -73,9 +78,34 @@ export function CanvasShortcutsModal({ open, onClose }: { open: boolean; onClose
                     </label>
                 </header>
 
+                <div className="canvas-shortcuts-scroll" data-canvas-no-zoom data-canvas-wheel-scroll>
+                    <details className="canvas-input-disclosure">
+                        <summary><span>操作偏好<small>鼠标、拖动与工具记忆</small></span><span className="canvas-input-disclosure-action">调整设置</span></summary>
+                    <section className="canvas-input-settings" aria-label="画布操作偏好">
+                        <div className="canvas-input-settings-heading">
+                            <div><h2>操作偏好</h2><p id="canvas-input-scope">仅对当前账号与浏览器生效。</p></div>
+                            <button type="button" onClick={resetPreferences}>恢复默认</button>
+                        </div>
+                        <div className="canvas-input-settings-fields">
+                            <label>空白处左键拖动
+                                <select aria-label="空白处左键拖动" value={preferences.blankDrag} onChange={(event) => updatePreferences({ blankDrag: event.target.value as "box-select" | "pan" })}>
+                                    <option value="box-select">框选节点（默认）</option><option value="pan">平移画布</option>
+                                </select>
+                            </label>
+                            <label>鼠标滚轮
+                                <select aria-label="鼠标滚轮" value={preferences.mouseWheel} onChange={(event) => updatePreferences({ mouseWheel: event.target.value as "zoom" | "pan" })}>
+                                    <option value="zoom">缩放画布（默认）</option><option value="pan">平移画布</option>
+                                </select>
+                            </label>
+                        </div>
+                        <p>当前工具：{canvasTool === "move" ? "抓手（平移画布）" : "区域选择（框选节点）"}。工具栏的当前选择优先于默认设置。</p>
+                        <label className="canvas-input-remember"><input type="checkbox" checked={preferences.rememberTool} onChange={(event) => updatePreferences({ rememberTool: event.target.checked })} />记住上次工具（抓手 / 区域选择）</label>
+                        <p>开启后，下次进入沿用上次工具。滚轮设置按事件步长识别鼠标，部分触控板事件也可能受影响；Ctrl / ⌘ 滚轮及捏合手势始终缩放画布。</p>
+                    </section>
+                    </details>
                 <div className="canvas-shortcuts-body">
                     <nav className="canvas-shortcuts-categories" aria-label="快捷键分类">
-                        <CategoryButton label="全部" count={CANVAS_SHORTCUTS.length} active={category === "all"} onClick={() => setCategory("all")} />
+                        <CategoryButton label="全部" count={catalog.length} active={category === "all"} onClick={() => setCategory("all")} />
                         {CANVAS_SHORTCUT_CATEGORIES.map((entry) => (
                             <CategoryButton
                                 key={entry.id}
@@ -90,9 +120,13 @@ export function CanvasShortcutsModal({ open, onClose }: { open: boolean; onClose
                     <main className="canvas-shortcuts-results" aria-live="polite">
                         {results.length ? (
                             <div className="canvas-shortcuts-list">
-                                {results.map((shortcut) => (
-                                    <ShortcutRow key={shortcut.id} shortcut={shortcut} showCategory={category === "all" || Boolean(query)} />
-                                ))}
+                                {CANVAS_SHORTCUT_CATEGORIES.map((group) => {
+                                    const items = results.filter((item) => item.category === group.id);
+                                    return items.length ? <section className="canvas-shortcuts-group" key={group.id} aria-label={group.label}>
+                                        <h2>{group.label}<span>{items.length}</span></h2>
+                                        {items.map((shortcut) => <ShortcutRow key={shortcut.id} shortcut={shortcut} showCategory={false} />)}
+                                    </section> : null;
+                                })}
                             </div>
                         ) : (
                             <div className="canvas-shortcuts-empty">
@@ -103,9 +137,10 @@ export function CanvasShortcutsModal({ open, onClose }: { open: boolean; onClose
                         )}
                     </main>
                 </div>
+                </div>
 
                 <footer className="canvas-shortcuts-footer">
-                    <span>共 {results.length} 个快捷键</span>
+                    <span>共 {results.length} 项操作 · 在画布获得焦点时使用键盘快捷键</span>
                     <span className="canvas-shortcuts-close-hint"><Kbd>Esc</Kbd> 关闭</span>
                 </footer>
             </div>

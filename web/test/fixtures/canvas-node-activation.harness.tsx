@@ -108,6 +108,49 @@ test("micro movement is a click; modifier selection and cancel or blur do not ac
     } finally { await f.cleanup(); }
 });
 
+test("Shift retains selected nodes; platform toggle removes only the clicked node", async () => {
+    const f = await fixture();
+    try {
+        await f.mouse("mousedown"); await f.mouse("mouseup");
+        await f.mouse("mousedown", "a", 110, 110, { shiftKey: true }); await f.mouse("mouseup");
+        expect([...f.api().selected]).toEqual(["a"]);
+        await f.mouse("mousedown", "b", 110, 110, { shiftKey: true }); await f.mouse("mouseup");
+        expect([...f.api().selected]).toEqual(["a", "b"]);
+        await f.mouse("mousedown", "a", 110, 110, { metaKey: true }); await f.mouse("mouseup");
+        expect([...f.api().selected]).toEqual(["b"]);
+    } finally { await f.cleanup(); }
+});
+
+test("Mac Control-click does not select, drag, pause history, close editors or suppress context menus", async () => {
+    const descriptor = Object.getOwnPropertyDescriptor(navigator, "platform");
+    Object.defineProperty(navigator, "platform", { configurable: true, value: "MacIntel" });
+    const f = await fixture();
+    try {
+        await f.mouse("mousedown"); await f.mouse("mouseup");
+        const originalNodes = f.api().nodes;
+        await f.mouse("mousedown", "b", 110, 110, { ctrlKey: true });
+        expect([...f.api().selected]).toEqual(["a"]);
+        expect(f.api().controller.isNodeDragging).toBe(false);
+        expect(f.api().historyPausedRef.current).toBe(false);
+        expect(f.shown()).toEqual(["a", "a"]);
+        await f.mouse("mousemove", "b", 180, 160); await f.mouse("mouseup", "b", 180, 160);
+        expect(f.api().nodes).toBe(originalNodes);
+        let menuCalls = 0;
+        f.host.addEventListener("contextmenu", () => menuCalls++);
+        const menu = new dom.MouseEvent("contextmenu", { bubbles: true, cancelable: true, ctrlKey: true, button: 0 });
+        f.host.querySelector('[data-test-node="b"]')!.dispatchEvent(menu as unknown as Event);
+        expect(menuCalls).toBe(1);
+        expect(menu.defaultPrevented).toBe(false);
+        await act(async () => f.api().controller.handleCanvasMouseDown({ button: 0, ctrlKey: true, clientX: 0, clientY: 0 }));
+        expect(f.api().controller.selectionBox).toBeNull();
+        expect(f.shown()).toEqual(["a", "a"]);
+    } finally {
+        await f.cleanup();
+        if (descriptor) Object.defineProperty(navigator, "platform", descriptor);
+        else Reflect.deleteProperty(navigator, "platform");
+    }
+});
+
 test("locked nodes retain click activation without starting a drag", async () => {
     const f = await fixture(true);
     try {

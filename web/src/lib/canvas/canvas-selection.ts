@@ -1,3 +1,4 @@
+import { getCanvasInputPlatform, isCanvasSecondaryClick } from "@/lib/canvas/canvas-input-platform";
 import { buildCanvasSpatialIndex, canvasNodeBounds, type CanvasSpatialBounds, type CanvasSpatialIndex } from "@/lib/canvas/canvas-spatial-index";
 import type { CanvasNodeData, CanvasSelectionHitMode, CanvasSelectionStrategy } from "@/types/canvas";
 
@@ -23,7 +24,8 @@ export type CanvasPointerIntent = "ignore" | "pan" | "select";
  * selects by default, while touch, Space + drag and middle-button drag pan.
  * Trackpad gestures arrive as wheel events and never pass through this router.
  */
-export function resolveCanvasPointerIntent(input: CanvasPointerIntentInput): CanvasPointerIntent {
+export function resolveCanvasPointerIntent(input: CanvasPointerIntentInput, platform = getCanvasInputPlatform()): CanvasPointerIntent {
+    if (isCanvasSecondaryClick(input, platform)) return "ignore";
     if (input.pointerType === "touch") return input.background ? "pan" : "ignore";
     if (input.button === 1) return "pan";
     if (input.button !== 0) return "ignore";

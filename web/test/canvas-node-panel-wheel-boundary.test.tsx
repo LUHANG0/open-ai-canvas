@@ -42,14 +42,12 @@ async function fixture(rich: boolean) {
     const containerRef = createRef<HTMLDivElement>();
     const previews: ViewportTransform[] = [];
     const commits: ViewportTransform[] = [];
-    const selected: number[] = [];
     const changes: string[] = [];
     const reference: CanvasResourceReference = { id: "wheel-reference", nodeId: "wheel-image", kind: "image", label: "图片1", title: "Fixture reference", active: true, previewUrl: "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==" };
     const render = async (id = "wheel-panel", scale = 1) => act(async () => root.render(
         <div>
             <CanvasViewport containerRef={containerRef} viewport={{ x: 0, y: 0, k: scale }}
-                onViewportChange={(next) => commits.push(next)} onViewportPreviewChange={(next) => previews.push(next)}
-                onSelectedImageWheel={(delta) => { selected.push(delta); return true; }}>
+                onViewportChange={(next) => commits.push(next)} onViewportPreviewChange={(next) => previews.push(next)}>
                 <div data-background>Canvas background</div>
             </CanvasViewport>
             <CanvasNodePanelOverlay containerRef={containerRef} viewport={{ x: 0, y: 0, k: scale }}
@@ -78,7 +76,7 @@ async function fixture(rich: boolean) {
         return event;
     };
     const settle = async () => act(async () => { await new Promise((resolve) => setTimeout(resolve, 150)); });
-    const expectCanvasIdle = () => { expect(previews).toHaveLength(0); expect(commits).toHaveLength(0); expect(selected).toHaveLength(0); expect(changes).toHaveLength(0); };
+    const expectCanvasIdle = () => { expect(previews).toHaveLength(0); expect(commits).toHaveLength(0); expect(changes).toHaveLength(0); };
     const cleanup = async () => { await act(async () => root.unmount()); host.remove(); };
     return { panel, editor, target, dispatch, render, settle, expectCanvasIdle, previews, commits, cleanup, background: host.querySelector<HTMLElement>("[data-background]")!, resetScroll: () => { scrollTop = 0; } };
 }

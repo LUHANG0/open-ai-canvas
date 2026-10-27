@@ -14,8 +14,8 @@ type CanvasViewportProps = {
     viewport: ViewportTransform;
     appearance?: CanvasAppearance;
     backgroundMode?: CanvasBackgroundMode;
+    mouseWheelMode?: "zoom" | "pan";
     onViewportChange: (viewport: ViewportTransform) => void;
-    onSelectedImageWheel?: (deltaPixels: number) => boolean;
     onViewportPreviewChange?: (viewport: ViewportTransform) => void;
     onCanvasMouseDown?: (event: React.PointerEvent<HTMLDivElement>) => void;
     boxSelectEnabled?: boolean;
@@ -53,8 +53,8 @@ export function CanvasViewport({
     viewport,
     appearance,
     backgroundMode = "dots",
+    mouseWheelMode = "zoom",
     onViewportChange,
-    onSelectedImageWheel,
     onViewportPreviewChange,
     onCanvasMouseDown,
     boxSelectEnabled = false,
@@ -90,7 +90,6 @@ export function CanvasViewport({
     const touchPointsRef = useRef(new Map<number, TouchPoint>());
     const pinchStateRef = useRef<PinchState>({ active: false, pointerIds: [-1, -1], initialDistance: 1, worldX: 0, worldY: 0, initialScale: viewport.k });
     const spacePressedRef = useRef(false);
-    const controlPressedRef = useRef(false);
     const [isSpacePressed, setIsSpacePressed] = useState(false);
     const [isPanning, setIsPanning] = useState(false);
 
@@ -177,7 +176,6 @@ export function CanvasViewport({
     useEffect(() => {
         if (!interactive) return;
         const handleKeyDown = (event: KeyboardEvent) => {
-            if (event.key === "Control") controlPressedRef.current = true;
             if (event.code !== "Space") return;
             if (event.target instanceof Element && event.target.closest("input,textarea,select,button,[contenteditable='true']")) return;
             event.preventDefault();
@@ -186,14 +184,12 @@ export function CanvasViewport({
         };
 
         const handleKeyUp = (event: KeyboardEvent) => {
-            if (event.key === "Control") controlPressedRef.current = false;
             if (event.code !== "Space") return;
             spacePressedRef.current = false;
             setIsSpacePressed(false);
         };
 
         const handleBlur = () => {
-            controlPressedRef.current = false;
             spacePressedRef.current = false;
             setIsSpacePressed(false);
         };
@@ -216,12 +212,6 @@ export function CanvasViewport({
             const absX = Math.abs(deltaX);
             const absY = Math.abs(deltaY);
             const isPinchZoom = event.ctrlKey || event.metaKey;
-            // Chromium also sets ctrlKey for touchpad pinch, but does not send a Control keydown.
-            const editing = document.activeElement?.matches("input,textarea,select,[contenteditable]:not([contenteditable='false'])");
-            if (event.ctrlKey && controlPressedRef.current && !event.metaKey && !event.shiftKey && !editing && !target?.closest(CANVAS_WHEEL_IGNORE_SELECTOR) && onSelectedImageWheel?.(deltaY)) {
-                event.preventDefault();
-                return;
-            }
             if (target?.closest(CANVAS_WHEEL_IGNORE_SELECTOR)) {
                 // 内部区域保留纵向滚动，缩放及横向手势不能泄漏为页面缩放或浏览器前进/后退。
                 if (isPinchZoom || event.shiftKey || absX > absY) event.preventDefault();
@@ -233,9 +223,9 @@ export function CanvasViewport({
             interactingRef.current = true;
             const current = viewportRef.current;
             const looksLikeMouseWheel = isDiscreteCanvasWheel(event.deltaY, event.deltaMode);
-            const looksLikeTrackpadPan = !isPinchZoom && (event.shiftKey || absX > 0 || (!looksLikeMouseWheel && absY > 0));
+            const shouldPan = !isPinchZoom && (mouseWheelMode === "pan" || event.shiftKey || absX > 0 || (!looksLikeMouseWheel && absY > 0));
 
-            if (looksLikeTrackpadPan) {
+            if (shouldPan) {
                 const panX = event.shiftKey && absX < 1 ? deltaY : deltaX;
                 scheduleViewportChange(
                     {
@@ -267,7 +257,7 @@ export function CanvasViewport({
                 true,
             );
         },
-        [containerRef, onSelectedImageWheel, scheduleViewportChange],
+        [containerRef, mouseWheelMode, scheduleViewportChange],
     );
 
     const handlePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {

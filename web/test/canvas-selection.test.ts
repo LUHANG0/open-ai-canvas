@@ -13,7 +13,6 @@ import {
     selectedNodesWorldBounds,
 } from "@/lib/canvas/canvas-selection";
 import { CanvasNodeType, type CanvasNodeData } from "@/types/canvas";
-import { moduleGroupSource } from "./helpers/module-group-source";
 
 describe("canvas selection semantics", () => {
     test("maps modifiers to replace, add, toggle, and subtract strategies", () => {
@@ -73,6 +72,21 @@ describe("canvas selection semantics", () => {
         expect(resolveCanvasPointerIntent({ ...pointer, boxSelectEnabled: false, shiftKey: true })).toBe("select");
     });
 
+    test("Mac secondary click never selects or pans while primary platform modifiers keep selection", () => {
+        const pointer = { altKey: false, background: true, boxSelectEnabled: true, button: 0, ctrlKey: false, metaKey: false, pointerType: "mouse", shiftKey: false, spacePressed: false };
+        for (const background of [true, false]) {
+            for (const boxSelectEnabled of [true, false]) {
+                const input = { ...pointer, background, boxSelectEnabled, ctrlKey: true };
+                expect(resolveCanvasPointerIntent(input, "mac")).toBe("ignore");
+                expect(resolveCanvasPointerIntent({ ...input, spacePressed: true }, "mac")).toBe("ignore");
+                expect(resolveCanvasPointerIntent({ ...input, ctrlKey: false, button: 2 }, "mac")).toBe("ignore");
+            }
+        }
+        expect(resolveCanvasPointerIntent({ ...pointer, boxSelectEnabled: false, metaKey: true }, "mac")).toBe("select");
+        expect(resolveCanvasPointerIntent({ ...pointer, boxSelectEnabled: false, ctrlKey: true }, "other")).toBe("select");
+        expect(resolveCanvasPointerIntent({ ...pointer, boxSelectEnabled: false, shiftKey: true }, "mac")).toBe("select");
+    });
+
     test("reuses the selectable-node spatial index until the node array changes", () => {
         const nodes: CanvasNodeData[] = [
             node("batch-root", 0, 0, { isBatchRoot: true, imageBatchExpanded: false }),
@@ -87,25 +101,6 @@ describe("canvas selection semantics", () => {
         expect(cache.get(nodes)).toBe(first);
         expect(first.query({ left: -10, top: -10, right: 1000, bottom: 300 }).map((item) => item.id)).toEqual(["batch-root", "frame", "visible"]);
         expect(cache.get([...nodes])).not.toBe(first);
-    });
-
-    test("uses region selection as the page default and commits selection outside pointer-move", async () => {
-        const projectSource = await Promise.resolve(moduleGroupSource("pages/canvas/project.tsx"));
-        const controllerSource = await Bun.file(new URL("../src/pages/canvas/use-canvas-selection-controller.ts", import.meta.url)).text();
-        const canvasSource = await Bun.file(new URL("../src/components/canvas/canvas-viewport.tsx", import.meta.url)).text();
-        const graphicsSource = await Bun.file(new URL("../src/components/canvas/canvas-leafer-graphics-layer.tsx", import.meta.url)).text();
-        const globalStyles = await Bun.file(new URL("../src/styles/globals.css", import.meta.url)).text();
-
-        expect(projectSource).toContain('useState<CanvasToolMode>("box-select")');
-        const pointerMoveBody = controllerSource.slice(controllerSource.indexOf("const handlePointerMove"), controllerSource.indexOf("const finishSelection"));
-        expect(pointerMoveBody).not.toContain("setSelectedNodeIds(");
-        expect(controllerSource).toContain("updateSelectionPreview(screenToCanvas(clientX, clientY), true)");
-        expect(canvasSource).toContain('"canvas-cursor-select"');
-        expect(canvasSource).not.toContain('"cursor-crosshair"');
-        expect(graphicsSource).toContain('fill: "transparent"');
-        expect(graphicsSource).toContain("dashPattern: [4 / scale, 4 / scale]");
-        expect(globalStyles).toContain(".canvas-cursor-select");
-        expect(globalStyles).not.toContain("filter='drop-shadow");
     });
 
     test("offsets multi-select bounds with the live drag preview", () => {

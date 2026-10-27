@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type Dispatch, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent, type RefObject, type SetStateAction } from "react";
 
+import { isCanvasSecondaryClick } from "@/lib/canvas/canvas-input-platform";
 import { applyCanvasNodeDragPreview, applyCanvasNodeSelectionPreview, applyCanvasSelectionPreview } from "@/lib/canvas/canvas-live-viewport";
 import { calculateNodeAlignment, createNodeAlignmentContext, sameStringSet, type NodeAlignmentContext } from "@/lib/canvas/canvas-project-domain";
 import { applyFrameDrop, buildCanvasFrameDropIndex, findFrameDropTargetFromIndex, getFrameChildIds, isFrameNode } from "@/lib/canvas/canvas-frame";
@@ -127,9 +128,9 @@ export function useCanvasSelectionController({
     }, [cancelPendingConnectionCreate, cancelSelectionBox, onDeselect, selectedNodeIdsRef, setSelectedConnectionId, setSelectedNodeIds]);
 
     const handleCanvasMouseDown = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
+        if (event.button !== 0 || isCanvasSecondaryClick(event)) return;
         cancelPendingConnectionCreate();
         onCanvasSelectionStart();
-        if (event.button !== 0) return;
         const world = screenToCanvas(event.clientX, event.clientY);
         const strategy = resolveCanvasSelectionStrategy(event);
         const initialSelection = new Set(selectedNodeIdsRef.current);
@@ -149,7 +150,7 @@ export function useCanvasSelectionController({
 
     const handleNodeMouseDown = useCallback((event: ReactMouseEvent | ReactPointerEvent, nodeId: string) => {
         event.stopPropagation();
-        if (event.button !== 0) return;
+        if (event.button !== 0 || isCanvasSecondaryClick(event)) return;
         // 子组件的 pointerdown 停止冒泡不会阻止随后独立派发的 mousedown。
         // 编辑、控件操作和表内滚动均不能启动节点选择/拖动，也不能暂停历史记录。
         if (event.target instanceof Element && event.target.closest('input, textarea, select, button, a[href], [contenteditable]:not([contenteditable="false"]), [role="textbox"], [data-canvas-no-drag]')) return;
@@ -161,15 +162,17 @@ export function useCanvasSelectionController({
         const currentNodes = nodesRef.current;
         const nextSelected = new Set(selectedNodeIdsRef.current);
         const isSubtractClick = event.altKey;
+        const isToggleClick = !isSubtractClick && (event.metaKey || event.ctrlKey);
         const isMultiSelectClick = !isSubtractClick && (event.shiftKey || event.metaKey || event.ctrlKey);
         const isSelectionModifier = isSubtractClick || isMultiSelectClick;
         onNodeInteractionStart(isSelectionModifier);
 
         if (isSubtractClick) nextSelected.delete(nodeId);
-        else if (isMultiSelectClick) {
+        else if (isToggleClick) {
             if (nextSelected.has(nodeId)) nextSelected.delete(nodeId);
             else nextSelected.add(nodeId);
-        } else if (!nextSelected.has(nodeId)) {
+        } else if (event.shiftKey) nextSelected.add(nodeId);
+        else if (!nextSelected.has(nodeId)) {
             nextSelected.clear();
             nextSelected.add(nodeId);
         }

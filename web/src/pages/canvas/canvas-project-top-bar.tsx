@@ -13,6 +13,7 @@ import { canvasThemes } from "@/lib/canvas-theme";
 import { useCanvasThemeStore } from "@/stores/canvas/use-canvas-theme-store";
 import { useUserStore } from "@/stores/use-user-store";
 import { CanvasShortcutsModal } from "./canvas-shortcuts-modal";
+import { formatCanvasShortcutKey } from "@/lib/canvas/canvas-input-platform";
 
 type CanvasTopBarProps = {
     title: string;
@@ -74,6 +75,8 @@ export function CanvasTopBar({
     const { availableMicrocredits, refreshing } = useWalletBalance(user?.id, creditsEnabled);
     const titleRef = useRef<HTMLDivElement>(null);
     const [shortcutsOpen, setShortcutsOpen] = useState(false);
+    const mod = formatCanvasShortcutKey("Mod");
+    const shift = formatCanvasShortcutKey("Shift");
 
     const handleShortDramaGuideToggle = () => {
         shortDramaGuide?.onToggle();
@@ -106,13 +109,14 @@ export function CanvasTopBar({
                                     { type: "divider" },
                                     { key: "new", icon: <Plus className="size-4" />, label: "新建画布", onClick: onCreateProject },
                                     { key: "delete", danger: true, icon: <Trash2 className="size-4" />, label: "删除当前画布", onClick: onDeleteProject },
-                                    { key: "save", icon: <Save className="size-4" />, label: <MenuLabel text="保存" shortcut="⌘ S" />, onClick: () => void onSave() },
+                                    { key: "save", icon: <Save className="size-4" />, label: <MenuLabel text="保存" shortcut={`${mod} S`} />, onClick: () => void onSave() },
                                     { type: "divider" },
                                     { key: "import", icon: <Upload className="size-4" />, label: "导入素材", onClick: onImportImage },
-                                    { key: "search", icon: <Search className="size-4" />, label: <MenuLabel text="搜索节点" shortcut="⌘ F" />, onClick: onOpenSearch },
+                                    { key: "search", icon: <Search className="size-4" />, label: <MenuLabel text="搜索节点" shortcut={`${mod} F`} />, onClick: onOpenSearch },
+                                    { key: "shortcuts", label: <MenuLabel text="操作与快捷键" shortcut="?" />, onClick: () => setShortcutsOpen(true) },
                                     { type: "divider" },
-                                    { key: "undo", disabled: !canUndo, icon: <Undo2 className="size-4" />, label: <MenuLabel text="撤销" shortcut="⌘ Z" />, onClick: onUndo },
-                                    { key: "redo", disabled: !canRedo, icon: <Redo2 className="size-4" />, label: <MenuLabel text="重做" shortcut="⌘ ⇧ Z / ⌘ Y" />, onClick: onRedo },
+                                    { key: "undo", disabled: !canUndo, icon: <Undo2 className="size-4" />, label: <MenuLabel text="撤销" shortcut={`${mod} Z`} />, onClick: onUndo },
+                                    { key: "redo", disabled: !canRedo, icon: <Redo2 className="size-4" />, label: <MenuLabel text="重做" shortcut={`${mod} ${shift} Z / ${mod} Y`} />, onClick: onRedo },
                                 ],
                             }}
                         >
@@ -215,7 +219,7 @@ export function CanvasTopBar({
                             </button>
                         </CanvasTopBarTooltip>
                     ) : null}
-                    <CanvasTopBarTooltip label="进入专注模式（Shift + Ctrl/Cmd + F）">
+                    <CanvasTopBarTooltip label={`进入专注模式（${shift} + ${mod} + F）`}>
                         <Button type="text" className="canvas-topbar-action !h-10 !w-10 !min-w-10 !rounded-xl !p-0" style={{ color: theme.node.text }} icon={<Focus className="size-4" />} onClick={onEnterFocusMode} aria-label="进入专注模式" />
                     </CanvasTopBarTooltip>
                     {shortDramaGuide ? (

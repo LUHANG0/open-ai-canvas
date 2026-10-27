@@ -7,6 +7,7 @@ import { canvasDockStyle } from "@/lib/canvas/canvas-aceternity-style";
 import { canvasThemes } from "@/lib/canvas-theme";
 import { subscribeCanvasViewportPreview } from "@/lib/canvas/canvas-live-viewport";
 import { useActiveTheme } from "@/stores/canvas/use-canvas-theme-store";
+import "./canvas-toolbar-responsive.css";
 
 type CanvasZoomControlsProps = {
     scale: number;
@@ -32,6 +33,7 @@ export function CanvasZoomControls({ scale, onScaleChange, onFitContent, onAutoA
     const dockLabelRef = useRef<HTMLSpanElement>(null);
     const panelLabelRef = useRef<HTMLSpanElement>(null);
     const [precisionOpen, setPrecisionOpen] = useState(false);
+    const [viewOpen, setViewOpen] = useState(false);
 
     useLayoutEffect(() => {
         const root = rootRef.current;
@@ -42,6 +44,7 @@ export function CanvasZoomControls({ scale, onScaleChange, onFitContent, onAutoA
         // Decide from actual occupied width, including user toolbar preferences and side panels.
         // Only horizontal overlap matters so moving the controls upward cannot oscillate the rule.
         const measure = () => {
+            if (window.innerWidth <= 767) { shell.style.removeProperty("bottom"); return; }
             const a = root.getBoundingClientRect(), b = dock.getBoundingClientRect();
             const overlap = a.left < b.right + 8 && a.right + 8 > b.left;
             const bottom = overlap ? "calc(var(--canvas-inset-y) + var(--space-16))" : "var(--canvas-inset-y)";
@@ -65,12 +68,15 @@ export function CanvasZoomControls({ scale, onScaleChange, onFitContent, onAutoA
     }, [containerRef]);
 
     useEffect(() => {
-        if (!precisionOpen) return;
+        if (!precisionOpen && !viewOpen) return;
         const close = (event: PointerEvent) => {
-            if (event.target instanceof Node && !rootRef.current?.contains(event.target)) setPrecisionOpen(false);
+            if (event.target instanceof Node && !rootRef.current?.contains(event.target)) { setPrecisionOpen(false); setViewOpen(false); }
         };
         const closeOnEscape = (event: KeyboardEvent) => {
-            if (event.key === "Escape") setPrecisionOpen(false);
+            if (event.key !== "Escape") return;
+            setPrecisionOpen(false);
+            setViewOpen(false);
+            rootRef.current?.querySelector<HTMLButtonElement>(window.innerWidth <= 767 ? '.canvas-view-trigger button' : '[aria-label="精确缩放"]')?.focus();
         };
         document.addEventListener("pointerdown", close, true);
         document.addEventListener("keydown", closeOnEscape);
@@ -78,7 +84,7 @@ export function CanvasZoomControls({ scale, onScaleChange, onFitContent, onAutoA
             document.removeEventListener("pointerdown", close, true);
             document.removeEventListener("keydown", closeOnEscape);
         };
-    }, [precisionOpen]);
+    }, [precisionOpen, viewOpen]);
 
     function updateScaleDisplay(nextScale: number) {
         liveScaleRef.current = nextScale;
@@ -108,15 +114,15 @@ export function CanvasZoomControls({ scale, onScaleChange, onFitContent, onAutoA
             quiet: true,
             icon: <span className="inline-flex h-full items-center justify-center whitespace-nowrap text-[var(--fs-caption)] font-semibold leading-none tabular-nums"><span ref={dockLabelRef}>{Math.round(scale * 100)}</span><span className="ml-px text-[var(--fs-micro)] font-medium leading-none opacity-50">%</span></span>,
             active: precisionOpen,
-            onClick: () => setPrecisionOpen((value) => !value),
+            onClick: () => { setViewOpen(false); setPrecisionOpen((value) => !value); },
         },
         { id: "zoom-in", label: "放大画布", icon: <Plus />, onClick: () => commitScale(liveScaleRef.current + 0.1) },
         { kind: "separator", id: "help-separator" },
-        { id: "zoom-shortcuts", label: "画布快捷键", icon: <HelpCircle />, onClick: onOpenShortcuts },
+        { id: "zoom-shortcuts", label: "操作与快捷键", icon: <HelpCircle />, onClick: onOpenShortcuts },
     ];
 
     return (
-        <div ref={rootRef} data-canvas-no-zoom className="relative z-[var(--z-toolbar)]" onMouseDown={(event) => event.stopPropagation()} onPointerDown={(event) => event.stopPropagation()} onWheel={(event) => event.stopPropagation()}>
+        <div ref={rootRef} data-canvas-no-zoom className="canvas-zoom-controls relative z-[var(--z-toolbar)]" onMouseDown={(event) => event.stopPropagation()} onPointerDown={(event) => event.stopPropagation()} onWheel={(event) => event.stopPropagation()}>
             <AnimatePresence>
                 {precisionOpen ? (
                     <motion.div
@@ -124,7 +130,7 @@ export function CanvasZoomControls({ scale, onScaleChange, onFitContent, onAutoA
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                         transition={{ duration: reducedMotion ? 0 : 0.15 }}
-                        className="aceternity-floating-panel absolute bottom-[var(--canvas-dock-popover-offset)] left-0 w-[220px] overflow-hidden rounded-[var(--panel-radius)] border p-2.5 backdrop-blur-2xl"
+                        className="canvas-zoom-precision aceternity-floating-panel absolute bottom-[var(--canvas-dock-popover-offset)] left-0 w-[220px] overflow-hidden rounded-[var(--panel-radius)] border p-2.5 backdrop-blur-2xl"
                         style={{ background: theme.spatial.elevated, borderColor: theme.toolbar.border, color: theme.node.text, boxShadow: `0 28px 80px ${theme.spatial.shadow}` }}
                     >
                         <div className="absolute inset-x-10 top-0 h-px" style={{ background: `linear-gradient(90deg, transparent, ${theme.spatial.glowStrong}, transparent)` }} />
@@ -166,7 +172,9 @@ export function CanvasZoomControls({ scale, onScaleChange, onFitContent, onAutoA
                 ) : null}
             </AnimatePresence>
 
-            <FloatingDock items={items} className="canvas-floating-dock" style={canvasDockStyle(theme)} ariaLabel="画布视图控制" />
+            <FloatingDock items={items} className="canvas-floating-dock canvas-desktop-toolbar" style={canvasDockStyle(theme)} ariaLabel="画布视图控制" />
+            <FloatingDock items={[{ id: "zoom-view", label: "画布视图", icon: <Compass />, expands: true, active: viewOpen, onClick: () => { setPrecisionOpen(false); setViewOpen((value) => !value); } }]} className="canvas-floating-dock canvas-compact-toolbar canvas-view-trigger" style={canvasDockStyle(theme)} ariaLabel="画布视图入口" />
+            {viewOpen ? <div role="region" aria-label="画布视图控制" className="canvas-compact-panel"><FloatingDock items={items.map((item) => item.kind === "separator" || item.kind === "switch" ? item : { ...item, icon: item.id === "zoom-precision" ? <Focus /> : item.icon, onClick: (event) => { item.onClick?.(event); if (item.id !== "zoom-in" && item.id !== "zoom-out") setViewOpen(false); } })} showLabels className="canvas-compact-menu" style={canvasDockStyle(theme)} /></div> : null}
         </div>
     );
 }
