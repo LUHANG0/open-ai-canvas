@@ -61,6 +61,11 @@ export function CanvasZoomControls({ scale, onScaleChange, onFitContent, onAutoA
 
     useEffect(() => updateScaleDisplay(scale), [scale]);
 
+    useLayoutEffect(() => {
+        // Newly mounted controls must catch up with imperative viewport previews.
+        updateScaleDisplay(liveScaleRef.current);
+    }, [precisionOpen, viewOpen]);
+
     useEffect(() => {
         const container = containerRef?.current;
         if (!container) return;

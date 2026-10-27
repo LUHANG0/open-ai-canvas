@@ -5,7 +5,7 @@ import type { ComponentProps, ReactNode } from "react";
 const dom = new Window({ url: "http://localhost/", width: 390, height: 844 });
 Object.defineProperty(dom.Element.prototype, "animate", { configurable: true, value: undefined });
 const originals = new Map<string, PropertyDescriptor | undefined>();
-for (const [key, value] of Object.entries({ window: dom, document: dom.document, navigator: dom.navigator, HTMLElement: dom.HTMLElement, Element: dom.Element, Node: dom.Node, ShadowRoot: dom.ShadowRoot, localStorage: dom.localStorage, getComputedStyle: dom.getComputedStyle.bind(dom), IS_REACT_ACT_ENVIRONMENT: true })) {
+for (const [key, value] of Object.entries({ window: dom, document: dom.document, navigator: dom.navigator, HTMLElement: dom.HTMLElement, Element: dom.Element, Node: dom.Node, ShadowRoot: dom.ShadowRoot, localStorage: dom.localStorage, getComputedStyle: dom.getComputedStyle.bind(dom), requestAnimationFrame: dom.requestAnimationFrame.bind(dom), cancelAnimationFrame: dom.cancelAnimationFrame.bind(dom), IS_REACT_ACT_ENVIRONMENT: true })) {
     originals.set(key, Object.getOwnPropertyDescriptor(globalThis, key));
     Object.defineProperty(globalThis, key, { configurable: true, writable: true, value });
 }
@@ -104,4 +104,63 @@ test("View retains zoom, fit, minimap, arrangement, connection and shortcuts com
         await act(async () => { preset!.click(); });
         expect(calls).toContain(0.5);
     } finally { await f.cleanup(); }
+});
+
+test.each([1280, 390])("zoom panel reopens with the live scale at viewport width %i", async (width) => {
+    dom.happyDOM.setWindowSize({ width, height: 844 });
+    const viewport = document.createElement("div");
+    document.body.append(viewport);
+    const calls: number[] = [];
+    const f = await fixture(<CanvasZoomControls scale={0.46} containerRef={{ current: viewport }} onScaleChange={(scale) => calls.push(scale)} onFitContent={() => {}} isMiniMapOpen={false} onToggleMiniMap={() => {}} onOpenShortcuts={() => {}} />);
+    const open = async () => {
+        if (width <= 767) {
+            await f.click(f.host.querySelector(".canvas-view-trigger")!, "画布视图");
+            await f.click(f.host.querySelector(".canvas-compact-menu")!, "精确缩放");
+        } else {
+            await f.click(f.host.querySelector(".canvas-desktop-toolbar")!, "精确缩放");
+        }
+    };
+    const expectScale = (percent: number) => {
+        expect(f.host.querySelector<HTMLInputElement>('[aria-label="精确缩放画布"]')!.value).toBe(String(percent));
+        expect(f.host.querySelector(".canvas-zoom-precision .tabular-nums")!.textContent?.trim()).toBe(`${percent}%`);
+        expect(f.host.querySelector('[aria-label="精确缩放"]')!.textContent?.trim()).toBe(`${percent}%`);
+    };
+    const close = async () => {
+        await act(async () => { document.dispatchEvent(new dom.KeyboardEvent("keydown", { key: "Escape", bubbles: true }) as unknown as Event); });
+        // Wait for the real exit animation; reopening before removal would not test remounting.
+        await act(async () => { await Bun.sleep(250); });
+        expect(f.host.querySelector(".canvas-zoom-precision")).toBeNull();
+    };
+    try {
+        await open();
+        const preset = Array.from(f.host.querySelectorAll<HTMLButtonElement>(".canvas-zoom-precision button")).find((button) => button.textContent === "100%")!;
+        await act(async () => { preset.click(); });
+        expect(calls).toEqual([1]);
+        expectScale(100);
+        await close();
+        await open();
+        expectScale(100);
+        await close();
+        await act(async () => { viewport.dispatchEvent(new dom.CustomEvent("canvas:viewport-preview", { detail: { x: 0, y: 0, k: 0.73 } }) as unknown as Event); });
+        await open();
+        expectScale(73);
+        await close();
+        if (width <= 767) {
+            // The mobile menu also unmounts; its commands must use the latest preview scale.
+            for (let attempt = 0; attempt < 2; attempt++) {
+                await f.click(f.host.querySelector(".canvas-view-trigger")!, "画布视图");
+                await f.click(f.host.querySelector(".canvas-compact-menu")!, "放大画布");
+                await act(async () => { document.dispatchEvent(new dom.KeyboardEvent("keydown", { key: "Escape", bubbles: true }) as unknown as Event); });
+                expect(f.host.querySelector(".canvas-compact-menu")).toBeNull();
+            }
+            expect(calls[1]).toBeCloseTo(0.83);
+            expect(calls[2]).toBeCloseTo(0.93);
+            await open();
+            expectScale(93);
+        }
+    } finally {
+        await f.cleanup();
+        viewport.remove();
+        dom.happyDOM.setWindowSize({ width: 390, height: 844 });
+    }
 });
