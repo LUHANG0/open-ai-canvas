@@ -129,6 +129,20 @@ AutoDL 视频模型在“能力与参数 → 画面规格”直接多选当前�
 - `web/src/pages/canvas/project.tsx`、`web/src/components/canvas/canvas-zoom-controls.tsx`：画布状态、开关和渲染接线。
 - `web/src/components/canvas/canvas-asset-tray.tsx`、`web/src/lib/canvas/tool-registry/definitions/main-toolbar-tools.tsx`：底部工作条入口。
 
+## 画布操作偏好与快捷键
+
+桌面与手机的画布「视图」入口提供统一的「操作与快捷键」，保留分类和搜索，并按当前系统显示 Command / Option 或 Ctrl / Alt。默认仍为空白处拖动框选、节点拖动移动、鼠标滚轮缩放、触控板双指平移与捏合缩放；Space + 左键及中键可临时平移，Shift 追加选择，Command / Ctrl 切换选择，Option / Alt 移除选择。macOS 的 Control + 左键保留辅助点按菜单，不启动框选或节点拖动。
+
+操作偏好可将空白处拖动改为平移，或将鼠标滚轮改为平移；Ctrl / Command + 滚轮和捏合仍缩放。滚轮分类使用保守的离散步长启发式，不声明准确识别鼠标或触控板，也不反转系统的滚动方向。编辑控件与内部滚动区域保留既有边界。
+
+设置仅保存在当前账号的此浏览器设备，不写入画布或云端同步。工具栏选择在本次进入期间优先；修改空白拖动偏好立即切换对应工具。默认关闭「记住上次工具」：关闭时下次进入按空白拖动偏好初始化，开启时优先恢复上次工具。恢复默认清除记忆工具。账号切换与会话初始化期间不会暴露上一账号的设置；本地存储失败时本次操作仍可使用，但不能保证刷新后保留。
+
+### 相关实现
+
+- `web/src/stores/canvas/use-canvas-input-preferences.ts`：账号隔离、本机持久化和进入画布的工具优先级。
+- `web/src/lib/canvas/canvas-input-platform.ts`、`canvas-shortcuts.ts`：平台辅助点按和动态操作说明。
+- `web/src/pages/canvas/canvas-shortcuts-modal.tsx`、`project.tsx`：设置入口与真实画布接线。
+
 ## 文本节点尺寸联动
 
 文本节点的普通文本、富文本和编辑态输入框共用同一套字号缩放规则。节点尺寸变大时字号随宽高联动增长，并保留最小、最大字号边界，避免极端尺寸造成不可读或失控的排版。

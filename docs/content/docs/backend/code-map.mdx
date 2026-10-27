@@ -149,7 +149,7 @@ Pi SDK 执行前的参数校验失败由 `agent-runtime/pi/agent-runtime.mjs` �
 | 内部资源保护与维护快照 | `backend/internal/canvas/canvas_history.go`、`repair_resources.go`、`backend/internal/repository/canvas_history.go`；仅供资源完整性维护和审计，不提供用户历史树、预览或恢复入口 |
 | Patch 历史、生成任务和重试控制 | `web/src/pages/canvas/use-canvas-history.ts`、`use-canvas-generation.ts`、`use-canvas-generation-executor.ts`、`use-canvas-generation-retry.ts` |
 | 文本、图片、视频和音频生成执行 | `web/src/pages/canvas/canvas-*-generation-executor*.ts` |
-| 云端 Agent、助手面板、导演台和全局快捷键控制 | `web/src/components/canvas/canvas-cloud-agent-panel.tsx`、`web/src/pages/canvas/use-canvas-assistant-visibility.ts`、`use-canvas-director.ts`、`use-canvas-keyboard.ts`；画布操作契约在 `web/src/lib/canvas/canvas-operation-contract.ts` |
+| 云端 Agent、助手面板、导演台和全局快捷键控制 | `web/src/components/canvas/canvas-cloud-agent-panel.tsx`、`web/src/pages/canvas/use-canvas-assistant-visibility.ts`、`use-canvas-director.ts`、`use-canvas-keyboard.ts`；全局键盘和粘贴先判断可见浮层及输入控件作用域，浮层打开时保留背景选择并将 Escape 留给浮层，已隐藏的保留 DOM 不阻断快捷键；画布操作契约在 `web/src/lib/canvas/canvas-operation-contract.ts` |
 | 选择拖拽与连线控制 | `web/src/pages/canvas/use-canvas-selection-controller.ts`、`use-canvas-connection-controller.ts` |
 | 上传、素材插入、媒体工具和短剧编排 | `web/src/pages/canvas/use-canvas-upload.ts`、`use-canvas-timeline-asset-insert.ts`、`use-canvas-media-tools.ts`、`use-canvas-storyboard.ts`、`use-canvas-generation-batches.ts`、`use-canvas-short-drama.ts` |
 | 节点操作、节点编辑和视口导航 | `web/src/pages/canvas/use-canvas-node-operations.ts`、`use-canvas-node-editor.ts`、`use-canvas-viewport-controller.ts` |
@@ -157,14 +157,14 @@ Pi SDK 执行前的参数校验失败由 `agent-runtime/pi/agent-runtime.mjs` �
 | 派生渲染模型和画布分层 | `web/src/pages/canvas/use-canvas-render-model.ts`、`canvas-project-world-layers.tsx`、`canvas-project-context-menu.tsx`、`canvas-project-status-dialogs.tsx` |
 | 顶栏、反馈和 screen-space 浮层 | `web/src/pages/canvas/canvas-project-top-bar.tsx`、`canvas-project-feedback.tsx`、`canvas-project-selection-toolbar.tsx`、`components/canvas/canvas-workspace-overlays.tsx` |
 | 媒体弹窗装配 | `web/src/pages/canvas/canvas-project-media-dialogs.tsx` |
-| 画布视口、拖拽、缩放和框选 | `web/src/components/canvas/canvas-viewport.tsx`、`web/src/lib/canvas/canvas-live-viewport.ts`；`pages/canvas/use-canvas-image-wheel-resize.ts` 合并单选图片 Ctrl 滚轮尺寸、历史和保存，`lib/canvas/canvas-wheel.ts` 识别离散滚轮，角点与滚轮共用 registry 最小尺寸规则 |
+| 画布视口、拖拽、缩放和框选 | `web/src/components/canvas/canvas-viewport.tsx`、`web/src/lib/canvas/canvas-live-viewport.ts`；`lib/canvas/canvas-wheel.ts` 识别离散滚轮。Ctrl/Meta 滚轮与触控板捏合缩放画布，不再调整单选图片尺寸；图片尺寸继续由角点与显式尺寸操作调整，内部编辑和滚动区域保留输入边界 |
 | 节点渲染与节点工具 | `web/src/components/canvas/canvas-node.tsx`、`canvas-node-hover-toolbar.tsx`、`canvas-node-toolbar.tsx`；普通图片和视频菜单及选中工具栏使用“放大预览”，实际全景工具仍为独立操作；预览来源为 `content` 或 `storageKey`，不将被动封面 `previewContent` 当作可播放视频 |
 | 图片与视频放大预览 | `canvas-image-preview.tsx`、`canvas-video-preview.tsx` 共用 `canvas-media-preview.tsx`；按自然尺寸适应窗口，不默认放大小图；图片支持相对适应比例 25%–400% 和内部滚动，视频复用 `VideoPlayer` 并解析 `playback` 资源版本；关闭条件挂载的预览后回焦到仍在页面上的发起控件；共享只读路由的工具预览仍走原未授权提示，不在此扩大权限 |
 | 视频悬停首帧 | `web/src/lib/canvas/canvas-video-hover-preview.ts`；保留静态封面，收到视频帧回调后才显露视频；旧浏览器以已解码数据和双 RAF 提供绘制机会，不能保证合成器已呈现；取消时先移除视频再释放解码器 |
 | 图片多角度、宫格切分与多选框 | `canvas-node-angle-dialog.tsx`、`canvas-angle-scene.tsx`、`canvas-grid-split-picker.tsx`、`web/src/lib/canvas/canvas-grid-split.ts`、`canvas-selection.ts` |
 | 图片自然比例与默认尺寸 | `web/src/lib/canvas/canvas-node-size.ts`；上传、生成结果和派生图片共用尺寸规则，节点调整继续使用现有角点入口 |
 | 图片编辑副本与工具菜单 | `web/src/lib/canvas/tool-registry/definitions/node-hover-tools.tsx` 声明入口；`web/src/pages/canvas/use-canvas-node-operations.ts` 负责带来源连线的复制；`web/src/components/canvas/canvas-node-toolbar.tsx` 与 `canvas-grid-split-picker.css` 共用菜单布局、滚动及子面板视口约束 |
-| 浮层可用区与小屏模式 | `web/src/lib/canvas/canvas-overlay-layout.ts` 计算侧栏/工具区边界并维护面板矩形通知；`canvas-workspace-overlays.tsx` 发布实测面板布局，`canvas-node-toolbar.tsx` 避让；`web/src/hooks/use-focus-mode.ts` 以用户明确偏好优先于小屏默认 |
+| 浮层可用区与小屏模式 | `web/src/lib/canvas/canvas-overlay-layout.ts` 计算侧栏/工具区边界并维护面板矩形通知；`canvas-workspace-overlays.tsx` 发布实测面板布局，`canvas-node-toolbar.tsx` 避让；`canvas-toolbar-responsive.css` 在 ≤767px 保留左栏空间、44px 操作目标及底部 Agent 安全区，主工具栏通过“更多”、缩放栏通过视图菜单保留全部操作；`web/src/hooks/use-focus-mode.ts` 以用户明确偏好优先于小屏默认 |
 | 图片方向与资源保留 | `web/src/pages/canvas/use-canvas-image-rotation.ts` 协调首次副本、只读、锁定和异步提交；`web/src/lib/canvas/canvas-image-edit-copy.ts` 共用编辑副本创建、来源线及空位；`web/src/lib/canvas/canvas-image-rotation.ts` 更新节点与引用行状态；`web/src/services/canvas-image-rotation.ts` 从原图旋转、上传并复用方向资源；原图及派生资源由 `backend/internal/assets/references.go`、`web/src/services/user-data-sync-media.ts`、`canvas-missing-resources.ts` 收集 |
 | 批量表编辑与渲染 | `web/src/components/canvas/canvas-batch-table-node.tsx` 处理行编辑、内部滚动及添加/插入；`web/src/lib/canvas/canvas-batch-window.ts` 限定大表挂载行；`canvas-batch-row-equality.ts` 判断影响行展示的引用变化 |
 | 批量表参考图绑定 | `web/src/pages/canvas/use-canvas-batch-references.tsx` 协调选择、上传、替换确认和按列重置；`web/src/lib/canvas/canvas-batch-references.ts` 同步列默认、保留单格覆盖，维护稳定行/列句柄并筛除离屏格线绘制；`web/src/pages/canvas/use-canvas-batch-table.ts` 保留 AI 列表和既有列模式的行规则 |
