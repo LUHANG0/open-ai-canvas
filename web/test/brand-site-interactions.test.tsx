@@ -371,7 +371,7 @@ test("legacy entry copy becomes accurate product previews while custom CMS conte
     const legacy = { ...base, items: base.items.map((item, index) => ({ ...item, title: ["写下灵感", "展开画布", "推进作品"][index], description: "", link: ["/create", "/canvas", "/projects"][index] })) };
     const f = await fixture({ ...DEFAULT_BRAND_CONTENT, sections: [legacy] });
     try {
-        expect([...f.host.querySelectorAll("#entries h3")].map((e) => e.textContent)).toEqual(["AI 视频创作", "创作画布", "短剧项目"]);
+        expect([...f.host.querySelectorAll("#entries h3")].map((e) => e.textContent)).toEqual(["AI 视频创作", "AI 无限画布", "短剧项目"]);
         expect(f.host.querySelectorAll("#entries [role=img]")).toHaveLength(3);
         expect(f.host.querySelector("#entries .mpv-canvas")).not.toBeNull();
         expect(f.host.querySelectorAll("#entries .mpv-shots > div")).toHaveLength(3);

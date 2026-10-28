@@ -20,7 +20,7 @@ const ARTWORK = [VIDU_MEDIA.cinema, VIDU_MEDIA.character, VIDU_MEDIA.performance
 const CREATION_LINKS = [
     { title: "视频创作", description: "从文字与参考素材开始", href: "/create?mode=video" },
     { title: "图片创作", description: "描绘你想象中的画面", href: "/create?mode=image" },
-    { title: "创作画布", description: "组织素材，继续探索", href: "/canvas" },
+    { title: "AI 无限画布", description: "连接文字、图片与视频", href: "/canvas" },
     { title: "短剧项目", description: "人物、章节与镜头管理", href: "/projects" },
 ];
 type NavigationProps = { onClick?: React.MouseEventHandler<HTMLAnchorElement> };
@@ -150,6 +150,6 @@ export function BrandSite({ content, preview = false }: { content: BrandContent;
                 </section>}
             </Fragment>)}
         </Main>
-        <footer className="mv-footer mv-shell"><div className="mv-footer-top"><BrandLink className="mv-brand" href="/" {...navigation}>{wordmark}</BrandLink><div><strong>创作</strong>{CREATION_LINKS.slice(0, 2).map((link) => <CreationLink key={link.href} href={link.href} navigation={navigation}>{link.title}</CreationLink>)}</div><div><strong>工作空间</strong>{CREATION_LINKS.slice(2).map((link) => <CreationLink key={link.href} href={link.href} navigation={navigation}>{link.title}</CreationLink>)}</div><div><strong>了解梦层</strong><a href="/features" onClick={navigation.onClick}>功能详解</a><a href="/tutorials" onClick={navigation.onClick}>创作教程</a>{sections.filter((section) => ["examples", "faq"].includes(section.id)).map((section) => <BrandLink key={section.id} href={"#" + section.id} {...navigation}>{section.id === "examples" ? "创意影像" : "常见问题"}</BrandLink>)}</div></div><div className="mv-footer-bottom"><small>{appearance.footerCopyright}</small>{appearance.icpFilingEnabled && <BrandLink href="https://beian.miit.gov.cn/" target="_blank" rel="noreferrer" {...navigation}>{appearance.icpFilingNumber}</BrandLink>}</div></footer>
+        <footer className="mv-footer mv-shell"><div className="mv-footer-top"><BrandLink className="mv-brand" href="/" {...navigation}>{wordmark}</BrandLink><div><strong>创作</strong>{CREATION_LINKS.slice(0, 2).map((link) => <CreationLink key={link.href} href={link.href} navigation={navigation}>{link.title}</CreationLink>)}</div><div><strong>工作空间</strong>{CREATION_LINKS.slice(2).map((link) => <CreationLink key={link.href} href={link.href} navigation={navigation}>{link.title}</CreationLink>)}</div><div><strong>了解梦层</strong><a href="/features" onClick={navigation.onClick}>功能详解</a><a href="/tutorials" onClick={navigation.onClick}>创作教程</a><a href="/features/canvas" onClick={navigation.onClick}>AI 无限画布</a><a href="/tutorials/infinite-canvas" onClick={navigation.onClick}>无限画布入门</a>{sections.filter((section) => ["examples", "faq"].includes(section.id)).map((section) => <BrandLink key={section.id} href={"#" + section.id} {...navigation}>{section.id === "examples" ? "创意影像" : "常见问题"}</BrandLink>)}</div></div><div className="mv-footer-bottom"><small>{appearance.footerCopyright}</small>{appearance.icpFilingEnabled && <BrandLink href="https://beian.miit.gov.cn/" target="_blank" rel="noreferrer" {...navigation}>{appearance.icpFilingNumber}</BrandLink>}</div></footer>
     </div>;
 }

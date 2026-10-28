@@ -2,7 +2,7 @@
   "path": "/tutorials/reference-video",
   "kind": "tutorial",
   "title": "参考图片生成视频：怎样说明人物、构图和运动",
-  "heading": "让参考图说明你的意图",
+  "heading": "用参考图片生成视频",
   "description": "学习为 AI 视频挑选参考图、标明参考用途、描述需要保留与需要变化的部分，并检查生成前的模型限制。",
   "intro": [
     "参考图提供视觉线索，文字说明镜头接下来怎样变化。两者分工清楚，才能判断结果偏离了哪里。"
@@ -67,8 +67,9 @@
   "related": [
     "/features/ai-video",
     "/tutorials/video-prompts",
-    "/tutorials/canvas-references"
+    "/tutorials/canvas-references",
+    "/tutorials/infinite-canvas"
   ],
-  "updatedAt": "2026-10-25T21:19:17+00:00",
+  "updatedAt": "2026-10-28T01:19:41+00:00",
   "published": true
 }

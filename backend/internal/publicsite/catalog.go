@@ -125,11 +125,11 @@ func Load(source fs.FS) (*Catalog, error) {
 	}
 	sort.Slice(c.pages, func(i, j int) bool { return c.pages[i].Path < c.pages[j].Path })
 	for _, kind := range []string{"features", "tutorials"} {
-		p := Page{Path: "/" + kind, Kind: "index", Heading: "把创作的方法展开", Title: "AI 影像创作教程与工作流", Description: "从画面描述、参考素材到角色和分镜，阅读梦层的影像创作方法。", Image: "/brand/story-worktable.jpg", ImageAlt: "角色参考与镜头规划的创作示意", Target: "/create?mode=video", Published: true}
+		p := Page{Path: "/" + kind, Kind: "index", Heading: "AI 影像创作教程", Title: "AI 影像创作教程与工作流", Description: "学习 AI 视频提示词、参考图生成视频、无限画布与短剧分镜，用具体示例推进梦层影像创作。", Image: "/brand/story-worktable.jpg", ImageAlt: "角色参考与镜头规划的创作示意", Target: "/create?mode=video", Published: true}
 		if kind == "features" {
-			p.Heading = "找到你的创作入口"
-			p.Title = "AI 视频、创作画布与短剧工作台"
-			p.Description = "了解梦层的 AI 视频创作、素材画布与短剧项目工具，选择适合当前作品的起点。"
+			p.Heading = "AI 影像创作工具"
+			p.Title = "AI 视频、无限画布与短剧创作"
+			p.Description = "了解梦层的 AI 视频创作、AI 无限画布与短剧项目工具，选择适合当前作品的创作入口。"
 		}
 		for _, child := range c.pages {
 			if strings.HasPrefix(child.Path, p.Path+"/") {

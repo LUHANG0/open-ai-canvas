@@ -12,7 +12,7 @@ export const SPLIT_MODULE_GROUPS: Record<string, readonly string[]> = {
     "components/canvas/canvas-cloud-agent-chat-ui.tsx": ["components/canvas/canvas-cloud-agent-composer.tsx", "components/canvas/canvas-cloud-agent-attachments.ts"],
     "components/canvas/art-critique/ai-art-critique-modal.tsx": ["components/canvas/art-critique/ai-art-critique-report.tsx"],
     "components/canvas/canvas-resource-mention-textarea.tsx": ["components/canvas/canvas-mention-chips.tsx", "components/canvas/canvas-mention-editable.ts", "components/canvas/canvas-mention-menu.tsx"],
-    "components/canvas/canvas-node-content.tsx": ["components/canvas/canvas-node-media-content.tsx", "components/canvas/canvas-node-status-content.tsx"],
+    "components/canvas/canvas-node-content.tsx": ["components/canvas/canvas-node-media-content.tsx", "components/canvas/canvas-node-status-content.tsx", "components/canvas/canvas-retained-image.tsx", "components/canvas/canvas-original-image-feedback.tsx"],
     "components/canvas/canvas-node-prompt-panel.tsx": ["components/canvas/canvas-node-prompt-config.ts", "components/canvas/canvas-node-prompt-references.tsx", "components/canvas/canvas-node-prompt-resize.tsx"],
     "components/canvas/canvas-script-node.tsx": ["components/canvas/canvas-script-node-parts.tsx"],
     "lib/art-critique/pipeline.ts": ["lib/art-critique/pipeline-messages.ts", "lib/art-critique/pipeline-parse.ts"],

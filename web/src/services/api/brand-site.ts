@@ -38,7 +38,7 @@ export const DEFAULT_BRAND_CONTENT: BrandContent = {
             title: "从第一句，到最后一镜。",
             description: "",
             visible: true,
-            items: [item("AI 视频创作", "描述画面，带入参考素材，在对话中生成镜头、继续调整。", "/create?mode=video"), item("创作画布", "把文字、图片与视频放在同一张画布上，连接思路与创作素材。", "/canvas"), item("短剧项目", "围绕章节、角色与分镜组织故事，让每个镜头都有清晰的位置。", "/projects")],
+            items: [item("AI 视频创作", "描述画面，带入参考素材，在对话中生成镜头、继续调整。", "/create?mode=video"), item("AI 无限画布", "自由摆放文字、图片与视频，连接参考关系，比较镜头方案。", "/canvas"), item("短剧项目", "围绕章节、角色与分镜组织故事，让每个镜头都有清晰的位置。", "/projects")],
         },
         {
             id: "process",

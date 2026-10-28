@@ -17,6 +17,8 @@ describe("MengCeng public renderer", () => {
             }
         }
         expect(html).toContain('href="/login"');
+        expect(html).toContain('href="/features/canvas"');
+        expect(html).toContain('href="/tutorials/infinite-canvas"');
         expect(html).toContain("MengCeng");
         expect(html).not.toContain("/brand/product-create.jpg");
         expect(html).not.toContain("影策");

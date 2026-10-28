@@ -1,0 +1,34 @@
+.canvas-original-image-feedback {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    padding: 12px;
+    color: var(--original-image-ink);
+    cursor: default;
+    pointer-events: none;
+}
+
+.canvas-original-image-panel {
+    display: flex;
+    max-width: 100%;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    text-align: center;
+}
+
+.canvas-original-image-copy { display: flex; max-width: 100%; flex-direction: column; align-items: center; gap: 4px; }
+.canvas-original-image-copy strong { font-size: 12px; line-height: 16px; font-weight: 500; text-wrap: balance; }
+.canvas-original-image-copy span:not(.canvas-original-image-placeholder),
+.canvas-original-image-copy small { color: var(--original-image-muted); font-size: 12px; line-height: 16px; overflow-wrap: anywhere; text-wrap: pretty; }
+.canvas-original-image-placeholder { width: 48px; height: 32px; margin-bottom: 4px; border: 1px solid var(--original-image-stroke); border-radius: var(--r-sm); background: var(--original-image-hover); }
+.canvas-original-image-placeholder[data-active="true"] { animation: canvas-original-image-pulse 1.8s cubic-bezier(.32, .72, 0, 1) infinite; }
+.canvas-original-image-feedback.has-preview { inset: auto 8px 8px; padding: 0; }
+.canvas-original-image-feedback.has-preview .canvas-original-image-panel { padding: 8px 12px; border: 1px solid var(--original-image-stroke); border-radius: var(--r-sm); background: var(--original-image-fill); }
+.canvas-original-image-retry { pointer-events: auto; min-height: 44px; padding: 8px 12px; border: 1px solid var(--original-image-stroke); border-radius: var(--r-sm); background: var(--original-image-fill); color: var(--original-image-ink); font-size: 12px; line-height: 16px; cursor: pointer; }
+.canvas-original-image-retry:hover { background: var(--original-image-hover); }
+.canvas-original-image-retry:active { transform: translateY(1px); }
+.canvas-original-image-retry:focus-visible { outline: 2px solid var(--original-image-ink); outline-offset: 2px; }
+@keyframes canvas-original-image-pulse { 0%, 100% { opacity: .45; } 50% { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .canvas-original-image-placeholder[data-active="true"] { animation: none; } }

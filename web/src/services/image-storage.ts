@@ -77,12 +77,12 @@ function shouldImportRemoteImage(input: string) {
     return /^https?:\/\//i.test(input) && !isResourceUrl(input);
 }
 
-export async function resolveImageUrl(storageKey?: string, fallback = "", options?: { cacheMiss?: boolean }) {
+export async function resolveImageUrl(storageKey?: string, fallback = "", options?: { cacheMiss?: boolean; forceRefresh?: boolean }) {
     if (!storageKey) return fallback;
     const resourceId = resourceIdFromStorageKey(storageKey);
     if (resourceId) {
         // 远程资源展示直接使用 OSS/CDN 授权地址，不把媒体内容读进浏览器 Blob。
-        return resolveResourceAccessURL((await getResourceAccess(storageKey, "display")).url);
+        return resolveResourceAccessURL((await getResourceAccess(storageKey, "display", "original", "", { forceRefresh: options?.forceRefresh })).url);
     }
     const cached = objectUrls.get(storageKey);
     if (cached) return cached;

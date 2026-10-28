@@ -4,7 +4,7 @@ import "./brand-product-preview.css";
 const frames = ["/brand/v5/story-wide.webp", "/brand/v5/story-character.webp", "/brand/v5/story-detail.webp"];
 export const PRODUCT_ENTRIES = [
     { legacy: "写下灵感", title: "AI 视频创作", description: "描述画面，带入参考素材，在对话中生成镜头、继续调整。", link: "/create?mode=video", kind: "video" },
-    { legacy: "展开画布", title: "创作画布", description: "把文字、图片与视频放在同一张画布上，连接思路与创作素材。", link: "/canvas", kind: "canvas" },
+    { legacy: "展开画布", title: "AI 无限画布", description: "自由摆放文字、图片与视频，连接参考关系，比较镜头方案。", link: "/canvas", kind: "canvas" },
     { legacy: "推进作品", title: "短剧项目", description: "围绕章节、角色与分镜组织故事，让每个镜头都有清晰的位置。", link: "/projects", kind: "project" },
 ] as const;
 export type ProductPreviewKind = typeof PRODUCT_ENTRIES[number]["kind"];

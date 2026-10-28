@@ -3,6 +3,7 @@ import { Image as ImageIcon, LoaderCircle, Maximize, Minus, Plus } from "lucide-
 
 import { CanvasMediaPreviewShell, IMAGE_PREVIEW_TOOLBAR_HEIGHT, useCanvasMediaSize } from "./canvas-media-preview";
 import { resolveImageUrl } from "@/services/image-storage";
+import { getActiveUserScope } from "@/lib/user-scope";
 import "./canvas-image-preview.css";
 
 type CanvasImagePreviewProps = {
@@ -13,13 +14,15 @@ type CanvasImagePreviewProps = {
 };
 
 export function CanvasImagePreview(props: CanvasImagePreviewProps) {
-    return <ImagePreview key={JSON.stringify([props.src, props.storageKey])} {...props} />;
+    return <ImagePreview key={JSON.stringify([getActiveUserScope(), props.src, props.storageKey])} {...props} />;
 }
 
 function ImagePreview({ src = "", storageKey, alt = "图片", onClose }: CanvasImagePreviewProps) {
     const [resolvedSrc, setResolvedSrc] = useState(storageKey ? "" : src);
     const [loading, setLoading] = useState(Boolean(src || storageKey));
     const [error, setError] = useState(false);
+    const [attempt, setAttempt] = useState(0);
+    const [slow, setSlow] = useState(false);
     const [zoom, setZoom] = useState(1);
     const [stage, setStage] = useState<HTMLDivElement | null>(null);
     const [imageSize, setImageSize] = useState({ width: 0, height: 0 });
@@ -40,15 +43,17 @@ function ImagePreview({ src = "", storageKey, alt = "图片", onClose }: CanvasI
 
     useEffect(() => {
         let cancelled = false;
+        const scope = getActiveUserScope();
+        const isCurrent = () => !cancelled && getActiveUserScope() === scope;
         setResolvedSrc(storageKey ? "" : src);
         setLoading(Boolean(src || storageKey));
         setError(false);
         if (!src && !storageKey) return () => {
             cancelled = true;
         };
-        void resolveImageUrl(storageKey, src)
+        void resolveImageUrl(storageKey, src, { forceRefresh: attempt > 0 })
             .then((url) => {
-                if (cancelled) return;
+                if (!isCurrent()) return;
                 if (!url) {
                     setLoading(false);
                     setError(true);
@@ -57,7 +62,7 @@ function ImagePreview({ src = "", storageKey, alt = "图片", onClose }: CanvasI
                 setResolvedSrc(url);
             })
             .catch(() => {
-                if (!cancelled) {
+                if (isCurrent()) {
                     setLoading(false);
                     setError(true);
                 }
@@ -65,7 +70,14 @@ function ImagePreview({ src = "", storageKey, alt = "图片", onClose }: CanvasI
         return () => {
             cancelled = true;
         };
-    }, [src, storageKey]);
+    }, [src, storageKey, attempt]);
+
+    useEffect(() => {
+        setSlow(false);
+        if (!loading || error) return;
+        const timer = setTimeout(() => setSlow(true), 8_000);
+        return () => clearTimeout(timer);
+    }, [loading, error, attempt]);
 
     if (!src && !storageKey) return null;
 
@@ -86,20 +98,22 @@ function ImagePreview({ src = "", storageKey, alt = "图片", onClose }: CanvasI
                     {loading && !error ? (
                         <div className="canvas-media-preview-state" role="status">
                             <LoaderCircle className="canvas-image-preview-spinner" aria-hidden="true" />
-                            <span>正在加载高清图片</span>
+                            <span>正在加载原图</span>
+                            <small>{slow ? "原图较大或网络较慢，请稍候" : "原图就绪后显示完整细节"}</small>
                         </div>
                     ) : null}
                     {error ? (
                         <div className="canvas-media-preview-state" role="alert">
                             <ImageIcon size={28} aria-hidden="true" />
                             <span>图片暂时无法显示</span>
-                            <small>请关闭预览后重试</small>
+                            <small>可重新加载原图，无需重新生成</small>
+                            <button type="button" className="canvas-image-preview-retry" onClick={() => setAttempt((value) => value + 1)}>重新加载原图</button>
                         </div>
                     ) : null}
                     {resolvedSrc ? (
                         <div className="canvas-image-preview-image-space">
                             <img
-                                key={resolvedSrc}
+                                key={`${attempt}:${resolvedSrc}`}
                                 src={resolvedSrc}
                                 alt={alt}
                                 draggable={false}

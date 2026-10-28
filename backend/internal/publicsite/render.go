@@ -58,7 +58,7 @@ func (c *Catalog) Render(p Page, origin, brand string) ([]byte, error) {
 	}
 	label := "打开视频工作台"
 	if p.Target == "/canvas" {
-		label = "打开创作画布"
+		label = "打开 AI 无限画布"
 	}
 	if p.Target == "/projects" {
 		label = "打开短剧项目"

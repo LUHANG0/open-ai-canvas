@@ -404,22 +404,11 @@ function CreationResultMetadata({ item, entries, observed }: {
     return <>{Array.from(groups, ([key, { record }]) => <GenerationResultMetadata key={key} record={record} />)}</>;
 }
 
-export function CreationMediaPending({ mode, ratio, startedAt }: { mode: CreationMode; ratio?: string; startedAt?: string }) {
-    const [now, setNow] = useState(() => Date.now());
-    const start = startedAt ? Date.parse(startedAt) : NaN;
-    useEffect(() => {
-        if (!Number.isFinite(start)) return;
-        const timer = window.setInterval(() => setNow(Date.now()), 1000);
-        return () => window.clearInterval(timer);
-    }, [start]);
-    const seconds = Math.max(0, Math.floor((now - start) / 1000));
+export function CreationMediaPending({ mode, ratio }: { mode: CreationMode; ratio?: string; startedAt?: string }) {
     const aspectRatio = creationMediaAspectRatio(ratio, mode);
     return <div className="creation-generation-card">
         <div className="creation-generation-preview" style={{ aspectRatio }}><GenerationActivity /></div>
-        <div className="creation-generation-copy">
-            <div className="creation-generation-title"><strong role="status">正在生成{mode === "video" ? "视频" : "图像"}</strong><span>{Number.isFinite(start) ? `已耗时 ${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}` : ratio}</span></div>
-            <p>结果将在这里呈现，你可以继续创作。</p>
-        </div>
+        <span className="sr-only" role="status">正在生成{mode === "video" ? "视频" : "图像"}</span>
     </div>;
 }
 

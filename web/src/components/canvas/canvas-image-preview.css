@@ -4,6 +4,10 @@
 .canvas-image-preview-image-space { display: flex; min-width: 100%; min-height: 100%; width: max-content; }
 .canvas-image-preview-image { display: block; flex: none; max-width: none; margin: auto; object-fit: contain; }
 .canvas-image-preview-spinner { animation: canvas-image-preview-spin 1s linear infinite; }
+.canvas-image-preview-retry { min-height: 44px; padding: 8px 12px; border: 1px solid #555; border-radius: 6px; background: #171717; color: #e5e5e5; font: inherit; font-size: 12px; cursor: pointer; }
+.canvas-image-preview-retry:hover { background: #303030; color: #fff; }
+.canvas-image-preview-retry:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { .canvas-image-preview-spinner { animation: none; } }
 /* A compact single row; narrow portraits use two rows without widening the image. */
 .canvas-image-preview-toolbar { box-sizing: border-box; display: grid; grid-template-columns: 44px 52px 44px minmax(0, 110px); grid-template-rows: 44px; justify-content: center; height: 44px; width: 100%; color: #e5e5e5; background: #171717; }
 .canvas-image-preview-toolbar button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-width: 0; padding: 0; overflow: hidden; border: 0; border-radius: 6px; background: transparent; color: inherit; font: inherit; font-size: 12px; cursor: pointer; }

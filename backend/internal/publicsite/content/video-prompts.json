@@ -2,7 +2,7 @@
   "path": "/tutorials/video-prompts",
   "kind": "tutorial",
   "title": "AI 视频提示词怎么写：从画面到镜头运动",
-  "heading": "把一句想法写成一个镜头",
+  "heading": "AI 视频提示词怎么写",
   "description": "用主体、环境、动作、摄影机与光线组织 AI 视频提示词，附车站镜头示例、逐项修改方法和生成前检查。",
   "intro": [
     "这篇教程从一个车站镜头开始，把“有电影感”拆成能够观察和调整的画面描述。你可以先在下方试写，再带到梦层视频工作台继续。"
@@ -72,8 +72,9 @@
   "related": [
     "/features/ai-video",
     "/tutorials/reference-video",
-    "/tutorials/short-drama-storyboard"
+    "/tutorials/short-drama-storyboard",
+    "/tutorials/infinite-canvas"
   ],
-  "updatedAt": "2026-10-25T21:19:17+00:00",
+  "updatedAt": "2026-10-28T01:19:41+00:00",
   "published": true
 }

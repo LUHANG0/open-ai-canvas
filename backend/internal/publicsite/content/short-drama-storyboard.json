@@ -2,7 +2,7 @@
   "path": "/tutorials/short-drama-storyboard",
   "kind": "tutorial",
   "title": "AI 短剧分镜怎么做：角色、章节与镜头的组织方法",
-  "heading": "把一场短戏拆成镜头",
+  "heading": "AI 短剧分镜怎么做",
   "description": "从人物目标与场景变化出发，整理角色基准、拆解 AI 短剧分镜，再将生成素材与项目中的镜头意图对应。",
   "intro": [
     "练习目标是一场很短的戏：旅人在站台犹豫，听见列车声音，最终决定上车。先把变化讲清楚，再考虑更多画面。"
@@ -67,8 +67,9 @@
   "related": [
     "/features/short-drama",
     "/tutorials/video-prompts",
-    "/tutorials/canvas-references"
+    "/tutorials/canvas-references",
+    "/tutorials/infinite-canvas"
   ],
-  "updatedAt": "2026-10-25T21:19:17+00:00",
+  "updatedAt": "2026-10-28T01:19:41+00:00",
   "published": true
 }

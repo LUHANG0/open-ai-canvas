@@ -2,7 +2,7 @@
 
 import { type GenerationTask } from "@/services/api/task-center";
 import { generationTaskStageLabel, generationTaskStatusLabel, isGenerationTaskSubmissionUncertain } from "@/lib/generation-task-display";
-import { Clock3, Download, FileText, RefreshCw } from "lucide-react";
+import { Download, FileText, RefreshCw } from "lucide-react";
 import { GenerationActivity } from "@/components/ai/generation-activity";
 import { useRef, useSyncExternalStore, type CSSProperties } from "react";
 import { formatTaskElapsed, idleTaskTickerSubscribe, subscribeTaskTicker, taskTickerSnapshot } from "@/lib/canvas/task-ticker";
@@ -14,30 +14,24 @@ import "./canvas-node-status-content.css";
 export function LoadingContent({ node, theme, onOpenTaskDetails, disableMediaEffects = false }: Pick<CanvasNodeContentProps, "node" | "theme" | "onOpenTaskDetails" | "disableMediaEffects">) {
     const taskId = node.metadata?.taskId;
     const presentation = canvasLoadingPresentation(node);
-    const elapsed = useTaskElapsed(presentation.startedAt, presentation.completedAt, presentation.terminal);
     return (
-        <div className="canvas-generation-status" data-active={presentation.active} data-reduced-motion={disableMediaEffects} style={{
+        <div className="canvas-generation-status" data-active={presentation.active} data-minimal={presentation.active} data-reduced-motion={disableMediaEffects} style={{
             "--generation-surface": theme.node.fill, "--generation-ink": theme.node.text, "--generation-muted": theme.node.muted,
             "--generation-stroke": theme.node.stroke, "--generation-placeholder": theme.toolbar.itemHover, "--generation-signal": theme.node.activeStroke,
         } as CSSProperties}>
-            <div className="canvas-generation-visual" aria-hidden="true" aria-busy={presentation.active}>
-                <GenerationActivity active={presentation.active} reduced={disableMediaEffects} />
+            <div className="canvas-generation-visual">
+                <GenerationActivity active={presentation.active} reduced={disableMediaEffects} progress={presentation.progress} />
             </div>
             <div className="canvas-generation-feedback" data-canvas-no-zoom data-canvas-wheel-scroll onWheel={(event) => event.stopPropagation()}>
-                <div role="status" aria-live="polite" aria-atomic="true" className="canvas-generation-message">
+                <div role="status" aria-live="polite" aria-atomic="true" className={presentation.active ? "sr-only" : "canvas-generation-message"}>
                     <strong>{presentation.title}</strong>
                     {presentation.stage ? <span>{presentation.stage}</span> : null}
                 </div>
-                {presentation.progress !== null ? <div className="canvas-generation-progress" role="progressbar" aria-label="生成进度" aria-valuemin={0} aria-valuemax={100} aria-valuenow={presentation.progress}>
-                    <span style={{ transform: `scaleX(${presentation.progress / 100})` }} />
-                    <small>{presentation.progress}%</small>
-                </div> : null}
                 <div className="canvas-generation-footer">
-                    {presentation.startedAt ? <span className="canvas-generation-elapsed"><Clock3 aria-hidden="true" />已耗时 {elapsed}</span> : null}
                     {taskId && onOpenTaskDetails ? (
                         <button
                             type="button"
-                            className="canvas-generation-details"
+                            className={presentation.active ? "canvas-generation-open" : "canvas-generation-details"}
                             data-canvas-no-zoom data-canvas-wheel-scroll
                             aria-label="查看任务详情"
                             onPointerDown={(event) => event.stopPropagation()}
@@ -49,8 +43,7 @@ export function LoadingContent({ node, theme, onOpenTaskDetails, disableMediaEff
                                 onOpenTaskDetails?.(node);
                             }}
                         >
-                            <FileText aria-hidden="true" />
-                            查看详情
+                            {presentation.active ? <span className="sr-only">查看详情</span> : <><FileText aria-hidden="true" />查看详情</>}
                         </button>
                     ) : null}
                 </div>

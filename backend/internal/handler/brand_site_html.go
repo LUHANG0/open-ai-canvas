@@ -60,7 +60,7 @@ func newBrandHeadView(appearance *service.PublicAppearanceSetting, baseURL strin
 var brandBodyHTML = template.Must(template.New("body").Parse(`<main id="mengceng-main">
 <h1>{{.Title}}</h1><p>{{.Description}}</p>{{if .Detail}}<p>{{.Detail}}</p>{{end}}
 <a href="/login">{{.PrimaryLabel}}</a>
-<nav aria-label="公开内容"><a href="/features">功能详解</a> · <a href="/tutorials">创作教程</a></nav>
+<nav aria-label="公开内容"><a href="/features">功能详解</a> · <a href="/features/canvas">AI 无限画布</a> · <a href="/tutorials">创作教程</a> · <a href="/tutorials/infinite-canvas">无限画布入门</a></nav>
 {{range .Sections}}<section><h2>{{.Title}}</h2>{{if .Description}}<p>{{.Description}}</p>{{end}}
 {{range .Items}}<article><h3>{{.Title}}</h3>{{if .Description}}<p>{{.Description}}</p>{{end}}</article>{{end}}
 </section>{{end}}

@@ -1,20 +1,24 @@
-.generation-activity { position:relative; display:flex; align-items:center; justify-content:center; width:100%; height:100%; min-height:120px; overflow:hidden; background:transparent; color:var(--generation-muted,var(--creation-muted)); }
-.generation-orbit-core { display:grid; place-items:center; color:var(--generation-ink,var(--creation-text)); opacity:.8; }
-.generation-orbit-core svg { width:23px; height:23px; stroke-width:1.3; }
-.generation-orbit-path { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; }
-.generation-orbit-path circle { stroke:currentColor; stroke-width:1; opacity:.15; }
-.generation-orbit-item { position:absolute; display:flex; align-items:center; justify-content:center; width:20px; height:20px; animation:generation-orbit 18s linear infinite; animation-play-state:paused; }
-.generation-orbit-item svg { width:15px; height:15px; stroke-width:1.3; }
-.generation-orbit-item i { width:4px; height:4px; border-radius:50%; background:currentColor; }
-.generation-activity[data-playing="true"] .generation-orbit-item { animation-play-state:running; }
-.generation-activity[data-active="false"] { opacity:.5; }
-@keyframes generation-orbit { from { transform:rotate(var(--orbit-angle)) translateY(var(--orbit-radius)) rotate(calc(-1 * var(--orbit-angle))); } to { transform:rotate(calc(var(--orbit-angle) + 360deg)) translateY(var(--orbit-radius)) rotate(calc(-1 * var(--orbit-angle) - 360deg)); } }
-@media(prefers-reduced-motion:reduce) { .generation-activity .generation-orbit-item { animation-play-state:paused; } }
-.no-motion .generation-activity .generation-orbit-item { animation-play-state:paused; }
+.generation-activity { position:relative; display:grid; place-items:center; width:100%; height:100%; min-height:120px; overflow:hidden; background:transparent; color:var(--generation-ink,var(--creation-text)); }
+.generation-field { width:min(78%,260px); height:100%; max-height:240px; overflow:visible; }
+.generation-field-track { stroke:currentColor; stroke-width:.6; opacity:.1; }
+.generation-field-plane { transform:rotate(-24deg) scaleY(.74); transform-origin:120px 100px; }
+.generation-field-turn { transform-origin:120px 100px; animation:generation-field-revolve 12s linear infinite; animation-play-state:paused; }
+.generation-field-turn-inner { animation-duration:18s; animation-direction:reverse; }
+.generation-field-tail { stroke:currentColor; stroke-width:1; opacity:.18; }
+.generation-field-light { stroke:currentColor; stroke-width:1.6; stroke-linecap:round; opacity:.75; }
+.generation-field-point { fill:currentColor; opacity:.9; }
+.generation-field-center { stroke:currentColor; stroke-width:.6; opacity:.16; }
+.generation-field-focus { stroke:currentColor; stroke-width:1; stroke-linecap:round; opacity:.5; }
+.generation-activity[data-playing="true"] .generation-field-turn { animation-play-state:running; }
+.generation-activity[data-active="false"] { opacity:.45; }
+/* A complete turn has identical endpoints; pause preserves the current phase. */
+@keyframes generation-field-revolve { from { transform:rotate(0deg); } to { transform:rotate(360deg); } }
+@media(prefers-reduced-motion:reduce) { .generation-activity[data-playing] .generation-field-turn { animation-play-state:paused; } }
+.no-motion .generation-activity .generation-field-turn { animation-play-state:paused; }
 .creation-home .creation-generation-card { width:min(360px,100%); margin:16px 0 0; overflow:hidden; border:0; border-radius:0; background:transparent; }
 .creation-generation-preview { max-height:220px; min-height:150px; }
-.creation-generation-copy { display:grid; gap:8px; padding:12px 0; }
-.creation-generation-title { display:flex; align-items:center; justify-content:space-between; gap:12px; font-size:13px; line-height:1.6; }
+.creation-generation-copy { display:grid; gap:6px; padding:0 12px 16px; text-align:center; }
+.creation-generation-title { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; font-size:13px; line-height:1.6; }
 .creation-generation-title strong { font-weight:500; color:var(--creation-text); }
 .creation-generation-title > span { color:var(--creation-muted); font-size:11px; }
 .creation-generation-copy p { margin:0; color:var(--creation-muted); font-size:12px; line-height:1.7; }
@@ -23,3 +27,25 @@
 .creation-media-error-copy strong { color:var(--creation-text); font-size:13px; font-weight:500; }
 .creation-media-error-copy > span { color:var(--creation-muted); font-size:12px; line-height:1.7; overflow-wrap:anywhere; }
 .creation-home .creation-media-error > button { min-height:36px; margin:0; font-size:12px; }
+
+.generation-field-progress { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; gap:3px; font-size:28px; font-weight:400; font-variant-numeric:tabular-nums; letter-spacing:-1px; pointer-events:none; }
+.generation-field-progress small { font-size:12px; letter-spacing:0; opacity:.55; margin-top:7px; }
+
+/* Soft light stays behind the indicator; the hollow mask protects the number. */
+.generation-activity { isolation:isolate; }
+.generation-activity::before {
+    content:"";
+    position:absolute;
+    width:140%;
+    aspect-ratio:1;
+    pointer-events:none;
+    z-index:-1;
+    background:radial-gradient(ellipse at 28% 35%, rgb(115 160 213 / 20%), transparent 46%), radial-gradient(ellipse at 73% 66%, rgb(104 191 197 / 16%), transparent 44%);
+    mask-image:radial-gradient(circle, transparent 8%, #000 30%, transparent 68%);
+    animation:generation-ambient-revolve 32s linear infinite;
+    animation-play-state:paused;
+}
+.generation-activity[data-playing="true"]::before { animation-play-state:running; }
+@keyframes generation-ambient-revolve { from { transform:rotate(0deg); } to { transform:rotate(360deg); } }
+@media(prefers-reduced-motion:reduce) { .generation-activity[data-playing]::before { animation-play-state:paused; } }
+.no-motion .generation-activity::before { animation-play-state:paused; }

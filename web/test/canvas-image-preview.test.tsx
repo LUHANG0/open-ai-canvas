@@ -12,8 +12,10 @@ for (const [key, value] of Object.entries({ window: dom, document: dom.document,
     Object.defineProperty(globalThis, key, { configurable: true, writable: true, value });
 }
 const pending = new Map<string, (value: string) => void>();
+const resolutionOptions: { storageKey?: string; forceRefresh?: boolean }[] = [];
 mock.module("../src/services/image-storage", () => ({
-    resolveImageUrl: (storageKey: string | undefined, src: string) => {
+    resolveImageUrl: (storageKey: string | undefined, src: string, options?: { forceRefresh?: boolean }) => {
+        resolutionOptions.push({ storageKey, forceRefresh: options?.forceRefresh });
         if (!storageKey) return Promise.resolve(src);
         const { promise, resolve } = Promise.withResolvers<string>();
         pending.set(storageKey, resolve);
@@ -39,6 +41,29 @@ async function loadImage(width = 2000, height = 1000) {
     await act(async () => image.dispatchEvent(new dom.Event("load")));
     return image;
 }
+
+test("failed originals can retry in place with a fresh access address and preserve modal keyboard boundaries", async () => {
+    const host = document.createElement("div"); document.body.append(host);
+    const root = createRoot(host);
+    try {
+        await act(async () => root.render(<CanvasImagePreview storageKey="retry-original" onClose={() => {}} />));
+        expect(document.querySelector('[role="status"]')?.textContent).toContain("正在加载原图");
+        await act(async () => pending.get("retry-original")!("/expired.png"));
+        const failed = document.querySelector<HTMLImageElement>(".canvas-image-preview-image")!;
+        await act(async () => failed.dispatchEvent(new dom.Event("error")));
+        expect(document.querySelector('[role="alert"]')?.textContent).toContain("无需重新生成");
+        const retry = [...document.querySelectorAll<HTMLButtonElement>("button")].find((button) => button.textContent === "重新加载原图")!;
+        await act(async () => retry.click());
+        expect(resolutionOptions.at(-1)).toEqual({ storageKey: "retry-original", forceRefresh: true });
+        expect(button("放大图片").disabled).toBe(true);
+        await act(async () => pending.get("retry-original")!("/fresh-original.png"));
+        const loaded = await loadImage(2448, 3264);
+        expect(loaded).not.toBe(failed);
+        expect(loaded.getAttribute("src")).toBe("/fresh-original.png");
+        expect(button("放大图片").disabled).toBe(false);
+        expect(document.querySelector('[role="alert"]')).toBeNull();
+    } finally { await act(async () => root.unmount()); host.remove(); }
+});
 
 test("real preview sizes images for fit, bounded zoom and resize, then resets on a new source", async () => {
     const host = document.createElement("div"); document.body.append(host);

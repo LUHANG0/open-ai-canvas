@@ -20,7 +20,8 @@ import { hydrateCanvasVideoPreview } from "@/services/canvas-video-preview";
 import { type CanvasTheme } from "@/lib/canvas-theme";
 import { fitImageMaterialNodeSize, fitImageNodeSize } from "@/lib/canvas/canvas-node-size";
 import { getActiveUserScope } from "@/lib/user-scope";
-import { prepareCanvasImage } from "@/services/canvas-image-loader";
+import { RetainedCanvasImage } from "./canvas-retained-image";
+export { RetainedCanvasImage } from "./canvas-retained-image";
 import { getResourceAccess, refreshResource, resourceIdFromStorageKey, resolveResourceAccessURL } from "@/services/api/resources";
 import type { CanvasNodeContentProps } from "./canvas-node-content";
 import { ErrorContent, LoadingContent } from "./canvas-node-status-content";
@@ -510,8 +511,8 @@ export function ImageContent({
 }: Pick<CanvasNodeContentProps, "renderLOD" | "node" | "theme" | "isBatchRoot" | "batchCount" | "batchPreviewNodes" | "batchExpanded" | "batchOpening" | "batchRecovering" | "onToggleBatch">) {
     const imageContainerRef = useRef<HTMLDivElement>(null);
     const nearViewport = useNearViewport(imageContainerRef, renderLOD !== "shell");
-    const resourceVariant = renderLOD === "full" && (node.metadata?.imageLayer || node.metadata?.imageLayerGroup) ? "original" : "thumbnail";
-    const { url, loading, originalWidth, originalHeight } = useNodeResourceUrl(node, nearViewport, resourceVariant);
+    const resourceVariant = renderLOD === "full" ? "original" : "thumbnail";
+    const { url, loading, error: sourceError, originalWidth, originalHeight } = useNodeResourceUrl(node, nearViewport, resourceVariant);
     const importedFromLibTV = node.metadata?.importSource?.provider === "libtv";
     const { updateMediaNode } = useCanvasNodeActions();
     const measuredSizeRef = useRef<{ width: number; height: number } | null>(null);
@@ -566,10 +567,13 @@ export function ImageContent({
             <div ref={imageContainerRef} className="relative h-full w-full overflow-hidden rounded-[var(--node-radius)]">
                 <RetainedCanvasImage
                     identity={`${getActiveUserScope()}:${node.id}:${node.metadata?.storageKey || node.metadata?.content || "empty"}`}
+                    retentionKey={`${getActiveUserScope()}:${node.id}`}
                     src={url}
                     storageKey={node.metadata?.storageKey}
-                    fallbackSrc={node.metadata?.content || ""}
-                    originalSize={{ width: originalWidth, height: originalHeight }}
+                    sourceError={sourceError}
+                    completed={node.metadata?.taskStatus === "succeeded"}
+                    bytes={node.metadata?.bytes}
+                    originalSize={{ width: originalWidth || node.metadata?.naturalWidth, height: originalHeight || node.metadata?.naturalHeight }}
                     alt={node.title}
                     fitToImage={fitToImage}
                     className={`pointer-events-none block h-full w-full select-none ${node.metadata?.freeResize ? "object-fill" : "object-contain"}`}
@@ -591,102 +595,6 @@ export function ImageContent({
     );
 }
 
-/** A stable visible img is updated only after a queued candidate has loaded and decoded. */
-export function RetainedCanvasImage({
-    identity,
-    src,
-    storageKey,
-    fallbackSrc,
-    originalSize,
-    alt,
-    fitToImage,
-    className,
-    loading,
-    theme,
-}: {
-    identity: string;
-    src: string;
-    storageKey?: string;
-    fallbackSrc: string;
-    originalSize: { width?: number; height?: number };
-    alt?: string;
-    fitToImage: (image: HTMLImageElement, size?: { width?: number; height?: number }) => void;
-    className: string;
-    loading: boolean;
-    theme: CanvasTheme;
-}) {
-    const [displayed, setDisplayed] = useState<{ identity: string; src: string } | null>(null);
-    const [preparing, setPreparing] = useState(false);
-    const displayedRef = useRef(displayed);
-    displayedRef.current = displayed;
-    const originalWidth = originalSize.width;
-    const originalHeight = originalSize.height;
-    const currentRef = useRef({ identity, src, storageKey, fallbackSrc, originalSize, fitToImage });
-    currentRef.current = { identity, src, storageKey, fallbackSrc, originalSize, fitToImage };
-    const currentDisplayedSrc = displayed?.identity === identity ? displayed.src : "";
-
-    useEffect(() => {
-        const controller = new AbortController();
-        const target = currentRef.current;
-        if (!target.src || (displayedRef.current?.identity === identity && displayedRef.current.src === target.src)) {
-            setPreparing(false);
-            return () => controller.abort();
-        }
-        setPreparing(true);
-        const isCurrent = () => !controller.signal.aborted && currentRef.current.identity === identity && currentRef.current.src === target.src;
-        const prepare = async () => {
-            try {
-                const candidate = await prepareCanvasImage(target.src, controller.signal);
-                if (!isCurrent()) return;
-                currentRef.current.fitToImage(candidate, target.originalSize);
-                setDisplayed({ identity, src: target.src });
-            } catch (error) {
-                if (controller.signal.aborted || (error instanceof DOMException && error.name === "AbortError")) return;
-                const resourceId = target.storageKey?.startsWith("resource:") ? target.storageKey.slice("resource:".length) : "";
-                if (!resourceId) return;
-                try {
-                    const access = await getResourceAccess(target.storageKey, "display", "original");
-                    const originalURL = resolveResourceAccessURL(access.url);
-                    if (!isCurrent() || !originalURL || originalURL === target.src) return;
-                    const original = await prepareCanvasImage(originalURL, controller.signal);
-                    if (!isCurrent()) return;
-                    currentRef.current.fitToImage(original, { width: access.originalWidth, height: access.originalHeight });
-                    setDisplayed({ identity, src: originalURL });
-                } catch (fallbackError) {
-                    if (!controller.signal.aborted && !(fallbackError instanceof DOMException && fallbackError.name === "AbortError")) {
-                        // Keep the already visible same-resource image; a first-load failure remains an explicit placeholder.
-                    }
-                }
-            } finally {
-                if (isCurrent()) setPreparing(false);
-            }
-        };
-        void prepare();
-        return () => controller.abort();
-    }, [identity, originalHeight, originalWidth, src, storageKey]);
-
-    return (
-        <>
-            <img
-                src={currentDisplayedSrc || undefined}
-                alt={alt || ""}
-                // 世界层每次缩放提交都会按新倍率重新栅格化；async 解码会让 Chromium 先画出
-                // 空白再补图（缩放时白闪）。图片已由 prepareCanvasImage 预解码，同步解码只阻塞栅格不阻塞主线程。
-                decoding="sync"
-                draggable={false}
-                onDragStart={(event) => event.preventDefault()}
-                className={`absolute inset-0 ${className}`}
-                style={{ visibility: currentDisplayedSrc ? "visible" : "hidden" }}
-            />
-            {!currentDisplayedSrc ? (
-                <div className="absolute inset-0 grid place-items-center" style={{ color: theme.node.muted }}>
-                    {loading || preparing ? <LoaderCircle className="size-5 animate-spin" /> : <ImageIcon className="size-5 opacity-45" />}
-                </div>
-            ) : null}
-        </>
-    );
-}
-
 export function useNodeResourceUrl(node: CanvasNodeData, eager: boolean, variant: "original" | "thumbnail" = "original") {
     const storageKey = node.metadata?.storageKey || "";
     const rawContent = node.metadata?.content || "";
@@ -695,7 +603,7 @@ export function useNodeResourceUrl(node: CanvasNodeData, eager: boolean, variant
     // activated, VideoPlayer/Audio must receive the playable asset, never the
     // LibTV OSS snapshot URL stored for the thumbnail.
     const fallback =
-        node.type === CanvasNodeType.Video || node.type === CanvasNodeType.Audio
+        node.type === CanvasNodeType.Video || node.type === CanvasNodeType.Audio || variant === "original"
             ? content
             : node.metadata?.previewContent || (node.type === CanvasNodeType.Image && node.metadata?.importSource?.provider === "libtv" ? buildLibTVImagePreviewUrl(content) : content);
     const isRemoteResource = storageKey.startsWith("resource:");
@@ -707,7 +615,7 @@ export function useNodeResourceUrl(node: CanvasNodeData, eager: boolean, variant
     const initialUrl = eager && !isRemoteResource && isLazyVisual && isHttpUrl ? fallback : isRemoteResource || isLazyVisual ? "" : fallback;
     const scope = getActiveUserScope();
     const identity = `${scope}:${node.id}:${storageKey || fallback}`;
-    const [resolved, setResolved] = useState<{ identity: string; url: string; loading: boolean; originalWidth?: number; originalHeight?: number }>(() => ({ identity, url: initialUrl, loading: !initialUrl && isRemoteResource && eager }));
+    const [resolved, setResolved] = useState<{ identity: string; url: string; loading: boolean; error?: boolean; originalWidth?: number; originalHeight?: number }>(() => ({ identity, url: initialUrl, loading: !initialUrl && isRemoteResource && eager }));
     const current = resolved.identity === identity ? resolved : { identity, url: initialUrl, loading: isRemoteResource && eager };
 
     useEffect(() => {
@@ -726,15 +634,14 @@ export function useNodeResourceUrl(node: CanvasNodeData, eager: boolean, variant
                 if (!cancelled) setResolved({ identity, url: resolveResourceAccessURL(access.url), loading: false, originalWidth: access.originalWidth, originalHeight: access.originalHeight });
             })
             .catch(() => {
-                if (!cancelled) setResolved({ identity, url: fallback, loading: false });
+                if (!cancelled) setResolved({ identity, url: fallback, loading: false, error: !fallback });
             });
         return () => {
             cancelled = true;
         };
     }, [eager, fallback, identity, isLazyVisual, isRemoteResource, storageKey, variant]);
 
-    const isThumbnail = variant === "thumbnail";
-    return { url: current.url, loading: current.loading, originalWidth: isThumbnail ? current.originalWidth : undefined, originalHeight: isThumbnail ? current.originalHeight : undefined };
+    return { url: current.url, loading: current.loading, error: "error" in current && Boolean(current.error), originalWidth: current.originalWidth, originalHeight: current.originalHeight };
 }
 
 export function useNearViewport(ref: RefObject<Element | null>, enabled = true) {
