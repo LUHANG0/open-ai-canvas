@@ -9,10 +9,18 @@ type Scenario =
     | "canvas-batch-commit-race"
     | "canvas-multi-output"
     | "canvas-copy-generation"
+    | "canvas-cold-remote-hydration"
     | "canvas-mask-batch"
     | "canvas-asset-preparation"
     | "canvas-reentry-observation"
     | "canvas-video-reentry";
+
+test("空缓存首次载入云端画布后保存、重载仍保留生成去重标记", async () => {
+    const result = await runScenario<{ storedKeys?: string[]; restoredKeys?: string[]; content?: string }>("canvas-cold-remote-hydration");
+    expect(result.storedKeys).toEqual(["attach-node:remote-task:remote-image:0"]);
+    expect(result.restoredKeys).toEqual(result.storedKeys);
+    expect(result.content).toBe("/original.png");
+});
 
 test("视频退出后重进可恢复已完成结果，并保留保存期间的新节点和编辑", async () => {
     type Node = import("../src/types/canvas").CanvasNodeData;

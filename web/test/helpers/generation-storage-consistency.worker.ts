@@ -13,6 +13,7 @@ type Scenario =
     | "canvas-batch-commit-race"
     | "canvas-multi-output"
     | "canvas-copy-generation"
+    | "canvas-cold-remote-hydration"
     | "canvas-mask-batch"
     | "canvas-asset-preparation"
     | "canvas-reentry-observation"
@@ -694,8 +695,42 @@ async function runCanvasAssetPreparation() {
     }
 }
 
+async function runColdRemoteHydration() {
+    const harness = installStorageHarness();
+    const previousScope = getActiveUserScope();
+    try {
+        setActiveUserScope("canvas-cold-remote-hydration");
+        const { useCanvasStore, flushCanvasStorePersistence, CANVAS_STORE_KEY } = await import("../../src/stores/canvas/use-canvas-store");
+        const { localForageStorageForScope } = await import("../../src/lib/localforage-storage");
+        const { parseCanvasStorageDocument } = await import("../../src/lib/canvas/canvas-storage-revision");
+        const { CanvasNodeType } = await import("../../src/types/canvas");
+        await useCanvasStore.persist.rehydrate();
+        // This follows remote hydration's replaceProjects path, without first
+        // creating a local project or committing a local generation effect.
+        useCanvasStore.getState().replaceProjects([{
+            id: "remote-project", title: "Remote generated canvas", revision: 19,
+            createdAt: "2026-01-01T00:00:00Z", updatedAt: "2026-01-01T00:00:00Z",
+            viewport: { x: 0, y: 0, k: 1 }, connections: [], chatSessions: [],
+            nodes: [{ id: "remote-image", type: CanvasNodeType.Image, position: { x: 0, y: 0 }, width: 100, height: 100,
+                metadata: { status: "success", content: "/original.png", storageKey: "resource:original", generationEffectKeys: ["attach-node:remote-task:remote-image:0"] } }],
+        }]);
+        await flushCanvasStorePersistence();
+        const stored = parseCanvasStorageDocument(await localForageStorageForScope(getActiveUserScope()).getItem(CANVAS_STORE_KEY));
+        await useCanvasStore.persist.rehydrate();
+        const restored = useCanvasStore.getState().projects.find((project) => project.id === "remote-project")!;
+        return { storedKeys: stored.state.projects[0]?.nodes[0]?.metadata?.generationEffectKeys, restoredKeys: restored.nodes[0]?.metadata?.generationEffectKeys, content: restored.nodes[0]?.metadata?.content };
+    } finally {
+        setActiveUserScope(previousScope);
+        harness.restore();
+    }
+}
+
 self.onmessage = async (event: MessageEvent<Scenario>) => {
     try {
+        if (event.data === "canvas-cold-remote-hydration") {
+            self.postMessage({ ok: true, result: await runColdRemoteHydration() });
+            return;
+        }
         if (event.data === "canvas-video-reentry") {
             self.postMessage({ ok: true, result: await runCanvasBatchCommitRace(false, false, true, true) });
             return;
