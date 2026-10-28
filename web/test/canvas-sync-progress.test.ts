@@ -16,6 +16,7 @@ const paths: Record<string, string> = {
     "json-canonicalize": import.meta.resolve("json-canonicalize"),
     zustand: import.meta.resolve("zustand"),
     "@/services/api/resources": join(dir, "resources.ts"),
+    "@/services/direct-object-upload": fileURLToPath(new URL("services/direct-object-upload.ts", root)),
     "@/lib/canvas/sync-recovery": fileURLToPath(new URL("lib/canvas/sync-recovery.ts", root)),
     "@/lib/canvas/canvas-sync-rebase": join(dir, "rebase.ts"),
     "@/lib/canvas/canvas-text-merge": fileURLToPath(new URL("lib/canvas/canvas-text-merge.ts", root)),

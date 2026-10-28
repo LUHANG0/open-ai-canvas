@@ -574,3 +574,9 @@ CSV 使用中文表头、UTF-8 BOM、CRLF；金额按整数分精确转换为两
 | POST | `/admin/provider-catalog/:id/install` | `{ name, apiKey, markupPercent, models: [{ modelKey, markupPercent? }], enabled }`，一次事务创建渠道、模型和规格档，返回 `{ channel }` |
 
 install 的 Base URL、协议、能力和成本全部从服务端快照读取，不信任请求体。售价 = 成本 × (1 + 加价率)，向上取整到微积分；加价率 0–1000%，最多两位小数。推广期已过返回 404。API Key 只加密存入渠道，不写日志。
+
+### 浏览器直传阿里云 OSS
+
+客户端上传先调用 `POST /api/resources/direct-uploads`，仅提交文件名、大小、尺寸和前 3072 字节的 Base64 样本。后端在跨实例共享的上传额度预留后创建 pending 资源，固定存储位置，并返回 30 分钟有效的 PostObject 表单授权。授权限定一个随机对象键、准确字节数、检测出的 MIME 和禁止覆盖；浏览器不能获得长期 Secret，也不能自行选择 Bucket 或对象路径。生产 Bucket 必须保持私有、关闭版本控制（OSS 在版本控制开启时忽略禁止覆盖条件），并仅对本站来源开放 POST/GET/HEAD CORS。
+
+文件以表单最后一项直接发往 OSS，不携带平台 Cookie、认证头或账号头。成功后调用 `POST /api/resources/direct-uploads/{id}/complete`；后端只读取最多 3072 字节，检查真实对象总大小、MIME、样本摘要和 ETag，再在事务中发布 ready 状态、消费预留额度。完成确认可重试且不会重复计量；上传中断、取消或账号切换不会误报为保存成功。授权过期重试使用新对象键，旧对象通过延迟 Outbox 清理；放弃的 pending 资源沿用既有不完整资源清理。直传失败不自动经平台转发文件；仅存储类型不支持直传时明确返回 `mode=server`，保留原本地/其他云存储上传路径。

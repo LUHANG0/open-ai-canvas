@@ -36,6 +36,13 @@ func (r *Repository) DeleteDetachedResources(resources []model.Resource, deletio
 		if len(current) != len(resources) {
 			return ErrResourceCleanupSetChanged
 		}
+		for _, candidate := range resources {
+			for _, row := range current {
+				if row.ID == candidate.ID && (row.Status != candidate.Status || !row.UpdatedAt.Equal(candidate.UpdatedAt) || row.ObjectKey != candidate.ObjectKey) {
+					return ErrResourceCleanupSetChanged
+				}
+			}
+		}
 		// The service performs exact JSON parsing before entering this transaction.
 		// This conservative second check closes the common race where an Asset or
 		// canvas is attached after that snapshot but before Resource deletion.

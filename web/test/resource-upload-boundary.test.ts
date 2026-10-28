@@ -10,6 +10,7 @@ type AdapterResult = { status: number; body: unknown };
 async function uploadWith(result: AdapterResult | Error) {
     const previous = apiClient.defaults.adapter;
     apiClient.defaults.adapter = async (config) => {
+        if (!(result instanceof Error) && result.status === 200 && config.url === "/resources/direct-uploads") return { data: { code: 0, data: { mode: "server" } }, status: 200, statusText: "OK", headers: {}, config };
         if (result instanceof Error) throw result;
         if (result.status >= 400) {
             throw new axios.AxiosError(`Request failed with status code ${result.status}`, "ERR_BAD_REQUEST", config, undefined, {

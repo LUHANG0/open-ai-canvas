@@ -2110,6 +2110,45 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorEnvelope"
+  /resources/direct-uploads:
+    post:
+      tags: [resources]
+      summary: 申请浏览器直传授权并预留上传额度
+      description: 阿里云 OSS 返回 mode=direct、uploadId、post（url、fields、expiresAt）；授权严格绑定单个对象、文件大小、MIME 和不可覆盖条件，30 分钟到期。只提交 fileName、size、sample（文件前 min(size,3072) 字节的 Base64）、width、height、durationMs。X-Idempotency-Key 保持逻辑上传身份。已存在资源返回 mode=ready；仅非阿里云存储返回 mode=server，直传故障不能回退经平台上传。响应禁止缓存。文件必须为表单最后一项，平台 Cookie 和认证头不得发给 OSS。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [fileName, size, sample]
+              properties:
+                fileName: {type: string, maxLength: 255}
+                size: {type: integer, format: int64, minimum: 1}
+                sample: {type: string, format: byte}
+                width: {type: integer, minimum: 0}
+                height: {type: integer, minimum: 0}
+                durationMs: {type: integer, format: int64, minimum: 0}
+      responses:
+        "200":
+          $ref: "#/components/responses/Envelope"
+        "403":
+          $ref: "#/components/responses/Error"
+  /resources/direct-uploads/{id}/complete:
+    post:
+      tags: [resources]
+      summary: 核验 OSS 原始对象并确认资源就绪
+      description: 只读取最多 3072 字节核验真实类型、样本摘要、对象总大小和 ETag，45 分钟内可确认。资源状态和配额消费在同一事务提交；重复确认返回原资源，不重复扣额度。服务端固定上传时的存储版本，不接受客户端指定 Bucket 或对象键。
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: {type: string}
+      responses:
+        "200":
+          $ref: "#/components/responses/Envelope"
+        "404":
+          $ref: "#/components/responses/Error"
   /resources/access:
     post:
       tags: [resources]

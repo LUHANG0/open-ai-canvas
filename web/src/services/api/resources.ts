@@ -2,6 +2,7 @@ import { getActiveUserScope } from "@/lib/user-scope";
 import { localForageStorageForScope } from "@/lib/localforage-storage";
 import { http, apiBaseURL, ApiError } from "@/services/api/request";
 import type { OSSConnectionTestInput, OSSConnectionTestResult, OSSProvider, S3Preset } from "@/lib/oss-settings";
+import { postObjectFile, type DirectUploadPost } from "@/services/direct-object-upload";
 
 export type RemoteResource = {
     id: string;
@@ -260,9 +261,62 @@ const CHUNK_UPLOAD_RETRIES = 2;
 
 export async function uploadResourceFile(file: Blob, kind: "image" | "video" | "audio" | "file", meta?: ResourceUploadMeta, onProgress?: (uploadedBytes: number, totalBytes: number) => void): Promise<RemoteResource> {
     const name = meta?.fileName || (file instanceof File ? file.name : `${kind}.${extensionFromMime(file.type, kind)}`);
+    const scope = getActiveUserScope();
+    const assertLive = () => {
+        if (meta?.signal?.aborted || getActiveUserScope() !== scope || (meta?.expectedUserId && meta.expectedUserId !== scope)) throw new DOMException("上传已取消或账号已切换", "AbortError");
+    };
     // 分片与 multipart 两条路径的失败都要归一成 ResourceUploadError，
     // 否则调用方只能靠文案猜测该重试还是该报错。
     try {
+        assertLive();
+        const sample = new Uint8Array(await file.slice(0, 3072).arrayBuffer());
+        assertLive();
+        const uploadMeta = { ...meta, ...(scope !== "guest" ? { expectedUserId: scope } : {}) };
+        const admission = await http.post<{ mode: "server" | "ready" | "direct"; resource?: RemoteResource; uploadId?: string; post?: DirectUploadPost }>("/resources/direct-uploads", {
+            fileName: name, size: file.size, sample: btoa(String.fromCharCode(...sample)), width: meta?.width, height: meta?.height, durationMs: meta?.durationMs,
+        }, { ...uploadRequestConfig(meta?.idempotencyKey), ...scopedUploadConfig(uploadMeta) });
+        assertLive();
+        if (admission.mode === "ready" && admission.resource) {
+            resourceCache.set(resourceCacheKey(admission.resource.id), admission.resource);
+            return admission.resource;
+        }
+        if (admission.mode === "direct" && admission.uploadId && admission.post) {
+            const complete = async () => {
+                assertLive();
+                const data = await http.post<{ resource: RemoteResource }>(`/resources/direct-uploads/${encodeURIComponent(admission.uploadId!)}/complete`, undefined, { timeout: 60_000, ...scopedUploadConfig(uploadMeta) });
+                assertLive();
+                return data.resource;
+            };
+            try {
+                await postObjectFile(admission.post, file, name, meta?.signal, assertLive, onProgress);
+            } catch (error) {
+                if (error instanceof DOMException && error.name === "AbortError") throw error;
+                assertLive();
+                // A lost POST response or forbid-overwrite conflict may mean the
+                // original upload succeeded. Only the backend can confirm it.
+                try {
+                    const resource = await complete();
+                    resourceCache.set(resourceCacheKey(resource.id), resource);
+                    return resource;
+                } catch (confirmationError) {
+                    if (confirmationError instanceof DOMException && confirmationError.name === "AbortError") throw confirmationError;
+                    throw error;
+                }
+            }
+            let lastError: unknown;
+            for (let attempt = 0; attempt < 3; attempt++) {
+                try {
+                    const resource = await complete();
+                    resourceCache.set(resourceCacheKey(resource.id), resource);
+                    return resource;
+                } catch (error) {
+                    lastError = error;
+                    if (!(error instanceof ApiError) || !error.retryable) throw error;
+                }
+            }
+            throw lastError;
+        }
+        if (admission.mode !== "server") throw new Error("上传授权响应无效");
         if (file.size > CHUNK_UPLOAD_THRESHOLD) {
             const resource = await uploadFileInChunks(file, name, kind, meta, onProgress);
             resourceCache.set(resourceCacheKey(resource.id), resource);
