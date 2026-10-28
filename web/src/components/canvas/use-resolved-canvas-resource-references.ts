@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 
+import { getActiveUserScope } from "@/lib/user-scope";
 import type { CanvasResourceReference } from "@/lib/canvas/canvas-resource-references";
 import { loadCanvasDrawingPreview } from "@/lib/canvas/canvas-drawing-storage";
+import { getResourceAccess, resolveResourceAccessURL, resourceIdFromStorageKey } from "@/services/api/resources";
 import { resolveImageUrl } from "@/services/image-storage";
 
 type ResolvedPreview = {
@@ -9,16 +11,57 @@ type ResolvedPreview = {
     url: string;
 };
 
-const previewPromiseCache = new Map<string, Promise<string>>();
+type CachedPreview = {
+    promise: Promise<string>;
+    expiresAt: number;
+    url?: string;
+};
+
+// 签名地址的有效期由 getResourceAccess 的缓存判断；这里只合并短时间内同一素材的重复解析。
+// 不能永久持有：地址过期后重新打开提示词面板仍会拿到旧地址，@ 缩略图就显示空白。
+const STORAGE_PREVIEW_CACHE_MS = 60_000;
+// 同一素材加载失败后强制换新地址的最短间隔，避免坏文件反复请求后端。
+const PREVIEW_REFRESH_COOLDOWN_MS = 30_000;
+
+const previewPromiseCache = new Map<string, CachedPreview>();
+const forcedRefreshAt = new Map<string, number>();
+const pendingForceRefresh = new Set<string>();
+const previewFailureListeners = new Set<() => void>();
+
+/** 缩略图加载失败时调用：作废对应地址，并让正在使用它的提示词编辑器换新签名地址。 */
+export function reportResourcePreviewFailure(url: string) {
+    if (!url) return;
+    const now = Date.now();
+    let refreshed = false;
+    previewPromiseCache.forEach((entry, identity) => {
+        if (entry.url !== url) return;
+        previewPromiseCache.delete(identity);
+        if (now - (forcedRefreshAt.get(identity) ?? 0) < PREVIEW_REFRESH_COOLDOWN_MS) return;
+        if (forcedRefreshAt.size >= 256) forcedRefreshAt.delete(forcedRefreshAt.keys().next().value!);
+        forcedRefreshAt.set(identity, now);
+        pendingForceRefresh.add(identity);
+        refreshed = true;
+    });
+    if (refreshed) previewFailureListeners.forEach((listener) => listener());
+}
 
 export function useResolvedCanvasResourceReferences(references: CanvasResourceReference[], options?: { projectId?: string }) {
     const projectId = options?.projectId;
+    const scope = getActiveUserScope();
+    const [refreshEpoch, setRefreshEpoch] = useState(0);
+    useEffect(() => {
+        const listener = () => setRefreshEpoch((value) => value + 1);
+        previewFailureListeners.add(listener);
+        return () => {
+            previewFailureListeners.delete(listener);
+        };
+    }, []);
     const requests = useMemo(
         () => references.flatMap((reference) => {
-            const identity = previewIdentity(reference, projectId);
+            const identity = previewIdentity(reference, projectId, scope);
             return identity ? [{ reference, identity }] : [];
         }),
-        [projectId, references],
+        [projectId, references, scope],
     );
     const [resolvedById, setResolvedById] = useState<Record<string, ResolvedPreview>>({});
 
@@ -32,7 +75,7 @@ export function useResolvedCanvasResourceReferences(references: CanvasResourceRe
                 url: await resolveReferencePreview(reference, identity, projectId),
             })),
         ).then((resolved) => {
-            if (cancelled) return;
+            if (cancelled || scope !== getActiveUserScope()) return;
             setResolvedById((current) => {
                 let changed = false;
                 const next = { ...current };
@@ -47,52 +90,62 @@ export function useResolvedCanvasResourceReferences(references: CanvasResourceRe
         return () => {
             cancelled = true;
         };
-    }, [projectId, requests]);
+    }, [projectId, requests, refreshEpoch, scope]);
 
     return useMemo(
         () => references.map((reference) => {
-            const identity = previewIdentity(reference, projectId);
+            const identity = previewIdentity(reference, projectId, scope);
             const resolved = identity ? resolvedById[reference.id] : undefined;
             return resolved?.identity === identity && resolved.url !== reference.previewUrl ? { ...reference, previewUrl: resolved.url } : reference;
         }),
-        [projectId, references, resolvedById],
+        [projectId, references, resolvedById, scope],
     );
 }
 
-function previewIdentity(reference: CanvasResourceReference, projectId?: string) {
+function previewIdentity(reference: CanvasResourceReference, projectId: string | undefined, scope: string) {
     // 只有当 drawingId 和 projectId 同时存在时才返回绘图身份,避免不完整的缓存键导致运行时错误
     if (reference.drawingId) {
         if (!projectId) return "";
-        return `drawing:${projectId}:${reference.drawingId}:${reference.drawingRevision || 0}`;
+        return `${scope}:drawing:${projectId}:${reference.drawingId}:${reference.drawingRevision || 0}`;
     }
     const storageKey = reference.kind === "video" ? reference.previewStorageKey : reference.storageKey;
     if (!storageKey || !["image", "video", "character"].includes(reference.kind)) return "";
-    return `${reference.kind}:${storageKey}`;
+    return `${scope}:${reference.kind}:${storageKey}`;
 }
 
 function resolveReferencePreview(reference: CanvasResourceReference, identity: string, projectId?: string) {
     const cached = previewPromiseCache.get(identity);
-    if (cached) return cached;
+    if (cached && cached.expiresAt > Date.now()) return cached.promise;
+    const fallback = reference.previewUrl || "";
+    let resolving: Promise<string>;
+    let expiresAt: number;
     if (reference.drawingId && projectId) {
-        const pending = loadCanvasDrawingPreview(projectId, reference.drawingId)
-            .then((preview) => preview ? blobToDataUrl(preview) : reference.previewUrl || "")
-            .catch(() => reference.previewUrl || "")
-            .then((url) => {
-                if (!url) previewPromiseCache.delete(identity);
-                return url;
-            });
-        previewPromiseCache.set(identity, pending);
-        return pending;
+        // 绘图预览按修订号区分且是本地 data URL，不会过期。
+        resolving = loadCanvasDrawingPreview(projectId, reference.drawingId).then((preview) => (preview ? blobToDataUrl(preview) : ""));
+        expiresAt = Number.POSITIVE_INFINITY;
+    } else {
+        const storageKey = reference.kind === "video" ? reference.previewStorageKey : reference.storageKey;
+        resolving =
+            pendingForceRefresh.delete(identity) && resourceIdFromStorageKey(storageKey)
+                ? getResourceAccess(storageKey, "display", "original", "", { forceRefresh: true }).then((access) => resolveResourceAccessURL(access.url))
+                : resolveImageUrl(storageKey, "", { cacheMiss: true });
+        expiresAt = Date.now() + STORAGE_PREVIEW_CACHE_MS;
     }
-    const storageKey = reference.kind === "video" ? reference.previewStorageKey : reference.storageKey;
-    const pending = resolveImageUrl(storageKey, reference.previewUrl || "", { cacheMiss: true })
-        .catch(() => reference.previewUrl || "")
+    const entry: CachedPreview = { promise: Promise.resolve(""), expiresAt };
+    // 解析失败只退回引用自带的地址，不进缓存：它可能已过期或已被释放，下次仍要重新解析。
+    entry.promise = resolving
+        .catch(() => "")
         .then((url) => {
-            if (!url) previewPromiseCache.delete(identity);
+            if (!url) {
+                if (previewPromiseCache.get(identity) === entry) previewPromiseCache.delete(identity);
+                return fallback;
+            }
+            entry.url = url;
             return url;
         });
-    previewPromiseCache.set(identity, pending);
-    return pending;
+    if (previewPromiseCache.size >= 256) previewPromiseCache.delete(previewPromiseCache.keys().next().value!);
+    previewPromiseCache.set(identity, entry);
+    return entry.promise;
 }
 
 function blobToDataUrl(blob: Blob) {

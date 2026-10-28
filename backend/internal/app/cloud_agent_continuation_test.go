@@ -214,3 +214,42 @@ func TestCloudAgentContinuationSourceNeverReachesUpstreamBody(t *testing.T) {
 		}
 	}
 }
+
+func TestContinuationRemembersLatestRejectedActionWithoutAuthorizingReplay(t *testing.T) {
+	run := &CloudAgentRun{ID: "rejected-run", Status: "rejected", Events: []CloudAgentEvent{
+		{Type: "approval_requested", Payload: map[string]any{"approvalId": "old", "toolName": "canvas_generate_image", "text": "旧方案"}},
+		{Type: "approval_decided", Payload: map[string]any{"approvalId": "old", "decision": "reject", "reason": "旧理由"}},
+		{Type: "approval_requested", Payload: map[string]any{"approvalId": "latest", "toolName": "canvas_generate_video", "text": "生成视频"}},
+		{Type: "approval_decided", Payload: map[string]any{"approvalId": "latest", "decision": "reject", "reason": "先调整机位"}},
+	}}
+	var frame cloudAgentContinuationFrame
+	context := cloudAgentContinuationContext(run, nil)
+	if err := json.Unmarshal([]byte(strings.TrimPrefix(context, cloudAgentRuntimeContextMarker)), &frame); err != nil {
+		t.Fatal(err)
+	}
+	rejection := frame.RejectedAction
+	if rejection == nil || rejection.ToolName != "canvas_generate_video" || rejection.Description != "生成视频" || rejection.UserReason != "先调整机位" {
+		t.Fatalf("wrong rejection: %+v", rejection)
+	}
+	if !strings.Contains(rejection.Instruction, "没有执行") || !strings.Contains(rejection.Instruction, "不要原样再次申请") || len(frame.SubmittedTaskIDs) != 0 || frame.Authority == "" {
+		t.Fatalf("rejection must remain non-authorizing: %+v", frame)
+	}
+	run.Status = "completed"
+	if cloudAgentContinuationRejectedAction(run) != nil {
+		t.Fatal("completed runs must not inherit an earlier rejection")
+	}
+}
+
+func TestContinuationBoundsRejectionAndIgnoresUndecidedApproval(t *testing.T) {
+	run := &CloudAgentRun{Status: "rejected", Events: []CloudAgentEvent{
+		{Type: "approval_requested", Payload: map[string]any{"approvalId": "a", "toolName": "canvas_generate_image", "text": strings.Repeat("图", 400)}},
+	}}
+	if cloudAgentContinuationRejectedAction(run) != nil {
+		t.Fatal("an undecided request is not a rejected operation")
+	}
+	run.Events = append(run.Events, CloudAgentEvent{Type: "approval_decided", Payload: map[string]any{"approvalId": "a", "decision": "reject", "reason": strings.Repeat("改", 600)}})
+	rejection := cloudAgentContinuationRejectedAction(run)
+	if rejection == nil || len([]rune(rejection.Description)) > cloudAgentContinuationRejectionDescriptionRunes+4 || len([]rune(rejection.UserReason)) > cloudAgentContinuationRejectionReasonRunes+4 {
+		t.Fatalf("unbounded rejection: %+v", rejection)
+	}
+}

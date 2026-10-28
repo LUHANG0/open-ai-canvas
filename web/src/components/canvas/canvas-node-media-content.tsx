@@ -25,7 +25,7 @@ export { RetainedCanvasImage } from "./canvas-retained-image";
 import { getResourceAccess, refreshResource, resourceIdFromStorageKey, resolveResourceAccessURL } from "@/services/api/resources";
 import type { CanvasNodeContentProps } from "./canvas-node-content";
 import { ErrorContent, LoadingContent } from "./canvas-node-status-content";
-import { applyCanvasVideoMeasurement, applyCanvasVideoPoster, videoMeasurementSnapshot, videoPresentationDimensions } from "@/lib/canvas/canvas-video-presentation";
+import { applyCanvasVideoDuration, applyCanvasVideoMeasurement, applyCanvasVideoPoster, videoMeasurementSnapshot, videoPresentationDimensions } from "@/lib/canvas/canvas-video-presentation";
 
 export function ImageNodeContent(props: CanvasNodeContentProps) {
     const hasImage = Boolean(props.node.metadata?.content || props.node.metadata?.storageKey);
@@ -143,9 +143,11 @@ export function VideoNodeContent({ node, theme, mediaActive = false, onMediaPlay
         const observed = videoMeasurementSnapshot(node, getActiveUserScope());
         let disposed = false;
         const handleLoadedMetadata = () => {
-            if (disposed || observed.scope !== getActiveUserScope() || video.videoWidth <= 0 || video.videoHeight <= 0) return;
+            if (disposed || observed.scope !== getActiveUserScope() || livePlayerKeyRef.current !== playerKey) return;
+            const duration = video.duration;
+            updateMediaNode?.(node.id, (current) => applyCanvasVideoDuration(current, observed, duration, getActiveUserScope()));
+            if (video.videoWidth <= 0 || video.videoHeight <= 0) return;
             const dimensions = { width: video.videoWidth, height: video.videoHeight };
-            if (livePlayerKeyRef.current !== playerKey) return;
             measuredSourceRef.current = playerKey;
             setVideoSize((previous) => previous && previous.width === dimensions.width && previous.height === dimensions.height ? previous : dimensions);
             updateMediaNode?.(node.id, (current) => applyCanvasVideoMeasurement(current, observed, dimensions, getActiveUserScope()));

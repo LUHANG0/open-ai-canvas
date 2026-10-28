@@ -58,3 +58,11 @@ export function applyCanvasVideoPoster(current: CanvasNodeData, observed: Return
     if (JSON.stringify(current.metadata?.videoPreview) !== JSON.stringify(observed.preview)) return current;
     return { ...current, metadata: { ...current.metadata, videoPreview: poster } };
 }
+
+/** Duration backfill follows the same media/task/account fences as delayed dimensions. */
+export function applyCanvasVideoDuration(current: CanvasNodeData, observed: ReturnType<typeof videoMeasurementSnapshot>, seconds: number, currentScope: string): CanvasNodeData {
+    if (current.type !== "video" || current.id !== observed.id || !observed.source || videoPresentationIdentity(current) !== observed.source || current.metadata?.taskId !== observed.taskId || observed.scope !== currentScope || current.metadata?.status === "loading" || !Number.isFinite(seconds) || seconds <= 0) return current;
+    const durationMs = Math.round(seconds * 1000);
+    if (durationMs <= 0 || (Number.isFinite(current.metadata?.durationMs) && current.metadata!.durationMs! > 0)) return current;
+    return { ...current, metadata: { ...current.metadata, durationMs } };
+}
