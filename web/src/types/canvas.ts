@@ -320,6 +320,7 @@ export type CanvasNodeMetadata = {
     /** Delivered media provenance; no quote, credentials or editable generation settings. */
     resultRecord?: {
         mediaKey: string; taskId: string; model?: string;
+        submittedResolution?: string; submittedAspectRatio?: string;
         createdAt?: string; startedAt?: string; completedAt?: string; includesSave?: boolean;
         outputCount?: number;
         width?: number; height?: number; durationMs?: number;

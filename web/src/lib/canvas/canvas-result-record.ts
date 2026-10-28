@@ -24,16 +24,37 @@ export function completedCanvasResultRecord(media: CanvasNodeMetadata, task: Par
 }
 
 export function completedGenerationResultRecord(task: GenerationTask, media: CanvasNodeMetadata, outputCount: number) {
-    return completedCanvasResultRecord(media, {
+    const record = completedCanvasResultRecord(media, {
         taskId: task.id, taskStatus: task.status, taskCreatedAt: task.createdAt || task.created_at,
         taskStartedAt: task.startedAt, taskCompletedAt: task.completedAt, taskMediaStage: task.mediaStage,
         producedModel: producedModelLabel(useConfigStore.getState().config, task.model),
     }, task.billing, outputCount);
+    return record ? { ...record, ...submittedMediaSpec(task) } : undefined;
+}
+
+
+/** Only server-captured submission facts, never the node's editable controls. */
+function submittedMediaSpec(task: GenerationTask): Pick<ResultRecord, "submittedResolution" | "submittedAspectRatio"> {
+    let spec = task.submittedMediaSpec;
+    if (!spec && task.inputJson) {
+        try { spec = JSON.parse(task.inputJson)?.metadata?.submittedMediaSpec; } catch { /* Legacy task has no snapshot. */ }
+    }
+    const resolution = typeof spec?.resolution === "string" ? spec.resolution.trim() : "";
+    const aspect = typeof spec?.aspectRatio === "string" ? spec.aspectRatio.trim() : "";
+    return {
+        ...(/^(?:[1-9]\d{0,3}p|[1-9]\d?k|[1-9]\d{1,4}[x×][1-9]\d{1,4}|auto)$/i.test(resolution) ? { submittedResolution: resolution.toLowerCase() === "auto" ? "自动" : resolution.toUpperCase().replace("X", "×") } : {}),
+        ...(/^[1-9]\d?:[1-9]\d?$/.test(aspect) ? { submittedAspectRatio: aspect } : {}),
+    };
 }
 
 /** Same-task refresh only; stale reservations cannot undo settlement. */
 export function reconcileResultBilling(record: ResultRecord, task: GenerationTask): ResultRecord {
-    if (record.taskId !== task.id || task.status !== "succeeded" || record.billing) return record;
+    if (record.taskId !== task.id || task.status !== "succeeded") return record;
+    const spec = submittedMediaSpec(task);
+    if ((!record.submittedResolution && spec.submittedResolution) || (!record.submittedAspectRatio && spec.submittedAspectRatio)) {
+        record = { ...record, submittedResolution: record.submittedResolution || spec.submittedResolution, submittedAspectRatio: record.submittedAspectRatio || spec.submittedAspectRatio };
+    }
+    if (record.billing) return record;
     const actual = task.billing?.actualAmountMicrocredits;
     const count = record.outputCount || 0;
     if (task.billing?.status === "settled" && Number.isSafeInteger(actual) && actual! >= 0 && count > 0) {
@@ -77,7 +98,7 @@ export function resultResolution(width: number, height: number, video: boolean):
 
 export function resultAspectRatio(width: number, height: number): string {
     for (const [w, h] of [[1, 1], [16, 9], [9, 16], [4, 3], [3, 4], [3, 2], [2, 3], [21, 9], [9, 21]]) {
-        if (width * h === height * w || (Math.min(width, height) >= 64 && w !== h && Math.abs(width - height * w / h) <= 1 && Math.abs(height - width * h / w) <= 1)) return `${w}:${h}`;
+        if (width * h === height * w || (Math.min(width, height) >= 64 && w !== h && Math.abs(width / height / (w / h) - 1) <= 0.015)) return `${w}:${h}`;
     }
     let a = width, b = height;
     while (b) [a, b] = [b, a % b];
@@ -100,11 +121,14 @@ export type ResultPresentation = { model: string; facts: string[]; details: stri
 export function generationResultPresentation(media: CanvasNodeMetadata, record: ResultRecord | undefined, model: string, video: boolean, taskSummary = true): ResultPresentation {
     const facts: string[] = [], details: string[] = [];
     if (validPixels(media.naturalWidth, media.naturalHeight)) {
-        facts.push(resultResolution(media.naturalWidth, media.naturalHeight!, video), resultAspectRatio(media.naturalWidth, media.naturalHeight!));
+        if (!taskSummary) facts.push(resultResolution(media.naturalWidth, media.naturalHeight!, video));
+        facts.push(record?.submittedAspectRatio || resultAspectRatio(media.naturalWidth, media.naturalHeight!));
         details.push(`${media.naturalWidth}×${media.naturalHeight} · ${resultAspectRatio(media.naturalWidth, media.naturalHeight!)}`);
     }
     if (video && typeof media.durationMs === "number" && Number.isFinite(media.durationMs) && media.durationMs > 0) details.push(`时长 ${Number((media.durationMs / 1000).toFixed(3))}秒`);
     if (taskSummary) {
+        facts.unshift(record?.submittedResolution ? `分辨率 ${record.submittedResolution}` : "分辨率未记录");
+        if (!validPixels(media.naturalWidth, media.naturalHeight) && record?.submittedAspectRatio) facts.push(record.submittedAspectRatio);
         const total = record?.outputCount && record.outputCount > 1 ? "本次任务合计 · " : "";
         const elapsed = resultElapsed(record?.createdAt || record?.startedAt, record?.completedAt);
         if (elapsed) facts.push(`${total}${elapsed.replace("耗时", record?.createdAt ? record.includesSave ? "总耗时" : "任务耗时" : "生成耗时")}`);

@@ -19,6 +19,7 @@ export type GenerationTaskOutput = {
 };
 
 export type GenerationTask = {
+    submittedMediaSpec?: { resolution?: string; aspectRatio?: string };
     id: string;
     clientOperationId?: string;
     retryOf?: string;

@@ -6,7 +6,7 @@ import { useConfigStore } from "../src/stores/use-config-store";
 
 import { applyResourceReference } from "../src/services/user-data-sync-media";
 const media = { storageKey: "resource:result", content: "/result", naturalWidth: 1280, naturalHeight: 720, durationMs: 15000, status: "success" as const };
-const task: GenerationTask = { id: "task-a", type: "canvas_video", status: "succeeded", model: "actual-model", prompt: "", attempts: 1, createdAt: "2026-10-25T00:00:00Z", startedAt: "2026-10-25T00:00:30Z", completedAt: "2026-10-25T00:02:38Z", updatedAt: "2026-10-25T00:02:38Z", mediaStage: "completed" };
+const task: GenerationTask = { id: "task-a", type: "canvas_video", status: "succeeded", model: "actual-model", prompt: "", attempts: 1, createdAt: "2026-10-25T00:00:00Z", startedAt: "2026-10-25T00:00:30Z", completedAt: "2026-10-25T00:02:38Z", updatedAt: "2026-10-25T00:02:38Z", mediaStage: "completed", submittedMediaSpec: { resolution: "720p", aspectRatio: "16:9" } };
 function node(metadata: CanvasNodeData["metadata"] = {}): CanvasNodeData {
     return { id: "result", type: CanvasNodeType.Video, title: "result", width: 320, height: 180, position: { x: 0, y: 0 }, metadata: { ...media, producedModel: "old-submission", ...metadata } };
 }
@@ -15,7 +15,7 @@ test("delivered task model, raster and queue-through-save time survive edited se
     const resultRecord = completedGenerationResultRecord(task, media, 1)!;
     const before = canvasResultRecord(node({ resultRecord }))!;
     expect(before.model).toBe("actual-model");
-    expect(before.facts).toContain("720P");
+    expect(before.facts).toContain("分辨率 720P");
     expect(before.facts).toContain("总耗时 2分38秒");
     expect(before.details).toContain("1280×720 · 16:9");
     expect(before.details).toContain("时长 15秒");
@@ -77,7 +77,7 @@ test("multi-output canvas task total belongs only to cover, never each child", (
 
 test("legacy and incomplete records never infer observed dimensions or total duration from requested settings", () => {
     const legacy = canvasResultRecord(node({ naturalWidth: undefined, naturalHeight: undefined, durationMs: undefined, vquality: "4k", seconds: "30", size: "16:9", taskDurationMs: 9000 }))!;
-    expect(legacy.facts).toEqual(["费用未知"]);
+    expect(legacy.facts).toEqual(["分辨率未记录", "费用未知"]);
     expect(legacy.details).toEqual([]);
     const generationOnly = completedCanvasResultRecord(media, { taskId: task.id, taskStatus: "succeeded", taskStartedAt: task.startedAt, taskCompletedAt: task.completedAt });
     expect(canvasResultRecord(node({ resultRecord: generationOnly }))?.facts).toContain("生成耗时 2分8秒");
@@ -153,4 +153,28 @@ test("imported media shows measured resolution and ratio without inventing gener
     expect(result.facts).toEqual(["720P", "16:9"]);
     expect(canvasResultRecord(node({ producedModel: undefined, naturalWidth: undefined }))).toBeNull();
     expect(canvasResultRecord(node({ producedModel: undefined, taskId: "unfinished", taskStatus: "failed" }))).toBeNull();
+});
+
+
+test("submitted tiers stay frozen independently of output raster and later editor settings", () => {
+    for (const tier of ["480p", "2k", "4k"]) {
+        const resultRecord = completedGenerationResultRecord({ ...task, submittedMediaSpec: { resolution: tier, aspectRatio: "4:3" } }, { ...media, naturalWidth: 752, naturalHeight: 560 }, 1)!;
+        const result = canvasResultRecord(node({ resultRecord, naturalWidth: 752, naturalHeight: 560, vquality: "1080p", size: "9:16" }))!;
+        expect(result.facts).toContain(`分辨率 ${tier.toUpperCase()}`);
+        expect(result.facts).toContain("4:3");
+        expect(result.details.join(" ")).toContain("752×560");
+    }
+    const legacyTask = { ...task, submittedMediaSpec: undefined };
+    const resultRecord = completedGenerationResultRecord(legacyTask, media, 1)!;
+    expect(canvasResultRecord(node({ resultRecord, vquality: "4k" }))!.facts).toContain("分辨率未记录");
+    const hydrated = reconcileResultBilling(resultRecord, task);
+    expect(hydrated.submittedResolution).toBe("720P");
+    expect(reconcileResultBilling(hydrated, task)).toBe(hydrated);
+    expect(reconcileResultBilling(resultRecord, { ...task, id: "other" })).toBe(resultRecord);
+});
+
+test("rounded output dimensions use recognizable aspect ratios", () => {
+    expect(resultAspectRatio(752, 560)).toBe("4:3");
+    expect(resultAspectRatio(1360, 1024)).toBe("4:3");
+    expect(resultAspectRatio(1672, 941)).toBe("16:9");
 });

@@ -183,6 +183,7 @@ func (s *Service) CreateTask(userID string, req CreateTaskRequest) (*model.Task,
 		}
 		return taskForOutput(task), nil
 	}
+	captureTaskMediaSpec(normalizedInput)
 	billingOrder, err := s.taskBillingOrder(userID, &task, normalizedInput)
 	if err != nil {
 		return nil, err

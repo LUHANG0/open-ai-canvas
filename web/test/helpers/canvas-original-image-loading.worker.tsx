@@ -39,7 +39,7 @@ self.onmessage = async () => {
         ));
         const resolveLast = async () => act(async () => loads.at(-1)!.resolve({ naturalWidth: 2448, naturalHeight: 3264 } as HTMLImageElement));
         await render("a", "/original-a.png");
-        assert(text().includes("生成完成，原图加载中") && text().includes("2448 × 3264") && !text().includes("%"), "missing truthful loading state and dimensions");
+        assert(text().includes("正在载入原图") && text().includes("2448 × 3264") && !text().includes("%"), "missing truthful loading state and dimensions");
         assert(image().style.visibility === "hidden", "unprepared original became visible");
         await resolveLast();
         assert(image().getAttribute("src") === "/original-a.png" && !host.querySelector('[role="status"]'), "decoded original did not replace loading state");
