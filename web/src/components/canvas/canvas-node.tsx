@@ -69,7 +69,7 @@ type CanvasNodeProps = {
     onOpenTextEditor?: (node: CanvasNodeData) => void;
     onOpenPrevis?: (node: CanvasNodeData) => void;
     onOpenDrawing?: (node: CanvasNodeData) => void;
-    onMediaPlayRequest?: (nodeId: string) => void;
+    onMediaPlayRequest?: (nodeId: string | null) => void;
     onContextMenu: (event: React.MouseEvent, nodeId: string) => void;
 };
 

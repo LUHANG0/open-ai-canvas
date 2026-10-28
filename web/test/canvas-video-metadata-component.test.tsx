@@ -8,7 +8,7 @@ for (const [key, value] of Object.entries({ window: dom, document: dom.document,
 }
 // Only decoding/player I/O is substituted. The real VideoNodeContent hooks, handlers,
 // action context and delayed node-update boundary run unchanged.
-mock.module("../src/components/video-player", () => ({ VideoPlayer: ({ src, onCanPlay }: { src: string; onCanPlay: () => void }) => <video data-player src={src} onCanPlay={onCanPlay} /> }));
+mock.module("../src/components/video-player", () => ({ VideoPlayer: ({ src, onCanPlay, onEnded }: { src: string; onCanPlay: () => void; onEnded?: () => void }) => <video data-player src={src} onCanPlay={onCanPlay} onEnded={onEnded} /> }));
 mock.module("../src/components/canvas/canvas-video-preview-image", () => ({ CanvasVideoPreviewImage: () => <img alt="fixture preview" /> }));
 const { act } = await import("react"); const { createRoot } = await import("react-dom/client");
 const { VideoNodeContent } = await import("../src/components/canvas/canvas-node-media-content");
@@ -25,10 +25,10 @@ async function fixture() {
     setActiveUserScope("fixture-user");
     const url = spyOn(files, "resolveVideoMediaUrl").mockResolvedValue("data:video/mp4;base64,AAAA");
     const host = document.createElement("div"); document.body.append(host); const root = createRoot(host);
-    let nodes = [initial()]; let writes = 0;
+    let nodes = [initial()]; let writes = 0; const playbackRequests: Array<string | null> = [];
     const pending: Array<{ id: string; update: (node: CanvasNodeData) => CanvasNodeData }> = [];
     const actions = { updateMediaNode: (id: string, update: (node: CanvasNodeData) => CanvasNodeData) => pending.push({ id, update }) };
-    const render = async () => { const props = { node: nodes[0], theme: canvasThemes.light, mediaActive: true } as CanvasNodeContentProps; await act(async () => { root.render(<CanvasNodeActionContext value={actions}><VideoNodeContent {...props} /></CanvasNodeActionContext>); await Promise.resolve(); }); };
+    const render = async () => { const props = { node: nodes[0], theme: canvasThemes.light, mediaActive: true, onMediaPlayRequest: (id: string | null) => playbackRequests.push(id) } as CanvasNodeContentProps; await act(async () => { root.render(<CanvasNodeActionContext value={actions}><VideoNodeContent {...props} /></CanvasNodeActionContext>); await Promise.resolve(); }); };
     const measure = async () => {
         const video = host.querySelector<HTMLVideoElement>("video[data-player]")!; expect(video).not.toBeNull();
         Object.defineProperties(video, { videoWidth: { configurable: true, value: 854 }, videoHeight: { configurable: true, value: 480 } });
@@ -36,7 +36,7 @@ async function fixture() {
     };
     const flush = () => { for (const { id, update } of pending.splice(0)) { const next = updateCanvasNodes(nodes, new Map([[id, update]])); if (next !== nodes) writes++; nodes = next; } };
     await render();
-    return { host, render, measure, flush, get: () => nodes, writes: () => writes, replace: (next: CanvasNodeData[]) => { nodes = next; }, close: async () => { await act(async () => root.unmount()); host.remove(); url.mockRestore(); setActiveUserScope(null); } };
+    return { host, render, measure, flush, playbackRequests, get: () => nodes, writes: () => writes, replace: (next: CanvasNodeData[]) => { nodes = next; }, close: async () => { await act(async () => root.unmount()); host.remove(); url.mockRestore(); setActiveUserScope(null); } };
 }
 
 test("real loadedmetadata resizes once; repeated events keep node identity and timestamps", async () => {
@@ -69,3 +69,15 @@ test("a manual resize or deletion before the real delayed update wins", async ()
 });
 
 afterAll(() => { for (const [key, descriptor] of originals) descriptor ? Object.defineProperty(globalThis, key, descriptor) : Reflect.deleteProperty(globalThis, key); dom.happyDOM.abort(); });
+
+
+test("ended playback releases the explicit player; pause and seek do not", async () => {
+    const f = await fixture();
+    try {
+        const video = await f.measure();
+        await act(async () => { video.dispatchEvent(new dom.Event("pause")); video.dispatchEvent(new dom.Event("seeked")); });
+        expect(f.playbackRequests).toEqual([]);
+        await act(async () => video.dispatchEvent(new dom.Event("ended")));
+        expect(f.playbackRequests).toEqual([null]);
+    } finally { await f.close(); }
+});

@@ -205,6 +205,11 @@ export function VideoNodeContent({ node, theme, mediaActive = false, onMediaPlay
                         dataCanvasNoZoom
                         compactControls
                         onCanPlay={() => { if (livePlayerKeyRef.current === playerKey && playerScope === getActiveUserScope()) { readySourceRef.current = playerKey; setVideoReady(true); } }}
+                        onEnded={() => {
+                            // Return the decoder lease to the poster so a later hover can preview again.
+                            // Pausing or seeking deliberately keeps the explicit player mounted.
+                            if (livePlayerKeyRef.current === playerKey && playerScope === getActiveUserScope()) onMediaPlayRequest?.(null);
+                        }}
                         onError={onError}
                     />
                     {activeEntry && activeEntry.text.trim() ? <CanvasSubtitleOverlay text={activeEntry.text} highlight={activeHighlight} style={subtitleStyle} /> : null}

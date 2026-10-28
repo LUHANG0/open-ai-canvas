@@ -56,7 +56,7 @@ export type CanvasNodeContentProps = {
     onToggleBatch?: () => void;
     disableMediaEffects?: boolean;
     mediaActive?: boolean;
-    onMediaPlayRequest?: (nodeId: string) => void;
+    onMediaPlayRequest?: (nodeId: string | null) => void;
 };
 
 export function CanvasNodeContent(props: CanvasNodeContentProps) {
