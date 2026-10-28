@@ -40,6 +40,7 @@ type OSSSettingRequest struct {
 	Provider          string `json:"provider"`
 	Region            string `json:"region"`
 	Endpoint          string `json:"endpoint"`
+	IsCNAME           bool   `json:"isCname"`
 	CDNBaseURL        string `json:"cdnBaseUrl"`
 	Bucket            string `json:"bucket"`
 	AccessKeyID       string `json:"accessKeyId"`
@@ -60,6 +61,7 @@ type PublicOSSSetting struct {
 	Provider                string     `json:"provider"`
 	Region                  string     `json:"region"`
 	Endpoint                string     `json:"endpoint"`
+	IsCNAME                 bool       `json:"isCname"`
 	CDNBaseURL              string     `json:"cdnBaseUrl"`
 	Bucket                  string     `json:"bucket"`
 	AccessKeyID             string     `json:"accessKeyId"`
@@ -119,13 +121,13 @@ func (s *Service) UpdateOSSSetting(actor *model.User, req OSSSettingRequest) (*P
 		}
 	}
 	next = archiveOSSProviderCredentials(next, currentValue)
-	if next.Provider == s3Provider && next.Enabled {
-		location, err := s.requireTestedS3Location("platform", "", next)
+	if (next.Provider == s3Provider || next.IsCNAME) && next.Enabled {
+		location, err := s.requireTestedStorageLocation("platform", "", next)
 		if err != nil {
 			return nil, err
 		}
 		next.StorageLocationID = location.ID
-	} else if next.Provider == s3Provider && storageLocationDigest(next) == storageLocationDigest(currentValue) {
+	} else if (next.Provider == s3Provider || next.IsCNAME) && storageLocationDigest(next) == storageLocationDigest(currentValue) {
 		next.StorageLocationID = currentValue.StorageLocationID
 	}
 	stored, err := s.encryptOSSSettingSecrets(next)
@@ -147,11 +149,11 @@ func (s *Service) UpdateOSSSetting(actor *model.User, req OSSSettingRequest) (*P
 	if err := s.repo.SaveSystemSetting(&setting); err != nil {
 		return nil, err
 	}
-	if next.Provider == s3Provider && next.StorageLocationID != "" {
+	if next.StorageLocationID != "" {
 		if err := s.repo.ActivateStorageLocation("platform", "", next.StorageLocationID, next.Enabled); err != nil {
 			return nil, err
 		}
-	} else if currentValue.Provider == s3Provider && currentValue.StorageLocationID != "" {
+	} else if currentValue.StorageLocationID != "" {
 		if err := s.repo.ActivateStorageLocation("platform", "", "", false); err != nil {
 			return nil, err
 		}
@@ -201,13 +203,13 @@ func (s *Service) UpdateUserOSSSetting(actor *model.User, req OSSSettingRequest)
 	if next.Enabled && next.Provider == s3Provider && !platform.AllowUserS3 {
 		return nil, Forbidden("平台管理员尚未允许个人 S3 兼容存储")
 	}
-	if next.Provider == s3Provider && next.Enabled {
-		location, err := s.requireTestedS3Location("user", actor.ID, next)
+	if (next.Provider == s3Provider || next.IsCNAME) && next.Enabled {
+		location, err := s.requireTestedStorageLocation("user", actor.ID, next)
 		if err != nil {
 			return nil, err
 		}
 		next.StorageLocationID = location.ID
-	} else if next.Provider == s3Provider && storageLocationDigest(next) == storageLocationDigest(currentValue) {
+	} else if (next.Provider == s3Provider || next.IsCNAME) && storageLocationDigest(next) == storageLocationDigest(currentValue) {
 		next.StorageLocationID = currentValue.StorageLocationID
 	}
 	stored, err := s.encryptOSSSettingSecrets(next)
@@ -223,11 +225,11 @@ func (s *Service) UpdateUserOSSSetting(actor *model.User, req OSSSettingRequest)
 	if err := s.repo.CreateUserOSSSetting(&setting); err != nil {
 		return nil, err
 	}
-	if next.Provider == s3Provider && next.StorageLocationID != "" {
+	if next.StorageLocationID != "" {
 		if err := s.repo.ActivateStorageLocation("user", actor.ID, next.StorageLocationID, next.Enabled); err != nil {
 			return nil, err
 		}
-	} else if currentValue.Provider == s3Provider && currentValue.StorageLocationID != "" {
+	} else if currentValue.StorageLocationID != "" {
 		if err := s.repo.ActivateStorageLocation("user", actor.ID, "", false); err != nil {
 			return nil, err
 		}
@@ -592,6 +594,7 @@ func ossSettingFromRequest(req OSSSettingRequest, current ossSettingValue) (ossS
 		PathPrefix:      strings.Trim(strings.TrimSpace(req.PathPrefix), "/"),
 		S3Preset:        strings.TrimSpace(req.S3Preset),
 		PathStyle:       req.PathStyle,
+		IsCNAME:         req.IsCNAME,
 		SessionToken:    strings.TrimSpace(req.SessionToken),
 		AllowUserS3:     req.AllowUserS3,
 		Delivery:        storage.DeliverySettings{CDNAuthMode: strings.ToLower(strings.TrimSpace(req.CDNAuthMode)), RequireCDN: req.RequireCDN, AllowPrivateProxy: req.AllowPrivateProxy},
@@ -693,6 +696,7 @@ func (s *Service) publicOSSSetting(setting *model.SystemSetting, value ossSettin
 		PathPrefix:         value.PathPrefix,
 		S3Preset:           value.S3Preset,
 		PathStyle:          value.PathStyle,
+		IsCNAME:            value.IsCNAME,
 		HasSessionToken:    value.SessionToken != "",
 		StorageLocationID:  value.StorageLocationID,
 		AllowUserS3:        value.AllowUserS3,
@@ -725,6 +729,7 @@ func (s *Service) publicUserOSSSetting(setting *model.UserOSSSetting, value ossS
 		PathPrefix:         value.PathPrefix,
 		S3Preset:           value.S3Preset,
 		PathStyle:          value.PathStyle,
+		IsCNAME:            value.IsCNAME,
 		HasSessionToken:    value.SessionToken != "",
 		StorageLocationID:  value.StorageLocationID,
 		AllowUserS3:        allowUserS3,
@@ -749,6 +754,10 @@ func (s *Service) publicUserOSSSetting(setting *model.UserOSSSetting, value ossS
 func storageLocationDigest(value ossSettingValue) string {
 	value = normalizeOSSSetting(value)
 	payload := strings.Join([]string{value.Provider, value.Endpoint, value.Bucket, value.Region, strconv.FormatBool(value.PathStyle), value.PathPrefix}, "\x00")
+	// Keep existing location identities stable when CNAME mode is disabled.
+	if value.IsCNAME {
+		payload += "\x00cname"
+	}
 	sum := sha256.Sum256([]byte(payload))
 	return hex.EncodeToString(sum[:])
 }

@@ -241,16 +241,20 @@ func (s *Service) storageLocationValue(id string) (*model.StorageLocation, ossSe
 	return location, normalizeOSSSetting(value), nil
 }
 
-func (s *Service) requireTestedS3Location(scope string, ownerID string, value ossSettingValue) (*model.StorageLocation, error) {
-	location, err := s.repo.StorageLocationByDigest(scope, ownerID, s3Provider, storageLocationDigest(value))
+func (s *Service) requireTestedStorageLocation(scope string, ownerID string, value ossSettingValue) (*model.StorageLocation, error) {
+	label := "S3"
+	if value.IsCNAME {
+		label = "OSS 自定义域名"
+	}
+	location, err := s.repo.StorageLocationByDigest(scope, ownerID, value.Provider, storageLocationDigest(value))
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, BadAuthRequest("S3 关键配置尚未通过连接测试")
+			return nil, BadAuthRequest(label + "关键配置尚未通过连接测试")
 		}
 		return nil, err
 	}
 	if location.TestedAt == nil || location.TestedDigest != storageTestDigest(value) {
-		return nil, BadAuthRequest("S3 关键配置或凭据已变化，请重新连接测试")
+		return nil, BadAuthRequest(label + "关键配置或凭据已变化，请重新连接测试")
 	}
 	return location, nil
 }

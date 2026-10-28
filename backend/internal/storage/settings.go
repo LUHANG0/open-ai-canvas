@@ -20,6 +20,7 @@ type Settings struct {
 	Provider          string           `json:"provider"`
 	Region            string           `json:"region"`
 	Endpoint          string           `json:"endpoint"`
+	IsCNAME           bool             `json:"isCname"`
 	CDNBaseURL        string           `json:"cdnBaseUrl"`
 	Bucket            string           `json:"bucket"`
 	AccessKeyID       string           `json:"accessKeyId"`
@@ -68,6 +69,7 @@ func NormalizeSettings(value Settings) Settings {
 	if value.Provider == "" {
 		value.Provider = aliyunOSSProvider
 	}
+	value.IsCNAME = value.IsCNAME && value.Provider == aliyunOSSProvider
 	value.Region = strings.TrimSpace(value.Region)
 	value.Endpoint = strings.TrimRight(strings.TrimSpace(value.Endpoint), "/")
 	if value.Provider == tencentCOSProvider && value.Endpoint == "" && value.Region != "" {

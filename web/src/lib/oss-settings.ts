@@ -9,6 +9,7 @@ export type OSSConnectionTestInput = {
     s3Preset?: S3Preset;
     region: string;
     endpoint: string;
+    isCname?: boolean;
     cdnBaseUrl: string;
     bucket: string;
     accessKeyId: string;
@@ -63,7 +64,7 @@ const S3_PRESET_HINTS: Record<S3Preset, { region: string; endpoint: string; help
     },
 };
 
-const CONNECTION_FIELDS = new Set(["provider", "s3Preset", "region", "endpoint", "cdnBaseUrl", "bucket", "accessKeyId", "accessKeySecret", "sessionToken", "pathPrefix", "pathStyle"]);
+const CONNECTION_FIELDS = new Set(["provider", "s3Preset", "region", "endpoint", "cdnBaseUrl", "bucket", "accessKeyId", "accessKeySecret", "sessionToken", "pathPrefix", "isCname", "pathStyle"]);
 
 export function getS3PresetHints(preset?: S3Preset) {
     return S3_PRESET_HINTS[preset || "custom"];
@@ -91,6 +92,7 @@ export function normalizeOSSConnectionTestInput(input: OSSConnectionTestDraft): 
         sessionToken: trimConnectionValue(input.sessionToken),
         pathPrefix: (trimConnectionValue(input.pathPrefix) || DEFAULT_OSS_PATH_PREFIX).replace(/^\/+|\/+$/g, ""),
         pathStyle: input.pathStyle === true,
+        isCname: input.provider === "aliyun" && input.isCname === true,
     };
 }
 

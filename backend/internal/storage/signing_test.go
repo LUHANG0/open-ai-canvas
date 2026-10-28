@@ -110,3 +110,47 @@ func mustParseQuery(t *testing.T, raw string) url.Values {
 func itoa(value int64) string {
 	return strconv.FormatInt(value, 10)
 }
+
+func TestAliyunCNAMEPreservesHostAndCanonicalBucketSignature(t *testing.T) {
+	base := Settings{Provider: "aliyun", Endpoint: "https://oss-cn-shenzhen.aliyuncs.com", Bucket: "media-bucket", AccessKeyID: "test-id", AccessKeySecret: "test-secret"}
+	cname := base
+	cname.Endpoint = "https://media.example.com"
+	cname.IsCNAME = true
+	key := "open-ai-canvas/user/测试 image.png"
+	expires := time.Unix(2000000000, 0)
+	normalURL, err := SignedAliyunOSSObjectURL(base, key, expires)
+	if err != nil {
+		t.Fatal(err)
+	}
+	customURL, err := SignedAliyunOSSObjectURL(cname, key, expires)
+	if err != nil {
+		t.Fatal(err)
+	}
+	normal, _ := url.Parse(normalURL)
+	custom, _ := url.Parse(customURL)
+	if normal.Host != "media-bucket.oss-cn-shenzhen.aliyuncs.com" || custom.Host != "media.example.com" || custom.Path != "/"+key {
+		t.Fatalf("wrong OSS hosts/paths: %s / %s", normalURL, customURL)
+	}
+	if normal.RawQuery != custom.RawQuery {
+		t.Fatal("CNAME changed canonical bucket signing")
+	}
+	for _, method := range []string{http.MethodPut, http.MethodGet, http.MethodHead, http.MethodDelete} {
+		req, err := NewOSSRequest(method, cname, key, "", nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if req.URL.Host != "media.example.com" || req.URL.Path != "/"+key || !strings.HasPrefix(req.Header.Get("Authorization"), "OSS test-id:") {
+			t.Fatalf("invalid %s CNAME request: %s", method, req.URL)
+		}
+	}
+	legacy := cname
+	legacy.IsCNAME = false
+	endpoint, err := OssBucketBaseURL(legacy)
+	if err != nil || endpoint.Host != "media-bucket.media.example.com" {
+		t.Fatalf("legacy endpoint behavior changed: %v, %v", endpoint, err)
+	}
+	other := NormalizeSettings(Settings{Provider: "s3", IsCNAME: true})
+	if other.IsCNAME {
+		t.Fatal("Aliyun CNAME mode must not apply to other providers")
+	}
+}

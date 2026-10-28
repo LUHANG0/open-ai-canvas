@@ -13,6 +13,7 @@ export type OSSFormValues = {
     publicBaseUrl: string;
     region: string;
     endpoint: string;
+    isCname?: boolean;
     cdnBaseUrl: string;
     cdnAuthMode: "" | "public" | "qiniu" | string;
     requireCDN: boolean;
@@ -44,6 +45,7 @@ export type StoragePayload = Pick<
     | "publicBaseUrl"
     | "pathPrefix"
     | "s3Preset"
+    | "isCname"
     | "pathStyle"
     | "allowUserS3"
 >;
@@ -65,6 +67,7 @@ export function formValues(setting: AdminOSSSetting): OSSFormValues {
         pathPrefix: setting.pathPrefix || DEFAULT_OSS_PATH_PREFIX,
         s3Preset: setting.s3Preset || "custom",
         pathStyle: setting.pathStyle === true,
+        isCname: setting.isCname === true,
         allowUserS3: setting.allowUserS3 === true,
     };
 }
@@ -85,6 +88,7 @@ export function providerDraftValues(mode: Exclude<StorageMode, "local">, setting
             pathPrefix: setting.pathPrefix || pathPrefix || "",
             s3Preset: setting.s3Preset || "custom",
             pathStyle: setting.pathStyle === true,
+            isCname: setting.isCname === true,
         };
     }
     return {
@@ -101,6 +105,7 @@ export function providerDraftValues(mode: Exclude<StorageMode, "local">, setting
         pathPrefix: pathPrefix || DEFAULT_OSS_PATH_PREFIX,
         s3Preset: "custom",
         pathStyle: false,
+        isCname: false,
     };
 }
 
@@ -127,6 +132,7 @@ export function normalizeStoragePayload(values: Partial<OSSFormValues>, setting:
         pathPrefix: (values.pathPrefix?.trim() || DEFAULT_OSS_PATH_PREFIX).replace(/^\/+|\/+$/g, ""),
         s3Preset: values.s3Preset || "custom",
         pathStyle: values.pathStyle === true,
+        isCname: provider === "aliyun" && values.isCname === true,
         allowUserS3: values.allowUserS3 === true,
     };
 }
@@ -168,7 +174,7 @@ export function validatePublicBaseURL(value: string) {
 
 export function storageResponseMatches(setting: AdminOSSSetting, expected: StoragePayload) {
     const actual = normalizeStoragePayload(formValues(setting), setting);
-    const fields: Array<keyof StoragePayload> = ["enabled", "provider", "region", "endpoint", "cdnBaseUrl", "cdnAuthMode", "requireCDN", "allowPrivateProxy", "bucket", "accessKeyId", "publicBaseUrl", "pathPrefix", "s3Preset", "pathStyle", "allowUserS3"];
+    const fields: Array<keyof StoragePayload> = ["enabled", "provider", "region", "endpoint", "cdnBaseUrl", "cdnAuthMode", "requireCDN", "allowPrivateProxy", "bucket", "accessKeyId", "publicBaseUrl", "pathPrefix", "s3Preset", "isCname", "pathStyle", "allowUserS3"];
     if (expected.accessKeySecret && !setting.hasAccessKeySecret) return false;
     if (expected.sessionToken && !setting.hasSessionToken) return false;
     return fields.every((key) => actual[key] === expected[key]);
@@ -257,6 +263,7 @@ export function connectionInput(values: Partial<OSSFormValues>) {
         sessionToken: values.sessionToken,
         pathPrefix: values.pathPrefix,
         pathStyle: values.pathStyle === true,
+        isCname: values.isCname === true,
     });
 }
 

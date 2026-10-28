@@ -9,6 +9,8 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+
+	"yingce/backend/internal/model"
 )
 
 func TestTencentCOSConnectionTestUsesStorageEndpointInsteadOfCDN(t *testing.T) {
@@ -140,5 +142,65 @@ func TestTencentCOSConnectionTestReturnsActionableAuthError(t *testing.T) {
 	}
 	if strings.Contains(appErr.Message, "secret-key") || strings.Contains(appErr.Message, "signature mismatch") {
 		t.Fatalf("public error leaked upstream detail: %q", appErr.Message)
+	}
+}
+
+func TestAliyunCNAMEHasDistinctLocationWithoutChangingLegacyDigest(t *testing.T) {
+	base := ossSettingValue{Provider: "aliyun", Endpoint: "https://media.example.com", Bucket: "media-bucket", Region: "oss-cn-shenzhen", PathPrefix: "open-ai-canvas"}
+	if got := storageLocationDigest(base); got != "60913d67310c8af98cbf9c257dd5db3203a8c7d0db70dfc63a0ea81e2d7f84b1" {
+		t.Fatalf("legacy location digest changed: %s", got)
+	}
+	custom := base
+	custom.IsCNAME = true
+	if storageLocationDigest(base) == storageLocationDigest(custom) {
+		t.Fatal("CNAME mode must be part of the immutable storage location identity")
+	}
+	if storageTestDigest(base) == storageTestDigest(custom) {
+		t.Fatal("CNAME change must invalidate a previous connection test")
+	}
+}
+
+func TestAliyunCNAMERequiresTestAndPinsEncryptedResourceLocation(t *testing.T) {
+	t.Setenv("CANVAS_ALLOWED_PRIVATE_UPSTREAM_HOSTS", "127.0.0.1")
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet {
+			_, _ = io.WriteString(w, "yingce-storage-test")
+		}
+	}))
+	defer server.Close()
+	svc, _ := newResourceFallbackTestService(t)
+	admin := &model.User{ID: "admin", Role: model.UserRoleAdmin}
+	req := OSSSettingRequest{Enabled: true, Provider: "aliyun", Endpoint: server.URL, IsCNAME: true, Bucket: "media-bucket", AccessKeyID: "test-id", AccessKeySecret: "cname-test-private-secret", PathPrefix: "open-ai-canvas"}
+	if _, err := svc.UpdateOSSSetting(admin, req); err == nil {
+		t.Fatal("untested CNAME endpoint was activated")
+	}
+	if _, err := svc.TestAdminOSSSetting(admin, req); err != nil {
+		t.Fatal(err)
+	}
+	saved, err := svc.UpdateOSSSetting(admin, req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !saved.IsCNAME || saved.StorageLocationID == "" {
+		t.Fatal("CNAME location was not persisted")
+	}
+	location, err := svc.repo.StorageLocation(saved.StorageLocationID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(location.ValueJSON, req.AccessKeySecret) {
+		t.Fatal("storage location contains a plaintext secret")
+	}
+	req.IsCNAME = false
+	if _, err := svc.UpdateOSSSetting(admin, req); err != nil {
+		t.Fatal(err)
+	}
+	oldResource := &model.Resource{UserID: "user-1", Provider: "aliyun", Endpoint: server.URL, Bucket: req.Bucket, StorageSettingID: saved.StorageLocationID}
+	historical, err := svc.ossSettingForResource("user-1", oldResource)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !historical.IsCNAME || historical.AccessKeySecret != req.AccessKeySecret {
+		t.Fatal("historical CNAME resource lost its original signing configuration")
 	}
 }

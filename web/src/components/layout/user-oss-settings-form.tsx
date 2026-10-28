@@ -16,6 +16,7 @@ type OSSFormValues = {
     s3Preset?: S3Preset;
     region?: string;
     endpoint?: string;
+    isCname?: boolean;
     cdnBaseUrl?: string;
     cdnAuthMode?: "" | "public" | "qiniu" | string;
     requireCDN?: boolean;
@@ -98,6 +99,7 @@ export function UserOSSSettingsForm() {
                 sessionToken: values.sessionToken?.trim() || "",
                 pathPrefix: values.pathPrefix?.trim() || DEFAULT_OSS_PATH_PREFIX,
                 pathStyle: values.pathStyle === true,
+                isCname: values.isCname === true,
             });
             setSetting(data.setting);
             setLoadError("");
@@ -162,7 +164,7 @@ export function UserOSSSettingsForm() {
                         ariaLabel="存储服务"
                         options={[{ label: "阿里云 OSS", value: "aliyun" }, { label: "腾讯云 COS", value: "tencent" }, { label: "七牛云 Kodo", value: "qiniu" }, { label: "S3 兼容存储", value: "s3", disabled: setting?.allowUserS3 === false }]}
                         onChange={(nextProvider: OSSFormValues["provider"]) => {
-                            if (nextProvider !== provider) form.setFieldsValue({ s3Preset: "custom", region: "", endpoint: "", cdnBaseUrl: "", cdnAuthMode: "", requireCDN: false, allowPrivateProxy: false, bucket: "", accessKeyId: "", accessKeySecret: "", sessionToken: "", pathStyle: false });
+                            if (nextProvider !== provider) form.setFieldsValue({ s3Preset: "custom", region: "", endpoint: "", cdnBaseUrl: "", cdnAuthMode: "", requireCDN: false, allowPrivateProxy: false, bucket: "", accessKeyId: "", accessKeySecret: "", sessionToken: "", isCname: false, pathStyle: false });
                         }}
                     />
                 </Form.Item>
@@ -177,6 +179,11 @@ export function UserOSSSettingsForm() {
                 <Form.Item name="endpoint" label={isQiniuKodo ? "上传 Endpoint" : "Endpoint"} extra={isS3 ? getS3PresetHints(s3Preset).help : isTencentCOS ? "可留空，系统会根据 Region 生成标准 COS Endpoint。" : undefined} className="mb-3">
                     <Input inputMode="url" spellCheck={false} placeholder={isS3 ? getS3PresetHints(s3Preset).endpoint : isTencentCOS ? "https://cos.ap-guangzhou.myqcloud.com" : isQiniuKodo ? "https://up-z0.qiniup.com" : "https://oss-cn-hangzhou.aliyuncs.com"} />
                 </Form.Item>
+                {provider === "aliyun" ? (
+                    <Form.Item name="isCname" label="使用 OSS 自定义域名" valuePropName="checked" extra="Endpoint 为已绑定的 OSS 自定义域名时开启，需要有效的 HTTPS 证书。" className="mb-3">
+                        <Switch aria-label="使用 OSS 自定义域名" />
+                    </Form.Item>
+                ) : null}
                 <Form.Item
                     name="cdnBaseUrl"
                     label={isQiniuKodo ? "绑定域名（可选）" : isS3 ? "公开 CDN（可选）" : "CDN 加速域名"}
@@ -260,6 +267,7 @@ function toFormValues(setting: UserOSSSetting): OSSFormValues {
         sessionToken: "",
         pathPrefix: setting.pathPrefix || DEFAULT_OSS_PATH_PREFIX,
         pathStyle: setting.pathStyle === true,
+        isCname: setting.isCname === true,
     };
 }
 
@@ -276,6 +284,7 @@ function connectionInput(values: OSSFormValues) {
         sessionToken: values.sessionToken?.trim() || "",
         pathPrefix: values.pathPrefix?.trim() || DEFAULT_OSS_PATH_PREFIX,
         pathStyle: values.pathStyle === true,
+        isCname: values.isCname === true,
     };
 }
 

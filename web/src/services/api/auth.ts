@@ -284,6 +284,7 @@ export type AdminOSSSetting = {
     s3Preset: S3Preset;
     region: string;
     endpoint: string;
+    isCname?: boolean;
     cdnBaseUrl: string;
     cdnAuthMode: "" | "public" | "qiniu" | string;
     requireCDN: boolean;

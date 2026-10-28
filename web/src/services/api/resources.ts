@@ -33,6 +33,7 @@ export type UserOSSSetting = {
     s3Preset: S3Preset;
     region: string;
     endpoint: string;
+    isCname?: boolean;
     cdnBaseUrl: string;
     cdnAuthMode: "" | "public" | "qiniu" | string;
     requireCDN: boolean;
@@ -53,7 +54,7 @@ export type UserOSSSetting = {
     updatedAt?: string;
 };
 
-export type UserOSSSettingInput = Pick<UserOSSSetting, "enabled" | "provider" | "s3Preset" | "region" | "endpoint" | "cdnBaseUrl" | "bucket" | "accessKeyId" | "pathPrefix" | "pathStyle"> & {
+export type UserOSSSettingInput = Pick<UserOSSSetting, "enabled" | "provider" | "s3Preset" | "region" | "endpoint" | "cdnBaseUrl" | "bucket" | "accessKeyId" | "pathPrefix" | "isCname" | "pathStyle"> & {
     accessKeySecret?: string;
     sessionToken?: string;
     cdnAuthMode?: "" | "public" | "qiniu" | string;

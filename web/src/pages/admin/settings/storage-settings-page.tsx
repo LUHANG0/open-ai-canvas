@@ -527,6 +527,11 @@ export default function StorageSettingsPage() {
                                                     }
                                                 />
                                             </Form.Item>
+                                            {draftMode === "aliyun" ? (
+                                                <Form.Item name="isCname" label="使用 OSS 自定义域名" valuePropName="checked" extra="Endpoint 已在 OSS 绑定为自定义域名时开启，后端将直接使用该域名签名读写。域名需要有效的 HTTPS 证书。">
+                                                    <Switch />
+                                                </Form.Item>
+                                            ) : null}
                                             <Form.Item
                                                 name="cdnBaseUrl"
                                                 label={draftMode === "qiniu" ? "绑定域名（可选）" : "CDN 加速域名（可选）"}

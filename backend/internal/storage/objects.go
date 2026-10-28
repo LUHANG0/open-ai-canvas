@@ -693,7 +693,7 @@ func OssBucketBaseURL(setting Settings) (*url.URL, error) {
 	// Local test/dev endpoints and explicit IP endpoints are commonly path-style
 	// services. Do not turn 127.0.0.1 into test-bucket.127.0.0.1, which both
 	// breaks the endpoint and makes the upload fallback impossible to exercise.
-	if host != "localhost" && net.ParseIP(host) == nil && !strings.HasPrefix(strings.ToLower(host), "localhost:") && !strings.HasPrefix(parsed.Host, setting.Bucket+".") {
+	if !setting.IsCNAME && host != "localhost" && net.ParseIP(host) == nil && !strings.HasPrefix(strings.ToLower(host), "localhost:") && !strings.HasPrefix(parsed.Host, setting.Bucket+".") {
 		parsed.Host = setting.Bucket + "." + parsed.Host
 	}
 	return parsed, nil

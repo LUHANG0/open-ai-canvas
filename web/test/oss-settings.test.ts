@@ -49,3 +49,9 @@ describe("OSS settings helpers", () => {
         });
     });
 });
+
+test("OSS CNAME endpoint changes require retesting and remain Aliyun-specific", () => {
+    expect(changesRequireOSSRetest({ isCname: true })).toBe(true);
+    expect(normalizeOSSConnectionTestInput({ provider: "aliyun", isCname: true }).isCname).toBe(true);
+    expect(normalizeOSSConnectionTestInput({ provider: "s3", isCname: true }).isCname).toBe(false);
+});
