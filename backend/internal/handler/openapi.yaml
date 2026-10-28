@@ -2114,7 +2114,7 @@ paths:
     post:
       tags: [resources]
       summary: 批量签发当前用户资源访问描述
-      description: 统一处理展示、下载、复制、浏览器字节处理和模型输入；客户端不能通过查询参数选择 direct/proxy。每项独立成功或失败。
+      description: 统一处理展示、下载、复制、浏览器字节处理和模型输入；客户端不能通过查询参数选择 direct/proxy。每项独立成功或失败。下载可指定 downloadName；访问描述中的 URL 为不透明合同，客户端应原样使用，不能改回展示地址。本地下载使用带文件名的地址及 attachment 响应，和展示 CDN 缓存隔离。
       requestBody:
         required: true
         content:
@@ -2128,6 +2128,7 @@ paths:
                 required: [resourceId]
                 properties:
                   resourceId: {type: string}
+                  downloadName: {type: string, description: "下载文件名，仅 purpose=download 时生效"}
                   purpose: {type: string, enum: [display, copy, download, browser-process, provider-input], default: display}
                   variant: {type: string, enum: [original, playback], default: original}
       responses:
@@ -2156,6 +2157,10 @@ paths:
         - in: query
           name: purpose
           schema: { type: string, enum: [display, download, browser-process], default: display }
+        - in: query
+          name: downloadName
+          schema: { type: string }
+          description: 下载附件文件名；优先使用访问描述返回的完整下载 URL。
       responses:
         "200":
           description: 文件流

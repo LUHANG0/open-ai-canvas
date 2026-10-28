@@ -244,7 +244,7 @@ func signedOriginObjectURL(setting Settings, objectKey string, signing objectURL
 // an origin URL: a generic CDN URL cannot guarantee that response header
 // overrides are forwarded and signed correctly.
 func SignedOriginObjectDownloadURL(setting Settings, objectKey string, expiresAt time.Time, fileName string) (string, error) {
-	disposition := objectDownloadContentDisposition(fileName, objectKey)
+	disposition := DownloadContentDisposition(fileName, objectKey)
 	return signedOriginObjectURL(setting, objectKey, objectURLSigning{ExpiresAt: expiresAt, ContentDisposition: disposition})
 }
 
@@ -265,12 +265,13 @@ func PublicCDNObjectDownloadURL(setting Settings, objectKey string, fileName str
 		return "", err
 	}
 	query := parsed.Query()
-	query.Set("response-content-disposition", objectDownloadContentDisposition(fileName, objectKey))
+	query.Set("response-content-disposition", DownloadContentDisposition(fileName, objectKey))
 	parsed.RawQuery = query.Encode()
 	return parsed.String(), nil
 }
 
-func objectDownloadContentDisposition(fileName string, objectKey string) string {
+// DownloadFileName keeps one safe filename policy for origin and platform downloads.
+func DownloadFileName(fileName string, objectKey string) string {
 	name := strings.TrimSpace(fileName)
 	name = strings.ReplaceAll(name, "\\", "_")
 	name = strings.ReplaceAll(name, "/", "_")
@@ -280,12 +281,18 @@ func objectDownloadContentDisposition(fileName string, objectKey string) string 
 		}
 		return char
 	}, name)
-	if name == "" || name == "." {
+	if name == "" || name == "." || name == ".." {
 		name = path.Base(strings.TrimSpace(objectKey))
 	}
-	if name == "" || name == "." || name == "/" {
+	if name == "" || name == "." || name == ".." || name == "/" {
 		name = "download"
 	}
+	return name
+}
+
+// DownloadContentDisposition encodes Unicode names without allowing header injection.
+func DownloadContentDisposition(fileName string, objectKey string) string {
+	name := DownloadFileName(fileName, objectKey)
 	value := mime.FormatMediaType("attachment", map[string]string{"filename": name})
 	if value == "" {
 		return `attachment; filename="download"`

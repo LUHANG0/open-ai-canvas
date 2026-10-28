@@ -2,6 +2,8 @@ package assets
 
 import (
 	"net/http"
+	"net/url"
+	"strings"
 	"time"
 
 	"yingce/backend/internal/kernel"
@@ -197,6 +199,21 @@ func ResolveAccess(resource *model.Resource, setting storage.Settings, options A
 		access.URL, err = platformURL(access.ActualVariant, expires)
 		if err != nil {
 			return nil, err
+		}
+		if options.Purpose == PurposeDownload {
+			// Display URLs may be redirected through an inline-media CDN. Use the
+			// existing named-file route for downloads, preserving the signed resource
+			// identity while keeping attachment responses outside that display cache.
+			u, parseErr := url.Parse(access.URL)
+			if parseErr != nil {
+				return nil, parseErr
+			}
+			u.Path = strings.TrimSuffix(u.Path, "/") + "/" + storage.DownloadFileName(options.DownloadName, resource.ObjectKey)
+			u.RawPath = ""
+			query := u.Query()
+			query.Set("purpose", string(PurposeDownload))
+			u.RawQuery = query.Encode()
+			access.URL = u.String()
 		}
 	}
 	return access, nil

@@ -974,6 +974,45 @@ func newResourceTestService(t *testing.T) *Service {
 	return &Service{repo: repository.New(db), dataDir: t.TempDir()}
 }
 
+func TestLocalDownloadNamedURLKeepsPublicAuthorizationAndBytes(t *testing.T) {
+	svc := newResourceTestService(t)
+	resource := model.Resource{ID: "local-download", UserID: "user-1", Kind: "image", Status: model.ResourceStatusReady, Provider: "local", ObjectKey: "users/user-1/image/original.png", MimeType: "image/png", Size: 7}
+	file := filepath.Join(svc.dataDir, "resources", filepath.FromSlash(resource.ObjectKey))
+	if err := os.MkdirAll(filepath.Dir(file), 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(file, []byte("payload"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.repo.CreateResource(&resource); err != nil {
+		t.Fatal(err)
+	}
+	items, err := svc.ResourceAccessBatch(resource.UserID, []ResourceAccessRequest{{ResourceID: resource.ID, AccessOptions: ResourceAccessOptions{Purpose: assets.PurposeDownload, DownloadName: "画布_镜头.png"}}})
+	if err != nil || len(items) != 1 || items[0].Access == nil {
+		t.Fatalf("download access failed: %v", err)
+	}
+	u, err := url.Parse(items[0].Access.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.HasSuffix(u.Path, "/file/画布_镜头.png") || u.Query().Get("purpose") != "download" {
+		t.Fatal("missing named download contract")
+	}
+	options := ResourceAccessOptions{Purpose: assets.PurposeDownload, Variant: assets.VariantOriginal, DownloadName: "画布_镜头.png"}
+	delivery, err := svc.PreparePublicResourceDelivery(resource.ID, u.Query().Get("expires"), u.Query().Get("signature"), options, "")
+	if err != nil {
+		t.Fatalf("named URL lost public authorization: %v", err)
+	}
+	defer delivery.Stream.Body.Close()
+	body, err := io.ReadAll(delivery.Stream.Body)
+	if err != nil || string(body) != "payload" {
+		t.Fatalf("download bytes = %q, %v", body, err)
+	}
+	if _, err := svc.PreparePublicResourceDelivery(resource.ID, u.Query().Get("expires"), "invalid", options, ""); err == nil {
+		t.Fatal("named download accepted an invalid signature")
+	}
+}
+
 func TestStoreResourceReusesReadyUploadIdentity(t *testing.T) {
 	svc := newResourceTestService(t)
 	uploadKey := normalizedResourceUploadKey([]string{"image:user-1:logical-upload"})

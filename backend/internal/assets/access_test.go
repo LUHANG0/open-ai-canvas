@@ -26,6 +26,31 @@ func testPlatformURL(variants *[]ResourceVariant) func(ResourceVariant, time.Tim
 	}
 }
 
+func TestResolveLocalDownloadKeepsIntentAndNameOnSignedURL(t *testing.T) {
+	for _, mimeType := range []string{"image/png", "video/mp4", "audio/wav"} {
+		t.Run(mimeType, func(t *testing.T) {
+			resource := testReadyResource("local")
+			resource.MimeType = mimeType
+			access, err := ResolveAccess(resource, storage.Settings{}, AccessOptions{Purpose: PurposeDownload, DownloadName: "画布/镜头\\参考\r\n.png"}, time.Now(), func(ResourceVariant, time.Time) (string, error) {
+				return "/api/public/resources/resource-1/file?expires=1800000000&signature=signature-value&variant=original", nil
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			u, err := url.Parse(access.URL)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if u.Path != "/api/public/resources/resource-1/file/画布_镜头_参考.png" || u.Query().Get("purpose") != "download" {
+				t.Fatalf("download lost filename or intent: %q", access.URL)
+			}
+			if u.Query().Get("signature") != "signature-value" || u.Query().Get("expires") != "1800000000" || u.Query().Get("variant") != "original" {
+				t.Fatal("download changed the resource authorization")
+			}
+		})
+	}
+}
+
 func TestResolveAccessPolicyMatrix(t *testing.T) {
 	outboundtest.PublicDNS(t, "s3.amazonaws.com")
 	now := time.Date(2026, time.January, 2, 3, 4, 5, 0, time.UTC)

@@ -9,6 +9,7 @@ import (
 
 	"yingce/backend/internal/assets"
 	"yingce/backend/internal/service"
+	"yingce/backend/internal/storage"
 
 	"github.com/gin-gonic/gin"
 )
@@ -19,9 +20,14 @@ func resourceAccessOptions(c *gin.Context) service.ResourceAccessOptions {
 		purpose = assets.PurposeDownload
 	}
 	variant := assets.ResourceVariant(strings.TrimSpace(c.Query("variant")))
+	name := c.Param("filename")
+	if name == "" {
+		name = c.Query("downloadName")
+	}
 	return service.ResourceAccessOptions{
 		Purpose:      purpose,
 		Variant:      variant,
+		DownloadName: name,
 		DescribeOnly: c.Query("access") == "1",
 	}
 }
@@ -63,6 +69,10 @@ func serveResourceDelivery(c *gin.Context, delivery *service.ResourceDelivery, c
 		return
 	}
 	defer stream.Body.Close()
+	if options := resourceAccessOptions(c); options.Purpose == assets.PurposeDownload {
+		disposition = storage.DownloadContentDisposition(options.DownloadName, stream.Resource.ObjectKey)
+		cacheControl = "private, no-store"
+	}
 	if cacheControl != "" {
 		c.Header("Cache-Control", cacheControl)
 	}
