@@ -1,6 +1,6 @@
 import { AnimatePresence } from "motion/react";
-import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
-import { ArrowLeft, AtSign, Check, ChevronRight, Clipboard, CloudUpload, Copy, FolderOpen, FolderPlus, Image as ImageIcon, Layers3, LayoutTemplate, Link2, Maximize2, PanelTop, Pencil, Plus, Redo2, Tags, Trash2, Undo2, Upload, UserRound } from "lucide-react";
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { ArrowLeft, AtSign, Check, ChevronRight, Clipboard, CloudUpload, Copy, Download, FolderOpen, FolderPlus, Image as ImageIcon, Layers3, LayoutTemplate, Link2, Maximize2, PanelTop, Pencil, Plus, Redo2, Tags, Trash2, Undo2, Upload, UserRound } from "lucide-react";
 
 import { CanvasCreateMenu, type CanvasCreateCommand } from "@/components/canvas/canvas-create-menu";
 import { ASSET_CATEGORY_OPTIONS } from "@/lib/asset-category";
@@ -55,6 +55,9 @@ type CanvasNodeContextMenuProps = {
     onCopySelection?: () => void;
     onDeleteSelection?: () => void;
     onSendToAgent?: () => void;
+    downloadableSelectionCount?: number;
+    downloadingSelection?: boolean;
+    onDownloadSelection?: () => void;
 };
 
 export function CanvasNodeContextMenu({
@@ -95,10 +98,15 @@ export function CanvasNodeContextMenu({
     onCopySelection,
     onDeleteSelection,
     onSendToAgent,
+    downloadableSelectionCount = 0,
+    downloadingSelection = false,
+    onDownloadSelection,
 }: CanvasNodeContextMenuProps) {
     const theme = canvasThemes[useActiveTheme()];
     const [addOpen, setAddOpen] = useState(false);
     const [categoryOpen, setCategoryOpen] = useState(false);
+    const panelRef = useRef<HTMLDivElement>(null);
+    const [measurements, setMeasurements] = useState({ height: 0, viewportWidth: 0, viewportHeight: 0 });
 
     useEffect(() => {
         const close = (event: PointerEvent) => {
@@ -145,13 +153,33 @@ export function CanvasNodeContextMenu({
     const canCopyMediaUrl = Boolean(isMedia && hasNodeContent);
     const assetCategory = node ? canvasNodeAssetCategory(node) : "other";
     const hasMultiSelection = selectedCount >= 2;
-    const position = getContextMenuPosition(menu, hasMultiSelection);
+    useLayoutEffect(() => {
+        const measure = () => {
+            const next = { height: panelRef.current?.getBoundingClientRect().height || 0, viewportWidth: window.innerWidth, viewportHeight: window.innerHeight };
+            setMeasurements((previous) => previous.height === next.height && previous.viewportWidth === next.viewportWidth && previous.viewportHeight === next.viewportHeight ? previous : next);
+        };
+        measure();
+        window.addEventListener("resize", measure);
+        return () => window.removeEventListener("resize", measure);
+    }, [menu, hasMultiSelection, categoryOpen, selectedCount, downloadableSelectionCount, downloadingSelection]);
+    const position = getContextMenuPosition(menu, hasMultiSelection, measurements.height);
+    const skippedDownloadCount = Math.max(0, selectedCount - downloadableSelectionCount);
+    const downloadSelectionButton = hasMultiSelection ? (
+        <MenuButton
+            icon={<Download />}
+            label={downloadingSelection ? "正在启动下载…" : downloadableSelectionCount ? `下载 ${downloadableSelectionCount} 个资源` : "下载资源"}
+            detail={!downloadableSelectionCount ? "没有就绪媒体，等待生成或上传完成" : skippedDownloadCount ? `逐个下载，跳过 ${skippedDownloadCount} 个不可下载节点` : "逐个下载为独立文件"}
+            disabled={downloadingSelection || !onDownloadSelection || !downloadableSelectionCount}
+            onClick={() => onDownloadSelection && runAction(onDownloadSelection)}
+        />
+    ) : null;
 
     return (
         <>
             <div
+                ref={panelRef}
                 data-canvas-context-menu
-                className="isolate workspace-utility-overlay aceternity-floating-panel fixed z-[var(--z-popover)] flex w-[224px] max-h-[calc(100vh-56px)] origin-top-left flex-col overflow-hidden rounded-xl border p-1.5 backdrop-blur-2xl"
+                className="isolate workspace-utility-overlay aceternity-floating-panel fixed z-[var(--z-popover)] flex w-[224px] max-h-[calc(100dvh-80px)] origin-top-left flex-col overflow-hidden rounded-xl border p-1.5 backdrop-blur-2xl"
                 style={{ left: position.left, top: position.top, background: theme.spatial.elevated, borderColor: theme.toolbar.border, color: theme.node.text }}
                 onContextMenu={(event) => event.preventDefault()}
                 onPointerDown={(event) => event.stopPropagation()}
@@ -179,6 +207,7 @@ export function CanvasNodeContextMenu({
                             {hasMultiSelection ? (
                                 <>
                                     <MenuButton icon={<LayoutTemplate className="size-4" />} label="自适应整理画布" detail="保持相对布局并加大边距" disabled={!onSpreadSelection} onClick={() => onSpreadSelection && runAction(onSpreadSelection)} />
+                                    {downloadSelectionButton}
                                     <MenuDivider />
                                 </>
                             ) : null}
@@ -198,6 +227,7 @@ export function CanvasNodeContextMenu({
                             <MenuButton icon={<LayoutTemplate />} label="自适应整理画布" detail="保持相对布局并加大边距" disabled={!onSpreadSelection} onClick={() => onSpreadSelection && runAction(onSpreadSelection)} />
                             <MenuDivider />
                             <MenuButton icon={<Copy />} label={`复制 ${selectedCount} 个节点`} shortcut="⌘C" disabled={!onCopySelection} onClick={() => onCopySelection && runAction(onCopySelection)} />
+                            {downloadSelectionButton}
                             <MenuButton icon={<AtSign />} label="发送到 Agent" disabled={!onSendToAgent} onClick={() => onSendToAgent && runAction(onSendToAgent)} />
                             <MenuButton icon={<Trash2 />} label={`删除 ${selectedCount} 个节点`} danger disabled={!onDeleteSelection} onClick={() => onDeleteSelection && runAction(onDeleteSelection)} />
                         </>
@@ -369,13 +399,14 @@ function MenuDivider() {
     return <div className="mx-1.5 my-1 h-px" style={{ background: `linear-gradient(90deg, transparent, ${theme.toolbar.border}, transparent)` }} />;
 }
 
-function getContextMenuPosition(menu: ContextMenuState, hasMultiSelection = false) {
+function getContextMenuPosition(menu: ContextMenuState, hasMultiSelection = false, measuredHeight = 0) {
     if (typeof window === "undefined") return { left: menu.x, top: menu.y };
     const width = 224;
-    const estimatedHeight = menu.type === "node" ? Math.min(hasMultiSelection ? 240 : 360, window.innerHeight - 72) : menu.type === "canvas" ? (hasMultiSelection ? 300 : 250) : 84;
+    const estimatedHeight = menu.type === "node" ? Math.min(hasMultiSelection ? 300 : 360, window.innerHeight - 72) : menu.type === "canvas" ? (hasMultiSelection ? 360 : 250) : 84;
+    const height = Math.min(measuredHeight || estimatedHeight, Math.max(0, window.innerHeight - 80));
     return {
         left: clamp(menu.x, 12, Math.max(12, window.innerWidth - width - 12)),
-        top: clamp(menu.y, 68, Math.max(68, window.innerHeight - estimatedHeight - 12)),
+        top: clamp(menu.y, 68, Math.max(68, window.innerHeight - height - 12)),
     };
 }
 

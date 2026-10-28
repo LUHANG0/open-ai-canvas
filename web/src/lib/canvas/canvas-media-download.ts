@@ -25,6 +25,37 @@ const MIME_EXTENSIONS: Record<string, string> = {
 
 const CONTENT_EXTENSIONS = new Set(["png", "jpg", "jpeg", "webp", "gif", "svg", "mp4", "webm", "mov", "ogv", "ogg", "mpeg", "mpg", "mp3", "m4a", "wav", "aac", "flac", "opus"]);
 
+/** Count the same ready media in the menu and in the actual download operation. */
+export function canDownloadCanvasNodeMedia(node: CanvasNodeData) {
+    const media = node.type === CanvasNodeType.Image || node.type === CanvasNodeType.Video || node.type === CanvasNodeType.Audio;
+    const metadata = node.metadata;
+    const compositeStatus = metadata?.imageLayerGroup?.compositeStatus;
+    return media && metadata?.status !== "loading" && !metadata?.fileUpload
+        && (!compositeStatus || compositeStatus === "ready")
+        && Boolean(metadata?.storageKey?.trim() || metadata?.content?.trim());
+}
+
+/** Snapshot the selection at click time, preserving node order and unique filenames. */
+export function buildCanvasMediaDownloads(canvasTitle: string, nodes: CanvasNodeData[], now = new Date()) {
+    const seenNodes = new Set<string>();
+    const usedNames = new Set<string>();
+    return nodes.filter((node) => {
+        if (seenNodes.has(node.id) || !canDownloadCanvasNodeMedia(node)) return false;
+        seenNodes.add(node.id);
+        return true;
+    }).map((node) => {
+        const baseName = buildCanvasMediaDownloadFileName(canvasTitle, node, now);
+        const extensionIndex = baseName.lastIndexOf(".");
+        let fileName = baseName;
+        let suffix = 2;
+        while (usedNames.has(fileName.toLowerCase())) {
+            fileName = `${baseName.slice(0, extensionIndex)}_${suffix++}${baseName.slice(extensionIndex)}`;
+        }
+        usedNames.add(fileName.toLowerCase());
+        return { fileName, storageKey: node.metadata?.storageKey?.trim(), url: node.metadata?.content?.trim() };
+    });
+}
+
 export function buildCanvasMediaDownloadFileName(canvasTitle: string, node: CanvasNodeData, now = new Date()) {
     const canvasName = safeFileNamePart(canvasTitle, "未命名画布");
     const nodeName = safeFileNamePart(node.title, defaultNodeName(node.type));

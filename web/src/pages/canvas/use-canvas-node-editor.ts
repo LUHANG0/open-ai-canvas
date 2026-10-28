@@ -18,6 +18,7 @@ import { canvasExplicitMediaParameters, canvasModelSwitchPatch } from "@/lib/can
 import { createModelSwitchCoordinator } from "@/lib/model-parameter-guard";
 import { configuredModelDisplayName, planMediaModelSwitch } from "@/lib/model-selection";
 import { CanvasNodeType, type CanvasFolderStyle, type CanvasFolderTheme, type CanvasNodeData, type CanvasNodeMetadata, type Position } from "@/types/canvas";
+import { useCanvasMediaDownloads } from "./use-canvas-media-downloads";
 
 type UseCanvasNodeEditorOptions = {
     canvasId: string;
@@ -45,6 +46,7 @@ export function useCanvasNodeEditor({
     setHoveredNodeId,
 }: UseCanvasNodeEditorOptions) {
     const { message, modal } = App.useApp();
+    const { downloadNodesMedia, downloadingSelection } = useCanvasMediaDownloads(canvasId, canvasTitle);
     const effectiveConfig = useEffectiveConfig();
     const configRef = useRef(effectiveConfig);
     configRef.current = effectiveConfig;
@@ -300,6 +302,8 @@ export function useCanvasNodeEditor({
     return {
         collapsingBatchIds,
         downloadNodeImage,
+        downloadNodesMedia,
+        downloadingSelection,
         handleConfigNodeChange,
         handleFolderStyleChange,
         handleFolderThemeChange,

@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 
 import { buildImageGenerationNodeTitle } from "@/lib/canvas/canvas-generation-title";
-import { buildCanvasMediaDownloadFileName, canvasMediaFileExtension } from "@/lib/canvas/canvas-media-download";
+import { buildCanvasMediaDownloadFileName, buildCanvasMediaDownloads, canDownloadCanvasNodeMedia, canvasMediaFileExtension } from "@/lib/canvas/canvas-media-download";
 import { CanvasNodeType, type CanvasNodeData } from "@/types/canvas";
 
 function mediaNode(overrides: Partial<CanvasNodeData> = {}): CanvasNodeData {
@@ -68,5 +68,31 @@ describe("generated image title", () => {
         const variant = mediaNode({ title: buildImageGenerationNodeTitle("未来城市", mediaNode({ title: "未来城市 · C", metadata: { versionOfNodeId: "source", versionLabel: "C" } })) });
         expect(buildCanvasMediaDownloadFileName("自由画布", copy, now)).toBe("自由画布_未来城市_copy1_20260829.png");
         expect(buildCanvasMediaDownloadFileName("自由画布", variant, now)).toBe("自由画布_未来城市 · C_20260829.png");
+    });
+});
+
+
+describe("batch download selection", () => {
+    test("counts only ready original media, excluding passive posters and unfinished results", () => {
+        for (const type of [CanvasNodeType.Image, CanvasNodeType.Video, CanvasNodeType.Audio]) {
+            expect(canDownloadCanvasNodeMedia(mediaNode({ type, metadata: { storageKey: "resource:stored" } }))).toBe(true);
+            expect(canDownloadCanvasNodeMedia(mediaNode({ type, metadata: { content: "blob:local" } }))).toBe(true);
+            for (const metadata of [{ previewContent: "poster.jpg" }, { storageKey: " " }, { content: "old.png", status: "loading" as const }, { content: "pending.png", fileUpload: "uploading" as const }, { content: "failed.png", fileUpload: "error" as const }]) expect(canDownloadCanvasNodeMedia(mediaNode({ type, metadata }))).toBe(false);
+        }
+        expect(canDownloadCanvasNodeMedia(mediaNode({ type: CanvasNodeType.Text }))).toBe(false);
+        const source = mediaNode();
+        const composite = { ...source, metadata: { ...source.metadata, imageLayerGroup: { compositeStatus: "error" } } } as CanvasNodeData;
+        expect(canDownloadCanvasNodeMedia(composite)).toBe(false);
+        composite.metadata!.imageLayerGroup!.compositeStatus = "ready";
+        expect(canDownloadCanvasNodeMedia(composite)).toBe(true);
+    });
+    test("preserves selection order, deduplicates node IDs and avoids filename collisions", () => {
+        const first = mediaNode({ id: "a", title: "同名" });
+        const second = mediaNode({ id: "b", title: "同名" });
+        const downloads = buildCanvasMediaDownloads("画布", [first, first, mediaNode({ id: "text", type: CanvasNodeType.Text }), second], new Date(2026, 9, 28));
+        expect(downloads.map((item) => item.fileName)).toEqual(["画布_同名_20261028.png", "画布_同名_20261028_2.png"]);
+        expect(downloads[0].url).toBe(first.metadata?.content);
+        first.metadata!.content = "replacement.png";
+        expect(downloads[0].url).not.toBe(first.metadata!.content);
     });
 });
