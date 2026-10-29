@@ -11,6 +11,7 @@ import { createCanvasNode, isHiddenBatchChild, removeCanvasNodes } from "@/lib/c
 import { isolateCopiedNodeMetadata, nextCopiedNodeTitle } from "@/lib/canvas/canvas-node-copy";
 import { createCanvasImageEditCopy } from "@/lib/canvas/canvas-image-edit-copy";
 import { adoptMediaVersion, createNodeFromMediaVersion, mediaVersionAdoptBlock, removeMediaVersion } from "@/lib/canvas/canvas-media-versions";
+import { planCanvasAssetPromotion, planCanvasAssetRename, type CanvasAssetMutation } from "@/lib/canvas/canvas-asset-operations";
 import { canvasEditLeases } from "@/services/canvas-edit-leases";
 import { copyImageLayerSources } from "@/lib/canvas/canvas-image-layers";
 import { CanvasNodeType, type CanvasConnection, type CanvasFolderStyle, type CanvasFolderTheme, type CanvasNodeData, type CanvasNodeMetadata, type CanvasNodeTypeId, type ContextMenuState, type Position } from "@/types/canvas";
@@ -482,6 +483,23 @@ export function useCanvasNodeOperations({
         return extracted.id;
     }, [commitNodes, nodesRef, selectNodes]);
 
+    const commitAssetMutation = useCallback((plan: CanvasAssetMutation | null) => {
+        if (!plan) { message.warning("资产已变化，或节点已锁定、正在生成，请刷新选择后重试"); return false; }
+        if (!plan.changedIds.length) return true;
+        if (plan.changedIds.some((id) => !canvasEditLeases.input(projectId, id))) {
+            message.warning("节点正在被其他会话编辑，请稍后重试");
+            return false;
+        }
+        commitNodes(plan.nodes);
+        return true;
+    }, [commitNodes, message, projectId]);
+    const renameCanvasAsset = useCallback((entryKey: string, title: string) => {
+        return commitAssetMutation(planCanvasAssetRename(nodesRef.current, entryKey, title));
+    }, [commitAssetMutation, nodesRef]);
+    const promoteCanvasAssetVersion = useCallback((version: { key: string }) => {
+        if (commitAssetMutation(planCanvasAssetPromotion(nodesRef.current, version.key))) message.success("已设为主版本");
+    }, [commitAssetMutation, message, nodesRef]);
+
     const setPrimaryVersion = useCallback((nodeId: string) => {
         const target = nodesRef.current.find((node) => node.id === nodeId);
         if (!target) return;
@@ -639,6 +657,8 @@ export function useCanvasNodeOperations({
         deleteNodeMediaVersion,
         extractNodeMediaVersion,
         setPrimaryVersion,
+        renameCanvasAsset,
+        promoteCanvasAssetVersion,
         shouldPreferCopiedNodes,
         toggleNodeLocked,
     };

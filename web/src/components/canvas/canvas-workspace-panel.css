@@ -83,6 +83,30 @@
 .canvas-main-with-workspace .canvas-topbar {
     left: var(--canvas-workspace-inset);
 }
+.canvas-main-with-workspace .canvas-asset-view-layer {
+    left: var(--canvas-workspace-inset);
+}
+/* Keep the editor mounted (viewport, undo and running tasks), but remove its
+   controls from hit testing, keyboard focus and the accessibility tree. */
+.canvas-assets-active [data-canvas-editor] > :not(.canvas-topbar):not(.canvas-asset-view-layer),
+.canvas-assets-active [data-canvas-editor] > :not(.canvas-topbar):not(.canvas-asset-view-layer) * {
+    visibility: hidden !important;
+    pointer-events: none !important;
+}
+@media (min-width: 992px) {
+    .canvas-main-with-workspace:has(> .canvas-project-sidebar) .canvas-asset-view-layer { left: 0; }
+}
+@media (max-width: 1023px) {
+    .canvas-asset-preview-area { flex: none; height: 280px; min-height: 200px; }
+}
+@media (max-width: 639px) {
+    .canvas-asset-view { flex-direction: column; }
+    .canvas-asset-view .canvas-asset-directory { width: 100%; max-height: 38%; border-right: 0; border-bottom: 1px solid var(--border); }
+    .canvas-asset-view > section { min-height: 0; }
+    .canvas-asset-detail-actions { width: 100%; margin-left: 0; }
+    .canvas-asset-detail-header { padding-inline: var(--space-3); }
+    .canvas-assets-active .canvas-topbar-tools-cluster .canvas-topbar-import-button { display: none !important; }
+}
 .canvas-main-with-workspace .canvas-workspace-zoom-controls {
     left: calc(var(--canvas-workspace-inset) + var(--canvas-inset-x));
 }

@@ -35,7 +35,7 @@ import { useCanvasThemeStore, useCanvasThemeScope } from "@/stores/canvas/use-ca
 import { useUserStore } from "@/stores/use-user-store";
 import { useCanvasInputEntry, useCanvasInputPreferences } from "@/stores/canvas/use-canvas-input-preferences";
 import { App, Button } from "antd";
-import { ArrowLeftRight } from "lucide-react";
+import { ArrowLeftRight, LoaderCircle } from "lucide-react";
 import { AppModal } from "@/components/ui/product/app-modal";
 import { getNodeSpec } from "@/constant/canvas";
 import { CanvasConfigComposer } from "@/components/canvas/canvas-config-composer";
@@ -214,6 +214,8 @@ export default function CanvasPage() {
     return <CanvasViewportPage />;
 }
 
+const CanvasAssetView = lazy(() => import("@/components/canvas/canvas-asset-view").then((module) => ({ default: module.CanvasAssetView })));
+
 function CanvasViewportPage() {
     // 命令式确认必须走 App.useApp().modal；静态 Modal.confirm 拿不到主题和 App 上下文。
     const { message, modal } = App.useApp();
@@ -309,7 +311,18 @@ function CanvasViewportPage() {
     const agentMentionReferences = useMemo(() => buildCanvasAgentMentionReferences(nodes), [nodes]);
 
     const { tasks: activeTasks } = useCanvasActiveTasks(projectId, projectLoaded);
-    const { focusMode, enterFocusMode, exitFocusMode, toggleFocusMode } = useFocusMode();
+    const { focusMode: preferredFocusMode, enterFocusMode, exitFocusMode, toggleFocusMode } = useFocusMode();
+    const canvasView = searchParams.get("view") === "assets" ? "assets" : "canvas";
+    const focusMode = preferredFocusMode && canvasView === "canvas";
+    const changeCanvasView = useCallback((view: "canvas" | "assets") => {
+        setSearchParams((current) => {
+            const next = new URLSearchParams(current);
+            if (view === "assets") next.set("view", "assets"); else next.delete("view");
+            return next;
+        }, { replace: true });
+        setContextMenu(null); setDialogNodeId(null); setToolbarNodeId(null); setHoveredNodeId(null);
+        setNodeSearchOpen(false);
+    }, [setSearchParams]);
     const [focusDockRevealed, setFocusDockRevealed] = useState(false);
 
     useEffect(() => {
@@ -1003,6 +1016,8 @@ function CanvasViewportPage() {
 
     const {
         adoptNodeMediaVersion,
+        renameCanvasAsset,
+        promoteCanvasAssetVersion,
         deleteNodeMediaVersion,
         extractNodeMediaVersion,
         alignSelectedNodes,
@@ -1686,8 +1701,19 @@ function CanvasViewportPage() {
         clearCanvasFiles();
     }, [clearCanvasFiles, deselectCanvas, message, nodesRef, projectId, setEmotionNodeId]);
 
+    useEffect(() => {
+        if (!projectLoaded || canvasView !== "assets") return;
+        const saveFromAssets = (event: KeyboardEvent) => {
+            if (!(event.metaKey || event.ctrlKey) || event.altKey || event.key.toLowerCase() !== "s") return;
+            event.preventDefault();
+            void saveCanvasProject();
+        };
+        window.addEventListener("keydown", saveFromAssets, true);
+        return () => window.removeEventListener("keydown", saveFromAssets, true);
+    }, [canvasView, projectLoaded, saveCanvasProject]);
+
     useCanvasKeyboard({
-        enabled: projectLoaded,
+        enabled: projectLoaded && canvasView === "canvas",
         nodesRef,
         selectedNodeIdsRef,
         selectedConnectionId,
@@ -2537,6 +2563,7 @@ function CanvasViewportPage() {
     const agentSelectedNodeIds = useMemo(() => Array.from(selectedNodeIds), [selectedNodeIds]);
     const agentFocusNodeRef = useRef<(nodeId: string) => void>(() => {});
     agentFocusNodeRef.current = (nodeId: string) => {
+        if (canvasView === "assets") changeCanvasView("canvas");
         const currentNodes = nodesRef.current;
         const target = currentNodes.find((node) => node.id === nodeId);
         if (!target) {
@@ -2551,6 +2578,13 @@ function CanvasViewportPage() {
         focusCanvasNode(nodeId);
     };
     const handleAgentFocusNode = useCallback((nodeId: string) => agentFocusNodeRef.current(nodeId), []);
+    const locateAssetNode = useCallback((nodeId: string) => {
+        const selection = new Set([nodeId]);
+        selectedNodeIdsRef.current = selection;
+        setSelectedNodeIds(selection);
+        setSelectedConnectionId(null);
+        agentFocusNodeRef.current(nodeId);
+    }, [setSelectedConnectionId, setSelectedNodeIds]);
     // 平台唯一的 Agent 面板挂在布局上；画布只发布自己的上下文。画布加载完成前不发布，避免以未保存画布绑定运行。
     const publishAgentCanvas = useGlobalAgentStore((state) => state.setCanvas);
     useEffect(() => {
@@ -2595,7 +2629,7 @@ function CanvasViewportPage() {
             <main
                 id="canvas-main"
                 tabIndex={-1}
-                className={`relative flex h-full min-h-0 overflow-clip outline-none ${!focusMode ? `canvas-main-with-workspace ${workspaceOpen ? "canvas-workspace-expanded" : ""}` : ""}`}
+                className={`${canvasView === "assets" ? "canvas-assets-active" : ""} relative flex h-full min-h-0 overflow-clip outline-none ${!focusMode ? `canvas-main-with-workspace ${workspaceOpen ? "canvas-workspace-expanded" : ""}` : ""}`}
                 style={{ background: resolvedCanvasAppearance.background, color: theme.node.text }}
             >
                 {!focusMode ? (
@@ -2612,6 +2646,7 @@ function CanvasViewportPage() {
                         onProjectAssets={currentProject?.projectId ? () => openProjectAssets() : undefined}
                         onCancelTask={cancelCanvasTask}
                         onFocus={(nodeId) => {
+                            if (canvasView === "assets") changeCanvasView("canvas");
                             const target = nodeById.get(nodeId);
                             const parent = target?.parentId ? nodeById.get(target.parentId) : null;
                             if (parent?.metadata?.frame?.collapsed) toggleFrameCollapsed(parent.id);
@@ -2633,6 +2668,8 @@ function CanvasViewportPage() {
                         <section data-canvas-editor className="relative min-w-0 flex-1 flex flex-col min-h-0 overflow-clip">
                             {!focusMode ? (
                                 <CanvasTopBar
+                                    view={canvasView}
+                                    onViewChange={changeCanvasView}
                                     title={currentProject?.title || "未命名画布"}
                                     titleDraft={titleDraft}
                                     isTitleEditing={titleEditing}
@@ -2663,7 +2700,7 @@ function CanvasViewportPage() {
                                               }
                                             : undefined
                                     }
-                                    onEnterFocusMode={enterFocusMode}
+                                    onEnterFocusMode={() => { changeCanvasView("canvas"); enterFocusMode(); }}
                                     shortDramaGuide={shortDramaGuide}
                                 />
                             ) : null}
@@ -2673,6 +2710,7 @@ function CanvasViewportPage() {
                                 nodes={nodes}
                                 onClose={() => setNodeSearchOpen(false)}
                                 onFocus={(nodeId) => {
+                            if (canvasView === "assets") changeCanvasView("canvas");
                                     const target = nodeById.get(nodeId);
                                     const parent = target?.parentId ? nodeById.get(target.parentId) : null;
                                     if (parent?.metadata?.frame?.collapsed) toggleFrameCollapsed(parent.id);
@@ -2702,7 +2740,7 @@ function CanvasViewportPage() {
                             <div className="relative flex min-h-0 min-w-0 flex-1">
                                 <div className="relative min-w-0 flex-1 overflow-clip">
                                     <CanvasViewport
-                                        interactive
+                                        interactive={canvasView === "canvas"}
                                         containerRef={containerRef}
                                         viewport={viewport}
                                         appearance={canvasAppearance}
@@ -3495,6 +3533,13 @@ function CanvasViewportPage() {
                                 onInsert={handleTimelineProjectAssetsInsert}
                                 onInsertFolder={projectAssetScope === "canvas" ? handleProjectFolderInsert : undefined}
                             />
+                            {canvasView === "assets" ? (
+                                <div className="canvas-asset-view-layer absolute bottom-0 left-0 right-0 top-[var(--canvas-topbar-h)] z-[var(--z-panel-floating)] flex min-h-0">
+                                    <Suspense fallback={<div role="status" className="grid size-full place-items-center bg-background text-muted-foreground"><span className="sr-only">正在加载资产视图</span><LoaderCircle className="size-5 animate-spin motion-reduce:animate-none" aria-hidden="true" /></div>}>
+                                        <CanvasAssetView nodes={nodes} onLocate={locateAssetNode} onRename={renameCanvasAsset} onPromoteVersion={promoteCanvasAssetVersion} onDownloadMedia={downloadNodeImage} onUpload={() => handleUploadRequest()} />
+                                    </Suspense>
+                                </div>
+                            ) : null}
                         </section>
                     </div>
                 </CanvasOverlayLayerProvider>

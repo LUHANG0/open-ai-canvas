@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { Link } from "react-router";
-import { Clapperboard, CloudDownload, CopyPlus, Focus, FolderKanban, Home, LayoutGrid, LoaderCircle, Menu, Pencil, Plus, Redo2, Save, Search, Share2, Trash2, Undo2, Upload } from "lucide-react";
+import { Clapperboard, CloudDownload, CopyPlus, Focus, FolderKanban, FolderTree, Workflow, Home, LayoutGrid, LoaderCircle, Menu, Pencil, Plus, Redo2, Save, Search, Share2, Trash2, Undo2, Upload } from "lucide-react";
 import { Button, Dropdown, Tooltip } from "antd";
 
 import { WorkspaceCreditGiftMark } from "@/components/layout/workspace-credit-gift-mark";
@@ -15,7 +15,11 @@ import { useUserStore } from "@/stores/use-user-store";
 import { CanvasShortcutsModal } from "./canvas-shortcuts-modal";
 import { formatCanvasShortcutKey } from "@/lib/canvas/canvas-input-platform";
 
+export type CanvasProjectView = "canvas" | "assets";
+
 type CanvasTopBarProps = {
+    view: CanvasProjectView;
+    onViewChange: (view: CanvasProjectView) => void;
     title: string;
     titleDraft: string;
     isTitleEditing: boolean;
@@ -43,6 +47,8 @@ type CanvasTopBarProps = {
 };
 
 export function CanvasTopBar({
+    view,
+    onViewChange,
     title,
     titleDraft,
     isTitleEditing,
@@ -113,6 +119,7 @@ export function CanvasTopBar({
                                     { type: "divider" },
                                     { key: "import", icon: <Upload className="size-4" />, label: "导入素材", onClick: onImportImage },
                                     { key: "search", icon: <Search className="size-4" />, label: <MenuLabel text="搜索节点" shortcut={`${mod} F`} />, onClick: onOpenSearch },
+                                    { key: "view", icon: <FolderTree className="size-4" />, label: view === "canvas" ? "切换到资产视图" : "切换到画布视图", onClick: () => onViewChange(view === "canvas" ? "assets" : "canvas") },
                                     { key: "shortcuts", label: <MenuLabel text="操作与快捷键" shortcut="?" />, onClick: () => setShortcutsOpen(true) },
                                     { type: "divider" },
                                     { key: "undo", disabled: !canUndo, icon: <Undo2 className="size-4" />, label: <MenuLabel text="撤销" shortcut={`${mod} Z`} />, onClick: onUndo },
@@ -179,6 +186,15 @@ export function CanvasTopBar({
                 </div>
 
                 <div className="canvas-topbar-cluster canvas-topbar-tools-cluster pointer-events-auto flex items-center gap-1.5" style={dockStyle}>
+                    <div role="group" aria-label="画布视图切换" className="flex shrink-0 items-center gap-0.5">
+                        {(["canvas", "assets"] as const).map((item) => (
+                            <button key={item} type="button" aria-pressed={view === item} aria-label={item === "canvas" ? "画布视图" : "资产视图"}
+                                onClick={() => onViewChange(item)} className="canvas-topbar-action inline-flex h-9 items-center gap-1.5 rounded-lg px-2 text-xs"
+                                style={{ color: theme.node.text, background: view === item ? theme.toolbar.activeBg : undefined }}>
+                                {item === "canvas" ? <Workflow className="size-4" /> : <FolderTree className="size-4" />}<span className="hidden xl:inline">{item === "canvas" ? "画布" : "资产"}</span>
+                            </button>
+                        ))}
+                    </div>
                     <CanvasTopBarTooltip label="搜索画布节点">
                         <Button
                             type="text"
