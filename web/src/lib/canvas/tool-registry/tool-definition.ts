@@ -101,6 +101,7 @@ export type ToolbarHandlers = {
     onNodeTrimVideoSegments: (node: CanvasNodeData) => void;
     /** 视频画质增强；只在存在 processing 视频模型时由项目页提供。 */
     onNodeEnhanceVideo?: (node: CanvasNodeData) => void;
+    onNodeVersions?: (node: CanvasNodeData) => void;
     onNodeSubtitles: (node: CanvasNodeData) => void;
     onNodeTimeline: (node: CanvasNodeData) => void;
     onNodeReversePrompt: (node: CanvasNodeData) => void;

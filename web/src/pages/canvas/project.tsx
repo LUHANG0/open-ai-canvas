@@ -186,6 +186,7 @@ import {
 import { ART_CRITIQUE_NODE_TYPE } from "@/lib/art-critique/contracts";
 import { copyImageToSystemClipboard } from "./canvas-clipboard";
 
+const CanvasMediaVersionModal = lazy(() => import("@/components/canvas/canvas-media-version-modal").then((module) => ({ default: module.CanvasMediaVersionModal })));
 const CanvasPrevisWorkbench = lazy(() => import("@/components/canvas/previs/canvas-previs-workbench").then((module) => ({ default: module.CanvasPrevisWorkbench })));
 const CanvasDrawingEditorModal = lazy(() => import("@/components/canvas/canvas-drawing-editor-modal").then((module) => ({ default: module.CanvasDrawingEditorModal })));
 
@@ -286,6 +287,7 @@ function CanvasViewportPage() {
     const [stylePickerOpen, setStylePickerOpen] = useState(false);
     // 新建预演台镜头必须先选模板：null 表示未在选择中，undefined position 表示用画布中心。
     const [previsTemplateRequest, setPrevisTemplateRequest] = useState<{ position?: Position } | null>(null);
+    const [mediaVersionNodeId, setMediaVersionNodeId] = useState<string | null>(null);
     const [infoNodeId, setInfoNodeId] = useState<string | null>(null);
     const [subtitleNodeId, setSubtitleNodeId] = useState<string | null>(null);
     const [timelineNodeId, setTimelineNodeId] = useState<string | null>(null);
@@ -1000,6 +1002,9 @@ function CanvasViewportPage() {
     );
 
     const {
+        adoptNodeMediaVersion,
+        deleteNodeMediaVersion,
+        extractNodeMediaVersion,
         alignSelectedNodes,
         autoArrangeCanvasNodes,
         arrangeSelectedNodes,
@@ -1470,6 +1475,7 @@ function CanvasViewportPage() {
             return changed ? next : current;
         });
     }, [mentionReferencesByNodeId, setNodes]);
+    const mediaVersionNode = mediaVersionNodeId ? nodeById.get(mediaVersionNodeId) || null : null;
     const dialogNode = dialogNodeId ? nodeById.get(dialogNodeId) || null : null;
     // dragPreview is published on the same pointer-down frame as isNodeDragging.
     // Treat either signal as moving so floating editors disappear before the
@@ -1563,6 +1569,7 @@ function CanvasViewportPage() {
     );
     const canvasNodeActions = useMemo<CanvasNodeActionContextValue>(
         () => ({
+            openMediaVersions: (node) => setMediaVersionNodeId(node.id),
             upload: replaceCanvasNodeMedia,
             download: downloadNodeImage,
             duplicate: duplicateNodeFromContent,
@@ -3004,6 +3011,7 @@ function CanvasViewportPage() {
                             ) : null}
 
                             <CanvasNodeToolbar
+                                onVersions={(node) => setMediaVersionNodeId(node.id)}
                                 onRotateImage={(node, direction) => void rotateImageNode(node.id, direction)}
                                 onCreateEditCopy={(node) => duplicateNode(node.id, "linked-copy")}
                                 rotatingImage={rotatingNodeId !== null}
@@ -3144,6 +3152,11 @@ function CanvasViewportPage() {
 
                             <input ref={imageInputRef} type="file" accept="image/*,video/*,audio/mpeg,audio/wav,audio/x-wav,.mp3,.wav" className="hidden" onChange={handleImageInputChange} />
 
+                            {mediaVersionNode ? <Suspense fallback={null}>
+                                <CanvasMediaVersionModal key={mediaVersionNode.id} node={mediaVersionNode} onClose={() => setMediaVersionNodeId(null)}
+                                    onAdopt={adoptNodeMediaVersion} onDelete={deleteNodeMediaVersion}
+                                    onExtract={(nodeId, versionId) => { if (extractNodeMediaVersion(nodeId, versionId)) setMediaVersionNodeId(null); }} />
+                            </Suspense> : null}
                             <CanvasNodeInfoModal node={infoNode} open={Boolean(infoNode)} onClose={() => setInfoNodeId(null)} onMetadataChange={handleConfigNodeChange} />
 
                             {subtitleNode ? (

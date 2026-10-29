@@ -10,6 +10,8 @@ import { applyCanvasConnectionPromptSync } from "@/lib/canvas/canvas-resource-re
 import { createCanvasNode, isHiddenBatchChild, removeCanvasNodes } from "@/lib/canvas/canvas-project-domain";
 import { isolateCopiedNodeMetadata, nextCopiedNodeTitle } from "@/lib/canvas/canvas-node-copy";
 import { createCanvasImageEditCopy } from "@/lib/canvas/canvas-image-edit-copy";
+import { adoptMediaVersion, createNodeFromMediaVersion, mediaVersionAdoptBlock, removeMediaVersion } from "@/lib/canvas/canvas-media-versions";
+import { canvasEditLeases } from "@/services/canvas-edit-leases";
 import { copyImageLayerSources } from "@/lib/canvas/canvas-image-layers";
 import { CanvasNodeType, type CanvasConnection, type CanvasFolderStyle, type CanvasFolderTheme, type CanvasNodeData, type CanvasNodeMetadata, type CanvasNodeTypeId, type ContextMenuState, type Position } from "@/types/canvas";
 import { cloneCanvasDrawing } from "@/lib/canvas/canvas-drawing-storage";
@@ -438,6 +440,48 @@ export function useCanvasNodeOperations({
         else if (!isFrameNode(source) && source.type !== CanvasNodeType.Drawing) setDialogNodeId(id);
     }, [cloneDrawingForNode, commitConnections, commitNodes, connectionsRef, nodesRef, selectNodes, setDialogNodeId]);
 
+    const canEditMediaVersions = useCallback((node: CanvasNodeData | undefined) => {
+        const block = mediaVersionAdoptBlock(node);
+        if (block) {
+            message.warning(block === "locked" ? "节点已锁定，请先解锁" : block === "loading" ? "请等待生成或上传完成" : "节点已不存在");
+            return false;
+        }
+        if (!canvasEditLeases.input(projectId, node!.id)) {
+            message.warning("节点正在被其他会话编辑，请稍后重试");
+            return false;
+        }
+        return true;
+    }, [message, projectId]);
+
+    const adoptNodeMediaVersion = useCallback((nodeId: string, versionId: string) => {
+        const node = nodesRef.current.find((item) => item.id === nodeId);
+        if (!canEditMediaVersions(node)) return false;
+        const adopted = adoptMediaVersion(node!, versionId);
+        if (!adopted) return false;
+        commitNodes(nodesRef.current.map((item) => item.id === nodeId ? adopted : item));
+        message.success("已切换媒体版本");
+        return true;
+    }, [canEditMediaVersions, commitNodes, message, nodesRef]);
+
+    const deleteNodeMediaVersion = useCallback((nodeId: string, versionId: string) => {
+        const node = nodesRef.current.find((item) => item.id === nodeId);
+        if (!canEditMediaVersions(node)) return false;
+        const next = removeMediaVersion(node!, versionId);
+        if (!next) return false;
+        commitNodes(nodesRef.current.map((item) => item.id === nodeId ? next : item));
+        return true;
+    }, [canEditMediaVersions, commitNodes, nodesRef]);
+
+    const extractNodeMediaVersion = useCallback((nodeId: string, versionId: string) => {
+        const node = nodesRef.current.find((item) => item.id === nodeId);
+        if (!node) return null;
+        const extracted = createNodeFromMediaVersion(node, versionId);
+        if (!extracted) return null;
+        commitNodes([...nodesRef.current, extracted]);
+        selectNodes(new Set([extracted.id]));
+        return extracted.id;
+    }, [commitNodes, nodesRef, selectNodes]);
+
     const setPrimaryVersion = useCallback((nodeId: string) => {
         const target = nodesRef.current.find((node) => node.id === nodeId);
         if (!target) return;
@@ -591,6 +635,9 @@ export function useCanvasNodeOperations({
         pasteCopiedNodes,
         restoreCopiedNodesFromText,
         releaseCopiedNodesPastePriority,
+        adoptNodeMediaVersion,
+        deleteNodeMediaVersion,
+        extractNodeMediaVersion,
         setPrimaryVersion,
         shouldPreferCopiedNodes,
         toggleNodeLocked,

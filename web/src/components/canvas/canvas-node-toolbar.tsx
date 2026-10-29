@@ -34,6 +34,7 @@ type CanvasNodeToolbarProps = {
     containerRef: RefObject<HTMLDivElement | null>;
     onKeep?: (nodeId: string) => void;
     onLeave?: () => void;
+    onVersions?: (node: CanvasNodeData) => void;
     onInfo: (node: CanvasNodeData) => void;
     onEditText: (node: CanvasNodeData) => void;
     onDecreaseFont: (node: CanvasNodeData) => void;
@@ -105,6 +106,7 @@ export function CanvasNodeToolbar({
     containerRef,
     onKeep,
     onLeave,
+    onVersions,
     onInfo,
     onEditText,
     onDecreaseFont,
@@ -282,7 +284,7 @@ export function CanvasNodeToolbar({
 
     // 构建 ToolContext——供注册表解析工具
     const nodeHoverHandlers = {
-        onNodeInfo: onInfo, onNodeDelete: onDelete, onNodeRetry: onRetry, onNodeEditText: onEditText, onNodeDecreaseFont: onDecreaseFont, onNodeIncreaseFont: onIncreaseFont,
+        onNodeVersions: onVersions, onNodeInfo: onInfo, onNodeDelete: onDelete, onNodeRetry: onRetry, onNodeEditText: onEditText, onNodeDecreaseFont: onDecreaseFont, onNodeIncreaseFont: onIncreaseFont,
         onNodeToggleDialog: onToggleDialog, onNodeAnnotate: onAnnotate, onNodeGenerateImage: onGenerateImage, onNodeUpload: onUpload, onNodeDownload: onDownload,
         onNodeSaveAsset: onSaveAsset, onNodeMaskEdit: onMaskEdit, onNodeRemoveBackground: onRemoveBackground, onNodeEmotion: onEmotion, onNodePortraitTexture: onPortraitTexture, onNodeCrop: onCrop,
         onNodeCreateEditCopy: onCreateEditCopy, onNodeRotateImage: onRotateImage,

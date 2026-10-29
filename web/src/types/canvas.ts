@@ -252,6 +252,22 @@ export type CanvasSkillSnapshot = {
     tags: string[];
 };
 
+export type CanvasMediaVersionMedia = Pick<CanvasNodeMetadata,
+    "content" | "storageKey" | "previewContent" | "mimeType" | "bytes" | "durationMs" |
+    "hasAudio" | "naturalWidth" | "naturalHeight" |
+    "videoPreview" | "imageRotation" | "assetId">;
+export type CanvasMediaVersionGeneration = Pick<CanvasNodeMetadata,
+    "prompt" | "model" | "producedModel" | "size" | "quality" | "seconds" |
+    "references" | "taskId" | "taskDurationMs" | "resultRecord">;
+export type CanvasMediaVersion = {
+    id: string;
+    number: number;
+    createdAt: string;
+    source: "generate" | "upload";
+    media: CanvasMediaVersionMedia;
+    generation?: CanvasMediaVersionGeneration;
+};
+
 export type CanvasNodeMetadata = {
     /** Credential-free editable generation contract; submitted recipes live with tasks. */
     generationSpec?: GenerationSpec;
@@ -524,6 +540,8 @@ export type CanvasNodeMetadata = {
     versionOfNodeId?: string;
     versionLabel?: string;
     versionPrimary?: boolean;
+    mediaVersions?: CanvasMediaVersion[];
+    currentMediaVersionId?: string;
     copiedFromNodeId?: string;
     /** Explicit editing copy; subsequent orientation tools modify this node in place. */
     imageEditSourceNodeId?: string;

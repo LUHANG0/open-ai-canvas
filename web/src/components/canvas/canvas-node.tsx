@@ -1,6 +1,7 @@
+import { currentMediaVersion, hasMediaVersionHistory, listMediaVersions } from "@/lib/canvas/canvas-media-versions";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
-import { AlertCircle, BookOpenCheck, CheckCircle2, ChevronRight, Clapperboard, Copy, Download, Image as ImageIcon, Lock, Maximize2, Music2, Pencil, RefreshCw, ScanSearch, Settings2, Star, Trash2, Type, UserRound, Video, WandSparkles } from "lucide-react";
+import { AlertCircle, BookOpenCheck, CheckCircle2, ChevronRight, Clapperboard, Copy, Download, History, Image as ImageIcon, Lock, Maximize2, Music2, Pencil, RefreshCw, ScanSearch, Settings2, Star, Trash2, Type, UserRound, Video, WandSparkles } from "lucide-react";
 
 import { useCanvasNodeActions } from "./canvas-node-action-context";
 import { CanvasImageLayerControls } from "./canvas-image-layer-controls";
@@ -125,7 +126,7 @@ export const CanvasNode = React.memo(function CanvasNode({
     const [isEditingContent, setIsEditingContent] = useState(false);
     const [isEditingTitle, setIsEditingTitle] = useState(false);
     const [titleDraft, setTitleDraft] = useState(data.title);
-    const { download: downloadNode, duplicate: duplicateNode, deleteNode } = useCanvasNodeActions();
+    const { download: downloadNode, duplicate: duplicateNode, deleteNode, openMediaVersions } = useCanvasNodeActions();
     const hasImageContent = data.type === CanvasNodeType.Image && Boolean(data.metadata?.content);
     const hasVideoContent = data.type === CanvasNodeType.Video && Boolean(data.metadata?.content);
     const hasAudioContent = data.type === CanvasNodeType.Audio && Boolean(data.metadata?.content || data.metadata?.storageKey);
@@ -137,7 +138,8 @@ export const CanvasNode = React.memo(function CanvasNode({
     const showProducedModel = showImageInfo && hasMediaContent && Boolean(producedModelStored) && !hasResultRecord;
     const isBatchRoot = data.type === CanvasNodeType.Image && Boolean(data.metadata?.isBatchRoot) && (batchCount > 1 || Boolean(data.metadata?.imageLayerGroup));
     const isBatchChild = data.type === CanvasNodeType.Image && Boolean(data.metadata?.batchRootId);
-    const showStatusTrack = Boolean(resourceLabel || data.metadata?.locked || isBatchRoot || (isBatchChild && !readOnly) || (hasMediaContent && !readOnly));
+    const showVersionBadge = !readOnly && Boolean(openMediaVersions) && hasMediaVersionHistory(data);
+    const showStatusTrack = Boolean(showVersionBadge || resourceLabel || data.metadata?.locked || isBatchRoot || (isBatchChild && !readOnly) || (hasMediaContent && !readOnly));
     const isActive = isConnectionTarget || isSelected || isFocusRelated;
     const showConnectionRails = !isConnecting && (hovered || isSelected || isFocusRelated);
     const effectiveRenderLOD: CanvasNodeRenderLOD = renderLOD === "full" || hovered || isEditingContent || isEditingTitle || mediaActive ? "full" : renderLOD;
@@ -359,6 +361,7 @@ export const CanvasNode = React.memo(function CanvasNode({
                         {isBatchRoot ? <BatchToggleBadge count={batchCount} expanded={batchExpanded} theme={theme} onToggle={() => onToggleBatch?.(data.id)} /> : null}
                         {data.metadata?.imageLayerGroup && !readOnly ? <CanvasImageLayerControls node={data} /> : null}
                         {isBatchChild && !data.metadata?.imageLayer && !data.metadata?.layerExtraction && !readOnly ? <BatchPrimaryBadge visible={batchPrimary || hovered || isSelected} selected={batchPrimary} theme={theme} onSelect={() => onSetBatchPrimary?.(data)} /> : null}
+                        {showVersionBadge ? <MediaVersionBadge node={data} theme={theme} onOpen={() => openMediaVersions?.(data)} /> : null}
                         {data.metadata?.locked ? <NodeLockBadge theme={theme} /> : null}
                     </div>
                 ) : null}
@@ -774,4 +777,15 @@ function ConnectionSideRail({ side, scale, theme, visible, onPointerDown }: { si
             </span>
         </button>
     );
+}
+
+function MediaVersionBadge({ node, theme, onOpen }: { node: CanvasNodeData; theme: CanvasTheme; onOpen: () => void }) {
+    const current = currentMediaVersion(node);
+    const total = listMediaVersions(node).length;
+    const label = `${current ? `当前 V${current.number}，` : ""}共 ${total} 个版本，打开版本历史`;
+    return <button type="button" className="canvas-node-tool-button inline-flex h-7 shrink-0 items-center gap-1 rounded-md border px-2 text-xs font-semibold tabular-nums focus-visible:ring-2"
+        style={{ background: theme.toolbar.panel, borderColor: theme.toolbar.border, color: theme.node.text }} title={label} aria-label={label}
+        onClick={(event) => { event.stopPropagation(); onOpen(); }} onMouseDown={(event) => event.stopPropagation()} onPointerDown={(event) => event.stopPropagation()}>
+        <History className="size-3" /><span>{current ? `V${current.number}` : "V–"}/{total}</span>
+    </button>;
 }

@@ -193,15 +193,25 @@ describe("batch regeneration result ownership", () => {
         expect(copied.content).toBe("/old.png");
     });
 
-    test("ordinary existing images still generate a separate result and keep their original node", async () => {
+    test("ordinary generated images regenerate in place and keep old media in history after failure", async () => {
         const state = fixture();
         const candidate = { ...prepare(state), nodes: [state.input, state.output] };
         const result = await executeCandidate(candidate, "failed");
-        expect(result.started).toHaveLength(1);
+        expect(result.started).toEqual([state.output.id]);
+        expect(result.nodes).toHaveLength(2);
+        const failed = result.nodes.find((node) => node.id === state.output.id)!;
+        expect(failed.metadata?.status).toBe("error");
+        expect(failed.metadata?.mediaVersions?.[0].media.storageKey).toBe("resource:old");
+    });
+
+    test("imported images still create a separate result and preserve their input", async () => {
+        const state = fixture();
+        state.output = { ...state.output, metadata: { ...state.output.metadata, taskId: undefined } };
+        const candidate = { ...prepare(state), nodes: [state.input, state.output] };
+        const result = await executeCandidate(candidate, "failed");
         expect(result.started[0]).not.toBe(state.output.id);
         expect(result.nodes).toHaveLength(3);
         expect(result.nodes.find((node) => node.id === state.output.id)).toBe(state.output);
-        expect(result.nodes.find((node) => node.id === result.started[0])!.metadata!.status).toBe("error");
     });
 
     test("old thumbnails do not hide waiting, running or failed task status", () => {

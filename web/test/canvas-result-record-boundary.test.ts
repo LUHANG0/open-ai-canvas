@@ -23,7 +23,11 @@ test("the real completed video path persists only media-bound actual cost and re
     expect(result.width / result.height).toBeCloseTo(16 / 9, 8);
     expect(result.metadata?.resultRecord?.billing).toEqual({ actualAmountMicrocredits: 8_800_000, scope: "result" });
     expect(result.metadata?.resultRecord?.model).toBe("task-model");
-    expect(canvasResultRecord(result)?.facts).toEqual(["720P", "16:9", "任务耗时 2分38秒", "8.8积分"]);
+    expect(canvasResultRecord(result)?.facts).toEqual(["分辨率未记录", "16:9", "任务耗时 2分38秒", "8.8积分"]);
+    expect(canvasResultRecord(result)?.details).toContain("1280×720 · 16:9");
+    const submitted = await buildGenerationTaskNodeResult(node(), task({ submittedMediaSpec: { resolution: "1080p", aspectRatio: "16:9" } }));
+    expect(canvasResultRecord(submitted)?.facts[0]).toBe("分辨率 1080P");
+    expect(canvasResultRecord(submitted)?.details).toContain("1280×720 · 16:9");
     expect(canvasPersistentNodes([result])[0].metadata?.resultRecord).toEqual(result.metadata?.resultRecord);
     const nextMedia = applyGeneratedMediaResultMetadata(result, { storageKey: "resource:other", content: "/other", status: "success" }, {}, "other-model");
     expect(nextMedia.resultRecord).toBeUndefined();

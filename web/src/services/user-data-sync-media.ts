@@ -92,6 +92,19 @@ async function ensureRemoteResourceReferencesValue<T>(value: T, uploaded: Map<st
         next[key] = await ensureRemoteResourceReferencesValue(child, uploaded, onUploaded, currentPreserveTextContent);
     }
 
+    const previousMedia = (value as Record<string, unknown>).media;
+    const media = next.media;
+    const generation = next.generation;
+    if (previousMedia && typeof previousMedia === "object" && media && typeof media === "object" && generation && typeof generation === "object") {
+        const before = previousMedia as Record<string, unknown>;
+        const after = media as Record<string, unknown>;
+        const facts = generation as Record<string, unknown>;
+        const record = facts.resultRecord as Record<string, unknown> | undefined;
+        if (record && record.mediaKey === (before.storageKey || before.content) && (after.storageKey || after.content)) {
+            facts.resultRecord = { ...record, mediaKey: after.storageKey || after.content };
+        }
+    }
+
     const storageKey = typeof next.storageKey === "string" ? next.storageKey : "";
     const remoteResourceId = resourceIdFromStorageKey(storageKey);
     if (remoteResourceId) return applyResourceReference(next, storageKey, currentPreserveTextContent) as T;

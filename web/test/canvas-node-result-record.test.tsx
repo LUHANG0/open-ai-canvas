@@ -29,16 +29,20 @@ test("completed metadata stays one line with secondary facts in its tooltip and 
         await act(async () => root.render(<CanvasNodeResultRecord node={node()} enabled />));
         const row = host.querySelector('[role="group"]')!;
         expect(row.querySelector("details, summary, button, [tabindex]")).toBeNull();
-        expect(row.querySelector(".generation-result-metadata-summary")?.textContent).toContain("720P");
+        expect(row.querySelector(".generation-result-metadata-summary")?.textContent).toContain("分辨率未记录");
         expect(row.querySelector(".generation-result-metadata-summary")?.textContent).not.toContain("15秒");
         expect(row.getAttribute("aria-label")).toContain("8.8积分");
         expect(row.querySelector(".generation-result-metadata")?.getAttribute("title")).toContain("15秒");
+        expect(row.querySelector(".generation-result-metadata")?.getAttribute("title")).toContain("1280×720");
         expect(row.querySelector(".generation-result-metadata")?.getAttribute("title")).toContain("task-a");
         expect(row.querySelector("dl, br, .generation-result-metadata-detail-list")).toBeNull();
         const before = row.textContent;
         await act(async () => root.render(<CanvasNodeResultRecord node={node({ model: "new-selected-model", size: "9:16", seconds: "99", vquality: "4k" })} enabled />));
         expect(host.textContent).toBe(before);
         expect(host.textContent).not.toContain("new-selected-model");
+        await act(async () => root.render(<CanvasNodeResultRecord node={node({ size: "9:16", vquality: "4k", resultRecord: { ...resultRecord, submittedResolution: "1080P", submittedAspectRatio: "16:9" } })} enabled />));
+        expect(host.querySelector(".generation-result-metadata-summary")?.textContent).toContain("1080P");
+        expect(host.querySelector(".generation-result-metadata")?.getAttribute("title")).toContain("1280×720");
         await act(async () => root.render(<CanvasNodeResultRecord node={node()} enabled={false} />));
         expect(host.textContent).toBe("");
     } finally { await act(async () => root.unmount()); host.remove(); }

@@ -1,6 +1,7 @@
 import type { CanvasNodeData, CanvasNodeMetadata } from "@/types/canvas";
 import type { GenerationTask } from "@/services/api/task-center";
 import { producedModelLabel } from "@/lib/canvas/produced-model";
+import { listMediaVersions } from "@/lib/canvas/canvas-media-versions";
 import { useConfigStore } from "@/stores/use-config-store";
 
 type ResultRecord = NonNullable<CanvasNodeMetadata["resultRecord"]>;
@@ -68,16 +69,35 @@ function validPixels(width: unknown, height: unknown): width is number {
     return typeof width === "number" && typeof height === "number" && Number.isSafeInteger(width) && Number.isSafeInteger(height) && width > 0 && height > 0;
 }
 
-/** Preserve array identity on repeated observations so unchanged billing never dirties the canvas. */
+/** Pending settlement stays observed even after another version becomes current. */
+export function canvasResultSettlementTaskIds(nodes: CanvasNodeData[]): string[] {
+    const ids = new Set<string>();
+    for (const node of nodes) {
+        const records = [[node.metadata?.resultRecord, node.metadata?.storageKey || node.metadata?.content] as const,
+            ...listMediaVersions(node).map((version) => [version.generation?.resultRecord, version.media.storageKey || version.media.content] as const)];
+        for (const [record, key] of records) if (record?.billingStatus === "pending" && record.mediaKey === key) ids.add(record.taskId);
+    }
+    return [...ids].sort();
+}
+
+/** Preserve identity on repeated observations so unchanged billing never dirties the canvas. */
 export function reconcileCanvasResultBilling(nodes: CanvasNodeData[], task: GenerationTask): CanvasNodeData[] {
     let changed = false;
     const updated = nodes.map((node) => {
         const record = node.metadata?.resultRecord;
-        if (!record || record.mediaKey !== (node.metadata?.storageKey || node.metadata?.content)) return node;
-        const next = reconcileResultBilling(record, task);
-        if (next === record) return node;
+        const next = record && record.mediaKey === (node.metadata?.storageKey || node.metadata?.content) ? reconcileResultBilling(record, task) : record;
+        let versionsChanged = false;
+        const versions = listMediaVersions(node).map((version) => {
+            const historic = version.generation?.resultRecord;
+            if (!historic || historic.mediaKey !== (version.media.storageKey || version.media.content)) return version;
+            const settled = reconcileResultBilling(historic, task);
+            if (settled === historic) return version;
+            versionsChanged = true;
+            return { ...version, generation: { ...version.generation, resultRecord: settled } };
+        });
+        if (next === record && !versionsChanged) return node;
         changed = true;
-        return { ...node, metadata: { ...node.metadata, resultRecord: next } };
+        return { ...node, metadata: { ...node.metadata, resultRecord: next, ...(versionsChanged ? { mediaVersions: versions } : {}) } };
     });
     return changed ? updated : nodes;
 }

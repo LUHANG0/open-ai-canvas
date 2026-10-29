@@ -1,4 +1,5 @@
-import { AudioLines, Captions, Clapperboard, Download, FolderPlus, Images, Image as ImageIcon, Info, LoaderCircle, Lock, Maximize2, MessageSquare, Minus, Music2, Plus, RefreshCw, RotateCcw, RotateCw, Scissors, Settings2, Trash2, Unlock, Upload, UserRound, Video, WandSparkles } from "lucide-react";
+import { hasMediaVersionHistory, listMediaVersions } from "@/lib/canvas/canvas-media-versions";
+import { AudioLines, Captions, Clapperboard, Download, FolderPlus, History, Images, Image as ImageIcon, Info, LoaderCircle, Lock, Maximize2, MessageSquare, Minus, Music2, Plus, RefreshCw, RotateCcw, RotateCw, Scissors, Settings2, Trash2, Unlock, Upload, UserRound, Video, WandSparkles } from "lucide-react";
 
 import { CONTENT_MODERATION_ERROR_CODE, isContentModerationError } from "@/lib/generation-error";
 import { registerToolbarTools, type ToolContext, type ToolDefinition } from "@/lib/canvas/tool-registry";
@@ -32,6 +33,14 @@ function canRetry(ctx: ToolContext) {
 }
 
 export const nodeHoverToolbarTools: ToolDefinition[] = [
+    {
+        id: "mediaVersions", toolbar: "node-hover", category: "node-state", label: "版本历史",
+        displayLabel: (ctx) => `版本 ${listMediaVersions(ctx.node).length}`,
+        icon: <History className="size-3.5" />, defaultVisible: true, defaultOrder: 147,
+        nodeToolbar: { group: "workspace", order: 10, section: "版本", description: "预览、对比并切换历史版本" },
+        applicable: (ctx) => Boolean(ctx.handlers.onNodeVersions) && hasMediaVersionHistory(ctx.node),
+        run: (ctx) => ctx.handlers.onNodeVersions?.(ctx.node!),
+    },
     {
         id: "createEditCopy",
         toolbar: "node-hover",

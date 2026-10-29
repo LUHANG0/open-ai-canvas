@@ -437,6 +437,8 @@ async function buildGenerationTaskNodeResults(node: CanvasNodeData, task: Genera
                 versionOfNodeId: undefined,
                 versionLabel: undefined,
                 versionPrimary: undefined,
+                mediaVersions: undefined,
+                currentMediaVersionId: undefined,
                 agentGenerationContinuation: undefined,
             },
         });
