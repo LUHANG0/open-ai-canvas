@@ -35,7 +35,7 @@ class FakeVideo extends EventTarget {
     async play() { this.paused = false; this.dispatchEvent(new Event("playing")); }
 }
 class FakeElement extends EventTarget {
-    isConnected = true;
+    isConnected = true; dataset: Record<string, string> = {};
     closest(selector: string) { return selector.includes('="true"') ? (interacting ? this : null) : this; }
     getAttribute() { return interacting ? "true" : null; }
     appendChild(video: FakeVideo) { videos.push(video); }
@@ -80,12 +80,35 @@ test("quick pass, touch, dragging and reduced motion never resolve media", async
     await wait();
     expect(calls).toBe(0);
 });
-test("hover is muted and capped at first three seconds; resources are released", async () => {
+test("hover plays beyond three seconds and restores the button on completion", async () => {
     const element = setup(); enter(element); await wait();
     const video = videos[0];
     expect(video.muted).toBe(true); expect(video.playsInline).toBe(true);
-    video.currentTime = 3; video.dispatchEvent(new Event("timeupdate"));
-    expect(video.paused).toBe(true); expect(video.src).toBe(""); expect(video.loads).toBe(1); expect(video.removed).toBe(true);
+    video.frameCallback!(); expect(element.dataset.hoverPlaying).toBe("true");
+    video.currentTime = 12; video.dispatchEvent(new Event("timeupdate"));
+    expect(video.paused).toBe(false); expect(video.removed).toBe(false);
+    video.dispatchEvent(new Event("ended"));
+    expect(element.dataset.hoverPlaying).toBeUndefined();
+    expect(video.removed).toBe(true);
+});
+test("a brief departure resumes, a long departure restarts, and ending clears the position", async () => {
+    const element = setup(); enter(element); await wait();
+    videos[0].currentTime = 9;
+    element.dispatchEvent(new Event("pointerleave"));
+    enter(element); await wait();
+    videos[1].dispatchEvent(new Event("loadedmetadata"));
+    expect(videos[1].currentTime).toBe(9);
+    videos[1].frameCallback!(); expect(element.dataset.hoverPlaying).toBeUndefined();
+    videos[1].dispatchEvent(new Event("seeked")); videos[1].frameCallback!();
+    expect(element.dataset.hoverPlaying).toBe("true");
+    element.dispatchEvent(new Event("pointerleave"));
+    const now = Date.now;
+    Date.now = () => now() + 6000;
+    try { enter(element); await wait(); } finally { Date.now = now; }
+    videos[2].dispatchEvent(new Event("loadedmetadata")); expect(videos[2].currentTime).toBe(0);
+    videos[2].currentTime = 20; videos[2].dispatchEvent(new Event("ended"));
+    enter(element); await wait(); videos[3].dispatchEvent(new Event("loadedmetadata"));
+    expect(videos[3].currentTime).toBe(0);
 });
 test("new hover cancels previous decoder and ignores stale URL resolution", async () => {
     let resolve!: (value: string) => void;

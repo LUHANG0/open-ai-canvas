@@ -1,10 +1,12 @@
 // Only the hovered node owns a decoder; pending hover work shares the same lease.
 let stopCurrentPreview: (() => void) | undefined;
 export const VIDEO_HOVER_DELAY_MS = 350;
-export const VIDEO_HOVER_PREVIEW_MS = 3000;
+export const VIDEO_HOVER_RESUME_MS = 5000;
 
 export function bindCanvasVideoHoverPreview(element: HTMLElement, resolveSource: () => Promise<string>) {
     let stop: (() => void) | undefined;
+    let resumeTime = 0;
+    let leftAt = 0;
     const enter = (event: PointerEvent) => {
         if (event.pointerType !== "mouse" || event.buttons || document.hidden
             || window.matchMedia("(prefers-reduced-motion: reduce)").matches
@@ -12,7 +14,9 @@ export function bindCanvasVideoHoverPreview(element: HTMLElement, resolveSource:
         stopCurrentPreview?.();
         let disposed = false;
         let video: HTMLVideoElement | undefined;
-        let playbackTimer: ReturnType<typeof setTimeout> | undefined;
+        let completed = false;
+        let resumePending = resumeTime > 0 && Date.now() - leftAt <= VIDEO_HOVER_RESUME_MS;
+        const seekTime = resumePending ? resumeTime : 0;
         let videoFrame: number | undefined;
         let animationFrame: number | undefined;
         const listeners = new AbortController();
@@ -28,13 +32,15 @@ export function bindCanvasVideoHoverPreview(element: HTMLElement, resolveSource:
             disposed = true;
             clearTimeout(delay);
             clearTimeout(deadline);
-            clearTimeout(playbackTimer);
+            delete element.dataset.hoverPlaying;
             listeners.abort();
             observer.disconnect();
             visibility.disconnect();
             if (animationFrame !== undefined) cancelAnimationFrame(animationFrame);
             if (videoFrame !== undefined) video?.cancelVideoFrameCallback?.(videoFrame);
             if (video) {
+                resumeTime = completed ? 0 : resumePending ? seekTime : Number.isFinite(video.currentTime) ? video.currentTime : 0;
+                leftAt = Date.now();
                 // Detach before resetting the decoder so cleanup cannot paint a blank frame.
                 video.remove();
                 video.pause();
@@ -63,16 +69,25 @@ export function bindCanvasVideoHoverPreview(element: HTMLElement, resolveSource:
                 video.style.opacity = "0";
                 video.setAttribute("aria-hidden", "true");
                 video.dataset.canvasHoverPreview = "true";
-                video.addEventListener("ended", cancel, { signal: listeners.signal });
-                video.addEventListener("error", cancel, { signal: listeners.signal });
-                video.addEventListener("timeupdate", () => {
-                    if (video && video.currentTime >= VIDEO_HOVER_PREVIEW_MS / 1000) cancel();
+                video.addEventListener("ended", () => { completed = true; cancel(); }, { signal: listeners.signal });
+                video.addEventListener("error", () => { completed = true; cancel(); }, { signal: listeners.signal });
+                video.addEventListener("loadedmetadata", () => {
+                    if (!resumePending) return;
+                    if (Number.isFinite(video!.duration) && seekTime >= video!.duration) { resumePending = false; return; }
+                    video!.currentTime = seekTime;
                 }, { signal: listeners.signal });
-                video.addEventListener("playing", () => {
-                    if (!playbackTimer) playbackTimer = setTimeout(cancel, VIDEO_HOVER_PREVIEW_MS);
+                video.addEventListener("seeked", () => {
+                    resumePending = false;
+                    if (typeof video?.requestVideoFrameCallback === "function") {
+                        videoFrame = video.requestVideoFrameCallback(reveal);
+                    }
                 }, { signal: listeners.signal });
                 const reveal = () => {
-                    if (!disposed && video && element.isConnected && !document.hidden) video.style.opacity = "1";
+                    if (!disposed && video && !resumePending && element.isConnected && !document.hidden) {
+                        clearTimeout(deadline);
+                        video.style.opacity = "1";
+                        element.dataset.hoverPlaying = "true";
+                    }
                 };
                 if (typeof video.requestVideoFrameCallback === "function") {
                     videoFrame = video.requestVideoFrameCallback(() => {
@@ -96,13 +111,14 @@ export function bindCanvasVideoHoverPreview(element: HTMLElement, resolveSource:
                     };
                     video.addEventListener("loadeddata", revealDecodedFrame, { signal: listeners.signal });
                     video.addEventListener("playing", revealDecodedFrame, { signal: listeners.signal });
+                    video.addEventListener("seeked", revealDecodedFrame, { signal: listeners.signal });
                 }
                 video.src = src;
                 element.appendChild(video);
                 void video.play().catch(cancel);
             }).catch(cancel);
         }, VIDEO_HOVER_DELAY_MS);
-        // Bound stalled network/decoder sessions as well as actual playback.
+        // Bound startup only. Once a frame is presented, play through the full video.
         const deadline = setTimeout(cancel, 8000);
         stop = cancel;
         stopCurrentPreview = cancel;
