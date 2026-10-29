@@ -111,11 +111,12 @@ export function offsetForPoint(root: Node, target: Node, targetOffset: number): 
     return offset;
 }
 
-export function setEditableSelection(root: HTMLElement, offset: number) {
+export function setEditableSelection(root: HTMLElement, offset: number, end = offset) {
     const range = document.createRange();
     const point = pointForOffset(root, Math.max(0, offset));
     range.setStart(point.node, point.offset);
-    range.collapse(true);
+    const endPoint = pointForOffset(root, Math.max(offset, end));
+    range.setEnd(endPoint.node, endPoint.offset);
     const selection = window.getSelection();
     selection?.removeAllRanges();
     selection?.addRange(range);
