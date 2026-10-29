@@ -12,6 +12,7 @@ const { createRoot } = await import("react-dom/client");
 const { CanvasResourceMentionTextarea } = await import("../../src/components/canvas/canvas-resource-mention-textarea");
 const { CanvasTextLeaseIndicator } = await import("../../src/components/canvas/use-canvas-text-lease");
 const { canvasEditLeases } = await import("../../src/services/canvas-edit-leases");
+const { getEditableSelection, renderEditableContent, serializeEditableValue, setEditableSelection } = await import("../../src/components/canvas/canvas-mention-editable");
 
 afterAll(() => {
     dom.happyDOM.abort(); canvasEditLeases.reset();
@@ -19,6 +20,26 @@ afterAll(() => {
         if (value) Object.defineProperty(globalThis, key, value);
         else Reflect.deleteProperty(globalThis, key);
     }
+});
+
+test("富文本末尾空行能继续补字，清空占位不会保存成换行", () => {
+    const editor = document.createElement("div");
+    editor.contentEditable = "true";
+    document.body.append(editor);
+    try {
+        for (const value of ["第一行\n", "第一行\n\n"]) {
+            renderEditableContent(editor, value, []);
+            expect(serializeEditableValue(editor)).toBe(value);
+            setEditableSelection(editor, value.length);
+            expect(getEditableSelection(editor)).toEqual({ start: value.length, end: value.length });
+            window.getSelection()!.getRangeAt(0).insertNode(document.createTextNode("末尾补充"));
+            expect(serializeEditableValue(editor)).toBe(value + "末尾补充");
+            renderEditableContent(editor, value + "末尾补充", []);
+            expect(serializeEditableValue(editor)).toBe(value + "末尾补充");
+        }
+        editor.replaceChildren(document.createElement("br"));
+        expect(serializeEditableValue(editor)).toBe("");
+    } finally { editor.remove(); }
 });
 
 test("真实提示词组件在中文组词期间接收远端更新，组词完成后保留两端文字且光标跟随", async () => {

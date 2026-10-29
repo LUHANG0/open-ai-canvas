@@ -37,6 +37,13 @@ export function splitMentionText(value: string, references: CanvasResourceRefere
 export function renderEditableContent(editor: HTMLElement, value: string, references: CanvasResourceReference[]) {
     const parts = splitMentionText(value, references);
     const nodes = parts.map((part) => (part.type === "mention" ? createInlineMentionChip(part.reference, part.token) : document.createTextNode(part.text)));
+    // Keep the final empty line editable. Chromium otherwise inserts text before
+    // the last newline when the caret points to the end of a text node.
+    if (value.endsWith("\n")) {
+        const tail = document.createElement("br");
+        tail.dataset.mentionEditorTail = "";
+        nodes.push(tail);
+    }
     editor.replaceChildren(...nodes);
 }
 
@@ -55,6 +62,8 @@ export function hasMentionBoundary(value: string, index: number) {
 }
 
 export function serializeEditableValue(root: HTMLElement) {
+    // Browsers leave a single placeholder BR after selecting all and deleting.
+    if (root.childNodes.length === 1 && root.firstChild instanceof HTMLElement && root.firstChild.tagName === "BR") return "";
     return serializeNodeList(root.childNodes).replace(/\u00a0/g, " ");
 }
 
@@ -69,6 +78,7 @@ export function serializeNodeList(nodes: NodeListOf<ChildNode> | ChildNode[]) {
 export function serializeNode(node: ChildNode): string {
     if (node.nodeType === Node.TEXT_NODE) return node.textContent || "";
     if (!(node instanceof HTMLElement)) return "";
+    if (node.hasAttribute("data-mention-editor-tail")) return "";
     const token = node.dataset.mentionToken;
     if (token) return token;
     if (node.tagName === "BR") return "\n";
@@ -115,6 +125,10 @@ export function pointForOffset(root: Node, offset: number): { node: Node; offset
     if (root.nodeType === Node.TEXT_NODE) return { node: root, offset: Math.min(offset, root.textContent?.length || 0) };
     let remaining = offset;
     const children = Array.from(root.childNodes);
+    const tail = children.at(-1);
+    if (tail instanceof HTMLElement && tail.hasAttribute("data-mention-editor-tail") && offset === plainTextLength(root)) {
+        return { node: root, offset: children.length - 1 };
+    }
     for (let index = 0; index < children.length; index += 1) {
         const child = children[index];
         const length = plainTextLength(child);
@@ -131,6 +145,7 @@ export function pointForOffset(root: Node, offset: number): { node: Node; offset
 export function plainTextLength(node: Node): number {
     if (node.nodeType === Node.TEXT_NODE) return node.textContent?.length || 0;
     if (node instanceof HTMLElement) {
+        if (node.hasAttribute("data-mention-editor-tail")) return 0;
         const token = node.dataset.mentionToken;
         if (token) return token.length;
         if (node.tagName === "BR") return 1;

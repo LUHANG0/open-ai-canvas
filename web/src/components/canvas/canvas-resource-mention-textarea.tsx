@@ -48,6 +48,7 @@ type Props = Omit<TextareaHTMLAttributes<HTMLTextAreaElement>, "onChange" | "val
     mentionMenuWidth?: number;
     sendOnEnter?: boolean | "both";
     onContentSizeChange?: (height: number) => void;
+    autoSize?: boolean;
     includeAssetLibrary?: boolean;
     activeDropReferenceId?: string | null;
     onReferenceFilesDrop?: (reference: CanvasResourceReference, files: File[]) => void;
@@ -64,7 +65,7 @@ function shouldSubmitOnEnter(event: { key: string; ctrlKey: boolean; metaKey: bo
 }
 
 export const CanvasResourceMentionTextarea = forwardRef<HTMLTextAreaElement, Props>(function CanvasResourceMentionTextarea(
-    { value, references, onSelectReference, onChange, onSubmit, onKeyDown, className, containerClassName, style, highlightLabels = true, mentionMenuWidth = 320, sendOnEnter = true, onContentSizeChange, includeAssetLibrary = false, activeDropReferenceId, onReferenceFilesDrop, autoLinkEnabled = false, ...props },
+    { value, references, onSelectReference, onChange, onSubmit, onKeyDown, className, containerClassName, style, highlightLabels = true, mentionMenuWidth = 320, sendOnEnter = true, onContentSizeChange, autoSize = false, includeAssetLibrary = false, activeDropReferenceId, onReferenceFilesDrop, autoLinkEnabled = false, ...props },
     forwardedRef,
 ) {
     const rawTheme = useActiveTheme();
@@ -109,19 +110,21 @@ export const CanvasResourceMentionTextarea = forwardRef<HTMLTextAreaElement, Pro
     const useRichEditor = Boolean(activeReferences.length);
     const autoLinkMatch = useMemo<CanvasResourceAutoLinkMatch | null>(() => autoLinkEnabled && autoLinkCursor !== null ? findCanvasResourceAutoLinkMatch(value, autoLinkCursor, activeCanvasReferences) : null, [activeCanvasReferences, autoLinkCursor, autoLinkEnabled, value]);
     const reportContentSize = useCallback((element: HTMLElement | null) => {
-        if (!element || !onContentSizeChange) return;
+        if (!element || (!autoSize && !onContentSizeChange)) return;
+        const scrollTop = element.scrollTop;
         const previous = { height: element.style.height, minHeight: element.style.minHeight, maxHeight: element.style.maxHeight, overflow: element.style.overflow };
         element.style.height = "1px";
         element.style.minHeight = "0";
         element.style.maxHeight = "none";
         element.style.overflow = "hidden";
         const height = Math.ceil(element.scrollHeight);
-        element.style.height = previous.height;
+        element.style.height = autoSize ? `${height}px` : previous.height;
         element.style.minHeight = previous.minHeight;
         element.style.maxHeight = previous.maxHeight;
         element.style.overflow = previous.overflow;
-        onContentSizeChange(height);
-    }, [onContentSizeChange]);
+        element.scrollTop = scrollTop;
+        onContentSizeChange?.(height);
+    }, [autoSize, onContentSizeChange]);
 
     useLayoutEffect(() => {
         if (!useRichEditor) pendingScrollTopRef.current = null;
@@ -200,7 +203,7 @@ export const CanvasResourceMentionTextarea = forwardRef<HTMLTextAreaElement, Pro
     useLayoutEffect(() => {
         const element = useRichEditor ? editorRef.current : textareaRef.current;
         const container = containerRef.current;
-        if (!element || !container || !onContentSizeChange) return;
+        if (!element || !container || (!autoSize && !onContentSizeChange)) return;
         reportContentSize(element);
         let width = container.clientWidth;
         const observer = new ResizeObserver(() => {
@@ -211,7 +214,26 @@ export const CanvasResourceMentionTextarea = forwardRef<HTMLTextAreaElement, Pro
         });
         observer.observe(container);
         return () => observer.disconnect();
-    }, [onContentSizeChange, reportContentSize, useRichEditor, value]);
+    }, [autoSize, compositionValue, onContentSizeChange, reportContentSize, useRichEditor, value]);
+
+    const revealEditableCaret = (editor: HTMLElement) => {
+        if (!autoSize || document.activeElement !== editor) return;
+        const selection = getEditableSelection(editor);
+        if (!selection || selection.start !== selection.end) return;
+        // A trailing newline has no DOM caret rectangle in Chromium.
+        const range = window.getSelection()?.getRangeAt(0);
+        if (range && !range.getBoundingClientRect().height && selection.end === serializeEditableValue(editor).length) {
+            editor.scrollTop = editor.scrollHeight;
+            return;
+        }
+        const caret = mentionCaretRect(editor, selection.end);
+        const bounds = editor.getBoundingClientRect();
+        const padding = getComputedStyle(editor);
+        const top = bounds.top + editor.clientTop + (Number.parseFloat(padding.paddingTop) || 0);
+        const bottom = bounds.top + editor.clientTop + editor.clientHeight - (Number.parseFloat(padding.paddingBottom) || 0);
+        if (caret.bottom > bottom) editor.scrollTop += caret.bottom - bottom;
+        else if (caret.top < top) editor.scrollTop -= top - caret.top;
+    };
 
     const focusEditor = (selectionStart?: number) => {
         requestAnimationFrame(() => {
@@ -221,6 +243,7 @@ export const CanvasResourceMentionTextarea = forwardRef<HTMLTextAreaElement, Pro
                 editor.focus({ preventScroll: true });
                 if (typeof selectionStart === "number") setEditableSelection(editor, selectionStart);
                 editor.scrollTop = scrollTop;
+                revealEditableCaret(editor);
                 return;
             }
             const textarea = textareaRef.current;
@@ -327,6 +350,7 @@ export const CanvasResourceMentionTextarea = forwardRef<HTMLTextAreaElement, Pro
         lastRenderedValueRef.current = next;
         syncMention(next, cursor);
         reportContentSize(editor);
+        revealEditableCaret(editor);
     };
 
     const syncEditableMentionFromSelection = () => {
@@ -619,13 +643,6 @@ if (event.key === "Enter" && (event.nativeEvent.isComposing || composingRef.curr
                 }}
                 onWheel={(event) => {
                     event.stopPropagation();
-                    const textarea = event.currentTarget;
-                    const deltaY = event.deltaMode === 1 ? event.deltaY * 16 : event.deltaMode === 2 ? event.deltaY * textarea.clientHeight : event.deltaY;
-                    if (deltaY) {
-                        const previousTop = textarea.scrollTop;
-                        textarea.scrollTop += deltaY;
-                        if (textarea.scrollTop !== previousTop) event.preventDefault();
-                    }
                     props.onWheel?.(event);
                 }}
                 onBlur={(event) => {
