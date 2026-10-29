@@ -98,8 +98,7 @@ function ImagePreview({ src = "", storageKey, alt = "图片", onClose }: CanvasI
                     {loading && !error ? (
                         <div className="canvas-media-preview-state" role="status">
                             <LoaderCircle className="canvas-image-preview-spinner" aria-hidden="true" />
-                            <span>正在加载原图</span>
-                            <small>{slow ? "原图较大或网络较慢，请稍候" : "原图就绪后显示完整细节"}</small>
+                            <span className="sr-only">正在加载原图。{slow ? "原图较大或网络较慢，请稍候" : "原图就绪后显示完整细节"}</span>
                         </div>
                     ) : null}
                     {error ? (

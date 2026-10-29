@@ -60,8 +60,8 @@ export function CanvasOriginalImageFeedback({ busy, animating = true, failed, co
             <div className="canvas-original-image-panel">
                 <div role="status" aria-live="polite" aria-atomic="true" aria-busy={busy && !failed} className="canvas-original-image-copy">
                     {failed ? <ImageOff className="canvas-original-image-symbol" aria-hidden="true" /> : <LoaderCircle className="canvas-original-image-spinner" aria-hidden="true" />}
-                    <strong>{title}</strong>
-                    <span className="sr-only">{completed ? "生成完成。" : ""}{details}。{hint}</span>
+                    {failed ? <strong>{title}</strong> : null}
+                    <span className="sr-only">{failed ? "" : `${title}。`}{completed ? "生成完成。" : ""}{details}。{hint}</span>
                     {failed && !hasPreview ? <small>无需重新生成</small> : null}
                 </div>
                 {failed ? <button type="button" className="canvas-original-image-retry" onClick={(event) => { event.stopPropagation(); onRetry(); }}>重新加载原图</button> : null}
