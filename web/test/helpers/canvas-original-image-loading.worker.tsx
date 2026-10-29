@@ -12,7 +12,7 @@ self.onmessage = async () => {
         const loads: { src: string; resolve: (image: HTMLImageElement) => void; reject: (error: Error) => void }[] = [];
         const accesses: unknown[][] = [];
         mock.module("../../src/lib/user-scope", () => ({ getActiveUserScope: () => scope }));
-        mock.module("../../src/services/canvas-image-loader", () => ({ prepareCanvasImage: (src: string) => {
+        mock.module("../../src/services/canvas-image-loader", () => ({ isCanvasImageActive: () => true, subscribeCanvasImageActivity: () => () => {}, prepareCanvasImage: (src: string) => {
             const { promise, resolve, reject } = Promise.withResolvers<HTMLImageElement>();
             loads.push({ src, resolve, reject });
             return promise;

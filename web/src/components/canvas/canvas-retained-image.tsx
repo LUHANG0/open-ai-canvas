@@ -1,9 +1,9 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 
 import type { CanvasTheme } from "@/lib/canvas-theme";
 import { getActiveUserScope } from "@/lib/user-scope";
 import { getResourceAccess, resolveResourceAccessURL, resourceIdFromStorageKey } from "@/services/api/resources";
-import { prepareCanvasImage } from "@/services/canvas-image-loader";
+import { isCanvasImageActive, prepareCanvasImage, subscribeCanvasImageActivity } from "@/services/canvas-image-loader";
 import { CanvasOriginalImageFeedback } from "./canvas-original-image-feedback";
 
 type DisplayedImage = { identity: string; retentionKey: string; src: string };
@@ -28,6 +28,11 @@ export function RetainedCanvasImage({ identity, retentionKey = identity, src, st
     const [preparing, setPreparing] = useState(false);
     const [failure, setFailure] = useState<{ identity: string; src: string; attempt: number } | null>(null);
     const [retry, setRetry] = useState({ identity, attempt: 0 });
+    const [preparation, setPreparation] = useState({ identity: "", src: "" });
+    const activitySrc = preparation.identity === identity ? preparation.src : "";
+    const subscribeActivity = useCallback((listener: () => void) => subscribeCanvasImageActivity(activitySrc, listener), [activitySrc, identity]);
+    const activeSnapshot = useCallback(() => isCanvasImageActive(activitySrc), [activitySrc, identity]);
+    const downloading = useSyncExternalStore(subscribeActivity, activeSnapshot, () => false);
     const attempt = retry.identity === identity ? retry.attempt : 0;
     const displayedRef = useRef(displayed);
     displayedRef.current = displayed;
@@ -59,15 +64,19 @@ export function RetainedCanvasImage({ identity, retentionKey = identity, src, st
             const remote = Boolean(resourceIdFromStorageKey(target.storageKey));
             if (attempt && remote) candidate = await freshOriginal();
             if (!isCurrent()) return;
+            const prepare = (url: string) => {
+                if (isCurrent()) setPreparation({ identity, src: url });
+                return prepareCanvasImage(url, controller.signal);
+            };
             let image: HTMLImageElement;
             try {
-                image = await prepareCanvasImage(candidate.url, controller.signal);
+                image = await prepare(candidate.url);
             } catch (error) {
                 if (!isCurrent() || !remote || attempt) throw error;
                 const refreshed = await freshOriginal();
                 if (!isCurrent() || !refreshed.url || refreshed.url === candidate.url) throw error;
                 candidate = refreshed;
-                image = await prepareCanvasImage(candidate.url, controller.signal);
+                image = await prepare(candidate.url);
             }
             if (!isCurrent()) return;
             currentRef.current.fitToImage(image, candidate.size);
@@ -101,7 +110,7 @@ export function RetainedCanvasImage({ identity, retentionKey = identity, src, st
                 className={`absolute inset-0 ${className}`}
                 style={{ visibility: visibleSrc ? "visible" : "hidden" }}
             />
-            {busy || failed || !visibleSrc ? <CanvasOriginalImageFeedback busy={busy} failed={Boolean(failed)} completed={completed} hasPreview={Boolean(visibleSrc)} width={originalWidth} height={originalHeight} bytes={bytes} theme={theme} onRetry={() => setRetry({ identity, attempt: attempt + 1 })} /> : null}
+            {busy || failed || !visibleSrc ? <CanvasOriginalImageFeedback busy={busy} animating={downloading} failed={Boolean(failed)} completed={completed} hasPreview={Boolean(visibleSrc)} width={originalWidth} height={originalHeight} bytes={bytes} theme={theme} onRetry={() => setRetry({ identity, attempt: attempt + 1 })} /> : null}
         </>
     );
 }

@@ -94,6 +94,7 @@ export function prepareCanvasImage(src: string, signal: AbortSignal, timeoutMs =
 
 type ImagePreparationJob = {
     src: string;
+    activityKey: string;
     signal: AbortSignal;
     resolve: (image: HTMLImageElement) => void;
     reject: (error: unknown) => void;
@@ -108,11 +109,38 @@ type ImagePreparationJob = {
 const queue: ImagePreparationJob[] = [];
 let activePreparations = 0;
 
+// Only sources occupying a download/decode slot animate. Queued sources stay static.
+// Scope and source subscriptions prevent account changes or unrelated images waking every node.
+const activeSources = new Set<string>();
+const activityListeners = new Map<string, Set<() => void>>();
+const activityKey = (src: string) => JSON.stringify([getActiveUserScope(), src]);
+
+export function subscribeCanvasImageActivity(src: string, listener: () => void) {
+    const key = activityKey(src);
+    let listeners = activityListeners.get(key);
+    if (!listeners) activityListeners.set(key, listeners = new Set());
+    listeners.add(listener);
+    return () => {
+        listeners.delete(listener);
+        if (!listeners.size && activityListeners.get(key) === listeners) activityListeners.delete(key);
+    };
+}
+
+export function isCanvasImageActive(src: string) {
+    return Boolean(src && activeSources.has(activityKey(src)));
+}
+
+function markImageActivity(job: ImagePreparationJob, active: boolean) {
+    if (active) activeSources.add(job.activityKey);
+    else activeSources.delete(job.activityKey);
+    for (const listener of [...(activityListeners.get(job.activityKey) || [])]) listener();
+}
+
 /** Load and decode one image under a shared concurrency budget. Queued work is cancellable. */
 function enqueueCanvasImage(src: string, signal: AbortSignal, timeoutMs: number): Promise<HTMLImageElement> {
     if (signal.aborted) return Promise.reject(abortError());
     return new Promise((resolve, reject) => {
-        const job: ImagePreparationJob = { src, signal, resolve, reject, started: false, settled: false, timeoutMs, onAbort: () => {} };
+        const job: ImagePreparationJob = { src, activityKey: activityKey(src), signal, resolve, reject, started: false, settled: false, timeoutMs, onAbort: () => {} };
         job.onAbort = () => {
             if (job.settled) return;
             if (!job.started) {
@@ -143,6 +171,7 @@ function pump() {
         }
         job.started = true;
         activePreparations += 1;
+        markImageActivity(job, true);
         job.timeout = setTimeout(() => {
             job.image?.removeAttribute("src");
             settle(job, undefined, new Error("图片加载或解码超时"));
@@ -176,6 +205,7 @@ function settle(job: ImagePreparationJob, image?: HTMLImageElement, error?: unkn
     }
     if (job.started) {
         activePreparations = Math.max(0, activePreparations - 1);
+        markImageActivity(job, false);
         pump();
     }
     if (error !== undefined) job.reject(error);

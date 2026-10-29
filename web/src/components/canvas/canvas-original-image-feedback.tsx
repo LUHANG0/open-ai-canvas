@@ -1,12 +1,13 @@
 import { LoaderCircle, ImageOff } from "lucide-react";
-import { useEffect, useState, type CSSProperties } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 
 import type { CanvasTheme } from "@/lib/canvas-theme";
 import { formatBytes } from "@/lib/image-utils";
 import "./canvas-original-image-feedback.css";
 
-export function CanvasOriginalImageFeedback({ busy, failed, completed = false, hasPreview = false, width, height, bytes, theme, onRetry }: {
+export function CanvasOriginalImageFeedback({ busy, animating = true, failed, completed = false, hasPreview = false, width, height, bytes, theme, onRetry }: {
     busy: boolean;
+    animating?: boolean;
     failed: boolean;
     completed?: boolean;
     hasPreview?: boolean;
@@ -16,6 +17,20 @@ export function CanvasOriginalImageFeedback({ busy, failed, completed = false, h
     theme: CanvasTheme;
     onRetry: () => void;
 }) {
+    const elementRef = useRef<HTMLDivElement>(null);
+    const [visible, setVisible] = useState(false);
+    useEffect(() => {
+        if (!busy || !animating || failed) { setVisible(false); return; }
+        const element = elementRef.current;
+        if (!element) return;
+        let intersecting = typeof IntersectionObserver === "undefined";
+        const update = () => setVisible(intersecting && !document.hidden);
+        const observer = typeof IntersectionObserver === "undefined" ? undefined : new IntersectionObserver(([entry]) => { intersecting = entry.isIntersecting; update(); });
+        observer?.observe(element);
+        document.addEventListener("visibilitychange", update);
+        update();
+        return () => { observer?.disconnect(); document.removeEventListener("visibilitychange", update); };
+    }, [busy, animating, failed]);
     const [slow, setSlow] = useState(false);
     useEffect(() => {
         setSlow(false);
@@ -31,8 +46,9 @@ export function CanvasOriginalImageFeedback({ busy, failed, completed = false, h
 
     return (
         <div
+            ref={elementRef}
             className={`canvas-original-image-feedback${hasPreview ? " has-preview" : ""}${failed ? " is-failed" : ""}`}
-            data-active={busy && !failed}
+            data-active={busy && animating && visible && !failed}
             data-canvas-no-zoom data-canvas-wheel-scroll
             style={{ "--original-image-fill": theme.node.fill, "--original-image-ink": theme.node.text, "--original-image-muted": theme.node.muted, "--original-image-stroke": theme.node.stroke, "--original-image-hover": theme.toolbar.itemHover } as CSSProperties}
             onPointerDown={(event) => event.stopPropagation()}
