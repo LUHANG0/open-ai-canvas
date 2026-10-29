@@ -3,18 +3,6 @@
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <script>
-            document.documentElement.classList.add("app-initializing");
-            if (/^\/(?:login|register|forgot-password|i(?:\/.*)?)?\/?$/.test(location.pathname)) document.documentElement.classList.add("app-boot-brand");
-        </script>
-        <!--# block name="brand_default_head" -->
-        <meta name="description" content="梦层 MengCeng，面向独立创作者与小型团队的 AI 影像创作工作台。" />
-        <title>梦层 MengCeng</title>
-        <link rel="icon" type="image/png" sizes="192x192" href="/favicon.png" />
-        <!--# endblock -->
-        <!--# include virtual="/_brand-seo/head" stub="brand_default_head" -->
-        <link rel="stylesheet" href="/loading-v1.css" />
-        <link rel="preload" href="/brand/fonts/glow-sc-medium-core.woff2" as="font" type="font/woff2" crossorigin />
         <style>
             /* Fix layer order before production chunks can register utilities ahead of base. */
             @layer theme, base, components, utilities;
@@ -32,6 +20,18 @@
                 background: #ffffff;
             }
         </style>
+        <script>
+            document.documentElement.classList.add("app-initializing");
+            if (/^\/(?:login|register|forgot-password|i(?:\/.*)?)?\/?$/.test(location.pathname)) document.documentElement.classList.add("app-boot-brand");
+        </script>
+        <!--# block name="brand_default_head" -->
+        <meta name="description" content="梦层 MengCeng，面向独立创作者与小型团队的 AI 影像创作工作台。" />
+        <title>梦层 MengCeng</title>
+        <link rel="icon" type="image/png" sizes="192x192" href="/favicon.png" />
+        <!--# endblock -->
+        <!--# include virtual="/_brand-seo/head" stub="brand_default_head" -->
+        <link rel="stylesheet" href="/loading-v1.css" />
+        <link rel="preload" href="/brand/fonts/glow-sc-medium-core.woff2" as="font" type="font/woff2" crossorigin />
         <script>
             try {
                 var s = JSON.parse(localStorage.getItem("yingce:theme_store") || "{}");

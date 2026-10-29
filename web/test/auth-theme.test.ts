@@ -28,6 +28,7 @@ describe("authentication brand palette and theme boundaries", () => {
 
     test("brand auth uses a dark media lightbox without changing the workspace preference", () => {
         const scene = source("components/brand/brand-auth-dialog.tsx");
+        const showcase = source("components/brand/brand-auth-showcase.tsx");
         expect(scene).toContain("ConfigProvider");
         expect(scene).toContain('getAntThemeConfig(true, appearance.activeSkin)');
         expect(source("components/brand/brand-site.tsx")).toContain("useThemeStore");
@@ -36,8 +37,9 @@ describe("authentication brand palette and theme boundaries", () => {
         expect(scene).not.toContain("auth-card-dark");
         expect(source("pages/auth/auth-scene.tsx")).toContain("BrandAuthDialog");
         expect(source("pages/auth/auth-scene.tsx")).not.toContain("<main");
-        expect(scene).toContain("mc-auth-showcase");
-        expect(scene).toContain("document.hidden");
+        expect(scene).toContain("<BrandAuthShowcase open={open}");
+        expect(showcase).toContain("mc-auth-showcase");
+        expect(showcase).toContain("document.hidden");
         expect(scene).toContain("useAuthReducedMotion");
         expect(scene).not.toContain("auth-scene-hero");
         expect(scene).toContain('<BrandLogo theme="dark"');

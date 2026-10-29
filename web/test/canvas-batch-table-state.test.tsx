@@ -9,7 +9,8 @@ import { buildGenerationConfig } from "@/lib/canvas/canvas-project-generation";
 import { batchGenerationRows, removeLastBatchReferenceColumn, reorderBatchReferenceColumns } from "@/lib/canvas/canvas-batch-table";
 import { patchCanvasBatchTableData, prepareCanvasBatchTableGeneration } from "@/lib/canvas/canvas-batch-table-state";
 import { useCanvasGenerationBatches } from "@/pages/canvas/use-canvas-generation-batches";
-import { defaultConfig } from "@/stores/use-config-store";
+import { createModelChannel, defaultConfig } from "@/stores/use-config-store";
+import { defaultModelCapabilityConfig } from "@/lib/model-capabilities";
 import { CanvasNodeType, type CanvasConnection, type CanvasNodeData } from "@/types/canvas";
 
 function fixture() {
@@ -133,7 +134,21 @@ describe("batch table state transitions", () => {
             ...state.output.metadata,
             generationSpec: specFromConfig("image", "stale prompt", { ...defaultConfig, size: "1:1", imageResolution: "1K", imageParameters: JSON.stringify({ ratio: "1:1" }), quality: "low", transparentBackground: "false" }),
         };
-        const settings = { ...defaultConfig, size: "3:2", imageResolution: "4K", imageParameters: JSON.stringify({ ratio: "3:2" }), quality: "high", transparentBackground: "true" };
+        const capabilityConfig = defaultModelCapabilityConfig();
+        capabilityConfig.image!.resolution = { supported: true, values: ["1K", "4K"], default: "1K" };
+        capabilityConfig.image!.size = { parameter: "size", values: ["1:1", "3:2"], default: "1:1", allowCustom: false };
+        const channel = createModelChannel({ id: "batch-fixture", name: "batch fixture", models: ["image"], modelCosts: [{ model: "image", capability: "image", capabilityConfig }] });
+        const settings = {
+            ...defaultConfig,
+            channels: [channel],
+            model: "batch-fixture::image",
+            imageModel: "batch-fixture::image",
+            size: "3:2",
+            imageResolution: "4K",
+            imageParameters: JSON.stringify({ ratio: "3:2" }),
+            quality: "high",
+            transparentBackground: "true",
+        };
         const candidate = prepare(state, state.nodes, settings);
         const output = candidate.nodes.find((node) => node.id === state.output.id)!;
         const spec = readNodeGenerationSpec(output)!;

@@ -1,6 +1,7 @@
 import { expect, test } from "bun:test";
 import { registerPlugin, unregisterPlugin } from "../src/lib/plugins/plugin-registry";
 import type { PluginManifest } from "../src/lib/plugins/plugin-types";
+import { getIsolatedAdminAntTheme } from "../src/pages/admin/theme/admin-ant-theme";
 
 test("plugin upload caller preserves the installation promise", async () => {
     const page = await Bun.file(new URL("../src/pages/admin/plugins/plugins-page.tsx", import.meta.url)).text();
@@ -33,11 +34,17 @@ test("copied guide manifest is accepted by the real plugin registry", async () =
     }
 });
 
-test("reduced motion preserves modal completion events", async () => {
+test("reduced motion disables Ant motion alongside CSS transitions", async () => {
     const css = await Bun.file(new URL("../src/pages/admin/theme/admin-chrome.css", import.meta.url)).text();
     const reducedMotion = css.slice(css.lastIndexOf("@media (prefers-reduced-motion: reduce)"));
-    expect(reducedMotion).toContain("animation-duration: 0.01ms !important");
-    expect(reducedMotion).toContain("transition-duration: 0.01ms !important");
+    for (const dark of [false, true]) {
+        expect(getIsolatedAdminAntTheme(dark, true).token?.motion).toBe(false);
+        expect(getIsolatedAdminAntTheme(dark, false).token?.motion).toBe(true);
+    }
+    const shell = await Bun.file(new URL("../src/pages/admin/components/admin-shell.tsx", import.meta.url)).text();
+    expect(shell).toContain("getIsolatedAdminAntTheme(dark, Boolean(reducedMotion))");
+    expect(reducedMotion).toContain("animation-duration: 0s !important");
+    expect(reducedMotion).toContain("transition-duration: 0s !important");
     expect(reducedMotion).not.toContain("animation: none");
     expect(reducedMotion).not.toContain("transition: none");
 });

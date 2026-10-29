@@ -16,6 +16,7 @@ const paths: Record<string, string> = {
     "json-canonicalize": import.meta.resolve("json-canonicalize"),
     zustand: import.meta.resolve("zustand"),
     "@/services/api/resources": join(dir, "resources.ts"),
+    "@/services/upload-scope": join(dir, "upload-scope.ts"),
     "@/services/direct-object-upload": fileURLToPath(new URL("services/direct-object-upload.ts", root)),
     "@/lib/canvas/sync-recovery": fileURLToPath(new URL("lib/canvas/sync-recovery.ts", root)),
     "@/lib/canvas/canvas-sync-rebase": join(dir, "rebase.ts"),
@@ -130,6 +131,7 @@ export const useCanvasHistoryStore = {};
 `,
 );
 copySource("services/api/resources.ts", "resources.ts");
+copySource("services/upload-scope.ts", "upload-scope.ts");
 copySource("services/user-data-sync-media.ts", "media.ts");
 copySource("lib/canvas/canvas-content.ts", "content.ts");
 copySource("lib/canvas/canvas-sync-rebase.ts", "rebase.ts");
@@ -143,7 +145,7 @@ sync.installRemoteUserDataAutoSync();
 // Independent module state/storage/session, sharing only the server fixture.
 const peerDir = join(dir, "peer");
 mkdirSync(peerDir);
-for (const name of ["dependencies.ts", "resources.ts", "media.ts", "content.ts", "rebase.ts", "progress.ts", "sync.ts"]) writeFileSync(join(peerDir, name), readFileSync(join(dir, name), "utf8").replaceAll(dir, peerDir));
+for (const name of ["dependencies.ts", "resources.ts", "upload-scope.ts", "media.ts", "content.ts", "rebase.ts", "progress.ts", "sync.ts"]) writeFileSync(join(peerDir, name), readFileSync(join(dir, name), "utf8").replaceAll(dir, peerDir));
 const peerSync: typeof sync = await import(join(peerDir, "sync.ts"));
 const peer = await import(join(peerDir, "dependencies.ts"));
 const peerProgress: typeof import("@/stores/use-sync-progress-store") = await import(join(peerDir, "progress.ts"));

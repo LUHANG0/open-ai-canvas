@@ -104,8 +104,9 @@ for (const rich of [false, true]) {
             if (!rich) {
                 f.resetScroll();
                 const scrollable = await f.dispatch(f.editor, {});
-                expect(f.editor.scrollTop).toBe(10);
-                expect(scrollable.defaultPrevented).toBe(true);
+                // Native scrolling runs after an uncancelled wheel event; HappyDOM has no default scroll action.
+                expect(f.editor.scrollTop).toBe(0);
+                expect(scrollable.defaultPrevented).toBe(false);
             }
             await f.settle(); f.expectCanvasIdle();
         } finally { await f.cleanup(); }
