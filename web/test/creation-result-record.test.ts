@@ -61,3 +61,19 @@ test("history migration rebinds snapshot identity with the local media key, neve
     const replaced = await prepare({ ...message, status: "done", resultRecords, resultStorageKeys: ["resource:replacement"] });
     expect(replaced.resultRecords).toEqual([]);
 });
+
+test("recovered media history preserves normalized submission facts separately from measured pixels", async () => {
+    const recovered = { ...task, submittedMediaSpec: { resolution: "4k", aspectRatio: "16:9" } };
+    const resultRecords = creationMessageResultRecords(message, recovered, ["resource:a", "resource:b"])!;
+    const prepare = creationHistoryMedia("guest", new AbortController().signal, () => true);
+    const payload = await prepare({ ...message, status: "done", resultRecords, resultStorageKeys: ["resource:a", "resource:b"] });
+    const records = JSON.parse(JSON.stringify(payload)).resultRecords;
+    expect(records.map((record: typeof resultRecords[number]) => ({
+        submittedResolution: record.submittedResolution, submittedAspectRatio: record.submittedAspectRatio,
+        width: record.width, height: record.height,
+    }))).toEqual([
+        { submittedResolution: "4K", submittedAspectRatio: "16:9", width: 1024, height: 768 },
+        { submittedResolution: "4K", submittedAspectRatio: "16:9", width: 2048, height: 2048 },
+    ]);
+    expect(payload.taskIds).toEqual(["task-a"]);
+});

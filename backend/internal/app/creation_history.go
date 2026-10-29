@@ -36,6 +36,8 @@ type CreationHistoryDetail struct {
 }
 
 var historyID = regexp.MustCompile(`^[a-zA-Z0-9_:\-]{1,160}$`)
+var historySubmittedResolution = regexp.MustCompile(`^(自动|[1-9][0-9]{0,3}P|[1-9][0-9]?K|[1-9][0-9]{1,4}×[1-9][0-9]{1,4})$`)
+var historySubmittedAspectRatio = regexp.MustCompile(`^[1-9][0-9]?:[1-9][0-9]?$`)
 
 func (s *Service) ListCreationHistory(userID, after string) (map[string]any, error) {
 	if userID == "" || (after != "" && !historyID.MatchString(after)) {
@@ -227,6 +229,15 @@ func validateHistoryResultRecords(input map[string]any, validateKey func(any) bo
 			switch field {
 			case "mediaKey", "taskId", "model":
 				if text, ok := value.(string); !ok || len(text) > 512 {
+					return invalid()
+				}
+			case "submittedResolution", "submittedAspectRatio":
+				// Match the normalized display snapshots emitted by the Web result record.
+				pattern := historySubmittedResolution
+				if field == "submittedAspectRatio" {
+					pattern = historySubmittedAspectRatio
+				}
+				if text, ok := value.(string); !ok || !pattern.MatchString(text) {
 					return invalid()
 				}
 			case "createdAt", "startedAt", "completedAt":

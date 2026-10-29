@@ -2729,6 +2729,8 @@ components:
                   mediaKey: {type: string, pattern: "^resource:"}
                   taskId: {type: string}
                   model: {type: string, maxLength: 512, description: 冻结的公开模型名称，不含渠道配置}
+                  submittedResolution: {type: string, pattern: '^(自动|[1-9][0-9]{0,3}P|[1-9][0-9]?K|[1-9][0-9]{1,4}×[1-9][0-9]{1,4})$', description: 提交时捕获并规范化的分辨率档位，仅用于展示}
+                  submittedAspectRatio: {type: string, pattern: '^[1-9][0-9]?:[1-9][0-9]?$', description: 提交时捕获的画幅比例，仅用于展示}
                   createdAt: {type: string, format: date-time}
                   startedAt: {type: string, format: date-time}
                   completedAt: {type: string, format: date-time}
