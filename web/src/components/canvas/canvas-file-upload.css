@@ -21,6 +21,15 @@
     pointer-events: none;
 }
 
+.canvas-file-upload-preview {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    pointer-events: none;
+}
+
 .canvas-file-upload-frost {
     transition: opacity 180ms ease-out;
     position: absolute;

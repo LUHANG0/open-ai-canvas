@@ -20,6 +20,7 @@ import { hydrateCanvasVideoPreview } from "@/services/canvas-video-preview";
 import { type CanvasTheme } from "@/lib/canvas-theme";
 import { fitImageMaterialNodeSize, fitImageNodeSize } from "@/lib/canvas/canvas-node-size";
 import { getActiveUserScope } from "@/lib/user-scope";
+import { uploadPreviewUrl } from "@/services/canvas-upload-preview";
 import { RetainedCanvasImage } from "./canvas-retained-image";
 export { RetainedCanvasImage } from "./canvas-retained-image";
 import { getResourceAccess, refreshResource, resourceIdFromStorageKey, resolveResourceAccessURL } from "@/services/api/resources";
@@ -613,19 +614,24 @@ export function useNodeResourceUrl(node: CanvasNodeData, eager: boolean, variant
         node.type === CanvasNodeType.Video || node.type === CanvasNodeType.Audio || variant === "original"
             ? content
             : node.metadata?.previewContent || (node.type === CanvasNodeType.Image && node.metadata?.importSource?.provider === "libtv" ? buildLibTVImagePreviewUrl(content) : content);
+    const localUploadPreview = variant === "original" && node.type === CanvasNodeType.Image && eager ? uploadPreviewUrl(node.id, storageKey) : "";
     const isRemoteResource = storageKey.startsWith("resource:");
     // Inline data URLs are already local, but decoding thousands of them is
     // still expensive. Images must wait for the same viewport gate as remote
     // resources; otherwise DOM virtualization does not reduce image work.
     const isLazyVisual = node.type === CanvasNodeType.Image;
     const isHttpUrl = Boolean(fallback && !fallback.startsWith("data:"));
-    const initialUrl = eager && !isRemoteResource && isLazyVisual && isHttpUrl ? fallback : isRemoteResource || isLazyVisual ? "" : fallback;
+    const initialUrl = localUploadPreview || (eager && !isRemoteResource && isLazyVisual && isHttpUrl ? fallback : isRemoteResource || isLazyVisual ? "" : fallback);
     const scope = getActiveUserScope();
     const identity = `${scope}:${node.id}:${storageKey || fallback}`;
     const [resolved, setResolved] = useState<{ identity: string; url: string; loading: boolean; error?: boolean; originalWidth?: number; originalHeight?: number }>(() => ({ identity, url: initialUrl, loading: !initialUrl && isRemoteResource && eager }));
     const current = resolved.identity === identity ? resolved : { identity, url: initialUrl, loading: isRemoteResource && eager };
 
     useEffect(() => {
+        if (localUploadPreview) {
+            setResolved({ identity, url: localUploadPreview, loading: false });
+            return;
+        }
         if (!isRemoteResource) {
             setResolved({ identity, url: isLazyVisual && !eager ? "" : fallback, loading: false });
             return;
@@ -646,7 +652,7 @@ export function useNodeResourceUrl(node: CanvasNodeData, eager: boolean, variant
         return () => {
             cancelled = true;
         };
-    }, [eager, fallback, identity, isLazyVisual, isRemoteResource, storageKey, variant]);
+    }, [eager, fallback, identity, isLazyVisual, isRemoteResource, storageKey, variant, localUploadPreview]);
 
     return { url: current.url, loading: current.loading, error: "error" in current && Boolean(current.error), originalWidth: current.originalWidth, originalHeight: current.originalHeight };
 }

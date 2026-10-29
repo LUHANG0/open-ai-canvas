@@ -1,3 +1,4 @@
+import { captureUploadScope } from "@/services/upload-scope";
 import { getActiveUserScope } from "@/lib/user-scope";
 import { localForageStorageForScope } from "@/lib/localforage-storage";
 import { http, apiBaseURL, ApiError } from "@/services/api/request";
@@ -261,17 +262,14 @@ const CHUNK_UPLOAD_RETRIES = 2;
 
 export async function uploadResourceFile(file: Blob, kind: "image" | "video" | "audio" | "file", meta?: ResourceUploadMeta, onProgress?: (uploadedBytes: number, totalBytes: number) => void): Promise<RemoteResource> {
     const name = meta?.fileName || (file instanceof File ? file.name : `${kind}.${extensionFromMime(file.type, kind)}`);
-    const scope = getActiveUserScope();
-    const assertLive = () => {
-        if (meta?.signal?.aborted || getActiveUserScope() !== scope || (meta?.expectedUserId && meta.expectedUserId !== scope)) throw new DOMException("上传已取消或账号已切换", "AbortError");
-    };
+    const { assertCurrent: assertLive, options: scopedOptions } = captureUploadScope(meta);
+    const uploadMeta = { ...meta, ...scopedOptions };
     // 分片与 multipart 两条路径的失败都要归一成 ResourceUploadError，
     // 否则调用方只能靠文案猜测该重试还是该报错。
     try {
         assertLive();
         const sample = new Uint8Array(await file.slice(0, 3072).arrayBuffer());
         assertLive();
-        const uploadMeta = { ...meta, ...(scope !== "guest" ? { expectedUserId: scope } : {}) };
         const admission = await http.post<{ mode: "server" | "ready" | "direct"; resource?: RemoteResource; uploadId?: string; post?: DirectUploadPost }>("/resources/direct-uploads", {
             fileName: name, size: file.size, sample: btoa(String.fromCharCode(...sample)), width: meta?.width, height: meta?.height, durationMs: meta?.durationMs,
         }, { ...uploadRequestConfig(meta?.idempotencyKey), ...scopedUploadConfig(uploadMeta) });
@@ -318,7 +316,8 @@ export async function uploadResourceFile(file: Blob, kind: "image" | "video" | "
         }
         if (admission.mode !== "server") throw new Error("上传授权响应无效");
         if (file.size > CHUNK_UPLOAD_THRESHOLD) {
-            const resource = await uploadFileInChunks(file, name, kind, meta, onProgress);
+            const resource = await uploadFileInChunks(file, name, kind, uploadMeta, onProgress);
+            assertLive();
             resourceCache.set(resourceCacheKey(resource.id), resource);
             return resource;
         }
@@ -329,17 +328,19 @@ export async function uploadResourceFile(file: Blob, kind: "image" | "video" | "
         if (meta?.height) formData.append("height", String(Math.round(meta.height)));
         if (meta?.durationMs) formData.append("durationMs", String(Math.round(meta.durationMs)));
         const data = await http.post<{ resource: RemoteResource }>("/resources", formData, {
-            ...uploadRequestConfig(meta?.idempotencyKey),
-            ...scopedUploadConfig(meta),
+            ...uploadRequestConfig(meta?.idempotencyKey, file.size),
+            ...scopedUploadConfig(uploadMeta),
             onUploadProgress: onProgress
                 ? ({ loaded, total }) => {
                       if (total && total > 0) onProgress(Math.min(file.size, (file.size * loaded) / total), file.size);
                   }
                 : undefined,
         });
+        assertLive();
         resourceCache.set(resourceCacheKey(data.resource.id), data.resource);
         return data.resource;
     } catch (error) {
+        assertLive();
         throw normalizeUploadError(error);
     }
 }
@@ -360,27 +361,30 @@ async function uploadFileInChunks(file: Blob, name: string, kind: "image" | "vid
 }
 
 async function runChunkedUpload(file: Blob, name: string, kind: "image" | "video" | "audio" | "file", meta: ResourceUploadMeta | undefined, onProgress?: (uploadedBytes: number, totalBytes: number) => void) {
+    const { assertCurrent } = captureUploadScope(meta);
     const session = await http.post<{ uploadId: string; chunkSize: number; chunkCount: number }>(
         "/resources/uploads",
         { fileName: name, kind, size: file.size, width: meta?.width, height: meta?.height, durationMs: meta?.durationMs },
         { ...uploadRequestConfig(meta?.idempotencyKey), ...scopedUploadConfig(meta) },
     );
+    assertCurrent();
     for (let index = 0; index < session.chunkCount; index++) {
+        assertCurrent();
         const start = index * session.chunkSize;
         const end = Math.min(file.size, start + session.chunkSize);
         const blob = file.slice(start, end);
-        const data = new FormData();
-        data.append("chunk", blob);
         // raw 二进制直传，与后端按裸 body 逐片落盘对齐（勿设手动 Content-Type，让 axios 处理）。
         await http.put<{ index: number }>(`/resources/uploads/${encodeURIComponent(session.uploadId)}/chunks/${index}`, blob, {
             ...scopedUploadConfig(meta),
-            timeout: 60_000,
+            timeout: uploadTimeoutMs(blob.size),
             headers: { ...scopedUploadConfig(meta).headers, "Content-Type": "application/octet-stream" },
             onUploadProgress: onProgress ? ({ loaded }) => onProgress(start + Math.min(loaded, blob.size), file.size) : undefined,
         });
+        assertCurrent();
         onProgress?.(Math.min(end, file.size), file.size);
     }
-    const complete = await http.post<{ resource: RemoteResource }>(`/resources/uploads/${encodeURIComponent(session.uploadId)}/complete`, undefined, { timeout: 60_000, ...scopedUploadConfig(meta) });
+    const complete = await http.post<{ resource: RemoteResource }>(`/resources/uploads/${encodeURIComponent(session.uploadId)}/complete`, undefined, { timeout: uploadTimeoutMs(file.size), ...scopedUploadConfig(meta) });
+    assertCurrent();
     return complete.resource;
 }
 
@@ -410,14 +414,22 @@ function normalizeUploadError(error: unknown): ResourceUploadError {
 }
 
 export async function importResourceFromUrl(url: string, kind: "image" | "video" | "audio" | "file", meta?: Omit<ResourceUploadMeta, "fileName">) {
-    const data = await http.post<{ resource: RemoteResource }>("/resources/import", { url, kind, width: meta?.width, height: meta?.height, durationMs: meta?.durationMs }, uploadRequestConfig(meta?.idempotencyKey));
+    const { assertCurrent, options } = captureUploadScope(meta);
+    const data = await http.post<{ resource: RemoteResource }>("/resources/import", { url, kind, width: meta?.width, height: meta?.height, durationMs: meta?.durationMs }, { ...uploadRequestConfig(meta?.idempotencyKey), ...scopedUploadConfig(options) });
+    assertCurrent();
     resourceCache.set(resourceCacheKey(data.resource.id), data.resource);
     return data.resource;
 }
 
-function uploadRequestConfig(idempotencyKey?: string) {
+// Allow conservative 256 KiB/s uploads plus a minute for saving, capped at 15 minutes.
+export function uploadTimeoutMs(bytes = 0) {
+    const size = Number.isFinite(bytes) ? Math.max(0, bytes) : 0;
+    return Math.min(15 * 60_000, 60_000 + Math.ceil(size / (256 * 1024)) * 1000);
+}
+
+function uploadRequestConfig(idempotencyKey?: string, bytes?: number) {
     const value = idempotencyKey?.trim();
-    return { timeout: 60_000, ...(value ? { headers: { "X-Idempotency-Key": value } } : {}) };
+    return { timeout: uploadTimeoutMs(bytes), ...(value ? { headers: { "X-Idempotency-Key": value } } : {}) };
 }
 
 export function getResource(id: string): Promise<RemoteResource> {

@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
 import type { AxiosProgressEvent } from "axios";
 import { apiClient } from "../src/services/api/request";
-import { uploadResourceFile } from "../src/services/api/resources";
+import { uploadResourceFile, uploadTimeoutMs } from "../src/services/api/resources";
 
 test("普通 multipart 将传输进度换算为文件字节，总量未知不伪造百分比", async () => {
     const adapter = apiClient.defaults.adapter;
@@ -63,4 +63,31 @@ test("传输结束不吞掉服务端保存错误", async () => {
     } finally {
         apiClient.defaults.adapter = adapter;
     }
+});
+
+test("large multipart and chunk bodies use size budgets while small control requests keep a short timeout", async () => {
+    expect(uploadTimeoutMs()).toBe(60_000);
+    expect(uploadTimeoutMs(40 * 1024 * 1024)).toBe(220_000);
+    expect(uploadTimeoutMs(8 * 1024 * 1024)).toBe(92_000);
+    expect(uploadTimeoutMs(1024 ** 3)).toBe(900_000);
+    expect(uploadTimeoutMs(NaN)).toBe(60_000);
+    const adapter = apiClient.defaults.adapter;
+    const controller = new AbortController();
+    try {
+        for (const size of [40, 51].map(mb => mb * 1024 * 1024)) {
+            let chunks = 0;
+            apiClient.defaults.adapter = async config => {
+                expect(config.signal).toBe(controller.signal);
+                expect(config.headers.get("X-Idempotency-Key") || "").toBe(config.url === "/resources/direct-uploads" || config.url === "/resources/uploads" || config.url === "/resources" ? "same-upload" : "");
+                let data: unknown;
+                if (config.url === "/resources/direct-uploads") { expect(config.timeout).toBe(60_000); data = { mode: "server" }; }
+                else if (config.url === "/resources/uploads") { expect(config.timeout).toBe(60_000); data = { uploadId: "sized", chunkSize: 8 * 1024 * 1024, chunkCount: 7 }; }
+                else if (config.url?.includes("/chunks/")) { chunks++; expect(config.timeout).toBe(uploadTimeoutMs((config.data as Blob).size)); data = {}; }
+                else { expect(config.timeout).toBe(uploadTimeoutMs(size)); data = { resource: { id: "sized-resource" } }; }
+                return { config, status: 200, statusText: "OK", headers: {}, data: { code: 0, data } };
+            };
+            await uploadResourceFile(new Blob([new Uint8Array(size)]), "file", { idempotencyKey: "same-upload", signal: controller.signal });
+            expect(chunks).toBe(size > 50 * 1024 * 1024 ? 7 : 0);
+        }
+    } finally { apiClient.defaults.adapter = adapter; }
 });

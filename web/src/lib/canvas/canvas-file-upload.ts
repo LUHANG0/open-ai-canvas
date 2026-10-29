@@ -21,6 +21,11 @@ export function uploadVeilOpacity(percent = 0) {
     return 1 - Math.min(100, Math.max(0, percent)) / 100 * 0.9;
 }
 
+export function uploadPreviewBlur(percent = 0) {
+    const progress = Number.isFinite(percent) ? Math.min(100, Math.max(0, percent)) / 100 : 0;
+    return 2 + 22 * (1 - progress);
+}
+
 export async function createFileUploadPlaceholder(id: string, file: File, position: Position) {
     const type = uploadNodeType(file);
     if (!type) throw new Error("请选择图片、视频、音频或 TXT / Markdown 文件");

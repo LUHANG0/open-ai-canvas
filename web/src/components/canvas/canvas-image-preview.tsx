@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Image as ImageIcon, LoaderCircle, Maximize, Minus, Plus } from "lucide-react";
 
 import { CanvasMediaPreviewShell, IMAGE_PREVIEW_TOOLBAR_HEIGHT, useCanvasMediaSize } from "./canvas-media-preview";
+import { uploadedResourcePreviewUrl } from "@/services/canvas-upload-preview";
 import { resolveImageUrl } from "@/services/image-storage";
 import { getActiveUserScope } from "@/lib/user-scope";
 import "./canvas-image-preview.css";
@@ -18,7 +19,8 @@ export function CanvasImagePreview(props: CanvasImagePreviewProps) {
 }
 
 function ImagePreview({ src = "", storageKey, alt = "图片", onClose }: CanvasImagePreviewProps) {
-    const [resolvedSrc, setResolvedSrc] = useState(storageKey ? "" : src);
+    const uploadPreview = uploadedResourcePreviewUrl(storageKey);
+    const [resolvedSrc, setResolvedSrc] = useState(uploadPreview || (storageKey ? "" : src));
     const [loading, setLoading] = useState(Boolean(src || storageKey));
     const [error, setError] = useState(false);
     const [attempt, setAttempt] = useState(0);
@@ -45,13 +47,13 @@ function ImagePreview({ src = "", storageKey, alt = "图片", onClose }: CanvasI
         let cancelled = false;
         const scope = getActiveUserScope();
         const isCurrent = () => !cancelled && getActiveUserScope() === scope;
-        setResolvedSrc(storageKey ? "" : src);
+        setResolvedSrc(uploadPreview || (storageKey ? "" : src));
         setLoading(Boolean(src || storageKey));
         setError(false);
         if (!src && !storageKey) return () => {
             cancelled = true;
         };
-        void resolveImageUrl(storageKey, src, { forceRefresh: attempt > 0 })
+        void (uploadPreview && !attempt ? Promise.resolve(uploadPreview) : resolveImageUrl(storageKey, src, { forceRefresh: attempt > 0 }))
             .then((url) => {
                 if (!isCurrent()) return;
                 if (!url) {
@@ -70,7 +72,7 @@ function ImagePreview({ src = "", storageKey, alt = "图片", onClose }: CanvasI
         return () => {
             cancelled = true;
         };
-    }, [src, storageKey, attempt]);
+    }, [src, storageKey, attempt, uploadPreview]);
 
     useEffect(() => {
         setSlow(false);

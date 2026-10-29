@@ -1,4 +1,5 @@
 import localforage from "localforage";
+import { captureUploadScope, type UploadScopeOptions } from "@/services/upload-scope";
 import { nanoid } from "nanoid";
 
 import { getActiveUserScope } from "@/lib/user-scope";
@@ -29,7 +30,8 @@ export type UploadedFile = {
 const store = localforage.createInstance({ name: "yingce", storeName: "media_files" });
 const objectUrls = new Map<string, string>();
 
-export async function uploadMediaFile(input: Blob, prefix = "file", onProgress?: (uploadedBytes: number, totalBytes: number) => void): Promise<UploadedFile> {
+export async function uploadMediaFile(input: Blob, prefix = "file", onProgress?: (uploadedBytes: number, totalBytes: number) => void, options: UploadScopeOptions = {}): Promise<UploadedFile> {
+    const { assertCurrent, options: scopedOptions } = captureUploadScope(options);
     // 直传和失败后的本地同步必须复用同一上传身份，避免响应丢失后创建第二个对象。
     const storageKey = `${prefix}:${getActiveUserScope()}:${nanoid()}`;
     const blob = input;
@@ -73,26 +75,30 @@ export async function uploadMediaFile(input: Blob, prefix = "file", onProgress?:
             meta = { hasAudio: resolvedHasAudio };
         }
 
+        assertCurrent();
         let poster: UploadedImage | undefined;
         if (captured?.poster) {
             try {
-                poster = await uploadImage(captured.poster);
+                poster = await uploadImage(captured.poster, undefined, scopedOptions);
             } catch (error) {
                 // 预览图失败不应把已经可用的视频降级成本地文件；视频本体仍按强校验上传。
                 console.warn("上传视频预览图失败，继续保存视频本体", { mimeType: blob.type, bytes: blob.size, error });
             }
         }
 
+        assertCurrent();
         let remoteUploadError = "";
         try {
             const kind = blob.type.startsWith("video/") ? "video" : blob.type.startsWith("audio/") ? "audio" : "file";
-            const resource = await uploadResourceFile(blob, kind, { ...meta, fileName: input instanceof File ? input.name : undefined, idempotencyKey: storageKey }, onProgress);
+            const resource = await uploadResourceFile(blob, kind, { ...meta, ...scopedOptions, fileName: input instanceof File ? input.name : undefined, idempotencyKey: storageKey }, onProgress);
+            assertCurrent();
             try {
                 await primeResourceBlobCache(resourceStorageKey(resource.id), blob);
             } catch (error) {
                 // 缓存只影响后续读取性能，服务端资源已经成功落盘，不得把缓存失败误报为上传失败。
                 console.warn("预热媒体缓存失败，服务端资源已保存", { resourceId: resource.id, error });
             }
+            assertCurrent();
             return {
                 url: resource.publicUrl || resourceFileUrl(resource.id),
                 storageKey: resourceStorageKey(resource.id),
@@ -105,13 +111,17 @@ export async function uploadMediaFile(input: Blob, prefix = "file", onProgress?:
                 preview: poster,
             };
         } catch (error) {
+            assertCurrent();
+            if (error instanceof DOMException && error.name === "AbortError") throw error;
             // 与图片上传同一套判定：永久性失败必须当场暴露，不能混进“稍后自动同步”。
             if (error instanceof ResourceUploadError && error.permanent) throw error;
             remoteUploadError = error instanceof Error ? error.message : "媒体直传失败";
         }
 
         // 瞬时失败退回本机：文件仍可用，且云端数据同步会用同一幂等键重传。
+        assertCurrent();
         await store.setItem(storageKey, blob);
+        assertCurrent();
         retainPreviewUrl = true;
         objectUrls.set(storageKey, previewUrl);
         return { url: previewUrl, storageKey, bytes: blob.size, mimeType: blob.type || "application/octet-stream", ...meta, preview: poster, pendingRemoteUpload: true, remoteUploadError };

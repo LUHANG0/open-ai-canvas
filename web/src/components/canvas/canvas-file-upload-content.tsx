@@ -1,7 +1,8 @@
 import type { CSSProperties } from "react";
 import { AlertCircle, ImageUp, FileText, Film, Music2 } from "lucide-react";
 import { CanvasNodeType, type CanvasNodeData } from "@/types/canvas";
-import { uploadVeilOpacity } from "@/lib/canvas/canvas-file-upload";
+import { uploadPreviewBlur, uploadVeilOpacity } from "@/lib/canvas/canvas-file-upload";
+import { uploadPreviewUrl } from "@/services/canvas-upload-preview";
 import type { CanvasTheme } from "@/lib/canvas-theme";
 import { useCanvasNodeActions } from "./canvas-node-action-context";
 import "./canvas-file-upload.css";
@@ -10,10 +11,12 @@ export function CanvasFileUploadContent({ node, theme, reduceMotion = false }: {
     const { upload } = useCanvasNodeActions();
     const failed = node.metadata?.fileUpload === "error";
     const percent = node.metadata?.fileUploadProgress;
+    const preview = !failed && node.type === CanvasNodeType.Image ? uploadPreviewUrl(node.id) : "";
     const label = node.type === CanvasNodeType.Image ? "图片" : node.type === CanvasNodeType.Video ? "视频" : node.type === CanvasNodeType.Audio ? "音频" : "文本";
     const Icon = failed ? AlertCircle : node.type === CanvasNodeType.Video ? Film : node.type === CanvasNodeType.Audio ? Music2 : node.type === CanvasNodeType.Text ? FileText : ImageUp;
     return (
         <div className="canvas-file-upload" data-static={reduceMotion || failed || undefined} style={{ "--upload-surface": theme.node.fill, "--upload-text": theme.node.text, "--upload-muted": theme.node.muted } as CSSProperties}>
+            {preview ? <img className="canvas-file-upload-preview" src={preview} alt="" aria-hidden="true" draggable={false} style={{ filter: `blur(${uploadPreviewBlur(percent)}px)` }} /> : null}
             <div className="canvas-file-upload-glow" aria-hidden="true" style={{ opacity: uploadVeilOpacity(percent) }} />
             <div className="canvas-file-upload-frost" aria-hidden="true" style={{ opacity: uploadVeilOpacity(percent) }} />
             <div className="canvas-file-upload-copy" role="status" aria-live="polite" aria-busy={!failed}>

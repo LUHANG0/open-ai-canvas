@@ -2,6 +2,11 @@ import { useCallback, useEffect, useRef, useState, type ChangeEvent, type Dispat
 import { useQueryClient } from "@tanstack/react-query";
 import { App } from "antd";
 
+import { getActiveUserScope } from "@/lib/user-scope";
+import { useUserStore } from "@/stores/use-user-store";
+import { beginGenerationConsumer } from "@/services/generation-consumer-lifecycle";
+import { captureUploadScope } from "@/services/upload-scope";
+import { registerUploadPreview } from "@/services/canvas-upload-preview";
 import { CANVAS_IMAGE_ASSET_DND_TYPE } from "@/components/canvas/canvas-asset-tray";
 import type { InsertAssetPayload } from "@/components/canvas/asset-picker-modal";
 import { CANVAS_PROJECT_CHAPTER_DND_TYPE, type CanvasProjectChapterPayload } from "@/components/canvas/canvas-project-sidebar";
@@ -10,7 +15,7 @@ import { getDataUrlByteSize, readImageMeta } from "@/lib/image-utils";
 import { audioMetadata, imageMetadata, videoMetadata } from "@/lib/canvas/canvas-generation-task-sync";
 import { createCanvasNode } from "@/lib/canvas/canvas-project-domain";
 import { isAudioFile } from "@/lib/canvas/canvas-project-generation";
-import { fitImageNodeSize, fitNodeSize, VIDEO_NODE_MAX_SIZE } from "@/lib/canvas/canvas-node-size";
+import { fitImageNodeSize, fitNodeSize, IMAGE_NODE_MAX_SIZE, VIDEO_NODE_MAX_SIZE } from "@/lib/canvas/canvas-node-size";
 import { recordReplacedMediaVersion } from "@/lib/canvas/canvas-media-versions";
 import { CANVAS_UPLOAD_ACCEPT, createFileUploadPlaceholder, uploadNodeType, uploadPercent } from "@/lib/canvas/canvas-file-upload";
 import { resourceIdFromStorageKey, resourceStorageKey, uploadResourceFile } from "@/services/api/resources";
@@ -37,16 +42,21 @@ type UseCanvasUploadOptions = {
     setDialogNodeId: Dispatch<SetStateAction<string | null>>;
 };
 
-export type StartCanvasUploadStatus = (title: string, detail: string, total?: number) => {
+export type StartCanvasUploadStatus = (title: string, detail: string, total?: number, initialStep?: number) => {
     update: (detail: string, step: number) => void;
     done: (detail?: string) => void;
     fail: (detail?: string) => void;
 };
 
+type UploadLifetime = { controller: AbortController; scope: string; canvasId: string; previews: Map<string, ReturnType<typeof registerUploadPreview>> };
+type FileNodeUploadOptions = { batch?: { onLocalOnly: () => void }; lifetime?: UploadLifetime };
+const SILENT_UPLOAD_PROGRESS = { update: (_detail: string, _step: number) => {}, done: (_detail?: string) => {}, fail: (_detail?: string) => {} };
+const BATCH_UPLOAD_CONCURRENCY = 3;
+const UPLOAD_PROGRESS_PAINT_MS = 120;
 const NODE_STATUS_SUCCESS = "success" as const;
 const BATCH_UPLOAD_COLUMNS = 3;
-const BATCH_UPLOAD_COLUMN_GAP = 380;
-const BATCH_UPLOAD_ROW_GAP = 300;
+const BATCH_UPLOAD_COLUMN_GAP = IMAGE_NODE_MAX_SIZE.width + 80;
+const BATCH_UPLOAD_ROW_GAP = IMAGE_NODE_MAX_SIZE.height + 100;
 const CANVAS_BATCH_TABLE_SELECTOR = "[data-canvas-batch-table]";
 
 function isBatchTableDragEvent(event: DragEvent<HTMLElement>) {
@@ -80,13 +90,45 @@ export function useCanvasUpload({
     const [uploadStatus, setUploadStatus] = useState<CanvasUploadStatus | null>(null);
     const [fileDropActive, setFileDropActive] = useState(false);
 
-    useEffect(() => () => {
-        statusTimersRef.current.forEach((timer) => window.clearTimeout(timer));
-    }, []);
+    const lifetimeRef = useRef<UploadLifetime | null>(null);
+    const batchRunningRef = useRef<UploadLifetime | null>(null);
+    const sessionUser = useUserStore((state) => state.user?.id);
+    const hydrated = useUserStore((state) => state.hydrated);
+    useEffect(() => {
+        const lifetime: UploadLifetime = { controller: new AbortController(), scope: getActiveUserScope(), canvasId, previews: new Map() };
+        lifetimeRef.current = lifetime;
+        setUploadStatus(null);
+        const unsubscribe = useUserStore.subscribe((next, previous) => {
+            if (next.user?.id !== previous.user?.id || (!next.hydrated && previous.hydrated)) {
+                lifetime.controller.abort();
+                lifetime.previews.forEach((preview) => preview.release());
+                lifetime.previews.clear();
+            }
+        });
+        return () => {
+            unsubscribe();
+            lifetime.controller.abort();
+            lifetime.previews.forEach((preview) => preview.release());
+            lifetime.previews.clear();
+            statusTimersRef.current.forEach((timer) => window.clearTimeout(timer));
+            statusTimersRef.current.clear();
+        };
+    }, [canvasId, domainProjectId, sessionUser, hydrated]);
 
-    const startUploadStatus = useCallback<StartCanvasUploadStatus>((title, detail, total = 3) => {
+    useEffect(() => {
+        const lifetime = lifetimeRef.current;
+        if (!lifetime) return;
+        for (const [id, preview] of lifetime.previews) {
+            if (!activeUploadsRef.current.has(id) && !nodesRef.current.some((node) => node.id === id)) {
+                preview.release();
+                lifetime.previews.delete(id);
+            }
+        }
+    });
+
+    const startUploadStatus = useCallback<StartCanvasUploadStatus>((title, detail, total = 3, initialStep = 1) => {
         const id = (uploadStatusIdRef.current += 1);
-        setUploadStatus({ id, title, detail, step: 1, total });
+        setUploadStatus({ id, title, detail, step: initialStep, total });
         const dismiss = (delay: number) => {
             const timer = window.setTimeout(() => {
                 statusTimersRef.current.delete(timer);
@@ -95,7 +137,7 @@ export function useCanvasUpload({
             statusTimersRef.current.add(timer);
         };
         return {
-            update: (nextDetail: string, step: number) => setUploadStatus((current) => (current?.id === id ? { ...current, detail: nextDetail, step: Math.min(Math.max(step, 1), total) } : current)),
+            update: (nextDetail: string, step: number) => setUploadStatus((current) => (current?.id === id ? { ...current, detail: nextDetail, step: Math.min(Math.max(step, 0), total) } : current)),
             done: (nextDetail = "处理完成") => {
                 setUploadStatus((current) => (current?.id === id ? { ...current, detail: nextDetail, step: total, done: true } : current));
                 dismiss(850);
@@ -113,13 +155,16 @@ export function useCanvasUpload({
         if (dialog !== "preserve") setDialogNodeId(dialog === "open" ? nodeId : null);
     }, [setDialogNodeId, setSelectedConnectionId, setSelectedNodeIds]);
 
-    const persistMediaNode = useCallback(async (node: CanvasNodeData) => {
+    const persistMediaNode = useCallback(async (node: CanvasNodeData, options: { signal?: AbortSignal; refreshProject?: boolean } = {}) => {
+        const { assertCurrent } = captureUploadScope(options);
         try {
-            const result = await ensureCanvasNodeAsset({ canvasId, domainProjectId, node, source: "canvas-upload" });
-            setNodes((current) => current.map((item) => item.id === node.id ? { ...item, metadata: { ...item.metadata, assetId: result.assetId } } : item));
-            if (domainProjectId) await queryClient.invalidateQueries({ queryKey: ["project", domainProjectId] });
+            const result = await ensureCanvasNodeAsset({ canvasId, domainProjectId, node, source: "canvas-upload", signal: options.signal });
+            assertCurrent();
+            setNodes((current) => current.map((item) => item.id === node.id && item.metadata?.storageKey === node.metadata?.storageKey ? { ...item, metadata: { ...item.metadata, assetId: result.assetId } } : item));
+            if (domainProjectId && options.refreshProject !== false) await queryClient.invalidateQueries({ queryKey: ["project", domainProjectId] });
             return true;
         } catch (error) {
+            assertCurrent();
             message.warning(error instanceof Error ? `媒体已添加到画布，但素材同步失败：${error.message}` : "媒体已添加到画布，但素材同步失败");
             return false;
         }
@@ -151,23 +196,41 @@ export function useCanvasUpload({
     }, [canvasId, domainProjectId, queryClient]);
 
     const activeUploadsRef = useRef(new Set<string>());
-    const createFileNode = useCallback(async (file: File, position: Position, replaceId?: string) => {
+    const createFileNode = useCallback(async (file: File, position: Position, replaceId?: string, options: FileNodeUploadOptions = {}) => {
+        const lifetime = options.lifetime || lifetimeRef.current;
+        if (!lifetime || lifetime !== lifetimeRef.current || lifetime.controller.signal.aborted || lifetime.canvasId !== canvasId || lifetime.scope !== getActiveUserScope()) return null;
+        const consumer = beginGenerationConsumer(lifetime.controller.signal);
+        const { signal } = consumer;
+        const isCurrent = () => !signal.aborted && lifetime === lifetimeRef.current && lifetime.scope === getActiveUserScope();
+        const assertCurrent = () => { if (!isCurrent()) throw new DOMException("上传已取消", "AbortError"); };
         const original = replaceId ? nodesRef.current.find((node) => node.id === replaceId) : undefined;
-        if (replaceId && (!original || activeUploadsRef.current.has(replaceId))) return null;
+        if (replaceId && (!original || original.metadata?.locked || original.metadata?.status === "loading" || activeUploadsRef.current.has(replaceId))) { consumer.release(); return null; }
         const id = replaceId || `upload-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
         activeUploadsRef.current.add(id);
-        const progress = startUploadStatus(replaceId ? "替换文件" : "上传文件", "读取文件信息", domainProjectId ? 4 : 3);
+        const progress = options.batch ? SILENT_UPLOAD_PROGRESS : startUploadStatus(replaceId ? "替换文件" : "上传文件", "读取文件信息", domainProjectId ? 4 : 3);
+        let preview: ReturnType<typeof registerUploadPreview> | undefined;
         try {
+            assertCurrent();
+            if (uploadNodeType(file) === CanvasNodeType.Image) {
+                preview = registerUploadPreview(id, file);
+                lifetime.previews.set(id, preview);
+            }
             const placeholder = await createFileUploadPlaceholder(id, file, position);
+            assertCurrent();
+            if (replaceId && !nodesRef.current.some((node) => node.id === id)) return null;
             setNodes((current) => replaceId ? current.map((item) => item.id === id ? {
                 ...item, width: placeholder.width, height: placeholder.height,
                 metadata: { ...item.metadata, fileUpload: "uploading", fileUploadProgress: undefined, status: undefined, size: undefined, errorDetails: undefined },
             } : item) : [...current, placeholder]);
-            selectInsertedNode(id, "close");
+            if (!options.batch) selectInsertedNode(id, "close");
+            let lastPaintAt = -Infinity;
             let lastPercent: number | undefined;
             const onProgress = (loaded: number, total: number) => {
                 const percent = uploadPercent(loaded, total);
-                if (percent === undefined || percent === lastPercent) return;
+                if (!isCurrent() || percent === undefined || percent === lastPercent) return;
+                const now = performance.now();
+                if (percent < 100 && now - lastPaintAt < UPLOAD_PROGRESS_PAINT_MS) return;
+                lastPaintAt = now;
                 lastPercent = percent;
                 setNodes((current) => current.map((item) => item.id === id ? { ...item, metadata: { ...item.metadata, fileUploadProgress: percent } } : item));
                 progress.update(percent === 100 ? "文件已传输，正在保存与处理" : `已上传 ${percent}%`, 2);
@@ -175,15 +238,16 @@ export function useCanvasUpload({
             progress.update("上传文件并同步资源", 2);
             let metadata: CanvasNodeData["metadata"];
             if (placeholder.type === CanvasNodeType.Image) {
-                metadata = imageMetadata(await uploadImage(file, onProgress));
+                metadata = imageMetadata(await uploadImage(file, onProgress, { signal, expectedUserId: lifetime.scope, knownSize: { width: placeholder.metadata?.naturalWidth || 0, height: placeholder.metadata?.naturalHeight || 0 } }));
             } else if (placeholder.type === CanvasNodeType.Text) {
                 const content = await file.text();
-                const resource = await uploadResourceFile(file, "file", { fileName: file.name }, onProgress);
+                const resource = await uploadResourceFile(file, "file", { fileName: file.name, signal, expectedUserId: lifetime.scope }, onProgress);
                 metadata = { content, prompt: content, storageKey: resourceStorageKey(resource.id), mimeType: file.type || "text/plain", bytes: file.size, status: "success" };
             } else {
-                const media = await uploadMediaFile(file, placeholder.type === CanvasNodeType.Video ? "video" : "audio", onProgress);
+                const media = await uploadMediaFile(file, placeholder.type === CanvasNodeType.Video ? "video" : "audio", onProgress, { signal, expectedUserId: lifetime.scope });
                 metadata = placeholder.type === CanvasNodeType.Video ? videoMetadata(media) : audioMetadata(media);
             }
+            assertCurrent();
             progress.update("更新画布节点", 3);
             const currentNode = nodesRef.current.find((item) => item.id === id);
             if (!currentNode) {
@@ -210,25 +274,37 @@ export function useCanvasUpload({
                 },
             };
             const node = replaceId ? recordReplacedMediaVersion(original, uploadedNode, "upload") : uploadedNode;
+            if (metadata.storageKey) preview?.bind(metadata.storageKey);
             setNodes((current) => current.map((item) => item.id === id ? { ...item, type: node.type, metadata: node.metadata } : item));
             if (domainProjectId) progress.update("写入项目资产", 4);
-            const persisted = await persistMediaNode(node);
+            const persisted = await persistMediaNode(node, { signal, refreshProject: !options.batch });
+            assertCurrent();
             const localOnly = metadata.storageKey && !resourceIdFromStorageKey(metadata.storageKey);
             progress.done(localOnly ? "已保存在本机，尚未上传到服务器" : persisted ? "文件已添加到画布" : "文件已添加，项目资产待重试");
-            if (localOnly) message.warning("文件已保存在本机，尚未上传到服务器");
+            if (localOnly) {
+                if (options.batch) options.batch.onLocalOnly();
+                else message.warning("文件已保存在本机，尚未上传到服务器");
+            }
             return id;
         } catch (error) {
+            if (!isCurrent() || (error instanceof DOMException && error.name === "AbortError")) return null;
             const details = error instanceof Error ? error.message : "文件上传失败";
-            setNodes((current) => current.map((item) => item.id !== id ? item : original?.metadata?.content ? {
-                ...item, width: original.width, height: original.height, metadata: original.metadata,
+            setNodes((current) => current.map((item) => item.id !== id ? item : original && (original?.metadata?.content || original.metadata?.storageKey) ? {
+                ...item, width: original.width, height: original.height, metadata: { ...item.metadata, fileUpload: original.metadata.fileUpload, fileUploadProgress: original.metadata.fileUploadProgress, errorDetails: original.metadata.errorDetails, status: original.metadata.status, size: original.metadata.size },
             } : { ...item, metadata: { ...item.metadata, fileUpload: "error", fileUploadProgress: undefined, errorDetails: details } }));
             progress.fail(details);
-            message.error(details);
+            if (!options.batch) message.error(details);
+            preview?.release();
             return null;
         } finally {
+            consumer.release();
             activeUploadsRef.current.delete(id);
+            if (!isCurrent() || !nodesRef.current.some((node) => node.id === id && !node.metadata?.fileUpload)) {
+                preview?.release();
+                if (lifetime.previews.get(id) === preview) lifetime.previews.delete(id);
+            }
         }
-    }, [domainProjectId, message, nodesRef, persistMediaNode, selectInsertedNode, setNodes, startUploadStatus]);
+    }, [canvasId, domainProjectId, message, nodesRef, persistMediaNode, selectInsertedNode, setNodes, startUploadStatus]);
 
     const createImageAssetNode = useCallback(async (asset: ImageAsset, position?: Position) => {
         try {
@@ -341,28 +417,59 @@ export function useCanvasUpload({
             message.warning("请选择图片、视频、音频或 TXT / Markdown 文件");
             return false;
         }
-        const center = uploadTargetRef.current?.position || getCanvasCenter();
-        const columns = Math.min(BATCH_UPLOAD_COLUMNS, supportedFiles.length);
-        const originX = center.x - ((columns - 1) * BATCH_UPLOAD_COLUMN_GAP) / 2;
-        const createdIds: string[] = [];
-        for (let index = 0; index < supportedFiles.length; index += 1) {
-            const file = supportedFiles[index];
-            const position = {
-                x: originX + (index % columns) * BATCH_UPLOAD_COLUMN_GAP,
-                y: center.y + Math.floor(index / columns) * BATCH_UPLOAD_ROW_GAP,
-            };
-            const createdId = await createFileNode(file, position);
-            if (createdId) createdIds.push(createdId);
+        const lifetime = lifetimeRef.current;
+        if (!lifetime || lifetime.controller.signal.aborted || lifetime.canvasId !== canvasId || lifetime.scope !== getActiveUserScope()) return false;
+        if (batchRunningRef.current === lifetime) {
+            message.warning("批量上传进行中，请等待当前批次完成");
+            return false;
         }
-        if (!createdIds.length) return false;
-        setSelectedNodeIds(new Set(createdIds));
-        setSelectedConnectionId(null);
-        setDialogNodeId(null);
-        const failedCount = supportedFiles.length - createdIds.length;
-        if (failedCount) message.warning(`已添加 ${createdIds.length} 个文件，${failedCount} 个上传失败`);
-        else message.success(`已添加 ${createdIds.length} 个文件到画布`);
-        return true;
-    }, [createFileNode, getCanvasCenter, message, setDialogNodeId, setSelectedConnectionId, setSelectedNodeIds]);
+        batchRunningRef.current = lifetime;
+        const isCurrent = () => !lifetime.controller.signal.aborted && lifetime === lifetimeRef.current && lifetime.scope === getActiveUserScope();
+        const center = uploadTargetRef.current?.position || getCanvasCenter();
+        const total = supportedFiles.length;
+        const columns = Math.min(BATCH_UPLOAD_COLUMNS, total);
+        const originX = center.x - ((columns - 1) * BATCH_UPLOAD_COLUMN_GAP) / 2;
+        const progress = total > 1 ? startUploadStatus(`上传 ${total} 个文件`, `已完成 0/${total}`, total, 0) : null;
+        const results: Array<string | null> = new Array(total).fill(null);
+        let nextIndex = 0;
+        let settled = 0;
+        let localOnlyCount = 0;
+        const batch = progress ? { onLocalOnly: () => { localOnlyCount++; } } : undefined;
+        try {
+            const worker = async () => {
+                while (isCurrent() && nextIndex < total) {
+                    const index = nextIndex++;
+                    results[index] = await createFileNode(supportedFiles[index], {
+                        x: originX + (index % columns) * BATCH_UPLOAD_COLUMN_GAP,
+                        y: center.y + Math.floor(index / columns) * BATCH_UPLOAD_ROW_GAP,
+                    }, undefined, { batch, lifetime });
+                    if (!isCurrent()) return;
+                    progress?.update(`已完成 ${++settled}/${total}`, settled);
+                }
+            };
+            await Promise.all(Array.from({ length: Math.min(BATCH_UPLOAD_CONCURRENCY, total) }, worker));
+            if (!isCurrent()) return false;
+            const createdIds = results.filter((id): id is string => Boolean(id));
+            if (batch && domainProjectId && createdIds.length) await queryClient.invalidateQueries({ queryKey: ["project", domainProjectId] });
+            if (!isCurrent()) return false;
+            if (!createdIds.length) {
+                progress?.fail("文件均未上传成功，请查看节点上的失败原因");
+                if (batch) message.error("文件均未上传成功，请查看节点上的失败原因");
+                return false;
+            }
+            setSelectedNodeIds(new Set(createdIds));
+            setSelectedConnectionId(null);
+            setDialogNodeId(null);
+            const failedCount = total - createdIds.length;
+            progress?.done(failedCount ? `已添加 ${createdIds.length} 个，${failedCount} 个失败` : `已添加 ${createdIds.length} 个文件`);
+            if (failedCount) message.warning(`已添加 ${createdIds.length} 个文件，${failedCount} 个上传失败`);
+            else if (localOnlyCount) message.warning(`已添加 ${createdIds.length} 个文件，其中 ${localOnlyCount} 个暂存在本机，尚未上传到服务器`);
+            else message.success(`已添加 ${createdIds.length} 个文件到画布`);
+            return true;
+        } finally {
+            if (batchRunningRef.current === lifetime) batchRunningRef.current = null;
+        }
+    }, [canvasId, createFileNode, domainProjectId, getCanvasCenter, message, queryClient, setDialogNodeId, setSelectedConnectionId, setSelectedNodeIds, startUploadStatus]);
 
     // 时间线专用：把本地音视频文件上传为直连媒体（仅时间线作用域，不创建画布节点），返回媒体描述数组。
     const uploadTimelineMedia = useCallback(async (files: File[]): Promise<TimelineDirectMedia[]> => {

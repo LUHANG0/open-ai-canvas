@@ -1,4 +1,5 @@
 import localforage from "localforage";
+import { captureUploadScope, type UploadScopeOptions } from "@/services/upload-scope";
 
 import { nanoid } from "nanoid";
 import { readImageMeta } from "@/lib/image-utils";
@@ -26,13 +27,15 @@ export type UploadedImage = {
 const store = localforage.createInstance({ name: "yingce", storeName: "image_files" });
 const objectUrls = new Map<string, string>();
 
-export async function uploadImage(input: string | Blob, onProgress?: (uploadedBytes: number, totalBytes: number) => void): Promise<UploadedImage> {
+export async function uploadImage(input: string | Blob, onProgress?: (uploadedBytes: number, totalBytes: number) => void, options: UploadScopeOptions & { knownSize?: { width: number; height: number } } = {}): Promise<UploadedImage> {
+    const { assertCurrent, options: scopedOptions } = captureUploadScope(options);
     // 同一个逻辑上传在直传失败后会退回 IndexedDB，并由云端数据同步再次提交。
     // 提前生成本地 key，确保两条路径向后端发送相同的幂等标识。
     const storageKey = `image:${getActiveUserScope()}:${nanoid()}`;
     if (typeof input === "string" && shouldImportRemoteImage(input)) {
         try {
-            const resource = await importResourceFromUrl(input, "image", { idempotencyKey: storageKey });
+            const resource = await importResourceFromUrl(input, "image", { ...scopedOptions, idempotencyKey: storageKey });
+            assertCurrent();
             return {
                 url: resource.publicUrl || resourceFileUrl(resource.id),
                 storageKey: resourceStorageKey(resource.id),
@@ -42,35 +45,51 @@ export async function uploadImage(input: string | Blob, onProgress?: (uploadedBy
                 mimeType: resource.mimeType || "image/png",
             };
         } catch {
+            assertCurrent();
             // Keep the browser-side path as a fallback for CORS-enabled HTTPS images.
         }
     }
-    const blob = typeof input === "string" ? await (await fetch(input)).blob() : input;
+    const blob = typeof input === "string" ? await (await fetch(input, { signal: options.signal })).blob() : input;
+    assertCurrent();
     const previewUrl = URL.createObjectURL(blob);
-    const meta = await readImageMeta(previewUrl);
-    let remoteUploadError = "";
+    let retained = false;
     try {
-        const resource = await uploadResourceFile(blob, "image", { width: meta.width, height: meta.height, fileName: input instanceof File ? input.name : undefined, idempotencyKey: storageKey }, onProgress);
-        await primeResourceBlobCache(resourceStorageKey(resource.id), blob).catch(() => "");
-        URL.revokeObjectURL(previewUrl);
-        return {
-            url: resource.publicUrl || resourceFileUrl(resource.id),
-            storageKey: resourceStorageKey(resource.id),
-            width: resource.width || meta.width,
-            height: resource.height || meta.height,
-            bytes: resource.size || blob.size,
-            mimeType: resource.mimeType || blob.type || meta.mimeType,
-        };
-    } catch (error) {
-        // 鉴权失效、越权、体积超限这类失败重传也是同样结果，不能退化成"稍后自动同步"。
-        if (error instanceof ResourceUploadError && error.permanent) throw error;
-        remoteUploadError = error instanceof Error ? error.message : "图片直传失败";
+        const knownSize = options.knownSize;
+        const meta = knownSize && Number.isFinite(knownSize.width) && knownSize.width > 0 && Number.isFinite(knownSize.height) && knownSize.height > 0
+            ? { ...knownSize, mimeType: blob.type || "image/png" } : await readImageMeta(previewUrl);
+        assertCurrent();
+        let remoteUploadError = "";
+        try {
+            const resource = await uploadResourceFile(blob, "image", { ...scopedOptions, width: meta.width, height: meta.height, fileName: input instanceof File ? input.name : undefined, idempotencyKey: storageKey }, onProgress);
+            assertCurrent();
+            await primeResourceBlobCache(resourceStorageKey(resource.id), blob).catch(() => "");
+            assertCurrent();
+            return {
+                url: resource.publicUrl || resourceFileUrl(resource.id),
+                storageKey: resourceStorageKey(resource.id),
+                width: resource.width || meta.width,
+                height: resource.height || meta.height,
+                bytes: resource.size || blob.size,
+                mimeType: resource.mimeType || blob.type || meta.mimeType,
+            };
+        } catch (error) {
+            assertCurrent();
+            // 鉴权失效、越权、体积超限这类失败重传也是同样结果，不能退化成"稍后自动同步"。
+            if (error instanceof DOMException && error.name === "AbortError") throw error;
+            if (error instanceof ResourceUploadError && error.permanent) throw error;
+            remoteUploadError = error instanceof Error ? error.message : "图片直传失败";
+        }
+        // 瞬时失败退回本机：文件仍可用，且云端数据同步会用同一幂等键重传。
+        assertCurrent();
+        await store.setItem(storageKey, blob);
+        assertCurrent();
+        const url = previewUrl;
+        retained = true;
+        objectUrls.set(storageKey, url);
+        return { url, storageKey, width: meta.width, height: meta.height, bytes: blob.size, mimeType: blob.type || meta.mimeType, pendingRemoteUpload: true, remoteUploadError };
+    } finally {
+        if (!retained) URL.revokeObjectURL(previewUrl);
     }
-    // 瞬时失败退回本机：文件仍可用，且云端数据同步会用同一幂等键重传。
-    await store.setItem(storageKey, blob);
-    const url = previewUrl;
-    objectUrls.set(storageKey, url);
-    return { url, storageKey, width: meta.width, height: meta.height, bytes: blob.size, mimeType: blob.type || meta.mimeType, pendingRemoteUpload: true, remoteUploadError };
 }
 
 function shouldImportRemoteImage(input: string) {
