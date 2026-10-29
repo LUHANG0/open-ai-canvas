@@ -2,6 +2,7 @@ import { useCallback, type Dispatch, type SetStateAction } from "react";
 import { App } from "antd";
 
 import { buildNodeGenerationContext, hydrateNodeGenerationContext } from "@/components/canvas/canvas-node-generation";
+import { canvasNodeCanResyncTask } from "@/lib/canvas/canvas-task-state";
 import { nodeGenerationPrompt } from "@/lib/canvas/generation-contract";
 import { imageLayerProviderMetadata, layerDecompositionConfig, supportsExperimentalLayerExtraction, supportsLayerDecomposition } from "@/lib/canvas/canvas-image-layers";
 import { imageLayerOutputSize, imageLayerRemovalPrompt } from "@/lib/canvas/canvas-image-layer-plan";
@@ -60,6 +61,7 @@ type UseCanvasGenerationRetryOptions = {
     startGenerationRequest: (targetNodeId: string, originNodeId: string, runningId?: string, controller?: AbortController) => AbortController;
     finishGenerationRequest: (targetNodeId: string, controller: AbortController) => void;
     bindGenerationTask: (targetNodeId: string, task: GenerationTask) => void;
+    resyncGenerationTaskNode: (node: CanvasNodeData) => Promise<void>;
     applyGenerationTaskResult: (targetNodeId: string, task: GenerationTask) => Promise<void>;
 };
 
@@ -80,6 +82,7 @@ export function useCanvasGenerationRetry({
     finishGenerationRequest,
     bindGenerationTask,
     applyGenerationTaskResult,
+    resyncGenerationTaskNode,
 }: UseCanvasGenerationRetryOptions) {
     const { message } = App.useApp();
     const effectiveConfig = useEffectiveConfig();
@@ -87,6 +90,7 @@ export function useCanvasGenerationRetry({
 
     return useCallback(
         async (node: CanvasNodeData) => {
+            if (canvasNodeCanResyncTask(node.metadata)) { await resyncGenerationTaskNode(node); return; }
             if (node.metadata?.experimentalLayerPlan) {
                 const complete = node.metadata.experimentalLayerPlan.requests.every((request) => {
                     const child = nodesRef.current.find((item) => item.id === request.nodeId);
@@ -576,7 +580,7 @@ export function useCanvasGenerationRetry({
                 setRunningNodeId(null);
             }
         },
-        [addedSkills, applyGenerationTaskResult, assets, bindGenerationTask, connectionsRef, domainProjectId, effectiveConfig, finishGenerationRequest, isAiConfigReady, message, nodesRef, projectId, setNodes, setRunningNodeId, startGenerationRequest],
+        [addedSkills, resyncGenerationTaskNode, applyGenerationTaskResult, assets, bindGenerationTask, connectionsRef, domainProjectId, effectiveConfig, finishGenerationRequest, isAiConfigReady, message, nodesRef, projectId, setNodes, setRunningNodeId, startGenerationRequest],
     );
 }
 

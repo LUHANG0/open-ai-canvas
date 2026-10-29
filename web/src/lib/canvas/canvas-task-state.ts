@@ -14,6 +14,14 @@ export function canvasTaskBindingStatus(node: CanvasNodeData, task: Pick<Generat
     return "loading";
 }
 
+/** Query/readback errors must follow the original task before another paid submission. */
+export function canvasNodeCanResyncTask(metadata: CanvasNodeMetadata | undefined) {
+    if (metadata?.status !== "error" || !metadata.taskId || metadata.isBatchRoot) return false;
+    if (metadata.taskStage === "submission_unknown" || metadata.layerExtraction?.rejectedTaskId === metadata.taskId) return false;
+    if (metadata.taskStatus === "failed" || metadata.taskStatus === "cancelled") return false;
+    return Boolean(metadata.resourceReloadAvailable || metadata.taskStatus === "queued" || metadata.taskStatus === "running" || metadata.taskStatus === "succeeded");
+}
+
 /** 查询/消费异常不是任务终态。只标记恢复诊断，不覆盖成功结果或新的任务绑定。 */
 export function markCanvasTaskRecoveryUnconfirmed(node: CanvasNodeData, expectedTaskId: string | undefined, detail: string): CanvasNodeData {
     if (node.metadata?.status === "success" || node.metadata?.taskId !== expectedTaskId) return node;

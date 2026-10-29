@@ -401,6 +401,22 @@ function safeTaskLogErrorCode(value: unknown) {
     return undefined;
 }
 
+/** Only a confirmed backend failure/cancellation is a generation failure. */
+export class GenerationTaskTerminalError extends Error {
+    constructor(message: string, readonly task: GenerationTask) {
+        super(message);
+        this.name = "GenerationTaskTerminalError";
+    }
+}
+
+export function isGenerationTaskTerminalError(error: unknown): error is GenerationTaskTerminalError {
+    return error instanceof GenerationTaskTerminalError;
+}
+
+function terminalTaskError(task: GenerationTask) {
+    return new GenerationTaskTerminalError(task.error ? generationErrorMessage(task.error) : `任务${task.status === "cancelled" ? "已取消" : "失败"}`, task);
+}
+
 export type WaitForGenerationTaskOptions = {
 	textEventsSource?: "task" | "agent";
     signal?: AbortSignal;
@@ -446,7 +462,7 @@ export async function waitForGenerationTask(id: string, options?: WaitForGenerat
             }
             if (task.status === "failed" || task.status === "cancelled") {
                 window.dispatchEvent(new CustomEvent("wallet:updated"));
-                throw new Error(task.error ? generationErrorMessage(task.error) : `任务${task.status === "cancelled" ? "已取消" : "失败"}`);
+                throw terminalTaskError(task);
             }
             await delay(intervalMs, options?.signal);
         }
@@ -543,13 +559,13 @@ async function waitForGenerationTaskTextEvents(id: string, options: WaitForGener
                 window.dispatchEvent(new CustomEvent("wallet:updated"));
                 if (completed.status === "succeeded") return completed;
                 if (completed.status === "failed" || completed.status === "cancelled") {
-                    throw new TaskTextStreamFatalError(completed.error ? generationErrorMessage(completed.error) : `任务${completed.status === "cancelled" ? "已取消" : "失败"}`);
+                    throw terminalTaskError(completed);
                 }
             }
             lastStreamError = new Error("任务文本流连接提前结束");
         } catch (error) {
             if (options.signal?.aborted) throw new DOMException("Aborted", "AbortError");
-            if (error instanceof TaskTextStreamFatalError) throw error;
+            if (error instanceof TaskTextStreamFatalError || isGenerationTaskTerminalError(error)) throw error;
             lastStreamError = error;
         }
         await delay(intervalMs, options.signal);

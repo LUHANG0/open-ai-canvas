@@ -84,6 +84,6 @@
 - [代码地图](content/docs/backend/code-map.mdx)
 - [待办](content/docs/progress/todo.mdx)
 - [待测试](content/docs/progress/pending-test.mdx)
-- [上游 v1.7.2 选择性整合](content/docs/progress/upstream-v1-7-2-integration.mdx)：以梦层二改为基线的修复取舍、验证和后续兼容批次。
+- [上游选择性整合记录](content/docs/progress/upstream-v1-7-2-integration.mdx)：以梦层二改为基线的 v1.7.2 修复取舍、v1.7.3 原任务恢复与结果下载，以及各批验证边界。
 
 - [登录与注册人机验证](content/docs/backend/turnstile.mdx)

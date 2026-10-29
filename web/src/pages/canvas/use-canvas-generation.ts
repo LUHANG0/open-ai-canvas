@@ -6,7 +6,7 @@ import { applyGenerationTaskResultToNodes, generationTaskCanReloadResource, gene
 import { commitCanvasGenerationResult } from "@/lib/canvas/canvas-generation-result";
 import { reconcileImageBatchRoot } from "@/lib/canvas/canvas-image-batch-retry";
 import { reconcileCanvasResultBilling } from "@/lib/canvas/canvas-result-record";
-import { canvasTaskBindingStatus, markCanvasTaskRecoveryUnconfirmed } from "@/lib/canvas/canvas-task-state";
+import { canvasNodeCanResyncTask, canvasTaskBindingStatus, markCanvasTaskRecoveryUnconfirmed } from "@/lib/canvas/canvas-task-state";
 import { applyCanvasGenerationTaskNodeEffect, CanvasGenerationDurableAckError, isCanvasGenerationDurableAckError } from "@/services/canvas-generation-consumer";
 import { consumeGenerationTaskNode, ensureCanvasNodeAsset, retryCanvasAssetSyncAfterRateLimit } from "@/services/project-asset-sync";
 import { listGenerationTasks, listTaskLogs, queryGenerationTask, subscribeGenerationTasks, type GenerationTask, type TaskLog } from "@/services/api/task-center";
@@ -205,6 +205,7 @@ export function useCanvasGeneration({ projectId, domainProjectId, projectLoaded,
     const { message } = App.useApp();
     const queryClient = useQueryClient();
     const generationRequestsRef = useRef(new Map<string, CanvasGenerationRequest>());
+    const resyncingTasksRef = useRef(new Map<string, symbol>());
     const recoveringTaskIdsRef = useRef(new Set<string>());
     const autoSavedTaskIdsRef = useRef(new Set<string>());
     const consumerControllerRef = useRef(new AbortController());
@@ -505,6 +506,34 @@ export function useCanvasGeneration({ projectId, domainProjectId, projectLoaded,
         [applyGenerationTaskResult, bindGenerationTask, message, nodesRef, observeSubscribedGenerationTask, setNodes],
     );
 
+    const resyncGenerationTaskNode = useCallback(async (node: CanvasNodeData) => {
+        const taskId = node.metadata?.taskId;
+        const key = `${node.id}:${taskId}`;
+        const signal = consumerControllerRef.current.signal;
+        if (!taskId || !canvasNodeCanResyncTask(node.metadata) || signal.aborted || resyncingTasksRef.current.has(key)) return;
+        const token = Symbol(key);
+        resyncingTasksRef.current.set(key, token);
+        const ownsTask = (item: CanvasNodeData) => item.id === node.id && item.metadata?.taskId === taskId;
+        setNodes((current) => current.map((item) => ownsTask(item) ? { ...item, metadata: { ...item.metadata, status: NODE_STATUS_LOADING, errorDetails: undefined, resourceReloadAvailable: undefined } } : item));
+        try {
+            await runGenerationConsumer(signal, async (managedSignal) => {
+                const completed = await observeSubscribedGenerationTask(taskId, managedSignal, (task) => {
+                    if (!managedSignal.aborted && task.status !== "succeeded" && nodesRef.current.some(ownsTask)) bindGenerationTask(node.id, task);
+                });
+                if (managedSignal.aborted || !nodesRef.current.some(ownsTask)) return;
+                if (completed.status === "succeeded") await applyGenerationTaskResult(node.id, completed);
+            });
+        } catch (error) {
+            if (signal.aborted || (error instanceof Error && error.name === "AbortError")) return;
+            setNodes((current) => current.map((item) => ownsTask(item) && item.metadata?.status === NODE_STATUS_LOADING
+                ? { ...item, metadata: { ...item.metadata, status: NODE_STATUS_ERROR, resourceReloadAvailable: true, errorDetails: "暂时无法获取原任务结果，请稍后再试，无需重新生成。" } }
+                : item));
+            message.warning("暂时无法获取结果，原任务已保留");
+        } finally {
+            if (resyncingTasksRef.current.get(key) === token) resyncingTasksRef.current.delete(key);
+        }
+    }, [applyGenerationTaskResult, bindGenerationTask, message, nodesRef, observeSubscribedGenerationTask, setNodes]);
+
     useEffect(() => {
         const coordinator = recoveryCoordinatorRef.current!;
         if (!projectLoaded) {
@@ -567,6 +596,7 @@ export function useCanvasGeneration({ projectId, domainProjectId, projectLoaded,
         bindGenerationTask,
         finishGenerationRequest,
         openNodeTaskDetails,
+        resyncGenerationTaskNode,
         runningNodeId,
         setRunningNodeId,
         setTaskDetail,

@@ -8,6 +8,7 @@ import { useRef, useSyncExternalStore, type CSSProperties } from "react";
 import { formatTaskElapsed, idleTaskTickerSubscribe, subscribeTaskTicker, taskTickerSnapshot } from "@/lib/canvas/task-ticker";
 import { CONTENT_MODERATION_ERROR_CODE, generationErrorMessage, isContentModerationError } from "@/lib/generation-error";
 import type { CanvasNodeContentProps } from "./canvas-node-content";
+import { canvasNodeCanResyncTask } from "@/lib/canvas/canvas-task-state";
 import { canvasLoadingPresentation } from "@/lib/canvas/canvas-loading-presentation";
 import "./canvas-node-status-content.css";
 
@@ -69,6 +70,7 @@ export function shortTaskId(id: string) {
 }
 
 export function ErrorContent({ node, theme, onRetry, onReloadResource }: Pick<CanvasNodeContentProps, "node" | "theme" | "onRetry" | "onReloadResource">) {
+    const canResync = canvasNodeCanResyncTask(node.metadata);
     const moderationFailure = node.metadata?.generationErrorCode === CONTENT_MODERATION_ERROR_CODE || isContentModerationError(node.metadata?.errorDetails);
     const errorDisplayTask = {
         provider: node.metadata?.taskProvider,
@@ -81,7 +83,7 @@ export function ErrorContent({ node, theme, onRetry, onReloadResource }: Pick<Ca
     const submissionUncertain = isGenerationTaskSubmissionUncertain(errorDisplayTask);
     return (
         <div className="canvas-generation-failure" style={{ color: theme.node.text, "--generation-stroke": theme.node.stroke, "--generation-muted": theme.node.muted } as CSSProperties}>
-            <strong>{submissionUncertain ? "正在确认任务状态" : "本次生成未完成"}</strong>
+            <strong>{submissionUncertain ? "正在确认任务状态" : canResync ? "结果暂时无法获取" : "本次生成未完成"}</strong>
             <div className="text-xs leading-5" style={{ color: submissionUncertain ? theme.node.text : theme.accent.danger }}>
                 {submissionUncertain ? generationTaskStatusLabel(errorDisplayTask) : generationErrorMessage(node.metadata?.errorDetails)}
             </div>
@@ -93,7 +95,7 @@ export function ErrorContent({ node, theme, onRetry, onReloadResource }: Pick<Ca
                 <div className="rounded-[var(--r-sm)] px-3 py-2 text-[var(--fs-label)] leading-4" style={{ background: theme.toolbar.itemHover, color: theme.node.muted }}>
                     修改节点提示词后，可重新点击生成。
                 </div>
-            ) : node.metadata?.resourceReloadAvailable ? (
+            ) : canResync ? (
                 <div className="flex flex-wrap justify-center gap-2">
                     <button
                         type="button"
@@ -106,20 +108,7 @@ export function ErrorContent({ node, theme, onRetry, onReloadResource }: Pick<Ca
                         onMouseDown={(event) => event.stopPropagation()}
                     >
                         <Download className="size-3.5" />
-                        重新加载资源
-                    </button>
-                    <button
-                        type="button"
-                        className="inline-flex h-8 items-center gap-1.5 rounded-[var(--r-md)] px-3 text-xs font-medium transition-colors"
-                        style={{ background: theme.toolbar.itemHover, color: theme.node.text }}
-                        onClick={(event) => {
-                            event.stopPropagation();
-                            onRetry?.(node);
-                        }}
-                        onMouseDown={(event) => event.stopPropagation()}
-                    >
-                        <RefreshCw className="size-3.5" />
-                        重新生成
+                        重新获取结果
                     </button>
                 </div>
             ) : (

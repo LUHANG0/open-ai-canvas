@@ -65,3 +65,12 @@ describe("创作消息状态展示", () => {
         expect(resolving).not.toContain("<video");
     });
 });
+
+test("interrupted media and text messages expose original-result refresh instead of a paid regeneration action", () => {
+    for (const mode of ["text", "image", "video"] as const) {
+        const html = renderMessage({ mode, status: "error", taskIds: ["existing-task"], error: "结果同步中断" });
+        expect(html).toContain("重新获取结果");
+        expect(html).not.toContain(">重新生成<");
+        expect(html).not.toContain("生成失败");
+    }
+});

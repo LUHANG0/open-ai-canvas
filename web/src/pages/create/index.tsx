@@ -38,7 +38,7 @@ import { buildCreationMentionReferences, expandCreationPrompt, reconcileCreation
 import { creationAttachmentFromAudio, creationAttachmentFromDocument, creationAttachmentFromImage, creationAttachmentFromVideo, creationAttachmentKind, creationAudioAsset, creationFileAccepted, creationImageAsset, creationMediaAspectRatio, creationUploadAccept, creationVideoAsset, removeCreationAttachment, splitCreationAttachments, type CreationAttachment } from "./creation-assets";
 import { creationLibraryDisabledReason, creationLibrarySelectionToAttachments } from "./creation-library";
 import { defaultCreationMode, modeLabels, type CreationConversation, type CreationMessage, type CreationMode, type CreationRetryContext, type CreationSettings, type CreationShotRailEntry, type CreationStatus } from "./creation-types";
-import { attachCreationTaskContexts, completedCreationGenerationTask, creationMessageResultRecords, conversationTimestamp, creationShotRail, creationVideoShotOrdinal, isImageAttachment, isVideoAttachment, materializeCreationTaskResults, newConversation, newMessage, reconcileCreationTaskMessages } from "./creation-conversations";
+import { attachCreationTaskSnapshots, creationMessageNeedsResultSync, creationTaskFailure, type PersistedCreationTask, completedCreationGenerationTask, creationMessageResultRecords, conversationTimestamp, creationShotRail, creationVideoShotOrdinal, isImageAttachment, isVideoAttachment, newConversation, newMessage, reconcileCreationTaskMessages } from "./creation-conversations";
 import { CreationComposer, CreationEmptySuggest, CreationHistoryDrawer, CreationMessageView, CreationModeTabs, CreationWorkspaceToolbar, creationAssetCategoryLabels } from "./creation-workspace";
 import { declaredInspirationSources } from "@/lib/inspirations/catalog";
 import { fillablePrompt } from "@/lib/inspirations/resolve";
@@ -160,6 +160,9 @@ export default function CreatePage() {
     const submitGateRef = useRef(createCreationSubmitGate());
     const pendingRetryRef = useRef<{ context: CreationRetryContext; lockKey: string } | null>(null);
     const [retrySequence, setRetrySequence] = useState(0);
+    const [recoveryEpoch, setRecoveryEpoch] = useState(0);
+    const resultRefreshesRef = useRef(new Map<string, AbortController>());
+    const [refreshingResultIds, setRefreshingResultIds] = useState<ReadonlySet<string>>(new Set());
     const [composerPreferencesInitialized, setComposerPreferencesInitialized] = useState(false);
     promptRef.current = prompt;
     attachmentsRef.current = attachments;
@@ -221,7 +224,7 @@ export default function CreatePage() {
         return () => window.cancelAnimationFrame(frame);
     }, [activeId, hydrated, isEmpty]);
     const pendingTaskIds = useMemo(() => pendingCreationTaskIds(conversations), [conversations]);
-    const recoveryTaskKey = useMemo(() => pendingTaskIds.filter((id) => !activeGenerationTaskIdsRef.current.has(id)).join("|"), [pendingTaskIds]);
+    const recoveryTaskKey = useMemo(() => `${recoveryEpoch}:${pendingTaskIds.filter((id) => !activeGenerationTaskIdsRef.current.has(id)).join("|")}`, [pendingTaskIds, recoveryEpoch]);
     const videoShots = useMemo(() => creationShotRail(activeConversation?.messages || []), [activeConversation]);
     const jumpToShot = (shot: CreationShotRailEntry) => { const id = shot.result?.id; if (id) document.getElementById(`creation-shot-${id}`)?.scrollIntoView({ block: "start", behavior: "smooth" }); };
 
@@ -372,60 +375,6 @@ export default function CreatePage() {
         if (!remoteHistorySnapshotsRef.current.has(conversations) && hydrated && userSessionHydrated && conversationScope === getActiveUserScope()) void saveCreationConversations(conversations).catch((error) => setHistorySync({ phase: "error", message: error instanceof Error ? error.message : "本机保存失败" }));
     }, [conversations, conversationScope, hydrated, userSessionHydrated, saveCreationConversations]);
 
-    useEffect(() => {
-        if (!hydrated || !recoveryTaskKey || !pendingTaskIds.length) return;
-        // 当前页面主动提交的任务由 submit 自己等待并收尾；恢复监听只接管刷新前遗留的任务，避免同一任务被双重轮询。
-        const recoverableTaskIds = pendingTaskIds.filter((id) => !activeGenerationTaskIdsRef.current.has(id));
-        if (!recoverableTaskIds.length) return;
-        let cancelled = false;
-        const observationController = new AbortController();
-        const applyTasks = async (tasks: GenerationTask[]) => {
-            const runtime = await loadCreationRuntime();
-            const contextual = attachCreationTaskContexts(tasks, conversations);
-            const persistedTasks = await materializeCreationTaskResults(runtime, contextual, observationController.signal);
-            if (cancelled) return;
-            taskSyncWarningRef.current = false;
-            const attachable = persistedTasks.filter((task) => task.status === "succeeded" && Boolean(task.clientContext?.messageId) && Boolean(task.creationResultUrls?.length || task.creationResultStorageKeys?.length));
-            for (const task of attachable) {
-                try {
-                    await runtime.consumeGenerationTaskMessage(task, task.clientContext!.messageId!, async ({ task: delivered, effectKey, resultUrls, resultStorageKeys }) => {
-                        if (cancelled) return;
-                        await updateConversationMessage(task.clientContext!.conversationId!, task.clientContext!.messageId!, (item) =>
-                            runtime.applyGenerationConsumerEffect(item, effectKey, (current) => ({ ...current, resultRecords: creationMessageResultRecords(current, delivered, resultStorageKeys), status: "done" as const, ...(resultUrls.length ? { resultUrls: Array.from(new Set([...(current.resultUrls || []), ...resultUrls])) } : {}), ...(resultStorageKeys.length ? { resultStorageKeys: Array.from(new Set([...(current.resultStorageKeys || []), ...resultStorageKeys])) } : {}) })).value,
-                        );
-                    }, { signal: observationController.signal, materialize: async () => task, materializedUrls: runtime.generationTaskMaterializedUrls, materializedStorageKeys: runtime.generationTaskMaterializedStorageKeys });
-                } catch (error) {
-                    if (cancelled || observationController.signal.aborted) return;
-                    console.warn("创作任务结果挂载失败，将使用已物化结果收敛消息状态", error);
-                }
-            }
-            if (!cancelled) setConversations((current) => reconcileCreationTaskMessages(runtime, current, persistedTasks));
-        };
-        const warnSync = (error: unknown) => {
-            if (cancelled || observationController.signal.aborted) return;
-            console.warn("创作任务状态同步失败", error);
-            if (!taskSyncWarningRef.current) {
-                taskSyncWarningRef.current = true;
-                toast.warning("任务状态暂时无法同步，请稍后刷新");
-            }
-        };
-        let applyChain = Promise.resolve();
-        let unsubscribe: () => void = () => {};
-        void loadCreationRuntime()
-            .then((runtime) => {
-                if (cancelled) return;
-                unsubscribe = runtime.subscribeGenerationTasks(recoverableTaskIds, (task) => {
-                    applyChain = applyChain.then(() => applyTasks([task])).catch(warnSync);
-                });
-            })
-            .catch(warnSync);
-        return () => {
-            cancelled = true;
-            observationController.abort();
-            unsubscribe();
-        };
-    }, [hydrated, recoveryTaskKey, toast, conversationScope]);
-
     const loadAddedSkills = useCallback(() => {
         if (addedSkillsRequestedRef.current) return;
         addedSkillsRequestedRef.current = true;
@@ -462,6 +411,67 @@ export default function CreatePage() {
         setConversations(next);
         await saveCreationConversations(next);
     }, [conversationScope, userId, saveCreationConversations]);
+
+    const applyCreationTasks = useCallback(async (tasks: GenerationTask[], signal: AbortSignal, observed = new Map<string, PersistedCreationTask>()) => {
+        const session = historySessionRef.current;
+        const current = () => !signal.aborted && session === historySessionRef.current && conversationScope === getActiveUserScope() && (useUserStore.getState().user?.id || null) === userId;
+        if (!current()) return;
+        const runtime = await loadCreationRuntime();
+        if (!current()) return;
+        const persisted = await attachCreationTaskSnapshots(runtime, tasks, conversationsRef.current, signal, async (conversationId, messageId, updater) => {
+            if (current()) await updateConversationMessage(conversationId, messageId, updater);
+        });
+        if (!current()) return;
+        for (const task of persisted) observed.set(task.id, task);
+        const next = reconcileCreationTaskMessages(runtime, conversationsRef.current, Array.from(observed.values()));
+        conversationsRef.current = next;
+        setConversations(next);
+    }, [conversationScope, userId, updateConversationMessage]);
+
+    useEffect(() => {
+        if (!hydrated || !recoveryTaskKey || !pendingTaskIds.length) return;
+        // 当前页面主动提交的任务由 submit 自己等待并收尾；恢复监听只接管刷新前遗留的任务，避免同一任务被双重轮询。
+        const recoverableTaskIds = pendingTaskIds.filter((id) => !activeGenerationTaskIdsRef.current.has(id));
+        if (!recoverableTaskIds.length) return;
+        let cancelled = false;
+        const observationController = new AbortController();
+        const observed = new Map<string, PersistedCreationTask>();
+        const applyTasks = async (tasks: GenerationTask[]) => {
+            await applyCreationTasks(tasks, observationController.signal, observed);
+            if (!cancelled) taskSyncWarningRef.current = false;
+        };
+        const warnSync = (error: unknown) => {
+            if (cancelled || observationController.signal.aborted) return;
+            console.warn("创作任务状态同步失败", error);
+            if (!taskSyncWarningRef.current) {
+                taskSyncWarningRef.current = true;
+                toast.warning("任务状态暂时无法同步，请稍后刷新");
+            }
+        };
+        let applyChain = Promise.resolve();
+        let unsubscribe: () => void = () => {};
+        void loadCreationRuntime()
+            .then((runtime) => {
+                if (cancelled) return;
+                unsubscribe = runtime.subscribeGenerationTasks(recoverableTaskIds, (task) => {
+                    applyChain = applyChain.then(() => applyTasks([task])).catch(warnSync);
+                });
+            })
+            .catch(warnSync);
+        return () => {
+            cancelled = true;
+            observationController.abort();
+            unsubscribe();
+        };
+    }, [hydrated, recoveryTaskKey, toast, conversationScope, applyCreationTasks]);
+
+    useEffect(() => {
+        setRefreshingResultIds(new Set());
+        return () => {
+            for (const controller of resultRefreshesRef.current.values()) controller.abort();
+            resultRefreshesRef.current.clear();
+        };
+    }, [conversationScope]);
 
     const selectMode = (next: CreationMode) => {
         setMode(next);
@@ -833,7 +843,7 @@ export default function CreatePage() {
                     if (!taskId) throw new Error("生成任务缺少稳定任务标识");
                     const task = completedCreationGenerationTask(runtime, { taskId, task: boundTasks.get(taskId), mode: "image", prompt: expandedPrompt, result, conversationId: activeConversation.id, messageId: assistantMessage.id, batchIndex, batchCount: taskCount });
                     const materialized = await runtime.consumeGenerationTaskMessage(task, assistantMessage.id, async ({ task: delivered, resultUrls, resultStorageKeys, effectKey }) => {
-                        await updateOriginAssistant((item) => runtime.applyGenerationConsumerEffect(item, effectKey, (current) => ({ ...current, resultRecords: creationMessageResultRecords(current, delivered, resultStorageKeys), status: "done" as const, content: "图片已生成", ...(resultUrls.length ? { resultUrls: Array.from(new Set([...(current.resultUrls || []), ...resultUrls])) } : {}), ...(resultStorageKeys.length ? { resultStorageKeys: Array.from(new Set([...(current.resultStorageKeys || []), ...resultStorageKeys])) } : {}) })).value);
+                        await updateOriginAssistant((item) => runtime.applyGenerationConsumerEffect(item, effectKey, (current) => ({ ...current, resultRecords: creationMessageResultRecords(current, delivered, resultStorageKeys), content: "图片已生成", ...(resultUrls.length ? { resultUrls: Array.from(new Set([...(current.resultUrls || []), ...resultUrls])) } : {}), ...(resultStorageKeys.length ? { resultStorageKeys: Array.from(new Set([...(current.resultStorageKeys || []), ...resultStorageKeys])) } : {}) })).value);
                     }, { signal: requestLifecycle.signal });
                     const urls = runtime.generationTaskMaterializedUrls(materialized);
                     if (!urls.length) throw new Error("图片结果资源不可用");
@@ -845,6 +855,10 @@ export default function CreatePage() {
                 if (!resultUrls.length) {
                     const reason = taskFailures[0]?.reason || resourceFailures[0]?.reason;
                     throw reason instanceof Error ? reason : new Error("后端任务没有返回图片");
+                }
+                if (resourceFailures.length || taskFailures.some((entry) => !runtime.isGenerationTaskTerminalError(entry.reason))) {
+                    updateOriginAssistant((item) => ({ ...item, status: "error", errorKind: "sync", syncInterrupted: true, content: "部分结果待同步", error: "已完成作品已保留，可重新获取其余原任务结果。" }));
+                    return;
                 }
                 if (failedCount) toast.warning(`${resultUrls.length} 张图片已生成，${failedCount} 张生成失败`);
                 updateOriginAssistant((item) => ({ ...item, content: failedCount ? `${resultUrls.length} 张图片已生成，${failedCount} 张失败` : "图片已生成" }));
@@ -876,10 +890,11 @@ export default function CreatePage() {
                 updateOriginAssistant((item) => ({ ...item, status: "cancelled", content: "已停止" }));
                 return;
             }
-            const message = generationErrorMessage(error);
-            updateOriginAssistant((item) => ({ ...item, status: "error", error: message, generationErrorCode: item.generationErrorCode || generationErrorCode(error), generationOperation: item.generationOperation || (mode === "video" ? videoOperation : mode), createdAt: assistantMessage.createdAt, content: "生成失败" }));
+            const failure = creationTaskFailure(Array.from(boundTasks.values()), error);
+            updateOriginAssistant((item) => ({ ...item, ...failure, generationErrorCode: item.generationErrorCode || generationErrorCode(error), generationOperation: item.generationOperation || (mode === "video" ? videoOperation : mode), createdAt: assistantMessage.createdAt }));
         } finally {
             for (const taskId of boundTaskIds) activeGenerationTaskIdsRef.current.delete(taskId);
+            if (boundTaskIds.size && !requestLifecycle.signal.aborted) setRecoveryEpoch((value) => value + 1);
             requestLifecycle.release();
             releaseRetryLock();
             releaseSubmitGate();
@@ -1049,7 +1064,34 @@ export default function CreatePage() {
         if (nextMode === "video") rememberVideoSettings({ ratio: nextSettings.ratio, seconds: nextSettings.seconds, videoQuality: nextSettings.videoQuality });
     };
 
+    const refreshCreationResult = async (item: CreationMessage) => {
+        const conversationId = activeConversation?.id;
+        const ids = item.taskIds || [];
+        if (!conversationId || !ids.length || resultRefreshesRef.current.has(item.id)) return;
+        const controller = new AbortController();
+        const session = historySessionRef.current;
+        resultRefreshesRef.current.set(item.id, controller);
+        setRefreshingResultIds(new Set(resultRefreshesRef.current.keys()));
+        try {
+            const runtime = await loadCreationRuntime();
+            await runtime.runGenerationConsumer(controller.signal, async (signal) => {
+                const tasks = await Promise.all(ids.map((id) => runtime.queryGenerationTask(id, { signal })));
+                if (signal.aborted || session !== historySessionRef.current) return;
+                await applyCreationTasks(tasks, signal);
+                if (!signal.aborted) setRecoveryEpoch((value) => value + 1);
+            });
+        } catch {
+            if (!controller.signal.aborted && session === historySessionRef.current) toast.warning("暂时无法获取结果，请稍后再试；原任务已保留");
+        } finally {
+            if (resultRefreshesRef.current.get(item.id) === controller) {
+                resultRefreshesRef.current.delete(item.id);
+                setRefreshingResultIds(new Set(resultRefreshesRef.current.keys()));
+            }
+        }
+    };
+
     const retryFailedMessage = async (item: CreationMessage, index: number) => {
+        if (creationMessageNeedsResultSync(item)) { await refreshCreationResult(item); return; }
         const previous = item.role === "assistant" ? activeConversation?.messages[index - 1] : item;
         if (!previous?.content || busy) return;
         const retryOf = item.taskIds?.[0];
@@ -1237,6 +1279,7 @@ export default function CreatePage() {
                         item={item}
                         shotNumber={creationVideoShotOrdinal(videoShots, item)}
                         onRetryFailure={() => retryFailedMessage(item, index)}
+                        refreshingResult={refreshingResultIds.has(item.id)}
                         onCreateVariant={() => createVariant(item, index)}
                         onContinueCanvas={(ids) => void continueOnCanvas(ids)}
                         openingCanvas={openingCanvas}

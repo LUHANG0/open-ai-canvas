@@ -204,3 +204,17 @@ test("shared observers reconcile succeeded pending settlement once and stop afte
         expect(queries).toBe(2);
     } finally { first(); second(); }
 });
+
+
+test("only confirmed backend terminal failures carry a terminal error", async () => {
+    for (const status of ["failed", "cancelled"] as const) {
+        apiClient.defaults.adapter = async (config) => ({ config, status: 200, statusText: "", headers: {}, data: { code: 0, data: { ...running, status, error: "fixture failure" }, msg: "ok" } });
+        const error = await waitForGenerationTask(running.id, { intervalMs: 1, timeoutMs: 1000 }).catch((error) => error);
+        expect(error.name).toBe("GenerationTaskTerminalError");
+        expect(error.task.id).toBe(running.id);
+        expect(error.task.status).toBe(status);
+    }
+    apiClient.defaults.adapter = async () => { throw new Error("offline fixture"); };
+    const error = await waitForGenerationTask(running.id, { intervalMs: 1, timeoutMs: 1000 }).catch((error) => error);
+    expect(error.name).not.toBe("GenerationTaskTerminalError");
+});

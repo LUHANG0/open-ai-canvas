@@ -6,6 +6,7 @@ export type RecoverableCreationTextMessage = {
     status?: string;
     content: string;
     error?: string;
+    errorKind?: "task" | "sync";
     taskIds?: string[];
 };
 
@@ -18,7 +19,7 @@ export type CreationTextTaskRecovery = {
 
 // 页面重载后只依赖后端任务终态恢复消息，不复用已经中断的浏览器请求。
 export function recoverCreationTextTask(message: RecoverableCreationTextMessage, tasks: GenerationTask[]): CreationTextTaskRecovery | null {
-    if (message.mode !== "text" || (message.status !== "streaming" && message.status !== "pending")) return null;
+    if (message.mode !== "text" || (message.status !== "streaming" && message.status !== "pending" && !(message.status === "error" && message.errorKind !== "task"))) return null;
 
     const taskIds = new Set(message.taskIds || []);
     const matches = tasks.filter((task) => taskIds.has(task.id));
@@ -32,7 +33,7 @@ export function recoverCreationTextTask(message: RecoverableCreationTextMessage,
             if (!text?.trim()) throw new Error("后端任务没有返回文本");
             return { status: "done", content: text, error: undefined, taskIds: nextTaskIds };
         } catch (error) {
-            return { status: "error", content: "生成失败", error: error instanceof Error ? error.message : "文本任务结果格式错误", taskIds: nextTaskIds };
+            return { status: "error", content: message.content || "结果暂时无法读取", error: error instanceof Error ? error.message : "文本任务结果格式错误", taskIds: nextTaskIds };
         }
     }
     if (matches.every((task) => task.status === "cancelled")) {

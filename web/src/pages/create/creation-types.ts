@@ -27,6 +27,9 @@ export type CreationMessage = {
     /** Media-bound task facts, persisted without transient URLs or provider settings. */
     resultRecords?: NonNullable<CanvasNodeMetadata["resultRecord"]>[];
     error?: string;
+    /** Derived from current task observations; not an authorization or task terminal state. */
+    errorKind?: "task" | "sync";
+    syncInterrupted?: boolean;
     generationErrorCode?: string;
     generationOperation?: string;
     attachments?: CreationAttachment[];

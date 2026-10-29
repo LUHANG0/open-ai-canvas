@@ -1,5 +1,6 @@
 // 创作页消息流：用户消息、媒体结果、生成中占位、引用素材与预览。
 
+import { creationMessageNeedsResultSync } from "./creation-conversations";
 import { conversationTimeFormatter, type CreationMessage } from "./creation-types";
 import { useAppearanceStore } from "@/stores/use-appearance-store";
 import { Copy, Download, FileText, Film, Image as ImageIcon, Maximize2, Music2, Pencil, RefreshCw, Sparkles, UserRound, X } from "lucide-react";
@@ -39,6 +40,7 @@ export function CreationMessageView({
     onEditUserMessage,
     onContinueCanvas,
     openingCanvas,
+    refreshingResult = false,
 }: {
     item: CreationMessage;
     shotNumber: number;
@@ -47,12 +49,14 @@ export function CreationMessageView({
     onEditUserMessage: (text: string) => void;
     onContinueCanvas: (ids?: string[]) => void;
     openingCanvas: boolean;
+    refreshingResult?: boolean;
 }) {
     const brandName = useAppearanceStore((state) => state.appearance.brandName);
     if (item.role === "user") return <CreationUserMessage item={item} shotNumber={shotNumber} onEditUserMessage={onEditUserMessage} />;
     const mode = item.mode || "text";
     const generating = item.status === "pending" || item.status === "streaming";
-    const stateLabel = generating ? "生成中" : item.status === "cancelled" ? "已停止" : item.status === "error" ? "生成失败" : item.status === "done" && mode === "text" ? "已完成" : "";
+    const needsSync = creationMessageNeedsResultSync(item);
+    const stateLabel = generating ? "生成中" : item.status === "cancelled" ? "已停止" : item.status === "error" ? needsSync ? "结果待同步" : "生成失败" : item.status === "done" && mode === "text" ? "已完成" : "";
     const heading =
         mode !== "text" ? (
             <>
@@ -112,15 +116,15 @@ export function CreationMessageView({
                 </>
             ) : (
                 <GenerationToolCard status={toolStatus} heading={heading}>
-                    <MediaResult item={item} onRetryFailure={onRetryFailure} onCreateVariant={onCreateVariant} onContinueCanvas={onContinueCanvas} openingCanvas={openingCanvas} />
+                    <MediaResult item={item} refreshingResult={refreshingResult} onRetryFailure={onRetryFailure} onCreateVariant={onCreateVariant} onContinueCanvas={onContinueCanvas} openingCanvas={openingCanvas} />
                 </GenerationToolCard>
             )}
             {(item.error || item.status === "error") && mode === "text" ? (
                 <div className="creation-message-error" role="status">
                     <span>{generationErrorMessage(item.error || "生成失败")}</span>
-                    <button type="button" onClick={onRetryFailure}>
+                    <button type="button" onClick={onRetryFailure} disabled={refreshingResult}>
                         <RefreshCw />
-                        重新生成
+                        {needsSync ? refreshingResult ? "正在获取…" : "重新获取结果" : "重新生成"}
                     </button>
                 </div>
             ) : null}
@@ -215,12 +219,14 @@ export function MediaResult({
     onCreateVariant,
     onContinueCanvas,
     openingCanvas,
+    refreshingResult = false,
 }: {
     item: CreationMessage;
     onRetryFailure: () => void;
     onCreateVariant: () => void;
     onContinueCanvas: (ids?: string[]) => void;
     openingCanvas: boolean;
+    refreshingResult?: boolean;
 }) {
     const [previewUrl, setPreviewUrl] = useState("");
     const [previewType, setPreviewType] = useState<"image" | "video">("image");
@@ -280,6 +286,7 @@ export function MediaResult({
         };
     }, [item.id, item.mode, resultStorageKeys.join("|"), storedResultUrls.join("|")]);
 
+    const needsSync = creationMessageNeedsResultSync(item);
     const isVideo = item.mode === "video";
     const { entries: resultEntries, resolving } = creationResultEntries({ storageKeys: resultStorageKeys, storedUrls: storedResultUrls, resolvedByKey, failedByKey, isVideo, isRemoteKey: (storageKey) => Boolean(resourceIdFromStorageKey(storageKey)) });
     const alignedResultUrls = resultStorageKeys.length ? resultStorageKeys.map((storageKey) => resultEntries.find((entry) => entry.key === storageKey)?.url || "") : resultEntries.map((entry) => entry.url);
@@ -287,14 +294,14 @@ export function MediaResult({
     const resultAssetIds = alignedResultUrls.length || resultStorageKeys.length ? creationResultAssetIds(assets, { messageId: item.id, taskIds: item.taskIds || [], resultUrls: alignedResultUrls, resultStorageKeys }) : [];
     const expectedResultCount = resultStorageKeys.length || alignedResultUrls.length;
     const canContinueWithResults = expectedResultCount > 0 && resultAssetIds.length === expectedResultCount;
-    if (item.status === "pending") return <CreationMediaPending mode={item.mode || "image"} ratio={item.settings?.ratio} startedAt={item.createdAt} />;
+    if (item.status === "pending" && !expectedResultCount) return <CreationMediaPending mode={item.mode || "image"} ratio={item.settings?.ratio} startedAt={item.createdAt} />;
     if ((item.status === "error" || item.status === "cancelled") && !expectedResultCount)
         return (
             <div className="creation-media-error" role="status">
-                <div className="creation-media-error-copy"><strong>{item.status === "cancelled" ? "生成已停止" : "本次生成未完成"}</strong><span>{item.status === "cancelled" ? item.content || "可重新发起生成。" : generationErrorMessage(item.error || "生成失败")}</span></div>
-                <button type="button" onClick={onRetryFailure}>
+                <div className="creation-media-error-copy"><strong>{item.status === "cancelled" ? "生成已停止" : needsSync ? "结果暂时无法获取" : "本次生成未完成"}</strong><span>{item.status === "cancelled" ? item.content || "可重新发起生成。" : generationErrorMessage(item.error || "生成失败")}</span></div>
+                <button type="button" onClick={onRetryFailure} disabled={refreshingResult}>
                     <RefreshCw />
-                    重新生成
+                    {needsSync ? refreshingResult ? "正在获取…" : "重新获取结果" : "重新生成"}
                 </button>
             </div>
         );
@@ -304,13 +311,15 @@ export function MediaResult({
         return (
             <div className="creation-media-empty">
                 没有返回可预览结果{" "}
-                <button type="button" onClick={onRetryFailure}>
+                <button type="button" onClick={onRetryFailure} disabled={refreshingResult}>
                     重试
                 </button>
             </div>
         );
     return (
         <div className="creation-media-result">
+            {item.status === "pending" ? <div role="status"><WorkingDots /><span>其余任务正在生成，已完成作品已保留</span></div> : null}
+            {needsSync ? <div className="creation-media-error" role="status"><span>部分结果待同步，已完成作品已保留</span><button type="button" onClick={onRetryFailure} disabled={refreshingResult}>{refreshingResult ? "正在获取…" : "重新获取结果"}</button></div> : null}
             {isVideo ? (
                 <button
                     type="button"

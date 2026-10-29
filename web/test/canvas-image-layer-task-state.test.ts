@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { canvasTaskBindingStatus } from "@/lib/canvas/canvas-task-state";
+import { canvasNodeCanResyncTask, canvasTaskBindingStatus } from "@/lib/canvas/canvas-task-state";
 import { CanvasNodeType, type CanvasNodeData } from "@/types/canvas";
 const node: CanvasNodeData = {
     id: "layer",
@@ -26,4 +26,16 @@ test("验收完成须与同一任务绑定，普通节点维持已有规则", ()
     expect(canvasTaskBindingStatus(validated, { id: "older", status: "succeeded" })).toBe("loading");
     expect(canvasTaskBindingStatus({ ...node, metadata: { content: "/ordinary.png" } }, { id: "ordinary", status: "succeeded" })).toBe("success");
     expect(canvasTaskBindingStatus(validated, { id: "remove", status: "failed" })).toBe("error");
+});
+
+test("recoverable observation errors reuse their task; terminal, uncertain and rejected tasks keep their own path", () => {
+    for (const taskStatus of ["queued", "running", "succeeded"] as const) {
+        expect(canvasNodeCanResyncTask({ status: "error", taskId: "a", taskStatus })).toBe(true);
+    }
+    for (const metadata of [
+        { status: "error" as const, taskId: "a", taskStatus: "failed" as const, resourceReloadAvailable: true },
+        { status: "error" as const, taskId: "a", taskStatus: "cancelled" as const },
+        { status: "error" as const, taskId: "a", taskStatus: "running" as const, taskStage: "submission_unknown" },
+        { ...node.metadata, status: "error" as const, taskStatus: "succeeded" as const, layerExtraction: { ...node.metadata!.layerExtraction!, rejectedTaskId: "extract" } },
+    ]) expect(canvasNodeCanResyncTask(metadata)).toBe(false);
 });
