@@ -27,7 +27,7 @@ type BillingLog = Pick<ApiCallLog, "billable" | "billingAvailable" | "billingSta
 export function logBillingAmounts(log: BillingLog) {
     if (!log.billable || !log.billingAvailable) return { reserved: undefined, settled: undefined };
     const reserved = log.billingReservedMicrocredits ?? (log.billingStatus && !["settled", "refunded"].includes(log.billingStatus) ? log.billingAmountMicrocredits : undefined);
-    const settled = log.billingStatus === "settled" ? log.billingSettledMicrocredits ?? log.billingAmountMicrocredits : undefined;
+    const settled = log.billingStatus === "settled" ? (log.billingSettledMicrocredits ?? log.billingAmountMicrocredits) : undefined;
     return { reserved, settled };
 }
 
