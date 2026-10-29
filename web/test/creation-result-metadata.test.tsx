@@ -36,7 +36,7 @@ test("compact facts preserve task scope, exact settled cost and full accessible 
     } finally { await act(async () => root.unmount()); host.remove(); }
 });
 
-test("conversation batch shows one summary line and preserves secondary facts in a tooltip", async () => {
+test("legacy image batch keeps its tier unknown while decoded pixels update accessible details", async () => {
     const resolve = spyOn(images, "resolveImageUrl").mockImplementation(async (_key, fallback) => fallback || "/fixture.png");
     const host = document.createElement("div"); document.body.append(host); const root = createRoot(host);
     const item: CreationMessage = { id: "reply", role: "assistant", mode: "image", content: "", status: "done", model: "old-selector", createdAt: "2026-10-25T00:00:00Z", taskIds: ["task-a"], resultUrls: ["/a.png", "/b.png"], resultStorageKeys: ["local-a", "local-b"], settings: { ratio: "9:16", seconds: "90", quality: "4k", videoQuality: "4k", count: "2" }, resultRecords: ["local-a", "local-b"].map((mediaKey) => ({ mediaKey, taskId: "task-a", model: "Public model", outputCount: 2, createdAt: "2026-10-25T00:00:00Z", completedAt: "2026-10-25T00:02:00Z", includesSave: true, billing: { actualAmountMicrocredits: 8800000, scope: "task" } })) };
@@ -46,11 +46,16 @@ test("conversation batch shows one summary line and preserves secondary facts in
         const metadata = host.querySelector(".generation-result-metadata")!;
         expect(metadata.textContent?.match(/8.8积分/g)).toHaveLength(1);
         expect(metadata.textContent?.match(/Public model/g)).toHaveLength(1);
+        expect(metadata.textContent).toContain("分辨率未记录");
         expect(metadata.textContent).not.toContain("4K");
+        expect(metadata.getAttribute("title")).not.toContain("1280×720");
         const image = host.querySelector(".creation-image-result img")!;
         Object.defineProperty(image, "naturalWidth", { value: 1280 }); Object.defineProperty(image, "naturalHeight", { value: 720 });
         await act(async () => image.dispatchEvent(new dom.Event("load")));
-        expect(metadata.textContent).toContain("1280×720");
+        expect(metadata.textContent).toContain("分辨率未记录");
+        expect(metadata.textContent).not.toContain("1280×720");
+        expect(metadata.getAttribute("title")).toContain("1280×720 · 16:9");
+        expect(metadata.getAttribute("aria-label")).toBe(metadata.getAttribute("title"));
         expect(metadata.textContent).not.toContain("old-selector");
         expect(metadata.querySelector("details, summary, button, [tabindex]")).toBeNull();
         expect(metadata.getAttribute("title")).toContain("task-a");
@@ -59,7 +64,7 @@ test("conversation batch shows one summary line and preserves secondary facts in
     } finally { await act(async () => root.unmount()); host.remove(); resolve.mockRestore(); }
 });
 
-test("video metadata uses decoded dimensions and duration while pending cost later becomes explicit settled zero", async () => {
+test("legacy video keeps its tier unknown and exposes decoded dimensions and duration before zero settlement", async () => {
     const resolve = spyOn(files, "resolveMediaUrl").mockResolvedValue("/fixture.mp4");
     const host = document.createElement("div"); document.body.append(host); const root = createRoot(host);
     const snapshot = { mediaKey: "video:fixture", taskId: "video-task", model: "Public video model", outputCount: 1, billingStatus: "pending" as const };
@@ -71,7 +76,10 @@ test("video metadata uses decoded dimensions and duration while pending cost lat
         Object.defineProperty(video, "videoWidth", { value: 720 }); Object.defineProperty(video, "videoHeight", { value: 1280 }); Object.defineProperty(video, "duration", { value: 6 });
         await act(async () => video.dispatchEvent(new dom.Event("loadedmetadata")));
         const metadata = host.querySelector(".generation-result-metadata")!;
-        expect(metadata.textContent).toContain("720P");
+        expect(metadata.textContent).toContain("分辨率未记录");
+        expect(metadata.textContent).not.toContain("720P");
+        expect(metadata.getAttribute("title")).toContain("720×1280 · 9:16");
+        expect(metadata.getAttribute("aria-label")).toBe(metadata.getAttribute("title"));
         expect(metadata.getAttribute("title")).toContain("9:16");
         expect(metadata.textContent).toContain("9:16");
         expect(metadata.getAttribute("title")).toContain("时长 6秒");
@@ -83,3 +91,33 @@ test("video metadata uses decoded dimensions and duration while pending cost lat
         expect(metadata.textContent).not.toContain("结算中");
     } finally { await act(async () => root.unmount()); host.remove(); resolve.mockRestore(); }
 });
+
+for (const mode of ["image", "video"] as const) {
+    test(`${mode} summary retains the submitted tier and aspect independently of decoded media and edited controls`, async () => {
+        const host = document.createElement("div"); document.body.append(host); const root = createRoot(host);
+        const submittedResolution = mode === "image" ? "2K" : "1080P";
+        const snapshot = { mediaKey: "/fixture", taskId: "submitted-task", model: "Submitted model", submittedResolution, submittedAspectRatio: "4:3", outputCount: 1 };
+        const item: CreationMessage = { id: `submitted-${mode}`, role: "assistant", mode, status: "done", content: "", createdAt: "2026-10-29T00:00:00Z", taskIds: [snapshot.taskId], resultUrls: [snapshot.mediaKey], resultRecords: [snapshot], settings: { ratio: "1:1", seconds: "30", quality: "4k", videoQuality: "4k", count: "1" } };
+        const render = (value: CreationMessage) => root.render(<MediaResult item={value} onRetryFailure={noop} onCreateVariant={noop} onContinueCanvas={noop} openingCanvas={false} />);
+        try {
+            await act(async () => render(item));
+            const media = host.querySelector(mode === "image" ? "img" : "video")!;
+            const measured = mode === "image" ? { naturalWidth: 1280, naturalHeight: 720 } : { videoWidth: 720, videoHeight: 1280, duration: 6 };
+            for (const [key, value] of Object.entries(measured)) Object.defineProperty(media, key, { value });
+            await act(async () => media.dispatchEvent(new dom.Event(mode === "image" ? "load" : "loadedmetadata")));
+            const metadata = host.querySelector(".generation-result-metadata")!;
+            const summary = metadata.textContent;
+            expect(summary).toContain(`分辨率 ${submittedResolution}`);
+            expect(summary).toContain("4:3");
+            expect(summary).not.toContain("4K");
+            expect(summary).not.toContain(mode === "image" ? "1280×720" : "720P");
+            const details = metadata.getAttribute("title");
+            expect(details).toContain(mode === "image" ? "1280×720 · 16:9" : "720×1280 · 9:16");
+            if (mode === "video") expect(details).toContain("时长 6秒");
+            expect(metadata.getAttribute("aria-label")).toBe(details);
+            await act(async () => render({ ...item, settings: { ...item.settings!, ratio: "9:16", quality: "auto", videoQuality: "720p" } }));
+            expect(metadata.textContent).toBe(summary);
+            expect(metadata.getAttribute("title")).toBe(details);
+        } finally { await act(async () => root.unmount()); host.remove(); }
+    });
+}
