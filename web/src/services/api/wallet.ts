@@ -212,6 +212,9 @@ export type AdminRedeemCodePage = {
 export type BillingOrder = {
     id: string;
     userId: string;
+    /** 仅管理端账单列表按当前页填充。 */
+    userDisplayName?: string;
+    userAccount?: string;
     taskId?: string;
     channelId: string;
     model: string;

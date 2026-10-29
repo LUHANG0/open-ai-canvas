@@ -155,6 +155,9 @@ type ApiCallLog struct {
 	StartedAt              time.Time     `json:"startedAt"`
 	CreatedAt              time.Time     `json:"createdAt" gorm:"index;index:idx_api_logs_user_created,priority:2;index:idx_api_logs_channel_created,priority:2;index:idx_api_logs_model_created,priority:2;index:idx_api_logs_status_created,priority:2;index:idx_api_logs_kind_status_created,priority:3"`
 	CreatedAtEpoch         int64         `json:"-" gorm:"index:idx_api_logs_created_epoch"`
+	// 新页面分别读取预授权和实收，BillingAmount 保留旧客户端兼容语义。
+	BillingReservedAmount int64  `json:"billingReservedMicrocredits" gorm:"-"`
+	BillingSettledAmount  *int64 `json:"billingSettledMicrocredits,omitempty" gorm:"-"`
 }
 
 func (a *ApiCallLog) BeforeCreate(tx *gorm.DB) error {

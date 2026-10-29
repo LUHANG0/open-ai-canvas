@@ -64,7 +64,7 @@ func TestAdminAnalyticsFinanceUsesSettledSnapshotsAndDeduplicates(t *testing.T) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := db.AutoMigrate(&model.BillingOrder{}, &model.ApiCallLog{}, &model.Task{}, &model.UserDailyActivity{}, &model.User{}); err != nil {
+	if err := db.AutoMigrate(&model.BillingOrder{}, &model.ApiCallLog{}, &model.Task{}, &model.UserDailyActivity{}, &model.User{}, &model.CreditAccount{}); err != nil {
 		t.Fatal(err)
 	}
 	svc := &Service{repo: repository.New(db)}
@@ -112,6 +112,16 @@ func TestAdminAnalyticsFinanceUsesSettledSnapshotsAndDeduplicates(t *testing.T) 
 		t.Fatal(err)
 	}
 	finance := result.KPI.Finance
+	if result.KPI.UpstreamRequests != 9 {
+		t.Errorf("generation requests = %d, want 9 (exclude auxiliary stages)", result.KPI.UpstreamRequests)
+	}
+	var consumed int64
+	for _, point := range result.Trend {
+		consumed += point.ConsumedMicrocredits
+	}
+	if consumed != finance.RevenueMicrocredits || result.KPI.TotalConsumedMicrocredits != finance.RevenueMicrocredits {
+		t.Errorf("consumption mismatch: trend=%d KPI=%d settled=%d", consumed, result.KPI.TotalConsumedMicrocredits, finance.RevenueMicrocredits)
+	}
 	if finance.SettledOrders != 4 || finance.CostedOrders != 3 || finance.RevenueMicrocredits != 1_400_000 || finance.CostMicrocredits != 600_000 || finance.ProfitMicrocredits != nil || finance.ProfitMargin != nil {
 		t.Fatalf("partial finance = %+v", finance)
 	}

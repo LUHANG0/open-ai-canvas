@@ -34,7 +34,7 @@ type AnalyticsKPI struct {
 	MAU                       int              `json:"mau"`
 	GenerationTasks           int              `json:"generationTasks"`
 	UpstreamRequests          int              `json:"upstreamRequests"`
-	SuccessRate               float64          `json:"successRate"`
+	SuccessRate               *float64         `json:"successRate"`
 	P95DurationMs             int64            `json:"p95DurationMs"`
 	CurrentQueuedTasks        int64            `json:"currentQueuedTasks"`
 	Finance                   AnalyticsFinance `json:"finance"`
@@ -43,12 +43,12 @@ type AnalyticsKPI struct {
 }
 
 type AnalyticsTrendPoint struct {
-	Day                  string  `json:"day"`
-	Tasks                int     `json:"tasks"`
-	Requests             int     `json:"requests"`
-	ActiveUsers          int     `json:"activeUsers"`
-	RequestSuccessRate   float64 `json:"requestSuccessRate"`
-	ConsumedMicrocredits int64   `json:"consumedMicrocredits"`
+	Day                  string   `json:"day"`
+	Tasks                int      `json:"tasks"`
+	Requests             int      `json:"requests"`
+	ActiveUsers          int      `json:"activeUsers"`
+	RequestSuccessRate   *float64 `json:"requestSuccessRate"`
+	ConsumedMicrocredits int64    `json:"consumedMicrocredits"`
 }
 
 type AnalyticsModelRow struct {
@@ -57,8 +57,8 @@ type AnalyticsModelRow struct {
 	Tasks              int              `json:"tasks"`
 	Requests           int              `json:"requests"`
 	UniqueUsers        int              `json:"uniqueUsers"`
-	TaskSuccessRate    float64          `json:"taskSuccessRate"`
-	RequestSuccessRate float64          `json:"requestSuccessRate"`
+	TaskSuccessRate    *float64         `json:"taskSuccessRate"`
+	RequestSuccessRate *float64         `json:"requestSuccessRate"`
 	P50DurationMs      int64            `json:"p50DurationMs"`
 	P95DurationMs      int64            `json:"p95DurationMs"`
 	InputTokens        int64            `json:"inputTokens"`
@@ -174,18 +174,16 @@ func (s *Service) AdminAnalytics(actor *model.User, query AnalyticsQuery) (*Anal
 	if err != nil {
 		return nil, err
 	}
-	result := buildAnalyticsOverview(filter, tasks, rollingTasks, rollingLogs, logs, activities, users)
+	// 请求指标只计模型生成请求；财务仍按完整日志关联结算订单。
+	result := buildAnalyticsOverview(filter, tasks, rollingTasks, upstreamCreateLogs(rollingLogs), upstreamCreateLogs(logs), activities, users)
 	result.KPI.TotalBalanceMicrocredits = totalBalance
-	for _, log := range logs {
-		if log.BillingAmount > 0 {
-			result.KPI.TotalConsumedMicrocredits += log.BillingAmount
-		}
-	}
 	records, err := s.analyticsFinancialRecords(logs)
 	if err != nil {
 		return nil, err
 	}
 	applyAnalyticsFinance(result, records)
+	// 保留旧响应字段，并与已结算实收采用同一口径。
+	result.KPI.TotalConsumedMicrocredits = result.KPI.Finance.RevenueMicrocredits
 	result.KPI.CurrentQueuedTasks = queued
 	return result, nil
 }

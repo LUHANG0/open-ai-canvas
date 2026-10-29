@@ -19,6 +19,12 @@ describe("运营总览「较前一日」", () => {
         expect(formatRateDelta(0, 0, 0, 0)).toBeUndefined();
     });
 
+    test("有请求但尚无已完成样本时不比较，真实 0% 仍可比较", () => {
+        expect(formatRateDelta(null, 99.3, 5, 120)).toBeUndefined();
+        expect(formatRateDelta(98, null, 50, 5)).toBeUndefined();
+        expect(formatRateDelta(0, 100, 2, 2)).toEqual({ value: "较前一日 ↓ 100.0pp", tone: "warning" });
+    });
+
     test("两天都有请求时照常显示 pp 差值", () => {
         expect(formatRateDelta(95, 97.5, 40, 80)).toEqual({ value: "较前一日 ↓ 2.5pp", tone: "warning" });
         expect(formatRateDelta(99, 98, 40, 80)).toEqual({ value: "较前一日 ↑ 1.0pp", tone: "success" });

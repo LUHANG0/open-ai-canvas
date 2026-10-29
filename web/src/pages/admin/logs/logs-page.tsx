@@ -16,7 +16,7 @@ import { batchRecoverAdminApiLogs, exportAdminApiLogs, listAdminApiLogs, type Ap
 import { ApiLogDetailDrawer } from "../components/api-log-detail-drawer";
 import { AdminPageFrame } from "../components/admin-shell";
 import { AdminBatchBar, AdminDataTable, AdminExportButton, AdminFilterChip, AdminStatusBadge, AdminTableEmpty } from "../components/admin-ui";
-import { logBillingLabel, logStatus, normalizeLogView } from "./log-view";
+import { logBillingAmounts, logBillingLabel, logStatus, normalizeLogView } from "./log-view";
 import "./logs-page.css";
 import { Select } from "@/components/ui/base/select";
 import { AdminSearchInput } from "../components/admin-search-input";
@@ -155,7 +155,8 @@ export default function LogsPage() {
     ];
     const compactColumns: ColumnsType<ApiCallLog> = view === "billing" ? [
         ...identityColumns,
-        { title: "销售积分", key: "revenue", align: "right", width: 108, render: (_, log) => log.billable && log.billingAvailable ? formatCredits(log.billingAmountMicrocredits) : "—" },
+        { title: "预授权积分", key: "reserved", align: "right", width: 108, render: (_, log) => { const { reserved } = logBillingAmounts(log); return reserved === undefined ? "—" : formatCredits(reserved); } },
+        { title: "实收积分", key: "revenue", align: "right", width: 108, render: (_, log) => { const { settled } = logBillingAmounts(log); return settled === undefined ? "—" : formatCredits(settled); } },
         { title: "成本积分", key: "cost", align: "right", width: 108, render: (_, log) => log.creditCostMicrocredits !== undefined ? formatCredits(log.creditCostMicrocredits) : log.creditCostConfigured ? "待核算" : "未配置" },
         { title: "账务状态", key: "billingStatus", width: 100, render: (_, log) => logBillingLabel(log) },
         { title: "Tokens 入 / 出", key: "usage", width: 142, render: (_, log) => log.usageAvailable ? `${log.inputTokens.toLocaleString()} / ${log.outputTokens.toLocaleString()}` : "未返回" },
@@ -273,7 +274,7 @@ export default function LogsPage() {
                     tableLayout: "fixed",
                     dataSource: logs,
                     pagination: false,
-                    scroll: { x: view === "all" ? 1901 : view === "billing" ? 1246 : 1186 },
+                    scroll: { x: view === "all" ? 1901 : view === "billing" ? 1354 : 1186 },
                 }}
                 empty={loadError ? <span role="status">数据暂不可用，请重试</span> : <AdminTableEmpty filtered={hasFilters} />}
                 footer={<PaginationBar alwaysShow current={page} pageSize={pageSize} total={total} onChange={(nextPage, nextSize) => updateUrl({ page: nextSize !== pageSize ? 1 : nextPage, pageSize: nextSize })} />}
@@ -360,13 +361,13 @@ function formatDuration(value: number) {
 function BillingSummary({ log }: { log: ApiCallLog }) {
     if (!log.billable) return <span className="text-foreground/45">不计费</span>;
     if (!log.billingAvailable) return <span className="text-foreground/35">未扣积分</span>;
-    const status = log.billingStatus || "reserved";
-    const statusLabel = ({ settled: "已结算", refunded: "已退回", uncertain: "待核对", running: "运行中", reserved: "已预授权" } as const)[status];
+    const { reserved, settled } = logBillingAmounts(log);
     return (
         <div>
-            <div className="tabular-nums">销售价格：{formatCredits(log.billingAmountMicrocredits)} 积分</div>
+            <div className="tabular-nums">预授权：{reserved === undefined ? "未记录" : `${formatCredits(reserved)} 积分`}</div>
+            <div className="tabular-nums">实收：{settled === undefined ? "未结算" : `${formatCredits(settled)} 积分`}</div>
             <div className="tabular-nums text-xs text-foreground/60">成本价格：{log.creditCostMicrocredits !== undefined ? `${formatCredits(log.creditCostMicrocredits)} 积分` : log.creditCostConfigured ? "待核算" : "未配置"}</div>
-            <div className="text-xs text-foreground/40">{statusLabel}</div>
+            <div className="text-xs text-foreground/40">{logBillingLabel(log)}</div>
         </div>
     );
 }

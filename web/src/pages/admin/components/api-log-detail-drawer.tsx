@@ -3,7 +3,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { Alert, App, Button, Input, Skeleton, Tabs, Typography } from "antd";
 import { AdminEmpty, AdminStatusBadge } from "@/pages/admin/components/admin-ui";
 import { Activity, Clipboard, Link2, RefreshCw, Save, Video } from "lucide-react";
-import { formatCredits } from "@/constant/credits";
+import { logBillingText } from "../logs/log-view";
 import { getAdminApiLog, queryAdminApiLogTask, recoverAdminApiLogVideoByURL, type ApiCallLog } from "@/services/api/auth";
 
 export function ApiLogDetailDrawer({ logId, onClose, onLogUpdated }: { logId: string | null; onClose: () => void; onLogUpdated?: (log: ApiCallLog) => void }) {
@@ -136,7 +136,7 @@ function LogDetail({ log, providerRequestId, videoURL, resultText, querying, onP
                     <InfoItem label="模型 / 渠道" value={`${log.model || "未识别模型"} / ${log.channelName || "未记录渠道"}`} />
                     <InfoItem label="用户" value={log.userDisplayName || log.userAccount || "未知用户"} detail={log.userAccount ? `@${log.userAccount}` : undefined} />
                     <InfoItem label="任务状态" value={mediaDeliveryText(log)} />
-                    <InfoItem label="计费" value={billingText(log)} />
+                    <InfoItem label="计费" value={logBillingText(log)} />
                     <InfoItem label="请求 ID" value={<CopyValue value={log.id} />} />
                     <InfoItem label="任务 ID" value={log.taskId ? <CopyValue value={log.taskId} /> : "未记录"} />
                     <InfoItem label="供应商任务 ID" value={log.providerRequestId ? <CopyValue value={log.providerRequestId} /> : "未记录"} />
@@ -234,13 +234,6 @@ function PayloadPanel({ value, empty }: { value?: string; empty: string }) {
             <pre className="api-log-payload">{value}</pre>
         </div>
     );
-}
-
-function billingText(log: ApiCallLog) {
-    if (!log.billable) return "不计费";
-    if (!log.billingAvailable) return "未扣积分";
-    const labels = { settled: "已结算", refunded: "已退回", uncertain: "待核对", running: "运行中", reserved: "已预授权" } as const;
-    return `${formatCredits(log.billingAmountMicrocredits)} 积分 · ${labels[log.billingStatus || "reserved"]}`;
 }
 
 function mediaDeliveryText(log: ApiCallLog) {
