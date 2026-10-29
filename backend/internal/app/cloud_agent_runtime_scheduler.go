@@ -352,7 +352,7 @@ func (s *Service) advanceCloudAgent(run *model.CloudAgentExecution) (err error) 
 	// 兜底 flush：本批调用都执行完了（无论最后一个调用是不是看图、有没有被中断），
 	// 缓冲里的图片必须在这里合并成一条 user 消息落到全部 tool 结果之后。少了这一步，
 	// "看图不是最后一个调用"的批次会把图片永久丢掉，而对应的 tool 回执已经在历史里。
-	// 幂等：正常路径（最后一个调用就是看图）已经在 cloudAgentRecordToolResult 里 flush 过。
+	// 幂等：正常批次已在 cloudAgentToolResult 里 flush；此处也兼容仍有缓冲的旧检查点。
 	cloudAgentFlushPendingImages(&state)
 	// 已经请求过压缩：这次推进只负责把压缩调用发出去（它不计入步数，见 enqueueCloudAgentTask）。
 	if state.ContextCompaction != nil && state.ContextCompaction.Status == "requested" {
