@@ -10,6 +10,7 @@ import { modelProtocolDefinition, modelProtocolLabel, type ModelProtocol } from 
 import { fetchPluginProviderCatalog } from "@/services/api/plugin-catalog";
 import { deleteAdminChannelModel, deleteAdminChannelModels, fetchAdminChannelModels, importAdminChannelModels, listAdminChannelModels, type ChannelModel } from "@/services/api/wallet";
 import type { ModelChannel } from "@/stores/use-config-store";
+import { ChannelModelHealthCell, channelModelHealthKey, type useChannelModelHealth } from "./channel-model-health";
 import { ChannelModelEditor } from "./channel-model-editor";
 import { AdminBatchBar, AdminDataTable, AdminFilterChip, AdminStatusBadge, AdminTableEmpty } from "./admin-ui";
 import { ChannelOrderDialog } from "./channel-order-dialog";
@@ -19,7 +20,7 @@ import { deselectVisibleModels, filterImportModels, normalizeFetchModelKey, sele
 import { duplicateChannelModelValues, type ChannelModelFormValues } from "./channel-model-editor-form";
 import { Select } from "@/components/ui/base/select";
 
-export function ChannelModelManager({ channel, onChanged }: { channel: ModelChannel; onChanged: () => void | Promise<void> }) {
+export function ChannelModelManager({ channel, onChanged, healthState }: { channel: ModelChannel; onChanged: () => void | Promise<void>; healthState?: ReturnType<typeof useChannelModelHealth> }) {
     const { message, modal } = App.useApp();
     const [items, setItems] = useState<ChannelModel[]>([]);
     const [selectedModelIds, setSelectedModelIds] = useState<string[]>([]);
@@ -227,6 +228,7 @@ export function ChannelModelManager({ channel, onChanged }: { channel: ModelChan
                     <AdminStatusBadge label="待配置" tone="warning" />
                 ),
         },
+        { title: "请求稳定性（24h）", key: "health", width: 160, render: (_, item) => <ChannelModelHealthCell health={healthState?.health.get(channelModelHealthKey(item.channelId, item.modelKey))} loading={healthState?.loading} error={healthState?.error} truncated={healthState?.truncated} /> },
         { title: "规格成本价 / 销售价 / 加价", width: 310, render: (_, item) => <ChannelModelCostSummary item={item} /> },
         { title: "版本", dataIndex: "priceVersion", width: 75, render: (value) => `v${value}` },
         { title: "状态", dataIndex: "enabled", width: 85, render: (enabled) => <AdminStatusBadge label={enabled ? "启用" : "停用"} tone={enabled ? "success" : "neutral"} /> },
@@ -421,7 +423,7 @@ export function ChannelModelManager({ channel, onChanged }: { channel: ModelChan
                     columns,
                     dataSource: pagedItems,
                     pagination: false,
-                    scroll: { x: 1090 },
+                    scroll: { x: 1250 },
                 }}
                 footer={
                     <PaginationBar

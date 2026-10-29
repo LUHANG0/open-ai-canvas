@@ -306,6 +306,34 @@ export function listAdminChannelModels(channelId: string) {
     return http.get<{ models: ChannelModel[] }>(`/admin/channels/${encodeURIComponent(channelId)}/models`);
 }
 
+export type AdminChannelModelListItem = ChannelModel & { channelName: string; channelEnabled: boolean };
+
+export type AdminChannelModelHealth = {
+    channelId: string;
+    modelKey: string;
+    requests24h: number;
+    succeeded24h: number;
+    failed24h: number;
+    successRate24h: number | null;
+    requests7d: number;
+    successRate7d: number | null;
+    p95DurationMs24h: number;
+    recentResults: boolean[];
+    lastErrorCode?: string;
+    lastFailedAt?: string;
+    lastCalledAt?: string;
+};
+
+export type AdminChannelModelHealthReport = { items: AdminChannelModelHealth[]; computedAt: string; truncated: boolean };
+
+export function listAdminAllChannelModels() {
+    return http.get<{ models: AdminChannelModelListItem[] }>("/admin/channel-models");
+}
+
+export function getAdminChannelModelHealth(channelId?: string) {
+    return http.get<AdminChannelModelHealthReport>("/admin/channel-models/health", channelId ? { params: { channelId } } : undefined);
+}
+
 // 管理员从上游读取模型目录；确认导入后才会写入渠道模型，价格和启用仍需人工确认。
 export function fetchAdminChannelModels(channelId: string) {
     return http.post<{ models: string[] }>(`/admin/channels/${encodeURIComponent(channelId)}/models/fetch`);

@@ -1,3 +1,6 @@
+import { AdminSegmented } from "@/pages/admin/ui/controls";
+import { useChannelModelHealth } from "../components/channel-model-health";
+import { AllChannelModelsPanel } from "./all-channel-models-panel";
 import { AdminModal } from "@/pages/admin/ui/overlays";
 import { App, Button, Form, Input, InputNumber, Spin, Switch } from "antd";
 import { ChevronRight, Copy, Download, Pencil, Plus, Power, Search, Trash2, Upload } from "lucide-react";
@@ -49,6 +52,8 @@ export default function ChannelsPage() {
     const { message, modal } = App.useApp();
     const { reloadReferences } = useAdminContext();
     const [searchParams, setSearchParams] = useSearchParams();
+    const modelView = searchParams.get("view") === "models";
+    const healthState = useChannelModelHealth();
     const keyword = searchParams.get("filter") || "";
     const status = normalizeStatus(searchParams.get("status"));
     const selectedChannelId = searchParams.get("channel");
@@ -326,8 +331,14 @@ export default function ChannelsPage() {
     );
 
     return (
-        <AdminPageFrame title="系统模型" description="左侧选择渠道，右侧直接管理模型、协议与售价。">
-            <div className="admin-channel-workspace">
+        <AdminPageFrame title="系统模型" description={modelView ? "跨渠道搜索模型，比较价格与请求稳定性，直接编辑现有配置。" : "左侧选择渠道，右侧直接管理模型、协议与售价。"}>
+            <div className="admin-channel-health-toolbar">
+                <AdminSegmented ariaLabel="系统模型视图" value={modelView ? "models" : "channels"} onChange={value => updateUrl({ view: value })} options={[{ label: "按渠道管理", value: "channels" }, { label: "全部模型", value: "models" }]} />
+                <span role="status">{healthState.error ? "稳定性读取失败，请重试" : healthState.loading ? "正在读取请求稳定性…" : healthState.computedAt ? `稳定性更新于 ${new Date(healthState.computedAt).toLocaleTimeString("zh-CN", { hour12: false })}` : ""}</span>
+                <Button size="small" loading={healthState.loading} onClick={() => void healthState.reload()}>{healthState.error ? "重试稳定性" : "刷新稳定性"}</Button>
+                {healthState.truncated && !healthState.error ? <span role="status">样本不完整：记录超过读取上限，24 小时和 7 天指标仅供参考。</span> : null}
+            </div>
+            {modelView ? <AllChannelModelsPanel channels={channels} health={healthState.health} healthLoading={healthState.loading} healthError={healthState.error} healthTruncated={healthState.truncated} onChanged={async () => { await syncChannels(); await reload(); }} onOpenChannel={channelId => updateUrl({ view: "channels", channel: channelId, filter: "", status: "all" })} /> : <div className="admin-channel-workspace">
                 <aside className="admin-channel-sidebar" aria-label="系统渠道">
                     <div className="admin-channel-sidebar-header">
                         <div className="flex items-center justify-between gap-2">
@@ -444,6 +455,7 @@ export default function ChannelsPage() {
                             <ChannelModelManager
                                 key={selectedChannel.id}
                                 channel={selectedChannel}
+                                healthState={healthState}
                                 onChanged={async () => {
                                     await syncChannels();
                                     await reload();
@@ -457,7 +469,7 @@ export default function ChannelsPage() {
                         />
                     )}
                 </section>
-            </div>
+            </div>}
             <AdminModal
                 className="workspace-modal workspace-modal-wide admin-channel-modal"
                 rootClassName="admin-channel-modal-root"

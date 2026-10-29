@@ -1722,6 +1722,48 @@ paths:
           $ref: "#/components/responses/Error"
         "404":
           $ref: "#/components/responses/Error"
+  /admin/channel-models:
+    get:
+      tags: [admin]
+      summary: 跨渠道读取全部系统模型
+      description: |
+        仅管理员可用，包含停用的系统渠道和模型，不包含私人渠道。
+        data.models 每项保留渠道模型完整编辑合同与 priceTiers[].costPricing，
+        并附加 channelName、channelEnabled。编辑复用原有渠道模型接口。
+      responses:
+        "200":
+          $ref: "#/components/responses/Envelope"
+        "401":
+          $ref: "#/components/responses/Error"
+        "403":
+          $ref: "#/components/responses/Error"
+  /admin/channel-models/health:
+    get:
+      tags: [admin]
+      summary: 读取系统渠道模型请求稳定性
+      description: |
+        仅管理员可用。data 为 {items, computedAt, truncated}，缓存 30 秒。
+        统计近 7 天最新 50000 条 create 请求；排除尚在运行的异步受理请求。
+        items 包含 channelId、modelKey、requests24h、succeeded24h、failed24h、
+        successRate24h、requests7d、successRate7d、p95DurationMs24h、recentResults、
+        lastErrorCode、lastFailedAt、lastCalledAt。成功率为 0 到 1，无完成样本为 null。
+        recentResults 最多 10 个，左旧右新。耗时为请求耗时，不代表最终任务耗时。
+        truncated=true 时 24 小时和 7 天均可能不完整，缺失模型不能判断为没有调用。
+      parameters:
+        - in: query
+          name: channelId
+          required: false
+          schema: { type: string }
+          description: 可选系统渠道 ID，私人或不存在的渠道拒绝。
+      responses:
+        "200":
+          $ref: "#/components/responses/Envelope"
+        "401":
+          $ref: "#/components/responses/Error"
+        "403":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
   /admin/channels/{id}/models/batch-reprice:
     post:
       tags: [admin]

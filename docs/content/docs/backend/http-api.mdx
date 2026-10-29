@@ -298,6 +298,10 @@ Token 报价的 `estimated` 为 `true`，`quantity` 是预留 Token 数。参考
 
 ## 管理员积分成本
 
+`GET /admin/channel-models` 仅管理员可用，返回 `{models}`，覆盖全部系统渠道（含停用渠道及停用模型），排除私人渠道。模型继续使用原有编辑合同，附加 `channelName`、`channelEnabled`，价格档保留管理员专用 `costPricing`；编辑仍走原有渠道模型接口，保留规格、能力配置及版本校验。
+
+`GET /admin/channel-models/health?channelId=` 仅管理员可用，返回 `{items, computedAt, truncated}`，缓存 30 秒。可选 `channelId` 必须属于系统渠道。近七天按请求时间倒序最多读取 50000 条 `create` 记录，额外探测一条判断是否截断；轮询、下载及其他请求不参与。HTTP 受理成功但提供方仍为排队或运行状态时不计入完成样本，请求失败优先于旧的运行状态。每项包含 `channelId`、`modelKey`、`requests24h`、`succeeded24h`、`failed24h`、`successRate24h`、`requests7d`、`successRate7d`、`p95DurationMs24h`、`recentResults`，以及可选最近请求/失败时间和错误码。成功率为 0–1，无已完成样本返回 `null`，真实全失败为 `0`；最近结果最多十个，左旧右新。P95 是请求耗时，指标不等于最终任务成功率或任务耗时。`truncated=true` 表示 24 小时和七天指标都可能不完整，未出现的模型不能判断为无调用；前端分别呈现读取失败、无完成样本和样本不完整。
+
 `GET/POST /admin/channels/:id/models` 与 `PATCH /admin/channels/:id/models/:modelId` 的 `priceTiers[]` 增加 `costPricing`：`configured`、`unitPriceMicrocredits`、`inputTokenPriceMicrocredits`、`outputTokenPriceMicrocredits`、`cachedTokenPriceMicrocredits`。成本沿用该价格档的计费方式；按次/秒使用单位价，文本 Token 按输入/输出/缓存分别定价，视频 Token 只使用输出价。价格为整数微积分，范围为 0 到 1000000000000；`configured=false` 表示未配置，`true` 且价格为 0 表示显式零成本。
 
 成本保存到下单时的内部账单快照，不受售价倍率或扣费上限影响，后续改价不重算旧订单。历史逻辑模型任务切换备用线路时，成本更新为实际执行线路的快照，独立于用户售价策略。管理员请求列表、详情与 CSV 同时展示销售金额及成本金额；JSON 增加 `creditCostConfigured` 和可选 `creditCostMicrocredits`。成功结算后按实际计费数量、Token 用量或视频公式快照核算；未结算、已退回、历史无快照或缺少有效用量时不编造成本金额。
