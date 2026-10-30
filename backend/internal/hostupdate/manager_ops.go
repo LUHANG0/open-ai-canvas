@@ -72,6 +72,10 @@ func (m *Manager) latestRelease(ctx context.Context) (*Release, error) {
 }
 
 func (m *Manager) currentVersion() (string, error) {
+	if m.custom != nil {
+		r, err := m.currentCustomRelease()
+		return r.ID, err
+	}
 	values, err := readEnvFile(m.envPath())
 	if err != nil {
 		return "", err
@@ -276,15 +280,24 @@ func (m *Manager) composeWithImages(composePath, imageTag string, images deploym
 		}
 		defer os.Remove(envFile)
 	}
-	args := []string{"compose", "--project-name", composeProjectName(m.config.InstallDir), "--env-file", envFile, "-f", composePath}
+	args := []string{"compose", "--project-name", m.projectName(), "--env-file", envFile, "-f", composePath}
+	if m.custom != nil {
+		args = append(args, "--project-directory", m.custom.ProjectDirectory)
+	}
 	args = append(args, arguments...)
 	var stderr bytes.Buffer
 	if stdout == nil {
 		stdout = io.Discard
 	}
 	environment := []string{"CANVAS_IMAGE_TAG=" + strings.TrimPrefix(imageTag, "v")}
+	if m.custom != nil {
+		environment = nil
+	}
 	err := m.runner.Run(ctx, "docker", args, environment, stdout, &stderr)
 	if err != nil {
+		if m.custom != nil {
+			return fmt.Errorf("docker compose %s 失败（详细输出不公开）", strings.Join(arguments, " "))
+		}
 		message := strings.TrimSpace(stderr.String())
 		if len(message) > 1000 {
 			message = message[len(message)-1000:]
@@ -429,12 +442,10 @@ func (m *Manager) createBackup(version string) (Backup, error) {
 	if err != nil {
 		return Backup{}, err
 	}
-	values, err := readEnvFile(m.envPath())
+	postgresUser, postgresDB, err := m.postgresIdentity()
 	if err != nil {
 		return Backup{}, err
 	}
-	postgresUser := firstNonEmpty(values["POSTGRES_USER"], "open_ai_canvas")
-	postgresDB := firstNonEmpty(values["POSTGRES_DB"], "open_ai_canvas")
 	if err := m.compose(m.composePath(), version, m.config.StepTimeout, databaseEntry, "exec", "-T", "postgres", "pg_dump", "-U", postgresUser, "-d", postgresDB, "-Fc"); err != nil {
 		return Backup{}, fmt.Errorf("备份 PostgreSQL：%w", err)
 	}
@@ -539,12 +550,10 @@ func (m *Manager) restoreDatabase(backup Backup) error {
 		return err
 	}
 	defer reader.Close()
-	values, err := readEnvFile(m.envPath())
+	postgresUser, postgresDB, err := m.postgresIdentity()
 	if err != nil {
 		return err
 	}
-	postgresUser := firstNonEmpty(values["POSTGRES_USER"], "open_ai_canvas")
-	postgresDB := firstNonEmpty(values["POSTGRES_DB"], "open_ai_canvas")
 	if postgresDB == "postgres" || strings.HasPrefix(postgresDB, "template") {
 		return fmt.Errorf("拒绝覆盖 PostgreSQL 系统数据库 %q", postgresDB)
 	}
@@ -556,10 +565,17 @@ func (m *Manager) restoreDatabase(backup Backup) error {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), m.config.StepTimeout)
 	defer cancel()
-	args := []string{"compose", "--project-name", composeProjectName(m.config.InstallDir), "--env-file", m.envPath(), "-f", m.composePath(), "exec", "-T", "postgres", "pg_restore", "-U", postgresUser, "-d", postgresDB, "--no-owner", "--no-privileges"}
+	args := []string{"compose", "--project-name", m.projectName(), "--env-file", m.envPath(), "-f", m.composePath()}
+	if m.custom != nil {
+		args = append(args, "--project-directory", m.custom.ProjectDirectory)
+	}
+	args = append(args, "exec", "-T", "postgres", "pg_restore", "-U", postgresUser, "-d", postgresDB, "--no-owner", "--no-privileges")
 	var stderr bytes.Buffer
 	command := execCommandWithInput{runner: m.runner, input: reader}
 	if err := command.Run(ctx, "docker", args, []string{"CANVAS_IMAGE_TAG=" + strings.TrimPrefix(backup.Version, "v")}, io.Discard, &stderr); err != nil {
+		if m.custom != nil {
+			return errors.New("恢复 PostgreSQL 失败（详细输出不公开）；需人工核对恢复现场")
+		}
 		return fmt.Errorf("恢复 PostgreSQL：%s", strings.TrimSpace(stderr.String()))
 	}
 	return nil
@@ -613,6 +629,10 @@ func (m *Manager) healthURL() string {
 }
 
 func (m *Manager) checkHealthOnce(healthURL, targetVersion string) error {
+	return m.checkHealthBuild(healthURL, targetVersion, "")
+}
+
+func (m *Manager) checkHealthBuild(healthURL, targetVersion, commit string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	request, _ := http.NewRequestWithContext(ctx, http.MethodGet, healthURL, nil)
@@ -642,6 +662,7 @@ func (m *Manager) checkHealthOnce(healthURL, targetVersion string) error {
 			} `json:"checks"`
 			Build struct {
 				Version string `json:"version"`
+				Commit  string `json:"commit"`
 			} `json:"build"`
 		} `json:"data"`
 	}
@@ -658,6 +679,12 @@ func (m *Manager) checkHealthOnce(healthURL, targetVersion string) error {
 	}
 	if IsReleaseVersion(targetVersion) && (payload.Data.Build.Version == "" || CompareVersions(payload.Data.Build.Version, targetVersion) != 0) {
 		return fmt.Errorf("运行版本仍为 %s，期望 %s", payload.Data.Build.Version, targetVersion)
+	}
+	if commit != "" && payload.Data.Build.Commit != commit {
+		return errors.New("运行后端提交与候选清单不一致")
+	}
+	if commit != "" && !IsReleaseVersion(targetVersion) && payload.Data.Build.Version != targetVersion {
+		return errors.New("运行后端版本与候选清单不一致")
 	}
 	return nil
 }

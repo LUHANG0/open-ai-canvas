@@ -61,6 +61,80 @@ description: Host Updater、Release 检查、数据库备份迁移、健康验�
 
 启用前应确认 Release、三个镜像与部署 Compose 都来自同一套已验收的二改发布源，保留实际 project、数据卷、密钥及外部反向代理约定。本地镜像标签、现有服务健康或把 `CANVAS_UPDATER_REPOSITORY` 改成 fork 名称，都不等于这些条件已经满足。默认安装脚本还要求现有 backend/web 为 GHCR digest；源码部署继续使用其已有、已验收的发布与回退流程，直到该适配完成。
 
+## 二改部署的本机发布合同
+
+设置 `CANVAS_UPDATER_CUSTOM_PROFILE` 后，Host Updater 使用本机预先准备的候选清单，不查询 GitHub Release、不推断官方镜像、不下载或覆盖上游 Compose，也不进行更新器自更新。默认安装脚本只服务标准 GHCR 部署，显式传入此变量会拒绝安装。二改模式须使用经过本项目验收的二进制和独立服务配置；添加 profile 不等于已启用线上更新器。
+
+启用前还须在 root-only 的更新器服务环境文件中显式配置独立的 `CANVAS_UPDATER_STATE_DIR`、`CANVAS_UPDATER_BACKUP_DIR`、`CANVAS_UPDATER_SOCKET` 与本机 `CANVAS_UPDATER_HEALTH_URL`，并安全配置至少 32 字符的 `CANVAS_UPDATER_TOKEN`，让业务后端挂载对应 Socket 并使用同一凭据。不要沿用另一套更新器的状态目录，也不要把凭据放到命令行、清单或发布回执中。服务定义、目录访问权限与后端挂载必须单独审阅；本节不触发安装或启用 systemd。
+
+Profile 格式为 JSON，`format` 固定为 1。所有路径使用真实绝对路径；Compose 顺序、project 和 projectDirectory 必须与现有部署一致，不能经过会切换的 `current` 符号链接。源配置、共享环境与 profile 不放入更新器 StateDir，也不可由组或其他用户写入。以下路径仅为结构示例：
+
+```json
+{
+  "format": 1,
+  "projectName": "mengceng",
+  "projectDirectory": "/opt/mengceng/releases/release-a/source",
+  "composeFiles": [
+    "/opt/mengceng/releases/release-a/source/docker-compose.deploy.yml",
+    "/opt/mengceng/releases/release-a/source/docker-compose.build.yml",
+    "/opt/mengceng/releases/release-a/compose.production.yml"
+  ],
+  "envFile": "/opt/mengceng/shared/.env",
+  "currentRelease": "/opt/mengceng/ops/current-import.json",
+  "targetRelease": "/opt/mengceng/ops/candidate.json",
+  "webPublisher": "/opt/mengceng/ops/publish-web",
+  "webPublisherSha256": "<适配器文件的64位小写SHA-256>"
+}
+```
+
+当前清单和候选清单使用同一格式，完整列出 `backend`、`web`、`yingce-agent`，每个组件各有 `image`、`version`、`commit`。`image` 只接受本机 `sha256:<64位内容ID>` 或注册表 `repository@sha256:<64位摘要>`；不能使用 tag。`commit` 为完整 40 位小写 Git 提交，`version` 为该组件构建号，不要求三个组件相同。首次导入必须从实际容器、构建记录和就绪接口核对，不能从 source 目录的一个 HEAD 猜测全部组件。
+
+```json
+{
+  "format": 1,
+  "id": "release-b",
+  "basedOn": "release-a",
+  "components": {
+    "backend": { "image": "sha256:<后端内容ID>", "version": "v1.6.9.1", "commit": "<后端完整提交>" },
+    "web": { "image": "sha256:<前端内容ID>", "version": "web-20261031", "commit": "<前端完整提交>" },
+    "yingce-agent": { "image": "sha256:<Agent内容ID>", "version": "agent-20261030", "commit": "<Agent完整提交>" }
+  }
+}
+```
+
+示例中的尖括号须替换为真实值。部署 ID 与组件构建号只允许字母、数字、点、下划线和连字符，长度不超过 128。新候选的 `basedOn` 必须等于当前部署 ID；同一个 ID 不允许改内容。检查时保存清单内容摘要，开始更新时再次比较；候选被修改必须重新检查。清单只描述已构建、已授权的组件，不承载命令、安装程序、环境变量或自动合并源码的策略。
+
+执行时按顺序解析全部本地 Compose 与共享环境，将结果以 0600 权限冻结到 StateDir；删除 build 和 pull policy，以固定镜像运行。保留 Compose 导出时已生成的 `$` 转义，避免再次转义改变密码或命令；与容器运行值比对时还原转义。迁移服务明确绑定候选后端镜像，即使本地 overlay 中的 migrate 仍指向旧镜像。切换只启动列出的受影响业务服务，使用 `--no-deps --no-build --pull never`，不重建 PostgreSQL/Redis、不删除孤立服务，也不覆盖源 Compose、共享 `.env` 或原 release 指针。
+
+启用后的实际部署记录是 StateDir 内 `custom-current.json` 与 `custom-active-compose.json`。原 source/release 指针保留为输入和恢复依据；后续运维不能再把该指针的 HEAD 当作三个组件的实际版本。每次发布保留 `custom-release-*` 目录，内含前后清单、冻结配置、旧环境及站点回执。冻结配置包含已解析凭据，必须与数据库备份同样按敏感数据保护，不纳入源码或公开日志。
+
+切换前比对三个运行容器的镜像内容 ID、project、service、环境值、命令和数据挂载，检查就绪接口的后端版本与完整提交；切换后再次逐项核对，并通过稳定窗口。manifest 中前端/Agent 的提交仍是受信任构建链的声明，容器镜像核对不能替代 source-manifest 或构建证明；前端发布适配器还须核对对外 HTML 与资源是否属于该构建。仅支持应用与独立迁移连接当前 Compose 的 postgres 服务、使用 /data 且关闭自动迁移的拓扑；外部数据库或 DSN 查询参数覆盖连接目标需要另行适配。只支持 Linux 本机 Unix Socket Docker；远程 Docker 或路径经过可变符号链接时，在停服前拒绝。
+
+仅前端变更时只停止/重建 web，不备份、迁移或恢复数据库和后端素材；前端与 Agent 的代码回退保留上线后写入。Agent 变更会一并停止业务写入服务。后端变更才执行最终 PostgreSQL/素材/密钥备份、已验证的本地挂载检查及目标迁移；自动失败回退复用本文的数据库、文件与密钥恢复流程。后端成功发布后不提供直接恢复旧数据库的后台按钮，避免覆盖上线后新写入；此类恢复必须另行建立维护窗口并核对数据合并方案。
+
+### 站点发布适配器
+
+只要 web 的镜像、构建号或提交变化，就必须配置站点适配器。即使没有外部 CDN，也必须通过该适配器验证实际 Web HTML、入口资源和回退结果；缺少适配器时开始更新直接失败。适配器是运维安装的固定可执行文件，由 profile 固定 SHA-256；它不能由候选清单或浏览器指定，不使用 shell 拼接调用，stdout/stderr 不进入公开更新日志。每次执行前重新检查权限与摘要。
+
+调用参数为 `publish-web PHASE FROM_JSON TO_JSON RECEIPT_DIRECTORY`，所有路径都由宿主更新器生成：
+
+- `preflight`：停服前检查目标资源、CDN 可达性和发布条件，把当前预加载/代理配置及恢复所需信息保存到私有回执目录；此阶段不得改变正式发布。
+- `publish`：目标容器启动后，完成该站点所需的静态资源/CDN 发布及 nginx 预加载配置切换。保存可供诊断的回执，失败时允许部分工作已完成。
+- `verify`：核对实际公开 HTML、带 hash 的入口/动态资源、缓存策略、预加载与候选构建一致；全部通过才返回 0。适配器负责其业务范围的限时、重试与错误日志脱敏。
+- `rollback`：恢复 preflight 保存的站点配置并检查旧 HTML/资源可访问；必须可重复调用，且只有恢复和验证全部完成才返回 0。它在旧容器重新启动后执行。
+
+前三个阶段任一失败都会中止或触发回退；发布失败后会调用 rollback 恢复可能已部分切换的外部配置。rollback 失败时保持恢复锁并停止写入服务。适配器具有宿主发布权限，不能把任意脚本或只返回成功的占位脚本当作生产验收；真实 CDN、nginx 和多设备浏览器验证需在目标站点单独完成。本机/隔离的发布替身只能证明接口、顺序和失败恢复，不能证明生产 CDN 已接通。
+
+### 中断与人工核对
+
+`custom-transaction.json` 独立记录停服、切换与恢复阶段，持久化后才执行破坏性步骤。进程中断或记录不可读时，重启进入 `manual_intervention` 并尝试停止业务写入服务；检查、更新与回退都会被锁住，仅修改 `state.json` 不能绕过。配置在发布期间漂移时不会覆盖操作者的新配置；切换后发现漂移会停服保留现场。未完成事务不自动重试迁移、发布或恢复。
+
+Compose 客户端退出不代表一次性迁移容器已经停止。开始发布前，若当前 project 还有运行中的 migrate 容器则拒绝开始。更新器启动的迁移带有专用标签；自动回退和中断后的停写会停止这些容器，并重新检查当前 project 的全部运行迁移。若停止失败、Docker 查询失败或仍有其他迁移运行，禁止数据库恢复并保留人工核对状态；不会擅自停止没有更新器标签的迁移容器。
+
+文件原子替换不等于数据库、容器与外部 CDN 的跨系统事务。恢复时核对冻结配置、事务记录、发布回执、数据库版本、素材与密钥，保留新版文件和所有已引用 release/镜像；不能直接删除恢复锁或回执后重跑。停服前失败的准备目录也可能含凭据，应由运维在确认无活动事务与回退引用后清理。
+
+## 标准 GHCR 安装
+
 GHCR 镜像部署必须把 `CANVAS_IMAGE_TAG` 固定到具体 Release，并把 `CANVAS_BACKEND_IMAGE`、`CANVAS_WEB_IMAGE` 固定到对应 GHCR digest，不可使用 `latest` 或仅使用可变 tag。首次安装时显式指定 Release：
 
 ```bash

@@ -123,6 +123,10 @@ func (m *Manager) dockerOutput(args ...string) ([]byte, error) {
 // Resolve both the stopped container and the saved Compose definition. Never
 // interpret a remote daemon's mount path as a path on the updater's host.
 func (m *Manager) localDataRoot(version string) (string, error) {
+	return m.localDataRootFrom(version, m.previousComposePath(), m.previousEnvPath())
+}
+
+func (m *Manager) localDataRootFrom(version, previousCompose, previousEnv string) (string, error) {
 	if runtime.GOOS != "linux" {
 		return "", errors.New("自动恢复数据仅支持 Linux 本机 Docker 挂载")
 	}
@@ -164,7 +168,7 @@ func (m *Manager) localDataRoot(version string) (string, error) {
 	if err := json.Unmarshal(body, &containers); err != nil {
 		return "", err
 	}
-	if len(containers) != 1 || containers[0].Config.Labels["com.docker.compose.project"] != composeProjectName(m.config.InstallDir) {
+	if len(containers) != 1 || containers[0].Config.Labels["com.docker.compose.project"] != m.projectName() {
 		return "", errors.New("backend 容器不属于当前部署项目")
 	}
 	var source, mountType, mountName string
@@ -184,7 +188,7 @@ func (m *Manager) localDataRoot(version string) (string, error) {
 			return "", errors.New("backend 数据目录必须为 /data")
 		}
 	}
-	args := []string{"compose", "--project-name", composeProjectName(m.config.InstallDir), "--project-directory", m.config.InstallDir, "--env-file", m.previousEnvPath(), "-f", m.previousComposePath(), "config", "--format", "json"}
+	args := []string{"compose", "--project-name", m.projectName(), "--project-directory", m.config.InstallDir, "--env-file", previousEnv, "-f", previousCompose, "config", "--format", "json"}
 	body, err = m.dockerOutput(args...)
 	if err != nil {
 		return "", err
@@ -257,7 +261,16 @@ func (m *Manager) localDataRoot(version string) (string, error) {
 	if err := rejectNestedHostMounts(source); err != nil {
 		return "", err
 	}
-	for _, protected := range []string{m.config.StateDir, m.config.BackupDir, m.composePath(), m.envPath(), m.previousComposePath(), m.previousEnvPath()} {
+	protectedPaths := []string{m.config.StateDir, m.config.BackupDir, m.composePath(), m.envPath(), previousCompose, previousEnv}
+	if m.custom != nil {
+		protectedPaths = append(protectedPaths, m.custom.ComposeFiles...)
+		for _, path := range []string{m.config.CustomProfile, m.custom.ProjectDirectory, m.custom.CurrentRelease, m.custom.TargetRelease, m.custom.WebPublisher} {
+			if path != "" {
+				protectedPaths = append(protectedPaths, path)
+			}
+		}
+	}
+	for _, protected := range protectedPaths {
 		if err := protectDataRecoveryPath(source, protected); err != nil {
 			return "", err
 		}
@@ -315,10 +328,14 @@ func rejectNestedHostMounts(source string) error {
 }
 
 func (m *Manager) stageLocalData(version string, backup Backup) (*dataRestore, error) {
+	return m.stageLocalDataFrom(version, backup, m.previousComposePath(), m.previousEnvPath())
+}
+
+func (m *Manager) stageLocalDataFrom(version string, backup Backup, previousCompose, previousEnv string) (*dataRestore, error) {
 	if err := m.pendingDataRecovery(); err != nil {
 		return nil, err
 	}
-	source, err := m.localDataRoot(version)
+	source, err := m.localDataRootFrom(version, previousCompose, previousEnv)
 	if err != nil {
 		return nil, err
 	}

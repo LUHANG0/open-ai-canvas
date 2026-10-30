@@ -22,6 +22,7 @@ import (
 const maxReleaseResponseBytes = 4 << 20
 
 type Config struct {
+	CustomProfile string
 	Repository    string
 	InstallDir    string
 	ComposeFile   string
@@ -54,10 +55,12 @@ func (r execRunner) Run(ctx context.Context, name string, args, environment []st
 }
 
 type persistedState struct {
-	LatestRelease   *Release  `json:"latestRelease,omitempty"`
-	LastBackup      *Backup   `json:"lastBackup,omitempty"`
-	RollbackVersion string    `json:"rollbackVersion,omitempty"`
-	Operation       Operation `json:"operation"`
+	CustomTargetHash string             `json:"customTargetHash,omitempty"`
+	CustomRollback   *customTransaction `json:"customRollback,omitempty"`
+	LatestRelease    *Release           `json:"latestRelease,omitempty"`
+	LastBackup       *Backup            `json:"lastBackup,omitempty"`
+	RollbackVersion  string             `json:"rollbackVersion,omitempty"`
+	Operation        Operation          `json:"operation"`
 }
 
 type Manager struct {
@@ -66,9 +69,22 @@ type Manager struct {
 	runner     commandRunner
 	httpClient *http.Client
 	state      persistedState
+	custom     *CustomProfile
 }
 
 func NewManager(config Config) (*Manager, error) {
+	var custom *CustomProfile
+	if config.CustomProfile != "" {
+		var profile CustomProfile
+		if err := readCustomJSON(config.CustomProfile, &profile); err != nil {
+			return nil, err
+		}
+		if err := validateCustomProfile(profile); err != nil {
+			return nil, err
+		}
+		custom = &profile
+		config.InstallDir, config.EnvFile, config.SelfUpdate = profile.ProjectDirectory, profile.EnvFile, false
+	}
 	config.Repository = strings.TrimSpace(config.Repository)
 	if config.Repository == "" {
 		config.Repository = "ddcat-ai/open-ai-canvas"
@@ -104,6 +120,7 @@ func NewManager(config Config) (*Manager, error) {
 		return nil, fmt.Errorf("创建备份目录：%w", err)
 	}
 	manager := &Manager{
+		custom:     custom,
 		config:     config,
 		runner:     execRunner{dir: config.InstallDir},
 		httpClient: &http.Client{Timeout: 30 * time.Second},
@@ -111,6 +128,13 @@ func NewManager(config Config) (*Manager, error) {
 	}
 	if err := manager.loadState(); err != nil {
 		return nil, err
+	}
+	if custom != nil {
+		if err := manager.pendingCustomRecovery(); err != nil {
+			manager.state.Operation.Phase = PhaseManualIntervention
+			manager.state.Operation.Error = manager.stopFailedRecovery(err).Error()
+			_ = manager.saveStateLocked()
+		}
 	}
 	if recoveryErr := manager.pendingDataRecovery(); recoveryErr != nil {
 		manager.state.Operation.Phase = PhaseManualIntervention
@@ -133,6 +157,9 @@ func (m *Manager) Snapshot() Status {
 }
 
 func (m *Manager) Check(ctx context.Context) (Status, error) {
+	if m.custom != nil {
+		return m.checkCustom(ctx)
+	}
 	m.mu.Lock()
 	if err := m.pendingDataRecovery(); err != nil {
 		status := m.snapshotLocked()
@@ -184,6 +211,9 @@ func (m *Manager) Check(ctx context.Context) (Status, error) {
 }
 
 func (m *Manager) StartUpdate(targetVersion string) (Status, error) {
+	if m.custom != nil {
+		return m.startCustomUpdate(strings.TrimSpace(targetVersion))
+	}
 	targetVersion = strings.TrimSpace(targetVersion)
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -218,6 +248,9 @@ func (m *Manager) StartUpdate(targetVersion string) (Status, error) {
 }
 
 func (m *Manager) StartRollback(reason string) (Status, error) {
+	if m.custom != nil {
+		return m.startCustomRollback(reason)
+	}
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if err := m.pendingDataRecovery(); err != nil {
@@ -487,6 +520,9 @@ func (m *Manager) restoreDeployment(targetVersion string, backup Backup) error {
 // Startup can fail after some writers have already started. Report a failed
 // shutdown too, so operators know that manual intervention is still required.
 func (m *Manager) stopFailedRecovery(cause error) error {
+	if m.custom != nil {
+		cause = errors.Join(cause, m.stopCustomMigrations())
+	}
 	version, _ := m.currentVersion()
 	if err := m.compose(m.composePath(), version, 5*time.Minute, nil, "stop", "web", "backend", "yingce-agent"); err != nil {
 		return errors.Join(cause, fmt.Errorf("停止恢复中的写入服务失败：%w", err))
@@ -495,6 +531,9 @@ func (m *Manager) stopFailedRecovery(cause error) error {
 }
 
 func (m *Manager) snapshotLocked() Status {
+	if m.custom != nil {
+		return m.customSnapshotLocked()
+	}
 	current, err := m.currentVersion()
 	checks := m.checks(current, err)
 	status := Status{
@@ -602,9 +641,24 @@ func (m *Manager) saveStateLocked() error {
 
 func (m *Manager) statePath() string { return filepath.Join(m.config.StateDir, "state.json") }
 func (m *Manager) composePath() string {
+	if m.custom != nil {
+		return filepath.Join(m.config.StateDir, "custom-active-compose.json")
+	}
 	return filepath.Join(m.config.InstallDir, m.config.ComposeFile)
 }
-func (m *Manager) envPath() string { return filepath.Join(m.config.InstallDir, m.config.EnvFile) }
+func (m *Manager) envPath() string {
+	if filepath.IsAbs(m.config.EnvFile) {
+		return m.config.EnvFile
+	}
+	return filepath.Join(m.config.InstallDir, m.config.EnvFile)
+}
+
+func (m *Manager) projectName() string {
+	if m.custom != nil {
+		return m.custom.ProjectName
+	}
+	return composeProjectName(m.config.InstallDir)
+}
 func (m *Manager) previousComposePath() string {
 	return filepath.Join(m.config.StateDir, "previous-compose.yml")
 }
@@ -636,6 +690,12 @@ func cloneRelease(value *Release) *Release {
 		return nil
 	}
 	cloned := *value
+	if value.Components != nil {
+		cloned.Components = make(map[string]CustomComponent, len(value.Components))
+		for key, component := range value.Components {
+			cloned.Components[key] = component
+		}
+	}
 	return &cloned
 }
 

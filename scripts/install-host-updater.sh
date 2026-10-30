@@ -14,6 +14,10 @@ fail() {
     exit 1
 }
 
+# This installer downloads upstream release binaries and enables systemd. A
+# custom deployment must never silently fall through to the official contract.
+[[ -z "${CANVAS_UPDATER_CUSTOM_PROFILE:-}" ]] || fail "自定义发布合同请使用已验收的二改更新器二进制和独立服务配置；此安装器仅支持标准 GHCR Release 部署"
+
 require_root() {
     [[ "${EUID}" -eq 0 ]] || fail "请使用 sudo 运行"
     [[ "$(uname -s)" == "Linux" ]] || fail "仅支持 Linux 服务器"
