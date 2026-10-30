@@ -125,6 +125,72 @@ Profile 格式为 JSON，`format` 固定为 1。所有路径使用真实绝对�
 
 前三个阶段任一失败都会中止或触发回退；发布失败后会调用 rollback 恢复可能已部分切换的外部配置。rollback 失败时保持恢复锁并停止写入服务。适配器具有宿主发布权限，不能把任意脚本或只返回成功的占位脚本当作生产验收；真实 CDN、nginx 和多设备浏览器验证需在目标站点单独完成。本机/隔离的发布替身只能证明接口、顺序和失败恢复，不能证明生产 CDN 已接通。
 
+### 梦层现有 nginx / CDN 适配实现
+
+`scripts/mengceng-web-publisher.py` 实现上述四阶段接口，仅适用于已核对的 nginx 回源拓扑：Web 镜像的 `/opt/canvas-release` 是构建产物，共享 Web 内容目录由 `docker/canvas-web-entrypoint.sh` 发布并保留旧的带哈希资源；静态 CDN 通过 nginx bridge 回源该目录。它不向 OSS 上传文件，不切换容器，不修改数据库、用户素材、DNS 或 CDN 运营配置，也不执行缓存清除。变更 CDN 拓扑或构建目录时必须重新适配。
+
+适配器使用 Python 3.9+ 标准库、Linux 本地 Docker、curl 与支持 `sub_filter` 的 nginx。运维将其放到固定、不可由组或其他用户写入的绝对路径，并在 Custom Profile 中固定该**实际安装文件**的 SHA-256；首次安装与更新摘要都需要单独验收。配置默认读取 `/etc/mengceng/web-publisher.json`，可在更新器的受保护服务环境中设置 `MENGCENG_WEB_PUBLISHER_CONFIG` 指向另一真实绝对路径。该变量属于宿主配置，不能从候选清单注入。以下 JSON 仅示意结构，路径、域名、哈希、预加载入口和重写规则须从目标站点读取后替换：
+
+```json
+{
+  "format": 1,
+  "projectName": "mengceng",
+  "nginxCommand": ["/www/server/nginx/sbin/nginx"],
+  "originURL": "https://mengceng.com",
+  "originResolveIP": "127.0.0.1",
+  "cdnAssetsURL": "https://static-test.mengceng.com/assets/cdn-20261028/",
+  "cdnBrandURL": "https://static-test.mengceng.com/brand/",
+  "originPreloadFile": "/opt/mengceng/ops/homepage-preload.conf",
+  "cdnPreloadFile": "/opt/mengceng/ops/static-cdn-20261027/home.conf",
+  "protectedFiles": {
+    "/www/server/panel/vhost/nginx/mengceng.com.conf": "<64位小写SHA-256>",
+    "/opt/mengceng/ops/static-cdn-20261027/static-cdn-maps.conf": "<64位小写SHA-256>",
+    "/opt/mengceng/ops/static-cdn-20261027/html.conf": "<64位小写SHA-256>",
+    "/opt/mengceng/ops/static-cdn-20261027/bridge.conf": "<64位小写SHA-256>"
+  },
+  "preloadStems": ["application", "brand-auth-entry", "brand-site", "auth-form-pending"],
+  "cdnTransforms": [
+    {"from": "\"/brand/", "to": "\"https://static-test.mengceng.com/brand/"},
+    {"from": "'/brand/", "to": "'https://static-test.mengceng.com/brand/"},
+    {"from": "`/brand/", "to": "`https://static-test.mengceng.com/brand/"},
+    {"from": "url(/brand/", "to": "url(https://static-test.mengceng.com/brand/"},
+    {"from": "return`/`+e", "to": "return`https://static-test.mengceng.com/assets/cdn-20261028/`+(e.startsWith(\"assets/\")?e.slice(7):e)"}
+  ],
+  "htmlMarkers": ["梦层", "<title>"],
+  "lockFile": "/opt/mengceng/ops/web-publisher.lock",
+  "requestTimeout": 15,
+  "operationTimeout": 600,
+  "workers": 4
+}
+```
+
+`originResolveIP` 可省略；设置时只覆盖源站域名的 DNS 解析，仍校验原域名的 HTTPS 证书。CDN 使用真实公开地址。所有公开 URL 禁止凭据、查询与片段，HTTP 仅允许隔离测试的 loopback。`protectedFiles` 应覆盖站点实际依赖的路由、map、bridge、公共代理及全局 nginx 配置；两个可变预加载文件不能列在其中。示例只列核心文件，不是完整运维清单。固定文件哈希变化或预加载文件出现不属于本次前后版本的内容时立即失败，避免覆盖操作者的并发修改。
+
+配置、预加载文件与其上级目录须由可信运维控制。回执目录使用 0700，配置和私有回执使用 0600；预加载文件保留原权限。所有文件路径必须是规范、真实的绝对路径，不能包含符号链接。`dockerPath` / `curlPath` 可覆盖工具路径，默认分别为 `/usr/bin/docker` / `/usr/bin/curl`。`nginxCommand` 是固定参数数组，不经过 shell；工具、配置与权限都必须在停服前确认。
+
+执行行为与边界：
+
+- `preflight` 核对实际 Compose project/service、Web 镜像内容 ID、健康状态与 OCI 完整提交。通过**不启动镜像程序**的临时停止容器提取前后构建产物，拒绝链接、越界路径、缺失依赖、非预期入口格式，以及旧 `/assets/` 同名文件改变字节。提取前要求宿主剩余空间超过 20 GiB。当前解析器要求 Vite 单一 module 入口与 8 字符 hash 的预加载入口名称；构建约定改变时显式失败。
+- 从配置列出的入口递归收集静态 JS import 与同名 CSS，排除 HTML 已有引用。原样保留 CDN 首页配置中 `set $mc_preload_0 ` 之前的回退脚本、preconnect 与重写前缀，只生成预加载变量和入口替换。未识别现有布局时拒绝发布。预加载总量限制为 1–99 项，变量按标签边界分段。
+- 保存前后预加载文件、权限、清单/配置摘要及产物清单，再只读检查当前 `/` 和 `/login`，各覆盖 CDN 路径与 `mc_static_origin=1` 源站回退。检查 HTML 重验证缓存、SSI 错误、首页标记、关键资源字节，以及关键 CSS 引用的品牌字体。`plan.json` 最后落盘；预检失败留下的私有目录不能当作可继续的发布计划。
+- `publish` 要求候选 Web 已运行且源站回退入口属于候选，持久记录阶段后依次原子替换两个文件，再执行 nginx 配置测试和 reload。**两个原子替换不构成整体事务**；失败交由更新器恢复旧容器后调用 `rollback`，不在新容器仍运行时自行伪装恢复成功。
+- `verify` 重新核对当前文件、配置与冻结产物，检查目标 HTML 的入口和首页预加载，检查关键资源、全部新增/改变的 `/assets/` 文件及旧关键带哈希资源的保留情况。源站与 CDN 的 JS/CSS 都检查 MIME 和正数有效期的 immutable 缓存。CDN 字节按配置中的**有序字面重写**计算预期结果；不能把已知 bridge 重写误报成文件损坏，也不能忽略字节差异。检查 CSS 引用的品牌字体源站/CDN字节与缓存。
+- HTML 在 nginx reload 后最多重试八次，间隔一秒；资源或 CDN 字节、缓存和 MIME 不符直接失败，交由更新器回退。总时限默认 600 秒，可配置 30–1200 秒；单请求 1–60 秒、并发 1–8。更新器的 step timeout 必须给适配器留足时间。
+- `rollback` 要求旧 Web 已恢复；接受本次任意一半写入状态，恢复 preflight 保存的精确配置，测试并 reload nginx，再验证旧 HTML 与资源。可重复调用；发现外部配置漂移时保留现场。旧文件仍须由 Web 发布合同保留，适配器不会从镜像偷偷回填生产共享目录。
+
+回执含 `plan.json`、`before-*.conf` / `next-*.conf`、提取的构建产物、`publication.json` 与实际 HTTP 验证报告；即使失败也保留。控制台只返回脱敏错误，原始 nginx / Docker 输出不会进入公开更新日志。目录与配置应按敏感运维数据处理。提取临时容器带 `io.mengceng.web-publisher` 标签；普通失败会删除容器，强制中断后需按该回执的标签与实际引用人工核对遗留停止容器。未完成事务与仍供回退的回执、镜像及产物不得清理。
+
+专项测试与 opt-in 容器验收入口：
+
+```bash
+python3 -m unittest discover -s scripts -p test_mengceng_web_publisher.py -v
+python3 scripts/test_mengceng_web_publisher_integration.py \
+  --root /opt/task-owned/new-empty-directory \
+  --base-image sha256:<已核对的本地nginx镜像内容ID>
+```
+
+容器验收需要独立 Linux Docker 环境和足够磁盘，自动选择 loopback 端口，创建带任务归属标签的镜像、网络和容器，模拟 CDN 重写、源站回退、内容损坏、旧资源丢失、并发编辑、真实 nginx 语法失败、部分发布与重复回退，退出时清理自身资源并保留小型证据。它不使用生产目录或数据卷。隔离四阶段验收与生产 `preflight` 只读检查可分别证明恢复行为和当前回源规则兼容，**不证明生产切换、真实 CDN 缓存传播、完整 Host Updater 联动或多设备验收已完成**。安装/启用正式更新器和首次实际发布仍需按目标环境执行独立验收。
+
 ### 中断与人工核对
 
 `custom-transaction.json` 独立记录停服、切换与恢复阶段，持久化后才执行破坏性步骤。进程中断或记录不可读时，重启进入 `manual_intervention` 并尝试停止业务写入服务；检查、更新与回退都会被锁住，仅修改 `state.json` 不能绕过。配置在发布期间漂移时不会覆盖操作者的新配置；切换后发现漂移会停服保留现场。未完成事务不自动重试迁移、发布或恢复。
