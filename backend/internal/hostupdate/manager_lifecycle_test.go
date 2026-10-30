@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"strings"
 	"testing"
@@ -19,17 +20,32 @@ import (
 // The runner simulates writes made while images download and during shutdown.
 // The real Manager still creates, commits and verifies its ZIP and saved config.
 type updateLifecycleRunner struct {
-	calls    []string
-	fail     string
-	version  string
-	database string
-	data     string
-	stopped  bool
+	installDir string
+	calls      []string
+	fail       string
+	version    string
+	database   string
+	data       string
+	stopped    bool
 }
 
 func (r *updateLifecycleRunner) Run(_ context.Context, _ string, args, environment []string, stdout, _ io.Writer) error {
 	call := strings.Join(args, " ")
 	r.calls = append(r.calls, call)
+	if len(args) > 0 && args[0] == "context" {
+		return json.NewEncoder(stdout).Encode("unix:///var/run/docker.sock")
+	}
+	if len(args) > 0 && args[0] == "inspect" {
+		return json.NewEncoder(stdout).Encode([]any{map[string]any{"Mounts": []map[string]any{{"Type": "bind", "Source": filepath.Join(r.installDir, "data"), "Destination": "/data", "RW": r.fail != "data-mount"}}, "Config": map[string]any{"Labels": map[string]string{"com.docker.compose.project": composeProjectName(r.installDir)}}}})
+	}
+	if strings.HasSuffix(call, "ps --all -q backend") {
+		_, err := io.WriteString(stdout, "fixture-backend")
+		return err
+	}
+	if strings.HasSuffix(call, "config --format json") {
+		return json.NewEncoder(stdout).Encode(map[string]any{"services": map[string]any{"backend": map[string]any{"volumes": []map[string]any{{"type": "bind", "source": filepath.Join(r.installDir, "data"), "target": "/data"}}}}})
+	}
+
 	if len(args) > 2 && args[0] == "image" {
 		if r.fail == "inspect" {
 			return errors.New("fixture digest failure")
@@ -100,12 +116,18 @@ func lifecycleManager(t *testing.T, failure string) (*Manager, *updateLifecycleR
 			t.Fatal(err)
 		}
 	}
-	runner := &updateLifecycleRunner{fail: failure, version: "v1.1.0", database: "before-download", data: "before-shutdown"}
+	if err := os.Mkdir(filepath.Join(root, "data"), 0750); err != nil {
+		t.Fatal(err)
+	}
+	runner := &updateLifecycleRunner{installDir: root, fail: failure, version: "v1.1.0", database: "before-download", data: "before-shutdown"}
 	manager.runner, manager.httpClient = runner, &http.Client{Transport: lifecycleTransport{runner}}
 	return manager, runner
 }
 
 func TestUpdateBackupIncludesShutdownWrites(t *testing.T) {
+	if runtime.GOOS != "linux" {
+		t.Skip("Host Updater local mount validation requires Linux")
+	}
 	manager, runner := lifecycleManager(t, "")
 	manager.runUpdate("v1.1.0", "v1.2.0")
 	if manager.state.Operation.Phase != PhaseSucceeded || manager.state.LastBackup == nil {
@@ -144,7 +166,7 @@ func TestUpdateBackupIncludesShutdownWrites(t *testing.T) {
 }
 
 func TestUpdateBeforeMigrationFailuresPreserveLiveData(t *testing.T) {
-	for _, failure := range []string{"pull", "inspect", "stop", "dump", "tar", "previous-compose", "previous-env", "restart"} {
+	for _, failure := range []string{"pull", "inspect", "stop", "dump", "tar", "previous-compose", "previous-env", "restart", "data-mount"} {
 		t.Run(failure, func(t *testing.T) {
 			manager, runner := lifecycleManager(t, failure)
 			previous := &Backup{ID: "earlier-verified-backup", Version: "v1.0.0"}
@@ -171,8 +193,12 @@ func TestUpdateBeforeMigrationFailuresPreserveLiveData(t *testing.T) {
 			if manager.state.Operation.Phase != want || manager.state.Operation.AutomaticRollback || manager.state.Operation.Error == "" {
 				t.Errorf("failure state = %+v, want %s without database rollback", manager.state.Operation, want)
 			}
-			if manager.state.LastBackup != previous || manager.state.RollbackVersion != previous.Version {
-				t.Error("failed preparation replaced the previously verified rollback point")
+			if failure != "data-mount" {
+				if manager.state.LastBackup != previous || manager.state.RollbackVersion != previous.Version {
+					t.Error("failed preparation replaced the previously verified rollback point")
+				}
+			} else if manager.state.LastBackup == nil || manager.state.LastBackup.Checksum == "" || manager.state.RollbackVersion != "v1.1.0" {
+				t.Error("completed snapshot and saved config did not retain their matching rollback point")
 			}
 			if failure == "previous-env" {
 				data, err := os.ReadFile(manager.previousComposePath())

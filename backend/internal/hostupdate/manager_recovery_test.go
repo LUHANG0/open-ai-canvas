@@ -1,12 +1,11 @@
 package hostupdate
 
 import (
-	"context"
 	"encoding/json"
-	"errors"
 	"io"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -58,31 +57,11 @@ func TestHealthRequiresReadySchemaAndDependencies(t *testing.T) {
 	}
 }
 
-type recoveryFailureRunner struct {
-	calls []string
-	fail  string
-}
-
-func (r *recoveryFailureRunner) Run(_ context.Context, _ string, args, _ []string, stdout, _ io.Writer) error {
-	call := strings.Join(args, " ")
-	r.calls = append(r.calls, call)
-	if strings.Contains(call, " stop ") && r.fail == "stop" {
-		return errors.New("fixture stop failed")
-	}
-	if strings.Contains(call, "dropdb") && r.fail == "database" {
-		return errors.New("fixture database restore failed")
-	}
-	return nil
-}
-
 func TestRollbackStopsOnFailedPrerequisites(t *testing.T) {
 	for _, scenario := range []string{"stop", "missing-compose", "missing-env", "corrupt-backup", "database", "compose-restore", "env-restore", "backup-version", "env-version"} {
 		t.Run(scenario, func(t *testing.T) {
-			manager, _ := lifecycleManager(t, "")
-			backup, err := manager.createBackup("v1.1.0")
-			if err != nil {
-				t.Fatal(err)
-			}
+			manager, _ := localDataManager(t)
+			backup := regularDataFixture(t, manager)
 			if err := manager.savePreviousDeployment(); err != nil {
 				t.Fatal(err)
 			}
@@ -117,13 +96,21 @@ func TestRollbackStopsOnFailedPrerequisites(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			runner := &recoveryFailureRunner{fail: scenario}
-			manager.runner = runner
+			if scenario == "stop" {
+				t.Setenv("HOSTUPDATE_FIXTURE_FAIL", "stop")
+			}
+			if scenario == "database" {
+				t.Setenv("HOSTUPDATE_FIXTURE_FAIL", "dropdb")
+			}
 			manager.runRollback("v1.1.0", backup, true)
 			if manager.state.Operation.Phase != PhaseManualIntervention {
 				t.Fatalf("phase=%s", manager.state.Operation.Phase)
 			}
-			for _, call := range runner.calls {
+			body, err := os.ReadFile(filepath.Join(manager.config.InstallDir, "bin", "calls.log"))
+			if err != nil && !os.IsNotExist(err) {
+				t.Fatal(err)
+			}
+			for _, call := range strings.Split(string(body), "\n") {
 				if strings.Contains(call, " up ") {
 					t.Errorf("must not start services after failed recovery prerequisite: %s", call)
 				}

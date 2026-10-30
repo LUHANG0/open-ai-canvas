@@ -112,6 +112,11 @@ func NewManager(config Config) (*Manager, error) {
 	if err := manager.loadState(); err != nil {
 		return nil, err
 	}
+	if recoveryErr := manager.pendingDataRecovery(); recoveryErr != nil {
+		manager.state.Operation.Phase = PhaseManualIntervention
+		manager.state.Operation.Error = manager.stopFailedRecovery(recoveryErr).Error()
+		_ = manager.saveStateLocked()
+	}
 	if manager.state.Operation.Phase.Active() {
 		manager.state.Operation.Phase = PhaseManualIntervention
 		manager.state.Operation.Error = "更新器进程在操作期间退出，请检查容器与数据库状态后手动处理"
@@ -129,6 +134,11 @@ func (m *Manager) Snapshot() Status {
 
 func (m *Manager) Check(ctx context.Context) (Status, error) {
 	m.mu.Lock()
+	if err := m.pendingDataRecovery(); err != nil {
+		status := m.snapshotLocked()
+		m.mu.Unlock()
+		return status, err
+	}
 	if m.state.Operation.Phase.Active() {
 		status := m.snapshotLocked()
 		m.mu.Unlock()
@@ -177,6 +187,9 @@ func (m *Manager) StartUpdate(targetVersion string) (Status, error) {
 	targetVersion = strings.TrimSpace(targetVersion)
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	if err := m.pendingDataRecovery(); err != nil {
+		return m.snapshotLocked(), err
+	}
 	if m.state.Operation.Phase.Active() {
 		return m.snapshotLocked(), errors.New("已有更新操作正在进行")
 	}
@@ -207,6 +220,9 @@ func (m *Manager) StartUpdate(targetVersion string) (Status, error) {
 func (m *Manager) StartRollback(reason string) (Status, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	if err := m.pendingDataRecovery(); err != nil {
+		return m.snapshotLocked(), err
+	}
 	if m.state.Operation.Phase.Active() {
 		return m.snapshotLocked(), errors.New("已有更新操作正在进行")
 	}
@@ -287,6 +303,14 @@ func (m *Manager) runUpdate(fromVersion, targetVersion string) {
 	m.state.RollbackVersion = fromVersion
 	_ = m.saveStateLocked()
 	m.mu.Unlock()
+
+	// Confirm that the saved rollback point can address stable local data before
+	// any migration runs. Unsupported volume drivers must not be discovered only
+	// after a failed upgrade has already changed the database.
+	if _, err := m.localDataRoot(fromVersion); err != nil {
+		m.failBeforeMigration(fmt.Errorf("检查本地数据回退条件：%w", err), fromVersion)
+		return
+	}
 
 	m.setPhase(PhaseMigrating, "执行目标版本数据库迁移")
 	if err := m.composeWithImages(nextCompose, targetVersion, targetImages, m.config.StepTimeout, nil, "run", "--rm", "migrate"); err != nil {
@@ -392,7 +416,7 @@ func (m *Manager) runRollback(targetVersion string, backup Backup, automatic boo
 	} else {
 		m.state.Operation.Phase = PhaseRolledBack
 		m.state.Operation.RollbackError = ""
-		m.appendLogLocked(PhaseRolledBack, fmt.Sprintf("已恢复到 %s（版本与数据库；数据目录需单独核对）", targetVersion))
+		m.appendLogLocked(PhaseRolledBack, fmt.Sprintf("已恢复到 %s（版本、数据库与本地数据；替换前文件已保留）", targetVersion))
 	}
 	_ = m.saveStateLocked()
 }
@@ -400,6 +424,9 @@ func (m *Manager) runRollback(targetVersion string, backup Backup, automatic boo
 // Restore in order and leave all writers stopped if a prerequisite fails.
 // Starting an old binary against a partially restored database is unsafe.
 func (m *Manager) restoreDeployment(targetVersion string, backup Backup) error {
+	if err := m.pendingDataRecovery(); err != nil {
+		return err
+	}
 	if err := verifyZipBackup(backup.Path, backup.Checksum); err != nil {
 		return fmt.Errorf("拒绝恢复未通过校验的备份：%w", err)
 	}
@@ -425,19 +452,46 @@ func (m *Manager) restoreDeployment(targetVersion string, backup Backup) error {
 	if err := m.compose(m.composePath(), targetVersion, 5*time.Minute, nil, "stop", "web", "backend", "yingce-agent"); err != nil {
 		return err
 	}
+	recovery, err := m.stageLocalData(targetVersion, backup)
+	if err != nil {
+		return err
+	}
+	defer recovery.root.Close()
 	if err := replaceFile(m.previousComposePath(), m.composePath(), 0o600); err != nil {
 		return fmt.Errorf("恢复旧 Compose 配置：%w", err)
 	}
 	if err := replaceFile(m.previousEnvPath(), m.envPath(), 0o600); err != nil {
 		return fmt.Errorf("恢复旧部署环境：%w", err)
 	}
+	if err := recovery.record("restoring-database"); err != nil {
+		return err
+	}
 	if err := m.restoreDatabase(backup); err != nil {
 		return err
 	}
-	if err := m.compose(m.composePath(), targetVersion, m.config.StepTimeout, nil, "up", "-d", "--remove-orphans", "--wait", "--wait-timeout", "600"); err != nil {
-		return err
+	if err := recovery.install(); err != nil {
+		return fmt.Errorf("恢复本地数据失败（服务保持停止）：%w", err)
 	}
-	return m.verifyHealthy(targetVersion)
+	if err := m.compose(m.composePath(), targetVersion, m.config.StepTimeout, nil, "up", "-d", "--remove-orphans", "--wait", "--wait-timeout", "600"); err != nil {
+		return m.stopFailedRecovery(err)
+	}
+	if err := m.verifyHealthy(targetVersion); err != nil {
+		return m.stopFailedRecovery(err)
+	}
+	if err := recovery.record("completed"); err != nil {
+		return m.stopFailedRecovery(err)
+	}
+	return nil
+}
+
+// Startup can fail after some writers have already started. Report a failed
+// shutdown too, so operators know that manual intervention is still required.
+func (m *Manager) stopFailedRecovery(cause error) error {
+	version, _ := m.currentVersion()
+	if err := m.compose(m.composePath(), version, 5*time.Minute, nil, "stop", "web", "backend", "yingce-agent"); err != nil {
+		return errors.Join(cause, fmt.Errorf("停止恢复中的写入服务失败：%w", err))
+	}
+	return cause
 }
 
 func (m *Manager) snapshotLocked() Status {
@@ -478,6 +532,9 @@ func (m *Manager) checks(current string, currentErr error) []Check {
 	if m.state.LastBackup != nil {
 		items[2].Status = "passed"
 		items[2].Detail = m.state.LastBackup.ID + " · " + m.state.LastBackup.Checksum
+	}
+	if err := m.pendingDataRecovery(); err != nil {
+		items = append(items, Check{Key: "data-recovery", Label: "本地数据恢复", Status: "failed", Detail: err.Error(), Blocking: true})
 	}
 	return items
 }
