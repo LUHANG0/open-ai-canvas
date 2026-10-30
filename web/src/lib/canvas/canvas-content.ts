@@ -4,9 +4,7 @@ import type { CanvasProject } from "@/stores/canvas/use-canvas-store";
 // These fields describe local viewing / synchronization, not an edit to the document.
 export function canvasContentSnapshot(project: CanvasProject) {
     const { viewport: _viewport, updatedAt: _updatedAt, revision: _revision, remoteContentHash: _hash, ...content } = project;
-    // The server removes activeChatId when it is cleared; the editor uses null.
-    // Both represent the same document and must share a comparison/hash baseline.
-    return { ...content, projectId: content.projectId || undefined, activeChatId: content.activeChatId ?? null };
+    return { ...content, projectId: content.projectId || undefined };
 }
 
 export function sameCanvasContent(left: CanvasProject | undefined, right: CanvasProject | undefined) {

@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 import type { CanvasProject } from "@/stores/canvas/use-canvas-store";
 import { createCanvasEditLeaseClient } from "../src/services/canvas-edit-leases";
 import type { changeCanvasEditLease } from "../src/services/api/user-data";
+import { canonicalize } from "json-canonicalize";
 
 // Isolate transport/storage without leaking module mocks into other test suites.
 // Sync, resource conversion, content comparison and progress use production code.
@@ -175,6 +176,39 @@ function live(): CanvasProject {
 function edit(patch: Partial<CanvasProject>) {
     useCanvasStore.setState({ projects: [{ ...live(), ...patch }] });
 }
+
+test("旧版确认摘要仍能恢复基线，不把旧缓存正文写回较新的云端", async () => {
+    fixture.manualTimers = true;
+    const baseline = { ...base(), nodes: [] };
+    Reflect.deleteProperty(baseline, "activeChatId");
+    // Persist the previous release's exact hash format, independently of the candidate.
+    const { viewport: _viewport, updatedAt: _updatedAt, revision: _revision, ...content } = baseline;
+    const serialized = canonicalize({ ...content, projectId: undefined });
+    baseline.remoteContentHash = globalThis.crypto?.subtle ? Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(serialized))), (value) => value.toString(16).padStart(2, "0")).join("") : `json:${serialized}`;
+    fixture.data.set("yingce:canvas-confirmed-baselines", JSON.stringify([baseline]));
+    useCanvasStore.setState({ projects: [{ ...baseline, activeChatId: null }] });
+    fixture.remote = { ...baseline, title: "另一会话已保存的新标题", revision: 8 };
+    await sync.initializeRemoteUserDataSession("sync-test-user");
+    await sync.loadCanvasProjectForEditing("canvas");
+    await sync.saveRemoteUserDataNow("canvas");
+    expect(live().title).toBe("另一会话已保存的新标题");
+    expect(fixture.remote.title).toBe("另一会话已保存的新标题");
+    expect(fixture.writes).toHaveLength(0);
+});
+
+test("编辑器将缺省对话转为 null 后保存收敛，后续保存不重复提交", async () => {
+    fixture.manualTimers = true;
+    fixture.remote = { ...base(), nodes: [] };
+    Reflect.deleteProperty(fixture.remote, "activeChatId");
+    useCanvasStore.setState({ projects: [structuredClone(fixture.remote)] });
+    await reloadSession();
+    await sync.loadCanvasProjectForEditing("canvas");
+    edit({ activeChatId: null });
+    await sync.saveRemoteUserDataNow("canvas");
+    await sync.saveRemoteUserDataNow("canvas");
+    expect(fixture.writes).toHaveLength(0);
+    expect(useSyncProgressStore.getState().syncingProjects.canvas).toMatchObject({ phase: "done", pendingChanges: 0 });
+});
 
 test("resource images keep media references through consecutive position saves and in-flight input", async () => {
     const first = base().nodes[0]!;
