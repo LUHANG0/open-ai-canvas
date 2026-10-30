@@ -85,6 +85,19 @@ export function serializeNode(node: ChildNode): string {
     return serializeNodeList(node.childNodes);
 }
 
+/** Copy the serialized prompt, including references hidden from native text selection. */
+export function serializeEditableSelection(root: HTMLElement | null): string | null {
+    if (!root) return null;
+    const selection = window.getSelection();
+    if (!selection || !selection.rangeCount) return null;
+    const range = selection.getRangeAt(0);
+    if (range.collapsed || !root.contains(range.startContainer) || !root.contains(range.endContainer)) return null;
+    const ancestor = range.commonAncestorContainer;
+    const mention = (ancestor instanceof Element ? ancestor : ancestor.parentElement)?.closest<HTMLElement>("[data-mention-token]");
+    if (mention && root.contains(mention)) return mention.dataset.mentionToken || "";
+    return serializeNodeList(Array.from(range.cloneContents().childNodes)).replace(/\u00a0/g, " ");
+}
+
 export function getEditableSelection(root: HTMLElement | null): EditableSelection | null {
     if (!root) return null;
     const selection = window.getSelection();
