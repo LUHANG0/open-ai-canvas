@@ -3,6 +3,7 @@ out/
 node_modules/
 open-storyboard-canvas/
 docs/*
+!docs/upstream-credits.md
 !docs/design/
 !docs/index.md
 !docs/adr/
