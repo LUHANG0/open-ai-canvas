@@ -556,7 +556,7 @@ func (m *Manager) restoreDatabase(backup Backup) error {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), m.config.StepTimeout)
 	defer cancel()
-	args := []string{"compose", "--env-file", m.envPath(), "-f", m.composePath(), "exec", "-T", "postgres", "pg_restore", "-U", postgresUser, "-d", postgresDB, "--no-owner", "--no-privileges"}
+	args := []string{"compose", "--project-name", composeProjectName(m.config.InstallDir), "--env-file", m.envPath(), "-f", m.composePath(), "exec", "-T", "postgres", "pg_restore", "-U", postgresUser, "-d", postgresDB, "--no-owner", "--no-privileges"}
 	var stderr bytes.Buffer
 	command := execCommandWithInput{runner: m.runner, input: reader}
 	if err := command.Run(ctx, "docker", args, []string{"CANVAS_IMAGE_TAG=" + strings.TrimPrefix(backup.Version, "v")}, io.Discard, &stderr); err != nil {
@@ -586,7 +586,7 @@ func (c execCommandWithInput) Run(ctx context.Context, name string, args, enviro
 
 func (m *Manager) verifyHealthy(targetVersion string) error {
 	healthURL := m.healthURL()
-	deadline := time.Now().Add(10 * time.Minute)
+	deadline := time.Now().Add(m.config.HealthTimeout)
 	stableSince := time.Time{}
 	for time.Now().Before(deadline) {
 		if err := m.checkHealthOnce(healthURL, targetVersion); err != nil {
@@ -627,6 +627,19 @@ func (m *Manager) checkHealthOnce(healthURL, targetVersion string) error {
 	var payload struct {
 		Code int `json:"code"`
 		Data struct {
+			Ready    bool `json:"ready"`
+			Started  bool `json:"started"`
+			Draining bool `json:"draining"`
+			Schema   struct {
+				Current  int  `json:"current"`
+				Expected int  `json:"expected"`
+				Ready    bool `json:"ready"`
+			} `json:"schema"`
+			Checks struct {
+				Database bool `json:"database"`
+				Runtime  bool `json:"runtime"`
+				Schema   bool `json:"schema"`
+			} `json:"checks"`
 			Build struct {
 				Version string `json:"version"`
 			} `json:"build"`
@@ -638,7 +651,12 @@ func (m *Manager) checkHealthOnce(healthURL, targetVersion string) error {
 	if payload.Code != 0 {
 		return errors.New("健康接口业务状态异常")
 	}
-	if IsReleaseVersion(targetVersion) && payload.Data.Build.Version != "" && CompareVersions(payload.Data.Build.Version, targetVersion) != 0 {
+	if !payload.Data.Ready || !payload.Data.Started || payload.Data.Draining ||
+		!payload.Data.Schema.Ready || payload.Data.Schema.Current <= 0 || payload.Data.Schema.Current != payload.Data.Schema.Expected ||
+		!payload.Data.Checks.Database || !payload.Data.Checks.Runtime || !payload.Data.Checks.Schema {
+		return errors.New("健康接口尚未就绪或数据库、运行时、Schema 检查失败")
+	}
+	if IsReleaseVersion(targetVersion) && (payload.Data.Build.Version == "" || CompareVersions(payload.Data.Build.Version, targetVersion) != 0) {
 		return fmt.Errorf("运行版本仍为 %s，期望 %s", payload.Data.Build.Version, targetVersion)
 	}
 	return nil

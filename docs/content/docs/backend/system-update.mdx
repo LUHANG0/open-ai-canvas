@@ -34,20 +34,25 @@ description: Host Updater、Release 检查、数据库备份迁移、健康验�
 
 停服后的迁移、启动或健康验证失败会触发自动回退：
 
-1. 停止目标 web/backend；
-2. 恢复更新前保存的 Compose 文件；
-3. 恢复更新前保存的 `.env`，确保 backend/web 镜像仍绑定到原 digest；
-4. 再次校验备份 ZIP 和 SHA-256；
-5. 删除并重建目标业务数据库，再使用 `pg_restore --no-owner --no-privileges` 恢复 PostgreSQL；系统数据库名称会被拒绝；
-6. 启动旧服务并重新进行稳定窗口验证。
+1. 在停服和改库前校验备份 ZIP、SHA-256、旧 Compose 和环境文件；回退版本、备份版本及旧环境中的版本必须对应；
+2. 停止目标 web/backend/yingce-agent，确认停止命令成功；
+3. 恢复更新前保存的 Compose 与 `.env`，保留三个服务的旧镜像引用；
+4. 删除并重建目标业务数据库，再使用 `pg_restore --no-owner --no-privileges` 恢复 PostgreSQL；系统数据库名称会被拒绝，恢复命令使用与其他操作相同的 Compose project；
+5. 只有前面步骤全部成功，才启动旧服务并重新进行稳定窗口验证。
 
-回退任一步失败时状态变为 `manual_intervention`，不伪造成功。管理后台仅在存在旧版本和已校验备份时开放人工回退按钮。
+回退按上述顺序执行。备份或旧配置缺失、版本不对应时，在停服和改库前拒绝操作。停服、配置恢复或数据库恢复失败后，立即进入 `manual_intervention`，不继续改库或启动应用；已经停止的写入服务保留停止状态，避免旧程序接入部分恢复的数据库。管理后台仅在存在旧版本和已校验备份时开放人工回退按钮，但发起操作时仍会重新校验。
+
+健康验证要求 `ready=true`、`started=true`、`draining=false`，数据库、运行时和 Schema 检查全部通过，Schema 当前值与预期值一致且大于零；正式 Release 还要求返回非空且匹配的构建版本。HTTP 200 和业务返回码成功不能单独作为就绪依据。
 
 该备份覆盖旧服务停止前的写入。新版本启动后产生的业务写入不在此快照中，历史备份回退仍可能覆盖这些写入。当前自动恢复路径只恢复数据库，ZIP 中的数据目录 tar 保留供独立恢复；不能把 ZIP 归档成功当作数据库和文件完整恢复已通过。启用更新器前，应在目标部署的隔离副本完成升级及失败回退演练，并核对旧 Compose、环境文件与备份记录对应关系。
 
-专项回归入口是 `cd backend && go test -count=1 ./internal/hostupdate`，覆盖退出前最终写入、下载与摘要失败、停服失败、备份失败、旧配置保存失败和原容器恢复失败。命令执行器与健康响应使用隔离替身；它不替代真实 Docker、PostgreSQL 与目标镜像演练。
+专项回归入口是 `cd backend && go test -count=1 ./internal/hostupdate`，覆盖退出前最终写入、下载与摘要失败、停服失败、备份失败、旧配置保存失败、原容器恢复失败、未就绪响应，以及回退各前置步骤失败后不再改库或启动服务。命令执行器与健康响应使用隔离替身；它不替代真实 Docker、PostgreSQL 与目标镜像演练。
 
 ## 安装与升级约束
+
+自定义源码部署不能直接套用默认更新器。它默认读取 `ddcat-ai/open-ai-canvas` 的 Release，按仓库 owner 选择固定名称的 GHCR 镜像，并用目标 Release 的整份 Compose 替换当前文件；不会合并本地源码修改、额外 Compose overlay、CDN 规则或自定义挂载。多份 Compose、分离的环境文件和分别发布的前后端版本，需要先建立并演练对应的自定义发布合同。
+
+启用前应确认 Release、三个镜像与部署 Compose 都来自同一套已验收的二改发布源，保留实际 project、数据卷、密钥及外部反向代理约定。本地镜像标签、现有服务健康或把 `CANVAS_UPDATER_REPOSITORY` 改成 fork 名称，都不等于这些条件已经满足。默认安装脚本还要求现有 backend/web 为 GHCR digest；源码部署继续使用其已有、已验收的发布与回退流程，直到该适配完成。
 
 GHCR 镜像部署必须把 `CANVAS_IMAGE_TAG` 固定到具体 Release，并把 `CANVAS_BACKEND_IMAGE`、`CANVAS_WEB_IMAGE` 固定到对应 GHCR digest，不可使用 `latest` 或仅使用可变 tag。首次安装时显式指定 Release：
 

@@ -83,7 +83,7 @@ func (tr lifecycleTransport) RoundTrip(req *http.Request) (*http.Response, error
 		if tr.runner.stopped {
 			return nil, errors.New("fixture service is stopped")
 		}
-		body = fmt.Sprintf(`{"code":0,"data":{"build":{"version":%q}}}`, tr.runner.version)
+		body = fmt.Sprintf(`{"code":0,"data":{"ready":true,"started":true,"build":{"version":%q},"schema":{"current":61,"expected":61,"ready":true},"checks":{"database":true,"runtime":true,"schema":true}}}`, tr.runner.version)
 	}
 	return &http.Response{StatusCode: http.StatusOK, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(body)), Request: req}, nil
 }
