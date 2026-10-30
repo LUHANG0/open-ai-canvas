@@ -3,6 +3,7 @@ import { assetStorageUsageQueryKey, AssetStorageUsage } from "./asset-storage-us
 import { readFileAsDataUrl, readImageMeta, formatBytes } from "@/lib/image-utils";
 import { uploadMediaFile } from "@/services/file-storage";
 import { exportAssets, readAssetPackage } from "./asset-transfer";
+import { captureAssetLibraryAccount, deleteAllArchivedAssets, loadAssetLibraryExport } from "./asset-library-operations";
 import { WorkspacePage, PageHeader, CollectionGrid, PaginationBar } from "@/components/layout/workspace-page";
 import { Trash2, Plus, Images, FolderOpen, FileUp, Upload, Download, MoreHorizontal, Search, LayoutGrid, FolderPlus, PencilLine, AlertTriangle } from "lucide-react";
 import { CollectionToolbar } from "@/components/layout/collection-toolbar";
@@ -440,17 +441,30 @@ export default function AssetsPage({ inTrashDialog = false }: { inTrashDialog?: 
     };
 
     const exportAllAssets = async () => {
-        if (!validAssets.length) {
-            message.warning("暂无素材可导出");
-            return;
+        if (batchWorking) return;
+        setBatchWorking(true);
+        try {
+            const assertCurrent = captureAssetLibraryAccount(userId);
+            const assets = await loadAssetLibraryExport(viewMode === "trash" ? "archived" : "active", userId);
+            assertCurrent();
+            if (!assets.length) {
+                message.warning("暂无素材可导出");
+                return;
+            }
+            await exportAssets(assets);
+        } catch (error) {
+            message.error(error instanceof Error ? error.message : "导出失败");
+        } finally {
+            setBatchWorking(false);
         }
-        await exportAssets(validAssets);
     };
 
     const importAssetZip = async (file?: File) => {
         if (!file) return;
         try {
+            const assertCurrent = captureAssetLibraryAccount(userId);
             const importedAssets = await readAssetPackage(file);
+            assertCurrent();
             importedAssets.forEach((asset) => {
                 const payload = { ...asset } as Record<string, unknown>;
                 delete payload.id;
@@ -458,9 +472,9 @@ export default function AssetsPage({ inTrashDialog = false }: { inTrashDialog?: 
                 delete payload.updatedAt;
                 addAsset(payload as Parameters<typeof addAsset>[0]);
             });
-            message.success(`已导入 ${importedAssets.length} 个素材`);
-        } catch {
-            message.error("导入失败，请选择有效的素材压缩包");
+            message.success(`已导入 ${importedAssets.length} 个素材${importedAssets.some((asset) => asset.kind === "entity") ? "；角色卡形象与声音需重新绑定" : ""}`);
+        } catch (error) {
+            message.error(error instanceof Error ? error.message : "导入失败，请选择有效的素材压缩包");
         } finally {
             if (assetInputRef.current) assetInputRef.current.value = "";
         }
@@ -492,15 +506,26 @@ export default function AssetsPage({ inTrashDialog = false }: { inTrashDialog?: 
     };
 
     const emptyTrash = async () => {
-        const count = trashAssets.length;
-        if (!count) return;
+        if (batchWorking) return;
+        setBatchWorking(true);
+        let deletedCount = 0;
         try {
-            await deleteAssetsWithRemoteSync(trashAssets.map((asset) => asset.id));
+            const count = await deleteAllArchivedAssets(userId, (count) => {
+                deletedCount = count;
+            });
+            if (!count) {
+                message.info("回收站已为空");
+                return;
+            }
             setSelectedIds([]);
             message.success(`已彻底清空回收站 ${count} 个素材`);
             void invalidateAssetLibrary();
         } catch (error) {
-            message.error(error instanceof Error ? error.message : "清空回收站失败");
+            const reason = error instanceof Error ? error.message : "清空回收站失败";
+            if (deletedCount) message.warning(`已删除 ${deletedCount} 个素材，其余未完成：${reason}`);
+            else message.error(reason);
+        } finally {
+            setBatchWorking(false);
         }
     };
 
@@ -561,7 +586,7 @@ export default function AssetsPage({ inTrashDialog = false }: { inTrashDialog?: 
                                 <div className="assets-header-action-buttons">
                                     {viewMode === "trash" ? (
                                         <>
-                                            {trashAssets.length > 0 ? (
+                                            {userId || trashAssets.length > 0 ? (
                                                 <Popconfirm
                                                     title="确定清空回收站吗？"
                                                     description="清空后所有回收站素材及其文件将被彻底永久删除，不可恢复。"
@@ -570,7 +595,7 @@ export default function AssetsPage({ inTrashDialog = false }: { inTrashDialog?: 
                                                     okButtonProps={{ danger: true }}
                                                     cancelText="取消"
                                                 >
-                                                    <Button danger icon={<Trash2 className="size-3.5" />}>
+                                                    <Button danger loading={batchWorking} icon={<Trash2 className="size-3.5" />}>
                                                         清空回收站
                                                     </Button>
                                                 </Popconfirm>

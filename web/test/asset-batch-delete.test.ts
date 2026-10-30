@@ -7,6 +7,8 @@ import { apiClient } from "@/services/api/request";
 import { deleteAssetsWithRemoteSync, initializeRemoteUserDataSession, loadAssetLibraryPage, loadAssetsForUse, resetRemoteUserDataSync, saveRemoteUserDataNow } from "@/services/user-data-sync";
 import { flushAssetStorePersistence, useAssetStore, type Asset } from "@/stores/use-asset-store";
 import { appQueryClient } from "@/lib/query-client";
+import { collectAssetLibraryIds, deleteAllArchivedAssets, loadAssetLibraryExport } from "@/pages/assets/asset-library-operations";
+import { useUserStore } from "@/stores/use-user-store";
 
 const originalAdapter = apiClient.defaults.adapter;
 let originalWindow: PropertyDescriptor | undefined;
@@ -69,6 +71,7 @@ afterEach(async () => {
         appQueryClient.clear();
         apiClient.defaults.adapter = originalAdapter;
         resetRemoteUserDataSync();
+        useUserStore.setState({ user: null });
         useAssetStore.setState({ assets: [] });
         await flushAssetStorePersistence();
     } finally {
@@ -81,6 +84,108 @@ afterEach(async () => {
 });
 
 describe("素材批量删除", () => {
+    test("全量集合读取服务端所有分页，不受本机缓存或当前搜索条件限制", async () => {
+        useUserStore.setState({ user: { id: "batch-test-user" } as NonNullable<ReturnType<typeof useUserStore.getState>["user"]> });
+        const pages: unknown[] = [];
+        apiClient.defaults.adapter = async (config) => {
+            expect(config.url).toBe("/assets");
+            expect(config.method).toBe("get");
+            pages.push(config.params);
+            const page = config.params.page;
+            const records = page === 1 ? [asset("remote-1"), asset("shared")] : [asset("shared"), asset("remote-2")];
+            return { config, headers: {}, status: 200, statusText: "OK", data: { code: 0, data: { assets: records, page, pageSize: 100, total: 3, hasMore: page === 1 }, msg: "ok" } };
+        };
+        expect(await collectAssetLibraryIds("archived", "batch-test-user")).toEqual(["remote-1", "shared", "remote-2"]);
+        expect(pages).toEqual([
+            { page: 1, pageSize: 100, status: "archived" },
+            { page: 2, pageSize: 100, status: "archived" },
+        ]);
+    });
+
+    test("全量集合分页返回前切号，停止旧账号操作", async () => {
+        useUserStore.setState({ user: { id: "batch-test-user" } as NonNullable<ReturnType<typeof useUserStore.getState>["user"]> });
+        let requests = 0;
+        apiClient.defaults.adapter = async (config) => {
+            requests++;
+            useUserStore.setState({ user: { id: "other-user" } as NonNullable<ReturnType<typeof useUserStore.getState>["user"]> });
+            return { config, headers: {}, status: 200, statusText: "OK", data: { code: 0, data: { assets: [asset("old-user")], page: 1, hasMore: true }, msg: "ok" } };
+        };
+        await expect(collectAssetLibraryIds("active", "batch-test-user")).rejects.toThrow("账号已切换");
+        expect(requests).toBe(1);
+    });
+
+    test("访客全量集合只使用本机素材且区分回收站", async () => {
+        useUserStore.setState({ user: null });
+        resetRemoteUserDataSync();
+        useAssetStore.setState({ assets: [asset("active"), { ...asset("trash"), status: "archived" }] });
+        apiClient.defaults.adapter = async () => {
+            throw new Error("访客不应访问远端");
+        };
+        expect(await collectAssetLibraryIds("active", "")).toEqual(["active"]);
+        expect(await collectAssetLibraryIds("archived", "")).toEqual(["trash"]);
+    });
+
+    test("全量导出先收集所有页，再补齐本机未缓存的素材正文", async () => {
+        useUserStore.setState({ user: { id: "batch-test-user" } as NonNullable<ReturnType<typeof useUserStore.getState>["user"]> });
+        const requests: string[] = [];
+        apiClient.defaults.adapter = async (config) => {
+            requests.push(`${config.method} ${config.url}`);
+            if (config.url === "/assets/batch") {
+                expect(JSON.parse(config.data).ids).toEqual(["remote-1", "remote-2"]);
+                return { config, headers: {}, status: 200, statusText: "OK", data: { code: 0, data: { assets: [asset("remote-1"), asset("remote-2")] }, msg: "ok" } };
+            }
+            return { config, headers: {}, status: 200, statusText: "OK", data: { code: 0, data: { assets: [asset(`remote-${config.params.page}`)], hasMore: config.params.page === 1 }, msg: "ok" } };
+        };
+        expect((await loadAssetLibraryExport("active", "batch-test-user")).map((asset) => asset.id)).toEqual(["remote-1", "remote-2"]);
+        expect(requests).toEqual(["get /assets", "get /assets", "post /assets/batch"]);
+    });
+
+    test.each([false, true])("清空先固定完整集合再分批删除，保留部分失败计数（失败：%s）", async (failSecond) => {
+        useUserStore.setState({ user: { id: "batch-test-user" } as NonNullable<ReturnType<typeof useUserStore.getState>["user"]> });
+        const all = Array.from({ length: 205 }, (_, index) => asset(`remote-${index}`));
+        let remote = [...all];
+        const requests: string[] = [];
+        let batches = 0;
+        apiClient.defaults.adapter = async (config) => {
+            requests.push(config.method!);
+            if (config.method === "get") {
+                const start = (config.params.page - 1) * 100;
+                return { config, headers: {}, status: 200, statusText: "OK", data: { code: 0, data: { assets: remote.slice(start, start + 100), hasMore: start + 100 < remote.length }, msg: "ok" } };
+            }
+            expect(config.url).toBe("/assets/batch-delete");
+            batches++;
+            if (failSecond && batches === 2) return { config, headers: {}, status: 200, statusText: "OK", data: { code: 500, data: null, msg: "第二批失败" } };
+            const ids: string[] = JSON.parse(config.data);
+            remote = remote.filter((asset) => !ids.includes(asset.id));
+            return { config, headers: {}, status: 200, statusText: "OK", data: { code: 0, data: { ids }, msg: "ok" } };
+        };
+        const progress: number[] = [];
+        const pending = deleteAllArchivedAssets("batch-test-user", (count) => progress.push(count));
+        if (failSecond) await expect(pending).rejects.toThrow("第二批失败");
+        else expect(await pending).toBe(205);
+        expect(requests).toEqual(failSecond ? ["get", "get", "get", "post", "post"] : ["get", "get", "get", "post", "post", "post"]);
+        expect(progress).toEqual(failSecond ? [100] : [100, 200, 205]);
+        expect(remote).toHaveLength(failSecond ? 105 : 0);
+    });
+
+    test("分批清空期间切号，不向新账号发送下一批删除", async () => {
+        useUserStore.setState({ user: { id: "batch-test-user" } as NonNullable<ReturnType<typeof useUserStore.getState>["user"]> });
+        let deletes = 0;
+        apiClient.defaults.adapter = async (config) => {
+            const data = config.method === "get" ? { assets: Array.from({ length: 101 }, (_, index) => asset(`remote-${index}`)), hasMore: false } : { ids: JSON.parse(config.data) };
+            if (config.method === "post") deletes++;
+            return { config, headers: {}, status: 200, statusText: "OK", data: { code: 0, data, msg: "ok" } };
+        };
+        const counts: number[] = [];
+        await expect(
+            deleteAllArchivedAssets("batch-test-user", (count) => {
+                counts.push(count);
+                useUserStore.setState({ user: null });
+            }),
+        ).rejects.toThrow("账号已切换");
+        expect(deletes).toBe(1);
+        expect(counts).toEqual([100]);
+    });
     test("100 个素材只发一个 POST 数组请求，成功后只更新一次本地素材集合", async () => {
         const ids = Array.from({ length: 100 }, (_, i) => `asset-${i}`);
         useAssetStore.setState({ assets: [...ids.map(asset), asset("keep")] });
@@ -272,7 +377,8 @@ describe("素材批量删除", () => {
     test("素材页和选择器的批量及清空入口使用数组同步方法", () => {
         const page = readFileSync(new URL("../src/pages/assets/index.tsx", import.meta.url), "utf8");
         const picker = readFileSync(new URL("../src/components/assets/asset-library-picker-modal.tsx", import.meta.url), "utf8");
-        expect(page).toContain("deleteAssetsWithRemoteSync(trashAssets.map");
+        expect(page).toContain("deleteAllArchivedAssets(userId");
+        expect(page).toContain("loadAssetLibraryExport(viewMode");
         expect(page).toContain("const ids = [...selectedIds]");
         expect(page).toContain("deleteAssetsWithRemoteSync(ids)");
         expect(page).not.toContain("validAssets.filter((asset) => selectedIds.includes(asset.id))");

@@ -113,3 +113,16 @@ test("a generation target deleted while the task was running still reports a del
 
     expect(result.conflicts).toContainEqual({ kind: "node", id: "image", projectId: "canvas" });
 });
+
+test.each([undefined, 2])("a missing snapshot without a newer deletion accepts the generation result (tombstone %s)", (tombstone) => {
+    const before = node({ taskId: "task", status: "loading" });
+    const completed = node({ taskId: "task", status: "success", storageKey: "resource:image" });
+    const document = parseCanvasStorageDocument(null, [{ ...project(before), nodes: [] }]);
+    if (tombstone !== undefined) document.tombstones.nodes.canvas = { image: tombstone };
+
+    const result = rebaseCanvasProjects({ document, baseProjects: [project(before)], localProjects: [project(completed)], baseRevision: 2 });
+
+    expect(result.conflicts).toEqual([]);
+    expect(result.document.state.projects[0]!.nodes).toEqual([completed]);
+    expect(result.document.tombstones.nodes.canvas?.image).toBeUndefined();
+});

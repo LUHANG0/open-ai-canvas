@@ -8,6 +8,52 @@ import (
 	"yingce/backend/internal/model"
 )
 
+func TestCloudAgentCharacterDefinitionSchemaAndFeedback(t *testing.T) {
+	raw, err := json.Marshal(cloudAgentCharacterCreateSchema()["definition"])
+	if err != nil {
+		t.Fatal(err)
+	}
+	var definition map[string]any
+	if err := json.Unmarshal(raw, &definition); err != nil {
+		t.Fatal(err)
+	}
+	properties, ok := definition["properties"].(map[string]any)
+	if !ok || definition["additionalProperties"] != false {
+		t.Fatalf("character definition must declare its fields: %+v", definition)
+	}
+	if properties["role"].(map[string]any)["type"] != "string" || properties["aliases"].(map[string]any)["items"].(map[string]any)["type"] != "string" {
+		t.Fatalf("incorrect character field types: %+v", properties)
+	}
+	if required, ok := definition["required"]; ok && len(required.([]any)) != 0 {
+		t.Fatalf("definition fields must be optional: %+v", required)
+	}
+	for _, tc := range []struct{ definition, field, issue string }{
+		{`{"aliases":"private-sentinel"}`, "definition.aliases", "type_mismatch"},
+		{`{"appearance":42}`, "definition.appearance", "type_mismatch"},
+		{`{"unknown":"value"}`, "", ""},
+	} {
+		t.Run(tc.field, func(t *testing.T) {
+			call := cloudAgentCall{ID: "character"}
+			call.Function.Name = "canvas_create_character"
+			call.Function.Arguments = `{"nodeId":"card","name":"Hero","imageNodeId":"portrait","definition":` + tc.definition + `}`
+			_, err := prepareCloudAgentCharacterCreate(nil, "user", "canvas", call)
+			if err == nil {
+				t.Fatal("invalid definition accepted before ownership and approval checks")
+			}
+			state := &cloudAgentRuntime{Canonical: canonicalAgentRequest{Tools: cloudAgentTools(agentTestRequest())}}
+			cloudAgentToolResult("run", state, call, nil, err)
+			content := state.Canonical.Messages[0]["content"].(string)
+			var result map[string]any
+			if err := json.Unmarshal([]byte(content), &result); err != nil {
+				t.Fatal(err)
+			}
+			if (tc.field != "" && (result["field"] != tc.field || result["issue"] != tc.issue)) || result["reason"] != "invalid_tool_arguments" || strings.Contains(content, "private-sentinel") {
+				t.Fatalf("incorrect repair feedback: %s", content)
+			}
+		})
+	}
+}
+
 func TestCloudAgentCreatesCharacterCardFromCanvasMedia(t *testing.T) {
 	s, db, _, _ := creationTestService(t)
 	doc := map[string]any{"nodes": []any{

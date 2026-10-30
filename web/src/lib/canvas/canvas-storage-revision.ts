@@ -239,7 +239,8 @@ function mergeEntities<T extends { id: string }>(input: {
         if (!local || (base && deepEqual(base, local))) continue;
 
         if (!durable) {
-            if (base || (input.tombstones[id] ?? 0) > input.baseRevision) {
+            // A prior read is not proof of deletion; only a newer tombstone is.
+            if ((input.tombstones[id] ?? 0) > input.baseRevision) {
                 // A local recreation is still user work. Record the concurrent
                 // deletion, but keep the node and clear the stale tombstone so a
                 // later rebase cannot suppress the same ID forever.
