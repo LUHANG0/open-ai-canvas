@@ -74,6 +74,7 @@
 功能、代码地图、待办、待测试分别维护在以下页面；尚未建立的专题会在对应任务中补齐：
 
 - [AI 审美批改画布插件](content/docs/plugins/ai-art-critique.mdx)
+- [协议插件源码与发行包](content/docs/plugins/protocol-packaging.mdx)：正式来源选择、文档生成、视频协议重建和线上生效边界。
 - [夜总会协议插件](content/docs/backend/yezonghui.mdx)
 - [4SToken 协议插件](content/docs/backend/4stoken.mdx)
 - [Drama API 协议插件](content/docs/backend/drama-api.mdx)
