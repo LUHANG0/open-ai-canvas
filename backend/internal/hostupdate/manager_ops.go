@@ -442,7 +442,8 @@ func (m *Manager) createBackup(version string) (Backup, error) {
 	if err != nil {
 		return Backup{}, err
 	}
-	if err := m.compose(m.composePath(), version, m.config.StepTimeout, dataEntry, "exec", "-T", "--user", "root", "backend", "tar", "-C", "/data", "-cf", "-", "."); err != nil {
+	// Backend 已停止；复用旧镜像与原数据卷，只执行 tar，不启动业务或依赖服务。
+	if err := m.compose(m.composePath(), version, m.config.StepTimeout, dataEntry, "run", "--rm", "--no-deps", "--pull", "never", "-T", "--user", "root", "--entrypoint", "tar", "backend", "-C", "/data", "-cf", "-", "."); err != nil {
 		return Backup{}, fmt.Errorf("备份数据目录：%w", err)
 	}
 	if err := archive.Close(); err != nil {
@@ -705,6 +706,61 @@ func setEnvValue(path, key, value string) error {
 		return err
 	}
 	return os.Rename(temporaryName, path)
+}
+
+// Prepare both files before replacing either rollback config. If the second
+// replacement fails, restore the first so LastBackup still names a matching pair.
+func (m *Manager) savePreviousDeployment() error {
+	return m.replacePreviousDeployment(replaceFile)
+}
+
+func (m *Manager) replacePreviousDeployment(copyFile func(string, string, os.FileMode) error) error {
+	stage, err := os.MkdirTemp(m.config.StateDir, ".rollback-config-*")
+	if err != nil {
+		return fmt.Errorf("准备旧部署配置：%w", err)
+	}
+	defer os.RemoveAll(stage)
+	nextCompose, nextEnv := filepath.Join(stage, "next-compose"), filepath.Join(stage, "next-env")
+	for _, file := range [][2]string{{m.composePath(), nextCompose}, {m.envPath(), nextEnv}} {
+		if err := copyFile(file[0], file[1], 0o600); err != nil {
+			return fmt.Errorf("暂存旧部署配置：%w", err)
+		}
+	}
+	oldCompose := filepath.Join(stage, "earlier-compose")
+	hadCompose := false
+	for _, file := range [][2]string{{m.previousComposePath(), oldCompose}, {m.previousEnvPath(), filepath.Join(stage, "earlier-env")}} {
+		if err := copyFile(file[0], file[1], 0o600); err != nil {
+			if os.IsNotExist(err) {
+				continue
+			}
+			return fmt.Errorf("保留先前回退配置：%w", err)
+		}
+		if file[0] == m.previousComposePath() {
+			hadCompose = true
+		}
+	}
+	if err := copyFile(nextCompose, m.previousComposePath(), 0o600); err != nil {
+		return fmt.Errorf("保存旧 Compose 配置：%w", err)
+	}
+	if err := copyFile(nextEnv, m.previousEnvPath(), 0o600); err != nil {
+		cause := fmt.Errorf("保存旧部署环境：%w", err)
+		var restoreErr error
+		if hadCompose {
+			restoreErr = copyFile(oldCompose, m.previousComposePath(), 0o600)
+		} else {
+			restoreErr = os.Remove(m.previousComposePath())
+		}
+		if restoreErr != nil {
+			// Do not offer a rollback whose config no longer matches its backup.
+			m.mu.Lock()
+			m.state.LastBackup, m.state.RollbackVersion = nil, ""
+			_ = m.saveStateLocked()
+			m.mu.Unlock()
+			return errors.Join(cause, fmt.Errorf("先前回退配置恢复失败，已禁用人工回退：%w", restoreErr))
+		}
+		return cause
+	}
+	return nil
 }
 
 func replaceFile(source, target string, mode os.FileMode) error {

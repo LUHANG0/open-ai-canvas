@@ -15,14 +15,20 @@ description: Host Updater、Release 检查、数据库备份迁移、健康验�
 
 1. 从 GitHub Releases 读取包含预览版在内的最高语义版本，并与 `.env` 中固定的 `CANVAS_IMAGE_TAG` 比较。`sha-*` 这类非正式镜像标签一律视为低于正式 Release，避免把 `vsha-5509b17` 字典序比较成比 `v1.5.0` 更新。
 2. 下载目标版本的 `docker-compose.deploy.yml`，执行 `docker compose config --quiet`，检查部署文件、磁盘空间和当前版本。当前标签不是 `vX.Y.Z` 或 `vX.Y.Z.N` 时，健康检查只确认服务就绪，不要求构建号和镜像标签逐字相同。
-3. 创建 `backup-YYYYMMDD-HHMMSS.zip.partial`，其中包含 PostgreSQL custom-format dump、后端数据目录 tar 和元数据；写入完成后 `fsync`、原子改名，并复核 ZIP 结构和 SHA-256。
-4. 拉取目标 backend/web 镜像并要求存在仓库 `sha256` 摘要。任何失败都在停服前中止。
-5. 停止 web/backend，等待 Backend 的 SIGTERM drain 完成；PostgreSQL 和 Redis 保持运行。
+3. 拉取目标 backend/web/yingce-agent 镜像并要求存在仓库 `sha256` 摘要；下载期间旧服务继续运行，准备失败在停服前中止。
+4. 停止 web/backend/yingce-agent，等待旧服务退出；PostgreSQL 和 Redis 保持运行。
+5. 创建停服后的 `backup-YYYYMMDD-HHMMSS.zip.partial`，包含 PostgreSQL custom-format dump、后端数据目录 tar 和元数据；写入完成后 `fsync`、原子改名，并复核 ZIP 结构和 SHA-256。保存旧 Compose 与部署环境后才进入迁移。
 6. 用目标 backend 镜像独立执行 `migrate-schema up`。整批迁移在事务和 PostgreSQL advisory lock 内完成，迁移名称与 checksum 必须匹配。
-7. 解析目标 backend/web 镜像的仓库 digest，原子更新 `CANVAS_IMAGE_TAG`、`CANVAS_BACKEND_IMAGE`、`CANVAS_WEB_IMAGE` 和 Compose 文件，启动目标版本；运行容器始终使用 `image@sha256:...`，不使用 `latest`。
+7. 将目标 backend/web/yingce-agent 的仓库 digest 写入 `CANVAS_BACKEND_IMAGE`、`CANVAS_WEB_IMAGE`、`CANVAS_YINGCE_AGENT_IMAGE`，更新 `CANVAS_IMAGE_TAG` 和 Compose 文件后启动目标版本；运行容器使用 `image@sha256:...`，不使用 `latest`。各文件使用临时文件原子替换，多个文件不是一个文件系统事务。
 8. 连续检查 `/api/health/ready` 的数据库、运行时、schema 和 build version，并经过稳定窗口后才标记成功。
 
 更新状态写入 `/var/lib/open-ai-canvas-updater/state.json`。Backend 或浏览器在切换期间断线不会终止宿主机操作，恢复后可继续读取日志。
+
+停止服务、最终备份或旧配置保存失败且尚未开始迁移时，直接启动原容器并验证健康，不恢复旧数据库快照。原容器恢复失败会进入 `manual_intervention`。备份耗时计入停服窗口。
+
+旧 Compose 与环境文件先暂存、检查先前回退配置，再逐个替换。环境文件替换失败时恢复先前 Compose，避免旧备份与新配置混用；连先前 Compose 也无法恢复时，清除人工回退记录并保留错误。这个错误恢复机制不等同断电时的跨文件原子事务；进程中断后的 `manual_intervention` 仍需检查现场。
+
+数据目录归档通过原 backend 镜像的一次性容器执行 `tar`，挂载原数据卷，不启动业务入口或依赖服务，不重新拉取镜像；不再依赖已停止容器上的 `exec`。归档命令只读取数据，但没有把原 Compose 的读写挂载自动改为只读挂载。
 
 ## 自动回退
 
@@ -32,10 +38,14 @@ description: Host Updater、Release 检查、数据库备份迁移、健康验�
 2. 恢复更新前保存的 Compose 文件；
 3. 恢复更新前保存的 `.env`，确保 backend/web 镜像仍绑定到原 digest；
 4. 再次校验备份 ZIP 和 SHA-256；
-5. 使用 `pg_restore --clean --if-exists` 恢复 PostgreSQL；
+5. 删除并重建目标业务数据库，再使用 `pg_restore --no-owner --no-privileges` 恢复 PostgreSQL；系统数据库名称会被拒绝；
 6. 启动旧服务并重新进行稳定窗口验证。
 
 回退任一步失败时状态变为 `manual_intervention`，不伪造成功。管理后台仅在存在旧版本和已校验备份时开放人工回退按钮。
+
+该备份覆盖旧服务停止前的写入。新版本启动后产生的业务写入不在此快照中，历史备份回退仍可能覆盖这些写入。当前自动恢复路径只恢复数据库，ZIP 中的数据目录 tar 保留供独立恢复；不能把 ZIP 归档成功当作数据库和文件完整恢复已通过。启用更新器前，应在目标部署的隔离副本完成升级及失败回退演练，并核对旧 Compose、环境文件与备份记录对应关系。
+
+专项回归入口是 `cd backend && go test -count=1 ./internal/hostupdate`，覆盖退出前最终写入、下载与摘要失败、停服失败、备份失败、旧配置保存失败和原容器恢复失败。命令执行器与健康响应使用隔离替身；它不替代真实 Docker、PostgreSQL 与目标镜像演练。
 
 ## 安装与升级约束
 
