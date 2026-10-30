@@ -1,4 +1,4 @@
-Open AI Canvas
+MengCeng (梦层) — independently maintained fork of Open AI Canvas
 Copyright (C) 2026 ddcat and contributors
 
 This project is licensed under the MIT License.
@@ -6,10 +6,12 @@ The complete license text is provided in LICENSE.
 
 This distribution includes third-party and inherited material under permissive open-source licenses. Required copyright and license notices are retained in LICENSE files and in the corresponding package directories.
 
-Material changes in this repository are maintained by the Open AI Canvas contributors. They include a multi-user Go backend, task processing and analytics, private resource storage, canvas sharing, film-production workflows, canvas UI refactoring, and cloud Agent integrations.
+Inherited changes from Open AI Canvas contributors include a multi-user Go backend, task processing and analytics, private resource storage, canvas sharing, film-production workflows, canvas UI refactoring, and cloud Agent integrations.
 
 Third-party packages remain subject to the licenses declared by their respective authors. Product names and logos under web/public/icons are the property of their respective owners and do not imply endorsement.
 
 Glow Sans SC / 未来荧黑 v0.93 — SIL Open Font License 1.1
 Source: https://github.com/welai/glow-sans
 Locally hosted WOFF2 subsets; copyright and complete license: web/public/brand/fonts/GlowSans-OFL.txt
+
+MengCeng-specific changes are maintained by LUHANG0 in https://github.com/LUHANG0/open-ai-canvas. These include the MengCeng brand site and publishing workflow, account-scoped creation persistence, invitation/pricing workflow adaptations, and custom release/publication integration. Upstream sponsorship and contributor records are preserved in docs/upstream-credits.md as historical attribution, not current support or endorsement.

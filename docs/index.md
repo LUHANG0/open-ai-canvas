@@ -1,6 +1,6 @@
-# 影策 · AI 文档索引
+# 梦层 MengCeng · 文档索引
 
-面向 AI 的短索引。详细文档维护规则见 [AGENTS.md](../AGENTS.md) 第 9 节「文档与交付」。
+面向使用、开发与运维的专题入口。梦层由 [LUHANG0/open-ai-canvas](https://github.com/LUHANG0/open-ai-canvas) 维护，当前功能分支为 `codex/upstream-v1.7.2-fixes`；源码实现、设计提案与生产验收分别核对。详细文档维护规则见 [AGENTS.md](../AGENTS.md) 第 9 节「文档与交付」。
 
 - [创作页历史跨设备同步](content/docs/backend/creation-conversation-sync.mdx)：账号历史、旧本地迁移、逐消息修订、删除防复活及媒体引用边界。
 - [用户注册邀请](content/docs/backend/registration-invitations.mdx)：管理员单次邀请、关闭公开注册时的验证、固定积分、事务与迁移回退边界。
@@ -9,11 +9,10 @@
 
 ## 部署与更新入口
 
-- [梦层自建镜像部署](content/docs/backend/mengceng-self-hosting.mdx)：当前 Fork 的自建镜像选择、共享宝塔主机隔离、构建补充层和验收边界；该明确选择优先于下述通用默认方案。
+- [梦层自建部署](content/docs/backend/mengceng-self-hosting.mdx)：维护分支的源码安装、已有站点配置保留、独立组件发布和验收边界。
 
-用户要求部署服务器时，默认使用官方 Release 镜像、`docker-compose.deploy.yml` 和 Host Updater。本地 SQLite 构建与自定义 Compose 不属于后台在线更新管理范围。
+梦层使用本仓库源码构建的独立组件镜像与站点专用配置。服务器发布先核对实际 Compose、环境、数据库、挂载、站点分发与恢复依据；二改 Host Updater 需按本机发布合同独立验收并安装启用。上游默认 Release 安装方式不作为梦层升级入口。
 
-- [Docker 部署](content/docs/overview/docker.mdx)：默认服务器方案、Compose 选择与已有部署核对。
 - [在线更新与安全回退](content/docs/backend/system-update.mdx)：受管部署条件、安装、备份、迁移和回退。
 - [本地开发](content/docs/backend/local-development.mdx)：宿主机与热更新开发环境。
 
@@ -64,7 +63,7 @@
 
 ## 本地协作文档（不随仓库分发）
 
-- [beautifului 创作设计](beautifului-creation-design.md)：本地设计参考，未纳入版本控制。
+本地设计参考不作为随仓库分发的文档入口。
 
 ## 按约定维护的文档（`docs/content/docs/`）
 
@@ -83,8 +82,12 @@
 - [HTTP API 合同](content/docs/backend/http-api.mdx)
 - [后端数据库](content/docs/backend/backend-database.mdx)
 - [代码地图](content/docs/backend/code-map.mdx)
-- [待办](content/docs/progress/todo.mdx)
 - [待测试](content/docs/progress/pending-test.mdx)
 - [上游选择性整合记录](content/docs/progress/upstream-v1-7-2-integration.mdx)：以梦层二改为基线的 v1.7.2 修复取舍、v1.7.3 原任务恢复与结果下载，以及各批验证边界。
 
 - [登录与注册人机验证](content/docs/backend/turnstile.mdx)
+
+## 来源与参与
+
+- [仓库首页](../README.md) · [贡献指南](../CONTRIBUTING.md) · [梦层安全报告](../SECURITY.md)
+- [上游来源与历史致谢](upstream-credits.md)：保留原项目资料，区分梦层维护入口。

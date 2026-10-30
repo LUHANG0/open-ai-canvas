@@ -5,6 +5,7 @@ open-storyboard-canvas/
 docs/*
 !docs/design/
 !docs/index.md
+!docs/upstream-credits.md
 !docs/adr/
 !docs/plans/
 # Keep the new plugin design spec versioned without unignoring generated docs.
@@ -18,6 +19,7 @@ docs/content/docs/plugins/*
 # Keep the task stability runbook versioned without unignoring generated docs.
 !docs/content/docs/backend/
 docs/content/docs/backend/*
+!docs/content/docs/backend/mengceng-self-hosting.mdx
 !docs/content/docs/backend/skill-curation.mdx
 !docs/content/docs/backend/task-runtime-stability.mdx
 !docs/content/docs/backend/agent-prompt-policy.mdx

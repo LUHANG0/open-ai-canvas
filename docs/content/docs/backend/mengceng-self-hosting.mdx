@@ -1,0 +1,75 @@
+---
+title: 梦层自建部署
+description: 从梦层维护分支构建、保留站点配置，并按独立组件发布与恢复。
+---
+
+# 梦层自建部署
+
+梦层由 `LUHANG0/open-ai-canvas` 维护，当前功能分支为 `codex/upstream-v1.7.2-fixes`。本文针对梦层源码与自建镜像。上游仓库的 Release、镜像和默认更新渠道另有发布合同，不能据此判断梦层站点的实际版本。
+
+## 部署结构
+
+生产基础编排为根目录 `docker-compose.deploy.yml`，源码构建叠加层为 `docker-compose.build.yml`，服务包括 PostgreSQL、Redis、一次性迁移、独立 Agent、Backend 和 Web。站点可能额外使用运维叠加文件、共享环境、独立 nginx 和 CDN 回源规则；已有站点必须保留其实际文件顺序、project 与挂载。
+
+本地开发用 `docker-compose.dev.yml`，本地构建试运行用 `docker-compose.local.yml`。这些用途与服务器发布不同，不能通过替换文件名将一套已有 SQLite 部署直接转换成受管 PostgreSQL 部署。
+
+## 全新独立服务器
+
+以下步骤仅适合**尚无梦层数据与服务的独立 Linux 服务器**。在共享宝塔主机或已有部署上，先盘点端口、数据、反向代理与原服务，再设计站点专用叠加层；不要直接重跑首次安装器。
+
+从维护分支取出并审阅源码：
+
+```bash
+git clone --branch codex/upstream-v1.7.2-fixes https://github.com/LUHANG0/open-ai-canvas.git
+cd open-ai-canvas
+git status --short
+git rev-parse HEAD
+```
+
+`scripts/install-server.sh` 保留了上游默认仓库值，调用时必须显式指定梦层仓库与分支。审阅该脚本、`.env.example` 和两个部署 Compose 后，在新服务器上执行本地脚本：
+
+```bash
+sudo env \
+  REPOSITORY_URL=https://github.com/LUHANG0/open-ai-canvas.git \
+  REPOSITORY_REF=codex/upstream-v1.7.2-fixes \
+  INSTALL_DIR=/opt/mengceng \
+  CANVAS_HTTP_PORT=3000 \
+  bash scripts/install-server.sh
+```
+
+此源码安装路径会安装所需系统软件和 Docker，生成私有环境配置，构建本仓库镜像并启动服务；它不安装 Host Updater。运行前应确认安装目录为空且端口未被使用。首次安装后设置 HTTPS、明确 CORS 来源、对外站点地址，并在受控环境创建首个管理员。数据库、Redis 和 Backend 留在内部网络，公网通过 Web 与反向代理访问。
+
+自建镜像和脚本中的本地 tag 只是构建入口。用于受控更新时，还要记录每个实际镜像内容 ID、独立组件提交与构建证据，按[系统更新合同](system-update.mdx)制作不可变清单。不能把一个源码目录的 HEAD 当作所有正在运行组件的版本。
+
+## 已有站点的发布准备
+
+先核对以下信息，再决定是否构建或切换：
+
+- 当前 Web、Backend、Agent 的实际容器、镜像内容 ID、独立版本与完整提交。
+- Compose 文件完整顺序、project、环境文件、数据库版本、Redis、数据挂载与站点 nginx/CDN 规则。
+- 当前与回退版本、数据库和素材备份、加密密钥，以及可用磁盘和必要恢复空间。
+- 本次变更涉及的服务、迁移、素材、生成、账号与收费合同，以及已执行和未执行的验收范围。
+
+在隔离副本验证必要的迁移、备份恢复与失败回退。候选使用明确的源码快照和不可变镜像；保留配置、挂载和旧资源，按受影响组件切换。上线后核对实际运行版本、就绪状态、公开 HTML/资源、保存与受影响业务入口。
+
+仅前端或 Agent 的代码回退保留上线后的新业务写入。后端涉及数据库时，按具体事务与恢复合同处理；历史备份不能直接覆盖已有新数据的生产库。外部对象存储、支付、模型生成和跨设备链路分别验收，不能从健康检查推断。
+
+## 二改更新器
+
+完整入口见[二改部署的本机发布合同](system-update.mdx#二改部署的本机发布合同)。它使用可信宿主 profile、前后组件清单、冻结 Compose、私有回执和专用站点发布适配器，保留独立组件版本与现有配置。
+
+`scripts/mengceng-web-publisher.py` 适用于当前共享 Web 目录与 nginx CDN 回源结构。它核对源站/CDN 的入口、预加载、资源字节、缓存与回退；不会上传用户素材或执行 DNS/CDN 管理操作。单独的脚本测试、四阶段容器验收、完整更新器联动和生产实际启用是不同验证范围。
+
+正式启用前还须审阅服务定义、Socket 与 Token 挂载、目录权限、构建来源、实际配置、数据库、挂载、恢复依据，以及目标环境的发布与回退验收。本文不代表任何站点已经安装或启用更新器。上游标准安装器不会自动替梦层完成这些工作，不能仅将仓库名改成 fork 后直接套用。
+
+## 运维命令与证据
+
+命令应使用该站点真实的 project、私有环境文件和全部叠加文件。例如在完成上述新服务器源码安装后，按安装结果核对实际文件，再查看状态和日志；已有定制站点应使用其运维记录中的命令。
+
+```bash
+cd /opt/mengceng
+docker compose --env-file .env \
+  -f docker-compose.deploy.yml -f docker-compose.build.yml ps
+```
+
+发布证据至少区分：源码提交、推送分支、构建组件、已上线组件、数据库版本、实际验收、未验证范围和仍需保留的临时资源。记录放在受保护的运维目录，凭据、数据库、素材、备份与私有回执不进入 Git。
