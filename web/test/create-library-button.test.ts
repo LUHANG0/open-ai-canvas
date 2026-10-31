@@ -123,7 +123,8 @@ describe("creation library button", () => {
         expect(styles).not.toContain(".creation-reference-track:not(.is-expanded) .creation-reference-stack-card:nth-child(n+5) { display: block; }");
         expect(source).toContain("isExpanded: true");
         expect(source).toContain("else if (!hadAttachments) setReferencePanelExpanded(true)");
-        expect(styles).toContain("creation-reference-filter-tabs button.is-active::after");
+        expect(source).toContain("aria-pressed={referenceFilter === filter.id}");
+        expect(source).toContain('data-slot="control-item"');
     });
 
     test("resolves remote asset images from their stable resource key", () => {

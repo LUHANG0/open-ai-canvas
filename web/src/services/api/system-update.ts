@@ -19,6 +19,7 @@ export type UpdatePhase =
     | "manual_intervention";
 
 export type SystemUpdateRelease = {
+	components?: Record<string, { image: string; version: string; commit: string }>;
     version: string;
     name: string;
     body: string;
@@ -64,6 +65,7 @@ export type SystemUpdateOperation = {
 };
 
 export type SystemUpdateStatus = {
+	components?: SystemUpdateRelease["components"];
     supported: boolean;
     connected: boolean;
     repository: string;

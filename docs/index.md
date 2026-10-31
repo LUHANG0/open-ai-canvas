@@ -1,6 +1,6 @@
-# 影策 · AI 文档索引
+# 梦层 MengCeng · 文档索引
 
-面向 AI 的短索引。详细文档维护规则见 [AGENTS.md](../AGENTS.md) 第 9 节「文档与交付」。
+面向使用、开发与运维的专题入口。梦层由 [LUHANG0/open-ai-canvas](https://github.com/LUHANG0/open-ai-canvas) 维护，当前功能分支为 `codex/upstream-v1.7.2-fixes`；源码实现、设计提案与生产验收分别核对。详细文档维护规则见 [AGENTS.md](../AGENTS.md) 第 9 节「文档与交付」。
 
 - [画布视频播放](content/docs/overview/canvas-video-playback.mdx)：统一悬浮与正式播放、空白单击暂停、进度恢复和会话资源边界。
 - [创作页历史跨设备同步](content/docs/backend/creation-conversation-sync.mdx)：账号历史、旧本地迁移、逐消息修订、删除防复活及媒体引用边界。
@@ -10,12 +10,12 @@
 
 ## 部署与更新入口
 
-- [梦层自建镜像部署](content/docs/backend/mengceng-self-hosting.mdx)：当前 Fork 的自建镜像选择、共享宝塔主机隔离、构建补充层和验收边界；该明确选择优先于下述通用默认方案。
+- [梦层自建部署](content/docs/backend/mengceng-self-hosting.mdx)：维护分支的源码安装、已有站点配置保留、独立组件发布和验收边界。
 
-用户要求部署服务器时，默认使用官方 Release 镜像、`docker-compose.deploy.yml` 和 Host Updater。本地 SQLite 构建与自定义 Compose 不属于后台在线更新管理范围。
+梦层使用本仓库源码构建的独立组件镜像与站点专用配置。服务器发布先核对实际 Compose、环境、数据库、挂载、站点分发与恢复依据；二改 Host Updater 需按本机发布合同独立验收并安装启用。上游默认 Release 安装方式不作为梦层升级入口。
 
-- [Docker 部署](content/docs/overview/docker.mdx)：默认服务器方案、Compose 选择与已有部署核对。
 - [在线更新与安全回退](content/docs/backend/system-update.mdx)：受管部署条件、安装、备份、迁移和回退。
+- [梦层更新器启用与首发清单](content/docs/backend/mengceng-updater-activation.mdx)：服务权限、后端 Socket 接通、撤销启用及首次业务发布。
 - [本地开发](content/docs/backend/local-development.mdx)：宿主机与热更新开发环境。
 
 ## 设计沉淀
@@ -65,7 +65,7 @@
 
 ## 本地协作文档（不随仓库分发）
 
-- [beautifului 创作设计](beautifului-creation-design.md)：本地设计参考，未纳入版本控制。
+本地设计参考不作为随仓库分发的文档入口。
 
 ## 按约定维护的文档（`docs/content/docs/`）
 
@@ -75,6 +75,7 @@
 功能、代码地图、待办、待测试分别维护在以下页面；尚未建立的专题会在对应任务中补齐：
 
 - [AI 审美批改画布插件](content/docs/plugins/ai-art-critique.mdx)
+- [协议插件源码与发行包](content/docs/plugins/protocol-packaging.mdx)：正式来源选择、文档生成、视频协议重建和线上生效边界。
 - [夜总会协议插件](content/docs/backend/yezonghui.mdx)
 - [4SToken 协议插件](content/docs/backend/4stoken.mdx)
 - [Drama API 协议插件](content/docs/backend/drama-api.mdx)
@@ -83,8 +84,12 @@
 - [HTTP API 合同](content/docs/backend/http-api.mdx)
 - [后端数据库](content/docs/backend/backend-database.mdx)
 - [代码地图](content/docs/backend/code-map.mdx)
-- [待办](content/docs/progress/todo.mdx)
 - [待测试](content/docs/progress/pending-test.mdx)
 - [上游选择性整合记录](content/docs/progress/upstream-v1-7-2-integration.mdx)：以梦层二改为基线的 v1.7.2 修复取舍、v1.7.3 原任务恢复与结果下载，以及各批验证边界。
 
 - [登录与注册人机验证](content/docs/backend/turnstile.mdx)
+
+## 来源与参与
+
+- [仓库首页](../README.md) · [贡献指南](../CONTRIBUTING.md) · [梦层安全报告](../SECURITY.md)
+- [上游来源与历史致谢](upstream-credits.md)：保留原项目资料，区分梦层维护入口。

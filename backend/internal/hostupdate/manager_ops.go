@@ -72,6 +72,10 @@ func (m *Manager) latestRelease(ctx context.Context) (*Release, error) {
 }
 
 func (m *Manager) currentVersion() (string, error) {
+	if m.custom != nil {
+		r, err := m.currentCustomRelease()
+		return r.ID, err
+	}
 	values, err := readEnvFile(m.envPath())
 	if err != nil {
 		return "", err
@@ -276,15 +280,24 @@ func (m *Manager) composeWithImages(composePath, imageTag string, images deploym
 		}
 		defer os.Remove(envFile)
 	}
-	args := []string{"compose", "--project-name", composeProjectName(m.config.InstallDir), "--env-file", envFile, "-f", composePath}
+	args := []string{"compose", "--project-name", m.projectName(), "--env-file", envFile, "-f", composePath}
+	if m.custom != nil {
+		args = append(args, "--project-directory", m.custom.ProjectDirectory)
+	}
 	args = append(args, arguments...)
 	var stderr bytes.Buffer
 	if stdout == nil {
 		stdout = io.Discard
 	}
 	environment := []string{"CANVAS_IMAGE_TAG=" + strings.TrimPrefix(imageTag, "v")}
+	if m.custom != nil {
+		environment = nil
+	}
 	err := m.runner.Run(ctx, "docker", args, environment, stdout, &stderr)
 	if err != nil {
+		if m.custom != nil {
+			return fmt.Errorf("docker compose %s 失败（详细输出不公开）", strings.Join(arguments, " "))
+		}
 		message := strings.TrimSpace(stderr.String())
 		if len(message) > 1000 {
 			message = message[len(message)-1000:]
@@ -429,12 +442,10 @@ func (m *Manager) createBackup(version string) (Backup, error) {
 	if err != nil {
 		return Backup{}, err
 	}
-	values, err := readEnvFile(m.envPath())
+	postgresUser, postgresDB, err := m.postgresIdentity()
 	if err != nil {
 		return Backup{}, err
 	}
-	postgresUser := firstNonEmpty(values["POSTGRES_USER"], "open_ai_canvas")
-	postgresDB := firstNonEmpty(values["POSTGRES_DB"], "open_ai_canvas")
 	if err := m.compose(m.composePath(), version, m.config.StepTimeout, databaseEntry, "exec", "-T", "postgres", "pg_dump", "-U", postgresUser, "-d", postgresDB, "-Fc"); err != nil {
 		return Backup{}, fmt.Errorf("备份 PostgreSQL：%w", err)
 	}
@@ -442,7 +453,8 @@ func (m *Manager) createBackup(version string) (Backup, error) {
 	if err != nil {
 		return Backup{}, err
 	}
-	if err := m.compose(m.composePath(), version, m.config.StepTimeout, dataEntry, "exec", "-T", "--user", "root", "backend", "tar", "-C", "/data", "-cf", "-", "."); err != nil {
+	// Backend 已停止；复用旧镜像与原数据卷，只执行 tar，不启动业务或依赖服务。
+	if err := m.compose(m.composePath(), version, m.config.StepTimeout, dataEntry, "run", "--rm", "--no-deps", "--pull", "never", "-T", "--user", "root", "--entrypoint", "tar", "backend", "-C", "/data", "--exclude=./.host-updater-recovery-*", "-cf", "-", "."); err != nil {
 		return Backup{}, fmt.Errorf("备份数据目录：%w", err)
 	}
 	if err := archive.Close(); err != nil {
@@ -538,12 +550,10 @@ func (m *Manager) restoreDatabase(backup Backup) error {
 		return err
 	}
 	defer reader.Close()
-	values, err := readEnvFile(m.envPath())
+	postgresUser, postgresDB, err := m.postgresIdentity()
 	if err != nil {
 		return err
 	}
-	postgresUser := firstNonEmpty(values["POSTGRES_USER"], "open_ai_canvas")
-	postgresDB := firstNonEmpty(values["POSTGRES_DB"], "open_ai_canvas")
 	if postgresDB == "postgres" || strings.HasPrefix(postgresDB, "template") {
 		return fmt.Errorf("拒绝覆盖 PostgreSQL 系统数据库 %q", postgresDB)
 	}
@@ -555,10 +565,17 @@ func (m *Manager) restoreDatabase(backup Backup) error {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), m.config.StepTimeout)
 	defer cancel()
-	args := []string{"compose", "--env-file", m.envPath(), "-f", m.composePath(), "exec", "-T", "postgres", "pg_restore", "-U", postgresUser, "-d", postgresDB, "--no-owner", "--no-privileges"}
+	args := []string{"compose", "--project-name", m.projectName(), "--env-file", m.envPath(), "-f", m.composePath()}
+	if m.custom != nil {
+		args = append(args, "--project-directory", m.custom.ProjectDirectory)
+	}
+	args = append(args, "exec", "-T", "postgres", "pg_restore", "-U", postgresUser, "-d", postgresDB, "--no-owner", "--no-privileges")
 	var stderr bytes.Buffer
 	command := execCommandWithInput{runner: m.runner, input: reader}
 	if err := command.Run(ctx, "docker", args, []string{"CANVAS_IMAGE_TAG=" + strings.TrimPrefix(backup.Version, "v")}, io.Discard, &stderr); err != nil {
+		if m.custom != nil {
+			return errors.New("恢复 PostgreSQL 失败（详细输出不公开）；需人工核对恢复现场")
+		}
 		return fmt.Errorf("恢复 PostgreSQL：%s", strings.TrimSpace(stderr.String()))
 	}
 	return nil
@@ -585,7 +602,7 @@ func (c execCommandWithInput) Run(ctx context.Context, name string, args, enviro
 
 func (m *Manager) verifyHealthy(targetVersion string) error {
 	healthURL := m.healthURL()
-	deadline := time.Now().Add(10 * time.Minute)
+	deadline := time.Now().Add(m.config.HealthTimeout)
 	stableSince := time.Time{}
 	for time.Now().Before(deadline) {
 		if err := m.checkHealthOnce(healthURL, targetVersion); err != nil {
@@ -612,6 +629,10 @@ func (m *Manager) healthURL() string {
 }
 
 func (m *Manager) checkHealthOnce(healthURL, targetVersion string) error {
+	return m.checkHealthBuild(healthURL, targetVersion, "")
+}
+
+func (m *Manager) checkHealthBuild(healthURL, targetVersion, commit string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	request, _ := http.NewRequestWithContext(ctx, http.MethodGet, healthURL, nil)
@@ -626,8 +647,22 @@ func (m *Manager) checkHealthOnce(healthURL, targetVersion string) error {
 	var payload struct {
 		Code int `json:"code"`
 		Data struct {
+			Ready    bool `json:"ready"`
+			Started  bool `json:"started"`
+			Draining bool `json:"draining"`
+			Schema   struct {
+				Current  int  `json:"current"`
+				Expected int  `json:"expected"`
+				Ready    bool `json:"ready"`
+			} `json:"schema"`
+			Checks struct {
+				Database bool `json:"database"`
+				Runtime  bool `json:"runtime"`
+				Schema   bool `json:"schema"`
+			} `json:"checks"`
 			Build struct {
 				Version string `json:"version"`
+				Commit  string `json:"commit"`
 			} `json:"build"`
 		} `json:"data"`
 	}
@@ -637,8 +672,19 @@ func (m *Manager) checkHealthOnce(healthURL, targetVersion string) error {
 	if payload.Code != 0 {
 		return errors.New("健康接口业务状态异常")
 	}
-	if IsReleaseVersion(targetVersion) && payload.Data.Build.Version != "" && CompareVersions(payload.Data.Build.Version, targetVersion) != 0 {
+	if !payload.Data.Ready || !payload.Data.Started || payload.Data.Draining ||
+		!payload.Data.Schema.Ready || payload.Data.Schema.Current <= 0 || payload.Data.Schema.Current != payload.Data.Schema.Expected ||
+		!payload.Data.Checks.Database || !payload.Data.Checks.Runtime || !payload.Data.Checks.Schema {
+		return errors.New("健康接口尚未就绪或数据库、运行时、Schema 检查失败")
+	}
+	if IsReleaseVersion(targetVersion) && (payload.Data.Build.Version == "" || CompareVersions(payload.Data.Build.Version, targetVersion) != 0) {
 		return fmt.Errorf("运行版本仍为 %s，期望 %s", payload.Data.Build.Version, targetVersion)
+	}
+	if commit != "" && payload.Data.Build.Commit != commit {
+		return errors.New("运行后端提交与候选清单不一致")
+	}
+	if commit != "" && !IsReleaseVersion(targetVersion) && payload.Data.Build.Version != targetVersion {
+		return errors.New("运行后端版本与候选清单不一致")
 	}
 	return nil
 }
@@ -705,6 +751,61 @@ func setEnvValue(path, key, value string) error {
 		return err
 	}
 	return os.Rename(temporaryName, path)
+}
+
+// Prepare both files before replacing either rollback config. If the second
+// replacement fails, restore the first so LastBackup still names a matching pair.
+func (m *Manager) savePreviousDeployment() error {
+	return m.replacePreviousDeployment(replaceFile)
+}
+
+func (m *Manager) replacePreviousDeployment(copyFile func(string, string, os.FileMode) error) error {
+	stage, err := os.MkdirTemp(m.config.StateDir, ".rollback-config-*")
+	if err != nil {
+		return fmt.Errorf("准备旧部署配置：%w", err)
+	}
+	defer os.RemoveAll(stage)
+	nextCompose, nextEnv := filepath.Join(stage, "next-compose"), filepath.Join(stage, "next-env")
+	for _, file := range [][2]string{{m.composePath(), nextCompose}, {m.envPath(), nextEnv}} {
+		if err := copyFile(file[0], file[1], 0o600); err != nil {
+			return fmt.Errorf("暂存旧部署配置：%w", err)
+		}
+	}
+	oldCompose := filepath.Join(stage, "earlier-compose")
+	hadCompose := false
+	for _, file := range [][2]string{{m.previousComposePath(), oldCompose}, {m.previousEnvPath(), filepath.Join(stage, "earlier-env")}} {
+		if err := copyFile(file[0], file[1], 0o600); err != nil {
+			if os.IsNotExist(err) {
+				continue
+			}
+			return fmt.Errorf("保留先前回退配置：%w", err)
+		}
+		if file[0] == m.previousComposePath() {
+			hadCompose = true
+		}
+	}
+	if err := copyFile(nextCompose, m.previousComposePath(), 0o600); err != nil {
+		return fmt.Errorf("保存旧 Compose 配置：%w", err)
+	}
+	if err := copyFile(nextEnv, m.previousEnvPath(), 0o600); err != nil {
+		cause := fmt.Errorf("保存旧部署环境：%w", err)
+		var restoreErr error
+		if hadCompose {
+			restoreErr = copyFile(oldCompose, m.previousComposePath(), 0o600)
+		} else {
+			restoreErr = os.Remove(m.previousComposePath())
+		}
+		if restoreErr != nil {
+			// Do not offer a rollback whose config no longer matches its backup.
+			m.mu.Lock()
+			m.state.LastBackup, m.state.RollbackVersion = nil, ""
+			_ = m.saveStateLocked()
+			m.mu.Unlock()
+			return errors.Join(cause, fmt.Errorf("先前回退配置恢复失败，已禁用人工回退：%w", restoreErr))
+		}
+		return cause
+	}
+	return nil
 }
 
 func replaceFile(source, target string, mode os.FileMode) error {

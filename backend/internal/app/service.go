@@ -107,6 +107,8 @@ type Service struct {
 	modelAvailabilityMu      sync.RWMutex
 	modelAvailabilityCache   map[publicModelAvailabilityKey]*PublicModelAvailability
 	modelAvailabilityAt      time.Time
+	adminModelHealthMu       sync.Mutex
+	adminModelHealthCache    *AdminChannelModelHealthReport
 }
 
 const taskWorkerConcurrency = 3

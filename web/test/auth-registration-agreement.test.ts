@@ -14,7 +14,7 @@ describe("注册服务协议", () => {
         expect(submitIndex).toBeGreaterThan(agreementIndex);
         expect(source).toContain("[agreementAccepted, setAgreementAccepted] = useState(false)");
         expect(source).toContain("disabled={disabled || registerCountdown > 0 || !agreementAccepted}");
-        expect(source).toContain("if (registering.current || registerCountdown > 0) return;");
+        expect(source).toContain("if (registering.current || registerCountdown > 0 || disabled) return;");
         expect(source).toContain("disabled={!agreementAccepted}");
     });
 

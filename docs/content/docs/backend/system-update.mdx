@@ -1,9 +1,11 @@
 ---
 title: 在线更新与安全回退
-description: Host Updater、Release 检查、数据库备份迁移、健康验证与异常回退机制。
+description: 梦层二改 Host Updater、本机发布清单、站点分发、数据库迁移与恢复边界。
 ---
 
 # 在线更新与安全回退
+
+本文以 [梦层仓库](https://github.com/LUHANG0/open-ai-canvas) 的二改发布合同为主要入口。当前维护分支为 `codex/upstream-v1.7.2-fixes`。实际启用状态以宿主服务、Socket、profile 和运行版本现场核对，源码存在不代表生产已启用。
 
 管理后台的“系统配置 → 系统更新”只负责管理员鉴权、展示状态和发起操作。真正的 Docker、数据库备份与服务切换由宿主机上的 `open-ai-canvas-host-updater` 执行，业务后端不挂载 Docker Socket。
 
@@ -11,33 +13,218 @@ description: Host Updater、Release 检查、数据库备份迁移、健康验�
 管理员浏览器 → Backend 管理 API → 带 Token 的 Unix Socket → Host Updater → Docker Compose
 ```
 
-## 安全更新顺序
+## 二改部署的本机发布合同
+
+设置 `CANVAS_UPDATER_CUSTOM_PROFILE` 后，Host Updater 使用本机预先准备的候选清单，不查询 GitHub Release、不推断官方镜像、不下载或覆盖上游 Compose，也不进行更新器自更新。默认安装脚本只服务标准 GHCR 部署，显式传入此变量会拒绝安装。二改模式须使用经过本项目验收的二进制和独立服务配置；添加 profile 不等于已启用线上更新器。
+
+启用前还须在 root-only 的更新器服务环境文件中显式配置独立的 `CANVAS_UPDATER_STATE_DIR`、`CANVAS_UPDATER_BACKUP_DIR`、`CANVAS_UPDATER_SOCKET` 与本机 `CANVAS_UPDATER_HEALTH_URL`，并安全配置至少 32 字符的 `CANVAS_UPDATER_TOKEN`，让业务后端挂载对应 Socket 并使用同一凭据。不要沿用另一套更新器的状态目录，也不要把凭据放到命令行、清单或发布回执中。服务定义、目录访问权限与后端挂载必须单独审阅；本节不触发安装或启用 systemd。
+
+具体的安装准备、后端接通、撤销启用与首次发布步骤见[梦层更新器启用与首发清单](mengceng-updater-activation.mdx)。仓库提供服务和环境模板，站点私有安装包另按现场快照生成；模板存在不表示已启用服务。
+
+Profile 格式为 JSON，`format` 固定为 1。所有路径使用真实绝对路径；Compose 顺序、project 和 projectDirectory 必须与现有部署一致，不能经过会切换的 `current` 符号链接。源配置、共享环境与 profile 不放入更新器 StateDir，也不可由组或其他用户写入。以下路径仅为结构示例：
+
+```json
+{
+  "format": 1,
+  "projectName": "mengceng",
+  "projectDirectory": "/opt/mengceng/releases/release-a/source",
+  "composeFiles": [
+    "/opt/mengceng/releases/release-a/source/docker-compose.deploy.yml",
+    "/opt/mengceng/releases/release-a/source/docker-compose.build.yml",
+    "/opt/mengceng/releases/release-a/compose.production.yml"
+  ],
+  "envFile": "/opt/mengceng/shared/.env",
+  "currentRelease": "/opt/mengceng/ops/current-import.json",
+  "targetRelease": "/opt/mengceng/ops/candidate.json",
+  "webPublisher": "/opt/mengceng/ops/publish-web",
+  "webPublisherSha256": "<适配器文件的64位小写SHA-256>"
+}
+```
+
+当前清单和候选清单使用同一格式，完整列出 `backend`、`web`、`yingce-agent`，每个组件各有 `image`、`version`、`commit`。`image` 只接受本机 `sha256:<64位内容ID>` 或注册表 `repository@sha256:<64位摘要>`；不能使用 tag。`commit` 为完整 40 位小写 Git 提交，`version` 为该组件构建号，不要求三个组件相同。首次导入必须从实际容器、构建记录和就绪接口核对，不能从 source 目录的一个 HEAD 猜测全部组件。
+
+```json
+{
+  "format": 1,
+  "id": "release-b",
+  "basedOn": "release-a",
+  "components": {
+    "backend": { "image": "sha256:<后端内容ID>", "version": "v1.6.9.1", "commit": "<后端完整提交>" },
+    "web": { "image": "sha256:<前端内容ID>", "version": "web-20261031", "commit": "<前端完整提交>" },
+    "yingce-agent": { "image": "sha256:<Agent内容ID>", "version": "agent-20261030", "commit": "<Agent完整提交>" }
+  }
+}
+```
+
+示例中的尖括号须替换为真实值。部署 ID 与组件构建号只允许字母、数字、点、下划线和连字符，长度不超过 128。新候选的 `basedOn` 必须等于当前部署 ID；同一个 ID 不允许改内容。检查时保存清单内容摘要，开始更新时再次比较；候选被修改必须重新检查。清单只描述已构建、已授权的组件，不承载命令、安装程序、环境变量或自动合并源码的策略。
+
+执行时按顺序解析全部本地 Compose 与共享环境，将结果以 0600 权限冻结到 StateDir；删除 build 和 pull policy，以固定镜像运行。保留 Compose 导出时已生成的 `$` 转义，避免再次转义改变密码或命令；与容器运行值比对时还原转义。迁移服务明确绑定候选后端镜像，即使本地 overlay 中的 migrate 仍指向旧镜像。切换只启动列出的受影响业务服务，使用 `--no-deps --no-build --pull never`，不重建 PostgreSQL/Redis、不删除孤立服务，也不覆盖源 Compose、共享 `.env` 或原 release 指针。
+
+启用后的实际部署记录是 StateDir 内 `custom-current.json` 与 `custom-active-compose.json`。原 source/release 指针保留为输入和恢复依据；后续运维不能再把该指针的 HEAD 当作三个组件的实际版本。每次发布保留 `custom-release-*` 目录，内含前后清单、冻结配置、旧环境及站点回执。冻结配置包含已解析凭据，必须与数据库备份同样按敏感数据保护，不纳入源码或公开日志。
+
+切换前比对三个运行容器的镜像内容 ID、project、service、环境值、命令和数据挂载，检查就绪接口的后端版本与完整提交；切换后再次逐项核对，并通过稳定窗口。manifest 中前端/Agent 的提交仍是受信任构建链的声明，容器镜像核对不能替代 source-manifest 或构建证明；前端发布适配器还须核对对外 HTML 与资源是否属于该构建。仅支持应用与独立迁移连接当前 Compose 的 postgres 服务、使用 /data 且关闭自动迁移的拓扑；外部数据库或 DSN 查询参数覆盖连接目标需要另行适配。只支持 Linux 本机 Unix Socket Docker；远程 Docker 或路径经过可变符号链接时，在停服前拒绝。
+
+仅前端变更时只停止/重建 web，不备份、迁移或恢复数据库和后端素材；前端与 Agent 的代码回退保留上线后写入。Agent 变更会一并停止业务写入服务。后端变更才执行最终 PostgreSQL/素材/密钥备份、已验证的本地挂载检查及目标迁移；自动失败回退复用本文的数据库、文件与密钥恢复流程。后端成功发布后不提供直接恢复旧数据库的后台按钮，避免覆盖上线后新写入；此类恢复必须另行建立维护窗口并核对数据合并方案。
+
+### 站点发布适配器
+
+只要 web 的镜像、构建号或提交变化，就必须配置站点适配器。即使没有外部 CDN，也必须通过该适配器验证实际 Web HTML、入口资源和回退结果；缺少适配器时开始更新直接失败。适配器是运维安装的固定可执行文件，由 profile 固定 SHA-256；它不能由候选清单或浏览器指定，不使用 shell 拼接调用，stdout/stderr 不进入公开更新日志。每次执行前重新检查权限与摘要。
+
+调用参数为 `publish-web PHASE FROM_JSON TO_JSON RECEIPT_DIRECTORY`，所有路径都由宿主更新器生成：
+
+- `preflight`：停服前检查目标资源、CDN 可达性和发布条件，把当前预加载/代理配置及恢复所需信息保存到私有回执目录；此阶段不得改变正式发布。
+- `publish`：目标容器启动后，完成该站点所需的静态资源/CDN 发布及 nginx 预加载配置切换。保存可供诊断的回执，失败时允许部分工作已完成。
+- `verify`：核对实际公开 HTML、带 hash 的入口/动态资源、缓存策略、预加载与候选构建一致；全部通过才返回 0。适配器负责其业务范围的限时、重试与错误日志脱敏。
+- `rollback`：恢复 preflight 保存的站点配置并检查旧 HTML/资源可访问；必须可重复调用，且只有恢复和验证全部完成才返回 0。它在旧容器重新启动后执行。
+
+前三个阶段任一失败都会中止或触发回退；发布失败后会调用 rollback 恢复可能已部分切换的外部配置。rollback 失败时保持恢复锁并停止写入服务。适配器具有宿主发布权限，不能把任意脚本或只返回成功的占位脚本当作生产验收；真实 CDN、nginx 和多设备浏览器验证需在目标站点单独完成。本机/隔离的发布替身只能证明接口、顺序和失败恢复，不能证明生产 CDN 已接通。
+
+### 梦层现有 nginx / CDN 适配实现
+
+`scripts/mengceng-web-publisher.py` 实现上述四阶段接口，仅适用于已核对的 nginx 回源拓扑：Web 镜像的 `/opt/canvas-release` 是构建产物，共享 Web 内容目录由 `docker/canvas-web-entrypoint.sh` 发布并保留旧的带哈希资源；静态 CDN 通过 nginx bridge 回源该目录。它不向 OSS 上传文件，不切换容器，不修改数据库、用户素材、DNS 或 CDN 运营配置，也不执行缓存清除。变更 CDN 拓扑或构建目录时必须重新适配。
+
+适配器使用 Python 3.9+ 标准库、Linux 本地 Docker、curl 与支持 `sub_filter` 的 nginx。运维将其放到固定、不可由组或其他用户写入的绝对路径，并在 Custom Profile 中固定该**实际安装文件**的 SHA-256；首次安装与更新摘要都需要单独验收。配置默认读取 `/etc/mengceng/web-publisher.json`，可在更新器的受保护服务环境中设置 `MENGCENG_WEB_PUBLISHER_CONFIG` 指向另一真实绝对路径。该变量属于宿主配置，不能从候选清单注入。以下 JSON 仅示意结构，路径、域名、哈希、预加载入口和重写规则须从目标站点读取后替换：
+
+```json
+{
+  "format": 1,
+  "projectName": "mengceng",
+  "nginxCommand": ["/www/server/nginx/sbin/nginx"],
+  "originURL": "https://mengceng.com",
+  "originResolveIP": "127.0.0.1",
+  "cdnAssetsURL": "https://static-test.mengceng.com/assets/cdn-20261028/",
+  "cdnBrandURL": "https://static-test.mengceng.com/brand/",
+  "originPreloadFile": "/opt/mengceng/ops/homepage-preload.conf",
+  "cdnPreloadFile": "/opt/mengceng/ops/static-cdn-20261027/home.conf",
+  "protectedFiles": {
+    "/www/server/panel/vhost/nginx/mengceng.com.conf": "<64位小写SHA-256>",
+    "/opt/mengceng/ops/static-cdn-20261027/static-cdn-maps.conf": "<64位小写SHA-256>",
+    "/opt/mengceng/ops/static-cdn-20261027/html.conf": "<64位小写SHA-256>",
+    "/opt/mengceng/ops/static-cdn-20261027/bridge.conf": "<64位小写SHA-256>"
+  },
+  "preloadStems": ["application", "brand-auth-entry", "brand-site", "auth-form-pending"],
+  "cdnTransforms": [
+    {"from": "\"/brand/", "to": "\"https://static-test.mengceng.com/brand/"},
+    {"from": "'/brand/", "to": "'https://static-test.mengceng.com/brand/"},
+    {"from": "`/brand/", "to": "`https://static-test.mengceng.com/brand/"},
+    {"from": "url(/brand/", "to": "url(https://static-test.mengceng.com/brand/"},
+    {"from": "return`/`+e", "to": "return`https://static-test.mengceng.com/assets/cdn-20261028/`+(e.startsWith(\"assets/\")?e.slice(7):e)"}
+  ],
+  "htmlMarkers": ["梦层", "<title>"],
+  "lockFile": "/opt/mengceng/ops/web-publisher.lock",
+  "requestTimeout": 15,
+  "operationTimeout": 600,
+  "workers": 4
+}
+```
+
+`originResolveIP` 可省略；设置时只覆盖源站域名的 DNS 解析，仍校验原域名的 HTTPS 证书。CDN 使用真实公开地址。所有公开 URL 禁止凭据、查询与片段，HTTP 仅允许隔离测试的 loopback。`protectedFiles` 应覆盖站点实际依赖的路由、map、bridge、公共代理及全局 nginx 配置；两个可变预加载文件不能列在其中。示例只列核心文件，不是完整运维清单。固定文件哈希变化或预加载文件出现不属于本次前后版本的内容时立即失败，避免覆盖操作者的并发修改。
+
+配置、预加载文件与其上级目录须由可信运维控制。回执目录使用 0700，配置和私有回执使用 0600；预加载文件保留原权限。所有文件路径必须是规范、真实的绝对路径，不能包含符号链接。`dockerPath` / `curlPath` 可覆盖工具路径，默认分别为 `/usr/bin/docker` / `/usr/bin/curl`。`nginxCommand` 是固定参数数组，不经过 shell；工具、配置与权限都必须在停服前确认。
+
+执行行为与边界：
+
+- `preflight` 核对实际 Compose project/service、Web 镜像内容 ID、健康状态与 OCI 完整提交。通过**不启动镜像程序**的临时停止容器提取前后构建产物，拒绝链接、越界路径、缺失依赖、非预期入口格式，以及旧 `/assets/` 同名文件改变字节。提取前要求宿主剩余空间超过 20 GiB。当前解析器要求 Vite 单一 module 入口与 8 字符 hash 的预加载入口名称；构建约定改变时显式失败。
+- 从配置列出的入口递归收集静态 JS import 与同名 CSS，排除 HTML 已有引用。原样保留 CDN 首页配置中 `set $mc_preload_0 ` 之前的回退脚本、preconnect 与重写前缀，只生成预加载变量和入口替换。未识别现有布局时拒绝发布。预加载总量限制为 1–99 项，变量按标签边界分段。
+- 保存前后预加载文件、权限、清单/配置摘要及产物清单，再只读检查当前 `/` 和 `/login`，各覆盖 CDN 路径与 `mc_static_origin=1` 源站回退。检查 HTML 重验证缓存、SSI 错误、首页标记、关键资源字节，以及关键 CSS 引用的品牌字体。`plan.json` 最后落盘；预检失败留下的私有目录不能当作可继续的发布计划。
+- `publish` 要求候选 Web 已运行且源站回退入口属于候选，持久记录阶段后依次原子替换两个文件，再执行 nginx 配置测试和 reload。**两个原子替换不构成整体事务**；失败交由更新器恢复旧容器后调用 `rollback`，不在新容器仍运行时自行伪装恢复成功。
+- `verify` 重新核对当前文件、配置与冻结产物，检查目标 HTML 的入口和首页预加载，检查关键资源、全部新增/改变的 `/assets/` 文件及旧关键带哈希资源的保留情况。源站与 CDN 的 JS/CSS 都检查 MIME 和正数有效期的 immutable 缓存。CDN 字节按配置中的**有序字面重写**计算预期结果；不能把已知 bridge 重写误报成文件损坏，也不能忽略字节差异。检查 CSS 引用的品牌字体源站/CDN字节与缓存。
+- HTML 在 nginx reload 后最多重试八次，间隔一秒；资源或 CDN 字节、缓存和 MIME 不符直接失败，交由更新器回退。总时限默认 600 秒，可配置 30–1200 秒；单请求 1–60 秒、并发 1–8。更新器的 step timeout 必须给适配器留足时间。
+- `rollback` 要求旧 Web 已恢复；接受本次任意一半写入状态，恢复 preflight 保存的精确配置，测试并 reload nginx，再验证旧 HTML 与资源。可重复调用；发现外部配置漂移时保留现场。旧文件仍须由 Web 发布合同保留，适配器不会从镜像偷偷回填生产共享目录。
+
+回执含 `plan.json`、`before-*.conf` / `next-*.conf`、提取的构建产物、`publication.json` 与实际 HTTP 验证报告；即使失败也保留。控制台只返回脱敏错误，原始 nginx / Docker 输出不会进入公开更新日志。目录与配置应按敏感运维数据处理。提取临时容器带 `io.mengceng.web-publisher` 标签；普通失败会删除容器，强制中断后需按该回执的标签与实际引用人工核对遗留停止容器。未完成事务与仍供回退的回执、镜像及产物不得清理。
+
+专项测试与 opt-in 容器验收入口：
+
+```bash
+python3 -m unittest discover -s scripts -p test_mengceng_web_publisher.py -v
+python3 scripts/test_mengceng_web_publisher_integration.py \
+  --root /opt/task-owned/new-empty-directory \
+  --base-image sha256:<已核对的本地nginx镜像内容ID>
+```
+
+容器验收需要独立 Linux Docker 环境和足够磁盘，自动选择 loopback 端口，创建带任务归属标签的镜像、网络和容器，模拟 CDN 重写、源站回退、内容损坏、旧资源丢失、并发编辑、真实 nginx 语法失败、部分发布与重复回退，退出时清理自身资源并保留小型证据。它不使用生产目录或数据卷。隔离四阶段验收与生产 `preflight` 只读检查可分别证明恢复行为和当前回源规则兼容，**不证明生产切换、真实 CDN 缓存传播、完整 Host Updater 联动或多设备验收已完成**。安装/启用正式更新器和首次实际发布仍需按目标环境执行独立验收。
+
+完整 Host Updater 联动另有独立入口，使用真实更新器二进制、此适配器、nginx 和独立 PostgreSQL/Redis/Backend/Agent/Web：
+
+```bash
+python3 scripts/test_host_updater_web_publisher_integration.py \
+  --root /opt/task-owned/new-empty-updater-directory \
+  --updater /opt/task-owned/host-updater \
+  --compose "$PWD/docker-compose.deploy.yml" \
+  --old-web-image sha256:<旧Web镜像内容ID> \
+  --new-web-image sha256:<新Web镜像内容ID> \
+  --backend-image sha256:<Backend镜像内容ID> \
+  --agent-image sha256:<Agent镜像内容ID> \
+  --postgres-image sha256:<PostgreSQL镜像内容ID> \
+  --redis-image sha256:<Redis镜像内容ID>
+```
+
+该入口要求 Linux Docker、至少 20 GiB 可用空间和已在本机的镜像，不拉取镜像或安装更新器。Backend 须支持 Schema 61 及 PostgreSQL/Redis，Web 须遵循上述共享目录发布合同。它检查正常发布、手动回退保留发布后的数据库/文件写入、目标 CDN 故障自动回退、注入 nginx 检查命令失败后的自动恢复，以及配置漂移在停服前被拒绝；不将注入命令失败称为真实配置语法错误。其他服务保持独立版本与容器身份。成功后清理本次容器、数据卷、网络和提取副本，保留小型私有回执；失败时停止测试更新器并保留隔离现场，人工按 `owner.json` 核对归属后清理。该验收仍不证明生产启用、实际 CDN 缓存传播或多设备业务已通过。
+
+### 中断与人工核对
+
+`custom-transaction.json` 独立记录停服、切换与恢复阶段，持久化后才执行破坏性步骤。进程中断或记录不可读时，重启进入 `manual_intervention` 并尝试停止业务写入服务；检查、更新与回退都会被锁住，仅修改 `state.json` 不能绕过。配置在发布期间漂移时不会覆盖操作者的新配置；切换后发现漂移会停服保留现场。未完成事务不自动重试迁移、发布或恢复。
+
+Compose 客户端退出不代表一次性迁移容器已经停止。开始发布前，若当前 project 还有运行中的 migrate 容器则拒绝开始。更新器启动的迁移带有专用标签；自动回退和中断后的停写会停止这些容器，并重新检查当前 project 的全部运行迁移。若停止失败、Docker 查询失败或仍有其他迁移运行，禁止数据库恢复并保留人工核对状态；不会擅自停止没有更新器标签的迁移容器。
+
+文件原子替换不等于数据库、容器与外部 CDN 的跨系统事务。恢复时核对冻结配置、事务记录、发布回执、数据库版本、素材与密钥，保留新版文件和所有已引用 release/镜像；不能直接删除恢复锁或回执后重跑。停服前失败的准备目录也可能含凭据，应由运维在确认无活动事务与回退引用后清理。
+
+## 上游标准模式参考
+
+以下内容解释保留在代码中的上游标准 Release / GHCR 路径，供历史部署与实现对照。梦层自建站点使用前述二改合同与[自建部署指南](mengceng-self-hosting.mdx)，不执行这些上游安装命令升级定制实例。
+
+## 上游标准 Release 模式的更新顺序
 
 1. 从 GitHub Releases 读取包含预览版在内的最高语义版本，并与 `.env` 中固定的 `CANVAS_IMAGE_TAG` 比较。`sha-*` 这类非正式镜像标签一律视为低于正式 Release，避免把 `vsha-5509b17` 字典序比较成比 `v1.5.0` 更新。
 2. 下载目标版本的 `docker-compose.deploy.yml`，执行 `docker compose config --quiet`，检查部署文件、磁盘空间和当前版本。当前标签不是 `vX.Y.Z` 或 `vX.Y.Z.N` 时，健康检查只确认服务就绪，不要求构建号和镜像标签逐字相同。
-3. 创建 `backup-YYYYMMDD-HHMMSS.zip.partial`，其中包含 PostgreSQL custom-format dump、后端数据目录 tar 和元数据；写入完成后 `fsync`、原子改名，并复核 ZIP 结构和 SHA-256。
-4. 拉取目标 backend/web 镜像并要求存在仓库 `sha256` 摘要。任何失败都在停服前中止。
-5. 停止 web/backend，等待 Backend 的 SIGTERM drain 完成；PostgreSQL 和 Redis 保持运行。
+3. 拉取目标 backend/web/yingce-agent 镜像并要求存在仓库 `sha256` 摘要；下载期间旧服务继续运行，准备失败在停服前中止。
+4. 停止 web/backend/yingce-agent，等待旧服务退出；PostgreSQL 和 Redis 保持运行。
+5. 创建停服后的 `backup-YYYYMMDD-HHMMSS.zip.partial`，包含 PostgreSQL custom-format dump、后端数据目录 tar 和元数据；写入完成后 `fsync`、原子改名，并复核 ZIP 结构和 SHA-256。保存旧 Compose 与部署环境，并核对本地数据挂载可用于自动恢复后才进入迁移；不支持的卷会在改库前中止并恢复原容器。
 6. 用目标 backend 镜像独立执行 `migrate-schema up`。整批迁移在事务和 PostgreSQL advisory lock 内完成，迁移名称与 checksum 必须匹配。
-7. 解析目标 backend/web 镜像的仓库 digest，原子更新 `CANVAS_IMAGE_TAG`、`CANVAS_BACKEND_IMAGE`、`CANVAS_WEB_IMAGE` 和 Compose 文件，启动目标版本；运行容器始终使用 `image@sha256:...`，不使用 `latest`。
+7. 将目标 backend/web/yingce-agent 的仓库 digest 写入 `CANVAS_BACKEND_IMAGE`、`CANVAS_WEB_IMAGE`、`CANVAS_YINGCE_AGENT_IMAGE`，更新 `CANVAS_IMAGE_TAG` 和 Compose 文件后启动目标版本；运行容器使用 `image@sha256:...`，不使用 `latest`。各文件使用临时文件原子替换，多个文件不是一个文件系统事务。
 8. 连续检查 `/api/health/ready` 的数据库、运行时、schema 和 build version，并经过稳定窗口后才标记成功。
 
 更新状态写入 `/var/lib/open-ai-canvas-updater/state.json`。Backend 或浏览器在切换期间断线不会终止宿主机操作，恢复后可继续读取日志。
 
-## 自动回退
+停止服务、最终备份或旧配置保存失败且尚未开始迁移时，直接启动原容器并验证健康，不恢复旧数据库快照。原容器恢复失败会进入 `manual_intervention`。备份耗时计入停服窗口。
+
+旧 Compose 与环境文件先暂存、检查先前回退配置，再逐个替换。环境文件替换失败时恢复先前 Compose，避免旧备份与新配置混用；连先前 Compose 也无法恢复时，清除人工回退记录并保留错误。这个错误恢复机制不等同断电时的跨文件原子事务；进程中断后的 `manual_intervention` 仍需检查现场。
+
+数据目录归档通过原 backend 镜像的一次性容器执行 `tar`，挂载原数据卷，不启动业务入口或依赖服务，不重新拉取镜像；不再依赖已停止容器上的 `exec`。归档命令只读取数据，但没有把原 Compose 的读写挂载自动改为只读挂载。
+
+## 上游标准模式的数据回退
 
 停服后的迁移、启动或健康验证失败会触发自动回退：
 
-1. 停止目标 web/backend；
-2. 恢复更新前保存的 Compose 文件；
-3. 恢复更新前保存的 `.env`，确保 backend/web 镜像仍绑定到原 digest；
-4. 再次校验备份 ZIP 和 SHA-256；
-5. 使用 `pg_restore --clean --if-exists` 恢复 PostgreSQL；
-6. 启动旧服务并重新进行稳定窗口验证。
+1. 在停服和改库前校验备份 ZIP、SHA-256、旧 Compose 和环境文件；回退版本、备份版本及旧环境中的版本必须对应；
+2. 停止目标 web/backend/yingce-agent，确认停止命令成功；
+3. 核对当前 backend 容器、旧 Compose 的 `/data` 挂载及本机 Docker 连接，在数据挂载内的 `.host-updater-recovery-<ID>/snapshot` 完整暂存并校验归档；在覆盖数据库前拒绝越界路径、重复路径、符号/硬链接、特殊文件、无效密钥及损坏归档；
+4. 恢复更新前保存的 Compose 与 `.env`，保留三个服务的旧镜像引用；删除并重建目标业务数据库，再使用 `pg_restore --no-owner --no-privileges` 恢复 PostgreSQL；系统数据库名称会被拒绝，恢复命令使用与其他操作相同的 Compose project；
+5. 将当前数据目录的顶层内容移至同一恢复目录的 `previous/`，再将快照移入活动目录；这会补回已删除文件、恢复被修改的素材及原 `.settings-key`，并把快照后新增文件移出活动目录。原文件不直接删除，旧符号链接仅移动，不访问其指向的文件；
+6. 复核文件内容 SHA-256、普通权限与类型后，才启动旧服务并重新进行稳定窗口验证。归档中的 UID/GID 与普通权限在提取时恢复。启动、健康检查或完成记录写入失败时，再次停止写入服务；停服失败也会明确报告。
 
-回退任一步失败时状态变为 `manual_intervention`，不伪造成功。管理后台仅在存在旧版本和已校验备份时开放人工回退按钮。
+回退按上述顺序执行。备份或旧配置缺失、版本不对应时，在停服和改库前拒绝操作。停服、配置恢复或数据库恢复失败后，立即进入 `manual_intervention`，不继续改库或启动应用；已经停止的写入服务保留停止状态，避免旧程序接入部分恢复的数据库。管理后台仅在存在旧版本和已校验备份时开放人工回退按钮，但发起操作时仍会重新校验。
+
+健康验证要求 `ready=true`、`started=true`、`draining=false`，数据库、运行时和 Schema 检查全部通过，Schema 当前值与预期值一致且大于零；正式 Release 还要求返回非空且匹配的构建版本。HTTP 200 和业务返回码成功不能单独作为就绪依据。
+
+该备份覆盖旧服务停止前的写入。新版本启动后产生的业务写入不在此快照中，历史备份回退仍可能覆盖这些写入。恢复范围包括 PostgreSQL 和本地 `/data` 快照；外部 OSS/CDN 对象不在这份本地归档内，也不会被回退操作删除或恢复。启用更新器前，应在目标部署的隔离副本完成升级及失败回退演练，并核对旧 Compose、环境文件与备份记录对应关系。
+
+本地文件自动恢复要求更新器运行在 Linux Docker 宿主机上，使用本机 Unix Socket，并能够直接访问 backend 的唯一可写 bind mount 或无额外挂载选项的标准 local 命名卷。旧 Compose 与当前容器的数据挂载必须对应；远程 Docker、带绑定/NFS 等挂载选项或其他驱动的卷、只读或嵌套挂载、更新器状态/配置/备份位于数据挂载内等情况均拒绝自动恢复。切换与校验过程使用限制在已打开目录内的文件操作，不通过 shell 解压覆盖活动目录。
+
+恢复过程单独写入状态目录的 `data-restore.json`，阶段包括 `preparing`、`staged`、`restoring-database`、`switching`、`installed` 与 `completed`。任一未完成或无法读取的记录都会阻止检查更新、再次升级和再次回退；更新器重启会进入 `manual_intervention` 并尝试停止写入服务。仅修改展示用 `state.json` 不能解除保护。数据目录内保留的 `previous/` 可能含有新版写入及旧密钥，须按敏感业务数据保护，不自动清理；后续 tar 备份排除 `.host-updater-recovery-*` 保留目录，避免递归膨胀。
+
+中断后不自动续跑，也不把文件切换和数据库恢复宣称为跨系统原子事务。人工处理时先保持写入服务停止，核对日志、备份校验值、记录中的挂载路径与恢复目录，按记录阶段检查数据库、活动文件、`snapshot/` 和 `previous/`。只有确认数据库、文件及密钥已匹配，并完成旧版本健康验证后，才归档恢复记录并解除阻塞；不能仅删除 `data-restore.json` 后重试。失败阶段的暂存内容和原文件保留供检查，不对其执行通用缓存清理。
+
+专项回归入口是 `cd backend && go test -count=1 ./internal/hostupdate`，覆盖退出前最终写入、下载与摘要失败、停服失败、备份失败、旧配置保存失败、原容器恢复失败、未就绪响应，回退各前置步骤失败后不再改库或启动服务、素材与密钥恢复、异常归档拒绝、实际子进程退出后的恢复锁，以及新增文件保留副本。命令执行器与健康响应使用隔离替身；它不替代真实 Docker、PostgreSQL 与目标镜像演练。
 
 ## 安装与升级约束
+
+自定义源码部署不能直接套用默认更新器。它默认读取 `ddcat-ai/open-ai-canvas` 的 Release，按仓库 owner 选择固定名称的 GHCR 镜像，并用目标 Release 的整份 Compose 替换当前文件；不会合并本地源码修改、额外 Compose overlay、CDN 规则或自定义挂载。多份 Compose、分离的环境文件和分别发布的前后端版本，需要先建立并演练对应的自定义发布合同。
+
+启用前应确认 Release、三个镜像与部署 Compose 都来自同一套已验收的二改发布源，保留实际 project、数据卷、密钥及外部反向代理约定。本地镜像标签、现有服务健康或把 `CANVAS_UPDATER_REPOSITORY` 改成 fork 名称，都不等于这些条件已经满足。默认安装脚本还要求现有 backend/web 为 GHCR digest；源码部署继续使用其已有、已验收的发布与回退流程，直到该适配完成。
+
+## 标准 GHCR 安装
 
 GHCR 镜像部署必须把 `CANVAS_IMAGE_TAG` 固定到具体 Release，并把 `CANVAS_BACKEND_IMAGE`、`CANVAS_WEB_IMAGE` 固定到对应 GHCR digest，不可使用 `latest` 或仅使用可变 tag。首次安装时显式指定 Release：
 

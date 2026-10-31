@@ -78,6 +78,8 @@ jobs:
       - name: Install Pi Agent runtime dependencies
         working-directory: backend/agent-runtime/pi
         run: npm ci --omit=dev --ignore-scripts
+      - name: Check independent Agent connections and queue
+        run: node --test ../yingce-agent/server.test.mjs
       - name: Install redis-server for integration tests
         # 用例自己拉起临时 redis-server（unix socket），所以需要的是可执行文件而不是 redis 服务。
         run: |
@@ -119,6 +121,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.19.0
+      - name: Verify protocol package source selection and documentation
+        run: node --test plugin-packages/package-directories.test.mjs
       - name: Verify canonical payment packages
         env:
           PAYMENT_PLUGIN_SMOKE_TEST: "1"

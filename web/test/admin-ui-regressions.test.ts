@@ -270,13 +270,15 @@ test("request logs display user credit billing independently from upstream cost"
     expect(listSource).toContain('title: "积分计算"');
     expect(listSource).toContain('title: "请求阶段 / 状态"');
     expect(listSource).toContain('description="模型生成与结果下载记录；仅计费调用扣除积分"');
-    expect(billingSummary).toContain("billingAmountMicrocredits");
+    expect(billingSummary).toContain("logBillingAmounts(log)");
+    expect(billingSummary).toContain("预授权");
+    expect(billingSummary).toContain("实收");
     expect(billingSummary).toContain("billingAvailable");
     expect(billingSummary).toContain("!log.billable");
     expect(billingSummary).toContain("未扣积分");
     expect(billingSummary).not.toContain("costAvailable");
     expect(detailSource).toContain('label="请求阶段" value={requestKindText(log.requestKind)}');
-    expect(detailSource).toContain('label="计费" value={billingText(log)}');
+    expect(detailSource).toContain('label="计费" value={logBillingText(log)}');
     expect(detailSource).toContain('label="请求 ID" value={<CopyValue value={log.id} />}');
     expect(detailSource).toContain('label="供应商任务 ID" value={log.providerRequestId ? <CopyValue value={log.providerRequestId} /> : "未记录"}');
     expect(apiSource).toContain("billingAmountMicrocredits: number");

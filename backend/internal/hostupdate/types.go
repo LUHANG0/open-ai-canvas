@@ -33,12 +33,13 @@ func (p Phase) Active() bool {
 }
 
 type Release struct {
-	Version     string    `json:"version"`
-	Name        string    `json:"name"`
-	Body        string    `json:"body"`
-	URL         string    `json:"url"`
-	PublishedAt time.Time `json:"publishedAt"`
-	Prerelease  bool      `json:"prerelease"`
+	Components  map[string]CustomComponent `json:"components,omitempty"`
+	Version     string                     `json:"version"`
+	Name        string                     `json:"name"`
+	Body        string                     `json:"body"`
+	URL         string                     `json:"url"`
+	PublishedAt time.Time                  `json:"publishedAt"`
+	Prerelease  bool                       `json:"prerelease"`
 }
 
 type Check struct {
@@ -78,17 +79,18 @@ type Operation struct {
 }
 
 type Status struct {
-	Supported       bool      `json:"supported"`
-	Connected       bool      `json:"connected"`
-	Repository      string    `json:"repository"`
-	Deployment      string    `json:"deployment"`
-	CurrentVersion  string    `json:"currentVersion"`
-	LatestRelease   *Release  `json:"latestRelease,omitempty"`
-	UpdateAvailable bool      `json:"updateAvailable"`
-	Checks          []Check   `json:"checks"`
-	LastBackup      *Backup   `json:"lastBackup,omitempty"`
-	RollbackVersion string    `json:"rollbackVersion,omitempty"`
-	Operation       Operation `json:"operation"`
+	Components      map[string]CustomComponent `json:"components,omitempty"`
+	Supported       bool                       `json:"supported"`
+	Connected       bool                       `json:"connected"`
+	Repository      string                     `json:"repository"`
+	Deployment      string                     `json:"deployment"`
+	CurrentVersion  string                     `json:"currentVersion"`
+	LatestRelease   *Release                   `json:"latestRelease,omitempty"`
+	UpdateAvailable bool                       `json:"updateAvailable"`
+	Checks          []Check                    `json:"checks"`
+	LastBackup      *Backup                    `json:"lastBackup,omitempty"`
+	RollbackVersion string                     `json:"rollbackVersion,omitempty"`
+	Operation       Operation                  `json:"operation"`
 }
 
 type StartRequest struct {

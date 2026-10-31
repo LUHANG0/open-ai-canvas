@@ -296,9 +296,9 @@ export default function CreditOperationsPanel({ users, activeOperation, onOperat
             title: "用户",
             dataIndex: "userId",
             width: 150,
-            render: (id: string) => (
+            render: (id: string, order: BillingOrder) => (
                 <div>
-                    <div className="font-medium">{userLabels.get(id) || "未知用户"}</div>
+                    <div className="font-medium">{order.userDisplayName || order.userAccount || userLabels.get(id) || "未知用户"}</div>
                     <div className="mt-0.5 truncate text-xs text-foreground/50" title={id}>
                         {id}
                     </div>
@@ -738,7 +738,7 @@ export default function CreditOperationsPanel({ users, activeOperation, onOperat
                                 <>
                                     <div>
                                         <dt>用户</dt>
-                                        <dd>{userLabels.get(resolutionTarget.order.userId) || resolutionTarget.order.userId}</dd>
+                                        <dd>{resolutionTarget.order.userDisplayName || resolutionTarget.order.userAccount || userLabels.get(resolutionTarget.order.userId) || resolutionTarget.order.userId}</dd>
                                     </div>
                                     <div>
                                         <dt>模型 / 场景</dt>

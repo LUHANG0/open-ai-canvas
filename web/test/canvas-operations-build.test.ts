@@ -22,6 +22,22 @@ function canvas(patch: Partial<CanvasProject> = {}): CanvasProject {
 }
 
 describe("画布 operations 生成", () => {
+    test("未选择对话的服务端缺省字段与本地 null 不产生重复保存", () => {
+        const remote = canvas();
+        Reflect.deleteProperty(remote, "activeChatId");
+        const local = { ...remote, activeChatId: null };
+        expect(buildCanvasOperations(remote, local)).toEqual([]);
+        expect(buildCanvasOperations(local, remote)).toEqual([]);
+    });
+
+    test("真实对话选择及清空仍发送有前置条件的字段操作", () => {
+        const remote = canvas();
+        Reflect.deleteProperty(remote, "activeChatId");
+        const selected = { ...remote, activeChatId: "chat-1" };
+        expect(buildCanvasOperations(remote, selected)).toEqual([{ type: "set_field", field: "activeChatId", value: "chat-1", beforeValue: null }]);
+        expect(buildCanvasOperations(selected, canvas())).toEqual([{ type: "set_field", field: "activeChatId", value: null, beforeValue: "chat-1" }]);
+    });
+
     test("生成任务时间戳更新携带taskId身份前置条件", () => {
         const before = canvas({ nodes: [{ id: "video", type: "video", metadata: { taskId: "task-1", taskUpdatedAt: "2026-04-01T00:00:00Z" } }] as CanvasProject["nodes"] });
         const after = canvas({ nodes: [{ id: "video", type: "video", metadata: { taskId: "task-1", taskUpdatedAt: "2026-04-01T00:00:01Z" } }] as CanvasProject["nodes"] });

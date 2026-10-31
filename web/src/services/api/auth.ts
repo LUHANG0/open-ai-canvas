@@ -66,7 +66,11 @@ export type ApiCallLog = {
     mediaStage?: GenerationTask["mediaStage"];
     billingOrderId?: string;
     billingStatus?: BillingOrder["status"];
+    /** 兼容旧接口；新页面分别读取预授权与实收。 */
     billingAmountMicrocredits: number;
+    billingReservedMicrocredits?: number;
+    /** 只有已结算订单返回；0 表示实际零扣费。 */
+    billingSettledMicrocredits?: number;
     billingAvailable: boolean;
     source: string;
     capability: "text" | "image" | "video" | "audio" | "";
@@ -187,22 +191,22 @@ export type AdminAnalytics = {
         mau: number;
         generationTasks: number;
         upstreamRequests: number;
-        successRate: number;
+        successRate: number | null;
         p95DurationMs: number;
         currentQueuedTasks: number;
         totalBalanceMicrocredits?: number;
         totalConsumedMicrocredits?: number;
         finance?: AnalyticsFinance | null;
     };
-    trend: Array<{ day: string; tasks: number; requests: number; activeUsers: number; requestSuccessRate: number; consumedMicrocredits?: number }>;
+    trend: Array<{ day: string; tasks: number; requests: number; activeUsers: number; requestSuccessRate: number | null; consumedMicrocredits?: number }>;
     models: Array<{
         model: string;
         capability: string;
         tasks: number;
         requests: number;
         uniqueUsers: number;
-        taskSuccessRate: number;
-        requestSuccessRate: number;
+        taskSuccessRate: number | null;
+        requestSuccessRate: number | null;
         p50DurationMs: number;
         p95DurationMs: number;
         inputTokens: number;

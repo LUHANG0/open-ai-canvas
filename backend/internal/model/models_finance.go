@@ -33,6 +33,9 @@ type CreditLedgerEntry struct {
 }
 
 type BillingOrder struct {
+	// 仅管理端列表按当前页填充，不持久化。
+	UserDisplayName     string `json:"userDisplayName,omitempty" gorm:"-"`
+	UserAccount         string `json:"userAccount,omitempty" gorm:"-"`
 	BillingCostSnapshot `json:"-" gorm:"embedded"`
 	ID                  string `json:"id" gorm:"primaryKey;size:36"`
 	UserID              string `json:"userId" gorm:"size:36;index;uniqueIndex:idx_billing_user_idempotency,priority:1"`

@@ -8,7 +8,7 @@ import { PaymentCheckoutCode } from "@/components/payment-checkout-code";
 import { AppModal } from "@/components/ui/product/app-modal";
 import { formatCredits } from "@/constant/credits";
 import { generationErrorMessage } from "@/lib/generation-error";
-import { closePaymentOrder, createPaymentOrder, getPaymentOrder, listPaymentProviders, listTopupProducts, queryPaymentOrder, refreshPaymentCheckout, type PaymentOrder, type PaymentProvider, type TopupProduct } from "@/services/api/payments";
+import { closePaymentOrder, createPaymentOrder, formatPaymentAmount, getPaymentOrder, listPaymentProviders, listTopupProducts, queryPaymentOrder, refreshPaymentCheckout, type PaymentOrder, type PaymentProvider, type TopupProduct } from "@/services/api/payments";
 import { getWallet, redeemCredits, type CreditLedgerEntry, type WalletSummary } from "@/services/api/wallet";
 import { cn } from "@/lib/utils";
 import { openWorkspaceWallet, WORKSPACE_WALLET_OPEN_EVENT, type WorkspaceWalletOpenDetail } from "@/lib/workspace-wallet";
@@ -477,7 +477,7 @@ export function WorkspaceWalletModal({ open, onClose, pendingPaymentOrderId, pay
                         <span className="workspace-wallet-payment-icon">
                             <CreditCard />
                         </span>
-                        <strong>¥ {(paymentOrder.amountFen / 100).toFixed(2)}</strong>
+                        <strong>{formatPaymentAmount(paymentOrder.amountFen, paymentOrder.currency)}</strong>
                         <p>
                             {paymentOrder.productName} · {formatCredits(paymentOrder.creditsMicrocredits, 6)} 积分
                         </p>

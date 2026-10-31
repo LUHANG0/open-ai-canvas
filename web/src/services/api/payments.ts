@@ -1,5 +1,12 @@
 import { ApiError, compactApiParams, http } from "@/services/api/request";
 
+/** Amounts use the payment API's integer minor units (100 per major unit). */
+export function formatPaymentAmount(amountMinor: number, currency?: string) {
+    const code = currency?.trim().toUpperCase() || "CNY";
+    const prefix = code === "CNY" ? "¥" : code === "USD" ? "$" : `${code} `;
+    return `${prefix}${(amountMinor / 100).toLocaleString("zh-CN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
 export type PaymentProvider = {
     id: "wechat-native" | "alipay-page-pay" | string;
     pluginId: string;

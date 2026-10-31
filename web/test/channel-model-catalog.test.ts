@@ -436,7 +436,7 @@ describe("public channel model catalog", () => {
         const panelHtml = renderToStaticMarkup(React.createElement(VideoSettingsPanel, { config, onConfigChange: () => undefined, theme: canvasThemes.dark }));
         await createVideoGenerationTask(config, "synthetic prompt");
 
-        expect(html).toContain("768P竖 · 16:9 · 8s");
+        expect(html).toContain("768P竖 · 16:9 · 8秒");
         expect(panelHtml).toMatch(/aria-pressed="true"[^>]*>768P竖<\/button>/);
         expect(body.resolution_name).toBe("768p竖");
     });

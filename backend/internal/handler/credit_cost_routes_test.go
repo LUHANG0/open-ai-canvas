@@ -28,7 +28,7 @@ func TestChannelCostHTTPAuthorizationAndPublicProjection(t *testing.T) {
 	sqlDB, _ := db.DB()
 	sqlDB.SetMaxOpenConns(1)
 	t.Cleanup(func() { _ = sqlDB.Close() })
-	if err := db.AutoMigrate(&model.User{}, &model.AuthSession{}, &model.ModelChannel{}, &model.ChannelModel{}, &model.ChannelModelPriceTier{}, &model.IDSequence{}, &model.SystemSetting{}); err != nil {
+	if err := db.AutoMigrate(&model.User{}, &model.AuthSession{}, &model.ModelChannel{}, &model.ChannelModel{}, &model.ChannelModelPriceTier{}, &model.IDSequence{}, &model.SystemSetting{}, &model.ApiCallLog{}); err != nil {
 		t.Fatal(err)
 	}
 	for _, role := range []model.UserRole{model.UserRoleAdmin, model.UserRoleUser} {
@@ -81,6 +81,39 @@ func TestChannelCostHTTPAuthorizationAndPublicProjection(t *testing.T) {
 			t.Fatalf("admin cost missing: %d %s", w.Code, w.Body.String())
 		}
 	}
+	t.Run("cross channel model and health HTTP contracts", func(t *testing.T) {
+		for _, channel := range []model.ModelChannel{{ID: "disabled-channel", Name: "停用渠道", Scope: model.ChannelScopeSystem, Enabled: false, ModelsJSON: `[]`}, {ID: "private-channel", Name: "私人渠道", Scope: model.ChannelScopeUser, UserID: "user", Enabled: true, ModelsJSON: `[]`}} {
+			if err := db.Create(&channel).Error; err != nil {
+				t.Fatal(err)
+			}
+			if err := db.Create(&model.ChannelModel{ID: channel.ID + "-model", ChannelID: channel.ID, ModelKey: channel.ID + "-key", Enabled: false}).Error; err != nil {
+				t.Fatal(err)
+			}
+		}
+		for _, path := range []string{"/api/admin/channel-models", "/api/admin/channel-models/health"} {
+			for _, role := range []string{"", "user"} {
+				w := call(role, http.MethodGet, path, nil)
+				want := http.StatusForbidden
+				if role == "" {
+					want = http.StatusUnauthorized
+				}
+				if w.Code != want {
+					t.Fatalf("%s %s: %d %s", role, path, w.Code, w.Body.String())
+				}
+			}
+		}
+		w := call("admin", http.MethodGet, "/api/admin/channel-models", nil)
+		if w.Code != http.StatusOK || !strings.Contains(w.Body.String(), `"costPricing":`) || !strings.Contains(w.Body.String(), "123456") || !strings.Contains(w.Body.String(), `"channelName":"渠道"`) || !strings.Contains(w.Body.String(), `"channelEnabled":true`) {
+			t.Fatalf("all model projection: %d %s", w.Code, w.Body.String())
+		}
+		if !strings.Contains(w.Body.String(), `"channelEnabled":false`) || !strings.Contains(w.Body.String(), "disabled-channel-key") || strings.Contains(w.Body.String(), "private-channel") {
+			t.Fatalf("all models must include disabled system channels and exclude private channels: %s", w.Body.String())
+		}
+		w = call("admin", http.MethodGet, "/api/admin/channel-models/health", nil)
+		if w.Code != http.StatusOK || !strings.Contains(w.Body.String(), `"items":[]`) || !strings.Contains(w.Body.String(), `"truncated":false`) || !strings.Contains(w.Body.String(), `"computedAt":`) {
+			t.Fatalf("empty health contract: %d %s", w.Code, w.Body.String())
+		}
+	})
 	t.Run("batch repricing HTTP contract", func(t *testing.T) {
 		var item model.ChannelModel
 		if err := db.First(&item, "channel_id = ?", channel.ID).Error; err != nil {

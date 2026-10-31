@@ -1,0 +1,38 @@
+---
+title: 协议插件源码与发行包
+description: 正式打包来源、文档生成与视频协议重建验收
+---
+
+# 协议插件源码与发行包
+
+`plugin-packages/` 同时保存协议源码目录和提交的 `.yingce-plugin` 发行包。后端启动时从配置的官方包目录读取发行包，不直接执行源码目录中的 `manifest.json`。因此，源码修正、发行包修正和线上生效需要分别核对。
+
+## 正式来源
+
+`package-directories.mjs` 为文档生成和 POSIX 全量打包提供同一份目录选择：
+
+- 同一插件 ID 存在多个目录时，优先选目录名与 `manifest.id` 相同的正式目录；例如 `a6api` 优先于 `src-a6api`。
+- 没有同名正式目录、但仅有一个来源时，兼容该旧目录。
+- 没有正式目录且存在多个来源时，报错停止，避免任选旧副本。
+- 辅助目录不参与自动发行，也不由文档生成器改写。选择脚本支持通过符号链接路径调用。
+
+`embed-documentation.mjs` 把正式 manifest 的协议合同写入接口文档，并嵌入 manifest 的 documentation；重复执行应保持内容一致。`build-packages.sh` 使用相同选择结果生成 ZIP 包。Windows 的 `package-selected.ps1` 是显式选择目录的独立入口，不使用上述自动选择器，操作前仍须核对选择的来源。
+
+## 重建与运行边界
+
+在仓库根目录执行 `sh plugin-packages/build-packages.sh` 会重新编译支付插件并打包所有正式插件，需要 Node、Go 和 ZIP 工具。只需重建支付插件时使用 `--payments-only`；后端 Dockerfile 使用这一入口。因此，修改声明式视频源码不会自动替换镜像中已提交的视频发行包。
+
+修改声明式协议时，应核对版本、请求映射、任务 ID、轮询状态、结果媒体和错误语义，并同步接口文档。重建后比较解压文件内容；ZIP 时间戳或条目顺序造成的摘要差异不等于协议行为变化。版本和包内容发生变化时，按发布流程验证实际官方包、安装注册表和启用状态，不能仅凭源码判断上线。
+
+Wan 3 视频源码应与 2.0.1 发行包一致，将分辨率转为大写。NewAPI 视频源码应与 2.0.0 发行包一致，兼容 `response.data` 数组中的视频 URL 结果。两项合同由专项测试保护，不能在下一次打包时回退。
+
+## 验证入口
+
+```sh
+node --test plugin-packages/package-directories.test.mjs
+cd backend
+go test -count=1 ./internal/protocol
+go test -count=1 -run 'Test(PluginViewIncludesDocumentationForEveryOfficialProtocol|PluginRuntime|DeclarativeProtocol|AsyncPollTransientRetriesSetting)' ./internal/app
+```
+
+Node 测试使用临时目录执行实际文档和 ZIP 流程，验证重复来源、歧义拒绝、符号链接、文档幂等，以及两个真实视频包重建后的逐文件一致性。支付编译使用替身，不验证支付二进制或真实交易；支付包另由既有 CI 验收。Go 测试覆盖协议合同和隔离上游响应，不能代替真实收费模型调用。

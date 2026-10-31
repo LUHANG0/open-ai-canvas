@@ -298,6 +298,10 @@ Token 报价的 `estimated` 为 `true`，`quantity` 是预留 Token 数。参考
 
 ## 管理员积分成本
 
+`GET /admin/channel-models` 仅管理员可用，返回 `{models}`，覆盖全部系统渠道（含停用渠道及停用模型），排除私人渠道。模型继续使用原有编辑合同，附加 `channelName`、`channelEnabled`，价格档保留管理员专用 `costPricing`；编辑仍走原有渠道模型接口，保留规格、能力配置及版本校验。
+
+`GET /admin/channel-models/health?channelId=` 仅管理员可用，返回 `{items, computedAt, truncated}`，缓存 30 秒。可选 `channelId` 必须属于系统渠道。近七天按请求时间倒序最多读取 50000 条 `create` 记录，额外探测一条判断是否截断；轮询、下载及其他请求不参与。HTTP 受理成功但提供方仍为排队或运行状态时不计入完成样本，请求失败优先于旧的运行状态。每项包含 `channelId`、`modelKey`、`requests24h`、`succeeded24h`、`failed24h`、`successRate24h`、`requests7d`、`successRate7d`、`p95DurationMs24h`、`recentResults`，以及可选最近请求/失败时间和错误码。成功率为 0–1，无已完成样本返回 `null`，真实全失败为 `0`；最近结果最多十个，左旧右新。P95 是请求耗时，指标不等于最终任务成功率或任务耗时。`truncated=true` 表示 24 小时和七天指标都可能不完整，未出现的模型不能判断为无调用；前端分别呈现读取失败、无完成样本和样本不完整。
+
 `GET/POST /admin/channels/:id/models` 与 `PATCH /admin/channels/:id/models/:modelId` 的 `priceTiers[]` 增加 `costPricing`：`configured`、`unitPriceMicrocredits`、`inputTokenPriceMicrocredits`、`outputTokenPriceMicrocredits`、`cachedTokenPriceMicrocredits`。成本沿用该价格档的计费方式；按次/秒使用单位价，文本 Token 按输入/输出/缓存分别定价，视频 Token 只使用输出价。价格为整数微积分，范围为 0 到 1000000000000；`configured=false` 表示未配置，`true` 且价格为 0 表示显式零成本。
 
 成本保存到下单时的内部账单快照，不受售价倍率或扣费上限影响，后续改价不重算旧订单。历史逻辑模型任务切换备用线路时，成本更新为实际执行线路的快照，独立于用户售价策略。管理员请求列表、详情与 CSV 同时展示销售金额及成本金额；JSON 增加 `creditCostConfigured` 和可选 `creditCostMicrocredits`。成功结算后按实际计费数量、Token 用量或视频公式快照核算；未结算、已退回、历史无快照或缺少有效用量时不编造成本金额。
@@ -305,6 +309,12 @@ Token 报价的 `estimated` 为 `true`，`quantity` 是预留 Token 数。参考
 成本字段仅通过经过管理员权限校验的接口显式返回；普通用户的模型目录、会话模型信息、报价、任务与账单 JSON 均不包含成本配置、成本快照或成本金额。底层价格档和账单成本字段禁止 JSON 序列化，不以页面隐藏代替接口隔离。
 
 数据概览不再提供独立的“模型价格配置”入口。`GET /admin/analytics/overview` 的 `kpi`、`models[]` 使用 `finance` 返回 `settledOrders`、`costedOrders`、`revenueMicrocredits`、`costMicrocredits`、可空的 `profitMicrocredits`、`profitMargin`，取代旧的费用/币种字段。按当前请求日志时间及筛选范围关联已结算订单，以订单 ID 去重并核对用户与实际结算渠道；轮询、下载、未结算、退款和无关联账单请求不计入财务汇总。收入为实际结算积分，成本复用系统模型价格档的订单快照与计费用量，利润为收入减成本，利润率为利润占收入百分比。已知成本可显示部分合计；只要有已结算订单缺失成本，利润和利润率返回 `null`，不把未知成本视为零。无订单时利润为 `null`；零收入时利润率为 `null`。历史无成本快照的订单不按当前价回填。此处为已结算生成订单的积分毛利，不含充值收入或失败请求的上游损耗。
+
+请求统计与财务统计使用不同输入：请求数量、请求成功率和耗时只统计 `requestKind=create` 的模型生成请求，不计轮询、下载、上传或本地保存。请求成功率只以 `succeeded` / `failed` 的已完成样本为分母，`providerStatus` 仍为排队、等待、处理中或运行中时不参与分母，即使 HTTP 已受理成功；任务成功率只以已成功或失败的任务为分母，排队、执行中与取消任务不参与。`kpi.successRate`、`trend[].requestSuccessRate`、`models[].taskSuccessRate` 和 `models[].requestSuccessRate` 在没有已完成样本时返回 `null`，前端显示 `--` 并让趋势图留空；真实全失败仍返回 `0`。范围消耗使用 `kpi.finance.revenueMicrocredits`，每日 `trend[].consumedMicrocredits` 按筛选范围内选定的订单首条可计费日志日期归属，与财务去重口径一致。旧字段 `kpi.totalConsumedMicrocredits` 保留为相同实收合计的兼容字段。
+
+管理员请求列表与详情增加 `billingReservedMicrocredits`（预授权）和 `billingSettledMicrocredits`（仅已结算订单返回实收；实际零扣费返回 `0`）。预授权、运行中、待核对和退款状态均不提供实收值，不能将其缺省解释为零或预授权金额。只有 `billingAvailable=true` 且 `billable=true` 时展示订单金额；CSV 分别输出“预授权(微积分)”和“实收(微积分)”，未结算实收留空。旧字段 `billingAmountMicrocredits` 保留旧语义供旧客户端兼容，新页面不使用它推断未结算订单的实收。
+
+`GET /admin/billing-orders` 按当前页账单中的用户 ID 批量返回 `userDisplayName` / `userAccount`，不依赖仅含最近 100 位注册用户的参考列表；字段不入库，已删除用户保持字段缺省并由页面显示回退标识。新增字段均为响应补充，不涉及数据库结构迁移，也不修改实际扣费、退款或人工调账行为。
 
 `GET /admin/analytics/export.csv` 沿用相同口径，CSV 输出收入、成本、利润（整数微积分）；重复请求只在该筛选范围内选定的一行记录金额，未知值留空。
 

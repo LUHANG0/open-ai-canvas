@@ -13,6 +13,12 @@ type adminChannelModelResponse struct {
 	PriceTiers []adminChannelModelPriceTier `json:"priceTiers"`
 }
 
+type adminAllChannelModelResponse struct {
+	adminChannelModelResponse
+	ChannelName    string `json:"channelName"`
+	ChannelEnabled bool   `json:"channelEnabled"`
+}
+
 func adminChannelModel(item model.ChannelModel) adminChannelModelResponse {
 	tiers := make([]adminChannelModelPriceTier, 0, len(item.PriceTiers))
 	for _, tier := range item.PriceTiers {

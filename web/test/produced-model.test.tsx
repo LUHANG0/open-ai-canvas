@@ -155,11 +155,13 @@ describe("produced model badge", () => {
         expect(image).toContain('class="canvas-node-result-record"');
         const video = renderMedia(CanvasNodeType.Video, true);
         expect(video).toContain('class="canvas-node-result-record"');
-        expect(video).toContain("720P");
+        // Measured pixels do not prove which resolution was submitted to a provider.
+        expect(video).toContain("1280×720");
+        expect(video).not.toContain("720P");
         expect(video).toContain("flux-dev");
         expect(video).not.toContain("1280 x 720");
         expect(renderMedia(CanvasNodeType.Audio, true)).toContain("flux-dev");
         expect(renderMedia(CanvasNodeType.Image, true, "preview")).not.toContain("flux-dev");
-        expect((video.match(/generation-result-metadata-model/g) || []).length).toBe(1);
+        expect((video.match(/class="generation-result-metadata-model /g) || []).length).toBe(1);
     });
 });

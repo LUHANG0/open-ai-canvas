@@ -1,12 +1,14 @@
-# 贡献指南
+# 梦层 MengCeng 贡献指南
 
-感谢参与 Open AI Canvas。提交改动前，请先确认相关 Issue 或用简短说明描述问题、目标和外部行为变化。
+本指南适用于由 LUHANG0 维护的梦层二改仓库。当前功能维护分支为 `codex/upstream-v1.7.2-fixes`，开发前按 [README](README.md) 检出该分支，并读取 [AGENTS.md](AGENTS.md) 与受影响目录约定。提交改动前，用简短说明描述问题、目标和用户可见行为。上游修改按现有产品合同选择性整合，保留来源与许可证。
 
 ## 开发环境
 
-- 前端：Bun、Vite、React、TypeScript。
-- 后端：Go、Gin、GORM、SQLite。
-- 本地全栈：`docker compose up -d --build`。
+- 前端：Bun 1.3.9、Vite、React、TypeScript；依赖使用 `web/bun.lock`。
+- 后端：Go 1.25、Gin、GORM；SQLite 本地兼容，PostgreSQL 部署同时需要 Redis。
+- 本地全栈热更新：`docker compose -f docker-compose.dev.yml up --build`。先检查已有服务与端口，复用现有环境。
+- 服务器：按[梦层自建部署](docs/content/docs/backend/mengceng-self-hosting.mdx)核对源码、镜像与配置，部署和升级单独验收。
+- `docs/` 当前没有独立 `package.json` 或文档站构建命令；检查文档真实路径、引用、命令和 Git 差异。
 
 不要提交 `.env`、数据库、数据目录、生成产物、编辑器配置或真实 API/OSS 密钥。新增配置项时只在 `.env.example` 中提供无敏感信息的说明。
 
@@ -25,7 +27,8 @@
 - 前端使用 Bun 1.3.9 和 `bun install --frozen-lockfile`，执行 `bun run typecheck`、`bun run lint`、`bun run test`、`bun run test:previs:e2e`（均在 `web/` 下）。E2E 需要 Chrome/Chromium，可用 `CHROME_BIN` 指定。改动文件另做 Prettier 检查；CI 用 `web/scripts/check-changed-formatting.mjs` 检查提交差异。
 - 后端在 `backend/` 下运行 `gofmt -l .` 并修复列出的文件，再运行 `go test -json -timeout=20m ./...`。完整测试需要 Node 22.19.0、`backend/agent-runtime/pi/` 中的 `npm ci --omit=dev --ignore-scripts`、`redis-server` 和独立的 PostgreSQL 测试库；连接通过 `CANVAS_TEST_POSTGRES_DSN` 提供。缺少服务导致用例跳过时，不能声称与 Backend checks 等价。
 - CSS、组件结构、路由或协议变动时，同时核对相邻回归测试。测试应表达当前约定；不要为了通过旧断言恢复已修复的行为，也不要直接跳过失败用例。
-- 合并、解决冲突或同步主干后，针对最终代码重新验证。先确认 `git status` 无未解决冲突、`git diff --check` 通过，再查看该提交的 CI 结果；旧提交的成功不能代表新提交通过。
+- 发布脚本变更在仓库根目录执行相关 Python 专项；真实更新器、nginx、数据库恢复与浏览器联动使用独立环境，不以替身验收冒充生产验收。
+- 合并、解决冲突或同步维护分支后，针对最终代码重新验证。先确认 `git status` 无未解决冲突、`git diff --check` 通过，再查看该提交的 CI 结果；旧提交的成功不能代表新提交通过。
 - Web checks、Backend checks 或 Payment plugin artifacts 失败时，先定位并修复。即使失败来自主干遗留问题，也不能将红色检查视为可忽略的背景噪声。
 
 Pull Request 应包含改动摘要、风险、验证方式和必要截图，并分别写明已执行、未执行或因环境跳过的检查。提交即表示你有权按本项目 MIT 许可证贡献相关代码或素材，并保留已有上游署名和许可证通知。

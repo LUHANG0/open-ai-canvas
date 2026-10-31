@@ -275,6 +275,36 @@ func RegisterFinanceRoutes(r *gin.RouterGroup, svc *service.Service) {
 		ok(c, gin.H{"setting": setting})
 	})
 
+	r.GET("/admin/channel-models", func(c *gin.Context) {
+		user, err := currentUser(c, svc)
+		if err != nil {
+			failService(c, err)
+			return
+		}
+		items, err := svc.AdminAllChannelModels(user)
+		if err != nil {
+			failService(c, err)
+			return
+		}
+		models := make([]adminAllChannelModelResponse, 0, len(items))
+		for _, item := range items {
+			models = append(models, adminAllChannelModelResponse{adminChannelModelResponse: adminChannelModel(item.ChannelModel), ChannelName: item.ChannelName, ChannelEnabled: item.ChannelEnabled})
+		}
+		ok(c, gin.H{"models": models})
+	})
+	r.GET("/admin/channel-models/health", func(c *gin.Context) {
+		user, err := currentUser(c, svc)
+		if err != nil {
+			failService(c, err)
+			return
+		}
+		report, err := svc.AdminChannelModelHealth(user, c.Query("channelId"))
+		if err != nil {
+			failService(c, err)
+			return
+		}
+		ok(c, report)
+	})
 	r.GET("/admin/channels/:id/models", func(c *gin.Context) {
 		user, err := currentUser(c, svc)
 		if err != nil {

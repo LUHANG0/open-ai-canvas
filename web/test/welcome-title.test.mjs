@@ -7,7 +7,7 @@ test("brand metadata retains configured identity on public and workspace pages",
     applyAppearanceMetadata(appearance, window.document);
     expect(window.document.title).toBe("梦层 MengCeng");
     expect(window.document.querySelector('meta[property="og:site_name"]').content).toBe("梦层");
-    expect(window.document.querySelector('link[rel="icon"]').getAttribute("href")).toContain("logo.svg");
+    expect(window.document.querySelector('link[rel="icon"]').getAttribute("href")).toBe("/favicon.png");
     applyAppearanceMetadata({ ...appearance, seoTitle: "运营自定义 SEO" }, window.document);
     expect(window.document.title).toBe("运营自定义 SEO");
     window.happyDOM.cancelAsync();

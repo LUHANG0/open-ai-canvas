@@ -1,9 +1,11 @@
 ---
 title: 本地开发
-description: 在宿主机启动影策前后端开发服务
+description: 从梦层维护分支启动前后端开发服务
 ---
 
 # 本地开发
+
+从 [梦层仓库](https://github.com/LUHANG0/open-ai-canvas) 的 `codex/upstream-v1.7.2-fixes` 分支开发，首次启动步骤见[仓库首页](../../../../README.md)。先核对已有服务、端口与数据目录。服务器部署和更新见[梦层自建部署](mengceng-self-hosting.mdx)。
 
 ## SMTP 邮件故障日志
 
@@ -61,8 +63,8 @@ mkdir -p .local/project-workbench-debug .local/cache/go-build .local/cache/go-mo
 cd backend
 CANVAS_BACKEND_ADDR=127.0.0.1:8080 \
 CANVAS_BACKEND_DATA_DIR=../.local/project-workbench-debug \
-GOCACHE=../.local/cache/go-build \
-GOMODCACHE=../.local/cache/go-mod \
+GOCACHE="$PWD/../.local/cache/go-build" \
+GOMODCACHE="$PWD/../.local/cache/go-mod" \
 go run ./cmd/server
 ```
 

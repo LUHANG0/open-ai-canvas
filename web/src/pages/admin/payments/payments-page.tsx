@@ -15,6 +15,7 @@ import {
     exportAdminPaymentOrders,
     exportAdminPaymentReconciliations,
     exportAdminPaymentReconciliationItems,
+    formatPaymentAmount,
     createAdminTopupProduct,
     listAdminPaymentOrders,
     listAdminPaymentProviders,
@@ -556,7 +557,7 @@ export default function AdminPaymentsPage() {
             align: "right",
             render: (_, order) => (
                 <div>
-                    <div className="font-medium tabular-nums">¥ {(order.amountFen / 100).toFixed(2)}</div>
+                    <div className="font-medium tabular-nums">{formatPaymentAmount(order.amountFen, order.currency)}</div>
                     <div className="text-xs text-foreground/45">{formatCredits(order.creditsMicrocredits)} 积分</div>
                 </div>
             ),
@@ -630,7 +631,7 @@ export default function AdminPaymentsPage() {
         { title: "结果", dataIndex: "result", width: 135, render: (value) => <AdminStatusBadge {...(reconciliationResult[value] || { label: value, tone: "neutral" as const })} /> },
         { title: "商户订单号", dataIndex: "merchantOrderNo", width: 255, render: (value) => <span className="font-mono text-xs">{value}</span> },
         { title: "渠道交易号", dataIndex: "providerTradeNo", width: 220, render: (value) => (value ? <span className="font-mono text-xs">{value}</span> : "--") },
-        { title: "金额", dataIndex: "amountFen", width: 110, align: "right", render: (value, item) => `${item.currency} ${(value / 100).toFixed(2)}` },
+        { title: "金额", dataIndex: "amountFen", width: 110, align: "right", render: (value, item) => formatPaymentAmount(value, item.currency) },
         { title: "说明", dataIndex: "detail", render: (value) => value || "账单与本地订单一致" },
     ];
 
@@ -871,7 +872,7 @@ export default function AdminPaymentsPage() {
                             },
                             { key: "product", label: "商品", children: selectedOrder.productName },
                             { key: "channel", label: "支付渠道", children: providerNames[selectedOrder.providerId] || selectedOrder.providerId },
-                            { key: "amount", label: "金额 / 积分", children: `¥ ${(selectedOrder.amountFen / 100).toFixed(2)} / ${formatCredits(selectedOrder.creditsMicrocredits)} 积分` },
+                            { key: "amount", label: "金额 / 积分", children: `${formatPaymentAmount(selectedOrder.amountFen, selectedOrder.currency)} / ${formatCredits(selectedOrder.creditsMicrocredits)} 积分` },
                             { key: "status", label: "状态", children: paymentOrderStatus[selectedOrder.status]?.label || selectedOrder.status },
                             ...(
                                 [
