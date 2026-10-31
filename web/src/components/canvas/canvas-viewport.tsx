@@ -56,7 +56,11 @@ type PinchState = {
 export function CanvasViewport(props: CanvasViewportProps) {
     const existing = useCanvasPlaybackController();
     if (existing) return <CanvasViewportContent {...props} />;
-    return <CanvasPlaybackProvider key={`${getActiveUserScope()}:${props.playbackScope || ""}`}><CanvasViewportContent {...props} /></CanvasPlaybackProvider>;
+    return (
+        <CanvasPlaybackProvider key={`${getActiveUserScope()}:${props.playbackScope || ""}`}>
+            <CanvasViewportContent {...props} />
+        </CanvasPlaybackProvider>
+    );
 }
 
 function CanvasViewportContent({
@@ -280,8 +284,8 @@ function CanvasViewportContent({
         // AntD 浮层通过 Portal 渲染到节点 DOM 之外；若不统一排除，会被误判为画布空白并捕获指针。
         if (target?.closest(CANVAS_POINTER_IGNORE_SELECTOR)) return;
         const isBackgroundClick = !target?.closest("[data-node-id],[data-connection-id]");
-        tapStartRef.current = isBackgroundClick && event.button === 0 && event.isPrimary && !event.shiftKey && !event.ctrlKey && !event.metaKey && !event.altKey && !spacePressedRef.current
-            ? { pointerId: event.pointerId, x: event.clientX, y: event.clientY } : null;
+        tapStartRef.current =
+            isBackgroundClick && event.button === 0 && event.isPrimary && !event.shiftKey && !event.ctrlKey && !event.metaKey && !event.altKey && !spacePressedRef.current ? { pointerId: event.pointerId, x: event.clientX, y: event.clientY } : null;
         const isTouch = event.pointerType === "touch";
 
         const pointerIntent = resolveCanvasPointerIntent({

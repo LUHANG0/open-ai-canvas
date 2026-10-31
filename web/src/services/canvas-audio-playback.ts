@@ -86,7 +86,8 @@ class CanvasAudioPlaybackController {
 
     pause(nodeId?: string) {
         if (!this.activeSource || (nodeId && this.activeSource.nodeId !== nodeId)) return;
-        this.autoplayToken = null; releaseMediaPlayback(this);
+        this.autoplayToken = null;
+        releaseMediaPlayback(this);
         this.audio?.pause();
     }
 
@@ -155,14 +156,16 @@ class CanvasAudioPlaybackController {
         const url = await resolveAudioSource(source);
         if (!this.isCurrent(source, token)) return;
         if (!url) {
-            releaseMediaPlayback(this); this.autoplayToken = null;
+            releaseMediaPlayback(this);
+            this.autoplayToken = null;
             this.update(source.nodeId, { phase: "error", error: "音频资源不可用" });
             return;
         }
 
         const audio = this.ensureAudio();
         audio.preload = "metadata";
-        audio.volume = source.volume ?? 1; audio.muted = source.muted ?? false;
+        audio.volume = source.volume ?? 1;
+        audio.muted = source.muted ?? false;
         audio.src = url;
         audio.load();
         if (this.autoplayToken !== token) {
@@ -181,15 +184,21 @@ class CanvasAudioPlaybackController {
             if (this.activeSource?.nodeId === nodeId && token === this.generation && this.autoplayToken === token) this.update(nodeId, { phase: "playing", error: undefined });
             else if (this.activeSource?.nodeId === nodeId && token === this.generation) this.audio.pause();
         } catch (error) {
-            if (this.activeSource?.nodeId === nodeId && token === this.generation && this.autoplayToken === token) { releaseMediaPlayback(this); this.update(nodeId, { phase: "error", error: mediaErrorMessage(error) }); }
+            if (this.activeSource?.nodeId === nodeId && token === this.generation && this.autoplayToken === token) {
+                releaseMediaPlayback(this);
+                this.update(nodeId, { phase: "error", error: mediaErrorMessage(error) });
+            }
         }
     }
 
-    private async resume(nodeId: string) { return this.playActive(nodeId); }
+    private async resume(nodeId: string) {
+        return this.playActive(nodeId);
+    }
 
     setSound(nodeId: string, sound: { volume: number; muted: boolean }) {
         if (this.activeSource?.nodeId !== nodeId || !this.audio) return;
-        this.audio.volume = sound.volume; this.audio.muted = sound.muted;
+        this.audio.volume = sound.volume;
+        this.audio.muted = sound.muted;
     }
 
     private ensureAudio() {
@@ -243,7 +252,8 @@ class CanvasAudioPlaybackController {
             this.update(active.nodeId, { phase: "ended", currentTimeMs: durationMs, durationMs });
         });
         audio.addEventListener("error", () => {
-            releaseMediaPlayback(this); this.autoplayToken = null;
+            releaseMediaPlayback(this);
+            this.autoplayToken = null;
             const active = this.activeSource;
             if (active) this.update(active.nodeId, { phase: "error", error: "音频加载失败" });
         });

@@ -93,7 +93,38 @@ const supportedVideoMimeTypes = new Set<VideoMimeType>(["video/mp4", "video/webm
  * 统一视频播放表面，保留原生媒体 URL 契约，同时提供可访问的完整控件布局。
  * 画布节点需要隔离播放器手势，避免拖动进度条时被误判为拖动画布。
  */
-export function VideoPlayer({ src, mimeType, title = "视频", className, brandColor = "#f5f5f5", preload = "metadata", autoPlay = false, dataCanvasNoZoom = false, compactControls = false, hasAudio, paused, initialTime = 0, playbackSessionId, playbackCommand, muted, volume, onSoundChange, onPlaybackFailure, onPlaying, onWaiting, onSeeking, onSeeked, previewMode = false, onPause, onPlayRequest, onPauseRequest, onCanPlay, onPlay, onEnded, onError }: VideoPlayerProps) {
+export function VideoPlayer({
+    src,
+    mimeType,
+    title = "视频",
+    className,
+    brandColor = "#f5f5f5",
+    preload = "metadata",
+    autoPlay = false,
+    dataCanvasNoZoom = false,
+    compactControls = false,
+    hasAudio,
+    paused,
+    initialTime = 0,
+    playbackSessionId,
+    playbackCommand,
+    muted,
+    volume,
+    onSoundChange,
+    onPlaybackFailure,
+    onPlaying,
+    onWaiting,
+    onSeeking,
+    onSeeked,
+    previewMode = false,
+    onPause,
+    onPlayRequest,
+    onPauseRequest,
+    onCanPlay,
+    onPlay,
+    onEnded,
+    onError,
+}: VideoPlayerProps) {
     const [detectedHasAudio, setDetectedHasAudio] = useState<boolean | undefined>(undefined);
     const autoPlayAttemptedRef = useRef(false);
     const audioProbeGenerationRef = useRef(0);
@@ -111,10 +142,13 @@ export function VideoPlayer({ src, mimeType, title = "视频", className, brandC
     };
     const drivePlayback = (player: MediaPlayerInstance) => {
         if (paused === undefined) return;
-        if (paused) { player.pause(); return; }
+        if (paused) {
+            player.pause();
+            return;
+        }
         if (!player.state.canPlay || attemptRef.current === requestKey) return;
         attemptRef.current = requestKey;
-        void player.play().catch(error => {
+        void player.play().catch((error) => {
             const latest = latestRequestRef.current;
             if (latest.key === requestKey && latest.paused !== true) latest.onPlaybackFailure?.(error);
         });
@@ -122,9 +156,15 @@ export function VideoPlayer({ src, mimeType, title = "视频", className, brandC
     useEffect(() => {
         const player = mediaPlayerRef.current;
         if (!player?.state.canPlay) return;
-        applyInitialPosition(player); drivePlayback(player);
+        applyInitialPosition(player);
+        drivePlayback(player);
     }, [paused, playbackSessionId, playbackCommand, src]);
-    useEffect(() => () => { releaseMediaPlayback(mediaPlayerRef); }, []);
+    useEffect(
+        () => () => {
+            releaseMediaPlayback(mediaPlayerRef);
+        },
+        [],
+    );
     // Match LibTV's conservative rule: only explicit/container-confirmed
     // silence mutes the player. Runtime probes are used to confirm audio and
     // correct stale persisted `false`, but a negative/unknown probe never
@@ -240,17 +280,23 @@ export function VideoPlayer({ src, mimeType, title = "视频", className, brandC
                 if (paused === undefined) claimMediaPlayback(mediaPlayerRef, "explicit", () => mediaPlayerRef.current?.pause());
                 onPlay?.(event);
             }}
-            onPause={(event) => { if (paused === undefined) releaseMediaPlayback(mediaPlayerRef); onPause?.(event); }}
+            onPause={(event) => {
+                if (paused === undefined) releaseMediaPlayback(mediaPlayerRef);
+                onPause?.(event);
+            }}
             onPlaying={onPlaying}
             onWaiting={onWaiting}
             onSeeking={onSeeking}
             onSeeked={onSeeked}
             onVolumeChange={(detail, event) => {
-                if (!noAudio && ["media-volume-change-request", "media-mute-request", "media-unmute-request"].some(type => event.triggers.hasType(type))) onSoundChange?.(detail);
+                if (!noAudio && ["media-volume-change-request", "media-mute-request", "media-unmute-request"].some((type) => event.triggers.hasType(type))) onSoundChange?.(detail);
             }}
             onMediaPlayRequest={onPlayRequest}
             onMediaPauseRequest={onPauseRequest}
-            onEnded={(event) => { if (paused === undefined) releaseMediaPlayback(mediaPlayerRef); onEnded?.(event); }}
+            onEnded={(event) => {
+                if (paused === undefined) releaseMediaPlayback(mediaPlayerRef);
+                onEnded?.(event);
+            }}
             onError={onError}
             onLoadedMetadata={(event) => {
                 const provider = event.target.provider;

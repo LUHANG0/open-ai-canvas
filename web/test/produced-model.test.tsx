@@ -126,7 +126,6 @@ describe("produced model badge", () => {
                         naturalWidth: 1280,
                         naturalHeight: 720,
                         bytes: 2048,
-                        ...(type === CanvasNodeType.Video ? { resultRecord: { taskId: "fixture", mediaKey: "resource:1", submittedResolution: "720P" } } : {}),
                     },
                 }}
                 scale={1}

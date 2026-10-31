@@ -160,7 +160,8 @@ describe("canvas audio playback", () => {
         expect(video.getSnapshot()?.nodeId).toBe("video");
         video.play("video", "video");
         expect(getCanvasAudioPlaybackSnapshot("audio-focus").phase).toBe("paused");
-        video.clear(); canvasAudioPlayback.stop();
+        video.clear();
+        canvasAudioPlayback.stop();
     });
 
     test("a pending audio source cannot restart after a newer video request", async () => {
@@ -171,6 +172,7 @@ describe("canvas audio playback", () => {
         await pending;
         expect(getCanvasAudioPlaybackSnapshot("audio-pending").phase).toBe("paused");
         expect(video.getSnapshot()?.intent).toBe("play");
-        video.clear(); canvasAudioPlayback.stop();
+        video.clear();
+        canvasAudioPlayback.stop();
     });
 });
