@@ -1,9 +1,9 @@
 import { canReplaceWorkbenchPrompt, planWorkbenchPresetSwitch } from "@/lib/workbench-preset-switch";
 import { createClientUUID } from "@/lib/client-id";
 import { App, Button, Input, InputNumber, Progress, Spin, Switch, Tooltip } from "antd";
-import { Check, Camera, ChevronDown, Clapperboard, Expand, FileImage, History, ImagePlus, Images, LoaderCircle, Mic, Palette, Plus, RotateCcw, Search, ShoppingBag, Sparkles, Upload, UserRound, Video, X } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useSearchParams } from "react-router";
+import { Check, Camera, ChevronDown, Clapperboard, FileImage, ImagePlus, Images, Mic, Palette, Search, ShoppingBag, Sparkles, Upload, UserRound, Video, X } from "lucide-react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router";
 
 import { ImageSizePicker } from "@/components/image-size-picker";
 import { MediaPreview } from "@/components/media-preview";
@@ -23,16 +23,26 @@ import { quoteModel } from "@/services/api/logical-models";
 import { prepareBackendGenerationTask } from "@/services/api/generation-task";
 import { createGenerationTask, cancelGenerationTask, queryGenerationTask, retryGenerationTask, type GenerationTask } from "@/services/api/task-center";
 import { capabilitySupportedModes, createWorkbenchTask, listWorkbenchTasks, listWorkbenchTools, normalizeWorkbenchGuide, resolveWorkbenchResourceURL, type WorkbenchKind, type WorkbenchPromptPreset, type WorkbenchTool } from "@/services/api/workbench";
-import { resourceStorageKey, resolveResourceUrl, uploadResourceFile } from "@/services/api/resources";
-import { formatCredits, requestCreditCost } from "@/constant/credits";
+import { getResource, resourceStorageKey, uploadResourceFile } from "@/services/api/resources";
+import { requestCreditCost } from "@/constant/credits";
 import { useCreationPreferencesStore } from "@/stores/use-creation-preferences-store";
 import { logicalModelIDForConfig, modelDisplayName, modelOptionName, resolveModelChannel, selectableModelsByCapability, useConfigStore, useEffectiveConfig } from "@/stores/use-config-store";
 import { useUserStore } from "@/stores/use-user-store";
 
 import { workbenchCategoryLabel, workbenchCategories } from "./workbench-catalog";
 import { missingWorkbenchInput, workbenchPromptRequired, workbenchVideoOperation } from "./workbench-input";
+import { WorkbenchResults } from "./workbench-results";
+import { WorkbenchViewer } from "./workbench-viewer";
+import { workbenchTaskOutputs, workbenchDownloadName, type WorkbenchOutput } from "./workbench-outputs";
+import { planWorkbenchReferences } from "./workbench-reference-policy";
+import type { PickedWorkbenchReference } from "./workbench-reference-library";
+import { downloadBrowserMedia } from "@/services/browser-download";
+import { getActiveUserScope } from "@/lib/user-scope";
 import "./workbench.css";
+import "./workbench-experience.css";
 import "./workbench-count-picker.css";
+
+const WorkbenchReferenceLibrary = lazy(() => import("./workbench-reference-library").then((module) => ({ default: module.WorkbenchReferenceLibrary })));
 
 export type WorkbenchReference = {
     id: string;
@@ -110,32 +120,6 @@ export function workbenchTaskSnapshot(task: GenerationTask): WorkbenchTaskSnapsh
     };
 }
 
-function taskPreview(task: GenerationTask) {
-    if (task.previewUrl) return task.previewUrl;
-    try {
-        const result = task.resultJson ? (JSON.parse(task.resultJson) as { images?: Array<{ url?: string; dataUrl?: string }>; video?: { url?: string; dataUrl?: string } }) : null;
-        return task.previewKind === "video" ? result?.video?.url || result?.video?.dataUrl || "" : result?.images?.[0]?.url || result?.images?.[0]?.dataUrl || "";
-    } catch {
-        return "";
-    }
-}
-
-function elapsedLabel(task: GenerationTask) {
-    const start = task.startedAt ? Date.parse(task.startedAt) : Date.parse(task.createdAt);
-    const end = task.completedAt ? Date.parse(task.completedAt) : Date.now();
-    if (!Number.isFinite(start) || !Number.isFinite(end)) return "";
-    const seconds = Math.max(0, Math.floor((end - start) / 1000));
-    return seconds < 60 ? `${seconds} 秒` : `${Math.floor(seconds / 60)} 分 ${seconds % 60} 秒`;
-}
-
-function displayTaskState(task: GenerationTask) {
-    if (task.status === "queued") return "排队中";
-    if (task.status === "running") return task.stage || "生成中";
-    if (task.status === "succeeded") return "已完成";
-    if (task.status === "cancelled") return "已取消";
-    return task.error || task.stage || "生成失败";
-}
-
 function revokeReferencePreview(reference: WorkbenchReference) {
     if (reference.previewUrl.startsWith("blob:")) URL.revokeObjectURL(reference.previewUrl);
 }
@@ -152,23 +136,29 @@ function isModelIdLike(value: string | undefined) {
 function toolVisual(tool: WorkbenchTool, kind: WorkbenchKind) {
     const text = `${tool.name} ${tool.subtitle || ""} ${tool.description || ""} ${(tool.searchKeywords || []).join(" ")}`.toLocaleLowerCase();
     if (text.includes("模特") || text.includes("人物") || text.includes("上身") || text.includes("穿搭")) return { icon: <UserRound />, tone: "people", label: "模特与人物" };
-    if (text.includes("视频") || kind === "video") return { icon: <Clapperboard />, tone: "video", label: "商品视频" };
+    if (text.includes("视频") || kind === "video") return { icon: <Clapperboard />, tone: "video", label: "镜头与视频" };
     if (text.includes("场景") || text.includes("氛围") || text.includes("背景")) return { icon: <Images />, tone: "scene", label: "场景与氛围" };
     if (text.includes("风格") || text.includes("海报") || text.includes("视觉")) return { icon: <Palette />, tone: "style", label: "风格与视觉" };
     if (text.includes("主图") || text.includes("商品") || text.includes("电商") || text.includes("白底")) return { icon: <ShoppingBag />, tone: "product", label: "商品出品" };
     return { icon: kind === "image" ? <Camera /> : <Sparkles />, tone: "creative", label: "创意生成" };
 }
 
-function flowStepState(step: string, values: { tool: WorkbenchTool | null; references: WorkbenchReference[]; prompt: string; selectedModel: string }) {
-    if (step === "goal") return values.tool ? "done" : "active";
-    if (step === "reference") return values.references.length ? "done" : values.tool?.inputContract?.slots.some((slot) => slot.required) ? "active" : "ready";
-    if (step === "prompt") return values.prompt.trim() ? "done" : "active";
-    return values.selectedModel ? "done" : "active";
-}
-
 export function WorkbenchPage({ kind }: { kind: WorkbenchKind }) {
     const { message } = App.useApp();
     const config = useEffectiveConfig();
+    const navigate = useNavigate();
+    const videoWorkbenchEnabled = useUserStore((state) => state.features.videoWorkbenchEnabled);
+    const userId = useUserStore((state) => state.user?.id);
+    const [assetPicker, setAssetPicker] = useState<{ slotKey?: string; revision: number } | null>(null);
+    const [taskDetails, setTaskDetails] = useState<Record<string, GenerationTask>>({});
+    const [taskDetailErrors, setTaskDetailErrors] = useState<Record<string, string>>({});
+    const detailEpoch = useRef(0);
+    const composerUserRef = useRef(userId);
+    const taskDetailsRef = useRef<Record<string, GenerationTask>>({});
+    const detailFlights = useRef(new Map<string, Promise<GenerationTask | undefined>>());
+    const [tasksError, setTasksError] = useState("");
+    const [detailError, setDetailError] = useState("");
+    const [outputKey, setOutputKey] = useState<string>();
     const updateConfig = useConfigStore((state) => state.updateConfig);
     const isAiConfigReady = useConfigStore((state) => state.isAiConfigReady);
     const [searchParams, setSearchParams] = useSearchParams();
@@ -189,7 +179,6 @@ export function WorkbenchPage({ kind }: { kind: WorkbenchKind }) {
     };
     useEffect(() => () => referencesRef.current.forEach(revokeReferencePreview), []);
     const [activeTask, setActiveTask] = useState<GenerationTask | null>(null);
-    const [resultHidden, setResultHidden] = useState(false);
     const workbenchRevisionRef = useRef(0);
     const [tasks, setTasks] = useState<GenerationTask[]>([]);
     const [tasksLoading, setTasksLoading] = useState(true);
@@ -223,18 +212,18 @@ export function WorkbenchPage({ kind }: { kind: WorkbenchKind }) {
     // 与创作页同一份可选目录。系统渠道模型通常没有 logicalModelId，不能据此滤成空列表。
     const models = useMemo(() => selectableModelsByCapability(config, capability), [capability, config]);
     const selectedModel = models.includes(configuredModel) ? configuredModel : models[0] || "";
+    const currentModelRef = useRef(selectedModel);
+    currentModelRef.current = selectedModel;
     const profile = useMemo(() => modelCapabilityConfigFor(config, selectedModel), [config, selectedModel]);
     const imageProfile = profile.image;
     const videoProfile = profile.video;
     const filteredTools = useMemo(() => filterWorkbenchTools(tools, toolCategory, toolSearch), [toolCategory, toolSearch, tools]);
     const quickTools = useMemo(() => {
-        const preferred = tools.filter((item) => item.recommended || item.categoryId === "ecommerce" || item.categoryId === "product");
+        const preferred = tools.filter((item) => item.recommended);
         return (preferred.length ? preferred : tools).slice(0, 4);
     }, [tools]);
     const promptRequired = workbenchPromptRequired(tool);
     const missingInput = missingWorkbenchInput(tool, references);
-    const activeTasks = useMemo(() => tasks.filter((task) => task.status === "queued" || task.status === "running"), [tasks]);
-    const historyTasks = useMemo(() => tasks.filter((task) => task.status !== "queued" && task.status !== "running"), [tasks]);
     const selectedCount = Number(count) || 1;
     const promptReferences = useMemo<CanvasResourceReference[]>(
         () =>
@@ -350,7 +339,9 @@ export function WorkbenchPage({ kind }: { kind: WorkbenchKind }) {
                 audioCount: references.filter((reference) => reference.kind === "audio").length,
                 characterCount: 0,
             },
-            ...(kind === "image" ? { imageSize: ratio, options: { size: ratio, quality, ...(imageProfile?.resolution.supported ? { imageResolution } : {}), count: selectedCount } } : { videoSeconds: seconds, options: { size: ratio, videoSeconds: Number(seconds), vquality: videoQuality } }),
+            ...(kind === "image"
+                ? { imageSize: ratio, options: { size: ratio, quality, ...(imageProfile?.resolution.supported ? { imageResolution } : {}), count: selectedCount } }
+                : { videoSeconds: seconds, options: { size: ratio, videoSeconds: Number(seconds), vquality: videoQuality } }),
         }),
         [capability, imageProfile, imageResolution, kind, prompt, quality, ratio, references, seconds, selectedCount, videoQuality],
     );
@@ -400,18 +391,55 @@ export function WorkbenchPage({ kind }: { kind: WorkbenchKind }) {
         return () => controller.abort();
     }, [capability, composerConfig, config, creditsEnabled, kind, quoteRequirements, seconds, selectedCount, selectedModel]);
 
+    useEffect(() => {
+        detailEpoch.current++;
+        workbenchRevisionRef.current++;
+        if (composerUserRef.current !== userId) {
+            referencesRef.current.forEach(revokeReferencePreview);
+            setReferences([]);
+            setPrompt("");
+            setTool(null);
+            setPreset(null);
+            setPresetPending(null);
+            setQuery("");
+            setMobileTab("generate");
+            setToolLibraryOpen(false);
+        }
+        composerUserRef.current = userId;
+        setTasks([]);
+        setActiveTask(null);
+        setTasksLoading(true);
+        setTasksError("");
+        taskDetailsRef.current = {};
+        detailFlights.current.clear();
+        setTaskDetails({});
+        setTaskDetailErrors({});
+        setDetailTask(null);
+        setAssetPicker(null);
+        setDetailLoading(false);
+        detailRequestRef.current++;
+        return () => {
+            detailEpoch.current++;
+        };
+    }, [userId]);
+
     const loadTasks = useCallback(async () => {
+        const scope = getActiveUserScope();
+        const epoch = detailEpoch.current;
         try {
             const result = await listWorkbenchTasks(kind, 100);
+            if (scope !== getActiveUserScope() || epoch !== detailEpoch.current) return [];
             setTasks(result);
+            setTasksError("");
             return result;
         } catch (error) {
-            message.error(error instanceof Error ? error.message : "任务列表加载失败");
+            if (scope !== getActiveUserScope() || epoch !== detailEpoch.current) return [];
+            setTasksError(error instanceof Error ? error.message : "任务列表加载失败，已有记录已保留");
             return [];
         } finally {
-            setTasksLoading(false);
+            if (scope === getActiveUserScope() && epoch === detailEpoch.current) setTasksLoading(false);
         }
-    }, [kind, message]);
+    }, [kind, userId]);
 
     useEffect(() => {
         let stopped = false;
@@ -454,7 +482,6 @@ export function WorkbenchPage({ kind }: { kind: WorkbenchKind }) {
         setPresetPending(null);
         setPrompt("");
         setActiveTask(null);
-        setResultHidden(true);
         detailRequestRef.current += 1;
         setDetailLoading(false);
         setDetailTask(null);
@@ -485,6 +512,8 @@ export function WorkbenchPage({ kind }: { kind: WorkbenchKind }) {
     };
 
     const chooseTool = (next: WorkbenchTool | null) => {
+        workbenchRevisionRef.current++;
+        setAssetPicker(null);
         references.forEach(revokeReferencePreview);
         setReferences([]);
         setUploadSlotKey(undefined);
@@ -690,7 +719,6 @@ export function WorkbenchPage({ kind }: { kind: WorkbenchKind }) {
             const task = await queryGenerationTask(createdTask.id);
             setTasks((current) => [task, ...current.filter((item) => item.id !== task.id)]);
             if (revision === workbenchRevisionRef.current) {
-                setResultHidden(false);
                 setActiveTask(task);
                 setMobileTab("result");
             }
@@ -721,6 +749,9 @@ export function WorkbenchPage({ kind }: { kind: WorkbenchKind }) {
             if (notify) message.warning("该任务没有可恢复的工作台参数");
             return false;
         }
+        const scope = getActiveUserScope();
+        const revision = ++workbenchRevisionRef.current;
+        setAssetPicker(null);
         const restoredTool = snapshot.toolId ? tools.find((item) => item.id === snapshot.toolId) || null : null;
         const restoredPreset = restoredTool && snapshot.presetId ? restoredTool.presets.find((item) => item.id === snapshot.presetId) || null : null;
         const parameters = snapshot.parameters;
@@ -769,6 +800,7 @@ export function WorkbenchPage({ kind }: { kind: WorkbenchKind }) {
                 ...(reference.slotKey ? { slotKey: reference.slotKey } : {}),
             })),
         );
+        if (scope !== getActiveUserScope() || revision !== workbenchRevisionRef.current) return false;
         setReferences(restoredReferences);
         const params = new URLSearchParams(searchParams);
         if (restoredTool) params.set("tool", restoredTool.id);
@@ -777,7 +809,6 @@ export function WorkbenchPage({ kind }: { kind: WorkbenchKind }) {
         else params.delete("preset");
         setSearchParams(params, { replace: true });
         setActiveTask(task);
-        setResultHidden(false);
         setMobileTab("generate");
         setDetailTask(null);
         if (notify) message.success("任务配置已载入编辑器");
@@ -808,17 +839,102 @@ export function WorkbenchPage({ kind }: { kind: WorkbenchKind }) {
         }
     };
 
-    const openDetail = async (task: GenerationTask) => {
+    const readTaskDetail = useCallback((task: GenerationTask, force = false): Promise<GenerationTask | undefined> => {
+        const cached = taskDetailsRef.current[task.id];
+        if (!force && cached?.updatedAt === task.updatedAt) return Promise.resolve(cached);
+        const running = detailFlights.current.get(task.id);
+        if (running) return running;
+        const scope = getActiveUserScope();
+        const epoch = detailEpoch.current;
+        const request = queryGenerationTask(task.id)
+            .then((detail) => {
+                if (scope !== getActiveUserScope() || epoch !== detailEpoch.current) return undefined;
+                taskDetailsRef.current[task.id] = detail;
+                setTaskDetails((current) => ({ ...current, [detail.id]: detail }));
+                setTaskDetailErrors((current) => {
+                    const next = { ...current };
+                    delete next[task.id];
+                    return next;
+                });
+                return detail;
+            })
+            .catch((reason) => {
+                if (scope === getActiveUserScope() && epoch === detailEpoch.current) setTaskDetailErrors((current) => ({ ...current, [task.id]: reason instanceof Error ? reason.message : "详细记录暂不可用，已有预览已保留" }));
+                return undefined;
+            })
+            .finally(() => {
+                if (detailFlights.current.get(task.id) === request) detailFlights.current.delete(task.id);
+            });
+        detailFlights.current.set(task.id, request);
+        return request;
+    }, []);
+
+    const openDetail = async (task: GenerationTask, output?: WorkbenchOutput) => {
         const requestId = ++detailRequestRef.current;
+        const scope = getActiveUserScope();
         setDetailTask(task);
+        setOutputKey(output?.key);
         setDetailLoading(true);
+        setDetailError("");
+        const detail = await readTaskDetail(task, true);
+        if (requestId !== detailRequestRef.current || scope !== getActiveUserScope()) return;
+        if (detail) setDetailTask(detail);
+        else setDetailError("详细记录暂不可用，请重新读取；已有预览已保留");
+        setDetailLoading(false);
+    };
+
+    useEffect(() => {
+        setAssetPicker(null);
+    }, [selectedModel]);
+
+    const referenceLimits = {
+        image: kind === "image" ? imageProfile?.references.maxImages || 0 : videoProfile?.references.maxImages || 0,
+        video: kind === "video" ? videoProfile?.references.maxVideos || 0 : 0,
+        audio: kind === "video" ? videoProfile?.references.maxAudios || 0 : 0,
+    };
+    const pickerSlot = tool?.inputContract?.slots.find((slot) => slot.key === assetPicker?.slotKey);
+    const pickerAccept = (pickerSlot?.mediaTypes || (kind === "image" ? ["image"] : ["image", "video", "audio"])) as Array<WorkbenchReference["kind"]>;
+    const pickerCapacity = pickerAccept.reduce((sum, media) => sum + Math.max(0, referenceLimits[media] - references.filter((item) => item.kind === media).length), 0);
+    const pickerRemaining = pickerSlot ? Math.min(pickerCapacity, Math.max(0, pickerSlot.maxCount - references.filter((item) => item.slotKey === pickerSlot.key).length)) : pickerCapacity;
+    const addLibraryReferences = async (items: PickedWorkbenchReference[], targetSlotKey = assetPicker?.slotKey) => {
+        const scope = getActiveUserScope();
+        const revision = workbenchRevisionRef.current;
+        if (assetPicker && assetPicker.revision !== revision) throw new Error("创作模板已变化，请重新选择素材");
+        const modelSnapshot = currentModelRef.current;
+        const referenceSnapshot = referencesRef.current;
+        const planned = planWorkbenchReferences(referenceSnapshot, items, tool?.inputContract?.slots || [], referenceLimits, targetSlotKey);
+        const resolved = await Promise.all(
+            planned.map(async (item): Promise<WorkbenchReference> => {
+                const resource = await getResource(item.resourceId);
+                if (resource.kind !== item.kind || resource.status !== "ready") throw new Error("素材尚未就绪或类型已变化，请刷新素材库");
+                const previewUrl = await resolveWorkbenchResourceURL(item.resourceId, item.kind === "image" ? "thumbnail" : "original");
+                if (!previewUrl) throw new Error("无法读取所选素材，请重试");
+                const role = item.slotKey === "first_frame" || item.slotKey === "last_frame" ? item.slotKey : "reference";
+                return { ...item, id: createClientUUID(), role, previewUrl, progress: 100, uploading: false };
+            }),
+        );
+        if (scope !== getActiveUserScope() || revision !== workbenchRevisionRef.current || referenceSnapshot !== referencesRef.current || modelSnapshot !== currentModelRef.current) throw new Error("账号或创作模板已变化，请重新选择素材");
+        planWorkbenchReferences(referencesRef.current, items, tool?.inputContract?.slots || [], referenceLimits, targetSlotKey);
+        setReferences((current) => [...current, ...resolved]);
+    };
+    const downloadOutput = (output: WorkbenchOutput) => {
+        void downloadBrowserMedia({ url: output.url, storageKey: output.resourceId ? resourceStorageKey(output.resourceId) : output.storageKey, fileName: workbenchDownloadName(output, kind === "image" ? "创作图片" : "创作视频", output.index + 1) }).catch(
+            (reason) => message.error(reason instanceof Error ? reason.message : "下载失败"),
+        );
+    };
+    const reuseRecord = async (task: GenerationTask) => {
+        const detail = task.inputJson ? task : await readTaskDetail(task, true);
+        if (detail) await restoreTaskToComposer(detail);
+        else message.warning("参数尚未读取，请重试");
+    };
+    const useOutputAsReference = async (output: WorkbenchOutput) => {
+        if (!output.resourceId) return;
         try {
-            const detail = await queryGenerationTask(task.id);
-            if (requestId === detailRequestRef.current) setDetailTask(detail);
-        } catch (error) {
-            if (requestId === detailRequestRef.current) message.error(error instanceof Error ? error.message : "任务详情加载失败");
-        } finally {
-            if (requestId === detailRequestRef.current) setDetailLoading(false);
+            await addLibraryReferences([{ resourceId: output.resourceId, kind: "image", name: "生成参考图" }]);
+            setDetailTask(null);
+            setMobileTab("generate");
+        } catch (reason) {
+            message.warning(reason instanceof Error ? reason.message : "参考图未能加入");
         }
     };
 
@@ -838,8 +954,7 @@ export function WorkbenchPage({ kind }: { kind: WorkbenchKind }) {
         const display = configuredModel ? modelDisplayName(config, configuredModel) : rawModel;
         return isModelIdLike(display) ? "生成模型" : display;
     };
-    const resultTask = resultHidden ? null : activeTask || tasks.find((task) => task.status === "succeeded") || null;
-    const resultUrl = resultTask ? taskPreview(resultTask) : "";
+
     const settingsPanel =
         kind === "image" && imageProfile ? (
             <div className="workbench-settings-content">
@@ -971,37 +1086,29 @@ export function WorkbenchPage({ kind }: { kind: WorkbenchKind }) {
             ) : (
                 <div className="workbench-tool-grid">
                     {filteredTools.map((item) => (
-                        <ToolCard key={item.id} tool={item} selected={item.id === tool?.id} onClick={() => { chooseTool(item); setToolLibraryOpen(false); }} />
+                        <ToolCard
+                            key={item.id}
+                            tool={item}
+                            selected={item.id === tool?.id}
+                            onClick={() => {
+                                chooseTool(item);
+                                setToolLibraryOpen(false);
+                            }}
+                        />
                     ))}
-                    {!filteredTools.length ? <div className="workbench-picker-state" role="status">没有找到匹配的创作工具</div> : null}
+                    {!filteredTools.length ? (
+                        <div className="workbench-picker-state" role="status">
+                            没有找到匹配的创作工具
+                        </div>
+                    ) : null}
                 </div>
             )}
         </div>
     );
 
     return (
-        <WorkspacePage fluid scroll={false} className="workbench-page">
+        <WorkspacePage fluid scroll={false} className="workbench-page is-gallery-layout">
             <div className="workbench-shell" data-kind={kind}>
-                <div className="workbench-flow-steps" aria-label="创作流程">
-                    <Tooltip title="清空工具、提示词、参考素材和生成结果">
-                        <button type="button" className="workbench-flow-reset" onClick={resetWorkbench} aria-label="重置工作台">
-                            <RotateCcw />
-                            <span>重置</span>
-                        </button>
-                    </Tooltip>
-                    {[
-                        ["goal", "01", "选择出品目标", flowStepState("goal", { tool, references, prompt, selectedModel })],
-                        ["reference", "02", "准备参考素材", flowStepState("reference", { tool, references, prompt, selectedModel })],
-                        ["prompt", "03", "描述商品画面", flowStepState("prompt", { tool, references, prompt, selectedModel })],
-                        ["settings", "04", "确认参数并生成", flowStepState("settings", { tool, references, prompt, selectedModel })],
-                    ].map(([key, number, label, state], index) => (
-                        <div className={`workbench-flow-step is-${state}`} key={key}>
-                            <span className="workbench-flow-number">{state === "done" ? <Check /> : number}</span>
-                            <span>{label}</span>
-                            {index < 3 ? <span className="workbench-flow-line" aria-hidden /> : null}
-                        </div>
-                    ))}
-                </div>
                 <section className={`workbench-columns ${mobileTab !== "generate" ? "is-mobile-secondary" : ""}`}>
                     <div className="workbench-mobile-tabs">
                         <SegmentedControl
@@ -1009,9 +1116,8 @@ export function WorkbenchPage({ kind }: { kind: WorkbenchKind }) {
                             value={mobileTab}
                             onChange={(value) => setMobileTab(String(value))}
                             options={[
-                                { label: "生成", value: "generate" },
-                                { label: "结果", value: "result" },
-                                { label: "任务", value: "tasks" },
+                                { label: "创作", value: "generate" },
+                                { label: "作品", value: "result" },
                             ]}
                         />
                     </div>
@@ -1019,19 +1125,22 @@ export function WorkbenchPage({ kind }: { kind: WorkbenchKind }) {
                     <section className={`workbench-input-column ${mobileTab === "generate" ? "is-mobile-active" : ""}`} aria-label="生成参数">
                         <div className="workbench-composer">
                             <div className="workbench-tool-bar">
+                                <Button className="workbench-reset" type="text" aria-label="重置创作参数" onClick={resetWorkbench}>
+                                    重置
+                                </Button>
                                 <span className="workbench-kind-label">{kind === "image" ? "图片生成" : "视频生成"}</span>
                                 <button type="button" className="workbench-tool-choice" aria-expanded={toolLibraryOpen} aria-haspopup="dialog" aria-controls="workbench-tool-library" onClick={() => setToolLibraryOpen((open) => !open)}>
                                     <span className="workbench-tool-choice-mark">{tool?.iconUrl ? <img src={tool.iconUrl} alt="" /> : kind === "image" ? <FileImage /> : <Video />}</span>
                                     <span className="workbench-tool-choice-copy">
                                         <small>{tool ? (isModelIdLike(tool.subtitle) ? tool.description || "创作工具" : tool.subtitle || tool.description || "创作工具") : "直接创作"}</small>
-                                        <strong>{tool?.name || "选择创作工具"}</strong>
+                                        <strong>{tool?.name || "选择创作模板"}</strong>
                                     </span>
                                     <ChevronDown className={toolLibraryOpen ? "is-open" : ""} />
                                 </button>
                             </div>
                             <AppModal
                                 destroyOnHidden={false}
-                                title="选择创作工具"
+                                title="选择创作模板"
                                 open={toolLibraryOpen}
                                 onCancel={() => setToolLibraryOpen(false)}
                                 footer={null}
@@ -1041,34 +1150,125 @@ export function WorkbenchPage({ kind }: { kind: WorkbenchKind }) {
                             >
                                 {toolLibrary}
                             </AppModal>
-                            {!tool && tools.length ? (
-                                <section className="workbench-goal-picker" aria-label="快速选择出品目标">
-                                    <div className="workbench-goal-heading">
-                                        <div>
-                                            <span className="workbench-section-index">01</span>
+                            <div className="workbench-studio">
+                                {!tool && tools.length ? (
+                                    <details className="workbench-quick-templates">
+                                        <summary>常用创作模板</summary>
+                                        <section className="workbench-goal-picker" aria-label="快速选择创作模板">
+                                            <div className="workbench-goal-heading">
+                                                <div>
+                                                    <div>
+                                                        <strong>你现在要做什么？</strong>
+                                                        <span>选择角色、场景或画面模板，也可以直接自由创作</span>
+                                                    </div>
+                                                </div>
+                                                <button type="button" onClick={() => setToolLibraryOpen(true)}>
+                                                    查看更多 <ChevronDown />
+                                                </button>
+                                            </div>
+                                            <div className="workbench-goal-grid">
+                                                {quickTools.map((item) => (
+                                                    <QuickGoalCard key={item.id} tool={item} kind={kind} onClick={() => chooseTool(item)} />
+                                                ))}
+                                            </div>
+                                        </section>
+                                    </details>
+                                ) : null}
+
+                                {kind === "video" && searchParams.get("reference") ? (
+                                    <div className="workbench-inline-note" role="status">
+                                        <span>有一张图片可以用于这个镜头，添加后再调整描述和首尾帧用途。</span>
+                                        <Button
+                                            onClick={() => {
+                                                const id = searchParams.get("reference")!;
+                                                void addLibraryReferences([{ resourceId: id, kind: "image", name: "图片生成结果" }])
+                                                    .then(() => {
+                                                        const next = new URLSearchParams(searchParams);
+                                                        next.delete("reference");
+                                                        setSearchParams(next, { replace: true });
+                                                    })
+                                                    .catch((reason) => message.warning(reason instanceof Error ? reason.message : "参考图未能加入"));
+                                            }}
+                                        >
+                                            加入参考图
+                                        </Button>
+                                        <Button
+                                            type="text"
+                                            onClick={() => {
+                                                const next = new URLSearchParams(searchParams);
+                                                next.delete("reference");
+                                                setSearchParams(next, { replace: true });
+                                            }}
+                                        >
+                                            忽略
+                                        </Button>
+                                    </div>
+                                ) : null}
+                                <details className="workbench-template-guide">
+                                    <summary>使用说明与效果参考</summary>{" "}
+                                    <div className="workbench-guide-stage">
+                                        <div className="workbench-section-heading">
                                             <div>
-                                                <strong>你现在要做什么？</strong>
-                                                <span>选择一个出品目标，参数和提示词会更快就位</span>
+                                                <h2>{tool?.name || "工具说明"}</h2>
+                                                <span>创作指南与效果预览</span>
                                             </div>
                                         </div>
-                                        <button type="button" onClick={() => setToolLibraryOpen(true)}>查看更多 <ChevronDown /></button>
+                                        {tool ? (
+                                            <>
+                                                <p className="workbench-guide-description">{tool.description || tool.subtitle}</p>
+                                                {normalizeWorkbenchGuide(tool.guide) ? (
+                                                    <div className="workbench-guide-copy">
+                                                        {normalizeWorkbenchGuide(tool.guide)
+                                                            .split("\n")
+                                                            .filter(Boolean)
+                                                            .map((line, index) => (
+                                                                <p key={`${index}:${line}`}>{line}</p>
+                                                            ))}
+                                                    </div>
+                                                ) : (
+                                                    <div className="workbench-guide-empty">选择适合的模型和参考素材，写下你希望呈现的画面细节。</div>
+                                                )}
+                                                {tool.inputHint ? <p className="workbench-guide-input-hint">{tool.inputHint}</p> : null}
+                                                {tool.inputContract?.slots.length ? (
+                                                    <div className="workbench-guide-contract">
+                                                        <strong>输入素材</strong>
+                                                        {tool.inputContract.slots.map((slot) => (
+                                                            <span key={slot.key}>
+                                                                {slot.name} · {slot.required ? "必填" : "可选"} · 最多 {slot.maxCount} 个
+                                                            </span>
+                                                        ))}
+                                                    </div>
+                                                ) : null}
+                                                {tool.resultExample?.imageUrls?.length || tool.resultExample?.videoUrl ? (
+                                                    <div className="workbench-example-strip">
+                                                        <span>{tool.resultExample.title || "效果参考"}</span>
+                                                        {tool.resultExample.imageUrls?.slice(0, 3).map((url) => (
+                                                            <span className="workbench-example-thumb" key={url}>
+                                                                <img src={url} alt="工具效果参考" />
+                                                            </span>
+                                                        ))}
+                                                        {tool.resultExample.videoUrl ? (
+                                                            <span className="workbench-example-thumb">
+                                                                <video src={tool.resultExample.videoUrl} muted />
+                                                            </span>
+                                                        ) : null}
+                                                    </div>
+                                                ) : null}
+                                            </>
+                                        ) : (
+                                            <div className="workbench-guide-empty">选定工具后，这里会展示创作说明和示例效果。</div>
+                                        )}
                                     </div>
-                                    <div className="workbench-goal-grid">
-                                        {quickTools.map((item) => <QuickGoalCard key={item.id} tool={item} kind={kind} onClick={() => chooseTool(item)} />)}
-                                    </div>
-                                </section>
-                            ) : null}
-                            <div className="workbench-studio">
+                                </details>
                                 <div className="workbench-block-label">
-                                    <span className="workbench-section-index">03</span>
                                     <div>
                                         <strong>描述你想要的成品</strong>
-                                        <span>说清商品、场景、构图、光线和需要保留的细节</span>
+                                        <span>写清主体、动作、场景、光线和需要保留的细节</span>
                                     </div>
                                 </div>
                                 {tool?.presets.length ? (
                                     <div className="workbench-preset-row" role="group" aria-label="工具提示词模板">
-                                        {tool.presets.slice(0, 5).map((item) => (
+                                        {tool.presets.map((item) => (
                                             <button
                                                 type="button"
                                                 key={item.id}
@@ -1109,6 +1309,9 @@ export function WorkbenchPage({ kind }: { kind: WorkbenchKind }) {
                                         {kind === "image" ? imageProfile?.references.maxImages || 0 : (videoProfile?.references.maxImages || 0) + (videoProfile?.references.maxVideos || 0) + (videoProfile?.references.maxAudios || 0)}
                                     </span>
                                     <div className="workbench-toolbar-actions">
+                                        <Button size="small" onClick={() => setAssetPicker({ revision: workbenchRevisionRef.current })} disabled={!pickerCapacity}>
+                                            从素材库选择
+                                        </Button>
                                         <Tooltip title="添加参考素材">
                                             <button type="button" aria-label="添加参考素材" onClick={() => fileRef.current?.click()}>
                                                 <Upload />
@@ -1125,6 +1328,10 @@ export function WorkbenchPage({ kind }: { kind: WorkbenchKind }) {
                                     <div className="workbench-reference-slots">
                                         {tool.inputContract.slots.map((slot) => {
                                             const slotReferences = references.filter((reference) => reference.slotKey === slot.key);
+                                            const slotCapacity = Math.min(
+                                                slot.maxCount - slotReferences.length,
+                                                slot.mediaTypes.reduce((sum, media) => sum + Math.max(0, referenceLimits[media] - references.filter((item) => item.kind === media).length), 0),
+                                            );
                                             const mediaLabel = slot.mediaTypes.map((type) => (type === "image" ? "图片" : type === "video" ? "视频" : "音频")).join(" / ");
                                             const openSlotPicker = () => {
                                                 setUploadSlotKey(slot.key);
@@ -1138,6 +1345,9 @@ export function WorkbenchPage({ kind }: { kind: WorkbenchKind }) {
                                                                 <strong>{slot.name || "参考素材"}</strong>
                                                                 <span className={`workbench-reference-slot-requirement${slot.required ? " is-required" : ""}`}>{slot.required ? "必填" : "可选"}</span>
                                                             </div>
+                                                            <Button size="small" onClick={() => setAssetPicker({ slotKey: slot.key, revision: workbenchRevisionRef.current })} disabled={slotCapacity <= 0}>
+                                                                从素材库选择
+                                                            </Button>
                                                             <div className="workbench-reference-slot-meta">
                                                                 <span>
                                                                     {slot.minCount}-{slot.maxCount} 个
@@ -1247,7 +1457,9 @@ export function WorkbenchPage({ kind }: { kind: WorkbenchKind }) {
                                                 audioCount: references.filter((reference) => reference.kind === "audio").length,
                                                 characterCount: 0,
                                             },
-                                            ...(kind === "image" ? { imageSize: ratio, options: { size: ratio, quality, ...(imageProfile?.resolution.supported ? { imageResolution } : {}), count: selectedCount } } : { videoSeconds: seconds, options: { size: ratio, videoSeconds: Number(seconds), vquality: videoQuality } }),
+                                            ...(kind === "image"
+                                                ? { imageSize: ratio, options: { size: ratio, quality, ...(imageProfile?.resolution.supported ? { imageResolution } : {}), count: selectedCount } }
+                                                : { videoSeconds: seconds, options: { size: ratio, videoSeconds: Number(seconds), vquality: videoQuality } }),
                                         }}
                                         variant="creation"
                                         fullWidth
@@ -1255,6 +1467,8 @@ export function WorkbenchPage({ kind }: { kind: WorkbenchKind }) {
                                         showSelectedPrice={false}
                                         showOptionPrices
                                         onChange={(value) => {
+                                            workbenchRevisionRef.current++;
+                                            setAssetPicker(null);
                                             if (kind === "image") updateConfig("imageModel", value);
                                             else updateConfig("videoModel", value);
                                             updateConfig("model", value);
@@ -1271,9 +1485,7 @@ export function WorkbenchPage({ kind }: { kind: WorkbenchKind }) {
                                 )}
                                 <div className="workbench-submit-estimate" aria-live="polite">
                                     <span className="workbench-submit-estimate-label">{estimateLabel || "预估可用积分"}</span>
-                                    {selectedModel ? (
-                                        <span className="workbench-submit-estimate-model">使用 {modelDisplayName(config, selectedModel)}</span>
-                                    ) : null}
+                                    {selectedModel ? <span className="workbench-submit-estimate-model">使用 {modelDisplayName(config, selectedModel)}</span> : null}
                                 </div>
                                 <Button
                                     className="workbench-submit"
@@ -1290,219 +1502,76 @@ export function WorkbenchPage({ kind }: { kind: WorkbenchKind }) {
                         </div>
                     </section>
 
-                    <section className={`workbench-result-column ${!tool ? "is-tool-unselected" : ""} ${mobileTab === "result" ? "is-mobile-active" : ""}`} aria-label="生成结果和工具说明">
-                        <div className="workbench-result-stage">
-                            <div className="workbench-section-heading">
-                                <div>
-                                    <h2>生成结果</h2>
-                                    <span>{resultTask ? displayTaskState(resultTask) : "作品会在这里呈现"}</span>
-                                </div>
-                                {resultTask?.status === "running" || resultTask?.status === "queued" ? <LoaderCircle className="size-4 animate-spin text-foreground/45" /> : null}
-                            </div>
-                            {!resultTask ? (
-                                <div className="workbench-empty-result">
-                                    <div className="workbench-stage-frame" aria-hidden>
-                                        <span className="workbench-empty-mark">{kind === "image" ? <FileImage /> : <Video />}</span>
-                                    </div>
-                                    <strong>{kind === "image" ? "图片会显示在这里" : "视频会显示在这里"}</strong>
-                                    <span>{kind === "image" ? "写好画面后生成，结果保持原始比例。" : "写好镜头后生成，结果以 16:9 画幅预览。"}</span>
-                                </div>
-                            ) : resultTask.status === "queued" || resultTask.status === "running" ? (
-                                <div className="workbench-generating">
-                                    <div className="workbench-flow-skeleton">
-                                        <span />
-                                        <span />
-                                        <span />
-                                    </div>
-                                    <strong>{displayTaskState(resultTask)}</strong>
-                                    <span>任务已安全进入队列，完成后会自动显示结果</span>
-                                    <Progress percent={resultTask.progress || 8} showInfo={false} />
-                                </div>
-                            ) : resultTask.status === "succeeded" && resultUrl ? (
-                                <div className="workbench-result-media">
-                                    {resultTask.previewKind === "video" || kind === "video" ? (
-                                        <video src={resultUrl} controls playsInline />
-                                    ) : (
-                                        <MediaPreview src={resultUrl} kind="image" alt="生成结果" className="size-full object-contain" fallbackLabel="结果暂不可用" />
-                                    )}
-                                    <div className="workbench-result-caption">
-                                        <span>{taskModelLabel(resultTask)}</span>
-                                        <Button size="small" icon={<Expand className="size-3.5" />} onClick={() => setDetailTask(resultTask)}>
-                                            查看详情
-                                        </Button>
-                                    </div>
-                                </div>
-                            ) : (
-                                <div className="workbench-result-error">
-                                    <span>{displayTaskState(resultTask)}</span>
-                                    <Button onClick={() => setDetailTask(resultTask)}>查看任务详情</Button>
-                                </div>
-                            )}
-                        </div>
-                        <div className="workbench-guide-stage">
-                            <div className="workbench-section-heading">
-                                <div>
-                                    <h2>{tool?.name || "工具说明"}</h2>
-                                    <span>创作指南与效果预览</span>
-                                </div>
-                            </div>
-                            {tool ? (
-                                <>
-                                    <p className="workbench-guide-description">{tool.description || tool.subtitle}</p>
-                                    {normalizeWorkbenchGuide(tool.guide) ? (
-                                        <div className="workbench-guide-copy">
-                                            {normalizeWorkbenchGuide(tool.guide)
-                                                .split("\n")
-                                                .filter(Boolean)
-                                                .map((line, index) => (
-                                                    <p key={`${index}:${line}`}>{line}</p>
-                                                ))}
-                                        </div>
-                                    ) : (
-                                        <div className="workbench-guide-empty">选择适合的模型和参考素材，写下你希望呈现的画面细节。</div>
-                                    )}
-                                    {tool.inputHint ? <p className="workbench-guide-input-hint">{tool.inputHint}</p> : null}
-                                    {tool.inputContract?.slots.length ? (
-                                        <div className="workbench-guide-contract">
-                                            <strong>输入素材</strong>
-                                            {tool.inputContract.slots.map((slot) => (
-                                                <span key={slot.key}>
-                                                    {slot.name} · {slot.required ? "必填" : "可选"} · 最多 {slot.maxCount} 个
-                                                </span>
-                                            ))}
-                                        </div>
-                                    ) : null}
-                                    {tool.resultExample?.imageUrls?.length || tool.resultExample?.videoUrl ? (
-                                        <div className="workbench-example-strip">
-                                            <span>{tool.resultExample.title || "效果参考"}</span>
-                                            {tool.resultExample.imageUrls?.slice(0, 3).map((url) => (
-                                                <span className="workbench-example-thumb" key={url}>
-                                                    <img src={url} alt="工具效果参考" />
-                                                </span>
-                                            ))}
-                                            {tool.resultExample.videoUrl ? (
-                                                <span className="workbench-example-thumb">
-                                                    <video src={tool.resultExample.videoUrl} muted />
-                                                </span>
-                                            ) : null}
-                                        </div>
-                                    ) : null}
-                                </>
-                            ) : (
-                                <div className="workbench-guide-empty">选定工具后，这里会展示创作说明和示例效果。</div>
-                            )}
-                        </div>
-                    </section>
-
-                    <aside className={`workbench-task-column ${mobileTab === "tasks" ? "is-mobile-active" : ""}`} aria-label="任务与历史">
-                        <section className="workbench-active-panel">
-                            <div className="workbench-section-heading">
-                                <div>
-                                    <h2>进行中的任务</h2>
-                                    <span>{activeTasks.length} 个任务</span>
-                                </div>
-                                <Tooltip title="刷新任务">
-                                    <button type="button" aria-label="刷新任务列表" onClick={() => void loadTasks()}>
-                                        <History />
-                                    </button>
-                                </Tooltip>
-                            </div>
-                            <div className="workbench-task-list" aria-busy={tasksLoading}>
-                                {tasksLoading && !activeTasks.length ? (
-                                    <div role="status"><Spin size="small" /><span className="sr-only">正在加载进行中的任务</span></div>
-                                ) : activeTasks.length ? (
-                                    activeTasks.map((task) => <TaskRow key={task.id} task={task} kind={kind} modelLabel={taskModelLabel(task)} busy={taskBusyId === task.id} onOpen={() => void openDetail(task)} onCancel={() => void cancelTask(task)} />)
-                                ) : (
-                                    <p className="workbench-list-empty">暂无进行中的任务</p>
-                                )}
-                            </div>
-                        </section>
-                        <section className="workbench-history-panel">
-                            <div className="workbench-section-heading">
-                                <div>
-                                    <h2>历史生成</h2>
-                                    <span>{historyTasks.length} 条记录</span>
-                                </div>
-                                <Input aria-label="搜索历史任务" prefix={<Search className="size-3.5" />} value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜索提示词" allowClear />
-                            </div>
-                            <div className="workbench-task-list" aria-busy={tasksLoading}>
-                                {tasksLoading ? (
-                                    <div role="status"><Spin size="small" /><span className="sr-only">正在加载历史任务</span></div>
-                                ) : (
-                                    historyTasks
-                                        .filter((task) => !query.trim() || task.prompt.toLowerCase().includes(query.trim().toLowerCase()))
-                                        .slice(0, 30)
-                                        .map((task) => <TaskRow key={task.id} task={task} kind={kind} modelLabel={taskModelLabel(task)} busy={taskBusyId === task.id} onOpen={() => void openDetail(task)} onRetry={() => void retryTask(task)} />)
-                                )}
-                                {!tasksLoading && !historyTasks.length ? <p className="workbench-list-empty">完成的作品会保留在这里</p> : null}
-                            </div>
-                        </section>
-                    </aside>
+                    <WorkbenchResults
+                        tasks={tasks}
+                        details={taskDetails}
+                        detailErrors={taskDetailErrors}
+                        kind={kind}
+                        loading={tasksLoading}
+                        error={tasksError}
+                        query={query}
+                        onQueryChange={setQuery}
+                        onRefresh={() => void loadTasks()}
+                        modelLabel={taskModelLabel}
+                        busyId={taskBusyId}
+                        actions={{
+                            open: (task, output) => void openDetail(task, output),
+                            loadDetail: async (task, force) => {
+                                await readTaskDetail(task, force);
+                            },
+                            cancel: (task) => void cancelTask(task),
+                            retry: (task) => void retryTask(task),
+                            reuse: (task) => void reuseRecord(task),
+                            download: downloadOutput,
+                        }}
+                    />
                 </section>
             </div>
 
-            <AppModal
-                destroyOnHidden={false}
-                title={detailTask ? (detailTask.previewKind === "video" || kind === "video" ? "视频任务详情" : "图片任务详情") : "任务详情"}
-                open={Boolean(detailTask)}
-                onCancel={() => {
-                    detailRequestRef.current += 1;
-                    setDetailLoading(false);
-                    setDetailTask(null);
-                }}
-                footer={null}
-                width={960}
-                className="workbench-detail-modal"
-                rootClassName="workbench-overlay"
-            >
-                {detailTask ? (
-                    <div className="workbench-detail-grid">
-                        <div className="workbench-detail-media">
-                            {taskPreview(detailTask) ? (
-                                detailTask.previewKind === "video" || kind === "video" ? (
-                                    <video src={taskPreview(detailTask)} controls playsInline />
-                                ) : (
-                                    <MediaPreview src={taskPreview(detailTask)} kind="image" alt="生成结果" className="size-full object-contain" />
-                                )
-                            ) : (
-                                <div className="workbench-guide-empty">{displayTaskState(detailTask)}</div>
-                            )}
-                        </div>
-                        <div className="workbench-detail-info" aria-busy={detailLoading}>
-                            <span className={`workbench-status is-${detailTask.status}`}>{displayTaskState(detailTask)}</span>
-                            <h3>{taskModelLabel(detailTask)}</h3>
-                            <span className="workbench-detail-label">提示词</span>
-                            <p className="workbench-detail-prompt" role="region" aria-label="任务提示词" tabIndex={0}>{detailTask.prompt || "此任务没有提示词"}</p>
-                            <span className="workbench-detail-label">参数</span>
-                            <pre tabIndex={0} aria-label="任务参数">{detailLoading ? "正在加载任务参数…" : JSON.stringify(workbenchTaskSnapshot(detailTask)?.parameters || {}, null, 2)}</pre>
-                            <dl>
-                                <div>
-                                    <dt>耗时</dt>
-                                    <dd>{elapsedLabel(detailTask)}</dd>
-                                </div>
-                                <div>
-                                    <dt>积分</dt>
-                                    <dd>{detailTask.billing ? `${formatCredits(detailTask.billing.amountMicrocredits)} · ${detailTask.billing.status}` : "--"}</dd>
-                                </div>
-                                <div>
-                                    <dt>创建时间</dt>
-                                    <dd>{new Date(detailTask.createdAt).toLocaleString()}</dd>
-                                </div>
-                            </dl>
-                            <div className="workbench-detail-actions">
-                                <Button disabled={detailLoading} onClick={() => void restoreTaskToComposer(detailTask)}>
-                                    载入到编辑器
-                                </Button>
-                                {detailTask.status === "failed" || detailTask.status === "cancelled" ? (
-                                    <Button type="primary" loading={taskBusyId === detailTask.id} disabled={detailLoading} onClick={() => void retryTask(detailTask)}>
-                                        重新生成
-                                    </Button>
-                                ) : null}
-                            </div>
-                        </div>
-                    </div>
+            <Suspense fallback={null}>
+                {assetPicker ? (
+                    <WorkbenchReferenceLibrary
+                        open
+                        accept={pickerAccept.filter((media) => referenceLimits[media] > references.filter((item) => item.kind === media).length)}
+                        remaining={pickerRemaining}
+                        slotName={pickerSlot?.name}
+                        onClose={() => setAssetPicker(null)}
+                        onPick={addLibraryReferences}
+                    />
                 ) : null}
-            </AppModal>
+            </Suspense>
+            <WorkbenchViewer
+                task={detailTask}
+                kind={kind}
+                loading={detailLoading}
+                error={detailError}
+                outputKey={outputKey}
+                modelLabel={detailTask ? taskModelLabel(detailTask) : ""}
+                parameters={detailTask ? workbenchTaskSnapshot(detailTask)?.parameters : undefined}
+                busy={taskBusyId === detailTask?.id}
+                onNavigate={(output) => setOutputKey(output.key)}
+                onClose={() => {
+                    detailRequestRef.current++;
+                    setDetailTask(null);
+                    setDetailLoading(false);
+                }}
+                onReload={() => {
+                    if (detailTask)
+                        void openDetail(
+                            detailTask,
+                            workbenchTaskOutputs(detailTask, kind).find((output) => output.key === outputKey),
+                        );
+                }}
+                onDownload={downloadOutput}
+                onReference={(output) => void useOutputAsReference(output)}
+                onVideo={videoWorkbenchEnabled ? (output) => navigate(`/toolbox/video?reference=${encodeURIComponent(output.resourceId!)}`) : undefined}
+                onReuse={() => {
+                    if (detailTask) void reuseRecord(detailTask);
+                }}
+                onRetry={() => {
+                    if (detailTask) void retryTask(detailTask);
+                }}
+            />
 
             <AppModal
                 destroyOnHidden={false}
@@ -1641,34 +1710,6 @@ function ReferenceCard({ reference, kind, onRemove, onRoleChange }: { reference:
                 />
             ) : null}
         </div>
-    );
-}
-
-function TaskRow({ task, kind, modelLabel, busy, onOpen, onCancel, onRetry }: { task: GenerationTask; kind: WorkbenchKind; modelLabel: string; busy: boolean; onOpen: () => void; onCancel?: () => void; onRetry?: () => void }) {
-    const url = taskPreview(task);
-    return (
-        <article className="workbench-task-row">
-            <button type="button" className="workbench-task-main" onClick={onOpen}>
-                <span className="workbench-task-thumb">{url && task.previewKind !== "video" ? <MediaPreview src={url} kind="image" alt="" className="size-full object-cover" /> : kind === "video" ? <Video /> : <FileImage />}</span>
-                <span className="workbench-task-copy">
-                    <strong>{modelLabel}</strong>
-                    <small>{task.prompt}</small>
-                    <em>
-                        {displayTaskState(task)} · {elapsedLabel(task)}
-                    </em>
-                </span>
-            </button>
-            {onCancel ? (
-                <Tooltip title="取消任务">
-                    <Button type="text" aria-label="取消任务" icon={<X className="size-3.5" />} loading={busy} onClick={onCancel} />
-                </Tooltip>
-            ) : null}
-            {onRetry ? (
-                <Tooltip title="重试任务">
-                    <Button type="text" aria-label="重试任务" icon={busy ? <LoaderCircle className="size-3.5 animate-spin" /> : <Plus className="size-3.5" />} disabled={busy} onClick={onRetry} />
-                </Tooltip>
-            ) : null}
-        </article>
     );
 }
 
