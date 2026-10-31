@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 
 import { resolveCanvasAppearance, resolveCanvasGridColor, type CanvasAppearance } from "@/lib/canvas/canvas-appearance";
+import { canvasThemes } from "@/lib/canvas-theme";
 import { resolveCanvasPointerIntent } from "@/lib/canvas/canvas-selection";
 import { isDiscreteCanvasWheel } from "@/lib/canvas/canvas-wheel";
 import type { CanvasBackgroundMode } from "@/lib/canvas-theme";
@@ -8,7 +9,12 @@ import { applyCanvasLiveViewport, CANVAS_GRID_BLEED, CANVAS_RESULT_INFO_MIN_SCAL
 import { useActiveTheme } from "@/stores/canvas/use-canvas-theme-store";
 import type { ViewportTransform } from "@/types/canvas";
 
+import { CanvasPlaybackProvider, useCanvasPlaybackController } from "./canvas-playback-context";
+import { isCanvasBackgroundTap, type CanvasTapStart } from "@/lib/canvas/canvas-playback";
+import { getActiveUserScope } from "@/lib/user-scope";
+
 type CanvasViewportProps = {
+    playbackScope?: string;
     interactive?: boolean;
     containerRef: React.RefObject<HTMLDivElement | null>;
     viewport: ViewportTransform;
@@ -47,7 +53,13 @@ type PinchState = {
     initialScale: number;
 };
 
-export function CanvasViewport({
+export function CanvasViewport(props: CanvasViewportProps) {
+    const existing = useCanvasPlaybackController();
+    if (existing) return <CanvasViewportContent {...props} />;
+    return <CanvasPlaybackProvider key={`${getActiveUserScope()}:${props.playbackScope || ""}`}><CanvasViewportContent {...props} /></CanvasPlaybackProvider>;
+}
+
+function CanvasViewportContent({
     interactive = true,
     containerRef,
     viewport,
@@ -68,6 +80,8 @@ export function CanvasViewport({
     graphicsLayer,
     children,
 }: CanvasViewportProps) {
+    const playback = useCanvasPlaybackController();
+    const tapStartRef = useRef<CanvasTapStart | null>(null);
     const colorTheme = useActiveTheme();
     const resolvedAppearance = resolveCanvasAppearance(appearance, colorTheme);
     const panState = useRef({
@@ -266,6 +280,8 @@ export function CanvasViewport({
         // AntD 浮层通过 Portal 渲染到节点 DOM 之外；若不统一排除，会被误判为画布空白并捕获指针。
         if (target?.closest(CANVAS_POINTER_IGNORE_SELECTOR)) return;
         const isBackgroundClick = !target?.closest("[data-node-id],[data-connection-id]");
+        tapStartRef.current = isBackgroundClick && event.button === 0 && event.isPrimary && !event.shiftKey && !event.ctrlKey && !event.metaKey && !event.altKey && !spacePressedRef.current
+            ? { pointerId: event.pointerId, x: event.clientX, y: event.clientY } : null;
         const isTouch = event.pointerType === "touch";
 
         const pointerIntent = resolveCanvasPointerIntent({
@@ -297,6 +313,7 @@ export function CanvasViewport({
                 const current = viewportRef.current;
                 const centerX = (first.x + second.x) / 2 - rect.left;
                 const centerY = (first.y + second.y) / 2 - rect.top;
+                tapStartRef.current = null;
                 pinchStateRef.current = {
                     active: true,
                     pointerIds: [firstId, secondId],
@@ -352,6 +369,8 @@ export function CanvasViewport({
     useEffect(() => {
         if (!interactive) return;
         const handlePointerMove = (event: PointerEvent) => {
+            const start = tapStartRef.current;
+            if (start?.pointerId === event.pointerId && Math.hypot(event.clientX - start.x, event.clientY - start.y) > 3) tapStartRef.current = null;
             if (event.pointerType === "touch" && touchPointsRef.current.has(event.pointerId)) {
                 touchPointsRef.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
                 const pinch = pinchStateRef.current;
@@ -390,6 +409,8 @@ export function CanvasViewport({
         };
 
         const handlePointerEnd = (event: PointerEvent) => {
+            if (isCanvasBackgroundTap(tapStartRef.current, { pointerId: event.pointerId, x: event.clientX, y: event.clientY, cancelled: event.type !== "pointerup" })) playback?.dismiss();
+            if (tapStartRef.current?.pointerId === event.pointerId) tapStartRef.current = null;
             if (event.pointerType === "touch" && pinchStateRef.current.active && pinchStateRef.current.pointerIds.includes(event.pointerId)) {
                 pinchStateRef.current.active = false;
                 touchPointsRef.current.clear();
@@ -428,7 +449,7 @@ export function CanvasViewport({
             window.removeEventListener("pointerup", handlePointerEnd);
             window.removeEventListener("pointercancel", handlePointerEnd);
         };
-    }, [interactive, containerRef, onCanvasDeselect, scheduleViewportChange, syncViewport]);
+    }, [interactive, containerRef, onCanvasDeselect, playback, scheduleViewportChange, syncViewport]);
 
     useEffect(() => {
         const container = containerRef.current;
@@ -458,6 +479,7 @@ export function CanvasViewport({
             style={
                 {
                     background: resolvedAppearance.background,
+                    "--canvas-selection-stroke": canvasThemes[colorTheme].canvas.selectionStroke,
                     overscrollBehavior: "none",
                     "--canvas-live-x": `${viewport.x}px`,
                     "--canvas-live-y": `${viewport.y}px`,

@@ -55,8 +55,6 @@ export type CanvasNodeContentProps = {
     onOpenTaskDetails?: (node: CanvasNodeData) => void;
     onToggleBatch?: () => void;
     disableMediaEffects?: boolean;
-    mediaActive?: boolean;
-    onMediaPlayRequest?: (nodeId: string | null) => void;
 };
 
 export function CanvasNodeContent(props: CanvasNodeContentProps) {
@@ -65,6 +63,12 @@ export function CanvasNodeContent(props: CanvasNodeContentProps) {
     // controls and batch previews become lighter in overview mode.
     if (props.node.type === CanvasNodeType.Image && props.renderLOD !== "full" && (props.node.metadata?.content || props.node.metadata?.storageKey)) {
         return <ImageNodeContent {...props} />;
+    }
+    // The completed video surface is already a passive poster until activated.
+    // Keep its decoded image across overview thresholds, just like image nodes.
+    if (props.node.type === CanvasNodeType.Video && props.renderLOD !== "full" && (props.node.metadata?.content || props.node.metadata?.storageKey)
+        && !props.isBatchRoot && !props.node.metadata?.previsSceneId && !["loading", "error"].includes(props.node.metadata?.status || "")) {
+        return <VideoNodeContent {...props} />;
     }
     if (props.renderLOD === "shell") return <CanvasNodeShellContent node={props.node} theme={props.theme} />;
     if (props.renderLOD === "preview") return <CanvasNodePreviewContent node={props.node} theme={props.theme} />;

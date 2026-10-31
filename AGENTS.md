@@ -10,6 +10,11 @@
 | --- | --- |
 | 品牌与产品界面体验 | `yingce-ui-experience`；公开品牌页面可结合 `design-taste-frontend`，交互检查可结合 `web-design-guidelines` 与 `playwright` |
 | 参考页面或截图复刻 | 全局 `reference-ui-recreation`；用户提供截图、设计稿、Figma 画面或网址并要求还原时，在现有项目页面中实现并对照验证 |
+| 网页加载与运行性能 | 全局 `performance`；首屏加载、交互响应和布局偏移专项结合 `core-web-vitals`，先测量再优化，区分实验室数据与真实用户数据 |
+| 构建与资源加载 | 全局 `vite`，仅用于构建配置、插件、资源与相关故障；以项目 package.json 和锁文件版本为准，不因技能示例自动升级依赖 |
+| 产品交互反馈 | 全局 `interaction-design`，用于加载状态、按钮反馈、弹窗、拖拽与过渡；复用现有 `motion`（`motion/react`）和组件，遵循本次设计方向；展示视频与 GIF 使用 `design-to-motion` |
+| 无障碍专项 | 日常 UI 审查使用 `web-design-guidelines`；深入检查键盘、焦点、读屏与 WCAG 时结合全局 `accessibility`，自动化分数不等同完整合规 |
+| Go 并发专项 | 全局 `go-concurrency-patterns`，仅用于任务并发、取消、超时、worker 与竞争问题，结合 `golang-context` 及项目实际生命周期和数据合同 |
 | 跨模块重构与职责调整 | `yingce-refactoring`，再结合受影响领域的技能 |
 | 产品流程、创作工具与模型 | `yingce-product-flows`、`yingce-generation-tools`、`yingce-provider-integrations` |
 | 项目剪辑、素材与编辑器 | `yingce-project-timeline`、`yingce-assets-storage`、`yingce-canvas-editor` |
@@ -18,7 +23,7 @@
 | PostgreSQL 与安全建模 | 全局 `supabase-postgres-best-practices` 仅用于 PostgreSQL 相关工作，不替代本项目的 SQLite 兼容检查；全局 `security-threat-model` 仅用于明确要求的威胁建模 |
 | 故障、验证与发布 | `systematic-debugging`、`verification-before-completion`、`yingce-release-readiness` |
 
-表格用于定位技能，不要求每项任务加载整行技能；先选直接相关的，再按实际影响范围补充。
+表格用于定位技能，不要求每项任务加载整行技能；先选直接相关的，再按实际影响范围补充。 技能示例需适配真实框架、依赖版本与用户当前要求，不自动引入依赖或固定视觉方案；重叠专项按问题选用，不能把安装视为已经完成运行验收。
 
 ## 1. 如何判断现状
 

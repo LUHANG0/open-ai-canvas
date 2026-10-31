@@ -109,7 +109,7 @@ describe("produced model", () => {
 
 describe("produced model badge", () => {
     const noop = () => {};
-    function renderMedia(type: CanvasNodeType, showImageInfo: boolean, mediaActive = false, renderLOD: "full" | "preview" = "full") {
+    function renderMedia(type: CanvasNodeType, showImageInfo: boolean, renderLOD: "full" | "preview" = "full") {
         return renderToStaticMarkup(
             <CanvasNode
                 data={{
@@ -126,11 +126,11 @@ describe("produced model badge", () => {
                         naturalWidth: 1280,
                         naturalHeight: 720,
                         bytes: 2048,
+                        ...(type === CanvasNodeType.Video ? { resultRecord: { taskId: "fixture", mediaKey: "resource:1", submittedResolution: "720P" } } : {}),
                     },
                 }}
                 scale={1}
                 isSelected={false}
-                mediaActive={mediaActive}
                 isRelated={false}
                 isFocusRelated={false}
                 isConnectionTarget={false}
@@ -153,13 +153,13 @@ describe("produced model badge", () => {
         expect(image).toContain("flux-dev");
         expect(image).toContain("1280×720");
         expect(image).toContain('class="canvas-node-result-record"');
-        const video = renderMedia(CanvasNodeType.Video, true, true);
+        const video = renderMedia(CanvasNodeType.Video, true);
         expect(video).toContain('class="canvas-node-result-record"');
         expect(video).toContain("720P");
         expect(video).toContain("flux-dev");
         expect(video).not.toContain("1280 x 720");
         expect(renderMedia(CanvasNodeType.Audio, true)).toContain("flux-dev");
-        expect(renderMedia(CanvasNodeType.Image, true, false, "preview")).not.toContain("flux-dev");
-        expect((video.match(/canvas-node-result-record-model/g) || []).length).toBe(1);
+        expect(renderMedia(CanvasNodeType.Image, true, "preview")).not.toContain("flux-dev");
+        expect((video.match(/generation-result-metadata-model/g) || []).length).toBe(1);
     });
 });

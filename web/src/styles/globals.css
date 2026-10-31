@@ -8386,6 +8386,12 @@ html:not(.dark) .canvas-generation-settings-trigger.ant-btn[aria-expanded="true"
     pointer-events: none;
 }
 
+/* Hide only the idle preview pointer, including the play button layered above it. */
+.node-element [data-hover-cursor-hidden="true"],
+.node-element [data-hover-cursor-hidden="true"] * {
+    cursor: none !important;
+}
+
 .canvas-node-shell {
         box-shadow: none;
         transform-origin: center;
@@ -10290,12 +10296,8 @@ html:not(.dark) .canvas-generation-settings-trigger.ant-btn[aria-expanded="true"
         transition: none !important;
     }
 
-    /* 平移时优先保证世界层合成，暂时关闭每个媒体卡片的滤镜和阴影绘制。 */
-    [data-canvas-viewport-interacting="true"] :where(.canvas-node-shell, .canvas-frame-shell, .canvas-folder-preview, .canvas-folder-front, .aceternity-comet-card) {
-        box-shadow: none !important;
-        filter: none !important;
-        backdrop-filter: none !important;
-    }
+    /* Keep node surfaces unchanged while the world transform moves. Toggling
+       shadows/filters on every wheel idle boundary repaints the whole card. */
 
     /* LibTV 式默认选择光标：短促圆润的黑色箭头配细白描边，不使用发光或阴影。 */
     .canvas-cursor-select {
@@ -10303,15 +10305,16 @@ html:not(.dark) .canvas-generation-settings-trigger.ant-btn[aria-expanded="true"
     }
 
     /* 框选移动期只标记发生变化的 DOM 节点，避免每帧提交 React 选择状态。 */
+    [data-node-id][data-node-selected="true"],
     [data-node-id][data-canvas-selection-preview="include"] {
-        outline: calc(2px * var(--canvas-live-inverse-scale)) solid var(--workspace-accent);
-        outline-offset: calc(3px * var(--canvas-live-inverse-scale));
+        outline: calc(1.5px * var(--canvas-live-inverse-scale, 1)) solid var(--canvas-selection-stroke);
+        outline-offset: calc(2px * var(--canvas-live-inverse-scale, 1));
         border-radius: var(--node-radius);
     }
 
     [data-node-id][data-canvas-selection-preview="remove"] {
-        outline: calc(2px * var(--canvas-live-inverse-scale)) dashed var(--destructive);
-        outline-offset: calc(3px * var(--canvas-live-inverse-scale));
+        outline: calc(1.5px * var(--canvas-live-inverse-scale, 1)) dashed var(--destructive);
+        outline-offset: calc(2px * var(--canvas-live-inverse-scale, 1));
         border-radius: var(--node-radius);
         opacity: 0.72;
     }

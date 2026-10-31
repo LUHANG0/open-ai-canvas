@@ -1,3 +1,4 @@
+import { useCanvasNativeMedia } from "./use-canvas-native-media";
 import { useEffect, useState } from "react";
 import { AudioLines, FileText, Image as ImageIcon, LoaderCircle, Video } from "lucide-react";
 
@@ -91,9 +92,10 @@ function PreviewMessage({ text, loading = false }: { text: string; loading?: boo
 
 function VideoPreview({ node }: { node: CanvasNodeData }) {
     const { url, loading, onError } = useVideoPlaybackUrl(node, true);
+    const mediaRef = useCanvasNativeMedia<HTMLVideoElement>(url);
     if (loading && !url) return <PreviewMessage text="正在加载视频" loading />;
     if (!url) return <PreviewMessage text="视频资源不可用" />;
-    return <video src={url} controls playsInline preload="metadata" className="max-h-full max-w-full bg-black" aria-label={node.title || "视频"} onError={onError} />;
+    return <video ref={mediaRef} src={url} controls playsInline preload="metadata" className="max-h-full max-w-full bg-black" aria-label={node.title || "视频"} onError={onError} />;
 }
 
 function AudioPreview({ node }: { node: CanvasNodeData }) {
@@ -109,12 +111,13 @@ function AudioPreview({ node }: { node: CanvasNodeData }) {
             active = false;
         };
     }, [fallback, storageKey]);
+    const mediaRef = useCanvasNativeMedia<HTMLAudioElement>(state.url);
     if (state.loading) return <PreviewMessage text="正在加载音频" loading />;
     if (!state.url) return <PreviewMessage text="音频资源不可用" />;
     return (
         <div className="flex w-full max-w-xl flex-col items-center gap-4 px-6">
             <AudioLines className="size-10 text-muted-foreground" aria-hidden="true" />
-            <audio onError={() => setState({ url: "", loading: false })} src={state.url} controls preload="metadata" className="w-full" aria-label={node.title || "音频"} />
+            <audio ref={mediaRef} onError={() => setState({ url: "", loading: false })} src={state.url} controls preload="metadata" className="w-full" aria-label={node.title || "音频"} />
         </div>
     );
 }

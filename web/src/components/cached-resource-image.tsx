@@ -12,6 +12,7 @@ type CachedResourceImageProps = Omit<ImgHTMLAttributes<HTMLImageElement>, "src">
     loadingFallback?: ReactNode;
     eager?: boolean;
     variant?: ResourceAccessVariant;
+    retentionKey?: string;
 };
 
 /**
@@ -19,19 +20,20 @@ type CachedResourceImageProps = Omit<ImgHTMLAttributes<HTMLImageElement>, "src">
  * Blob 缓存仍可用于导出、抽帧等字节处理，但不作为媒体展示 src，避免把
  * `blob:http(s)://...` 泄露到节点、素材库和浏览器媒体链路中。
  */
-export function CachedResourceImage({ storageKey, src = "", fallback = null, loadingFallback = fallback, eager = false, variant = "original", onError, ...props }: CachedResourceImageProps) {
+export function CachedResourceImage({ storageKey, src = "", fallback = null, loadingFallback = fallback, eager = false, variant = "original", retentionKey, onError, ...props }: CachedResourceImageProps) {
     const resourceId = resourceIdFromStorageKey(storageKey);
     const remoteResource = Boolean(resourceId);
     const localImageResource = Boolean(storageKey && storageKey.startsWith("image:"));
     const scope = getActiveUserScope();
     const identity = `${scope}:${resourceId || storageKey || src}`;
+    const retentionIdentity = retentionKey ? `${scope}:${retentionKey}` : identity;
     const targetRef = useRef<HTMLSpanElement>(null);
     const [nearViewport, setNearViewport] = useState(eager || !remoteResource);
-    const [displayed, setDisplayed] = useState<{ identity: string; src: string } | null>(null);
+    const [displayed, setDisplayed] = useState<{ identity: string; retentionIdentity: string; src: string } | null>(null);
     const displayedRef = useRef(displayed);
     displayedRef.current = displayed;
     const [failedIdentity, setFailedIdentity] = useState("");
-    const cachedSrc = displayed?.identity === identity ? displayed.src : "";
+    const cachedSrc = displayed?.retentionIdentity === retentionIdentity ? displayed.src : "";
 
     useEffect(() => {
         if (!remoteResource || eager) {
@@ -91,18 +93,18 @@ export function CachedResourceImage({ storageKey, src = "", fallback = null, loa
                 }
             }
             if (isCurrent()) {
-                setDisplayed({ identity, src: candidate });
+                setDisplayed({ identity, retentionIdentity, src: candidate });
                 setFailedIdentity("");
             }
         };
         void load().catch(() => {
-            if (isCurrent() && displayedRef.current?.identity !== identity) setFailedIdentity(identity);
+            if (isCurrent() && displayedRef.current?.retentionIdentity !== retentionIdentity) setFailedIdentity(identity);
         });
         return () => {
             cancelled = true;
             controller.abort();
         };
-    }, [identity, localImageResource, nearViewport, remoteResource, resourceId, scope, src, storageKey, variant]);
+    }, [identity, retentionIdentity, localImageResource, nearViewport, remoteResource, resourceId, scope, src, storageKey, variant]);
 
     const handleImgError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
         if (localImageResource && storageKey && cachedSrc.startsWith("blob:")) {
@@ -110,7 +112,7 @@ export function CachedResourceImage({ storageKey, src = "", fallback = null, loa
                 .then((url) => {
                     if (url && url !== cachedSrc) {
                         const controller = new AbortController();
-                        void prepareCanvasImage(url, controller.signal).then(() => setDisplayed({ identity, src: url })).catch(() => {
+                        void prepareCanvasImage(url, controller.signal).then(() => setDisplayed({ identity, retentionIdentity, src: url })).catch(() => {
                             setFailedIdentity(identity);
                             onError?.(e);
                         });

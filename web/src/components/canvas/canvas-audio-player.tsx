@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useSyncExternalStore } from "react";
+import { useCanvasPlaybackSound } from "./canvas-playback-context";
 import { AlertCircle, LoaderCircle, Pause, Play } from "lucide-react";
 
 import type { CanvasTheme } from "@/lib/canvas-theme";
 import { useCanvasNodeActions } from "./canvas-node-action-context";
-import { getCanvasAudioPlaybackSnapshot, seekCanvasAudio, stopCanvasAudio, subscribeCanvasAudioNode, toggleCanvasAudio } from "@/services/canvas-audio-playback";
+import { setCanvasAudioSound, getCanvasAudioPlaybackSnapshot, seekCanvasAudio, stopCanvasAudio, subscribeCanvasAudioNode, toggleCanvasAudio } from "@/services/canvas-audio-playback";
 import type { CanvasNodeData } from "@/types/canvas";
 
 type CanvasAudioPlayerProps = {
@@ -12,6 +13,8 @@ type CanvasAudioPlayerProps = {
 };
 
 export function CanvasAudioPlayer({ node, theme }: CanvasAudioPlayerProps) {
+    const sound = useCanvasPlaybackSound();
+    useEffect(() => { setCanvasAudioSound(node.id, sound); }, [node.id, sound]);
     const { updateMetadata } = useCanvasNodeActions();
     const subscribe = useCallback((listener: () => void) => subscribeCanvasAudioNode(node.id, listener), [node.id]);
     const getSnapshot = useCallback(() => getCanvasAudioPlaybackSnapshot(node.id), [node.id]);
@@ -23,8 +26,9 @@ export function CanvasAudioPlayer({ node, theme }: CanvasAudioPlayerProps) {
             storageKey: node.metadata?.storageKey,
             mimeType: node.metadata?.mimeType,
             durationMs: node.metadata?.durationMs,
+            ...sound,
         }),
-        [node.id, node.metadata?.content, node.metadata?.durationMs, node.metadata?.mimeType, node.metadata?.storageKey],
+        [node.id, node.metadata?.content, node.metadata?.durationMs, node.metadata?.mimeType, node.metadata?.storageKey, sound],
     );
     const waveform = useMemo(() => createStableWaveform(node.id), [node.id]);
     const syncedDurationRef = useRef(0);

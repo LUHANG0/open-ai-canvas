@@ -70,19 +70,19 @@ describe("large canvas media rendering", () => {
 
     test("keeps inactive video nodes on a viewport-gated static first frame", () => {
         const inactivePreviewSource = canvasNodeContentSource.match(/function InactiveVideoPreview[\s\S]*?\n}\n\n(?:export )?function VideoPreviewPlayButton/)?.[0] || "";
-        expect(canvasNodeContentSource).toContain("if (hasPersistedPreview || !nearViewport || (!node.metadata?.content && !node.metadata?.storageKey) || !updateMediaNodeRef.current)");
+        expect(canvasNodeContentSource).toContain("if ((hasPersistedPreview && !needsPosterUpgrade) || !nearViewport || (!node.metadata?.content && !node.metadata?.storageKey) || !updateMediaNodeRef.current)");
         expect(canvasNodeContentSource).not.toContain("hydrateMediaPreview");
-        expect(inactivePreviewSource).toContain("hasPersistedPreview || !nearViewport");
+        expect(inactivePreviewSource).toContain("hasPersistedPreview && !needsPosterUpgrade");
         expect(inactivePreviewSource).toContain("URL.revokeObjectURL(localPreviewUrlRef.current)");
         expect(inactivePreviewSource).not.toContain("<video");
         expect(inactivePreviewSource).toContain("hydrateCanvasVideoPreview(node, controller.signal)");
-        expect(canvasVideoPreviewSource).toContain("captureVideoPoster(source, { signal, maxWidth: 400 })");
+        expect(canvasVideoPreviewSource).toContain("captureVideoPoster(source, { signal })");
         expect(inactivePreviewSource).toContain("hydrated.persisted.then");
         expect(inactivePreviewSource).not.toContain("autoPlay");
         expect(inactivePreviewSource).toContain("<VideoPreviewPlayButton");
-        expect(canvasNodeContentSource).toContain("useVideoPlaybackUrl(node, mediaActive)");
-        expect(canvasNodeContentSource).toContain("onMediaPlayRequest?.(node.id)");
-        expect(canvasNodeContentSource).toMatch(/autoPlay\s+preload="metadata"/);
+        expect(canvasNodeContentSource).toContain("useVideoPlaybackUrl(node, mediaActive, session?.token)");
+        expect(canvasNodeContentSource).toContain("playback.play(node.id, playerKey)");
+        expect(canvasNodeContentSource).toContain('preload="metadata"');
         expect(canvasNodeContentSource).toContain("resolveVideoMediaUrl(storageKey, fallback)");
         expect(canvasNodeContentSource).toContain("refreshResource(resourceId)");
         expect(canvasNodeContentSource).toContain('getResourceAccess(storageKey, "display", "playback", "", { forceRefresh: true })');
@@ -92,7 +92,7 @@ describe("large canvas media rendering", () => {
     test("routes resource-backed video playback through a browser-compatible variant", () => {
         expect(fileStorageSource).toContain('getResourceAccess(storageKey, "display", variant)');
         expect(fileStorageSource).toContain('return resolveMediaUrl(storageKey, fallback, "playback");');
-        expect(canvasNodeContentSource).toContain("resolveVideoMediaUrl(node.metadata?.storageKey, fallback)");
+        expect(canvasNodeContentSource).toContain("resolveVideoMediaUrl(storageKey, fallback)");
         expect(canvasNodeContentSource).toContain("resolveVideoMediaUrl(storageKey, fallback)");
         expect(canvasVideoPreviewSource).toContain('resolveVideoMediaUrl(node.metadata?.storageKey, node.metadata?.content || "")');
         expect(canvasGenerationTaskSource).toContain('resolveVideoMediaUrl(result.storageKey, result.dataUrl || "")');
@@ -220,7 +220,7 @@ describe("video canvas controls", () => {
     test("uses the muted icon state only when a video is known to have no audio", () => {
         expect(videoPlayerSource).toContain("hasAudio?: boolean");
         expect(videoPlayerSource).toContain("mediaPlayerRef.current?.el");
-        expect(videoPlayerSource).toContain("muted={noAudio ? true : undefined}");
+        expect(videoPlayerSource).toContain("muted={noAudio ? true : muted}");
         expect(videoPlayerSource).toContain('data-no-audio={noAudio ? "true" : undefined}');
         expect(videoPlayerSource).toContain("VolumeLow: defaultLayoutIcons.MuteButton.Mute");
         expect(videoPlayerSource).toContain("VolumeHigh: defaultLayoutIcons.MuteButton.Mute");
@@ -232,7 +232,8 @@ describe("video canvas controls", () => {
         expect(videoPlayerSource).not.toContain("onPointerDownCapture={stopCanvasControlInteraction}");
         expect(videoPlayerSource).not.toContain("onMouseDownCapture={stopCanvasControlInteraction}");
         expect(videoPlayerSource).not.toContain("onClickCapture={stopCanvasControlClick}");
-        expect(canvasNodeContentSource).toMatch(/hasAudio=\{inferVideoHasAudio\(node.metadata\)\}\s+autoPlay\s+preload="metadata"/);
+        expect(canvasNodeContentSource).toContain("hasAudio={inferVideoHasAudio(node.metadata)}");
+        expect(canvasNodeContentSource).toContain('paused={session?.intent !== "play"}');
         expect(canvasNodeContentSource).toContain('if (["false", "0", "off", "no", "disabled"].includes(value || "")) return false;');
     });
 

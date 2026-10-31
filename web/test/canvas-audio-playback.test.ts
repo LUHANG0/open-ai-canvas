@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 
 import { canvasAudioPlayback, getCanvasAudioPlaybackSnapshot, seekCanvasAudio, subscribeCanvasAudioNode, toggleCanvasAudio } from "../src/services/canvas-audio-playback";
+import { CanvasPlaybackController } from "../src/lib/canvas/canvas-playback";
 
 type AudioEventName = "loadedmetadata" | "timeupdate" | "playing" | "pause" | "ended" | "error" | "durationchange";
 
@@ -147,5 +148,29 @@ describe("canvas audio playback", () => {
         expect(getCanvasAudioPlaybackSnapshot("audio-b").phase).toBe("paused");
         expect(getCanvasAudioPlaybackSnapshot("audio-b").currentTimeMs).toBe(800);
         expect(FakeAudio.instances).toHaveLength(1);
+    });
+
+    test("detached audio and video share focus, while hover cannot steal audio", async () => {
+        canvasAudioPlayback.stop();
+        const video = new CanvasPlaybackController();
+        video.play("video", "video");
+        await toggleCanvasAudio({ nodeId: "audio-focus", content: "data:audio/mpeg;base64,a" });
+        expect(video.getSnapshot()?.intent).toBe("pause");
+        video.preview("hover", "hover");
+        expect(video.getSnapshot()?.nodeId).toBe("video");
+        video.play("video", "video");
+        expect(getCanvasAudioPlaybackSnapshot("audio-focus").phase).toBe("paused");
+        video.clear(); canvasAudioPlayback.stop();
+    });
+
+    test("a pending audio source cannot restart after a newer video request", async () => {
+        canvasAudioPlayback.stop();
+        const pending = toggleCanvasAudio({ nodeId: "audio-pending", content: "data:audio/mpeg;base64,a" });
+        const video = new CanvasPlaybackController();
+        video.play("video-newer", "video-newer");
+        await pending;
+        expect(getCanvasAudioPlaybackSnapshot("audio-pending").phase).toBe("paused");
+        expect(video.getSnapshot()?.intent).toBe("play");
+        video.clear(); canvasAudioPlayback.stop();
     });
 });

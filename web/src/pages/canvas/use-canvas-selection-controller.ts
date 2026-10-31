@@ -140,7 +140,7 @@ export function useCanvasSelectionController({
             currentWorldX: world.x,
             currentWorldY: world.y,
             strategy,
-            hitMode: "contain",
+            hitMode: "intersect",
             initialSelectedNodeIds: Array.from(initialSelection),
         };
         selectionGestureRef.current = { phase: "pending", initialSelection, selection: nextSelectionBox };

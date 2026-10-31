@@ -1,3 +1,4 @@
+import { claimMediaPlayback, releaseMediaPlayback } from "@/lib/canvas/media-playback-focus";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ComponentProps } from "react";
 import { isVideoProvider, MediaPlayer, MediaProvider, type MediaPlayerInstance, type VideoMimeType } from "@vidstack/react";
@@ -18,6 +19,22 @@ type VideoPlayerProps = {
     brandColor?: string;
     preload?: MediaPlayerProps["preload"];
     autoPlay?: boolean;
+    paused?: boolean;
+    initialTime?: number;
+    playbackSessionId?: number;
+    playbackCommand?: number;
+    muted?: boolean;
+    volume?: number;
+    onSoundChange?: (sound: { muted: boolean; volume: number }) => void;
+    onPlaybackFailure?: (error: unknown) => void;
+    onPlaying?: MediaPlayerProps["onPlaying"];
+    onWaiting?: MediaPlayerProps["onWaiting"];
+    onSeeking?: MediaPlayerProps["onSeeking"];
+    onSeeked?: MediaPlayerProps["onSeeked"];
+    previewMode?: boolean;
+    onPause?: MediaPlayerProps["onPause"];
+    onPlayRequest?: MediaPlayerProps["onMediaPlayRequest"];
+    onPauseRequest?: MediaPlayerProps["onMediaPauseRequest"];
     dataCanvasNoZoom?: boolean;
     compactControls?: boolean;
     /** Explicitly marks videos known to have an audio track (or not). */
@@ -76,11 +93,38 @@ const supportedVideoMimeTypes = new Set<VideoMimeType>(["video/mp4", "video/webm
  * 统一视频播放表面，保留原生媒体 URL 契约，同时提供可访问的完整控件布局。
  * 画布节点需要隔离播放器手势，避免拖动进度条时被误判为拖动画布。
  */
-export function VideoPlayer({ src, mimeType, title = "视频", className, brandColor = "#f5f5f5", preload = "metadata", autoPlay = false, dataCanvasNoZoom = false, compactControls = false, hasAudio, onCanPlay, onPlay, onEnded, onError }: VideoPlayerProps) {
+export function VideoPlayer({ src, mimeType, title = "视频", className, brandColor = "#f5f5f5", preload = "metadata", autoPlay = false, dataCanvasNoZoom = false, compactControls = false, hasAudio, paused, initialTime = 0, playbackSessionId, playbackCommand, muted, volume, onSoundChange, onPlaybackFailure, onPlaying, onWaiting, onSeeking, onSeeked, previewMode = false, onPause, onPlayRequest, onPauseRequest, onCanPlay, onPlay, onEnded, onError }: VideoPlayerProps) {
     const [detectedHasAudio, setDetectedHasAudio] = useState<boolean | undefined>(undefined);
     const autoPlayAttemptedRef = useRef(false);
     const audioProbeGenerationRef = useRef(0);
     const mediaPlayerRef = useRef<MediaPlayerInstance>(null);
+    const appliedSourceRef = useRef("");
+    const attemptRef = useRef("");
+    const requestKey = JSON.stringify([playbackSessionId, playbackCommand, src]);
+    const latestRequestRef = useRef({ key: requestKey, paused, onPlaybackFailure });
+    latestRequestRef.current = { key: requestKey, paused, onPlaybackFailure };
+    const applyInitialPosition = (player: MediaPlayerInstance) => {
+        const key = JSON.stringify([playbackSessionId, src]);
+        if (playbackSessionId === undefined || appliedSourceRef.current === key) return;
+        appliedSourceRef.current = key;
+        player.currentTime = initialTime;
+    };
+    const drivePlayback = (player: MediaPlayerInstance) => {
+        if (paused === undefined) return;
+        if (paused) { player.pause(); return; }
+        if (!player.state.canPlay || attemptRef.current === requestKey) return;
+        attemptRef.current = requestKey;
+        void player.play().catch(error => {
+            const latest = latestRequestRef.current;
+            if (latest.key === requestKey && latest.paused !== true) latest.onPlaybackFailure?.(error);
+        });
+    };
+    useEffect(() => {
+        const player = mediaPlayerRef.current;
+        if (!player?.state.canPlay) return;
+        applyInitialPosition(player); drivePlayback(player);
+    }, [paused, playbackSessionId, playbackCommand, src]);
+    useEffect(() => () => { releaseMediaPlayback(mediaPlayerRef); }, []);
     // Match LibTV's conservative rule: only explicit/container-confirmed
     // silence mutes the player. Runtime probes are used to confirm audio and
     // correct stale persisted `false`, but a negative/unknown probe never
@@ -164,7 +208,9 @@ export function VideoPlayer({ src, mimeType, title = "视频", className, brandC
         // `canplay` may fire again after buffering or seeking. Only the first
         // event may satisfy the activation autoplay intent; later events must
         // not override a user pause.
-        if (autoPlay && !autoPlayAttemptedRef.current) {
+        applyInitialPosition(event.target);
+        if (paused !== undefined) drivePlayback(event.target);
+        else if (autoPlay && !autoPlayAttemptedRef.current) {
             autoPlayAttemptedRef.current = true;
             void event.target.play().catch(() => undefined);
         }
@@ -173,7 +219,7 @@ export function VideoPlayer({ src, mimeType, title = "视频", className, brandC
 
     return (
         <MediaPlayer
-            className={`canvas-video-player ${compactControls ? "canvas-video-player-compact" : ""} ${className || ""}`}
+            className={`canvas-video-player ${compactControls ? "canvas-video-player-compact" : ""} ${previewMode ? "canvas-video-player-preview" : ""} ${className || ""}`}
             data-player-variant={compactControls ? "compact" : "dialog"}
             ref={mediaPlayerRef}
             src={mediaSource}
@@ -181,16 +227,30 @@ export function VideoPlayer({ src, mimeType, title = "视频", className, brandC
             viewType="video"
             streamType="on-demand"
             playsInline
-            autoPlay={autoPlay}
-            muted={noAudio ? true : undefined}
+            autoPlay={paused === undefined ? autoPlay : false}
+            muted={noAudio ? true : muted}
+            volume={volume}
             load="eager"
             preload={preload}
             data-canvas-no-zoom={dataCanvasNoZoom ? "true" : undefined}
             data-no-audio={noAudio ? "true" : undefined}
             style={{ "--video-brand": brandColor }}
             onCanPlay={handleCanPlay}
-            onPlay={onPlay}
-            onEnded={onEnded}
+            onPlay={(event) => {
+                if (paused === undefined) claimMediaPlayback(mediaPlayerRef, "explicit", () => mediaPlayerRef.current?.pause());
+                onPlay?.(event);
+            }}
+            onPause={(event) => { if (paused === undefined) releaseMediaPlayback(mediaPlayerRef); onPause?.(event); }}
+            onPlaying={onPlaying}
+            onWaiting={onWaiting}
+            onSeeking={onSeeking}
+            onSeeked={onSeeked}
+            onVolumeChange={(detail, event) => {
+                if (!noAudio && ["media-volume-change-request", "media-mute-request", "media-unmute-request"].some(type => event.triggers.hasType(type))) onSoundChange?.(detail);
+            }}
+            onMediaPlayRequest={onPlayRequest}
+            onMediaPauseRequest={onPauseRequest}
+            onEnded={(event) => { if (paused === undefined) releaseMediaPlayback(mediaPlayerRef); onEnded?.(event); }}
             onError={onError}
             onLoadedMetadata={(event) => {
                 const provider = event.target.provider;

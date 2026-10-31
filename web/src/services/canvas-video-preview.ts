@@ -91,7 +91,7 @@ async function generateCanvasVideoPreview(node: CanvasNodeData, signal?: AbortSi
     const cachedSource = storageKey ? peekCachedResourceObjectUrl(storageKey) || (await getCachedResourceObjectUrl(storageKey).catch(() => "")) : "";
     const source = cachedSource || (await resolveVideoMediaUrl(node.metadata?.storageKey, node.metadata?.content || ""));
     if (!source) return null;
-    const captured = await captureVideoPoster(source, { signal, maxWidth: 400 });
+    const captured = await captureVideoPoster(source, { signal });
     throwIfAborted(signal);
     if (!captured.poster) return null;
     const persisted = uploadImage(captured.poster)

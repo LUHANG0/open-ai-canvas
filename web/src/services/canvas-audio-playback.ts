@@ -1,3 +1,4 @@
+import { claimMediaPlayback, releaseMediaPlayback } from "@/lib/canvas/media-playback-focus";
 import { getResourceAccess, resolveResourceAccessURL, resourceIdFromStorageKey } from "@/services/api/resources";
 
 export type CanvasAudioSource = {
@@ -6,6 +7,8 @@ export type CanvasAudioSource = {
     storageKey?: string;
     mimeType?: string;
     durationMs?: number;
+    volume?: number;
+    muted?: boolean;
 };
 
 export type CanvasAudioPlaybackPhase = "idle" | "loading" | "playing" | "paused" | "ended" | "error";
@@ -59,7 +62,7 @@ class CanvasAudioPlaybackController {
         const snapshot = this.getSnapshot(source.nodeId);
         if (active && active.nodeId === source.nodeId && sameSource(active, source)) {
             if (snapshot.phase === "playing") {
-                this.audio?.pause();
+                this.pause();
                 return;
             }
             if (snapshot.phase === "loading") {
@@ -83,11 +86,13 @@ class CanvasAudioPlaybackController {
 
     pause(nodeId?: string) {
         if (!this.activeSource || (nodeId && this.activeSource.nodeId !== nodeId)) return;
+        this.autoplayToken = null; releaseMediaPlayback(this);
         this.audio?.pause();
     }
 
     stop(nodeId?: string) {
         if (!this.activeSource || (nodeId && this.activeSource.nodeId !== nodeId)) return;
+        releaseMediaPlayback(this);
         const previous = this.activeSource;
         this.generation += 1;
         this.activeSource = null;
@@ -139,6 +144,7 @@ class CanvasAudioPlaybackController {
         this.activeSource = source;
         this.pendingSeekMs = seekTimeMs == null ? null : Math.max(0, seekTimeMs);
         this.autoplayToken = autoplay ? token : null;
+        if (autoplay) claimMediaPlayback(this, "explicit", () => this.pause());
         this.update(source.nodeId, {
             phase: "loading",
             currentTimeMs: this.pendingSeekMs || 0,
@@ -149,36 +155,41 @@ class CanvasAudioPlaybackController {
         const url = await resolveAudioSource(source);
         if (!this.isCurrent(source, token)) return;
         if (!url) {
+            releaseMediaPlayback(this); this.autoplayToken = null;
             this.update(source.nodeId, { phase: "error", error: "音频资源不可用" });
             return;
         }
 
         const audio = this.ensureAudio();
         audio.preload = "metadata";
+        audio.volume = source.volume ?? 1; audio.muted = source.muted ?? false;
         audio.src = url;
         audio.load();
-        if (!autoplay && this.autoplayToken !== token) return;
+        if (this.autoplayToken !== token) {
+            this.update(source.nodeId, { phase: "paused" });
+            return;
+        }
         return this.playActive(source.nodeId, token);
     }
 
     private async playActive(nodeId: string, token = this.generation) {
         if (!this.audio || !this.activeSource || this.activeSource.nodeId !== nodeId || token !== this.generation) return;
+        if (!claimMediaPlayback(this, "explicit", () => this.pause())) return;
+        this.autoplayToken = token;
         try {
             await this.audio.play();
-            if (this.activeSource?.nodeId === nodeId && token === this.generation) this.update(nodeId, { phase: "playing", error: undefined });
+            if (this.activeSource?.nodeId === nodeId && token === this.generation && this.autoplayToken === token) this.update(nodeId, { phase: "playing", error: undefined });
+            else if (this.activeSource?.nodeId === nodeId && token === this.generation) this.audio.pause();
         } catch (error) {
-            if (this.activeSource?.nodeId === nodeId && token === this.generation) this.update(nodeId, { phase: "error", error: mediaErrorMessage(error) });
+            if (this.activeSource?.nodeId === nodeId && token === this.generation && this.autoplayToken === token) { releaseMediaPlayback(this); this.update(nodeId, { phase: "error", error: mediaErrorMessage(error) }); }
         }
     }
 
-    private async resume(nodeId: string) {
-        if (!this.audio || !this.activeSource || this.activeSource.nodeId !== nodeId) return;
-        try {
-            await this.audio.play();
-            if (this.activeSource?.nodeId === nodeId) this.update(nodeId, { phase: "playing", error: undefined });
-        } catch (error) {
-            this.update(nodeId, { phase: "error", error: mediaErrorMessage(error) });
-        }
+    private async resume(nodeId: string) { return this.playActive(nodeId); }
+
+    setSound(nodeId: string, sound: { volume: number; muted: boolean }) {
+        if (this.activeSource?.nodeId !== nodeId || !this.audio) return;
+        this.audio.volume = sound.volume; this.audio.muted = sound.muted;
     }
 
     private ensureAudio() {
@@ -216,19 +227,23 @@ class CanvasAudioPlaybackController {
         });
         audio.addEventListener("playing", () => {
             const active = this.activeSource;
-            if (active) this.update(active.nodeId, { phase: "playing", error: undefined });
+            if (active && this.autoplayToken === this.generation) this.update(active.nodeId, { phase: "playing", error: undefined });
+            else this.audio?.pause();
         });
         audio.addEventListener("pause", () => {
+            releaseMediaPlayback(this);
             const active = this.activeSource;
             if (active && this.getSnapshot(active.nodeId).phase !== "ended") this.update(active.nodeId, { phase: "paused" });
         });
         audio.addEventListener("ended", () => {
+            releaseMediaPlayback(this);
             const active = this.activeSource;
             if (!active) return;
             const durationMs = Number.isFinite(audio.duration) && audio.duration > 0 ? Math.round(audio.duration * 1000) : this.getSnapshot(active.nodeId).durationMs;
             this.update(active.nodeId, { phase: "ended", currentTimeMs: durationMs, durationMs });
         });
         audio.addEventListener("error", () => {
+            releaseMediaPlayback(this); this.autoplayToken = null;
             const active = this.activeSource;
             if (active) this.update(active.nodeId, { phase: "error", error: "音频加载失败" });
         });
@@ -278,3 +293,5 @@ export const toggleCanvasAudio = (source: CanvasAudioSource) => canvasAudioPlayb
 export const pauseCanvasAudio = (nodeId?: string) => canvasAudioPlayback.pause(nodeId);
 export const stopCanvasAudio = (nodeId?: string) => canvasAudioPlayback.stop(nodeId);
 export const seekCanvasAudio = (nodeId: string, timeMs: number, source?: CanvasAudioSource) => canvasAudioPlayback.seek(nodeId, timeMs, source);
+
+export const setCanvasAudioSound = (nodeId: string, sound: { volume: number; muted: boolean }) => canvasAudioPlayback.setSound(nodeId, sound);

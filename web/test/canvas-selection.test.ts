@@ -23,8 +23,8 @@ describe("canvas selection semantics", () => {
         expect(resolveCanvasSelectionStrategy({ altKey: true, ctrlKey: true, metaKey: true, shiftKey: true })).toBe("subtract");
     });
 
-    test("uses containment from left to right and intersection from right to left", () => {
-        expect(resolveCanvasSelectionHitMode(0, 100)).toBe("contain");
+    test("selects partially intersecting nodes in both drag directions like LibTV", () => {
+        expect(resolveCanvasSelectionHitMode(0, 100)).toBe("intersect");
         expect(resolveCanvasSelectionHitMode(100, 0)).toBe("intersect");
         expect(createCanvasSelectionBounds(100, 80, 0, 20)).toEqual({ left: 0, top: 20, right: 100, bottom: 80 });
     });

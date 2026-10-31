@@ -1,11 +1,11 @@
-import { afterAll, expect, test } from "bun:test";
+import { afterAll, expect, spyOn, test } from "bun:test";
 import { Window } from "happy-dom";
 
 const dom = new Window({ url: "http://localhost/", width: 1280, height: 900 });
 const originals = new Map<string, PropertyDescriptor | undefined>();
 const frames = new Map<number, FrameRequestCallback>();
 let frameId = 0;
-for (const [key, value] of Object.entries({ window: dom, document: dom.document, navigator: dom.navigator, HTMLElement: dom.HTMLElement, Element: dom.Element, Node: dom.Node, Event: dom.Event, CustomEvent: dom.CustomEvent, localStorage: dom.localStorage, getComputedStyle: dom.getComputedStyle.bind(dom), IS_REACT_ACT_ENVIRONMENT: true, requestAnimationFrame: (callback: FrameRequestCallback) => { frames.set(++frameId, callback); return frameId; }, cancelAnimationFrame: (id: number) => frames.delete(id) })) {
+for (const [key, value] of Object.entries({ MutationObserver: dom.MutationObserver, window: dom, document: dom.document, navigator: dom.navigator, HTMLElement: dom.HTMLElement, Element: dom.Element, Node: dom.Node, Event: dom.Event, CustomEvent: dom.CustomEvent, localStorage: dom.localStorage, getComputedStyle: dom.getComputedStyle.bind(dom), IS_REACT_ACT_ENVIRONMENT: true, requestAnimationFrame: (callback: FrameRequestCallback) => { frames.set(++frameId, callback); return frameId; }, cancelAnimationFrame: (id: number) => frames.delete(id) })) {
     originals.set(key, Object.getOwnPropertyDescriptor(globalThis, key));
     Object.defineProperty(globalThis, key, { configurable: true, writable: true, value });
 }
@@ -193,4 +193,37 @@ test("real ordinary and tall node shells keep valid target outlines without tilt
         }
         expect(frames.size).toBe(0);
     } finally { await act(async () => root.unmount()); host.remove(); }
+});
+
+test("confirmed video body click starts explicit playback without requiring a native click event", async () => {
+    const { CanvasPlaybackProvider } = await import("@/components/canvas/canvas-playback-context");
+    const { CanvasPlaybackController } = await import("@/lib/canvas/canvas-playback");
+    const playback = new CanvasPlaybackController(); const activations: string[] = [];
+    const mediaIO = spyOn(await import("@/services/file-storage"), "resolveVideoMediaUrl").mockResolvedValue("");
+    const host = document.createElement("div"); document.body.append(host); const root = createRoot(host);
+    function Harness() {
+        const [nodes, setNodes] = useState([{ ...sample("video-click"), type: CanvasNodeType.Video, metadata: { content: "/fixture.mp4" } }]);
+        const nodesRef = useRef(nodes); nodesRef.current = nodes;
+        const [selected, setSelected] = useState(new Set<string>());
+        const selectedNodeIdsRef = useRef(selected); selectedNodeIdsRef.current = selected;
+        const containerRef = useRef<HTMLDivElement>(null); const viewportRef = useRef({ x: 0, y: 0, k: 1 }); const historyPausedRef = useRef(false);
+        const selection = useCanvasSelectionController({ containerRef, nodesRef, viewportRef, selectedNodeIdsRef, historyPausedRef, screenToCanvas: (x, y) => ({ x, y }), setNodes, setSelectedNodeIds: setSelected, setSelectedConnectionId: noop, cancelPendingConnectionCreate: noop, onCanvasSelectionStart: noop, onNodeInteractionStart: noop, onNodeClick: node => playback.play(node.id, node.metadata?.content || node.id), onDeselect: noop });
+        return <CanvasPlaybackProvider controller={playback} onActivateNode={id => activations.push(id)}><div ref={containerRef}><CanvasNode data={nodes[0]} scale={1} isSelected={selected.has(nodes[0].id)} isRelated={false} isFocusRelated={false} isConnectionTarget={false} onMouseDown={selection.handleNodeMouseDown} onHoverStart={noop} onHoverEnd={noop} onConnectStart={noop} onResize={noop} onTitleChange={noop} onContentChange={noop} onContextMenu={noop} /></div></CanvasPlaybackProvider>;
+    }
+    try {
+        await act(async () => root.render(<Harness />));
+        const body = host.querySelector(".canvas-node-shell")!;
+        const control = document.createElement("button"); control.textContent = "player control"; body.append(control);
+        const dispatch = async (target: Element, endX = 110, modifiers = {}) => act(async () => {
+            target.dispatchEvent(new dom.MouseEvent("mousedown", { bubbles: true, button: 0, clientX: 110, clientY: 110, ...modifiers }));
+            if (endX !== 110) window.dispatchEvent(new dom.MouseEvent("mousemove", { bubbles: true, button: 0, clientX: endX, clientY: 110, ...modifiers }));
+            window.dispatchEvent(new dom.MouseEvent("mouseup", { bubbles: true, button: 0, clientX: endX, clientY: 110, ...modifiers }));
+        });
+        await dispatch(body, 150); expect(playback.getSnapshot()).toBeNull();
+        await dispatch(body, 110, { shiftKey: true }); expect(playback.getSnapshot()).toBeNull();
+        await dispatch(control); expect(playback.getSnapshot()).toBeNull();
+        await dispatch(body); expect(playback.getSnapshot()?.nodeId).toBe("video-click");
+        expect(playback.getSnapshot()?.mode).toBe("explicit"); expect(activations).toEqual(["video-click"]);
+        expect(host.querySelector('[data-node-selected="true"]')).not.toBeNull();
+    } finally { await act(async () => root.unmount()); host.remove(); frames.clear(); mediaIO.mockRestore(); }
 });

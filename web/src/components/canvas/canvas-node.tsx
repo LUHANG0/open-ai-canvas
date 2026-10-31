@@ -18,6 +18,7 @@ import { getNodeDefinition } from "@/lib/canvas/node-registry";
 import type { NodeResizeCorner } from "@/lib/canvas/node-resize-geometry";
 import { useCanvasNodeResize } from "./use-canvas-node-resize";
 import { useCanvasNodeResizeStyle } from "./canvas-node-resize-motion";
+import { useCanvasPlaybackSession } from "./canvas-playback-context";
 import { CanvasNodeContent, CanvasNodeImageInfo, CanvasNodeProducedModel } from "./canvas-node-content";
 import { CanvasNodeResultRecord } from "./canvas-node-result-record";
 import { canvasResultRecord } from "@/lib/canvas/canvas-result-record";
@@ -32,7 +33,6 @@ type CanvasNodeProps = {
     dragOffset?: Position;
     scale: number;
     isSelected: boolean;
-    mediaActive?: boolean;
     isRelated: boolean;
     isFocusRelated: boolean;
     isConnectionTarget: boolean;
@@ -71,7 +71,6 @@ type CanvasNodeProps = {
     onOpenTextEditor?: (node: CanvasNodeData) => void;
     onOpenPrevis?: (node: CanvasNodeData) => void;
     onOpenDrawing?: (node: CanvasNodeData) => void;
-    onMediaPlayRequest?: (nodeId: string | null) => void;
     onContextMenu: (event: React.MouseEvent, nodeId: string) => void;
 };
 
@@ -81,7 +80,6 @@ export const CanvasNode = React.memo(function CanvasNode({
     dragOffset,
     scale,
     isSelected,
-    mediaActive = false,
     isRelated,
     isFocusRelated,
     isConnectionTarget,
@@ -118,17 +116,18 @@ export const CanvasNode = React.memo(function CanvasNode({
     onOpenTextEditor,
     onOpenPrevis,
     onOpenDrawing,
-    onMediaPlayRequest,
     onContextMenu,
 }: CanvasNodeProps) {
     const theme = canvasThemes[useActiveTheme()];
+    const { session: playbackSession } = useCanvasPlaybackSession(data.id, data.metadata?.storageKey || data.metadata?.content || data.id);
+    const mediaActive = Boolean(playbackSession);
     const [hovered, setHovered] = useState(false);
     const [isEditingContent, setIsEditingContent] = useState(false);
     const [isEditingTitle, setIsEditingTitle] = useState(false);
     const [titleDraft, setTitleDraft] = useState(data.title);
     const { download: downloadNode, duplicate: duplicateNode, deleteNode, openMediaVersions } = useCanvasNodeActions();
     const hasImageContent = data.type === CanvasNodeType.Image && Boolean(data.metadata?.content);
-    const hasVideoContent = data.type === CanvasNodeType.Video && Boolean(data.metadata?.content);
+    const hasVideoContent = data.type === CanvasNodeType.Video && Boolean(data.metadata?.content || data.metadata?.storageKey);
     const hasAudioContent = data.type === CanvasNodeType.Audio && Boolean(data.metadata?.content || data.metadata?.storageKey);
     const mediaDimensionLabel = formatMediaDimensionLabel(data, hasImageContent || hasVideoContent);
     const isComposerNode = data.type === CanvasNodeType.Config;
@@ -202,6 +201,7 @@ export const CanvasNode = React.memo(function CanvasNode({
         <div
             ref={nodeRef}
             data-node-id={data.id}
+            data-node-selected={isSelected ? "true" : undefined}
             data-popover-anchor-container
             data-node-lod={effectiveRenderLOD}
             className={`node-element absolute flex select-none flex-col ${dragOffset ? "cursor-grabbing" : data.type === CanvasNodeType.Drawing ? "cursor-pointer" : "cursor-default"} ${isSelected && data.type === CanvasNodeType.Video ? "z-[var(--z-node-toolbar)]" : isSelected || isFocusRelated || isConnectionTarget ? "z-[var(--z-node-active)]" : "z-[var(--z-node)]"}`}
@@ -210,6 +210,7 @@ export const CanvasNode = React.memo(function CanvasNode({
                 width: data.width,
                 height: data.height,
                 contain: "layout style",
+                "--canvas-selection-stroke": theme.canvas.selectionStroke,
                 "--node-result-record-ink": theme.node.label,
                 "--node-result-record-text": theme.node.text,
                 "--node-result-record-surface": theme.toolbar.panel,
@@ -247,9 +248,9 @@ export const CanvasNode = React.memo(function CanvasNode({
                 data-state={data.metadata?.status || (isActive ? "active" : isRelated ? "related" : "idle")}
                 style={{
                     background: hasImageContent || hasVideoContent ? "transparent" : theme.node.fill,
-                    // 固定占位但不绘制描边，避免聚焦切换时边框宽度变化造成白边跳动。
-                    border: isComposerNode ? "0" : "1px solid transparent",
-                    boxShadow: isComposerNode || !showChrome ? "none" : isSelected || isFocusRelated ? theme.node.hoverShadow : theme.node.shadow,
+                    // Use an outside shadow edge: an inset layout border changes the media aspect ratio.
+                    border: 0,
+                    boxShadow: isComposerNode ? "none" : isSelected || isFocusRelated ? theme.node.hoverShadow : theme.node.shadow,
                     outline: isConnectionTarget || (!showChrome && isActive) ? `1px solid ${theme.node.activeStroke}` : undefined,
                     outlineWidth: isConnectionTarget ? `calc(2px * var(--canvas-live-inverse-scale, ${1 / Math.max(scale, 0.05)}))` : undefined,
                 } as React.CSSProperties}
@@ -330,8 +331,6 @@ export const CanvasNode = React.memo(function CanvasNode({
                         onOpenTaskDetails={onOpenTaskDetails}
                         onToggleBatch={() => onToggleBatch?.(data.id)}
                         disableMediaEffects={disableMediaEffects}
-                        mediaActive={mediaActive}
-                        onMediaPlayRequest={onMediaPlayRequest}
                     />
                 </div>
 
@@ -425,7 +424,6 @@ function areCanvasNodePropsEqual(previous: CanvasNodeProps, next: CanvasNodeProp
         previous.dragOffset?.y === next.dragOffset?.y &&
         previous.scale === next.scale &&
         previous.isSelected === next.isSelected &&
-        previous.mediaActive === next.mediaActive &&
         previous.isRelated === next.isRelated &&
         previous.isFocusRelated === next.isFocusRelated &&
         previous.isConnectionTarget === next.isConnectionTarget &&

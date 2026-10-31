@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useCanvasPlaybackController, useCanvasPlaybackSound } from "./canvas-playback-context";
 import { VideoPlayer } from "@/components/video-player";
 import { resolveVideoMediaUrl } from "@/services/file-storage";
 import { CanvasMediaPreviewShell, useCanvasMediaSize } from "./canvas-media-preview";
@@ -8,6 +9,8 @@ export function CanvasVideoPreview(props: Props) {
     return <VideoPreview key={JSON.stringify([props.src, props.storageKey])} {...props} />;
 }
 function VideoPreview({ src = "", storageKey, mimeType, title, hasAudio, onClose }: Props) {
+    const playback = useCanvasPlaybackController();
+    const sound = useCanvasPlaybackSound();
     const [resolvedSrc, setResolvedSrc] = useState(storageKey ? "" : src);
     const [loading, setLoading] = useState(true);
     const [failed, setFailed] = useState(false);
@@ -34,7 +37,7 @@ function VideoPreview({ src = "", storageKey, mimeType, title, hasAudio, onClose
                     setLoading(false);
                     setFailed(false);
                 }}>
-                {resolvedSrc ? <VideoPlayer key={resolvedSrc} src={resolvedSrc} mimeType={mimeType} title={title} hasAudio={hasAudio}
+                {resolvedSrc ? <VideoPlayer key={resolvedSrc} src={resolvedSrc} mimeType={mimeType} title={title} hasAudio={hasAudio} muted={sound.muted} volume={sound.volume} onSoundChange={playback?.setSound}
                     onError={() => { setLoading(false); setFailed(true); }} /> : null}
                 {failed ? <div className="canvas-media-preview-state" role="alert">视频暂时无法播放，请关闭后重试</div>
                     : loading ? <div className="canvas-media-preview-state" role="status">正在加载视频…</div> : null}

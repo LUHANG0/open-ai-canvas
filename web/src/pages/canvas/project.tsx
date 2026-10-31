@@ -16,6 +16,8 @@ import { loadAssetsForUse } from "@/services/user-data-sync";
 import { canvasAssetHandoffIds } from "@/lib/canvas/canvas-asset-handoff";
 import { useEffectiveConfig } from "@/stores/use-config-store";
 import { createCanvasGenerationLiveProjectAdapter, registerCanvasGenerationLiveProject } from "@/services/canvas-generation-consumer";
+import { CanvasPlaybackController } from "@/lib/canvas/canvas-playback";
+import { CanvasPlaybackProvider } from "@/components/canvas/canvas-playback-context";
 import { getActiveUserScope } from "@/lib/user-scope";
 import { getResource, getResourceAccess, resolveResourceAccessURL, resourceFileUrl, resourceIdFromStorageKey, syncResourceToArkPrivateAsset } from "@/services/api/resources";
 import { uploadImage } from "@/services/image-storage";
@@ -224,6 +226,7 @@ function CanvasViewportPage() {
     const [searchParams, setSearchParams] = useSearchParams();
     const projectId = params.id || "";
     const canvasStorageScope = getActiveUserScope();
+    const canvasPlayback = useMemo(() => new CanvasPlaybackController(), [canvasStorageScope, projectId]);
     const containerRef = useRef<HTMLDivElement>(null);
     const didInitialCenterRef = useRef(false);
     const assetHandoffRef = useRef("");
@@ -1207,6 +1210,14 @@ function CanvasViewportPage() {
         [bringNodeToFront, nodesRef],
     );
 
+    const handleNodeClick = useCallback((node: CanvasNodeData) => {
+        handleSelectedNodeClick(node);
+        if (node.type === CanvasNodeType.Video && (node.metadata?.content || node.metadata?.storageKey)
+            && !node.metadata?.previsSceneId && !["loading", "error"].includes(node.metadata?.status || "")) {
+            canvasPlayback.play(node.id, node.metadata?.storageKey || node.metadata?.content || node.id);
+        }
+    }, [canvasPlayback, handleSelectedNodeClick]);
+
     const handleNodeBringToFront = useCallback(
         (nodeId: string) => {
             const node = nodesRef.current.find((item) => item.id === nodeId);
@@ -1238,7 +1249,7 @@ function CanvasViewportPage() {
         onCanvasSelectionStart: handleCanvasSelectionStart,
         onNodeInteractionStart: handleNodeInteractionStart,
         onNodeBringToFront: handleNodeBringToFront,
-        onNodeClick: handleSelectedNodeClick,
+        onNodeClick: handleNodeClick,
         onNodeDragEnd: handleNodeDragEnd,
         onBatchConnectionTarget: handleBatchConnectionTargetClick,
         onLinkedFolderDrop: archiveNodesToLinkedFolder,
@@ -2619,6 +2630,13 @@ function CanvasViewportPage() {
     if (!projectLoaded) return <CanvasRefreshShell />;
 
     return (
+        <CanvasPlaybackProvider key={`${canvasStorageScope}:${projectId}`} controller={canvasPlayback} active={canvasView === "canvas"} onActivateNode={(nodeId) => {
+            if (selectedNodeIdsRef.current.size === 1 && selectedNodeIdsRef.current.has(nodeId)) return;
+            const node = nodesRef.current.find(item => item.id === nodeId);
+            if (!node) return;
+            const selection = new Set([nodeId]); selectedNodeIdsRef.current = selection; setSelectedNodeIds(selection);
+            handleSelectedNodeClick(node);
+        }}>
         <CanvasNodeResizeMotionProvider key={projectId} nodes={visibleNodes}>
             <a
                 href="#canvas-main"
@@ -2740,6 +2758,7 @@ function CanvasViewportPage() {
                             <div className="relative flex min-h-0 min-w-0 flex-1">
                                 <div className="relative min-w-0 flex-1 overflow-clip">
                                     <CanvasViewport
+                                        playbackScope={projectId}
                                         interactive={canvasView === "canvas"}
                                         containerRef={containerRef}
                                         viewport={viewport}
@@ -3545,5 +3564,6 @@ function CanvasViewportPage() {
                 </CanvasOverlayLayerProvider>
             </main>
         </CanvasNodeResizeMotionProvider>
+        </CanvasPlaybackProvider>
     );
 }

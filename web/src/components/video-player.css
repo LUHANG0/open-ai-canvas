@@ -616,3 +616,9 @@
         right: calc(var(--canvas-video-control-size) * 2 + var(--canvas-video-control-gap) * 2 + 20px);
     }
 }
+
+/* Hover and explicit playback share the same player; only the controls change. */
+.canvas-video-player-preview .vds-controls {
+    visibility: hidden;
+    pointer-events: none;
+}

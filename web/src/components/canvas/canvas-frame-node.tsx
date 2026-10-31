@@ -157,6 +157,7 @@ export const CanvasFrameNode = React.memo(function CanvasFrameNode({
     return (
         <div
             data-node-id={data.id}
+            data-node-selected={isSelected ? "true" : undefined}
             data-node-lod={fullDetail ? "full" : renderLOD}
             role={folder && collapsed ? "group" : undefined}
             tabIndex={folder && collapsed ? 0 : undefined}

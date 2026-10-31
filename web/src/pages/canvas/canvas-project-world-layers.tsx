@@ -1,4 +1,5 @@
-import { memo, useEffect, useMemo, useState, type CSSProperties, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent, type ReactNode, type RefObject } from "react";
+import { memo, useLayoutEffect, useMemo, useRef, type CSSProperties, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent, type ReactNode, type RefObject } from "react";
+import { useCanvasPlaybackController } from "@/components/canvas/canvas-playback-context";
 import { Link2 } from "lucide-react";
 import { CANVAS_CONNECTION_STROKE_WIDTH, canvasThemes } from "@/lib/canvas-theme";
 import { useActiveTheme } from "@/stores/canvas/use-canvas-theme-store";
@@ -88,14 +89,24 @@ const EMPTY_CANVAS_NODES: CanvasNodeData[] = [];
 
 export const CanvasProjectWorldLayers = memo(function CanvasProjectWorldLayers(props: CanvasProjectWorldLayersProps) {
     const { viewportScale } = props;
-    const [activeMediaNodeId, setActiveMediaNodeId] = useState<string | null>(null);
-    useEffect(() => {
-        if (activeMediaNodeId && !props.nodeById.has(activeMediaNodeId)) setActiveMediaNodeId(null);
-    }, [activeMediaNodeId, props.nodeById]);
+    const playback = useCanvasPlaybackController();
+    useLayoutEffect(() => {
+        const current = playback?.getSnapshot();
+        if (current?.mode === "explicit" && !props.selectedNodeIds.has(current.nodeId)) playback?.dismiss();
+    }, [playback, props.selectedNodeIds]);
+    useLayoutEffect(() => {
+        playback?.prune(new Set(props.nodeById.keys()));
+    }, [playback, props.nodeById]);
+    const mountedOrder = useRef<CanvasNodeStackOrder>([]);
     const orderedVisibleNodes = useMemo(() => [
         ...props.visibleNodes.filter(isFrameNode),
-        ...sortCanvasNodesByStackOrder(props.visibleNodes.filter((node) => !isFrameNode(node)), props.nodeStackOrder),
-    ], [props.nodeStackOrder, props.visibleNodes]);
+        // Moving Vidstack custom elements disconnects and recreates their native
+        // provider. Selection already raises z-index; defer DOM moves until idle.
+        ...sortCanvasNodesByStackOrder(props.visibleNodes.filter((node) => !isFrameNode(node)), playback?.getSnapshot() ? mountedOrder.current : props.nodeStackOrder),
+    ], [playback, props.nodeStackOrder, props.visibleNodes, props.selectedNodeIds]);
+    useLayoutEffect(() => {
+        mountedOrder.current = orderedVisibleNodes.filter(node => !isFrameNode(node)).map(node => node.id);
+    }, [orderedVisibleNodes]);
     const batchPreviews = useMemo(() => new Map(props.visibleNodes.filter((node) => node.metadata?.isBatchRoot).map((node) => [
         node.id,
         (node.metadata?.batchChildIds || []).filter((id) => id !== node.metadata?.primaryImageId)
@@ -164,8 +175,6 @@ export const CanvasProjectWorldLayers = memo(function CanvasProjectWorldLayers(p
                         dragOffset={props.dragPreview?.nodeIds.has(node.id) ? props.dragPreview : undefined}
                         scale={viewportScale}
                         isSelected={props.selectedNodeIds.has(node.id)}
-                        mediaActive={activeMediaNodeId === node.id}
-                        onMediaPlayRequest={setActiveMediaNodeId}
                         isRelated={props.relatedNodeIds.has(node.id)}
                         isFocusRelated={props.activeNodeId === node.id}
                         isConnectionTarget={props.connectionTargetNodeId === node.id || (props.batchConnectionPreview?.targetNodeId === node.id && props.batchConnectionPreview.status !== "invalid")}

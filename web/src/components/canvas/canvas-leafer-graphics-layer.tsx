@@ -337,7 +337,7 @@ function syncOverlayContent(scene: OverlayScene, props: CanvasLeaferGraphicsLaye
     scene.selectionBounds.visible = Boolean(bounds && !selection);
     if (bounds && !selection) {
         syncSelectionBounds(scene.selectionBounds, liveSelectedNodeBounds(bounds, scene.dragPreview), viewportScale);
-        scene.selectionBounds.stroke = props.theme.node.label;
+        scene.selectionBounds.stroke = props.theme.canvas.selectionStroke;
     }
 }
 
@@ -347,9 +347,9 @@ function syncSelection(rect: Rect, selection: SelectionBox, theme: CanvasTheme) 
         y: Math.min(selection.startWorldY, selection.currentWorldY),
         width: Math.abs(selection.currentWorldX - selection.startWorldX),
         height: Math.abs(selection.currentWorldY - selection.startWorldY),
-        fill: "transparent",
-        stroke: theme.node.label,
-        opacity: selection.hitMode === "intersect" ? 0.82 : 0.68,
+        fill: theme.canvas.selectionFill,
+        stroke: theme.canvas.selectionStroke,
+        opacity: 1,
     });
 }
 
@@ -360,14 +360,14 @@ function syncViewport(viewport: ViewportTransform, width: number, height: number
     overlay.selection.set({
         strokeWidth: 1 / scale,
         cornerRadius: 2 / scale,
-        dashPattern: [4 / scale, 4 / scale],
+        dashPattern: [],
     });
     if (props.selectedNodeBounds) syncSelectionBounds(overlay.selectionBounds, liveSelectedNodeBounds(props.selectedNodeBounds, overlay.dragPreview), scale);
     overlay.selectionBounds.set({
         strokeWidth: 1 / scale,
         cornerRadius: 2 / scale,
         dashPattern: [4 / scale, 4 / scale],
-        opacity: 0.68,
+        opacity: 0.9,
     });
     overlay.guides.set({
         visible: typeof props.alignmentGuides.vertical === "number" || typeof props.alignmentGuides.horizontal === "number",
@@ -421,7 +421,7 @@ function syncLiveSelectionBounds(scene: OverlayScene, props: CanvasLeaferGraphic
     scene.selectionBounds.visible = Boolean(bounds && !selection);
     if (!bounds || selection) return;
     syncSelectionBounds(scene.selectionBounds, liveSelectedNodeBounds(bounds, scene.dragPreview), viewportScale);
-    scene.selectionBounds.stroke = props.theme.node.label;
+    scene.selectionBounds.stroke = props.theme.canvas.selectionStroke;
 }
 
 function syncSelectionBounds(rect: Rect, bounds: NonNullable<NodeBounds>, viewportScale: number) {

@@ -1,3 +1,5 @@
+import { CANVAS_VIDEO_POSTER_MAX_EDGE } from "@/lib/canvas/canvas-video-poster-quality";
+
 export type CapturedVideoPoster = {
     width: number;
     height: number;
@@ -85,8 +87,8 @@ function captureVideoPosterNow(source: string, options: CaptureVideoPosterOption
                 fail(abortError());
                 return;
             }
-            const maxWidth = Math.max(1, options.maxWidth ?? 400);
-            const width = Math.max(1, Math.min(metadata.width, maxWidth));
+            const maxWidth = Math.max(1, options.maxWidth ?? CANVAS_VIDEO_POSTER_MAX_EDGE);
+            const width = Math.max(1, Math.round(metadata.width * Math.min(1, maxWidth / metadata.width, CANVAS_VIDEO_POSTER_MAX_EDGE / metadata.height)));
             const height = Math.max(1, Math.round(width * metadata.height / Math.max(1, metadata.width)));
             const canvas = document.createElement("canvas");
             canvas.width = width;
@@ -100,7 +102,7 @@ function captureVideoPosterNow(source: string, options: CaptureVideoPosterOption
                 context.fillStyle = "#000";
                 context.fillRect(0, 0, width, height);
                 context.drawImage(video, 0, 0, width, height);
-                canvas.toBlob((poster) => finish({ ...metadata, poster: poster || undefined }), "image/jpeg", 0.82);
+                canvas.toBlob((poster) => finish({ ...metadata, poster: poster || undefined }), "image/jpeg", 0.94);
             } catch {
                 // Cross-origin videos without CORS can still expose metadata but cannot be drawn safely.
                 finish(metadata);

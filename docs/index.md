@@ -2,6 +2,7 @@
 
 面向 AI 的短索引。详细文档维护规则见 [AGENTS.md](../AGENTS.md) 第 9 节「文档与交付」。
 
+- [画布视频播放](content/docs/overview/canvas-video-playback.mdx)：统一悬浮与正式播放、空白单击暂停、进度恢复和会话资源边界。
 - [创作页历史跨设备同步](content/docs/backend/creation-conversation-sync.mdx)：账号历史、旧本地迁移、逐消息修订、删除防复活及媒体引用边界。
 - [用户注册邀请](content/docs/backend/registration-invitations.mdx)：管理员单次邀请、关闭公开注册时的验证、固定积分、事务与迁移回退边界。
 

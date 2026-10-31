@@ -14,9 +14,12 @@ import { CanvasSubtitleOverlay } from "./canvas-subtitle-overlay";
 import { type CanvasNodeData, CanvasNodeType } from "@/types/canvas";
 import { CanvasAudioPlayer } from "./canvas-audio-player";
 import { buildLibTVImagePreviewUrl, buildLibTVVideoSourceUrl } from "@/lib/canvas/libtv-import";
-import { bindCanvasVideoHoverPreview } from "@/lib/canvas/canvas-video-hover-preview";
+import { useCanvasPlaybackSession } from "./canvas-playback-context";
+import { revealCanvasVideoFrame } from "@/lib/canvas/canvas-video-frame-presentation";
+import { useCanvasVideoSurface } from "./use-canvas-video-playback";
 import { resolveVideoMediaUrl } from "@/services/file-storage";
 import { hydrateCanvasVideoPreview } from "@/services/canvas-video-preview";
+import { needsCanvasVideoPosterUpgrade } from "@/lib/canvas/canvas-video-poster-quality";
 import { type CanvasTheme } from "@/lib/canvas-theme";
 import { fitImageMaterialNodeSize, fitImageNodeSize } from "@/lib/canvas/canvas-node-size";
 import { getActiveUserScope } from "@/lib/user-scope";
@@ -98,24 +101,30 @@ export function EmptyImageContent({ node, theme, isBatchRoot, batchCount, batchP
     return content;
 }
 
-export function VideoNodeContent({ node, theme, mediaActive = false, onMediaPlayRequest }: CanvasNodeContentProps) {
+export function VideoNodeContent({ node, theme }: CanvasNodeContentProps) {
     const playerBoxRef = useRef<HTMLDivElement>(null);
     const { updateMediaNode } = useCanvasNodeActions();
-    const { url, loading, onError } = useVideoPlaybackUrl(node, mediaActive);
-    const preview = canvasNodeVideoPreviewReference(node);
+    const playerKey = node.metadata?.storageKey || node.metadata?.content || node.id;
+    const { controller: playback, session, sound } = useCanvasPlaybackSession(node.id, playerKey);
+    const mediaActive = Boolean(session);
+    const { url, failed, onError } = useVideoPlaybackUrl(node, mediaActive, session?.token);
     const subtitleEntries = node.metadata?.subtitleEntries || [];
     const subtitleStyle = node.metadata?.subtitleStyle || createDefaultSubtitleStyle();
     const [currentTimeMs, setCurrentTimeMs] = useState(0);
     const [videoSize, setVideoSize] = useState<{ width: number; height: number } | null>(null);
     const [videoReady, setVideoReady] = useState(false);
     const readySourceRef = useRef("");
+    const cancelPresentationRef = useRef<(() => void) | undefined>(undefined);
     const measuredSourceRef = useRef("");
     // 播放器身份是节点上的媒体（storageKey），不是当前签名地址：续签只换 src，不重建播放器、不退回静态预览。
-    const playerKey = node.metadata?.storageKey || node.metadata?.content || node.id;
     const playerScope = getActiveUserScope();
     const livePlayerKeyRef = useRef(playerKey);
     livePlayerKeyRef.current = playerKey;
     const ready = videoReady && readySourceRef.current === playerKey;
+    useCanvasVideoSurface(playerBoxRef, playback, session, node.id, playerKey, url, ready);
+    useEffect(() => { if (failed && session) playback.failed(session.token); }, [failed, session?.token, playback]);
+
+    useEffect(() => () => { cancelPresentationRef.current?.(); }, [playerKey, session?.token]);
 
     useEffect(() => {
         setVideoReady(false);
@@ -166,7 +175,6 @@ export function VideoNodeContent({ node, theme, mediaActive = false, onMediaPlay
     }, [node.id, playerKey, node.metadata?.taskId, subtitleEntries.length, updateMediaNode, url, mediaActive]);
 
     if (!node.metadata?.content && !node.metadata?.storageKey) return <EmptyMediaContent icon={<Video className="size-7 opacity-35" />} label="空视频节点" color={theme.node.placeholder} />;
-    if (!mediaActive) return <InactiveVideoPreview key={playerKey} node={node} theme={theme} onPlay={() => onMediaPlayRequest?.(node.id)} />;
 
     const measuredSize = measuredSourceRef.current === playerKey ? videoSize : null;
     const sourceRatio = (measuredSize?.width || node.metadata?.naturalWidth || node.width) / Math.max(1, measuredSize?.height || node.metadata?.naturalHeight || node.height);
@@ -176,23 +184,14 @@ export function VideoNodeContent({ node, theme, mediaActive = false, onMediaPlay
     const activeHighlight = activeEntry ? (node.metadata?.subtitleHighlights || []).find((item) => item.entryIndex === activeEntry.index) : undefined;
 
     return (
-        <div ref={playerBoxRef} className="relative flex h-full w-full items-center justify-center overflow-hidden rounded-[var(--node-radius)] bg-black">
-            {preview ? (
-                <CanvasVideoPreviewImage
-                    node={node}
-                    alt={`${node.title || "视频"} 静态预览`}
-                    loading="eager"
-                    decoding="sync"
-                    draggable={false}
-                    className={`absolute inset-0 size-full select-none object-contain transition-opacity duration-150 motion-reduce:transition-none ${ready ? "opacity-0" : "opacity-100"}`}
-                    loadingFallback={<LoaderCircle className="size-5 animate-spin text-white/55" />}
-                    fallback={<Video className="size-7 text-white/40" />}
-                />
-            ) : !ready || !url || loading ? (
-                <MediaLoadingState icon={<LoaderCircle className="size-5 animate-spin motion-reduce:animate-none" />} label={loading || url ? "正在加载视频" : "视频资源不可用"} />
-            ) : null}
-            {url ? (
-                <div className={`relative z-[1] transition-opacity duration-150 motion-reduce:transition-none ${ready ? "opacity-100" : "opacity-0"}`} style={{ width: fitWidth, height: fitHeight }}>
+        <div ref={playerBoxRef} data-hover-playing={session?.mode === "hover" && ready && session.status === "playing" ? "true" : undefined} data-playback-mode={session?.mode} data-playback-status={session?.status} className="group/video-preview relative flex h-full w-full items-center justify-center overflow-hidden rounded-[var(--node-radius)] bg-black">
+            {/* Keep the already-decoded poster in place across activation and release.
+                Fading both layers exposes the black stage between two half-opaque images. */}
+            <div className="absolute inset-0">
+                <InactiveVideoPreview key={playerKey} node={node} theme={theme} onPlay={mediaActive ? undefined : () => playback.play(node.id, playerKey)} />
+            </div>
+            {url && session ? (
+                <div className={`relative z-[1] ${ready ? "opacity-100" : "pointer-events-none opacity-0"}`} style={{ width: fitWidth, height: fitHeight }}>
                     <VideoPlayer
                         key={playerKey}
                         src={url}
@@ -200,22 +199,51 @@ export function VideoNodeContent({ node, theme, mediaActive = false, onMediaPlay
                         title={node.title || "视频"}
                         hasAudio={inferVideoHasAudio(node.metadata)}
                         autoPlay
+                        paused={session?.intent !== "play"}
+                        initialTime={session ? playback.position(session.token) : 0}
+                        playbackSessionId={session?.token}
+                        playbackCommand={session?.command}
+                        muted={session.autoplayMuted || sound.muted}
+                        volume={sound.volume}
+                        onSoundChange={(next) => { if (session.autoplayMuted) playback.play(node.id, playerKey); playback.setSound(next); }}
+                        onPlaybackFailure={(error) => { if (session) playback.rejected(session.token, error); }}
+                        previewMode={false}
+                        onPlay={(event) => { if (session && !playback.accepts(session.token)) event?.target.pause(); }}
+                        onPlaying={() => { if (session) playback.played(session.token); }}
+                        onWaiting={() => { if (session) playback.phase(session.token, "buffering"); }}
+                        onSeeking={() => { if (session) playback.phase(session.token, "seeking"); }}
+                        onSeeked={(_, event) => { if (session && event.target.state.playing) playback.played(session.token); }}
+                        onPlayRequest={(event) => { if (event.isOriginTrusted) playback.play(node.id, playerKey); }}
+                        onPauseRequest={(event) => { if (event.isOriginTrusted) { if (session.mode === "hover") playback.play(node.id, playerKey); playback.pause(); } }}
+                        onPause={() => { if (session) playback.paused(session.token); }}
                         preload="metadata"
                         brandColor={theme.accent.primary}
                         className="h-full w-full rounded-[var(--node-radius)] bg-black"
                         dataCanvasNoZoom
                         compactControls
-                        onCanPlay={() => { if (livePlayerKeyRef.current === playerKey && playerScope === getActiveUserScope()) { readySourceRef.current = playerKey; setVideoReady(true); } }}
-                        onEnded={() => {
-                            // Return the decoder lease to the poster so a later hover can preview again.
-                            // Pausing or seeking deliberately keeps the explicit player mounted.
-                            if (livePlayerKeyRef.current === playerKey && playerScope === getActiveUserScope()) onMediaPlayRequest?.(null);
+                        onCanPlay={() => {
+                            const video = playerBoxRef.current?.querySelector("video");
+                            if (!video || !session) return;
+                            cancelPresentationRef.current?.();
+                            cancelPresentationRef.current = revealCanvasVideoFrame(video, () => {
+                                if (playback.getSnapshot()?.token === session.token && livePlayerKeyRef.current === playerKey && playerScope === getActiveUserScope()) { readySourceRef.current = playerKey; setVideoReady(true); }
+                            });
                         }}
-                        onError={onError}
+                        onEnded={() => {
+                            // Vidstack completes its end/pause event chain in this task.
+                            // Release a hover decoder only after that chain has settled.
+                            if (session) setTimeout(() => playback.ended(session.token), 0);
+                        }}
+                        onError={() => { if (session) playback.recovering(session.token); onError(); }}
                     />
                     {activeEntry && activeEntry.text.trim() ? <CanvasSubtitleOverlay text={activeEntry.text} highlight={activeHighlight} style={subtitleStyle} /> : null}
                 </div>
             ) : null}
+            {session?.autoplayMuted && session.intent === "play" ? <button type="button" data-canvas-no-zoom="true" onMouseDown={event => event.stopPropagation()} onClick={event => { event.stopPropagation(); playback.play(node.id, playerKey); }} className="absolute left-2 top-2 z-[2] rounded bg-black/75 px-2 py-1 text-xs text-white">静音预览 · 开启声音</button> : null}
+            {session?.mode === "explicit" && session.intent === "pause" && !url && !["blocked", "error"].includes(session.status) ? <VideoPreviewPlayButton visible title={node.title || "视频"} actionLabel="继续播放" onPlay={() => playback.play(node.id, playerKey)} /> : null}
+            {session?.mode === "hover" && ["blocked", "error"].includes(session.status) ? <VideoPreviewPlayButton visible title={node.title || "视频"} onPlay={() => playback.play(node.id, playerKey)} /> : null}
+            {session?.mode === "explicit" && ["error", "blocked"].includes(session.status) ? <VideoPreviewPlayButton visible title={node.title || "视频"} actionLabel={session.status === "blocked" ? "点击启用有声播放" : "重试播放"} onPlay={() => playback.play(node.id, playerKey)} /> : null}
+            {session?.status === "blocked" || session?.status === "error" ? <span role="status" className="pointer-events-none absolute bottom-2 left-2 rounded bg-black/75 px-2 py-1 text-xs text-white">{session.status === "blocked" ? "点击播放以启用声音" : "播放失败，点击重试"}</span> : null}
         </div>
     );
 }
@@ -236,26 +264,20 @@ export function AudioNodeContent({ node, theme }: CanvasNodeContentProps) {
     return <CanvasAudioPlayer node={node} theme={theme} />;
 }
 
-export function InactiveVideoPreview({ node, theme, onPlay }: Pick<CanvasNodeContentProps, "node" | "theme"> & { onPlay: () => void }) {
+export function InactiveVideoPreview({ node, theme, onPlay, actionLabel }: Pick<CanvasNodeContentProps, "node" | "theme"> & { onPlay?: () => void; actionLabel?: string }) {
     const previewRef = useRef<HTMLDivElement>(null);
     const nearViewport = useNearViewport(previewRef);
     const persistedPreview = canvasNodeVideoPreviewReference(node);
     const persistedPreviewSource = persistedPreview?.src || "";
     const persistedPreviewStorageKey = persistedPreview?.storageKey || "";
     const hasPersistedPreview = Boolean(persistedPreviewSource || persistedPreviewStorageKey);
+    const needsPosterUpgrade = needsCanvasVideoPosterUpgrade(node);
     const { updateMediaNode } = useCanvasNodeActions();
     const updateMediaNodeRef = useRef(updateMediaNode);
     const [hydrating, setHydrating] = useState(false);
     const [localPreviewUrl, setLocalPreviewUrl] = useState("");
     const localPreviewUrlRef = useRef("");
 
-    useEffect(() => {
-        const element = previewRef.current;
-        if (!element) return;
-        const content = node.metadata?.content || "";
-        const fallback = node.metadata?.importSource?.provider === "libtv" ? buildLibTVVideoSourceUrl(content) : content;
-        return bindCanvasVideoHoverPreview(element, () => resolveVideoMediaUrl(node.metadata?.storageKey, fallback));
-    }, [node.metadata?.content, node.metadata?.storageKey, node.metadata?.importSource?.provider]);
 
     useEffect(() => {
         updateMediaNodeRef.current = updateMediaNode;
@@ -269,7 +291,7 @@ export function InactiveVideoPreview({ node, theme, onPlay }: Pick<CanvasNodeCon
     );
 
     useEffect(() => {
-        if (hasPersistedPreview || !nearViewport || (!node.metadata?.content && !node.metadata?.storageKey) || !updateMediaNodeRef.current) {
+        if ((hasPersistedPreview && !needsPosterUpgrade) || !nearViewport || (!node.metadata?.content && !node.metadata?.storageKey) || !updateMediaNodeRef.current) {
             if (hasPersistedPreview && localPreviewUrlRef.current) {
                 URL.revokeObjectURL(localPreviewUrlRef.current);
                 localPreviewUrlRef.current = "";
@@ -293,8 +315,8 @@ export function InactiveVideoPreview({ node, theme, onPlay }: Pick<CanvasNodeCon
                     return;
                 }
                 if (localPreviewUrlRef.current) URL.revokeObjectURL(localPreviewUrlRef.current);
-                localPreviewUrlRef.current = hydrated.localUrl;
-                setLocalPreviewUrl(hydrated.localUrl);
+                if (hasPersistedPreview) URL.revokeObjectURL(hydrated.localUrl);
+                else { localPreviewUrlRef.current = hydrated.localUrl; setLocalPreviewUrl(hydrated.localUrl); }
                 const dimensions = { width: hydrated.width, height: hydrated.height };
                 updateMediaNodeRef.current?.(node.id, (current) => applyCanvasVideoMeasurement(current, observed, dimensions, getActiveUserScope()));
                 void hydrated.persisted.then((videoPreview) => {
@@ -308,7 +330,7 @@ export function InactiveVideoPreview({ node, theme, onPlay }: Pick<CanvasNodeCon
         return () => {
             controller.abort();
         };
-    }, [hasPersistedPreview, nearViewport, node.id, node.metadata?.content, node.metadata?.storageKey, node.metadata?.taskId, persistedPreviewSource, persistedPreviewStorageKey]);
+    }, [hasPersistedPreview, needsPosterUpgrade, nearViewport, node.id, node.metadata?.content, node.metadata?.storageKey, node.metadata?.taskId, persistedPreviewSource, persistedPreviewStorageKey]);
 
     if (hasPersistedPreview || localPreviewUrl) {
         return (
@@ -327,25 +349,26 @@ export function InactiveVideoPreview({ node, theme, onPlay }: Pick<CanvasNodeCon
                 ) : (
                     <img src={localPreviewUrl} alt={`${node.title || "视频"} 静态预览`} loading="lazy" decoding="sync" draggable={false} className="pointer-events-none size-full select-none object-contain" />
                 )}
-                <VideoPreviewPlayButton title={node.title || "视频"} onPlay={onPlay} />
+                {onPlay ? <VideoPreviewPlayButton title={node.title || "视频"} actionLabel={actionLabel} onPlay={onPlay} /> : null}
             </div>
         );
     }
     return (
         <div ref={previewRef} className="group/video-preview relative size-full">
             <InactiveMediaCard icon={<Video className="size-7" />} title={node.title || "视频"} hint={hydrating ? "正在生成首帧" : nearViewport ? "点击播放视频" : "进入视口后加载首帧"} theme={theme} />
-            <VideoPreviewPlayButton title={node.title || "视频"} onPlay={onPlay} />
+            {onPlay ? <VideoPreviewPlayButton title={node.title || "视频"} actionLabel={actionLabel} onPlay={onPlay} /> : null}
         </div>
     );
 }
 
-export function VideoPreviewPlayButton({ title, onPlay }: { title: string; onPlay: () => void }) {
+export function VideoPreviewPlayButton({ title, onPlay, actionLabel = "播放", visible = false }: { title: string; onPlay: () => void; actionLabel?: string; visible?: boolean }) {
     return (
         <button
             type="button"
-            className="absolute left-1/2 top-1/2 z-[var(--node-z-overlay)] grid size-11 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-black/62 text-white shadow-lg backdrop-blur transition-[transform,background-color,opacity] group-data-[hover-playing=true]/video-preview:opacity-0 focus-visible:!opacity-100 hover:scale-105 hover:bg-black/78 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
-            aria-label={`播放 ${title}`}
-            title="播放视频"
+            className={`absolute left-1/2 top-1/2 z-[var(--node-z-overlay)] grid size-11 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-black/62 text-white shadow-lg backdrop-blur transition-[transform,background-color,opacity] group-data-[hover-playing=true]/video-preview:opacity-0 focus-visible:!opacity-100 hover:scale-105 hover:bg-black/78 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white ${visible ? "" : "pointer-events-none opacity-0 focus-visible:pointer-events-auto"}`}
+            aria-label={`${actionLabel} ${title}`}
+            data-canvas-play-button
+            title={actionLabel === "播放" ? "播放视频" : actionLabel}
             onPointerDown={(event) => event.stopPropagation()}
             onMouseDown={(event) => event.stopPropagation()}
             onClick={(event) => {
@@ -374,17 +397,19 @@ function waitForVideoPlaybackRecovery(signal: AbortSignal) {
     });
 }
 
-export function useVideoPlaybackUrl(node: CanvasNodeData, active: boolean) {
+export function useVideoPlaybackUrl(node: CanvasNodeData, active: boolean, retryKey?: number) {
     const rawContent = node.metadata?.content || "";
     const fallback = node.metadata?.importSource?.provider === "libtv" ? buildLibTVVideoSourceUrl(rawContent) : rawContent;
     const storageKey = node.metadata?.storageKey || "";
     const [url, setUrl] = useState("");
     const [loading, setLoading] = useState(false);
+    const [failedAtKey, setFailedAtKey] = useState<number | null>(null);
     const recoveryRef = useRef<AbortController | null>(null);
     const recoveryAttemptedRef = useRef(false);
     const sourceGenerationRef = useRef(0);
 
     useEffect(() => {
+        setFailedAtKey(null);
         sourceGenerationRef.current += 1;
         recoveryAttemptedRef.current = false;
         recoveryRef.current?.abort();
@@ -400,10 +425,10 @@ export function useVideoPlaybackUrl(node: CanvasNodeData, active: boolean) {
         setLoading(true);
         void resolveVideoMediaUrl(storageKey, fallback)
             .then((resolved) => {
-                if (!cancelled) setUrl(resolved);
+                if (!cancelled) { setUrl(resolved); setFailedAtKey(resolved ? null : retryKey ?? -1); }
             })
             .catch(() => {
-                if (!cancelled) setUrl(fallback);
+                if (!cancelled) { setUrl(fallback); setFailedAtKey(fallback ? null : retryKey ?? -1); }
             })
             .finally(() => {
                 if (!cancelled) setLoading(false);
@@ -412,12 +437,12 @@ export function useVideoPlaybackUrl(node: CanvasNodeData, active: boolean) {
             cancelled = true;
             recoveryRef.current?.abort();
         };
-    }, [active, fallback, storageKey]);
+    }, [active, fallback, storageKey, retryKey]);
 
     const onError = () => {
         const resourceId = resourceIdFromStorageKey(storageKey);
         if (!active || !resourceId || recoveryAttemptedRef.current) {
-            if (!resourceId) setUrl("");
+            if (active) { setUrl(""); setFailedAtKey(retryKey ?? -1); }
             return;
         }
         recoveryAttemptedRef.current = true;
@@ -464,6 +489,7 @@ export function useVideoPlaybackUrl(node: CanvasNodeData, active: boolean) {
             if (!controller.signal.aborted && generation === sourceGenerationRef.current) {
                 setUrl("");
                 setLoading(false);
+                setFailedAtKey(retryKey ?? -1);
             }
         };
 
@@ -472,7 +498,7 @@ export function useVideoPlaybackUrl(node: CanvasNodeData, active: boolean) {
         });
     };
 
-    return { url, loading, onError };
+    return { url, loading, failed: failedAtKey === (retryKey ?? -1), onError };
 }
 
 export function InactiveMediaCard({ icon, title, hint, theme }: { icon: ReactNode; title: string; hint: string; theme: CanvasTheme }) {
