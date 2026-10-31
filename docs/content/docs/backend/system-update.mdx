@@ -19,6 +19,8 @@ description: 梦层二改 Host Updater、本机发布清单、站点分发、数
 
 启用前还须在 root-only 的更新器服务环境文件中显式配置独立的 `CANVAS_UPDATER_STATE_DIR`、`CANVAS_UPDATER_BACKUP_DIR`、`CANVAS_UPDATER_SOCKET` 与本机 `CANVAS_UPDATER_HEALTH_URL`，并安全配置至少 32 字符的 `CANVAS_UPDATER_TOKEN`，让业务后端挂载对应 Socket 并使用同一凭据。不要沿用另一套更新器的状态目录，也不要把凭据放到命令行、清单或发布回执中。服务定义、目录访问权限与后端挂载必须单独审阅；本节不触发安装或启用 systemd。
 
+具体的安装准备、后端接通、撤销启用与首次发布步骤见[梦层更新器启用与首发清单](mengceng-updater-activation.mdx)。仓库提供服务和环境模板，站点私有安装包另按现场快照生成；模板存在不表示已启用服务。
+
 Profile 格式为 JSON，`format` 固定为 1。所有路径使用真实绝对路径；Compose 顺序、project 和 projectDirectory 必须与现有部署一致，不能经过会切换的 `current` 符号链接。源配置、共享环境与 profile 不放入更新器 StateDir，也不可由组或其他用户写入。以下路径仅为结构示例：
 
 ```json

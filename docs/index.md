@@ -14,6 +14,7 @@
 梦层使用本仓库源码构建的独立组件镜像与站点专用配置。服务器发布先核对实际 Compose、环境、数据库、挂载、站点分发与恢复依据；二改 Host Updater 需按本机发布合同独立验收并安装启用。上游默认 Release 安装方式不作为梦层升级入口。
 
 - [在线更新与安全回退](content/docs/backend/system-update.mdx)：受管部署条件、安装、备份、迁移和回退。
+- [梦层更新器启用与首发清单](content/docs/backend/mengceng-updater-activation.mdx)：服务权限、后端 Socket 接通、撤销启用及首次业务发布。
 - [本地开发](content/docs/backend/local-development.mdx)：宿主机与热更新开发环境。
 
 ## 设计沉淀

@@ -1,0 +1,31 @@
+[Unit]
+Description=MengCeng custom Host Updater
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/mengceng/ops/host-updater
+EnvironmentFile=/etc/mengceng-updater/updater.env
+ExecStart=/usr/local/bin/mengceng-host-updater
+Restart=on-failure
+RestartSec=5s
+TimeoutStopSec=30s
+UMask=0077
+StateDirectory=mengceng-updater
+StateDirectoryMode=0700
+RuntimeDirectory=mengceng-updater
+RuntimeDirectoryMode=0755
+# Backend binds this directory. Replacing it on restart would leave a stale mount.
+RuntimeDirectoryPreserve=yes
+NoNewPrivileges=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectHome=yes
+ProtectSystem=strict
+ReadWritePaths=/opt/mengceng/ops /opt/mengceng/backups/host-updater /www/wwwlogs /www/server/nginx/logs
+
+[Install]
+WantedBy=multi-user.target

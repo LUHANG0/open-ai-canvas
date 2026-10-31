@@ -1,0 +1,82 @@
+---
+title: 梦层更新器启用与首发清单
+description: 按站点快照准备独立服务、接通后端，并区分撤销启用与业务版本回退。
+---
+
+# 梦层更新器启用与首发清单
+
+本文用于源码二改站点，配合[系统更新合同](system-update.mdx)使用。**准备安装包、隔离验收、正式启用和首次业务更新是四个不同阶段。** 文档、模板和某次隔离结果不代表正式服务已安装或允许发布任意候选。
+
+## 一、准备可核对的站点快照
+
+从实际容器、镜像和宿主配置读取以下信息，不从 `current` 指针或一个源码 HEAD 推断全部组件：
+
+- Web、Backend、Agent 各自的镜像内容 ID、完整提交、构建号与健康状态；数据库 Schema、PostgreSQL 和 Redis 状态。
+- Compose project、真实 projectDirectory、全部叠加文件顺序、共享环境文件与数据挂载。不同组件最后启动时的文件列表可能不同，需与最终渲染结果逐项比较。
+- 后端当前是否有 `CANVAS_UPDATER_TOKEN`、`CANVAS_UPDATER_SOCKET` 与对应目录挂载；只记录是否存在、长度及相等性，不输出凭据。
+- 站点 nginx include、CDN 重写与缓存合同、两个可变预加载文件、当前与回退版本、备份和加密密钥。
+
+原 Compose 的 Web tag 可能落后于实际运行版本。安装叠加层必须固定三个应用组件及 migrate 的真实镜像，避免后端重建时误用旧配置。比对渲染配置的环境、命令、入口与已有挂载，预期只新增后端的更新器凭据、Socket 路径和目录挂载。源码构建指令保留为输入，实际操作明确使用 `--no-build --pull never`。
+
+站点安装包存于独立、真实且 root-only 的运维目录，记录所有文件摘要。私有环境副本、Token、冻结 Compose、运行回执与数据库备份不进入 Git，也不在终端展示。制作新包时先核对磁盘；不要复制业务数据或整仓依赖。
+
+## 二、服务与后端接通配置
+
+模板为 [`scripts/templates/mengceng-updater.service`](../../../../scripts/templates/mengceng-updater.service) 和 [`scripts/templates/mengceng-updater.env.example`](../../../../scripts/templates/mengceng-updater.env.example)。以下路径是现有梦层拓扑的安装布局，其他站点必须重新映射并验证：
+
+| 内容 | 目标与权限 |
+| --- | --- |
+| 已核对二进制 | `/usr/local/bin/mengceng-host-updater`，root 所有、0755；摘要和源码构建依据单独记录。 |
+| 已核对发布适配器 | `/usr/local/libexec/mengceng-web-publisher.py`，root 所有、0755；profile 固定摘要。 |
+| 服务配置 | `/etc/mengceng-updater/` 为 0700，`updater.env`、`profile.json`、`web-publisher.json` 为 0600。 |
+| 站点发布输入 | `/opt/mengceng/ops/host-updater/` 为 0700，当前/候选清单和安装叠加层为 0600。 |
+| 独立运行状态 | `/var/lib/mengceng-updater/` 为 0700，由 systemd `StateDirectory` 管理。 |
+| 后端可遍历的 Socket 目录 | `/run/mengceng-updater/` 为 0755，由 systemd 管理；后端只读挂载该目录。 |
+| 独立备份目录 | `/opt/mengceng/backups/host-updater/` 为 0700，不替换既有生产备份。 |
+
+更新器以 root 访问本机 Docker Unix Socket，Backend 不挂载 Docker Socket。服务使用 `ProtectSystem=strict`、`ProtectHome`、`PrivateTmp`、`PrivateDevices` 和 `NoNewPrivileges`；只给站点预加载目录、状态、备份、Socket 及 nginx 实际日志目录留写入口。Docker 控制权仍具有宿主权限，这些限制不能替代凭据、管理员鉴权及可信发布输入。
+
+`RuntimeDirectoryPreserve=yes` 用于保留目录身份：后端绑定的是整个 Socket 目录，更新器重启后只替换其中的 Socket 文件。若删除并重建目录，已有容器可能继续挂载旧目录而失联。后端挂载设置 `read_only: true` 和 `bind.create_host_path: false`，先由 systemd 创建目录。当前二进制将 Socket 文件设为 0666，所有接口仍校验 Token；不要改成后端用户无法访问的目录或文件模式。Token 保持在 root-only 配置中，后端通过自己的运行环境接收同一凭据。
+
+显式设置 `CANVAS_UPDATER_REPOSITORY=LUHANG0/open-ai-canvas` 和 `CANVAS_UPDATER_SELF_UPDATE=false`。自定义 profile 本身也会关闭上游自更新。健康地址必须是实际本机 Web/Backend 入口，不能从模板端口推断。状态和备份目录必须独立，不能导入其他更新器遗留事务。
+
+安装包的初始 `candidate.json` 与 `current.json` 完全一致，仅允许检查得到 `no_update`。不要为测试连接伪造一个可发布的新 ID，也不要把最新开发提交写成旧镜像的组件提交。
+
+## 三、隔离验证安装配置
+
+使用临时 systemd 单元、独立状态/备份和独立 Socket 目录，将生产模板的权限策略投影到隔离路径；不得启动或覆盖正式单元。验证后停止临时服务并清理本次资源：
+
+1. 使用 `systemd-analyze verify` 核对投影后的完整服务定义和实际可执行路径。
+2. 使用实际 Backend 镜像的普通用户、无外网的独立容器，只读挂载测试 Socket 目录；不挂载数据库或业务素材。
+3. 核对带凭据的状态读取、无凭据的 401、相同清单检查得到 `no_update`，并确认没有发布事务或数据库备份。
+4. 在保持客户端容器存活的情况下重启临时服务，核对目录身份保持、同一容器能重新连接；验证只读挂载禁止客户端删除 Socket。
+5. 在同样的文件系统限制下执行真实 nginx `-t` 和发布适配器 `preflight`，只读核对源站/CDN、预加载和字体；不调用 `publish`、`rollback` 或 nginx reload。
+6. 比对前后正式服务、组件、环境摘要、挂载、站点配置及预加载文件。隔离通过只证明准备配置，正式后端尚未接通时仍须明确标记。
+
+## 四、正式接通窗口
+
+以下步骤会写宿主配置并重建 Backend，须属于当前明确授权的启用工作。执行前重新核对安装包摘要、原输入摘要、镜像、系统权限、健康和业务任务；任一发生漂移即停止并更新安装包。不要拿过期的环境副本覆盖后来的运维修改。
+
+1. 确认没有活动发布事务、待恢复状态或应保留的另一套更新器。记录当前服务身份、独立组件版本、配置/环境和现有业务任务；安排后端短暂不可用的窗口。
+2. 保存精确配置恢复点。安装已核对的二进制、适配器、私有配置、初始清单及固定镜像/Socket 叠加层；核对服务中所有写目录，执行最终路径下的 `systemd-analyze verify`。
+3. 在原共享环境摘要仍匹配时，原子添加更新器 Token；保留其他环境值和 0600 权限。重新渲染完整 Compose，确认 Backend 之外的环境、镜像和已有挂载不变。
+4. `daemon-reload` 后先启动 `mengceng-updater.service`，核对 Socket 和 root 调用的状态/`no_update`。此时不设业务候选，也不执行更新。
+5. 使用快照记录的 project、真实目录、原环境文件、全部原 Compose **以及最后的安装叠加层**，仅执行 `up -d --no-deps --no-build --pull never --wait --wait-timeout 180 backend`。遵守原后端的优雅停机时限，不连带重建 Web、Agent、数据库或 Redis，不执行迁移。
+6. 验证新后端同镜像、同数据挂载，额外只有预期凭据和只读 Socket 目录；核对 ready/Schema、登录、管理员更新状态和 `no_update`。用 Chrome 读取真实后台，普通用户和未登录访问仍需按服务端权限拒绝。
+7. 完成重启后 Socket 重连、受影响入口与版本记录后，再设置开机启用。保留安装前恢复点、当前和回退镜像、原 release、数据库备份与新状态记录。
+
+## 五、撤销接通配置
+
+此步骤用于更新器安装或连接失败，**不是业务数据库回退**。先确认没有活动事务；若有 `manual_intervention`，按事务回执处理，不直接停服务、删除状态或恢复旧数据库。
+
+停用本次正式更新器；仅在当前环境仍等于本次安装后的摘要时恢复安装前的环境。用原 Compose 文件顺序和固定安装前组件镜像的恢复叠加层，仅重建 Backend，移除本次 Token/Socket 接入。原 Compose 的 Web 可能落后，因此仍保留实际线上 Web 镜像记录，不执行全栈 `up`。核对原后端版本、就绪状态、登录/保存入口与其他服务身份；不恢复数据库、不动用户素材，也不删除业务 release 或备份。
+
+服务、安装文件、状态及私有凭据的清理在确认无事务、无容器挂载和回退引用后另行执行。保留 Socket 目录的设置是为避免失联，不能在仍有后端挂载时为了清理而删除目录。
+
+## 六、首次业务发布与回退
+
+首次候选应来自一个确有需要且已验证的业务改动。仅文档/运维脚本变化不要求重建应用镜像，也不应作为“生产已更新”的证明。优先选作用明确的 Web 变更，单独记录构建源、不可变镜像、前端提交及实际资源清单；Backend/Agent 的独立版本保持真实。
+
+候选新 ID 的 `basedOn` 等于更新器当前记录，三个组件完整列出，不能修改旧 ID 的内容。依次做隔离完整联动、目标站点只读 preflight、候选检查和发布；检查后候选变化必须重新检查。上线核对运行组件、对外 HTML/动态资源、源站回退和实际浏览器业务，再记录发布成功。
+
+首次 Web 回退通过同一事务回执恢复旧 Web 与站点预加载配置，保留发布后的数据库和文件写入；复核旧入口与旧 hash 资源以及新会话。CDN 全网缓存传播、多设备保存同步、真实支付及付费生成仍是单独范围。Backend 变更涉及数据库时须另做迁移、最终备份及恢复验收，不能套用 Web 的回退步骤。
