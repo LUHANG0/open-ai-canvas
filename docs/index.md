@@ -16,6 +16,7 @@
 
 - [在线更新与安全回退](content/docs/backend/system-update.mdx)：受管部署条件、安装、备份、迁移和回退。
 - [梦层更新器启用与首发清单](content/docs/backend/mengceng-updater-activation.mdx)：服务权限、后端 Socket 接通、撤销启用及首次业务发布。
+- [发布产物保留与清理](content/docs/backend/release-retention.mdx)：当前组件、单份回退与配置引用保护，历史副本和构建缓存的发版收尾规则。
 - [本地开发](content/docs/backend/local-development.mdx)：宿主机与热更新开发环境。
 
 ## 设计沉淀
