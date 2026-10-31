@@ -36,7 +36,7 @@ func (a manifestAdapter) BuildCreate(_ context.Context, c RequestContext) (Reque
 	if err != nil {
 		return RequestSpec{}, err
 	}
-	if err := validateManifestRequest(a.manifest.Validations, request); err != nil {
+	if err := validateManifestRequest(a.manifest.Validations, request, "create"); err != nil {
 		return RequestSpec{}, err
 	}
 	return buildManifestOperation(a.manifest.Create, a.manifest.Auth, request, "")
@@ -47,6 +47,9 @@ func (a manifestAdapter) BuildAgent(_ context.Context, c AgentRequestContext) (R
 		return RequestSpec{}, fmt.Errorf("protocol %s has no agent operation", a.manifest.Metadata.ID)
 	}
 	request := GenerationRequest{Model: c.Model, Extra: map[string]any{"agent": c.Request}}
+	if err := validateManifestRequest(a.manifest.Validations, request, "agent"); err != nil {
+		return RequestSpec{}, err
+	}
 	return buildManifestOperation(*a.manifest.Agent, a.manifest.Auth, request, "")
 }
 
@@ -356,11 +359,13 @@ func (a manifestAdapter) parse(payload map[string]any, c PollContext) CreateResu
 	return CreateResult{TaskID: id, Status: status, Result: result, Message: message}
 }
 
-func validateManifestRequest(rules []ManifestValidation, request GenerationRequest) error {
+func validateManifestRequest(rules []ManifestValidation, request GenerationRequest, operation string) error {
 	if len(rules) == 0 {
 		return nil
 	}
-	env := map[string]any{"request": manifestRequestValues(request)}
+	// The host owns the operation discriminator; request.extra cannot select a
+	// less restrictive rule branch or disguise a generation as an Agent step.
+	env := map[string]any{"request": manifestRequestValues(request), "operation": operation}
 	for _, rule := range rules {
 		value, err := evaluateManifestValue(rule.Assert, env)
 		if err != nil {
