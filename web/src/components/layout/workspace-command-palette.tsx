@@ -3,6 +3,7 @@ import { useEffect, useId, useMemo, useRef, useState, type AriaAttributes, type 
 import { useNavigate } from "react-router";
 
 import { navigationTools } from "@/constant/navigation-tools";
+import { buildWorkspaceNav } from "@/lib/workspace-navigation";
 import { Kbd } from "@/components/ui/base/kbd";
 import { cn } from "@/lib/utils";
 import { openWorkspaceWallet } from "@/lib/workspace-wallet";
@@ -35,12 +36,11 @@ export function WorkspaceCommandPalette({ open, onClose, returnFocusTarget }: { 
         };
         return [
             { id: "home", title: "首页", icon: Home, to: "/" },
-            toolEntry("create", "/create"),
-            toolEntry("projects", "/projects"),
-            toolEntry("canvas", "/canvas"),
-            ...(features.taskCenterEnabled ? [toolEntry("tasks", "/tasks")] : []),
-            toolEntry("assets", "/assets"),
-            toolEntry("skills", "/skills"),
+            ...buildWorkspaceNav(features).flatMap(({ items }) => items.map((item): PaletteEntry => ({
+                ...item,
+                id: item.id === "home" ? "create" : item.id,
+                icon: item.icon ?? Home,
+            }))),
             ...(features.creditsEnabled ? [{ ...toolEntry("wallet"), run: () => openWorkspaceWallet() }] : []),
             toolEntry("settings", "/settings"),
         ];

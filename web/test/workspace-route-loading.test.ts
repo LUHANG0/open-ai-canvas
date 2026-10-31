@@ -48,8 +48,8 @@ describe("workspace route loading", () => {
         expect(router).toMatch(/path: "\/canvas\/:id",\s+element: \(\s+<RequireAuth>\s+<CanvasProjectPage \/>\s+<\/RequireAuth>\s+\),/);
         expect(router).not.toContain('path: "/home"');
         expect(router).not.toContain("HomePage");
-        expect(navigation).toContain('{ ...toolItem("create", "/create"), id: "home" }');
-        expect(navigation).not.toContain('to: "/home"');
+        expect(source("../src/lib/workspace-navigation.ts")).toContain('{ ...toolItem("create", "/create"), id: "home" }');
+        expect(navigation + source("../src/lib/workspace-navigation.ts")).not.toContain('to: "/home"');
     });
 
     test("preloads canvas detail and paints opening feedback before navigation", () => {
