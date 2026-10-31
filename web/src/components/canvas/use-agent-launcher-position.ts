@@ -32,14 +32,14 @@ export function useAgentLauncherPosition(onOpen: () => void, width = 76, height 
         return () => window.removeEventListener("resize", resize);
     }, [width, height]);
 
-    const onPointerDown = (event: PointerEvent<HTMLButtonElement>) => {
+    const onPointerDown = (event: PointerEvent<HTMLElement>) => {
         event.stopPropagation();
         if (event.button !== 0 || !event.isPrimary || gestureRef.current) return;
         suppressClick.current = false;
         gestureRef.current = { pointerId: event.pointerId, x: event.clientX, y: event.clientY, start: position, dragged: false };
         event.currentTarget.setPointerCapture(event.pointerId);
     };
-    const onPointerMove = (event: PointerEvent<HTMLButtonElement>) => {
+    const onPointerMove = (event: PointerEvent<HTMLElement>) => {
         event.stopPropagation();
         const gesture = gestureRef.current;
         if (!gesture || gesture.pointerId !== event.pointerId) return;
@@ -51,7 +51,7 @@ export function useAgentLauncherPosition(onOpen: () => void, width = 76, height 
         setDragging(true);
         setPosition(next.position);
     };
-    const finish = (event: PointerEvent<HTMLButtonElement>, cancelled: boolean) => {
+    const finish = (event: PointerEvent<HTMLElement>, cancelled: boolean) => {
         event.stopPropagation();
         const gesture = gestureRef.current;
         if (!gesture || gesture.pointerId !== event.pointerId) return;
@@ -63,7 +63,7 @@ export function useAgentLauncherPosition(onOpen: () => void, width = 76, height 
         if (next.dragged) save(next.position);
         if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
     };
-    const onClick = (event: MouseEvent<HTMLButtonElement>) => {
+    const onClick = (event: MouseEvent<HTMLElement>) => {
         event.stopPropagation();
         // Keyboard/assistive activation remains available after a drag or cancellation.
         if (event.detail !== 0 && suppressClick.current) {
@@ -72,7 +72,7 @@ export function useAgentLauncherPosition(onOpen: () => void, width = 76, height 
         }
         onOpen();
     };
-    const onKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
+    const onKeyDown = (event: KeyboardEvent<HTMLElement>) => {
         event.stopPropagation();
         const delta = event.shiftKey ? 40 : 10;
         const offsets: Record<string, [number, number]> = { ArrowLeft: [delta, 0], ArrowRight: [-delta, 0], ArrowUp: [0, delta], ArrowDown: [0, -delta] };
@@ -90,12 +90,12 @@ export function useAgentLauncherPosition(onOpen: () => void, width = 76, height 
         handlers: {
             onPointerDown,
             onPointerMove,
-            onPointerUp: (event: PointerEvent<HTMLButtonElement>) => finish(event, false),
-            onPointerCancel: (event: PointerEvent<HTMLButtonElement>) => finish(event, true),
-            onLostPointerCapture: (event: PointerEvent<HTMLButtonElement>) => finish(event, true),
+            onPointerUp: (event: PointerEvent<HTMLElement>) => finish(event, false),
+            onPointerCancel: (event: PointerEvent<HTMLElement>) => finish(event, true),
+            onLostPointerCapture: (event: PointerEvent<HTMLElement>) => finish(event, true),
             onClick,
             onKeyDown,
-            onDoubleClick: (event: MouseEvent<HTMLButtonElement>) => event.stopPropagation(),
+            onDoubleClick: (event: MouseEvent<HTMLElement>) => event.stopPropagation(),
         },
     };
 }

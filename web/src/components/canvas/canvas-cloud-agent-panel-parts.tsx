@@ -9,6 +9,8 @@ import { agentAvatarClipForState, agentAvatarStateForRunStatus, agentCopy, DEFAU
 import { type CSSProperties, type ReactNode, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { usePopoverAnchorAlign } from "@/hooks/use-popover-anchor-align";
 import { useAgentLauncherPosition } from "./use-agent-launcher-position";
+import { resolveAgentLauncherAvatarHeight } from "@/lib/canvas/agent-launcher-position";
+import { useMatch } from "react-router";
 import { cn } from "@/lib/utils";
 import { Live2DAvatar } from "./live2d-avatar";
 import { agentAvatarBundleFileURL, live2DModelURL } from "@/services/api/appearance";
@@ -99,17 +101,23 @@ export function AgentLauncher({
     const media = Boolean(mediaURL && !mediaError);
     const aspectRatio = live ? 0.75 : bundleManifest ? bundleManifest.width / bundleManifest.height : appearance.avatarType === "bundle" ? 480 / 432 : 1;
     const keepsAvatarSize = live || media || bundleManifestLoading;
-    const height = keepsAvatarSize ? Math.max(40, Math.min(appearance.avatarHeight, viewport.height - 60, (viewport.width - 40) / aspectRatio)) : 76;
+    const inCanvasEditor = Boolean(useMatch("/canvas/:id"));
+    const height = keepsAvatarSize ? resolveAgentLauncherAvatarHeight(appearance.avatarHeight, aspectRatio, viewport, inCanvasEditor) : 76;
     const width = keepsAvatarSize ? Math.round(height * aspectRatio) : 76;
     const { position, dragging, handlers } = useAgentLauncherPosition(onOpen, width, height);
+    const { onClick, onKeyDown, onDoubleClick, ...pointerHandlers } = handlers;
+    // Only the body catches pointer gestures; transparent padding leaves the page usable.
+    // The button retains keyboard focus and activation.
+    const bodyHitOnly = keepsAvatarSize && (live || media);
     return (
         <button
             type="button"
             aria-label={`打开${appearance.agentName}`}
             title={live && live2DError ? live2DError : `${approvalPending ? "Agent 等待你的审批" : "打开 Agent 助手"} · 拖动可调整位置，聚焦后可用方向键移动`}
             className={cn(
-                "canvas-agent-launcher fixed z-[calc(var(--z-toast)+1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-current/35",
+                "canvas-agent-launcher fixed z-[var(--z-panel-floating)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-current/35",
                 dragging && "is-dragging",
+                bodyHitOnly && "is-body-hit",
                 live && "canvas-agent-launcher-live2d",
                 mediaURL && !mediaError && "canvas-agent-launcher-media",
             )}
@@ -118,8 +126,14 @@ export function AgentLauncher({
             tabIndex={hidden ? -1 : undefined}
             data-canvas-no-zoom
             onDragStart={(event) => event.preventDefault()}
-            {...handlers}
+            {...(bodyHitOnly ? null : pointerHandlers)}
+            onClick={onClick}
+            onKeyDown={onKeyDown}
+            onDoubleClick={onDoubleClick}
         >
+            {bodyHitOnly ? (
+                <span className="canvas-agent-launcher-hit" aria-hidden="true" {...pointerHandlers} />
+            ) : null}
             {live ? (
                 <Live2DAvatar
                     url={live2DModelURL(appearance.live2dResourceId, appearance.live2dEntry)}
