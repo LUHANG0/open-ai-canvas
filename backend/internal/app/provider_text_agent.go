@@ -138,6 +138,18 @@ func runDeclarativeAgentTask(ctx context.Context, input canvasGenerationInput, a
 		"claude":         input.AgentRequests.Claude,
 		"gemini":         input.AgentRequests.Gemini,
 	}
+	// Provider validation must see the host's effective output/thinking policy,
+	// including per-step overrides, before it authorizes an upstream request.
+	if knownWire {
+		key := map[string]string{"chat-completion": "chatCompletion", "responses": "responses", "claude-api": "claude"}[wire]
+		if source, ok := request[key].(map[string]any); ok && source != nil {
+			body := cloneStringAnyMap(source)
+			applyTextThinking(body, input, wire)
+			applyAgentOutputLimit(body, agentStepOutputLimit(input), wire)
+			normalizeAgentToolChoice(body, input, wire)
+			request[key] = body
+		}
+	}
 	spec, err := adapter.BuildAgent(ctx, protocol.AgentRequestContext{BaseURL: input.Config.BaseURL, Model: input.Config.Model, Request: request})
 	if err != nil {
 		return nil, err
