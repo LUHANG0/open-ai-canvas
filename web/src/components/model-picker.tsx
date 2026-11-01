@@ -229,7 +229,7 @@ export function ModelPicker({
                                         aria-selected={selected}
                                         aria-disabled={Boolean(disabledReason)}
                                         disabled={Boolean(disabledReason)}
-                                        className="canvas-model-picker-option disabled:cursor-not-allowed disabled:opacity-45"
+                                        className="canvas-model-picker-option disabled:cursor-not-allowed"
                                         style={{ background: selected ? theme.toolbar.activeBg : "transparent", color: theme.node.text }}
                                         onClick={() => {
                                             if (!model) return;

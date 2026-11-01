@@ -1,3 +1,5 @@
+import { workflowProviderPluginEnabled } from "@/lib/plugins/builtin/workflows";
+import { usePluginStore } from "@/stores/use-plugin-store";
 import { modelCompatibilityError, type ModelRequirements } from "@/lib/model-selection";
 import type { ModelProtocolDefinition } from "@/lib/model-protocols";
 import { resolveGenerationWorkflowExecution, type GenerationWorkflowMode } from "@/lib/generation-workflow-execution";
@@ -49,7 +51,7 @@ export function generationReadiness(config: AiConfig, value: string, mode: Gener
     try {
         if (resolveGenerationWorkflowExecution(config, mode)) return { ready: true, source: "supplier" };
     } catch (error) {
-        return { ready: false, source: "supplier", reason: error instanceof Error ? error.message : "工作流配置不可用", settingsHref: "/settings?section=runninghub" };
+        return { ready: false, source: "supplier", reason: error instanceof Error ? error.message : "工作流配置不可用", settingsHref: config.taskWorkflowProvider === "runninghub" && !workflowProviderPluginEnabled(usePluginStore.getState().runtimeStatuses, "runninghub") ? "/plugins" : "/settings?section=runninghub" };
     }
     return modelReadiness(config, value, mode, requirements, catalog);
 }

@@ -75,6 +75,7 @@ test("an enabled saved workflow bypasses ordinary model prerequisites, while tex
     expect(generationReadiness(config, "", "image").reason).toContain("积分 API Key");
     config.runningHub.apiKey = "fixture"; usePluginStore.setState({ runtimeStatuses: {} });
     expect(generationReadiness(config, "", "image").reason).toContain("插件未启用");
+    expect(generationReadiness(config, "", "image").settingsHref).toBe("/plugins");
 });
 
 const quote: LogicalModelQuote = { logicalModelId: "quote", billingMode: "fixed_request", quantity: 1, amountMicrocredits: 0, estimated: false };
