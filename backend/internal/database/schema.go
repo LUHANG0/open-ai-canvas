@@ -118,6 +118,7 @@ func Models() []any {
 		&model.UserAnnouncementRead{},
 		&model.BannerAnnouncement{},
 		&model.Task{},
+		&model.TaskSubmission{},
 		&model.CreationRun{},
 		&model.CreationConversation{},
 		&model.CreationConversationMessage{},

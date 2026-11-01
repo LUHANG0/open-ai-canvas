@@ -12,6 +12,7 @@ import (
 )
 
 type TaskInput struct {
+	IdempotencyKey string          `json:"idempotencyKey,omitempty"`
 	Kind           string          `json:"kind"`
 	ToolID         string          `json:"toolId"`
 	PresetID       string          `json:"presetId,omitempty"`

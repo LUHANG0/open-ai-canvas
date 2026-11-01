@@ -106,6 +106,15 @@ func (s *Service) SetWorkbenchPresetEnabled(actor *model.User, id string, enable
 }
 
 func (s *Service) CreateWorkbenchTask(userID string, req WorkbenchTaskInput, traceID, requestID string) (*model.Task, error) {
+	submission, existing, err := s.resolveTaskSubmission(userID, req.IdempotencyKey, "workbench", req)
+	if err != nil || existing != nil {
+		return existing, err
+	}
+	task, err := s.createWorkbenchTask(userID, req, traceID, requestID, submission)
+	return s.reconcileTaskSubmission(userID, submission, task, err)
+}
+
+func (s *Service) createWorkbenchTask(userID string, req WorkbenchTaskInput, traceID, requestID string, submission *model.TaskSubmission) (*model.Task, error) {
 	if req.Kind == WorkbenchKindImage {
 		if err := s.RequireFeature(FeatureImageWorkbench); err != nil {
 			return nil, err
@@ -131,7 +140,7 @@ func (s *Service) CreateWorkbenchTask(userID string, req WorkbenchTaskInput, tra
 		return nil, BadAuthRequest("所选系统模型不可用")
 	}
 	resolved.Model = modelName
-	return s.CreateTask(userID, CreateTaskRequest{Type: resolved.TaskType, Operation: resolved.Operation, Prompt: resolved.Prompt, Model: resolved.Model, LogicalModelID: resolved.LogicalModelID, Input: resolved.Input, TraceID: traceID, RequestID: requestID, workbenchKind: req.Kind})
+	return s.CreateTask(userID, CreateTaskRequest{submission: submission, Type: resolved.TaskType, Operation: resolved.Operation, Prompt: resolved.Prompt, Model: resolved.Model, LogicalModelID: resolved.LogicalModelID, Input: resolved.Input, TraceID: traceID, RequestID: requestID, workbenchKind: req.Kind})
 }
 
 func (s *Service) WorkbenchTasks(userID, kind string, activeOnly bool, limit int) ([]TaskSummary, error) {

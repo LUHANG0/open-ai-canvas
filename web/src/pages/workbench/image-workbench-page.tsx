@@ -1,3 +1,4 @@
+import { submitTaskIntent } from "@/lib/task-submission-intent";
 import { canReplaceWorkbenchPrompt, planWorkbenchPresetSwitch } from "@/lib/workbench-preset-switch";
 import { createClientUUID } from "@/lib/client-id";
 import { App, Button, Input, InputNumber, Progress, Spin, Switch, Tooltip } from "antd";
@@ -188,6 +189,7 @@ export function WorkbenchPage({ kind }: { kind: WorkbenchKind }) {
     const [preset, setPreset] = useState<WorkbenchPromptPreset | null>(null);
     const [presetPending, setPresetPending] = useState<WorkbenchPromptPreset | null>(null);
     const [busy, setBusy] = useState(false);
+    const submissionBusyRef = useRef<symbol | null>(null);
     const [taskBusyId, setTaskBusyId] = useState("");
     const [mobileTab, setMobileTab] = useState("generate");
     const [query, setQuery] = useState("");
@@ -395,6 +397,8 @@ export function WorkbenchPage({ kind }: { kind: WorkbenchKind }) {
         detailEpoch.current++;
         workbenchRevisionRef.current++;
         if (composerUserRef.current !== userId) {
+            submissionBusyRef.current = null;
+            setBusy(false);
             referencesRef.current.forEach(revokeReferencePreview);
             setReferences([]);
             setPrompt("");
@@ -598,6 +602,8 @@ export function WorkbenchPage({ kind }: { kind: WorkbenchKind }) {
     };
 
     const submit = async () => {
+        if (submissionBusyRef.current) return;
+        const scope = getActiveUserScope();
         const revision = workbenchRevisionRef.current;
         const submittedPrompt = normalizeCanvasNodeMentionTokens(prompt.trim(), promptReferences);
         if (tool?.inputContract?.promptRequired && !submittedPrompt) {
@@ -631,6 +637,8 @@ export function WorkbenchPage({ kind }: { kind: WorkbenchKind }) {
             message.error("提示词超过当前模型支持的长度");
             return;
         }
+        const submissionToken = Symbol();
+        submissionBusyRef.current = submissionToken;
         setBusy(true);
         try {
             const imageRequest = kind === "image" && imageProfile ? normalizeImageValue(imageProfile, { size: ratio, quality, imageResolution, imageParameters: config.imageParameters, count, transparentBackground: config.transparentBackground }) : null;
@@ -653,9 +661,10 @@ export function WorkbenchPage({ kind }: { kind: WorkbenchKind }) {
             const readyReferences = references.filter((reference) => reference.resourceId);
             const videoOperation = kind === "video" ? workbenchVideoOperation(readyReferences) : undefined;
             const referenceSnapshot = readyReferences.map((reference) => ({ resourceId: reference.resourceId!, kind: reference.kind, role: reference.role, ...(reference.slotKey ? { slotKey: reference.slotKey } : {}) }));
+            const submissionFingerprint = { kind, prompt: submittedPrompt, model: selectedModel, logicalModelId, channelId: channel?.id, toolId: tool?.id, presetId: preset?.id, parameters, references: referenceSnapshot };
             const createdTask =
                 logicalModelId || channel?.scope === "system"
-                    ? await createWorkbenchTask({
+                    ? await submitTaskIntent(scope, kind, {
                           kind,
                           ...(tool ? { toolId: tool.id } : {}),
                           ...(tool && preset ? { presetId: preset.id } : {}),
@@ -664,7 +673,7 @@ export function WorkbenchPage({ kind }: { kind: WorkbenchKind }) {
                           ...(logicalModelId ? { logicalModelId } : { channelId: channel.id }),
                           parameters,
                           references: readyReferences.map((reference) => ({ resourceId: reference.resourceId!, kind: reference.kind, role: reference.role, ...(reference.slotKey ? { slotKey: reference.slotKey } : {}) })),
-                      })
+                      }, createWorkbenchTask, () => scope === getActiveUserScope(), submissionFingerprint)
                     : await prepareBackendGenerationTask({
                           mode: kind,
                           prompt: submittedPrompt,
@@ -715,8 +724,17 @@ export function WorkbenchPage({ kind }: { kind: WorkbenchKind }) {
                               ...(tool && preset ? { workbenchPresetId: preset.id } : {}),
                               workbench: { kind, ...(tool ? { toolId: tool.id } : {}), ...(tool && preset ? { presetId: preset.id } : {}), parameters, references: referenceSnapshot },
                           },
-                      }).then((taskInput) => createGenerationTask({ ...taskInput, ...(videoOperation ? { operation: videoOperation } : {}) }));
-            const task = await queryGenerationTask(createdTask.id);
+                      }).then((taskInput) => submitTaskIntent(scope, kind, { ...taskInput, ...(videoOperation ? { operation: videoOperation } : {}) }, createGenerationTask, () => scope === getActiveUserScope(), submissionFingerprint));
+            let task: GenerationTask;
+            try {
+                task = await queryGenerationTask(createdTask.id);
+            } catch {
+                if (scope !== getActiveUserScope()) return;
+                message.warning("任务已提交，记录暂未读回，请刷新作品列表查看进度");
+                void loadTasks();
+                return;
+            }
+            if (scope !== getActiveUserScope()) return;
             setTasks((current) => [task, ...current.filter((item) => item.id !== task.id)]);
             if (revision === workbenchRevisionRef.current) {
                 setActiveTask(task);
@@ -724,9 +742,12 @@ export function WorkbenchPage({ kind }: { kind: WorkbenchKind }) {
             }
             message.success("生成任务已提交");
         } catch (error) {
-            message.error(error instanceof Error ? error.message : "任务提交失败");
+            if (scope === getActiveUserScope()) message.error(error instanceof Error ? error.message : "任务提交失败");
         } finally {
-            setBusy(false);
+            if (submissionBusyRef.current === submissionToken) {
+                submissionBusyRef.current = null;
+                setBusy(false);
+            }
         }
     };
 
