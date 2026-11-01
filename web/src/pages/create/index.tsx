@@ -1,3 +1,4 @@
+import { useGenerationReadiness } from "@/hooks/use-generation-readiness";
 import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { App } from "antd";
 import { WorkspaceEntryPending } from "@/components/layout/workspace-entry-pending";
@@ -195,6 +196,7 @@ export default function CreatePage() {
     const generationConfig = useMemo(() => mode === "video"
         ? creationVideoConfig(config, selectedModel, { ratio, seconds, videoQuality })
         : config, [config, mode, ratio, seconds, selectedModel, videoQuality]);
+    const generationStatus = useGenerationReadiness(generationConfig, selectedModel, mode, modelRequirements, mode === "image" ? Number(count) || 1 : 1, mode === "video" ? seconds : 1);
     const imageProfile = useMemo(() => modelCapabilityConfigFor(config, selectedModel).image!, [config, selectedModel]);
     const videoProfile = useMemo(() => modelCapabilityConfigFor(config, selectedModel).video!, [config, selectedModel]);
     // 同名逻辑模型可能把文生视频、图生视频和全模态参考拆到不同路由。
@@ -684,6 +686,12 @@ export default function CreatePage() {
         }
         if (!selectedModel) {
             toast.warning(`请先在设置中配置${modeLabels[mode]}模型`);
+            releaseRetryLock();
+            releaseSubmitGate();
+            return;
+        }
+        if (!generationStatus.canSubmit) {
+            toast.warning(generationStatus.reason || generationStatus.fee.label);
             releaseRetryLock();
             releaseSubmitGate();
             return;

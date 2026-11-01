@@ -1,13 +1,15 @@
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent } from "react";
 import { Check, ChevronDown, Coins } from "lucide-react";
 import { Popover } from "antd";
+import { useGenerationProviderCatalog, useGenerationReadiness } from "@/hooks/use-generation-readiness";
+import { modelReadiness } from "@/lib/generation-readiness";
 import { usePopoverAnchorAlign } from "@/hooks/use-popover-anchor-align";
 
 import { imageQualityLabel } from "@/lib/image-quality";
 import { canvasThemes, type CanvasTheme } from "@/lib/canvas-theme";
 import { modelCapabilityConfigFor, videoDurationOptions } from "@/lib/model-capabilities";
-import { formatPriceRange, modelQuoteDescription, modelQuoteRequest, normalizeTierResolution, priceTierSummaryLabel, priceTiersForCurrentSelection } from "@/lib/model-pricing";
-import { compatibleModelInGroup, configuredModelDisplayName, modelCompatibilityError, resolveCompatibleModel, type ModelRequirements } from "@/lib/model-selection";
+import { formatPriceRange, modelQuoteDescription, normalizeTierResolution, priceTierSummaryLabel, priceTiersForCurrentSelection } from "@/lib/model-pricing";
+import { compatibleModelInGroup, configuredModelDisplayName, resolveCompatibleModel, type ModelRequirements } from "@/lib/model-selection";
 import { groupModelsForPicker, isDirectSystemModel, modelChannelLabel, type ModelPickerGroup } from "@/lib/model-picker-groups";
 import { cn } from "@/lib/utils";
 import { modelDisplayName, modelIcon, modelOptionName, resolveModelChannel, selectableModelsByCapability, type AiConfig, type ModelCapability } from "@/stores/use-config-store";
@@ -17,7 +19,7 @@ import { ModelLogo } from "@/components/model-logo";
 import { ModelTags } from "@/components/model-tags";
 import { formatVideoResolutionLabel } from "@/lib/video-generation-options";
 import { modelPickerVideoDescription } from "@/lib/model-picker-description";
-import { quoteModel, type LogicalModelQuote, type PublicChannelModelAvailability } from "@/services/api/logical-models";
+import { type LogicalModelQuote, type PublicChannelModelAvailability } from "@/services/api/logical-models";
 
 type ModelPickerProps = {
     config: AiConfig;
@@ -74,8 +76,9 @@ export function ModelPicker({
     // 旧画布可能保存过已下架或前端历史内置模型；它们不能重新进入当前可选目录。
     const current = options.includes(resolvedCurrent) ? resolvedCurrent : "";
     const currentPrice = modelMenuPrice(config, current, capability, false, requirements);
-    const quoteRequest = useMemo(() => modelQuoteRequest(config, current, capability, requirements), [capability, config, current, requirements]);
-    const [routeQuote, setRouteQuote] = useState<LogicalModelQuote | undefined>();
+    const userId = useUserStore((state) => state.user?.id);
+    const provider = useGenerationProviderCatalog(open && options.some((model) => resolveModelChannel(config, model).scope !== "system"));
+    const selectedStatus = useGenerationReadiness({ ...config, taskWorkflowProvider: "model" }, current, capability || "text", requirements);
     const creationVariant = variant === "creation";
 
     useLayoutEffect(() => {
@@ -92,21 +95,6 @@ export function ModelPicker({
             window.removeEventListener("scroll", updateAvailableHeight, true);
         };
     }, [open]);
-
-    useEffect(() => {
-        if (!showSelectedPrice || !creditsEnabled || !quoteRequest) {
-            setRouteQuote(undefined);
-            return;
-        }
-        const controller = new AbortController();
-        setRouteQuote(undefined);
-        quoteModel(quoteRequest, controller.signal)
-            .then((payload) => setRouteQuote(payload.quote))
-            .catch(() => {
-                if (!controller.signal.aborted) setRouteQuote(undefined);
-            });
-        return () => controller.abort();
-    }, [creditsEnabled, quoteRequest, showSelectedPrice]);
 
     useEffect(() => {
         const closeOtherPicker = (event: Event) => {
@@ -228,9 +216,10 @@ export function ModelPicker({
                         <div className="grid min-w-0 gap-1">
                             {group.models.map((modelGroup) => {
                                 const selected = modelGroup.models.includes(current);
-                                const model = compatibleModelInGroup(config, modelGroup.models, selectionRequirements, selected ? current : undefined);
+                                const candidates = modelGroup.models.filter((item) => modelReadiness(config, item, capability, selectionRequirements, provider.catalog).ready);
+                                const model = compatibleModelInGroup(config, candidates, selectionRequirements, selected ? current : undefined);
                                 const displayModel = model || (selected ? current : modelGroup.models[0]);
-                                const disabledReason = model ? "" : modelCompatibilityError(config, modelGroup.models[0], selectionRequirements) || "当前输入不符合该模型能力";
+                                const disabledReason = model ? "" : modelReadiness(config, displayModel, capability, selectionRequirements, provider.catalog).reason || "当前输入不符合该模型能力";
                                 return (
                                     <button
                                         key={modelGroup.key}
@@ -261,7 +250,7 @@ export function ModelPicker({
                                             showConfiguredModelName={showConfiguredModelName}
                                             label={group.kind === "product" ? modelGroup.label : undefined}
                                             requirements={requirements}
-                                            showPrice={showOptionPrices && creditsEnabled}
+                                            showPrice={showOptionPrices && (creditsEnabled || resolveModelChannel(config, displayModel).scope !== "system")}
                                             disabledReason={disabledReason}
                                             showDescription
                                         />
@@ -277,6 +266,10 @@ export function ModelPicker({
                     {emptyModelLabel(config, capability)}
                 </div>
             )}
+            {options.some((model) => !modelReadiness(config, model, capability, selectionRequirements, provider.catalog).ready) ? <div className="flex flex-wrap items-center gap-2 px-3 py-2 text-[var(--fs-caption)]" style={{ color: theme.node.muted }}>
+                <a href="/settings?section=channels" target="_blank" rel="noreferrer" className="underline underline-offset-2">检查模型与个人渠道设置</a>
+                {provider.catalog?.status === "error" ? <button type="button" onClick={provider.retry} className="underline underline-offset-2">重试协议检查</button> : null}
+            </div> : null}
         </div>
     );
 
@@ -313,7 +306,7 @@ export function ModelPicker({
                             <ModelIcon config={config} model={current} />
                         </span>
                         <span className="min-w-0 flex-1 truncate">{current ? (creationVariant ? pickerModelDisplayName(config, current, showConfiguredModelName) : pickerModelOptionLabel(config, current, showConfiguredModelName)) : placeholder}</span>
-                        {showSelectedPrice && creditsEnabled ? <ModelPrice price={currentPrice} quote={routeQuote} compact /> : null}
+                        {showSelectedPrice && (creditsEnabled || currentPrice?.kind === "supplier") ? userId && selectedStatus.fee.blocked ? <span className="text-[var(--fs-tiny)]">{selectedStatus.fee.label}</span> : <ModelPrice price={currentPrice} quote={selectedStatus.quote} compact /> : null}
                     </span>
                     <ChevronDown className={cn("canvas-model-picker-chevron", open && "is-open")} aria-hidden="true" />
                 </button>
@@ -483,13 +476,14 @@ function formatDurationSummary(profile: NonNullable<ReturnType<typeof modelCapab
     return `${profile.duration.min || values[0]}–${profile.duration.max || values[values.length - 1]}秒`;
 }
 
-type ModelMenuPrice = { kind: "tiers"; label: string; compactLabel: string; title: string } | { kind: "estimate"; label?: string; title?: string } | { kind: "fixed"; value: number; unit: "次" | "秒" };
+type ModelMenuPrice = { kind: "supplier" } | { kind: "tiers"; label: string; compactLabel: string; title: string } | { kind: "estimate"; label?: string; title?: string } | { kind: "fixed"; value: number; unit: "次" | "秒" };
 
 function modelMenuPrice(config: AiConfig, model: string, capability?: ModelCapability, summary = false, requirements?: ModelRequirements): ModelMenuPrice | null | undefined {
     if (!model) return undefined;
     const channel = resolveModelChannel(config, model);
+    if (channel.scope !== "system") return { kind: "supplier" };
     const cost = channel.modelCosts?.find((item) => item.model === modelOptionName(model));
-    if (!cost) return channel.scope === "system" ? null : undefined;
+    if (!cost) return null;
     if (cost.pricePolicy === "channel") {
         const tiers = cost.logicalPriceTiers || [];
         if (!tiers.length) return null;
@@ -503,6 +497,7 @@ function modelMenuPrice(config: AiConfig, model: string, capability?: ModelCapab
             ? { kind: "estimate", label: formatPriceRange([rate / 1_000_000], "积分/百万视频 Token"), title: "按视频 Token 单价预估，优先按有效上游用量结算；未返回用量时按视频公式结算" }
             : { kind: "estimate" };
     }
+    if (!Number.isFinite(cost.unitPriceMicrocredits) || cost.unitPriceMicrocredits < 0) return null;
     return { kind: "fixed", value: cost.unitPriceMicrocredits / 1_000_000, unit: cost.billingMode === "per_second" ? "秒" : "次" };
 }
 
@@ -571,6 +566,7 @@ function ModelPrice({ price, quote, compact = false }: { price: ModelMenuPrice |
     }
     if (price === undefined) return null;
     if (price === null) return compact ? null : <span className="shrink-0 text-[var(--fs-tiny)] text-foreground/40">未配置</span>;
+    if (price.kind === "supplier") return <span className="shrink-0 text-[var(--fs-tiny)]" title="金额以供应商账单为准">供应商计费</span>;
     if (price.kind === "tiers") {
         return (
             <span className="model-picker-price inline-flex shrink-0 items-center gap-1 text-[var(--fs-tiny)] font-bold tabular-nums">

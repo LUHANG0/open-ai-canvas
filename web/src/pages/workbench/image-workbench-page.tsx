@@ -1,3 +1,5 @@
+import { useGenerationReadiness } from "@/hooks/use-generation-readiness";
+import { GenerationStatusNotice } from "@/components/generation-status";
 import { submitTaskIntent } from "@/lib/task-submission-intent";
 import { canReplaceWorkbenchPrompt, planWorkbenchPresetSwitch } from "@/lib/workbench-preset-switch";
 import { createClientUUID } from "@/lib/client-id";
@@ -19,13 +21,10 @@ import { imageResolutionUsesQuality } from "@/lib/image-size-presets";
 import { modelCapabilityConfigFor, normalizeImageValue, normalizeVideoValue } from "@/lib/model-capabilities";
 import { creationVideoConfig } from "@/pages/create/creation-generation-config";
 import { imageQualityLabel } from "@/lib/image-quality";
-import { modelQuoteRequest } from "@/lib/model-pricing";
-import { quoteModel } from "@/services/api/logical-models";
 import { prepareBackendGenerationTask } from "@/services/api/generation-task";
 import { createGenerationTask, cancelGenerationTask, queryGenerationTask, retryGenerationTask, type GenerationTask } from "@/services/api/task-center";
 import { capabilitySupportedModes, createWorkbenchTask, listWorkbenchTasks, listWorkbenchTools, normalizeWorkbenchGuide, resolveWorkbenchResourceURL, type WorkbenchKind, type WorkbenchPromptPreset, type WorkbenchTool } from "@/services/api/workbench";
 import { getResource, resourceStorageKey, uploadResourceFile } from "@/services/api/resources";
-import { requestCreditCost } from "@/constant/credits";
 import { useCreationPreferencesStore } from "@/stores/use-creation-preferences-store";
 import { logicalModelIDForConfig, modelDisplayName, modelOptionName, resolveModelChannel, selectableModelsByCapability, useConfigStore, useEffectiveConfig } from "@/stores/use-config-store";
 import { useUserStore } from "@/stores/use-user-store";
@@ -161,7 +160,6 @@ export function WorkbenchPage({ kind }: { kind: WorkbenchKind }) {
     const [detailError, setDetailError] = useState("");
     const [outputKey, setOutputKey] = useState<string>();
     const updateConfig = useConfigStore((state) => state.updateConfig);
-    const isAiConfigReady = useConfigStore((state) => state.isAiConfigReady);
     const [searchParams, setSearchParams] = useSearchParams();
     const [tools, setTools] = useState<WorkbenchTool[]>([]);
     const [directoryLoading, setDirectoryLoading] = useState(true);
@@ -193,10 +191,6 @@ export function WorkbenchPage({ kind }: { kind: WorkbenchKind }) {
     const [taskBusyId, setTaskBusyId] = useState("");
     const [mobileTab, setMobileTab] = useState("generate");
     const [query, setQuery] = useState("");
-    const creditsEnabled = useUserStore((state) => state.features.creditsEnabled);
-    const [estimateCredits, setEstimateCredits] = useState<number | null>(null);
-    const [estimateEstimated, setEstimateEstimated] = useState(false);
-    const [estimateTone, setEstimateTone] = useState<"quote" | "local" | "usage" | "loading" | "unavailable">("unavailable");
     const fileRef = useRef<HTMLInputElement>(null);
     const [uploadSlotKey, setUploadSlotKey] = useState<string | undefined>();
     const preferencesHydrated = useCreationPreferencesStore((state) => state.hydrated);
@@ -348,50 +342,7 @@ export function WorkbenchPage({ kind }: { kind: WorkbenchKind }) {
         [capability, imageProfile, imageResolution, kind, prompt, quality, ratio, references, seconds, selectedCount, videoQuality],
     );
 
-    useEffect(() => {
-        if (!creditsEnabled || !selectedModel) {
-            setEstimateCredits(null);
-            setEstimateTone("unavailable");
-            return;
-        }
-        const priceChannel = resolveModelChannel(config, selectedModel);
-        const localCredits = requestCreditCost({
-            channelMode: priceChannel.scope === "system" ? "remote" : "local",
-            modelCosts: priceChannel.modelCosts,
-            model: modelOptionName(selectedModel),
-            count: kind === "image" ? selectedCount : 1,
-            seconds: kind === "video" ? Number(seconds) || 1 : 1,
-            capability,
-            config: composerConfig,
-            requirements: quoteRequirements,
-        });
-        const request = modelQuoteRequest(composerConfig, selectedModel, capability, quoteRequirements);
-        if (!request) {
-            setEstimateCredits(localCredits);
-            setEstimateEstimated(false);
-            setEstimateTone(localCredits === null ? "usage" : "local");
-            return;
-        }
-        const controller = new AbortController();
-        if (localCredits === null) setEstimateTone("loading");
-        else {
-            setEstimateCredits(localCredits);
-            setEstimateTone("local");
-        }
-        quoteModel(request, controller.signal)
-            .then(({ quote }) => {
-                setEstimateCredits(quote.amountMicrocredits / 1_000_000);
-                setEstimateEstimated(quote.estimated === true);
-                setEstimateTone("quote");
-            })
-            .catch(() => {
-                if (controller.signal.aborted) return;
-                setEstimateCredits(localCredits);
-                setEstimateEstimated(false);
-                setEstimateTone(localCredits === null ? "unavailable" : "local");
-            });
-        return () => controller.abort();
-    }, [capability, composerConfig, config, creditsEnabled, kind, quoteRequirements, seconds, selectedCount, selectedModel]);
+    const generationStatus = useGenerationReadiness(composerConfig, selectedModel, capability, quoteRequirements, kind === "image" ? selectedCount : 1, kind === "video" ? seconds : 1);
 
     useEffect(() => {
         detailEpoch.current++;
@@ -625,8 +576,8 @@ export function WorkbenchPage({ kind }: { kind: WorkbenchKind }) {
             message.error(`请选择可用的${kind === "image" ? "图片" : "视频"}模型`);
             return;
         }
-        if (!isAiConfigReady(config, selectedModel)) {
-            message.error("当前模型配置不完整，请先完成模型设置");
+        if (!generationStatus.canSubmit) {
+            message.error(generationStatus.reason || generationStatus.fee.label);
             return;
         }
         if (references.some((reference) => reference.uploading || reference.error || !reference.resourceId)) {
@@ -959,15 +910,6 @@ export function WorkbenchPage({ kind }: { kind: WorkbenchKind }) {
         }
     };
 
-    const estimateLabel = !creditsEnabled
-        ? ""
-        : estimateCredits !== null
-          ? `${estimateEstimated || estimateTone !== "quote" ? "预估" : "预计"} ${estimateCredits.toLocaleString("zh-CN", { maximumFractionDigits: 6 })} 积分`
-          : estimateTone === "loading"
-            ? "正在计算积分"
-            : estimateTone === "usage"
-              ? "按实际用量结算"
-              : "报价暂不可用";
     const taskModelLabel = (task: GenerationTask) => {
         const rawModel = task.model?.trim() || "";
         if (!rawModel) return kind === "image" ? "图片生成" : "视频生成";
@@ -1505,7 +1447,7 @@ export function WorkbenchPage({ kind }: { kind: WorkbenchKind }) {
                                     </div>
                                 )}
                                 <div className="workbench-submit-estimate" aria-live="polite">
-                                    <span className="workbench-submit-estimate-label">{estimateLabel || "预估可用积分"}</span>
+                                    <GenerationStatusNotice status={generationStatus} className="workbench-submit-estimate-label" />
                                     {selectedModel ? <span className="workbench-submit-estimate-model">使用 {modelDisplayName(config, selectedModel)}</span> : null}
                                 </div>
                                 <Button
@@ -1513,7 +1455,7 @@ export function WorkbenchPage({ kind }: { kind: WorkbenchKind }) {
                                     type="primary"
                                     loading={busy}
                                     aria-busy={busy}
-                                    disabled={(promptRequired && !prompt.trim()) || Boolean(missingInput) || !selectedModel || references.some((reference) => reference.uploading || Boolean(reference.error))}
+                                    disabled={!generationStatus.canSubmit || (promptRequired && !prompt.trim()) || Boolean(missingInput) || !selectedModel || references.some((reference) => reference.uploading || Boolean(reference.error))}
                                     onClick={() => void submit()}
                                 >
                                     <Sparkles aria-hidden="true" />

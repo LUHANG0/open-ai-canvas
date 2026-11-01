@@ -1,3 +1,5 @@
+import { useGenerationReadiness } from "@/hooks/use-generation-readiness";
+import { GenerationStatusNotice } from "@/components/generation-status";
 import { AppModal } from "@/components/ui/product/app-modal";
 import { Button, InputNumber } from "antd";
 import { Tooltip } from "@/components/ui/base/tooltip";
@@ -8,14 +10,12 @@ import { ModelPicker } from "@/components/model-picker";
 import { modelOptionName, resolveModelChannel, useEffectiveConfig } from "@/stores/use-config-store";
 import { canonicalGenerationMetadata, nodeGenerationPrompt } from "@/lib/canvas/generation-contract";
 import { PROMPT_EDITOR_VIEWPORT_MARGIN } from "@/lib/canvas/canvas-prompt-editor-size";
-import { CreditSymbol, requestCreditCost } from "@/constant/credits";
+import { CreditSymbol } from "@/constant/credits";
 import { canvasThemes } from "@/lib/canvas-theme";
-import { modelQuoteDescription, modelQuoteRequest } from "@/lib/model-pricing";
 import { modelRequestOptions, type ModelRequirements } from "@/lib/model-selection";
 import { canvasGenerationParameterError } from "@/lib/canvas/canvas-model-parameter-guard";
 import { navigateToSettings } from "@/lib/settings-navigation";
 import { useActiveTheme } from "@/stores/canvas/use-canvas-theme-store";
-import { useUserStore } from "@/stores/use-user-store";
 import { CanvasCameraControlPopover } from "./canvas-camera-control-popover";
 import { CanvasImageSettingsPopover } from "./canvas-image-settings-popover";
 import { CanvasAudioSettingsPopover } from "./canvas-audio-settings-popover";
@@ -35,7 +35,6 @@ import { promptOptimizerPlugin, PROMPT_OPTIMIZER_PLUGIN_ID } from "@/lib/plugins
 import { createPluginHostContext } from "@/services/plugin-host";
 import { usePluginStore } from "@/stores/use-plugin-store";
 import { useResolvedCanvasResourceReferences } from "./use-resolved-canvas-resource-references";
-import { quoteModel, type LogicalModelQuote } from "@/services/api/logical-models";
 import { ConnectedReferenceShelf, ReferenceToolsPopover, referenceShelfHeading } from "./canvas-node-prompt-references";
 import { PromptModalResizeHandle, PromptResizeHandle, clampExpandedModalSize, clampPromptHeight, estimatePromptContentHeight, promptEditorBounds } from "./canvas-node-prompt-resize";
 import { audioConfigPatch, buildNodeConfig, defaultMode, modeDisplayName, promptPlaceholder, videoConfigPatch } from "./canvas-node-prompt-config";
@@ -84,7 +83,6 @@ export function CanvasNodePromptPanel({ projectId, node, isRunning, onPromptChan
     const globalConfig = useEffectiveConfig();
     const themeName = useActiveTheme();
     const theme = canvasThemes[themeName];
-    const creditsEnabled = useUserStore((state) => state.features.creditsEnabled);
     const promptOptimizerInstallation = usePluginStore((state) => state.installations.find((item) => item.manifest.id === PROMPT_OPTIMIZER_PLUGIN_ID));
     const promptOptimizerEnabled = usePluginStore((state) => state.pluginStates[PROMPT_OPTIMIZER_PLUGIN_ID]?.effectiveEnabled ?? Boolean(state.installations.find((item) => item.manifest.id === PROMPT_OPTIMIZER_PLUGIN_ID)?.enabled));
     const simpleMode = workspaceMode === "simple";
@@ -171,20 +169,8 @@ export function CanvasNodePromptPanel({ projectId, node, isRunning, onPromptChan
     }, [globalConfig, promptOptimizerEnabled, promptOptimizerInstallation]);
     const generationCount = Math.max(1, Math.min(15, Math.floor(Math.abs(Number(config.count)) || 1)));
     const priceChannel = resolveModelChannel(config, config.model);
-    const configuredCredits = requestCreditCost({
-        channelMode: priceChannel.scope === "system" ? "remote" : "local",
-        modelCosts: priceChannel.modelCosts,
-        model: modelOptionName(config.model),
-        count: mode === "image" ? generationCount : 1,
-        seconds: mode === "video" ? config.videoSeconds : 1,
-        capability: mode,
-        config,
-        requirements: resolvedRequirements,
-    });
-    const quoteRequest = modelQuoteRequest(config, config.model, mode, resolvedRequirements);
-    const quoteRequestKey = JSON.stringify(quoteRequest || null);
-    const [routeQuote, setRouteQuote] = useState<LogicalModelQuote | null>(null);
-    const credits = routeQuote ? routeQuote.amountMicrocredits / 1_000_000 : configuredCredits;
+    const generationStatus = useGenerationReadiness(config, config.model, mode, resolvedRequirements, mode === "image" ? generationCount : 1, mode === "video" ? config.videoSeconds : 1);
+    const credits = generationStatus.fee.credits;
     const activeReferenceCount = activeReferences.length;
     const videoFrameOptions = resolvedMentionReferences.filter((item) => item.active && item.kind === "image").map((item) => ({ nodeId: item.nodeId, label: item.label, title: item.title, previewUrl: item.previewUrl }));
     const hasVideoPromptTools = mode === "video" && !simpleMode && videoFrameOptions.length > 0;
@@ -211,7 +197,7 @@ export function CanvasNodePromptPanel({ projectId, node, isRunning, onPromptChan
         if (!rect?.width || !rect.height) return { width: PROMPT_EDITOR_MODAL_DEFAULT_WIDTH, height: PROMPT_EDITOR_MODAL_DEFAULT_HEIGHT };
         return { width: Math.round(rect.width), height: Math.round(rect.height) };
     };
-    const isSubmitDisabled = !isRunning && (!prompt.trim() || Boolean(parameterError));
+    const isSubmitDisabled = !isRunning && (!prompt.trim() || Boolean(parameterError) || !generationStatus.canSubmit);
     const canExpandPrompt = mode === "image" || mode === "video";
     const canOptimizePrompt = Boolean(promptOptimizerProvider) && canExpandPrompt;
     const isPortraitTexture = mode === "image" && Boolean(node.metadata?.portraitTexture);
@@ -243,23 +229,6 @@ export function CanvasNodePromptPanel({ projectId, node, isRunning, onPromptChan
         window.addEventListener("resize", constrainSize);
         return () => window.removeEventListener("resize", constrainSize);
     }, [expandedPromptOpen]);
-
-    useEffect(() => {
-        if (!creditsEnabled || !quoteRequest) {
-            setRouteQuote(null);
-            return;
-        }
-        const controller = new AbortController();
-        setRouteQuote(null);
-        quoteModel(quoteRequest, controller.signal)
-            .then(({ quote }) => setRouteQuote(quote))
-            .catch(() => {
-                if (!controller.signal.aborted) setRouteQuote(null);
-            });
-        return () => controller.abort();
-        // quoteRequestKey captures the full normalized request without retriggering on object identity.
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [creditsEnabled, quoteRequestKey]);
 
     const skillReferences = useMemo(() => resolvedMentionReferences.filter((item) => item.kind === "skill"), [resolvedMentionReferences]);
 
@@ -303,7 +272,7 @@ export function CanvasNodePromptPanel({ projectId, node, isRunning, onPromptChan
 
     const submit = () => {
         const text = prompt.trim();
-        if (!text || isRunning || parameterError) return false;
+        if (!text || isRunning || parameterError || !generationStatus.canSubmit) return false;
         if (mode === "text" && node.metadata?.listMode && onListGenerate) onListGenerate(node.id, text);
         else onGenerate(node.id, mode, text);
         return true;
@@ -394,9 +363,9 @@ export function CanvasNodePromptPanel({ projectId, node, isRunning, onPromptChan
     );
 
     const renderSubmitButton = (expanded: boolean) => {
-        const showCost = creditsEnabled && credits !== null;
+        const showCost = credits !== null;
         const formattedCredits = credits?.toLocaleString("zh-CN", { maximumFractionDigits: 6 });
-        const actionLabel = isRunning ? "生成中" : showCost ? `${routeQuote?.estimated ? "预估" : "消耗"} ${formattedCredits} 积分，生成` : "生成";
+        const actionLabel = isRunning ? "生成中" : showCost ? `${generationStatus.fee.estimated ? "预估" : "消耗"} ${formattedCredits} 积分，生成` : "生成";
         return (
             <Button
                 type="text"
@@ -411,12 +380,12 @@ export function CanvasNodePromptPanel({ projectId, node, isRunning, onPromptChan
                 }
                 onClick={() => (expanded ? submitExpandedPrompt() : submit())}
                 aria-label={actionLabel}
-                title={parameterError || (routeQuote ? modelQuoteDescription(routeQuote) : actionLabel)}
+                title={parameterError || generationStatus.reason || generationStatus.fee.description}
             >
                 {showCost ? (
                     <span className="canvas-node-composer-submit-cost">
                         <CreditSymbol />
-                        <span>{routeQuote?.estimated ? `预估:${formattedCredits}` : formattedCredits}</span>
+                        <span>{generationStatus.fee.estimated ? `预估:${formattedCredits}` : formattedCredits}</span>
                     </span>
                 ) : null}
                 <span className="canvas-node-composer-submit-action" aria-hidden>
@@ -455,7 +424,7 @@ export function CanvasNodePromptPanel({ projectId, node, isRunning, onPromptChan
                         requirements={resolvedRequirements}
                         onMissingConfig={() => navigateToSettings({ continueCreation: true })}
                         showSelectedPrice={false}
-                        showOptionPrices={creditsEnabled}
+                        showOptionPrices
                         variant="creation"
                         showConfiguredModelName
                     />
@@ -576,6 +545,7 @@ export function CanvasNodePromptPanel({ projectId, node, isRunning, onPromptChan
                     max={bounds.max}
                     onResize={setManualPromptHeight}
                 />}
+                {!parameterError ? <GenerationStatusNotice status={generationStatus} className="px-3 py-2" /> : null}
                 {parameterError ? <div className="px-3 py-2 text-[var(--fs-caption)]" role="alert" style={{ color: theme.node.text }}>
                     <p>{parameterError}</p>
                     <button type="button" className="mt-1 underline underline-offset-2 focus-visible:outline" onClick={() => onConfigChange(node.id, { model: config.model })}>查看建议调整</button>

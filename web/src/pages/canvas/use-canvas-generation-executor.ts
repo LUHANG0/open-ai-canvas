@@ -1,3 +1,4 @@
+import { generationReadiness } from "@/lib/generation-readiness";
 import { isCanvasNodeGenerating, restoreUnsubmittedCanvasPreparation } from "@/lib/canvas/canvas-node-task-state";
 import { useCallback, useRef, type Dispatch, type SetStateAction } from "react";
 import { App } from "antd";
@@ -15,11 +16,10 @@ import { resolveCanvasStyleExecution } from "@/lib/canvas/canvas-style-execution
 import { generationErrorMessage, generationFailureMetadata } from "@/lib/generation-error";
 import { UnconfirmedMediaParametersError } from "@/lib/model-parameter-guard";
 import { modelCompatibilityError, modelGroupReferenceLimits, modelPromptLengthError, modelRequestOptions, type ModelRequirements } from "@/lib/model-selection";
-import { navigateToSettings } from "@/lib/settings-navigation";
 import type { Skill } from "@/services/api/skills";
 import { skillRuntime } from "@/services/skill-runtime";
 import type { GenerationTask } from "@/services/api/task-center";
-import { useConfigStore, useEffectiveConfig } from "@/stores/use-config-store";
+import { useEffectiveConfig } from "@/stores/use-config-store";
 import type { Asset } from "@/stores/use-asset-store";
 import { CanvasNodeType, type CanvasBatchInputSnapshot, type CanvasConnection, type CanvasNodeData } from "@/types/canvas";
 
@@ -82,7 +82,6 @@ export function useCanvasGenerationExecutor({
     const effectiveConfig = useEffectiveConfig();
     const effectiveConfigRef = useRef(effectiveConfig);
     effectiveConfigRef.current = effectiveConfig;
-    const isAiConfigReady = useConfigStore((state) => state.isAiConfigReady);
     const submissionLocksRef = useRef(new Map<string, Promise<unknown>>());
     const confirmDuplicateSubmission = useCallback(
         () =>
@@ -129,6 +128,11 @@ export function useCanvasGenerationExecutor({
                         message.error(generationErrorMessage(error));
                         return;
                     }
+                    const readiness = generationReadiness(generationConfig, generationConfig.model, mode);
+                    if (!readiness.ready) {
+                        message.warning(readiness.reason);
+                        return;
+                    }
                     const hasLiveBatchChildren =
                         sourceNode?.type === CanvasNodeType.Image && (sourceNode.metadata?.batchChildIds || []).some((childId) => nodesRef.current.some((node) => node.id === childId && node.metadata?.batchRootId === sourceNode.id));
                     const hasStaleImageBatchState =
@@ -147,11 +151,6 @@ export function useCanvasGenerationExecutor({
                             }),
                         );
                     }
-                    if (!isAiConfigReady(generationConfig, generationConfig.model)) {
-                        navigateToSettings({ continueCreation: true });
-                        return;
-                    }
-
                     const sourceTextContent = sourceNode?.type === CanvasNodeType.Text ? sourceNode.metadata?.content?.trim() || "" : "";
                     const editingTextNode = mode === "text" && Boolean(sourceTextContent);
                     const markSourceStatus = !sourceNode?.metadata?.content && !editingTextNode;
@@ -452,7 +451,6 @@ export function useCanvasGenerationExecutor({
             domainProjectId,
             effectiveConfig,
             finishGenerationRequest,
-            isAiConfigReady,
             message,
             nodesRef,
             connectionsRef,
