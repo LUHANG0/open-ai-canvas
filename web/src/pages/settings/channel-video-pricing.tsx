@@ -35,15 +35,11 @@ export function ChannelModelSettings({ channel, onChange }: { channel: ModelChan
     if (!channel.models.length) return null;
 
     const updateCost = (model: string, patch: Partial<ModelCost>) => {
-        const defaultProtocol = defaultProtocolForModel(model, availableProtocols);
-        const defaultCap = modelProtocolCapability(defaultProtocol, availableProtocols) || inferCapabilityFromModel(model);
         const current = channel.modelCosts?.find((item) => item.model === model) || {
             model,
-            capability: defaultCap,
-            protocol: defaultProtocol,
+            capability: inferCapabilityFromModel(model),
             billingMode: "fixed_request" as const,
             unitPriceMicrocredits: 0,
-            capabilityConfig: defaultModelCapabilityConfig(defaultProtocol, model),
         };
         const next = [...(channel.modelCosts || []).filter((item) => item.model !== model), { ...current, ...patch, model }];
         onChange(next.filter((item) => channel.models.includes(item.model)));
@@ -62,8 +58,9 @@ export function ChannelModelSettings({ channel, onChange }: { channel: ModelChan
     };
 
     const activeModelCost = activeModel ? channel.modelCosts?.find((item) => item.model === activeModel) : undefined;
-    const inferredProtocol = activeModel ? defaultProtocolForModel(activeModel, availableProtocols) : "";
-    const activeProtocol = activeModelCost?.protocol || inferredProtocol;
+    // A checked native radio does not emit change when clicked again. Only
+    // show a stored protocol as selected so the first explicit choice saves it.
+    const activeProtocol = activeModelCost?.protocol || "";
     const activeCapability = activeModelCost?.capability || modelProtocolCapability(activeProtocol, availableProtocols) || (activeModel ? inferCapabilityFromModel(activeModel) : "text");
 
     return (
@@ -79,7 +76,7 @@ export function ChannelModelSettings({ channel, onChange }: { channel: ModelChan
                 {channel.models.map((rawModel) => {
                     const model = modelOptionName(rawModel);
                     const cost = channel.modelCosts?.find((item) => item.model === model);
-                    const protocol = cost?.protocol || defaultProtocolForModel(model, availableProtocols);
+                    const protocol = cost?.protocol || "";
                     const capability = cost?.capability || modelProtocolCapability(protocol, availableProtocols) || inferCapabilityFromModel(model);
                     const displayName = cost?.displayName?.trim() || model;
                     return (
@@ -117,7 +114,7 @@ export function ChannelModelSettings({ channel, onChange }: { channel: ModelChan
                 onClose={() => setActiveModel(null)}
                 footer={
                     <div className="model-editor-footer">
-                        <span className="text-xs text-foreground/50">更改实时保存到云端渠道配置</span>
+                        <span className="text-xs text-foreground/50">更改实时保存到本机当前账号</span>
                         <div className="model-editor-footer-actions">
                             <Button
                                 icon={<FlaskConical className="size-4" />}
@@ -177,7 +174,7 @@ export function ChannelModelSettings({ channel, onChange }: { channel: ModelChan
                         key: "capabilities",
                         label: "能力与参数",
                         children: <div inert={Boolean(testingModel)}>
-                            {activeCapability === "text" || activeCapability === "image" || activeCapability === "video" ? (
+                            {!activeProtocol ? <p>请先在基本信息中选择请求协议，再配置能力与参数。</p> : activeCapability === "text" || activeCapability === "image" || activeCapability === "video" ? (
                                 <ModelCapabilityEditor
                                     capability={activeCapability}
                                     model={activeModel}
@@ -263,11 +260,6 @@ function defaultProtocolForCapability(capability: ModelCapabilityChoice, availab
         audio: "openai-audio",
     };
     return fallbackMap[capability] || "chat-completion";
-}
-
-function defaultProtocolForModel(model: string, availableProtocols: ModelProtocolDefinition[] = []): ModelProtocol {
-    const capability = inferCapabilityFromModel(model);
-    return defaultProtocolForCapability(capability, availableProtocols);
 }
 
 function capabilityLabel(value: ModelCost["capability"]) {

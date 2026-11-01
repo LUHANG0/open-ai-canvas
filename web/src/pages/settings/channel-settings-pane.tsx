@@ -232,7 +232,7 @@ export function ChannelSettingsPane({ onOpenModels, onOpenRunningHub }: ChannelS
                                         subtitle={channel.name}
                                         onClose={closeChannelEditor}
                                         footer={<div className="model-editor-footer">
-                                            <span className="text-xs text-foreground/50">更改实时保存到云端渠道配置</span>
+                                            <span className="text-xs text-foreground/50">更改实时保存到本机当前账号</span>
                                             <div className="model-editor-footer-actions">
                                                 <Button loading={loadingChannelIds.includes(channel.id)} onClick={() => void refreshChannelModels(channel)}>拉取模型</Button>
                                                 <Button type="primary" onClick={closeChannelEditor}>完成</Button>
