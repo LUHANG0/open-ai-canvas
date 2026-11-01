@@ -21,6 +21,7 @@ import { normalizeVideoValue, videoDurationOptions, type ImageCapabilityConfig, 
 import { mergedImageCapabilityConfig, type ModelRequirements } from "@/lib/model-selection";
 import { imageQualityLabel } from "@/lib/image-quality";
 import { modelOptionName, resolveModelChannel, type AiConfig } from "@/stores/use-config-store";
+import { useUserStore } from "@/stores/use-user-store";
 import { useGenerationReadiness } from "@/hooks/use-generation-readiness";
 import { GenerationStatusNotice } from "@/components/generation-status";
 import type { PromptOptimizerProvider } from "@/lib/plugins/plugin-types";
@@ -143,12 +144,13 @@ export function CreationComposer(props: ComposerProps) {
     const [trackState, setTrackState] = useState({ canScrollLeft: false, canScrollRight: false, isExpanded: true, isDragging: false });
     const previousAttachmentCountRef = useRef(0);
     const interactionBusy = props.busy || props.referenceReplacementBusy;
+    const authenticated = useUserStore((state) => Boolean(state.user));
     const generationStatus = useGenerationReadiness(props.config, props.model, props.mode, props.modelRequirements, props.mode === "image" ? Number(props.count) || 1 : 1, props.mode === "video" ? props.seconds : 1);
-    const canSubmit = Boolean(props.prompt.trim()) && !interactionBusy && generationStatus.canSubmit;
+    const canSubmit = Boolean(props.prompt.trim()) && !interactionBusy && (!authenticated || generationStatus.canSubmit);
     const priceChannel = resolveModelChannel(props.config, props.model);
     const canOptimizePrompt = Boolean(props.promptOptimizerProvider) && (props.mode === "image" || props.mode === "video");
     const optimizerReferences = props.references.filter((reference) => reference.active && reference.kind !== "skill");
-    const showCost = generationStatus.fee.credits !== null;
+    const showCost = authenticated && generationStatus.fee.credits !== null;
     const formattedCredits = generationStatus.fee.credits?.toLocaleString("zh-CN", { maximumFractionDigits: 6 });
     const actionLabel = props.referenceReplacementBusy ? "正在替换参考图" : interactionBusy || (props.generationActive && !props.prompt.trim()) ? "生成中" : showCost ? `${generationStatus.fee.label}，发送` : "发送";
     const submit = () => { if (canSubmit) props.onSubmit(); };
@@ -374,13 +376,13 @@ export function CreationComposer(props: ComposerProps) {
                 } as CSSProperties}
                 onClick={submit}
                 aria-label={actionLabel}
-                title={generationStatus.reason || (generationStatus.fee.blocked ? generationStatus.fee.label : !canSubmit && !interactionBusy ? "输入创作想法后即可生成" : actionLabel)}
+                title={!authenticated ? "登录后继续创作" : generationStatus.reason || (generationStatus.fee.blocked ? generationStatus.fee.label : !canSubmit && !interactionBusy ? "输入创作想法后即可生成" : actionLabel)}
             >
                 {showCost ? <span className="creation-submit-cost" title={generationStatus.fee.description}><CreditSymbol /><span>{generationStatus.fee.estimated ? `预估:${formattedCredits}` : formattedCredits}</span></span> : null}
                 <span className="creation-submit-action" aria-hidden>{showWorkingSpinner ? <LoaderCircle className="size-4 animate-spin" /> : <ArrowUp className="size-4" />}<span>{showWorkingSpinner ? "生成中" : "开始创作"}</span></span>
             </Button>
         </footer>
-        <GenerationStatusNotice status={generationStatus} className="px-3 pb-2" />
+        {authenticated ? <GenerationStatusNotice status={generationStatus} className="px-3 pb-2" /> : <div role="status" className="px-3 pb-2 text-[var(--fs-caption)] leading-relaxed">登录后选择模型并查看费用</div>}
         <CreationMediaPreviewModal url={previewUrl} type={previewType} onClose={() => setPreviewUrl("")} />
     </>;
     const composer = (
