@@ -397,7 +397,7 @@ export function CanvasNodePromptPanel({ projectId, node, isRunning, onPromptChan
 
     const renderComposerControls = (expanded: boolean) =>
         simpleMode ? (
-            <div className="canvas-node-composer-footer">
+            <div className="canvas-node-composer-footer max-sm:flex-wrap">
                 <span className="min-w-0 truncate px-2 text-[var(--fs-tiny)]" style={{ color: theme.node.muted }}>
                     {activeReferenceCount ? `已连接 ${activeReferenceCount} 个素材` : "将使用默认模型与参数"}
                 </span>
@@ -412,8 +412,8 @@ export function CanvasNodePromptPanel({ projectId, node, isRunning, onPromptChan
                 {renderSubmitButton(expanded)}
             </div>
         ) : (
-            <div className="canvas-node-composer-footer">
-                <div className={expanded ? "min-w-0 flex-1" : "canvas-node-composer-model"}>
+            <div className="canvas-node-composer-footer max-sm:flex-wrap">
+                <div className={expanded ? "min-w-0 flex-1 max-sm:basis-full" : "canvas-node-composer-model"}>
                     <ModelPicker
                         className="!h-7 !w-full !min-w-0 !text-[var(--fs-tiny)] !font-normal [&_img]:!size-3 [&_.lucide]:!size-3"
                         fullWidth
@@ -429,7 +429,7 @@ export function CanvasNodePromptPanel({ projectId, node, isRunning, onPromptChan
                         showConfiguredModelName
                     />
                 </div>
-                <div className="ml-auto flex min-w-0 shrink-0 items-center gap-1">
+                <div className="ml-auto flex min-w-0 shrink-0 items-center gap-1 max-sm:w-full max-sm:flex-wrap max-sm:justify-end">
                     <ReferenceToolsPopover
                         canAutoMention={canAutoMention}
                         autoLinkEnabled={autoLinkEnabled}
