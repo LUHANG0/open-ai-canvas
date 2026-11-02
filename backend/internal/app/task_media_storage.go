@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"image"
 	"io"
+	"log/slog"
 	"math"
 	"net/http"
 	"os"
@@ -23,6 +24,8 @@ import (
 
 const mediaStagingBudget int64 = 512 << 20
 const mediaStagingTTL = 24 * time.Hour
+
+var errMediaStagingFull = errors.New("作品暂存空间不足")
 
 // 单次结果下载的时限：上游慢但一直在传输时允许跑完，长时间收不到任何字节才判定卡住。
 // 原来的固定 3 分钟总时限会让慢速结果服务器上的大图永远下载不完——每次重试都从零开始，
@@ -86,6 +89,7 @@ func (s *Service) newMediaTemp(limit int64) (*os.File, error) {
 		return nil, err
 	}
 	var used int64
+	var referenced func(string) bool
 	for _, entry := range entries {
 		if !strings.HasPrefix(entry.Name(), "result-") || !entry.Type().IsRegular() {
 			continue
@@ -95,15 +99,23 @@ func (s *Service) newMediaTemp(limit int64) (*os.File, error) {
 			return nil, err
 		}
 		if time.Since(info.ModTime()) > mediaStagingTTL {
-			if err := os.Remove(filepath.Join(dir, entry.Name())); err != nil {
-				return nil, err
+			if referenced == nil {
+				referenced = s.referencedMediaStagingNames()
 			}
-			continue
+			if !referenced(entry.Name()) {
+				if err := os.Remove(filepath.Join(dir, entry.Name())); err != nil {
+					return nil, err
+				}
+				continue
+			}
 		}
 		used += info.Size()
 	}
-	if limit <= 0 || limit > mediaStagingBudget || used > mediaStagingBudget-limit {
+	if limit <= 0 || limit > mediaStagingBudget {
 		return nil, errors.New("作品暂存空间不足，请稍后重试保存")
+	}
+	if used > mediaStagingBudget-limit {
+		return nil, errMediaStagingFull
 	}
 	file, err := os.CreateTemp(dir, "result-*")
 	if err != nil {
@@ -387,5 +399,36 @@ func (s *Service) cleanupMediaCheckpointFiles(task *model.Task) {
 				_ = s.log(task.UserID, task.ID, "warn", "清理作品暂存文件失败", "")
 			}
 		}
+	}
+}
+
+// Failed deliveries can still be manually recovered. Do not expire their only
+// inline result by age or stop scanning after an arbitrary number of tasks.
+// Uncertain references fail closed, including unreadable encrypted checkpoints.
+func (s *Service) referencedMediaStagingNames() func(string) bool {
+	names := map[string]bool{}
+	afterID := ""
+	for {
+		tasks, err := s.repo.TasksWithPendingMediaCheckpoint(afterID, 500)
+		if err != nil {
+			slog.Warn("media staging reference query failed; preserving staging files")
+			return func(string) bool { return true }
+		}
+		for index := range tasks {
+			checkpoint, err := s.decodeMediaCheckpoint(&tasks[index])
+			if err != nil {
+				slog.Warn("media staging checkpoint unreadable; preserving staging files")
+				return func(string) bool { return true }
+			}
+			for _, item := range checkpoint.Items {
+				if item.TempName != "" {
+					names[item.TempName] = true
+				}
+			}
+		}
+		if len(tasks) < 500 {
+			return func(name string) bool { return names[name] }
+		}
+		afterID = tasks[len(tasks)-1].ID
 	}
 }

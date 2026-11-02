@@ -4,6 +4,7 @@
 
 - [画布视频播放](content/docs/overview/canvas-video-playback.mdx)：统一悬浮与正式播放、空白单击暂停、进度恢复和会话资源边界。
 - [创作页历史跨设备同步](content/docs/backend/creation-conversation-sync.mdx)：账号历史、旧本地迁移、逐消息修订、删除防复活及媒体引用边界。
+- [生成作品存储与恢复](content/docs/backend/generation-storage-recovery.mdx)：生成前配额检查、检查点与暂存副本顺序、分页引用保护和保存恢复边界。
 - [用户注册邀请](content/docs/backend/registration-invitations.mdx)：管理员单次邀请、关闭公开注册时的验证、固定积分、事务与迁移回退边界。
 
 - [账户邮件模板](content/docs/backend/email-templates.mdx)：五种验证码场景、后台文案编辑与预览、版本冲突和双格式发信。

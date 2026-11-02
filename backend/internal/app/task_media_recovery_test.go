@@ -217,8 +217,8 @@ func TestMediaRecoveryRegistrationRollbackAndRetryWithoutDownload(t *testing.T) 
 	if err := db.Exec(`DROP TRIGGER reject_media_asset`).Error; err != nil {
 		t.Fatal(err)
 	}
-	if err := os.Remove(s.mediaTempPath(temp)); err != nil {
-		t.Fatal(err)
+	if _, err := os.Stat(s.mediaTempPath(temp)); !os.IsNotExist(err) {
+		t.Fatalf("durable resource still has a staging copy: %v", err)
 	}
 	output, err = s.resumeTaskMedia(context.Background(), saved)
 	if err != nil {
