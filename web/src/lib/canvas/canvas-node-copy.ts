@@ -3,6 +3,15 @@ import { CanvasNodeType, type CanvasNodeData, type CanvasNodeMetadata, type Stor
 
 const COPY_TITLE_SUFFIX = /^(.*)_copy(\d+)$/i;
 
+const VIDEO_VARIANT_RESULT_FIELDS = [
+    "content", "previewContent", "videoPreview", "imageRotation", "storageKey", "mimeType", "bytes",
+    "durationMs", "hasAudio", "naturalWidth", "naturalHeight",
+    "assetId", "producedModel", "producedModelCandidate", "resultRecord",
+    "subtitleEntries", "subtitleHighlights", "subtitleUpdatedAt",
+    "agentGenerationContinuation", "lastGenerationRequestFingerprint",
+    "fileUpload", "fileUploadProgress", "mediaConversion",
+] as const satisfies ReadonlyArray<keyof CanvasNodeMetadata>;
+
 export function nextCopiedNodeTitle(sourceTitle: string, existingTitles: Iterable<string>) {
     const sourceMatch = sourceTitle.match(COPY_TITLE_SUFFIX);
     const baseTitle = (sourceMatch?.[1] || sourceTitle.replace(/ Copy$/i, "")).trim() || sourceTitle.trim() || "未命名节点";
@@ -50,10 +59,15 @@ function copyStoryboardRow(row: StoryboardRow, idMap: ReadonlyMap<string, string
  * 副本继承内容和用户引用，但不能继承原节点的任务、批次与结果持久化身份。
  * @param node 原节点，复制过程不会修改它的元数据。
  * @param idMap 本次复制的节点 ID 映射，用于更新副本内部引用。
+ * @param options 仅视频参数变体清空旧结果并保留外部参考；普通复制继续继承内容。
  * @returns 可独立生成与保存的副本元数据。
  */
-export function isolateCopiedNodeMetadata(node: CanvasNodeData, idMap: ReadonlyMap<string, string>): CanvasNodeMetadata {
-    const metadata = resetGenerationTaskMetadata(node.metadata, node.metadata?.content ? "success" : "idle");
+export function isolateCopiedNodeMetadata(node: CanvasNodeData, idMap: ReadonlyMap<string, string>, options: { videoParameterVariant?: boolean } = {}): CanvasNodeMetadata {
+    const videoParameterVariant = options.videoParameterVariant && node.type === CanvasNodeType.Video;
+    const metadata = resetGenerationTaskMetadata(node.metadata, !videoParameterVariant && node.metadata?.content ? "success" : "idle");
+    if (videoParameterVariant) {
+        for (const field of VIDEO_VARIANT_RESULT_FIELDS) delete metadata[field];
+    }
     // 原节点的提交标记不能证明副本已保存；继承后，普通保存会把新副本误判为未确认结果并排除。
     delete metadata.generationEffectKeys;
     delete metadata.generationBatches;
@@ -102,21 +116,23 @@ export function isolateCopiedNodeMetadata(node: CanvasNodeData, idMap: ReadonlyM
         metadata.generationResultPlacement = "replace-node";
     }
     metadata.frame = node.metadata?.frame ? { ...node.metadata.frame } : undefined;
-    metadata.referenceSetId = remapOwnedNodeId(node.metadata?.referenceSetId, idMap);
-    metadata.referenceAssetNodeIds = node.metadata?.referenceAssetNodeIds?.map((nodeId) => remapOwnedNodeId(nodeId, idMap)).filter((nodeId): nodeId is string => Boolean(nodeId));
+    const remapReference = videoParameterVariant ? remapReferenceId : remapOwnedNodeId;
+    metadata.referenceSetId = remapReference(node.metadata?.referenceSetId, idMap);
+    metadata.referenceAssetNodeIds = node.metadata?.referenceAssetNodeIds?.map((nodeId) => remapReference(nodeId, idMap)).filter((nodeId): nodeId is string => Boolean(nodeId));
     metadata.videoStartFrameNodeId = remapReferenceId(node.metadata?.videoStartFrameNodeId, idMap);
     metadata.videoEndFrameNodeId = remapReferenceId(node.metadata?.videoEndFrameNodeId, idMap);
-    metadata.previsPreviewNodeId = remapOwnedNodeId(node.metadata?.previsPreviewNodeId, idMap);
-    metadata.previsDepthNodeId = remapOwnedNodeId(node.metadata?.previsDepthNodeId, idMap);
-    metadata.previsDepthVideoNodeId = remapOwnedNodeId(node.metadata?.previsDepthVideoNodeId, idMap);
-    metadata.previsNormalNodeId = remapOwnedNodeId(node.metadata?.previsNormalNodeId, idMap);
+    metadata.previsPreviewNodeId = remapReference(node.metadata?.previsPreviewNodeId, idMap);
+    metadata.previsDepthNodeId = remapReference(node.metadata?.previsDepthNodeId, idMap);
+    metadata.previsDepthVideoNodeId = remapReference(node.metadata?.previsDepthVideoNodeId, idMap);
+    metadata.previsNormalNodeId = remapReference(node.metadata?.previsNormalNodeId, idMap);
+    if (videoParameterVariant) metadata.previsClayVideoNodeId = remapReferenceId(node.metadata?.previsClayVideoNodeId, idMap);
 
     const characterViewNodeIds = node.metadata?.characterViewNodeIds;
     const copiedCharacterViewNodeIds = characterViewNodeIds
         ? {
-              front: remapOwnedNodeId(characterViewNodeIds.front, idMap),
-              side: remapOwnedNodeId(characterViewNodeIds.side, idMap),
-              back: remapOwnedNodeId(characterViewNodeIds.back, idMap),
+              front: remapReference(characterViewNodeIds.front, idMap),
+              side: remapReference(characterViewNodeIds.side, idMap),
+              back: remapReference(characterViewNodeIds.back, idMap),
           }
         : undefined;
     metadata.characterViewNodeIds = copiedCharacterViewNodeIds && Object.values(copiedCharacterViewNodeIds).some(Boolean) ? copiedCharacterViewNodeIds : undefined;

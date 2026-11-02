@@ -390,12 +390,13 @@ export function useCanvasNodeOperations({
             return copy.node.id;
         }
         const sources = isFrameNode(source) ? [source, ...getFrameChildren(source.id, nodesRef.current)] : copyImageLayerSources(source, nodesRef.current);
+        const independentVideoVariant = duplicateMode === "variant" && source.type === CanvasNodeType.Video;
         const idMap = new Map(sources.map((node, index) => [node.id, `${node.type}-${Date.now()}-${index}-${Math.random().toString(36).slice(2, 7)}`]));
-        const versionRootId = duplicateMode === "variant" && !isFrameNode(source) ? source.metadata?.versionOfNodeId || source.id : undefined;
+        const versionRootId = duplicateMode === "variant" && !isFrameNode(source) && !independentVideoVariant ? source.metadata?.versionOfNodeId || source.id : undefined;
         const versionLabel = versionRootId ? nextCanvasVersionLabel(versionRootId, nodesRef.current) : undefined;
         const copyTitle = duplicateMode !== "variant" ? nextCopiedNodeTitle(source.title, nodesRef.current.map((node) => node.title)) : undefined;
         const copiedNodes = sources.map((node) => {
-            const metadata = isolateCopiedNodeMetadata(node, idMap);
+            const metadata = isolateCopiedNodeMetadata(node, idMap, { videoParameterVariant: independentVideoVariant });
             if (node.type === CanvasNodeType.Drawing) {
                 metadata.drawingId = `${idMap.get(node.id)}-document`;
                 metadata.drawingRevision = 0;
