@@ -4681,8 +4681,8 @@ html:not(.dark) .creation-studio-control[aria-expanded="true"] { background: #e7
         transition: background-color var(--motion-instant) ease-out, color var(--motion-instant) ease-out;
     }
 
-    :where(.canvas-folder-rename, .canvas-folder-more):hover { background: color-mix(in srgb, var(--foreground) 8%, transparent); color: var(--foreground); }
-    :where(.canvas-folder-rename, .canvas-folder-more) svg { width: 16px; height: 16px; }
+    :where(.canvas-folder-rename):hover,:where( .canvas-folder-more):hover { background: color-mix(in srgb, var(--foreground) 8%, transparent); color: var(--foreground); }
+    :where(.canvas-folder-rename) svg,:where( .canvas-folder-more) svg { width: 16px; height: 16px; }
 
     @media (max-width: 639px) {
         .canvas-folder-open { gap: 0; padding: 0; }
@@ -6639,7 +6639,7 @@ html:not(.dark) .creation-studio-control[aria-expanded="true"] { background: #e7
     .app-pagination-btn:disabled { color: color-mix(in srgb, var(--foreground) 30%, transparent); cursor: not-allowed; }
     .app-pagination-ellipsis { display: inline-flex; height: 28px; min-width: 16px; align-items: center; justify-content: center; color: color-mix(in srgb, var(--foreground) 30%, transparent); font-size: var(--fs-body); }
 
-    :where(.ant-modal-content, .ant-drawer-content) {
+    :where(.ant-modal-content),:where( .ant-drawer-content) {
         border: 1px solid var(--border);
         box-shadow: 0 28px 84px rgba(15, 23, 42, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
         backdrop-filter: blur(24px);
@@ -6684,7 +6684,7 @@ html:not(.dark) .creation-studio-control[aria-expanded="true"] { background: #e7
         box-shadow: 0 32px 96px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.06) !important;
     }
 
-    :where(.ant-modal-mask, .ant-drawer-mask) {
+    :where(.ant-modal-mask),:where( .ant-drawer-mask) {
         backdrop-filter: blur(5px);
     }
 
@@ -7006,13 +7006,13 @@ html:not(.dark) .creation-studio-control[aria-expanded="true"] { background: #e7
         opacity: var(--opa-muted);
     }
 
-    :where(.ant-select-dropdown, .ant-dropdown-menu, .ant-popover-inner) {
+    :where(.ant-select-dropdown),:where( .ant-dropdown-menu),:where( .ant-popover-inner) {
         border: 1px solid var(--workspace-border);
         box-shadow: var(--elevation-overlay) !important;
         backdrop-filter: blur(22px);
     }
 
-    :where(.ant-input, .ant-input-affix-wrapper, .ant-input-number, .ant-select-content) {
+    :where(.ant-input),:where( .ant-input-affix-wrapper),:where( .ant-input-number),:where( .ant-select-content) {
         transition: var(--control-state-transition) !important;
     }
 
@@ -7207,7 +7207,7 @@ html:not(.dark) .creation-studio-control[aria-expanded="true"] { background: #e7
         box-shadow: 0 0 0 var(--focus-ring-width) color-mix(in srgb, var(--ring) 20%, transparent);
     }
 
-:where(.ant-modal, .ant-drawer, .ant-select-dropdown, .ant-dropdown, .ant-popover) {
+:where(.ant-modal),:where( .ant-drawer),:where( .ant-select-dropdown),:where( .ant-dropdown),:where( .ant-popover) {
         overscroll-behavior: contain;
     }
 
@@ -7226,7 +7226,7 @@ html:not(.dark) .creation-studio-control[aria-expanded="true"] { background: #e7
             transform: none;
         }
 
-        :where(.ant-input, .ant-input-affix-wrapper, .ant-input-number, .ant-select-content) {
+        :where(.ant-input),:where( .ant-input-affix-wrapper),:where( .ant-input-number),:where( .ant-select-content) {
             transition: none !important;
         }
     }
@@ -12428,21 +12428,21 @@ html:not(.dark) .creation-custom-value { background: rgba(28, 32, 37, .055) !imp
     --creation-shadow: var(--elevation-card);
 }
 
-:where(.ant-input, .ant-input-affix-wrapper, .ant-input-number, .ant-select-selector, .ant-select-multiple .ant-select-selection-search-input) {
+:where(.ant-input),:where( .ant-input-affix-wrapper),:where( .ant-input-number),:where( .ant-select-selector),:where( .ant-select-multiple .ant-select-selection-search-input) {
     box-shadow: none !important;
 }
 
-:where(.ant-input:focus, .ant-input-focused, .ant-input-affix-wrapper-focused, .ant-input-number-focused, .ant-select-focused .ant-select-selector) {
+:where(.ant-input:focus),:where( .ant-input-focused),:where( .ant-input-affix-wrapper-focused),:where( .ant-input-number-focused),:where( .ant-select-focused .ant-select-selector) {
     border-color: var(--control-focus-ring) !important;
     box-shadow: none !important;
     outline: none !important;
 }
 
-:where(.ant-input:hover, .ant-input-affix-wrapper:hover, .ant-input-number:hover, .ant-select:not(.ant-select-disabled):hover .ant-select-selector) {
+:where(.ant-input:hover),:where( .ant-input-affix-wrapper:hover),:where( .ant-input-number:hover),:where( .ant-select:not(.ant-select-disabled):hover .ant-select-selector) {
     border-color: color-mix(in srgb, var(--foreground) 42%, var(--border)) !important;
 }
 
-:where(.ant-select-dropdown, .ant-dropdown-menu) {
+:where(.ant-select-dropdown),:where( .ant-dropdown-menu) {
     border: 0 !important;
     border-radius: var(--r-lg) !important;
     background: var(--popover) !important;
@@ -12451,7 +12451,7 @@ html:not(.dark) .creation-custom-value { background: rgba(28, 32, 37, .055) !imp
     backdrop-filter: none !important;
 }
 
-:where(.ant-popover-inner, .ant-picker-dropdown .ant-picker-panel-container) {
+:where(.ant-popover-inner),:where( .ant-picker-dropdown .ant-picker-panel-container) {
     border: 1px solid var(--border) !important;
     border-radius: var(--r-md) !important;
     background: var(--popover) !important;
@@ -12467,12 +12467,12 @@ html:not(.dark) .creation-custom-value { background: rgba(28, 32, 37, .055) !imp
     --ant-tooltip-overlay-color: var(--popover-foreground) !important;
 }
 
-:where(.ant-tooltip-container, .ant-tooltip-inner) {
+:where(.ant-tooltip-container),:where( .ant-tooltip-inner) {
     background: var(--popover) !important;
     color: var(--popover-foreground) !important;
 }
 
-:where(.ant-select-item-option, .ant-dropdown-menu-item, .ant-dropdown-menu-submenu-title, .ant-cascader-menu-item, .ant-mentions-dropdown-menu-item) {
+:where(.ant-select-item-option),:where( .ant-dropdown-menu-item),:where( .ant-dropdown-menu-submenu-title),:where( .ant-cascader-menu-item),:where( .ant-mentions-dropdown-menu-item) {
     min-height: 36px;
     margin-block: 2px;
     padding-block: 7px !important;
@@ -12480,17 +12480,17 @@ html:not(.dark) .creation-custom-value { background: rgba(28, 32, 37, .055) !imp
     color: var(--popover-foreground) !important;
 }
 
-:where(.ant-select-item-option-active:not(.ant-select-item-option-disabled), .ant-dropdown-menu-item:hover, .ant-cascader-menu-item-active) {
+:where(.ant-select-item-option-active:not(.ant-select-item-option-disabled)),:where( .ant-dropdown-menu-item:hover),:where( .ant-cascader-menu-item-active) {
     background: color-mix(in srgb, var(--popover-foreground) 6%, var(--popover)) !important;
 }
 
-:where(.ant-select-item-option-selected:not(.ant-select-item-option-disabled), .ant-dropdown-menu-item-selected) {
+:where(.ant-select-item-option-selected:not(.ant-select-item-option-disabled)),:where( .ant-dropdown-menu-item-selected) {
     background: color-mix(in srgb, var(--popover-foreground) 12%, var(--popover)) !important;
     color: var(--popover-foreground) !important;
     font-weight: 600;
 }
 
-:where(.ant-tag-success, .ant-tag-warning, .ant-tag-processing, .ant-tag-cyan, .ant-tag-blue, .ant-tag-green, .ant-tag-gold, .ant-tag-orange) {
+:where(.ant-tag-success),:where( .ant-tag-warning),:where( .ant-tag-processing),:where( .ant-tag-cyan),:where( .ant-tag-blue),:where( .ant-tag-green),:where( .ant-tag-gold),:where( .ant-tag-orange) {
     border-color: color-mix(in srgb, var(--foreground) 18%, transparent) !important;
     background: color-mix(in srgb, var(--foreground) 7%, transparent) !important;
     color: color-mix(in srgb, var(--foreground) 76%, transparent) !important;
@@ -12517,15 +12517,15 @@ html:not(.dark) .creation-custom-value { background: rgba(28, 32, 37, .055) !imp
 
 
 /* 鼠标点击不留下“选中框”；键盘导航仍通过 :focus-visible 保留可发现的焦点提示。 */
-:where(button:not(:disabled), a[href], [role="button"]:not([aria-disabled="true"]), label[for], input[type="checkbox"]:not(:disabled), input[type="radio"]:not(:disabled), .ant-btn:not(:disabled), .ant-switch:not(.ant-switch-disabled), .ant-select:not(.ant-select-disabled), .ant-dropdown-trigger, .ant-tabs-tab, .ant-segmented-item, .ant-pagination-item, .ant-pagination-prev, .ant-pagination-next, .ant-dropdown-menu-item, .ant-menu-item, .ant-select-item-option, .ant-checkbox-wrapper, .ant-radio-wrapper, .ant-upload, .ant-collapse-header, .ant-slider, .ant-rate-star, .ant-tag-checkable) {
+:where(button:not(:disabled)),:where( a[href]),:where( [role="button"]:not([aria-disabled="true"])),:where( label[for]),:where( input[type="checkbox"]:not(:disabled)),:where( input[type="radio"]:not(:disabled)),:where( .ant-btn:not(:disabled)),:where( .ant-switch:not(.ant-switch-disabled)),:where( .ant-select:not(.ant-select-disabled)),:where( .ant-dropdown-trigger),:where( .ant-tabs-tab),:where( .ant-segmented-item),:where( .ant-pagination-item),:where( .ant-pagination-prev),:where( .ant-pagination-next),:where( .ant-dropdown-menu-item),:where( .ant-menu-item),:where( .ant-select-item-option),:where( .ant-checkbox-wrapper),:where( .ant-radio-wrapper),:where( .ant-upload),:where( .ant-collapse-header),:where( .ant-slider),:where( .ant-rate-star),:where( .ant-tag-checkable) {
     cursor: pointer;
 }
 
-:where(button:disabled, [role="button"][aria-disabled="true"], .ant-btn:disabled, .ant-switch-disabled, .ant-select-disabled, .ant-tabs-tab-disabled, .ant-segmented-item-disabled, .ant-pagination-disabled, .ant-dropdown-menu-item-disabled, .ant-menu-item-disabled, .ant-select-item-option-disabled, .ant-checkbox-wrapper-disabled, .ant-radio-wrapper-disabled, .ant-upload-disabled, .ant-collapse-header[aria-disabled="true"]) {
+:where(button:disabled),:where( [role="button"][aria-disabled="true"]),:where( .ant-btn:disabled),:where( .ant-switch-disabled),:where( .ant-select-disabled),:where( .ant-tabs-tab-disabled),:where( .ant-segmented-item-disabled),:where( .ant-pagination-disabled),:where( .ant-dropdown-menu-item-disabled),:where( .ant-menu-item-disabled),:where( .ant-select-item-option-disabled),:where( .ant-checkbox-wrapper-disabled),:where( .ant-radio-wrapper-disabled),:where( .ant-upload-disabled),:where( .ant-collapse-header[aria-disabled="true"]) {
     cursor: not-allowed;
 }
 
-:where(button, [role="button"], a, .ant-btn):focus:not(:focus-visible) {
+:where(button):focus:not(:focus-visible),:where( [role="button"]):focus:not(:focus-visible),:where( a):focus:not(:focus-visible),:where( .ant-btn):focus:not(:focus-visible) {
     outline: none !important;
     box-shadow: none !important;
 }
@@ -12537,8 +12537,9 @@ html:not(.dark) .creation-custom-value { background: rgba(28, 32, 37, .055) !imp
     box-shadow: none !important;
 }
 
-:where([class*="card"], [class*="Card"]):focus:not(:focus-visible),
-:where([class*="card"], [class*="Card"]):has(:focus:not(:focus-visible)) {
+:where([class*="card"]):focus:not(:focus-visible),:where( [class*="Card"]):focus:not(:focus-visible),
+:where([class*="card"]):has(:focus:not(:focus-visible)),
+:where( [class*="Card"]):has(:focus:not(:focus-visible)) {
     outline: none !important;
     box-shadow: none !important;
 }
@@ -18702,38 +18703,38 @@ html:not(.dark) .creation-home .creation-user-message-copy-wrap { box-shadow: 0 
    所有 Select / TreeSelect / Cascader / AutoComplete 共用同一套触发器和浮层
    语义。尤其禁止鼠标点击后出现高亮白边；键盘焦点仍保留可见 ring。
    ------------------------------------------------------------------------- */
-:where(.app-unified-select, .ant-select, .ant-tree-select, .ant-cascader-picker, .ant-auto-complete) {
+:where(.app-unified-select),:where( .ant-select),:where( .ant-tree-select),:where( .ant-cascader-picker),:where( .ant-auto-complete) {
     --unified-select-surface: var(--control-surface, color-mix(in srgb, var(--foreground) 5%, transparent));
     --unified-select-surface-hover: var(--control-surface-hover, color-mix(in srgb, var(--foreground) 9%, transparent));
     --unified-select-border: transparent;
     --unified-select-focus: var(--control-focus-ring, color-mix(in srgb, var(--foreground) 32%, transparent));
 }
 
-:where(.ant-select .ant-select-selector, .ant-tree-select .ant-select-selector, .ant-cascader-picker, .ant-auto-complete .ant-select-selector) {
+:where(.ant-select .ant-select-selector),:where( .ant-tree-select .ant-select-selector),:where( .ant-cascader-picker),:where( .ant-auto-complete .ant-select-selector) {
     border-color: var(--unified-select-border) !important;
     background: var(--unified-select-surface) !important;
     box-shadow: none !important;
     transition: background-color var(--motion-state, 180ms) ease, border-color var(--motion-state, 180ms) ease !important;
 }
 
-:where(.ant-select:not(.ant-select-disabled):hover .ant-select-selector, .ant-tree-select:not(.ant-select-disabled):hover .ant-select-selector, .ant-cascader-picker:hover, .ant-auto-complete:not(.ant-select-disabled):hover .ant-select-selector) {
+:where(.ant-select:not(.ant-select-disabled):hover .ant-select-selector),:where( .ant-tree-select:not(.ant-select-disabled):hover .ant-select-selector),:where( .ant-cascader-picker:hover),:where( .ant-auto-complete:not(.ant-select-disabled):hover .ant-select-selector) {
     border-color: var(--unified-select-border) !important;
     background: var(--unified-select-surface-hover) !important;
 }
 
 /* 点击打开时只改变表面，不制造白色外框；焦点可见性只交给键盘路径。 */
-:where(.ant-select-focused .ant-select-selector, .ant-select-open .ant-select-selector, .ant-tree-select-focused .ant-select-selector, .ant-cascader-picker-focused, .ant-auto-complete.ant-select-focused .ant-select-selector) {
+:where(.ant-select-focused .ant-select-selector),:where( .ant-select-open .ant-select-selector),:where( .ant-tree-select-focused .ant-select-selector),:where( .ant-cascader-picker-focused),:where( .ant-auto-complete.ant-select-focused .ant-select-selector) {
     border-color: var(--unified-select-border) !important;
     box-shadow: none !important;
     outline: none !important;
 }
 
-:where(.ant-select:focus-visible, .ant-tree-select:focus-visible, .ant-cascader-picker:focus-visible, .ant-auto-complete:focus-visible) {
+:where(.ant-select:focus-visible),:where( .ant-tree-select:focus-visible),:where( .ant-cascader-picker:focus-visible),:where( .ant-auto-complete:focus-visible) {
     outline: 2px solid var(--unified-select-focus) !important;
     outline-offset: 2px;
 }
 
-:where(.ant-select-dropdown, .ant-dropdown-menu, .ant-cascader-dropdown, .ant-tree-select-dropdown, .ant-picker-dropdown) {
+:where(.ant-select-dropdown),:where( .ant-dropdown-menu),:where( .ant-cascader-dropdown),:where( .ant-tree-select-dropdown),:where( .ant-picker-dropdown) {
     border: 0 !important;
     border-radius: var(--r-lg, 12px) !important;
     background: var(--popover) !important;
@@ -18741,18 +18742,18 @@ html:not(.dark) .creation-home .creation-user-message-copy-wrap { box-shadow: 0 
     box-shadow: var(--elevation-overlay) !important;
 }
 
-:where(.ant-select-item-option, .ant-dropdown-menu-item, .ant-dropdown-menu-submenu-title, .ant-cascader-menu-item, .ant-tree-select-tree-node-content-wrapper) {
+:where(.ant-select-item-option),:where( .ant-dropdown-menu-item),:where( .ant-dropdown-menu-submenu-title),:where( .ant-cascader-menu-item),:where( .ant-tree-select-tree-node-content-wrapper) {
     min-height: 36px;
     margin-block: 2px;
     border-radius: var(--r-sm, 8px) !important;
     color: var(--popover-foreground) !important;
 }
 
-:where(.ant-select-item-option-active:not(.ant-select-item-option-disabled), .ant-dropdown-menu-item:hover, .ant-cascader-menu-item-active, .ant-tree-select-tree-node-content-wrapper:hover) {
+:where(.ant-select-item-option-active:not(.ant-select-item-option-disabled)),:where( .ant-dropdown-menu-item:hover),:where( .ant-cascader-menu-item-active),:where( .ant-tree-select-tree-node-content-wrapper:hover) {
     background: color-mix(in srgb, var(--popover-foreground) 7%, var(--popover)) !important;
 }
 
-:where(.ant-select-item-option-selected:not(.ant-select-item-option-disabled), .ant-dropdown-menu-item-selected, .ant-tree-select-tree-node-content-wrapper.ant-tree-node-selected) {
+:where(.ant-select-item-option-selected:not(.ant-select-item-option-disabled)),:where( .ant-dropdown-menu-item-selected),:where( .ant-tree-select-tree-node-content-wrapper.ant-tree-node-selected) {
     background: color-mix(in srgb, var(--popover-foreground) 12%, var(--popover)) !important;
     color: var(--popover-foreground) !important;
     font-weight: 600;

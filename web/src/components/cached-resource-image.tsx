@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState, type ImgHTMLAttributes, type ReactNode } from "react";
 
-import { getResourceAccess, resolveResourceAccessURL, resourceIdFromStorageKey, type ResourceAccessVariant } from "@/services/api/resources";
+import { resourceIdFromStorageKey, type ResourceAccessVariant } from "@/services/api/resources";
 import { getActiveUserScope } from "@/lib/user-scope";
-import { resolveImageUrl } from "@/services/image-storage";
-import { prepareCanvasImage } from "@/services/canvas-image-loader";
+import { useCanvasMediaImage } from "@/components/canvas/use-canvas-media-image";
+import type { CanvasImageSource } from "@/services/canvas-image-loader";
 
 type CachedResourceImageProps = Omit<ImgHTMLAttributes<HTMLImageElement>, "src"> & {
     storageKey?: string;
@@ -13,27 +13,27 @@ type CachedResourceImageProps = Omit<ImgHTMLAttributes<HTMLImageElement>, "src">
     eager?: boolean;
     variant?: ResourceAccessVariant;
     retentionKey?: string;
+    sourceFallback?: CanvasImageSource;
 };
 
-/**
- * 远程资源图片统一使用 OSS/CDN 授权地址。
- * Blob 缓存仍可用于导出、抽帧等字节处理，但不作为媒体展示 src，避免把
- * `blob:http(s)://...` 泄露到节点、素材库和浏览器媒体链路中。
- */
-export function CachedResourceImage({ storageKey, src = "", fallback = null, loadingFallback = fallback, eager = false, variant = "original", retentionKey, onError, ...props }: CachedResourceImageProps) {
+/** Resource display stays on authorized delivery URLs; byte/blob storage is not a display cache. */
+export function CachedResourceImage({ storageKey, src = "", fallback = null, loadingFallback = fallback, eager = false, variant = "original", retentionKey, sourceFallback, onError, ...props }: CachedResourceImageProps) {
     const resourceId = resourceIdFromStorageKey(storageKey);
     const remoteResource = Boolean(resourceId);
-    const localImageResource = Boolean(storageKey && storageKey.startsWith("image:"));
     const scope = getActiveUserScope();
-    const identity = `${scope}:${resourceId || storageKey || src}`;
-    const retentionIdentity = retentionKey ? `${scope}:${retentionKey}` : identity;
+    const identity = `${scope}:${resourceId || storageKey || src}:${variant}`;
+    const retentionIdentity = retentionKey ? `${scope}:${retentionKey}` : `${scope}:${resourceId || storageKey || src}`;
     const targetRef = useRef<HTMLSpanElement>(null);
     const [nearViewport, setNearViewport] = useState(eager || !remoteResource);
-    const [displayed, setDisplayed] = useState<{ identity: string; retentionIdentity: string; src: string } | null>(null);
-    const displayedRef = useRef(displayed);
-    displayedRef.current = displayed;
-    const [failedIdentity, setFailedIdentity] = useState("");
-    const cachedSrc = displayed?.retentionIdentity === retentionIdentity ? displayed.src : "";
+    const pendingError = useRef<{ identity: string; event: React.SyntheticEvent<HTMLImageElement, Event> } | null>(null);
+    const media = useCanvasMediaImage({ identity, retentionKey: retentionIdentity, storageKey, src, variant, fallbackSource: sourceFallback, thumbnailFallback: "original", enabled: eager || !remoteResource || nearViewport,
+        onPrepared: () => { pendingError.current = null; },
+        onFailure: () => {
+            const error = pendingError.current;
+            pendingError.current = null;
+            if (error?.identity === identity) onError?.(error.event);
+        },
+    });
 
     useEffect(() => {
         if (!remoteResource || eager) {
@@ -58,84 +58,15 @@ export function CachedResourceImage({ storageKey, src = "", fallback = null, loa
         return () => observer.disconnect();
     }, [eager, remoteResource]);
 
-    useEffect(() => {
-        if (remoteResource && !nearViewport) return;
-        const controller = new AbortController();
-        let cancelled = false;
-        const isCurrent = () => !cancelled && !controller.signal.aborted && getActiveUserScope() === scope;
-        const load = async () => {
-            let candidate = src;
-            if (remoteResource && resourceId) {
-                try {
-                    const access = await getResourceAccess(storageKey, "display", variant);
-                    candidate = resolveResourceAccessURL(access.url);
-                } catch (error) {
-                    if (variant !== "thumbnail") throw error;
-                    const access = await getResourceAccess(storageKey, "display", "original");
-                    candidate = resolveResourceAccessURL(access.url);
-                }
-            } else if (localImageResource && storageKey) {
-                candidate = (await resolveImageUrl(storageKey, src)) || src;
-            }
-            if (!candidate) throw new Error("图片地址为空");
-            try {
-                await prepareCanvasImage(candidate, controller.signal);
-            } catch (error) {
-                if (!remoteResource || variant !== "thumbnail") {
-                    if (candidate !== src && src) await prepareCanvasImage(src, controller.signal);
-                    else throw error;
-                } else {
-                    const access = await getResourceAccess(storageKey, "display", "original");
-                    const originalURL = resolveResourceAccessURL(access.url);
-                    if (!originalURL || originalURL === candidate) throw error;
-                    await prepareCanvasImage(originalURL, controller.signal);
-                    candidate = originalURL;
-                }
-            }
-            if (isCurrent()) {
-                setDisplayed({ identity, retentionIdentity, src: candidate });
-                setFailedIdentity("");
-            }
-        };
-        void load().catch(() => {
-            if (isCurrent() && displayedRef.current?.retentionIdentity !== retentionIdentity) setFailedIdentity(identity);
-        });
-        return () => {
-            cancelled = true;
-            controller.abort();
-        };
-    }, [identity, retentionIdentity, localImageResource, nearViewport, remoteResource, resourceId, scope, src, storageKey, variant]);
-
-    const handleImgError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
-        if (localImageResource && storageKey && cachedSrc.startsWith("blob:")) {
-            void resolveImageUrl(storageKey)
-                .then((url) => {
-                    if (url && url !== cachedSrc) {
-                        const controller = new AbortController();
-                        void prepareCanvasImage(url, controller.signal).then(() => setDisplayed({ identity, retentionIdentity, src: url })).catch(() => {
-                            setFailedIdentity(identity);
-                            onError?.(e);
-                        });
-                        return;
-                    }
-                    setFailedIdentity(identity);
-                    onError?.(e);
-                })
-                .catch(() => {
-                    setFailedIdentity(identity);
-                    onError?.(e);
-                });
-            return;
-        }
-        setFailedIdentity(identity);
-        onError?.(e);
+    const handleImgError = (event: React.SyntheticEvent<HTMLImageElement, Event>) => {
+        pendingError.current = { identity, event };
+        media.imageError();
     };
-
-    if (failedIdentity === identity && fallback) return <>{fallback}</>;
-    if (!remoteResource) return <img {...props} src={cachedSrc || undefined} onError={handleImgError} />;
+    if (media.failed && !media.src && fallback) return <>{fallback}</>;
+    if (!remoteResource) return <img {...props} decoding={retentionKey ? "sync" : props.decoding} src={media.src || undefined} onError={handleImgError} />;
     return (
         <span ref={targetRef} className="cached-resource-image-shell">
-            {cachedSrc ? <img {...props} src={cachedSrc} onError={handleImgError} /> : failedIdentity === identity ? fallback : loadingFallback}
+            {media.src ? <img {...props} decoding={retentionKey ? "sync" : props.decoding} src={media.src} onError={handleImgError} /> : media.failed ? fallback : loadingFallback}
         </span>
     );
 }

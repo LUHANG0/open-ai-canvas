@@ -4,9 +4,10 @@
 // 避免大画布上同时拉取大量视频。
 
 import { Image as ImageIcon, LoaderCircle, Music2, Play, Video } from "lucide-react";
-import { type ReactNode, type RefObject, useEffect, useRef, useState } from "react";
+import { type ReactNode, type RefObject, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { useCanvasNodeActions } from "./canvas-node-action-context";
 import { canvasNodeVideoPreviewReference } from "@/lib/canvas/canvas-media-preview";
+import { canvasImageDisplayVariant, canvasImagePixelRatio, subscribeCanvasImagePixelRatio } from "@/lib/canvas/canvas-image-display-source";
 import { createDefaultSubtitleStyle } from "@/types/timeline";
 import { CanvasVideoPreviewImage } from "./canvas-video-preview-image";
 import { VideoPlayer } from "@/components/video-player";
@@ -27,6 +28,8 @@ import { uploadPreviewUrl } from "@/services/canvas-upload-preview";
 import { RetainedCanvasImage } from "./canvas-retained-image";
 export { RetainedCanvasImage } from "./canvas-retained-image";
 import { getResourceAccess, refreshResource, resourceIdFromStorageKey, resolveResourceAccessURL } from "@/services/api/resources";
+import { peekCanvasMediaAccess } from "@/services/canvas-media-source";
+import { peekCanvasImage, registerCanvasImageSource } from "@/services/canvas-image-loader";
 import type { CanvasNodeContentProps } from "./canvas-node-content";
 import { ErrorContent, LoadingContent } from "./canvas-node-status-content";
 import { applyCanvasVideoDuration, applyCanvasVideoMeasurement, applyCanvasVideoPoster, videoMeasurementSnapshot, videoPresentationDimensions } from "@/lib/canvas/canvas-video-presentation";
@@ -60,6 +63,7 @@ export function ImageNodeContent(props: CanvasNodeContentProps) {
     return (
         <ImageContent
             renderLOD={props.renderLOD}
+            viewportScale={props.viewportScale}
             batchPreviewNodes={props.batchPreviewNodes}
             node={props.node}
             theme={props.theme}
@@ -533,6 +537,7 @@ export function EmptyMediaContent({ icon, label, color }: { icon: ReactNode; lab
 
 export function ImageContent({
     renderLOD = "full",
+    viewportScale = 1,
     node,
     theme,
     isBatchRoot,
@@ -542,11 +547,12 @@ export function ImageContent({
     batchOpening,
     batchRecovering,
     onToggleBatch,
-}: Pick<CanvasNodeContentProps, "renderLOD" | "node" | "theme" | "isBatchRoot" | "batchCount" | "batchPreviewNodes" | "batchExpanded" | "batchOpening" | "batchRecovering" | "onToggleBatch">) {
+}: Pick<CanvasNodeContentProps, "renderLOD" | "viewportScale" | "node" | "theme" | "isBatchRoot" | "batchCount" | "batchPreviewNodes" | "batchExpanded" | "batchOpening" | "batchRecovering" | "onToggleBatch">) {
     const imageContainerRef = useRef<HTMLDivElement>(null);
     const nearViewport = useNearViewport(imageContainerRef, renderLOD !== "shell");
-    const resourceVariant = renderLOD === "full" ? "original" : "thumbnail";
-    const { url, loading, error: sourceError, originalWidth, originalHeight } = useNodeResourceUrl(node, nearViewport, resourceVariant);
+    const dpr = useSyncExternalStore(subscribeCanvasImagePixelRatio, canvasImagePixelRatio, () => 1);
+    const resourceVariant = canvasImageDisplayVariant(node, renderLOD, viewportScale, dpr);
+    const { url, controlledSource, loading, error: sourceError, originalWidth, originalHeight, actualVariant } = useNodeResourceUrl(node, nearViewport && renderLOD !== "shell", resourceVariant);
     const importedFromLibTV = node.metadata?.importSource?.provider === "libtv";
     const { updateMediaNode } = useCanvasNodeActions();
     const measuredSizeRef = useRef<{ width: number; height: number } | null>(null);
@@ -600,10 +606,13 @@ export function ImageContent({
         >
             <div ref={imageContainerRef} className="relative h-full w-full overflow-hidden rounded-[var(--node-radius)]">
                 <RetainedCanvasImage
-                    identity={`${getActiveUserScope()}:${node.id}:${node.metadata?.storageKey || node.metadata?.content || "empty"}`}
-                    retentionKey={`${getActiveUserScope()}:${node.id}`}
+                    identity={`${getActiveUserScope()}:${node.id}:${node.metadata?.storageKey || node.metadata?.content || "empty"}:${resourceVariant}`}
+                    retentionKey={`${getActiveUserScope()}:${node.metadata?.storageKey || node.metadata?.content || node.id}`}
                     src={url}
+                    preferredSource={controlledSource}
                     storageKey={node.metadata?.storageKey}
+                    variant={resourceVariant}
+                    measuredVariant={actualVariant}
                     sourceError={sourceError}
                     completed={node.metadata?.taskStatus === "succeeded"}
                     bytes={node.metadata?.bytes}
@@ -640,18 +649,22 @@ export function useNodeResourceUrl(node: CanvasNodeData, eager: boolean, variant
         node.type === CanvasNodeType.Video || node.type === CanvasNodeType.Audio || variant === "original"
             ? content
             : node.metadata?.previewContent || (node.type === CanvasNodeType.Image && node.metadata?.importSource?.provider === "libtv" ? buildLibTVImagePreviewUrl(content) : content);
-    const localUploadPreview = variant === "original" && node.type === CanvasNodeType.Image && eager ? uploadPreviewUrl(node.id, storageKey) : "";
+    const localUploadPreview = node.type === CanvasNodeType.Image && eager ? uploadPreviewUrl(node.id, storageKey) : "";
     const isRemoteResource = storageKey.startsWith("resource:");
     // Inline data URLs are already local, but decoding thousands of them is
     // still expensive. Images must wait for the same viewport gate as remote
     // resources; otherwise DOM virtualization does not reduce image work.
     const isLazyVisual = node.type === CanvasNodeType.Image;
     const isHttpUrl = Boolean(fallback && !fallback.startsWith("data:"));
-    const initialUrl = localUploadPreview || (eager && !isRemoteResource && isLazyVisual && isHttpUrl ? fallback : isRemoteResource || isLazyVisual ? "" : fallback);
     const scope = getActiveUserScope();
-    const identity = `${scope}:${node.id}:${storageKey || fallback}`;
-    const [resolved, setResolved] = useState<{ identity: string; url: string; loading: boolean; error?: boolean; originalWidth?: number; originalHeight?: number }>(() => ({ identity, url: initialUrl, loading: !initialUrl && isRemoteResource && eager }));
-    const current = resolved.identity === identity ? resolved : { identity, url: initialUrl, loading: isRemoteResource && eager };
+    const accessSnapshot = useMemo(() => isRemoteResource && isLazyVisual ? peekCanvasMediaAccess(storageKey, variant) : undefined, [isRemoteResource, isLazyVisual, storageKey, variant, scope]);
+    const preparedAccessUrl = accessSnapshot && peekCanvasImage(accessSnapshot.source.src) ? accessSnapshot.source.src : "";
+    const initialUrl = localUploadPreview || preparedAccessUrl || (eager && !isRemoteResource && isLazyVisual && isHttpUrl ? fallback : isRemoteResource || isLazyVisual ? "" : fallback);
+    // The URL has already passed the existing scope/node/bound-resource preview owner.
+    const controlledSource = useMemo(() => localUploadPreview ? registerCanvasImageSource(localUploadPreview, resourceIdFromStorageKey(storageKey) || undefined, "original", Infinity, { requestedVariant: variant, originalWidth: node.metadata?.naturalWidth, originalHeight: node.metadata?.naturalHeight }) : undefined, [localUploadPreview, node.id, node.metadata?.naturalWidth, node.metadata?.naturalHeight, scope, storageKey, variant]);
+    const identity = `${scope}:${node.id}:${storageKey || fallback}:${variant}`;
+    const [resolved, setResolved] = useState<{ identity: string; url: string; loading: boolean; error?: boolean; originalWidth?: number; originalHeight?: number; actualVariant?: "original" | "thumbnail" | "playback" }>(() => ({ identity, url: initialUrl, loading: !initialUrl && isRemoteResource && eager }));
+    const current = resolved.identity === identity && resolved.url ? resolved : { identity, url: initialUrl, loading: isRemoteResource && eager, originalWidth: accessSnapshot?.width, originalHeight: accessSnapshot?.height, actualVariant: accessSnapshot?.actualVariant };
 
     useEffect(() => {
         if (localUploadPreview) {
@@ -670,17 +683,17 @@ export function useNodeResourceUrl(node: CanvasNodeData, eager: boolean, variant
         setResolved({ identity, url: "", loading: true });
         void getResourceAccess(storageKey, "display", variant)
             .then((access) => {
-                if (!cancelled) setResolved({ identity, url: resolveResourceAccessURL(access.url), loading: false, originalWidth: access.originalWidth, originalHeight: access.originalHeight });
+                if (!cancelled && scope === getActiveUserScope()) setResolved({ identity, url: resolveResourceAccessURL(access.url), loading: false, originalWidth: access.originalWidth, originalHeight: access.originalHeight, actualVariant: access.actualVariant });
             })
             .catch(() => {
-                if (!cancelled) setResolved({ identity, url: fallback, loading: false, error: !fallback });
+                if (!cancelled && scope === getActiveUserScope()) setResolved({ identity, url: fallback, loading: false, error: !fallback });
             });
         return () => {
             cancelled = true;
         };
     }, [eager, fallback, identity, isLazyVisual, isRemoteResource, storageKey, variant, localUploadPreview]);
 
-    return { url: current.url, loading: current.loading, error: "error" in current && Boolean(current.error), originalWidth: current.originalWidth, originalHeight: current.originalHeight };
+    return { url: current.url, controlledSource: current.url === localUploadPreview ? controlledSource : undefined, loading: current.loading, error: "error" in current && Boolean(current.error), originalWidth: current.originalWidth, originalHeight: current.originalHeight, actualVariant: current.actualVariant || variant };
 }
 
 export function useNearViewport(ref: RefObject<Element | null>, enabled = true) {
@@ -707,13 +720,15 @@ export function useNearViewport(ref: RefObject<Element | null>, enabled = true) 
     return nearViewport;
 }
 
-export function BatchPreviewImage({ node }: { node: CanvasNodeData }) {
+const ignoreBatchImageSize = () => {};
+
+export function BatchPreviewImage({ node, theme }: { node: CanvasNodeData; theme: CanvasTheme }) {
     const ref = useRef<HTMLDivElement>(null);
     const nearViewport = useNearViewport(ref);
-    const { url } = useNodeResourceUrl(node, nearViewport);
+    const { url, controlledSource, loading, error, originalWidth, originalHeight, actualVariant } = useNodeResourceUrl(node, nearViewport, "thumbnail");
     return (
-        <div ref={ref} className="h-full w-full overflow-hidden rounded-[inherit]">
-            {url ? <img src={url} alt={`子图预览：${node.title}`} className="h-full w-full object-contain" draggable={false} /> : null}
+        <div ref={ref} className="relative h-full w-full overflow-hidden rounded-[inherit]">
+            <RetainedCanvasImage identity={`${getActiveUserScope()}:${node.id}:${node.metadata?.storageKey || node.metadata?.content || "empty"}:thumbnail`} retentionKey={`${getActiveUserScope()}:${node.metadata?.storageKey || node.metadata?.content || node.id}`} src={url} preferredSource={controlledSource} storageKey={node.metadata?.storageKey} variant="thumbnail" measuredVariant={actualVariant} sourceError={error} originalSize={{ width: originalWidth || node.metadata?.naturalWidth, height: originalHeight || node.metadata?.naturalHeight }} alt={`子图预览：${node.title}`} className="h-full w-full object-contain" fitToImage={ignoreBatchImageSize} loading={loading} theme={theme} />
         </div>
     );
 }
@@ -766,7 +781,7 @@ export function BatchFrame({
                                 zIndex: -index - 1,
                             }}
                         >
-                            {batchPreviewNodes?.[index] ? <BatchPreviewImage node={batchPreviewNodes[index]} /> : null}
+                            {batchPreviewNodes?.[index] ? <BatchPreviewImage node={batchPreviewNodes[index]} theme={theme} /> : null}
                         </div>
                     ))}
                 </div>

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, type CSSProperties, type ReactNode, type 
 import { BookOpenCheck, FileText, Image as ImageIcon, Music2, Pencil, Video } from "lucide-react";
 
 import type { CanvasNodeRenderLOD } from "@/lib/canvas/canvas-node-lod";
+import { canvasNodeUsesProjectContent } from "@/lib/canvas/canvas-node-content-routing";
 import { CachedResourceImage } from "@/components/cached-resource-image";
 import { canvasRichTextHTML } from "@/lib/canvas/canvas-rich-text";
 import { canvasTextFontSize } from "@/lib/canvas/canvas-text-scale";
@@ -36,6 +37,7 @@ export type CanvasNodeContentProps = {
     node: CanvasNodeData;
     theme: CanvasTheme;
     renderLOD?: CanvasNodeRenderLOD;
+    viewportScale?: number;
     isEditingContent: boolean;
     contentReadOnly?: boolean;
     textareaRef: RefObject<HTMLTextAreaElement | null>;
@@ -72,15 +74,7 @@ export function CanvasNodeContent(props: CanvasNodeContentProps) {
     }
     if (props.renderLOD === "shell") return <CanvasNodeShellContent node={props.node} theme={props.theme} />;
     if (props.renderLOD === "preview") return <CanvasNodePreviewContent node={props.node} theme={props.theme} />;
-    const hasCustomContent =
-        props.node.type === CanvasNodeType.Config ||
-        props.node.type === CanvasNodeType.Script ||
-        props.node.type === CanvasNodeType.BatchTable ||
-        Boolean(props.node.metadata?.previsSceneId) ||
-        (props.node.metadata?.workflowKind === "character" && Boolean(props.node.metadata.characterAssetId)) ||
-        (props.node.metadata?.workflowKind === "story_input" && !props.isEditingContent) ||
-        (props.node.metadata?.workflowKind === "styleboard" && !props.node.metadata.content);
-    if (hasCustomContent && props.renderNodeContent) return props.renderNodeContent(props.node);
+    if (canvasNodeUsesProjectContent(props.node, props.isEditingContent) && props.renderNodeContent) return props.renderNodeContent(props.node);
     if (props.node.type === ART_CRITIQUE_NODE_TYPE) return <ArtCritiqueNodeContent node={props.node} />;
     if (props.node.type === MEDIA_CONVERSION_NODE_TYPE) return <MediaConversionNodeContent node={props.node} theme={props.theme} />;
     if (props.isBatchRoot) return <ImageNodeContent {...props} />;

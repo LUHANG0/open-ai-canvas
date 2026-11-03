@@ -3,6 +3,7 @@ import { describe, expect, test } from "bun:test";
 import { applySkinTheme, DEFAULT_CLASSIC_SKIN, duplicateSkinDefinition, getSkinAntOverrides, normalizeSkinDefinition, skinSwatches, SKIN_COLOR_GROUPS, SKIN_COMPONENT_NUMBER_FIELDS } from "../src/lib/skin-themes";
 import { normalizePublicAppearance } from "../src/stores/use-appearance-store";
 import { moduleGroupSource } from "./helpers/module-group-source";
+import { expectWhereDeclarations } from "./helpers/css-where-declarations";
 
 describe("site appearance and editable skin library", () => {
     test("classic preserves foundation tokens and applies only primary button fills", () => {
@@ -160,7 +161,10 @@ describe("site appearance and editable skin library", () => {
         expect(globalStyles).toContain("--plugin-switch-checked-bg: var(--control-switch-checked-bg)");
         expect(globalStyles).toContain("--ant-tooltip-arrow-background-color: var(--popover) !important");
         expect(globalStyles).toContain("--ant-tooltip-overlay-color: var(--popover-foreground) !important");
-        expect(globalStyles).toContain(":where(.ant-tooltip-container, .ant-tooltip-inner)");
+        expectWhereDeclarations(globalStyles, ["ant-tooltip-container", "ant-tooltip-inner"], {
+            background: "var(--popover)",
+            color: "var(--popover-foreground)",
+        });
         expect(globalStyles).toContain("color: var(--popover-foreground) !important");
         expect(adminStyles).toContain("var(--admin-status-warning)");
         expect(adminStyles).toContain("border-radius: var(--menu-radius);");

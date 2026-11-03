@@ -22,7 +22,7 @@ export function CanvasVideoPreviewImage({ node, fallback = null, loadingFallback
     return (
         <CachedResourceImage
             {...props}
-            retentionKey={`${node.id}:${node.metadata?.storageKey || node.metadata?.content || ""}`}
+            retentionKey={`canvas-video:${node.metadata?.storageKey || node.metadata?.content || node.id}:${preview.storageKey || preview.src}`}
             storageKey={preview.storageKey}
             src={preview.src}
             fallback={fallback}

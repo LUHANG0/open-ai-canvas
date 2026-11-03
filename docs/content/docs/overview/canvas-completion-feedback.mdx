@@ -1,0 +1,73 @@
+---
+title: 画布完成反馈生命周期
+description: 实时视口、节点呈现与任务结果完成反馈的职责边界。
+---
+
+## 职责与时序
+
+画布的实时 world/grid 变换与 Leafer graphics preview 沿用同一最新视口。可见性继续按屏幕位移/倍率采样，实际 mounted coverage 缺口同任务 `flushSync` 补齐；屏内节点不受缓冲预算硬裁，屏外节点分批补充。LOD、hover、编辑和播放仍决定节点 chrome，不拥有任务完成事件。
+
+`CanvasCompletionFeedbackProvider` 以账号 scope 与 project ID 为 key，观察完整节点集合，而不是虚拟化后的节点。`CanvasCompletionFeedbackLedger` 首次已加载快照建立历史基线；后续真正应用的结果创建本机 `performance.now()` 起算的两秒反馈窗口。该状态不写文档、不参与同步、不表示云端保存已确认。
+
+- 上游任务 `succeeded` 可能先于素材物化、保存和节点结果应用；只有状态或服务端完成时间不足以证明当前节点拿到了结果。
+- 媒体以 task ID 与稳定资源身份去重。匹配的 result record、当前任务的 attach-node 应用证明、已确认的结果身份或实际新媒体可证明结果应用。旧 task 绑定到已有媒体时不能提前庆祝。
+- 文本同内容重试与 Script 分镜没有媒体 record。文本提交及正常/恢复分镜生产方通过 `markCanvasTextResultApplied` 提供本地应用证明；WeakMap 以 metadata 身份保存输出身份，不序列化。后续 timestamp-only 节点规范化保留该证明；普通用户编辑和记账补充不制造完成事件。
+- asset ID、effect 列表及顺序、result record 后补、时钟、节点位置和尺寸不是新结果。无 storage key 的媒体 URL 仅忽略明确鉴权参数与 fragment，保留其他 query；畸形 URL 留给节点错误路径，不使整个观察器抛错。
+
+## 呈现
+
+`NodeStatusBadge` 仅消费剩余窗口。普通 rerender 固定已挂载动画的负 delay；LOD 短暂卸载/虚拟化重进只恢复剩余时间，不能重新起算。到期移除完成徽标；历史 success 不挂载动画。loading/error 反馈保持原合同，不全局禁用动画。
+
+切换账号/项目替换 ledger；卸载释放消费者订阅和到期 timer。媒体、海报、播放会话的身份与 prepare/decode 后原子换源不由完成反馈控制。
+
+## 节点内容与标签更新边界
+
+项目无预演场景时使用稳定的空场景集合，避免缺省数组使预演动作及通用内容 renderer 在每次视口采样时换引用。`canvasNodeUsesProjectContent` 集中定义项目内容路由：Config、Script、BatchTable、预演、角色、故事输入和未填写的风格板保留业务 renderer；普通媒体不接收其不消费的 renderer 或预演动作。文件上传状态仍优先于项目内容，故事输入编辑时仍进入文本编辑路径。节点类型或 metadata 改变后重新判路由；不冻结闭包，也不从 memo 比较中删除函数依赖。
+
+`CanvasNode` 的资源标签比较限定在真实呈现消费：Image 不显示引用徽章，只保留引用有无对状态轨道的影响；其他节点继续比较引用有无及 `active`、`title`、`label`。资源对象的其他字段仍由原引用业务消费者处理，不改变引用生成、编号或 store 数据。类型切换、数据变化和其他节点 props 继续按原语义更新。
+
+此边界借鉴 React Flow 的单节点更新隔离、tldraw 的位置与内容分层，以及 Excalidraw 的静态/交互场景分离；不引入新依赖、不照搬全量 DOM 常驻或相机输入阻挡层。实时覆盖补齐、LOD 结构与阈值、媒体身份/质量/缓存、连接命中和保存历史合同均不变。减少 React 内容执行不等于已降低全部浏览器样式/绘制成本，也不构成稳定 60 Hz 的保证。
+
+
+## 连线几何与覆盖
+
+`canvas-connection-geometry.ts` 统一已保存连线的端点、控制点、路径与精确三次曲线包围盒。反向曲线可越过两个节点外框，空间索引与呈现不得再按端点外框裁掉它；未取得滚动位置的索引用批次单元格/分镜行端口的保守滚动包络。连接几何快照单独追踪 composer 高度与端口 ID/顺序，普通文本和任务状态不使其失效。
+
+相同 connection 对象和实际锚点复用几何对象；WeakMap 随项目对象释放，不写持久存储。普通连线仍由 Leafer 按 edge ID 复用 Path，主题只更新描边。`CanvasConnectionHitLayer` 将被动命中曲线按每批最多 64 条合并为 SVG compound path；浏览器原生 `pointer-events: stroke` 先确定批次，再通过实时 SVG screen CTM 的逆变换和 `Path2D` / `isPointInStroke` 精确选择曲线，不以粗包围盒或采样折线代替最终命中。批次内反序选择，重叠时保持原 DOM 最后连线优先；Path2D 按几何对象 WeakMap 缓存。缺少 Path2D、2D context 或 isPointInStroke 时回退逐条 SVG 命中，不丢失选择和右键功能。
+
+命中宽度保持 16 个屏幕像素：实时缩放同步更新命中路径的 `16 / scale` 描边宽度，原生精确判定使用相同线宽。hover、选中及关联连线的活动 SVG 视觉与被动命中独立，不接收指针；视口或几何变化会重新定位静止指针下的 hover。drag/resize 按节点邻接关系更新受影响几何，只重组脏批次路径，不在每次预览中重建全部边。脚本/分镜行与批次表格端口继续使用实际滚动位置。
+
+`CanvasViewport` 的 pointer-down 空白判定、空白双击创建，以及项目的空白右键守卫均同时识别 `data-connection-batch` 与 `data-connection-id`，避免批次连线被当成空白；不借此禁用缩放或绕过原有指针意图判定。
+
+节点 chrome 常驻候选与 render-model 引用保留候选已撤回，不属于最终方案。LOD 阈值与优先级、媒体源/缓存/播放 identity、DPR、完成反馈窗口及 operations/revision/lease 保存合同均未因本次连线优化改变。
+
+可见覆盖同时检查节点与曲线；5000 候选预算仅约束屏外缓冲，不截断穿过实际视野、选中或拖动邻接的连线。实时 graphics 视口、缺口同任务 `flushSync`、120ms idle 和 raster 清晰度阈值沿用原合同。
+
+实际加载的第一方全局/按钮/输入 CSS 将 leading 多分支 `:where(...)` 等价展开为零特异性的单分支 selector list，不改声明、顺序、layer 或状态语义；第三方播放器 CSS 不改。
+
+### 性能证据与限制
+
+最终采用独立验收的 24 轮基线/候选交替测量，每个场景每版各三轮。下表为活动期 rAF P95 的三轮中位与范围，单位 ms；长帧为活动期 >50ms 的三轮累计，不是平均 FPS 或 GPU present 时间。
+
+| 节点/连线 | 基线 P95 中位（范围） | 候选 P95 中位（范围） | 基线/候选长帧 |
+| --- | --- | --- | --- |
+| 18/0 | 7.5（7.1–7.7） | 7.1（7.1–7.2） | 0 / 0 |
+| 200/0 | 34.0（20.9–34.7） | 27.8（20.9–27.9） | 0 / 0 |
+| 200/200 | 34.7（27.8–42.5） | 34.7（34.2–34.7） | 0 / 1 |
+| 200/600 | 48.6（41.7–62.4） | 41.6（33.9–41.7） | 7 / 1 |
+
+200/0 的范围重叠，且没有连线，不能将该差异归因于 batch；200/200 的中位没有改善。600 边场景观察到中位和长帧减少，但候选全部 12 轮仍有 2 个长帧，不宣称零长帧或稳定 60fps。旧 node-only 候选的 35.5/55.5ms 结果已随候选撤回，不作为最终收益证据。
+
+## 撤销事务与保存回执
+
+`useCanvasHistory` 只记录节点、连线、对话和外观的真实内容变化；相同引用直接复用，对象 key 顺序及对象中 undefined 字段与缺失字段不制造历史步骤，数组顺序仍有意义。等价的保存回执可以推进引用基线，但不增加 past、不清除 future；真正的新内容仍可撤销，并使旧 redo 分支失效。比较仅针对历史快照，不改变持久化或同步协议的相等合同，也不序列化大 metadata 作为签名。
+
+普通编辑保留 180ms 合并窗口；undo/redo 先结算最新内容，再操作历史栈，避免快速删线撤销到前一步拖动，或 redo 覆盖尚未入栈的新编辑。应用历史先更新快照基线，再应用各编辑状态；项目重置与 hydration 清除旧栈和计时器，不把历史应用本身重新记成编辑。
+
+## 验证入口
+
+- `web/test/canvas-completion-feedback.test.ts`：历史快照、状态恢复、新 task/result、记账去重、签名刷新与坏 URL。
+- `web/test/canvas-completion-feedback-lifecycle.test.tsx`：真实文本提交、真实分镜恢复生产方、StrictMode/首次 hydration、普通 rerender、LOD 重挂/过期与 scope 隔离。
+- `web/test/canvas-history.test.ts`：保存回执等价、一次 undo/redo、180ms pending 事务、真实新编辑分支失效、数组/metadata/外观、引用快路径及项目重置；使用确定性假时钟。
+- `web/test/canvas-node-content-routing.test.tsx`：隔离进程中的真实 world/node/content，验证普通媒体更新隔离、内容路由及类型转换、当前项目动作、标题编辑，以及资源标签存在性和非 Image 徽章字段变化。
+- 真实编辑器还需核查可见性、源图连续性、播放、拖动/连线、焦点/滚动边界与实际保存；单元测试不能替代这些验收。

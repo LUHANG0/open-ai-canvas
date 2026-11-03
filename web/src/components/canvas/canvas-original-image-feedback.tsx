@@ -5,7 +5,7 @@ import type { CanvasTheme } from "@/lib/canvas-theme";
 import { formatBytes } from "@/lib/image-utils";
 import "./canvas-original-image-feedback.css";
 
-export function CanvasOriginalImageFeedback({ busy, animating = true, failed, completed = false, hasPreview = false, width, height, bytes, theme, onRetry }: {
+export function CanvasOriginalImageFeedback({ busy, animating = true, failed, completed = false, hasPreview = false, width, height, bytes, variant = "original", theme, onRetry }: {
     busy: boolean;
     animating?: boolean;
     failed: boolean;
@@ -14,6 +14,7 @@ export function CanvasOriginalImageFeedback({ busy, animating = true, failed, co
     width?: number;
     height?: number;
     bytes?: number;
+    variant?: "original" | "thumbnail";
     theme: CanvasTheme;
     onRetry: () => void;
 }) {
@@ -41,8 +42,9 @@ export function CanvasOriginalImageFeedback({ busy, animating = true, failed, co
 
     const dimensions = width && height && Number.isFinite(width) && Number.isFinite(height) && width > 0 && height > 0 ? `${Math.round(width)} × ${Math.round(height)}` : "";
     const details = [dimensions, bytes && Number.isFinite(bytes) && bytes > 0 ? formatBytes(bytes) : ""].filter(Boolean).join(" · ");
-    const title = failed ? "原图加载失败" : slow ? "原图仍在加载" : "正在载入原图";
-    const hint = failed ? hasPreview ? "当前保留已有预览，可重试加载原图" : "可重新加载原图，无需重新生成" : hasPreview ? "当前保留已有预览，原图就绪后替换" : slow ? "原图较大或网络较慢，请稍候" : "原图就绪后显示完整细节";
+    const label = variant === "thumbnail" ? "预览图" : "原图";
+    const title = failed ? `${label}加载失败` : slow ? `${label}仍在加载` : `正在载入${label}`;
+    const hint = failed ? hasPreview ? `当前保留已有预览，可重试加载${label}` : `可重新加载${label}，无需重新生成` : hasPreview ? `当前保留已有预览，${label}就绪后替换` : slow ? `${label}较大或网络较慢，请稍候` : variant === "thumbnail" ? "预览图就绪后显示，查看和精修仍使用原图" : "原图就绪后显示完整细节";
 
     return (
         <div
@@ -64,7 +66,7 @@ export function CanvasOriginalImageFeedback({ busy, animating = true, failed, co
                     <span className="sr-only">{failed ? "" : `${title}。`}{completed ? "生成完成。" : ""}{details}。{hint}</span>
                     {failed && !hasPreview ? <small>无需重新生成</small> : null}
                 </div>
-                {failed ? <button type="button" className="canvas-original-image-retry" onClick={(event) => { event.stopPropagation(); onRetry(); }}>重新加载原图</button> : null}
+                {failed ? <button type="button" className="canvas-original-image-retry" onClick={(event) => { event.stopPropagation(); onRetry(); }}>重新加载{label}</button> : null}
             </div>
         </div>
     );

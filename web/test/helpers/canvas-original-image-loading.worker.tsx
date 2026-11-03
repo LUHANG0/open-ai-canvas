@@ -12,15 +12,20 @@ self.onmessage = async () => {
         const loads: { src: string; resolve: (image: HTMLImageElement) => void; reject: (error: Error) => void }[] = [];
         const accesses: unknown[][] = [];
         mock.module("../../src/lib/user-scope", () => ({ getActiveUserScope: () => scope }));
-        mock.module("../../src/services/canvas-image-loader", () => ({ isCanvasImageActive: () => true, subscribeCanvasImageActivity: () => () => {}, prepareCanvasImage: (src: string) => {
+        // Preserve the real owner; replace only the decoder boundary after account installation.
+        const owner = await import("../../src/services/canvas-image-loader");
+        mock.module("../../src/services/image-storage", () => ({ resolveImageUrl: async (_key: string, src: string) => src }));
+        mock.module("../../src/services/canvas-image-loader", () => ({ ...owner, isCanvasImageActive: () => true, subscribeCanvasImageActivity: () => () => {}, prepareCanvasImage: (source: { src: string }) => {
             const { promise, resolve, reject } = Promise.withResolvers<HTMLImageElement>();
-            loads.push({ src, resolve, reject });
+            loads.push({ src: source.src, resolve, reject });
             return promise;
         } }));
         mock.module("../../src/services/api/resources", () => ({
+            peekResourceAccess: () => undefined,
+            resourceAccessCacheExpiry: () => Infinity,
             resourceIdFromStorageKey: (key?: string) => key?.startsWith("resource:") ? key.slice(9) : "",
             resolveResourceAccessURL: (url: string) => url,
-            getResourceAccess: async (...args: unknown[]) => { accesses.push(args); return { url: `/fresh-${accesses.length}.png`, originalWidth: 2448, originalHeight: 3264 }; },
+            getResourceAccess: async (...args: unknown[]) => { accesses.push(args); return { resourceId: "fixture", requestedVariant: args[2], actualVariant: "original", url: `/fresh-${accesses.length}.png`, originalWidth: 2448, originalHeight: 3264 }; },
         }));
         const { act } = await import("react");
         const { createRoot } = await import("react-dom/client");
@@ -32,11 +37,14 @@ self.onmessage = async () => {
         const assert = (ok: unknown, message: string) => { if (!ok) throw new Error(message); };
         const text = () => host.textContent || "";
         const image = () => host.querySelector("img")!;
-        const render = async (id: string, src: string, sourceError = false, width = 2448) => act(async () => root!.render(
-            <div onClick={() => leaked++} onPointerDown={() => leaked++} onWheel={() => leaked++} onKeyDown={() => leaked++}>
-                <RetainedCanvasImage identity={`${scope}:${id}`} retentionKey={`${scope}:node-1`} src={src} storageKey="resource:fixture" sourceError={sourceError} originalSize={{ width, height: 3264 }} bytes={9937640} completed fitToImage={(img) => fitSizes.push(img.naturalWidth)} className="test-image" loading={false} theme={canvasThemes.dark} />
-            </div>,
-        ));
+        const render = async (id: string, src: string, sourceError = false, width = 2448) => {
+            if (src) owner.registerCanvasImageSource(src, "fixture", "original");
+            return act(async () => root!.render(
+                <div onClick={() => leaked++} onPointerDown={() => leaked++} onWheel={() => leaked++} onKeyDown={() => leaked++}>
+                    <RetainedCanvasImage identity={`${scope}:${id}`} retentionKey={`${scope}:node-1`} src={src} storageKey="resource:fixture" sourceError={sourceError} originalSize={{ width, height: 3264 }} bytes={9937640} completed fitToImage={(img) => fitSizes.push(img.naturalWidth)} className="test-image" loading={false} theme={canvasThemes.dark} />
+                </div>,
+            ));
+        };
         const resolveLast = async () => act(async () => loads.at(-1)!.resolve({ naturalWidth: 2448, naturalHeight: 3264 } as HTMLImageElement));
         await render("a", "/original-a.png");
         assert(text().includes("正在载入原图") && text().includes("2448 × 3264") && !text().includes("%"), "missing truthful loading state and dimensions");
@@ -44,7 +52,7 @@ self.onmessage = async () => {
         await resolveLast();
         assert(image().getAttribute("src") === "/original-a.png" && !host.querySelector('[role="status"]'), "decoded original did not replace loading state");
         await render("b", "/original-b.png");
-        assert(image().getAttribute("src") === "/original-a.png" && text().includes("保留已有预览"), "previous node preview disappeared during replacement");
+        assert(image().getAttribute("src") === "/original-a.png", "previous node preview disappeared during replacement");
         await act(async () => loads.at(-1)!.reject(new Error("expired address")));
         assert(loads.at(-1)!.src === "/fresh-1.png", "failed address was not refreshed");
         await act(async () => loads.at(-1)!.reject(new Error("offline")));

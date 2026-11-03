@@ -3,6 +3,10 @@
 面向使用、开发与运维的专题入口。梦层由 [LUHANG0/open-ai-canvas](https://github.com/LUHANG0/open-ai-canvas) 维护，当前功能分支为 `codex/upstream-v1.7.2-fixes`；源码实现、设计提案与生产验收分别核对。详细文档维护规则见 [AGENTS.md](../AGENTS.md) 第 9 节「文档与交付」。
 
 - [画布视频播放](content/docs/overview/canvas-video-playback.mdx)：统一悬浮与正式播放、空白单击暂停、进度恢复和会话资源边界。
+- [画布完成反馈](content/docs/overview/canvas-completion-feedback.mdx)：结果应用事件、项目级短时反馈和历史成功不重播。
+- [画布媒体生命周期](content/docs/overview/canvas-media-lifecycle.mdx)：账号与来源身份、准备交接、有界缓存、失效撤销和长离屏恢复。
+- [画布 Agent 视频渲染](content/docs/overview/canvas-avatar-rendering.mdx)：保留原生视频连续播放的 GPU 去绿幕及 2D 降级。
+- [画布节点细节调度](content/docs/overview/canvas-detail-scheduling.mdx)：手势中合并装饰状态、结束后收敛，保留可见媒体和即时交互。
 - [创作页历史跨设备同步](content/docs/backend/creation-conversation-sync.mdx)：账号历史、旧本地迁移、逐消息修订、删除防复活及媒体引用边界。
 - [生成作品存储与恢复](content/docs/backend/generation-storage-recovery.mdx)：生成前配额检查、检查点与暂存副本顺序、分页引用保护和保存恢复边界。
 - [用户注册邀请](content/docs/backend/registration-invitations.mdx)：管理员单次邀请、关闭公开注册时的验证、固定积分、事务与迁移回退边界。

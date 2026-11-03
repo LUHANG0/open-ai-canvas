@@ -1,0 +1,80 @@
+---
+title: 画布媒体恢复生命周期
+---
+
+# 画布媒体恢复生命周期
+
+图片与已持久化的视频海报共用访问描述、准备队列和展示交接。本文描述实现候选的合同；自动检查不等于真实性能、全部交互或生产链路已经验收。
+
+## 身份与访问能力
+
+- 准备身份由账号 scope、现有 resourceId（本地媒体使用自己的来源键）和 actualVariant 组成。nodeId 是消费者，不是同一资源的重复下载身份。
+- `CanvasImageSource` 显式携带来源、scope/generation、访问截止时间、requestedVariant/actualVariant 和可选原始尺寸。签名 URL 是传输能力，不是资源版本；不推导额外的 resource revision 保证。
+- 远程访问仍通过现有 `getResourceAccess` 合同；validUntil 沿用其 refreshAt/expiry 等访问缓存期限，不延长签名或刷新期限。同步 peek 校验有效期；准备开始、排队启动、准备结束均检查截止时间。索引过期或容量淘汰不能把调用者持有的过期描述变成无限有效的匿名来源。
+- 展示身份由账号 scope、storageKey 与调用方的 retentionKey 共同限定。真实换源或切号隔离旧画面；同媒体缩略图到高清图的升级、能力 URL 续签保持 retentionKey 稳定，可以在新来源准备期间保留已有画面。`RetainedCanvasImage` 的真实调用按底层媒体标识构造 retentionKey；`CachedResourceImage` 未提供显式 retentionKey 且无 storageKey 时，默认身份包含 src，不能把人为固定的键当作任意换源的依据。
+- 有 resource storageKey 时，裸 `src` 不作为独立 fallback 的授权事实。需要独立回退时显式传递 typed `sourceFallback`，发布实际准备成功的来源，不能准备 fallback 后仍发布失败的 URL。
+- 成功描述只来自已成功准备的确切 `CanvasImageSource`。共享物理 prepare 的每个 consumer 在完成时分别校验取消、共享撤销、scope/generation 与有效期后取得成功凭据；过期或取消的 consumer 不因其他共享者成功而获凭据。仅注册冷 URL 或同 URL 重新注册更长有效期，不能给旧展示描述延长授权。
+
+## 唯一准备队列与预算
+
+`services/canvas-image-loader.ts` 同时拥有准备任务、有限暖引用和展示 metadata，不再另设字符串缓存的独立生命周期。
+
+| 分账 | 合同 |
+| --- | --- |
+| 下载/解码 | 全局最多 4 个活跃任务，图片和持久海报共享；排队任务可取消 |
+| 暖 Image 引用 | 最多 48 项、16,000,000 自然像素；离屏最长 60 秒，像素和项数共同裁剪 |
+| 活跃引用 | 已登记展示引用独立于 detached warm 预算；释放后才进入有限暖 LRU |
+| 展示 metadata | 仅保留成功准备过的描述，最多 256 项会话 LRU；以原能力 validUntil 为截止，不再按 60 秒回收。无期限普通 URL 仍受容量与 scope reset 限制；不保留 blob 或大 inline 字符串 |
+| 来源索引 | 最多 256 项，主动移除过期描述 |
+| 访问描述 | 现有 resource access 授权来源；内存描述最多 256 项，持久化访问缓存继续沿用原合同 |
+
+同步 peek 仍只把已有 prepared 像素当作暖准备；只有访问描述热、像素冷的真正冷源，不能越过图片的 viewport gate。成功展示过且能力仍有效的历史描述可以在首 render 恢复 src，即使暖 Image 引用已按 60 秒或预算淘汰；随后仍经四并发 prepare 完成质量、尺寸校正与必要续签。恢复 src 不宣称已经 decoded：新 DOM 的 `complete`、自然尺寸、实际呈现和首 GPU 帧 ready 仍需浏览器观察。
+
+上述预算只约束相应 owner 持有的暖引用，不是 DOM、组件持有的 Image、浏览器 decoded cache、播放解码器或 GPU 的总内存上限。超过 16M 像素的工作集在长离屏后允许真实加载，不能承诺任意视图原质瞬时恢复。
+
+## 可见性、预热与取消
+
+- 现有 render model 是唯一几何来源；节点挂载集合、enter/retain 边界、LOD、DPR、布局和连线不变。
+- 空间 interest 只预热现有候选中的最多 8 个屏外不同资源。可见需求保留 DOM/IO 发现次序，不额外批量提前发起；全可视且无残留 interest 时不构造额外工作。
+- 当前有效消费者决定优先级：可见需求优先于屏外预热。加入和离开都会重新计算，不能把已经取消的可见消费者的历史优先级永久保留。
+- 同优先级使用已有尺寸信息作为调度成本提示；等待达到一秒后 FIFO 优先，防止大图被持续的小图请求饿死。提示不改变显示尺寸、原质、真实尺寸回调或像素预算计费。
+- 一个消费者取消不影响其他共享者。最后一个消费者退出后以 microtask 保护即时重挂，再撤销物理任务或队列项。
+- 屏外准备转为可见时，未完成 interest 仅保留到本次共享准备结算，便于跨异步访问解析交接；项目卸载仍释放自己的全部 interest，不留下永久 pin。
+- 账号切换在现有 `switchUserStorageScope` 边界主动 dispose：取消全部 URL 代际任务，停止旧队列继续启动，清理快照、引用和定时器。scope/generation 继续阻止晚到结果发布；同账号项目之间只允许有限缓存复用。
+
+## 展示与错误恢复
+
+`useCanvasMediaImage` 为 `RetainedCanvasImage` 和 `CachedResourceImage` 提供共同交接。新目标准备失败时，可保留同媒体仍有效的已有画面；首次加载失败使用现有反馈。已发生 DOM 图像错误的来源不能作为这种保留画面继续复用。
+
+- 图片的请求变体续签保持 requestedVariant，不静默把 thumbnail 升为 original。
+- `CachedResourceImage` 使用显式恢复策略：thumbnail 访问或准备失败时，允许经授权访问 original，再发布真正成功的 original。
+- 自动续签有界；`AbortError` 终止整条链，不升级为刷新、变体回退或 fallback。账号字符串相同但 session generation 已变化的取消也不能重试。
+- DOM imageError 按失败 src 撤销所有 consumer 的展示描述、暖像素及尚未完成的共享 prepare；旧错误 URL 不因其他 consumer 卸载而重新记入。retention cleanup 只释放像素引用，不再 remember 展示描述。失败后的有界刷新成功可重新取得成功凭据；被撤销的 late decode 不得重新发布旧描述。
+- 本地 `image:` 的 blob DOM 错误可以重新 `resolveImageUrl(storageKey)`，再经同一队列准备新 URL；成功恢复前不调用外部 `onError`，最终失败才报告。
+- 上传完成后的临时预览从原有 scope/node/绑定 storageKey 检查取得，作为 typed `preferredSource` 交接。它不写入画布 metadata，不放开任意裸 blob，不改原有 URL 撤销所有者。
+
+## 保持独立的合同
+
+被动海报只是图像消费者。没有海报时，原有空闲安排、串行抽帧、上传和 operations 保存仍负责生成海报，不为预热创建播放器。
+
+`CanvasPlaybackController` 继续拥有选择、token、播放状态和位置。播放器身份、首帧覆盖、暂停/切换、音轨与有声策略不迁入图片 owner。图片/海报测量继续遵守原始尺寸、manualSize、freeResize、locked 和既有操作保存合同。
+
+Blob/音轨/旧本地存储的全局预算、后端授权、引擎、CSS、节点布局与连线不在本次切片中重构。
+
+## 实现与验证入口
+
+- `services/canvas-image-loader.ts`：有界 owner、同步快照、优先级、共享取消、显式 dispose。
+- `services/canvas-media-source.ts`：完整描述匹配、访问续签、调用方恢复策略、真正成功来源的发布。
+- `components/canvas/use-canvas-media-image.ts`：共同展示生命周期与账号/目标身份护栏。
+- `lib/canvas/canvas-image-presentation.ts`：活跃像素引用的 retain/release hook；cleanup 不再 remember，也不持有独立展示缓存。
+- `pages/canvas/use-canvas-media-interests.ts`：有限屏外预热和项目释放。
+- `lib/user-session.ts`：切号 dispose 入口。
+- `test/canvas-media-owner.test.ts`：暖准备与展示描述交接。
+- `test/canvas-media-lifecycle.test.ts`：期限、身份、URL 代际、共享取消、优先级升降、成本/FIFO、预算与晚到结果。
+- `test/canvas-media-handoff.test.ts`：thumbnail 恢复、上传绑定、本地 blob 恢复、冷访问 gate 与屏外 interest 合同。
+- `test/canvas-image-metadata.test.ts` 及独立 metadata worker：13 个行为场景，覆盖冷注册拒用、能力过期与同 URL 注册不延长、错误撤销/cleanup 不复活、刷新恢复、同媒体变体升级、资源替换、blob、scope、256 项 LRU，以及共享 consumer 成功、取消、过期和撤销后的 late decode。
+- `test/canvas-image-continuity.test.ts` 与 `test/canvas-image-long-visible.test.ts`：已展示媒体在像素过期后仍可同步恢复有效描述；long-visible 同时覆盖图片与持久海报，不再把展示描述按 60 秒失效作为预期。
+
+回归还包括既有 continuity、long-visible、activity、original loading、display loading、上传与视频专项。含 `mock.module` 的专项按文件独立进程运行，避免模块替身跨文件污染。
+
+真实性能验收需将普通手势与质量/解码诊断分开，记录相同输入锚点、hover/selection、实际矩阵、1440×900/DPR2/CPU1、预热及计分轮次。短离屏、屏内停留超过一分钟后的短离屏、70 秒和 5 分钟离屏、冷源、淘汰、反向取消、播放、编辑焦点与保存分别验收；记录 missingNode、missingImg、emptySource、unready，而不是只看请求数。单路线结果与专项通过不能推广为全场景零闪烁、首 GPU 帧 ready 或帧率显著提升；chrome 调度的独立职责见[画布节点细节调度](./canvas-detail-scheduling)。

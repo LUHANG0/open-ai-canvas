@@ -41,7 +41,8 @@ export function useCanvasViewportController({
 
     const previewViewport = useCallback((next: ViewportTransform) => {
         viewportRef.current = next;
-        if (containerRef.current) containerRef.current.dataset.canvasViewportInteracting = "true";
+        const container = containerRef.current;
+        if (container && container.dataset.canvasViewportInteracting !== "true") container.dataset.canvasViewportInteracting = "true";
         applyCanvasLiveViewport(containerRef.current, next);
     }, [containerRef, viewportRef]);
 

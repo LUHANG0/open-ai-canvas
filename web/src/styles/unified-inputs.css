@@ -20,7 +20,7 @@
     --unified-input-addon: color-mix(in srgb, var(--foreground) 4%, transparent);
 }
 
-:where(.ant-input:not(textarea), .ant-input-affix-wrapper, .ant-input-number, .ant-input-number-affix-wrapper, .ant-input-group-wrapper .ant-input-group-addon, .ant-otp-input) {
+:where(.ant-input:not(textarea)),:where( .ant-input-affix-wrapper),:where( .ant-input-number),:where( .ant-input-number-affix-wrapper),:where( .ant-input-group-wrapper .ant-input-group-addon),:where( .ant-otp-input) {
     border-color: transparent !important;
     border-radius: var(--r-lg) !important;
     background: var(--unified-input-surface) !important;
@@ -30,7 +30,7 @@
         color var(--control-motion-duration) ease !important;
 }
 
-:where(textarea.ant-input, .ant-input-textarea textarea.ant-input) {
+:where(textarea.ant-input),:where( .ant-input-textarea textarea.ant-input) {
     border-color: transparent !important;
     border-radius: var(--r-lg) !important;
     background: var(--unified-input-surface) !important;
@@ -38,9 +38,9 @@
 }
 
 :where(
-    .ant-input:not(.ant-input-disabled):hover,
-    .ant-input-affix-wrapper:not(.ant-input-affix-wrapper-disabled):hover,
-    .ant-input-number:not(.ant-input-number-disabled):hover,
+    .ant-input:not(.ant-input-disabled):hover),:where(
+    .ant-input-affix-wrapper:not(.ant-input-affix-wrapper-disabled):hover),:where(
+    .ant-input-number:not(.ant-input-number-disabled):hover),:where(
     .ant-input-number-affix-wrapper:not(.ant-input-number-affix-wrapper-disabled):hover
 ) {
     border-color: transparent !important;
@@ -48,21 +48,21 @@
     box-shadow: none !important;
 }
 
-:where(.ant-input:focus, .ant-input-focused, .ant-input-affix-wrapper-focused, .ant-input-number-focused, .ant-input-number-affix-wrapper-focused) {
+:where(.ant-input:focus),:where( .ant-input-focused),:where( .ant-input-affix-wrapper-focused),:where( .ant-input-number-focused),:where( .ant-input-number-affix-wrapper-focused) {
     border-color: transparent !important;
     background: var(--unified-input-surface-focus) !important;
     outline: var(--unified-input-keyboard-outline, none) !important;
     box-shadow: none !important;
 }
 
-:where(.ant-input-affix-wrapper > .ant-input, .ant-input-number .ant-input-number-input, .ant-input-number-affix-wrapper .ant-input-number-input, .ant-input-search .ant-input) {
+:where(.ant-input-affix-wrapper > .ant-input),:where( .ant-input-number .ant-input-number-input),:where( .ant-input-number-affix-wrapper .ant-input-number-input),:where( .ant-input-search .ant-input) {
     border: 0 !important;
     border-radius: 0 !important;
     background: transparent !important;
     box-shadow: none !important;
 }
 
-:where(.ant-input, .ant-input-number-input)::placeholder {
+:where(.ant-input)::placeholder,:where( .ant-input-number-input)::placeholder {
     color: var(--unified-input-placeholder) !important;
 }
 
@@ -82,52 +82,54 @@
 }
 
 /* 外壳已经承担视觉时，内部输入不再形成第二层线条。 */
-:where(.ant-input-affix-wrapper .ant-input, .ant-input-group .ant-input, .ant-input-group .ant-input-affix-wrapper, .ant-otp .ant-otp-input-wrapper .ant-input) {
+:where(.ant-input-affix-wrapper .ant-input),:where( .ant-input-group .ant-input),:where( .ant-input-group .ant-input-affix-wrapper),:where( .ant-otp .ant-otp-input-wrapper .ant-input) {
     border-color: transparent !important;
     background: transparent !important;
     box-shadow: none !important;
 }
 
 /* 错误和警告仍需要可识别的状态，但不再叠加发光描边。 */
-:where(.ant-input-status-error:not(.ant-input-disabled), .ant-input-affix-wrapper-status-error:not(.ant-input-affix-wrapper-disabled), .ant-input-number-status-error:not(.ant-input-number-disabled)) {
+:where(.ant-input-status-error:not(.ant-input-disabled)),:where( .ant-input-affix-wrapper-status-error:not(.ant-input-affix-wrapper-disabled)),:where( .ant-input-number-status-error:not(.ant-input-number-disabled)) {
     background: color-mix(in srgb, var(--destructive, #ef4444) 10%, transparent) !important;
 }
 
-:where(.ant-input-status-warning:not(.ant-input-disabled), .ant-input-affix-wrapper-status-warning:not(.ant-input-affix-wrapper-disabled), .ant-input-number-status-warning:not(.ant-input-number-disabled)) {
+:where(.ant-input-status-warning:not(.ant-input-disabled)),:where( .ant-input-affix-wrapper-status-warning:not(.ant-input-affix-wrapper-disabled)),:where( .ant-input-number-status-warning:not(.ant-input-number-disabled)) {
     background: color-mix(in srgb, var(--warning, #f59e0b) 12%, transparent) !important;
 }
 
-:where(.ant-input-disabled, .ant-input-affix-wrapper-disabled, .ant-input-number-disabled, .ant-input-number-affix-wrapper-disabled) {
+:where(.ant-input-disabled),:where( .ant-input-affix-wrapper-disabled),:where( .ant-input-number-disabled),:where( .ant-input-number-affix-wrapper-disabled) {
     background: color-mix(in srgb, var(--foreground) 4%, transparent) !important;
     color: color-mix(in srgb, var(--foreground) 42%, transparent) !important;
     box-shadow: none !important;
 }
 
 /* 输入框和其外壳直接消费原生焦点，首次 Tab 不需要先触发自身 keydown。 */
-:where(.ant-input, .ant-input-number-input):focus-visible,
-:where(.ant-input-affix-wrapper, .ant-input-number-affix-wrapper, .ant-input-number):has(input:focus-visible) {
+:where(.ant-input):focus-visible,:where( .ant-input-number-input):focus-visible,
+:where(.ant-input-affix-wrapper):has(input:focus-visible),
+:where( .ant-input-number-affix-wrapper):has(input:focus-visible),
+:where( .ant-input-number):has(input:focus-visible) {
     outline: var(--unified-input-keyboard-outline, 1px solid var(--control-focus-ring)) !important;
     outline-offset: 2px !important;
     box-shadow: none !important;
 }
 
 /* 只有外壳画线，避免前后缀与数字输入框出现两层焦点边界。 */
-:where(.ant-input-affix-wrapper > .ant-input, .ant-input-number .ant-input-number-input, .ant-input-number-affix-wrapper .ant-input-number-input):focus-visible,
+:where(.ant-input-affix-wrapper > .ant-input):focus-visible,:where( .ant-input-number .ant-input-number-input):focus-visible,:where( .ant-input-number-affix-wrapper .ant-input-number-input):focus-visible,
 .ant-input-number-affix-wrapper .ant-input-number:has(input:focus-visible) { outline: none !important; }
 
 @media (prefers-reduced-motion: reduce) {
-    :where(.ant-input, .ant-input-affix-wrapper, .ant-input-number, .ant-input-number-affix-wrapper) { transition-duration: 0s !important; }
+    :where(.ant-input),:where( .ant-input-affix-wrapper),:where( .ant-input-number),:where( .ant-input-number-affix-wrapper) { transition-duration: 0s !important; }
 }
 
 /* inset：父容器已经是输入表面，子输入框退成纯文字区。 */
-:where(.auth-code-field, .canvas-prompt-optimizer-sender, .ant-input-group, .ant-space-compact) :where(.ant-input, .ant-input-affix-wrapper, .ant-input-number) {
+:where(.auth-code-field) :where(.ant-input, .ant-input-affix-wrapper, .ant-input-number),:where( .canvas-prompt-optimizer-sender) :where(.ant-input, .ant-input-affix-wrapper, .ant-input-number),:where( .ant-input-group) :where(.ant-input, .ant-input-affix-wrapper, .ant-input-number),:where( .ant-space-compact) :where(.ant-input, .ant-input-affix-wrapper, .ant-input-number) {
     border: 0 !important;
     background: transparent !important;
     box-shadow: none !important;
 }
 
 /* borderless：行内改名和节点标题不需要控件底。 */
-:where(.ant-input-borderless, .ant-input-affix-wrapper-borderless, .ant-input-number-borderless) {
+:where(.ant-input-borderless),:where( .ant-input-affix-wrapper-borderless),:where( .ant-input-number-borderless) {
     min-height: auto !important;
     border: 0 !important;
     border-radius: 0 !important;
@@ -135,9 +137,13 @@
     box-shadow: none !important;
 }
 
-:where(.ant-input-borderless, .ant-input-affix-wrapper-borderless, .ant-input-number-borderless):hover,
-:where(.ant-input-borderless, .ant-input-affix-wrapper-borderless, .ant-input-number-borderless):focus,
-:where(.ant-input-borderless, .ant-input-affix-wrapper-borderless, .ant-input-number-borderless):focus-within {
+:where(.ant-input-borderless):hover,:where( .ant-input-affix-wrapper-borderless):hover,:where( .ant-input-number-borderless):hover,
+:where(.ant-input-borderless):focus,
+:where( .ant-input-affix-wrapper-borderless):focus,
+:where( .ant-input-number-borderless):focus,
+:where(.ant-input-borderless):focus-within,
+:where( .ant-input-affix-wrapper-borderless):focus-within,
+:where( .ant-input-number-borderless):focus-within {
     background: color-mix(in srgb, var(--foreground) 5%, transparent) !important;
     box-shadow: none !important;
 }

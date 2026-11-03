@@ -17,6 +17,7 @@ import { useGlobalAgentStore } from "@/stores/use-global-agent-store";
 import { initializeRemoteUserDataSession, installRemoteUserDataAutoSync, resetRemoteUserDataSync, withRemoteUserDataSyncExclusive } from "@/services/user-data-sync";
 import { clearResourceAccessCache } from "@/services/api/resources";
 import { clearResourceBlobCache } from "@/services/resource-blob-cache";
+import { disposeCanvasImageSession } from "@/services/canvas-image-loader";
 import { withGenerationConsumersPaused } from "@/services/generation-consumer-lifecycle";
 import { recordDiagnosticEvent } from "@/services/diagnostics/client-diagnostics";
 
@@ -25,6 +26,7 @@ export async function switchUserStorageScope(userId?: string | null) {
         await withRemoteUserDataSyncExclusive(async () => {
             await Promise.all([flushCanvasStorePersistence(), flushAssetStorePersistence()]);
             resetRemoteUserDataSync();
+            disposeCanvasImageSession();
             clearResourceAccessCache();
             clearResourceBlobCache();
             setActiveUserScope(userId);

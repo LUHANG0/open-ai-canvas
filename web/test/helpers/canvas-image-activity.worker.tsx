@@ -75,19 +75,19 @@ self.onmessage = async () => {
         const unsubscribe = loader.subscribeCanvasImageActivity("/shared.png", () => { notifications++; });
         const unrelatedUnsubscribe = loader.subscribeCanvasImageActivity("/other.png", () => { unrelated++; });
         const first = new AbortController(), second = new AbortController();
-        const firstResult = loader.prepareCanvasImage("/shared.png", first.signal).catch((error) => error.name);
+        const firstResult = loader.prepareCanvasImage(loader.registerCanvasImageSource("/shared.png"), first.signal).catch((error) => error.name);
         const sharedImage = images.at(-1)!;
-        const secondResult = loader.prepareCanvasImage("/shared.png", second.signal).catch((error) => error.name);
+        const secondResult = loader.prepareCanvasImage(loader.registerCanvasImageSource("/shared.png"), second.signal).catch((error) => error.name);
         assert(loader.isCanvasImageActive("/shared.png") && notifications === 1 && unrelated === 0, "activity notified unrelated sources or missed sharing");
         first.abort(); await Promise.resolve();
         assert(await firstResult === "AbortError" && loader.isCanvasImageActive("/shared.png"), "one consumer cancelled the other's job");
         sharedImage.onload!(); sharedImage.decoded.resolve(); await secondResult;
         assert(!loader.isCanvasImageActive("/shared.png") && notifications === 2 && unrelated === 0, "shared decode never settled activity");
         const count = images.length;
-        await loader.prepareCanvasImage("/shared.png", new AbortController().signal);
+        await loader.prepareCanvasImage(loader.registerCanvasImageSource("/shared.png"), new AbortController().signal);
         assert(images.length === count && notifications === 2, "cache hit incorrectly restarted loading activity");
         unsubscribe(); unrelatedUnsubscribe();
-        const timeout = await loader.prepareCanvasImage("/timeout.png", new AbortController().signal, 5).then(() => false, () => true);
+        const timeout = await loader.prepareCanvasImage(loader.registerCanvasImageSource("/timeout.png"), new AbortController().signal, 5).then(() => false, () => true);
         assert(timeout && !loader.isCanvasImageActive("/timeout.png") && loader.canvasImagePreparationStats().active === 0, "timeout left stale activity");
         self.postMessage({ initial, decoded: true, failed: true, hidden: true, offscreen: true, isolated: true, shared: true, cached: true, timeout: true, drained: true });
     } catch (error) {

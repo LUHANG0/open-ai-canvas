@@ -227,3 +227,37 @@ test("confirmed video body click starts explicit playback without requiring a na
         expect(host.querySelector('[data-node-selected="true"]')).not.toBeNull();
     } finally { await act(async () => root.unmount()); host.remove(); frames.clear(); mediaIO.mockRestore(); }
 });
+
+test("inactive connection hit targets survive zoom while hover and keyboard focus reveal current-size decorations", async () => {
+    const host = document.createElement("div"); document.body.append(host);
+    const root = createRoot(host);
+    const data = sample("rail");
+    const render = async (scale: number, selected = false) => act(async () => root.render(<CanvasNode data={data} scale={scale} isSelected={selected} isRelated={false} isFocusRelated={false} isConnectionTarget={false} onMouseDown={noop} onHoverStart={noop} onHoverEnd={noop} onConnectStart={noop} onResize={noop} onTitleChange={noop} onContentChange={noop} onContextMenu={noop} />));
+    try {
+        await render(1);
+        const rail = host.querySelector<HTMLButtonElement>('[data-canvas-connection-rail="right"]')!;
+        const label = rail.getAttribute("aria-label");
+        expect(rail.querySelector("span")).toBeNull();
+        await render(0.25);
+        expect(host.querySelector('[data-canvas-connection-rail="right"]')).toBe(rail);
+        expect(rail.style.width).toBe("80px");
+        expect(rail.getAttribute("aria-label")).toBe(label);
+        expect(rail.querySelector("span")).toBeNull();
+        await act(async () => rail.dispatchEvent(new dom.FocusEvent("focusin", { bubbles: true })));
+        expect(rail.querySelector("svg")!.getAttribute("width")).toBe("32");
+        await render(0.1);
+        expect(rail.querySelector("svg")!.getAttribute("width")).toBe("80");
+        await act(async () => rail.dispatchEvent(new dom.FocusEvent("focusout", { bubbles: true })));
+        expect(rail.querySelector("span")).toBeNull();
+        Object.defineProperty(rail, "getBoundingClientRect", { configurable: true, value: () => ({ left: 0, top: 0, width: 80, height: 80 }) });
+        await act(async () => rail.dispatchEvent(new dom.PointerEvent("pointerover", { bubbles: true, clientX: 42, clientY: 40, relatedTarget: document.body })));
+        // The first hover must retain its offset even though the span mounted during this event.
+        expect(rail.querySelector<HTMLSpanElement>("span")!.style.transform).toContain("translate(20px, 0px)");
+        await act(async () => rail.dispatchEvent(new dom.PointerEvent("pointerout", { bubbles: true, relatedTarget: document.body })));
+        expect(rail.querySelector("span")).toBeNull();
+        await render(0.25, true);
+        expect(rail.querySelector("svg")!.getAttribute("width")).toBe("32");
+        await render(0.25, false);
+        expect(rail.querySelector("span")).toBeNull();
+    } finally { await act(async () => root.unmount()); host.remove(); frames.clear(); }
+});

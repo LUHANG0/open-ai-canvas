@@ -79,7 +79,6 @@ export function useCanvasHistory({
     const lastHistoryRef = useRef<CanvasHistorySnapshot | null>(null);
     const historyCommitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const applyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-    const applyingHistoryRef = useRef(false);
     const historyPausedRef = useRef(false);
     const [historyState, setHistoryState] = useState({ canUndo: false, canRedo: false });
 
@@ -102,14 +101,12 @@ export function useCanvasHistory({
         }
         historyRef.current = { past: [], future: [] };
         lastHistoryRef.current = snapshot;
-        applyingHistoryRef.current = false;
         historyPausedRef.current = false;
         setHistoryState({ canUndo: false, canRedo: false });
     }, [clearCommitTimer]);
 
     const applyHistorySnapshot = useCallback((snapshot: CanvasHistorySnapshot) => {
         clearCommitTimer();
-        applyingHistoryRef.current = true;
         lastHistoryRef.current = snapshot;
         setNodes(snapshot.nodes);
         setConnections(snapshot.connections);
@@ -123,52 +120,60 @@ export function useCanvasHistory({
         setContextMenu(null);
         if (applyTimerRef.current) clearTimeout(applyTimerRef.current);
         applyTimerRef.current = setTimeout(() => {
-            applyingHistoryRef.current = false;
             applyTimerRef.current = null;
             setHistoryState({ canUndo: historyRef.current.past.length > 0, canRedo: historyRef.current.future.length > 0 });
         });
     }, [applyCanvasAppearance, clearCommitTimer, setActiveChatId, setBackgroundMode, setChatSessions, setConnections, setContextMenu, setNodes, setSelectedConnectionId, setSelectedNodeIds, setShowImageInfo]);
 
+    const commitPendingHistory = useCallback(() => {
+        clearCommitTimer();
+        if (!projectLoaded || historyPausedRef.current) return;
+        const current = createHistorySnapshot();
+        const last = lastHistoryRef.current;
+        if (!last || snapshotsShareReferences(last, current)) return;
+        const patch = createCanvasHistoryPatch(last, current);
+        // Equal save echoes advance the reference baseline, not the undo stack.
+        lastHistoryRef.current = current;
+        if (!patch) return;
+        historyRef.current.past.push(patch);
+        if (historyRef.current.past.length > 50) historyRef.current.past.shift();
+        historyRef.current.future = [];
+        setHistoryState({ canUndo: true, canRedo: false });
+    }, [clearCommitTimer, createHistorySnapshot, projectLoaded]);
+
     const undoCanvas = useCallback(() => {
+        // An edit may still be inside the ordinary 180ms merge window.
+        commitPendingHistory();
         const patch = historyRef.current.past.pop();
         const current = lastHistoryRef.current;
         if (!patch || !current) return;
         historyRef.current.future.push(patch);
         applyHistorySnapshot(applyCanvasHistoryPatch(current, patch, "before"));
-    }, [applyHistorySnapshot]);
+    }, [applyHistorySnapshot, commitPendingHistory]);
 
     const redoCanvas = useCallback(() => {
+        // A genuine new edit must invalidate an older future before popping it.
+        commitPendingHistory();
         const patch = historyRef.current.future.pop();
         const current = lastHistoryRef.current;
         if (!patch || !current) return;
         historyRef.current.past.push(patch);
         applyHistorySnapshot(applyCanvasHistoryPatch(current, patch, "after"));
-    }, [applyHistorySnapshot]);
+    }, [applyHistorySnapshot, commitPendingHistory]);
 
     const getHistoryCleanupContext = useCallback(() => ({ history: historyRef.current, lastHistory: lastHistoryRef.current }), []);
 
     useEffect(() => {
-        if (!projectLoaded || applyingHistoryRef.current || historyPausedRef.current) return;
+        if (!projectLoaded || historyPausedRef.current) return;
         const next = createHistorySnapshot();
         const previous = lastHistoryRef.current;
         if (!previous || snapshotsShareReferences(previous, next)) return;
 
         clearCommitTimer();
-        historyCommitTimerRef.current = setTimeout(() => {
-            const current = createHistorySnapshot();
-            const last = lastHistoryRef.current;
-            if (!last) return;
-            const patch = createCanvasHistoryPatch(last, current);
-            historyCommitTimerRef.current = null;
-            lastHistoryRef.current = current;
-            if (!patch) return;
-            historyRef.current.past = [...historyRef.current.past.slice(-49), patch];
-            historyRef.current.future = [];
-            setHistoryState({ canUndo: true, canRedo: false });
-        }, 180);
+        historyCommitTimerRef.current = setTimeout(commitPendingHistory, 180);
 
         return clearCommitTimer;
-    }, [clearCommitTimer, createHistorySnapshot, projectLoaded]);
+    }, [clearCommitTimer, commitPendingHistory, createHistorySnapshot, projectLoaded]);
 
     useEffect(() => () => {
         clearCommitTimer();
@@ -188,19 +193,42 @@ function snapshotsShareReferences(before: CanvasHistorySnapshot, after: CanvasHi
         && before.showImageInfo === after.showImageInfo;
 }
 
+/** JSON-shaped document values: key order is not content, and undefined object
+ * members are absent on persistence. Arrays remain ordered. Shared references
+ * return before enumeration, especially for large unchanged media metadata. */
+function sameHistoryValue(before: unknown, after: unknown): boolean {
+    if (before === after) return true;
+    if (!before || !after || typeof before !== "object" || typeof after !== "object") return false;
+    if (Array.isArray(before) || Array.isArray(after)) {
+        if (!Array.isArray(before) || !Array.isArray(after) || before.length !== after.length) return false;
+        for (let index = 0; index < before.length; index++) if (!sameHistoryValue(before[index], after[index])) return false;
+        return true;
+    }
+    const left = before as Record<string, unknown>, right = after as Record<string, unknown>;
+    let definedKeys = 0;
+    for (const key of Object.keys(left)) {
+        if (left[key] === undefined) continue;
+        if (!Object.hasOwn(right, key) || !sameHistoryValue(left[key], right[key])) return false;
+        definedKeys++;
+    }
+    for (const key of Object.keys(right)) if (right[key] !== undefined) definedKeys--;
+    return definedKeys === 0;
+}
+
 function createCanvasHistoryPatch(before: CanvasHistorySnapshot, after: CanvasHistorySnapshot): CanvasHistoryPatch | null {
     const patch: CanvasHistoryPatch = {};
     patch.nodes = createEntityPatch(before.nodes, after.nodes);
     patch.connections = createEntityPatch(before.connections, after.connections);
     patch.chatSessions = createEntityPatch(before.chatSessions, after.chatSessions);
     if (before.activeChatId !== after.activeChatId) patch.activeChatId = { before: before.activeChatId, after: after.activeChatId };
-    if (before.canvasAppearance !== after.canvasAppearance) patch.canvasAppearance = { before: before.canvasAppearance, after: after.canvasAppearance };
+    if (!sameHistoryValue(before.canvasAppearance, after.canvasAppearance)) patch.canvasAppearance = { before: before.canvasAppearance, after: after.canvasAppearance };
     if (before.backgroundMode !== after.backgroundMode) patch.backgroundMode = { before: before.backgroundMode, after: after.backgroundMode };
     if (before.showImageInfo !== after.showImageInfo) patch.showImageInfo = { before: before.showImageInfo, after: after.showImageInfo };
     return Object.values(patch).some(Boolean) ? patch : null;
 }
 
 function createEntityPatch<T extends { id: string }>(before: T[], after: T[]): EntityPatch<T> | undefined {
+    if (before === after) return undefined;
     const beforeById = new Map(before.map((item) => [item.id, item]));
     const afterById = new Map(after.map((item) => [item.id, item]));
     const ids = new Set([...beforeById.keys(), ...afterById.keys()]);
@@ -208,7 +236,7 @@ function createEntityPatch<T extends { id: string }>(before: T[], after: T[]): E
     ids.forEach((id) => {
         const beforeItem = beforeById.get(id);
         const afterItem = afterById.get(id);
-        if (beforeItem !== afterItem) changes.push({ id, before: beforeItem, after: afterItem });
+        if (!sameHistoryValue(beforeItem, afterItem)) changes.push({ id, before: beforeItem, after: afterItem });
     });
 
     const beforeOrder = before.map((item) => item.id);

@@ -334,3 +334,46 @@ test("Mac Control-left blank drag yields to the context menu without capture or 
         else Reflect.deleteProperty(navigator, "platform");
     }
 });
+
+for (const marker of ["data-connection-id", "data-connection-batch"]) {
+    test(`${marker}: connection input cannot start blank selection or double-click creation`, async () => {
+        const host = document.createElement("div"); document.body.append(host);
+        const root = createRoot(host), ref = createRef<HTMLDivElement>();
+        let selections = 0, creations = 0, captures = 0;
+        try {
+            await act(async () => root.render(<CanvasViewport containerRef={ref} viewport={{ x: 0, y: 0, k: 1 }} boxSelectEnabled onViewportChange={() => {}} onCanvasMouseDown={() => selections++} onCanvasDoubleClick={() => creations++}>
+                <svg><path {...{ [marker]: "edge" }} data-hit-target d="M 0 50 L 200 50" /></svg>
+                <div data-blank-target />
+            </CanvasViewport>));
+            ref.current!.setPointerCapture = () => { captures++; };
+            const hit = host.querySelector("[data-hit-target]")!;
+            await act(async () => {
+                hit.dispatchEvent(new window.PointerEvent("pointerdown", { bubbles: true, cancelable: true, isPrimary: true, pointerType: "mouse", pointerId: 1, button: 0, clientX: 100, clientY: 50 }));
+                hit.dispatchEvent(new window.MouseEvent("dblclick", { bubbles: true, clientX: 100, clientY: 50 }));
+            });
+            expect({ selections, creations, captures }).toEqual({ selections: 0, creations: 0, captures: 0 });
+            const blank = host.querySelector("[data-blank-target]")!;
+            await act(async () => {
+                blank.dispatchEvent(new window.PointerEvent("pointerdown", { bubbles: true, cancelable: true, isPrimary: true, pointerType: "mouse", pointerId: 2, button: 0 }));
+                blank.dispatchEvent(new window.MouseEvent("dblclick", { bubbles: true }));
+            });
+            expect({ selections, creations, captures }).toEqual({ selections: 1, creations: 1, captures: 1 });
+        } finally { await act(async () => root.unmount()); host.remove(); }
+    });
+
+    test(`${marker}: middle pointer still enters the viewport pan intent`, async () => {
+        const host = document.createElement("div"); document.body.append(host);
+        const root = createRoot(host), ref = createRef<HTMLDivElement>();
+        let captures = 0, selections = 0;
+        try {
+            await act(async () => root.render(<CanvasViewport containerRef={ref} viewport={{ x: 0, y: 0, k: 1 }} boxSelectEnabled onViewportChange={() => {}} onCanvasMouseDown={() => selections++}>
+                <svg><path {...{ [marker]: "edge" }} data-hit-target d="M 0 50 L 200 50" /></svg>
+            </CanvasViewport>));
+            ref.current!.setPointerCapture = () => { captures++; };
+            await act(async () => host.querySelector("[data-hit-target]")!.dispatchEvent(new window.PointerEvent("pointerdown", { bubbles: true, cancelable: true, isPrimary: true, pointerType: "mouse", pointerId: 3, button: 1, clientX: 100, clientY: 50 })));
+            expect(captures).toBe(1);
+            expect(selections).toBe(0);
+            expect(ref.current!.dataset.canvasPanState).toBe("grabbing");
+        } finally { await act(async () => root.unmount()); host.remove(); }
+    });
+}

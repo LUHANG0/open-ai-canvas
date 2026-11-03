@@ -151,6 +151,29 @@ const accessCache = new Map<string, CachedResourceAccess>();
 const accessRequests = new Map<string, Promise<ResourceAccess>>();
 const pendingResourceAccess = new Map<string, PendingResourceAccess>();
 let resourceAccessBatchTimer: ReturnType<typeof setTimeout> | undefined;
+const MAX_MEMORY_ACCESS_DESCRIPTORS = 256;
+
+function cacheResourceAccess(key: string, entry: CachedResourceAccess) {
+    accessCache.delete(key);
+    accessCache.set(key, entry);
+    while (accessCache.size > MAX_MEMORY_ACCESS_DESCRIPTORS) accessCache.delete(accessCache.keys().next().value!);
+}
+
+/** Synchronous capability peek; never performs I/O or serves an expired descriptor. */
+export function peekResourceAccess(storageKey: string | undefined, variant: ResourceAccessVariant = "original") {
+    const id = resourceIdFromStorageKey(storageKey);
+    if (!id) return undefined;
+    const key = `${getActiveUserScope()}:${id}:display:${variant}:`;
+    const cached = accessCache.get(key);
+    if (!cached) return undefined;
+    if (cached.expiresAt <= Date.now()) {
+        accessCache.delete(key);
+        return undefined;
+    }
+    accessCache.delete(key);
+    accessCache.set(key, cached);
+    return cached.value;
+}
 const PERSISTED_DISPLAY_ACCESS_PREFIX = "resource-access-v1:";
 
 function persistedDisplayAccessKey(resourceId: string, variant: ResourceAccessVariant) {
@@ -162,10 +185,11 @@ function shouldPersistDisplayAccess(value: ResourceAccess) {
     return value.delivery === "cdn" || value.delivery === "origin";
 }
 
-function resourceAccessCacheExpiry(value: ResourceAccess, now = Date.now()) {
+export function resourceAccessCacheExpiry(value: ResourceAccess, now = Date.now()) {
     const expiresAt = value.expiresAt ? new Date(value.expiresAt).getTime() : Number.NaN;
     if (Number.isFinite(expiresAt) && expiresAt <= now + 1_000) return now;
     const refreshAt = value.refreshAt ? new Date(value.refreshAt).getTime() : Number.NaN;
+    if (Number.isFinite(refreshAt) && refreshAt <= now) return now;
     const candidates = [Number.isFinite(refreshAt) && refreshAt > now ? refreshAt : Number.POSITIVE_INFINITY, Number.isFinite(expiresAt) && expiresAt > now ? expiresAt - 15_000 : Number.POSITIVE_INFINITY].filter(Number.isFinite);
     if (candidates.length) return Math.max(now, Math.min(...candidates));
     return now + 5 * 60_000;
@@ -507,7 +531,7 @@ async function completeResourceAccessBatchEntry(entry: PendingResourceAccess, it
     const value = item.access;
     const cachedEntry = { value, expiresAt: resourceAccessCacheExpiry(value) } satisfies CachedResourceAccess;
     if (cachedEntry.expiresAt > Date.now()) {
-        accessCache.set(entry.key, cachedEntry);
+        cacheResourceAccess(entry.key, cachedEntry);
         if (entry.payload.purpose === "display") await persistDisplayAccess(entry.scope, entry.payload.resourceId, entry.payload.variant, cachedEntry);
     }
     if (entry.generation !== accessGeneration || entry.scope !== getActiveUserScope()) {
@@ -586,7 +610,7 @@ export async function getResourceAccess(storageKey: string | undefined, purpose:
                 const persisted = await readPersistedDisplayAccess(scope, id, variant);
                 assertResourceRequestCurrent(generation, scope);
                 if (persisted) {
-                    accessCache.set(key, persisted);
+                    cacheResourceAccess(key, persisted);
                     return persisted.value;
                 }
             }

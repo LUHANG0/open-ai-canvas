@@ -4,7 +4,7 @@ import { Link2 } from "lucide-react";
 import { CANVAS_CONNECTION_STROKE_WIDTH, canvasThemes } from "@/lib/canvas-theme";
 import { useActiveTheme } from "@/stores/canvas/use-canvas-theme-store";
 
-import { canvasConnectionPath, CanvasConnectionBeam, ConnectionPath } from "@/components/canvas/canvas-connections";
+import { canvasConnectionPath, CanvasConnectionBeam, CanvasConnectionHitLayer } from "@/components/canvas/canvas-connections";
 import { CanvasFrameNode } from "@/components/canvas/canvas-frame-node";
 import { CanvasNode } from "@/components/canvas/canvas-node";
 import { useCanvasVisualNode } from "@/components/canvas/canvas-node-resize-motion";
@@ -15,6 +15,7 @@ import { sortCanvasNodesByStackOrder, type CanvasNodeStackOrder } from "@/lib/ca
 import type { CanvasResourceReference } from "@/lib/canvas/canvas-resource-references";
 import { isFrameNode } from "@/lib/canvas/canvas-frame";
 import type { CanvasNodeRenderLOD } from "@/lib/canvas/canvas-node-lod";
+import { canvasNodeUsesProjectContent } from "@/lib/canvas/canvas-node-content-routing";
 import type { CanvasDisplayConnection, CanvasFolderStyle, CanvasFolderTheme, CanvasNodeData, Position, SelectionBox } from "@/types/canvas";
 
 type DragPreview = { x: number; y: number; nodeIds: Set<string> } | null;
@@ -35,6 +36,7 @@ type CanvasProjectWorldLayersProps = {
     nodeById: Map<string, CanvasNodeData>;
     visibleNodes: CanvasNodeData[];
     nodeRenderLODById: Map<string, CanvasNodeRenderLOD>;
+    nodeDetailLODById?: Map<string, CanvasNodeRenderLOD>;
     nodeStackOrder: CanvasNodeStackOrder;
     frameChildrenById: Map<string, CanvasNodeData[]>;
     linkedFolderPreviewNodesById: Map<string, CanvasNodeData[]>;
@@ -123,30 +125,13 @@ export const CanvasProjectWorldLayers = memo(function CanvasProjectWorldLayers(p
     };
     return (
         <>
-            <svg
-                className="absolute overflow-visible"
-                viewBox={`${props.connectionLayerBounds.left} ${props.connectionLayerBounds.top} ${props.connectionLayerBounds.width} ${props.connectionLayerBounds.height}`}
-                style={{ left: props.connectionLayerBounds.left, top: props.connectionLayerBounds.top, width: props.connectionLayerBounds.width, height: props.connectionLayerBounds.height, pointerEvents: "none", zIndex: 0 }}
-            >
-                {props.displayConnections.map(({ connection, from, to }) => (
-                    <ConnectionPath
-                        key={connection.id}
-                        connection={connection}
-                        from={from}
-                        to={to}
-                        fromScrollTop={props.scriptScrollTopById[from.id] || 0}
-                        toScrollTop={props.scriptScrollTopById[to.id] || 0}
-                        fromBatchScroll={props.batchScrollById?.[from.id]}
-                        toBatchScroll={props.batchScrollById?.[to.id]}
-                        active={props.selectedConnectionId === connection.id || props.relatedConnectionIds.has(connection.id)}
-                        visualMode="hover-only"
-                        // 拖动预览由 Leafer 图形层逐帧同步；隐藏这层静态 SVG 描边，避免两套位置叠出残影。
-                        hideVisual={props.isNodeDragging}
-                        onSelect={() => props.onConnectionSelect(connection.id)}
-                        onContextMenu={(event) => props.onConnectionContextMenu(event, connection.id)}
-                    />
-                ))}
-            </svg>
+            <CanvasConnectionHitLayer
+                connections={props.displayConnections} bounds={props.connectionLayerBounds} scale={viewportScale}
+                selectedId={props.selectedConnectionId} relatedIds={props.relatedConnectionIds}
+                scriptScrollTopById={props.scriptScrollTopById} batchScrollById={props.batchScrollById}
+                hideVisual={props.isNodeDragging}
+                onSelect={props.onConnectionSelect} onContextMenu={props.onConnectionContextMenu}
+            />
 
             {orderedVisibleNodes.map((node) =>
                 isFrameNode(node) ? (
@@ -172,6 +157,7 @@ export const CanvasProjectWorldLayers = memo(function CanvasProjectWorldLayers(p
                         key={node.id}
                         data={node}
                         renderLOD={props.nodeRenderLODById.get(node.id) || "full"}
+                        detailLOD={props.nodeDetailLODById ? props.nodeDetailLODById.get(node.id) || "preview" : undefined}
                         dragOffset={props.dragPreview?.nodeIds.has(node.id) ? props.dragPreview : undefined}
                         scale={viewportScale}
                         isSelected={props.selectedNodeIds.has(node.id)}
@@ -193,7 +179,7 @@ export const CanvasProjectWorldLayers = memo(function CanvasProjectWorldLayers(p
                         disableMediaEffects={props.mediaEffectsDisabledNodeId === node.id}
                         resourceLabel={props.resourceReferenceByNodeId.get(node.id)}
                         mentionReferences={props.mentionReferencesByNodeId.get(node.id) || EMPTY_RESOURCE_REFERENCES}
-                        renderNodeContent={props.renderCanvasNodeContent}
+                        renderNodeContent={canvasNodeUsesProjectContent(node) ? props.renderCanvasNodeContent : undefined}
                         drawingProjectId={props.projectId}
                         onMouseDown={props.onNodeMouseDown}
                         onHoverStart={props.onNodeHoverStart}
@@ -210,7 +196,7 @@ export const CanvasProjectWorldLayers = memo(function CanvasProjectWorldLayers(p
                         onViewImage={props.onViewImage}
                         onReplaceMedia={props.onReplaceMedia}
                         onOpenTextEditor={props.onOpenTextEditor}
-                        onOpenPrevis={props.onOpenPrevis}
+                        onOpenPrevis={node.metadata?.previsSceneId ? props.onOpenPrevis : undefined}
                         onOpenDrawing={props.onOpenDrawing}
                         onContextMenu={props.onNodeContextMenu}
                     />

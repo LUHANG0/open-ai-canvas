@@ -8,6 +8,7 @@ import { Select as UnifiedSelect } from "@/components/ui/base/select";
 import { SegmentedControl } from "@/components/ui/base/segmented-control";
 import { getWorkspaceAntThemeConfig } from "@/lib/app-theme";
 import { assetGridCardMinWidth, assetGridDensityOptions, parseAssetGridDensity } from "@/pages/assets/asset-grid-density";
+import { expectWhereDeclarations } from "./helpers/css-where-declarations";
 
 test("unified selects retain native accessible names and support the compatibility prop", () => {
     const options = [{ value: "all", label: "全部" }];
@@ -111,8 +112,14 @@ test("menu surfaces are explicitly scoped and old account inner overrides are re
     const controls = readFileSync(new URL("../src/styles/unified-buttons.css", import.meta.url), "utf8");
     expect(controls).toContain('.app-unified-select[data-input-modality="keyboard"]:not(.ant-select-open)');
     expect(globals.includes('.app-unified-select[data-input-modality="keyboard"]:not(.ant-select-open)')).toBe(false);
-    expect(globals).toMatch(/:where\(\.ant-select-dropdown, \.ant-dropdown-menu,[^)]*\)\s*\{\s*border: 0 !important;/);
-    expect(globals).toContain("body.app-spatial-overlays :where(.ant-dropdown-menu, .ant-select-dropdown, .ant-cascader-menus, .ant-mentions-dropdown) {\n        border: 0 !important;");
+    expectWhereDeclarations(globals, ["ant-select-dropdown", "ant-dropdown-menu", "ant-cascader-dropdown", "ant-tree-select-dropdown", "ant-picker-dropdown"], {
+        border: "0",
+        background: "var(--popover)",
+    });
+    expectWhereDeclarations(globals, ["ant-dropdown-menu", "ant-select-dropdown", "ant-cascader-menus", "ant-mentions-dropdown"], {
+        border: "0",
+        background: "var(--workspace-overlay-bg-strong)",
+    }, "body.app-spatial-overlays");
 });
 
 test("shared single-select popup uses a borderless surface instead of a bright focus frame", () => {

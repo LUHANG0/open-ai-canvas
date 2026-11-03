@@ -1,0 +1,41 @@
+---
+title: 画布 Agent 视频形象渲染
+---
+
+# 画布 Agent 视频形象渲染
+
+`AgentAvatarVideo` 只负责 Agent 视频形象的展示；不改变画布节点媒体 owner、播放业务、生成任务、保存合同或 UI 入口。
+
+## 正常路径
+
+- 同一个原生 video 保留 `autoPlay`、`muted`、`playsInline`、`loop`、`src` 和媒体 `onError` 合同。形象画布沿用绝对定位、contain、className 和禁止指针事件的布局。
+- WebGL 1 单纹理和全屏 quad 在 fragment shader 中完成 chromakey 与绿色溢出抑制。正常路径不调用 CPU `drawImage/getImageData/putImageData`，不调用 `readPixels`，也不逐帧同步查询 GL 错误。
+- 延续既有最长边 320、不放大小视频的尺寸规则，不降低帧率或暂停/隐藏形象。优先 `requestVideoFrameCallback`，不支持时使用 rAF；readyState、源身份、currentTime 与源尺寸去重阻止无数据或相同暂停/结束帧重复绘制。rAF fallback 在暂停时仍可能唤醒，但不会重复上传像素。
+- 输入视频纹理使用浏览器默认色彩转换、LINEAR 采样、CLAMP_TO_EDGE；Y 翻转将视频左上原点映射到 quad 的纹理原点。shader 采样值先量化为 0–255 字节，再使用既有阈值及正数 `floor(x + 0.5)` round。GL drawing buffer 与输出都使用 straight alpha，禁用 blending 和 dithering，避免混淆预乘 alpha。
+
+抠像合同：`green > 70`、`green - max(red, blue) > 12`、`green > red * 1.12`、`green > blue * 1.08` 时，透明度为 `clamp((38 - greenLead) / 26, 0, 1)`；绿通道减去 `round((1 - opacity) * greenLead * 0.75)`，但不低于 red/blue 的最大值；原 alpha 乘以该透明度并 round。2D fallback 保留原像素算法。
+
+## 源切换与所有权
+
+一个组件生命周期内只有一个 controller、一个有效帧回调和一张已呈现 canvas。controller 拥有 video 前面的呈现 canvas，React 拥有 video；卸载时同步移除 canvas。切换 src 不重挂 video、不销毁当前显示帧，也不重建 GPU 资源。
+
+切源显式 retarget：取消旧 callback，提升代次、重置新源帧去重。只有 `video.src`、`currentSrc` 与当前 source 一致且视频已有数据时才绘制新帧。连续切到尚未加载的新源时仍保留最后可用画面；取消后意外到达的旧代次 callback 不能提交画面、清掉新 callback ID 或重新调度。GL 使用 `preserveDrawingBuffer: true` 保留等待新 clip 时的最后关键帧；这是连续性与潜在 backing-buffer 成本的明确取舍，性能仍需实测。
+
+## 单向 2D 接管
+
+GL 不可用、分配/编译/链接失败、texture 上传异常、设备纹理尺寸超限或 contextlost 后，当前组件生命周期单向转入原 2D 算法，不自动尝试恢复 GL。
+
+GL canvas 不能切换成 2D context，因此接管使用新的 canvas。新 canvas 完成第一次 keyed draw 后才替换旧 canvas，不重挂 video、不重置播放位置，也不因成功接管触发素材 onError。contextlost 移除 GL 监听和资源；若视频此刻无数据，等待其就绪再呈现 2D。设备丢失可能已使旧 GL backing store 无效，不能承诺设备故障期间仍有完整旧像素。
+
+2D context 创建或读写像素也失败时只报告一次错误并停止调度，不把空白当作成功；原生视频网络/解码错误继续走组件的媒体 onError。卸载取消 RVFC/rAF、移除监听、删除 shader/program/buffer/texture 并移除呈现 canvas。
+
+GL setup 和输入尺寸变化的第一次上传检查错误；正常同尺寸帧不轮询 getError。纹理上传、浏览器视频色彩转换和 GPU 排队仍有成本；移除 CPU 像素路径不代表画布整体已达 60Hz。
+
+## 验证边界
+
+专项入口：
+
+- `web/test/agent-avatar-video-renderer.test.ts`：2D 颜色/alpha、GL 不可用/编译/链接/texture 故障、contextlost、真实上下文类型不可切换约束、准备后接管、尺寸变化、RVFC/rAF 去重、源代次与资源释放。
+- `web/test/agent-avatar-video-lifecycle.test.tsx`：真实 React 生命周期，video 身份/播放位置、loop/className、src 加载间隙保留画面、连续切源、过期 callback 与加载中卸载。
+
+这些测试替代浏览器 GL/媒体 I/O，不证明真实 GPU shader 编译、视频帧色彩、边缘透明度、滤波或性能收益。真实验收需对同一视频帧在浅深背景上比较 2D/GL，验证强制 fallback/contextlost 和 clip 切换，再对原生 Agent 开启的相同手势做普通性能配对。不得使用关闭形象、降低清晰度或隐藏画布交互的成绩替代正常路径。

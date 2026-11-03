@@ -123,14 +123,59 @@ function readCanvasPersistenceJournals(scope: string): CanvasPersistenceJournal[
         });
     } catch { return []; }
 }
+type CanvasJournalJsonFragment = { json: string; bytes: number };
+type CanvasJournalProjectFragment = CanvasJournalJsonFragment & { fields: Omit<CanvasProject, "viewport"> };
+// Canvas content is immutable (the same contract used by canvas-content.ts).
+// Weak node-array keys let viewport copies share encoding without retaining old canvases.
+const canvasJournalProjectFragments = new WeakMap<CanvasProject["nodes"], CanvasJournalProjectFragment>();
+const canvasJournalEncoder = new TextEncoder();
+
+function canvasJournalJsonFragment(value: unknown): CanvasJournalJsonFragment {
+    const json = JSON.stringify(value);
+    return { json, bytes: canvasJournalEncoder.encode(json).byteLength };
+}
+
+function canvasJournalProjectFragment(project: CanvasProject): CanvasJournalJsonFragment {
+    const { viewport, ...fields } = project;
+    let cached = canvasJournalProjectFragments.get(project.nodes);
+    const keys = Object.keys(fields) as (keyof typeof fields)[];
+    // Check every own field, including optional/new metadata; nodes alone are not
+    // a content version and must never hide edits to title, revision or chat state.
+    if (!cached || keys.length !== Object.keys(cached.fields).length || !keys.every((key) => fields[key] === cached!.fields[key])) {
+        cached = { ...canvasJournalJsonFragment(fields), fields };
+        canvasJournalProjectFragments.set(project.nodes, cached);
+    }
+    if (viewport === undefined) return cached;
+    const view = canvasJournalJsonFragment(viewport);
+    const separator = ',"viewport":';
+    return { json: `${cached.json.slice(0, -1)}${separator}${view.json}}`, bytes: cached.bytes + separator.length + view.bytes };
+}
+
+function serializeCanvasPersistenceJournal(journal: CanvasPersistenceJournal): string | null {
+    const { baseProjects, projects, ...metadata } = journal;
+    const envelope = canvasJournalJsonFragment(metadata);
+    const before = baseProjects.map(canvasJournalProjectFragment);
+    const after = projects.map(canvasJournalProjectFragment);
+    const beforeSeparator = ',"baseProjects":[';
+    const afterSeparator = '],"projects":[';
+    const end = ']}';
+    const bytes = envelope.bytes - 1 + beforeSeparator.length + afterSeparator.length + end.length
+        + Math.max(0, before.length - 1) + Math.max(0, after.length - 1)
+        + before.reduce((sum, fragment) => sum + fragment.bytes, 0)
+        + after.reduce((sum, fragment) => sum + fragment.bytes, 0);
+    // Count cached UTF-8 fragments before joining, avoiding a second full encode
+    // (and avoiding the combined allocation entirely for oversized records).
+    if (bytes > CANVAS_JOURNAL_MAX_BYTES) return null;
+    return `${envelope.json.slice(0, -1)}${beforeSeparator}${before.map((part) => part.json).join(",")}${afterSeparator}${after.map((part) => part.json).join(",")}${end}`;
+}
 
 function writeCanvasPersistenceJournal(journal: CanvasPersistenceJournal) {
     try {
         if (typeof window === "undefined" || !window.localStorage) return false;
-        const serialized = JSON.stringify(journal);
+        const serialized = serializeCanvasPersistenceJournal(journal);
         // Large media stays in IndexedDB. Oversized recovery records trigger an
         // immediate full save and remain visibly pending until that write succeeds.
-        if (new TextEncoder().encode(serialized).byteLength > CANVAS_JOURNAL_MAX_BYTES) return false;
+        if (serialized === null) return false;
         window.localStorage.setItem(canvasPersistenceJournalKey(journal.scope, journal.writerId), serialized);
         return true;
     } catch { return false; }

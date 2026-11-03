@@ -14,6 +14,7 @@ import { CanvasNodeType, type CanvasNodeData } from "@/types/canvas";
 import { useCanvasStore } from "@/stores/canvas/use-canvas-store";
 import { cinematicStoryboardColumns, storyboardRowsFromTask } from "@/lib/canvas/canvas-project-domain";
 import { generationTaskMetadata } from "@/lib/canvas/canvas-project-generation";
+import { markCanvasTextResultApplied } from "@/lib/canvas/canvas-completion-feedback";
 import { nodeGenerationPrompt } from "@/lib/canvas/generation-contract";
 import { generationFailureMetadata } from "@/lib/generation-error";
 import { runGenerationConsumer } from "@/services/generation-consumer-lifecycle";
@@ -118,7 +119,7 @@ export async function recoverCanvasGenerationTaskNode(input: {
                 const result = storyboardRowsFromTask(input.completed);
                 const recoveredNodes = input.nodesRef.current.map((item) =>
                     item.id === input.node.id
-                        ? {
+                        ? markCanvasTextResultApplied({
                               ...item,
                               title: result.title || item.title,
                               metadata: {
@@ -131,7 +132,7 @@ export async function recoverCanvasGenerationTaskNode(input: {
                                   failedPromptFingerprint: undefined,
                                   storyboard: { rows: result.rows, visibleColumns: cinematicStoryboardColumns(item.metadata?.storyboard?.visibleColumns), referenceNodeIds: item.metadata?.storyboard?.referenceNodeIds || [] },
                               },
-                          }
+                          })
                         : item,
                 );
                 if (!isCurrentProject()) return;

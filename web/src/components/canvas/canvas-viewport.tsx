@@ -168,7 +168,7 @@ function CanvasViewportContent({
             scaleRef.current = next.k;
             onViewportPreviewChange?.(next);
             const container = containerRef.current;
-            if (container) container.dataset.canvasViewportInteracting = "true";
+            if (container && container.dataset.canvasViewportInteracting !== "true") container.dataset.canvasViewportInteracting = "true";
             nextViewportRef.current = next;
             if (!frameRef.current)
                 frameRef.current = requestAnimationFrame((now) => {
@@ -283,7 +283,7 @@ function CanvasViewportContent({
         const target = event.target instanceof Element ? event.target : null;
         // AntD 浮层通过 Portal 渲染到节点 DOM 之外；若不统一排除，会被误判为画布空白并捕获指针。
         if (target?.closest(CANVAS_POINTER_IGNORE_SELECTOR)) return;
-        const isBackgroundClick = !target?.closest("[data-node-id],[data-connection-id]");
+        const isBackgroundClick = !target?.closest("[data-node-id],[data-connection-id],[data-connection-batch]");
         tapStartRef.current =
             isBackgroundClick && event.button === 0 && event.isPrimary && !event.shiftKey && !event.ctrlKey && !event.metaKey && !event.altKey && !spacePressedRef.current ? { pointerId: event.pointerId, x: event.clientX, y: event.clientY } : null;
         const isTouch = event.pointerType === "touch";
@@ -497,7 +497,7 @@ function CanvasViewportContent({
             onPointerDown={handlePointerDown}
             onDoubleClick={(event) => {
                 const target = event.target instanceof Element ? event.target : null;
-                if (!target?.closest("[data-node-id],[data-connection-id],[data-canvas-no-zoom]")) onCanvasDoubleClick?.(event);
+                if (!target?.closest("[data-node-id],[data-connection-id],[data-connection-batch],[data-canvas-no-zoom]")) onCanvasDoubleClick?.(event);
             }}
             onContextMenu={onContextMenu}
             onDragEnter={(event) => {

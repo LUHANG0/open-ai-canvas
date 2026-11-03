@@ -5,112 +5,275 @@ const IMAGE_PREPARATION_TIMEOUT_MS = 60_000;
 const MAX_CACHED_IMAGES = 48;
 const MAX_CACHED_PIXELS = 16_000_000;
 const IMAGE_CACHE_TTL_MS = 60_000;
+const METADATA_LIMIT = 256;
 
-type SharedPreparation = { controller: AbortController; promise: Promise<HTMLImageElement>; consumers: number };
+export type CanvasImagePriority = 0 | 1 | 2;
+export type CanvasImageSource = {
+    key: string; src: string; validUntil: number; scope: string; generation: number;
+    resourceId?: string; requestedVariant: "original" | "thumbnail" | "playback"; actualVariant: "original" | "thumbnail" | "playback";
+    originalWidth?: number; originalHeight?: number;
+};
+type PreparedImage = CanvasImageSource & { image: HTMLImageElement; pixels: number; expiresAt: number; refs: number };
+type Presentation = CanvasImageSource;
+type SharedPreparation = { controller: AbortController; promise: Promise<HTMLImageElement>; priorities: Map<symbol, CanvasImagePriority>; src: string; priority: CanvasImagePriority };
 const preparations = new Map<string, SharedPreparation>();
-const preparedImages = new Map<string, { image: HTMLImageElement; pixels: number; expiresAt: number }>();
-let preparedPixels = 0;
+const controllers = new Set<AbortController>();
+const preparedImages = new Map<string, PreparedImage>();
+const activeHandles = new Set<PreparedImage>();
+const sources = new Map<string, CanvasImageSource>();
+const presentations = new Map<string, Presentation>();
+// Weak evidence belongs to the exact capability, not a URL re-registration.
+let successfulSources = new WeakSet<CanvasImageSource>();
 let preparationScope = "";
+let generation = 0;
+let expiryTimer: ReturnType<typeof setTimeout> | undefined;
+let nextExpiry = Infinity;
+let disposing = false;
 
-/** Share work across nodes and LOD remounts without letting one consumer cancel the others. */
-export function prepareCanvasImage(src: string, signal: AbortSignal, timeoutMs = IMAGE_PREPARATION_TIMEOUT_MS): Promise<HTMLImageElement> {
-    if (signal.aborted) return Promise.reject(abortError());
-    const scope = getActiveUserScope();
-    if (scope !== preparationScope) {
-        preparationScope = scope;
-        preparedImages.clear();
-        preparedPixels = 0;
-        for (const pending of preparations.values()) pending.controller.abort();
-        preparations.clear();
+function ensureScope() {
+    if (preparationScope !== getActiveUserScope()) {
+        disposeCanvasImageSession();
+        preparationScope = getActiveUserScope();
     }
-    for (const [key, value] of preparedImages) {
-        if (value.expiresAt <= Date.now()) {
-            preparedPixels -= value.pixels;
-            preparedImages.delete(key);
+}
+
+/** Explicit account boundary: cancel physical work as well as rejecting late publication. */
+export function disposeCanvasImageSession() {
+    generation += 1;
+    disposing = true;
+    for (const controller of controllers) controller.abort();
+    controllers.clear();
+    preparations.clear();
+    preparedImages.clear();
+    activeHandles.clear();
+    sources.clear();
+    presentations.clear();
+    successfulSources = new WeakSet();
+    clearTimeout(expiryTimer);
+    expiryTimer = undefined;
+    nextExpiry = Infinity;
+    preparationScope = "";
+    disposing = false;
+}
+
+/** Access is a capability, not the media identity. No revision guarantee is inferred. */
+export function registerCanvasImageSource(src: string, resourceId?: string, actualVariant: CanvasImageSource["actualVariant"] = "original", validUntil = Number.POSITIVE_INFINITY, metadata: { requestedVariant?: CanvasImageSource["requestedVariant"]; originalWidth?: number; originalHeight?: number } = {}): CanvasImageSource {
+    ensureScope();
+    const previous = sources.get(src);
+    if (previous && previous.resourceId === resourceId && previous.actualVariant === actualVariant && previous.requestedVariant === (metadata.requestedVariant || actualVariant) && previous.validUntil === validUntil && previous.originalWidth === metadata.originalWidth && previous.originalHeight === metadata.originalHeight) return previous;
+    const value: CanvasImageSource = { key: JSON.stringify([preparationScope, resourceId || src, actualVariant]), src, resourceId, actualVariant, requestedVariant: metadata.requestedVariant || actualVariant, originalWidth: metadata.originalWidth, originalHeight: metadata.originalHeight, validUntil, scope: preparationScope, generation };
+    sources.delete(src);
+    sources.set(src, value);
+    while (sources.size > METADATA_LIMIT) sources.delete(sources.keys().next().value!);
+    if (validUntil < nextExpiry) scheduleExpiry();
+    return value;
+}
+
+export function canvasImageSourceFor(src: string) {
+    ensureScope();
+    return sources.get(src);
+}
+
+function collectExpired() {
+    const now = Date.now();
+    if (now < nextExpiry) return;
+    for (const [key, entry] of preparedImages) if (!entry.refs && entry.expiresAt <= now) preparedImages.delete(key);
+    for (const [key, entry] of presentations) if (entry.validUntil <= now) presentations.delete(key);
+    for (const [key, entry] of sources) if (entry.validUntil <= now) sources.delete(key);
+    scheduleExpiry();
+}
+
+function scheduleExpiry() {
+    clearTimeout(expiryTimer);
+    let next = Number.POSITIVE_INFINITY;
+    for (const entry of preparedImages.values()) if (!entry.refs) next = Math.min(next, entry.expiresAt);
+    for (const entry of presentations.values()) next = Math.min(next, entry.validUntil);
+    for (const entry of sources.values()) next = Math.min(next, entry.validUntil);
+    nextExpiry = next;
+    expiryTimer = Number.isFinite(next) ? setTimeout(() => { expiryTimer = undefined; collectExpired(); }, Math.max(1, next - Date.now())) : undefined;
+    // Module tests and SSR must not be kept alive by a warm cache.
+    (expiryTimer as unknown as { unref?: () => void } | undefined)?.unref?.();
+}
+
+function trimWarmImages() {
+    let count = 0, pixels = 0;
+    for (const entry of preparedImages.values()) if (!entry.refs) { count += 1; pixels += entry.pixels; }
+    for (const [key, entry] of preparedImages) {
+        if (count <= MAX_CACHED_IMAGES && pixels <= MAX_CACHED_PIXELS) break;
+        if (entry.refs) continue;
+        count -= 1; pixels -= entry.pixels; preparedImages.delete(key);
+    }
+    scheduleExpiry();
+}
+
+/** A synchronous snapshot only exposes images already prepared, never a cold descriptor. */
+export function peekCanvasImage(src: string) {
+    ensureScope();
+    collectExpired();
+    const source = canvasImageSourceFor(src);
+    const entry = source ? preparedImages.get(source.key) : undefined;
+    return source && source.validUntil > Date.now() && entry?.src === src && entry.validUntil > Date.now() ? entry.image : undefined;
+}
+
+export function retainCanvasImage(src: string) {
+    ensureScope();
+    const scopeGeneration = generation;
+    const source = canvasImageSourceFor(src);
+    const entry = source ? preparedImages.get(source.key) : undefined;
+    if (!entry || entry.src !== src) return () => {};
+    entry.refs += 1;
+    activeHandles.add(entry);
+    scheduleExpiry();
+    let released = false;
+    return () => {
+        if (released || generation !== scopeGeneration) return;
+        released = true;
+        entry.refs -= 1;
+        if (!entry.refs) {
+            activeHandles.delete(entry);
+            entry.expiresAt = Math.min(Date.now() + IMAGE_CACHE_TTL_MS, entry.validUntil);
+            if (!src.startsWith("blob:") && preparedImages.get(entry.key) === entry) {
+                preparedImages.delete(entry.key);
+                preparedImages.set(entry.key, entry);
+            }
+            trimWarmImages();
         }
+    };
+}
+
+/** Successful descriptors outlive warm pixels, bounded by capability, session and LRU. */
+export function getImagePresentation(key: string, candidate = "") {
+    ensureScope();
+    collectExpired();
+    const previous = presentations.get(key);
+    if (previous && previous.validUntil > Date.now()) {
+        presentations.delete(key);
+        presentations.set(key, previous);
+        return previous.src;
     }
-    const cached = preparedImages.get(src);
-    if (cached) {
-        preparedImages.delete(src);
-        preparedImages.set(src, cached);
+    return candidate && peekCanvasImage(candidate) ? candidate : "";
+}
+
+export function rememberImagePresentation(key: string, src: string) {
+    ensureScope();
+    if (!key || !src || src.startsWith("blob:") || src.length > 4096) return;
+    const source = canvasImageSourceFor(src);
+    if (!source || source.validUntil <= Date.now() || !successfulSources.has(source)) return;
+    presentations.delete(key);
+    presentations.set(key, source);
+    while (presentations.size > METADATA_LIMIT) presentations.delete(presentations.keys().next().value!);
+    scheduleExpiry();
+}
+
+export function forgetImagePresentation(src: string) {
+    ensureScope();
+    // A failed URL is invalid for every presentation consumer.
+    for (const [presentationKey, entry] of presentations) {
+        if (entry.src !== src) continue;
+        successfulSources.delete(entry);
+        presentations.delete(presentationKey);
+    }
+    const source = canvasImageSourceFor(src);
+    if (source) successfulSources.delete(source);
+    for (const [imageKey, entry] of preparedImages) if (entry.src === src) preparedImages.delete(imageKey);
+    for (const entry of preparations.values()) if (entry.src === src) entry.controller.abort();
+    scheduleExpiry();
+}
+
+/** Same resource/actual variant shares one queue entry; node IDs are consumers only. */
+export function prepareCanvasImage(source: CanvasImageSource, signal: AbortSignal, timeoutMs = IMAGE_PREPARATION_TIMEOUT_MS, priority: CanvasImagePriority = 0, estimatedPixels = source.originalWidth && source.originalHeight ? source.originalWidth * source.originalHeight : Infinity): Promise<HTMLImageElement> {
+    if (signal.aborted) return Promise.reject(abortError());
+    ensureScope();
+    if (source.scope !== preparationScope || source.generation !== generation) return Promise.reject(abortError());
+    if (source.validUntil <= Date.now()) return Promise.reject(new Error("图片访问地址已过期"));
+    const src = source.src;
+    collectExpired();
+    const cached = preparedImages.get(source.key);
+    if (cached?.src === src && cached.validUntil > Date.now()) {
+        preparedImages.delete(source.key);
+        preparedImages.set(source.key, cached);
+        successfulSources.add(source);
         return Promise.resolve(cached.image);
     }
-    let pending = preparations.get(src);
+    const scopeGeneration = generation;
+    const key = source.key;
+    let pending = preparations.get(key);
+    if (pending?.src !== src) pending = undefined;
     if (!pending) {
         const controller = new AbortController();
-        const entry: SharedPreparation = { controller, consumers: 0, promise: enqueueCanvasImage(src, controller.signal, timeoutMs) };
-        entry.promise = entry.promise
-            .then((image) => {
-                if (controller.signal.aborted || scope !== getActiveUserScope() || preparations.get(src) !== entry) throw abortError();
-                const pixels = image.naturalWidth * image.naturalHeight;
-                if (pixels > 0 && pixels <= MAX_CACHED_PIXELS && !src.startsWith("blob:")) {
-                    while (preparedImages.size >= MAX_CACHED_IMAGES || preparedPixels + pixels > MAX_CACHED_PIXELS) {
-                        const oldest = preparedImages.keys().next().value;
-                        if (oldest === undefined) break;
-                        preparedPixels -= preparedImages.get(oldest)!.pixels;
-                        preparedImages.delete(oldest);
-                    }
-                    preparedImages.set(src, { image, pixels, expiresAt: Date.now() + IMAGE_CACHE_TTL_MS });
-                    preparedPixels += pixels;
-                }
-                return image;
-            })
-            .finally(() => {
-                if (preparations.get(src) === entry) preparations.delete(src);
-            });
+        controllers.add(controller);
+        const entry: SharedPreparation = { controller, priorities: new Map(), src, priority, promise: enqueueCanvasImage(src, controller.signal, timeoutMs, priority, source.validUntil, estimatedPixels) };
+        entry.promise = entry.promise.then((image) => {
+            if (source.validUntil <= Date.now()) throw new Error("图片访问地址在准备期间过期");
+            if (controller.signal.aborted || scopeGeneration !== generation || preparationScope !== getActiveUserScope()) throw abortError();
+            const pixels = image.naturalWidth * image.naturalHeight;
+            if (preparations.get(key) === entry && pixels > 0 && pixels <= MAX_CACHED_PIXELS && !src.startsWith("blob:")) {
+                preparedImages.delete(key);
+                preparedImages.set(key, { ...source, image, pixels, refs: 0, expiresAt: Date.now() + IMAGE_CACHE_TTL_MS });
+                trimWarmImages();
+            }
+            return image;
+        }).finally(() => {
+            controllers.delete(controller);
+            if (preparations.get(key) === entry) preparations.delete(key);
+        });
         pending = entry;
-        preparations.set(src, pending);
+        preparations.set(key, entry);
+    } else {
+        const job = queue.find((entry) => entry.signal === pending!.controller.signal);
+        if (job) {
+            job.estimatedPixels = Math.min(job.estimatedPixels, estimatedPixels);
+        }
     }
     const shared = pending;
-    shared.consumers += 1;
-    return new Promise((resolve, reject) => {
-        let settled = false;
-        const finish = (image?: HTMLImageElement, error?: unknown) => {
-            if (settled) return;
-            settled = true;
-            signal.removeEventListener("abort", onAbort);
-            shared.consumers -= 1;
-            if (error !== undefined) reject(error);
-            else resolve(image!);
-        };
-        const onAbort = () => {
-            finish(undefined, abortError());
-            // React can immediately remount the same image. Allow that consumer
-            // to join before cancelling an otherwise unreferenced job.
-            queueMicrotask(() => {
-                if (shared.consumers === 0 && preparations.get(src) === shared) {
-                    preparations.delete(src);
-                    shared.controller.abort();
-                }
-            });
-        };
-        signal.addEventListener("abort", onAbort, { once: true });
-        shared.promise.then(
-            (image) => finish(image),
-            (error) => finish(undefined, error),
-        );
-    });
+    const consumer = Symbol();
+    shared.priorities.set(consumer, priority);
+    updatePreparationPriority(shared);
+    const { promise, resolve, reject } = Promise.withResolvers<HTMLImageElement>();
+    let settled = false;
+    const finish = (image?: HTMLImageElement, error?: unknown) => {
+        if (settled) return;
+        settled = true;
+        signal.removeEventListener("abort", onAbort);
+        shared.priorities.delete(consumer);
+        updatePreparationPriority(shared);
+        if (error === undefined) {
+            if (signal.aborted || shared.controller.signal.aborted || scopeGeneration !== generation || source.scope !== getActiveUserScope()) error = abortError();
+            else if (source.validUntil <= Date.now()) error = new Error("图片访问地址在准备期间过期");
+            else successfulSources.add(source);
+        }
+        if (error !== undefined) reject(error); else resolve(image!);
+    };
+    const onAbort = () => {
+        finish(undefined, abortError());
+        queueMicrotask(() => {
+            if (!shared.priorities.size) {
+                if (preparations.get(key) === shared) preparations.delete(key);
+                shared.controller.abort();
+            }
+        });
+    };
+    signal.addEventListener("abort", onAbort, { once: true });
+    shared.promise.then((image) => finish(image), (error) => finish(undefined, error));
+    return promise;
+}
+
+function updatePreparationPriority(shared: SharedPreparation) {
+    let priority: CanvasImagePriority = 2;
+    for (const value of shared.priorities.values()) if (value < priority) priority = value;
+    shared.priority = priority;
+    const job = queue.find((entry) => entry.signal === shared.controller.signal);
+    if (job) job.priority = priority;
 }
 
 type ImagePreparationJob = {
-    src: string;
-    activityKey: string;
-    signal: AbortSignal;
-    resolve: (image: HTMLImageElement) => void;
-    reject: (error: unknown) => void;
-    started: boolean;
-    settled: boolean;
-    image?: HTMLImageElement;
-    timeout?: ReturnType<typeof setTimeout>;
-    timeoutMs: number;
-    onAbort: () => void;
+    src: string; activityKey: string; signal: AbortSignal; priority: CanvasImagePriority; validUntil: number; estimatedPixels: number; queuedAt: number;
+    resolve: (image: HTMLImageElement) => void; reject: (error: unknown) => void;
+    started: boolean; settled: boolean; image?: HTMLImageElement;
+    timeout?: ReturnType<typeof setTimeout>; timeoutMs: number; onAbort: () => void;
 };
-
 const queue: ImagePreparationJob[] = [];
 let activePreparations = 0;
-
-// Only sources occupying a download/decode slot animate. Queued sources stay static.
-// Scope and source subscriptions prevent account changes or unrelated images waking every node.
 const activeSources = new Set<string>();
 const activityListeners = new Map<string, Set<() => void>>();
 const activityKey = (src: string) => JSON.stringify([getActiveUserScope(), src]);
@@ -125,94 +288,75 @@ export function subscribeCanvasImageActivity(src: string, listener: () => void) 
         if (!listeners.size && activityListeners.get(key) === listeners) activityListeners.delete(key);
     };
 }
-
-export function isCanvasImageActive(src: string) {
-    return Boolean(src && activeSources.has(activityKey(src)));
-}
-
+export function isCanvasImageActive(src: string) { return Boolean(src && activeSources.has(activityKey(src))); }
 function markImageActivity(job: ImagePreparationJob, active: boolean) {
-    if (active) activeSources.add(job.activityKey);
-    else activeSources.delete(job.activityKey);
+    if (active) activeSources.add(job.activityKey); else activeSources.delete(job.activityKey);
     for (const listener of [...(activityListeners.get(job.activityKey) || [])]) listener();
 }
-
-/** Load and decode one image under a shared concurrency budget. Queued work is cancellable. */
-function enqueueCanvasImage(src: string, signal: AbortSignal, timeoutMs: number): Promise<HTMLImageElement> {
+function enqueueCanvasImage(src: string, signal: AbortSignal, timeoutMs: number, priority: CanvasImagePriority, validUntil: number, estimatedPixels: number): Promise<HTMLImageElement> {
     if (signal.aborted) return Promise.reject(abortError());
-    return new Promise((resolve, reject) => {
-        const job: ImagePreparationJob = { src, activityKey: activityKey(src), signal, resolve, reject, started: false, settled: false, timeoutMs, onAbort: () => {} };
-        job.onAbort = () => {
-            if (job.settled) return;
-            if (!job.started) {
-                const index = queue.indexOf(job);
-                if (index >= 0) queue.splice(index, 1);
-                settle(job, undefined, abortError());
-                return;
-            }
-            job.image?.removeAttribute("src");
-            settle(job, undefined, abortError());
-        };
-        signal.addEventListener("abort", job.onAbort, { once: true });
-        queue.push(job);
-        pump();
-    });
+    const { promise, resolve, reject } = Promise.withResolvers<HTMLImageElement>();
+    const job: ImagePreparationJob = { src, activityKey: activityKey(src), signal, resolve, reject, priority, validUntil, estimatedPixels, queuedAt: Date.now(), started: false, settled: false, timeoutMs, onAbort: () => {} };
+    job.onAbort = () => {
+        if (job.settled) return;
+        const index = queue.indexOf(job);
+        if (index >= 0) queue.splice(index, 1);
+        job.image?.removeAttribute("src");
+        settle(job, undefined, abortError());
+    };
+    signal.addEventListener("abort", job.onAbort, { once: true });
+    queue.push(job);
+    pump();
+    return promise;
 }
-
 export function canvasImagePreparationStats() {
-    return { active: activePreparations, queued: queue.length, limit: MAX_ACTIVE_IMAGE_PREPARATIONS };
+    let warmPixels = 0, warmImages = 0, activePixels = 0, activeImages = 0;
+    for (const entry of preparedImages.values()) {
+        if (!entry.refs) { warmPixels += entry.pixels; warmImages += 1; }
+    }
+    for (const entry of activeHandles) { activePixels += entry.pixels; activeImages += 1; }
+    return { active: activePreparations, queued: queue.length, limit: MAX_ACTIVE_IMAGE_PREPARATIONS, warmPixels, warmImages, activePixels, activeImages, presentations: presentations.size, sources: sources.size };
 }
-
 function pump() {
+    if (disposing) return;
     while (activePreparations < MAX_ACTIVE_IMAGE_PREPARATIONS && queue.length) {
-        const job = queue.shift()!;
-        if (job.settled || job.signal.aborted) {
-            settle(job, undefined, abortError());
-            continue;
+        let index = 0;
+        const now = Date.now();
+        for (let i = 1; i < queue.length; i++) {
+            const candidate = queue[i], current = queue[index];
+            if (candidate.priority < current.priority) { index = i; continue; }
+            if (candidate.priority !== current.priority) continue;
+            // Small prepared surfaces must not wait behind an entire original-image batch.
+            // After one second, FIFO wins within the same priority to prevent starvation.
+            const currentAged = now - current.queuedAt >= 1000;
+            const candidateAged = now - candidate.queuedAt >= 1000;
+            if (currentAged ? candidateAged && candidate.queuedAt < current.queuedAt : candidateAged || candidate.estimatedPixels < current.estimatedPixels) index = i;
         }
+        const job = queue.splice(index, 1)[0];
+        if (job.settled || job.signal.aborted) { settle(job, undefined, abortError()); continue; }
+        if (job.validUntil <= Date.now()) { settle(job, undefined, new Error("图片访问地址在排队期间过期")); continue; }
         job.started = true;
         activePreparations += 1;
         markImageActivity(job, true);
-        job.timeout = setTimeout(() => {
-            job.image?.removeAttribute("src");
-            settle(job, undefined, new Error("图片加载或解码超时"));
-        }, job.timeoutMs);
-
-        const image = new Image();
-        job.image = image;
-        image.decoding = "async";
+        job.timeout = setTimeout(() => { job.image?.removeAttribute("src"); settle(job, undefined, new Error("图片加载或解码超时")); }, job.timeoutMs);
+        const image = new Image(); job.image = image; image.decoding = "async";
         image.onload = () => {
             if (job.settled || job.signal.aborted) return;
             image.onload = null;
-            void image.decode().then(
-                () => settle(job, image),
-                (error) => settle(job, undefined, error),
-            );
+            void image.decode().then(() => settle(job, image), (error) => settle(job, undefined, error));
         };
         image.onerror = () => settle(job, undefined, new Error("图片加载失败"));
         image.src = job.src;
         if (image.complete && image.naturalWidth > 0) image.onload?.call(image, new Event("load"));
     }
 }
-
 function settle(job: ImagePreparationJob, image?: HTMLImageElement, error?: unknown) {
     if (job.settled) return;
     job.settled = true;
     job.signal.removeEventListener("abort", job.onAbort);
-    if (job.timeout) clearTimeout(job.timeout);
-    if (job.image) {
-        job.image.onload = null;
-        job.image.onerror = null;
-    }
-    if (job.started) {
-        activePreparations = Math.max(0, activePreparations - 1);
-        markImageActivity(job, false);
-        pump();
-    }
-    if (error !== undefined) job.reject(error);
-    else if (image) job.resolve(image);
-    else job.reject(new Error("图片准备未完成"));
+    clearTimeout(job.timeout);
+    if (job.image) { job.image.onload = null; job.image.onerror = null; }
+    if (job.started) { activePreparations = Math.max(0, activePreparations - 1); markImageActivity(job, false); pump(); }
+    if (error !== undefined) job.reject(error); else if (image) job.resolve(image); else job.reject(new Error("图片准备未完成"));
 }
-
-function abortError() {
-    return new DOMException("图片准备已取消", "AbortError");
-}
+function abortError() { return new DOMException("图片准备已取消", "AbortError"); }
