@@ -1,12 +1,12 @@
 # 梦层 MengCeng · 文档索引
 
-面向使用、开发与运维的专题入口。梦层由 [LUHANG0/open-ai-canvas](https://github.com/LUHANG0/open-ai-canvas) 维护，当前功能分支为 `codex/upstream-v1.7.2-fixes`；源码实现、设计提案与生产验收分别核对。详细文档维护规则见 [AGENTS.md](../AGENTS.md) 第 9 节「文档与交付」。
+面向使用、开发与运维的专题入口。梦层由 [LUHANG0/open-ai-canvas](https://github.com/LUHANG0/open-ai-canvas) 维护，主要开发分支为 `my-product`；源码实现、设计提案与生产验收分别核对。详细文档维护规则见 [AGENTS.md](../AGENTS.md) 第 9 节「文档与交付」。
 
 - [画布视频播放](content/docs/overview/canvas-video-playback.mdx)：统一悬浮与正式播放、空白单击暂停、进度恢复和会话资源边界。
-- [画布完成反馈](content/docs/overview/canvas-completion-feedback.mdx)：结果应用事件、项目级短时反馈和历史成功不重播。
-- [画布媒体生命周期](content/docs/overview/canvas-media-lifecycle.mdx)：账号与来源身份、准备交接、有界缓存、失效撤销和长离屏恢复。
-- [画布 Agent 视频渲染](content/docs/overview/canvas-avatar-rendering.mdx)：保留原生视频连续播放的 GPU 去绿幕及 2D 降级。
-- [画布节点细节调度](content/docs/overview/canvas-detail-scheduling.mdx)：手势中合并装饰状态、结束后收敛，保留可见媒体和即时交互。
+- [画布完成反馈生命周期](content/docs/overview/canvas-completion-feedback.mdx)：实时视口、LOD/chrome 与任务结果应用的职责、去重与两秒反馈窗口。
+- [画布媒体恢复生命周期](content/docs/overview/canvas-media-lifecycle.mdx)：图片与持久海报的统一准备/展示、访问期限、共享取消、有限预热、账号释放及真实性能验收边界。
+- [画布 Agent 视频形象渲染](content/docs/overview/canvas-avatar-rendering.mdx)：WebGL 抠像、独立 2D 接管、源切换连续性、资源回收及真实 GPU 验收边界。
+- [画布节点细节调度](content/docs/overview/canvas-detail-scheduling.mdx)：独立外层 chrome admission、即时内容与媒体路径、交互优先级及真实 A/B 验收边界。
 - [第三方画布导入](content/docs/overview/third-party-canvas-import.mdx)：本地保存、云端确认、同批次去重及刷新后的素材补传。
 - [创作页历史跨设备同步](content/docs/backend/creation-conversation-sync.mdx)：账号历史、旧本地迁移、逐消息修订、删除防复活及媒体引用边界。
 - [生成作品存储与恢复](content/docs/backend/generation-storage-recovery.mdx)：生成前配额检查、检查点与暂存副本顺序、分页引用保护和保存恢复边界。

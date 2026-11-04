@@ -46,6 +46,10 @@ docs/content/docs/backend/*
 docs/content/docs/overview/*
 !docs/content/docs/overview/creative-agent-design.mdx
 !docs/content/docs/overview/canvas-video-playback.mdx
+!docs/content/docs/overview/canvas-completion-feedback.mdx
+!docs/content/docs/overview/canvas-media-lifecycle.mdx
+!docs/content/docs/overview/canvas-avatar-rendering.mdx
+!docs/content/docs/overview/canvas-detail-scheduling.mdx
 .env*
 !.env.example
 data/
