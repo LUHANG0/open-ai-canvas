@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test";
+import { describe, expect, test, spyOn } from "bun:test";
 import { applyCanvasImport } from "../src/pages/canvas/canvas-import-save";
 import { CanvasSyncPendingError, waitForCanvasSync } from "../src/lib/canvas/sync-recovery";
 import { CanvasNodeType, type CanvasNodeData, type CanvasConnection } from "../src/types/canvas";
@@ -199,6 +199,50 @@ test("a callback from an old account cannot stage nodes in the new account", asy
         await expect(applyCanvasImport([node("imported")], [], { ...state, sessionScope: "owner", syncRemote: async () => {} })).rejects.toThrow("账号已切换");
         expect(state.read().nodes.map((n) => n.id)).toEqual(["old"]);
     } finally {
+        if (previous) Object.defineProperty(globalThis, "window", previous); else Reflect.deleteProperty(globalThis, "window");
+    }
+});
+
+
+test("inline import images share one local storage identity with their assets before persistence", async () => {
+    const imageStorage = await import("../src/services/image-storage");
+    const assets = useAssetStore.getState().assets;
+    const writes: string[] = [];
+    const stub = spyOn(imageStorage, "setImageBlob").mockImplementation(async (key) => { writes.push(key); return "blob:import-image"; });
+    const state = editor();
+    try {
+        await applyCanvasImport([{ ...node("inline"), metadata: { content: "data:image/png;base64,eA==" } }], [], { ...state, syncRemote: async () => {} });
+        const imported = state.durable().nodes[1];
+        expect(imported.metadata?.storageKey).toMatch(/^image:guest:canvas-import:/);
+        expect(writes).toEqual([imported.metadata!.storageKey!]);
+        const asset = useAssetStore.getState().assets.find((item) => item.id === imported.metadata?.assetId)!;
+        expect(asset.kind === "image" && asset.data.storageKey).toBe(imported.metadata?.storageKey);
+        expect(imported.metadata?.content).toBe("blob:import-image");
+    } finally { stub.mockRestore(); useAssetStore.setState({ assets }); }
+});
+
+test("local image preparation preserves concurrent edits and checks account before staging", async () => {
+    const imageStorage = await import("../src/services/image-storage");
+    const previous = Object.getOwnPropertyDescriptor(globalThis, "window");
+    const assets = useAssetStore.getState().assets;
+    let scope = "owner";
+    Object.defineProperty(globalThis, "window", { configurable: true, value: { localStorage: { getItem: () => scope } } });
+    const state = editor();
+    let switchAccount = false;
+    const stub = spyOn(imageStorage, "setImageBlob").mockImplementation(async () => {
+        state.write({ ...state.read(), nodes: [...state.read().nodes, node("later")] });
+        if (switchAccount) scope = "other";
+        return "blob:import-image";
+    });
+    try {
+        const inline = { ...node("inline"), metadata: { content: "data:image/png;base64,eA==" } };
+        await applyCanvasImport([inline], [], { ...state, syncRemote: async () => {} });
+        expect(state.read().nodes.map((item) => item.id)).toEqual(["old", "later", "inline"]);
+        switchAccount = true;
+        await expect(applyCanvasImport([{ ...inline, id: "second" }], [], { ...state, sessionScope: "owner", syncRemote: async () => {} })).rejects.toThrow("账号已切换");
+        expect(state.read().nodes.some((item) => item.id === "second")).toBe(false);
+    } finally {
+        stub.mockRestore(); useAssetStore.setState({ assets });
         if (previous) Object.defineProperty(globalThis, "window", previous); else Reflect.deleteProperty(globalThis, "window");
     }
 });

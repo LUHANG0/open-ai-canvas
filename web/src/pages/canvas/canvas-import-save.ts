@@ -2,6 +2,7 @@ import { CanvasNodeType, type CanvasConnection, type CanvasNodeData } from "@/ty
 import { CanvasSyncPendingError } from "@/lib/canvas/sync-recovery";
 import { canvasNodeToAsset, findCanvasNodeAsset } from "@/lib/canvas/canvas-node-asset";
 import { useAssetStore } from "@/stores/use-asset-store";
+import { setImageBlob } from "@/services/image-storage";
 import { getActiveUserScope } from "@/lib/user-scope";
 
 type CanvasImportContent = { nodes: CanvasNodeData[]; connections: CanvasConnection[] };
@@ -23,13 +24,15 @@ export async function applyCanvasImport(nodes: CanvasNodeData[], connections: Ca
         if (scope !== getActiveUserScope()) throw new Error("账号已切换，已停止旧账号的画布导入");
     };
     requireCurrentSession();
+    const preparedNodes = await Promise.all(nodes.map((node) => prepareImportImage(node, scope)));
+    requireCurrentSession();
     const current = persistence.read();
     const nodeIds = new Set(current.nodes.map((node) => node.id));
     const connectionIds = new Set(current.connections.map((connection) => connection.id));
     persistence.write({
         nodes: [
             ...current.nodes,
-            ...nodes
+            ...preparedNodes
                 .filter((node) => {
                     if (nodeIds.has(node.id)) return false;
                     nodeIds.add(node.id);
@@ -73,4 +76,19 @@ function bindImportAsset(canvasId: string, node: CanvasNodeData): CanvasNodeData
     const assetId = existing?.id || (input ? store.addAsset(input) : undefined);
     // 绑定同时写入编辑器与持久化快照，避免后台补出的 assetId 被下一次编辑覆盖。
     return assetId ? { ...node, metadata: { ...node.metadata, assetId } } : node;
+}
+
+
+async function prepareImportImage(node: CanvasNodeData, scope: string): Promise<CanvasNodeData> {
+    const content = node.metadata?.content;
+    if (node.type !== CanvasNodeType.Image || node.metadata?.storageKey || !content?.startsWith("data:image/")) return node;
+    // 刷新时素材缓存会恢复内嵌图片；先与节点共用一个本地 key，避免各自上传成不同资源。
+    const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(content));
+    const hash = Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
+    if (scope !== getActiveUserScope()) throw new Error("账号已切换，已停止旧账号的画布导入");
+    const blob = await (await fetch(content)).blob();
+    if (scope !== getActiveUserScope()) throw new Error("账号已切换，已停止旧账号的画布导入");
+    const storageKey = `image:${scope}:canvas-import:${hash}`;
+    const url = await setImageBlob(storageKey, blob);
+    return { ...node, metadata: { ...node.metadata, storageKey, content: url, ...(node.metadata?.previewContent === content ? { previewContent: url } : {}) } };
 }
