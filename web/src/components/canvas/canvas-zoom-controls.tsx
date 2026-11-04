@@ -24,6 +24,12 @@ type CanvasZoomControlsProps = {
 
 const QUICK_ZOOM_LEVELS = [0.25, 0.5, 1, 2] as const;
 
+// Keep React's existing text nodes: replacing children invalidates ancestor :has selectors.
+function updateLabelText(element: HTMLSpanElement | null, value: string) {
+    const text = element?.firstChild;
+    if (text?.nodeType === Node.TEXT_NODE && (text as Text).data !== value) (text as Text).data = value;
+}
+
 export function CanvasZoomControls({ scale, onScaleChange, onFitContent, onAutoArrange, hideNodeConnections = false, onHideNodeConnectionsChange, isMiniMapOpen, onToggleMiniMap, onOpenShortcuts, containerRef }: CanvasZoomControlsProps) {
     const theme = canvasThemes[useActiveTheme()];
     const reducedMotion = useReducedMotion();
@@ -95,8 +101,8 @@ export function CanvasZoomControls({ scale, onScaleChange, onFitContent, onAutoA
         liveScaleRef.current = nextScale;
         const percent = String(Math.round(nextScale * 100));
         if (rangeRef.current) rangeRef.current.value = percent;
-        if (dockLabelRef.current) dockLabelRef.current.textContent = percent;
-        if (panelLabelRef.current) panelLabelRef.current.textContent = `${percent}%`;
+        updateLabelText(dockLabelRef.current, percent);
+        updateLabelText(panelLabelRef.current, `${percent}%`);
     }
 
     function commitScale(nextScale: number) {
@@ -145,7 +151,7 @@ export function CanvasZoomControls({ scale, onScaleChange, onFitContent, onAutoA
                                 <span className="mt-0.5 block text-[var(--fs-micro)]" style={{ color: theme.node.muted }}>精确控制视野密度</span>
                             </span>
                             <span ref={panelLabelRef} className="rounded-full border px-2 py-0.5 text-[var(--fs-tiny)] font-semibold tabular-nums" style={{ background: theme.spatial.surface, borderColor: theme.toolbar.border, color: theme.accent.primary }}>
-                                {Math.round(scale * 100)}%
+                                {`${Math.round(scale * 100)}%`}
                             </span>
                         </div>
                         <input
