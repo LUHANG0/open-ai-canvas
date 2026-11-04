@@ -249,6 +249,8 @@ function CanvasViewportPage() {
     const nodesRef = useRef<CanvasNodeData[]>([]);
     const [nodes, setNodesState] = useState<CanvasNodeData[]>([]);
     const setNodes = useMemo(() => createCanvasStateWriter(nodesRef, setNodesState, stampCanvasNodeChanges), []);
+    // History restores an existing document version; stamping it would create a new edit.
+    const restoreHistoryNodes = useMemo(() => createCanvasStateWriter(nodesRef, setNodesState), []);
     const [nodeStackOrder, setNodeStackOrder] = useState<CanvasNodeStackOrder>([]);
     const bringNodeToFront = useCallback((nodeId: string) => {
         setNodeStackOrder((current) => bringCanvasNodeToFront(current, nodeId));
@@ -394,7 +396,7 @@ function CanvasViewportPage() {
         canvasAppearance,
         backgroundMode,
         showImageInfo,
-        setNodes,
+        setNodes: restoreHistoryNodes,
         setConnections,
         setChatSessions,
         setActiveChatId,
