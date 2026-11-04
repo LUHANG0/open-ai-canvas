@@ -17,6 +17,7 @@
 ## 部署与更新入口
 
 - [梦层自建部署](content/docs/backend/mengceng-self-hosting.mdx)：维护分支的源码安装、已有站点配置保留、独立组件发布和验收边界。
+- [梦层静态资源故障恢复](content/docs/backend/mengceng-static-recovery.mdx)：2026-10-29 CDN 离线后的同版本静态路径切换、备份、验证及回退边界。
 
 梦层使用本仓库源码构建的独立组件镜像与站点专用配置。服务器发布先核对实际 Compose、环境、数据库、挂载、站点分发与恢复依据；二改 Host Updater 需按本机发布合同独立验收并安装启用。上游默认 Release 安装方式不作为梦层升级入口。
 
