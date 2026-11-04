@@ -15,6 +15,7 @@ const root = new URL("../src/", import.meta.url);
 const stubPath = join(dir, "dependencies.ts");
 const paths: Record<string, string> = {
     "json-canonicalize": import.meta.resolve("json-canonicalize"),
+    "@/lib/asset-remote-sync": fileURLToPath(new URL("lib/asset-remote-sync.ts", root)),
     zustand: import.meta.resolve("zustand"),
     "@/services/api/resources": join(dir, "resources.ts"),
     "@/services/upload-scope": join(dir, "upload-scope.ts"),
@@ -120,7 +121,6 @@ export async function applyRemoteCanvasOperations(id, request) {
 export async function getRemoteCanvasProject(id) { fixture.reads++; fixture.readsById.set(id, (fixture.readsById.get(id) ?? 0) + 1); const hook = fixture.readHook; fixture.readHook = undefined; await hook?.(id); return { project: structuredClone(remoteFor(id)) }; }
 export async function getRemoteAsset(id) { fixture.assetReads.push(id); if (fixture.assetReadErrors.has(id)) throw fixture.assetReadErrors.get(id); return { asset: structuredClone(fixture.remoteAssetsById.get(id)) }; }
 export async function upsertRemoteAsset(asset) { fixture.assetWrites.push(structuredClone(asset)); if (fixture.assetWriteErrors.has(asset.id)) throw fixture.assetWriteErrors.get(asset.id); fixture.remoteAssetsById.set(asset.id, structuredClone(asset)); }
-export const assetForRemoteSync = asset => asset;
 export const getRemoteAssetsByIds = async ids => ({ assets: ids.map(id => fixture.remoteAssetsById.get(id)).filter(Boolean) });
 export const parseAssetRecordList = records => records;
 export const deleteRemoteAssets = unexpected, deleteRemoteCanvasProject = unexpected, getRemoteUserDataSnapshot = unexpected, listRemoteAssetsPage = unexpected;

@@ -7,17 +7,19 @@ import { useCanvasImageLayerMaterials } from "./use-canvas-image-layer-materials
 import { isCanvasNodeGenerating } from "@/lib/canvas/canvas-node-task-state";
 import { createCanvasStateWriter } from "@/lib/canvas/canvas-editor-state";
 import { useCanvasNodeControls } from "./use-canvas-node-controls";
+import { useCanvasNodeDetailLOD } from "./use-canvas-node-detail-lod";
 import { canCancelGenerationTask } from "@/lib/generation-task-display";
 import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { MouseEvent as ReactMouseEvent } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useParams, useSearchParams } from "react-router";
-import { loadAssetsForUse } from "@/services/user-data-sync";
+import { loadAssetsForUse, saveRemoteUserDataNow } from "@/services/user-data-sync";
 import { canvasAssetHandoffIds } from "@/lib/canvas/canvas-asset-handoff";
 import { useEffectiveConfig } from "@/stores/use-config-store";
 import { createCanvasGenerationLiveProjectAdapter, registerCanvasGenerationLiveProject } from "@/services/canvas-generation-consumer";
 import { CanvasPlaybackController } from "@/lib/canvas/canvas-playback";
 import { CanvasPlaybackProvider } from "@/components/canvas/canvas-playback-context";
+import { CanvasCompletionFeedbackProvider } from "@/components/canvas/canvas-completion-feedback";
 import { getActiveUserScope } from "@/lib/user-scope";
 import { getResource, getResourceAccess, resolveResourceAccessURL, resourceFileUrl, resourceIdFromStorageKey, syncResourceToArkPrivateAsset } from "@/services/api/resources";
 import { uploadImage } from "@/services/image-storage";
@@ -30,7 +32,7 @@ import { canvasThemes, type CanvasBackgroundMode } from "@/lib/canvas-theme";
 import { filterCanvasDisplayConnections, persistCanvasHideNodeConnections, readCanvasHideNodeConnections } from "@/lib/canvas/canvas-connection-visibility";
 import { summarizeCanvasContext } from "@/lib/canvas/canvas-context-summary";
 import { refreshCanvasCharacterReferenceNodes } from "@/lib/canvas/canvas-character-reference";
-import { useAssetStore } from "@/stores/use-asset-store";
+import { flushAssetStorePersistence, useAssetStore } from "@/stores/use-asset-store";
 import { flushCanvasStorePersistence } from "@/stores/canvas/use-canvas-store";
 import { ensureCanvasNodeAsset } from "@/services/project-asset-sync";
 import { useCanvasThemeStore, useCanvasThemeScope } from "@/stores/canvas/use-canvas-theme-store";
@@ -162,7 +164,10 @@ import { useCanvasMediaTools } from "./use-canvas-media-tools";
 import { useCanvasNodeEditor } from "./use-canvas-node-editor";
 import { useCanvasNodeOperations } from "./use-canvas-node-operations";
 import { useCanvasProjectLifecycle } from "./use-canvas-project-lifecycle";
+import { applyCanvasImport } from "./canvas-import-save";
+import { waitForCanvasSync } from "@/lib/canvas/sync-recovery";
 import { useCanvasRenderModel } from "./use-canvas-render-model";
+import { useCanvasVisibilityViewport } from "./use-canvas-visibility-viewport";
 import { useCanvasSelectionController } from "./use-canvas-selection-controller";
 import { useCanvasShortDrama } from "./use-canvas-short-drama";
 import { useCanvasStoryboard } from "./use-canvas-storyboard";
@@ -187,6 +192,7 @@ import {
 } from "@/types/canvas";
 import { ART_CRITIQUE_NODE_TYPE } from "@/lib/art-critique/contracts";
 import { copyImageToSystemClipboard } from "./canvas-clipboard";
+import type { PrevisScene } from "@/types/previs";
 
 const CanvasMediaVersionModal = lazy(() => import("@/components/canvas/canvas-media-version-modal").then((module) => ({ default: module.CanvasMediaVersionModal })));
 const CanvasPrevisWorkbench = lazy(() => import("@/components/canvas/previs/canvas-previs-workbench").then((module) => ({ default: module.CanvasPrevisWorkbench })));
@@ -194,6 +200,7 @@ const CanvasDrawingEditorModal = lazy(() => import("@/components/canvas/canvas-d
 
 const NODE_STATUS_SUCCESS = "success" as const;
 const EMPTY_RESOURCE_REFERENCES: CanvasResourceReference[] = [];
+const EMPTY_PREVIS_SCENES: PrevisScene[] = [];
 
 function visibleGenerationBatch(node: CanvasNodeData) {
     const batches = node.metadata?.generationBatches || [];
@@ -244,6 +251,8 @@ function CanvasViewportPage() {
     const nodesRef = useRef<CanvasNodeData[]>([]);
     const [nodes, setNodesState] = useState<CanvasNodeData[]>([]);
     const setNodes = useMemo(() => createCanvasStateWriter(nodesRef, setNodesState, stampCanvasNodeChanges), []);
+    // History restores an existing document version; stamping it would create a new edit.
+    const restoreHistoryNodes = useMemo(() => createCanvasStateWriter(nodesRef, setNodesState), []);
     const [nodeStackOrder, setNodeStackOrder] = useState<CanvasNodeStackOrder>([]);
     const bringNodeToFront = useCallback((nodeId: string) => {
         setNodeStackOrder((current) => bringCanvasNodeToFront(current, nodeId));
@@ -389,7 +398,7 @@ function CanvasViewportPage() {
         canvasAppearance,
         backgroundMode,
         showImageInfo,
-        setNodes,
+        setNodes: restoreHistoryNodes,
         setConnections,
         setChatSessions,
         setActiveChatId,
@@ -408,7 +417,7 @@ function CanvasViewportPage() {
         [cleanupAssetImages, getHistoryCleanupContext],
     );
 
-    const { loadError, retryLoad, addedSkills, agentCreatedNodes, clearCanvasFiles, createAndOpenProject, currentProject, deleteCurrentProject, renameCurrentProject, saveCanvasProject, updateProject } = useCanvasProjectLifecycle({
+    const { loadError, retryLoad, addedSkills, agentCreatedNodes, clearCanvasFiles, createAndOpenProject, currentProject, deleteCurrentProject, renameCurrentProject, saveCanvasProject, persistLocalEdits, updateProject } = useCanvasProjectLifecycle({
         projectId,
         projectLoaded,
         nodes,
@@ -487,47 +496,25 @@ function CanvasViewportPage() {
         },
         [agentMentionReferences, message, openAgent],
     );
-    const applyLibTVImport = useCallback(
-        async (importedNodes: CanvasNodeData[], importedConnections: CanvasConnection[]) => {
-            const previousNodes = nodesRef.current;
-            const previousConnections = connectionsRef.current;
-            const nextNodes = [...nodesRef.current, ...importedNodes];
-            const nextConnections = [...connectionsRef.current, ...importedConnections];
-            nodesRef.current = nextNodes;
-            connectionsRef.current = nextConnections;
-            setNodes(nextNodes);
-            setConnections(nextConnections);
-            const saved = await saveCanvasProject({ requireRemote: false });
-            if (!saved) {
-                nodesRef.current = previousNodes;
-                connectionsRef.current = previousConnections;
-                setNodes(previousNodes);
-                setConnections(previousConnections);
-                throw new Error("画布保存失败，已撤销本次 LibTV 导入");
-            }
-        },
-        [saveCanvasProject, setConnections, setNodes],
-    );
-    const applyTapNowImport = useCallback(
-        async (importedNodes: CanvasNodeData[], importedConnections: CanvasConnection[]) => {
-            const previousNodes = nodesRef.current;
-            const previousConnections = connectionsRef.current;
-            const nextNodes = [...nodesRef.current, ...importedNodes];
-            const nextConnections = [...connectionsRef.current, ...importedConnections];
-            nodesRef.current = nextNodes;
-            connectionsRef.current = nextConnections;
-            setNodes(nextNodes);
-            setConnections(nextConnections);
-            const saved = await saveCanvasProject({ requireRemote: false });
-            if (!saved) {
-                nodesRef.current = previousNodes;
-                connectionsRef.current = previousConnections;
-                setNodes(previousNodes);
-                setConnections(previousConnections);
-                throw new Error("画布保存失败，已撤销本次 TapNow 导入");
-            }
-        },
-        [saveCanvasProject, setConnections, setNodes],
+    const applyImportedCanvas = useCallback(
+        async (importedNodes: CanvasNodeData[], importedConnections: CanvasConnection[]) => applyCanvasImport(importedNodes, importedConnections, {
+            canvasId: projectId,
+            sessionScope: canvasStorageScope,
+            read: () => ({ nodes: nodesRef.current, connections: connectionsRef.current }),
+            write: ({ nodes, connections }) => {
+                nodesRef.current = nodes;
+                connectionsRef.current = connections;
+                setNodes(nodes);
+                setConnections(connections);
+            },
+            persistLocal: async () => {
+                await persistLocalEdits();
+                if (canvasStorageScope !== getActiveUserScope()) throw new Error("账号已切换，已停止旧账号的画布导入");
+                await waitForCanvasSync(flushAssetStorePersistence());
+            },
+            syncRemote: () => saveRemoteUserDataNow(projectId),
+        }),
+        [canvasStorageScope, persistLocalEdits, projectId, setConnections, setNodes],
     );
     const linkedProjectId = shortDramaEnabled ? currentProject?.projectId || "" : "";
     const linkedProjectQuery = useQuery({ queryKey: ["project", linkedProjectId], queryFn: () => getProject(linkedProjectId), enabled: Boolean(linkedProjectId) });
@@ -663,8 +650,10 @@ function CanvasViewportPage() {
         chatSessionsRef.current = chatSessions;
         activeChatIdRef.current = activeChatId;
         selectedNodeIdsRef.current = selectedNodeIds;
+    }, [activeChatId, chatSessions, nodes, connections, selectedNodeIds]);
+    useLayoutEffect(() => {
         viewportRef.current = viewport;
-    }, [activeChatId, chatSessions, nodes, connections, selectedNodeIds, viewport]);
+    }, [viewport]);
 
     useEffect(() => {
         if (!projectLoaded) return;
@@ -1404,6 +1393,8 @@ function CanvasViewportPage() {
         });
     }, [linkedProjectQuery.data?.assetFolders, setNodes]);
 
+    const visibilityCoverageRef = useRef<((next: ViewportTransform) => boolean) | null>(null);
+    const visibilityViewport = useCanvasVisibilityViewport(viewport, containerRef, size, visibilityCoverageRef);
     const {
         activePrevisScene,
         activeNodeId,
@@ -1422,6 +1413,7 @@ function CanvasViewportPage() {
         displayConnections,
         frameChildrenById,
         infoNode,
+        isVisibilityViewportCovered,
         maskEditNode,
         imageEditNode,
         mentionReferencesByNodeId,
@@ -1441,9 +1433,10 @@ function CanvasViewportPage() {
         nodes,
         connections,
         assets,
-        viewport,
+        viewport: visibilityViewport,
         viewportSize: size,
         selectedNodeIds,
+        selectedConnectionId,
         toolbarNodeId,
         hoveredNodeId,
         dragPreview,
@@ -1467,6 +1460,10 @@ function CanvasViewportPage() {
         scriptEditorNodeId,
         dialogNodeId,
     });
+    const nodeDetailLODById = useCanvasNodeDetailLOD(projectId, nodeRenderLODById, containerRef);
+    useLayoutEffect(() => {
+        visibilityCoverageRef.current = isVisibilityViewportCovered;
+    }, [isVisibilityViewportCovered]);
 
     const visibleDisplayConnections = useMemo(
         () =>
@@ -1648,7 +1645,7 @@ function CanvasViewportPage() {
         projectId,
         domainProjectId: currentProject?.projectId,
         previsNodeId,
-        previsScenes: currentProject?.previsScenes || [],
+        previsScenes: currentProject?.previsScenes ?? EMPTY_PREVIS_SCENES,
         nodesRef,
         connectionsRef,
         getCanvasCenter,
@@ -1908,7 +1905,7 @@ function CanvasViewportPage() {
     const handleCanvasContextMenu = useCallback(
         (event: ReactMouseEvent) => {
             const target = event.target instanceof Element ? event.target : null;
-            if (target?.closest("[data-node-id],[data-connection-id]")) return;
+            if (target?.closest("[data-node-id],[data-connection-id],[data-connection-batch]")) return;
 
             event.preventDefault();
             event.stopPropagation();
@@ -2748,8 +2745,8 @@ function CanvasViewportPage() {
 
                             {batchReferencePickerModal}
                             <CanvasShareModal projectId={projectId} open={shareModalOpen} onClose={() => setShareModalOpen(false)} beforeCreate={saveCanvasProject} />
-                            <LibTVImportDialog open={libTVImportOpen} projectId={projectId} viewport={viewport} viewportSize={size} onClose={() => setLibTVImportOpen(false)} onApply={applyLibTVImport} />
-                            <TapNowImportDialog open={tapNowImportOpen} projectId={projectId} viewport={viewport} viewportSize={size} onClose={() => setTapNowImportOpen(false)} onApply={applyTapNowImport} />
+                            <LibTVImportDialog open={libTVImportOpen} projectId={projectId} viewport={viewport} viewportSize={size} onClose={() => setLibTVImportOpen(false)} onApply={applyImportedCanvas} />
+                            <TapNowImportDialog open={tapNowImportOpen} projectId={projectId} viewport={viewport} viewportSize={size} onClose={() => setTapNowImportOpen(false)} onApply={applyImportedCanvas} />
 
                             <CanvasStylePickerModal open={stylePickerOpen} value={activeStylePresetId} applying={styleApplying} onClose={() => setStylePickerOpen(false)} onSelect={selectCanvasStyle} />
 
@@ -2795,6 +2792,7 @@ function CanvasViewportPage() {
                                         onFileDragOver={handleFileDragOver}
                                     >
                                         <CanvasNodeActionContext.Provider value={canvasNodeActions}>
+                                            <CanvasCompletionFeedbackProvider key={`${canvasStorageScope}:${projectId}`} nodes={nodes} active={projectLoaded}>
                                             <CanvasNodeGraphContext.Provider value={nodeGraphContext}>
                                                 <CanvasProjectWorldLayers
                                                     connectionApproach={connectionApproach}
@@ -2811,6 +2809,7 @@ function CanvasViewportPage() {
                                                     nodeById={nodeById}
                                                     visibleNodes={visibleNodes}
                                                     nodeRenderLODById={nodeRenderLODById}
+                                                    nodeDetailLODById={nodeDetailLODById}
                                                     nodeStackOrder={nodeStackOrder}
                                                     frameChildrenById={frameChildrenById}
                                                     linkedFolderPreviewNodesById={linkedFolderPreviewNodesById}
@@ -2869,6 +2868,7 @@ function CanvasViewportPage() {
                                                     onStartBatchConnection={startBatchConnection}
                                                 />
                                             </CanvasNodeGraphContext.Provider>
+                                            </CanvasCompletionFeedbackProvider>
                                         </CanvasNodeActionContext.Provider>
                                     </CanvasViewport>
 

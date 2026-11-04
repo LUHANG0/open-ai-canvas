@@ -1,5 +1,6 @@
 import { recordCommittedMediaVersion } from "@/lib/canvas/canvas-media-versions";
 import type { CanvasNodeData, CanvasNodeMetadata } from "@/types/canvas";
+import { markCanvasTextResultApplied } from "@/lib/canvas/canvas-completion-feedback";
 
 const completedTaskObservationKeys = [
     "status",
@@ -64,7 +65,7 @@ export function commitCanvasGenerationResult(current: CanvasNodeData[], before: 
     const versionRootId = merged.metadata?.versionOfNodeId;
     const recorded = recordCommittedMediaVersion(merged);
     const committed = current.map((node) => {
-        if (node.id === merged.id) return versionRootId ? { ...recorded, metadata: { ...recorded.metadata, versionPrimary: true } } : recorded;
+        if (node.id === merged.id) return markCanvasTextResultApplied(versionRootId ? { ...recorded, metadata: { ...recorded.metadata, versionPrimary: true } } : recorded);
         if (!versionRootId || (node.metadata?.versionOfNodeId || node.id) !== versionRootId) return node;
         return { ...node, metadata: { ...node.metadata, versionPrimary: false } };
     });

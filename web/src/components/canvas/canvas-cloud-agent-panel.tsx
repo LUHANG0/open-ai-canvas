@@ -64,6 +64,7 @@ import { CanvasAgentSkillLibraryModal } from "./canvas-agent-skill-library-modal
 import { useSkillCuration, curationQuery } from "@/components/skills/skill-curation-browser";
 import { CanvasCloudAgentSettings, type AgentContextKey } from "./canvas-cloud-agent-settings";
 import { useAgentPanelLayout } from "./use-agent-panel-layout";
+import { useAgentCanvasInteraction } from "./use-agent-canvas-interaction";
 import "./canvas-cloud-agent.css";
 import { appendAgentError, appendUniqueMessage, applyAgentEvent, positiveNumber, type ApprovalState } from "./canvas-cloud-agent-events";
 import { AgentContextRing, AgentConversation, AgentHeader, AgentHistory, AgentLauncher, ComposerControls, ComposerPermission } from "./canvas-cloud-agent-panel-parts";
@@ -82,6 +83,7 @@ const EMPTY_REFERENCES: CanvasResourceReference[] = [];
  */
 export const CanvasCloudAgentPanel = memo(function CanvasCloudAgentPanel() {
     const canvasContext = useGlobalAgentStore((state) => state.canvas);
+    const panelInteractionRef = useAgentCanvasInteraction(canvasContext);
     const open = useGlobalAgentStore((state) => state.open);
     const onOpen = useGlobalAgentStore((state) => state.openAgent);
     const onCollapse = useGlobalAgentStore((state) => state.closeAgent);
@@ -1039,6 +1041,7 @@ export const CanvasCloudAgentPanel = memo(function CanvasCloudAgentPanel() {
             <AnimatePresence>
                 {open ? (
                     <motion.aside
+                        ref={panelInteractionRef}
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}

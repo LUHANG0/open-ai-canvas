@@ -8,9 +8,24 @@ for (const [key, value] of Object.entries({ window: dom, document: dom.document,
     Object.defineProperty(globalThis, key, { configurable: true, writable: true, value });
 }
 const pending = new Map<string, { resolve: () => void; reject: () => void }>();
-mock.module("../src/services/canvas-image-loader", () => ({ prepareCanvasImage: (src: string) => new Promise<void>((resolve, reject) => pending.set(src, { resolve, reject: () => reject(new Error("image unavailable")) })) }));
+// The DOM platform must be installed before loading the scoped owner.
+const owner = await import("../src/services/canvas-image-loader");
+mock.module("../src/services/canvas-image-loader", () => ({
+    ...owner,
+    prepareCanvasImage: (source: { src: string }) => {
+        const { promise, resolve, reject } = Promise.withResolvers<void>();
+        pending.set(source.src, { resolve, reject: () => reject(new Error("image unavailable")) });
+        return promise;
+    },
+}));
 mock.module("../src/services/image-storage", () => ({ resolveImageUrl: async (_key: string, src: string) => src }));
-mock.module("../src/services/api/resources", () => ({ resourceIdFromStorageKey: () => null, getResourceAccess: async () => ({ url: "" }), resolveResourceAccessURL: (url: string) => url }));
+mock.module("../src/services/api/resources", () => ({
+    peekResourceAccess: () => undefined,
+    resourceAccessCacheExpiry: () => Infinity,
+    resourceIdFromStorageKey: () => null,
+    getResourceAccess: async () => ({ url: "" }),
+    resolveResourceAccessURL: (url: string) => url,
+}));
 const { act } = await import("react");
 const { createRoot } = await import("react-dom/client");
 const { CachedResourceImage } = await import("../src/components/cached-resource-image");

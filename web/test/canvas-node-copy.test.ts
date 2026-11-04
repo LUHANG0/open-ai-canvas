@@ -189,3 +189,48 @@ describe("batch table copy references", () => {
         expect(copied.content).toBe("result.png");
     });
 });
+
+describe("independent video parameter variants", () => {
+    const video: CanvasNodeData = {
+        id: "video-result", type: CanvasNodeType.Video, title: "镜头", position: { x: 0, y: 0 }, width: 340, height: 240,
+        metadata: {
+            content: "/result.mp4", previewContent: "/poster.jpg", storageKey: "resource:old-video", assetId: "old-asset",
+            videoPreview: { content: "/proxy.mp4", storageKey: "resource:proxy" }, mimeType: "video/mp4", bytes: 9000,
+            naturalWidth: 1920, naturalHeight: 1080, durationMs: 8000, hasAudio: true,
+            prompt: "镜头缓慢推进", composerContent: "镜头缓慢推进", model: "test-video", size: "16x9", seconds: "8", vquality: "1080p", generateAudio: "true", watermark: "false",
+            references: ["resource:reference"], referenceSetId: "ref-set", referenceAssetNodeIds: ["reference", "internal"],
+            videoStartFrameNodeId: "reference", videoEndFrameNodeId: "end", previsDepthVideoNodeId: "depth", previsClayVideoNodeId: "clay",
+            characterViewNodeIds: { front: "reference", side: "internal" },
+            subtitleEntries: [{ index: 1, startMs: 0, endMs: 1000, text: "旧字幕" }], subtitleUpdatedAt: "2026-11-01T00:00:00Z",
+            producedModel: "old-model", producedModelCandidate: "old-candidate", status: "success", taskId: "old-task", taskClientOperationId: "old-operation", taskStatus: "succeeded",
+            resultRecord: { mediaKey: "resource:old-video", taskId: "old-task", billing: { actualAmountMicrocredits: 123, scope: "task" } },
+            agentGenerationContinuation: { id: "continuation", taskId: "old-task", status: "pending" }, lastGenerationRequestFingerprint: "old-request",
+            generationEffectKeys: ["old-effect"], generationResultPlacement: "new-version", versionOfNodeId: "version-root", versionLabel: "B", versionPrimary: true,
+            mediaVersions: [{ id: "old-version", number: 1, createdAt: "2026-11-01", source: "generate", media: { content: "/result.mp4" } }], currentMediaVersionId: "old-version",
+        },
+    };
+
+    test("retains settings and references while dropping old media, task, billing and continuation identities", () => {
+        const before = structuredClone(video);
+        const metadata = isolateCopiedNodeMetadata(video, new Map([[video.id, "variant"], ["internal", "internal-copy"]]), { videoParameterVariant: true });
+        expect(metadata).toMatchObject({ prompt: "镜头缓慢推进", composerContent: "镜头缓慢推进", model: "test-video", size: "16x9", seconds: "8", vquality: "1080p", generateAudio: "true", watermark: "false",
+            references: ["resource:reference"], referenceSetId: "ref-set", referenceAssetNodeIds: ["reference", "internal-copy"], videoStartFrameNodeId: "reference", videoEndFrameNodeId: "end",
+            previsDepthVideoNodeId: "depth", previsClayVideoNodeId: "clay", characterViewNodeIds: { front: "reference", side: "internal-copy" }, copiedFromNodeId: video.id, generationResultPlacement: "replace-node", status: "idle" });
+        for (const key of ["content", "previewContent", "videoPreview", "storageKey", "assetId", "mimeType", "bytes", "naturalWidth", "naturalHeight", "durationMs", "hasAudio",
+            "subtitleEntries", "subtitleUpdatedAt", "producedModel", "producedModelCandidate", "taskId", "taskClientOperationId", "taskStatus", "resultRecord", "agentGenerationContinuation", "lastGenerationRequestFingerprint",
+            "generationEffectKeys", "versionOfNodeId", "versionLabel", "versionPrimary", "mediaVersions", "currentMediaVersionId"] as const) expect(metadata[key]).toBeUndefined();
+        expect(video).toEqual(before);
+    });
+
+    test("ordinary video copy still keeps delivered media and subtitles, without adopting a running task", () => {
+        const copy = isolateCopiedNodeMetadata(video, new Map([[video.id, "copy"]]));
+        expect(copy.content).toBe("/result.mp4"); expect(copy.storageKey).toBe("resource:old-video");
+        expect(copy.subtitleEntries).toEqual(video.metadata!.subtitleEntries); expect(copy.status).toBe("success");
+        expect(copy.taskId).toBeUndefined(); expect(copy.referenceSetId).toBeUndefined();
+    });
+
+    test("the video-only option does not clear an image result", () => {
+        const copy = isolateCopiedNodeMetadata({ ...video, type: CanvasNodeType.Image }, new Map([[video.id, "copy"]]), { videoParameterVariant: true });
+        expect(copy.content).toBe("/result.mp4"); expect(copy.status).toBe("success");
+    });
+});

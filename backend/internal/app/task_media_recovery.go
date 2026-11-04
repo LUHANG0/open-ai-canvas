@@ -234,8 +234,16 @@ func (s *Service) materializeTaskMedia(ctx context.Context, task *model.Task, co
 			}
 		}
 		item.ResourceID = resource.ID
+		stagedName := item.TempName
+		// Persist the durable recovery source before removing the staging copy.
+		item.TempName = ""
 		if err := s.saveMediaCheckpoint(task, checkpoint, "register"); err != nil {
 			return nil, err
+		}
+		if path := s.mediaTempPath(stagedName); path != "" {
+			if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
+				_ = s.log(task.UserID, task.ID, "warn", "清理作品暂存文件失败", "")
+			}
 		}
 		url := resourceFileURL(resource.ID)
 		items = append(items, map[string]interface{}{"dataUrl": url, "url": url, "resourceId": resource.ID, "storageKey": "resource:" + resource.ID, "mimeType": resource.MimeType, "bytes": resource.Size, "width": resource.Width, "height": resource.Height, "durationMs": resource.DurationMs})
@@ -256,6 +264,9 @@ func (s *Service) materializeTaskMedia(ctx context.Context, task *model.Task, co
 var errMediaRecoveryBusy = errors.New("作品保存并发已满")
 
 func retryableMediaRecovery(err error) bool {
+	if errors.Is(err, errMediaStagingFull) {
+		return true
+	}
 	if retryableProtocolMediaDownload(err) || errors.Is(err, context.DeadlineExceeded) {
 		return true
 	}

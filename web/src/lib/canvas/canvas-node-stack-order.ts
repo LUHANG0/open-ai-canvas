@@ -1,3 +1,6 @@
+import { isFrameNode } from "@/lib/canvas/canvas-frame";
+import type { CanvasNodeData } from "@/types/canvas";
+
 export type CanvasNodeStackOrder = string[];
 
 /**
@@ -22,4 +25,17 @@ export function sortCanvasNodesByStackOrder<T extends { id: string }>(nodes: T[]
         .map((node, index) => ({ node, index, rank: rankById.get(node.id) ?? -1 }))
         .sort((left, right) => left.rank - right.rank || left.index - right.index)
         .map(({ node }) => node);
+}
+
+/** Viewport queries choose membership, never DOM order. Only current document IDs may render. */
+export function sortCanvasNodesForRendering(nodes: CanvasNodeData[], documentOrder: ReadonlyMap<string, number>, order: CanvasNodeStackOrder): CanvasNodeData[] {
+    const frames: CanvasNodeData[] = [];
+    const regular: CanvasNodeData[] = [];
+    for (const node of nodes) {
+        if (!documentOrder.has(node.id)) continue;
+        (isFrameNode(node) ? frames : regular).push(node);
+    }
+    frames.sort((left, right) => documentOrder.get(left.id)! - documentOrder.get(right.id)!);
+    regular.sort((left, right) => documentOrder.get(left.id)! - documentOrder.get(right.id)!);
+    return [...frames, ...sortCanvasNodesByStackOrder(regular, order)];
 }

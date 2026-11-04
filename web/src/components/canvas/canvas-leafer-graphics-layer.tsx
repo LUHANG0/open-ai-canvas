@@ -1,14 +1,14 @@
 import { useLayoutEffect, useRef, type RefObject } from "react";
 import { Group, Leafer, Path, Rect } from "leafer-ui";
 
-import { canvasConnectionPath } from "@/components/canvas/canvas-connections";
+import { canvasConnectionPath, type CanvasConnectionGeometry } from "@/lib/canvas/canvas-connection-geometry";
 import { CanvasConnectionDrafts } from "./canvas-connection-drafts";
 import { useCanvasNodeResizeMotion } from "./canvas-node-resize-motion";
 import type { CanvasNodeResizeMotion } from "@/lib/canvas/canvas-node-resize-motion";
 import type { CanvasBatchConnectionPreview } from "@/lib/canvas/canvas-batch-connection";
-import { batchCellAnchor, type BatchScroll } from "@/lib/canvas/canvas-batch-references";
+import type { BatchScroll } from "@/lib/canvas/canvas-batch-references";
 import { subscribeCanvasGraphicsViewportPreview, subscribeCanvasNodeDragPreview, subscribeCanvasSelectionPreview, type CanvasNodeDragPreview } from "@/lib/canvas/canvas-live-viewport";
-import { calculateCanvasPreviewTransform, sameCanvasViewport, shouldRebaseCanvasRaster } from "@/lib/canvas/canvas-leafer-viewport";
+import { CANVAS_RASTER_PADDING, calculateCanvasRasterPreviewTransform, sameCanvasViewport, shouldRebaseCanvasRaster } from "@/lib/canvas/canvas-leafer-viewport";
 import { offsetSelectedNodeBounds } from "@/lib/canvas/canvas-selection";
 import { CANVAS_CONNECTION_STROKE_WIDTH, type CanvasTheme } from "@/lib/canvas-theme";
 import type { CanvasDisplayConnection, CanvasNodeData, ConnectionHandle, Position, SelectionBox, ViewportTransform } from "@/types/canvas";
@@ -52,7 +52,8 @@ type ConnectionSceneEntry = {
     connection: CanvasDisplayConnection["connection"];
     from: CanvasNodeData;
     to: CanvasNodeData;
-    signature: string;
+    geometry?: CanvasConnectionGeometry;
+    stroke?: string;
 };
 
 type OverlayScene = LeaferScene & {
@@ -90,13 +91,13 @@ export function CanvasLeaferGraphicsLayer(props: CanvasLeaferGraphicsLayerProps)
         const resize = () => {
             const rect = container.getBoundingClientRect();
             containerSizeRef.current = { width: Math.max(1, rect.width), height: Math.max(1, rect.height) };
-            const size = { ...containerSizeRef.current, pixelRatio: canvasPixelRatio() };
+            const size = { width: containerSizeRef.current.width + 2 * CANVAS_RASTER_PADDING, height: containerSizeRef.current.height + 2 * CANVAS_RASTER_PADDING, pixelRatio: canvasPixelRatio() };
             underlay.leafer.resize(size);
             overlay.leafer.resize(size);
-            syncViewport(rasterViewportRef.current, size.width, size.height, underlay, overlay, propsRef.current);
-            if (isViewportPreview(container, viewportRef.current, rasterViewportRef.current)) {
-                applyScenePreview(viewportRef.current, rasterViewportRef.current, underlay, overlay);
-            }
+            rasterViewportRef.current = viewportRef.current;
+            syncViewport(rasterViewportRef.current, containerSizeRef.current.width, containerSizeRef.current.height, underlay, overlay, propsRef.current);
+            forceSceneRender(underlay, overlay);
+            resetScenePreview(underlay, overlay);
         };
         const resizeObserver = new ResizeObserver(resize);
         resizeObserver.observe(container);
@@ -104,7 +105,7 @@ export function CanvasLeaferGraphicsLayer(props: CanvasLeaferGraphicsLayerProps)
         const unsubscribe = subscribeCanvasGraphicsViewportPreview(container, (next) => {
             viewportRef.current = next;
             if (isViewportPreview(container, next, rasterViewportRef.current)) {
-                if (shouldRebaseCanvasRaster(next, rasterViewportRef.current)) {
+                if (shouldRebaseCanvasRaster(next, rasterViewportRef.current, containerSizeRef.current)) {
                     syncViewport(next, containerSizeRef.current.width, containerSizeRef.current.height, underlay, overlay, propsRef.current);
                     rasterViewportRef.current = next;
                     forceSceneRender(underlay, overlay);
@@ -153,7 +154,10 @@ export function CanvasLeaferGraphicsLayer(props: CanvasLeaferGraphicsLayerProps)
     useLayoutEffect(() => {
         const underlay = underlayRef.current;
         if (!underlay) return;
-        rebuildConnections(underlay, props);
+        const changed = rebuildConnections(underlay, props);
+        // Visibility/content commits can add paths during a live preview. Present
+        // those changes before paint without replacing the newer live viewport.
+        if (changed && props.containerRef.current?.dataset.canvasViewportInteracting === "true") forceSceneRender(underlay);
     }, [props.displayConnections, props.scriptScrollTopById, props.batchScrollById, props.theme]);
 
     useLayoutEffect(() => {
@@ -191,8 +195,8 @@ export function CanvasLeaferGraphicsLayer(props: CanvasLeaferGraphicsLayerProps)
 
     return (
         <>
-            <div ref={underlayHostRef} data-canvas-leafer-underlay className="pointer-events-none absolute inset-0 z-0 overflow-hidden" aria-hidden />
-            <div ref={overlayHostRef} data-canvas-leafer-overlay className="pointer-events-none absolute inset-0 z-[var(--z-canvas-overlay)] overflow-hidden" aria-hidden />
+            <div ref={underlayHostRef} data-canvas-leafer-underlay className="pointer-events-none absolute z-0 overflow-hidden" style={{ inset: -CANVAS_RASTER_PADDING }} aria-hidden />
+            <div ref={overlayHostRef} data-canvas-leafer-overlay className="pointer-events-none absolute z-[var(--z-canvas-overlay)] overflow-hidden" style={{ inset: -CANVAS_RASTER_PADDING }} aria-hidden />
             <CanvasConnectionDrafts {...props} />
         </>
     );
@@ -221,31 +225,29 @@ function createOverlayScene(host: HTMLDivElement): OverlayScene {
 }
 
 function rebuildConnections(scene: UnderlayScene, props: CanvasLeaferGraphicsLayerProps) {
+    let changed = false;
     const nextIds = new Set(props.displayConnections.map(({ connection }) => connection.id));
     for (const [connectionId, entry] of scene.connectionEntries) {
         if (nextIds.has(connectionId)) continue;
         entry.path.remove();
         scene.connectionEntries.delete(connectionId);
+        changed = true;
     }
 
     scene.connectionIdsByNodeId.clear();
     const previewIds = scene.dragPreview ? scene.dragPreview.nodeIds : null;
     for (const { connection, from, to } of props.displayConnections) {
-        const signature = connectionSceneSignature(connection, from, to, props);
         let entry = scene.connectionEntries.get(connection.id);
         if (!entry) {
-            const path = new Path({ hittable: false });
+            const path = new Path({ hittable: false, strokeWidth: CANVAS_CONNECTION_STROKE_WIDTH, strokeScaleFixed: true, strokeCap: "round", opacity: 0.8 });
             scene.connections.add(path);
-            entry = { path, connection, from, to, resizeMotion: scene.resizeMotion, signature: "" };
+            entry = { path, connection, from, to, resizeMotion: scene.resizeMotion };
             scene.connectionEntries.set(connection.id, entry);
         }
         entry.connection = connection;
         entry.from = from;
         entry.to = to;
-        if (entry.signature !== signature || scene.dragPreview) {
-            syncConnectionPath(entry, props, scene.dragPreview, previewIds);
-            entry.signature = signature;
-        }
+        if (syncConnectionPath(entry, props, scene.dragPreview, previewIds)) changed = true;
         for (const nodeId of [from.id, to.id]) {
             const connectionIds = scene.connectionIdsByNodeId.get(nodeId) || new Set<string>();
             connectionIds.add(connection.id);
@@ -254,49 +256,20 @@ function rebuildConnections(scene: UnderlayScene, props: CanvasLeaferGraphicsLay
     }
 
     scene.dragPreviewConnectionIds = collectPreviewConnectionIds(scene, scene.dragPreview);
-}
-
-function connectionSceneSignature(connection: CanvasDisplayConnection["connection"], from: CanvasNodeData, to: CanvasNodeData, props: CanvasLeaferGraphicsLayerProps) {
-    const fromCell = batchCellAnchor(from, connection.fromHandleId, props.batchScrollById?.[from.id]);
-    const toCell = batchCellAnchor(to, connection.toHandleId, props.batchScrollById?.[to.id]);
-    return [
-        connection.id,
-        connection.fromNodeId,
-        connection.toNodeId,
-        connection.fromHandleId || "",
-        connection.toHandleId || "",
-        from.id,
-        from.position.x,
-        from.position.y,
-        from.width,
-        from.height,
-        to.id,
-        to.position.x,
-        to.position.y,
-        to.width,
-        to.height,
-        props.scriptScrollTopById[from.id] || 0,
-        props.scriptScrollTopById[to.id] || 0,
-        fromCell?.x,
-        fromCell?.y,
-        toCell?.x,
-        toCell?.y,
-        props.theme.connection.stroke,
-    ].join("|");
+    return changed;
 }
 
 function syncConnectionPath(entry: ConnectionSceneEntry, props: CanvasLeaferGraphicsLayerProps, preview: CanvasNodeDragPreview | null, previewIds: ReadonlySet<string> | null = preview?.nodeIds || null) {
     const from = translatePreviewNode(entry.resizeMotion?.resolveNode(entry.from) || entry.from, previewIds, preview);
     const to = translatePreviewNode(entry.resizeMotion?.resolveNode(entry.to) || entry.to, previewIds, preview);
-    entry.path.set({
-        path: canvasConnectionPath(entry.connection, from, to, props.scriptScrollTopById[entry.from.id] || 0, props.scriptScrollTopById[entry.to.id] || 0, props.batchScrollById?.[entry.from.id], props.batchScrollById?.[entry.to.id]).pathD,
-        stroke: props.theme.connection.stroke,
-        strokeWidth: CANVAS_CONNECTION_STROKE_WIDTH,
-        strokeScaleFixed: true,
-        strokeCap: "round",
-        opacity: 0.8,
-        hittable: false,
-    });
+    const geometry = canvasConnectionPath(entry.connection, from, to, props.scriptScrollTopById[entry.from.id] || 0, props.scriptScrollTopById[entry.to.id] || 0, props.batchScrollById?.[entry.from.id], props.batchScrollById?.[entry.to.id]);
+    const stroke = props.theme.connection.stroke;
+    if (entry.geometry === geometry && entry.stroke === stroke) return false;
+    if (entry.geometry !== geometry) entry.path.path = geometry.pathD;
+    if (entry.stroke !== stroke) entry.path.stroke = stroke;
+    entry.geometry = geometry;
+    entry.stroke = stroke;
+    return true;
 }
 
 function translatePreviewNode(node: CanvasNodeData, previewIds: ReadonlySet<string> | null, preview: CanvasNodeDragPreview | null) {
@@ -355,7 +328,7 @@ function syncSelection(rect: Rect, selection: SelectionBox, theme: CanvasTheme) 
 
 function syncViewport(viewport: ViewportTransform, width: number, height: number, underlay: UnderlayScene, overlay: OverlayScene, props: CanvasLeaferGraphicsLayerProps) {
     const scale = Math.max(viewport.k, 0.05);
-    for (const scene of [underlay, overlay]) scene.world.set({ x: viewport.x, y: viewport.y, scaleX: scale, scaleY: scale });
+    for (const scene of [underlay, overlay]) scene.world.set({ x: viewport.x + CANVAS_RASTER_PADDING, y: viewport.y + CANVAS_RASTER_PADDING, scaleX: scale, scaleY: scale });
 
     overlay.selection.set({
         strokeWidth: 1 / scale,
@@ -385,7 +358,7 @@ function isViewportPreview(container: HTMLDivElement, viewport: ViewportTransfor
 
 function applyScenePreview(viewport: ViewportTransform, rasterViewport: ViewportTransform, ...scenes: LeaferScene[]) {
     // 将已栅格画面的屏幕坐标映射到实时视口，缩放手势期间不触碰 Leafer 场景树。
-    const { ratio, x, y } = calculateCanvasPreviewTransform(viewport, rasterViewport);
+    const { ratio, x, y } = calculateCanvasRasterPreviewTransform(viewport, rasterViewport);
     for (const scene of scenes) {
         scene.host.style.transformOrigin = "0 0";
         scene.host.style.transform = `translate3d(${x}px, ${y}px, 0) scale(${ratio})`;

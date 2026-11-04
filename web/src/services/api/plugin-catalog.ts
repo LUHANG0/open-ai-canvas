@@ -33,8 +33,8 @@ type PluginProviderCatalogItem = {
     }>;
 };
 
-export async function fetchPluginProviderCatalog(scope: string, capability?: ProtocolCapability) {
-    const result = await http.get<{ providers: PluginProviderCatalogItem[] }>("/plugins/catalog", { params: { scope, capability } });
+export async function fetchPluginProviderCatalog(scope: string, capability?: ProtocolCapability, signal?: AbortSignal) {
+    const result = await http.get<{ providers: PluginProviderCatalogItem[] }>("/plugins/catalog", { params: { scope, capability }, signal });
     return result.providers.filter((item) => item.enabled && !item.unavailableReason).map(toProviderDefinition);
 }
 

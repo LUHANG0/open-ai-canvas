@@ -2290,7 +2290,7 @@ paths:
     post:
       tags: [workbench]
       summary: 创建工作台生成任务
-      description: 仅接受模型选择意图、资源 ID、提示词和允许的生成参数；toolId 可选，服务端校验开关、所选工具、资源、模型能力和账单，不接受客户端 providerConfig、密钥或上游 URL。
+      description: 可选 idempotencyKey（16–128 位字母、数字、点、下划线、冒号或连字符）标识同一账号的一次提交。相同键及内容返回原任务，内容冲突返回 409；传输不确定时沿用原键，不应生成新键。仅接受模型选择意图、资源 ID、提示词和允许的生成参数；toolId 可选，服务端校验开关、所选工具、资源、模型能力和账单，不接受客户端 providerConfig、密钥或上游 URL。
       requestBody:
         required: true
         content:
@@ -2300,6 +2300,7 @@ paths:
               additionalProperties: false
               required: [kind, prompt, model, modelChoice, parameters, references]
               properties:
+                idempotencyKey: { type: string, minLength: 16, maxLength: 128, pattern: "^[A-Za-z0-9._:-]+$" }
                 kind: { type: string, enum: [image, video] }
                 toolId: { type: string }
                 presetId: { type: string }
@@ -2325,6 +2326,7 @@ paths:
                   properties:
                     size: { type: string }
                     quality: { type: string }
+                    imageResolution: { type: string }
                     count: { type: integer, minimum: 1 }
                     videoSeconds: { type: integer, minimum: 1 }
                     ratio: { type: string }
@@ -2343,6 +2345,8 @@ paths:
                       kind: { type: string, enum: [image, video, audio] }
                       role: { type: string, enum: [reference, first_frame, last_frame] }
       responses:
+        "409":
+          $ref: "#/components/responses/Error"
         "200":
           $ref: "#/components/responses/Envelope"
         "400":
@@ -2375,9 +2379,20 @@ paths:
         "401":
           $ref: "#/components/responses/Error"
     post:
+      description: "可选 idempotencyKey（16–128 位字母、数字、点、下划线、冒号或连字符）标识同一账号的一次提交。相同键及内容返回原任务，内容冲突返回 409；传输不确定时沿用原键，不应生成新键。"
       tags: [tasks]
       summary: 创建生成任务
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                idempotencyKey: { type: string, minLength: 16, maxLength: 128, pattern: "^[A-Za-z0-9._:-]+$" }
       responses:
+        "409":
+          $ref: "#/components/responses/Error"
         "200":
           $ref: "#/components/responses/Envelope"
         "400":

@@ -13,17 +13,17 @@ import { formatVideoResolutionLabel as videoResolutionLabel } from "@/lib/video-
 import { CanvasResourceMentionTextarea } from "@/components/canvas/canvas-resource-mention-textarea";
 import { VoiceRecordingButton } from "@/components/conversation/voice-recording-button";
 import { ModelPicker } from "@/components/model-picker";
-import { CreditSymbol, requestCreditCost } from "@/constant/credits";
+import { CreditSymbol } from "@/constant/credits";
 import { ASSET_CATEGORY_LABELS } from "@/lib/asset-category";
 import { formatShotOrdinal } from "@/lib/shot-label";
 import { buildImageResolutionOptions, formatImageResolutionSize, supportsImageResolutionPresets } from "@/lib/image-resolution-tiers";
 import { normalizeVideoValue, videoDurationOptions, type ImageCapabilityConfig, type VideoCapabilityConfig } from "@/lib/model-capabilities";
 import { mergedImageCapabilityConfig, type ModelRequirements } from "@/lib/model-selection";
 import { imageQualityLabel } from "@/lib/image-quality";
-import { modelQuoteDescription, modelQuoteRequest } from "@/lib/model-pricing";
-import { quoteModel, type LogicalModelQuote } from "@/services/api/logical-models";
 import { modelOptionName, resolveModelChannel, type AiConfig } from "@/stores/use-config-store";
 import { useUserStore } from "@/stores/use-user-store";
+import { useGenerationReadiness } from "@/hooks/use-generation-readiness";
+import { GenerationStatusNotice } from "@/components/generation-status";
 import type { PromptOptimizerProvider } from "@/lib/plugins/plugin-types";
 import { type CreationReference } from "./creation-references";
 import { creationAttachmentKind, type CreationAttachment, type CreationMode } from "./creation-assets";
@@ -144,46 +144,21 @@ export function CreationComposer(props: ComposerProps) {
     const [trackState, setTrackState] = useState({ canScrollLeft: false, canScrollRight: false, isExpanded: true, isDragging: false });
     const previousAttachmentCountRef = useRef(0);
     const interactionBusy = props.busy || props.referenceReplacementBusy;
-    const canSubmit = Boolean(props.prompt.trim()) && !interactionBusy;
-    const creditsEnabled = useUserStore((state) => state.features.creditsEnabled);
+    const authenticated = useUserStore((state) => Boolean(state.user));
+    const generationStatus = useGenerationReadiness(props.config, props.model, props.mode, props.modelRequirements, props.mode === "image" ? Number(props.count) || 1 : 1, props.mode === "video" ? props.seconds : 1);
+    const canSubmit = Boolean(props.prompt.trim()) && !interactionBusy && (!authenticated || generationStatus.canSubmit);
     const priceChannel = resolveModelChannel(props.config, props.model);
-    const quoteRequest = useMemo(() => modelQuoteRequest(props.config, props.model, props.mode, props.modelRequirements), [props.config, props.mode, props.model, props.modelRequirements]);
-    const [routeQuote, setRouteQuote] = useState<LogicalModelQuote | null>(null);
     const canOptimizePrompt = Boolean(props.promptOptimizerProvider) && (props.mode === "image" || props.mode === "video");
     const optimizerReferences = props.references.filter((reference) => reference.active && reference.kind !== "skill");
-    const credits = requestCreditCost({
-        channelMode: priceChannel.scope === "system" ? "remote" : "local",
-        modelCosts: priceChannel.modelCosts,
-        model: modelOptionName(props.model),
-        count: props.mode === "image" ? props.count : 1,
-        seconds: props.mode === "video" ? props.seconds : 1,
-        capability: props.mode,
-        config: props.config,
-        requirements: props.modelRequirements,
-    });
-    useEffect(() => {
-        if (!creditsEnabled || !quoteRequest) {
-            setRouteQuote(null);
-            return;
-        }
-        const controller = new AbortController();
-        setRouteQuote(null);
-        quoteModel(quoteRequest, controller.signal)
-            .then(({ quote }) => setRouteQuote(quote))
-            .catch(() => {
-                if (!controller.signal.aborted) setRouteQuote(null);
-            });
-        return () => controller.abort();
-    }, [creditsEnabled, quoteRequest]);
-    const generationCredits = routeQuote ? routeQuote.amountMicrocredits / 1_000_000 : credits;
-    const showCost = creditsEnabled && generationCredits !== null && generationCredits !== undefined;
-    const formattedCredits = generationCredits?.toLocaleString("zh-CN", { maximumFractionDigits: 6 });
-    const actionLabel = props.referenceReplacementBusy ? "正在替换参考图" : interactionBusy || (props.generationActive && !canSubmit) ? "生成中" : showCost ? `${routeQuote?.estimated ? "预估" : "消耗"} ${formattedCredits} 积分，发送` : "发送";
+    const showCost = authenticated && generationStatus.fee.credits !== null;
+    const formattedCredits = generationStatus.fee.credits?.toLocaleString("zh-CN", { maximumFractionDigits: 6 });
+    const actionLabel = props.referenceReplacementBusy ? "正在替换参考图" : interactionBusy || (props.generationActive && !props.prompt.trim()) ? "生成中" : showCost ? `${generationStatus.fee.label}，发送` : "发送";
+    const submit = () => { if (canSubmit) props.onSubmit(); };
     // Send-button working state must span the WHOLE generation (not just the
     // submit-lock window): spinner stays while a message is pending and
     // the composer is empty; typing a next prompt returns the arrow so the
     // user knows a new send is possible.
-    const showWorkingSpinner = interactionBusy || (props.generationActive && !canSubmit);
+    const showWorkingSpinner = interactionBusy || (props.generationActive && !props.prompt.trim());
     const placeholder = props.mode === "text"
         ? "描述你的故事、角色或想继续讨论的创意"
         : props.mode === "image"
@@ -293,7 +268,7 @@ export function CreationComposer(props: ComposerProps) {
     const composerContent = <>
         <div className="creation-chat-writing-surface">
             <div className="creation-chat-editor">
-                <CanvasResourceMentionTextarea ref={props.composerFocusRef} value={props.prompt} references={props.references} mentionMenuWidth={400} autoSize sendOnEnter onFocus={props.onPromptFocus} onChange={props.setPrompt} onSubmit={props.onSubmit} containerClassName="creation-chat-mention-container" className="creation-chat-mention-editor creation-scrollbar" style={{ color: "var(--creation-text)" }} placeholder={props.placeholderOverride || (props.variant === "empty" ? emptyPlaceholder : placeholder)} aria-label="创作提示词，可使用 @ 引用当前参考内容或技能；回车发送，Shift+回车换行" spellCheck disabled={interactionBusy} activeDropReferenceId={dropTargetReferenceId} onReferenceFilesDrop={(reference, files) => { const target = props.references.find((item) => item.id === reference.id); if (target?.attachmentId) props.onReplaceReferenceFiles(target.attachmentId, files); }} />
+                <CanvasResourceMentionTextarea ref={props.composerFocusRef} value={props.prompt} references={props.references} mentionMenuWidth={400} autoSize sendOnEnter onFocus={props.onPromptFocus} onChange={props.setPrompt} onSubmit={submit} containerClassName="creation-chat-mention-container" className="creation-chat-mention-editor creation-scrollbar" style={{ color: "var(--creation-text)" }} placeholder={props.placeholderOverride || (props.variant === "empty" ? emptyPlaceholder : placeholder)} aria-label="创作提示词，可使用 @ 引用当前参考内容或技能；回车发送，Shift+回车换行" spellCheck disabled={interactionBusy} activeDropReferenceId={dropTargetReferenceId} onReferenceFilesDrop={(reference, files) => { const target = props.references.find((item) => item.id === reference.id); if (target?.attachmentId) props.onReplaceReferenceFiles(target.attachmentId, files); }} />
                 {props.attachments.length ? <div className={`creation-reference-panel${trackState.isExpanded ? " is-expanded" : ""}`} aria-busy={interactionBusy}>
                     {trackState.isExpanded ? <div className="creation-reference-panel-header">
                         <div className="creation-reference-filter-tabs app-control-group" data-density="compact" role="group" aria-label="筛选参考内容">
@@ -399,14 +374,15 @@ export function CreationComposer(props: ComposerProps) {
                     position: "relative",
                     color: "var(--user-ink)",
                 } as CSSProperties}
-                onClick={interactionBusy ? undefined : props.onSubmit}
+                onClick={submit}
                 aria-label={actionLabel}
-                title={!canSubmit && !interactionBusy ? "输入创作想法后即可生成" : actionLabel}
+                title={!authenticated ? "登录后继续创作" : generationStatus.reason || (generationStatus.fee.blocked ? generationStatus.fee.label : !canSubmit && !interactionBusy ? "输入创作想法后即可生成" : actionLabel)}
             >
-                {showCost ? <span className="creation-submit-cost" title={routeQuote ? modelQuoteDescription(routeQuote) : undefined}><CreditSymbol /><span>{routeQuote?.estimated ? `预估:${formattedCredits}` : formattedCredits}</span></span> : null}
+                {showCost ? <span className="creation-submit-cost" title={generationStatus.fee.description}><CreditSymbol /><span>{generationStatus.fee.estimated ? `预估:${formattedCredits}` : formattedCredits}</span></span> : null}
                 <span className="creation-submit-action" aria-hidden>{showWorkingSpinner ? <LoaderCircle className="size-4 animate-spin" /> : <ArrowUp className="size-4" />}<span>{showWorkingSpinner ? "生成中" : "开始创作"}</span></span>
             </Button>
         </footer>
+        {authenticated ? <GenerationStatusNotice status={generationStatus} className="px-3 pb-2" /> : <div role="status" className="px-3 pb-2 text-[var(--fs-caption)] leading-relaxed">登录后选择模型并查看费用</div>}
         <CreationMediaPreviewModal url={previewUrl} type={previewType} onClose={() => setPreviewUrl("")} />
     </>;
     const composer = (

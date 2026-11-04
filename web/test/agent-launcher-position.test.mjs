@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
 import { fileURLToPath } from "node:url";
 import { runInNewContext } from "node:vm";
-import { clampAgentLauncherPosition, moveAgentLauncher, restoreAgentLauncherPosition } from "../src/lib/canvas/agent-launcher-position";
+import { clampAgentLauncherPosition, moveAgentLauncher, restoreAgentLauncherPosition, resolveAgentLauncherAvatarHeight } from "../src/lib/canvas/agent-launcher-position";
 
 const viewport = { width: 1280, height: 800 };
 const start = { right: 20, bottom: 20 };
@@ -179,4 +179,23 @@ test("production handlers support keyboard movement and viewport resizing", () =
     expect(h.state.position).toEqual({ right: 12, bottom: 12 });
     h.fire("onClick", { detail: 0 });
     expect(h.opens).toBe(1);
+});
+
+test("large avatars shrink outside the canvas and on narrow canvas screens", () => {
+    expect(resolveAgentLauncherAvatarHeight(320, 0.75, viewport, false)).toBe(120);
+    expect(resolveAgentLauncherAvatarHeight(320, 480 / 432, { width: 390, height: 844 }, true)).toBe(120);
+    expect(resolveAgentLauncherAvatarHeight(320, 1, { width: 767, height: 800 }, true)).toBe(120);
+    expect(resolveAgentLauncherAvatarHeight(320, 1, { width: 768, height: 800 }, true)).toBe(320);
+});
+
+test("desktop canvas respects chosen avatar size and smaller avatars never grow", () => {
+    expect(resolveAgentLauncherAvatarHeight(320, 0.75, viewport, true)).toBe(320);
+    expect(resolveAgentLauncherAvatarHeight(80, 1, viewport, false)).toBe(80);
+    expect(resolveAgentLauncherAvatarHeight(80, 1, { width: 390, height: 844 }, true)).toBe(80);
+});
+
+test("avatar size still fits short viewports and unusually wide media", () => {
+    expect(resolveAgentLauncherAvatarHeight(320, 0.75, { width: 390, height: 160 }, false)).toBe(100);
+    expect(resolveAgentLauncherAvatarHeight(320, 4, { width: 390, height: 844 }, false)).toBe(87.5);
+    expect(resolveAgentLauncherAvatarHeight(320, 4, { width: 800, height: 800 }, true)).toBe(190);
 });

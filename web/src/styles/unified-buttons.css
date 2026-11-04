@@ -1,15 +1,15 @@
 /* 原生 :focus-visible 决定键盘焦点；不再维护逐页放行名单。 */
-:where(button, .ant-btn):focus:not(:focus-visible) {
+:where(button):focus:not(:focus-visible),:where( .ant-btn):focus:not(:focus-visible) {
     outline: none !important;
     box-shadow: none !important;
 }
 
 /* 共享原生控件的显式槽位；不猜测按钮是否只有一个 svg。 */
-:where([data-slot="icon-button"], [data-slot="tool-button"], [data-slot="control-item"]) {
+:where([data-slot="icon-button"]),:where( [data-slot="tool-button"]),:where( [data-slot="control-item"]) {
     transition: var(--control-state-transition);
 }
 
-:where([data-slot="icon-button"], [data-slot="tool-button"], [data-slot="control-item"]):focus-visible {
+:where([data-slot="icon-button"]):focus-visible,:where( [data-slot="tool-button"]):focus-visible,:where( [data-slot="control-item"]):focus-visible {
     outline: 2px solid var(--control-focus-ring);
     outline-offset: 2px;
 }
@@ -19,12 +19,12 @@
 [data-slot="icon-button"][data-variant="solid"]:not([data-active="true"]):hover { background: var(--button-primary-hover-bg); }
 [data-slot="icon-button"][data-variant="solid"]:not([data-active="true"]):active { background: var(--button-primary-active-bg); }
 
-:where([data-slot="icon-button"], [data-slot="tool-button"])[data-active="true"] {
+:where([data-slot="icon-button"])[data-active="true"],:where( [data-slot="tool-button"])[data-active="true"] {
     background: var(--control-selected-bg);
     color: var(--control-selected-fg);
 }
 
-:where([data-slot="icon-button"], [data-slot="tool-button"])[data-active="true"]:hover {
+:where([data-slot="icon-button"])[data-active="true"]:hover,:where( [data-slot="tool-button"])[data-active="true"]:hover {
     background: var(--control-selected-hover-bg);
 }
 
@@ -88,5 +88,5 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-    :where([data-slot="icon-button"], [data-slot="tool-button"], [data-slot="control-item"], [data-slot="select"]) { transition-duration: 0s !important; }
+    :where([data-slot="icon-button"]),:where( [data-slot="tool-button"]),:where( [data-slot="control-item"]),:where( [data-slot="select"]) { transition-duration: 0s !important; }
 }

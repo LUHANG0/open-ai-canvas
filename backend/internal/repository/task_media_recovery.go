@@ -6,6 +6,22 @@ import (
 	"yingce/backend/internal/model"
 )
 
+// Keyset pagination covers every recoverable checkpoint without an age cutoff.
+// Only checkpoint identity columns are read; no generation or billing is run.
+func (r *Repository) TasksWithPendingMediaCheckpoint(afterID string, limit int) ([]model.Task, error) {
+	if limit <= 0 || limit > 1000 {
+		limit = 500
+	}
+	query := r.db.Select("id", "user_id", "media_recovery_json").
+		Where("COALESCE(media_recovery_json, '') <> '' AND status IN ?", []model.TaskStatus{model.TaskStatusQueued, model.TaskStatusRunning, model.TaskStatusFailed})
+	if afterID != "" {
+		query = query.Where("id > ?", afterID)
+	}
+	var tasks []model.Task
+	err := query.Order("id ASC").Limit(limit).Find(&tasks).Error
+	return tasks, err
+}
+
 // The existing task lease fences every checkpoint write, including after cancellation.
 func (r *Repository) SaveTaskMediaCheckpoint(task *model.Task, encrypted, stage string) error {
 	result := taskLeaseWriter(r.db.Model(&model.Task{}), task.LeaseOwner).

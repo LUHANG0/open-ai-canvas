@@ -151,6 +151,29 @@ const accessCache = new Map<string, CachedResourceAccess>();
 const accessRequests = new Map<string, Promise<ResourceAccess>>();
 const pendingResourceAccess = new Map<string, PendingResourceAccess>();
 let resourceAccessBatchTimer: ReturnType<typeof setTimeout> | undefined;
+const MAX_MEMORY_ACCESS_DESCRIPTORS = 256;
+
+function cacheResourceAccess(key: string, entry: CachedResourceAccess) {
+    accessCache.delete(key);
+    accessCache.set(key, entry);
+    while (accessCache.size > MAX_MEMORY_ACCESS_DESCRIPTORS) accessCache.delete(accessCache.keys().next().value!);
+}
+
+/** Synchronous capability peek; never performs I/O or serves an expired descriptor. */
+export function peekResourceAccess(storageKey: string | undefined, variant: ResourceAccessVariant = "original") {
+    const id = resourceIdFromStorageKey(storageKey);
+    if (!id) return undefined;
+    const key = `${getActiveUserScope()}:${id}:display:${variant}:`;
+    const cached = accessCache.get(key);
+    if (!cached) return undefined;
+    if (cached.expiresAt <= Date.now()) {
+        accessCache.delete(key);
+        return undefined;
+    }
+    accessCache.delete(key);
+    accessCache.set(key, cached);
+    return cached.value;
+}
 const PERSISTED_DISPLAY_ACCESS_PREFIX = "resource-access-v1:";
 
 function persistedDisplayAccessKey(resourceId: string, variant: ResourceAccessVariant) {
@@ -162,10 +185,11 @@ function shouldPersistDisplayAccess(value: ResourceAccess) {
     return value.delivery === "cdn" || value.delivery === "origin";
 }
 
-function resourceAccessCacheExpiry(value: ResourceAccess, now = Date.now()) {
+export function resourceAccessCacheExpiry(value: ResourceAccess, now = Date.now()) {
     const expiresAt = value.expiresAt ? new Date(value.expiresAt).getTime() : Number.NaN;
     if (Number.isFinite(expiresAt) && expiresAt <= now + 1_000) return now;
     const refreshAt = value.refreshAt ? new Date(value.refreshAt).getTime() : Number.NaN;
+    if (Number.isFinite(refreshAt) && refreshAt <= now) return now;
     const candidates = [Number.isFinite(refreshAt) && refreshAt > now ? refreshAt : Number.POSITIVE_INFINITY, Number.isFinite(expiresAt) && expiresAt > now ? expiresAt - 15_000 : Number.POSITIVE_INFINITY].filter(Number.isFinite);
     if (candidates.length) return Math.max(now, Math.min(...candidates));
     return now + 5 * 60_000;
@@ -272,7 +296,7 @@ export async function uploadResourceFile(file: Blob, kind: "image" | "video" | "
         assertLive();
         const admission = await http.post<{ mode: "server" | "ready" | "direct"; resource?: RemoteResource; uploadId?: string; post?: DirectUploadPost }>("/resources/direct-uploads", {
             fileName: name, size: file.size, sample: btoa(String.fromCharCode(...sample)), width: meta?.width, height: meta?.height, durationMs: meta?.durationMs,
-        }, { ...uploadRequestConfig(meta?.idempotencyKey), ...scopedUploadConfig(uploadMeta) });
+        }, scopedUploadConfig(uploadMeta, uploadRequestConfig(meta?.idempotencyKey)));
         assertLive();
         if (admission.mode === "ready" && admission.resource) {
             resourceCache.set(resourceCacheKey(admission.resource.id), admission.resource);
@@ -328,8 +352,7 @@ export async function uploadResourceFile(file: Blob, kind: "image" | "video" | "
         if (meta?.height) formData.append("height", String(Math.round(meta.height)));
         if (meta?.durationMs) formData.append("durationMs", String(Math.round(meta.durationMs)));
         const data = await http.post<{ resource: RemoteResource }>("/resources", formData, {
-            ...uploadRequestConfig(meta?.idempotencyKey, file.size),
-            ...scopedUploadConfig(uploadMeta),
+            ...scopedUploadConfig(uploadMeta, uploadRequestConfig(meta?.idempotencyKey, file.size)),
             onUploadProgress: onProgress
                 ? ({ loaded, total }) => {
                       if (total && total > 0) onProgress(Math.min(file.size, (file.size * loaded) / total), file.size);
@@ -365,7 +388,7 @@ async function runChunkedUpload(file: Blob, name: string, kind: "image" | "video
     const session = await http.post<{ uploadId: string; chunkSize: number; chunkCount: number }>(
         "/resources/uploads",
         { fileName: name, kind, size: file.size, width: meta?.width, height: meta?.height, durationMs: meta?.durationMs },
-        { ...uploadRequestConfig(meta?.idempotencyKey), ...scopedUploadConfig(meta) },
+        scopedUploadConfig(meta, uploadRequestConfig(meta?.idempotencyKey)),
     );
     assertCurrent();
     for (let index = 0; index < session.chunkCount; index++) {
@@ -388,8 +411,9 @@ async function runChunkedUpload(file: Blob, name: string, kind: "image" | "video
     return complete.resource;
 }
 
-function scopedUploadConfig(meta?: ResourceUploadMeta) {
-    return { signal: meta?.signal, ...(meta?.expectedUserId ? { headers: { "X-Canvas-Expected-User": meta.expectedUserId } } : {}) };
+function scopedUploadConfig(meta?: ResourceUploadMeta, requestConfig?: ReturnType<typeof uploadRequestConfig>) {
+    // 账号校验与上传幂等身份必须同时保留，避免重试生成另一份资源。
+    return { ...requestConfig, signal: meta?.signal, headers: { ...requestConfig?.headers, ...(meta?.expectedUserId ? { "X-Canvas-Expected-User": meta.expectedUserId } : {}) } };
 }
 
 // 失败分类直接复用 request() 已经算好的 ApiError.retryable（408/425/429/5xx 可重试），
@@ -415,7 +439,7 @@ function normalizeUploadError(error: unknown): ResourceUploadError {
 
 export async function importResourceFromUrl(url: string, kind: "image" | "video" | "audio" | "file", meta?: Omit<ResourceUploadMeta, "fileName">) {
     const { assertCurrent, options } = captureUploadScope(meta);
-    const data = await http.post<{ resource: RemoteResource }>("/resources/import", { url, kind, width: meta?.width, height: meta?.height, durationMs: meta?.durationMs }, { ...uploadRequestConfig(meta?.idempotencyKey), ...scopedUploadConfig(options) });
+    const data = await http.post<{ resource: RemoteResource }>("/resources/import", { url, kind, width: meta?.width, height: meta?.height, durationMs: meta?.durationMs }, scopedUploadConfig(options, uploadRequestConfig(meta?.idempotencyKey)));
     assertCurrent();
     resourceCache.set(resourceCacheKey(data.resource.id), data.resource);
     return data.resource;
@@ -507,7 +531,7 @@ async function completeResourceAccessBatchEntry(entry: PendingResourceAccess, it
     const value = item.access;
     const cachedEntry = { value, expiresAt: resourceAccessCacheExpiry(value) } satisfies CachedResourceAccess;
     if (cachedEntry.expiresAt > Date.now()) {
-        accessCache.set(entry.key, cachedEntry);
+        cacheResourceAccess(entry.key, cachedEntry);
         if (entry.payload.purpose === "display") await persistDisplayAccess(entry.scope, entry.payload.resourceId, entry.payload.variant, cachedEntry);
     }
     if (entry.generation !== accessGeneration || entry.scope !== getActiveUserScope()) {
@@ -586,7 +610,7 @@ export async function getResourceAccess(storageKey: string | undefined, purpose:
                 const persisted = await readPersistedDisplayAccess(scope, id, variant);
                 assertResourceRequestCurrent(generation, scope);
                 if (persisted) {
-                    accessCache.set(key, persisted);
+                    cacheResourceAccess(key, persisted);
                     return persisted.value;
                 }
             }

@@ -11,7 +11,7 @@ import { localForageStorageForScope } from "@/lib/localforage-storage";
 import { appQueryClient } from "@/lib/query-client";
 import { parseAssetRecordList } from "@/lib/asset-record";
 import { rebaseAssetSnapshot } from "@/lib/asset-storage-revision";
-import { assetForRemoteSync } from "@/lib/asset-remote-sync";
+import { assetForRemoteSync, projectConfirmedAssetMedia } from "@/lib/asset-remote-sync";
 import type { Asset } from "@/stores/use-asset-store";
 import { flushAssetStorePersistence, getGenerationAssetDefaults, useAssetStore } from "@/stores/use-asset-store";
 import type { CanvasProject } from "@/stores/canvas/use-canvas-store";
@@ -207,7 +207,29 @@ export async function initializeRemoteUserDataSession(userId: string) {
         for (const pending of pendingCanvasMutations.values()) {
             if (pending.baseline) acknowledgedProjects.set(pending.projectId, pending.baseline);
         }
-        acknowledgedAssets = new Map(useAssetStore.getState().assets.map((asset) => [asset.id, asset]));
+        // 只重放已确认画布基线之后新增、且明确属于该导入节点的素材。
+        const unconfirmedImportAssets = new Map<string, Array<{ canvasId: string; nodeId: string }>>();
+        for (const project of useCanvasStore.getState().projects) {
+            const baseline = acknowledgedProjects.get(project.id);
+            if (!baseline) continue;
+            const confirmedNodes = new Set(baseline.nodes.map((node) => node.id));
+            for (const node of project.nodes) {
+                if (node.metadata?.importSource && node.metadata.assetId && !confirmedNodes.has(node.id)) {
+                    const owners = unconfirmedImportAssets.get(node.metadata.assetId) || [];
+                    owners.push({ canvasId: project.id, nodeId: node.id });
+                    unconfirmedImportAssets.set(node.metadata.assetId, owners);
+                }
+            }
+        }
+        acknowledgedAssets = new Map(
+            useAssetStore
+                .getState()
+                .assets.filter((asset) => {
+                    const pending = unconfirmedImportAssets.get(asset.id);
+                    return !pending?.some((owner) => asset.metadata?.canvasId === owner.canvasId && asset.metadata?.nodeId === owner.nodeId);
+                })
+                .map((asset) => [asset.id, asset]),
+        );
         remoteUserDataPhase = "ready";
         if (pendingCanvasMutations.size) scheduleRemoteUserDataSync();
     });
@@ -1409,18 +1431,28 @@ async function syncRemoteAssetBatch(dirtyAssets: Asset[], uploaded: Map<string, 
         }
     }
 
-    // 转换后的 resource: 引用只属于发往服务端的 payload，不能反写整份实时 store。
-    // 已确认快照记录的是本次上传所依据的本地实体；上传期间的新编辑会在下一轮继续提交。
+    // 上传确认后仅投影仍未改变的媒体引用，不能用旧实体覆盖实时 store。
+    // 已确认快照与实时素材采用同一资源身份；上传期间的新编辑留待下一轮提交。
     // 素材先于画布提交。这样画布中的 resource: 引用一旦成为远端事实，
     // 对应 Asset 已经存在，刷新或换设备不会出现只占容量、不见素材的窗口。
     for (const dirty of dirtyAssets) {
         if (adoptedAssetIds.has(dirty.id)) continue;
         const source = mergedAssets.get(dirty.id) ?? dirty;
-        const remotePayload = await ensureRemoteResourceReferences(assetForRemoteSync(source), uploaded);
+        const remotePayload = assetForRemoteSync(await ensureRemoteResourceReferences(assetForRemoteSync(source), uploaded));
         requireCurrentSession();
         await upsertRemoteAsset(remotePayload);
         requireCurrentSession();
-        acknowledgedAssets.set(source.id, source);
+        acknowledgedAssets.set(source.id, projectConfirmedAssetMedia(source, remotePayload, source));
+        useAssetStore.setState((state) => {
+            let changed = false;
+            const assets = state.assets.map((asset) => {
+                if (asset.id !== source.id) return asset;
+                const projected = projectConfirmedAssetMedia(source, remotePayload, asset);
+                changed ||= projected !== asset;
+                return projected;
+            });
+            return changed ? { assets } : state;
+        });
         verifiedAssets.add(source.id);
     }
 }

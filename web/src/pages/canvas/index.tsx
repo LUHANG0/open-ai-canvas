@@ -4,7 +4,7 @@ import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { App, Button, Dropdown, Input } from "antd";
 import { AppModal } from "@/components/ui/product/app-modal";
 import { Select } from "@/components/ui/base/select";
-import { ArrowDownAZ, Clock3, Download, FileUp, History, ListFilter, MoreHorizontal, Plus, Search, SlidersHorizontal, Trash2 } from "lucide-react";
+import { ArrowDownAZ, ChevronDown, Clock3, Download, FileUp, History, ListChecks, ListFilter, Plus, Search, SlidersHorizontal } from "lucide-react";
 
 import { CollectionGrid, PageHeader, WorkspacePage } from "@/components/layout/workspace-page";
 import { CollectionToolbar } from "@/components/layout/collection-toolbar";
@@ -45,6 +45,7 @@ export default function CanvasPage() {
     const [keyword, setKeyword] = useState("");
     const [sort, setSort] = useState<"updated" | "name" | "nodes">("updated");
     const [projectFilter, setProjectFilter] = useState("all");
+    const [selectionMode, setSelectionMode] = useState(false);
     const loadMoreRef = useRef<HTMLDivElement>(null);
     const [loadedProjectCount, setLoadedProjectCount] = useState(50);
     const [openingProjectId, setOpeningProjectId] = useState("");
@@ -63,6 +64,8 @@ export default function CanvasPage() {
         queryFn: ({ pageParam, signal }) => listRemoteCanvasProjectsPage({ page: pageParam, pageSize: 40, projectId: projectFilter, sort, query: debouncedKeyword, signal }),
         initialPageParam: 1,
         getNextPageParam: (last) => last.hasMore ? last.page + 1 : undefined,
+        // Retain the last successful scope while fetching, never another account's rows.
+        placeholderData: (previous, previousQuery) => previousQuery?.queryKey[1] === userId ? previous : undefined,
         enabled: Boolean(userId) && sessionHydrated,
     });
     const projects = useMemo<CanvasLibrarySummary[]>(() => userId
@@ -70,7 +73,7 @@ export default function CanvasPage() {
         : localProjects.map((project) => ({ ...project, nodeCount: project.nodes.length, previewNodes: project.nodes.slice(0, 4) })), [libraryQuery.data, localProjects, userId]);
     const totalProjects = userId ? libraryQuery.data?.pages[0]?.total || 0 : projects.length;
     const importProject = useCanvasStore((state) => state.importProject);
-    const selectedIds = useCanvasUiStore((state) => state.selectedProjectIds);
+    const storedSelectedIds = useCanvasUiStore((state) => state.selectedProjectIds);
     const deleteDialogOpen = useCanvasUiStore((state) => state.deleteProjectIds.length > 0);
     const setDeleteIds = useCanvasUiStore((state) => state.setDeleteProjectIds);
     const updateProject = useCanvasStore((state) => state.updateProject);
@@ -114,6 +117,20 @@ export default function CanvasPage() {
     const projectNames = useMemo(() => new Map((projectQuery.data?.projects || []).map(({ project }) => [project.id, project.name])), [projectQuery.data]);
     const visibleProjects = userId ? filteredProjects : filteredProjects.slice(0, loadedProjectCount);
     const hasMore = userId ? libraryQuery.hasNextPage : visibleProjects.length < filteredProjects.length;
+    const searchWaiting = Boolean(userId) && keyword.trim() !== debouncedKeyword;
+    const listPending = !hydrated || !sessionHydrated || searchWaiting || Boolean(userId && (libraryQuery.isPending || libraryQuery.isPlaceholderData));
+    const selectedIds = selectionMode && !listPending ? storedSelectedIds.filter((id) => visibleProjects.some((project) => project.id === id)) : [];
+    const resultScope = Boolean(keyword.trim() || projectFilter !== "all");
+    const resultCount = userId ? totalProjects : filteredProjects.length;
+    const clearSelection = () => {
+        useCanvasUiStore.getState().removeSelectedProjectIds(useCanvasUiStore.getState().selectedProjectIds);
+        setAssociationOpen(false);
+    };
+    useEffect(() => {
+        useCanvasUiStore.getState().removeSelectedProjectIds(useCanvasUiStore.getState().selectedProjectIds);
+        setAssociationOpen(false);
+        return () => { useCanvasUiStore.getState().removeSelectedProjectIds(useCanvasUiStore.getState().selectedProjectIds); };
+    }, [keyword, projectFilter, sort, userId]);
     const selectedProjects = projects.filter((project) => selectedIds.includes(project.id));
     const projectFilterLabel = projectFilter === "all" ? "全部画布" : projectFilter === "independent" ? "自由画布" : projectNames.get(projectFilter) || "项目画布";
     const sortLabel = sort === "name" ? "按名称" : sort === "nodes" ? "按节点" : "最近更新";
@@ -129,7 +146,7 @@ export default function CanvasPage() {
     }, [keyword, projectFilter, sort]);
     useEffect(() => {
         const node = loadMoreRef.current;
-        if (!node || !hasMore) return;
+        if (!node || !hasMore || listPending) return;
         const observer = new IntersectionObserver(
             ([entry]) => {
                 if (!entry?.isIntersecting) return;
@@ -141,7 +158,7 @@ export default function CanvasPage() {
         );
         observer.observe(node);
         return () => observer.disconnect();
-    }, [filteredProjects.length, visibleProjects.length, hasMore, userId, libraryQuery.fetchNextPage, libraryQuery.isFetchingNextPage, libraryQuery.isFetchNextPageError]);
+    }, [filteredProjects.length, visibleProjects.length, hasMore, listPending, userId, libraryQuery.fetchNextPage, libraryQuery.isFetchingNextPage, libraryQuery.isFetchNextPageError]);
     const associateSelected = async (nextProjectId = associationProjectId) => {
         const projectId = nextProjectId || undefined;
         try {
@@ -411,32 +428,19 @@ export default function CanvasPage() {
     if (hydrated && !libraryQuery.isError && (mode === "new" || mode === "recent" || mode === "handoff")) return <main className="flex h-full items-center justify-center bg-background text-sm text-stone-500">正在打开画布...</main>;
 
     return (
-        <WorkspacePage className="studio-collection-page collection-workspace">
+        <WorkspacePage className="studio-collection-page collection-workspace canvas-library-page">
             <div className="studio-band">
                 <PageHeader
                     title="创作画布"
-                    description="把镜头、素材和想法留在同一张画布里。"
-                    meta={<span className="app-projects-header-meta">{totalProjects} 个画布</span>}
+                    description="将素材、分镜和生成结果放在一起，打开画布继续创作。"
+                    meta={<span className="app-projects-header-meta" role="status">{listPending ? visibleProjects.length ? "正在搜索…" : "正在读取画布…" : userId && libraryQuery.isError ? "列表暂不可用" : resultScope ? `${resultCount} 个匹配结果` : `${resultCount} 个画布`}</span>}
                     actions={
                         <div className="collection-header-actions">
                             <Button type="primary" disabled={!hydrated} icon={<Plus />} onClick={createAndEnter}>
                                 新建画布
                             </Button>
-                            {projects.length ? (
-                                <Dropdown
-                                    menu={{
-                                        classNames: { root: "canvas-library-actions-menu", item: "canvas-library-actions-menu-item" },
-                                        items: [{ key: "delete-loaded", danger: true, icon: <Trash2 className="size-3.5" />, label: "删除当前已加载画布", onClick: () => setDeleteIds(projects.map((project) => project.id)) }],
-                                    }}
-                                    openClassName="is-open"
-                                    placement="bottomRight"
-                                    trigger={["click"]}
-                                >
-                                    <Button type="text" aria-label="更多画布操作" title="更多操作" icon={<MoreHorizontal />} />
-                                </Dropdown>
-                            ) : null}
                             <Button disabled={!hydrated} icon={<FileUp />} onClick={() => inputRef.current?.click()}>
-                                导入
+                                导入画布
                             </Button>
                         </div>
                     }
@@ -446,25 +450,29 @@ export default function CanvasPage() {
                     label="画布浏览工具"
                     active={Boolean(keyword || projectFilter !== "all" || sort !== "updated")}
                     onReset={resetFilters}
-                    trailing={<Button type="text" icon={<History />} onClick={(event) => { event.currentTarget.focus({ preventScroll: true }); setHistoryOpen(true); }}>创作历史</Button>}
+                    trailing={<><Button type="text" icon={<ListChecks />} aria-pressed={selectionMode} onClick={() => { clearSelection(); setSelectionMode(!selectionMode); }}>{selectionMode ? "退出批量管理" : "批量管理"}</Button><Button type="text" icon={<History />} onClick={(event) => { event.currentTarget.focus({ preventScroll: true }); setHistoryOpen(true); }}>画布历史</Button></>}
                 >
-                    <Input prefix={<Search />} value={keyword} allowClear placeholder="搜索画布" aria-label="搜索画布" onChange={(event) => setKeyword(event.target.value)} />
-                    <Dropdown trigger={["click"]} placement="bottomLeft" menu={{ items: projectFilterItems, selectedKeys: [projectFilter], onClick: ({ key }) => setProjectFilter(String(key)) }}>
-                        <Button icon={<SlidersHorizontal />} aria-label={`按所属项目筛选：${projectFilterLabel}`} title={projectFilterLabel}>{projectFilterLabel}</Button>
-                    </Dropdown>
-                    <Dropdown trigger={["click"]} placement="bottomLeft" menu={{ items: sortItems, selectedKeys: [sort], onClick: ({ key }) => setSort(key as typeof sort) }}>
-                        <Button icon={sort === "updated" ? <Clock3 /> : sort === "name" ? <ArrowDownAZ /> : <ListFilter />} aria-label={`画布排序：${sortLabel}`}>{sortLabel}</Button>
-                    </Dropdown>
+                    <Input prefix={<Search />} value={keyword} allowClear placeholder="搜索画布名称" aria-label="搜索画布" onChange={(event) => setKeyword(event.target.value)} />
+                    <div className="canvas-library-find-options">
+                        <Dropdown trigger={["click"]} placement="bottomLeft" menu={{ items: projectFilterItems, selectedKeys: [projectFilter], onClick: ({ key }) => setProjectFilter(String(key)) }}>
+                            <Button icon={<SlidersHorizontal />} aria-label={`按所属项目筛选：${projectFilterLabel}`} title={projectFilterLabel}>{projectFilterLabel}<ChevronDown className="size-3.5" /></Button>
+                        </Dropdown>
+                        <Dropdown trigger={["click"]} placement="bottomLeft" menu={{ items: sortItems, selectedKeys: [sort], onClick: ({ key }) => setSort(key as typeof sort) }}>
+                            <Button icon={sort === "updated" ? <Clock3 /> : sort === "name" ? <ArrowDownAZ /> : <ListFilter />} aria-label={`画布排序：${sortLabel}`}>{sortLabel}<ChevronDown className="size-3.5" /></Button>
+                        </Dropdown>
+                    </div>
                 </CollectionToolbar>
             </div>
 
             <div className="collection-content">
-                {selectedIds.length ? (
+                {selectionMode ? (
                     <div className="collection-selection-bar">
                         <strong className="mr-auto font-medium" role="status" aria-live="polite" aria-atomic="true">已选 {selectedIds.length} 个画布</strong>
+                        <Button size="small" disabled={listPending || !visibleProjects.length} onClick={() => visibleProjects.forEach((project) => useCanvasUiStore.getState().toggleSelectedProjectId(project.id, true))}>全选已加载的 {visibleProjects.length} 个{resultScope ? "结果" : "画布"}</Button>
+                        <Button size="small" disabled={!selectedIds.length} onClick={clearSelection}>取消选择</Button>
                         <Button
                             size="small"
-                            disabled={!hydrated || projectQuery.isLoading}
+                            disabled={!selectedIds.length || listPending || projectQuery.isLoading}
                             onClick={(event) => {
                                 associationTriggerRef.current = event.currentTarget;
                                 event.currentTarget.focus({ preventScroll: true });
@@ -477,7 +485,7 @@ export default function CanvasPage() {
                         {selectedProjects.some((project) => project.projectId) ? (
                             <Button
                                 size="small"
-                                disabled={!hydrated}
+                                disabled={!selectedIds.length || listPending}
                                 onClick={() => {
                                     setAssociationProjectId("");
                                     void associateSelected("");
@@ -486,10 +494,10 @@ export default function CanvasPage() {
                                 移出项目
                             </Button>
                         ) : null}
-                        <Button size="small" disabled={!hydrated} icon={<Download className="size-3.5" />} onClick={() => void exportSelected()}>
+                        <Button size="small" disabled={!selectedIds.length || listPending} icon={<Download className="size-3.5" />} onClick={() => void exportSelected()}>
                             导出
                         </Button>
-                        <Button size="small" danger disabled={!hydrated} onClick={() => setDeleteIds(selectedIds)}>
+                        <Button size="small" danger disabled={!selectedIds.length || listPending} onClick={() => setDeleteIds(selectedIds)}>
                             删除
                         </Button>
                     </div>
@@ -497,7 +505,7 @@ export default function CanvasPage() {
 
                 {userId && libraryQuery.isError ? (
                     <div role="alert"><WorkspaceErrorState title="画布列表读取失败" description="暂时无法读取画布，请检查网络连接后重试。" onRetry={() => void libraryQuery.refetch()} /></div>
-                ) : !hydrated || (userId && libraryQuery.isPending) ? (
+                ) : listPending && !visibleProjects.length ? (
                     <WorkspaceEntryPending />
                 ) : visibleProjects.length ? (
                     <CollectionGrid className="canvas-collection-grid">
@@ -506,6 +514,9 @@ export default function CanvasPage() {
                                 key={project.id}
                                 project={project}
                                 projectName={project.projectId ? projectNames.get(project.projectId) || "未同步项目" : undefined}
+                                href={`/canvas/${project.id}${forwardedQuery}`}
+                                selectionMode={selectionMode}
+                                selectionDisabled={listPending}
                                 onClick={() => enterProject(project.id)}
                                 onPrefetch={preloadProject}
                                 opening={openingProjectId === project.id}
@@ -513,11 +524,11 @@ export default function CanvasPage() {
                         ))}
                     </CollectionGrid>
                 ) : (
-                    <WorkspaceState icon="canvas" title={keyword || projectFilter !== "all" ? "没有匹配的画布" : "让第一个想法落在画布上"} description={keyword || projectFilter !== "all" ? "换一个画布名称或重置筛选条件。" : "图片、分镜和灵感，都可以在这里自由组织。"} action={keyword || projectFilter !== "all" ? <Button onClick={resetFilters}>重置筛选</Button> : <Button type="primary" icon={<Plus />} disabled={!hydrated} onClick={createAndEnter}>新建画布</Button>} />
+                    <WorkspaceState icon="canvas" title={keyword || projectFilter !== "all" ? "没有匹配的画布" : "新建画布，开始组织你的创作"} description={keyword || projectFilter !== "all" ? "换一个画布名称或重置筛选条件。" : "在画布中添加图片、编排分镜，连接节点开展创作。"} action={keyword || projectFilter !== "all" ? <Button onClick={resetFilters}>重置筛选</Button> : <Button type="primary" icon={<Plus />} disabled={!hydrated} onClick={createAndEnter}>新建画布</Button>} />
                 )}
-                {hydrated && visibleProjects.length ? (
+                {hydrated && !listPending && visibleProjects.length && (hasMore || libraryQuery.isFetchNextPageError) ? (
                     <div ref={loadMoreRef} className="library-load-more" aria-live="polite">
-                        {libraryQuery.isFetchNextPageError ? <Button onClick={() => void libraryQuery.fetchNextPage()}>加载失败，重试</Button> : hasMore ? "继续下滑加载更多" : `已加载全部 ${filteredProjects.length} 个画布`}
+                        {libraryQuery.isFetchNextPageError ? <Button onClick={() => void libraryQuery.fetchNextPage()}>加载失败，重试</Button> : <span>已加载 {visibleProjects.length} / {resultCount} 个{resultScope ? "结果" : "画布"} · {libraryQuery.isFetchingNextPage ? "正在加载…" : "继续下滑加载更多"}</span>}
                     </div>
                 ) : null}
             </div>

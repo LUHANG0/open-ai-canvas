@@ -5,6 +5,14 @@ export type AgentLauncherGesture = { x: number; y: number; start: AgentLauncherP
 export const AGENT_LAUNCHER_POSITION_KEY = "canvas:agent-launcher-position:v1";
 export const AGENT_LAUNCHER_SIZE = 76;
 const MARGIN = 20; // Includes the label below the orb.
+const COMPACT_AVATAR_HEIGHT = 120;
+const COMPACT_VIEWPORT_WIDTH = 768;
+
+// Large transparent avatars should not cover page controls outside the desktop canvas.
+export function resolveAgentLauncherAvatarHeight(preferred: number, aspectRatio: number, viewport: AgentLauncherViewport, inCanvasEditor: boolean) {
+    const compact = !inCanvasEditor || viewport.width < COMPACT_VIEWPORT_WIDTH;
+    return Math.max(40, Math.min(preferred, viewport.height - 60, (viewport.width - 40) / aspectRatio, compact ? COMPACT_AVATAR_HEIGHT : Infinity));
+}
 
 export function clampAgentLauncherPosition(position: AgentLauncherPosition, viewport: AgentLauncherViewport, size = { width: AGENT_LAUNCHER_SIZE, height: AGENT_LAUNCHER_SIZE }): AgentLauncherPosition {
     const clamp = (value: number, extent: number, dimension: number) => {

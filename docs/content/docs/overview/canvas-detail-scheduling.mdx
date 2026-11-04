@@ -1,0 +1,35 @@
+---
+title: 画布节点细节调度
+description: 外层 chrome admission 与媒体、正文、可见性和视口提交的职责边界。
+---
+
+## 两条独立路径
+
+`nodeRenderLODById` 仍由现有 visibility viewport 与 LOD 策略产生，负责节点真实内容、媒体请求、图片清晰度与正文挂载。`CanvasNode` 原有 hover、标题/正文编辑及播放会话的内容升级保持不变。
+
+`useCanvasNodeDetailLOD` 只产生 `nodeDetailLODById`，控制普通节点外层标题、状态徽章、结果信息和其他 chrome。不会延迟 viewport/store 提交，不参与保存、undo/revision、媒体 owner 或资源缓存。可见性 coverage miss 仍在原 task 挂载新节点。
+
+## 调度合同
+
+- 首次静态加载，包括项目异步读取后从空集合加入的节点，在 layout effect 直接采用目标 chrome，不排队慢显示。
+- `canvasViewportInteracting=true` 时，已有节点保留已 admission 的 chrome；手势中新增节点用 preview chrome，真实内容仍走即时 LOD。
+- 有待处理差异时只保留一个 rAF 观察既有手势标记。手势期间中间 desired 覆盖旧目标；结束后用一次普通 React 更新提交完整最新 chrome 快照，不使用 flushSync，不做逐帧分批 drain。
+- 每次目标更新取消旧回调；新手势使尚未提交的快照等待结束。程序化 transition 的最新目标也在待执行 rAF 前合并，不改变输入控制器。仅有 pending 时观察 dataset，因此净零视口提交也能结束等待，不依赖 React viewport identity 改变。
+- 只保存当前 mounted/visible IDs，删除后剪除；项目 scope 更换重置，卸载取消回调。无差异时不持续轮询。
+- 当前保留 shell/preview 原值；两者虽都不显示 full chrome，仍可能产生一次调度差异。没有因此改变原内容 LOD 或资源策略。
+
+## 交互优先级
+
+hover、单节点焦点选择（现有 `isFocusRelated`）、标题/正文编辑、播放会话、连接目标与拖拽绕过 chrome 队列。节点内焦点通过 focus capture 保留 chrome，内部焦点移动不触发卸载；移出后恢复 admission。该策略不改变原正文焦点或 portal 合同。
+
+多选不会把全部节点当作单节点焦点选择升级标题/徽章。原内容 LOD 为 full 的已选节点仍立即保留 resize 与连接操作控件；批量连接的 `forceInputMounted` 例外保留。readOnly、locked 和原连接类型限制保持。
+
+Frame/folder 的现有 LOD 会直接替换内容树，无法只作为外层 chrome 自然拆分，因此本次保持其原路径，不给它接入 detail admission。图片、视频、音频与项目自定义内容组件、loader、avatar、连线实现、CSS 和 viewport 输入算法均未改。
+
+## 验证与性能边界
+
+行为回归覆盖连续阈值反转、结束一次完整快照、净零结束、捕获 pending 回调后再切换目标/手势、删除/卸载旧回调、异步静态首次到达，以及真实 CanvasNode 的媒体树保留、项目内容即时 LOD、选择、hover、编辑、播放、焦点与交互控件。既有 visibility coverage 和 select-all 不全图挂载回归继续执行。原源码字符串接线断言已删除，以运行行为覆盖。
+
+逐帧分批的旧候选已在单向缩放停止后的尾部验收被拒绝：虽降低部分尾峰，却延长多帧卡顿并提高总样式计算与 CPU 成本。新策略合并中间状态，避免每批 DOM 变更重复触发样式计算与项目 render；一次完整提交仍可能有峰值，不能仅凭策略宣称性能改善。
+
+独立 HappyDOM smoke 观察 150 个节点的手势期 chrome 保留、结束后一次完整收敛且无待处理帧；这不是浏览器呈现性能证据。候选必须在真实路由以相同素材、缩放轨迹、Agent 播放和 DPR 做 A/B，同时验收往返与单向停住后的 tail P95、峰值、总 RecalcStyle/Script/Task 成本及媒体 blank/replaced、节点连线操作。不得只凭运动窗口分数接受候选。

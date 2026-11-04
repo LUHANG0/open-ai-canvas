@@ -122,6 +122,7 @@ export type TaskLog = {
 };
 
 export type CreateTaskInput = {
+    idempotencyKey?: string;
     projectId?: string;
     type?: string;
     operation?: string;

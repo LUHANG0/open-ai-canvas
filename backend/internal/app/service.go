@@ -115,6 +115,8 @@ const taskWorkerConcurrency = 3
 const taskLogPayloadLimit = 4000
 
 type CreateTaskRequest struct {
+	submission      *model.TaskSubmission
+	IdempotencyKey  string `json:"idempotencyKey,omitempty"`
 	creationPrepare *creationTaskPreparation
 	admission       *taskAdmission
 	workbenchKind   string

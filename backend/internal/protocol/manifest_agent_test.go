@@ -3,8 +3,30 @@ package protocol
 import (
 	"context"
 	"encoding/json"
+	"strings"
 	"testing"
 )
+
+func TestManifestAgentEnforcesProviderValidations(t *testing.T) {
+	data := []byte(`{"apiVersion":"yingce.plugin/v2","id":"guarded-agent","name":"Guarded Agent","version":"1.0.0","contributes":{"providers":[{"id":"guarded-agent","label":"Guarded Agent","capabilities":["text"],"scopes":["agent"],"create":{"method":"POST","path":"/create"},"agent":{"method":"POST","path":"/chat","body":{"messages":{"$ref":"request.extra.agent.chatCompletion.messages"}}},"agentResponse":{},"response":{},"validations":[{"assert":{"$if":{"condition":{"$eq":[{"$ref":"operation"},"agent"]},"then":{"$lte":[{"$len":{"$json":{"$ref":"request.extra.agent.chatCompletion"}}},200]},"else":true}},"message":"agent context too long"}]}]}}`)
+	a, err := LoadManifest(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	agent := a.(AgentAdapter)
+	for _, size := range []int{5, 201} {
+		_, err := agent.BuildAgent(context.Background(), AgentRequestContext{Model: "test", Request: map[string]any{"chatCompletion": map[string]any{"messages": []any{map[string]any{"role": "user", "content": strings.Repeat("x", size)}}}}})
+		if size == 5 && err != nil {
+			t.Fatal(err)
+		}
+		if size == 201 && (err == nil || !strings.Contains(err.Error(), "agent context too long")) {
+			t.Fatalf("Agent bypassed validation: %v", err)
+		}
+	}
+	if _, err := a.BuildCreate(context.Background(), RequestContext{Request: GenerationRequest{Model: "test", Extra: map[string]any{"operation": "agent"}}}); err != nil {
+		t.Fatalf("operation must be host-owned: %v", err)
+	}
+}
 
 func TestManifestAgentMapsRequestAndResponse(t *testing.T) {
 	manifest := []byte(`{

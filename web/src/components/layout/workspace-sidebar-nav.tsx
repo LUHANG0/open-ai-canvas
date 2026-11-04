@@ -1,17 +1,17 @@
 import { Popover } from "antd";
 import { motion, type Transition } from "motion/react";
-import { ChevronDown, CircleUserRound, Infinity as InfinityIcon, PanelLeftClose, PanelLeftOpen, Search, Image as ImageIcon, Video } from "lucide-react";
-import { useImperativeHandle, useRef, type ComponentType, type Ref } from "react";
+import { ChevronDown, CircleUserRound, Infinity as InfinityIcon, PanelLeftClose, PanelLeftOpen, Search } from "lucide-react";
+import { useImperativeHandle, useRef, type Ref } from "react";
 import { Link, useLocation, useSearchParams } from "react-router";
 
 import { BrandLogoFrame } from "@/components/brand/brand-logo";
 import { UserAvatar } from "@/components/layout/user-avatar";
 import { Tooltip } from "@/components/ui/base/tooltip";
-import { navigationTools, type NavigationToolSlug } from "@/constant/navigation-tools";
 import { cn } from "@/lib/utils";
+import { buildWorkspaceNav, type WorkspaceNavItem } from "@/lib/workspace-navigation";
 import { preloadWorkspaceRoute } from "@/lib/workspace-route-modules";
 import { authEntry } from "@/lib/auth-navigation";
-import { useUserStore, type FeatureAvailability } from "@/stores/use-user-store";
+import { useUserStore } from "@/stores/use-user-store";
 import { useAppearanceStore } from "@/stores/use-appearance-store";
 import { WorkspaceAccountCard } from "./workspace-account-card";
 import { WorkspaceSidebarCheckin } from "./workspace-sidebar-checkin";
@@ -19,49 +19,7 @@ import { WorkspaceSidebarStorageMeter } from "./workspace-sidebar-storage-meter"
 import { openWorkspaceWallet } from "@/lib/workspace-wallet";
 import "./workspace-sidebar-nav.css";
 
-export type WorkspaceNavItem = {
-    id: string;
-    title: string;
-    icon?: ComponentType<{ className?: string; strokeWidth?: number }>;
-    to: string;
-};
-
-function toolItem(slug: NavigationToolSlug, to: string): WorkspaceNavItem {
-    const tool = navigationTools.find((item) => item.slug === slug);
-    return { id: slug, title: tool?.label ?? slug, icon: tool?.icon, to };
-}
-
-export function buildWorkspaceNav(features: FeatureAvailability) {
-    return [
-        {
-            heading: "创作入口",
-            primary: true,
-            items: [
-                { ...toolItem("create", "/create"), id: "home" },
-                toolItem("projects", "/projects"),
-                toolItem("canvas", "/canvas"),
-            ],
-        },
-        {
-            heading: "素材与记录",
-            primary: false,
-            items: [
-                toolItem("assets", "/assets"),
-                ...(features.taskCenterEnabled ? [toolItem("tasks", "/tasks")] : []),
-            ],
-        },
-        {
-            heading: "工具",
-            primary: false,
-            items: [
-                ...(features.imageWorkbenchEnabled ? [{ id: "toolbox-image", title: "图片生成", icon: ImageIcon, to: "/toolbox/image" }] : []),
-                ...(features.videoWorkbenchEnabled ? [{ id: "toolbox-video", title: "视频生成", icon: Video, to: "/toolbox/video" }] : []),
-                toolItem("skills", "/skills"),
-                ...(features.pluginCenterEnabled ? [toolItem("plugins", "/plugins")] : []),
-            ],
-        },
-    ];
-}
+export { buildWorkspaceNav, type WorkspaceNavItem } from "@/lib/workspace-navigation";
 
 // Image and video tools share a URL prefix but keep independent active states.
 export function workspaceNavActiveId(pathname: string, section?: string | null) {

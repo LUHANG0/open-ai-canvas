@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type RefObject } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type RefObject } from "react";
 
 import { canvasThemes } from "@/lib/canvas-theme";
 import { isFrameNode, visibleCanvasMinimapNodes } from "@/lib/canvas/canvas-frame";
@@ -22,6 +22,7 @@ export function Minimap({ nodes, viewport, viewportSize, canvasContainerRef, onV
     const theme = canvasThemes[useActiveTheme()];
     const containerRef = useRef<HTMLDivElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
+    const viewportRectRef = useRef<HTMLDivElement>(null);
     const liveViewportRef = useRef(viewport);
     const [isDragging, setIsDragging] = useState(false);
     const width = MINIMAP_WIDTH;
@@ -54,22 +55,30 @@ export function Minimap({ nodes, viewport, viewportSize, canvasContainerRef, onV
     }, [displayNodes, height, width]);
     const toMinimap = useCallback((worldX: number, worldY: number) => ({ x: (worldX - worldBounds.x) * scale + offset.x, y: (worldY - worldBounds.y) * scale + offset.y }), [offset.x, offset.y, scale, worldBounds.x, worldBounds.y]);
     const toWorld = useCallback((minimapX: number, minimapY: number) => ({ x: (minimapX - offset.x) / scale + worldBounds.x, y: (minimapY - offset.y) / scale + worldBounds.y }), [offset.x, offset.y, scale, worldBounds.x, worldBounds.y]);
-    const viewportRect = useMemo(() => {
-        const vx = -viewport.x / viewport.k;
-        const vy = -viewport.y / viewport.k;
-        const p1 = toMinimap(vx, vy);
-        const p2 = toMinimap(vx + viewportSize.width / viewport.k, vy + viewportSize.height / viewport.k);
-        return { x: p1.x, y: p1.y, w: Math.max(p2.x - p1.x, 4), h: Math.max(p2.y - p1.y, 4) };
-    }, [toMinimap, viewport.k, viewport.x, viewport.y, viewportSize.height, viewportSize.width]);
     const updateViewportRect = useCallback((nextViewport: ViewportTransform) => {
         liveViewportRef.current = nextViewport;
-        drawMinimap(canvasRef.current, displayNodes, toMinimap, nextViewport, viewportSize, theme);
-    }, [displayNodes, theme, toMinimap, viewportSize]);
+        const rect = viewportRectRef.current;
+        if (!rect) return;
+        const vx = -nextViewport.x / nextViewport.k;
+        const vy = -nextViewport.y / nextViewport.k;
+        const p1 = toMinimap(vx, vy);
+        const p2 = toMinimap(vx + viewportSize.width / nextViewport.k, vy + viewportSize.height / nextViewport.k);
+        rect.style.left = `${p1.x}px`;
+        rect.style.top = `${p1.y}px`;
+        rect.style.width = `${Math.max(p2.x - p1.x, 4)}px`;
+        rect.style.height = `${Math.max(p2.y - p1.y, 4)}px`;
+    }, [toMinimap, viewportSize.height, viewportSize.width]);
 
     useEffect(() => {
-        drawMinimap(canvasRef.current, displayNodes, toMinimap, viewport, viewportSize, theme);
-    }, [displayNodes, theme, toMinimap, viewport, viewportSize]);
-    useEffect(() => updateViewportRect(viewport), [updateViewportRect, viewport]);
+        drawMinimap(canvasRef.current, displayNodes, toMinimap, theme);
+    }, [displayNodes, theme, toMinimap]);
+    // Geometry/theme rerenders must retain a preview newer than committed props.
+    useLayoutEffect(() => {
+        liveViewportRef.current = { x: viewport.x, y: viewport.y, k: viewport.k };
+    }, [viewport.k, viewport.x, viewport.y]);
+    useLayoutEffect(() => {
+        updateViewportRect(liveViewportRef.current);
+    }, [updateViewportRect, viewport.k, viewport.x, viewport.y]);
     useEffect(() => {
         const canvasContainer = canvasContainerRef?.current;
         if (!canvasContainer) return;
@@ -82,7 +91,7 @@ export function Minimap({ nodes, viewport, viewportSize, canvasContainerRef, onV
         const world = toWorld(event.clientX - rect.left, event.clientY - rect.top);
         const current = liveViewportRef.current;
         const next = { x: viewportSize.width / 2 - world.x * current.k, y: viewportSize.height / 2 - world.y * current.k, k: current.k };
-        liveViewportRef.current = next;
+        updateViewportRect(next);
         onViewportPreviewChange?.(next);
     };
 
@@ -110,13 +119,13 @@ export function Minimap({ nodes, viewport, viewportSize, canvasContainerRef, onV
                 }}
             >
                 <canvas ref={canvasRef} width={width} height={height} className="pointer-events-none block size-full" aria-label="画布小地图" />
-                <div className="pointer-events-none absolute rounded-[var(--r-xs)]" style={{ left: viewportRect.x, top: viewportRect.y, width: viewportRect.w, height: viewportRect.h, background: `${theme.node.activeStroke}12`, boxShadow: `inset 0 0 0 1px ${theme.node.activeStroke}66` }} />
+                <div ref={viewportRectRef} className="pointer-events-none absolute rounded-[var(--r-xs)]" style={{ background: `${theme.node.activeStroke}12`, boxShadow: `inset 0 0 0 1px ${theme.node.activeStroke}66` }} />
             </div>
         </div>
     );
 }
 
-function drawMinimap(canvas: HTMLCanvasElement | null, nodes: CanvasNodeData[], toMinimap: (x: number, y: number) => { x: number; y: number }, viewport: ViewportTransform, viewportSize: { width: number; height: number }, theme: (typeof canvasThemes)[keyof typeof canvasThemes]) {
+function drawMinimap(canvas: HTMLCanvasElement | null, nodes: CanvasNodeData[], toMinimap: (x: number, y: number) => { x: number; y: number }, theme: (typeof canvasThemes)[keyof typeof canvasThemes]) {
     if (!canvas) return;
     const context = canvas.getContext("2d");
     if (!context) return;
@@ -135,11 +144,5 @@ function drawMinimap(canvas: HTMLCanvasElement | null, nodes: CanvasNodeData[], 
         if (context.fillStyle !== "transparent") context.fillRect(pos.x, pos.y, rectWidth, rectHeight);
         if (frame) context.strokeRect(pos.x, pos.y, rectWidth, rectHeight);
     }
-    const vx = -viewport.x / viewport.k;
-    const vy = -viewport.y / viewport.k;
-    const p1 = toMinimap(vx, vy);
-    const p2 = toMinimap(vx + viewportSize.width / viewport.k, vy + viewportSize.height / viewport.k);
     context.globalAlpha = 1;
-    context.strokeStyle = theme.node.activeStroke;
-    context.strokeRect(p1.x, p1.y, Math.max(p2.x - p1.x, 4), Math.max(p2.y - p1.y, 4));
 }

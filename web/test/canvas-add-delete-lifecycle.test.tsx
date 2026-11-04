@@ -107,10 +107,10 @@ afterAll(async () => {
 });
 
 const noOp = () => {};
-async function fixture() {
+async function fixture(initialNodes: CanvasNodeData[] = [], initialConnections: CanvasConnection[] = []) {
     patches.length = 0; FixtureSocket.instances.length = 0;
     statusReads = 0; leaseTicks = 0; flushes = 0; remoteSaves = 0; unexpected.length = 0;
-    cached = { id: "fixture-only", title: "Isolated canvas", revision: 1, nodes: [], connections: [], chatSessions: [], activeChatId: null, viewport: { x: 0, y: 0, k: 1 }, appearance: canvasAppearanceForTheme("light"), backgroundMode: "dots", showImageInfo: false, createdAt: "2026-01-01", updatedAt: "2026-01-01", previsScenes: [] };
+    cached = { id: "fixture-only", title: "Isolated canvas", revision: 1, nodes: initialNodes, connections: initialConnections, chatSessions: [], activeChatId: null, viewport: { x: 0, y: 0, k: 1 }, appearance: canvasAppearanceForTheme("light"), backgroundMode: "dots", showImageInfo: false, createdAt: "2026-01-01", updatedAt: "2026-01-01", previsScenes: [] };
     const host = document.createElement("div"); document.body.append(host);
     const root = createRoot(host);
     const deleted: Array<{ ids: string[]; next: CanvasNodeData[]; removed: CanvasNodeData[] }> = [];
@@ -214,5 +214,44 @@ test("the actual lifecycle save path flushes the empty-node state after a full d
         expect(cached.nodes).toEqual([]); expect(cached.connections).toEqual([]);
         expect(f.current.nodes).toEqual([]); expect(f.socket.closes).toBe(0);
         expect(unexpected).toEqual([]);
+    } finally { await f.cleanup(); }
+});
+
+
+test("actual video variant command keeps the source unchanged, preserves incoming references and saves an idle independent template", async () => {
+    const source: CanvasNodeData = { id: "video", type: CanvasNodeType.Video, title: "Original video", parentId: "folder", position: { x: 400, y: 100 }, width: 340, height: 240,
+        metadata: { content: "/fixture.mp4", storageKey: "resource:video", status: "success", prompt: "slow camera move", model: "fixture-video", seconds: "8", referenceAssetNodeIds: ["ref"],
+            taskId: "source-task", resultRecord: { mediaKey: "resource:video", taskId: "source-task" }, agentGenerationContinuation: { id: "old", taskId: "source-task", status: "pending" } } };
+    const ref: CanvasNodeData = { id: "ref", type: CanvasNodeType.Image, title: "Reference", position: { x: 0, y: 0 }, width: 340, height: 240, metadata: { content: "/fixture.png" } };
+    const f = await fixture([ref, source], [{ id: "reference-edge", fromNodeId: "ref", toNodeId: "video" }]);
+    const before = structuredClone(f.current.nodes.find((node) => node.id === "video")!);
+    try {
+        await act(async () => f.current.ops.duplicateNode("video"));
+        const variant = f.current.nodes.find((node) => node.id !== "video" && node.id !== "ref")!;
+        expect(variant).toBeDefined(); expect(variant.parentId).toBe("folder");
+        expect(variant.metadata).toMatchObject({ status: "idle", prompt: "slow camera move", model: "fixture-video", seconds: "8", referenceAssetNodeIds: ["ref"], generationResultPlacement: "replace-node" });
+        expect(variant.metadata?.content).toBeUndefined(); expect(variant.metadata?.taskId).toBeUndefined(); expect(variant.metadata?.resultRecord).toBeUndefined(); expect(variant.metadata?.agentGenerationContinuation).toBeUndefined();
+        expect(variant.metadata?.versionOfNodeId).toBeUndefined(); expect(f.current.nodes.find((node) => node.id === "video")).toEqual(before);
+        expect(f.current.connections).toHaveLength(2); expect(f.current.connections[1]).toMatchObject({ fromNodeId: "ref", toNodeId: variant.id });
+        expect([...f.current.selected]).toEqual([variant.id]); expect(f.current.dialog).toBe(variant.id);
+        let saved = false; await act(async () => { saved = await f.current.lifecycle.saveCanvasProject({ requireRemote: false }); });
+        expect(saved).toBe(true); expect(cached.nodes.find((node) => node.id === variant.id)).toEqual(variant);
+        expect(flushes).toBe(1); expect(remoteSaves).toBe(1); expect(unexpected).toEqual([]);
+    } finally { await f.cleanup(); }
+});
+
+test("ordinary video copy and image variants keep their established media and version behavior", async () => {
+    const video: CanvasNodeData = { id: "video", type: CanvasNodeType.Video, title: "Original", position: { x: 0, y: 0 }, width: 340, height: 240, metadata: { content: "/fixture.mp4", taskId: "old-task", status: "success" } };
+    const image: CanvasNodeData = { ...video, id: "image", type: CanvasNodeType.Image, title: "Image", metadata: { content: "/fixture.png", status: "success" } };
+    const f = await fixture([video, image]);
+    try {
+        await act(async () => f.current.ops.duplicateNode("video", "copy"));
+        const copy = f.current.nodes[2]; expect(copy.metadata?.content).toBe("/fixture.mp4"); expect(copy.metadata?.taskId).toBeUndefined(); expect(copy.title).toBe("Original_copy1");
+        await act(async () => f.current.ops.duplicateNode("image"));
+        const imageVariant = f.current.nodes[3]; expect(imageVariant.metadata).toMatchObject({ content: "/fixture.png", versionOfNodeId: "image", versionLabel: "B", versionPrimary: false });
+        expect(f.current.nodes[1].metadata).toMatchObject({ versionLabel: "A", versionPrimary: true });
+        await act(async () => f.current.ops.duplicateNode("image", "linked-copy"));
+        const linked = f.current.nodes[4]; expect(linked.metadata).toMatchObject({ content: "/fixture.png", imageEditSourceNodeId: "image" });
+        expect(f.current.connections[0]).toMatchObject({ fromNodeId: "image", toNodeId: linked.id }); expect(unexpected).toEqual([]);
     } finally { await f.cleanup(); }
 });

@@ -36,7 +36,7 @@
 
     /* 面板下方的画布每帧都在变：平移/缩放/拖拽节点时毛玻璃要逐帧重新模糊整块区域，
        是 Agent 打开后画布掉帧的主因。交互期换成实色，静止后恢复。 */
-    :root:has([data-canvas-viewport-interacting="true"], [data-canvas-node-dragging="true"]) .canvas-agent-panel {
+    .canvas-agent-panel[data-canvas-interacting="true"] {
         background: var(--agent-material-solid);
         -webkit-backdrop-filter: none;
         backdrop-filter: none;
@@ -44,7 +44,7 @@
 }
 
 /* 交互期暂停面板内的循环动画，避免和画布争抢重绘。 */
-:root:has([data-canvas-viewport-interacting="true"], [data-canvas-node-dragging="true"]) .canvas-agent-panel * {
+.canvas-agent-panel[data-canvas-interacting="true"] * {
     animation-play-state: paused !important;
 }
 
@@ -2065,6 +2065,20 @@
 
 .canvas-agent-launcher.is-dragging {
     cursor: grabbing;
+}
+
+/* Transparent avatar padding must pass clicks and scrolling to the page below. */
+.canvas-agent-launcher.is-body-hit {
+    pointer-events: none;
+}
+
+.canvas-agent-launcher-hit {
+    position: absolute;
+    inset: 15% 22% 4%;
+    z-index: 2;
+    border-radius: 32%;
+    pointer-events: auto;
+    touch-action: none;
 }
 
 .canvas-agent-launcher > .fluid-orb {

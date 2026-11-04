@@ -34,11 +34,11 @@ afterAll(() => {
     }
 });
 
-async function paletteFixture(account?: "topbar" | "sidebar") {
+async function paletteFixture(account?: "topbar" | "sidebar", availability: { imageWorkbenchEnabled?: boolean; videoWorkbenchEnabled?: boolean; pluginCenterEnabled?: boolean } = {}) {
     const host = document.createElement("div");
     document.body.append(host);
     const features = useUserStore.getState().features;
-    useUserStore.setState({ features: { ...features, taskCenterEnabled: true, creditsEnabled: true } });
+    useUserStore.setState({ features: { ...features, taskCenterEnabled: true, creditsEnabled: true, ...availability } });
     let walletOpens = 0;
     const countWallet = () => { walletOpens += 1; };
     window.addEventListener(WORKSPACE_WALLET_OPEN_EVENT, countWallet);
@@ -140,11 +140,11 @@ test("输入框方向键选择安全路由，Enter 只激活当前条目", async
         await fixture.key(fixture.input, "ArrowDown");
         await fixture.key(fixture.input, "ArrowUp");
         const selected = fixture.host.querySelector('[role="option"][aria-selected="true"]')!;
-        expect(selected.textContent).toBe("短剧项目");
+        expect(selected.textContent).toBe("创作画布");
         expect(fixture.input.getAttribute("aria-activedescendant")).toBe(selected.id);
         expect(document.activeElement).toBe(fixture.input);
         await fixture.key(fixture.input, "Enter");
-        expect(fixture.path()).toBe("/projects");
+        expect(fixture.path()).toBe("/canvas");
         expect(fixture.host.querySelector('[role="dialog"]')).toBeNull();
         expect(document.activeElement).not.toBe(fixture.trigger);
         expect(fixture.walletOpens()).toBe(0);
@@ -202,4 +202,30 @@ test("输入无结果时保留命名的结果区与可见提示，Enter 不导�
     } finally {
         await fixture.dispose();
     }
+});
+
+
+test("search follows sidebar creation order and opens the enabled image workbench", async () => {
+    const fixture = await paletteFixture(undefined, { imageWorkbenchEnabled: true, videoWorkbenchEnabled: true, pluginCenterEnabled: true });
+    try {
+        const labels = Array.from(fixture.host.querySelectorAll('[role="option"]')).map((option) => option.textContent);
+        expect(labels.slice(0, 10)).toEqual(["首页", "对话创作", "图片生成", "视频生成", "创作画布", "短剧项目", "素材库", "任务记录", "技能库", "插件中心"]);
+        await act(async () => {
+            Object.getOwnPropertyDescriptor(dom.HTMLInputElement.prototype, "value")!.set!.call(fixture.input, "图片生成");
+            fixture.input.dispatchEvent(new window.Event("input", { bubbles: true }));
+        });
+        expect(fixture.host.querySelectorAll('[role="option"]').length).toBe(1);
+        await fixture.key(fixture.input, "Enter");
+        expect(fixture.path()).toBe("/toolbox/image");
+        expect(fixture.walletOpens()).toBe(0);
+    } finally { await fixture.dispose(); }
+});
+
+test("search never exposes disabled image, video or plugin entries", async () => {
+    const fixture = await paletteFixture(undefined, { imageWorkbenchEnabled: false, videoWorkbenchEnabled: false, pluginCenterEnabled: false });
+    try {
+        const labels = Array.from(fixture.host.querySelectorAll('[role="option"]')).map((option) => option.textContent);
+        for (const label of ["图片生成", "视频生成", "插件中心"]) expect(labels).not.toContain(label);
+        expect(labels).toContain("创作画布");
+    } finally { await fixture.dispose(); }
 });

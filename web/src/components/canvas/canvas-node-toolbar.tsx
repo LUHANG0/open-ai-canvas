@@ -193,6 +193,7 @@ export function CanvasNodeToolbar({
         let liveDragOffset: Position | null = null;
         let containerRect = container.getBoundingClientRect();
         let availableBounds = canvasOverlayBounds(containerRect);
+        let measuredContainerWidth = containerWidth;
         let toolbarWidth = toolbarRef.current?.offsetWidth || 0;
         let toolbarHeight = toolbarRef.current?.offsetHeight || 44;
         const update = () => {
@@ -235,12 +236,17 @@ export function CanvasNodeToolbar({
             const dock = toolbarRef.current?.firstElementChild as HTMLElement | null;
             if (dock) {
                 measuredToolbarWidths.current[layoutLevel] = dock.scrollWidth;
-                setLayoutLevel(canvasToolbarLayoutLevel(availableWidth, measuredToolbarWidths.current, layoutLevel));
+                const nextLayoutLevel = canvasToolbarLayoutLevel(availableWidth, measuredToolbarWidths.current, layoutLevel);
+                if (nextLayoutLevel !== layoutLevel) setLayoutLevel(nextLayoutLevel);
             }
-            setContainerWidth(availableWidth);
+            if (availableWidth !== measuredContainerWidth) {
+                measuredContainerWidth = availableWidth;
+                setContainerWidth(availableWidth);
+            }
             scheduleUpdate();
         };
-        measure();
+        // observeCanvasOverlayBounds synchronously measures with chrome insets;
+        // measuring before it would reset width to full canvas on every resubscribe.
         const resizeObserver = new ResizeObserver(measure);
         resizeObserver.observe(element);
         resizeObserver.observe(container);
@@ -264,7 +270,7 @@ export function CanvasNodeToolbar({
             unsubscribeDrag();
             window.removeEventListener("resize", measure);
         };
-    }, [anchor === null, containerRef, layoutLevel, node, resizeMotion, viewport.k, viewport.x, viewport.y]);
+    }, [anchor === null, containerRef, containerWidth, layoutLevel, node, resizeMotion, viewport.k, viewport.x, viewport.y]);
 
     if (!node || !anchor) return null;
 

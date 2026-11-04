@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, type Dispatch, type SetStateAction } fr
 import { App } from "antd";
 import { nanoid } from "nanoid";
 
+import { markCanvasTextResultApplied } from "@/lib/canvas/canvas-completion-feedback";
 import { NODE_DEFAULT_SIZE } from "@/constant/canvas";
 import {
     backendProviderConfig,
@@ -229,7 +230,7 @@ export function useCanvasStoryboard({
             const result = storyboardRowsFromTask(completed);
             assertCurrent();
             replaceScriptRows(nodeId, result.rows);
-            setNodes((current) => current.map((node) => node.id === nodeId ? {
+            setNodes((current) => current.map((node) => node.id === nodeId ? markCanvasTextResultApplied({
                 ...node,
                 title: result.title || node.title,
                 metadata: {
@@ -243,7 +244,7 @@ export function useCanvasStoryboard({
                         referenceNodeIds: node.metadata?.storyboard?.referenceNodeIds || [],
                     },
                 },
-            } : node));
+            }) : node));
             message.success(`已生成 ${result.rows.length} 个镜头`);
             return true;
         } catch (error) {
