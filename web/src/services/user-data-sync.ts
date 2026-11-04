@@ -207,7 +207,29 @@ export async function initializeRemoteUserDataSession(userId: string) {
         for (const pending of pendingCanvasMutations.values()) {
             if (pending.baseline) acknowledgedProjects.set(pending.projectId, pending.baseline);
         }
-        acknowledgedAssets = new Map(useAssetStore.getState().assets.map((asset) => [asset.id, asset]));
+        // 只重放已确认画布基线之后新增、且明确属于该导入节点的素材。
+        const unconfirmedImportAssets = new Map<string, Array<{ canvasId: string; nodeId: string }>>();
+        for (const project of useCanvasStore.getState().projects) {
+            const baseline = acknowledgedProjects.get(project.id);
+            if (!baseline) continue;
+            const confirmedNodes = new Set(baseline.nodes.map((node) => node.id));
+            for (const node of project.nodes) {
+                if (node.metadata?.importSource && node.metadata.assetId && !confirmedNodes.has(node.id)) {
+                    const owners = unconfirmedImportAssets.get(node.metadata.assetId) || [];
+                    owners.push({ canvasId: project.id, nodeId: node.id });
+                    unconfirmedImportAssets.set(node.metadata.assetId, owners);
+                }
+            }
+        }
+        acknowledgedAssets = new Map(
+            useAssetStore
+                .getState()
+                .assets.filter((asset) => {
+                    const pending = unconfirmedImportAssets.get(asset.id);
+                    return !pending?.some((owner) => asset.metadata?.canvasId === owner.canvasId && asset.metadata?.nodeId === owner.nodeId);
+                })
+                .map((asset) => [asset.id, asset]),
+        );
         remoteUserDataPhase = "ready";
         if (pendingCanvasMutations.size) scheduleRemoteUserDataSync();
     });

@@ -423,6 +423,7 @@ export function useCanvasProjectLifecycle({
         deleteCurrentProject,
         renameCurrentProject,
         saveCanvasProject,
+        persistLocalEdits,
         updateProject,
     };
 }

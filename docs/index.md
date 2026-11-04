@@ -7,6 +7,7 @@
 - [画布媒体生命周期](content/docs/overview/canvas-media-lifecycle.mdx)：账号与来源身份、准备交接、有界缓存、失效撤销和长离屏恢复。
 - [画布 Agent 视频渲染](content/docs/overview/canvas-avatar-rendering.mdx)：保留原生视频连续播放的 GPU 去绿幕及 2D 降级。
 - [画布节点细节调度](content/docs/overview/canvas-detail-scheduling.mdx)：手势中合并装饰状态、结束后收敛，保留可见媒体和即时交互。
+- [第三方画布导入](content/docs/overview/third-party-canvas-import.mdx)：本地保存、云端确认、同批次去重及刷新后的素材补传。
 - [创作页历史跨设备同步](content/docs/backend/creation-conversation-sync.mdx)：账号历史、旧本地迁移、逐消息修订、删除防复活及媒体引用边界。
 - [生成作品存储与恢复](content/docs/backend/generation-storage-recovery.mdx)：生成前配额检查、检查点与暂存副本顺序、分页引用保护和保存恢复边界。
 - [用户注册邀请](content/docs/backend/registration-invitations.mdx)：管理员单次邀请、关闭公开注册时的验证、固定积分、事务与迁移回退边界。
