@@ -11,7 +11,7 @@ import { useCanvasVisualNode } from "@/components/canvas/canvas-node-resize-moti
 import type { CanvasConnectionApproach } from "@/lib/canvas/canvas-connection-tilt";
 import type { CanvasBatchConnectionPreview } from "@/lib/canvas/canvas-batch-connection";
 import { batchCellAnchor, BATCH_COLUMN_HEADER_HEIGHT, BATCH_TABLE_HEADER_HEIGHT, parseBatchCellHandle, type BatchScroll } from "@/lib/canvas/canvas-batch-references";
-import { sortCanvasNodesByStackOrder, type CanvasNodeStackOrder } from "@/lib/canvas/canvas-node-stack-order";
+import { sortCanvasNodesForRendering, type CanvasNodeStackOrder } from "@/lib/canvas/canvas-node-stack-order";
 import type { CanvasResourceReference } from "@/lib/canvas/canvas-resource-references";
 import { isFrameNode } from "@/lib/canvas/canvas-frame";
 import type { CanvasNodeRenderLOD } from "@/lib/canvas/canvas-node-lod";
@@ -100,12 +100,18 @@ export const CanvasProjectWorldLayers = memo(function CanvasProjectWorldLayers(p
         playback?.prune(new Set(props.nodeById.keys()));
     }, [playback, props.nodeById]);
     const mountedOrder = useRef<CanvasNodeStackOrder>([]);
-    const orderedVisibleNodes = useMemo(() => [
-        ...props.visibleNodes.filter(isFrameNode),
+    // nodeById is rebuilt from current model nodes in document order. Cache ranks
+    // here so viewport changes only sort mounted candidates, not the full document.
+    const documentOrder = useMemo(() => {
+        const ranks = new Map<string, number>();
+        for (const id of props.nodeById.keys()) ranks.set(id, ranks.size);
+        return ranks;
+    }, [props.nodeById]);
+    const orderedVisibleNodes = useMemo(() =>
         // Moving Vidstack custom elements disconnects and recreates their native
         // provider. Selection already raises z-index; defer DOM moves until idle.
-        ...sortCanvasNodesByStackOrder(props.visibleNodes.filter((node) => !isFrameNode(node)), playback?.getSnapshot() ? mountedOrder.current : props.nodeStackOrder),
-    ], [playback, props.nodeStackOrder, props.visibleNodes, props.selectedNodeIds]);
+        sortCanvasNodesForRendering(props.visibleNodes, documentOrder, playback?.getSnapshot() ? mountedOrder.current : props.nodeStackOrder),
+    [documentOrder, playback, props.nodeStackOrder, props.visibleNodes, props.selectedNodeIds]);
     useLayoutEffect(() => {
         mountedOrder.current = orderedVisibleNodes.filter(node => !isFrameNode(node)).map(node => node.id);
     }, [orderedVisibleNodes]);

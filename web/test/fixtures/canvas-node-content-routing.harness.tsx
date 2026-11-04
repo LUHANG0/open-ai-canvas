@@ -276,3 +276,35 @@ test("non-image badges update each consumed field and disappear across presence 
         await f.cleanup();
     }
 });
+
+test("viewport-only regrouping preserves DOM identity without moving retained node roots", async () => {
+    const data = Array.from({ length: 12 }, (_, i) => ({ ...node(CanvasNodeType.Text, { content: `Body ${i}` }), id: `stable-${i}` }));
+    const props = options(data);
+    const f = await fixture(props);
+    const roots = new Map([...f.host.querySelectorAll("[data-node-id]")].map((element) => [element.getAttribute("data-node-id"), element]));
+    const mutations: MutationRecord[] = [];
+    const observer = new dom.MutationObserver((records) => mutations.push(...records as unknown as MutationRecord[]));
+    observer.observe(f.host, { childList: true });
+    try {
+        for (const visibleNodes of [[...data].reverse(), [...data.slice(4), ...data.slice(0, 4)], data]) {
+            await f.render({ ...props, visibleNodes });
+            mutations.push(...observer.takeRecords() as unknown as MutationRecord[]);
+            const current = [...f.host.querySelectorAll("[data-node-id]")];
+            expect(current.map((element) => element.getAttribute("data-node-id"))).toEqual(data.map((item) => item.id));
+            current.forEach((element) => expect(element).toBe(roots.get(element.getAttribute("data-node-id"))));
+        }
+        expect(mutations.flatMap((record) => [...record.addedNodes, ...record.removedNodes])).toEqual([]);
+        await f.render({ ...props, visibleNodes: [...data].reverse(), selectedNodeIds: new Set([data[0].id]), nodeStackOrder: [data[0].id] });
+        const raised = f.host.querySelector(`[data-node-id="${data[0].id}"]`)!;
+        expect(raised).toBe(roots.get(data[0].id));
+        expect(raised.className).toContain("z-[var(--z-node-active)]");
+        expect([...f.host.querySelectorAll("[data-node-id]")].at(-1)).toBe(raised);
+        const reordered = [...data].reverse().slice(1);
+        await f.render({ ...props, nodeById: new Map(reordered.map((item) => [item.id, item])), visibleNodes: data });
+        expect([...f.host.querySelectorAll("[data-node-id]")].map((element) => element.getAttribute("data-node-id"))).toEqual(reordered.map((item) => item.id));
+        expect(f.host.querySelector(`[data-node-id="${data.at(-1)!.id}"]`)).toBeNull();
+    } finally {
+        observer.disconnect();
+        await f.cleanup();
+    }
+});

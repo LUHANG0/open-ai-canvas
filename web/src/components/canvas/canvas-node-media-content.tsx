@@ -366,10 +366,11 @@ export function InactiveVideoPreview({ node, theme, onPlay, actionLabel }: Pick<
 }
 
 export function VideoPreviewPlayButton({ title, onPlay, actionLabel = "播放", visible = false }: { title: string; onPlay: () => void; actionLabel?: string; visible?: boolean }) {
+    // 浏览器会为 opacity-0 的 backdrop 按钮创建合成层；隐藏时仅在键盘聚焦后启用模糊。
     return (
         <button
             type="button"
-            className={`absolute left-1/2 top-1/2 z-[var(--node-z-overlay)] grid size-11 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-black/62 text-white shadow-lg backdrop-blur transition-[transform,background-color,opacity] group-data-[hover-playing=true]/video-preview:opacity-0 focus-visible:!opacity-100 hover:scale-105 hover:bg-black/78 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white ${visible ? "" : "pointer-events-none opacity-0 focus-visible:pointer-events-auto"}`}
+            className={`absolute left-1/2 top-1/2 z-[var(--node-z-overlay)] grid size-11 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-black/62 text-white shadow-lg transition-[transform,background-color,opacity] group-data-[hover-playing=true]/video-preview:opacity-0 focus-visible:!opacity-100 hover:scale-105 hover:bg-black/78 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white ${visible ? "backdrop-blur" : "pointer-events-none opacity-0 focus-visible:pointer-events-auto focus-visible:backdrop-blur"}`}
             aria-label={`${actionLabel} ${title}`}
             data-canvas-play-button
             title={actionLabel === "播放" ? "播放视频" : actionLabel}
