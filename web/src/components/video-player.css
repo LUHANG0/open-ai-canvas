@@ -472,7 +472,11 @@
     pointer-events: none;
 }
 
-.canvas-video-player[data-player-variant="compact"]:is([data-fullscreen], :fullscreen, :-webkit-full-screen) .vds-video-layout[data-sm] .vds-controls-group:has(.vds-volume) > :not(.vds-volume) {
+/* Target only direct volume siblings: absent volume leaves the group unchanged,
+   and every volume stays visible. Keeping :has on the sibling avoids broad
+   descendant invalidation during canvas zoom without depending on group order. */
+.canvas-video-player[data-player-variant="compact"]:is([data-fullscreen], :fullscreen, :-webkit-full-screen) .vds-video-layout[data-sm] .vds-controls-group > :not(.vds-volume):has(~ .vds-volume),
+.canvas-video-player[data-player-variant="compact"]:is([data-fullscreen], :fullscreen, :-webkit-full-screen) .vds-video-layout[data-sm] .vds-controls-group > .vds-volume ~ :not(.vds-volume) {
     display: none !important;
 }
 

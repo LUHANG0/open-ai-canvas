@@ -65,7 +65,7 @@ export function registerCanvasImageSource(src: string, resourceId?: string, actu
     sources.delete(src);
     sources.set(src, value);
     while (sources.size > METADATA_LIMIT) sources.delete(sources.keys().next().value!);
-    if (validUntil < nextExpiry) scheduleExpiry();
+    scheduleExpiry(validUntil);
     return value;
 }
 
@@ -77,20 +77,38 @@ export function canvasImageSourceFor(src: string) {
 function collectExpired() {
     const now = Date.now();
     if (now < nextExpiry) return;
-    for (const [key, entry] of preparedImages) if (!entry.refs && entry.expiresAt <= now) preparedImages.delete(key);
-    for (const [key, entry] of presentations) if (entry.validUntil <= now) presentations.delete(key);
-    for (const [key, entry] of sources) if (entry.validUntil <= now) sources.delete(key);
-    scheduleExpiry();
+    // A synchronous read can collect before the pending timer gets its turn.
+    clearTimeout(expiryTimer);
+    expiryTimer = undefined;
+    nextExpiry = Infinity;
+    let next = Infinity;
+    for (const [key, entry] of preparedImages) {
+        if (entry.refs) continue;
+        if (entry.expiresAt <= now) preparedImages.delete(key);
+        else next = Math.min(next, entry.expiresAt);
+    }
+    for (const [key, entry] of presentations) {
+        if (entry.validUntil <= now) presentations.delete(key);
+        else next = Math.min(next, entry.validUntil);
+    }
+    for (const [key, entry] of sources) {
+        if (entry.validUntil <= now) sources.delete(key);
+        else next = Math.min(next, entry.validUntil);
+    }
+    scheduleExpiry(next);
 }
 
-function scheduleExpiry() {
+/** Only new earlier deadlines replace a timer; removals may leave an early wakeup. */
+function scheduleExpiry(deadline: number) {
+    if (!Number.isFinite(deadline) || (expiryTimer !== undefined && deadline >= nextExpiry)) return;
     clearTimeout(expiryTimer);
-    let next = Number.POSITIVE_INFINITY;
-    for (const entry of preparedImages.values()) if (!entry.refs) next = Math.min(next, entry.expiresAt);
-    for (const entry of presentations.values()) next = Math.min(next, entry.validUntil);
-    for (const entry of sources.values()) next = Math.min(next, entry.validUntil);
-    nextExpiry = next;
-    expiryTimer = Number.isFinite(next) ? setTimeout(() => { expiryTimer = undefined; collectExpired(); }, Math.max(1, next - Date.now())) : undefined;
+    nextExpiry = deadline;
+    expiryTimer = setTimeout(() => {
+        expiryTimer = undefined;
+        // Date.now can move backwards: preserve the absolute expiry check and re-arm.
+        if (Date.now() < nextExpiry) scheduleExpiry(nextExpiry);
+        else collectExpired();
+    }, Math.max(1, deadline - Date.now()));
     // Module tests and SSR must not be kept alive by a warm cache.
     (expiryTimer as unknown as { unref?: () => void } | undefined)?.unref?.();
 }
@@ -103,7 +121,6 @@ function trimWarmImages() {
         if (entry.refs) continue;
         count -= 1; pixels -= entry.pixels; preparedImages.delete(key);
     }
-    scheduleExpiry();
 }
 
 /** A synchronous snapshot only exposes images already prepared, never a cold descriptor. */
@@ -123,7 +140,6 @@ export function retainCanvasImage(src: string) {
     if (!entry || entry.src !== src) return () => {};
     entry.refs += 1;
     activeHandles.add(entry);
-    scheduleExpiry();
     let released = false;
     return () => {
         if (released || generation !== scopeGeneration) return;
@@ -137,6 +153,7 @@ export function retainCanvasImage(src: string) {
                 preparedImages.set(entry.key, entry);
             }
             trimWarmImages();
+            if (preparedImages.get(entry.key) === entry) scheduleExpiry(entry.expiresAt);
         }
     };
 }
@@ -162,7 +179,7 @@ export function rememberImagePresentation(key: string, src: string) {
     presentations.delete(key);
     presentations.set(key, source);
     while (presentations.size > METADATA_LIMIT) presentations.delete(presentations.keys().next().value!);
-    scheduleExpiry();
+    scheduleExpiry(source.validUntil);
 }
 
 export function forgetImagePresentation(src: string) {
@@ -177,7 +194,6 @@ export function forgetImagePresentation(src: string) {
     if (source) successfulSources.delete(source);
     for (const [imageKey, entry] of preparedImages) if (entry.src === src) preparedImages.delete(imageKey);
     for (const entry of preparations.values()) if (entry.src === src) entry.controller.abort();
-    scheduleExpiry();
 }
 
 /** Same resource/actual variant shares one queue entry; node IDs are consumers only. */
@@ -209,8 +225,10 @@ export function prepareCanvasImage(source: CanvasImageSource, signal: AbortSigna
             const pixels = image.naturalWidth * image.naturalHeight;
             if (preparations.get(key) === entry && pixels > 0 && pixels <= MAX_CACHED_PIXELS && !src.startsWith("blob:")) {
                 preparedImages.delete(key);
-                preparedImages.set(key, { ...source, image, pixels, refs: 0, expiresAt: Date.now() + IMAGE_CACHE_TTL_MS });
+                const prepared = { ...source, image, pixels, refs: 0, expiresAt: Date.now() + IMAGE_CACHE_TTL_MS };
+                preparedImages.set(key, prepared);
                 trimWarmImages();
+                if (preparedImages.get(key) === prepared) scheduleExpiry(prepared.expiresAt);
             }
             return image;
         }).finally(() => {
