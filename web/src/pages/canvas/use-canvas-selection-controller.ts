@@ -151,6 +151,8 @@ export function useCanvasSelectionController({
     const handleNodeMouseDown = useCallback((event: ReactMouseEvent | ReactPointerEvent, nodeId: string) => {
         event.stopPropagation();
         if (event.button !== 0 || isCanvasSecondaryClick(event)) return;
+        // Portal 弹层沿 React 树冒泡，但不在节点 DOM 内；不能启动拖动或提前关闭菜单。
+        if (event.target instanceof Node && event.currentTarget instanceof Node && !event.currentTarget.contains(event.target)) return;
         // 子组件的 pointerdown 停止冒泡不会阻止随后独立派发的 mousedown。
         // 编辑、控件操作和表内滚动均不能启动节点选择/拖动，也不能暂停历史记录。
         if (event.target instanceof Element && event.target.closest('input, textarea, select, button, a[href], [contenteditable]:not([contenteditable="false"]), [role="textbox"], [data-canvas-no-drag]')) return;

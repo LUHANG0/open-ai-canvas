@@ -16,6 +16,7 @@ localforage.setItem = (async (key: string, value: unknown) => { storage.set(key,
 localforage.removeItem = (async (key: string) => { storage.delete(key); }) as typeof localforage.removeItem;
 const { act, useRef, useState } = await import("react");
 const { createRoot } = await import("react-dom/client");
+const { createPortal } = await import("react-dom");
 const { useCanvasNodeControls } = await import("@/pages/canvas/use-canvas-node-controls");
 const { useCanvasSelectionController } = await import("@/pages/canvas/use-canvas-selection-controller");
 const { useCanvasRenderModel } = await import("@/pages/canvas/use-canvas-render-model");
@@ -33,11 +34,12 @@ afterAll(async () => {
     }
 });
 
-async function fixture(locked = false) {
+async function fixture(locked = false, portalMenu = false) {
     const host = document.createElement("div"); document.body.append(host);
     const root = createRoot(host);
     let api: any;
     function Harness() {
+        const [menuClicks, setMenuClicks] = useState(0);
         const [nodes, setNodes] = useState([{ ...sample(), metadata: { locked } }, sample("b")]);
         const nodesRef = useRef(nodes); nodesRef.current = nodes;
         const [selected, setSelected] = useState(new Set<string>());
@@ -49,9 +51,11 @@ async function fixture(locked = false) {
         const historyPausedRef = useRef(false);
         const controller = useCanvasSelectionController({ containerRef, nodesRef, viewportRef, selectedNodeIdsRef, historyPausedRef, screenToCanvas: (x, y) => ({ x, y }), setNodes, setSelectedNodeIds: setSelected, setSelectedConnectionId: noop, cancelPendingConnectionCreate: noop, onCanvasSelectionStart: noop, onNodeInteractionStart: (modifier) => { controls.setToolbarNodeId(null); if (modifier) controls.setDialogNodeId(null); }, onNodeClick: (node) => { controls.setToolbarNodeId(node.id); controls.setDialogNodeId(node.id); }, onNodeDragEnd: controls.closeNodeControls, onDeselect: controls.closeNodeControls });
         const model = useCanvasRenderModel({ nodes, connections: [], assets: [], viewport: viewportRef.current, viewportSize: { width: 1280, height: 900 }, selectedNodeIds: selected, toolbarNodeId: controls.toolbarNodeId, hoveredNodeId: hovered, dragPreview: controller.dragPreview, collapsingBatchIds: new Set(), addedSkills: [], infoNodeId: null, cropNodeId: null, maskEditNodeId: null, imageEditNodeId: null, annotationNodeId: null, splitNodeId: null, upscaleNodeId: null, superResolveNodeId: null, angleNodeId: null, lightingNodeId: null, emotionNodeId: null, previewNodeId: null, contextMenu: null, previsNodeId: null, scriptEditorNodeId: null, dialogNodeId: controls.dialogNodeId });
-        api = { nodes, selected, controls, controller, historyPausedRef, model, create: () => { const node = sample("new"); setNodes((current) => [...current, node]); setSelected(new Set([node.id])); controls.setDialogNodeId(node.id); } };
+        api = { nodes, selected, controls, controller, historyPausedRef, model, menuClicks, create: () => { const node = sample("new"); setNodes((current) => [...current, node]); setSelected(new Set([node.id])); controls.setDialogNodeId(node.id); } };
         return <div ref={containerRef} onPointerDown={controller.handleCanvasMouseDown}>
-            {nodes.map((node) => <div key={node.id} data-test-node={node.id} onMouseDown={(event) => controller.handleNodeMouseDown(event, node.id)} onMouseEnter={() => setHovered(node.id)} />)}
+            {nodes.map((node) => <div key={node.id} data-test-node={node.id} onMouseDown={(event) => controller.handleNodeMouseDown(event, node.id)} onMouseEnter={() => setHovered(node.id)}>
+                {portalMenu && node.id === "a" && !controller.isNodeDragging ? createPortal(<div role="menu"><div role="menuitem" onClick={() => setMenuClicks((count) => count + 1)}>弹层操作</div></div>, document.body) : null}
+            </div>)}
             <output data-upper>{!controller.isNodeDragging ? model.toolbarNode?.id : ""}</output>
             <output data-lower>{!controller.isNodeDragging ? controls.dialogNodeId : ""}</output>
         </div>;
@@ -65,6 +69,33 @@ async function fixture(locked = false) {
     const cleanup = async () => { await act(async () => root.unmount()); host.remove(); frames.clear(); };
     return { host, api: () => api, mouse, shown, cleanup };
 }
+
+test("a Portal menu stays mounted through mousedown and click without changing selection or pausing history", async () => {
+    const f = await fixture(false, true);
+    try {
+        await f.mouse("mousedown", "b"); await f.mouse("mouseup");
+        const originalNodes = f.api().nodes;
+        const menu = document.querySelector('[role="menuitem"]')!;
+        expect(f.host.contains(menu)).toBe(false);
+        await act(async () => menu.dispatchEvent(new dom.MouseEvent("mousedown", { bubbles: true, button: 0, clientX: 900, clientY: 400 })));
+        expect(f.api().controller.isNodeDragging).toBe(false);
+        expect(f.api().historyPausedRef.current).toBe(false);
+        expect([...f.api().selected]).toEqual(["b"]);
+        expect(f.shown()).toEqual(["b", "b"]);
+        expect(menu.isConnected).toBe(true);
+        await act(async () => {
+            menu.dispatchEvent(new dom.MouseEvent("mouseup", { bubbles: true, button: 0 }));
+            menu.dispatchEvent(new dom.MouseEvent("click", { bubbles: true, button: 0 }));
+        });
+        expect(f.api().menuClicks).toBe(1);
+        expect(f.api().nodes).toBe(originalNodes);
+        // The same node's real body must still start a drag normally.
+        await f.mouse("mousedown", "a");
+        expect(f.api().controller.isNodeDragging).toBe(true);
+        await f.mouse("mouseup");
+        expect(f.api().historyPausedRef.current).toBe(false);
+    } finally { await f.cleanup(); }
+});
 
 test("explicit click activates both areas; drag keeps selection but needs another click, including the same node", async () => {
     const f = await fixture();
