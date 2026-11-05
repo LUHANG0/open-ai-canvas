@@ -1,6 +1,7 @@
 import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useLocation, useNavigate } from "react-router";
+import { useTranslation } from "react-i18next";
 
 import { BannerAnnouncementsSlider } from "@/components/layout/banner-announcements-slider";
 import { ModelSetupGuide } from "@/components/layout/model-setup-guide";
@@ -9,7 +10,10 @@ import { readWorkspaceSidebarCollapsed, writeWorkspaceSidebarCollapsed } from "@
 import { WorkspaceTopBar } from "@/components/layout/workspace-top-bar";
 import { WorkspaceEntryStage } from "@/components/layout/workspace-entry-stage";
 import { WorkspaceTopBarExtensionProvider } from "@/components/layout/workspace-top-bar-extension";
+import { WorkspaceStorageLimitNotice } from "@/components/layout/workspace-storage-limit-notice";
 import { WorkspaceWalletHost } from "@/components/layout/workspace-wallet-modal";
+import { GenerationSuccessNotifier } from "@/components/layout/generation-success-notifier";
+import { useWorkspaceDocumentTitle } from "@/hooks/use-workspace-document-title";
 import { cn } from "@/lib/utils";
 import { isSpatialWorkbenchPath } from "@/lib/workspace-routes";
 import { workspaceSidebarMotion } from "@/lib/workspace-sidebar-motion";
@@ -17,6 +21,7 @@ import { workspaceSidebarMotion } from "@/lib/workspace-sidebar-motion";
 const WorkspaceCommandPalette = lazy(() => import("@/components/layout/workspace-command-palette").then((module) => ({ default: module.WorkspaceCommandPalette })));
 
 export function AppWorkspaceShell({ children }: { children: ReactNode }) {
+    const { t } = useTranslation();
     const { pathname } = useLocation();
     const navigate = useNavigate();
     const [mobileSidebarExpanded, setMobileSidebarExpanded] = useState(false);
@@ -38,6 +43,7 @@ export function AppWorkspaceShell({ children }: { children: ReactNode }) {
     useLayoutEffect(() => {
         if (mobileViewport && mobileSidebarExpanded) sidebarRef.current?.querySelector<HTMLAnchorElement>(".workspace-navigation-brand")?.focus({ preventScroll: true });
     }, [mobileViewport, mobileSidebarExpanded]);
+    useWorkspaceDocumentTitle();
 
     const hideChrome = pathname.startsWith("/admin") || /^\/canvas\/[^/]+/.test(pathname);
     const showGlobalTopBar = !hideChrome;
@@ -191,6 +197,8 @@ export function AppWorkspaceShell({ children }: { children: ReactNode }) {
                 </div>
             </WorkspaceTopBarExtensionProvider>
             <WorkspaceWalletHost />
+            <WorkspaceStorageLimitNotice />
+            <GenerationSuccessNotifier />
             <ModelSetupGuide hidden={pathname === "/login" || pathname === "/register" || pathname.startsWith("/admin")} />
         </>
     );

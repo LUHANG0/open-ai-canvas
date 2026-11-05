@@ -1,5 +1,7 @@
 import { Button, Image as AntImage, Modal } from "antd";
 import { Bell, BellOff, CircleAlert, Info, Pin, ShieldAlert, Wrench } from "lucide-react";
+import { currentLocale, translate } from "@/i18n";
+import { useTranslation } from "react-i18next";
 
 import { AnnouncementContent } from "@/components/ui/announcement-content";
 import { announcementImageUrl, type AnnouncementLevel, type SystemAnnouncement } from "@/services/api/announcements";
@@ -16,14 +18,16 @@ type AnnouncementTimelineModalProps = {
     onRetry?: () => void;
 };
 
+/** label 为 account.ui.announcements.levels 下的键名，渲染时翻译。 */
 const levelMeta: Record<AnnouncementLevel, { label: string; dot: string; icon: typeof Info }> = {
-    info: { label: "平台通知", dot: "bg-sky-500", icon: Info },
-    success: { label: "状态恢复", dot: "bg-emerald-500", icon: Wrench },
-    warning: { label: "服务提醒", dot: "bg-amber-500", icon: CircleAlert },
-    critical: { label: "重要通知", dot: "bg-red-500", icon: ShieldAlert },
+    info: { label: "info", dot: "bg-sky-500", icon: Info },
+    success: { label: "success", dot: "bg-emerald-500", icon: Wrench },
+    warning: { label: "warning", dot: "bg-amber-500", icon: CircleAlert },
+    critical: { label: "critical", dot: "bg-red-500", icon: ShieldAlert },
 };
 
 export function AnnouncementTimelineModal({ open, announcements, loading = false, error = "", automaticPrompt = false, onClose, onDismissOnce, onDismissToday, onRetry }: AnnouncementTimelineModalProps) {
+    const { t } = useTranslation();
     return (
         <Modal
             rootClassName="system-announcement-modal workspace-utility-overlay"
@@ -32,8 +36,8 @@ export function AnnouncementTimelineModal({ open, announcements, loading = false
             centered
             footer={automaticPrompt ? (
                 <div className="flex flex-wrap justify-end gap-2">
-                    <Button onClick={onDismissToday}>今日不再提醒</Button>
-                    <Button type="primary" onClick={onDismissOnce}>关闭本次</Button>
+                    <Button onClick={onDismissToday}>{t("account.ui.announcements.dismissToday")}</Button>
+                    <Button type="primary" onClick={onDismissOnce}>{t("account.ui.announcements.dismissOnce")}</Button>
                 </div>
             ) : null}
             onCancel={onClose}
@@ -95,7 +99,7 @@ function AnnouncementTimelineItem({ announcement, last }: { announcement: System
         <article
             className="relative grid grid-cols-[26px_minmax(0,1fr)] gap-3 pb-7 last:pb-2 sm:grid-cols-[32px_minmax(0,1fr)] sm:gap-4"
         >
-            <div className="relative flex justify-center pt-1.5" aria-hidden>
+            <div className="relative flex justify-center pt-2" aria-hidden>
                 {!last ? <span className="absolute left-1/2 top-5 h-[calc(100%+4px)] w-px -translate-x-1/2 bg-border" /> : null}
                 <span className={`relative z-10 size-3.5 rounded-full border-[3px] border-background ${meta.dot}`} />
             </div>
@@ -116,16 +120,16 @@ function AnnouncementTimelineItem({ announcement, last }: { announcement: System
 function formatDateTime(value: string) {
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) return "--";
-    return new Intl.DateTimeFormat("zh-CN", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false }).format(date).replaceAll("/", "-");
+    return new Intl.DateTimeFormat(currentLocale(), { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false }).format(date).replaceAll("/", "-");
 }
 
 function relativeTime(value: string) {
     const timestamp = new Date(value).getTime();
-    if (!Number.isFinite(timestamp)) return "刚刚";
+    if (!Number.isFinite(timestamp)) return translate("time.justNow");
     const seconds = Math.max(0, Math.floor((Date.now() - timestamp) / 1000));
-    if (seconds < 60) return "刚刚";
-    if (seconds < 3600) return `${Math.floor(seconds / 60)} 分钟前`;
-    if (seconds < 86400) return `${Math.floor(seconds / 3600)} 小时前`;
-    if (seconds < 86400 * 7) return `${Math.floor(seconds / 86400)} 天前`;
-    return `${Math.floor(seconds / (86400 * 7))} 周前`;
+    if (seconds < 60) return translate("time.justNow");
+    if (seconds < 3600) return translate("time.minutesAgo", { count: Math.floor(seconds / 60) });
+    if (seconds < 86400) return translate("time.hoursAgo", { count: Math.floor(seconds / 3600) });
+    if (seconds < 86400 * 7) return translate("time.daysAgo", { count: Math.floor(seconds / 86400) });
+    return translate("account.ui.announcements.weeksAgo", { count: Math.floor(seconds / (86400 * 7)) });
 }

@@ -84,7 +84,7 @@
 .ant-select.app-unified-select .ant-select-content,
 .ant-select.app-unified-select .ant-select-selection-item,
 .ant-select.app-unified-select .ant-select-placeholder {
-    padding-inline-start: 10px !important;
+    padding-inline-start: 8px !important;
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -1,6 +1,6 @@
 import { App } from "antd";
 import { useRef, useState } from "react";
-import { useNavigate } from "react-router";
+import { useAuthEntry } from "@/hooks/use-auth-entry";
 
 import { applyUserSession } from "@/lib/user-session";
 import { clearAuthNavigation } from "@/lib/auth-navigation";
@@ -11,7 +11,7 @@ import { logout } from "@/services/api/auth";
  * 写路径强校验：失败必须明确提示，不得静默吞错。
  */
 export function useWorkspaceLogout(onLoggedOut?: () => void) {
-    const navigate = useNavigate();
+    const { showLoginAfterSignOut } = useAuthEntry();
     const { message } = App.useApp();
     const [loggingOut, setLoggingOut] = useState(false);
     const pending = useRef(false);
@@ -26,7 +26,7 @@ export function useWorkspaceLogout(onLoggedOut?: () => void) {
             await applyUserSession({ user: null });
             onLoggedOut?.();
             message.success("已退出登录");
-            navigate("/login", { replace: true });
+            showLoginAfterSignOut();
         } catch (error) {
             message.error(error instanceof Error ? error.message : "退出失败");
         } finally {

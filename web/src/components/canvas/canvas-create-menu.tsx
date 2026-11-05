@@ -1,4 +1,5 @@
 import type { CSSProperties, ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 
 import { canvasThemes } from "@/lib/canvas-theme";
 import { cn } from "@/lib/utils";
@@ -14,6 +15,7 @@ export type CanvasCreateCommand = {
 };
 
 export function CanvasCreateMenu({ commands }: { commands: CanvasCreateCommand[] }) {
+    const { t } = useTranslation();
     const theme = canvasThemes[useActiveTheme()];
     const projectCommands = commands.filter((command) => command.section === "project");
     const nodeCommands = commands.filter((command) => command.section === "node");
@@ -23,7 +25,7 @@ export function CanvasCreateMenu({ commands }: { commands: CanvasCreateCommand[]
     return (
         <div>
             <header className="flex min-h-7 items-center justify-between gap-2 border-b pb-2" style={{ borderColor: theme.toolbar.border }}>
-                <h2 className="font-semibold leading-none" style={{ fontSize: "var(--fs-caption)" }}>添加节点</h2>
+                <h2 className="font-semibold leading-none" style={{ fontSize: "var(--fs-caption)" }}>{t("canvasA.createMenu.title")}</h2>
                 {projectCommands.map((command) => (
                     <button
                         key={command.id}
@@ -40,27 +42,28 @@ export function CanvasCreateMenu({ commands }: { commands: CanvasCreateCommand[]
                 ))}
             </header>
 
-            <MenuSection title="创作节点" color={theme.node.muted} />
+            <MenuSection title={t("canvasA.createMenu.nodesGroup")} color={theme.node.muted} />
             <CanvasCreateCommandGrid commands={nodeCommands} variant="node" />
 
             {workflowCommands.length ? (
                 <>
-                    <MenuSection title="工作流" color={theme.node.muted} spaced />
+                    <MenuSection title={t("canvasA.createMenu.workflowGroup", { defaultValue: "工作流" })} color={theme.node.muted} spaced />
                     <CanvasCreateCommandGrid commands={workflowCommands} variant="workflow" />
                 </>
             ) : null}
 
-            <MenuSection title="导入资源" color={theme.node.muted} spaced />
+            <MenuSection title={t("canvasA.createMenu.resourceGroup", { defaultValue: "导入资源" })} color={theme.node.muted} spaced />
             <CanvasCreateCommandGrid commands={resourceCommands} variant="compact" />
         </div>
     );
 }
 
 function CanvasCreateCommandGrid({ commands, variant }: { commands: CanvasCreateCommand[]; variant: "node" | "compact" | "workflow" }) {
+    const { t } = useTranslation();
     const theme = canvasThemes[useActiveTheme()];
 
     return (
-        <div className={cn("grid gap-1", variant === "node" ? "grid-cols-4" : variant === "workflow" ? "grid-cols-1" : "grid-cols-2")}>
+        <div role="group" aria-label={t(variant === "node" ? "canvasA.createMenu.nodesGroup" : variant === "workflow" ? "canvasA.createMenu.workflowGroup" : "canvasA.createMenu.resourceGroup", { defaultValue: variant === "node" ? "创作节点" : variant === "workflow" ? "工作流" : "导入资源" })} className={cn("grid gap-1", variant === "node" ? "grid-cols-4" : variant === "workflow" ? "grid-cols-1" : "grid-cols-2")}>
             {commands.map((command) => (
                 <button
                     key={command.id}

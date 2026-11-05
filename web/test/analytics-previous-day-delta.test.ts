@@ -13,10 +13,11 @@ describe("运营总览「较前一日」", () => {
         expect(formatCountDelta(3, 0)).toEqual({ value: "较前一日 ↑ 3", tone: "success" });
     });
 
-    test("任一天没有上游请求时不比较成功率", () => {
-        expect(formatRateDelta(0, 99.3, 0, 120)).toBeUndefined();
-        expect(formatRateDelta(98, 0, 50, 0)).toBeUndefined();
-        expect(formatRateDelta(0, 0, 0, 0)).toBeUndefined();
+    test("任一天没有已完成请求（成功率为 null）时不比较", () => {
+        expect(formatRateDelta(null, 99.3)).toBeUndefined();
+        expect(formatRateDelta(98, null)).toBeUndefined();
+        expect(formatRateDelta(null, null)).toBeUndefined();
+        expect(formatRateDelta(undefined, 98)).toBeUndefined();
     });
 
     test("有请求但尚无已完成样本时不比较，真实 0% 仍可比较", () => {

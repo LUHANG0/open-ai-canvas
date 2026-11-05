@@ -84,6 +84,9 @@ func TestTaskSubmissionRollbackAndAccountIsolation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if err := db.Create(&model.User{ID: "other", Username: "other"}).Error; err != nil {
+		t.Fatal(err)
+	}
 	if err := db.Create(&model.CreditAccount{UserID: "other", AvailableMicrocredits: 10000}).Error; err != nil {
 		t.Fatal(err)
 	}

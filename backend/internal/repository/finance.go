@@ -121,6 +121,9 @@ func (r *Repository) CreateTaskWithCreditReservation(task *model.Task, order *mo
 		if err := repo.claimTaskSubmission(task); err != nil {
 			return err
 		}
+		if err := repo.requireCurrentCloudAgentParent(task); err != nil {
+			return err
+		}
 		if err := New(tx).requireExclusiveCanvasAgent(task); err != nil {
 			return err
 		}
@@ -147,6 +150,9 @@ func (r *Repository) CreateTaskWithActiveLimit(task *model.Task, activeTaskLimit
 	return r.Transaction(func(repo *Repository) error {
 		tx := repo.db
 		if err := repo.claimTaskSubmission(task); err != nil {
+			return err
+		}
+		if err := repo.requireCurrentCloudAgentParent(task); err != nil {
 			return err
 		}
 		if err := New(tx).requireExclusiveCanvasAgent(task); err != nil {

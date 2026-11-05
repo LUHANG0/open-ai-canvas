@@ -327,14 +327,10 @@ export default function AnalyticsPanel({ users, channels }: Props) {
                 <AnalyticsHealthCard icon={<Workflow className="size-4" />} label="当前排队" value={data ? formatNumber(data.kpi.currentQueuedTasks) : "--"} detail="实时快照 · 非历史累计" tone={data?.kpi.currentQueuedTasks ? "warning" : "neutral"} />
                 <AnalyticsHealthCard
                     icon={<CircleDollarSign className="size-4" />}
-                    label="费用统计（积分）"
+                    label="成本与利润（积分）"
                     value={
                         finance ? (
                             <dl className="admin-analytics-finance-values">
-                                <div>
-                                    <dt>收入</dt>
-                                    <dd>{formatCredits(finance.revenueMicrocredits)}</dd>
-                                </div>
                                 <div>
                                     <dt>成本</dt>
                                     <dd>{formatFinanceCost(finance)}</dd>
@@ -343,12 +339,16 @@ export default function AnalyticsPanel({ users, channels }: Props) {
                                     <dt>利润</dt>
                                     <dd>{formatCredits(finance.profitMicrocredits)}</dd>
                                 </div>
+                                <div>
+                                    <dt>利润率</dt>
+                                    <dd>{formatFinanceMargin(finance.profitMargin)}</dd>
+                                </div>
                             </dl>
                         ) : (
                             "--"
                         )
                     }
-                    detail={finance ? `已结算 ${finance.settledOrders} 笔 · 利润率 ${formatFinanceMargin(finance.profitMargin)}` : undefined}
+                    detail={finance ? `成本覆盖 ${finance.costedOrders}/${finance.settledOrders} 笔已结算订单` : undefined}
                     tone={finance && (finance.costedOrders < finance.settledOrders || (finance.profitMicrocredits ?? 0) < 0) ? "warning" : "neutral"}
                 />
             </section>

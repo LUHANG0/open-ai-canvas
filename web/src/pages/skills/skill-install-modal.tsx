@@ -41,7 +41,7 @@ export function SkillInstallModal({ open, onClose, afterClose, onInstalled, onMa
         setMode("markdown");
         setFileList([]);
         setInstallError("");
-        form.setFieldsValue({ tag: "creative", is_public: true, autoUpdate: true, name: "", description: "", url: "", ref: "", subdir: "" });
+        form.setFieldsValue({ tag: "creative", is_public: false, autoUpdate: true, name: "", description: "", url: "", ref: "", subdir: "" });
     }, [form, open]);
 
     const install = async () => {

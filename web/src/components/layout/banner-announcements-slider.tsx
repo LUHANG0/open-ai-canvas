@@ -3,6 +3,7 @@ import { X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router";
+import { useTranslation } from "react-i18next";
 
 import { getActiveBanners, type BannerAnnouncement } from "@/services/api/announcements";
 import {
@@ -16,6 +17,7 @@ const BANNER_AUTO_SLIDE_MS = 4000;
 const BANNER_DISMISS_STORAGE_PREFIX = "yingce.banner-announcements.dismissed";
 
 export function BannerAnnouncementsSlider() {
+    const { t } = useTranslation();
     const navigate = useNavigate();
     const reducedMotion = useReducedMotion();
     const userId = useUserStore((state) => state.user?.id);
@@ -85,7 +87,7 @@ export function BannerAnnouncementsSlider() {
                 style={{ transition: "var(--control-state-transition)" }}
                 title={hasLink ? "点击查看详情" : undefined}
             >
-                <span className="flex min-w-0 items-center justify-center gap-2.5">
+                <span className="flex min-w-0 items-center justify-center gap-2">
                     {/* 标题内容区：通过外层弹性居中对齐，不用固定高度控制 */}
                     <span className="relative flex min-w-0 items-center justify-center">
                         <AnimatePresence mode="wait">

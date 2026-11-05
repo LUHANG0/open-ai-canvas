@@ -1,7 +1,8 @@
+import { Sparkles } from "lucide-react";
 import { Canvas, useLoader, useThree } from "@react-three/fiber";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { Suspense, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
-import { ScanFace, Sparkles, X } from "lucide-react";
+import { ScanFace, X, Play } from "lucide-react";
 import { Box3, Color, Mesh, MeshStandardMaterial, Vector3, type Object3D } from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { KTX2Loader } from "three/examples/jsm/loaders/KTX2Loader.js";
@@ -76,14 +77,14 @@ export function CanvasNodeEmotionPanel({ dataUrl, imageWidth, imageHeight, chara
                             <span>{character.name}</span>
                         </button>
                     ))}
-                    <button type="button" className="flex h-8 shrink-0 items-center gap-1.5 rounded-[var(--dock-item-radius)] border px-2 text-[var(--fs-label)] font-medium opacity-70 transition hover:opacity-100" style={{ background: theme.spatial.surface, borderColor: theme.toolbar.border }} onClick={onManualSelect}>
+                    <button type="button" className="flex h-8 shrink-0 items-center gap-2 rounded-[var(--dock-item-radius)] border px-2 text-[var(--fs-label)] font-medium opacity-70 transition hover:opacity-100" style={{ background: theme.spatial.surface, borderColor: theme.toolbar.border }} onClick={onManualSelect}>
                         <ScanFace className="size-3.5" />手动框选
                     </button>
                 </div>
                 <button type="button" aria-label="关闭情绪调节" className="grid size-7 shrink-0 place-items-center rounded-full transition hover:bg-black/5 dark:hover:bg-white/10" onClick={onClose}><X className="size-3.5" /></button>
             </div>
 
-            <div className="grid h-[216px] grid-cols-[minmax(0,1fr)_212px] gap-2.5 p-2.5">
+            <div className="grid h-[216px] grid-cols-[minmax(0,1fr)_212px] gap-2 p-2">
                 <EmotionHeadPreview preset={preset} />
                 <EmotionPad preset={preset} onChange={onPresetChange} />
             </div>
@@ -132,7 +133,7 @@ function EmotionPad({ preset, onChange }: { preset: CanvasEmotionPreset; onChang
     const selectedColumn = 2 - preset.intimacy;
     const selectedRow = 2 - preset.arousal;
     return (
-        <div className="relative rounded-[var(--r-lg)] border px-[25px] pb-[22px] pt-[24px]" style={{ background: theme.toolbar.itemHover, borderColor: theme.toolbar.border }}>
+        <div className="relative rounded-[var(--r-lg)] border px-6 pb-6 pt-[24px]" style={{ background: theme.toolbar.itemHover, borderColor: theme.toolbar.border }}>
             <span className="pointer-events-none absolute inset-x-0 top-1.5 text-center text-[var(--fs-micro)]" style={{ color: theme.node.muted }}>激动</span>
             <span className="pointer-events-none absolute inset-x-0 bottom-1.5 text-center text-[var(--fs-micro)]" style={{ color: theme.node.muted }}>平静</span>
             <span className="pointer-events-none absolute left-1 top-1/2 -translate-y-1/2 text-[var(--fs-micro)] [writing-mode:vertical-rl]" style={{ color: theme.node.muted }}>亲近</span>

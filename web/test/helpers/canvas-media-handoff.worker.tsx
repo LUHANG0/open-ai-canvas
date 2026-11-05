@@ -25,6 +25,7 @@ self.onmessage = async ({ data: scenario }) => {
             });
         mock.module("../../src/lib/user-scope", () => ({ getActiveUserScope: () => scope }));
         mock.module("../../src/services/image-storage", () => ({ resolveImageUrl: async (_key: string, src: string) => (scenario === "local-recovery" ? (++localResolves === 1 ? "blob:first" : "blob:renewed") : src) }));
+        mock.module("../../src/services/resource-blob-cache", () => ({ peekCachedResourceObjectUrl: () => "" }));
         mock.module("../../src/services/api/resources", () => ({
             resourceIdFromStorageKey: (key?: string) => (key?.startsWith("resource:") ? key.slice(9) : ""),
             resolveResourceAccessURL: (url: string) => url,

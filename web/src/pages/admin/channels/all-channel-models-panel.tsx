@@ -1,6 +1,6 @@
-import { Button, Space } from "antd";
+import { App, Button, Space } from "antd";
 import type { ColumnsType } from "antd/es/table";
-import { Pencil, Search } from "lucide-react";
+import { Pencil, Power, Search } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router";
 
@@ -9,7 +9,7 @@ import { ModelIcon } from "@/components/model-picker";
 import { Select } from "@/components/ui/base/select";
 import { type ModelProtocolDefinition } from "@/lib/model-protocols";
 import { fetchPluginProviderCatalog } from "@/services/api/plugin-catalog";
-import { listAdminAllChannelModels, type AdminChannelModelHealth, type AdminChannelModelListItem } from "@/services/api/wallet";
+import { listAdminAllChannelModels, setAdminChannelModelEnabled, type AdminChannelModelHealth, type AdminChannelModelListItem } from "@/services/api/wallet";
 import type { ModelChannel } from "@/stores/use-config-store";
 import { AdminDataTable, AdminStatusBadge, AdminTableEmpty, PaginationBar } from "../components/admin-ui";
 import { AdminSearchInput } from "../components/admin-search-input";
@@ -48,6 +48,7 @@ export function AllChannelModelsPanel({
     onChanged: () => Promise<void>;
     onOpenChannel: (channelId: string) => void;
 }) {
+    const { message, modal } = App.useApp();
     const [searchParams, setSearchParams] = useSearchParams();
     const keyword = searchParams.get("q") || "";
     const capability = searchParams.get("capability") || "all";
@@ -59,6 +60,7 @@ export function AllChannelModelsPanel({
     const [retry, setRetry] = useState(0);
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(50);
+    const [togglingId, setTogglingId] = useState<string | null>(null);
     const [editing, setEditing] = useState<AdminChannelModelListItem | null>(null);
     const [protocols, setProtocols] = useState<ModelProtocolDefinition[]>([]);
     const [protocolLoading, setProtocolLoading] = useState(true);
@@ -124,6 +126,35 @@ export function AllChannelModelsPanel({
     const paged = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
     const enabledCount = filtered.filter((item) => item.enabled && item.channelEnabled).length;
 
+    const applyEnabled = async (item: AdminChannelModelListItem, enabled: boolean) => {
+        setTogglingId(item.id);
+        try {
+            await setAdminChannelModelEnabled(item.channelId, item.id, enabled);
+            setItems((current) => current.map((entry) => (entry.id === item.id ? { ...entry, enabled } : entry)));
+            await onChanged();
+            message.success(enabled ? "模型已启用" : "模型已停用");
+        } catch (error) {
+            message.error(error instanceof Error ? error.message : "更新模型状态失败");
+        } finally {
+            setTogglingId(null);
+        }
+    };
+
+    const toggleEnabled = (item: AdminChannelModelListItem) => {
+        if (!item.enabled) {
+            void applyEnabled(item, true);
+            return;
+        }
+        modal.confirm({
+            title: `停用 ${item.channelName} 的 ${item.displayName || item.modelKey}？`,
+            content: "停用后新任务不再使用这个渠道的该模型，引用它的前台模型会切换到其他可用线路；配置保留，可随时重新启用。",
+            okText: "确认停用",
+            cancelText: "取消",
+            okButtonProps: { danger: true },
+            onOk: () => applyEnabled(item, false),
+        });
+    };
+
     const openEditor = (item: AdminChannelModelListItem) => setEditing(item);
 
     const editingChannel = editing ? channels.find((channel) => channel.id === editing.channelId) : undefined;
@@ -186,6 +217,9 @@ export function AllChannelModelsPanel({
                 <Space size={4}>
                     <Button size="small" icon={<Pencil className="size-3.5" />} onClick={() => openEditor(item)}>
                         编辑
+                    </Button>
+                    <Button size="small" danger={item.enabled} icon={<Power className="size-3.5" />} loading={togglingId === item.id} disabled={togglingId !== null && togglingId !== item.id} onClick={() => toggleEnabled(item)}>
+                        {item.enabled ? "停用" : "启用"}
                     </Button>
                 </Space>
             ),

@@ -35,7 +35,7 @@
     display: flex;
     min-height: 54px;
     align-items: center;
-    padding: 10px 8px 0;
+    padding: 8px 8px 0;
 }
 
 [data-admin-root] .admin-sidebar-identity > span {
@@ -50,10 +50,10 @@
     width: 100%;
     align-items: center;
     justify-content: center;
-    gap: 10px;
-    padding: 0 7px;
+    gap: 8px;
+    padding: 0 8px;
     border: 0;
-    border-radius: 10px;
+    border-radius: 8px;
     background: transparent;
     color: inherit;
     transition: background-color var(--admin-motion);
@@ -74,7 +74,7 @@
 [data-admin-root] .admin-sidebar-brand-title {
     color: var(--admin-text);
     font-size: 13px;
-    font-weight: 650;
+    font-weight: 600;
     letter-spacing: -0.01em;
     line-height: 16px;
 }
@@ -87,17 +87,82 @@
 }
 
 [data-admin-root] .admin-sidebar-nav {
-    padding: 10px 8px 16px;
+    padding: 8px 8px 16px;
 }
 
 [data-admin-root] .admin-nav-group + .admin-nav-group {
-    margin-top: 14px;
+    margin-top: 16px;
+}
+
+/* 展开态侧栏：分组为可折叠的一级，入口为二级；分组之间靠标题行分隔，不再额外留白。 */
+[data-admin-root] .admin-sidebar-nav.is-tree .admin-nav-group + .admin-nav-group {
+    margin-top: 4px;
+}
+
+[data-admin-root] .admin-nav-group-toggle {
+    display: flex;
+    width: 100%;
+    min-height: 28px;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    padding: 0 8px;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--admin-text-muted);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    cursor: pointer;
+    transition:
+        color var(--admin-motion),
+        background-color var(--admin-motion);
+}
+
+[data-admin-root] .admin-nav-group-toggle:hover {
+    background: var(--admin-nav-hover);
+    color: var(--admin-text-secondary);
+}
+
+[data-admin-root] .admin-nav-group.is-current .admin-nav-group-toggle {
+    color: var(--admin-text-secondary);
+}
+
+[data-admin-root] .admin-nav-group-toggle:focus-visible {
+    outline: 2px solid var(--admin-focus);
+    outline-offset: 1px;
+}
+
+[data-admin-root] .admin-nav-group-chevron {
+    flex: 0 0 auto;
+    transition: transform var(--admin-motion);
+}
+
+[data-admin-root] .admin-nav-group-chevron.is-collapsed {
+    transform: rotate(-90deg);
+}
+
+[data-admin-root] .admin-sidebar-nav.is-tree .admin-nav-group-items {
+    margin-top: 2px;
+    margin-bottom: 4px;
+}
+
+[data-admin-root] .admin-page-location-section.is-link:hover {
+    text-decoration: underline;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    [data-admin-root] .admin-nav-group-chevron,
+    [data-admin-root] .admin-nav-group-toggle {
+        transition: none;
+    }
 }
 
 [data-admin-root] .admin-nav-group-label,
 [data-admin-root] .admin-nav-group-label span {
     display: block;
-    margin: 0 0 6px;
+    margin: 0 0 8px;
     padding: 0 8px;
     color: var(--admin-text-muted) !important;
     font-size: 11px;
@@ -137,9 +202,9 @@
 [data-admin-root] .admin-nav-link {
     position: relative;
     display: flex;
-    min-height: 44px;
+    min-height: 34px;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
     padding: 0 12px;
     border: 0;
     border-radius: 8px;
@@ -154,11 +219,31 @@
 }
 
 [data-admin-root] .admin-nav-link.is-collapsed {
+    flex-direction: column;
     justify-content: center;
+    gap: 2px;
     width: 100%;
     min-width: 0;
+    min-height: 52px;
     margin-inline: 0;
-    padding: 0;
+    padding: 4px 0;
+}
+
+/* 折叠态与用户端侧栏一致：图标下方显示两字名称，完整名称仍由 Tooltip 和 aria-label 提供。 */
+[data-admin-root] .admin-nav-short-label {
+    display: block;
+    max-width: 100%;
+    overflow: hidden;
+    color: var(--admin-text-muted);
+    font-size: 11px;
+    font-weight: 500;
+    line-height: 1.1;
+    white-space: nowrap;
+}
+
+[data-admin-root] .admin-nav-link:hover .admin-nav-short-label,
+[data-admin-root] .admin-nav-link.is-active .admin-nav-short-label {
+    color: var(--admin-text);
 }
 
 [data-admin-root] .admin-nav-group-items > span,
@@ -177,7 +262,7 @@
     border: 0;
     box-shadow: none;
     color: var(--admin-text);
-    font-weight: 650;
+    font-weight: 500;
 }
 
 [data-admin-root] .admin-nav-link.is-active::before,
@@ -236,7 +321,7 @@
     flex: 0 0 40px;
     place-items: center;
     border: 0;
-    border-radius: 10px;
+    border-radius: 8px;
     background: transparent;
     color: var(--admin-text-secondary);
 }
@@ -287,7 +372,7 @@
 [data-admin-root] .admin-density-toggle {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
+    gap: 8px;
     height: var(--admin-control-h);
     padding: 0 8px;
     border: 0;
@@ -311,7 +396,7 @@
     display: flex;
     min-width: 0;
     align-items: baseline;
-    gap: 6px;
+    gap: 8px;
 }
 
 [data-admin-root] .admin-page-location-section {
@@ -321,7 +406,7 @@
     text-decoration: none;
 }
 
-[data-admin-root] .admin-page-location-section:hover {
+[data-admin-root] a.admin-page-location-section:hover {
     color: var(--admin-text);
 }
 
@@ -331,8 +416,8 @@
 
 [data-admin-root] .admin-page-title {
     color: var(--admin-text);
-    font-size: 18px;
-    font-weight: 650;
+    font-size: 16px;
+    font-weight: 600;
     letter-spacing: -0.02em;
     line-height: 24px;
 }
@@ -389,8 +474,8 @@
 [data-admin-root] .admin-mobile-navigation-eyebrow {
     display: block;
     color: var(--admin-text-muted);
-    font-size: 10px;
-    font-weight: 650;
+    font-size: 11px;
+    font-weight: 600;
     letter-spacing: 0.04em;
     text-transform: uppercase;
 }
@@ -398,7 +483,7 @@
 [data-admin-root] .admin-mobile-navigation-current-label {
     display: block;
     font-size: 13px;
-    font-weight: 650;
+    font-weight: 600;
 }
 
 [data-admin-root] .admin-data-table {
@@ -415,7 +500,7 @@
     align-items: center;
     justify-content: space-between;
     gap: 8px;
-    margin: 0 0 10px;
+    margin: 0 0 8px;
     padding: 0;
 }
 
@@ -438,20 +523,21 @@
     display: flex;
 }
 
+/* 工具栏里的按钮、搜索框和选择器等高同圆角；圆角与全站按钮规范同为 8px（docs/ui-design-system.md §3.0）。 */
 [data-admin-root] .admin-list-toolbar .ant-input-affix-wrapper,
 [data-admin-root] .admin-list-toolbar .ant-select-selector,
 [data-admin-root] .admin-list-toolbar .ant-btn,
 [data-admin-root] .admin-page-actions .ant-btn {
     height: var(--admin-control-h) !important;
     min-height: var(--admin-control-h) !important;
-    border-radius: var(--admin-radius) !important;
+    border-radius: var(--admin-radius-lg) !important;
 }
 
 [data-admin-root] .admin-filter-chip {
     display: inline-flex;
     height: 28px;
     align-items: center;
-    gap: 6px;
+    gap: 8px;
     padding: 0 8px;
     border: 1px solid var(--admin-border);
     border-radius: 999px;
@@ -492,7 +578,7 @@
     background: var(--admin-surface-2) !important;
     color: var(--admin-text-muted) !important;
     font-size: 12px !important;
-    font-weight: 650 !important;
+    font-weight: 600 !important;
     letter-spacing: 0;
 }
 
@@ -519,7 +605,7 @@
     min-height: 40px;
     align-items: center;
     justify-content: flex-end;
-    padding: 0 10px;
+    padding: 0 8px;
     border-top: 1px solid var(--admin-border);
     background: var(--admin-surface);
 }
@@ -551,7 +637,7 @@
     min-width: 28px;
     height: 28px;
     place-items: center;
-    padding: 0 6px;
+    padding: 0 8px;
     border: 0;
     border-radius: var(--admin-radius-sm);
     background: transparent;
@@ -632,14 +718,14 @@
     display: inline-flex;
     height: 22px;
     align-items: center;
-    gap: 6px;
+    gap: 8px;
     padding: 0;
     border: 0;
     border-radius: 0;
     background: transparent;
     color: var(--admin-text-secondary);
     font-size: 12px;
-    font-weight: 650;
+    font-weight: 600;
     line-height: 1;
     white-space: nowrap;
 }
@@ -678,7 +764,7 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 6px;
+    gap: 8px;
     padding: 24px;
     color: var(--admin-text-muted);
     text-align: center;
@@ -688,7 +774,7 @@
     margin: 0;
     color: var(--admin-text);
     font-size: 14px;
-    font-weight: 650;
+    font-weight: 600;
 }
 
 [data-admin-root] .admin-empty p {
@@ -702,7 +788,7 @@
     min-height: 96px;
     align-items: center;
     justify-content: center;
-    gap: 10px;
+    gap: 8px;
     padding: 16px;
     color: var(--admin-status-error);
     font-size: 12px;
@@ -714,7 +800,7 @@
 
 [data-admin-root] .admin-stat-tile {
     min-height: 76px;
-    padding: 12px 14px;
+    padding: 12px 16px;
     border: 0;
     border-radius: var(--admin-radius-lg);
     background: var(--admin-surface);
@@ -724,23 +810,23 @@
 [data-admin-root] .admin-stat-tile-label {
     color: var(--admin-text-muted);
     font-size: 11px;
-    font-weight: 650;
+    font-weight: 600;
     letter-spacing: 0.04em;
     text-transform: uppercase;
 }
 
 [data-admin-root] .admin-stat-tile-value {
-    margin-top: 6px;
+    margin-top: 8px;
     color: var(--admin-text);
     font-size: 22px;
-    font-weight: 650;
+    font-weight: 600;
     font-variant-numeric: tabular-nums;
     letter-spacing: -0.03em;
     line-height: 28px;
 }
 
 [data-admin-root] .admin-stat-tile-detail {
-    margin-top: 6px;
+    margin-top: 8px;
     color: var(--admin-text-muted);
     font-size: 12px;
 }
@@ -770,7 +856,7 @@
     align-items: center;
     justify-content: space-between;
     gap: 12px;
-    padding: 12px 14px;
+    padding: 12px 16px;
     border-bottom: 0;
 }
 
@@ -778,12 +864,12 @@
     margin: 0;
     color: var(--admin-text);
     font-size: 13px;
-    font-weight: 650;
+    font-weight: 600;
     letter-spacing: -0.01em;
 }
 
 [data-admin-root] .admin-settings-section-summary p {
-    margin: 3px 0 0;
+    margin: 4px 0 0;
     color: var(--admin-text-muted);
     font-size: 12px;
     line-height: 18px;
@@ -819,7 +905,7 @@
     border-bottom: 1px solid var(--admin-border) !important;
     border-radius: 0 !important;
     background: var(--admin-canvas) !important;
-    padding: 8px 0 10px !important;
+    padding: 8px 0 8px !important;
     box-shadow: none !important;
     backdrop-filter: none !important;
 }
@@ -844,7 +930,7 @@
 [data-admin-root] :is(.admin-feature-command-copy strong, .admin-appearance-command-copy strong) {
     color: var(--admin-text);
     font-size: 12px;
-    font-weight: 650;
+    font-weight: 600;
 }
 
 [data-admin-root] .admin-feature-board {
@@ -864,8 +950,8 @@
 [data-admin-root] .admin-feature-domain-header {
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 12px 14px;
+    gap: 8px;
+    padding: 12px 16px;
     border-bottom: 0;
     background: var(--admin-surface-2);
 }
@@ -874,7 +960,7 @@
     margin: 0;
     color: var(--admin-text);
     font-size: 13px;
-    font-weight: 650;
+    font-weight: 600;
 }
 
 [data-admin-root] .admin-feature-domain-header p {
@@ -901,7 +987,7 @@
     align-items: center;
     justify-content: space-between;
     gap: 16px;
-    padding: 10px 14px;
+    padding: 8px 16px;
     border-bottom: 1px solid var(--admin-row-border);
     background: transparent;
 }
@@ -914,7 +1000,7 @@
     display: flex;
     min-width: 0;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
 }
 
 [data-admin-root] .admin-feature-board-row-name {
@@ -926,8 +1012,8 @@
 
 [data-admin-root] .admin-feature-board-row-name small {
     color: var(--admin-text-muted);
-    font-size: 10px;
-    font-weight: 650;
+    font-size: 11px;
+    font-weight: 600;
     letter-spacing: 0.04em;
     text-transform: uppercase;
 }
@@ -935,7 +1021,7 @@
 [data-admin-root] .admin-feature-board-row-name strong {
     color: var(--admin-text);
     font-size: 13px;
-    font-weight: 650;
+    font-weight: 600;
 }
 
 [data-admin-root] .admin-feature-board-row-name span {
@@ -948,7 +1034,7 @@
     display: flex;
     flex: 0 0 auto;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
     color: var(--admin-text-muted);
     font-size: 12px;
 }
@@ -963,13 +1049,13 @@
 
 [data-admin-root] .admin-feature-board-source-selector button {
     height: 28px;
-    padding: 0 10px;
+    padding: 0 8px;
     border: 0;
     border-radius: var(--admin-radius-sm);
     background: transparent;
     color: var(--admin-text-secondary);
     font-size: 12px;
-    font-weight: 550;
+    font-weight: 500;
 }
 
 [data-admin-root] .admin-feature-board-source-selector button.is-selected {
@@ -980,8 +1066,8 @@
 
 [data-admin-root] .admin-callout {
     display: flex;
-    gap: 10px;
-    padding: 10px 12px;
+    gap: 8px;
+    padding: 8px 12px;
     border: 1px solid var(--admin-border);
     border-radius: var(--admin-radius);
     background: var(--admin-surface-2);
@@ -1001,7 +1087,7 @@
 [data-admin-root] .admin-callout-title {
     color: var(--admin-text);
     font-size: 13px;
-    font-weight: 650;
+    font-weight: 600;
 }
 
 [data-admin-root] .admin-callout-body {
@@ -1011,7 +1097,7 @@
 }
 
 [data-admin-root] .ant-btn {
-    font-weight: 550;
+    font-weight: 500;
 }
 
 [data-admin-root] .ant-switch.ant-switch-checked,
@@ -1022,13 +1108,13 @@
 }
 
 [data-admin-root] .ant-form-item {
-    margin-bottom: 14px;
+    margin-bottom: 16px;
 }
 
 [data-admin-root] .ant-form-item-label > label {
     color: var(--admin-text-secondary);
     font-size: 12px;
-    font-weight: 650;
+    font-weight: 600;
 }
 
 [data-admin-root] .admin-row-actions {
@@ -1055,8 +1141,8 @@
 
 [data-admin-root] .admin-unauthorized-card h1 {
     margin: 0;
-    font-size: 18px;
-    font-weight: 650;
+    font-size: 16px;
+    font-weight: 600;
 }
 
 [data-admin-root] .admin-unauthorized-card p {
@@ -1109,13 +1195,15 @@
 .admin-channel-modal-root .ant-modal-title {
     color: var(--admin-text);
     font-size: 14px;
-    font-weight: 650;
+    font-weight: 600;
 }
 
 :root:not(.dark) :is(.admin-drawer, .admin-secondary-drawer) .ant-drawer-content,
 :root:not(.dark) :is(.admin-modal-root, .admin-channel-modal-root) .ant-modal-container {
     border: 0 !important;
-    box-shadow: 0 16px 40px rgb(15 23 42 / 0.1) !important;
+    box-shadow:
+        0 1px 2px color-mix(in srgb, rgb(15 23 42 / 0.1) 50%, transparent),
+        0 16px 40px rgb(15 23 42 / 0.1) !important;
 }
 
 :root:not(.dark) :is(.admin-drawer, .admin-secondary-drawer) :is(.ant-drawer-header, .ant-drawer-footer),

@@ -1,6 +1,8 @@
+import { translate } from "@/i18n";
 import { useEffect, useState } from "react";
 import { AppLoading } from "@/components/ui/app-loading";
 import { cn } from "@/lib/utils";
+import { useAppearanceStore } from "@/stores/use-appearance-store";
 
 type FullScreenLoaderProps = { label?: string; detail?: string; className?: string };
 
@@ -8,7 +10,7 @@ export function FullScreenLoader({ label = "正在恢复工作区", detail = "�
     return <div data-full-screen-loader className={cn("full-screen-loader", className)}><AppLoading screen label={label} detail={detail} /></div>;
 }
 
-export function WorkspaceRouteLoader({ label = "正在打开页面" }: { label?: string }) {
+export function WorkspaceRouteLoader({ label = translate("account.ui.loader.route") }: { label?: string }) {
     const [visible, setVisible] = useState(false);
     useEffect(() => {
         const timer = window.setTimeout(() => setVisible(true), 140);

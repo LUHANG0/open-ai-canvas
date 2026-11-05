@@ -18,6 +18,8 @@
 
 **当前功能代码维护在 [`codex/upstream-v1.7.2-fixes`](https://github.com/LUHANG0/open-ai-canvas/tree/codex/upstream-v1.7.2-fixes)。** 默认 `main` 目前保留历史代码基线并同步入口文档，构建当前梦层请检出上述维护分支。克隆、构建和反馈问题时请注明实际分支与完整提交；仓库首页不能代替线上实例的版本记录。
 
+**v1.8.0 兼容升级候选在 [`codex/mengceng-v1.8.0`](https://github.com/LUHANG0/open-ai-canvas/tree/codex/mengceng-v1.8.0)。** 候选基于梦层二改保留合同整合作者 v1.8.0，数据库编号与官方不同；上线状态、验收和升级限制见[兼容升级记录](docs/plans/mengceng-v1.8-upgrade.md)，不能使用官方镜像直接覆盖。
+
 产品入口为 [mengceng.com](https://mengceng.com)。注册方式由站点配置决定，关闭公开注册时通过管理员邀请加入；仓库不提供公共演示账号。
 
 ## 创作能力

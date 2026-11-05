@@ -72,6 +72,7 @@ func runProtocolAdapterTaskWithPolicy(ctx context.Context, input canvasGeneratio
 	// 不把“已提交但结果未知”伪装成成功，也不把下载失败降级成空结果。
 	request := protocolRequestFromInput(input)
 	taskID := resumedProviderRequestID(ctx)
+	detached := protocolDetachedPolling(adapter, input.Mode)
 	var created protocol.CreateResult
 	if taskID == "" {
 		// 幂等键只存在于宿主请求元数据中，声明式插件可以把它映射到 Header，
@@ -81,11 +82,14 @@ func runProtocolAdapterTaskWithPolicy(ctx context.Context, input canvasGeneratio
 			key = uuid.NewString()
 		}
 		request.Extra["idempotencyKey"] = key
+		if err := uploadProtocolMedia(ctx, input, adapter, &request); err != nil {
+			return nil, err
+		}
 		spec, err := adapter.BuildCreate(ctx, protocol.RequestContext{BaseURL: input.Config.BaseURL, Request: request})
 		if err != nil {
 			return nil, err
 		}
-		body, streamedResult, err := executeProtocolCreateRequest(withProviderRequestKind(ctx, "create"), input, spec)
+		body, streamedResult, err := executeIdempotentProtocolCreate(ctx, input, spec, adapter.Metadata().IdempotentCreate)
 		if err != nil {
 			return nil, err
 		}
@@ -110,7 +114,7 @@ func runProtocolAdapterTaskWithPolicy(ctx context.Context, input canvasGeneratio
 			taskID = extracted
 		}
 		if created.Status == protocol.StatusFailed || created.Status == protocol.StatusCancelled {
-			return nil, protocolResultError(created.Message, taskID)
+			return nil, protocolTaskFailure(ctx, created.Status, created.Message, taskID)
 		}
 		if created.Status == protocol.StatusSucceeded {
 			return finishProtocolAdapterResult(ctx, input, adapter, request, taskID, created.Result, policy)
@@ -118,6 +122,16 @@ func runProtocolAdapterTaskWithPolicy(ctx context.Context, input canvasGeneratio
 		if taskID == "" {
 			return nil, errors.New("声明式协议创建请求没有返回任务 ID")
 		}
+		if detached {
+			if err := recordProtocolProviderTask(ctx, taskID); err != nil {
+				// 上游已收单但本地没记住任务 ID：不能退回调度，否则恢复时无法找到原任务。
+				return nil, fmt.Errorf("上游已接收任务，但保存任务 ID 失败：%w", err)
+			}
+			return nil, detachedProtocolPending(taskID, created.Stage, created.QueueAhead)
+		}
+	} else if detached {
+		// 恢复分离式任务：立即回查一次，未完成就再次退回调度，不在 worker 内等待。
+		policy.InitialDelay = 0
 	}
 
 	return runVideoPollLoop(ctx, taskID, policy, func(ctx context.Context) (videoPollOutcome, error) {
@@ -141,7 +155,10 @@ func runProtocolAdapterTaskWithPolicy(ctx context.Context, input canvasGeneratio
 			result, err := finishProtocolAdapterResult(ctx, input, adapter, request, taskID, state.Result, policy)
 			return videoPollOutcome{Done: err == nil, Result: result}, err
 		case protocol.StatusFailed, protocol.StatusCancelled:
-			return videoPollOutcome{}, protocolResultError(state.Message, taskID)
+			return videoPollOutcome{}, protocolTaskFailure(ctx, state.Status, state.Message, taskID)
+		}
+		if detached {
+			return videoPollOutcome{}, detachedProtocolPending(taskID, state.Stage, state.QueueAhead)
 		}
 		return videoPollOutcome{}, nil
 	})
@@ -191,7 +208,7 @@ func queryProtocolAdapterVideoTask(ctx context.Context, input canvasGenerationIn
 		result, err := finishProtocolAdapterResult(ctx, input, adapter, request, taskID, state.Result, defaultVideoPollPolicy())
 		return result, providerStatus, err
 	case protocol.StatusFailed, protocol.StatusCancelled:
-		return nil, providerStatus, protocolResultError(state.Message, taskID)
+		return nil, providerStatus, protocolTaskFailure(ctx, state.Status, state.Message, taskID)
 	case protocol.StatusPending, protocol.StatusProcessing:
 		return nil, providerStatus, nil
 	default:

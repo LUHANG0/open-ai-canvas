@@ -6,6 +6,7 @@ import { useActiveTheme } from "@/stores/canvas/use-canvas-theme-store";
 import { usePopoverAnchorAlign } from "@/hooks/use-popover-anchor-align";
 
 export type CanvasSettingsPlacement = "topLeft" | "top" | "topRight" | "bottomLeft" | "bottom" | "bottomRight";
+const SETTINGS_POPOVER_VIEWPORT_GAP = 12;
 type SettingsPopoverProps = {
     label: string;
     summary: string;
@@ -57,7 +58,8 @@ export function CanvasSettingsPopover({ label, summary, children, placement = "t
             arrow={false}
             classNames={{ root: "workspace-utility-overlay" }}
             destroyOnHidden
-            styles={{ root: { zIndex: "var(--z-dialog-popover)" }, container: { background: theme.canvas.background, color: theme.node.text, padding: 12 } }}
+            // shift 只会把浮层推到视口边缘；外层上下留 12px 透明内边距作为与视口、触发按钮的间距，内边距不接收指针。
+            styles={{ root: { zIndex: "var(--z-dialog-popover)", paddingBlock: SETTINGS_POPOVER_VIEWPORT_GAP, pointerEvents: "none" }, container: { background: theme.canvas.background, color: theme.node.text, padding: 12, pointerEvents: "auto" } }}
             content={
                 <section
                     ref={attachSection}
@@ -67,6 +69,7 @@ export function CanvasSettingsPopover({ label, summary, children, placement = "t
                     data-canvas-no-zoom
                     data-canvas-wheel-scroll
                     className="canvas-image-settings-popover overflow-y-auto overscroll-contain"
+                    // 100px 已覆盖外层上下间距与容器内边距（共 48px），整体始终落在视口内。
                     style={{ width: `min(${width}px, calc(100vw - 48px))`, maxHeight: "min(560px, calc(100dvh - 100px))" }}
                     onPointerDown={(event) => event.stopPropagation()}
                     onMouseDown={(event) => event.stopPropagation()}

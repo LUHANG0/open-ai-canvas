@@ -27,7 +27,9 @@ test("announcement editor preserves image and pinned fields through edit and sav
     expect(panel).toContain('imageResourceId: values.imageResourceId?.trim() || ""');
     expect(panel).toContain("pinned: Boolean(values.pinned)");
     expect(panel).toContain('(announcement?.imageResourceId || "") === (expectedContent.imageResourceId || "")');
-    expect(panel).toContain('rootClassName="admin-modal-root admin-announcement-editor-modal"');
+    // AdminModal 自带 admin-modal-root，页面只追加自己的类名。
+    expect(panel).toContain("<AdminModal");
+    expect(panel).toContain('rootClassName="admin-announcement-editor-modal"');
     expect(panel).toContain("centered");
     expect(panel).not.toContain("<Drawer");
     expect(safetySource).toContain("imageResourceId?: string");
@@ -141,7 +143,7 @@ test("storage settings keep generic S3 controls and connection validation", asyn
     for (const field of ["s3Preset", "sessionToken", "pathStyle", "allowUserS3"]) {
         expect(compacted).toContain(`name="${field}"`);
     }
-    expect(compacted).toContain('["aliyun", "tencent", "qiniu", "s3"].includes(setting.provider || "")');
+    expect(compacted).toContain('["aliyun", "tencent", "qiniu", "volcengine", "s3"].includes(setting.provider || "")');
 });
 
 test("admin navigation keeps the storage resource page reachable", async () => {
@@ -152,8 +154,24 @@ test("admin navigation keeps the storage resource page reachable", async () => {
 test("nested admin pages return to their own parent entry", async () => {
     const source = await Bun.file(new URL("../src/pages/admin/components/admin-shell.tsx", import.meta.url)).text();
     const compacted = compactSource(source);
-    expect(compacted).toContain("const currentItem = currentSection?.items.find");
-    expect(compacted).toContain("const sectionPath = back ? (currentItem?.path");
+    // 子页面的面包屑链接回所属入口（或所属页签），分组名只作文字，不再跳到分组第一项。
+    expect(compacted).toContain("const current = findAdminNavigation(location.pathname)");
+    expect(compacted).toContain("<Link to={current.item.path}");
+    expect(compacted).not.toContain("currentSection?.items[0]?.path");
+});
+
+test("admin navigation keeps one sidebar entry per page inside collapsible groups", async () => {
+    const [shell, router] = await Promise.all([Bun.file(new URL("../src/pages/admin/components/admin-shell.tsx", import.meta.url)).text(), Bun.file(new URL("../src/router.tsx", import.meta.url)).text()]);
+    const compacted = compactSource(shell);
+    expect(compacted).toContain('className="admin-nav-group-toggle" aria-expanded={expanded}');
+    // 不再用页头页签合并页面：页签入口不易发现，切换时还会触发懒加载白屏。
+    expect(compacted).not.toContain("admin-page-tabs");
+    for (const path of ["/admin/logs", "/admin/login-logs", "/admin/users", "/admin/user-groups", "/admin/agent-lessons", "/admin/settings/system-update"]) {
+        expect(compacted).toContain(`path: "${path}"`);
+    }
+    // 后台页面代码在进入后台后空闲预取，切换菜单不经过 Suspense 加载态。
+    expect(compacted).toContain("preloadAdminPages();");
+    expect(router).toContain('const LogsPage = lazyAdminPage(() => import("@/pages/admin/logs/logs-page"));');
 });
 
 test("high impact feature shutdowns require confirmation", async () => {
@@ -205,9 +223,12 @@ test("task-first settings reveal dependent configuration only after the primary 
     expect(accessSource).toContain('title="1. 是否允许创建新账号"');
     expect(accessSource).toContain('title="2. 是否开放 Linux.do 登录"');
 
-    expect(featureSource).toContain('title="1. 用户工作台入口"');
-    expect(featureSource).toContain('title="2. 插件开放范围"');
-    expect(featureSource).toContain('title="3. 用户模型来源"');
+    // 功能开放按前台位置分组；子开关在上级关闭时不可切换，跨组依赖在行内提示。
+    expect(featureSource).toContain('title: "创作功能"');
+    expect(featureSource).toContain('title: "插件与记录"');
+    expect(featureSource).toContain('title: "模型与计费"');
+    expect(featureSource).toContain('disabled={savingKey !== null || state === "blocked"}');
+    expect(featureSource).toContain('requires: [{ key: "imageWorkbenchEnabled"');
     expect(appearanceSource).toContain("<WelcomeSetting />");
     expect(welcomeSource).toContain('to="/admin/settings/brand-site"');
     expect(welcomeSource).not.toContain("updateAdminFeatureAvailability");
@@ -220,6 +241,10 @@ test("task-first settings reveal dependent configuration only after the primary 
     expect(arkSource).toContain('title="2. 是否启用可信素材同步"');
     expect(arkSource).toContain("{prerequisitesReady || draftEnabled ? (");
     expect(arkSource).toContain('aria-label="启用可信素材同步，保存修改后生效"');
+    expect(arkSource).toContain('title="3. 开放用户素材组"');
+    expect(arkSource).toContain('aria-label="开放真人素材库，保存修改后生效"');
+    expect(arkSource).toContain('aria-label="开放虚拟素材组，保存修改后生效"');
+    expect(arkSource).toContain('title="4. 素材组收费"');
 
     expect(interceptionSource).toContain('title="1. 是否替换用户可见的上游错误"');
     expect(interceptionSource).toContain('title="2. 配置替换规则与优先级"');
@@ -281,6 +306,8 @@ test("request logs display user credit billing independently from upstream cost"
     expect(detailSource).toContain('label="计费" value={logBillingText(log)}');
     expect(detailSource).toContain('label="请求 ID" value={<CopyValue value={log.id} />}');
     expect(detailSource).toContain('label="供应商任务 ID" value={log.providerRequestId ? <CopyValue value={log.providerRequestId} /> : "未记录"}');
+    expect(apiSource).toContain("billingReservedMicrocredits?: number");
+    expect(apiSource).toContain("billingSettledMicrocredits?: number");
     expect(apiSource).toContain("billingAmountMicrocredits: number");
     expect(apiSource).toContain("billingAvailable: boolean");
 });
@@ -311,8 +338,9 @@ test("banner announcement editor keeps title styles through edit, save and statu
     expect(panel).toContain("destroyOnHidden");
     expect(panel).not.toContain("destroyOnClose");
     // Modal 渲染在 body portal 里，必须挂 admin-modal-root 才能拿到弹窗作用域的强边框 / 分层 token，
-    // 否则编辑器等自绘控件的边框回落到 :root 的 8% 透明度，肉眼不可见。
-    expect(panel).toContain('rootClassName="admin-modal-root"');
+    // 否则编辑器等自绘控件的边框回落到 :root 的 8% 透明度，肉眼不可见。AdminModal 固定挂这个类。
+    expect(panel).toContain("<AdminModal");
+    expect(panel).not.toContain("<Modal");
     // 非表单控件不能放进 Form.Item（会被注入 value/onChange/ref）。
     expect(panel).toContain("<BannerNoticePreview runs={titleRuns} hasLink={Boolean(linkValue?.trim())} noticeType={noticeType} />");
     // 通知类型在后台要有独立入口；emoji 图标不设独立字段，经编辑器「图标」按钮插入。

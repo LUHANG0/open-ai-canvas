@@ -56,7 +56,7 @@ export function CreateRedeemBatchDrawer({
                 open={open && !pending}
                 size="min(600px, 100vw)"
                 onClose={onClose}
-                rootClassName="admin-drawer admin-redemption-drawer"
+                rootClassName="admin-redemption-drawer"
                 destroyOnHidden
                 mask={{ closable: !creating && !pending }}
                 keyboard={!creating && !pending}
@@ -168,7 +168,6 @@ export function CreateRedeemBatchDrawer({
                 closable={!creating}
                 keyboard={!creating}
                 destroyOnHidden
-                rootClassName="admin-modal-root"
             >
                 {pending ? (
                     <div className="admin-operation-confirmation">
@@ -231,7 +230,6 @@ export function GeneratedCodesModal({ codes, batchId, onClose }: { codes: string
             open={codes.length > 0}
             onCancel={onClose}
             destroyOnHidden
-            rootClassName="admin-modal-root"
             footer={
                 <Space>
                     <Button onClick={onClose}>完成</Button>
@@ -427,7 +425,6 @@ export function RedeemBatchCodesModal({ batch, onClose, onBatchChanged }: { batc
                 </Space>
             }
             width={1080}
-            rootClassName="admin-modal-root"
         >
             {!plaintextAvailable ? <div className="admin-redemption-sensitive-notice is-warning">该批次创建于加密回看功能上线前，系统当时只保存了哈希，无法恢复完整明文；核销状态和审计信息仍可查看。</div> : null}
             <div className="admin-redemption-detail-summary">

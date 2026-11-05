@@ -3,6 +3,10 @@ import { AGENT_LAUNCHER_POSITION_KEY, clampAgentLauncherPosition, moveAgentLaunc
 
 const viewport = () => ({ width: window.innerWidth, height: window.innerHeight });
 
+/**
+ * 入口的拖拽、点击与键盘移动。指针处理器（onPointer*）可以挂在入口按钮上，也可以挂在按钮内的身体热区上
+ * （大形象外框不接收指针）；指针捕获落在挂处理器的元素上，因此该元素必须能被命中。
+ */
 export function useAgentLauncherPosition(onOpen: () => void, width = 76, height = 76) {
     const size = { width, height };
     const [position, setPosition] = useState(() => {

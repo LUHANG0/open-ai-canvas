@@ -14,7 +14,7 @@ import { getSkillFile, listSkillFiles, skillFileRawURL, type Skill, type SkillCa
 
 type PreviewMode = "preview" | "source";
 
-export function SkillDetailModal({ skill, loading, mutating, categories, onClose, afterClose, onAdd, onLike, onEdit, onSync }: { skill: Skill | null; loading: boolean; mutating: boolean; categories: SkillCategory[]; onClose: () => void; afterClose: () => void; onAdd: (skill: Skill) => void; onLike: (skill: Skill) => void; onEdit: (skill: Skill) => void; onSync: (skill: Skill) => void }) {
+export function SkillDetailModal({ skill, loading, mutating, categories, onClose, afterClose, onAdd, onLike, onEdit, onOpenWorkbench, onSync }: { skill: Skill | null; loading: boolean; mutating: boolean; categories: SkillCategory[]; onClose: () => void; afterClose?: () => void; onAdd: (skill: Skill) => void; onLike: (skill: Skill) => void; onEdit: (skill: Skill) => void; onOpenWorkbench?: (skill: Skill) => void; onSync: (skill: Skill) => void }) {
     const [files, setFiles] = useState<SkillPackageFile[]>([]);
     const [filesLoading, setFilesLoading] = useState(false);
     const [filesError, setFilesError] = useState("");
@@ -106,14 +106,14 @@ export function SkillDetailModal({ skill, loading, mutating, categories, onClose
                             <div className="flex flex-wrap items-center gap-2 text-[var(--fs-label)] text-foreground/45">
                                 <span>{skillCategoryLabel(skill.tag, categories)}</span><span aria-hidden="true">/</span><span>{sourceLabel(skill.sourceType)}</span><span aria-hidden="true">/</span><span>v{skill.version || "1"}</span><span aria-hidden="true">/</span><span>更新于 {formatSkillDate(skill.updatedAt)}</span>
                             </div>
-                            <h1 className="mt-1 break-words text-[var(--fs-heading-lg)] font-semibold text-foreground">{skill.skillName}</h1>
+                            <h1 className="mt-1 break-words text-[var(--fs-heading-lg)] font-semibold text-foreground">{skill?.skillName}</h1>
                             <div className="skill-package-description-scroll thin-scrollbar" role="region" aria-label="技能简介" tabIndex={0}>
-                                <p className="mt-1 max-w-4xl break-words text-sm leading-5 text-foreground/58">{skill.description || "暂无技能简介"}</p>
+                                <p className="mt-1 max-w-4xl break-words text-sm leading-5 text-foreground/58">{skill?.description || "暂无技能简介"}</p>
                             </div>
                         </div>
                         <div className="skill-package-actions">
                             {skill.sourceType === "github" && skill.isOwner ? <Tooltip title={skill.syncError || "从 GitHub 检查并同步最新提交"}><Button aria-label="同步技能" loading={mutating} icon={<RefreshCw className="size-4" />} onClick={() => onSync(skill)}>同步</Button></Tooltip> : null}
-                            {skill.isOwner ? <Button aria-label="编辑技能" icon={<Pencil className="size-4" />} onClick={() => onEdit(skill)}>编辑</Button> : null}
+                            {skill.isOwner ? <Button aria-label="编辑技能" icon={<Pencil className="size-4" />} onClick={() => skill.sourceType !== "github" && onOpenWorkbench ? onOpenWorkbench(skill) : onEdit(skill)}>编辑</Button> : null}
                             <Button loading={mutating} aria-label={skill.isLike ? "取消收藏技能" : "收藏技能"} aria-pressed={skill.isLike} icon={<Heart className={`size-4 ${skill.isLike ? "fill-current text-rose-500" : ""}`} />} onClick={() => onLike(skill)}>{skill.isLike ? "已收藏" : "收藏"}</Button>
                             <Button type={skill.isAdded ? "default" : "primary"} loading={mutating} disabled={skill.isOwner} aria-pressed={skill.isAdded || skill.isOwner} aria-label={skill.isOwner ? "我的技能" : skill.isAdded ? "从技能库移除此技能" : "加入技能库"} icon={skill.isAdded ? <Check className="size-4" /> : <Plus className="size-4" />} onClick={() => onAdd(skill)}>{skill.isOwner ? "我的技能" : skill.isAdded ? "已加入" : "加入技能"}</Button>
                         </div>
@@ -180,12 +180,12 @@ function SkillFilePreview({ skill, file, content, mode, filePaths, onNavigate }:
     return <pre className="skill-package-source"><code>{content.content}</code></pre>;
 }
 
-function SkillMarkdown({ skill, source, currentPath, filePaths, onNavigate }: { skill: Skill; source: string; currentPath: string; filePaths: Set<string>; onNavigate: (path: string) => void }) {
+export function SkillMarkdown({ skill, source, currentPath, filePaths, onNavigate }: { skill?: Skill; source: string; currentPath: string; filePaths: Set<string>; onNavigate: (path: string) => void }) {
     const document = useMemo(() => parseSkillDocument(currentPath, source), [currentPath, source]);
     const metadata = Object.entries(document.metadata || {}).filter(([key, value]) => {
         if (typeof value !== "string") return true;
-        if (key === "name" && value.trim() === skill.skillName.trim()) return false;
-        if (key === "description" && value.trim() === skill.description.trim()) return false;
+        if (key === "name" && value.trim() === skill?.skillName.trim()) return false;
+        if (key === "description" && value.trim() === skill?.description.trim()) return false;
         return true;
     });
     const navigate = (event: MouseEvent<HTMLAnchorElement>, href?: string) => {

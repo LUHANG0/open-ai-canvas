@@ -6,6 +6,7 @@ import { Callout } from "@/components/ui/product/callout";
 import { EmptyState } from "@/components/ui/product/empty-state";
 import { RotateCcw, Save, ShieldCheck, Undo2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import { PromptCodeEditor } from "@/components/prompt/prompt-code-editor";
 import {
@@ -18,14 +19,12 @@ import {
 
 type CustomizationMode = UserPromptCustomization["mode"];
 
-const modeOptions = [
-    { label: "跟随平台", value: "inherit" },
-    { label: "追加要求", value: "append" },
-    { label: "高级改写", value: "rewrite" },
-];
+const MODES: CustomizationMode[] = ["inherit", "append", "rewrite"];
 
 export function PromptPreferencesPane() {
+    const { t } = useTranslation();
     const { message, modal } = App.useApp();
+    const modeOptions = useMemo(() => MODES.map((value) => ({ label: t(`account.settings.prompts.modes.${value}`), value })), [t]);
     const [preferences, setPreferences] = useState<UserPromptPreference[]>([]);
     const [selectedOperation, setSelectedOperation] = useState("");
     const [mode, setMode] = useState<CustomizationMode>("inherit");
@@ -47,7 +46,7 @@ export function PromptPreferencesPane() {
             setSelectedOperation((current) => preferredOperation || current || result.preferences[0]?.definition.operation || "");
         } catch (error) {
             if (reqId !== requestIdRef.current) return;
-            const msg = error instanceof Error ? error.message : "读取提示词偏好失败";
+            const msg = error instanceof Error ? error.message : t("account.settings.prompts.loadFailed");
             setLoadError(msg);
             message.error(msg);
         } finally {
@@ -104,16 +103,16 @@ export function PromptPreferencesPane() {
         if (!selected) return;
         const content = mode === "append" ? appendContent : mode === "rewrite" ? rewriteContent : "";
         if (mode !== "inherit" && !content.trim()) {
-            message.warning("请填写个人提示词内容");
+            message.warning(t("account.settings.prompts.contentRequired"));
             return;
         }
         setSaving(true);
         try {
             await updateUserPromptCustomization(selected.definition.operation, { mode, content });
             await reload(selected.definition.operation);
-            message.success("提示词偏好已保存");
+            message.success(t("account.settings.prompts.saved"));
         } catch (error) {
-            message.error(error instanceof Error ? error.message : "保存提示词偏好失败");
+            message.error(error instanceof Error ? error.message : t("account.settings.prompts.saveFailed"));
         } finally {
             setSaving(false);
         }
@@ -131,9 +130,9 @@ export function PromptPreferencesPane() {
                 try {
                     await resetUserPromptCustomization(selected.definition.operation);
                     await reload(selected.definition.operation);
-                    message.success("已恢复平台模板");
+                    message.success(t("account.settings.prompts.resetDone"));
                 } catch (error) {
-                    message.error(error instanceof Error ? error.message : "恢复平台模板失败");
+                    message.error(error instanceof Error ? error.message : t("account.settings.prompts.resetFailed"));
                 }
             },
         });
@@ -148,11 +147,11 @@ export function PromptPreferencesPane() {
             </div>
         );
     }
-    if (!selected) return <EmptyState title="暂无可配置的提示词模板" />;
+    if (!selected) return <EmptyState title={t("account.settings.prompts.empty")} />;
 
-    const templateContent = selected.template?.content || "当前没有启用的平台模板";
+    const templateContent = selected.template?.content || t("account.settings.prompts.noTemplate");
     const previewCreative = mode === "inherit" ? templateContent : mode === "append" ? `${templateContent}\n\n【用户个性化创作要求】\n${appendContent}` : rewriteContent;
-    const outputLabel = selected.definition.outputType === "json" ? selected.definition.schemaKey || "JSON" : "文本";
+    const outputLabel = selected.definition.outputType === "json" ? selected.definition.schemaKey || "JSON" : t("account.settings.modelConfig.capabilities.text");
 
     return (
         <div className="settings-prompt-preferences flex min-h-full min-w-0 flex-col" aria-busy={loading || saving}>
@@ -168,14 +167,14 @@ export function PromptPreferencesPane() {
                             onChange={selectOperation}
                             options={preferences.map((item) => ({
                                 value: item.definition.operation,
-                                label: `${item.definition.category} · ${item.definition.label}${item.customization && item.customization.mode !== "inherit" ? " · 已定制" : ""}`,
+                                label: item.customization && item.customization.mode !== "inherit" ? t("account.settings.prompts.optionCustomized", { category: item.definition.category, label: item.definition.label }) : `${item.definition.category} · ${item.definition.label}`,
                             }))}
                         />
                     </div>
                     <div className="flex shrink-0 flex-wrap gap-2">
-                        <Button icon={<Undo2 className="size-4" />} disabled={!dirty || saving} onClick={() => restoreDraft()}>撤销修改</Button>
-                        <Button icon={<RotateCcw className="size-4" />} disabled={!selected.customization || saving} onClick={reset}>恢复平台</Button>
-                        <Button type="primary" icon={<Save className="size-4" />} loading={saving} disabled={!dirty} onClick={() => void save()}>保存更改</Button>
+                        <Button icon={<Undo2 className="size-4" />} disabled={!dirty || saving} onClick={() => restoreDraft()}>{t("account.settings.prompts.revert")}</Button>
+                        <Button icon={<RotateCcw className="size-4" />} disabled={!selected.customization || saving} onClick={reset}>{t("account.settings.prompts.reset")}</Button>
+                        <Button type="primary" icon={<Save className="size-4" />} loading={saving} disabled={!dirty} onClick={() => void save()}>{t("account.settings.prompts.save")}</Button>
                     </div>
                 </div>
 
@@ -183,7 +182,7 @@ export function PromptPreferencesPane() {
                     <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-2">
                             <h2 className="text-base font-semibold">{selected.definition.label}</h2>
-                            <StatusBadge variant="filled" tone="neutral" label={`平台 v${selected.template?.version || "--"}`} />
+                            <StatusBadge variant="filled" tone="neutral" label={t("account.settings.prompts.platformVersion", { version: selected.template?.version || "--" })} />
                             <StatusBadge variant="filled" tone="neutral" label={outputLabel} />
                             {dirty ? <span role="status"><StatusBadge variant="filled" tone="warning" label="未保存" /></span> : null}
                         </div>
@@ -193,7 +192,7 @@ export function PromptPreferencesPane() {
                 </div>
             </header>
 
-            {selected.outdated ? <Callout className="mt-4" tone="warning" title="平台模板已更新">当前高级改写基于旧版本。可以保留现有改写，或恢复平台后再基于新版本调整。</Callout> : null}
+            {selected.outdated ? <Callout className="mt-4" tone="warning" title={t("account.settings.prompts.outdatedTitle")}>{t("account.settings.prompts.outdated")}</Callout> : null}
 
             <div className="grid min-h-0 flex-1 gap-4 pt-4 lg:grid-cols-3">
                 <section className="flex min-h-0 min-w-0 flex-col lg:col-span-2">
@@ -211,7 +210,7 @@ export function PromptPreferencesPane() {
                             value={appendContent}
                             maxLength={12000}
                             showCount
-                            placeholder="例如：仙侠项目采用明亮、宏大、高清的休闲剧质感；避免阴森恐怖色调，人物表演自然、轻松。"
+                            placeholder={t("account.settings.prompts.appendPlaceholder")}
                             onChange={(event) => setAppendContent(event.target.value)}
                         />
                     ) : (
@@ -219,7 +218,7 @@ export function PromptPreferencesPane() {
                             <PromptCodeEditor
                                 value={mode === "inherit" ? templateContent : rewriteContent}
                                 readOnly={mode === "inherit"}
-                                ariaLabel={mode === "inherit" ? "平台提示词模板" : "个人提示词改写"}
+                                ariaLabel={mode === "inherit" ? t("account.settings.prompts.platformEditor") : t("account.settings.prompts.personalEditor")}
                                 onChange={mode === "rewrite" ? setRewriteContent : undefined}
                             />
                         </div>

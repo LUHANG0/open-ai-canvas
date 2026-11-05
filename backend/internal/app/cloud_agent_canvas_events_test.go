@@ -287,6 +287,9 @@ func TestCloudAgentMissingCanvasStillCheckpointsMediaFailure(t *testing.T) {
 		t.Fatal(err)
 	}
 	approveAgentMediaDraft(t, s, run.ID)
+	// This test drives completion manually; wait for the asynchronous approval
+	// waiter to stop before changing the task and removing its canvas.
+	s.closeApprovedCloudAgentMediaWaiters()
 	run, _ = s.repo.CloudAgent("user", run.ID)
 	state, _ := cloudAgentDecode(run)
 	if err := db.Model(&model.Task{}).Where("id = ?", state.MediaTaskID).Update("status", model.TaskStatusFailed).Error; err != nil {

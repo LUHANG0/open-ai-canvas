@@ -71,7 +71,7 @@ func TestCloudAgentPiRuntimeMixedBatchDeliversImages(t *testing.T) {
 		mu.Unlock()
 		w.Header().Set("Content-Type", "application/json")
 		if first {
-			_, _ = w.Write([]byte(`{"choices":[{"message":{"content":"","tool_calls":[{"id":"inspect-cat","type":"function","function":{"name":"canvas_inspect_image","arguments":"{\"nodeId\":\"cat\"}"}},{"id":"inspect-hero","type":"function","function":{"name":"canvas_inspect_image","arguments":"{\"nodeId\":\"hero\"}"}},{"id":"read-state","type":"function","function":{"name":"canvas_get_state","arguments":"{}"}}]}}]}`))
+			_, _ = w.Write([]byte(`{"choices":[{"message":{"content":"","tool_calls":[{"id":"inspect-cat","type":"function","function":{"name":"canvas_inspect_image","arguments":"{\"nodeIds\":[\"cat\"],\"purpose\":\"Inspect the cat\"}"}},{"id":"inspect-hero","type":"function","function":{"name":"canvas_inspect_image","arguments":"{\"nodeIds\":[\"hero\"],\"purpose\":\"Inspect the hero\"}"}},{"id":"read-state","type":"function","function":{"name":"canvas_get_state","arguments":"{}"}}]}}]}`))
 			return
 		}
 		_, _ = w.Write([]byte(`{"choices":[{"message":{"content":"mock accepted both images"}}]}`))

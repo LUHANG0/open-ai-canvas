@@ -427,13 +427,17 @@ func (s *Service) executeCloudAgentRuntimeTool(ctx context.Context, userID, runI
 			return nil, err
 		}
 		if run.Status == "waiting_approval" && state.Approval != nil {
-			return map[string]any{"pause": true, "approvalId": state.Approval.ID, "content": "操作正在等待用户审批。"}, nil
+			return map[string]any{"pause": true, "approvalId": state.Approval.ID, "content": cloudAgentPiApprovalPauseText}, nil
 		}
 		if cloudAgentRunTerminal(run.Status) && run.Status != "completed" {
 			return nil, fmt.Errorf("%s", firstNonEmpty(run.FailureMessage, "Agent 工具执行失败"))
 		}
 		if content, ok := cloudAgentToolMessage(&state, call.ID); ok {
 			return cloudAgentPiToolResult(call, content), nil
+		}
+		if batch := state.MediaBatch; batch.active() && batch.CallID == call.ID {
+			// 批次在后台执行：像审批一样暂停 Pi 会话，结束后由执行器写入回执并续跑。
+			return map[string]any{"pause": true, "approvalId": batch.ID, "content": cloudAgentPiMediaBatchPauseText}, nil
 		}
 		if state.MediaTaskID == "" {
 			return nil, fmt.Errorf("tool %s produced no result", call.Function.Name)

@@ -217,3 +217,43 @@ func statusCodeErrorCode(statusCode int) string {
 	}
 	return "HTTP " + strconv.Itoa(statusCode)
 }
+
+// SetAdminChannelModelEnabled 只改启停，不重写价格档与能力配置；列表行内启停走这里。
+func (s *Service) SetAdminChannelModelEnabled(actor *model.User, channelID string, id string, enabled bool) (*model.ChannelModel, error) {
+	if err := s.RequireAdmin(actor); err != nil {
+		return nil, err
+	}
+	channel, err := s.repo.AdminSystemChannel(channelID)
+	if err != nil {
+		return nil, err
+	}
+	item, err := s.repo.ChannelModelByID(channelID, strings.TrimSpace(id))
+	if err != nil {
+		return nil, err
+	}
+	if item.Enabled == enabled {
+		return item, nil
+	}
+	if enabled && (item.Protocol == "" || item.Capability == "") {
+		return nil, BadAuthRequest("模型尚未配置能力与请求协议，请先编辑模型")
+	}
+	if err := s.repo.SetChannelModelEnabled(channelID, item.ID, enabled); err != nil {
+		return nil, err
+	}
+	item.Enabled = enabled
+	s.invalidateRouteCatalog()
+	if err := s.syncChannelModelNames(channel); err != nil {
+		return nil, err
+	}
+	if err := s.syncLogicalModelsFromChannelModel(actor, item); err != nil {
+		return nil, err
+	}
+	action, summary := "channel_model.disable", "停用渠道模型 "+item.ModelKey
+	if enabled {
+		action, summary = "channel_model.enable", "启用渠道模型 "+item.ModelKey
+	}
+	if err := s.appendAdminAudit(actor, action, "channel_model", item.ID, summary, map[string]any{"channelId": channelID, "modelKey": item.ModelKey, "enabled": enabled}); err != nil {
+		return nil, err
+	}
+	return item, nil
+}

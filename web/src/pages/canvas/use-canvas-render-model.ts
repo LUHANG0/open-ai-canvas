@@ -37,7 +37,7 @@ type UseCanvasRenderModelOptions = {
     previsScenes?: PrevisScene[];
     infoNodeId: string | null;
     cropNodeId: string | null;
-    maskEditNodeId: string | null;
+    regionEditNodeId: string | null;
     imageEditNodeId: string | null;
     annotationNodeId: string | null;
     splitNodeId: string | null;
@@ -69,7 +69,7 @@ export function useCanvasRenderModel({
     previsScenes,
     infoNodeId,
     cropNodeId,
-    maskEditNodeId,
+    regionEditNodeId,
     imageEditNodeId,
     annotationNodeId,
     splitNodeId,
@@ -251,7 +251,7 @@ export function useCanvasRenderModel({
     useEffect(() => { overviewRef.current = overview; }, [overview]);
     const nodeRenderLODById = useMemo(() => {
         const result = new Map<string, CanvasNodeRenderLOD>();
-        for (const node of visibleNodes) {
+        for (const node of candidateNodes) {
             // Selection/drag keeps every node visible, not every editor mounted.
             const editing = selectedNodeIds.size === 1 && selectedNodeIds.has(node.id);
             const inView = intersectsCanvasBounds(canvasNodeBounds(node), renderBounds.view);
@@ -278,7 +278,7 @@ export function useCanvasRenderModel({
     const toolbarNode = isFrameNode(toolbarCandidate) ? null : toolbarCandidate;
     const infoNode = infoNodeId ? nodeById.get(infoNodeId) || null : null;
     const cropNode = cropNodeId ? nodeById.get(cropNodeId) || null : null;
-    const maskEditNode = maskEditNodeId ? nodeById.get(maskEditNodeId) || null : null;
+    const regionEditNode = regionEditNodeId ? nodeById.get(regionEditNodeId) || null : null;
     const imageEditNode = imageEditNodeId ? nodeById.get(imageEditNodeId) || null : null;
     const annotationNode = annotationNodeId ? nodeById.get(annotationNodeId) || null : null;
     const splitNode = splitNodeId ? nodeById.get(splitNodeId) || null : null;
@@ -361,7 +361,7 @@ export function useCanvasRenderModel({
     const configInputsById = useMemo(() => {
         const map = new Map<string, NodeGenerationInput[]>();
         const configNodeIds = new Set<string>();
-        visibleNodes.forEach((node) => {
+        candidateNodes.forEach((node) => {
             if (node.type === CanvasNodeType.Config) configNodeIds.add(node.id);
         });
         selectedNodeIds.forEach((nodeId) => {
@@ -370,13 +370,13 @@ export function useCanvasRenderModel({
         if (dialogNodeId && nodeById.get(dialogNodeId)?.type === CanvasNodeType.Config) configNodeIds.add(dialogNodeId);
         configNodeIds.forEach((nodeId) => map.set(nodeId, buildNodeGenerationInputs(nodeId, semanticNodes, connections)));
         return map;
-    }, [connections, dialogNodeId, nodeById, selectedNodeIds, semanticNodes, visibleNodes]);
+    }, [connections, dialogNodeId, nodeById, selectedNodeIds, semanticNodes, candidateNodes]);
     const activePrevisNode = useMemo(() => semanticNodes.find((node) => node.id === previsNodeId) || null, [previsNodeId, semanticNodes]);
     const activeStylePresetId = useMemo(() => semanticNodes.find((node) => node.metadata?.workflowKind === "styleboard")?.metadata?.stylePresetId, [semanticNodes]);
     const activeScriptNode = useMemo(() => semanticNodes.find((node) => node.id === scriptEditorNodeId && node.type === CanvasNodeType.Script) || null, [scriptEditorNodeId, semanticNodes]);
     const activePrevisScene = useMemo(() => previsScenes?.find((scene) => scene.id === activePrevisNode?.metadata?.previsSceneId) || null, [activePrevisNode?.metadata?.previsSceneId, previsScenes]);
     const resourceReferenceTargetNodes = useMemo(() => {
-        const targetNodes = [...visibleNodes];
+        const targetNodes = [...candidateNodes];
         const activeId = dialogNodeId || activeNodeId;
         if (activeId) {
             const activeNode = nodeById.get(activeId);
@@ -443,7 +443,7 @@ export function useCanvasRenderModel({
         imageAssets,
         infoNode,
         isVisibilityViewportCovered,
-        maskEditNode,
+        regionEditNode,
         imageEditNode,
         mentionReferencesByNodeId,
         nodeById,
@@ -459,7 +459,10 @@ export function useCanvasRenderModel({
         superResolveNode,
         toolbarNode,
         upscaleNode,
+        candidateNodes,
         visibleNodes,
+        immediateRenderNodeIds,
+        renderViewBounds: renderBounds.view,
     };
 }
 

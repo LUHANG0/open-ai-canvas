@@ -374,7 +374,6 @@ export default function AdminBannerAnnouncementsPanel({
                 centered
                 destroyOnHidden
                 width="min(880px, calc(100vw - 32px))"
-                rootClassName="admin-modal-root"
             >
                 <Form
                     form={form}

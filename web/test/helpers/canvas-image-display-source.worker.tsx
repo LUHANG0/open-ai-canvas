@@ -27,6 +27,7 @@ self.onmessage = async () => {
                 return promise;
             },
         }));
+        mock.module("../../src/services/resource-blob-cache", () => ({ peekCachedResourceObjectUrl: () => "" }));
         mock.module("../../src/services/api/resources", () => ({
             peekResourceAccess: () => undefined,
             resourceAccessCacheExpiry: () => Infinity,

@@ -1,4 +1,4 @@
-import { Command, Home, Search, X } from "lucide-react";
+import { Bot, Command, Home, Search, X } from "lucide-react";
 import { useEffect, useId, useMemo, useRef, useState, type AriaAttributes, type ComponentType, type KeyboardEvent } from "react";
 import { useNavigate } from "react-router";
 
@@ -8,6 +8,8 @@ import { Kbd } from "@/components/ui/base/kbd";
 import { cn } from "@/lib/utils";
 import { openWorkspaceWallet } from "@/lib/workspace-wallet";
 import { useUserStore } from "@/stores/use-user-store";
+import { useGlobalAgentStore } from "@/stores/use-global-agent-store";
+import { useTranslation } from "react-i18next";
 
 type PaletteEntry = {
     id: string;
@@ -20,6 +22,7 @@ type PaletteEntry = {
 /** 顶栏搜索 / ⌘K 命令面板：按功能开关过滤当前可用页面入口。 */
 export function WorkspaceCommandPalette({ open, onClose, returnFocusTarget }: { open: boolean; onClose: () => void; returnFocusTarget?: HTMLElement | null }) {
     const navigate = useNavigate();
+    const { t, i18n } = useTranslation();
     const features = useUserStore((state) => state.features);
     const [query, setQuery] = useState("");
     const [highlight, setHighlight] = useState(0);
@@ -32,7 +35,7 @@ export function WorkspaceCommandPalette({ open, onClose, returnFocusTarget }: { 
     const entries = useMemo<PaletteEntry[]>(() => {
         const toolEntry = (slug: string, to?: string): PaletteEntry => {
             const tool = navigationTools.find((item) => item.slug === slug);
-            return { id: slug, title: tool?.label ?? slug, icon: tool?.icon ?? Home, to };
+            return { id: slug, title: tool ? ("labelKey" in tool ? t(tool.labelKey) : tool.label) : slug, icon: tool?.icon ?? Home, to };
         };
         return [
             { id: "home", title: "首页", icon: Home, to: "/" },
@@ -43,8 +46,10 @@ export function WorkspaceCommandPalette({ open, onClose, returnFocusTarget }: { 
             }))),
             ...(features.creditsEnabled ? [{ ...toolEntry("wallet"), run: () => openWorkspaceWallet() }] : []),
             toolEntry("settings", "/settings"),
+            // 与 ⌘/Ctrl+J 相同：打开平台 Agent 面板。
+            { id: "agent", title: t("shell.palette.agent"), icon: Bot, run: () => useGlobalAgentStore.getState().openAgent() },
         ];
-    }, [features]);
+    }, [features, t, i18n.language]);
 
     const filtered = useMemo(() => {
         const keyword = query.trim().toLowerCase();
@@ -142,7 +147,7 @@ export function WorkspaceCommandPalette({ open, onClose, returnFocusTarget }: { 
                             value={query}
                             onChange={(event) => setQuery(event.target.value)}
                             className="min-w-0 flex-1 bg-transparent text-[var(--fs-body)] outline-none placeholder:text-foreground/45"
-                            placeholder="搜索页面或操作…"
+                            placeholder={t("shell.palette.placeholder")}
                         />
                         <button type="button" onClick={onClose} aria-label="关闭命令面板（⌘K / Ctrl+K）" className="hidden shrink-0 rounded-sm transition-colors duration-150 hover:bg-surface-hover hover:text-foreground sm:inline-flex">
                             <Kbd>⌘K</Kbd>
@@ -173,10 +178,7 @@ export function WorkspaceCommandPalette({ open, onClose, returnFocusTarget }: { 
                                             tabIndex={-1}
                                             onMouseEnter={() => setHighlight(index)}
                                             onClick={() => activateEntry(entry)}
-                                            className={cn(
-                                                "flex w-full items-center gap-2.5 rounded-[var(--r-sm)] px-3 py-2.5 text-left text-[var(--fs-body)] transition-colors",
-                                                index === highlight ? "bg-surface-hover text-foreground" : "text-foreground/65",
-                                            )}
+                                            className={cn("flex w-full items-center gap-2 rounded-[var(--r-sm)] px-3 py-2 text-left text-[var(--fs-body)] transition-colors", index === highlight ? "bg-surface-hover text-foreground" : "text-foreground/65")}
                                         >
                                             <Icon className={cn("size-4 shrink-0", index === highlight ? "text-foreground" : "text-foreground/55")} strokeWidth={1.6} aria-hidden="true" />
                                             <span className="truncate">{entry.title}</span>

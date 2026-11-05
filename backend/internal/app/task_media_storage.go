@@ -9,12 +9,9 @@ import (
 	"image"
 	"io"
 	"log/slog"
-	"math"
 	"net/http"
 	"os"
-	"os/exec"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -271,25 +268,27 @@ func mediaUploadKey(taskID string, index int) *string {
 	return &key
 }
 
-func (s *Service) storeTaskMediaFile(task *model.Task, index int, path, mimeType, kind string, existing *model.Resource) (*model.Resource, error) {
+// storeTaskMediaFile 保存一份暂存作品。fallbackCause 非 nil 表示对象存储写入失败、
+// 作品已兜底保存到本地并登记了补传任务。
+func (s *Service) storeTaskMediaFile(task *model.Task, index int, path, mimeType, kind string, existing *model.Resource) (resource *model.Resource, fallbackCause error, err error) {
 	info, err := os.Lstat(path)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	if !info.Mode().IsRegular() {
-		return nil, errors.New("暂存作品不是普通文件")
+		return nil, nil, errors.New("暂存作品不是普通文件")
 	}
 	file, err := os.Open(path)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	defer file.Close()
 	info, err = file.Stat()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	if !info.Mode().IsRegular() {
-		return nil, errors.New("暂存作品不是普通文件")
+		return nil, nil, errors.New("暂存作品不是普通文件")
 	}
 	width, height := 0, 0
 	durationMs := int64(0)
@@ -304,22 +303,28 @@ func (s *Service) storeTaskMediaFile(task *model.Task, index int, path, mimeType
 			webp := mimeType == "image/webp" && n >= 12 && string(head[:4]) == "RIFF" && string(head[8:12]) == "WEBP"
 			avif := mimeType == "image/avif" && n >= 16 && string(head[4:8]) == "ftyp" && (strings.Contains(string(head[8:]), "avif") || strings.Contains(string(head[8:]), "avis"))
 			if !webp && !avif {
-				return nil, fmt.Errorf("图片内容校验失败：%w", err)
+				return nil, nil, fmt.Errorf("图片内容校验失败：%w", err)
 			}
 		}
 		width, height = config.Width, config.Height
 		if _, err := file.Seek(0, io.SeekStart); err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 	} else if kind == "audio" || kind == "video" {
 		// Audio and video-processing duration is the source of truth for per-second
 		// settlement. The media can still be saved when ffprobe is unavailable;
 		// settlement then falls back to provider usage or moves the order to review.
-		durationMs = probeMediaDurationMs(path)
+		// Video width/height come from the same probe; unknown stays 0, never a fake size.
+		if probed, probeErr := probeMediaFile(context.Background(), path); probeErr == nil {
+			durationMs = probed.DurationMs
+			if kind == "video" {
+				width, height = probed.Width, probed.Height
+			}
+		}
 	}
 	day, err := s.reserveGeneratedResourceQuota(task.UserID, info.Size())
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	committed := false
 	defer func() {
@@ -327,24 +332,33 @@ func (s *Service) storeTaskMediaFile(task *model.Task, index int, path, mimeType
 			s.releaseUserUploadQuota(task.UserID, day, info.Size())
 		}
 	}()
-	var resource *model.Resource
+	writeObject := s.taskMediaObjectWriter(task, path, &fallbackCause)
 	if existing == nil {
-		resource, _, err = s.storeResourceWithWriter(task.UserID, kind, "generated."+extensionFromMimeType(mimeType), mimeType, info.Size(), width, height, durationMs, file, mediaUploadKey(task.ID, index), false, s.storeTaskMediaObject)
+		resource, _, err = s.storeResourceWithWriter(task.UserID, kind, "generated."+extensionFromMimeType(mimeType), mimeType, info.Size(), width, height, durationMs, file, mediaUploadKey(task.ID, index), false, writeObject)
 	} else {
 		// Reuse the same object key after a failed upload; no orphan per retry.
 		resource = existing
 		if resource.UserID != task.UserID || resource.Size != info.Size() || resource.MimeType != mimeType {
-			return nil, errors.New("恢复文件与原始资源不一致")
+			return nil, nil, errors.New("恢复文件与原始资源不一致")
 		}
 		resource.DurationMs = durationMs
-		resource.ETag, err = s.storeTaskMediaObject(resource, "generated."+extensionFromMimeType(mimeType), file)
+		if kind == "video" && width > 0 && height > 0 {
+			resource.Width, resource.Height = width, height
+		}
+		resource.ETag, err = writeObject(resource, "generated."+extensionFromMimeType(mimeType), file)
 		if err == nil {
 			resource.Status, resource.Error, resource.UpdatedAt = model.ResourceStatusReady, "", time.Now()
 			err = s.saveResourceWithinStorageLimit(resource, "")
+		} else {
+			// 保留最近一次的存储错误，管理员排查时不必只看首次失败原因。
+			resource.Status, resource.Error, resource.UpdatedAt = model.ResourceStatusFailed, err.Error(), time.Now()
+			if saveErr := s.repo.SaveResource(resource); saveErr != nil {
+				err = errors.Join(err, fmt.Errorf("记录资源失败状态失败：%w", saveErr))
+			}
 		}
 	}
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	s.commitUserUploadQuota(task.UserID, info.Size())
 	committed = true
@@ -352,38 +366,17 @@ func (s *Service) storeTaskMediaFile(task *model.Task, index int, path, mimeType
 		s.recordActivity(task.UserID, "resource", 1)
 		s.maybeStartPlaybackTranscode(resource)
 	}
-	return resource, nil
+	return resource, fallbackCause, nil
 }
 
-func probeMediaDurationMs(path string) int64 {
-	if strings.TrimSpace(path) == "" {
-		return 0
-	}
-	if _, err := exec.LookPath("ffprobe"); err != nil {
-		return 0
-	}
-	output, err := exec.Command("ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", path).Output()
-	if err != nil {
-		return 0
-	}
-	seconds, err := strconv.ParseFloat(strings.TrimSpace(string(output)), 64)
-	if err != nil || seconds <= 0 || math.IsNaN(seconds) || math.IsInf(seconds, 0) {
-		return 0
-	}
-	return int64(math.Ceil(seconds * 1000))
-}
-
-// Unlike ordinary uploads, generated output preserves an OSS failure for
-// explicit recovery instead of silently changing the storage destination.
-func (s *Service) storeTaskMediaObject(resource *model.Resource, _ string, body io.Reader) (string, error) {
-	if resource.Provider == "local" {
-		return "", writeLocalResourceObject(filepath.Join(s.dataDir, "resources", filepath.FromSlash(resource.ObjectKey)), body)
-	}
+// storeTaskMediaObjectContext 直传对象存储。是否改存本地由 taskMediaObjectWriter
+// 决定：只有平台存储失败才会兜底，并且总会登记补传任务，不会静默改变存储位置。
+func (s *Service) storeTaskMediaObjectContext(ctx context.Context, resource *model.Resource, body io.Reader) (string, error) {
 	setting, err := s.ossSettingForResource(resource.UserID, resource)
 	if err != nil {
 		return "", err
 	}
-	return putOSSObject(s.storageSettingWithRuntimePolicy(setting), resource.ObjectKey, resource.MimeType, resource.Size, body)
+	return putOSSObjectContext(ctx, s.storageSettingWithRuntimePolicy(setting), resource.ObjectKey, resource.MimeType, resource.Size, body)
 }
 
 // Cleanup is best effort only after durable completion. Expired leftovers are

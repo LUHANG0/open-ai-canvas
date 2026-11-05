@@ -1,9 +1,11 @@
 import { Home } from "lucide-react";
 import { Link } from "react-router";
+import { useTranslation } from "react-i18next";
 
 import { WorkspaceSignalIcon } from "@/components/ui/aceternity/workspace-signal-icon";
 
 export default function NotFound() {
+    const { t } = useTranslation();
     return (
         <div className="app-workspace-page flex h-dvh flex-col overflow-hidden text-foreground">
             <main className="app-workspace-page flex h-full min-h-0 items-center justify-center overflow-y-auto px-6 py-10 text-foreground">

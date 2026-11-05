@@ -18,6 +18,62 @@ type invitationTestHost struct {
 	repo *repository.Repository
 }
 
+type invitationReferralCommitHost struct {
+	Host
+	t     *testing.T
+	db    *gorm.DB
+	calls int
+}
+
+func (h *invitationReferralCommitHost) BindReferral(userID, code string) {
+	h.calls++
+	if code != "REFERRAL" {
+		h.t.Errorf("referral code = %q", code)
+	}
+	// The external host uses its own pool, not the invitation transaction.
+	// A single-connection pool makes an early call fail within a bounded time.
+	ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
+	defer cancel()
+	var user model.User
+	if err := h.db.WithContext(ctx).First(&user, "id = ?", userID).Error; err != nil {
+		h.t.Errorf("referral host cannot read committed invitee: %v", err)
+	}
+}
+
+func TestInvitationReferralRunsOnlyAfterCommit(t *testing.T) {
+	for _, failSession := range []bool{false, true} {
+		t.Run(fmt.Sprint("failSession=", failSession), func(t *testing.T) {
+			svc, db, _, code := invitationFixture(t, 0)
+			host := &invitationReferralCommitHost{Host: svc.host, t: t, db: db}
+			svc.host = host
+			if err := svc.SendRegistrationEmailCode("member@example.com", "Ab3xY9"); err != nil {
+				t.Fatal(err)
+			}
+			if failSession {
+				if err := db.Exec(`CREATE TRIGGER reject_invited_session BEFORE INSERT ON auth_sessions BEGIN SELECT RAISE(ABORT, 'injected session failure'); END`).Error; err != nil {
+					t.Fatal(err)
+				}
+			}
+			_, err := svc.Register(RegisterRequest{Username: "member", Email: "member@example.com", EmailCode: *code, Password: "password-strong", AcceptedTerms: true, InvitationCode: "Ab3xY9", ReferralCode: "REFERRAL"})
+			if (err != nil) != failSession {
+				t.Fatalf("registration error = %v, failSession=%v", err, failSession)
+			}
+			wantCalls := 1
+			if failSession {
+				wantCalls = 0
+			}
+			if host.calls != wantCalls {
+				t.Fatalf("referral calls=%d, want %d", host.calls, wantCalls)
+			}
+			if failSession {
+				if _, state, err := svc.RegistrationInvitation("Ab3xY9"); err != nil || state != "valid" {
+					t.Fatalf("failed session consumed invitation: %s %v", state, err)
+				}
+			}
+		})
+	}
+}
+
 func (h invitationTestHost) SettingsEncryptionKey() ([]byte, error) {
 	return []byte("invitation-test-only-key-32-bytes!"), nil
 }

@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 
-for (const scenario of ["shared-consumers", "earlier-expiry", "last-release", "sync-collection", "early-wakeup", "scope-release"]) {
+for (const scenario of ["shared-consumers", "earlier-expiry", "last-release", "sync-collection", "early-wakeup", "long-deadline", "scope-release"]) {
     test(`canvas image expiry scheduler: ${scenario}`, async () => {
         const worker = new Worker(new URL("./helpers/canvas-image-expiry.worker.ts", import.meta.url).href, { type: "module" });
         try {

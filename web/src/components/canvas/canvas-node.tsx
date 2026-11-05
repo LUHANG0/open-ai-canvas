@@ -1,7 +1,11 @@
 import { currentMediaVersion, hasMediaVersionHistory, listMediaVersions } from "@/lib/canvas/canvas-media-versions";
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import type { ReactNode } from "react";
-import { AlertCircle, BookOpenCheck, CheckCircle2, ChevronRight, Clapperboard, Copy, Download, History, Image as ImageIcon, Lock, Maximize2, Music2, Pencil, RefreshCw, ScanSearch, Settings2, Star, Trash2, Type, UserRound, Video, WandSparkles } from "lucide-react";
+import type { CSSProperties, ReactNode } from "react";
+import { agentNodeEntranceDelay } from "@/lib/canvas/agent-canvas-entrance";
+import { AlertCircle, BookOpenCheck, CheckCircle2, Check, ChevronRight, Clapperboard, Copy, Download, History, Image as ImageIcon, Lock, Maximize2, Music2, Pencil, RefreshCw, RotateCcw, ScanSearch, Settings2, ShieldAlert, ShieldCheck, Star, Trash2, Type, UserRound, Video, WandSparkles } from "lucide-react";
+import { translate } from "@/i18n";
+import { arkAssetMatchesImage, arkCertificationBadgeKey, arkCertificationExpired } from "@/lib/ark-assets";
+import { useAssetStore } from "@/stores/use-asset-store";
 
 import { useCanvasNodeActions } from "./canvas-node-action-context";
 import { CanvasImageLayerControls } from "./canvas-image-layer-controls";
@@ -19,7 +23,7 @@ import type { NodeResizeCorner } from "@/lib/canvas/node-resize-geometry";
 import { useCanvasNodeResize } from "./use-canvas-node-resize";
 import { useCanvasNodeResizeStyle } from "./canvas-node-resize-motion";
 import { useCanvasPlaybackSession } from "./canvas-playback-context";
-import { CanvasNodeContent, CanvasNodeImageInfo, CanvasNodeProducedModel } from "./canvas-node-content";
+import { canvasNodeRendersStatusContent, canvasNodeUsesCustomContent, CanvasNodeContent, CanvasNodeImageInfo, CanvasNodeProducedModel } from "./canvas-node-content";
 import { CanvasNodeResultRecord } from "./canvas-node-result-record";
 import { canvasResultRecord } from "@/lib/canvas/canvas-result-record";
 import { CANVAS_RESULT_INFO_MIN_SCALE } from "@/lib/canvas/canvas-live-viewport";
@@ -129,7 +133,7 @@ export const CanvasNode = React.memo(function CanvasNode({
     const [isEditingTitle, setIsEditingTitle] = useState(false);
     const [chromeFocused, setChromeFocused] = useState(false);
     const [titleDraft, setTitleDraft] = useState(data.title);
-    const { download: downloadNode, duplicate: duplicateNode, deleteNode, openMediaVersions } = useCanvasNodeActions();
+    const { download: downloadNode, duplicate: duplicateNode, deleteNode, openMediaVersions, dramaStaleNodeIds, refreshFromDrama } = useCanvasNodeActions();
     const hasImageContent = data.type === CanvasNodeType.Image && Boolean(data.metadata?.content);
     const hasVideoContent = data.type === CanvasNodeType.Video && Boolean(data.metadata?.content || data.metadata?.storageKey);
     const hasAudioContent = data.type === CanvasNodeType.Audio && Boolean(data.metadata?.content || data.metadata?.storageKey);
@@ -142,7 +146,8 @@ export const CanvasNode = React.memo(function CanvasNode({
     const isBatchRoot = data.type === CanvasNodeType.Image && Boolean(data.metadata?.isBatchRoot) && (batchCount > 1 || Boolean(data.metadata?.imageLayerGroup));
     const isBatchChild = data.type === CanvasNodeType.Image && Boolean(data.metadata?.batchRootId);
     const showVersionBadge = !readOnly && Boolean(openMediaVersions) && hasMediaVersionHistory(data);
-    const showStatusTrack = Boolean(showVersionBadge || resourceLabel || data.metadata?.locked || isBatchRoot || (isBatchChild && !readOnly) || (hasMediaContent && !readOnly));
+    const dramaStale = !readOnly && Boolean(dramaStaleNodeIds?.has(data.id));
+    const showStatusTrack = Boolean(resourceLabel || data.metadata?.locked || isBatchRoot || (isBatchChild && !readOnly) || (hasMediaContent && !readOnly) || showVersionBadge || dramaStale);
     const isActive = isConnectionTarget || isSelected || isFocusRelated;
     const showConnectionRails = !isConnecting && (hovered || isSelected || isFocusRelated);
     const effectiveRenderLOD: CanvasNodeRenderLOD = renderLOD === "full" || hovered || isEditingContent || isEditingTitle || mediaActive ? "full" : renderLOD;
@@ -157,6 +162,12 @@ export const CanvasNode = React.memo(function CanvasNode({
     const nodeRef = useRef<HTMLDivElement>(null);
     const resizeMotion = useCanvasNodeResizeStyle(nodeRef, data, dragOffset);
     const handleResizePointerDown = useCanvasNodeResize(data, scale, scriptMinHeight, onResize, readOnly);
+    const generationStatus = data.metadata?.status;
+    const completion = useCanvasCompletionFeedback(data.id);
+    const generationRevealing = Boolean(completion) && !disableMediaEffects;
+    const statusShownInContent = canvasNodeRendersStatusContent(data, { isBatchRoot, isEditingContent, hasCustomRenderer: Boolean(renderNodeContent) });
+    const statusBadge = generationStatus === "success" ? (generationRevealing ? generationStatus : undefined) : (generationStatus === "loading" || generationStatus === "error") && !statusShownInContent ? generationStatus : undefined;
+    const canResyncTask = canvasNodeCanResyncTask(data.metadata);
 
     useEffect(() => {
         const textarea = textareaRef.current;
@@ -203,6 +214,7 @@ export const CanvasNode = React.memo(function CanvasNode({
         if (next !== data.title) onTitleChange?.(data.id, next);
     };
 
+    const [entranceDelay] = useState(() => agentNodeEntranceDelay(data.id));
     return (
         <div
             ref={nodeRef}
@@ -215,6 +227,7 @@ export const CanvasNode = React.memo(function CanvasNode({
             onBlurCapture={(event) => {
                 if (!event.currentTarget.contains(event.relatedTarget)) setChromeFocused(false);
             }}
+            data-agent-enter={entranceDelay === null ? undefined : "true"}
             className={`node-element absolute flex select-none flex-col ${dragOffset ? "cursor-grabbing" : data.type === CanvasNodeType.Drawing ? "cursor-pointer" : "cursor-default"} ${isSelected && data.type === CanvasNodeType.Video ? "z-[var(--z-node-toolbar)]" : isSelected || isFocusRelated || isConnectionTarget ? "z-[var(--z-node-active)]" : "z-[var(--z-node)]"}`}
             style={{
                 transform: `translate(${data.position.x + (dragOffset?.x || 0)}px, ${data.position.y + (dragOffset?.y || 0)}px)`,
@@ -227,7 +240,8 @@ export const CanvasNode = React.memo(function CanvasNode({
                 "--node-result-record-surface": theme.toolbar.panel,
                 "--node-result-record-border": theme.toolbar.border,
                 "--canvas-result-info-fallback": scale >= CANVAS_RESULT_INFO_MIN_SCALE ? "flex" : "none",
-            } as React.CSSProperties}
+                ...(entranceDelay === null ? {} : { "--agent-enter-delay": `${entranceDelay}ms` }),
+            } as CSSProperties}
             onMouseEnter={() => {
                 setHovered(true);
                 onHoverStart(data.id);
@@ -256,6 +270,7 @@ export const CanvasNode = React.memo(function CanvasNode({
             <div
                 className="canvas-node-shell relative h-full w-full overflow-visible rounded-[var(--node-radius)]"
                 data-node-state={nodeState}
+                data-generation-reveal={generationRevealing ? "true" : undefined}
                 data-state={data.metadata?.status || (isActive ? "active" : isRelated ? "related" : "idle")}
                 style={{
                     background: hasImageContent || hasVideoContent ? "transparent" : theme.node.fill,
@@ -316,8 +331,8 @@ export const CanvasNode = React.memo(function CanvasNode({
                     }
                 >
                     {/* 节点状态徽章（对应 #97 决策2：左上角 loading/success/error，近距离确认信号）*/}
-                    {showChrome && data.metadata?.status && data.metadata.status !== "idle" && data.type !== CanvasNodeType.Frame && !(data.metadata.status === "loading" && effectiveRenderLOD === "full" && !data.metadata.previsSceneId && (data.type === CanvasNodeType.Video || data.type === CanvasNodeType.Image)) ? (
-                        <NodeStatusBadge nodeId={data.id} status={data.metadata.status} needsSync={canvasNodeCanResyncTask(data.metadata)} />
+                    {showChrome && statusBadge && data.type !== CanvasNodeType.Frame && !(data.metadata?.status === "loading" && effectiveRenderLOD === "full" && !data.metadata?.previsSceneId && (data.type === CanvasNodeType.Video || data.type === CanvasNodeType.Image)) ? (
+                        <NodeStatusBadge nodeId={data.id} status={statusBadge!} needsSync={canvasNodeCanResyncTask(data.metadata)} />
                     ) : null}
                     <CanvasNodeContent
                         node={data}
@@ -368,10 +383,12 @@ export const CanvasNode = React.memo(function CanvasNode({
                 {showChrome && showStatusTrack ? (
                     <div className="absolute right-3 top-3 z-[var(--node-z-overlay)] flex min-w-0 items-center justify-end gap-1 max-w-[calc(100%-24px)]">
                         {resourceLabel && data.type !== CanvasNodeType.Image ? <ResourceLabelBadge reference={resourceLabel} theme={theme} /> : null}
+                        {data.type === CanvasNodeType.Image && hasImageContent && data.metadata?.assetId ? <ArkCertificationBadge assetId={data.metadata.assetId} storageKey={data.metadata.storageKey} /> : null}
                         {hasMediaContent && !readOnly ? <ResourceStorageBadge storageKey={data.metadata?.storageKey} active={isActive} theme={theme} /> : null}
                         {isBatchRoot ? <BatchToggleBadge count={batchCount} expanded={batchExpanded} theme={theme} onToggle={() => onToggleBatch?.(data.id)} /> : null}
                         {data.metadata?.imageLayerGroup && !readOnly ? <CanvasImageLayerControls node={data} /> : null}
                         {isBatchChild && !data.metadata?.imageLayer && !data.metadata?.layerExtraction && !readOnly ? <BatchPrimaryBadge visible={batchPrimary || hovered || isSelected} selected={batchPrimary} theme={theme} onSelect={() => onSetBatchPrimary?.(data)} /> : null}
+                        {dramaStale ? <DramaStaleBadge theme={theme} onRefresh={refreshFromDrama ? () => refreshFromDrama(data) : undefined} /> : null}
                         {showVersionBadge ? <MediaVersionBadge node={data} theme={theme} onOpen={() => openMediaVersions?.(data)} /> : null}
                         {data.metadata?.locked ? <NodeLockBadge theme={theme} /> : null}
                     </div>
@@ -389,8 +406,8 @@ export const CanvasNode = React.memo(function CanvasNode({
                             {hasImageContent && !data.metadata?.imageLayer && !data.metadata?.layerExtraction ? (
                                 <BatchChildActionButton theme={theme} label={batchPrimary ? "当前主图" : "设为主图"} icon={<Star className={`size-3.5 ${batchPrimary ? "fill-current" : ""}`} style={{ color: theme.accent.primary }} />} onClick={() => onSetBatchPrimary?.(data)} />
                             ) : null}
-                            {data.metadata?.status === "error" && data.metadata.resourceReloadAvailable ? <BatchChildActionButton theme={theme} label="重新加载资源" icon={<Download className="size-3.5" />} onClick={() => onReloadResource?.(data)} /> : null}
-                            {data.metadata?.status === "error" ? <BatchChildActionButton theme={theme} label={data.metadata?.taskCanRecoverMedia ? "重试保存" : "重新生成"} icon={<RefreshCw className="size-3.5" />} onClick={() => onRetry?.(data)} /> : null}
+                            {data.metadata?.status === "error" && canResyncTask ? <BatchChildActionButton theme={theme} label="重新获取结果" icon={<RefreshCw className="size-3.5" />} onClick={() => onReloadResource?.(data)} /> : null}
+                            {data.metadata?.status === "error" ? <BatchChildActionButton theme={theme} label={data.metadata?.taskCanRecoverMedia ? "重新保存" : "重新生成"} icon={<RotateCcw className="size-3.5" />} onClick={() => onRetry?.(data)} /> : null}
                             {data.metadata?.status === "error" ? <BatchChildActionButton theme={theme} label="删除" icon={<Trash2 className="size-3.5" />} danger onClick={() => deleteNode?.(data)} /> : null}
                         </div>
                     </div>
@@ -449,7 +466,8 @@ function areCanvasNodePropsEqual(previous: CanvasNodeProps, next: CanvasNodeProp
         previous.readOnly === next.readOnly &&
         sameResourceLabelPresentation(previous.data.type, previous.resourceLabel, next.resourceLabel) &&
         previous.mentionReferences === next.mentionReferences &&
-        previous.renderNodeContent === next.renderNodeContent &&
+        // 页面级 renderNodeContent 随任意业务状态重建；图片/视频/文本节点不调用它，比较它会让整屏节点陪跑重渲染。
+        (previous.renderNodeContent === next.renderNodeContent || !canvasNodeUsesCustomContent(next.data)) &&
         previous.drawingProjectId === next.drawingProjectId &&
         previous.batchCount === next.batchCount &&
         previous.batchPreviewNodes === next.batchPreviewNodes &&
@@ -492,8 +510,23 @@ function sameResourceLabelPresentation(type: CanvasNodeTypeId, previous: CanvasR
 
 function ResourceLabelBadge({ reference, theme }: { reference: CanvasResourceReference; theme: CanvasTheme }) {
     return (
-        <span className="pointer-events-none min-w-0 max-w-28 truncate rounded-md px-1.5 py-1 text-[var(--fs-tiny)] font-medium leading-none" style={{ background: reference.active ? theme.accent.primary : "rgba(0,0,0,.35)", color: reference.active ? theme.accent.onPrimary : "#ffffff", opacity: reference.active ? 1 : 0.75 }} title={reference.title || reference.label}>
+        <span className="pointer-events-none min-w-0 max-w-28 truncate rounded-md px-2 py-1 text-[var(--fs-tiny)] font-medium leading-none" style={{ background: reference.active ? theme.accent.primary : "rgba(0,0,0,.35)", color: reference.active ? theme.accent.onPrimary : "#ffffff", opacity: reference.active ? 1 : 0.75 }} title={reference.title || reference.label}>
             {reference.label}
+        </span>
+    );
+}
+
+/** 图片节点绑定的素材库图片已通过方舟认证时显示【方舟真人认证】等标识；节点换过图片后认证不再对应，标识随之消失。 */
+function ArkCertificationBadge({ assetId, storageKey }: { assetId: string; storageKey?: string }) {
+    const asset = useAssetStore((state) => state.assets.find((item) => item.id === assetId));
+    const certification = asset?.arkCertification;
+    if (!asset || asset.kind !== "image" || !certification || !asset.arkAssetId || !arkAssetMatchesImage(asset, storageKey)) return null;
+    const expired = arkCertificationExpired(certification);
+    const title = `${translate("library.ark.canvas.tooltip", { group: certification.groupName || "", id: asset.arkAssetId })}\n${translate("library.ark.canvas.usage")}`;
+    return (
+        <span className="pointer-events-auto inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-[var(--fs-tiny)] font-medium leading-none" style={{ background: "rgba(0,0,0,.55)", color: "#ffffff" }} title={title}>
+            {expired ? <ShieldAlert aria-hidden className="size-3" style={{ color: "var(--status-warning)" }} /> : <ShieldCheck aria-hidden className="size-3" style={{ color: "var(--status-success)" }} />}
+            {translate(arkCertificationBadgeKey(certification))}
         </span>
     );
 }
@@ -502,9 +535,32 @@ function ResourceStorageBadge({ storageKey, active, theme }: { storageKey?: stri
     const location = resourceStorageLocation(storageKey);
     const background = active ? (location === "local" ? "rgba(245,158,11,.9)" : theme.accent.primary) : "rgba(0,0,0,.35)";
     return (
-        <span className="pointer-events-auto shrink-0 rounded-md px-1.5 py-1 text-[var(--fs-tiny)] font-medium leading-none" style={{ background, color: active && location !== "local" ? theme.accent.onPrimary : "#ffffff", opacity: active ? 1 : 0.75 }} title={resourceStorageTitle(storageKey)}>
+        <span className="pointer-events-auto shrink-0 rounded-md px-2 py-1 text-[var(--fs-tiny)] font-medium leading-none" style={{ background, color: active && location !== "local" ? theme.accent.onPrimary : "#ffffff", opacity: active ? 1 : 0.75 }} title={resourceStorageTitle(storageKey)}>
             {resourceStorageLabel(storageKey)}
         </span>
+    );
+}
+
+function MediaVersionBadge({ node, theme, onOpen }: { node: CanvasNodeData; theme: CanvasTheme; onOpen: () => void }) {
+    const total = listMediaVersions(node).length;
+    const current = currentMediaVersion(node);
+    const label = current ? `当前 V${current.number}，共 ${total} 个版本，打开版本历史` : `共 ${total} 个历史版本，打开版本历史`;
+    return (
+        <button type="button" className="canvas-node-tool-button inline-flex h-7 shrink-0 items-center gap-1 rounded-md border px-2 text-[var(--fs-tiny)] font-semibold tabular-nums backdrop-blur-md" style={{ background: `${theme.toolbar.panel}d9`, borderColor: `${theme.toolbar.border}cc`, color: theme.node.text }} title={label} aria-label={label} onClick={(event) => { event.stopPropagation(); onOpen(); }} onMouseDown={(event) => event.stopPropagation()} onPointerDown={(event) => event.stopPropagation()}>
+            <History className="size-3 opacity-70" />
+            <span className="leading-none">{current ? `V${current.number}` : "V–"}<span className="opacity-50">/{total}</span></span>
+        </button>
+    );
+}
+
+// 精修画布：短剧侧已有更新的版本（例如流水线重新生成或在制作台上传），点击换成短剧当前的媒体。
+function DramaStaleBadge({ theme, onRefresh }: { theme: CanvasTheme; onRefresh?: () => void }) {
+    const label = "短剧侧已更新，点击同步最新版本";
+    return (
+        <button type="button" className="canvas-node-tool-button inline-flex h-7 shrink-0 items-center gap-1 rounded-md border px-2 text-[var(--fs-tiny)] font-semibold backdrop-blur-md disabled:cursor-default" style={{ background: `${theme.toolbar.panel}d9`, borderColor: "color-mix(in srgb, var(--status-warning) 45%, transparent)", color: theme.node.text }} title={label} aria-label={label} disabled={!onRefresh} onClick={(event) => { event.stopPropagation(); onRefresh?.(); }} onMouseDown={(event) => event.stopPropagation()} onPointerDown={(event) => event.stopPropagation()}>
+            <span className="size-1.5 rounded-full" style={{ background: "var(--status-warning)" }} aria-hidden />
+            <span className="leading-none">短剧已更新</span>
+        </button>
     );
 }
 
@@ -554,7 +610,7 @@ function AssetTagBadges({ tags, theme }: { tags: string[]; theme: (typeof canvas
             {tags.map((tag, index) => (
                 <span
                     key={`${tag}-${index}`}
-                    className="max-w-full truncate rounded-md border px-1.5 py-1 text-[var(--fs-tiny)] font-medium leading-none backdrop-blur-sm"
+                    className="max-w-full truncate rounded-md border px-2 py-1 text-[var(--fs-tiny)] font-medium leading-none backdrop-blur-sm"
                     style={{ background: theme.toolbar.panel, borderColor: theme.toolbar.border, color: theme.node.text }}
                 >
                     {tag.trim()}
@@ -628,7 +684,7 @@ function NodeExternalHeader({ node, scale, dimensionLabel, active, editable, edi
                         autoFocus
                         value={draft}
                         readOnly={!editable}
-                        className="h-6 min-w-20 max-w-[190px] flex-1 truncate rounded bg-transparent px-1.5 text-xs font-medium outline-none"
+                        className="h-6 min-w-20 max-w-[190px] flex-1 truncate rounded bg-transparent px-2 text-xs font-medium outline-none"
                         style={{ background: "transparent", color: theme.node.text }}
                         onChange={(event) => onDraftChange(event.target.value)}
                         onFocus={(event) => event.currentTarget.select()}
@@ -672,13 +728,9 @@ function NodeStatusBadge({ nodeId, status, needsSync }: { nodeId: string; status
     const completion = useCanvasCompletionFeedback(nodeId);
     if (status === "loading") {
         return (
-            <div
-                className="pointer-events-none absolute left-2 top-2 z-20 flex items-center gap-1 rounded-full px-2 py-0.5 backdrop-blur-sm"
-                style={{ background: "color-mix(in oklch, var(--status-loading) 20%, transparent)", color: "var(--status-loading)" }}
-                aria-label="生成中"
-            >
-                <span className="size-1.5 animate-pulse rounded-full" style={{ background: "var(--status-loading)" }} />
-                <span className="text-[var(--fs-micro)] font-medium leading-none">生成中</span>
+            <div className="canvas-node-status-chip" data-tone="loading" role="status">
+                <span className="canvas-node-status-chip-dot" aria-hidden="true" />
+                生成中
             </div>
         );
     }
@@ -814,15 +866,4 @@ function ConnectionSideRail({ side, scale, theme, visible, onPointerDown }: { si
             </span> : null}
         </button>
     );
-}
-
-function MediaVersionBadge({ node, theme, onOpen }: { node: CanvasNodeData; theme: CanvasTheme; onOpen: () => void }) {
-    const current = currentMediaVersion(node);
-    const total = listMediaVersions(node).length;
-    const label = `${current ? `当前 V${current.number}，` : ""}共 ${total} 个版本，打开版本历史`;
-    return <button type="button" className="canvas-node-tool-button inline-flex h-7 shrink-0 items-center gap-1 rounded-md border px-2 text-xs font-semibold tabular-nums focus-visible:ring-2"
-        style={{ background: theme.toolbar.panel, borderColor: theme.toolbar.border, color: theme.node.text }} title={label} aria-label={label}
-        onClick={(event) => { event.stopPropagation(); onOpen(); }} onMouseDown={(event) => event.stopPropagation()} onPointerDown={(event) => event.stopPropagation()}>
-        <History className="size-3" /><span>{current ? `V${current.number}` : "V–"}/{total}</span>
-    </button>;
 }

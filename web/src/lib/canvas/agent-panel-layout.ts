@@ -2,10 +2,13 @@ export type AgentPanelLayout = { left: number; top: number; width: number; heigh
 export type AgentPanelViewport = { width: number; height: number };
 export type AgentPanelGesture = "move" | "north" | "west" | "northwest" | "northeast" | "southwest" | "southeast";
 
+// Keep existing user geometry; the taller default only applies without a saved layout.
 export const AGENT_PANEL_LAYOUT_KEY = "canvas:agent-panel-layout:v1";
 const MARGIN = 12;
 const MIN_WIDTH = 360;
 const MIN_HEIGHT = 520;
+/** 默认窗口从顶栏下方开始，不压住画布顶栏。 */
+const DEFAULT_TOP = 72;
 const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
 
 export function clampAgentPanelLayout(layout: AgentPanelLayout, viewport: AgentPanelViewport): AgentPanelLayout {
@@ -37,8 +40,8 @@ export function restoreAgentPanelLayout(raw: string | null, viewport: AgentPanel
 
 export function defaultAgentPanelLayout(viewport: AgentPanelViewport): AgentPanelLayout {
     const width = 420;
-    const height = 640;
-    return clampAgentPanelLayout({ width, height, left: viewport.width - width - MARGIN, top: viewport.height - height - MARGIN }, viewport);
+    const height = viewport.height - DEFAULT_TOP - MARGIN;
+    return clampAgentPanelLayout({ width, height, left: viewport.width - width - MARGIN, top: DEFAULT_TOP }, viewport);
 }
 
 export function changeAgentPanelLayout(start: AgentPanelLayout, gesture: AgentPanelGesture, dx: number, dy: number, viewport: AgentPanelViewport): AgentPanelLayout {

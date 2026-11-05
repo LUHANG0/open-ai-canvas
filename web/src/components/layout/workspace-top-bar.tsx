@@ -18,6 +18,8 @@ const PAGE_TITLES: Record<string, string> = {
     home: "对话创作",
     ...Object.fromEntries(navigationTools.map(({ slug, label }) => [slug, label])),
     settings: "设置",
+    ecommerce: "电商创作",
+    referral: "邀请推广",
 };
 
 export function WorkspaceTopBar({ sidebarOpen, onToggleSidebar, accountOpen, onAccountOpenChange, accountTriggerRef, menuTriggerRef }: { sidebarOpen: boolean; onToggleSidebar: () => void; accountOpen: boolean; onAccountOpenChange: (open: boolean) => void; accountTriggerRef: Ref<HTMLButtonElement>; menuTriggerRef?: Ref<HTMLButtonElement> }) {

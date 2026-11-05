@@ -78,6 +78,7 @@ mock.module("@/services/user-data-sync", () => ({
     ...syncBoundary, numberValue: forbidden("numberValue"),
     loadCanvasProjectForEditing: async () => cached,
     subscribeAgentCanvasRefresh: () => () => {},
+    subscribeRemoteUserDataReady: () => () => {},
     saveRemoteUserDataNow: async () => { remoteSaves++; },
     prepareCanvasForCloudAction: forbidden("prepare cloud action"),
     createCanvasProjectWithRemoteSync: forbidden("create real project"),

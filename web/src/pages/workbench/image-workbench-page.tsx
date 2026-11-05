@@ -1,208 +1,254 @@
 import { useGenerationReadiness } from "@/hooks/use-generation-readiness";
 import { GenerationStatusNotice } from "@/components/generation-status";
-import { submitTaskIntent } from "@/lib/task-submission-intent";
+import { getActiveUserScope } from "@/lib/user-scope";
+import { openWorkbenchBatchIntent, runWorkbenchBatchIntent, workbenchProviderIdentity, type WorkbenchBatchIntent } from "@/lib/workbench-batch-intent";
 import { canReplaceWorkbenchPrompt, planWorkbenchPresetSwitch } from "@/lib/workbench-preset-switch";
-import { createClientUUID } from "@/lib/client-id";
-import { App, Button, Input, InputNumber, Progress, Spin, Switch, Tooltip } from "antd";
-import { Check, Camera, ChevronDown, Clapperboard, FileImage, ImagePlus, Images, Mic, Palette, Search, ShoppingBag, Sparkles, Upload, UserRound, Video, X } from "lucide-react";
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { planWorkbenchReferences, prepareWorkbenchReferences } from "./workbench-reference-policy";
+import { App, Button } from "antd";
+import { Clapperboard, Image as ImageIcon, RotateCcw } from "lucide-react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type ClipboardEvent, type Dispatch, type SetStateAction } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 
-import { ImageSizePicker } from "@/components/image-size-picker";
-import { MediaPreview } from "@/components/media-preview";
-import { ModelPicker } from "@/components/model-picker";
-import { WorkspacePage } from "@/components/layout/workspace-page";
-import { Select } from "@/components/ui/base/select";
-import { SegmentedControl } from "@/components/ui/base/segmented-control";
-import { AppModal } from "@/components/ui/product/app-modal";
 import { CanvasResourceMentionTextarea } from "@/components/canvas/canvas-resource-mention-textarea";
+import { ImageSizePicker } from "@/components/image-size-picker";
+import { WorkspacePage } from "@/components/layout/workspace-page";
+import { ModelPicker } from "@/components/model-picker";
+import { SegmentedControl } from "@/components/ui/base/segmented-control/segmented-control";
+import { AntTooltip as Tooltip } from "@/components/ui/base/tooltip/ant-tooltip";
+import { AppModal } from "@/components/ui/product/app-modal/app-modal";
 import { normalizeCanvasNodeMentionTokens, type CanvasResourceReference } from "@/lib/canvas/canvas-resource-references";
+import { createClientUUID } from "@/lib/client-id";
+import { togglePromptPhrase } from "@/lib/prompt-phrases";
+import { imageQualityLabel } from "@/lib/image-quality";
 import { imageResolutionUsesQuality } from "@/lib/image-size-presets";
 import { modelCapabilityConfigFor, normalizeImageValue, normalizeVideoValue } from "@/lib/model-capabilities";
+import { modelQuoteRequest, requestCreditCost } from "@/lib/model-pricing";
 import { creationVideoConfig } from "@/pages/create/creation-generation-config";
-import { imageQualityLabel } from "@/lib/image-quality";
-import { prepareBackendGenerationTask } from "@/services/api/generation-task";
-import { createGenerationTask, cancelGenerationTask, queryGenerationTask, retryGenerationTask, type GenerationTask } from "@/services/api/task-center";
-import { capabilitySupportedModes, createWorkbenchTask, listWorkbenchTasks, listWorkbenchTools, normalizeWorkbenchGuide, resolveWorkbenchResourceURL, type WorkbenchKind, type WorkbenchPromptPreset, type WorkbenchTool } from "@/services/api/workbench";
-import { getResource, resourceStorageKey, uploadResourceFile } from "@/services/api/resources";
+import { resolveBrowserMediaDownloadHref, startBrowserDownload } from "@/services/browser-download";
+import { backendProviderConfig, prepareBackendGenerationTask } from "@/services/api/generation-task";
+import { quoteModel } from "@/services/api/logical-models";
+import { resourceStorageKey, uploadResourceFile } from "@/services/api/resources";
+import { cancelGenerationTask, createGenerationTask, queryGenerationTask, retryGenerationTask, type GenerationTask } from "@/services/api/task-center";
+import { capabilitySupportedModes, createWorkbenchTask, listWorkbenchTasks, listWorkbenchTools, resolveWorkbenchResourceURL, type WorkbenchKind, type WorkbenchPromptPreset, type WorkbenchReferenceSlot, type WorkbenchTool } from "@/services/api/workbench";
 import { useCreationPreferencesStore } from "@/stores/use-creation-preferences-store";
 import { logicalModelIDForConfig, modelDisplayName, modelOptionName, resolveModelChannel, selectableModelsByCapability, useConfigStore, useEffectiveConfig } from "@/stores/use-config-store";
 import { useUserStore } from "@/stores/use-user-store";
 
-import { workbenchCategoryLabel, workbenchCategories } from "./workbench-catalog";
+import {
+    aspectRatioOf,
+    groupWorkbenchTasks,
+    isActiveWorkbenchTask,
+    planWorkbenchBatch,
+    workbenchBatchLimit,
+    workbenchDownloadName,
+    workbenchParameterSummary,
+    workbenchTaskOutputs,
+    workbenchTaskSnapshot,
+    type WorkbenchOutput,
+    type WorkbenchTaskGroup,
+} from "./workbench-batches";
+import { ChoiceChips, ComposerFooter, ComposerSection, CountStepper, PromptSection, ReferenceSection, SceneSection, SwitchRow, videoRatioOptions, type WorkbenchReference } from "./workbench-composer";
+import { WorkbenchGallery, type GalleryActions, type GalleryBatch, type GalleryFilter, type GalleryTile } from "./workbench-gallery";
 import { missingWorkbenchInput, workbenchPromptRequired, workbenchVideoOperation } from "./workbench-input";
-import { WorkbenchResults } from "./workbench-results";
+import { isModelIdLike, WORKBENCH_INSPIRATIONS, WORKBENCH_SPEC_TIPS, workbenchQuickTools, workbenchRatioUsage } from "./workbench-presets";
+import { SceneLibraryModal } from "./workbench-scene-library";
 import { WorkbenchViewer } from "./workbench-viewer";
-import { workbenchTaskOutputs, workbenchDownloadName, type WorkbenchOutput } from "./workbench-outputs";
-import { planWorkbenchReferences } from "./workbench-reference-policy";
-import type { PickedWorkbenchReference } from "./workbench-reference-library";
-import { downloadBrowserMedia } from "@/services/browser-download";
-import { getActiveUserScope } from "@/lib/user-scope";
 import "./workbench.css";
-import "./workbench-experience.css";
-import "./workbench-count-picker.css";
+
+export { filterWorkbenchTools } from "./workbench-presets";
+export { workbenchTaskSnapshot } from "./workbench-batches";
+export type { WorkbenchReference } from "./workbench-composer";
 
 const WorkbenchReferenceLibrary = lazy(() => import("./workbench-reference-library").then((module) => ({ default: module.WorkbenchReferenceLibrary })));
 
-export type WorkbenchReference = {
-    id: string;
-    name: string;
-    kind: "image" | "video" | "audio";
-    resourceId?: string;
-    previewUrl: string;
-    progress: number;
-    uploading: boolean;
-    error?: string;
-    role: "reference" | "first_frame" | "last_frame";
-    slotKey?: string;
-};
+const BATCH_DOWNLOAD_INTERVAL_MS = 400;
+const DETAIL_CONCURRENCY = 3;
 
-export function filterWorkbenchTools(tools: WorkbenchTool[], category: string, query: string) {
-    const normalized = query.trim().toLocaleLowerCase();
-    return tools.filter(
-        (tool) =>
-            (category === "all" || (category === "recommended" ? tool.recommended || tool.categoryId === category : tool.categoryId === category)) &&
-            (!normalized || `${tool.name} ${tool.subtitle} ${tool.description} ${workbenchCategoryLabel(tool.categoryId)} ${(tool.searchKeywords || []).join(" ")}`.toLocaleLowerCase().includes(normalized)),
-    );
-}
+type MediaKind = WorkbenchReference["kind"];
 
-function parseInput(inputJson?: string) {
-    if (!inputJson) return null;
-    try {
-        const parsed: unknown = JSON.parse(inputJson);
-        return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? (parsed as Record<string, any>) : null;
-    } catch {
-        return null;
-    }
-}
-
-type WorkbenchTaskReferenceSnapshot = {
-    resourceId: string;
-    kind: WorkbenchReference["kind"];
-    role?: WorkbenchReference["role"];
-    slotKey?: string;
-};
-
-type WorkbenchTaskSnapshot = {
+/** 提交那一刻冻结的请求；“继续提交剩余”使用同一份参数，不受之后编辑影响。 */
+type BatchRequest = {
     kind: WorkbenchKind;
+    route: "workbench" | "tasks";
+    prompt: string;
+    model: string;
+    logicalModelId?: string;
+    channelId?: string;
     toolId?: string;
     presetId?: string;
     parameters: Record<string, unknown>;
-    references: WorkbenchTaskReferenceSnapshot[];
+    references: WorkbenchReference[];
+    generationConfig: ReturnType<typeof useEffectiveConfig>;
+    videoOperation?: string;
 };
 
-export function workbenchTaskSnapshot(task: GenerationTask): WorkbenchTaskSnapshot | null {
-    const input = parseInput(task.inputJson);
-    if (!input) return null;
-    const metadata = input.metadata && typeof input.metadata === "object" ? (input.metadata as Record<string, any>) : {};
-    const metadataSnapshot = metadata.workbench && typeof metadata.workbench === "object" ? (metadata.workbench as Record<string, any>) : {};
-    const snapshot = input.workbench && typeof input.workbench === "object" ? (input.workbench as Record<string, any>) : metadataSnapshot;
-    const kind = snapshot.kind || metadata.workbenchKind;
-    if (kind !== "image" && kind !== "video") return null;
-    const rawReferences = Array.isArray(snapshot.references) ? snapshot.references : [];
-    const references = rawReferences.flatMap((value: unknown): WorkbenchTaskReferenceSnapshot[] => {
-        if (!value || typeof value !== "object") return [];
-        const reference = value as Record<string, unknown>;
-        const resourceId = typeof reference.resourceId === "string" ? reference.resourceId.trim() : "";
-        const referenceKind = reference.kind;
-        if (!resourceId || (referenceKind !== "image" && referenceKind !== "video" && referenceKind !== "audio")) return [];
-        const role = reference.role === "first_frame" || reference.role === "last_frame" || reference.role === "reference" ? reference.role : undefined;
-        const slotKey = typeof reference.slotKey === "string" ? reference.slotKey : undefined;
-        return [{ resourceId, kind: referenceKind, ...(role ? { role } : {}), ...(slotKey ? { slotKey } : {}) }];
-    });
-    const rawParameters = snapshot.parameters && typeof snapshot.parameters === "object" ? snapshot.parameters : {};
-    return {
-        kind,
-        ...(typeof snapshot.toolId === "string" ? { toolId: snapshot.toolId } : typeof metadata.workbenchToolId === "string" ? { toolId: metadata.workbenchToolId } : {}),
-        ...(typeof snapshot.presetId === "string" ? { presetId: snapshot.presetId } : typeof metadata.workbenchPresetId === "string" ? { presetId: metadata.workbenchPresetId } : {}),
-        parameters: rawParameters as Record<string, unknown>,
-        references,
-    };
-}
+type LocalBatch = {
+    id: string;
+    createdAt: string;
+    prompt: string;
+    toolName?: string;
+    modelLabel: string;
+    parameters: Record<string, unknown>;
+    ratio?: number;
+    plan: number[];
+    states: Array<"pending" | "submitting" | "created" | "failed">;
+    receipts: Record<number, GenerationTask>;
+    submitting: boolean;
+    error?: string;
+    request: BatchRequest;
+    intent: WorkbenchBatchIntent;
+};
 
 function revokeReferencePreview(reference: WorkbenchReference) {
     if (reference.previewUrl.startsWith("blob:")) URL.revokeObjectURL(reference.previewUrl);
 }
 
-// 当后台工具副标题看起来像模型 ID（前后端配置错误遗留），回退到工具描述或留空，避免泄露原始模型标识。
-function isModelIdLike(value: string | undefined) {
-    if (!value) return true;
-    const normalized = value.trim();
-    if (!normalized) return true;
-    if (/^[a-z0-9][a-z0-9._-]{1,40}$/i.test(normalized) && /[._-]/.test(normalized)) return true;
-    return false;
+function errorMessage(error: unknown, fallback: string) {
+    return error instanceof Error && error.message ? error.message : fallback;
 }
 
-function toolVisual(tool: WorkbenchTool, kind: WorkbenchKind) {
-    const text = `${tool.name} ${tool.subtitle || ""} ${tool.description || ""} ${(tool.searchKeywords || []).join(" ")}`.toLocaleLowerCase();
-    if (text.includes("模特") || text.includes("人物") || text.includes("上身") || text.includes("穿搭")) return { icon: <UserRound />, tone: "people", label: "模特与人物" };
-    if (text.includes("视频") || kind === "video") return { icon: <Clapperboard />, tone: "video", label: "镜头与视频" };
-    if (text.includes("场景") || text.includes("氛围") || text.includes("背景")) return { icon: <Images />, tone: "scene", label: "场景与氛围" };
-    if (text.includes("风格") || text.includes("海报") || text.includes("视觉")) return { icon: <Palette />, tone: "style", label: "风格与视觉" };
-    if (text.includes("主图") || text.includes("商品") || text.includes("电商") || text.includes("白底")) return { icon: <ShoppingBag />, tone: "product", label: "商品出品" };
-    return { icon: kind === "image" ? <Camera /> : <Sparkles />, tone: "creative", label: "创意生成" };
+function mediaKindOfFile(file: File): MediaKind | null {
+    if (file.type.startsWith("image/")) return "image";
+    if (file.type.startsWith("video/")) return "video";
+    if (file.type.startsWith("audio/")) return "audio";
+    return null;
+}
+
+function mediaLabel(kind: MediaKind) {
+    return kind === "image" ? "图片" : kind === "video" ? "视频" : "音频";
+}
+
+/** 视频的首帧、尾帧各只能有一个；新设为首帧/尾帧时把原来的降为普通参考。 */
+function withUniqueFrameRole(references: WorkbenchReference[], targetId: string, role: WorkbenchReference["role"]) {
+    return references.map((item) => {
+        if (item.id === targetId) return { ...item, role };
+        if (role !== "reference" && item.role === role) return { ...item, role: "reference" as const };
+        return item;
+    });
+}
+
+/** 视频图片素材的默认用途：首帧/尾帧槽位或无槽位时先占首帧，其余作为参考。 */
+function defaultVideoRole(slot: WorkbenchReferenceSlot | undefined, existing: WorkbenchReference[]): WorkbenchReference["role"] {
+    const name = slot?.name || "";
+    if (name.includes("尾帧") && !existing.some((item) => item.role === "last_frame")) return "last_frame";
+    if ((!slot || name.includes("首帧")) && !existing.some((item) => item.role === "first_frame")) return "first_frame";
+    return "reference";
+}
+
+function receiptTask(raw: Partial<GenerationTask> & { id: string }, request: BatchRequest, batch: { id: string; index: number; count: number }): GenerationTask {
+    const now = new Date().toISOString();
+    return {
+        type: request.kind === "image" ? "canvas_image" : "canvas_video",
+        prompt: request.prompt,
+        attempts: 0,
+        createdAt: now,
+        updatedAt: now,
+        ...raw,
+        status: raw.status || "queued",
+        clientContext: { ...(raw.clientContext || {}), batchId: batch.id, batchIndex: batch.index, batchCount: batch.count },
+    } as GenerationTask;
+}
+
+function mergeTaskUpdate(previous: GenerationTask | undefined, next: GenerationTask): GenerationTask {
+    return previous ? { ...previous, ...next, clientContext: next.clientContext || previous.clientContext } : next;
 }
 
 export function WorkbenchPage({ kind }: { kind: WorkbenchKind }) {
-    const { message } = App.useApp();
-    const config = useEffectiveConfig();
-    const navigate = useNavigate();
-    const videoWorkbenchEnabled = useUserStore((state) => state.features.videoWorkbenchEnabled);
     const userId = useUserStore((state) => state.user?.id);
-    const [assetPicker, setAssetPicker] = useState<{ slotKey?: string; revision: number } | null>(null);
-    const [taskDetails, setTaskDetails] = useState<Record<string, GenerationTask>>({});
-    const [taskDetailErrors, setTaskDetailErrors] = useState<Record<string, string>>({});
-    const detailEpoch = useRef(0);
-    const composerUserRef = useRef(userId);
-    const taskDetailsRef = useRef<Record<string, GenerationTask>>({});
-    const detailFlights = useRef(new Map<string, Promise<GenerationTask | undefined>>());
-    const [tasksError, setTasksError] = useState("");
-    const [detailError, setDetailError] = useState("");
-    const [outputKey, setOutputKey] = useState<string>();
+    const hydrated = useUserStore((state) => state.hydrated);
+    const scope = getActiveUserScope();
+    return <WorkbenchSession key={`${scope}:${userId}:${hydrated}:${kind}`} kind={kind} scope={scope} userId={userId} />;
+}
+
+function useComposerState<T>(initial: T, revision: { current: number }): [T, Dispatch<SetStateAction<T>>] {
+    const [value, update] = useState(initial);
+    const set = useCallback((next: SetStateAction<T>) => {
+        revision.current++;
+        update(next);
+    }, [revision]);
+    return [value, set];
+}
+
+function WorkbenchSession({ kind, scope, userId }: { kind: WorkbenchKind; scope: string; userId?: string }) {
+    const aliveRef = useRef(true);
+    const active = useCallback(() => aliveRef.current && getActiveUserScope() === scope && useUserStore.getState().user?.id === userId, [scope, userId]);
+    useEffect(() => {
+        aliveRef.current = true;
+        const unsubscribe = useUserStore.subscribe((next, previous) => {
+            if (next.user?.id !== previous.user?.id || (!next.hydrated && previous.hydrated)) aliveRef.current = false;
+        });
+        return () => { aliveRef.current = false; unsubscribe(); };
+    }, []);
+    const submissionBusyRef = useRef<symbol | null>(null);
+    const workbenchRevisionRef = useRef(0);
+    useEffect(() => useConfigStore.subscribe(() => { workbenchRevisionRef.current++; }), []);
+    const { message, modal } = App.useApp();
+    const navigate = useNavigate();
+    const config = useEffectiveConfig();
     const updateConfig = useConfigStore((state) => state.updateConfig);
+    const isAiConfigReady = useConfigStore((state) => state.isAiConfigReady);
+    const features = useUserStore((state) => state.features);
+    const creditsEnabled = features.creditsEnabled;
+    const activeTaskLimit = useUserStore((state) => state.runtimeLimits.activeTaskLimit);
     const [searchParams, setSearchParams] = useSearchParams();
+
     const [tools, setTools] = useState<WorkbenchTool[]>([]);
     const [directoryLoading, setDirectoryLoading] = useState(true);
     const [directoryError, setDirectoryError] = useState("");
-    const [toolLibraryOpen, setToolLibraryOpen] = useState(false);
-    const [toolSearch, setToolSearch] = useState("");
-    const [toolCategory, setToolCategory] = useState("all");
-    const [tool, setTool] = useState<WorkbenchTool | null>(null);
-    const [prompt, setPrompt] = useState("");
+    const [libraryOpen, setLibraryOpen] = useState(false);
+    const [tool, setTool] = useComposerState<WorkbenchTool | null>(null, workbenchRevisionRef);
+    const [preset, setPreset] = useComposerState<WorkbenchPromptPreset | null>(null, workbenchRevisionRef);
+    const [presetPending, setPresetPending] = useComposerState<WorkbenchPromptPreset | null>(null, workbenchRevisionRef);
+    const [prompt, setPrompt] = useComposerState("", workbenchRevisionRef);
     const [references, setReferencesState] = useState<WorkbenchReference[]>([]);
     const referencesRef = useRef<WorkbenchReference[]>([]);
-    const setReferences = (update: WorkbenchReference[] | ((current: WorkbenchReference[]) => WorkbenchReference[])) => {
+    const setReferences = useCallback((update: WorkbenchReference[] | ((current: WorkbenchReference[]) => WorkbenchReference[])) => {
+        workbenchRevisionRef.current++;
         const next = typeof update === "function" ? update(referencesRef.current) : update;
         referencesRef.current = next;
         setReferencesState(next);
-    };
+    }, []);
     useEffect(() => () => referencesRef.current.forEach(revokeReferencePreview), []);
-    const [activeTask, setActiveTask] = useState<GenerationTask | null>(null);
-    const workbenchRevisionRef = useRef(0);
-    const [tasks, setTasks] = useState<GenerationTask[]>([]);
-    const [tasksLoading, setTasksLoading] = useState(true);
-    const [detailTask, setDetailTask] = useState<GenerationTask | null>(null);
-    const [detailLoading, setDetailLoading] = useState(false);
-    const detailRequestRef = useRef(0);
-    const [preset, setPreset] = useState<WorkbenchPromptPreset | null>(null);
-    const [presetPending, setPresetPending] = useState<WorkbenchPromptPreset | null>(null);
-    const [busy, setBusy] = useState(false);
-    const submissionBusyRef = useRef<symbol | null>(null);
-    const [taskBusyId, setTaskBusyId] = useState("");
-    const [mobileTab, setMobileTab] = useState("generate");
-    const [query, setQuery] = useState("");
     const fileRef = useRef<HTMLInputElement>(null);
     const [uploadSlotKey, setUploadSlotKey] = useState<string | undefined>();
+    const [assetPicker, setAssetPicker] = useState<{ slotKey?: string; revision: number } | null>(null);
+
     const preferencesHydrated = useCreationPreferencesStore((state) => state.hydrated);
     const rememberImageSettings = useCreationPreferencesStore((state) => state.rememberImageSettings);
     const rememberVideoSettings = useCreationPreferencesStore((state) => state.rememberVideoSettings);
     const [settingsReady, setSettingsReady] = useState(false);
-    const [ratio, setRatio] = useState(kind === "image" ? "1:1" : "16:9");
-    const [quality, setQuality] = useState("auto");
-    const [imageResolution, setImageResolution] = useState("auto");
-    const [count, setCount] = useState("1");
-    const [seconds, setSeconds] = useState("6");
-    const [videoQuality, setVideoQuality] = useState("720");
+    const [ratio, setRatio] = useComposerState(kind === "image" ? "1:1" : "16:9", workbenchRevisionRef);
+    const [quality, setQuality] = useComposerState("auto", workbenchRevisionRef);
+    const [imageResolution, setImageResolution] = useComposerState("auto", workbenchRevisionRef);
+    const [count, setCount] = useComposerState(1, workbenchRevisionRef);
+    const [seconds, setSeconds] = useComposerState("6", workbenchRevisionRef);
+    const [videoQuality, setVideoQuality] = useComposerState("720", workbenchRevisionRef);
+
+    const [tasks, setTasks] = useState<GenerationTask[]>([]);
+    const [tasksLoading, setTasksLoading] = useState(true);
+    const [localBatches, setLocalBatchesState] = useState<LocalBatch[]>([]);
+    const localBatchesRef = useRef<LocalBatch[]>([]);
+    const setLocalBatches = useCallback((update: (current: LocalBatch[]) => LocalBatch[]) => {
+        localBatchesRef.current = update(localBatchesRef.current);
+        setLocalBatchesState(localBatchesRef.current);
+    }, []);
+    const updateLocalBatch = useCallback((id: string, update: (batch: LocalBatch) => LocalBatch) => setLocalBatches((current) => current.map((batch) => (batch.id === id ? update(batch) : batch))), [setLocalBatches]);
+    const [details, setDetails] = useState<Record<string, GenerationTask>>({});
+    const [detailErrors, setDetailErrors] = useState<ReadonlySet<string>>(() => new Set());
+    const detailQueueRef = useRef<Array<{ id: string; version: string }>>([]);
+    const detailInflightRef = useRef(new Set<string>());
+    const detailFailedRef = useRef(new Map<string, string>());
+    const detailActiveRef = useRef(0);
+    const [visibleBatchKeys, setVisibleBatchKeys] = useState<ReadonlySet<string>>(() => new Set());
+    const [measuredRatios, setMeasuredRatios] = useState<Record<string, number>>({});
+    const [busy, setBusy] = useState(false);
+    const [busyTaskIds, setBusyTaskIds] = useState<ReadonlySet<string>>(() => new Set());
+    const [viewer, setViewer] = useState<{ batchKey: string; outputKey: string } | null>(null);
+    const [filter, setFilter] = useState<GalleryFilter>("all");
+    const [query, setQuery] = useState("");
+    const [mobileTab, setMobileTab] = useState<"compose" | "gallery">("compose");
+    const [estimate, setEstimate] = useState<{ credits: number | null; estimated: boolean; tone: "quote" | "local" | "usage" | "loading" | "unavailable" }>({ credits: null, estimated: false, tone: "unavailable" });
+
     const capability = kind;
     const configuredModel = kind === "image" ? config.imageModel || config.model : config.videoModel || config.model;
     // 与创作页同一份可选目录。系统渠道模型通常没有 logicalModelId，不能据此滤成空列表。
@@ -213,14 +259,17 @@ export function WorkbenchPage({ kind }: { kind: WorkbenchKind }) {
     const profile = useMemo(() => modelCapabilityConfigFor(config, selectedModel), [config, selectedModel]);
     const imageProfile = profile.image;
     const videoProfile = profile.video;
-    const filteredTools = useMemo(() => filterWorkbenchTools(tools, toolCategory, toolSearch), [toolCategory, toolSearch, tools]);
-    const quickTools = useMemo(() => {
-        const preferred = tools.filter((item) => item.recommended);
-        return (preferred.length ? preferred : tools).slice(0, 4);
-    }, [tools]);
+    const maxOutputsPerTask = kind === "image" ? Math.max(1, imageProfile?.maxOutputs || 1) : 1;
+    const batchLimit = workbenchBatchLimit(kind, maxOutputsPerTask, activeTaskLimit);
+    const requestedCount = Math.min(batchLimit, Math.max(1, Math.floor(count) || 1));
+    const plan = useMemo(() => planWorkbenchBatch(kind, requestedCount, maxOutputsPerTask), [kind, maxOutputsPerTask, requestedCount]);
+    const promptMaxChars = kind === "image" ? imageProfile?.references.promptMaxChars || 32000 : videoProfile?.references.promptMaxChars || 8000;
+    const unslottedLimit = kind === "image" ? imageProfile?.references.maxImages || 0 : (videoProfile?.references.maxImages || 0) + (videoProfile?.references.maxVideos || 0) + (videoProfile?.references.maxAudios || 0);
+    const quickTools = useMemo(() => workbenchQuickTools(tools), [tools]);
     const promptRequired = workbenchPromptRequired(tool);
     const missingInput = missingWorkbenchInput(tool, references);
-    const selectedCount = Number(count) || 1;
+    const kindLabel = kind === "image" ? "图片" : "视频";
+
     const promptReferences = useMemo<CanvasResourceReference[]>(
         () =>
             references.map((reference) => ({
@@ -236,39 +285,38 @@ export function WorkbenchPage({ kind }: { kind: WorkbenchKind }) {
         [references],
     );
     const composerConfig = useMemo(
-        () => (kind === "video" && selectedModel ? creationVideoConfig(config, selectedModel, { ratio, seconds, videoQuality }) : { ...config, model: selectedModel, imageModel: selectedModel, size: ratio, quality, imageResolution, count }),
-        [config, count, imageResolution, kind, quality, ratio, seconds, selectedModel, videoQuality],
+        () =>
+            kind === "video" && selectedModel
+                ? creationVideoConfig(config, selectedModel, { ratio, seconds, videoQuality })
+                : { ...config, model: selectedModel, imageModel: selectedModel, size: ratio, quality, imageResolution, count: String(plan[0] || 1) },
+        [config, imageResolution, kind, plan, quality, ratio, seconds, selectedModel, videoQuality],
     );
 
+    const loadDirectory = useCallback(
+        (signal?: AbortSignal) => {
+            setDirectoryLoading(true);
+            setDirectoryError("");
+            listWorkbenchTools(kind, signal, false)
+                .then((directory) => {
+                    if (signal?.aborted || !active()) return;
+                    setTools(directory.tools.filter((item) => item.kind === kind && item.enabled !== false && (!capabilitySupportedModes(item).length || capabilitySupportedModes(item).includes(kind))).sort((a, b) => a.sortOrder - b.sortOrder));
+                })
+                .catch((error) => {
+                    if (!signal?.aborted && active()) setDirectoryError(errorMessage(error, "场景目录加载失败"));
+                })
+                .finally(() => {
+                    if (!signal?.aborted && active()) setDirectoryLoading(false);
+                });
+        },
+        [kind, active],
+    );
     useEffect(() => {
         const controller = new AbortController();
-        setDirectoryLoading(true);
-        setDirectoryError("");
-        listWorkbenchTools(kind, controller.signal, false)
-            .then((directory) => {
-                setTools(directory.tools.filter((item) => item.kind === kind && item.enabled !== false && (!capabilitySupportedModes(item).length || capabilitySupportedModes(item).includes(kind))).sort((a, b) => a.sortOrder - b.sortOrder));
-            })
-            .catch((error) => {
-                if (!controller.signal.aborted) setDirectoryError(error instanceof Error ? error.message : "工具目录加载失败");
-            })
-            .finally(() => {
-                if (!controller.signal.aborted) setDirectoryLoading(false);
-            });
+        loadDirectory(controller.signal);
         return () => controller.abort();
-    }, [kind]);
+    }, [loadDirectory]);
 
-    useEffect(() => {
-        const toolId = searchParams.get("tool");
-        if (!toolId || !tools.length) return;
-        const next = tools.find((item) => item.id === toolId);
-        // 页内选择和任务恢复会先更新 tool 再改地址，这里只处理从外部链接切换过来的工具。
-        if (!next || next.id === tool?.id) return;
-        setTool(next);
-        switchToolPrompt(next, searchParams.get("preset"));
-        // 只随地址和目录变化触发；tool 变化不能触发，否则任务恢复在改地址前会被旧地址拉回。
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [searchParams, tools]);
-
+    // ---------- 设置恢复：模型能力变化时把参数收敛到新模型支持的值 ----------
     useEffect(() => {
         if (!preferencesHydrated || settingsReady || !imageProfile || !videoProfile) return;
         const saved = useCreationPreferencesStore.getState().preferences;
@@ -277,12 +325,13 @@ export function WorkbenchPage({ kind }: { kind: WorkbenchKind }) {
                 size: saved.image?.ratio || imageProfile.size.default,
                 quality: saved.image?.quality || imageProfile.quality.default,
                 imageResolution: saved.image?.imageResolution || imageProfile.resolution.default,
-                count: saved.image?.count || "1",
+                count: "1",
             });
             setRatio(normalized.size);
             setQuality(normalized.quality);
             setImageResolution(normalized.imageResolution || imageProfile.resolution.default || "auto");
-            setCount(normalized.count);
+            // 批量数量可以超过模型单次张数（会拆成多个任务），不能用单任务上限收敛。
+            setCount(Math.max(1, Math.floor(Number(saved.image?.count)) || 1));
         } else {
             const normalized = normalizeVideoValue(videoProfile, {
                 seconds: saved.video?.seconds || String(videoProfile.duration.default),
@@ -294,7 +343,7 @@ export function WorkbenchPage({ kind }: { kind: WorkbenchKind }) {
             setVideoQuality(normalized.resolution.replace(/p$/i, ""));
         }
         setSettingsReady(true);
-    }, [imageProfile, kind, preferencesHydrated, selectedModel, settingsReady, videoProfile]);
+    }, [imageProfile, kind, preferencesHydrated, settingsReady, videoProfile]);
 
     useEffect(() => {
         if (!settingsReady || kind !== "image" || !imageProfile) return;
@@ -303,12 +352,12 @@ export function WorkbenchPage({ kind }: { kind: WorkbenchKind }) {
             size: saved?.ratio || imageProfile.size.default,
             quality: saved?.quality || imageProfile.quality.default,
             imageResolution: saved?.imageResolution || imageProfile.resolution.default,
-            count: saved?.count || count,
+            count: "1",
         });
         setRatio(normalized.size);
         setQuality(normalized.quality);
         setImageResolution(normalized.imageResolution || imageProfile.resolution.default || "auto");
-        setCount(normalized.count);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [imageProfile, kind, selectedModel, settingsReady]);
 
     useEffect(() => {
@@ -324,8 +373,9 @@ export function WorkbenchPage({ kind }: { kind: WorkbenchKind }) {
         setVideoQuality(normalized.resolution.replace(/p$/i, ""));
     }, [kind, selectedModel, settingsReady, videoProfile]);
 
-    const quoteRequirements = useMemo(
-        () => ({
+    // ---------- 报价：按拆分后的每个任务分别报价再求和 ----------
+    const quoteRequirementsFor = useCallback(
+        (outputs: number) => ({
             capability,
             input: {
                 textCount: prompt.trim() ? 1 : 0,
@@ -336,88 +386,99 @@ export function WorkbenchPage({ kind }: { kind: WorkbenchKind }) {
                 characterCount: 0,
             },
             ...(kind === "image"
-                ? { imageSize: ratio, options: { size: ratio, quality, ...(imageProfile?.resolution.supported ? { imageResolution } : {}), count: selectedCount } }
+                ? { imageSize: ratio, options: { size: ratio, quality, ...(imageProfile?.resolution.supported ? { imageResolution } : {}), count: outputs } }
                 : { videoSeconds: seconds, options: { size: ratio, videoSeconds: Number(seconds), vquality: videoQuality } }),
         }),
-        [capability, imageProfile, imageResolution, kind, prompt, quality, ratio, references, seconds, selectedCount, videoQuality],
+        [capability, imageProfile, imageResolution, kind, prompt, quality, ratio, references, seconds, videoQuality],
     );
-
-    const generationStatus = useGenerationReadiness(composerConfig, selectedModel, capability, quoteRequirements, kind === "image" ? selectedCount : 1, kind === "video" ? seconds : 1);
+    const pickerRequirements = useMemo(() => quoteRequirementsFor(plan[0] || 1), [plan, quoteRequirementsFor]);
 
     useEffect(() => {
-        detailEpoch.current++;
-        workbenchRevisionRef.current++;
-        if (composerUserRef.current !== userId) {
-            submissionBusyRef.current = null;
-            setBusy(false);
-            referencesRef.current.forEach(revokeReferencePreview);
-            setReferences([]);
-            setPrompt("");
-            setTool(null);
-            setPreset(null);
-            setPresetPending(null);
-            setQuery("");
-            setMobileTab("generate");
-            setToolLibraryOpen(false);
+        if (!creditsEnabled || !selectedModel) {
+            setEstimate({ credits: null, estimated: false, tone: "unavailable" });
+            return;
         }
-        composerUserRef.current = userId;
-        setTasks([]);
-        setActiveTask(null);
-        setTasksLoading(true);
-        setTasksError("");
-        taskDetailsRef.current = {};
-        detailFlights.current.clear();
-        setTaskDetails({});
-        setTaskDetailErrors({});
-        setDetailTask(null);
-        setAssetPicker(null);
-        setDetailLoading(false);
-        detailRequestRef.current++;
-        return () => {
-            detailEpoch.current++;
-        };
-    }, [userId]);
+        const priceChannel = resolveModelChannel(config, selectedModel);
+        const distinct = [...new Set(plan)];
+        const localFor = (outputs: number) =>
+            requestCreditCost({
+                channelMode: priceChannel.scope === "system" ? "remote" : "local",
+                modelCosts: priceChannel.modelCosts,
+                model: modelOptionName(selectedModel),
+                count: kind === "image" ? outputs : 1,
+                seconds: kind === "video" ? Number(seconds) || 1 : 1,
+                capability,
+                config: composerConfig,
+                requirements: quoteRequirementsFor(outputs),
+            });
+        const localAmounts = new Map(distinct.map((outputs) => [outputs, localFor(outputs)]));
+        const localTotal = plan.every((outputs) => localAmounts.get(outputs) !== null) ? plan.reduce((sum, outputs) => sum + (localAmounts.get(outputs) || 0), 0) : null;
+        const requests = distinct.map((outputs) => ({ outputs, request: modelQuoteRequest(kind === "image" ? { ...composerConfig, count: String(outputs) } : composerConfig, selectedModel, capability, quoteRequirementsFor(outputs)) }));
+        if (requests.some((item) => !item.request)) {
+            setEstimate({ credits: localTotal, estimated: false, tone: localTotal === null ? "usage" : "local" });
+            return;
+        }
+        const controller = new AbortController();
+        setEstimate(localTotal === null ? { credits: null, estimated: false, tone: "loading" } : { credits: localTotal, estimated: false, tone: "local" });
+        Promise.all(requests.map(async (item) => ({ outputs: item.outputs, quote: (await quoteModel(item.request!, controller.signal)).quote })))
+            .then((quotes) => {
+                const byOutputs = new Map(quotes.map((item) => [item.outputs, item.quote]));
+                const total = plan.reduce((sum, outputs) => sum + (byOutputs.get(outputs)?.amountMicrocredits || 0), 0) / 1_000_000;
+                if (!active() || controller.signal.aborted) return;
+                setEstimate({ credits: total, estimated: quotes.some((item) => item.quote.estimated === true), tone: "quote" });
+            })
+            .catch(() => {
+                if (controller.signal.aborted || !active()) return;
+                setEstimate({ credits: localTotal, estimated: false, tone: localTotal === null ? "unavailable" : "local" });
+            });
+        return () => controller.abort();
+    }, [capability, composerConfig, config, creditsEnabled, kind, plan, quoteRequirementsFor, seconds, selectedModel]);
 
+    const generationStatus = useGenerationReadiness(composerConfig, selectedModel, capability, quoteRequirementsFor(plan[0] || 1), plan[0] || 1, kind === "video" ? seconds : 1);
+
+    // ---------- 任务列表轮询 ----------
+    const loadFailedRef = useRef(false);
+    const [tasksError, setTasksError] = useState("");
     const loadTasks = useCallback(async () => {
-        const scope = getActiveUserScope();
-        const epoch = detailEpoch.current;
         try {
             const result = await listWorkbenchTasks(kind, 100);
-            if (scope !== getActiveUserScope() || epoch !== detailEpoch.current) return [];
-            setTasks(result);
+            if (!active()) return null;
+            loadFailedRef.current = false;
             setTasksError("");
+            setTasks(result);
             return result;
         } catch (error) {
-            if (scope !== getActiveUserScope() || epoch !== detailEpoch.current) return [];
-            setTasksError(error instanceof Error ? error.message : "任务列表加载失败，已有记录已保留");
-            return [];
+            if (!active()) return null;
+            setTasksError(errorMessage(error, "作品列表加载失败"));
+            if (!loadFailedRef.current) message.error(errorMessage(error, "作品列表加载失败"));
+            loadFailedRef.current = true;
+            return null;
         } finally {
-            if (scope === getActiveUserScope() && epoch === detailEpoch.current) setTasksLoading(false);
+            if (active()) setTasksLoading(false);
         }
-    }, [kind, userId]);
-
+    }, [kind, message, active]);
+    const taskIds = useMemo(() => new Set(tasks.map((task) => task.id)), [tasks]);
+    const hasActiveWork = tasks.some(isActiveWorkbenchTask) || localBatches.some((batch) => batch.submitting || Object.values(batch.receipts).some((receipt) => !taskIds.has(receipt.id) && isActiveWorkbenchTask(receipt)));
+    const hasActiveWorkRef = useRef(hasActiveWork);
+    hasActiveWorkRef.current = hasActiveWork;
+    const pollKickRef = useRef<() => void>(() => undefined);
     useEffect(() => {
         let stopped = false;
         let timer = 0;
+        const schedule = (delay: number) => {
+            window.clearTimeout(timer);
+            timer = window.setTimeout(() => void poll(), delay);
+        };
         const poll = async () => {
-            const revision = workbenchRevisionRef.current;
-            const result = await loadTasks();
-            if (stopped) return;
-            if (activeTask && revision === workbenchRevisionRef.current) {
-                const latest = result.find((item) => item.id === activeTask.id);
-                if (latest) {
-                    setActiveTask(latest);
-                    if (latest.status === "succeeded" || latest.status === "failed" || latest.status === "cancelled") setMobileTab("result");
-                }
-            }
-            timer = window.setTimeout(() => void poll(), result.some((task) => task.status === "queued" || task.status === "running") ? 5000 : 30000);
+            await loadTasks();
+            if (!stopped) schedule(hasActiveWorkRef.current ? 4000 : 30000);
+        };
+        pollKickRef.current = () => {
+            if (!stopped) schedule(600);
         };
         void poll();
         const onVisible = () => {
-            if (!document.hidden) {
-                window.clearTimeout(timer);
-                void poll();
-            }
+            if (!document.hidden && !stopped) schedule(0);
         };
         document.addEventListener("visibilitychange", onVisible);
         return () => {
@@ -425,62 +486,269 @@ export function WorkbenchPage({ kind }: { kind: WorkbenchKind }) {
             window.clearTimeout(timer);
             document.removeEventListener("visibilitychange", onVisible);
         };
-    }, [activeTask?.id, loadTasks]);
+    }, [loadTasks]);
+    useEffect(() => {
+        if (hasActiveWork) pollKickRef.current();
+    }, [hasActiveWork]);
 
-    const resetWorkbench = () => {
-        workbenchRevisionRef.current += 1;
-        references.forEach(revokeReferencePreview);
-        setReferences([]);
-        setUploadSlotKey(undefined);
-        setTool(null);
-        setPreset(null);
-        setPresetPending(null);
-        setPrompt("");
-        setActiveTask(null);
-        detailRequestRef.current += 1;
-        setDetailLoading(false);
-        setDetailTask(null);
-        setMobileTab("generate");
-        setCount("1");
-        setRatio(kind === "image" ? imageProfile?.size.default || "1:1" : videoProfile?.defaultRatio || "16:9");
-        setQuality(imageProfile?.quality.default || "auto");
-        setImageResolution(imageProfile?.resolution.default || "auto");
-        setSeconds(String(videoProfile?.duration.default || 6));
-        setVideoQuality((videoProfile?.defaultResolution || "720p").replace(/p$/i, ""));
-        const params = new URLSearchParams(searchParams);
-        params.delete("tool");
-        params.delete("preset");
-        setSearchParams(params, { replace: true });
-        message.success("工作台已重置");
-    };
+    // ---------- 任务详情：列表只有首张预览，可见批次再按需取详情 ----------
+    const pumpDetails = useCallback(() => {
+        while (active() && detailActiveRef.current < DETAIL_CONCURRENCY && detailQueueRef.current.length) {
+            const { id, version } = detailQueueRef.current.shift()!;
+            detailActiveRef.current += 1;
+            detailInflightRef.current.add(id);
+            queryGenerationTask(id)
+                .then((task) => {
+                    if (!active()) return;
+                    detailFailedRef.current.delete(id);
+                    setDetails((current) => ({ ...current, [id]: task }));
+                    setDetailErrors((current) => {
+                        if (!current.has(id)) return current;
+                        const next = new Set(current);
+                        next.delete(id);
+                        return next;
+                    });
+                })
+                // 失败时记下当时的任务版本：同一版本不再重复请求，任务更新后再取；画廊不再为它保留加载占位。
+                .catch(() => {
+                    if (!active()) return;
+                    detailFailedRef.current.set(id, version);
+                    setDetailErrors((current) => (current.has(id) ? current : new Set(current).add(id)));
+                })
+                .finally(() => {
+                    detailActiveRef.current -= 1;
+                    detailInflightRef.current.delete(id);
+                    if (active()) pumpDetails();
+                });
+        }
+    }, []);
+    const requestDetails = useCallback(
+        (entries: Array<{ id: string; version?: string }>) => {
+            for (const { id, version = "" } of entries) {
+                if (!id || detailInflightRef.current.has(id) || detailQueueRef.current.some((entry) => entry.id === id)) continue;
+                if (detailFailedRef.current.has(id) && detailFailedRef.current.get(id) === version) continue;
+                detailQueueRef.current.push({ id, version });
+            }
+            pumpDetails();
+        },
+        [pumpDetails],
+    );
+    useEffect(
+        () => () => {
+            // 离开页面后不再继续排队读取详情。
+            detailQueueRef.current = [];
+        },
+        [],
+    );
 
-    // 提示词为空，或仍是当前预设的原文（用户没改过），切换时可以直接替换；改过的内容先确认再动。
+    const receiptTasks = useMemo(() => localBatches.flatMap((batch) => Object.values(batch.receipts)).filter((receipt) => !taskIds.has(receipt.id)), [localBatches, taskIds]);
+    const groups = useMemo(() => groupWorkbenchTasks([...tasks, ...receiptTasks]), [receiptTasks, tasks]);
+
+    useEffect(() => {
+        const wanted: Array<{ id: string; version: string }> = [];
+        for (const group of groups) {
+            if (!visibleBatchKeys.has(group.key)) continue;
+            group.tasks.forEach((task, index) => {
+                const detail = details[task.id];
+                // 首个任务的详情提供场景与参数摘要；图片任务各自的张数不同（如 4 + 1），每个都要读一次；
+                // 已完成任务的详情才有全部产物，运行中取到的旧详情完成后要刷新。
+                const needsSummary = (index === 0 || kind === "image") && !detail;
+                const needsOutputs = task.status === "succeeded" && (!detail || detail.status !== "succeeded");
+                if (needsSummary || needsOutputs) wanted.push({ id: task.id, version: task.updatedAt });
+            });
+        }
+        if (wanted.length) requestDetails(wanted);
+    }, [details, groups, kind, requestDetails, visibleBatchKeys]);
+
+    const taskModelLabel = useCallback(
+        (task?: GenerationTask) => {
+            const rawModel = task?.model?.trim() || "";
+            if (!rawModel) return "";
+            const configured = models.find((item) => item === rawModel || modelOptionName(item) === rawModel);
+            const display = configured ? modelDisplayName(config, configured) : rawModel;
+            return isModelIdLike(display) ? "" : display;
+        },
+        [config, models],
+    );
+
+    // ---------- 组装画廊批次 ----------
+    const galleryBatches = useMemo<GalleryBatch[]>(() => {
+        const localById = new Map(localBatches.map((batch) => [batch.id, batch]));
+        const used = new Set<string>();
+        const toolNames = new Map(tools.map((item) => [item.id, item.name]));
+        const build = (group: WorkbenchTaskGroup | null, local: LocalBatch | undefined): GalleryBatch => {
+            const groupTasks = group?.tasks || [];
+            const first = groupTasks[0];
+            const snapshot = first ? workbenchTaskSnapshot(details[first.id] || first) : null;
+            const parameters = local?.parameters || snapshot?.parameters || {};
+            const key = group?.key || `batch:${local!.id}`;
+            const ratioValue = local?.ratio ?? aspectRatioOf(kind === "image" ? parameters.size : parameters.ratio) ?? measuredRatios[key];
+            const tiles: GalleryTile[] = [];
+            const outputs: WorkbenchOutput[] = [];
+            const counts = { done: 0, active: 0, failed: 0, pending: 0, total: 0 };
+            const expectedFor = (task: GenerationTask, index: number) => {
+                if (local) return local.plan[index] || 1;
+                if (kind !== "image") return 1;
+                const taskSnapshot = details[task.id] ? workbenchTaskSnapshot(details[task.id]) : task === first ? snapshot : null;
+                return Math.max(1, Math.floor(Number(taskSnapshot?.parameters.count)) || 1);
+            };
+            const addTask = (task: GenerationTask, expected: number) => {
+                counts.total += expected;
+                if (task.status === "succeeded") {
+                    const detail = details[task.id];
+                    const taskOutputs = workbenchTaskOutputs(task, kind, detail);
+                    for (const output of taskOutputs) {
+                        tiles.push({ type: "output", key: output.key, output, task });
+                        outputs.push(output);
+                    }
+                    counts.done += taskOutputs.length;
+                    const detailLoaded = Boolean(detail?.resultJson);
+                    const missing = detailLoaded || detailErrors.has(task.id) ? 0 : Math.max(0, expected - taskOutputs.length);
+                    for (let slot = 0; slot < missing; slot += 1) tiles.push({ type: "loading", key: `${task.id}:loading:${slot}`, task });
+                    if (detailLoaded && !taskOutputs.length) tiles.push({ type: "failed", key: `${task.id}:missing`, task: { ...task, status: "failed", error: "作品已生成，但暂时无法载入预览" } });
+                    if (detailLoaded) counts.total += taskOutputs.length - expected;
+                    return;
+                }
+                if (isActiveWorkbenchTask(task)) {
+                    counts.active += expected;
+                    for (let slot = 0; slot < expected; slot += 1) tiles.push({ type: "active", key: `${task.id}:active:${slot}`, task, slot });
+                    return;
+                }
+                counts.failed += expected;
+                tiles.push({ type: "failed", key: `${task.id}:failed`, task });
+            };
+            let resumable = 0;
+            if (local) {
+                local.plan.forEach((outputsForTask, index) => {
+                    const task = groupTasks.find((item) => (item.clientContext?.batchIndex ?? 0) === index) || local.receipts[index];
+                    if (task) {
+                        addTask(task, outputsForTask);
+                        return;
+                    }
+                    const state = local.states[index];
+                    const submitting = state === "submitting" || (state === "pending" && local.submitting);
+                    if (!submitting) resumable += 1;
+                    counts.total += outputsForTask;
+                    if (submitting) counts.active += outputsForTask;
+                    else counts.pending += outputsForTask;
+                    for (let slot = 0; slot < outputsForTask; slot += 1) tiles.push({ type: "pending", key: `${local.id}:${index}:${slot}`, state: submitting ? "submitting" : "unsubmitted" });
+                });
+            } else {
+                groupTasks.forEach((task, index) => addTask(task, expectedFor(task, index)));
+            }
+            const toolName = local?.toolName || snapshot?.toolName || (snapshot?.toolId ? toolNames.get(snapshot.toolId) : undefined);
+            return {
+                key,
+                createdAt: local?.createdAt || group?.createdAt || new Date().toISOString(),
+                prompt: local?.prompt || first?.prompt || "",
+                ...(toolName ? { toolName } : {}),
+                modelLabel: local?.modelLabel || taskModelLabel(first),
+                chips: workbenchParameterSummary(kind, parameters, counts.total),
+                ...(ratioValue ? { ratio: ratioValue } : {}),
+                tiles,
+                tasks: groupTasks,
+                outputs,
+                counts,
+                resumable,
+                ...(local?.error ? { resumeError: local.error } : {}),
+                submitting: Boolean(local?.submitting),
+                localOnly: Boolean(local) && !groupTasks.length,
+            };
+        };
+        const result: GalleryBatch[] = [];
+        for (const group of groups) {
+            const local = group.batchId ? localById.get(group.batchId) : undefined;
+            if (local) used.add(local.id);
+            result.push(build(group, local));
+        }
+        for (const local of localBatches) if (!used.has(local.id)) result.push(build(null, local));
+        return result.sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
+    }, [detailErrors, details, groups, kind, localBatches, measuredRatios, taskModelLabel, tools]);
+
+    // ---------- 场景与提示词 ----------
+    // 提示词为空，或仍是当前预设原文（用户没改过），切换时可以直接替换；改过的内容先确认再动。
     const promptReplaceable = () => canReplaceWorkbenchPrompt(prompt, preset);
 
-    // 切换工具后提示词必须跟着新工具走：未改动的模板直接换成新工具的预设（新工具没有预设则清空），
-    // 用户改过的内容弹出"替换 / 追加 / 返回"确认，不能静默保留上一个工具的模板。
+    // 切换场景后提示词必须跟着新场景走：未改动的模板直接换成新场景的预设（新场景没有预设则清空），
+    // 用户改过的内容弹出“替换 / 追加 / 返回”确认，不能静默保留上一个场景的模板。
     const switchToolPrompt = (next: WorkbenchTool | null, preferredPresetId?: string | null) => {
-        const decision = planWorkbenchPresetSwitch(prompt, preset, next?.presets || [], preferredPresetId);
-        setPrompt(decision.prompt);
-        setPreset(decision.preset);
-        setPresetPending(decision.pending);
+        const nextState = planWorkbenchPresetSwitch(prompt, preset, next?.presets || [], preferredPresetId);
+        setPrompt(nextState.prompt);
+        setPreset(nextState.preset);
+        setPresetPending(nextState.pending);
+    };
+
+    const referenceLimitFor = useCallback(
+        (mediaKind: MediaKind) => {
+            if (kind === "image") return mediaKind === "image" ? imageProfile?.references.maxImages || 0 : 0;
+            if (mediaKind === "image") return videoProfile?.references.maxImages || 0;
+            if (mediaKind === "video") return videoProfile?.references.maxVideos || 0;
+            return videoProfile?.references.maxAudios || 0;
+        },
+        [imageProfile, kind, videoProfile],
+    );
+
+    /** 换场景时尽量保留已上传素材：按媒体类型放进新场景的槽位，放不下的才移除。 */
+    const reassignReferences = (next: WorkbenchTool | null) => {
+        const slots = next?.inputContract?.slots || [];
+        const used = new Map<string, number>();
+        const kept: WorkbenchReference[] = [];
+        const dropped: WorkbenchReference[] = [];
+        for (const reference of referencesRef.current) {
+            if (kept.filter((item) => item.kind === reference.kind).length >= referenceLimitFor(reference.kind)) {
+                dropped.push(reference);
+                continue;
+            }
+            if (!slots.length) {
+                const sameKind = kept.filter((item) => item.kind === reference.kind).length;
+                if (sameKind < referenceLimitFor(reference.kind)) kept.push({ ...reference, slotKey: undefined });
+                else dropped.push(reference);
+                continue;
+            }
+            const fits = (slot: WorkbenchReferenceSlot) => slot.mediaTypes.includes(reference.kind) && (used.get(slot.key) || 0) < slot.maxCount;
+            const slot = slots.find((item) => item.key === reference.slotKey && fits(item)) || slots.find(fits);
+            if (!slot) {
+                dropped.push(reference);
+                continue;
+            }
+            used.set(slot.key, (used.get(slot.key) || 0) + 1);
+            kept.push({ ...reference, slotKey: slot.key });
+        }
+        dropped.forEach(revokeReferencePreview);
+        setReferences(kept);
+        if (dropped.length) message.info(`${dropped.length} 个素材不适用于${next ? `“${next.name}”` : "自由创作"}，已移除`);
     };
 
     const chooseTool = (next: WorkbenchTool | null) => {
         workbenchRevisionRef.current++;
         setAssetPicker(null);
-        references.forEach(revokeReferencePreview);
-        setReferences([]);
+        reassignReferences(next);
         setUploadSlotKey(undefined);
         setTool(next);
-        setToolLibraryOpen(false);
+        setLibraryOpen(false);
         const params = new URLSearchParams(searchParams);
         if (next) params.set("tool", next.id);
         else params.delete("tool");
         params.delete("preset");
         setSearchParams(params, { replace: true });
         switchToolPrompt(next);
+        setMobileTab("compose");
     };
+
+    useEffect(() => {
+        const toolId = searchParams.get("tool");
+        if (!toolId || !tools.length) return;
+        const next = tools.find((item) => item.id === toolId);
+        // 页内选择和任务恢复会先更新 tool 再改地址，这里只处理从外部链接切换过来的场景。
+        if (!next || next.id === tool?.id) return;
+        workbenchRevisionRef.current++;
+        setAssetPicker(null);
+        reassignReferences(next);
+        setTool(next);
+        switchToolPrompt(next, searchParams.get("preset"));
+        // 只随地址和目录变化触发；tool 变化不能触发，否则任务恢复在改地址前会被旧地址拉回。
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [searchParams, tools]);
 
     const choosePreset = (next: WorkbenchPromptPreset) => {
         if (promptReplaceable()) {
@@ -498,6 +766,158 @@ export function WorkbenchPage({ kind }: { kind: WorkbenchKind }) {
         setPresetPending(null);
     };
 
+    // ---------- 参考素材 ----------
+    const slotFor = (mediaKind: MediaKind, preferredKey: string | undefined, pending: WorkbenchReference[]) => {
+        const slots = tool?.inputContract?.slots || [];
+        const occupancy = (key: string) => [...referencesRef.current, ...pending].filter((item) => item.slotKey === key).length;
+        const fits = (slot: WorkbenchReferenceSlot) => slot.mediaTypes.includes(mediaKind) && occupancy(slot.key) < slot.maxCount;
+        const preferred = slots.find((slot) => slot.key === preferredKey);
+        if (preferred) return fits(preferred) ? preferred : null;
+        return slots.find(fits) || null;
+    };
+
+    const appendReferences = (items: Array<{ kind: MediaKind; name: string; previewUrl: string; resourceId?: string; file?: File }>, preferredSlotKey?: string) => {
+        const slots = tool?.inputContract?.slots || [];
+        const accepted: Array<{ reference: WorkbenchReference; file?: File }> = [];
+        const rejected = new Set<string>();
+        for (const item of items) {
+            const pending = accepted.map((entry) => entry.reference);
+            const limit = referenceLimitFor(item.kind);
+            if ([...referencesRef.current, ...pending].filter((entry) => entry.kind === item.kind).length >= limit) {
+                rejected.add(limit ? `${mediaLabel(item.kind)}最多 ${limit} 个` : `当前模型不支持参考${mediaLabel(item.kind)}`);
+                if (item.previewUrl.startsWith("blob:")) URL.revokeObjectURL(item.previewUrl);
+                continue;
+            }
+            let slotKey: string | undefined;
+            let slot: WorkbenchReferenceSlot | undefined;
+            if (slots.length) {
+                const target = slotFor(item.kind, preferredSlotKey, pending);
+                if (!target) {
+                    rejected.add(
+                        preferredSlotKey
+                            ? `“${slots.find((entry) => entry.key === preferredSlotKey)?.name || "该槽位"}”只接受${(slots.find((entry) => entry.key === preferredSlotKey)?.mediaTypes || []).map(mediaLabel).join("、")}或已满`
+                            : `没有可以放${mediaLabel(item.kind)}的素材位置`,
+                    );
+                    if (item.previewUrl.startsWith("blob:")) URL.revokeObjectURL(item.previewUrl);
+                    continue;
+                }
+                slot = target;
+                slotKey = target.key;
+            } else {
+                const sameKind = [...referencesRef.current, ...pending].filter((entry) => entry.kind === item.kind).length;
+                const limit = referenceLimitFor(item.kind);
+                if (sameKind >= limit) {
+                    rejected.add(limit ? `${mediaLabel(item.kind)}最多 ${limit} 个` : `当前模型不支持参考${mediaLabel(item.kind)}`);
+                    if (item.previewUrl.startsWith("blob:")) URL.revokeObjectURL(item.previewUrl);
+                    continue;
+                }
+            }
+            const role = kind === "video" && item.kind === "image" ? defaultVideoRole(slot, [...referencesRef.current, ...pending]) : "reference";
+            accepted.push({
+                file: item.file,
+                reference: {
+                    id: createClientUUID(),
+                    name: item.name,
+                    kind: item.kind,
+                    previewUrl: item.previewUrl,
+                    ...(item.resourceId ? { resourceId: item.resourceId } : {}),
+                    progress: item.file ? 0 : 100,
+                    uploading: Boolean(item.file),
+                    role,
+                    ...(slotKey ? { slotKey } : {}),
+                },
+            });
+        }
+        if (rejected.size) message.warning([...rejected].join("；"));
+        if (accepted.length) setReferences((current) => [...current, ...accepted.map((entry) => entry.reference)]);
+        return accepted;
+    };
+
+    const addFiles = async (files: FileList | File[], preferredSlotKey?: string) => {
+        if (!active()) return;
+        const list = Array.from(files);
+        const allowed = kind === "image" ? ["image"] : ["image", "video", "audio"];
+        const typed = list.flatMap((file) => {
+            const mediaKind = mediaKindOfFile(file);
+            return mediaKind && allowed.includes(mediaKind) ? [{ file, mediaKind }] : [];
+        });
+        if (typed.length < list.length) message.warning(kind === "image" ? "只能上传图片" : "只能上传图片、视频或音频");
+        const accepted = appendReferences(
+            typed.map(({ file, mediaKind }) => ({ kind: mediaKind, name: file.name, previewUrl: URL.createObjectURL(file), file })),
+            preferredSlotKey,
+        );
+        await Promise.all(
+            accepted.map(async ({ reference, file }) => {
+                if (!file) return;
+                try {
+                    if (!active()) return;
+                    const resource = await uploadResourceFile(file, reference.kind, { fileName: file.name }, (uploaded, total) => {
+                        if (!active()) return;
+                        setReferences((current) => current.map((item) => (item.id === reference.id ? { ...item, progress: total ? (uploaded / total) * 100 : 0 } : item)));
+                    });
+                    if (!active()) return;
+                    setReferences((current) => current.map((item) => (item.id === reference.id ? { ...item, resourceId: resource.id, uploading: false, progress: 100 } : item)));
+                } catch (error) {
+                    if (!active()) return;
+                    setReferences((current) => current.map((item) => (item.id === reference.id ? { ...item, uploading: false, error: errorMessage(error, "上传失败") } : item)));
+                }
+            }),
+        );
+    };
+
+    /** 已在服务端的资源直接作为参考；换不到展示地址通常是资源已删除或不属于当前账号，不放进面板。 */
+    const addResourceReferences = async (items: Array<{ resourceId: string; kind: MediaKind; name: string }>, preferredSlotKey?: string) => {
+        const revision = workbenchRevisionRef.current;
+        const referenceSnapshot = referencesRef.current;
+        const model = currentModelRef.current;
+        if (!active() || (assetPicker && assetPicker.revision !== revision)) throw new Error("创作模板已变化，请重新选择素材");
+        const limits = { image: referenceLimitFor("image"), video: referenceLimitFor("video"), audio: referenceLimitFor("audio") };
+        const planned = planWorkbenchReferences(referenceSnapshot, items, tool?.inputContract?.slots || [], limits, preferredSlotKey);
+        const resolved = await Promise.all(planned.map(async (item) => ({ ...item, previewUrl: (await resolveWorkbenchResourceURL(item.resourceId, item.kind === "image" ? "thumbnail" : "original")) || "" })));
+        if (!active() || revision !== workbenchRevisionRef.current || referenceSnapshot !== referencesRef.current || model !== currentModelRef.current) throw new Error("账号或创作模板已变化，请重新选择素材");
+        if (resolved.some((item) => !item.previewUrl)) throw new Error("所选素材不存在或暂时无法读取，未添加任何素材");
+        return appendReferences(resolved, preferredSlotKey);
+    };
+
+    const removeReference = (reference: WorkbenchReference) => {
+        revokeReferencePreview(reference);
+        setReferences((current) => current.filter((item) => item.id !== reference.id));
+    };
+
+    const clearReferences = () => {
+        referencesRef.current.forEach(revokeReferencePreview);
+        setReferences([]);
+    };
+
+    const handlePaste = (event: ClipboardEvent<HTMLElement>) => {
+        const files = Array.from(event.clipboardData?.files || []).filter((file) => {
+            const mediaKind = mediaKindOfFile(file);
+            return mediaKind === "image" || (kind === "video" && mediaKind !== null);
+        });
+        if (!files.length) return;
+        event.preventDefault();
+        event.stopPropagation();
+        void addFiles(files);
+    };
+
+    // “做成视频”从图片页带着资源 ID 过来：放进首帧位置，然后清掉地址参数。
+    const handoffRef = useRef(false);
+    useEffect(() => {
+        const resourceId = searchParams.get("ref")?.trim() || "";
+        if (!resourceId || kind !== "video" || directoryLoading || handoffRef.current) return;
+        if (searchParams.get("tool") && !tool) return;
+        handoffRef.current = true;
+        const params = new URLSearchParams(searchParams);
+        params.delete("ref");
+        setSearchParams(params, { replace: true });
+        if (!/^[A-Za-z0-9_-]{1,80}$/.test(resourceId)) return;
+        void addResourceReferences([{ resourceId, kind: "image", name: "商品图" }]).then((accepted) => {
+            if (accepted.length) message.success("已放入商品首帧，描述镜头后即可生成视频");
+        });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [directoryLoading, kind, searchParams, tool]);
+
+    // ---------- 参数 ----------
     const updateImageSettings = (size: string, nextQuality?: string, nextResolution?: string) => {
         setRatio(size);
         rememberImageSettings({ ratio: size });
@@ -511,232 +931,330 @@ export function WorkbenchPage({ kind }: { kind: WorkbenchKind }) {
         }
     };
 
-    const addFiles = async (files: FileList | File[], targetSlotKey = uploadSlotKey) => {
-        const list = Array.from(files);
-        const slot = tool?.inputContract?.slots.find((item) => item.key === targetSlotKey);
-        const allowedTypes = slot?.mediaTypes || (kind === "image" ? ["image"] : ["image", "video", "audio"]);
-        const accepted = list.filter((file) => allowedTypes.some((type) => file.type.startsWith(`${type}/`)));
-        if (accepted.length !== list.length) message.warning(`该输入槽位仅支持${allowedTypes.map((type) => (type === "image" ? "图片" : type === "video" ? "视频" : "音频")).join("、")}`);
-        const currentCount = references.filter((reference) => reference.slotKey === targetSlotKey).length;
-        const maxCount = slot?.maxCount || (kind === "image" ? imageProfile?.references.maxImages || 0 : (videoProfile?.references.maxImages || 0) + (videoProfile?.references.maxVideos || 0) + (videoProfile?.references.maxAudios || 0));
-        const picked = accepted.slice(0, Math.max(0, maxCount - currentCount));
-        if (picked.length < accepted.length) message.warning("部分素材超过当前输入槽位数量上限，未添加");
-        const pending: WorkbenchReference[] = picked.map((file) => ({
-            id: createClientUUID(),
-            name: file.name,
-            kind: (file.type.startsWith("image/") ? "image" : file.type.startsWith("video/") ? "video" : "audio") as WorkbenchReference["kind"],
-            previewUrl: URL.createObjectURL(file),
-            progress: 0,
-            uploading: true,
-            role: "reference" as const,
-            ...(targetSlotKey ? { slotKey: targetSlotKey } : {}),
-        }));
-        setReferences((current) => [...current, ...pending]);
-        await Promise.all(
-            pending.map(async (reference, index) => {
-                const file = picked[index];
-                try {
-                    const resource = await uploadResourceFile(file, reference.kind, { fileName: file.name }, (uploaded, total) => {
-                        setReferences((current) => current.map((item) => (item.id === reference.id ? { ...item, progress: total ? (uploaded / total) * 100 : 0 } : item)));
-                    });
-                    setReferences((current) => current.map((item) => (item.id === reference.id ? { ...item, resourceId: resource.id, uploading: false, progress: 100 } : item)));
-                } catch (error) {
-                    setReferences((current) => current.map((item) => (item.id === reference.id ? { ...item, uploading: false, error: error instanceof Error ? error.message : "上传失败" } : item)));
-                }
+    const changeCount = (value: number) => {
+        setCount(value);
+        if (kind === "image") rememberImageSettings({ count: String(value) });
+    };
+
+    const resetComposer = () => {
+        workbenchRevisionRef.current++;
+        setAssetPicker(null);
+        referencesRef.current.forEach(revokeReferencePreview);
+        setReferences([]);
+        setUploadSlotKey(undefined);
+        setTool(null);
+        setPreset(null);
+        setPresetPending(null);
+        setPrompt("");
+        setCount(1);
+        if (kind === "image") rememberImageSettings({ count: "1" });
+        setRatio(kind === "image" ? imageProfile?.size.default || "1:1" : videoProfile?.defaultRatio || "16:9");
+        setQuality(imageProfile?.quality.default || "auto");
+        setImageResolution(imageProfile?.resolution.default || "auto");
+        setSeconds(String(videoProfile?.duration.default || 6));
+        setVideoQuality((videoProfile?.defaultResolution || "720p").replace(/p$/i, ""));
+        const params = new URLSearchParams(searchParams);
+        params.delete("tool");
+        params.delete("preset");
+        setSearchParams(params, { replace: true });
+        message.success("创作面板已重置，作品不受影响");
+    };
+
+    // ---------- 提交 ----------
+    const disabledReason = !generationStatus.canSubmit ? generationStatus.reason || generationStatus.fee.label : !selectedModel
+        ? `先选择${kindLabel}模型`
+        : missingInput
+          ? `请上传“${missingInput.name || "必填素材"}”`
+          : references.some((reference) => reference.uploading)
+            ? "素材上传中，请稍候"
+            : references.some((reference) => reference.error)
+              ? "请移除上传失败的素材"
+              : promptRequired && !prompt.trim()
+                ? "请填写画面描述"
+                : undefined;
+
+    const buildBatchRequest = (): BatchRequest | string => {
+        const submittedPrompt = normalizeCanvasNodeMentionTokens(prompt.trim(), promptReferences);
+        if (promptRequired && !submittedPrompt) return "请填写画面描述";
+        const missing = missingWorkbenchInput(tool, references);
+        if (missing) return `请上传“${missing.name || "必填素材"}”`;
+        if (!selectedModel || !models.includes(selectedModel)) return `请选择可用的${kindLabel}模型`;
+        if (!generationStatus.canSubmit) return generationStatus.reason || generationStatus.fee.label;
+        if (!isAiConfigReady(config, selectedModel)) return "当前模型配置不完整，请先完成模型设置";
+        if (references.some((reference) => reference.uploading || reference.error || !reference.resourceId)) return "请等待素材上传完成，或移除上传失败的素材";
+        if (references.some((reference) => references.filter((item) => item.kind === reference.kind).length > referenceLimitFor(reference.kind))) return "参考素材超出当前模型支持的数量，请调整后重试";
+        if (submittedPrompt.length > promptMaxChars) return "描述超过当前模型支持的长度";
+        const logicalModelId = logicalModelIDForConfig({ ...composerConfig, model: selectedModel });
+        const channel = resolveModelChannel(config, selectedModel);
+        const imageRequest = kind === "image" && imageProfile ? normalizeImageValue(imageProfile, { size: ratio, quality, imageResolution, imageParameters: config.imageParameters, count: "1", transparentBackground: config.transparentBackground }) : null;
+        const videoRequest = kind === "video" && videoProfile ? normalizeVideoValue(videoProfile, { seconds, ratio, resolution: videoQuality }) : null;
+        const parameters: Record<string, unknown> = imageRequest
+            ? { size: imageRequest.size, quality: imageRequest.quality, ...(imageRequest.imageResolution ? { imageResolution: imageRequest.imageResolution } : {}) }
+            : {
+                  seconds: Number(videoRequest?.seconds || seconds),
+                  ratio: videoRequest?.ratio || ratio,
+                  resolution: videoRequest?.resolution || videoQuality,
+                  generateAudio: composerConfig.videoGenerateAudio === "true",
+                  watermark: composerConfig.videoWatermark === "true",
+              };
+        const generationConfig = {
+            ...composerConfig,
+            model: selectedModel,
+            ...(imageRequest ? { imageModel: selectedModel, size: imageRequest.size, quality: imageRequest.quality, imageResolution: imageRequest.imageResolution } : {}),
+            ...(videoRequest ? { videoModel: selectedModel, size: videoRequest.ratio, videoSeconds: videoRequest.seconds, vquality: videoRequest.resolution.replace(/p$/i, "") } : {}),
+        };
+        const readyReferences = references.filter((reference) => reference.resourceId);
+        return {
+            kind,
+            route: logicalModelId || channel?.scope === "system" ? "workbench" : "tasks",
+            prompt: submittedPrompt,
+            model: modelOptionName(selectedModel),
+            ...(logicalModelId ? { logicalModelId } : channel?.id ? { channelId: channel.id } : {}),
+            ...(tool ? { toolId: tool.id } : {}),
+            ...(tool && preset ? { presetId: preset.id } : {}),
+            parameters,
+            references: readyReferences,
+            generationConfig,
+            ...(kind === "video" ? { videoOperation: workbenchVideoOperation(readyReferences) } : {}),
+        };
+    };
+
+    const createBatchTask = async (request: BatchRequest, batchPlan: number[], index: number, batchId: string, idempotencyKey: string) => {
+        if (!active()) throw new DOMException("账号已切换", "AbortError");
+        const batch = { id: batchId, index, count: batchPlan.length };
+        const outputs = batchPlan[index] || 1;
+        const parameters = request.kind === "image" ? { ...request.parameters, count: outputs } : request.parameters;
+        const referenceSnapshot = request.references.map((reference) => ({ resourceId: reference.resourceId!, kind: reference.kind, role: reference.role, ...(reference.slotKey ? { slotKey: reference.slotKey } : {}) }));
+        if (request.route === "workbench") {
+            const created = await createWorkbenchTask({
+                idempotencyKey,
+                kind: request.kind,
+                ...(request.toolId ? { toolId: request.toolId } : {}),
+                ...(request.presetId ? { presetId: request.presetId } : {}),
+                prompt: request.prompt,
+                model: request.model,
+                ...(request.logicalModelId ? { logicalModelId: request.logicalModelId } : { channelId: request.channelId }),
+                parameters,
+                references: referenceSnapshot,
+                batch,
+            });
+            return receiptTask(created as Partial<GenerationTask> & { id: string }, request, batch);
+        }
+        const mediaReference = (reference: WorkbenchReference, type: string) => ({
+            id: reference.resourceId!,
+            name: reference.resourceId!,
+            type,
+            storageKey: resourceStorageKey(reference.resourceId!),
+            role: reference.role,
+            ...(reference.slotKey ? { slotKey: reference.slotKey } : {}),
+        });
+        const taskInput = await prepareBackendGenerationTask({
+            mode: request.kind,
+            prompt: request.prompt,
+            config: request.kind === "image" ? { ...request.generationConfig, count: String(outputs) } : request.generationConfig,
+            referenceImages: request.references.filter((reference) => reference.kind === "image").map((reference) => ({ ...mediaReference(reference, "image/*"), dataUrl: "" })),
+            referenceVideos: request.references.filter((reference) => reference.kind === "video").map((reference) => ({ ...mediaReference(reference, "video/*"), url: "" })),
+            referenceAudios: request.references.filter((reference) => reference.kind === "audio").map((reference) => ({ ...mediaReference(reference, "audio/*"), url: "" })),
+            metadata: {
+                source: "workbench",
+                workbenchKind: request.kind,
+                ...(request.videoOperation ? { videoEditOperation: request.videoOperation } : {}),
+                ...Object.fromEntries(
+                    request.references.filter((reference) => reference.role === "first_frame" || reference.role === "last_frame").map((reference) => [reference.role === "first_frame" ? "videoStartFrameNodeId" : "videoEndFrameNodeId", reference.resourceId]),
+                ),
+                ...(request.toolId ? { workbenchToolId: request.toolId, workbenchToolName: tools.find((item) => item.id === request.toolId)?.name || "" } : {}),
+                ...(request.presetId ? { workbenchPresetId: request.presetId } : {}),
+                workbench: { kind: request.kind, ...(request.toolId ? { toolId: request.toolId } : {}), ...(request.presetId ? { presetId: request.presetId } : {}), parameters, references: referenceSnapshot, batch },
+            },
+        });
+        if (!active()) throw new DOMException("账号已切换", "AbortError");
+        const created = await createGenerationTask({ ...taskInput, idempotencyKey, ...(request.videoOperation ? { operation: request.videoOperation } : {}) });
+        return receiptTask(created, request, batch);
+    };
+
+    const runBatchSubmission = async (batchId: string, indices: number[], heldToken?: symbol) => {
+        if (!active() || (submissionBusyRef.current && submissionBusyRef.current !== heldToken)) return;
+        const token = heldToken || Symbol();
+        submissionBusyRef.current = token;
+        setBusy(true);
+        const local = localBatchesRef.current.find((batch) => batch.id === batchId);
+        if (!local) { submissionBusyRef.current = null; setBusy(false); return; }
+        updateLocalBatch(batchId, (batch) => ({ ...batch, submitting: true, error: undefined }));
+        let confirmed = 0;
+        try {
+            await runWorkbenchBatchIntent(local.intent, {
+                indices,
+                active,
+                send: (index, id, key) => createBatchTask(local.request, local.plan, index, id, key),
+                read: queryGenerationTask,
+                onStart: (index) => updateLocalBatch(batchId, (batch) => ({ ...batch, states: batch.states.map((state, i) => i === index ? "submitting" : state) })),
+                onReceipt: (index, task) => {
+                    confirmed++;
+                    const receipt = receiptTask(task, local.request, { id: batchId, index, count: local.plan.length });
+                    updateLocalBatch(batchId, (batch) => ({ ...batch, states: batch.states.map((state, i) => i === index ? "created" : state), receipts: { ...batch.receipts, [index]: receipt } }));
+                },
+            });
+            if (active()) message.success("任务回执已确认，生成进度会自动更新");
+        } catch (error) {
+            if (!active()) return;
+            const reason = errorMessage(error, "暂未收到任务回执，请继续确认原批次");
+            updateLocalBatch(batchId, (batch) => ({ ...batch, error: reason, states: batch.states.map((state) => state === "created" ? state : "failed") }));
+            message.warning(`${confirmed ? `已确认 ${confirmed} 个任务；` : ""}${reason}。继续提交会核对原任务，不会重新生成已确认的任务。`);
+        } finally {
+            if (active()) {
+                updateLocalBatch(batchId, (batch) => ({ ...batch, submitting: false }));
+                setBusy(false);
+                pollKickRef.current();
+            }
+            if (submissionBusyRef.current === token) submissionBusyRef.current = null;
+        }
+    };
+
+    const submit = async () => {
+        if (submissionBusyRef.current || !active()) return;
+        const request = buildBatchRequest();
+        if (typeof request === "string") { message.warning(request); return; }
+        const token = Symbol();
+        submissionBusyRef.current = token;
+        setBusy(true);
+        try {
+            const batchPlan = planWorkbenchBatch(kind, requestedCount, maxOutputsPerTask);
+            const { generationConfig, references: requestReferences, ...stableRequest } = request;
+            const fingerprint = {
+                ...stableRequest,
+                references: requestReferences.map(({ resourceId, kind, role, slotKey }) => ({ resourceId, kind, role, slotKey })),
+                // The raw task route sends more than the visible parameters (e.g.
+                // Ark private references, workflow fields and provider defaults).
+                // Managed workbench requests use only stableRequest above.
+                ...(request.route === "tasks" ? {
+                    providerConfig: workbenchProviderIdentity(backendProviderConfig(generationConfig, kind)),
+                    defaultOptions: resolveModelChannel(generationConfig, selectedModel).modelCosts?.find((cost) => cost.model === modelOptionName(selectedModel))?.defaultOptions,
+                } : {}),
+            };
+            const intent = await openWorkbenchBatchIntent(scope, kind, fingerprint, batchPlan, active);
+            const parameters = kind === "image" ? { ...request.parameters, count: requestedCount } : request.parameters;
+            const local: LocalBatch = {
+                id: intent.id, intent,
+                createdAt: new Date().toISOString(), prompt: request.prompt,
+                ...(tool ? { toolName: tool.name } : {}),
+                modelLabel: modelDisplayName(config, selectedModel), parameters,
+                ...(aspectRatioOf(kind === "image" ? request.parameters.size : request.parameters.ratio) ? { ratio: aspectRatioOf(kind === "image" ? request.parameters.size : request.parameters.ratio) } : {}),
+                plan: batchPlan, states: batchPlan.map(() => "pending"), receipts: {}, submitting: true, request,
+            };
+            setLocalBatches((current) => [local, ...current.filter((item) => item.id !== local.id)]);
+            setFilter("all"); setQuery(""); setMobileTab("gallery");
+            await runBatchSubmission(local.id, batchPlan.map((_, i) => i), token);
+        } catch (error) {
+            if (active()) message.error(errorMessage(error, "任务提交失败"));
+        } finally {
+            if (submissionBusyRef.current === token) { submissionBusyRef.current = null; if (active()) setBusy(false); }
+        }
+    };
+
+    // ---------- 作品操作 ----------
+    const markTaskBusy = (id: string, value: boolean) =>
+        setBusyTaskIds((current) => {
+            const next = new Set(current);
+            if (value) next.add(id);
+            else next.delete(id);
+            return next;
+        });
+
+    const applyTaskUpdate = (next: GenerationTask) => {
+        setTasks((current) => current.map((item) => (item.id === next.id ? mergeTaskUpdate(item, next) : item)));
+        setLocalBatches((current) =>
+            current.map((batch) => {
+                const entry = Object.entries(batch.receipts).find(([, receipt]) => receipt.id === next.id);
+                return entry ? { ...batch, receipts: { ...batch.receipts, [entry[0]]: mergeTaskUpdate(entry[1], next) } } : batch;
             }),
         );
     };
 
-    const removeReference = (reference: WorkbenchReference) => {
-        revokeReferencePreview(reference);
-        setReferences((current) => current.filter((item) => item.id !== reference.id));
-    };
-
-    const submit = async () => {
-        if (submissionBusyRef.current) return;
-        const scope = getActiveUserScope();
-        const revision = workbenchRevisionRef.current;
-        const submittedPrompt = normalizeCanvasNodeMentionTokens(prompt.trim(), promptReferences);
-        if (tool?.inputContract?.promptRequired && !submittedPrompt) {
-            message.warning("当前工具需要填写提示词");
-            return;
-        }
-        if (!tool && !submittedPrompt) {
-            message.warning("请填写提示词");
-            return;
-        }
-        const missing = missingWorkbenchInput(tool, references);
-        if (missing) {
-            message.warning(`请补齐“${missing.name || "输入素材"}”`);
-            return;
-        }
-        const logicalModelId = logicalModelIDForConfig({ ...composerConfig, model: selectedModel });
-        const channel = resolveModelChannel(config, selectedModel);
-        if (!selectedModel || !models.includes(selectedModel)) {
-            message.error(`请选择可用的${kind === "image" ? "图片" : "视频"}模型`);
-            return;
-        }
-        if (!generationStatus.canSubmit) {
-            message.error(generationStatus.reason || generationStatus.fee.label);
-            return;
-        }
-        if (references.some((reference) => reference.uploading || reference.error || !reference.resourceId)) {
-            message.warning("请等待参考素材上传完成或移除失败素材");
-            return;
-        }
-        if (submittedPrompt.length > (kind === "image" ? imageProfile?.references.promptMaxChars || 32000 : videoProfile?.references.promptMaxChars || 8000)) {
-            message.error("提示词超过当前模型支持的长度");
-            return;
-        }
-        const submissionToken = Symbol();
-        submissionBusyRef.current = submissionToken;
-        setBusy(true);
-        try {
-            const imageRequest = kind === "image" && imageProfile ? normalizeImageValue(imageProfile, { size: ratio, quality, imageResolution, imageParameters: config.imageParameters, count, transparentBackground: config.transparentBackground }) : null;
-            const videoRequest = kind === "video" && videoProfile ? normalizeVideoValue(videoProfile, { seconds, ratio, resolution: videoQuality }) : null;
-            const parameters = imageRequest
-                ? { size: imageRequest.size, quality: imageRequest.quality, imageResolution: imageRequest.imageResolution, count: Number(imageRequest.count) }
-                : {
-                      seconds: Number(videoRequest?.seconds || seconds),
-                      ratio: videoRequest?.ratio || ratio,
-                      resolution: videoRequest?.resolution || videoQuality,
-                      generateAudio: composerConfig.videoGenerateAudio === "true",
-                      watermark: composerConfig.videoWatermark === "true",
-                  };
-            const generationConfig = {
-                ...composerConfig,
-                model: selectedModel,
-                ...(imageRequest ? { imageModel: selectedModel, size: imageRequest.size, quality: imageRequest.quality, imageResolution: imageRequest.imageResolution, count: imageRequest.count } : {}),
-                ...(videoRequest ? { videoModel: selectedModel, size: videoRequest.ratio, videoSeconds: videoRequest.seconds, vquality: videoRequest.resolution.replace(/p$/i, "") } : {}),
-            };
-            const readyReferences = references.filter((reference) => reference.resourceId);
-            const videoOperation = kind === "video" ? workbenchVideoOperation(readyReferences) : undefined;
-            const referenceSnapshot = readyReferences.map((reference) => ({ resourceId: reference.resourceId!, kind: reference.kind, role: reference.role, ...(reference.slotKey ? { slotKey: reference.slotKey } : {}) }));
-            const submissionFingerprint = { kind, prompt: submittedPrompt, model: selectedModel, logicalModelId, channelId: channel?.id, toolId: tool?.id, presetId: preset?.id, parameters, references: referenceSnapshot };
-            const createdTask =
-                logicalModelId || channel?.scope === "system"
-                    ? await submitTaskIntent(scope, kind, {
-                          kind,
-                          ...(tool ? { toolId: tool.id } : {}),
-                          ...(tool && preset ? { presetId: preset.id } : {}),
-                          prompt: submittedPrompt,
-                          model: modelOptionName(selectedModel),
-                          ...(logicalModelId ? { logicalModelId } : { channelId: channel.id }),
-                          parameters,
-                          references: readyReferences.map((reference) => ({ resourceId: reference.resourceId!, kind: reference.kind, role: reference.role, ...(reference.slotKey ? { slotKey: reference.slotKey } : {}) })),
-                      }, createWorkbenchTask, () => scope === getActiveUserScope(), submissionFingerprint)
-                    : await prepareBackendGenerationTask({
-                          mode: kind,
-                          prompt: submittedPrompt,
-                          config: generationConfig,
-                          referenceImages: readyReferences
-                              .filter((reference) => reference.kind === "image")
-                              .map((reference) => ({
-                                  id: reference.id,
-                                  name: reference.name,
-                                  type: "image/*",
-                                  dataUrl: "",
-                                  storageKey: resourceStorageKey(reference.resourceId!),
-                                  role: reference.role,
-                                  ...(reference.slotKey ? { slotKey: reference.slotKey } : {}),
-                              })),
-                          referenceVideos: readyReferences
-                              .filter((reference) => reference.kind === "video")
-                              .map((reference) => ({
-                                  id: reference.id,
-                                  name: reference.name,
-                                  type: "video/*",
-                                  url: "",
-                                  storageKey: resourceStorageKey(reference.resourceId!),
-                                  role: reference.role,
-                                  ...(reference.slotKey ? { slotKey: reference.slotKey } : {}),
-                              })),
-                          referenceAudios: readyReferences
-                              .filter((reference) => reference.kind === "audio")
-                              .map((reference) => ({
-                                  id: reference.id,
-                                  name: reference.name,
-                                  type: "audio/*",
-                                  url: "",
-                                  storageKey: resourceStorageKey(reference.resourceId!),
-                                  role: reference.role,
-                                  ...(reference.slotKey ? { slotKey: reference.slotKey } : {}),
-                              })),
-                          metadata: {
-                              source: "workbench",
-                              workbenchKind: kind,
-                              ...(videoOperation ? { videoEditOperation: videoOperation } : {}),
-                              ...Object.fromEntries(
-                                  readyReferences
-                                      .filter((reference) => reference.role === "first_frame" || reference.role === "last_frame")
-                                      .map((reference) => [reference.role === "first_frame" ? "videoStartFrameNodeId" : "videoEndFrameNodeId", reference.id]),
-                              ),
-                              ...(tool ? { workbenchToolId: tool.id, workbenchToolName: tool.name } : {}),
-                              ...(tool && preset ? { workbenchPresetId: preset.id } : {}),
-                              workbench: { kind, ...(tool ? { toolId: tool.id } : {}), ...(tool && preset ? { presetId: preset.id } : {}), parameters, references: referenceSnapshot },
-                          },
-                      }).then((taskInput) => submitTaskIntent(scope, kind, { ...taskInput, ...(videoOperation ? { operation: videoOperation } : {}) }, createGenerationTask, () => scope === getActiveUserScope(), submissionFingerprint));
-            let task: GenerationTask;
-            try {
-                task = await queryGenerationTask(createdTask.id);
-            } catch {
-                if (scope !== getActiveUserScope()) return;
-                message.warning("任务已提交，记录暂未读回，请刷新作品列表查看进度");
-                void loadTasks();
-                return;
-            }
-            if (scope !== getActiveUserScope()) return;
-            setTasks((current) => [task, ...current.filter((item) => item.id !== task.id)]);
-            if (revision === workbenchRevisionRef.current) {
-                setActiveTask(task);
-                setMobileTab("result");
-            }
-            message.success("生成任务已提交");
-        } catch (error) {
-            if (scope === getActiveUserScope()) message.error(error instanceof Error ? error.message : "任务提交失败");
-        } finally {
-            if (submissionBusyRef.current === submissionToken) {
-                submissionBusyRef.current = null;
-                setBusy(false);
-            }
-        }
-    };
-
-    const cancelTask = async (task: GenerationTask) => {
-        setTaskBusyId(task.id);
+    const cancelTask = async (task: GenerationTask, notify = true) => {
+        if (!active()) return false;
+        markTaskBusy(task.id, true);
         try {
             const next = await cancelGenerationTask(task.id);
-            setTasks((current) => current.map((item) => (item.id === task.id ? next : item)));
-            if (activeTask?.id === task.id) setActiveTask(next);
+            if (!active()) return false;
+            applyTaskUpdate(next);
+            if (notify) message.success("任务已取消");
+            return true;
         } catch (error) {
-            message.error(error instanceof Error ? error.message : "取消任务失败");
+            if (active()) message.error(errorMessage(error, "取消任务失败"));
+            return false;
         } finally {
-            setTaskBusyId("");
+            if (active()) markTaskBusy(task.id, false);
         }
     };
 
-    const restoreTaskToComposer = async (task: GenerationTask, notify = true) => {
-        const snapshot = workbenchTaskSnapshot(task);
-        if (!snapshot || snapshot.kind !== kind) {
-            if (notify) message.warning("该任务没有可恢复的工作台参数");
+    const retryTask = async (task: GenerationTask, notify = true) => {
+        if (!active()) return false;
+        markTaskBusy(task.id, true);
+        try {
+            const next = await retryGenerationTask(task.id);
+            if (!active()) return false;
+            applyTaskUpdate(next);
+            if (notify) message.success("已重新提交");
+            pollKickRef.current();
+            return true;
+        } catch (error) {
+            if (active()) message.error(errorMessage(error, "重新生成失败"));
             return false;
+        } finally {
+            if (active()) markTaskBusy(task.id, false);
         }
-        const scope = getActiveUserScope();
+    };
+
+    const restoreBatch = async (batch: GalleryBatch, sourceTask?: GenerationTask) => {
         const revision = ++workbenchRevisionRef.current;
-        setAssetPicker(null);
+        const unchanged = () => active() && revision === workbenchRevisionRef.current;
+        const first = sourceTask || batch.tasks[0];
+        if (!first) return;
+        let detail = details[first.id];
+        if (!detail?.inputJson) {
+            try {
+                detail = await queryGenerationTask(first.id);
+                if (!unchanged()) return;
+                setDetails((current) => ({ ...current, [first.id]: detail! }));
+            } catch (error) {
+                if (unchanged()) message.error(errorMessage(error, "参数读取失败"));
+                return;
+            }
+        }
+        if (!unchanged()) return;
+        const snapshot = workbenchTaskSnapshot(detail);
+        if (!snapshot || snapshot.kind !== kind) {
+            message.warning("这组作品没有可复用的参数");
+            return;
+        }
         const restoredTool = snapshot.toolId ? tools.find((item) => item.id === snapshot.toolId) || null : null;
         const restoredPreset = restoredTool && snapshot.presetId ? restoredTool.presets.find((item) => item.id === snapshot.presetId) || null : null;
+        let restoredReferences: WorkbenchReference[];
+        try {
+            const resolved = await prepareWorkbenchReferences(snapshot.references, (reference) => resolveWorkbenchResourceURL(reference.resourceId, reference.kind === "image" ? "thumbnail" : "original"), unchanged);
+            if (!unchanged()) return;
+            restoredReferences = resolved.map((reference, index) => ({
+                ...reference,
+                id: createClientUUID(),
+                name: `${mediaLabel(reference.kind)} ${index + 1}`,
+                progress: 100,
+                uploading: false,
+                role: reference.role || "reference",
+            }));
+        } catch (error) {
+            if (unchanged()) message.error(errorMessage(error, "Unable to restore references"));
+            return;
+        }
+        // No awaits below: commit the complete composer only after all reads succeed.
         const parameters = snapshot.parameters;
         if (kind === "image") {
             const restoredRatio = typeof parameters.size === "string" ? parameters.size : ratio;
             const restoredQuality = typeof parameters.quality === "string" ? parameters.quality : quality;
             const restoredResolution = typeof parameters.imageResolution === "string" ? parameters.imageResolution : imageResolution;
-            const restoredCount = parameters.count != null ? String(parameters.count) : count;
             setRatio(restoredRatio);
             setQuality(restoredQuality);
             setImageResolution(restoredResolution);
-            setCount(restoredCount);
-            rememberImageSettings({ ratio: restoredRatio, quality: restoredQuality, imageResolution: restoredResolution, count: restoredCount });
+            rememberImageSettings({ ratio: restoredRatio, quality: restoredQuality, imageResolution: restoredResolution });
         } else {
             const restoredSeconds = parameters.seconds != null ? String(parameters.seconds) : seconds;
             const restoredRatio = typeof parameters.ratio === "string" ? parameters.ratio : ratio;
@@ -748,31 +1266,19 @@ export function WorkbenchPage({ kind }: { kind: WorkbenchKind }) {
             if (typeof parameters.generateAudio === "boolean") updateConfig("videoGenerateAudio", String(parameters.generateAudio));
             if (typeof parameters.watermark === "boolean") updateConfig("videoWatermark", String(parameters.watermark));
         }
-        const restoredModel = task.model ? models.find((item) => item === task.model || modelOptionName(item) === task.model) : undefined;
+        const total = Math.max(1, batch.counts.total || batch.tasks.length);
+        changeCount(Math.min(batchLimit, total));
+        const restoredModel = first.model ? models.find((item) => item === first.model || modelOptionName(item) === first.model) : undefined;
         if (restoredModel) {
             updateConfig(kind === "image" ? "imageModel" : "videoModel", restoredModel);
             updateConfig("model", restoredModel);
         }
         setTool(restoredTool);
         setPreset(restoredPreset);
-        setPrompt(task.prompt || "");
+        setPresetPending(null);
+        setPrompt(detail.prompt || first.prompt || "");
         setUploadSlotKey(undefined);
         referencesRef.current.forEach(revokeReferencePreview);
-        setReferences([]);
-        const restoredReferences = await Promise.all(
-            snapshot.references.map(async (reference, index): Promise<WorkbenchReference> => ({
-                id: createClientUUID(),
-                name: `${reference.kind === "image" ? "图片" : reference.kind === "video" ? "视频" : "音频"} ${index + 1}`,
-                kind: reference.kind,
-                resourceId: reference.resourceId,
-                previewUrl: (await resolveWorkbenchResourceURL(reference.resourceId, "original")) || "",
-                progress: 100,
-                uploading: false,
-                role: reference.role || "reference",
-                ...(reference.slotKey ? { slotKey: reference.slotKey } : {}),
-            })),
-        );
-        if (scope !== getActiveUserScope() || revision !== workbenchRevisionRef.current) return false;
         setReferences(restoredReferences);
         const params = new URLSearchParams(searchParams);
         if (restoredTool) params.set("tool", restoredTool.id);
@@ -780,766 +1286,457 @@ export function WorkbenchPage({ kind }: { kind: WorkbenchKind }) {
         if (restoredPreset) params.set("preset", restoredPreset.id);
         else params.delete("preset");
         setSearchParams(params, { replace: true });
-        setActiveTask(task);
-        setMobileTab("generate");
-        setDetailTask(null);
-        if (notify) message.success("任务配置已载入编辑器");
-        return true;
+        setViewer(null);
+        setMobileTab("compose");
+        message.success("参数已载入创作面板，确认后点击生成");
     };
 
-    const retryTask = async (task: GenerationTask) => {
-        setTaskBusyId(task.id);
-        try {
-            let restoreSource = task;
-            if (!restoreSource.inputJson) {
-                try {
-                    restoreSource = await queryGenerationTask(task.id);
-                } catch {
-                    // The retry response also contains the safe restore snapshot.
-                }
-            }
-            const restored = await restoreTaskToComposer(restoreSource, false);
-            const next = await retryGenerationTask(task.id);
-            if (!restored) await restoreTaskToComposer(next, false);
-            setTasks((current) => [next, ...current.filter((item) => item.id !== next.id)]);
-            setActiveTask(next);
-            message.success("任务已重新提交");
-        } catch (error) {
-            message.error(error instanceof Error ? error.message : "重试任务失败");
-        } finally {
-            setTaskBusyId("");
-        }
-    };
-
-    const readTaskDetail = useCallback((task: GenerationTask, force = false): Promise<GenerationTask | undefined> => {
-        const cached = taskDetailsRef.current[task.id];
-        if (!force && cached?.updatedAt === task.updatedAt) return Promise.resolve(cached);
-        const running = detailFlights.current.get(task.id);
-        if (running) return running;
-        const scope = getActiveUserScope();
-        const epoch = detailEpoch.current;
-        const request = queryGenerationTask(task.id)
-            .then((detail) => {
-                if (scope !== getActiveUserScope() || epoch !== detailEpoch.current) return undefined;
-                taskDetailsRef.current[task.id] = detail;
-                setTaskDetails((current) => ({ ...current, [detail.id]: detail }));
-                setTaskDetailErrors((current) => {
-                    const next = { ...current };
-                    delete next[task.id];
-                    return next;
-                });
-                return detail;
-            })
-            .catch((reason) => {
-                if (scope === getActiveUserScope() && epoch === detailEpoch.current) setTaskDetailErrors((current) => ({ ...current, [task.id]: reason instanceof Error ? reason.message : "详细记录暂不可用，已有预览已保留" }));
-                return undefined;
-            })
-            .finally(() => {
-                if (detailFlights.current.get(task.id) === request) detailFlights.current.delete(task.id);
-            });
-        detailFlights.current.set(task.id, request);
-        return request;
-    }, []);
-
-    const openDetail = async (task: GenerationTask, output?: WorkbenchOutput) => {
-        const requestId = ++detailRequestRef.current;
-        const scope = getActiveUserScope();
-        setDetailTask(task);
-        setOutputKey(output?.key);
-        setDetailLoading(true);
-        setDetailError("");
-        const detail = await readTaskDetail(task, true);
-        if (requestId !== detailRequestRef.current || scope !== getActiveUserScope()) return;
-        if (detail) setDetailTask(detail);
-        else setDetailError("详细记录暂不可用，请重新读取；已有预览已保留");
-        setDetailLoading(false);
-    };
-
-    useEffect(() => {
-        setAssetPicker(null);
-    }, [selectedModel]);
-
-    const referenceLimits = {
-        image: kind === "image" ? imageProfile?.references.maxImages || 0 : videoProfile?.references.maxImages || 0,
-        video: kind === "video" ? videoProfile?.references.maxVideos || 0 : 0,
-        audio: kind === "video" ? videoProfile?.references.maxAudios || 0 : 0,
-    };
-    const pickerSlot = tool?.inputContract?.slots.find((slot) => slot.key === assetPicker?.slotKey);
-    const pickerAccept = (pickerSlot?.mediaTypes || (kind === "image" ? ["image"] : ["image", "video", "audio"])) as Array<WorkbenchReference["kind"]>;
-    const pickerCapacity = pickerAccept.reduce((sum, media) => sum + Math.max(0, referenceLimits[media] - references.filter((item) => item.kind === media).length), 0);
-    const pickerRemaining = pickerSlot ? Math.min(pickerCapacity, Math.max(0, pickerSlot.maxCount - references.filter((item) => item.slotKey === pickerSlot.key).length)) : pickerCapacity;
-    const addLibraryReferences = async (items: PickedWorkbenchReference[], targetSlotKey = assetPicker?.slotKey) => {
-        const scope = getActiveUserScope();
-        const revision = workbenchRevisionRef.current;
-        if (assetPicker && assetPicker.revision !== revision) throw new Error("创作模板已变化，请重新选择素材");
-        const modelSnapshot = currentModelRef.current;
-        const referenceSnapshot = referencesRef.current;
-        const planned = planWorkbenchReferences(referenceSnapshot, items, tool?.inputContract?.slots || [], referenceLimits, targetSlotKey);
-        const resolved = await Promise.all(
-            planned.map(async (item): Promise<WorkbenchReference> => {
-                const resource = await getResource(item.resourceId);
-                if (resource.kind !== item.kind || resource.status !== "ready") throw new Error("素材尚未就绪或类型已变化，请刷新素材库");
-                const previewUrl = await resolveWorkbenchResourceURL(item.resourceId, item.kind === "image" ? "thumbnail" : "original");
-                if (!previewUrl) throw new Error("无法读取所选素材，请重试");
-                const role = item.slotKey === "first_frame" || item.slotKey === "last_frame" ? item.slotKey : "reference";
-                return { ...item, id: createClientUUID(), role, previewUrl, progress: 100, uploading: false };
+    const downloadOutputs = async (items: Array<{ output: WorkbenchOutput; ordinal: number }>, baseName: string) => {
+        if (!active()) return;
+        const now = new Date();
+        const resolved = await Promise.allSettled(
+            items.map(({ output, ordinal }) => {
+                const fileName = workbenchDownloadName(output, baseName, ordinal, now);
+                return resolveBrowserMediaDownloadHref({ fileName, ...(output.resourceId ? { storageKey: resourceStorageKey(output.resourceId) } : { url: output.url }) }).then((href) => ({ href, fileName }));
             }),
         );
-        if (scope !== getActiveUserScope() || revision !== workbenchRevisionRef.current || referenceSnapshot !== referencesRef.current || modelSnapshot !== currentModelRef.current) throw new Error("账号或创作模板已变化，请重新选择素材");
-        planWorkbenchReferences(referencesRef.current, items, tool?.inputContract?.slots || [], referenceLimits, targetSlotKey);
-        setReferences((current) => [...current, ...resolved]);
+        let started = 0;
+        const failures: string[] = [];
+        for (const result of resolved) {
+            if (result.status === "rejected") {
+                failures.push(errorMessage(result.reason, "下载失败"));
+                continue;
+            }
+            if (started > 0) await new Promise((resolve) => window.setTimeout(resolve, BATCH_DOWNLOAD_INTERVAL_MS));
+            if (!active()) return;
+            startBrowserDownload(result.value.href, result.value.fileName);
+            started += 1;
+        }
+        if (!started) message.error(`下载失败：${failures[0] || "没有可下载的作品"}`);
+        else if (failures.length) message.warning(`已开始下载 ${started} 个文件，${failures.length} 个失败：${failures[0]}`);
+        else if (items.length > 1) message.success(`已开始下载 ${started} 个文件`);
     };
-    const downloadOutput = (output: WorkbenchOutput) => {
-        void downloadBrowserMedia({ url: output.url, storageKey: output.resourceId ? resourceStorageKey(output.resourceId) : output.storageKey, fileName: workbenchDownloadName(output, kind === "image" ? "创作图片" : "创作视频", output.index + 1) }).catch(
-            (reason) => message.error(reason instanceof Error ? reason.message : "下载失败"),
-        );
-    };
-    const reuseRecord = async (task: GenerationTask) => {
-        const detail = task.inputJson ? task : await readTaskDetail(task, true);
-        if (detail) await restoreTaskToComposer(detail);
-        else message.warning("参数尚未读取，请重试");
-    };
-    const useOutputAsReference = async (output: WorkbenchOutput) => {
+
+    const useAsReference = async (output: WorkbenchOutput) => {
         if (!output.resourceId) return;
-        try {
-            await addLibraryReferences([{ resourceId: output.resourceId, kind: "image", name: "生成参考图" }]);
-            setDetailTask(null);
-            setMobileTab("generate");
-        } catch (reason) {
-            message.warning(reason instanceof Error ? reason.message : "参考图未能加入");
+        const accepted = await addResourceReferences([{ resourceId: output.resourceId, kind: "image", name: "生成结果" }]);
+        if (accepted.length) {
+            message.success("已加入商品素材，可继续调整描述再生成");
+            setViewer(null);
+            setMobileTab("compose");
         }
     };
 
-    const taskModelLabel = (task: GenerationTask) => {
-        const rawModel = task.model?.trim() || "";
-        if (!rawModel) return kind === "image" ? "图片生成" : "视频生成";
-        const configuredModel = models.find((item) => item === rawModel || modelOptionName(item) === rawModel);
-        const display = configuredModel ? modelDisplayName(config, configuredModel) : rawModel;
-        return isModelIdLike(display) ? "生成模型" : display;
+    const makeVideo = (output: WorkbenchOutput) => {
+        if (!output.resourceId) return;
+        navigate(`/toolbox/video?ref=${encodeURIComponent(output.resourceId)}`);
     };
 
-    const settingsPanel =
-        kind === "image" && imageProfile ? (
-            <div className="workbench-settings-content">
-                <ImageSizePicker profile={imageProfile} size={ratio} quality={quality} imageResolution={imageResolution} onChange={updateImageSettings} />
-                {imageProfile.quality.supported && !imageResolutionUsesQuality(imageProfile) ? (
-                    <label className="workbench-setting-row">
-                        <span>图片质量</span>
-                        <Select
-                            aria-label="图片质量"
-                            value={quality}
-                            onChange={(value) => {
-                                setQuality(value);
-                                rememberImageSettings({ quality: value });
-                            }}
-                            options={imageProfile.quality.values.map((value) => ({ value, label: imageQualityLabel(value) }))}
-                        />
-                    </label>
-                ) : null}
-                <CountPicker
-                    value={count}
-                    max={imageProfile.maxOutputs}
-                    onChange={(value) => {
-                        setCount(value);
-                        rememberImageSettings({ count: value });
-                    }}
-                />
-            </div>
-        ) : videoProfile ? (
-            <div className="workbench-settings-content">
-                <ParameterChips
-                    label="视频时长"
-                    value={seconds}
-                    options={(videoProfile.duration.selection === "enum"
-                        ? videoProfile.duration.values || []
-                        : Array.from(
-                              { length: Math.floor(((videoProfile.duration.max || 15) - (videoProfile.duration.min || 1)) / (videoProfile.duration.step || 1)) + 1 },
-                              (_, index) => (videoProfile.duration.min || 1) + index * (videoProfile.duration.step || 1),
-                          )
-                    ).map((value) => ({ value: String(value), label: `${value} 秒` }))}
-                    onChange={(value) => {
-                        setSeconds(value);
-                        rememberVideoSettings({ seconds: value });
-                    }}
-                />
-                <ParameterChips
-                    label="画面比例"
-                    value={ratio}
-                    options={videoProfile.ratios.map((value) => ({ value, label: value === "adaptive" ? "自适应" : value }))}
-                    onChange={(value) => {
-                        setRatio(value);
-                        rememberVideoSettings({ ratio: value });
-                    }}
-                />
-                <ParameterChips
-                    label="清晰度"
-                    value={videoQuality}
-                    options={videoProfile.resolutions.map((value) => ({ value: value.replace(/p$/i, ""), label: value }))}
-                    onChange={(value) => {
-                        setVideoQuality(value);
-                        rememberVideoSettings({ videoQuality: value });
-                    }}
-                />
-                {videoProfile.generateAudio.supported || videoProfile.watermark.supported ? (
-                    <div className="workbench-switch-row">
-                        {videoProfile.generateAudio.supported ? (
-                            <label>
-                                <span>生成音频</span>
-                                <Switch aria-label="生成音频" checked={config.videoGenerateAudio === "true"} onChange={(value) => updateConfig("videoGenerateAudio", String(value))} />
-                            </label>
-                        ) : null}
-                        {videoProfile.watermark.supported ? (
-                            <label>
-                                <span>添加水印</span>
-                                <Switch aria-label="添加水印" checked={config.videoWatermark === "true"} onChange={(value) => updateConfig("videoWatermark", String(value))} />
-                            </label>
-                        ) : null}
-                    </div>
-                ) : null}
-            </div>
-        ) : (
-            <p className="workbench-list-empty">选择模型后，这里会显示该模型真正支持的参数。</p>
-        );
-    const toolLibrary = (
-        <div className="workbench-tool-library" id="workbench-tool-library">
-            <div className="workbench-tool-library-heading">
-                <div>
-                    <span>选一个场景，或直接写提示词</span>
-                </div>
-                {tool ? (
-                    <button type="button" className="workbench-direct-create" onClick={() => chooseTool(null)}>
-                        清除选择
-                    </button>
-                ) : null}
-            </div>
-            <Input aria-label="搜索创作工具" prefix={<Search className="size-4" />} value={toolSearch} onChange={(event) => setToolSearch(event.target.value)} placeholder="搜索工具" allowClear />
-            <div className="workbench-tool-categories app-control-group" role="group" aria-label="工具分类">
-                {[{ value: "all", label: "全部" }, ...workbenchCategories].map((category) => (
-                    <button type="button" key={category.value} data-slot="control-item" aria-pressed={toolCategory === category.value} onClick={() => setToolCategory(category.value)}>
-                        <span data-slot="control-label">{category.label}</span>
-                    </button>
-                ))}
-            </div>
-            {directoryLoading ? (
-                <div className="workbench-picker-state" role="status">
-                    <Spin size="small" />
-                    <span>正在加载创作工具</span>
-                </div>
-            ) : directoryError ? (
-                <div className="workbench-tool-library-error" role="alert">
-                    <span>{directoryError}</span>
-                    <Button
-                        size="small"
-                        onClick={() => {
-                            setDirectoryError("");
-                            setDirectoryLoading(true);
-                            listWorkbenchTools(kind)
-                                .then((directory) =>
-                                    setTools(
-                                        directory.tools.filter((item) => item.kind === kind && item.enabled !== false && (!capabilitySupportedModes(item).length || capabilitySupportedModes(item).includes(kind))).sort((a, b) => a.sortOrder - b.sortOrder),
-                                    ),
-                                )
-                                .catch((error) => setDirectoryError(error instanceof Error ? error.message : "工具目录加载失败"))
-                                .finally(() => setDirectoryLoading(false));
-                        }}
-                    >
-                        重试
-                    </Button>
-                </div>
-            ) : (
-                <div className="workbench-tool-grid">
-                    {filteredTools.map((item) => (
-                        <ToolCard
-                            key={item.id}
-                            tool={item}
-                            selected={item.id === tool?.id}
-                            onClick={() => {
-                                chooseTool(item);
-                                setToolLibraryOpen(false);
-                            }}
-                        />
-                    ))}
-                    {!filteredTools.length ? (
-                        <div className="workbench-picker-state" role="status">
-                            没有找到匹配的创作工具
-                        </div>
-                    ) : null}
-                </div>
-            )}
-        </div>
+    const copyText = async (text: string) => {
+        try {
+            await navigator.clipboard.writeText(text);
+            message.success("提示词已复制");
+        } catch {
+            message.error("复制失败，请手动选择文本复制");
+        }
+    };
+
+    const handlersRef = useRef<GalleryActions | null>(null);
+    handlersRef.current = {
+        openOutput: (batch, output) => {
+            setViewer({ batchKey: batch.key, outputKey: output.key });
+            requestDetails([{ id: output.taskId, version: batch.tasks.find((task) => task.id === output.taskId)?.updatedAt }]);
+        },
+        download: (output, batch) => void downloadOutputs([{ output, ordinal: batch.outputs.findIndex((item) => item.key === output.key) + 1 || 1 }], batch.toolName || ""),
+        useAsReference: kind === "image" ? (output) => void useAsReference(output) : undefined,
+        makeVideo: kind === "image" && features.videoWorkbenchEnabled ? makeVideo : undefined,
+        cancelTask: (task) => void cancelTask(task),
+        retryTask: (task) => void retryTask(task),
+        reuse: (batch) => void restoreBatch(batch),
+        copyPrompt: (batch) => void copyText(batch.prompt),
+        downloadAll: (batch) =>
+            void downloadOutputs(
+                batch.outputs.map((output, index) => ({ output, ordinal: index + 1 })),
+                batch.toolName || "",
+            ),
+        cancelBatch: (batch) => {
+            if (!active()) return;
+            const cancellable = batch.tasks.filter(isActiveWorkbenchTask);
+            if (!cancellable.length) return;
+            modal.confirm({
+                title: `取消这组 ${cancellable.length} 个未完成的任务？`,
+                content: "已完成的作品会保留；未完成的任务停止生成，费用按任务计费规则处理。",
+                okText: "取消任务",
+                cancelText: "返回",
+                okButtonProps: { danger: true },
+                onOk: async () => {
+                    let cancelled = 0;
+                    for (const task of cancellable) {
+                        if (!active() || !(await cancelTask(task, false))) break;
+                        cancelled += 1;
+                    }
+                    if (active() && cancelled) message.success(`已取消 ${cancelled} 个未完成的任务`);
+                },
+            });
+        },
+        retryFailed: async (batch) => {
+            const failed = batch.tasks.filter((task) => task.status === "failed" || task.status === "cancelled");
+            let retried = 0;
+            for (const task of failed) {
+                if (!active() || !(await retryTask(task, false))) break;
+                retried += 1;
+            }
+            if (active() && retried) message.success(`已重新提交 ${retried} 个任务`);
+        },
+        resume: (batch) => {
+            const local = localBatchesRef.current.find((item) => `batch:${item.id}` === batch.key);
+            if (!local || local.submitting || busy) return;
+            const indices = local.states.flatMap((state, index) => (state === "failed" || state === "pending" ? [index] : []));
+            if (indices.length) void runBatchSubmission(local.id, indices);
+        },
+        dismiss: (batch) => setLocalBatches((current) => current.filter((item) => `batch:${item.id}` !== batch.key || item.submitting)),
+        visible: (batchKey) =>
+            setVisibleBatchKeys((current) => {
+                if (current.has(batchKey)) return current;
+                const next = new Set(current);
+                next.add(batchKey);
+                return next;
+            }),
+        measure: (batchKey, value) => setMeasuredRatios((current) => (current[batchKey] ? current : { ...current, [batchKey]: value })),
+    };
+    const galleryActions = useMemo<GalleryActions>(
+        () => ({
+            openOutput: (...args) => handlersRef.current!.openOutput(...args),
+            download: (...args) => handlersRef.current!.download(...args),
+            useAsReference: kind === "image" ? (...args) => handlersRef.current!.useAsReference?.(...args) : undefined,
+            makeVideo: kind === "image" && features.videoWorkbenchEnabled ? (...args) => handlersRef.current!.makeVideo?.(...args) : undefined,
+            cancelTask: (...args) => handlersRef.current!.cancelTask(...args),
+            retryTask: (...args) => handlersRef.current!.retryTask(...args),
+            reuse: (...args) => handlersRef.current!.reuse(...args),
+            copyPrompt: (...args) => handlersRef.current!.copyPrompt(...args),
+            downloadAll: (...args) => handlersRef.current!.downloadAll(...args),
+            cancelBatch: (...args) => handlersRef.current!.cancelBatch(...args),
+            retryFailed: (...args) => handlersRef.current!.retryFailed(...args),
+            resume: (...args) => handlersRef.current!.resume(...args),
+            dismiss: (...args) => handlersRef.current!.dismiss(...args),
+            visible: (...args) => handlersRef.current!.visible(...args),
+            measure: (...args) => handlersRef.current!.measure(...args),
+        }),
+        [features.videoWorkbenchEnabled, kind],
     );
 
-    return (
-        <WorkspacePage fluid scroll={false} className="workbench-page is-gallery-layout">
-            <div className="workbench-shell" data-kind={kind}>
-                <section className={`workbench-columns ${mobileTab !== "generate" ? "is-mobile-secondary" : ""}`}>
-                    <div className="workbench-mobile-tabs">
-                        <SegmentedControl
-                            ariaLabel="工具台视图"
-                            value={mobileTab}
-                            onChange={(value) => setMobileTab(String(value))}
-                            options={[
-                                { label: "创作", value: "generate" },
-                                { label: "作品", value: "result" },
-                            ]}
-                        />
-                    </div>
+    const viewerBatch = viewer ? galleryBatches.find((batch) => batch.key === viewer.batchKey) || null : null;
+    const viewerOutput = viewerBatch?.outputs.find((output) => output.key === viewer?.outputKey);
+    const viewerDetail = viewerOutput ? details[viewerOutput.taskId] : undefined;
 
-                    <section className={`workbench-input-column ${mobileTab === "generate" ? "is-mobile-active" : ""}`} aria-label="生成参数">
-                        <div className="workbench-composer">
-                            <div className="workbench-tool-bar">
-                                <Button className="workbench-reset" type="text" aria-label="重置创作参数" onClick={resetWorkbench}>
-                                    重置
-                                </Button>
-                                <span className="workbench-kind-label">{kind === "image" ? "图片生成" : "视频生成"}</span>
-                                <button type="button" className="workbench-tool-choice" aria-expanded={toolLibraryOpen} aria-haspopup="dialog" aria-controls="workbench-tool-library" onClick={() => setToolLibraryOpen((open) => !open)}>
-                                    <span className="workbench-tool-choice-mark">{tool?.iconUrl ? <img src={tool.iconUrl} alt="" /> : kind === "image" ? <FileImage /> : <Video />}</span>
-                                    <span className="workbench-tool-choice-copy">
-                                        <small>{tool ? (isModelIdLike(tool.subtitle) ? tool.description || "创作工具" : tool.subtitle || tool.description || "创作工具") : "直接创作"}</small>
-                                        <strong>{tool?.name || "选择创作模板"}</strong>
-                                    </span>
-                                    <ChevronDown className={toolLibraryOpen ? "is-open" : ""} />
-                                </button>
-                            </div>
-                            <AppModal
-                                destroyOnHidden={false}
-                                title="选择创作模板"
-                                open={toolLibraryOpen}
-                                onCancel={() => setToolLibraryOpen(false)}
-                                footer={null}
-                                width="min(1120px, calc(100vw - 32px))"
-                                className="workbench-picker-modal"
-                                rootClassName="workbench-overlay"
-                            >
-                                {toolLibrary}
-                            </AppModal>
-                            <div className="workbench-studio">
-                                {!tool && tools.length ? (
-                                    <details className="workbench-quick-templates">
-                                        <summary>常用创作模板</summary>
-                                        <section className="workbench-goal-picker" aria-label="快速选择创作模板">
-                                            <div className="workbench-goal-heading">
-                                                <div>
-                                                    <div>
-                                                        <strong>你现在要做什么？</strong>
-                                                        <span>选择角色、场景或画面模板，也可以直接自由创作</span>
-                                                    </div>
-                                                </div>
-                                                <button type="button" onClick={() => setToolLibraryOpen(true)}>
-                                                    查看更多 <ChevronDown />
-                                                </button>
-                                            </div>
-                                            <div className="workbench-goal-grid">
-                                                {quickTools.map((item) => (
-                                                    <QuickGoalCard key={item.id} tool={item} kind={kind} onClick={() => chooseTool(item)} />
-                                                ))}
-                                            </div>
-                                        </section>
-                                    </details>
-                                ) : null}
+    // ---------- 文案 ----------
+    const unit = kind === "image" ? "张" : "条";
+    const estimateLabel = !creditsEnabled
+        ? ""
+        : estimate.credits !== null
+          ? `${estimate.estimated || estimate.tone !== "quote" ? "预估" : "预计"} ${estimate.credits.toLocaleString("zh-CN", { maximumFractionDigits: 6 })} 积分`
+          : estimate.tone === "loading"
+            ? "正在计算积分"
+            : estimate.tone === "usage"
+              ? "按实际用量结算"
+              : "报价暂不可用";
+    const countHint =
+        kind === "image"
+            ? plan.length > 1
+                ? `模型单次最多 ${maxOutputsPerTask} 张，将拆成 ${plan.length} 个任务并行生成`
+                : requestedCount > 1
+                  ? `一个任务一次出 ${requestedCount} 张`
+                  : `最多 ${batchLimit} 张`
+            : requestedCount > 1
+              ? `并行提交 ${requestedCount} 个任务，每条独立生成`
+              : `最多 ${batchLimit} 条`;
+    const limitHint = requestedCount >= batchLimit && batchLimit < (kind === "image" ? 12 : 8) ? `账号同时最多 ${activeTaskLimit} 个任务` : "";
+    const durationOptions = videoProfile
+        ? (videoProfile.duration.selection === "enum"
+              ? videoProfile.duration.values || []
+              : Array.from({ length: Math.floor(((videoProfile.duration.max || 15) - (videoProfile.duration.min || 1)) / (videoProfile.duration.step || 1)) + 1 }, (_, index) => (videoProfile.duration.min || 1) + index * (videoProfile.duration.step || 1))
+          ).map((value) => ({ value: String(value), label: `${value} 秒` }))
+        : [];
+    const bothKinds = features.imageWorkbenchEnabled && features.videoWorkbenchEnabled;
+    const galleryCount = galleryBatches.reduce((sum, batch) => sum + batch.outputs.length, 0);
 
-                                {kind === "video" && searchParams.get("reference") ? (
-                                    <div className="workbench-inline-note" role="status">
-                                        <span>有一张图片可以用于这个镜头，添加后再调整描述和首尾帧用途。</span>
-                                        <Button
-                                            onClick={() => {
-                                                const id = searchParams.get("reference")!;
-                                                void addLibraryReferences([{ resourceId: id, kind: "image", name: "图片生成结果" }])
-                                                    .then(() => {
-                                                        const next = new URLSearchParams(searchParams);
-                                                        next.delete("reference");
-                                                        setSearchParams(next, { replace: true });
-                                                    })
-                                                    .catch((reason) => message.warning(reason instanceof Error ? reason.message : "参考图未能加入"));
-                                            }}
-                                        >
-                                            加入参考图
-                                        </Button>
-                                        <Button
-                                            type="text"
-                                            onClick={() => {
-                                                const next = new URLSearchParams(searchParams);
-                                                next.delete("reference");
-                                                setSearchParams(next, { replace: true });
-                                            }}
-                                        >
-                                            忽略
-                                        </Button>
-                                    </div>
-                                ) : null}
-                                <details className="workbench-template-guide">
-                                    <summary>使用说明与效果参考</summary>{" "}
-                                    <div className="workbench-guide-stage">
-                                        <div className="workbench-section-heading">
-                                            <div>
-                                                <h2>{tool?.name || "工具说明"}</h2>
-                                                <span>创作指南与效果预览</span>
-                                            </div>
-                                        </div>
-                                        {tool ? (
-                                            <>
-                                                <p className="workbench-guide-description">{tool.description || tool.subtitle}</p>
-                                                {normalizeWorkbenchGuide(tool.guide) ? (
-                                                    <div className="workbench-guide-copy">
-                                                        {normalizeWorkbenchGuide(tool.guide)
-                                                            .split("\n")
-                                                            .filter(Boolean)
-                                                            .map((line, index) => (
-                                                                <p key={`${index}:${line}`}>{line}</p>
-                                                            ))}
-                                                    </div>
-                                                ) : (
-                                                    <div className="workbench-guide-empty">选择适合的模型和参考素材，写下你希望呈现的画面细节。</div>
-                                                )}
-                                                {tool.inputHint ? <p className="workbench-guide-input-hint">{tool.inputHint}</p> : null}
-                                                {tool.inputContract?.slots.length ? (
-                                                    <div className="workbench-guide-contract">
-                                                        <strong>输入素材</strong>
-                                                        {tool.inputContract.slots.map((slot) => (
-                                                            <span key={slot.key}>
-                                                                {slot.name} · {slot.required ? "必填" : "可选"} · 最多 {slot.maxCount} 个
-                                                            </span>
-                                                        ))}
-                                                    </div>
-                                                ) : null}
-                                                {tool.resultExample?.imageUrls?.length || tool.resultExample?.videoUrl ? (
-                                                    <div className="workbench-example-strip">
-                                                        <span>{tool.resultExample.title || "效果参考"}</span>
-                                                        {tool.resultExample.imageUrls?.slice(0, 3).map((url) => (
-                                                            <span className="workbench-example-thumb" key={url}>
-                                                                <img src={url} alt="工具效果参考" />
-                                                            </span>
-                                                        ))}
-                                                        {tool.resultExample.videoUrl ? (
-                                                            <span className="workbench-example-thumb">
-                                                                <video src={tool.resultExample.videoUrl} muted />
-                                                            </span>
-                                                        ) : null}
-                                                    </div>
-                                                ) : null}
-                                            </>
-                                        ) : (
-                                            <div className="workbench-guide-empty">选定工具后，这里会展示创作说明和示例效果。</div>
-                                        )}
-                                    </div>
-                                </details>
-                                <div className="workbench-block-label">
-                                    <div>
-                                        <strong>描述你想要的成品</strong>
-                                        <span>写清主体、动作、场景、光线和需要保留的细节</span>
-                                    </div>
-                                </div>
-                                {tool?.presets.length ? (
-                                    <div className="workbench-preset-row" role="group" aria-label="工具提示词模板">
-                                        {tool.presets.map((item) => (
-                                            <button
-                                                type="button"
-                                                key={item.id}
-                                                className={`workbench-preset-chip ${preset?.id === item.id ? "is-active" : ""}`}
-                                                aria-pressed={preset?.id === item.id}
-                                                title={item.summary || item.name}
-                                                onClick={() => choosePreset(item)}
-                                            >
-                                                {item.name}
-                                            </button>
-                                        ))}
-                                    </div>
-                                ) : null}
-                                <div className="workbench-prompt-surface">
-                                    <CanvasResourceMentionTextarea
-                                        aria-label="生成提示词，可输入 @ 引用参考素材"
-                                        className="workbench-prompt-input workbench-prompt-rich-editor"
-                                        containerClassName="workbench-prompt-mention-container"
-                                        value={prompt}
-                                        references={promptReferences}
-                                        onChange={setPrompt}
-                                        onSubmit={() => void submit()}
-                                        sendOnEnter={false}
-                                        style={{ color: "var(--wb-text)" }}
-                                        placeholder={kind === "image" ? "写下要生成的画面：主体、场景、构图、光线、风格" : "写下镜头里发生什么：主体、运动、光线、节奏、转场"}
-                                        maxLength={kind === "image" ? imageProfile?.references.promptMaxChars || 32000 : videoProfile?.references.promptMaxChars || 8000}
-                                    />
-                                    <div className="workbench-prompt-meta">
-                                        <span>
-                                            {prompt.length} / {kind === "image" ? imageProfile?.references.promptMaxChars || 32000 : videoProfile?.references.promptMaxChars || 8000}
-                                        </span>
-                                        <span>⌘ / Ctrl + Enter</span>
-                                    </div>
-                                </div>
-                                <div className="workbench-composer-toolbar">
-                                    <span className="workbench-ref-count">
-                                        参考素材 {references.length} /{" "}
-                                        {kind === "image" ? imageProfile?.references.maxImages || 0 : (videoProfile?.references.maxImages || 0) + (videoProfile?.references.maxVideos || 0) + (videoProfile?.references.maxAudios || 0)}
-                                    </span>
-                                    <div className="workbench-toolbar-actions">
-                                        <Button size="small" onClick={() => setAssetPicker({ revision: workbenchRevisionRef.current })} disabled={!pickerCapacity}>
-                                            从素材库选择
-                                        </Button>
-                                        <Tooltip title="添加参考素材">
-                                            <button type="button" aria-label="添加参考素材" onClick={() => fileRef.current?.click()}>
-                                                <Upload />
-                                            </button>
-                                        </Tooltip>
-                                        <Tooltip title="清空参考素材">
-                                            <button type="button" aria-label="清空参考素材" onClick={() => references.forEach(removeReference)} disabled={!references.length}>
-                                                <X />
-                                            </button>
-                                        </Tooltip>
-                                    </div>
-                                </div>
-                                {tool?.inputContract?.slots.length ? (
-                                    <div className="workbench-reference-slots">
-                                        {tool.inputContract.slots.map((slot) => {
-                                            const slotReferences = references.filter((reference) => reference.slotKey === slot.key);
-                                            const slotCapacity = Math.min(
-                                                slot.maxCount - slotReferences.length,
-                                                slot.mediaTypes.reduce((sum, media) => sum + Math.max(0, referenceLimits[media] - references.filter((item) => item.kind === media).length), 0),
-                                            );
-                                            const mediaLabel = slot.mediaTypes.map((type) => (type === "image" ? "图片" : type === "video" ? "视频" : "音频")).join(" / ");
-                                            const openSlotPicker = () => {
-                                                setUploadSlotKey(slot.key);
-                                                fileRef.current?.click();
-                                            };
-                                            return (
-                                                <section className="workbench-reference-slot" key={slot.key}>
-                                                    <div className="workbench-reference-slot-heading">
-                                                        <div className="workbench-reference-slot-copy">
-                                                            <div className="workbench-reference-slot-title">
-                                                                <strong>{slot.name || "参考素材"}</strong>
-                                                                <span className={`workbench-reference-slot-requirement${slot.required ? " is-required" : ""}`}>{slot.required ? "必填" : "可选"}</span>
-                                                            </div>
-                                                            <Button size="small" onClick={() => setAssetPicker({ slotKey: slot.key, revision: workbenchRevisionRef.current })} disabled={slotCapacity <= 0}>
-                                                                从素材库选择
-                                                            </Button>
-                                                            <div className="workbench-reference-slot-meta">
-                                                                <span>
-                                                                    {slot.minCount}-{slot.maxCount} 个
-                                                                </span>
-                                                                <span>{mediaLabel}</span>
-                                                            </div>
-                                                        </div>
-                                                        {slotReferences.length ? (
-                                                            <button type="button" className="workbench-slot-upload" onClick={openSlotPicker} aria-label={`为${slot.name}添加素材`} disabled={slotReferences.length >= slot.maxCount}>
-                                                                <ImagePlus /> <span>添加</span>
-                                                            </button>
-                                                        ) : null}
-                                                    </div>
-                                                    <div className="workbench-reference-grid">
-                                                        {slotReferences.map((reference) => (
-                                                            <ReferenceCard
-                                                                key={reference.id}
-                                                                reference={reference}
-                                                                kind={kind}
-                                                                onRemove={removeReference}
-                                                                onRoleChange={(role) => setReferences((current) => current.map((item) => (item.id === reference.id ? { ...item, role } : item)))}
-                                                            />
-                                                        ))}
-                                                        {!slotReferences.length ? (
-                                                            <button type="button" className="workbench-reference-slot-empty" onClick={openSlotPicker} disabled={slotReferences.length >= slot.maxCount}>
-                                                                <span className="workbench-reference-slot-empty-icon">
-                                                                    <ImagePlus />
-                                                                </span>
-                                                                <span className="workbench-reference-slot-empty-copy">
-                                                                    <strong>上传{slot.name || "参考"}素材</strong>
-                                                                    <small>从设备中选择文件</small>
-                                                                </span>
-                                                            </button>
-                                                        ) : null}
-                                                    </div>
-                                                </section>
-                                            );
-                                        })}
-                                    </div>
-                                ) : (
-                                    <div className="workbench-reference-grid">
-                                        {references.map((reference) => (
-                                            <ReferenceCard
-                                                key={reference.id}
-                                                reference={reference}
-                                                kind={kind}
-                                                onRemove={removeReference}
-                                                onRoleChange={(role) => setReferences((current) => current.map((item) => (item.id === reference.id ? { ...item, role } : item)))}
-                                            />
-                                        ))}
-                                        {!references.length || (kind === "video" && references.length < 5) ? (
-                                            <button
-                                                type="button"
-                                                className="workbench-reference-add"
-                                                onClick={() => {
-                                                    setUploadSlotKey(undefined);
-                                                    fileRef.current?.click();
-                                                }}
-                                            >
-                                                <ImagePlus />
-                                                <span>添加{kind === "image" ? "参考图" : "参考素材"}</span>
-                                            </button>
-                                        ) : null}
-                                    </div>
-                                )}
-                                <input
-                                    ref={fileRef}
-                                    type="file"
-                                    className="sr-only"
-                                    accept={
-                                        uploadSlotKey
-                                            ? tool?.inputContract?.slots
-                                                  .find((slot) => slot.key === uploadSlotKey)
-                                                  ?.mediaTypes.map((type) => `${type}/*`)
-                                                  .join(",")
-                                            : kind === "image"
-                                              ? "image/*"
-                                              : "image/*,video/*,audio/*"
-                                    }
-                                    multiple
-                                    onChange={(event) => {
-                                        if (event.target.files) void addFiles(event.target.files, uploadSlotKey);
-                                        event.currentTarget.value = "";
-                                    }}
-                                />
-                                <section className="workbench-parameters" aria-label="生成参数">
-                                    <header>
-                                        <strong>{kind === "image" ? "图片参数" : "视频参数"}</strong>
-                                        <span>{kind === "image" ? "尺寸、分辨率、质量和数量" : "时长、画幅、清晰度和音频"}</span>
-                                    </header>
-                                    {selectedModel ? settingsPanel : <p className="workbench-list-empty">先选择模型，再调整尺寸、数量或时长。</p>}
-                                </section>
-                            </div>
-                            <div className="workbench-composer-dock" aria-label="生成设置">
-                                {models.length ? (
-                                    <ModelPicker
-                                        config={config}
-                                        value={selectedModel}
-                                        capability={capability}
-                                        requirements={{
-                                            capability,
-                                            input: {
-                                                textCount: prompt.trim() ? 1 : 0,
-                                                imageCount: references.filter((reference) => reference.kind === "image").length,
-                                                referenceImageCount: references.filter((reference) => reference.kind === "image" && reference.role !== "first_frame" && reference.role !== "last_frame").length,
-                                                videoCount: references.filter((reference) => reference.kind === "video").length,
-                                                audioCount: references.filter((reference) => reference.kind === "audio").length,
-                                                characterCount: 0,
-                                            },
-                                            ...(kind === "image"
-                                                ? { imageSize: ratio, options: { size: ratio, quality, ...(imageProfile?.resolution.supported ? { imageResolution } : {}), count: selectedCount } }
-                                                : { videoSeconds: seconds, options: { size: ratio, videoSeconds: Number(seconds), vquality: videoQuality } }),
-                                        }}
-                                        variant="creation"
-                                        fullWidth
-                                        className="creation-model-picker workbench-model-picker"
-                                        showSelectedPrice={false}
-                                        showOptionPrices
-                                        onChange={(value) => {
-                                            workbenchRevisionRef.current++;
-                                            setAssetPicker(null);
-                                            if (kind === "image") updateConfig("imageModel", value);
-                                            else updateConfig("videoModel", value);
-                                            updateConfig("model", value);
-                                        }}
-                                        placeholder={`选择${kind === "image" ? "图片" : "视频"}模型`}
-                                    />
-                                ) : (
-                                    <div className="workbench-model-empty" role="status">
-                                        <span>暂无可用的{kind === "image" ? "图片" : "视频"}模型</span>
-                                        <a href="/settings?section=models" target="_blank" rel="noreferrer" aria-label="在新窗口打开模型设置">
-                                            模型设置
-                                        </a>
-                                    </div>
-                                )}
-                                <div className="workbench-submit-estimate" aria-live="polite">
-                                    <GenerationStatusNotice status={generationStatus} className="workbench-submit-estimate-label" />
-                                    {selectedModel ? <span className="workbench-submit-estimate-model">使用 {modelDisplayName(config, selectedModel)}</span> : null}
-                                </div>
-                                <Button
-                                    className="workbench-submit"
-                                    type="primary"
-                                    loading={busy}
-                                    aria-busy={busy}
-                                    disabled={!generationStatus.canSubmit || (promptRequired && !prompt.trim()) || Boolean(missingInput) || !selectedModel || references.some((reference) => reference.uploading || Boolean(reference.error))}
-                                    onClick={() => void submit()}
-                                >
-                                    <Sparkles aria-hidden="true" />
-                                    <span>{kind === "image" ? "生成图片" : "生成视频"}</span>
-                                </Button>
-                            </div>
-                        </div>
-                    </section>
-
-                    <WorkbenchResults
-                        tasks={tasks}
-                        details={taskDetails}
-                        detailErrors={taskDetailErrors}
-                        kind={kind}
-                        loading={tasksLoading}
-                        error={tasksError}
-                        query={query}
-                        onQueryChange={setQuery}
-                        onRefresh={() => void loadTasks()}
-                        modelLabel={taskModelLabel}
-                        busyId={taskBusyId}
-                        actions={{
-                            open: (task, output) => void openDetail(task, output),
-                            loadDetail: async (task, force) => {
-                                await readTaskDetail(task, force);
-                            },
-                            cancel: (task) => void cancelTask(task),
-                            retry: (task) => void retryTask(task),
-                            reuse: (task) => void reuseRecord(task),
-                            download: downloadOutput,
+    const specControls =
+        kind === "image" && imageProfile ? (
+            <>
+                <ImageSizePicker profile={imageProfile} size={ratio} quality={quality} imageResolution={imageResolution} ratioHint={(value) => workbenchRatioUsage("image", value)} onChange={updateImageSettings} />
+                {imageProfile.quality.supported && !imageResolutionUsesQuality(imageProfile) && imageProfile.quality.values.length > 1 ? (
+                    <ChoiceChips
+                        label="画质"
+                        value={quality}
+                        options={imageProfile.quality.values.map((value) => ({ value, label: imageQualityLabel(value) }))}
+                        onChange={(value) => {
+                            setQuality(value);
+                            rememberImageSettings({ quality: value });
                         }}
                     />
-                </section>
-            </div>
-
-            <Suspense fallback={null}>
-                {assetPicker ? (
-                    <WorkbenchReferenceLibrary
-                        open
-                        accept={pickerAccept.filter((media) => referenceLimits[media] > references.filter((item) => item.kind === media).length)}
-                        remaining={pickerRemaining}
-                        slotName={pickerSlot?.name}
-                        onClose={() => setAssetPicker(null)}
-                        onPick={addLibraryReferences}
+                ) : null}
+            </>
+        ) : videoProfile ? (
+            <>
+                {videoProfile.durationSupported !== false && durationOptions.length ? (
+                    <ChoiceChips
+                        label="时长"
+                        value={seconds}
+                        options={durationOptions}
+                        onChange={(value) => {
+                            setSeconds(value);
+                            rememberVideoSettings({ seconds: value });
+                        }}
                     />
                 ) : null}
-            </Suspense>
-            <WorkbenchViewer
-                task={detailTask}
-                kind={kind}
-                loading={detailLoading}
-                error={detailError}
-                outputKey={outputKey}
-                modelLabel={detailTask ? taskModelLabel(detailTask) : ""}
-                parameters={detailTask ? workbenchTaskSnapshot(detailTask)?.parameters : undefined}
-                busy={taskBusyId === detailTask?.id}
-                onNavigate={(output) => setOutputKey(output.key)}
-                onClose={() => {
-                    detailRequestRef.current++;
-                    setDetailTask(null);
-                    setDetailLoading(false);
-                }}
-                onReload={() => {
-                    if (detailTask)
-                        void openDetail(
-                            detailTask,
-                            workbenchTaskOutputs(detailTask, kind).find((output) => output.key === outputKey),
-                        );
-                }}
-                onDownload={downloadOutput}
-                onReference={(output) => void useOutputAsReference(output)}
-                onVideo={videoWorkbenchEnabled ? (output) => navigate(`/toolbox/video?reference=${encodeURIComponent(output.resourceId!)}`) : undefined}
-                onReuse={() => {
-                    if (detailTask) void reuseRecord(detailTask);
-                }}
-                onRetry={() => {
-                    if (detailTask) void retryTask(detailTask);
+                {videoProfile.ratios.length ? (
+                    <ChoiceChips
+                        label="画幅"
+                        value={ratio}
+                        options={videoRatioOptions(videoProfile.ratios)}
+                        columns={videoProfile.ratios.length <= 4 ? videoProfile.ratios.length : 3}
+                        onChange={(value) => {
+                            setRatio(value);
+                            rememberVideoSettings({ ratio: value });
+                        }}
+                    />
+                ) : null}
+                {videoProfile.resolutions.length ? (
+                    <ChoiceChips
+                        label="清晰度"
+                        value={videoQuality}
+                        options={videoProfile.resolutions.map((value) => ({ value: value.replace(/p$/i, ""), label: value }))}
+                        onChange={(value) => {
+                            setVideoQuality(value);
+                            rememberVideoSettings({ videoQuality: value });
+                        }}
+                    />
+                ) : null}
+                <SwitchRow
+                    items={[
+                        ...(videoProfile.generateAudio.supported
+                            ? [{ key: "audio", label: "生成音频", detail: "同步生成环境音或配乐", checked: config.videoGenerateAudio === "true", onChange: (value: boolean) => updateConfig("videoGenerateAudio", String(value)) }]
+                            : []),
+                        ...(videoProfile.watermark.supported
+                            ? [{ key: "watermark", label: "添加水印", detail: "投放素材建议关闭", checked: config.videoWatermark === "true", onChange: (value: boolean) => updateConfig("videoWatermark", String(value)) }]
+                            : []),
+                    ]}
+                />
+            </>
+        ) : null;
+
+    return (
+        <WorkspacePage fluid scroll={false} className="wb-page">
+            {tasksError ? <div role="status" className="collection-feedback is-error"><span>{tasksError}；保留已读取作品。</span><Button onClick={() => void loadTasks()}>重新加载</Button></div> : null}
+            <div className="wb-shell" data-kind={kind} data-mobile-tab={mobileTab}>
+                <div className="wb-mobile-tabs">
+                    <SegmentedControl<"compose" | "gallery">
+                        block
+                        ariaLabel="切换创作面板与作品"
+                        value={mobileTab}
+                        onChange={setMobileTab}
+                        options={[
+                            { value: "compose", label: "创作" },
+                            { value: "gallery", label: galleryCount ? `作品 ${galleryCount}` : "作品" },
+                        ]}
+                    />
+                </div>
+                <aside className="wb-composer" aria-label={`${kindLabel}创作面板`} onPasteCapture={handlePaste}>
+                    <header className="wb-composer-head">
+                        <h1 className="sr-only">{kindLabel}生成</h1>
+                        {bothKinds ? (
+                            <nav className="wb-kind-switch" aria-label="切换生成类型">
+                                <button type="button" aria-pressed={kind === "image"} className={kind === "image" ? "is-active" : ""} onClick={() => kind !== "image" && navigate("/toolbox/image")}>
+                                    <ImageIcon />
+                                    商品图片
+                                </button>
+                                <button type="button" aria-pressed={kind === "video"} className={kind === "video" ? "is-active" : ""} onClick={() => kind !== "video" && navigate("/toolbox/video")}>
+                                    <Clapperboard />
+                                    商品视频
+                                </button>
+                            </nav>
+                        ) : (
+                            <strong className="wb-composer-title">{kind === "image" ? "商品图片" : "商品视频"}</strong>
+                        )}
+                        <Tooltip title="清空场景、素材、描述和参数（作品不受影响）">
+                            <button type="button" className="wb-icon-button" data-icon-only aria-label="重置创作面板" onClick={resetComposer}>
+                                <RotateCcw />
+                            </button>
+                        </Tooltip>
+                    </header>
+                    <div className="wb-composer-scroll">
+                        <SceneSection kind={kind} tool={tool} quickTools={quickTools} loading={directoryLoading} error={directoryError} onOpenLibrary={() => setLibraryOpen(true)} onChoose={chooseTool} onRetry={() => loadDirectory()} />
+                        <ReferenceSection
+                            kind={kind}
+                            tool={tool}
+                            references={references}
+                            unslottedLimit={unslottedLimit}
+                            onPick={(slotKey) => {
+                                setUploadSlotKey(slotKey);
+                                window.setTimeout(() => fileRef.current?.click(), 0);
+                            }}
+                            onDropFiles={(files, slotKey) => void addFiles(files, slotKey)}
+                            onOpenLibrary={(slotKey) => setAssetPicker({ slotKey, revision: workbenchRevisionRef.current })}
+                            onRemove={removeReference}
+                            onRoleChange={(reference, role) => setReferences((current) => withUniqueFrameRole(current, reference.id, role))}
+                            onClear={clearReferences}
+                        />
+                        <PromptSection
+                            kind={kind}
+                            tool={tool}
+                            preset={preset}
+                            prompt={prompt}
+                            maxChars={promptMaxChars}
+                            inspirations={WORKBENCH_INSPIRATIONS[kind]}
+                            onChoosePreset={choosePreset}
+                            onTogglePhrase={(phrase) => setPrompt((current) => togglePromptPhrase(current, phrase))}
+                            onClear={() => {
+                                setPrompt("");
+                                setPreset(null);
+                            }}
+                            editor={
+                                <CanvasResourceMentionTextarea
+                                    aria-label="画面描述，可输入 @ 引用素材"
+                                    className="wb-prompt-input"
+                                    containerClassName="wb-prompt-editor"
+                                    value={prompt}
+                                    references={promptReferences}
+                                    onChange={setPrompt}
+                                    onSubmit={() => void submit()}
+                                    sendOnEnter={false}
+                                    style={{ color: "var(--wb-ink)" }}
+                                    placeholder={kind === "image" ? "例如：白色陶瓷马克杯放在浅色原木桌面上，清晨自然窗光，背景简洁，商品居中，保留杯身印花与把手细节" : "例如：镜头从商品正面缓慢推近，柔和光线从左向右扫过瓶身，结尾停在完整包装上 1 秒"}
+                                    maxLength={promptMaxChars}
+                                />
+                            }
+                        />
+                        <ComposerSection title="模型与规格" hint="可选参数随模型变化">
+                            {models.length ? (
+                                <ModelPicker
+                                    config={config}
+                                    value={selectedModel}
+                                    capability={capability}
+                                    requirements={pickerRequirements}
+                                    variant="creation"
+                                    fullWidth
+                                    className="creation-model-picker wb-model-picker"
+                                    showSelectedPrice={false}
+                                    showOptionPrices
+                                    onChange={(value) => {
+                                        updateConfig(kind === "image" ? "imageModel" : "videoModel", value);
+                                        updateConfig("model", value);
+                                    }}
+                                    placeholder={`选择${kindLabel}模型`}
+                                />
+                            ) : (
+                                <div className="wb-inline-error">
+                                    <span>暂无可用的{kindLabel}模型</span>
+                                    <a href="/settings?section=models" target="_blank" rel="noreferrer">
+                                        去模型设置
+                                    </a>
+                                </div>
+                            )}
+                            {selectedModel ? specControls : null}
+                            {selectedModel ? <p className="wb-muted-note">{WORKBENCH_SPEC_TIPS[kind]}</p> : null}
+                        </ComposerSection>
+                        <ComposerSection title="生成数量" hint={limitHint ? `${countHint} · ${limitHint}` : countHint}>
+                            <CountStepper kind={kind} value={requestedCount} max={batchLimit} onChange={changeCount} />
+                        </ComposerSection>
+                    </div>
+                    <GenerationStatusNotice status={generationStatus} />
+                    <ComposerFooter kind={kind} count={requestedCount} taskCount={plan.length} estimate={estimateLabel} busy={busy} disabledReason={disabledReason} onSubmit={() => void submit()} />
+                </aside>
+                <WorkbenchGallery
+                    kind={kind}
+                    batches={galleryBatches}
+                    loading={tasksLoading}
+                    filter={filter}
+                    query={query}
+                    busyTaskIds={busyTaskIds}
+                    actions={galleryActions}
+                    quickTools={quickTools}
+                    historyCapped={tasks.length >= 100}
+                    onFilterChange={setFilter}
+                    onQueryChange={setQuery}
+                    onRefresh={() => {
+                        detailFailedRef.current.clear();
+                        setDetailErrors(new Set());
+                        void loadTasks();
+                    }}
+                    onOpenLibrary={() => {
+                        setMobileTab("compose");
+                        setLibraryOpen(true);
+                    }}
+                    onChooseTool={chooseTool}
+                />
+            </div>
+
+            <input
+                ref={fileRef}
+                type="file"
+                className="sr-only"
+                tabIndex={-1}
+                aria-hidden
+                accept={
+                    uploadSlotKey
+                        ? tool?.inputContract?.slots
+                              .find((slot) => slot.key === uploadSlotKey)
+                              ?.mediaTypes.map((type) => `${type}/*`)
+                              .join(",")
+                        : kind === "image"
+                          ? "image/*"
+                          : "image/*,video/*,audio/*"
+                }
+                multiple
+                onChange={(event) => {
+                    if (event.target.files?.length) void addFiles(event.target.files, uploadSlotKey);
+                    event.currentTarget.value = "";
                 }}
             />
 
+            <SceneLibraryModal open={libraryOpen} kind={kind} tools={tools} loading={directoryLoading} error={directoryError} selectedId={tool?.id} onRetry={() => loadDirectory()} onClose={() => setLibraryOpen(false)} onChoose={chooseTool} />
+
+            <WorkbenchViewer
+                kind={kind}
+                batch={viewerBatch}
+                outputKey={viewer?.outputKey || null}
+                detail={viewerDetail}
+                presetName={viewerDetail ? workbenchTaskSnapshot(viewerDetail)?.presetName : undefined}
+                onNavigate={(output) => {
+                    setViewer((current) => (current ? { ...current, outputKey: output.key } : current));
+                    requestDetails([{ id: output.taskId, version: viewerBatch?.tasks.find((task) => task.id === output.taskId)?.updatedAt }]);
+                }}
+                onClose={() => setViewer(null)}
+                onDownload={(output) => viewerBatch && galleryActions.download(output, viewerBatch)}
+                onUseAsReference={kind === "image" ? (output) => void useAsReference(output) : undefined}
+                onMakeVideo={kind === "image" && features.videoWorkbenchEnabled ? makeVideo : undefined}
+                onReuse={(task) => viewerBatch && void restoreBatch(viewerBatch, task)}
+                onCopyPrompt={(text) => void copyText(text)}
+            />
+
+            {assetPicker ? (
+                <Suspense fallback={null}>
+                    <WorkbenchReferenceLibrary
+                        open
+                        accept={(() => {
+                            const slot = tool?.inputContract?.slots.find((item) => item.key === assetPicker.slotKey);
+                            if (slot) return slot.mediaTypes;
+                            return kind === "image" ? (["image"] as const) : (["image", "video", "audio"] as const).filter((mediaKind) => referenceLimitFor(mediaKind) > 0);
+                        })()}
+                        remaining={(() => {
+                            const slot = tool?.inputContract?.slots.find((item) => item.key === assetPicker.slotKey);
+                            if (slot) return Math.max(0, slot.maxCount - references.filter((item) => item.slotKey === slot.key).length);
+                            return Math.max(0, unslottedLimit - references.length);
+                        })()}
+                        slotName={tool?.inputContract?.slots.find((item) => item.key === assetPicker.slotKey)?.name}
+                        onClose={() => setAssetPicker(null)}
+                        onPick={async (items) => { await addResourceReferences(items, assetPicker.slotKey); }}
+                    />
+                </Suspense>
+            ) : null}
+
             <AppModal
-                destroyOnHidden={false}
-                title="提示词已有内容"
-                rootClassName="workbench-overlay"
+                title="描述里已有内容"
                 open={Boolean(presetPending)}
                 onCancel={() => setPresetPending(null)}
                 footer={[
@@ -1547,132 +1744,16 @@ export function WorkbenchPage({ kind }: { kind: WorkbenchKind }) {
                         返回
                     </Button>,
                     <Button key="append" onClick={() => applyPreset("append")}>
-                        追加
+                        追加到末尾
                     </Button>,
                     <Button key="replace" type="primary" onClick={() => applyPreset("replace")}>
                         替换
                     </Button>,
                 ]}
             >
-                {presetPending ? <p>将应用“{presetPending.name}”提示词。你可以替换当前内容，也可以追加到末尾。</p> : null}
+                {presetPending ? <p className="wb-modal-copy">将应用“{presetPending.name}”模板。可以替换当前描述，也可以追加到末尾。</p> : null}
             </AppModal>
         </WorkspacePage>
-    );
-}
-
-function CountPicker({ value, max, onChange }: { value: string; max: number; onChange: (value: string) => void }) {
-    const limit = Math.min(10, Math.max(1, max || 1));
-    const current = Math.min(limit, Math.max(1, Math.floor(Number(value) || 1)));
-    return (
-        <div className="workbench-count-picker">
-            <span>生成数量</span>
-            <div role="group" aria-label="生成数量">
-                {Array.from({ length: limit }, (_, index) => index + 1).map((item) => (
-                    <button key={item} type="button" aria-label={`生成 ${item} 张图片`} aria-pressed={current === item} className={current === item ? "is-active" : ""} onClick={() => onChange(String(item))}>
-                        {item}
-                    </button>
-                ))}
-                <InputNumber min={1} max={limit} precision={0} value={current} aria-label="输入生成数量" onChange={(next) => onChange(String(Math.min(limit, Math.max(1, Number(next) || 1))))} />
-            </div>
-        </div>
-    );
-}
-
-function ParameterChips({ label, value, options, onChange }: { label: string; value: string; options: Array<{ value: string; label: string }>; onChange: (value: string) => void }) {
-    if (options.length > 7) {
-        return (
-            <label className="workbench-setting-row">
-                <span>{label}</span>
-                <Select aria-label={label} value={value} onChange={onChange} options={options} />
-            </label>
-        );
-    }
-    return (
-        <div className="workbench-chip-field">
-            <span>{label}</span>
-            <div role="group" aria-label={label}>
-                {options.map((option) => (
-                    <button key={option.value} type="button" aria-pressed={value === option.value} className={value === option.value ? "is-active" : ""} onClick={() => onChange(option.value)}>
-                        {option.label}
-                    </button>
-                ))}
-            </div>
-        </div>
-    );
-}
-
-function QuickGoalCard({ tool, kind, onClick }: { tool: WorkbenchTool; kind: WorkbenchKind; onClick: () => void }) {
-    const visual = toolVisual(tool, kind);
-    return (
-        <button type="button" className={`workbench-goal-card is-${visual.tone}`} title={`${tool.name} · ${tool.subtitle || visual.label}`} onClick={onClick}>
-            <span className="workbench-goal-icon">{tool.coverUrl || tool.iconUrl ? <img src={tool.coverUrl || tool.iconUrl} alt="" /> : visual.icon}</span>
-            <span className="workbench-goal-copy">
-                <strong>{tool.name}</strong>
-                <small>{tool.subtitle || visual.label}</small>
-            </span>
-            <span className="workbench-goal-arrow">→</span>
-        </button>
-    );
-}
-
-function ToolCard({ tool, selected, onClick }: { tool: WorkbenchTool; selected: boolean; onClick: () => void }) {
-    const visual = toolVisual(tool, tool.kind);
-    const subtitle = isModelIdLike(tool.subtitle) ? tool.description || "" : tool.subtitle || tool.description;
-    return (
-        <button type="button" className={`workbench-tool-card ${selected ? "is-selected" : ""} is-${visual.tone}`} aria-pressed={selected} title={`${tool.name}${subtitle ? ` · ${subtitle}` : ""}`} onClick={onClick}>
-            <div className="group/spotlight relative isolate workbench-tool-card-spotlight">
-                <div className="workbench-tool-card-surface relative z-[1]">
-                    <span className="workbench-tool-card-image">{tool.coverUrl || tool.iconUrl ? <img src={tool.coverUrl || tool.iconUrl} alt="" /> : visual.icon}</span>
-                    <span className="workbench-tool-card-copy">
-                        <strong>{tool.name}</strong>
-                        <small>{subtitle}</small>
-                    </span>
-                    {selected ? (
-                        <span className="workbench-tool-check">
-                            <Check />
-                        </span>
-                    ) : null}
-                </div>
-            </div>
-        </button>
-    );
-}
-
-function ReferenceCard({ reference, kind, onRemove, onRoleChange }: { reference: WorkbenchReference; kind: WorkbenchKind; onRemove: (reference: WorkbenchReference) => void; onRoleChange: (role: WorkbenchReference["role"]) => void }) {
-    return (
-        <div className="workbench-reference">
-            {reference.kind === "video" ? (
-                <video src={reference.previewUrl} muted />
-            ) : reference.kind === "audio" ? (
-                <span className="workbench-audio-reference">
-                    <Mic />
-                </span>
-            ) : (
-                <img src={reference.previewUrl} alt={reference.name} />
-            )}
-            {reference.uploading ? <Progress type="circle" percent={Math.round(reference.progress)} size={34} /> : null}
-            {reference.error ? (
-                <span className="workbench-reference-error" title={reference.error}>
-                    上传失败
-                </span>
-            ) : null}
-            <button type="button" aria-label={`移除${reference.name}`} onClick={() => onRemove(reference)}>
-                <X />
-            </button>
-            {kind === "video" && reference.kind === "image" && !reference.slotKey ? (
-                <Select
-                    size="small"
-                    aria-label={`${reference.name} 的图片用途`}
-                    value={reference.role}
-                    onChange={onRoleChange}
-                    options={[
-                        { label: "参考图", value: "reference" },
-                        { label: "首帧", value: "first_frame" },
-                        { label: "尾帧", value: "last_frame" },
-                    ]}
-                />
-            ) : null}
-        </div>
     );
 }
 

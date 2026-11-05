@@ -94,7 +94,7 @@ export function EditorExport() {
         if (!project || sources.length === 0 || state.phase === "running") return;
         setState({ phase: "running", mode: "local", percent: 0, detail: "准备导出", result: null });
         try {
-            const blob = await exportTimelineToMp4(project, sources, {
+            const { blob, warnings } = await exportTimelineToMp4(project, sources, {
                 onProgress: (p: TimelineExportProgress) =>
                     setState({ phase: "running", mode: "local", percent: p.percent, detail: p.detail, result: null }),
             });
@@ -104,7 +104,7 @@ export function EditorExport() {
             a.download = "timeline-export.mp4";
             a.click();
             URL.revokeObjectURL(url);
-            setState({ phase: "done", mode: "local", percent: 100, detail: "导出完成，已开始下载", result: null });
+            setState({ phase: "done", mode: "local", percent: 100, detail: warnings.length ? `导出完成，已开始下载；${warnings.join("；")}` : "导出完成，已开始下载", result: null });
         } catch (error) {
             setState({
                 phase: "error",
@@ -121,7 +121,7 @@ export function EditorExport() {
     return (
         <div className="flex h-full flex-col bg-[var(--previs-sequencer-surface)]">
             <div className="director-scroll min-h-0 flex-1 overflow-y-auto p-3">
-                <div className="mb-3 rounded-md border border-[var(--previs-sequencer-border)] bg-[var(--previs-control-hover)] p-2.5">
+                <div className="mb-3 rounded-md border border-[var(--previs-sequencer-border)] bg-[var(--previs-control-hover)] p-2">
                     <div className="flex items-center justify-between">
                         <span className="text-xs font-medium text-[var(--previs-dock-fg-strong)]">渲染计划</span>
                         <span className="text-xs text-[var(--previs-dock-fg)]/60">{plan ? `${plan.steps.length} 步` : "—"}</span>
@@ -171,7 +171,7 @@ export function EditorExport() {
                     type="button"
                     onClick={exportLocalMp4}
                     disabled={sources.length === 0 || state.phase === "running"}
-                    className="mt-1.5 flex w-full items-center justify-center gap-2 rounded-md border border-[var(--previs-sequencer-border)] px-2 py-1.5 text-xs text-[var(--previs-dock-fg)]/80 hover:bg-[var(--previs-control-hover)] disabled:opacity-40"
+                    className="mt-2 flex w-full items-center justify-center gap-2 rounded-md border border-[var(--previs-sequencer-border)] px-2 py-2 text-xs text-[var(--previs-dock-fg)]/80 hover:bg-[var(--previs-control-hover)] disabled:opacity-40"
                 >
                     {state.phase === "running" && state.mode === "local" ? (
                         <Loader2 className="size-3.5 animate-spin" />

@@ -3,6 +3,18 @@ import type { WorkbenchReferenceSlot } from "@/services/api/workbench";
 type MediaKind = "image" | "video" | "audio";
 type Reference = { resourceId?: string; kind: MediaKind; slotKey?: string };
 
+/** Resolve the entire old selection before the caller replaces any live input. */
+export async function prepareWorkbenchReferences<T extends { resourceId: string; kind: MediaKind }>(references: readonly T[], resolve: (reference: T) => Promise<string | undefined>, active: () => boolean): Promise<Array<T & { previewUrl: string }>> {
+    const assertCurrent = () => {
+        if (!active()) throw new DOMException("创作输入或账号已变化，请重新载入参数", "AbortError");
+    };
+    assertCurrent();
+    const resolved = await Promise.all(references.map(async (reference) => ({ ...reference, previewUrl: (await resolve(reference)) || "" })));
+    assertCurrent();
+    if (resolved.some((reference) => !reference.previewUrl)) throw new Error("参考素材不存在或暂时无法读取，当前创作输入已保留");
+    return resolved;
+}
+
 /** Plan the complete selection before changing the composer; never silently drop excess items. */
 export function planWorkbenchReferences<T extends { resourceId: string; kind: MediaKind }>(
     current: readonly Reference[],

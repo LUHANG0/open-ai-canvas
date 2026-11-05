@@ -1,3 +1,5 @@
+import { useNavigate } from "react-router";
+import { SkillRecommendationsModal } from "@/components/skills/skill-recommendations-modal";
 import { CollectionToolbar } from "@/components/layout/collection-toolbar";
 import { AppModal } from "@/components/ui/product/app-modal";
 import { App, Button, Dropdown, Input } from "antd";
@@ -47,6 +49,9 @@ export default function SkillsPage() {
     const { curation, error: curationError, retry: retryCuration } = useSkillCuration();
     const [platformCategory, setPlatformCategory] = useState("");
     const { message, modal } = App.useApp();
+    const navigate = useNavigate();
+    const [recommendationsOpen, setRecommendationsOpen] = useState(false);
+    const openWorkbench = (skill: Skill) => navigate(`/skills/${encodeURIComponent(skill.skillId)}/edit`);
     const [scope, setScope] = useState<SkillScope>("public");
     const [sort, setSort] = useState<SkillSort>("popular");
     const [search, setSearch] = useState("");
@@ -367,7 +372,7 @@ export default function SkillsPage() {
     return (
         <>
             <WorkspacePage className="library-page skills-library-page collection-workspace" grid>
-                <PageHeader title="技能库" description="把提示词、角色设定和创作方法，变成随时可用的能力。" actions={<Button type="primary" icon={<Plus className="size-4" />} onClick={(event) => { installTriggerRef.current = event.currentTarget; event.currentTarget.focus({ preventScroll: true }); setInstallOpen(true); }}>安装技能</Button>} />
+                <PageHeader title="技能库" description="把提示词、角色设定和创作方法，变成随时可用的能力。" actions={<><Button onClick={() => setRecommendationsOpen(true)}>推荐技能</Button><Button type="primary" icon={<Plus className="size-4" />} onClick={(event) => { installTriggerRef.current = event.currentTarget; event.currentTarget.focus({ preventScroll: true }); setInstallOpen(true); }}>安装技能</Button></>} />
 
                 <div className="skills-browse-bar">
                 <SkillCurationBrowser data={curation} value={platformCategory} onChange={(value) => { setPlatformCategory(value); setTag("all"); setPage(1); }} error={curationError} retry={retryCuration} />
@@ -537,7 +542,8 @@ export default function SkillsPage() {
                     </div>
                 </div>
             </AppModal>
-            <SkillDetailModal skill={activeSkill} loading={detailLoading} mutating={Boolean(activeSkill && mutatingID === activeSkill.skillId)} categories={categories} onClose={() => setActiveSkill(null)} afterClose={() => { if (!editorOpen && detailTriggerRef.current?.isConnected) detailTriggerRef.current.focus({ preventScroll: true }); }} onAdd={(skill) => void toggleAdded(skill)} onLike={(skill) => void toggleLiked(skill)} onEdit={(skill) => void openEditor(skill)} onSync={(skill) => void synchronizeSkill(skill)} />
+            <SkillRecommendationsModal open={recommendationsOpen} onClose={() => setRecommendationsOpen(false)} onInstalled={() => reload()} />
+            <SkillDetailModal skill={activeSkill} loading={detailLoading} mutating={Boolean(activeSkill && mutatingID === activeSkill.skillId)} categories={categories} onClose={() => setActiveSkill(null)} afterClose={() => { if (!editorOpen && detailTriggerRef.current?.isConnected) detailTriggerRef.current.focus({ preventScroll: true }); }} onAdd={(skill) => void toggleAdded(skill)} onLike={(skill) => void toggleLiked(skill)} onEdit={(skill) => void openEditor(skill)} onOpenWorkbench={openWorkbench} onSync={(skill) => void synchronizeSkill(skill)} />
             <SkillInstallModal open={installOpen} onClose={() => setInstallOpen(false)} afterClose={() => { if (!editorOpen && !activeSkill && installTriggerRef.current?.isConnected) installTriggerRef.current.focus({ preventScroll: true }); }} onInstalled={(skill) => { setInstallOpen(false); setActiveSkill(skill); reload(); }} onManualCreate={() => { setInstallOpen(false); void openEditor(); }} />
             <SkillEditorDrawer open={editorOpen} skill={editingSkill} onClose={() => setEditorOpen(false)} onSaved={(skill) => { setEditorOpen(false); setEditingSkill(null); setActiveSkill(skill); reload(); }} />
         </>

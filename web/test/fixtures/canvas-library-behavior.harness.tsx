@@ -35,12 +35,20 @@ mock.module("@/components/canvas/canvas-history-drawer", () => ({ CanvasHistoryD
 mock.module("@/lib/canvas/canvas-export", () => ({ exportCanvasProjects: async () => { throw Error("unexpected export"); } }));
 mock.module("@/services/project-asset-sync", () => ({ ensureCanvasNodeAsset: async () => { throw Error("unexpected upload"); } }));
 mock.module("@/lib/canvas/canvas-drawing-storage", () => ({ saveCanvasDrawing: async () => { throw Error("unexpected drawing write"); } }));
+const { useLocaleStore } = await import("@/stores/use-locale-store");
+useLocaleStore.setState({ locale: "zh-CN" });
+await import("@/i18n");
 const { default: CanvasPage } = await import("@/pages/canvas/index");
 const { useCanvasUiStore } = await import("@/stores/canvas/use-canvas-ui-store");
 const client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: Infinity } } });
 const host = document.createElement("div"); document.body.append(host);
 const root = createRoot(host);
-const button = (name: string) => [...host.querySelectorAll("button")].find(b => b.textContent?.replace(/\s/g, "").includes(name)) as HTMLButtonElement;
+const button = (name: string) => {
+    const buttons = [...host.querySelectorAll("button")];
+    const found = buttons.find(b => b.textContent?.replace(/\s/g, "").includes(name));
+    assert.ok(found, `Missing button ${name}; available: ${buttons.map(b => b.textContent).join(" | ")}`);
+    return found;
+};
 const wait = async (ms = 25) => { const { promise, resolve } = Promise.withResolvers<void>(); setTimeout(resolve, ms); await act(async () => { await promise; }); };
 const click = async (el: Element) => { assert.ok(el); await act(async () => (el as HTMLElement).click()); };
 const input = async (el: Element, value: string) => { await act(async () => { Object.getOwnPropertyDescriptor(dom.HTMLInputElement.prototype, "value")!.set!.call(el, value); el.dispatchEvent(new dom.Event("input", { bubbles: true })); }); };

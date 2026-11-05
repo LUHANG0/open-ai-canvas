@@ -11,6 +11,8 @@ import { useRef, type KeyboardEvent, type ReactNode } from "react";
  * - API 对齐 AntD Segmented（value/onChange/options/block/size/disabled），
  *   可直接置于 antd Form.Item（Form 注入 value/onChange，props 同名兼容）。
  * - icon 节点尺寸由调用方控制（与 AntD options.icon 行为一致），用 currentColor 跟随文字色。
+ * - 稳定类名 app-segmented / app-segmented-thumb / app-segmented-item / is-sm 供用户工作台
+ *   内容库工具栏统一几何（workspace-product.css），其他场景仍只用 token 工具类。
  */
 
 export type SegmentedSize = "sm" | "md";
@@ -93,7 +95,8 @@ export function SegmentedControl<V extends string = string>({ value, onChange, o
     };
 
     const itemBase =
-        "relative z-10 inline-flex select-none items-center justify-center gap-1.5 whitespace-nowrap font-medium outline-none transition-colors motion-reduce:transition-none " + "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 ";
+        "app-segmented-item relative z-10 inline-flex select-none items-center justify-center gap-2 whitespace-nowrap font-medium outline-none transition-colors motion-reduce:transition-none " +
+        "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 ";
 
     return (
         <div data-slot="segmented-control" data-density={size === "sm" ? "compact" : undefined} role="radiogroup" aria-label={ariaLabel} aria-disabled={disabled || undefined} className={["app-control-group relative inline-flex bg-surface-tertiary", SIZE_CLASS[size].track, block ? "flex w-full" : "", disabled ? "opacity-60" : "", className].join(" ")}>

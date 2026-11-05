@@ -55,7 +55,7 @@ export function CanvasNodeAnglePanel({ dataUrl, onClose, onConfirm }: { dataUrl:
                 <span className="min-w-0 flex-1" />
                 <Tooltip title="关闭"><button type="button" aria-label="关闭多角度编辑器" className="grid size-7 place-items-center rounded-full transition hover:bg-black/5 dark:hover:bg-white/10" onClick={onClose}><X className="size-3.5" /></button></Tooltip>
             </div>
-            <div className="flex h-10 items-center gap-1 overflow-x-auto border-b px-2.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" style={{ borderColor: theme.toolbar.border }}>
+            <div className="flex h-10 items-center gap-1 overflow-x-auto border-b px-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" style={{ borderColor: theme.toolbar.border }}>
                 <AnglePresetButton active={!activePreset} label="自定义" />
                 {presets.map((preset) => (
                     <AnglePresetButton
@@ -91,10 +91,10 @@ export function CanvasNodeAnglePanel({ dataUrl, onClose, onConfirm }: { dataUrl:
                         onTiltChange={(value) => update("pitchAngle", value)}
                     />
                 </div>
-                <div className="flex min-w-0 flex-col justify-center gap-2 rounded-[var(--r-lg)] border px-2.5 py-2" style={{ background: theme.toolbar.itemHover, borderColor: theme.toolbar.border }}>
+                <div className="flex min-w-0 flex-col justify-center gap-2 rounded-[var(--r-lg)] border px-2 py-2" style={{ background: theme.toolbar.itemHover, borderColor: theme.toolbar.border }}>
                     <AngleSeg value={mode} options={[{ label: "天空盒", value: "skybox" }, { label: "摄像头", value: "camera" }]} onChange={(value) => setMode(value as "camera" | "skybox")} />
                     <span className="text-[var(--fs-tiny)] font-medium opacity-70">常用角度</span>
-                    <div className="grid grid-cols-2 gap-1.5">
+                    <div className="grid grid-cols-2 gap-2">
                         {presets.map((preset) => (
                             <button
                                 key={preset.id}

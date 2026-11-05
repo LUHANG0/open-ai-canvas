@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"errors"
 	"net/http"
 	"time"
 
@@ -321,6 +322,26 @@ func RegisterFinanceRoutes(r *gin.RouterGroup, svc *service.Service) {
 			models = append(models, adminChannelModel(item))
 		}
 		ok(c, gin.H{"models": models})
+	})
+	r.PATCH("/admin/channels/:id/models/:modelId/enabled", func(c *gin.Context) {
+		user, err := currentUser(c, svc)
+		if err != nil {
+			failService(c, err)
+			return
+		}
+		var req struct {
+			Enabled *bool `json:"enabled"`
+		}
+		if err := c.ShouldBindJSON(&req); err != nil || req.Enabled == nil {
+			fail(c, http.StatusBadRequest, errors.New("请提供 enabled"))
+			return
+		}
+		item, err := svc.SetAdminChannelModelEnabled(user, c.Param("id"), c.Param("modelId"), *req.Enabled)
+		if err != nil {
+			failService(c, err)
+			return
+		}
+		ok(c, gin.H{"model": adminChannelModel(*item)})
 	})
 	r.POST("/admin/channels/:id/models/fetch", func(c *gin.Context) {
 		user, err := currentUser(c, svc)

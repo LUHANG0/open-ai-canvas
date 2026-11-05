@@ -82,7 +82,7 @@ export function EditorInspector() {
                 <button
                     type="button"
                     onClick={() => selectClip(null)}
-                    className="w-full rounded-md border border-[var(--previs-sequencer-border)] py-1.5 text-xs text-[var(--previs-dock-fg)] hover:bg-[var(--previs-control-hover)]"
+                    className="w-full rounded-md border border-[var(--previs-sequencer-border)] py-2 text-xs text-[var(--previs-dock-fg)] hover:bg-[var(--previs-control-hover)]"
                 >
                     清除选中
                 </button>

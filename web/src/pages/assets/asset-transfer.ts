@@ -1,4 +1,5 @@
 import { saveAs } from "file-saver";
+import { translate } from "@/i18n";
 import { readZip } from "@/lib/zip";
 import { MediaPackage } from "@/lib/media-package";
 import { parseAssetRecordList } from "@/lib/asset-record";
@@ -38,7 +39,7 @@ export async function readAssetPackage(file: File): Promise<Asset[]> {
     const scope = getActiveUserScope();
     const archive = await readZip(file);
     const manifestBlob = archive.get("assets.json");
-    if (!manifestBlob) throw new Error("素材包缺少 assets.json");
+    if (!manifestBlob) throw new Error(translate("library.assets.transfer.missingManifest"));
     const manifest: unknown = JSON.parse(await manifestBlob.text());
     if (
         !manifest ||
@@ -71,10 +72,10 @@ export async function readAssetPackage(file: File): Promise<Asset[]> {
             !("mimeType" in entry) ||
             typeof entry.mimeType !== "string"
         )
-            throw new Error("素材包文件索引无效");
+            throw new Error(translate("library.assets.transfer.invalidIndex"));
         const blob = archive.get(entry.path);
-        if (!blob) throw new Error(`素材包缺少文件：${entry.path}`);
-        if ("bytes" in entry && entry.bytes !== blob.size) throw new Error(`素材包文件大小不匹配：${entry.path}`);
+        if (!blob) throw new Error(translate("library.assets.transfer.missingFile", { path: entry.path }));
+        if ("bytes" in entry && entry.bytes !== blob.size) throw new Error(translate("library.assets.transfer.sizeMismatch", { path: entry.path }));
         return { key: entry.storageKey, blob: blob.slice(0, blob.size, entry.mimeType) };
     });
     const keys = new Set(writes.map(({ key }) => key));

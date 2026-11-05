@@ -1,8 +1,10 @@
 import { CircleAlert, CloudCheck, CloudUpload, HardDriveDownload, LoaderCircle } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { useSyncProgressStore } from "@/stores/use-sync-progress-store";
 import "./canvas-sync-status.css";
 
 export function CanvasSyncStatus({ projectId }: { projectId: string }) {
+    const { t } = useTranslation();
     const progress = useSyncProgressStore((state) => state.syncingProjects[projectId]);
     const localError = progress?.localPhase === "error";
     const cloudError = progress?.phase === "error" || Boolean(progress?.errorKind);

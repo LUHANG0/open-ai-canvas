@@ -35,7 +35,7 @@ export function WorkbenchOutputImage({ output, thumbnail = false, onLoad }: { ou
         setRefreshing(true);
         try {
             if (output.resourceId) {
-                const url = await resolveWorkbenchResourceURL(output.resourceId, thumbnail ? "thumbnail" : "original");
+                const url = await resolveWorkbenchResourceURL(output.resourceId, thumbnail ? "thumbnail" : "original", true);
                 if (scope !== getActiveUserScope()) return;
                 if (!url) throw new Error("预览地址暂不可用");
                 setRefreshed(url);

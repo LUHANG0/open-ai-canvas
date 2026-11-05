@@ -479,7 +479,7 @@ function VersionThumb({ node, version, selected, current, onHover, onSelect, onA
                 ) : node.type === CanvasNodeType.Video ? (
                     <CanvasVideoPreviewImage node={preview} alt="" loading="lazy" draggable={false} className="block size-full object-cover" fallback={<ThumbFallback />} />
                 ) : (
-                    <Waveform seed={version.id} className="absolute inset-x-3 inset-y-4" />
+                    <Waveform peaks={version.media.waveform} seed={version.id} className="absolute inset-x-3 inset-y-4" />
                 )}
                 {current ? (
                     <span className="absolute left-1.5 top-1.5 inline-flex h-5 items-center gap-0.5 rounded-sm bg-black/60 px-2 text-xs font-medium text-white backdrop-blur-md">

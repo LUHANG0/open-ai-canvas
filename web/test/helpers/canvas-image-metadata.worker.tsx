@@ -43,6 +43,7 @@ self.onmessage = async ({ data: scenario }) => {
         mock.module("../../src/lib/user-scope", () => ({ getActiveUserScope: () => scope }));
         mock.module("../../src/services/image-storage", () => ({ resolveImageUrl: async (_key: string, src: string) => src }));
         const access = (key: string, variant: string) => ({ resourceId: key.slice(9), requestedVariant: variant, actualVariant: variant, url: `/${key.slice(9)}-${variant}`, originalWidth: 4000, originalHeight: 3000 });
+        mock.module("../../src/services/resource-blob-cache", () => ({ peekCachedResourceObjectUrl: () => "" }));
         mock.module("../../src/services/api/resources", () => ({
             resourceIdFromStorageKey: (key?: string) => (key?.startsWith("resource:") ? key.slice(9) : ""),
             resolveResourceAccessURL: (src: string) => src,

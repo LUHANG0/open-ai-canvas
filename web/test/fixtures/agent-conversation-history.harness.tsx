@@ -118,7 +118,10 @@ test("operation/reasoning groups remain intact and current approval actions stay
     const f = await fixture(messages);
     try {
         await f.render({ busy: true, approval: { approvalId: "isolated", detail: { toolName: "canvas_apply_ops", arguments: { operations: [] } }, reason: "" }, onApprove: () => approved++, onReject: () => rejected++ });
-        expect(f.host.querySelectorAll(".agent-reasoning-card")).toHaveLength(1);
+        const reasoning = f.host.querySelectorAll("details.agent-reasoning");
+        expect(reasoning).toHaveLength(1);
+        expect(reasoning[0].textContent).toContain("检查");
+        expect(reasoning[0].textContent).toContain("整理");
         expect(f.host.querySelectorAll("[data-agent-operation-feed]")).toHaveLength(1);
         expect(f.host.querySelector("[data-agent-operation-feed]")?.classList.contains("is-live")).toBe(true);
         const approval = f.host.querySelector(".canvas-agent-approval-card")!;

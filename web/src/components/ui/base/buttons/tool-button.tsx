@@ -22,7 +22,7 @@ import { cn } from "@/lib/utils";
  */
 export const toolButtonVariants = cva(
     [
-        "inline-flex select-none items-center justify-center gap-1.5 rounded-md px-3",
+        "inline-flex select-none items-center justify-center gap-2 rounded-md px-3",
         "font-medium transition-colors",
         "outline-none",
         "disabled:pointer-events-none disabled:opacity-45",

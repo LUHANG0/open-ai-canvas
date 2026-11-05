@@ -1,3 +1,4 @@
+import { translate } from "@/i18n";
 import { createClientId } from "@/lib/client-id";
 import { generationErrorMessage } from "@/lib/generation-error";
 import type { BackendGenerationResult } from "@/services/api/generation-task";
@@ -11,7 +12,7 @@ type CreationRuntime = typeof import("./creation-runtime");
 export type PersistedCreationTask = GenerationTask & { creationResultUrls?: string[]; creationResultStorageKeys?: string[]; creationError?: string };
 
 export function newConversation(): CreationConversation {
-    return { id: createClientId(), title: "新创作", updatedAt: new Date().toISOString(), messages: [] };
+    return { id: createClientId(), title: translate("create.conversation.untitled"), updatedAt: new Date().toISOString(), messages: [] };
 }
 
 export function newMessage(role: CreationMessage["role"], content: string, extra: Partial<CreationMessage> = {}): CreationMessage {
@@ -98,7 +99,7 @@ export async function materializeCreationTaskResults(runtime: CreationRuntime, t
             const creationResultStorageKeys = runtime.generationTaskMaterializedStorageKeys(materialized);
             return creationResultUrls.length || creationResultStorageKeys.length ? { ...materialized, ...(creationResultUrls.length ? { creationResultUrls } : {}), ...(creationResultStorageKeys.length ? { creationResultStorageKeys } : {}) } : materialized;
         } catch (error) {
-            return { ...task, creationError: error instanceof Error ? error.message : "生成结果资源化失败" };
+            return { ...task, creationError: error instanceof Error ? error.message : translate("create.conversation.materializeFailed") };
         }
     }));
 }
@@ -149,9 +150,35 @@ export function creationTaskFailure(tasks: GenerationTask[], error: unknown): Pi
     return { status: "error", content: syncing ? "结果同步中断" : "生成失败", error: syncing ? "暂时无法获取结果，可重新获取原任务，无需重新生成。" : generationErrorMessage(error), errorKind: syncing ? "sync" : "task", syncInterrupted: syncing || undefined };
 }
 
-const clearedCreationSyncState = { errorKind: undefined, syncInterrupted: undefined };
+const clearedCreationSyncState = { syncInterrupted: undefined, errorKind: undefined, mediaRecoverable: undefined } satisfies Partial<CreationMessage>;
 
-export function reconcileCreationTaskMessages(runtime: CreationRuntime, conversations: CreationConversation[], tasks: PersistedCreationTask[]) {
+/** 任务仍在进行：消息回到生成中，并刷新阶段与真实进度；没有变化时返回原对象，避免无谓重渲染与持久化。 */
+function creationMessageWithObservedTask(message: CreationMessage, task: GenerationTask): CreationMessage {
+    const progress = typeof task.progress === "number" && Number.isFinite(task.progress) ? Math.round(task.progress) : undefined;
+    const unchanged =
+        message.status === "pending" &&
+        !message.syncInterrupted &&
+        !message.error &&
+        !message.errorKind &&
+        message.generationStatus === task.status &&
+        message.generationStage === task.stage &&
+        message.generationMediaStage === task.mediaStage &&
+        message.generationProgress === progress;
+    if (unchanged) return message;
+    return {
+        ...message,
+        ...clearedCreationSyncState,
+        status: "pending",
+        content: message.status === "pending" ? message.content : "",
+        error: undefined,
+        generationStatus: task.status,
+        generationStage: task.stage,
+        generationMediaStage: task.mediaStage,
+        generationProgress: progress,
+    };
+}
+
+export function reconcileCreationTaskMessages(runtime: CreationRuntime, conversations: CreationConversation[], tasks: PersistedCreationTask[], options: { reviveMessageIds?: ReadonlySet<string> } = {}) {
     let changed = false;
     const next = conversations.map((conversation) => {
         let conversationChanged = false;
@@ -161,32 +188,41 @@ export function reconcileCreationTaskMessages(runtime: CreationRuntime, conversa
             const matches = tasks
                 .filter((task) => taskIds.size ? taskIds.has(task.id) : task.clientContext?.conversationId === conversation.id && task.clientContext.messageId === message.id)
                 .sort((left, right) => (left.clientContext?.batchIndex || 0) - (right.clientContext?.batchIndex || 0));
+            const active = matches.filter((task) => task.status === "queued" || task.status === "running");
             if (message.role === "assistant" && message.mode === "text") {
                 if (creationMessageNeedsResultSync(message) && matches.some((task) => task.status === "queued" || task.status === "running")) {
                     conversationChanged = changed = true;
                     return { ...message, ...clearedCreationSyncState, status: "pending" as const, error: undefined };
                 }
                 const recovery = runtime.recoverCreationTextTask(message, matches);
-                if (!recovery) return message;
+                if (!recovery) {
+                    // 恢复监听已重新拿到任务状态，连接中断提示可以收起；正文仍等任务终态一次性回填。
+                    if (!message.syncInterrupted || !active.length) return message;
+                    conversationChanged = true;
+                    changed = true;
+                    return { ...message, syncInterrupted: undefined };
+                }
                 completedAt = matches.reduce((latest, task) => conversationTimestamp(task.updatedAt) > conversationTimestamp(latest) ? task.updatedAt : latest, completedAt);
                 conversationChanged = true;
                 changed = true;
                 return { ...message, ...recovery, ...clearedCreationSyncState, ...(recovery.status === "error" ? { errorKind: matches.some((task) => task.status === "succeeded") ? "sync" as const : "task" as const } : {}) };
             }
             if (message.role !== "assistant") return message;
+            const revive = Boolean(options.reviveMessageIds?.has(message.id));
+            if (!revive && message.status === "error" && message.errorKind === "task") return message;
             const resultRecords = matches.reduce((records, task) => creationMessageResultRecords({ ...message, resultRecords: records }, task, creationTaskResultStorageKeys(task)), message.resultRecords);
             const metadataChanged = JSON.stringify(resultRecords) !== JSON.stringify(message.resultRecords);
-            if (message.status !== "pending" && message.status !== "error") {
+            if (!revive && message.status !== "pending" && message.status !== "error") {
                 if (!metadataChanged) return message;
                 conversationChanged = changed = true;
                 return { ...message, resultRecords };
             }
             const expectedTaskCount = Math.max(taskIds.size, ...matches.map((task) => task.clientContext?.batchCount || 0));
-            const active = matches.find((task) => task.status === "queued" || task.status === "running");
-            if (active) {
-                if (message.status === "pending" && !message.error && !message.errorKind && message.generationStage === active.stage) return message;
+            if (active.length) {
+                const observed = creationMessageWithObservedTask(message, active[0]);
+                if (observed === message) return message;
                 conversationChanged = changed = true;
-                return { ...message, ...clearedCreationSyncState, status: "pending" as const, content: "", error: undefined, generationStage: active.stage };
+                return { ...observed, resultRecords };
             }
             if (!matches.length || matches.length < expectedTaskCount) return message;
 
@@ -202,14 +238,25 @@ export function reconcileCreationTaskMessages(runtime: CreationRuntime, conversa
             const unavailable = succeeded.some((task) => task.creationError || !(task.creationResultUrls?.length || task.creationResultStorageKeys?.length));
             if (unavailable) return { ...message, status: "error" as const, content: resultUrls.length || resultStorageKeys.length ? "部分结果待同步" : "结果暂时无法读取", errorKind: "sync" as const, syncInterrupted: true, error: "任务已完成，可重新获取结果，无需重新生成。", ...(resultUrls.length ? { resultUrls: Array.from(new Set([...(message.resultUrls || []), ...resultUrls])) } : {}), ...(resultStorageKeys.length ? { resultStorageKeys: Array.from(new Set([...(message.resultStorageKeys || []), ...resultStorageKeys])) } : {}), resultRecords, taskIds: nextTaskIds };
             if (resultUrls.length || resultStorageKeys.length) {
-                const content = message.mode === "video" ? "视频已生成" : failedCount ? `${resultStorageKeys.length || resultUrls.length} 张图片已生成，${failedCount} 张失败` : "图片已生成";
-                return { ...message, ...clearedCreationSyncState, status: "done" as const, content, ...(resultUrls.length ? { resultUrls } : {}), ...(resultStorageKeys.length ? { resultStorageKeys } : {}), resultRecords, error: undefined, taskIds: nextTaskIds };
+                const content = message.mode === "video" ? translate("create.status.videoGenerated") : failedCount ? translate("create.status.imagesPartiallyGenerated", { done: resultStorageKeys.length || resultUrls.length, failed: failedCount }) : translate("create.status.imageGenerated");
+                return { ...message, ...clearedCreationSyncState, status: "done" as const, content, ...(resultUrls.length ? { resultUrls } : {}), ...(resultStorageKeys.length ? { resultStorageKeys } : {}), resultRecords, error: undefined, generationStatus: "succeeded" as const, taskIds: nextTaskIds };
             }
             if (matches.every((task) => task.status === "cancelled")) {
-                return { ...message, ...clearedCreationSyncState, status: "cancelled" as const, content: "已停止", error: undefined, taskIds: nextTaskIds };
+                return { ...message, ...clearedCreationSyncState, status: "cancelled" as const, content: translate("create.status.stopped"), error: undefined, generationStatus: "cancelled" as const, taskIds: nextTaskIds };
             }
             const failed = matches.find((task) => task.status === "failed");
-            return { ...message, ...clearedCreationSyncState, status: "error" as const, content: "生成失败", errorKind: "task" as const, error: generationErrorMessage(failed?.error || "任务已结束，但没有返回结果"), taskIds: nextTaskIds };
+            return {
+                ...message,
+                ...clearedCreationSyncState,
+                status: "error" as const,
+                content: translate("create.status.failed"),
+                errorKind: "task" as const,
+                mediaRecoverable: matches.some((task) => task.status === "failed" && task.canRecoverMedia) || undefined,
+                error: generationErrorMessage(failed?.error || translate("create.conversation.noResult")),
+                generationStatus: failed ? ("failed" as const) : message.generationStatus,
+                generationMediaStage: failed?.mediaStage,
+                taskIds: nextTaskIds,
+            };
         });
         return conversationChanged ? { ...conversation, messages, updatedAt: completedAt } : conversation;
     });

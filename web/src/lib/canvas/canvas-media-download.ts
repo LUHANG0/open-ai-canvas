@@ -56,6 +56,12 @@ export function buildCanvasMediaDownloads(canvasTitle: string, nodes: CanvasNode
     });
 }
 
+/** 拆层合成图在合成完成前没有可下载的结果。 */
+export function isCanvasMediaCompositePending(node: CanvasNodeData) {
+    const status = node.metadata?.imageLayerGroup?.compositeStatus;
+    return Boolean(status && status !== "ready");
+}
+
 export function buildCanvasMediaDownloadFileName(canvasTitle: string, node: CanvasNodeData, now = new Date()) {
     const canvasName = safeFileNamePart(canvasTitle, "未命名画布");
     const nodeName = safeFileNamePart(node.title, defaultNodeName(node.type));

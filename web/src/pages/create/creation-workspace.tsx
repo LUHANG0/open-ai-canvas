@@ -1,3 +1,5 @@
+import { HoverBorderGradient } from "@/components/ui/aceternity/hover-border-gradient";
+import { aceternityMotion } from "@/lib/aceternity-motion";
 import { ImageSizePicker } from "@/components/image-size-picker";
 import { ImageParameterFields } from "@/components/image-parameter-fields";
 import { imageResolutionUsesQuality, imageSizePresets } from "@/lib/image-size-presets";
@@ -6,8 +8,9 @@ import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type
 import { Button, Popover } from "antd";
 import { useWorkspaceTopBarMount } from "@/components/layout/workspace-top-bar-extension";
 import { Tooltip } from "@/components/ui/base/tooltip";
-import { Reorder } from "motion/react";
-import { ArrowUp, Brain, ChevronDown, ChevronLeft, ChevronRight, Clapperboard, Clock3, Film, History, Image as ImageIcon, LoaderCircle, Maximize2, MessageSquareText, Minimize2, Plus, SlidersHorizontal, Trash2, WandSparkles, Waves, X } from "lucide-react";
+import { Reorder, LayoutGroup, motion, useReducedMotion } from "motion/react";
+import type { Transition } from "motion/react";
+import { ArrowUp, Brain, WandSparkles, ChevronDown, ChevronLeft, ChevronRight, Clapperboard, Clock3, Film, History, Image as ImageIcon, LoaderCircle, Maximize2, MessageSquareText, Minimize2, Plus, SlidersHorizontal, Trash2, Waves, X, Lightbulb, Orbit, PenLine } from "lucide-react";
 
 import { formatVideoResolutionLabel as videoResolutionLabel } from "@/lib/video-generation-options";
 import { CanvasResourceMentionTextarea } from "@/components/canvas/canvas-resource-mention-textarea";
@@ -28,6 +31,7 @@ import type { PromptOptimizerProvider } from "@/lib/plugins/plugin-types";
 import { type CreationReference } from "./creation-references";
 import { creationAttachmentKind, type CreationAttachment, type CreationMode } from "./creation-assets";
 import { countOptions, modeLabels, qualityOptions, resolutionOptions, type CreationShotRailEntry } from "./creation-types";
+import { creationMessageNeedsResultSync } from "./creation-conversations";
 import "./creation-product.css";
 import "./creation-scrollbars.css";
 import { CreationAttachmentThumbnail, CreationMediaPreviewModal } from "./creation-workspace-messages";
@@ -57,11 +61,12 @@ export function CreationWorkspaceToolbar({ shots, onJumpToShot, onNewConversatio
                 <div className="creation-rail-pop-head"><span className="creation-rail-pop-title">镜头时间线<small>{shots.length ? `共 ${shots.length} 镜` : "空轨道"}</small></span><button type="button" className="creation-rail-pop-close" aria-label="关闭镜头列表" onClick={() => setRailOpen(false)}><X /></button></div>
                 {shots.length ? <ol className="creation-rail-list">{shots.map((shot) => {
                     const resultStatus = shot.result?.status;
-                    const statusLabel = resultStatus === "done" ? "完成" : resultStatus === "error" ? "生成失败" : resultStatus === "pending" ? "生成中" : resultStatus === "cancelled" ? "已停止" : "待生成";
+                    const resultNeedsSync = Boolean(shot.result && creationMessageNeedsResultSync(shot.result));
+                    const statusLabel = resultStatus === "done" ? "完成" : resultNeedsSync ? "待同步" : resultStatus === "error" ? "生成失败" : resultStatus === "pending" ? "生成中" : resultStatus === "cancelled" ? "已停止" : "待生成";
                     return <li key={shot.key}><button type="button" role="option" aria-selected="false" className="creation-rail-row" onClick={() => { setRailOpen(false); onJumpToShot(shot); }}>
                         <span className="creation-rail-row-shot">{formatShotOrdinal(shot.ordinal - 1)}</span>
                         <span className="creation-rail-row-prompt">{shot.user.content || "视频镜头"}</span>
-                        <span className={`creation-rail-row-state is-${resultStatus || "idle"}`}>{statusLabel}</span>
+                        <span className={`creation-rail-row-state is-${resultNeedsSync ? "sync" : resultStatus || "idle"}`}>{statusLabel}</span>
                     </button></li>;
                 })}</ol> : <p className="creation-rail-empty">在下方发送一条视频消息，就会自动成为第 1 镜。</p>}
             </div> : null}
@@ -353,7 +358,7 @@ export function CreationComposer(props: ComposerProps) {
                         aria-expanded={promptOptimizerOpen}
                         aria-haspopup="dialog"
                     >
-                        <WandSparkles />
+                        <PenLine />
                         <span>优化</span>
                     </button>
                 </Tooltip> : null}
@@ -361,8 +366,20 @@ export function CreationComposer(props: ComposerProps) {
                 {props.mode === "video" || (props.mode === "image" && imageSettingsSupported) ? <GenerationSettingsMenu {...props} /> : null}
                 {props.mode === "video" ? <DurationMenu profile={props.videoProfile} seconds={props.seconds} onChange={props.setSeconds} /> : null}
                 {props.mode === "text" ? <>
-                    <Tooltip title={interactionBusy ? "生成中，此开关将在下次发送时生效" : (props.textStreaming ? "流式输出已开启" : "流式输出已关闭")}><button type="button" className="creation-chat-control" aria-pressed={props.textStreaming} disabled={interactionBusy} onClick={() => props.setTextStreaming(!props.textStreaming)}><Waves /><span>流式</span></button></Tooltip>
-                    <Tooltip title={interactionBusy ? "生成中，此开关将在下次发送时生效" : (props.textThinking ? "思考已开启，会展示模型返回的推理摘要" : "开启模型思考")}><button type="button" className="creation-chat-control" aria-pressed={props.textThinking} disabled={interactionBusy} onClick={() => props.setTextThinking(!props.textThinking)}><Brain /><span>思考</span></button></Tooltip>
+                    <Tooltip title={interactionBusy ? "生成中，此开关将在下次发送时生效" : (props.textStreaming ? "流式输出已开启" : "流式输出已关闭")}>
+                        <button type="button" className="creation-chat-control" aria-pressed={props.textStreaming} disabled={interactionBusy} onClick={() => props.setTextStreaming(!props.textStreaming)}>
+                            <Waves />
+                            <span>流式</span>
+                            {props.textStreaming ? <span className="size-1.5 rounded-full bg-blue-400 shrink-0 shadow-sm" /> : null}
+                        </button>
+                    </Tooltip>
+                    <Tooltip title={interactionBusy ? "生成中，此开关将在下次发送时生效" : (props.textThinking ? "思考已开启，会展示模型返回的推理摘要" : "开启模型思考")}>
+                        <button type="button" className="creation-chat-control" aria-pressed={props.textThinking} disabled={interactionBusy} onClick={() => props.setTextThinking(!props.textThinking)}>
+                            <Lightbulb />
+                            <span>思考</span>
+                            {props.textThinking ? <span className="size-1.5 rounded-full bg-current shrink-0" aria-hidden /> : null}
+                        </button>
+                    </Tooltip>
                 </> : null}
                 {props.prompt.trim() || props.attachments.length || props.references.some((reference) => reference.active) ? <Tooltip title="清空提示词和参考内容"><button type="button" className="creation-chat-control is-clear" onClick={props.onClearComposer} disabled={interactionBusy} aria-label="清空提示词和参考内容"><Trash2 /><span>清空</span></button></Tooltip> : null}
             </div>
@@ -414,21 +431,71 @@ export function CreationComposer(props: ComposerProps) {
     );
 }
 
-export function CreationModeTabs({ mode, onModeChange, agentActive = false, onAgentSelect, orientation = "horizontal" }: { mode: CreationMode; onModeChange: (mode: CreationMode) => void; agentActive?: boolean; onAgentSelect?: () => void; orientation?: "horizontal" | "vertical" }) {
-    const items: { mode: CreationMode; icon: ReactNode; label: string }[] = [
-        { mode: "video", icon: <Film />, label: "视频" },
-        { mode: "image", icon: <ImageIcon />, label: "图片" },
-        { mode: "text", icon: <MessageSquareText />, label: "文本" },
-    ];
-    return <div className="creation-mode-tabs app-control-group" role="group" aria-label="创作模式" data-active-mode={agentActive ? "agent" : mode} data-orientation={orientation} style={{ gridTemplateColumns: orientation === "vertical" ? "minmax(0, 1fr)" : `repeat(${onAgentSelect ? 4 : 3}, minmax(0, 1fr))` }}>
-        {items.map((item) => (
-            <button key={item.mode} type="button" className="creation-mode-button" data-slot="control-item" data-mode={item.mode} aria-pressed={!agentActive && item.mode === mode} aria-label={`${item.label}生成`} onClick={() => onModeChange(item.mode)}>
+const creationModeItems: { mode: CreationMode; icon: ReactNode; label: string }[] = [
+    { mode: "video", icon: <Film />, label: "视频" },
+    { mode: "image", icon: <ImageIcon />, label: "图片" },
+    { mode: "text", icon: <MessageSquareText />, label: "文本" },
+];
+
+type CreationModeKey = CreationMode | "agent";
+
+// 首页页签的拉伸滑动：朝目标一侧的边用更硬的弹簧先到，另一侧稍后跟上，页签先拉长再收拢。
+const folderTabLeadingSpring = { type: "spring", stiffness: 540, damping: 42, mass: 0.6 } as const;
+const folderTabTrailingSpring = { type: "spring", stiffness: 280, damping: 32, mass: 0.8 } as const;
+
+/** 首页创作卡：顶部文件夹页签切换视频 / 图片 / 文本 / Agent，选中页签与下方内容面同色相连。 */
+export function CreationModeCard({ mode, agentActive, onModeChange, onAgentSelect, children }: { mode: CreationMode; agentActive: boolean; onModeChange: (mode: CreationMode) => void; onAgentSelect: () => void; children: ReactNode }) {
+    const reducedMotion = useReducedMotion();
+    const keys: CreationModeKey[] = [...creationModeItems.map((item) => item.mode), "agent"];
+    const activeKey: CreationModeKey = agentActive ? "agent" : mode;
+    const activeIndex = Math.max(0, keys.indexOf(activeKey));
+    // 记住上一次的位置来判断滑动方向；在渲染期调整状态，切换当帧就拿到新方向。
+    const [slide, setSlide] = useState({ index: activeIndex, direction: 0 });
+    if (slide.index !== activeIndex) setSlide({ index: activeIndex, direction: Math.sign(activeIndex - slide.index) });
+    const step = 100 / keys.length;
+    const tabTransition: Transition = reducedMotion ? { duration: 0 } : {
+        left: slide.direction < 0 ? folderTabLeadingSpring : folderTabTrailingSpring,
+        right: slide.direction > 0 ? folderTabLeadingSpring : folderTabTrailingSpring,
+    };
+    return <HoverBorderGradient as="div" duration={2.2} containerClassName="creation-mode-card" className="creation-mode-card-inner">
+        <div className="creation-mode-folder" role="group" aria-label="创作模式" data-active-mode={activeKey} style={{ "--creation-mode-count": keys.length } as CSSProperties}>
+            <motion.span className="creation-mode-folder-tab" aria-hidden initial={false} animate={{ left: `${activeIndex * step}%`, right: `${(keys.length - 1 - activeIndex) * step}%` }} transition={tabTransition}>
+                <CreationModeFolderWing side="start" />
+                <CreationModeFolderWing side="end" />
+            </motion.span>
+            {creationModeItems.map((item) => <button key={item.mode} type="button" className="creation-mode-folder-button" data-mode={item.mode} aria-pressed={activeKey === item.mode} aria-label={`${item.label}生成`} onClick={() => onModeChange(item.mode)}>{item.icon}<span>{item.label}</span></button>)}
+            <button type="button" className="creation-mode-folder-button" data-mode="agent" aria-pressed={agentActive} onClick={onAgentSelect}><Orbit /><span>Agent</span><i className="creation-mode-spark" aria-hidden /></button>
+        </div>
+        <div className="creation-mode-panel">{children}</div>
+    </HoverBorderGradient>;
+}
+
+// 选中页签两侧的 S 形翼片：顶边水平切入、底边水平落到内容面；与页签主体重叠 1px，避免亚像素接缝。
+function CreationModeFolderWing({ side }: { side: "start" | "end" }) {
+    return <svg className={`creation-mode-folder-wing is-${side}`} viewBox="0 0 30 48" preserveAspectRatio="none" aria-hidden focusable="false"><path d="M30 0H28C14 0 14 48 0 48H30Z" /></svg>;
+}
+
+function CreationModeTabs({ mode, onModeChange, orientation = "horizontal" }: { mode: CreationMode; onModeChange: (mode: CreationMode) => void; orientation?: "horizontal" | "vertical" }) {
+    const reducedMotion = useReducedMotion();
+    const indicator = (pressed: boolean) => pressed ? (
+        <motion.span
+            layoutId={`creation-mode-indicator-${orientation}`}
+            className="creation-mode-indicator"
+            aria-hidden
+            transition={reducedMotion ? { duration: 0 } : aceternityMotion.spring.dock}
+        />
+    ) : null;
+    return <LayoutGroup id={`creation-mode-tabs-${orientation}`}>
+        <div className="creation-mode-tabs" role="group" aria-label="创作模式" data-active-mode={mode} data-orientation={orientation} style={{ gridTemplateColumns: orientation === "vertical" ? "minmax(0, 1fr)" : "repeat(3, minmax(0, 1fr))" }}>
+        {creationModeItems.map((item) => (
+            <button key={item.mode} type="button" className="creation-mode-button" data-mode={item.mode} aria-pressed={item.mode === mode} aria-label={`${item.label}生成`} onClick={() => onModeChange(item.mode)}>
+                {indicator(item.mode === mode)}
                 {item.icon}
                 <span data-slot="control-label">{item.label}</span>
             </button>
         ))}
-        {onAgentSelect ? <button type="button" className="creation-mode-button" data-slot="control-item" data-mode="agent" aria-pressed={agentActive} onClick={onAgentSelect}><Brain /><span data-slot="control-label">Agent</span><i className="creation-mode-spark" aria-hidden /></button> : null}
-    </div>;
+        </div>
+    </LayoutGroup>;
 }
 
 function ModePicker({ mode, onModeChange }: { mode: CreationMode; onModeChange: (mode: CreationMode) => void }) {
@@ -470,7 +537,7 @@ function GenerationSettingsMenu(props: ComposerProps) {
         {props.mode === "video" ? (videoResolutionSupported ? <SettingSection title="清晰度" value={videoResolutionLabel(props.videoQuality)}><div className="creation-choice-grid is-resolution">{resolutions.map((option) => <button key={option.value} type="button" aria-pressed={option.value === props.videoQuality} className={option.value === props.videoQuality ? "is-selected" : ""} onClick={() => props.setVideoQuality(option.value)}>{option.label}</button>)}</div></SettingSection> : null) : <>
 
             {props.imageProfile.quality.supported && !imageResolutionUsesQuality(mergedProfile) ? <SettingSection title={activeQualityOptions.some((item) => item.value === "1k" || item.value === "2k") ? "分辨率" : "图片质量"} value={qualityLabel}><div className="creation-choice-grid is-quality">{activeQualityOptions.map((option) => <button key={option.value} type="button" aria-pressed={option.value === props.quality} className={option.value === props.quality ? "is-selected" : ""} onClick={() => props.setQuality(option.value)}><span>{option.label}</span><small>{option.description}</small></button>)}</div></SettingSection> : null}
-            {props.imageProfile.maxOutputs > 1 ? <SettingSection title="生成数量" value={`${props.count} 张`}><div className="creation-parameter-content"><div className="creation-choice-grid is-count">{countOptions.filter((option) => Number(option) <= props.imageProfile.maxOutputs).map((option) => <button key={option} type="button" aria-pressed={option === props.count} className={option === props.count ? "is-selected" : ""} onClick={() => props.setCount(option)}>{option}</button>)}</div><label className="creation-custom-value"><span>自定义</span><input inputMode="numeric" pattern="[0-9]*" value={props.count} onChange={(event) => props.setCount(String(Math.max(1, Math.min(props.imageProfile.maxOutputs, Number(event.target.value) || 1))))} aria-label={`生成数量，范围 1 到 ${props.imageProfile.maxOutputs}`} /><em>张</em></label></div></SettingSection> : null}
+            {props.imageProfile.maxOutputs > 1 ? <SettingSection title="生成张数" value={`${props.count} 张`}><div className="creation-parameter-content"><div className="creation-choice-grid is-count">{countOptions.filter((option) => Number(option) <= props.imageProfile.maxOutputs).map((option) => <button key={option} type="button" aria-pressed={option === props.count} className={option === props.count ? "is-selected" : ""} onClick={() => props.setCount(option)}>{option}</button>)}</div><label className="creation-custom-value"><span>自定义</span><input inputMode="numeric" pattern="[0-9]*" value={props.count} onChange={(event) => props.setCount(String(Math.max(1, Math.min(props.imageProfile.maxOutputs, Number(event.target.value) || 1))))} aria-label={`生成张数，范围 1 到 ${props.imageProfile.maxOutputs}`} /><em>张</em></label></div></SettingSection> : null}
         </>}
     </div>;
     return <Popover open={open} onOpenChange={setOpen} trigger="click" placement="bottom" arrow={false} align={{ offset: [0, 0], overflow: { shiftX: true, shiftY: true } }} classNames={{ root: "creation-control-popover", container: "creation-control-popover-surface", content: "creation-control-popover-content" }} content={panel}>
