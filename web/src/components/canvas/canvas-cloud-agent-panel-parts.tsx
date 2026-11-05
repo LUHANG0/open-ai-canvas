@@ -490,7 +490,24 @@ export function AgentConversation({
     const lastUserId = messages.findLast((item) => item.role === "user")?.id;
     // 连续的工具记录折成一行（只报最新一步），计划/提问载体由输入区上方的固定条渲染。
     const segments = useMemo(() => buildAgentFeedSegments(messages), [messages]);
+    // 按展示段分页，保留工具/推理分组和完整持久化消息。阅读历史后固定首段，
+    // 不能因末尾收到新消息而移除用户正在阅读的段落。
+    const [firstVisibleKey, setFirstVisibleKey] = useState<string | null>(null);
+    const pinnedIndex = firstVisibleKey === null ? -1 : segments.findIndex((segment) => segment.key === firstVisibleKey);
+    const startIndex = pinnedIndex >= 0 ? pinnedIndex : Math.max(0, segments.length - 80);
+    const pendingAnchorRef = useRef<{ element: HTMLElement; top: number } | null>(null);
     const lastMessage = messages.at(-1);
+
+    const loadEarlier = () => {
+        const container = scrollRef.current;
+        if (!container || startIndex === 0) return;
+        followRef.current = false;
+        const top = container.getBoundingClientRect().top;
+        const anchor = Array.from(contentRef.current?.querySelectorAll<HTMLElement>("[data-agent-feed-key]") || [])
+            .find((element) => element.getBoundingClientRect().bottom > top);
+        pendingAnchorRef.current = anchor ? { element: anchor, top: anchor.getBoundingClientRect().top } : null;
+        setFirstVisibleKey(segments[Math.max(0, startIndex - 80)].key);
+    };
 
     // 自己发送时恢复跟随；阅读旧消息时不让流式输出抢走滚动位置。
     useLayoutEffect(() => {
@@ -498,8 +515,12 @@ export function AgentConversation({
     }, [lastUserId]);
     useLayoutEffect(() => {
         const element = scrollRef.current;
-        if (element && followRef.current) element.scrollTop = element.scrollHeight;
-    }, [messages, busy, approval]);
+        const anchor = pendingAnchorRef.current;
+        pendingAnchorRef.current = null;
+        if (!element) return;
+        if (anchor?.element.isConnected) element.scrollTop += anchor.element.getBoundingClientRect().top - anchor.top;
+        else if (followRef.current) element.scrollTop = element.scrollHeight;
+    }, [messages, busy, approval, startIndex]);
     useEffect(() => {
         const element = scrollRef.current;
         const content = contentRef.current;
@@ -520,29 +541,36 @@ export function AgentConversation({
             onScroll={(event) => {
                 const element = event.currentTarget;
                 followRef.current = element.scrollHeight - element.scrollTop - element.clientHeight < 48;
+                if (!followRef.current && firstVisibleKey === null && segments[startIndex]) setFirstVisibleKey(segments[startIndex].key);
             }}
         >
             {!messages.length ? <AgentWelcome appearance={appearance} nodeCount={nodeCount} onChooseSkill={onChooseSkill} onDraftPrompt={onDraftPrompt} /> : null}
             <div ref={contentRef} className="agent-conversation-messages">
-                {segments.map((segment, index) =>
-                    segment.kind === "operations" ? (
-                        // 只有"对话末尾那一段 + 还在跑"才流光：历史段落留在静态态，任务完成即停。
-                        <AgentOperationFeed key={segment.key} items={segment.items} theme={theme} references={references} onFocusNode={onFocusNode} onUndo={onUndo} undoStates={undoStates} live={busy && index === segments.length - 1} />
-                    ) : segment.kind === "reasoning" ? (
-                        <AgentReasoningFeed key={segment.key} items={segment.items} theme={theme} />
-                    ) : (
-                        <AgentChatMessage
-                            key={segment.key}
-                            item={segment.item}
-                            theme={theme}
-                            references={references}
-                            onFocusNode={onFocusNode}
-                            onUndo={onUndo}
-                            undoStates={undoStates}
-                            isStreaming={busy && !approval && segment.item.streaming === true && segment.item === lastMessage}
-                        />
-                    ),
-                )}
+                {startIndex > 0 ? (
+                    <button type="button" className="agent-load-earlier" onClick={loadEarlier}>
+                        加载更早的 {Math.min(80, startIndex)} 段对话
+                    </button>
+                ) : null}
+                {segments.slice(startIndex).map((segment, offset) => (
+                    <div key={segment.key} data-agent-feed-key={segment.key} className="agent-history-item">
+                        {segment.kind === "operations" ? (
+                            // 只有"对话末尾那一段 + 还在跑"才流光：历史段落留在静态态，任务完成即停。
+                            <AgentOperationFeed items={segment.items} theme={theme} references={references} onFocusNode={onFocusNode} onUndo={onUndo} undoStates={undoStates} live={busy && startIndex + offset === segments.length - 1} />
+                        ) : segment.kind === "reasoning" ? (
+                            <AgentReasoningFeed items={segment.items} theme={theme} />
+                        ) : (
+                            <AgentChatMessage
+                                item={segment.item}
+                                theme={theme}
+                                references={references}
+                                onFocusNode={onFocusNode}
+                                onUndo={onUndo}
+                                undoStates={undoStates}
+                                isStreaming={busy && !approval && segment.item.streaming === true && segment.item === lastMessage}
+                            />
+                        )}
+                    </div>
+                ))}
                 {approval ? (
                     <ApprovalCard
                         key={approval.approvalId}
