@@ -2594,8 +2594,8 @@ summary.agent-tool-step:hover {
 /* 收起 / 展开形象的小按钮：常驻半透明，悬停入口或聚焦时完全显示。 */
 .canvas-agent-launcher-toggle {
     display: grid;
-    width: 22px;
-    height: 22px;
+    width: 28px;
+    height: 28px;
     place-items: center;
     border: 1px solid color-mix(in srgb, var(--foreground) 10%, transparent);
     border-radius: 999px;

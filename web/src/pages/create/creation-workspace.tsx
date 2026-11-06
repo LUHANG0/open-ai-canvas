@@ -403,7 +403,7 @@ export function CreationComposer(props: ComposerProps) {
         <CreationMediaPreviewModal url={previewUrl} type={previewType} onClose={() => setPreviewUrl("")} />
     </>;
     const composer = (
-        <div className="creation-composer-shell p-px">
+        <div className="creation-composer-shell p-px" data-agent-launcher-avoid>
             <div className="creation-composer-shell-inner">
                 <div className={`creation-chat-composer is-${props.variant}`}>{composerContent}</div>
             </div>

@@ -53,10 +53,11 @@ const build = await Bun.build({
 expect(build.success).toBe(true);
 const source = await build.outputs[0].text();
 
-function harness() {
+function harness(captureError) {
     const cells = [];
     let cursor = 0;
     let opens = 0;
+    let obstacles = [];
     const stored = new Map();
     const listeners = new Map();
     const window = { innerWidth: 1280, innerHeight: 800, addEventListener: (name, fn) => listeners.set(name, fn), removeEventListener: (name) => listeners.delete(name) };
@@ -87,12 +88,13 @@ function harness() {
     runInNewContext(source, { module, exports: module.exports, hooks, window, localStorage: { getItem: (key) => stored.get(key) ?? null, setItem: (key, value) => stored.set(key, value) }, console });
     const render = () => {
         cursor = 0;
-        return module.exports.useAgentLauncherPosition(() => opens++);
+        return module.exports.useAgentLauncherPosition(() => opens++, 76, 76, obstacles);
     };
     let current = render();
     let captured = null;
     const target = {
         setPointerCapture: (id) => {
+            if (captureError) throw captureError;
             captured = id;
         },
         hasPointerCapture: (id) => captured === id,
@@ -101,6 +103,10 @@ function harness() {
         },
     };
     return {
+        avoid(next) {
+            obstacles = next;
+            current = render();
+        },
         fire(name, overrides = {}) {
             const event = { currentTarget: target, pointerId: 1, isPrimary: true, button: 0, clientX: 500, clientY: 500, detail: 1, preventDefault() {}, stopPropagation() {}, ...overrides };
             current.handlers[name](event);
@@ -179,6 +185,37 @@ test("production handlers support keyboard movement and viewport resizing", () =
     expect(h.state.position).toEqual({ right: 12, bottom: 12 });
     h.fire("onClick", { detail: 0 });
     expect(h.opens).toBe(1);
+});
+
+test("temporary avoidance survives a click without replacing the user's saved position", () => {
+    const h = harness();
+    h.avoid([{ left: 250, top: 660, right: 1260, bottom: 790 }]);
+    expect(h.state.position.bottom).toBeGreaterThan(20);
+    h.fire("onPointerDown");
+    h.fire("onPointerUp");
+    h.fire("onClick");
+    expect(h.opens).toBe(1);
+    expect(h.saved).toEqual([]);
+    h.avoid([]);
+    expect(h.state.position).toEqual(start);
+});
+
+test("an expired pointer cannot leave a stuck drag or break the subsequent click", () => {
+    const h = harness({ name: "NotFoundError" });
+    expect(() => h.fire("onPointerDown")).not.toThrow();
+    h.fire("onPointerMove", { clientX: 100 });
+    h.fire("onPointerUp", { clientX: 100 });
+    h.fire("onClick");
+    expect(h.state.position).toEqual(start);
+    expect(h.state.dragging).toBe(false);
+    expect(h.captured).toBe(null);
+    expect(h.saved).toEqual([]);
+    expect(h.opens).toBe(1);
+});
+
+test("unexpected pointer capture failures remain visible", () => {
+    const h = harness({ name: "UnexpectedCaptureError" });
+    expect(() => h.fire("onPointerDown")).toThrow();
 });
 
 test("large avatars shrink outside the canvas and on narrow canvas screens", () => {

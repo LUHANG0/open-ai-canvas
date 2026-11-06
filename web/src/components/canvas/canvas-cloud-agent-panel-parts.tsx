@@ -9,6 +9,7 @@ import { agentAvatarClipForState, agentAvatarStateForRunStatus, agentCopy, DEFAU
 import { type CSSProperties, type ReactNode, memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { usePopoverAnchorAlign } from "@/hooks/use-popover-anchor-align";
 import { useAgentLauncherPosition } from "./use-agent-launcher-position";
+import { useAgentLauncherObstacles } from "./use-agent-launcher-obstacles";
 import { resolveAgentLauncherAvatarHeight } from "@/lib/canvas/agent-launcher-position";
 import { useMatch } from "react-router";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
@@ -123,13 +124,14 @@ export const AgentLauncher = memo(function AgentLauncher({
     const keepsAvatarSize = largeAvatar && !collapsed;
     const height = collapsed ? AGENT_LAUNCHER_COLLAPSED_SIZE : keepsAvatarSize ? resolveAgentLauncherAvatarHeight(appearance.avatarHeight, aspectRatio, viewport, inCanvasEditor) : 76;
     const width = collapsed ? AGENT_LAUNCHER_COLLAPSED_SIZE : keepsAvatarSize ? Math.round(height * aspectRatio) : 76;
-    const { position, dragging, handlers } = useAgentLauncherPosition(onOpen, width, height);
+    const obstacles = useAgentLauncherObstacles();
+    const { position, dragging, handlers } = useAgentLauncherPosition(onOpen, width, height, obstacles);
     const { onClick, onKeyDown, onDoubleClick, ...pointerHandlers } = handlers;
     // 大形象的外框大多是透明像素：外框不接收指针，只有身体热区可点、可拖，透明处的点击落到下面的页面。
     // 键盘聚焦与激活仍在按钮上；小圆球和默认 76px 入口整块可点。
     const bodyHitOnly = keepsAvatarSize && (live || media);
     const hitInset = bodyHitOnly ? AGENT_LAUNCHER_HIT_INSET : null;
-    const showToggle = !hidden && (largeAvatar || collapsed);
+    const showToggle = !hidden;
     return (
         <>
             <motion.button
