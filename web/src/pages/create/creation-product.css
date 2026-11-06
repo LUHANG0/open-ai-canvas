@@ -121,6 +121,28 @@
     border-radius: 50%;
     background: var(--product-accent-blue);
 }
+/* Keep the folder wings inside the mode rail; unpositioned SVGs expand to page width. */
+.creation-mode-card {
+    --creation-mode-card-radius: var(--user-radius-card);
+    --creation-mode-inner-radius: calc(var(--creation-mode-card-radius) - 1px);
+    --creation-mode-rail-height: 48px;
+    --creation-mode-wing: 30px;
+    border-radius: var(--creation-mode-card-radius);
+    background: transparent;
+    box-shadow: var(--creation-composer-shadow);
+}
+.creation-mode-card-inner { display: flex; flex-direction: column; min-width: 0; }
+.creation-mode-folder { position: relative; isolation: isolate; display: grid; grid-template-columns: repeat(var(--creation-mode-count), minmax(0, 1fr)); height: var(--creation-mode-rail-height); overflow: hidden; border-radius: var(--creation-mode-inner-radius) var(--creation-mode-inner-radius) 0 0; background: var(--user-surface-muted); }
+.creation-mode-folder-tab { position: absolute; z-index: 0; top: 0; bottom: 0; background: var(--user-surface); pointer-events: none; }
+.creation-mode-folder-wing { position: absolute; top: 0; width: var(--creation-mode-wing); height: 100%; fill: var(--user-surface); }
+.creation-mode-folder-wing.is-start { right: calc(100% - 1px); }
+.creation-mode-folder-wing.is-end { left: calc(100% - 1px); transform: scaleX(-1); }
+.creation-mode-folder-button { position: relative; z-index: 1; display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2); min-width: 0; height: 100%; padding: 0 12px; border: 0; background: transparent; color: var(--user-ink-muted); font-size: var(--fs-body); font-weight: 500; white-space: nowrap; cursor: pointer; transition: color var(--user-motion); }
+.creation-mode-folder-button > svg { flex: 0 0 auto; width: var(--user-icon-size); height: var(--user-icon-size); stroke-width: 1.8; color: currentColor; }
+.creation-mode-folder-button[aria-pressed="true"], .creation-mode-folder-button:hover { color: var(--user-ink); }
+/* 轨道裁切了溢出，焦点环画在页签内侧。 */
+.creation-mode-folder-button:focus-visible { outline: 2px solid var(--control-focus-ring); outline-offset: -6px; border-radius: var(--user-radius-control); }
+.creation-mode-panel { overflow: hidden; border-radius: 0 0 var(--creation-mode-inner-radius) var(--creation-mode-inner-radius); }
 .creation-agent-entry { display: grid; grid-template-columns: 88px minmax(0, 1fr); align-items: center; gap: 16px 24px; padding: 28px; margin-bottom: 20px; border-radius: var(--user-radius-card); background: var(--user-surface); }
 .creation-agent-orb { grid-row: span 2; }
 .creation-agent-eyebrow { font-size: var(--fs-caption); font-weight: 650; letter-spacing: .14em; color: var(--user-ink-muted); }
