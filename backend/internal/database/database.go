@@ -34,6 +34,10 @@ func Open(config Config) (*gorm.DB, error) {
 			}
 			dsn = config.DataDir + "/open_ai_canvas.db?_busy_timeout=5000&_journal_mode=WAL&_foreign_keys=on&_synchronous=NORMAL"
 		}
+		dsn, err := configureSQLiteDSN(dsn)
+		if err != nil {
+			return nil, err
+		}
 		return gorm.Open(sqlite.Open(dsn), &gorm.Config{Logger: logging.GormLogger()})
 	case "postgres", "postgresql":
 		dsn := strings.TrimSpace(config.DSN)
