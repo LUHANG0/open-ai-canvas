@@ -195,6 +195,7 @@ export default function CreatePage() {
             textCount: hasPrompt ? 1 : 0,
             imageCount: attachments.filter(isImageAttachment).length,
             videoCount: attachments.filter(isVideoAttachment).length,
+            videoDurationsMs: attachments.filter(isVideoAttachment).map((attachment) => ("durationMs" in attachment ? attachment.durationMs || 0 : 0)),
             audioCount: attachments.filter((attachment) => creationAttachmentKind(attachment) === "audio").length,
             characterCount: 0,
         },
