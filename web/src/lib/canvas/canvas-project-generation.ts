@@ -416,6 +416,18 @@ export function generationWorkflowMetadata(config: AiConfig): Pick<CanvasNodeMet
     };
 }
 
+export function buildImageRetryGenerationConfig(config: AiConfig, sourceGenerationConfig: AiConfig, savedImageMetadata: CanvasNodeMetadata): AiConfig {
+    return {
+        ...sourceGenerationConfig,
+        model: savedImageMetadata.model || config.imageModel || config.model || sourceGenerationConfig.model,
+        // Empty means the selected model has no quality parameter; use normalized source defaults when absent.
+        quality: savedImageMetadata.quality ?? sourceGenerationConfig.quality,
+        size: savedImageMetadata.size ?? sourceGenerationConfig.size,
+        transparentBackground: (savedImageMetadata.transparentBackground || config.transparentBackground || sourceGenerationConfig.transparentBackground) === "true" ? "true" : "false",
+        count: "1",
+    };
+}
+
 export function buildGenerationConfig(config: AiConfig, node: CanvasNodeData | undefined, mode: CanvasNodeGenerationMode, requirements?: ModelRequirements, displayOnly = false, referenceImage?: ImageDimensions): AiConfig {
     const generationSpec = node ? readNodeGenerationSpec(node) : undefined;
     const selection = generationSpec?.mode === mode ? generationSpec.modelSelection : undefined;
@@ -534,7 +546,7 @@ export function buildGenerationConfig(config: AiConfig, node: CanvasNodeData | u
         taskWorkflowProvider: workflowProvider,
         runningHub,
         model,
-        quality: generationDefaults.quality || requestedConfig.quality,
+        quality: generationDefaults.quality ?? requestedConfig.quality,
         imageResolution: generationDefaults.imageResolution || requestedConfig.imageResolution,
         imageParameters: generationDefaults.imageParameters ?? requestedConfig.imageParameters,
         size: generationDefaults.size ?? requestedConfig.size,

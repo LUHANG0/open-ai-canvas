@@ -20,6 +20,7 @@ import {
     buildAudioGenerationMetadata,
     buildGenerationConfig,
     buildImageGenerationMetadata,
+    buildImageRetryGenerationConfig,
     buildVideoGenerationMetadata,
     createGenerationRetryContext,
     findRetrySourceNode,
@@ -256,14 +257,7 @@ export function useCanvasGenerationRetry({
             const sourceGenerationConfig = buildGenerationConfig(effectiveConfig, generationSourceNode, retryMode);
             let generationConfig =
                 hasSavedImageMetadata && savedImageMetadata
-                    ? {
-                          ...sourceGenerationConfig,
-                          model: savedImageMetadata.model || effectiveConfig.imageModel || effectiveConfig.model || sourceGenerationConfig.model,
-                          quality: savedImageMetadata.quality || effectiveConfig.quality || sourceGenerationConfig.quality,
-                          size: savedImageMetadata.size || effectiveConfig.size || sourceGenerationConfig.size,
-                          transparentBackground: (savedImageMetadata.transparentBackground || effectiveConfig.transparentBackground || sourceGenerationConfig.transparentBackground) === "true" ? "true" : "false",
-                          count: "1",
-                      }
+                    ? buildImageRetryGenerationConfig(effectiveConfig, sourceGenerationConfig, savedImageMetadata)
                     : { ...sourceGenerationConfig, count: "1" };
             if (node.metadata?.layerDecomposition) generationConfig = layerDecompositionConfig(generationConfig, generationConfig.model);
             if (node.metadata?.layerDecomposition && !supportsLayerDecomposition(generationConfig, generationConfig.model)) {
