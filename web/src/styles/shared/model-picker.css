@@ -1051,3 +1051,12 @@ html:not(.dark) .creation-home .creation-chat-composer .creation-model-picker.ca
 .creation-model-picker-surface .canvas-model-picker-option > span:first-child > span:first-child { width: 32px; height: 32px; border-radius: 10px; background: color-mix(in srgb, var(--workspace-accent) 10%, var(--workspace-surface-strong)) !important; color: var(--workspace-accent); }
 .creation-model-picker-surface .canvas-model-picker-option > span:first-child > span:first-child svg { color: currentColor !important; opacity: 1 !important; }
 .creation-model-picker-surface .canvas-model-picker-option .model-picker-price { font-size: var(--fs-tiny); }
+
+
+.canvas-model-picker-reference-billing {
+    margin-left: 6px;
+    font-size: var(--fs-tiny);
+    font-weight: 500;
+    white-space: nowrap;
+    opacity: 0.68;
+}

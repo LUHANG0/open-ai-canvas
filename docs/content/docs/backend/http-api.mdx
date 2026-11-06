@@ -3,6 +3,11 @@ title: HTTP API 合同
 description: 信封、错误码与 OpenAPI
 ---
 
+## v1.8.1 参考视频价格与报价增量
+
+渠道模型读写增加 `referenceVideoBilling`；价格档增加 `referenceVideoUnitPriceMicrocredits` / `referenceVideoOutputTokenPriceMicrocredits`，`costPricing` 同步保留独立的参考视频成本。省略开关时更新保留当前设置，新建默认关闭。报价意图可带 `referenceVideoDurationsMs`（与 `inputs.video` 等长、每项 1–3600000 毫秒），只用于估算；真实按秒任务按账号资源实测。报价返回可选 `referenceVideo` 构成，不产生任务、账单或余额写入。完整字段以 `/api/openapi.yaml` 与[视频计费](/docs/backend/video-token-billing)为准。
+
+
 # HTTP API 合同
 
 ## 管理员注册邀请

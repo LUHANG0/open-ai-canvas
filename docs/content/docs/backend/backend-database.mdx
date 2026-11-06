@@ -5,6 +5,12 @@ description: 影策后端核心持久化表与状态边界
 
 # 后端数据库
 
+## v1.8.1 参考视频计费（梦层 Schema 91–92）
+
+Schema 91 `reference_video_billing` 新增渠道模型开关、价格档的参考视频售价与订单的参考视频数量/毫秒/计费快照；92 `reference_video_cost_price` 新增档位及订单的参考视频成本价。上游同项编号为 88/89，梦层已发布的 1–90 号记录、名称及 checksum 均保持，新增项的 checksum 保留上游来源编号。
+
+只对已有 Token 档且没有按秒档的视频模型自动开启参考视频计费，参考视频 Token 售价及成本回填现价，延续原来含参考视频的用量口径。按秒及含按秒档的模型保持关闭，历史账单不改。迁移沿用统一事务、PG 事务锁和版本检查；不得把旧库恢复到发布后的新写入之上。实测时长、报价、结算与成本合同见[视频计费](/docs/backend/video-token-billing)。代码版本不代表目标环境已经迁移，运行版本与发布证据另记。
+
 ## v1.8.0 兼容升级候选（梦层 Schema 90）
 
 本升级分支的候选结构版本为 90，不代表正式环境已迁移。梦层原有 60 `creation_conversation_history`、61 `registration_invitations`、62 `task_submission_receipts` 的编号、名称及 checksum 保留；上游 v1.8.0 的 60–87 号迁移追加为梦层 63–90。checksum 保留上游来源编号，不据此推断梦层记录的版本。
