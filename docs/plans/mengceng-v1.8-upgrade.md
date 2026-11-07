@@ -260,3 +260,23 @@ Backend 与独立 Agent 内的 Pi runtime、依赖锁文件及 Agent 入口 SHA 
 收尾移除了本阶段隔离 PG 容器和内部网络、发布器可再生成解压副本、远端私有数据库快照及重复源码包，远端释放 1130655744 字节，无本任务容器遗留。本地重复源码包在 SHA 和 lsof 无引用核对后移除，包大小 621957120 字节。保留精确候选源码和三镜像供正式发布，保留所有正式/回退版本、生产备份、用户数据、数据卷及原开发服务。共享 Docker 缓存已评估，空间充足且与其他构建共用，没有全局清理。
 
 权威证据位于 `.local/v1.8.2-preflight-20261107/` 的 `verification-summary.json`、`progress.json`、`cleanup-local.json` 及 `remote-evidence/` 中的构建、镜像、发布器、数据库、备份、线上未变与清理收据；远端同名 ops 目录保留收据。本阶段没有重跑上一阶段已完成的全套测试或 Chrome 流程，也没有取得本候选的正式业务验收。真实付费生成/支付、SMTP/短信/外部 OSS 业务写入、完整手机/多设备及短剧生成合成仍未验证。下一步若获正式发布授权，须重新核对线上基线与活动任务、推送候选，再由 Host Updater 对三个精确镜像执行停写备份、92→94 迁移和发布验收。
+
+## v1.8.2 正式发布与人工恢复（2026-11-07）
+
+用户批准正式推送和发布后，源码 `e65f1855a94652f87c07a1e52bb12969d9606ab1` 与预演文档提交 `cc797ea8` 已推送 `origin/codex/mengceng-v1.8.0`。正式发布 ID 为 `mengceng-20261107-v182-e65f1855`，Web、Backend、独立 Agent 均为 `v1.8.2-mengceng.1 / e65f1855`，使用上一节三个精确镜像和 6731 文件源码，未换用官方镜像。Schema 已由 92 升至 94。北京时间 19:09:23 经人工恢复和核验后完成发布；19:14:24 收尾复核五服务 healthy/ready、版本和挂载匹配。后续文档提交不改变运行源码，不重复部署。
+
+本次不是首轮自动发布成功。Host Updater 操作 `0945b089b1a87bb719205bfe` 于北京时间 18:51:15 启动，停写备份、迁移和组件启动完成后，已安装发布器的首次 verify 失败。发布器未保留具体失败输出，准确原因仍未查明；之后同一发布器直接执行及等效 systemd 沙箱完整复验均通过，不能倒推首次一定是时序、CDN 或产品故障。自动回退随后因 `ProtectSystem=strict` 未允许实际 Backend 数据卷写入而受阻，进入 manual_intervention；正式页面期间短暂出现 502。
+
+恢复前保存了原始状态、事务、恢复日志和迁移后 Schema 94 的一致性快照，确认恢复日志仅在 preparing、恢复目录尚不存在，数据库及文件恢复均未开始。停止更新器避免竞争后，按冻结事务的目标 Compose 启动同一精确候选，保留 Schema 94 和现有数据，没有执行数据库降级、旧备份覆盖或重复迁移。完成运行版本、原发布器、数据及沙箱核验后，人工按顺序持久化向前恢复完成记录，再启动更新器；原始失败、回退尝试和人工成功日志均保留，最终 succeeded 不代表自动回退成功。
+
+已明确修复的宿主问题是恢复目录权限：新增 `/etc/systemd/system/mengceng-updater.service.d/20-backend-data-recovery.conf`，只增加 `ReadWritePaths=/var/lib/docker/volumes/mengceng_backend-data/_data`，保留 `ProtectSystem=strict`。严格沙箱内对该目录的创建/删除探针由只读错误变为通过，原发布器在等效沙箱复验通过。原冻结 Compose、共享环境、nginx 保护配置、服务环境及挂载保持，PostgreSQL/Redis 容器和镜像不变；这一精确 systemd 覆盖属于有意新增，不能笼统称宿主配置完全未变。
+
+停写新备份为 `/opt/mengceng/backups/host-updater/backup-20261107-105209.zip`，1253865367 字节，SHA-256 为 `3654ac41e6b8a80d4fdc0987b56a5f1c2af171fe3579c0d84d34ff027f4a602d`。SHA、ZIP CRC 和密钥保全检查通过，仅恢复至隔离 PostgreSQL 作审计，未恢复生产。150 张原表逐原字段指纹对照中 147 张不变；18 条内置知识源只刷新 updated_at/last_synced_at，3 条内置技能只刷新 created_at/updated_at。画布 mutation receipt 从 215 条变为 214 条，保留的 214 条逐字段相同；唯一移除项创建于 10 月 31 日 18:54:10，早于本次 Backend 启动时刻的七天阈值，符合未改动的启动/每小时过期清理策略。93/94 新迁移回执及新字段通过核验，新增草稿内容、邮件日志及订阅数据为空。
+
+461 个原数据文件含 `.settings-key` 字节匹配，文件差异只有插件注册表。117 个条目身份、安装时间和启用状态保持，116 个更新时间刷新；6 个内置包 SHA/路径随本次构建更新，与运行镜像匹配。5 个支付包 manifest 字节保持，Anthropic Messages manifest 按固定源码有意增加 `providerOptions.claude-api.max_output_tokens` 回退及生成说明，不称全部 manifest 不变。注册表序列化的缺省值归一化经过逐项对照。首次审计因 receipt 差异拒绝、后续解释器因 Anthropic manifest/默认值变化拒绝的原始记录保留；调查后以 `data-acceptance.json` 和 `startup-difference-analysis.json` 为最终验收依据，没有通过重复正式更新消除差异。
+
+正式公共交付核验为 4 类 HTML、371 项资源、103 项字体。使用 Google Chrome 原生界面及截图核对正式后台更新成功、三个组件版本、新备份和完整恢复日志；创作页既有历史同步可读，模型选择器可开关、当前模型/价格和思考控件可见，空输入可聚焦且发送禁用。没有输入或发送消息、生成、支付、发邮件或编辑业务数据；未检查浏览器控制台，不声称控制台零错误。先前隔离开发的全套测试及浏览器证据保留其阶段身份，本次未重复执行。
+
+收尾删除了本次最终备份审计的 tmpfs PG 容器、空内部网络，以及与保留 ZIP 内 database.dump 摘要一致、无挂载/进程引用的重复 dump，远端释放 17584128 字节，无本次临时容器遗留。正式三组件镜像带任务标签但属于生产，明确保留。正式及回退源码/镜像、所有生产备份、用户数据和数据卷、原开发服务保持；事务 `/var/lib/mengceng-updater/custom-release-94453605` 及引用的发布解压资源保留。独有的 `incident-0945b089/schema94-before-recovery.dump`、原始日志和诊断为恢复证据，暂留远端，不作为缓存删除。空间充足，没有执行全局 Docker 清理。
+
+权威证据在 `.local/v1.8.2-preflight-20261107/remote-evidence/` 与服务器同名 ops 目录，主要为 `final-verification.json`、`publication-verification.json`、`data-acceptance.json`、`startup-difference-analysis.json`、`production-browser-acceptance.json`、`cleanup-publication.json` 及 `incident-0945b089/`。尚未验证真实付费模型/支付、SMTP/短信、外部 OSS 业务写入、完整手机/多设备、旧项目浏览器编辑及完整短剧生成。后端不开放 Schema 94 后直接旧代码降级，不能用发布前快照覆盖上线后的新写入。后续更新器诊断应保留私有结构化发布错误，以补足本次首次 verify 根因证据缺口；该项尚未实施。
