@@ -48,6 +48,7 @@ const SkillCurationPage = lazyAdminPage(() => import("@/pages/admin/skill-curati
 const AdminPaymentsPage = lazyAdminPage(() => import("@/pages/admin/payments/payments-page"));
 const LogsPage = lazyAdminPage(() => import("@/pages/admin/logs/logs-page"));
 const LoginLogsPage = lazyAdminPage(() => import("@/pages/admin/login-logs/login-logs-page"));
+const EmailLogsPage = lazyAdminPage(() => import("@/pages/admin/email-logs/email-logs-page"));
 const RedemptionCodesPage = lazyAdminPage(() => import("@/pages/admin/redemption-codes/redemption-codes-page"));
 const RuntimePolicySettingsPage = lazyAdminPage(() => import("@/pages/admin/settings/runtime-policy-settings-page"));
 const AppearanceSettingsPage = lazyAdminPage(() => import("@/pages/admin/settings/appearance-settings-page"));
@@ -245,6 +246,7 @@ export const router = createBrowserRouter([{ element: <AuthSurfaceRoot />, child
                     { index: true, element: <AnalyticsPage /> },
                     { path: "users", element: <UsersPage /> },
                     { path: "user-groups", element: <UserGroupsPage /> },
+                    { path: "email-logs", element: <EmailLogsPage /> },
                     { path: "feedbacks", element: <AdminFeedbacksPage /> },
                     { path: "ecommerce", element: <Navigate to="/admin/ecommerce/agent" replace /> },
                     { path: "ecommerce/agent", element: <EcommerceAgentConfigPage /> },

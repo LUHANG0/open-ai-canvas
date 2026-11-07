@@ -1,6 +1,9 @@
 package protocol
 
-import "strings"
+import (
+	"net/url"
+	"strings"
+)
 
 // 宿主自己能流式解析、能补思考参数/输出上限/工具选择/用量统计的文本线格式。
 // 插件声明的 create 或 agent 路径以对应端点结尾时，就按这个格式处理；
@@ -47,6 +50,26 @@ func OperationPath(summary string) string {
 		return ""
 	}
 	return strings.TrimSpace(path)
+}
+
+// AnthropicWireForBaseURL 判断一个文本上游的 Base URL 是否走 Anthropic Messages 线。
+// 社区里 Anthropic 兼容端点有两种形态：原生 https://api.anthropic.com（打 /v1/messages），
+// 和中转的 .../anthropic 前缀（如 DeepSeek https://api.deepseek.com/anthropic、部分网关的
+// /claude 或 /anthropic/v1 路径）。OpenAI 系（api.openai.com、/v1、/openai 前缀）不受影响。
+func AnthropicWireForBaseURL(baseURL string) bool {
+	parsed, err := url.Parse(strings.TrimSpace(baseURL))
+	if err != nil || parsed.Hostname() == "" || (parsed.Scheme != "http" && parsed.Scheme != "https") {
+		return false
+	}
+	if strings.EqualFold(parsed.Hostname(), "api.anthropic.com") {
+		return true
+	}
+	for _, segment := range strings.Split(strings.ToLower(parsed.Path), "/") {
+		if segment == "anthropic" || segment == "claude" {
+			return true
+		}
+	}
+	return false
 }
 
 func hasCapability(capabilities []Capability, capability Capability) bool {

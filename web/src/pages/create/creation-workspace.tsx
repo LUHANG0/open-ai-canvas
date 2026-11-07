@@ -1,3 +1,5 @@
+import { type ThinkingLevel, type ThinkingRequest } from "@/lib/text-thinking";
+import { ThinkingLevelSlider } from "@/components/thinking-level-slider";
 import { HoverBorderGradient } from "@/components/ui/aceternity/hover-border-gradient";
 import { aceternityMotion } from "@/lib/aceternity-motion";
 import { ImageSizePicker } from "@/components/image-size-picker";
@@ -125,8 +127,10 @@ type ComposerProps = {
     setCount: (value: string) => void;
     textStreaming: boolean;
     setTextStreaming: (value: boolean) => void;
-    textThinking: boolean;
-    setTextThinking: (value: boolean) => void;
+    textThinkingLevels: ThinkingLevel[];
+    textThinkingLevel: ThinkingLevel | "";
+    textThinkingRequest: ThinkingRequest;
+    setTextThinkingLevel: (value: ThinkingRequest) => void;
     promptOptimizerProvider: PromptOptimizerProvider | null;
     composerFocusRef: RefObject<HTMLTextAreaElement | null>;
     onPromptFocus: () => void;
@@ -373,13 +377,7 @@ export function CreationComposer(props: ComposerProps) {
                             {props.textStreaming ? <span className="size-1.5 rounded-full bg-blue-400 shrink-0 shadow-sm" /> : null}
                         </button>
                     </Tooltip>
-                    <Tooltip title={interactionBusy ? "生成中，此开关将在下次发送时生效" : (props.textThinking ? "思考已开启，会展示模型返回的推理摘要" : "开启模型思考")}>
-                        <button type="button" className="creation-chat-control" aria-pressed={props.textThinking} disabled={interactionBusy} onClick={() => props.setTextThinking(!props.textThinking)}>
-                            <Lightbulb />
-                            <span>思考</span>
-                            {props.textThinking ? <span className="size-1.5 rounded-full bg-current shrink-0" aria-hidden /> : null}
-                        </button>
-                    </Tooltip>
+                    <ThinkingControl levels={props.textThinkingLevels} value={props.textThinkingRequest} resolvedLevel={props.textThinkingLevel} onChange={props.setTextThinkingLevel} disabled={interactionBusy} />
                 </> : null}
                 {props.prompt.trim() || props.attachments.length || props.references.some((reference) => reference.active) ? <Tooltip title="清空提示词和参考内容"><button type="button" className="creation-chat-control is-clear" onClick={props.onClearComposer} disabled={interactionBusy} aria-label="清空提示词和参考内容"><Trash2 /><span>清空</span></button></Tooltip> : null}
             </div>
@@ -547,6 +545,16 @@ function GenerationSettingsMenu(props: ComposerProps) {
 
 function SettingSection({ title, value, children }: { title: string; value?: string; children: ReactNode }) {
     return <section className="creation-parameter-section"><header><h3>{title}</h3>{value ? <span>{value}</span> : null}</header>{children}</section>;
+}
+
+// 首页与 Agent 共用离散档位滑条，保留模型默认意图，不把它提前固化为某个档位。
+function ThinkingControl({ levels, value, resolvedLevel, onChange, disabled }: { levels: ThinkingLevel[]; value: ThinkingRequest; resolvedLevel: ThinkingLevel | ""; onChange: (value: ThinkingRequest) => void; disabled: boolean }) {
+    if (!levels.length) return null;
+    return (
+        <div className="creation-thinking-inline">
+            <ThinkingLevelSlider levels={levels} value={value} resolvedLevel={resolvedLevel} onChange={onChange} disabled={disabled} />
+        </div>
+    );
 }
 
 function DurationMenu({ profile, seconds, onChange }: { profile: VideoCapabilityConfig; seconds: string; onChange: (value: string) => void }) {

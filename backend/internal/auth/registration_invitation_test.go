@@ -310,3 +310,24 @@ func TestInvitationRandomCodeShape(t *testing.T) {
 		seen[code] = true
 	}
 }
+
+func TestInvitationStillRequiresVerificationWhenPublicRegistrationDoesNot(t *testing.T) {
+	svc, db, _, code := invitationFixture(t, 0)
+	if err := db.Model(&model.SystemSetting{}).Where("key = ?", registrationSettingKey).Update("value_json", `{"enabled":false,"emailVerificationRequired":false}`).Error; err != nil {
+		t.Fatal(err)
+	}
+	req := RegisterRequest{Username: "member", Email: "member@example.com", Password: "password-strong", AcceptedTerms: true, InvitationCode: "Ab3xY9"}
+	if _, err := svc.Register(req); err == nil {
+		t.Fatal("invitation redeemed without verification")
+	}
+	if _, state, err := svc.RegistrationInvitation("Ab3xY9"); err != nil || state != "valid" {
+		t.Fatalf("failed request consumed invite: %s %v", state, err)
+	}
+	if err := svc.SendRegistrationEmailCode(req.Email, req.InvitationCode); err != nil {
+		t.Fatal(err)
+	}
+	req.EmailCode = *code
+	if _, err := svc.Register(req); err != nil {
+		t.Fatal(err)
+	}
+}

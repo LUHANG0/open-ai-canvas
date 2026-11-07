@@ -211,7 +211,7 @@ func renderVerificationEmail(value EmailTemplate, brand, code string) (*EmailTem
 	return &EmailTemplatePreview{Subject: replace(value.Subject), HTML: html.String(), Text: data.Brand + "\n\n" + data.Title + "\n\n" + data.Intro + "\n\n验证码：" + code + "\n\n验证码 10 分钟内有效，仅用于本次操作。请勿向任何人透露验证码。\n\n" + data.Footer}, nil
 }
 
-func (s *Service) deliverVerificationEmail(setting EmailSettingValue, recipient, scene, code string) error {
+func (s *Service) deliverVerificationEmail(setting EmailSettingValue, recipient, scene, code string, userIDs ...string) error {
 	_, templates, err := s.readEmailTemplates()
 	if err != nil {
 		return err
@@ -225,5 +225,18 @@ func (s *Service) deliverVerificationEmail(setting EmailSettingValue, recipient,
 		return err
 	}
 	setting.htmlBody = message.HTML
-	return s.deliverEmail(setting, recipient, message.Subject, message.Text)
+	purpose := EmailPurposeVerification
+	switch scene {
+	case "register":
+		purpose = EmailPurposeRegistration
+	case "password_reset":
+		purpose = EmailPurposePasswordReset
+	case "change_email":
+		purpose = EmailPurposeProfileEmail
+	}
+	userID := ""
+	if len(userIDs) > 0 {
+		userID = userIDs[0]
+	}
+	return s.deliverEmail(setting, EmailDelivery{Purpose: purpose, UserID: userID, Recipient: recipient, Mail: OutgoingMail{Subject: message.Subject, Text: message.Text, HTML: message.HTML}})
 }

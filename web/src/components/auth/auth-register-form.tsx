@@ -7,7 +7,7 @@ import { VerificationFields } from "@/components/auth/verification-fields";
 import { clearReferralCode, readReferralCode } from "@/lib/auth-entry";
 import { getAuthSession, linuxDOLoginURL, register } from "@/services/api/auth";
 import { ApiError } from "@/services/api/request";
-import { emptyVerification, verificationMethods, type VerificationMethod } from "@/services/api/verification";
+import { emptyVerification, registrationVerificationRequired, verificationMethods, type VerificationMethod } from "@/services/api/verification";
 import { AuthAgreementDialog, AuthNotice, AuthSwitchPrompt, AuthTabs, LinuxDOIcon, authTabId, authTabPanelId, useAuthAgreement } from "./auth-form-parts";
 import type { AuthFormProps } from "./auth-login-form";
 
@@ -33,9 +33,10 @@ export function AuthRegisterForm({ settings, settingsFailed, onReloadSettings, n
     const agreementTitle = agreement.title;
 
     const registrationClosed = settings?.registrationEnabled === false;
-    const methods = settings ? verificationMethods(settings, "register") : [];
+    const verificationRequired = Boolean(settings && registrationVerificationRequired(settings));
+    const methods = settings && verificationRequired ? verificationMethods(settings, "register") : [];
     const method = chosenMethod && methods.includes(chosenMethod) ? chosenMethod : (methods[0] ?? "email");
-    const verificationUnavailable = Boolean(settings && !settings.firstUser && methods.length === 0);
+    const verificationUnavailable = Boolean(settings && verificationRequired && methods.length === 0);
     const disabled = !settings || registrationClosed || verificationUnavailable;
 
     useEffect(() => {
@@ -58,8 +59,8 @@ export function AuthRegisterForm({ settings, settingsFailed, onReloadSettings, n
         registering.current = true;
         setSubmitting(true);
         try {
-            if (!settings?.firstUser && !verification.ticket) throw new Error(t("auth.register.needCode"));
-            await register({ username, ...(settings?.firstUser ? { email } : verification), displayName, password, acceptedTerms: agreementAccepted, ...(referralCode ? { referralCode } : {}) });
+            if (verificationRequired && !verification.ticket) throw new Error(t("auth.register.needCode"));
+            await register({ username, ...(!verificationRequired ? { email } : { ...verification, email: verification.email || email }), displayName, password, acceptedTerms: agreementAccepted, ...(referralCode ? { referralCode } : {}) });
             clearReferralCode();
             const { applyUserSession } = await import("@/lib/user-session");
             await applyUserSession(await getAuthSession());
@@ -124,18 +125,20 @@ export function AuthRegisterForm({ settings, settingsFailed, onReloadSettings, n
                     />
                     <Input size="large" value={displayName} onChange={(event) => setDisplayName(event.target.value)} aria-label={t("auth.register.displayName")} placeholder={t("auth.register.displayNamePlaceholder")} disabled={disabled} />
                 </div>
-                {settings?.firstUser ? (
+                {settings?.firstUser || !verificationRequired || (settings?.emailRequired && method === "sms") ? (
                     <Input
                         size="large"
                         type="email"
                         value={email}
                         onChange={(event) => setEmail(event.target.value)}
-                        aria-label={t("auth.register.emailOptional")}
-                        placeholder={t("auth.register.emailPlaceholder")}
+                        aria-label={t(!settings?.firstUser && settings?.emailRequired ? "auth.verification.email" : "auth.register.emailOptional")}
+                        placeholder={t(!settings?.firstUser && settings?.emailRequired ? "auth.verification.emailPlaceholder" : "auth.register.emailPlaceholder")}
                         autoComplete="email"
+                        required={!settings?.firstUser && Boolean(settings?.emailRequired)}
                         disabled={disabled}
                     />
-                ) : methods.length > 0 ? (
+                ) : null}
+                {!settings?.firstUser && methods.length > 0 ? (
                     <VerificationFields key={method} purpose="register" method={method} value={verification} onChange={setVerification} disabled={disabled || submitting} />
                 ) : null}
                 <div className="auth-form-pair">

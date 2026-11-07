@@ -153,7 +153,7 @@ export function useCanvasKeyboard({
             }
             if (event.altKey && !isModifierShortcut && key === "l") {
                 event.preventDefault();
-                if (!event.repeat && selectedNodeIdsRef.current.size > 1) beginBatchConnection();
+                if (!event.repeat && selectedNodeIdsRef.current.size > 0) beginBatchConnection();
                 return;
             }
             if (event.key === "?" && !isModifierShortcut && !event.altKey) {
@@ -198,9 +198,12 @@ export function useCanvasKeyboard({
                 if (shouldPreferCopiedNodes()) {
                     event.preventDefault();
                     if (pasteCopiedNodes()) return;
-                    void navigator.clipboard?.readText?.().then((text) => {
-                        if (restoreCopiedNodesFromText(text)) pasteCopiedNodes();
-                    }).catch(() => undefined);
+                    void navigator.clipboard
+                        ?.readText?.()
+                        .then((text) => {
+                            if (restoreCopiedNodesFromText(text)) pasteCopiedNodes();
+                        })
+                        .catch(() => undefined);
                 }
                 return;
             }
@@ -243,5 +246,40 @@ export function useCanvasKeyboard({
             window.removeEventListener("keydown", handleKeyDown, true);
             window.removeEventListener("paste", handlePaste, true);
         };
-    }, [enabled, beginBatchConnection, cancelSelectionBox, copySelectedNodes, deleteConnection, deleteNodes, deselectCanvas, exitFocusMode, fitCanvasContent, fitCanvasSelection, focusMode, nodesRef, onOpenSearch, pasteCopiedNodes, pasteSystemClipboard, redoCanvas, restoreCopiedNodesFromText, saveCanvasProject, selectedConnectionId, selectedNodeIdsRef, setAnnotationNodeId, setContextMenu, setCropNodeId, setInfoNodeId, setRegionEditNodeId, setSelectedConnectionId, setSelectedNodeIds, setShortcutRequestNonce, shouldPreferCopiedNodes, toggleFocusMode, undoCanvas, zoomCanvasIn, zoomCanvasOut, zoomToActualSize]);
+    }, [
+        enabled,
+        beginBatchConnection,
+        cancelSelectionBox,
+        copySelectedNodes,
+        deleteConnection,
+        deleteNodes,
+        deselectCanvas,
+        exitFocusMode,
+        fitCanvasContent,
+        fitCanvasSelection,
+        focusMode,
+        nodesRef,
+        onOpenSearch,
+        pasteCopiedNodes,
+        pasteSystemClipboard,
+        redoCanvas,
+        restoreCopiedNodesFromText,
+        saveCanvasProject,
+        selectedConnectionId,
+        selectedNodeIdsRef,
+        setAnnotationNodeId,
+        setContextMenu,
+        setCropNodeId,
+        setInfoNodeId,
+        setRegionEditNodeId,
+        setSelectedConnectionId,
+        setSelectedNodeIds,
+        setShortcutRequestNonce,
+        shouldPreferCopiedNodes,
+        toggleFocusMode,
+        undoCanvas,
+        zoomCanvasIn,
+        zoomCanvasOut,
+        zoomToActualSize,
+    ]);
 }

@@ -2776,6 +2776,8 @@ export const CanvasCloudAgentPanel = memo(function CanvasCloudAgentPanel() {
                                                     onClear={() => setSelectedSkillIds([])}
                                                     onOpenLibrary={() => setSkillsOpen(true)}
                                                 />}
+                                                reasoningMode={reasoningMode}
+                                                onReasoningModeChange={setReasoningMode}
                                             />
                                         }
                                     />

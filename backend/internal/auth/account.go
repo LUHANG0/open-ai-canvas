@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"gorm.io/gorm"
+	"yingce/backend/internal/emailtpl"
 	"yingce/backend/internal/kernel"
 	"yingce/backend/internal/model"
 	"yingce/backend/internal/repository"
@@ -166,7 +167,8 @@ func (s *Service) SendProfileEmailCode(ctx context.Context, actor *model.User, c
 	if err := ValidateEmail(email); err != nil {
 		return nil, err
 	}
-	if email == NormalizeEmail(user.Email) {
+	// 未验证的邮箱（关闭注册验证时填写）允许原样提交一次验证，作为后续绑定邮箱的入口。
+	if email == NormalizeEmail(user.Email) && user.EmailVerifiedAt != nil {
 		return nil, kernel.BadAuthRequest("请输入与当前邮箱不同的新邮箱")
 	}
 	if err := s.repo.CheckEmailAvailable(email, user.ID); err != nil {
@@ -194,7 +196,7 @@ func (s *Service) SendProfileEmailCode(ctx context.Context, actor *model.User, c
 		}
 		return nil, err
 	}
-	if err := s.deliverVerificationEmail(setting, email, "change_email", code); err != nil {
+	if err := s.deliverVerificationEmail(setting, email, "change_email", code, user.ID); err != nil {
 		return nil, kernel.NewAppError(503, "邮件发送失败，请稍后重试")
 	}
 	if err := s.repo.SetAuthVerificationReady(v.ID); err != nil {
@@ -243,9 +245,12 @@ func (s *Service) ChangeProfileEmail(actor *model.User, cookie string, req Profi
 		return nil, profileWriteError(err)
 	}
 	result := &ProfileEmailChangeResult{Changed: true, NotificationStatus: "not_needed"}
-	if user.Email != "" {
+	if user.Email != "" && NormalizeEmail(user.Email) != v.Email {
 		result.NotificationStatus = "sent"
-		if err := s.deliverEmail(setting, user.Email, setting.FromName+"账号邮箱已变更", "你的"+setting.FromName+"账号邮箱已成功变更，所有登录会话已退出。若非本人操作，请立即联系管理员。"); err != nil {
+		rendered, renderErr := noticeMail(emailtpl.NoticeEmail{Brand: setting.FromName, Subject: setting.FromName + "账号邮箱已变更", Heading: "账号邮箱已变更",
+			Lines: []string{"你的" + setting.FromName + "账号邮箱已更换为 " + maskedEmail(v.Email) + "。", "为保护账号安全，所有设备上的登录会话已退出，请使用新邮箱重新登录。"},
+			Tip:   "如果这不是你本人的操作，请立即联系管理员冻结账号。"})
+		if renderErr != nil || s.deliverEmail(setting, EmailDelivery{Purpose: EmailPurposeEmailChanged, UserID: user.ID, Recipient: user.Email, Mail: rendered}) != nil {
 			result.NotificationStatus = "failed"
 		}
 	}

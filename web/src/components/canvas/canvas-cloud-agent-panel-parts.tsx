@@ -18,9 +18,8 @@ import { Live2DAvatar } from "./live2d-avatar";
 import { agentAvatarBundleFileURL, live2DModelURL } from "@/services/api/appearance";
 import { AgentAvatarVideo } from "@/components/canvas/agent-avatar-video";
 import { FluidOrb } from "@/components/ui/fluid-orb";
-import { ArrowDown, ArrowLeft, Check, Clock3, Download, Ellipsis, History, LoaderCircle, Maximize2, MessageSquarePlus, Minus, PanelRight, PictureInPicture2, RefreshCw, Scaling, Settings2, ShieldCheck, Trash2, X, Blocks } from "lucide-react";
+import { ArrowDown, ArrowLeft, Check, ChevronDown, Clock3, Download, Ellipsis, History, LoaderCircle, Maximize2, MessageSquarePlus, Minus, PanelRight, PictureInPicture2, RefreshCw, Scaling, Settings2, ShieldCheck, Trash2, X, Blocks } from "lucide-react";
 import { agentModifierShortcut } from "@/lib/canvas/agent-outbox";
-import { ChevronDown } from "lucide-react";
 import { Button, Input, Popover } from "antd";
 import { CanvasAnchoredDropdown as Dropdown } from "./canvas-anchored-dropdown";
 import type { AgentContextPhase, AgentContextUsageView } from "@/lib/canvas/agent-context-usage";
@@ -29,13 +28,16 @@ import { AgentChatMessage, AgentOperationFeed, AgentReasoningFeed, AgentWorkingM
 import type { CanvasResourceReference } from "@/lib/canvas/canvas-resource-references";
 import type { CanvasNodeData } from "@/types/canvas";
 import type { AgentCanvasUndoState, AgentCanvasUndoTarget } from "@/lib/canvas/agent-canvas-undo";
-import type { AgentMediaSettings, AgentPermissionMode } from "@/services/api/agent";
+import type { AgentMediaSettings, AgentPermissionMode, AgentReasoningMode } from "@/services/api/agent";
 import { buildAgentFeedSegments } from "@/lib/canvas/agent-operation-feed";
 import { AgentWelcome } from "./canvas-agent-welcome";
 import { useEffectiveConfig } from "@/stores/use-config-store";
 import { agentPermissionLabel, agentPermissionMenuItems, agentPermissionShortLabel, agentPermissionVisual } from "./canvas-cloud-agent-settings";
 import { Kbd } from "@/components/ui/base/kbd";
 import { ModelPicker } from "@/components/model-picker";
+import { ThinkingLevelSlider } from "@/components/thinking-level-slider";
+import { modelCapabilityConfigFor } from "@/lib/model-capabilities";
+import { LEGACY_TEXT_THINKING_CONFIG, THINKING_LEVEL_LABELS, resolveThinkingLevel, thinkingLevelsFor } from "@/lib/text-thinking";
 import { agentImageApproval, agentVideoApproval } from "@/lib/canvas/agent-media-approval";
 import { agentApprovalPresentation } from "@/lib/canvas/agent-approval-presentation";
 import { CanvasAgentImageApprovalSettings } from "./canvas-agent-image-approval-settings";
@@ -885,13 +887,22 @@ export function ComposerControls({
     theme,
     onModelChange,
     skillControl,
+    reasoningMode,
+    onReasoningModeChange,
 }: {
     config: ReturnType<typeof useEffectiveConfig>;
     selectedModel: string;
     theme: CanvasTheme;
     onModelChange: (model: string) => void;
     skillControl: ReactNode;
+    reasoningMode: AgentReasoningMode;
+    onReasoningModeChange: (value: AgentReasoningMode) => void;
 }) {
+    const [thinkingOpen, setThinkingOpen] = useState(false);
+    const thinkingAnchor = usePopoverAnchorAlign(thinkingOpen);
+    const thinking = modelCapabilityConfigFor(config, selectedModel).text?.thinking || LEGACY_TEXT_THINKING_CONFIG;
+    const levels = thinkingLevelsFor(thinking);
+    const thinkingLabel = reasoningMode === "auto" ? "默认" : reasoningMode === "deep" ? "深入" : THINKING_LEVEL_LABELS[reasoningMode];
     return (
         <div className="agent-composer-selection flex min-w-0 flex-1 flex-nowrap items-center gap-0.5">
             <ModelPicker
@@ -907,6 +918,26 @@ export function ComposerControls({
                 showOptionPrices
                 placeholder="选择文本模型"
             />
+            {levels.length ? (
+                <Popover
+                    ref={thinkingAnchor}
+                    open={thinkingOpen}
+                    onOpenChange={setThinkingOpen}
+                    trigger="click"
+                    placement="top"
+                    arrow={false}
+                    content={
+                        <div className="agent-thinking-popover">
+                            <ThinkingLevelSlider levels={levels} value={reasoningMode} resolvedLevel={resolveThinkingLevel(thinking, reasoningMode)} onChange={onReasoningModeChange} />
+                        </div>
+                    }
+                >
+                    <button type="button" className="agent-thinking-trigger" aria-label={`选择推理强度：${thinkingLabel}`} aria-expanded={thinkingOpen} onPointerDown={(event) => event.stopPropagation()}>
+                        <span>{thinkingLabel}</span>
+                        <ChevronDown className="size-3" aria-hidden="true" />
+                    </button>
+                </Popover>
+            ) : null}
             {skillControl}
         </div>
     );

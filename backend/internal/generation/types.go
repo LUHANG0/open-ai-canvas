@@ -1,6 +1,7 @@
 package generation
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"time"
@@ -29,8 +30,33 @@ type Input struct {
 }
 
 type TextOptions struct {
-	Stream   *bool `json:"stream"`
-	Thinking bool  `json:"thinking"`
+	Stream        *bool  `json:"stream"`
+	ThinkingLevel string `json:"thinkingLevel,omitempty"`
+}
+
+// UnmarshalJSON keeps persisted pre-v1.8.2 tasks and older API clients meaningful.
+// An explicit new field takes precedence, including an explicit empty default intent.
+func (o *TextOptions) UnmarshalJSON(data []byte) error {
+	type current TextOptions
+	var wire struct {
+		current
+		Thinking *bool   `json:"thinking"`
+		Level    *string `json:"thinkingLevel"`
+	}
+	if err := json.Unmarshal(data, &wire); err != nil {
+		return err
+	}
+	*o = TextOptions(wire.current)
+	if wire.Level != nil {
+		o.ThinkingLevel = *wire.Level
+	} else if wire.Thinking != nil {
+		if *wire.Thinking {
+			o.ThinkingLevel = "medium"
+		} else {
+			o.ThinkingLevel = "off"
+		}
+	}
+	return nil
 }
 
 type AgentToolRequests struct {
