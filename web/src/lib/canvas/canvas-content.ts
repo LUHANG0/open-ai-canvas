@@ -4,7 +4,15 @@ import type { CanvasProject } from "@/stores/canvas/use-canvas-store";
 // These fields describe local viewing / synchronization, not an edit to the document.
 export function canvasContentSnapshot(project: CanvasProject) {
     const { viewport: _viewport, updatedAt: _updatedAt, revision: _revision, remoteContentHash: _hash, ...content } = project;
-    return { ...content, projectId: content.projectId || undefined };
+    return {
+        ...content,
+        projectId: content.projectId || undefined,
+        activeChatId: content.activeChatId || undefined,
+        starterMode: content.starterMode || undefined,
+        chatSessions: content.chatSessions?.length ? content.chatSessions : undefined,
+        previsScenes: content.previsScenes?.length ? content.previsScenes : undefined,
+        timeline: content.timeline || undefined,
+    };
 }
 
 export function sameCanvasContent(left: CanvasProject | undefined, right: CanvasProject | undefined) {
@@ -51,16 +59,29 @@ export function canvasContentHash(project: CanvasProject): Promise<string> {
     return hash;
 }
 
+// Verify the persisted digest before treating a cached document as acknowledged.
+// Releases before optional-field normalization hashed null/empty values literally.
+// Keep that exact verifier for upgrades; never relabel an unverified local draft.
+export async function hasConfirmedCanvasContent(project: CanvasProject): Promise<boolean> {
+    const expected = project.remoteContentHash;
+    if (!expected) return false;
+    if (expected === (await canvasContentHash(project))) return true;
+    const exactJson = expected.startsWith("json:");
+    if (exactJson && expected === (await hashContent(canvasContentSnapshot(project), true))) return true;
+    const { viewport: _viewport, updatedAt: _updatedAt, revision: _revision, remoteContentHash: _hash, ...content } = project;
+    return expected === (await hashContent({ ...content, projectId: content.projectId || undefined }, exactJson));
+}
+
 function sameContentReferences(a: ContentSnapshot, b: ContentSnapshot) {
     const keys = Object.keys(a) as (keyof ContentSnapshot)[];
     return keys.length === Object.keys(b).length && keys.every((key) => a[key] === b[key]);
 }
 
-async function hashContent(content: ContentSnapshot) {
+async function hashContent(content: object, exactJson = false) {
     const serialized = canonicalize(content);
     // LAN HTTP deployments may lack Web Crypto. Keep an exact baseline there;
     // a lossy checksum could incorrectly discard an unsaved draft during login.
-    if (!globalThis.crypto?.subtle) return `json:${serialized}`;
+    if (exactJson || !globalThis.crypto?.subtle) return `json:${serialized}`;
     const bytes = new TextEncoder().encode(serialized);
     const digest = await crypto.subtle.digest("SHA-256", bytes);
     return Array.from(new Uint8Array(digest), (value) => value.toString(16).padStart(2, "0")).join("");
