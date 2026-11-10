@@ -37,6 +37,8 @@ type ModelPickerProps = {
     variant?: "default" | "creation";
     requirements?: ModelRequirements;
     showConfiguredModelName?: boolean;
+    /** 在紧凑输入区仅显示模型名；完整渠道信息仍保留在标题和选项中。 */
+    showChannelLabel?: boolean;
     modelFilter?: (model: string) => boolean;
     /** 调用方额外的不可选原因（例如短剧只能用平台模型）；返回非空串时选项置灰并显示原因。 */
     modelDisabledReason?: (model: string) => string;
@@ -57,6 +59,7 @@ export function ModelPicker({
     variant = "creation",
     requirements,
     showConfiguredModelName = false,
+    showChannelLabel = true,
     modelFilter,
     modelDisabledReason,
 }: ModelPickerProps) {
@@ -346,7 +349,7 @@ export function ModelPicker({
                         <span className="canvas-model-picker-trigger-icon">
                             <ModelIcon config={config} model={current} />
                         </span>
-                        <span className="min-w-0 flex-1 truncate">{current ? (creationVariant ? pickerModelDisplayName(config, current, showConfiguredModelName) : pickerModelOptionLabel(config, current, showConfiguredModelName)) : placeholder}</span>
+                        <span className="min-w-0 flex-1 truncate">{current ? (!showChannelLabel ? (showConfiguredModelName ? configuredModelDisplayName(config, current) : modelDisplayName(config, current)) : creationVariant ? pickerModelDisplayName(config, current, showConfiguredModelName) : pickerModelOptionLabel(config, current, showConfiguredModelName)) : placeholder}</span>
                         {isCurrentCustomChannel ? <span className="shrink-0 rounded px-2 py-0.5 text-[var(--fs-label)] font-medium leading-none bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/25">个人</span> : null}
                         {showSelectedPrice && (creditsEnabled || currentPrice?.kind === "supplier") ? userId && selectedStatus.fee.blocked ? <span className="text-[var(--fs-tiny)]">{selectedStatus.fee.label}</span> : <ModelPrice price={currentPrice} quote={selectedStatus.quote} compact /> : null}
                     </span>

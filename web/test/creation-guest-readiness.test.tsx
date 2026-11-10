@@ -54,3 +54,35 @@ test("signed-in creators remain blocked when model configuration is not ready", 
         expect(host.textContent).toContain("请先选择模型");
     } finally { await act(async () => root.unmount()); host.remove(); }
 });
+
+
+test("text settings preserve streaming, model-default thinking and busy protection", async () => {
+    useUserStore.setState({ user: null });
+    let streaming: boolean | undefined;
+    let thinking: string | undefined;
+    const props = { ...fixture("text"), variant: "thread" as const, setTextStreaming: (value: boolean) => { streaming = value; }, setTextThinkingLevel: (value: string) => { thinking = value; } };
+    const host = document.createElement("div"); document.body.append(host); const root = createRoot(host);
+    try {
+        await act(async () => root.render(<CreationComposer {...props} />));
+        expect(host.querySelector('input[type="range"]')).toBeNull();
+        const trigger = host.querySelector<HTMLButtonElement>(".creation-text-settings-trigger")!;
+        await act(async () => trigger.click());
+        const toggle = document.querySelector<HTMLButtonElement>('[role="switch"][aria-label="流式输出"]')!;
+        const slider = document.querySelector<HTMLInputElement>('input[aria-label="思考等级"]')!;
+        expect(toggle.getAttribute("aria-checked")).toBe("true");
+        expect(slider.getAttribute("aria-valuetext")).toBe("默认");
+        await act(async () => toggle.click());
+        expect(streaming).toBe(false);
+        await act(async () => slider.dispatchEvent(new dom.KeyboardEvent("keydown", { key: "End", bubbles: true }) as unknown as KeyboardEvent));
+        expect(thinking).toBe("medium");
+        await act(async () => slider.dispatchEvent(new dom.KeyboardEvent("keydown", { key: "Home", bubbles: true }) as unknown as KeyboardEvent));
+        expect(thinking).toBe("auto");
+        await act(async () => root.render(<CreationComposer {...props} busy />));
+        expect(toggle.disabled).toBe(true);
+        expect(slider.disabled).toBe(true);
+        expect(host.querySelector<HTMLButtonElement>(".creation-composer-clear")!.disabled).toBe(true);
+        await act(async () => document.dispatchEvent(new dom.KeyboardEvent("keydown", { key: "Escape", bubbles: true }) as unknown as KeyboardEvent));
+        expect(trigger.getAttribute("aria-expanded")).toBe("false");
+        expect(document.activeElement).toBe(trigger);
+    } finally { await act(async () => root.unmount()); host.remove(); }
+});

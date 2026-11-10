@@ -73,8 +73,8 @@
     }
 }
 @media (prefers-reduced-motion: reduce) {
-    .thinking-level-slider .thinking-level-fill,
-    .thinking-level-slider .thinking-level-fill::after {
+    .thinking-level-slider:is([data-tone="on"], [data-tone="max"]) .thinking-level-fill,
+    .thinking-level-slider:is([data-tone="on"], [data-tone="max"]) .thinking-level-fill::after {
         animation: none;
     }
 }

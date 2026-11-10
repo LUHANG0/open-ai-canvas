@@ -164,27 +164,69 @@
 .creation-submit { margin-left: auto; flex: 0 0 auto; display: inline-flex; gap: 8px; }
 .creation-submit-cost { display: inline-flex; align-items: center; gap: 4px; color: var(--user-ink-muted); font-size: 12px; padding-inline: 8px; }
 .creation-submit-cost svg { width: 14px; height: 14px; }
-/* One geometry contract for the home and thread toolbars. */
-.app-user-workspace .creation-home .creation-chat-dock {
+/* Group controls by purpose; break at the composer's width, not the viewport. */
+.app-user-workspace .creation-home .creation-chat-composer {
+    container: creation-composer / inline-size;
+}
+.creation-composer-head {
     display: flex;
-    flex-wrap: wrap;
-    align-items: flex-end;
+    align-items: center;
+    justify-content: flex-end;
     gap: var(--space-3);
+    padding: var(--space-3) var(--space-4) 0;
+}
+.creation-composer-head:has(.creation-mode-tabs) { justify-content: space-between; }
+.creation-composer-clear {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    margin-left: auto;
+    min-height: 28px;
+    padding: var(--space-1) var(--space-2);
+    border: 0;
+    border-radius: var(--user-radius-control);
+    background: transparent;
+    color: var(--user-ink-muted);
+    font-size: var(--typ-caption);
+    cursor: pointer;
+}
+.creation-composer-clear svg { width: 14px; height: 14px; }
+.creation-composer-clear:hover:not(:disabled) { background: var(--user-surface-hover); color: var(--user-ink); }
+.creation-composer-clear:disabled { cursor: not-allowed; opacity: .5; }
+.app-user-workspace .creation-home .creation-chat-dock {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: "controls actions" "feedback feedback";
+    align-items: center;
+    gap: var(--space-2) var(--space-4);
     min-height: 0;
     padding: var(--space-3) var(--space-4);
     border-top: 0;
     background: transparent;
 }
 .app-user-workspace .creation-home .creation-chat-controls {
+    grid-area: controls;
     display: flex;
-    flex: 1 1 540px;
     min-width: 0;
     flex-wrap: wrap;
     align-items: center;
+    gap: var(--space-2) var(--space-4);
+}
+.creation-composer-input-tools,
+.creation-composer-model-tools,
+.creation-composer-actions {
+    display: flex;
+    align-items: center;
+    min-width: 0;
     gap: var(--space-2);
 }
-.app-user-workspace .creation-home .creation-chat-controls > * { flex-shrink: 0; max-width: 100%; }
-.app-user-workspace .creation-home .creation-chat-controls > :has(> .creation-model-picker) { width: 232px; min-width: 0; }
+.creation-composer-input-tools { flex: 0 0 auto; }
+.creation-composer-model-tools { flex: 0 1 auto; max-width: 100%; }
+.creation-composer-model-tools > :has(> .creation-model-picker) { flex: 0 1 212px; width: 212px; min-width: 100px; }
+.creation-composer-model-tools > .creation-chat-control { flex-shrink: 0; }
+.creation-composer-actions { grid-area: actions; justify-content: flex-end; }
+.creation-composer-feedback { grid-area: feedback; min-width: 0; }
+.creation-composer-feedback:empty { display: none; }
 .app-user-workspace .creation-home .creation-chat-composer .creation-chat-control,
 .app-user-workspace .creation-home .creation-chat-composer .creation-model-picker.canvas-composer-model-picker,
 .app-user-workspace .creation-home .creation-voice-trigger.ant-btn {
@@ -206,7 +248,7 @@
     width: var(--creation-toolbar-height) !important;
     min-width: var(--creation-toolbar-height) !important;
 }
-.app-user-workspace .creation-home .creation-chat-dock .creation-mode-tabs {
+.app-user-workspace .creation-home .creation-composer-head .creation-mode-tabs {
     display: grid;
     width: max-content;
     height: var(--creation-toolbar-height);
@@ -220,7 +262,7 @@
     transform: none;
     overflow: visible;
 }
-.app-user-workspace .creation-home .creation-chat-dock .creation-mode-button {
+.app-user-workspace .creation-home .creation-composer-head .creation-mode-button {
     height: calc(var(--creation-toolbar-height) - 2 * var(--space-half));
     min-height: 0;
     flex-direction: row;
@@ -230,27 +272,26 @@
     border-radius: var(--user-radius-control);
     white-space: nowrap;
 }
-.app-user-workspace .creation-home .creation-chat-dock .creation-mode-button svg {
+.app-user-workspace .creation-home .creation-composer-head .creation-mode-button svg {
     width: var(--user-icon-size);
     height: var(--user-icon-size);
     flex: 0 0 auto;
 }
-.creation-home .creation-thinking-inline { height: var(--creation-toolbar-height); }
-.creation-home .creation-thinking-inline .thinking-level-slider { height: 100%; }
 .creation-composer-status {
-    padding: 0 var(--space-4) var(--space-3);
+    justify-content: flex-end;
+    padding: 0;
     color: var(--user-ink-muted);
     font-size: var(--fs-caption);
     line-height: 1.6;
 }
 /* The outer Button keeps click/disabled semantics; only its action paints the primary surface. */
-.app-product-workspace .creation-home .creation-submit.ant-btn { height: var(--creation-toolbar-height); min-height: var(--creation-toolbar-height); padding: 0; border: 0; background: transparent !important; box-shadow: none; border-radius: var(--user-radius-control); opacity: 1; transform: none; }
-.app-product-workspace .creation-home .creation-submit.ant-btn .creation-submit-action { position: relative; overflow: hidden; display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; gap: var(--space-2); width: auto; height: var(--creation-toolbar-height); padding: 0 var(--space-4); border-radius: var(--user-radius-control); background: var(--creation-command-bg); color: var(--creation-command-fg); transition: background-color var(--user-motion), color var(--user-motion); }
-.app-product-workspace .creation-home .creation-submit.ant-btn .creation-submit-action span { font-size: var(--typ-caption); font-weight: 600; }
-.app-product-workspace .creation-home .creation-submit.ant-btn .creation-submit-action svg { width: var(--user-icon-size); height: var(--user-icon-size); color: currentColor; }
-.app-product-workspace .creation-home .creation-submit.ant-btn:disabled .creation-submit-action { background: var(--user-surface-hover); color: var(--user-ink-muted); }
-.app-product-workspace .creation-home .creation-submit.ant-btn:not(:disabled):hover .creation-submit-action { background: var(--creation-command-hover-bg); }
-.app-product-workspace .creation-home .creation-submit.ant-btn:not(:disabled):active .creation-submit-action { background: var(--creation-command-active-bg); }
+.app-product-workspace .creation-home .creation-chat-composer:is(.is-empty, .is-thread) .creation-submit.ant-btn { height: var(--creation-toolbar-height); min-height: var(--creation-toolbar-height); padding: 0; border: 0; background: transparent !important; box-shadow: none; border-radius: var(--user-radius-control); opacity: 1; transform: none; }
+.app-product-workspace .creation-home .creation-chat-composer:is(.is-empty, .is-thread) .creation-submit.ant-btn .creation-submit-action { position: relative; overflow: hidden; display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; gap: var(--space-2); width: auto; height: var(--creation-toolbar-height); padding: 0 var(--space-4); border-radius: var(--user-radius-control); background: var(--creation-command-bg); color: var(--creation-command-fg); transition: background-color var(--user-motion), color var(--user-motion); }
+.app-product-workspace .creation-home .creation-chat-composer:is(.is-empty, .is-thread) .creation-submit.ant-btn .creation-submit-action span { font-size: var(--typ-caption); font-weight: 600; }
+.app-product-workspace .creation-home .creation-chat-composer:is(.is-empty, .is-thread) .creation-submit.ant-btn .creation-submit-action svg { width: var(--user-icon-size); height: var(--user-icon-size); color: currentColor; }
+.app-product-workspace .creation-home .creation-chat-composer:is(.is-empty, .is-thread) .creation-submit.ant-btn:disabled .creation-submit-action { background: var(--user-surface-hover); color: var(--user-ink-muted); }
+.app-product-workspace .creation-home .creation-chat-composer:is(.is-empty, .is-thread) .creation-submit.ant-btn:not(:disabled):hover .creation-submit-action { background: var(--creation-command-hover-bg); }
+.app-product-workspace .creation-home .creation-chat-composer:is(.is-empty, .is-thread) .creation-submit.ant-btn:not(:disabled):active .creation-submit-action { background: var(--creation-command-active-bg); }
 .creation-inspiration-filters { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
 .creation-inspiration-filters button { display: inline-flex; align-items: center; gap: 8px; padding: 8px 16px; min-height: 36px; border: 0; border-radius: 999px; color: var(--user-ink-muted); background: transparent; font-size: 13px; transition: background var(--user-motion), color var(--user-motion); }
 .creation-inspiration-filters button span { font-size: 11px; opacity: .65; font-variant-numeric: tabular-nums; }
@@ -275,8 +316,6 @@
     .creation-inspiration-filters { gap: 4px; }
     .creation-inspiration-filters button { padding-inline: 8px; }
     .creation-inspiration-footer { align-items: flex-start; flex-direction: column; }
-    .creation-home .creation-chat-dock { flex-wrap: wrap; gap: 12px; }
-    .creation-home .creation-chat-controls { flex: 1 1 100%; width: 100%; }
 }
 /* 语音按钮沿用创作工具栏的表面状态。 */
 .app-user-workspace .creation-voice-trigger.ant-btn {
@@ -599,4 +638,36 @@ html:not(.dark) .app-product-overlays .creation-control-popover-surface {
     .app-user-workspace .app-workspace-topbar-extension .creation-rail-trigger {
         white-space: nowrap;
     }
+}
+
+.creation-text-settings {
+    width: min(280px, calc(100vw - 56px));
+    padding: var(--space-4);
+    color: var(--user-ink);
+}
+.creation-text-setting-row { display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); }
+.creation-text-setting-row label,
+.creation-text-thinking h3 { margin: 0; font-size: var(--fs-body); font-weight: 600; }
+.creation-text-settings p { margin: var(--space-1) 0 0; color: var(--user-ink-muted); font-size: var(--fs-caption); line-height: 1.6; }
+.creation-text-thinking { margin-top: var(--space-4); padding-top: var(--space-4); border-top: 1px solid var(--user-border); }
+.creation-text-thinking .thinking-level-slider { margin-block: var(--space-3); }
+.creation-text-settings .creation-text-settings-hint { margin-top: var(--space-4); }
+@container creation-composer (max-width: 680px) {
+    .app-user-workspace .creation-home .creation-chat-dock {
+        grid-template-areas: "controls controls" "feedback actions";
+        gap: var(--space-3);
+    }
+    .creation-composer-status { justify-content: flex-start; }
+    .creation-composer-actions { flex-wrap: wrap; }
+}
+@container creation-composer (max-width: 460px) {
+    .app-user-workspace .creation-home .creation-chat-controls {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        gap: var(--space-2);
+    }
+    .creation-composer-model-tools { width: 100%; }
+    .creation-composer-model-tools > :has(> .creation-model-picker) { flex: 1 1 0; width: auto; min-width: 0; }
+    .creation-composer-model-tools > .creation-chat-control { min-width: 0; padding-inline: var(--space-2); }
+    .creation-composer-actions .creation-submit-cost { font-size: var(--fs-caption); padding: 0; }
 }

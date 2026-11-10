@@ -1,17 +1,17 @@
-import { type ThinkingLevel, type ThinkingRequest } from "@/lib/text-thinking";
+import { THINKING_LEVEL_LABELS, type ThinkingLevel, type ThinkingRequest } from "@/lib/text-thinking";
 import { ThinkingLevelSlider } from "@/components/thinking-level-slider";
 import { HoverBorderGradient } from "@/components/ui/aceternity/hover-border-gradient";
 import { ImageSizePicker } from "@/components/image-size-picker";
 import { ImageParameterFields } from "@/components/image-parameter-fields";
 import { imageResolutionUsesQuality, imageSizePresets } from "@/lib/image-size-presets";
 import { createPortal } from "react-dom";
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent, type ReactNode, type RefObject } from "react";
-import { Button, Popover } from "antd";
+import { lazy, Suspense, useCallback, useEffect, useId, useMemo, useRef, useState, type CSSProperties, type PointerEvent, type ReactNode, type RefObject } from "react";
+import { Button, Popover, Switch } from "antd";
 import { useWorkspaceTopBarMount } from "@/components/layout/workspace-top-bar-extension";
 import { Tooltip } from "@/components/ui/base/tooltip";
 import { Reorder, motion, useReducedMotion } from "motion/react";
 import type { Transition } from "motion/react";
-import { ArrowUp, Brain, WandSparkles, ChevronDown, ChevronLeft, ChevronRight, Clapperboard, Clock3, Film, History, Image as ImageIcon, LoaderCircle, Maximize2, MessageSquareText, Minimize2, Plus, SlidersHorizontal, Trash2, Waves, X, Lightbulb, Orbit, PenLine } from "lucide-react";
+import { ArrowUp, WandSparkles, ChevronDown, ChevronLeft, ChevronRight, Clapperboard, Clock3, Film, History, Image as ImageIcon, LoaderCircle, Maximize2, MessageSquareText, Minimize2, Plus, SlidersHorizontal, Trash2, X, Lightbulb, Orbit, PenLine } from "lucide-react";
 
 import { formatVideoResolutionLabel as videoResolutionLabel } from "@/lib/video-generation-options";
 import { CanvasResourceMentionTextarea } from "@/components/canvas/canvas-resource-mention-textarea";
@@ -160,6 +160,9 @@ export function CreationComposer(props: ComposerProps) {
     const optimizerReferences = props.references.filter((reference) => reference.active && reference.kind !== "skill");
     const showCost = authenticated && generationStatus.fee.credits !== null;
     const formattedCredits = generationStatus.fee.credits?.toLocaleString("zh-CN", { maximumFractionDigits: 6 });
+    const tokenUsageBilling = props.mode === "text" && generationStatus.ready && generationStatus.source === "platform" && !generationStatus.fee.blocked && generationStatus.fee.credits === null && Boolean(generationStatus.fee.label) && priceChannel.modelCosts?.find((item) => item.model === modelOptionName(props.model))?.billingMode === "token";
+    const noticeStatus = tokenUsageBilling ? { ...generationStatus, fee: { ...generationStatus.fee, label: "按实际 Token 用量结算积分" } } : generationStatus;
+    const canClear = Boolean(props.prompt.trim() || props.attachments.length || props.references.some((reference) => reference.active));
     const actionLabel = props.referenceReplacementBusy ? "正在替换参考图" : interactionBusy || (props.generationActive && !props.prompt.trim()) ? "生成中" : showCost ? `${generationStatus.fee.label}，发送` : "发送";
     const submit = () => { if (canSubmit) props.onSubmit(); };
     // Send-button working state must span the WHOLE generation (not just the
@@ -274,6 +277,10 @@ export function CreationComposer(props: ComposerProps) {
         return undefined;
     };
     const composerContent = <>
+        {props.variant === "thread" || canClear ? <div className="creation-composer-head">
+            {props.variant === "thread" ? <ModePicker mode={props.mode} onModeChange={props.onModeChange} /> : null}
+            {canClear ? <Tooltip title="清空提示词和参考内容"><button type="button" className="creation-composer-clear" onClick={props.onClearComposer} disabled={interactionBusy} aria-label="清空提示词和参考内容"><Trash2 aria-hidden="true" /><span>清空</span></button></Tooltip> : null}
+        </div> : null}
         <div className="creation-chat-writing-surface">
             <div className="creation-chat-editor">
                 <CanvasResourceMentionTextarea ref={props.composerFocusRef} value={props.prompt} references={props.references} mentionMenuWidth={400} autoSize sendOnEnter onFocus={props.onPromptFocus} onChange={props.setPrompt} onSubmit={submit} containerClassName="creation-chat-mention-container" className="creation-chat-mention-editor creation-scrollbar" style={{ color: "var(--creation-text)" }} placeholder={props.placeholderOverride || (props.variant === "empty" ? emptyPlaceholder : placeholder)} aria-label="创作提示词，可使用 @ 引用当前参考内容或技能；回车发送，Shift+回车换行" spellCheck disabled={interactionBusy} activeDropReferenceId={dropTargetReferenceId} onReferenceFilesDrop={(reference, files) => { const target = props.references.find((item) => item.id === reference.id); if (target?.attachmentId) props.onReplaceReferenceFiles(target.attachmentId, files); }} />
@@ -345,58 +352,55 @@ export function CreationComposer(props: ComposerProps) {
         </div>
         <footer className="creation-chat-dock">
             <div className="creation-chat-controls">
-                {props.variant === "thread" ? <ModePicker mode={props.mode} onModeChange={props.onModeChange} /> : null}
-                {referencesSupported && !props.attachments.length ? <Tooltip title={addReferenceLabel}><button type="button" className="creation-chat-control" onClick={props.onOpenLibrary} disabled={interactionBusy || !canAddMoreReferences} aria-label={addReferenceLabel}><Plus aria-hidden="true" /><span>参考内容</span></button></Tooltip> : null}
-                <VoiceRecordingButton
-                    className="creation-voice-trigger"
-                    disabled={interactionBusy}
-                    onTranscribed={(text) => props.setPrompt(props.prompt.trim() ? `${props.prompt} ${text}` : text)}
-                />
-                {canOptimizePrompt ? <Tooltip title="用 AI 优化提示词">
-                    <button
-                        type="button"
-                        className="creation-chat-control"
-                        onClick={() => setPromptOptimizerOpen(true)}
-                        aria-label="优化提示词"
-                        aria-expanded={promptOptimizerOpen}
-                        aria-haspopup="dialog"
-                    >
-                        <PenLine />
-                        <span>优化</span>
-                    </button>
-                </Tooltip> : null}
-				<ModelPicker config={props.config} value={props.model} onChange={props.onModelChange} capability={props.mode} requirements={props.modelRequirements} className="creation-model-picker" placeholder={`选择${modeLabels[props.mode]}模型`} showSelectedPrice={false} showOptionPrices variant="creation" />
-                {props.mode === "video" || (props.mode === "image" && imageSettingsSupported) ? <GenerationSettingsMenu {...props} /> : null}
-                {props.mode === "video" ? <DurationMenu profile={props.videoProfile} seconds={props.seconds} onChange={props.setSeconds} /> : null}
-                {props.mode === "text" ? <>
-                    <Tooltip title={interactionBusy ? "生成中，此开关将在下次发送时生效" : (props.textStreaming ? "流式输出已开启" : "流式输出已关闭")}>
-                        <button type="button" className="creation-chat-control" aria-pressed={props.textStreaming} disabled={interactionBusy} onClick={() => props.setTextStreaming(!props.textStreaming)}>
-                            <Waves />
-                            <span>流式</span>
-                            {props.textStreaming ? <span className="size-1.5 rounded-full bg-blue-400 shrink-0 shadow-sm" /> : null}
+                <div className="creation-composer-input-tools" role="group" aria-label="输入辅助">
+                    {referencesSupported && !props.attachments.length ? <Tooltip title={addReferenceLabel}><button type="button" className="creation-chat-control" onClick={props.onOpenLibrary} disabled={interactionBusy || !canAddMoreReferences} aria-label={addReferenceLabel}><Plus aria-hidden="true" /><span>参考内容</span></button></Tooltip> : null}
+                    <VoiceRecordingButton
+                        className="creation-voice-trigger"
+                        disabled={interactionBusy}
+                        onTranscribed={(text) => props.setPrompt(props.prompt.trim() ? `${props.prompt} ${text}` : text)}
+                    />
+                    {canOptimizePrompt ? <Tooltip title="用 AI 优化提示词">
+                        <button
+                            type="button"
+                            className="creation-chat-control"
+                            onClick={() => setPromptOptimizerOpen(true)}
+                            aria-label="优化提示词"
+                            aria-expanded={promptOptimizerOpen}
+                            aria-haspopup="dialog"
+                        >
+                            <PenLine />
+                            <span>优化</span>
                         </button>
-                    </Tooltip>
-                    <ThinkingControl levels={props.textThinkingLevels} value={props.textThinkingRequest} resolvedLevel={props.textThinkingLevel} onChange={props.setTextThinkingLevel} disabled={interactionBusy} />
-                </> : null}
-                {props.prompt.trim() || props.attachments.length || props.references.some((reference) => reference.active) ? <Tooltip title="清空提示词和参考内容"><button type="button" className="creation-chat-control is-clear" onClick={props.onClearComposer} disabled={interactionBusy} aria-label="清空提示词和参考内容"><Trash2 /><span>清空</span></button></Tooltip> : null}
+                    </Tooltip> : null}
+                </div>
+                <div className="creation-composer-model-tools" role="group" aria-label="模型与生成设置">
+                    <ModelPicker config={props.config} value={props.model} onChange={props.onModelChange} capability={props.mode} requirements={props.modelRequirements} className="creation-model-picker" placeholder={`选择${modeLabels[props.mode]}模型`} showSelectedPrice={false} showChannelLabel={false} showOptionPrices variant="creation" />
+                    {props.mode === "video" || (props.mode === "image" && imageSettingsSupported) ? <GenerationSettingsMenu {...props} /> : null}
+                    {props.mode === "video" ? <DurationMenu profile={props.videoProfile} seconds={props.seconds} onChange={props.setSeconds} /> : null}
+                    {props.mode === "text" ? <TextSettingsMenu streaming={props.textStreaming} onStreamingChange={props.setTextStreaming} levels={props.textThinkingLevels} value={props.textThinkingRequest} resolvedLevel={props.textThinkingLevel} onThinkingChange={props.setTextThinkingLevel} disabled={interactionBusy} /> : null}
+                </div>
             </div>
-            <Button
-                type="text"
-                className={`creation-submit ${showCost ? "has-cost" : ""}`}
-                disabled={interactionBusy || !canSubmit}
-                style={{
-                    position: "relative",
-                    color: "var(--user-ink)",
-                } as CSSProperties}
-                onClick={submit}
-                aria-label={actionLabel}
-                title={!authenticated ? "登录后继续创作" : generationStatus.reason || (generationStatus.fee.blocked ? generationStatus.fee.label : !canSubmit && !interactionBusy ? "输入创作想法后即可生成" : actionLabel)}
-            >
-                {showCost ? <span className="creation-submit-cost" title={generationStatus.fee.description}><CreditSymbol /><span>{generationStatus.fee.estimated ? `预估:${formattedCredits}` : formattedCredits}</span></span> : null}
-                <span className="creation-submit-action" aria-hidden>{showWorkingSpinner ? <LoaderCircle className="size-4 animate-spin" /> : <ArrowUp className="size-4" />}<span>{showWorkingSpinner ? "生成中" : "开始创作"}</span></span>
-            </Button>
+            <div className="creation-composer-actions">
+                {showCost ? <span className="creation-submit-cost" title={generationStatus.fee.description}><CreditSymbol /><span>{generationStatus.fee.estimated ? `预估 ${formattedCredits}` : formattedCredits} 积分</span></span> : null}
+                <Button
+                    type="text"
+                    className={`creation-submit ${showCost ? "has-cost" : ""}`}
+                    disabled={interactionBusy || !canSubmit}
+                    style={{
+                        position: "relative",
+                        color: "var(--user-ink)",
+                    } as CSSProperties}
+                    onClick={submit}
+                    aria-label={actionLabel}
+                    title={!authenticated ? "登录后继续创作" : generationStatus.reason || (generationStatus.fee.blocked ? generationStatus.fee.label : !canSubmit && !interactionBusy ? "输入创作想法后即可生成" : actionLabel)}
+                >
+                    <span className="creation-submit-action" aria-hidden>{showWorkingSpinner ? <LoaderCircle className="size-4 animate-spin" /> : <ArrowUp className="size-4" />}<span>{showWorkingSpinner ? "生成中" : "开始创作"}</span></span>
+                </Button>
+            </div>
+            <div className="creation-composer-feedback">
+                {authenticated ? <GenerationStatusNotice status={noticeStatus} feeShownInline={showCost} className="creation-composer-status" /> : <div role="status" className="creation-composer-status">登录后选择模型并查看费用</div>}
+            </div>
         </footer>
-        {authenticated ? <GenerationStatusNotice status={generationStatus} feeShownInline={showCost} className="creation-composer-status" /> : <div role="status" className="creation-composer-status">登录后选择模型并查看费用</div>}
         <CreationMediaPreviewModal url={previewUrl} type={previewType} onClose={() => setPreviewUrl("")} />
     </>;
     const composer = (
@@ -534,14 +538,47 @@ function SettingSection({ title, value, children }: { title: string; value?: str
     return <section className="creation-parameter-section"><header><h3>{title}</h3>{value ? <span>{value}</span> : null}</header>{children}</section>;
 }
 
-// 首页与 Agent 共用离散档位滑条，保留模型默认意图，不把它提前固化为某个档位。
-function ThinkingControl({ levels, value, resolvedLevel, onChange, disabled }: { levels: ThinkingLevel[]; value: ThinkingRequest; resolvedLevel: ThinkingLevel | ""; onChange: (value: ThinkingRequest) => void; disabled: boolean }) {
-    if (!levels.length) return null;
-    return (
-        <div className="creation-thinking-inline">
-            <ThinkingLevelSlider levels={levels} value={value} resolvedLevel={resolvedLevel} onChange={onChange} disabled={disabled} />
+// 保留模型默认意图与共享滑条的键盘/拖动行为，只收拢文本模式的参数入口。
+function TextSettingsMenu({ streaming, onStreamingChange, levels, value, resolvedLevel, onThinkingChange, disabled }: { streaming: boolean; onStreamingChange: (value: boolean) => void; levels: ThinkingLevel[]; value: ThinkingRequest; resolvedLevel: ThinkingLevel | ""; onThinkingChange: (value: ThinkingRequest) => void; disabled: boolean }) {
+    const [open, setOpen] = useState(false);
+    const streamingId = useId();
+    const triggerRef = useRef<HTMLButtonElement>(null);
+    const panelRef = useRef<HTMLDivElement>(null);
+    const thinkingLabel = value === "auto" ? "默认" : value === "deep" ? "尽可能深" : THINKING_LEVEL_LABELS[value];
+    useEffect(() => {
+        if (!open) return;
+        const onEscape = (event: KeyboardEvent) => {
+            if (event.key !== "Escape") return;
+            event.preventDefault();
+            setOpen(false);
+            triggerRef.current?.focus({ preventScroll: true });
+        };
+        document.addEventListener("keydown", onEscape);
+        return () => document.removeEventListener("keydown", onEscape);
+    }, [open]);
+    const panel = <div ref={panelRef} className="creation-text-settings" role="dialog" aria-label="文本设置">
+        <div className="creation-text-setting-row">
+            <div><label htmlFor={streamingId}>流式输出</label><p>逐步显示回复内容</p></div>
+            <Switch id={streamingId} checked={streaming} onChange={onStreamingChange} disabled={disabled} aria-label="流式输出" />
         </div>
-    );
+        {levels.length ? <section className="creation-text-thinking">
+            <h3>思考强度</h3>
+            <ThinkingLevelSlider levels={levels} value={value} resolvedLevel={resolvedLevel} onChange={onThinkingChange} disabled={disabled} />
+            <p>默认使用模型推荐的思考等级</p>
+        </section> : <p className="creation-text-settings-hint">当前模型不支持调节思考强度</p>}
+    </div>;
+    return <Popover
+        open={open}
+        onOpenChange={setOpen}
+        afterOpenChange={(visible) => { if (visible) panelRef.current?.querySelector<HTMLButtonElement>("button:not(:disabled)")?.focus({ preventScroll: true }); }}
+        trigger="click"
+        placement="topRight"
+        arrow={false}
+        classNames={{ root: "creation-control-popover", container: "creation-control-popover-surface", content: "creation-control-popover-content" }}
+        content={panel}
+    >
+        <button ref={triggerRef} type="button" className="creation-chat-control creation-text-settings-trigger" aria-haspopup="dialog" aria-expanded={open} aria-label={`文本设置：${streaming ? "流式输出" : "完整输出"}${levels.length ? `，思考${thinkingLabel}` : ""}`}><SlidersHorizontal aria-hidden="true" /><span>文本设置</span><ChevronDown aria-hidden="true" /></button>
+    </Popover>;
 }
 
 function DurationMenu({ profile, seconds, onChange }: { profile: VideoCapabilityConfig; seconds: string; onChange: (value: string) => void }) {
