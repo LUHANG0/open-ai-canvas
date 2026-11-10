@@ -37,7 +37,7 @@
     display: flex;
     flex-shrink: 0;
     align-items: center;
-    gap: var(--space-1);
+    gap: var(--space-2);
 }
 
 .inspiration-hall-toolbar {
@@ -56,16 +56,21 @@
     flex: 0 0 auto;
 }
 
+/* 搜索框与内容库工具栏同一套外观：34px、9px 圆角、透明底 + 1px 细线。 */
 .inspiration-hall-search.ant-input-affix-wrapper {
     width: clamp(200px, 24%, 300px);
+    height: var(--user-control-height);
     min-width: 0;
     margin-left: auto;
-    background: var(--user-surface-muted);
-    border: 0;
-    border-radius: var(--user-radius-control);
+    background: transparent;
+    border: 1px solid var(--user-border);
+    border-radius: var(--user-radius-button);
     color: var(--user-ink);
     font-size: var(--fs-caption);
     box-shadow: none;
+}
+.inspiration-hall-search.ant-input-affix-wrapper:hover {
+    border-color: var(--user-border-strong);
 }
 
 .inspiration-hall-search .ant-input-prefix {
@@ -75,6 +80,8 @@
 .inspiration-hall-filter-toggle > svg:last-child {
     width: var(--space-3);
     height: var(--space-3);
+    margin-left: calc(-1 * var(--space-half));
+    color: var(--user-ink-soft);
     transition: transform var(--user-motion);
 }
 
@@ -157,7 +164,7 @@
     flex-direction: column;
     border: 0;
     border-radius: inherit;
-    padding: 0;
+    padding: var(--space-2);
     background: transparent;
     color: inherit;
     text-align: left;
@@ -177,6 +184,7 @@
     flex-shrink: 0;
     aspect-ratio: 4 / 3;
     overflow: hidden;
+    border-radius: var(--user-radius-media);
     background: var(--library-cover-surface);
 }
 
@@ -202,11 +210,25 @@
     white-space: nowrap;
 }
 
+/* 上新 7 天内的条目：左上角小标签，与右上角的操作按钮错开。 */
+.inspiration-card-new {
+    position: absolute;
+    top: var(--space-2);
+    left: var(--space-2);
+    padding: 0 var(--space-2);
+    border-radius: var(--r-full);
+    background: var(--user-surface-raised);
+    color: var(--user-ink);
+    font-size: var(--fs-tiny);
+    font-weight: 600;
+    line-height: 1.8;
+}
+
 /* 操作与详情按钮是兄弟节点；收藏和展开的菜单始终可见。 */
 .inspiration-card-actions {
     position: absolute;
-    top: var(--space-2);
-    right: var(--space-2);
+    top: var(--space-4);
+    right: var(--space-4);
     display: flex;
     gap: var(--space-1);
     opacity: 0;
@@ -262,7 +284,7 @@
     flex: 1;
     flex-direction: column;
     gap: var(--space-1);
-    padding: var(--space-3);
+    padding: var(--space-3) var(--space-2) var(--space-1);
 }
 
 .inspiration-card-title {
@@ -397,7 +419,7 @@
         gap: var(--space-3);
     }
     .inspiration-card-body {
-        padding: var(--space-2-half);
+        padding: var(--space-2) var(--space-1) 0;
     }
     .inspiration-card-source {
         font-size: var(--fs-tiny);
@@ -436,7 +458,7 @@
         left: var(--space-1);
         bottom: var(--space-1);
         max-width: calc(100% - var(--space-2));
-        padding-inline: var(--space-1-half);
+        padding-inline: var(--space-2);
     }
     .inspiration-card-title {
         font-size: var(--fs-caption);

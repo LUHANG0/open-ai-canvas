@@ -15,6 +15,7 @@ export function ImageSizePicker({
     quality,
     imageResolution,
     canSelectResolution,
+    ratioHint,
     onChange,
 }: {
     profile: ImageCapabilityConfig;
@@ -22,6 +23,8 @@ export function ImageSizePicker({
     quality?: string;
     imageResolution?: string;
     canSelectResolution?: (resolution: string) => boolean;
+    /** 可选：在比例按钮下补一行用途说明（如电商“主图”），不改变可选值。 */
+    ratioHint?: (ratio: string) => { label: string; title?: string } | undefined;
     onChange: (size: string, quality?: string, resolution?: string) => void;
 }) {
     const resolutionId = useId();
@@ -163,10 +166,14 @@ export function ImageSizePicker({
                 <legend>画幅</legend>
                 {profile.size.values.includes("auto") ? <button type="button" className="image-size-auto" aria-pressed={size === "auto"} onClick={() => { setError(""); onChange("auto"); }}>自动尺寸</button> : null}
                 <div className="image-size-ratios" role="group" aria-label="画幅">
-                    {choices.map((preset) => <button type="button" key={`${preset.ratio}:${preset.size}`} title={`${preset.ratio} · ${preset.width} × ${preset.height}`} aria-pressed={size !== "auto" && active?.size === preset.size && active?.tier === tier} onClick={() => select(preset)}>
-                        <span aria-hidden="true" className="image-size-ratio-icon" style={{ width: 24 * Math.min(1, preset.width / preset.height), height: 24 * Math.min(1, preset.height / preset.width) }} />
-                        <span>{settingsAspectLabel(preset.ratio)}</span>
-                    </button>)}
+                    {choices.map((preset) => {
+                        const hint = ratioHint?.(preset.ratio);
+                        return <button type="button" key={`${preset.ratio}:${preset.size}`} title={`${preset.ratio} · ${preset.width} × ${preset.height}${hint?.title ? `\n${hint.title}` : ""}`} aria-pressed={size !== "auto" && active?.size === preset.size && active?.tier === tier} onClick={() => select(preset)}>
+                            <span aria-hidden="true" className="image-size-ratio-icon" style={{ width: 24 * Math.min(1, preset.width / preset.height), height: 24 * Math.min(1, preset.height / preset.width) }} />
+                            <span>{settingsAspectLabel(preset.ratio)}</span>
+                            {hint ? <small className="image-size-ratio-hint">{hint.label}</small> : null}
+                        </button>;
+                    })}
                 </div>
                 {!choices.length ? <p className="image-size-hint">未配置预设尺寸{profile.size.allowCustom ? "，可输入自定义比例或尺寸" : ""}</p> : null}
             </fieldset>

@@ -65,7 +65,7 @@ export function EditorSubtitleTools() {
     return (
         <div className="flex h-full flex-col bg-[var(--previs-sequencer-surface)]">
             <div className="director-scroll min-h-0 flex-1 overflow-y-auto p-3">
-                <div className="mb-3 rounded-md border border-[var(--previs-sequencer-border)] bg-[var(--previs-control-hover)] p-2.5">
+                <div className="mb-3 rounded-md border border-[var(--previs-sequencer-border)] bg-[var(--previs-control-hover)] p-2">
                     <div className="flex items-center justify-between">
                         <span className="text-xs font-medium text-[var(--previs-dock-fg-strong)]">时间线字幕</span>
                         <span className="text-xs text-[var(--previs-dock-fg)]/60">{subtitleClips.length} 条</span>
@@ -108,13 +108,13 @@ export function EditorSubtitleTools() {
                         type="button"
                         onClick={exportSrt}
                         disabled={subtitleClips.length === 0}
-                        className="flex-1 rounded-md border border-[var(--previs-sequencer-border)] px-2 py-1.5 text-xs text-[var(--previs-dock-fg)] hover:bg-[var(--previs-control-hover)] disabled:opacity-40"
+                        className="flex-1 rounded-md border border-[var(--previs-sequencer-border)] px-2 py-2 text-xs text-[var(--previs-dock-fg)] hover:bg-[var(--previs-control-hover)] disabled:opacity-40"
                     >
                         导出 SRT
                     </button>
                 </div>
 
-                <div className="rounded-md border border-[var(--previs-sequencer-border)] bg-[var(--previs-control-hover)] p-2.5">
+                <div className="rounded-md border border-[var(--previs-sequencer-border)] bg-[var(--previs-control-hover)] p-2">
                     <div className="flex items-center justify-between">
                         <span className="text-xs font-medium text-[var(--previs-dock-fg-strong)]">AI 高亮</span>
                         <span className="rounded-full bg-[var(--previs-dock-active-surface)] px-1.5 py-0.5 text-xs text-[var(--previs-dock-fg)]/80">可用</span>

@@ -108,7 +108,9 @@ function scheduleExpiry(deadline: number) {
         // Date.now can move backwards: preserve the absolute expiry check and re-arm.
         if (Date.now() < nextExpiry) scheduleExpiry(nextExpiry);
         else collectExpired();
-    }, Math.max(1, deadline - Date.now()));
+    // Native timers use a signed 32-bit delay. Long-lived access descriptors or
+    // a backwards wall clock must re-arm in bounded steps, never overflow to 1ms.
+    }, Math.min(2_147_483_647, Math.max(1, deadline - Date.now())));
     // Module tests and SSR must not be kept alive by a warm cache.
     (expiryTimer as unknown as { unref?: () => void } | undefined)?.unref?.();
 }

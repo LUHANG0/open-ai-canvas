@@ -203,6 +203,9 @@ func TestMediaRecoveryRegistrationRollbackAndRetryWithoutDownload(t *testing.T) 
 	if err != nil {
 		t.Fatal(err)
 	}
+	if _, err := os.Stat(s.mediaTempPath(temp)); !os.IsNotExist(err) {
+		t.Fatalf("staging copy was not released after resource persistence: %v", err)
+	}
 	encoded, _ := json.Marshal(output)
 	if err := db.Exec(`CREATE TRIGGER reject_media_asset BEFORE INSERT ON assets BEGIN SELECT RAISE(ABORT, 'injected asset failure'); END`).Error; err != nil {
 		t.Fatal(err)
@@ -405,8 +408,8 @@ func TestMediaRecoveryExpiredLeaseAndStagingLimits(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer file.Close()
-	if _, err := s.newMediaTemp(1); err == nil {
-		t.Fatal("staging budget exceeded")
+	if _, err := s.newMediaTemp(1); err == nil || !errors.Is(err, errMediaStagingFull) || !retryableMediaRecovery(err) {
+		t.Fatalf("staging budget error is not retryable: %v", err)
 	}
 }
 

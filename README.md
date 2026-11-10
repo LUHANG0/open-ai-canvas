@@ -8,7 +8,7 @@
 
 <p align="center">
   <a href="https://mengceng.com">梦层官网</a> ·
-  <a href="https://github.com/LUHANG0/open-ai-canvas/tree/codex/upstream-v1.7.2-fixes">开发分支</a> ·
+  <a href="https://github.com/LUHANG0/open-ai-canvas/tree/codex/mengceng-v1.8.0">开发分支</a> ·
   <a href="docs/index.md">文档索引</a> ·
   <a href="CONTRIBUTING.md">参与开发</a> ·
   <a href="SECURITY.md">安全报告</a>
@@ -16,7 +16,11 @@
 
 梦层 MengCeng 是由 [LUHANG0](https://github.com/LUHANG0) 维护的 AI 影像与短剧创作工作台，基于 [ddcat-ai/open-ai-canvas](https://github.com/ddcat-ai/open-ai-canvas) 二次开发。产品连接创作对话、参考素材、自由画布、短剧项目、生成任务和时间线剪辑，并提供账号、模型渠道、价格与账务管理。
 
-**当前功能代码维护在 [`codex/upstream-v1.7.2-fixes`](https://github.com/LUHANG0/open-ai-canvas/tree/codex/upstream-v1.7.2-fixes)。** 默认 `main` 目前保留历史代码基线并同步入口文档，构建当前梦层请检出上述维护分支。克隆、构建和反馈问题时请注明实际分支与完整提交；仓库首页不能代替线上实例的版本记录。
+**当前功能代码维护在 [`codex/mengceng-v1.8.0`](https://github.com/LUHANG0/open-ai-canvas/tree/codex/mengceng-v1.8.0)。** 默认 `main` 目前保留历史代码基线并同步入口文档，构建当前梦层请检出上述维护分支。克隆、构建和反馈问题时请注明实际分支与完整提交；仓库首页不能代替线上实例的版本记录。
+
+**当前梦层版本为 `v1.8.0-mengceng.1`，基于保留二改的源码 `663850c6`，于北京时间 2026-11-06 06:05 完成本站发布。** 本分支整合作者 v1.8.0，数据库编号与官方不同；上线状态、验收和升级限制见[兼容升级记录](docs/plans/mengceng-v1.8-upgrade.md)，不能使用官方镜像直接覆盖。
+
+原维护分支 [`codex/upstream-v1.7.2-fixes`](https://github.com/LUHANG0/open-ai-canvas/tree/codex/upstream-v1.7.2-fixes) 保留作为升级前源码基线，不再作为本版本构建入口。
 
 产品入口为 [mengceng.com](https://mengceng.com)。注册方式由站点配置决定，关闭公开注册时通过管理员邀请加入；仓库不提供公共演示账号。
 
@@ -45,7 +49,7 @@
 前端使用 **Bun 1.3.9、React、TypeScript、Vite**，后端使用 **Go 1.25、Gin、GORM**。本地可使用 SQLite；PostgreSQL 部署同时需要 Redis。独立 Agent 和后端内嵌运行时的 Node 版本与依赖以 Dockerfile 和锁文件为准。
 
 ```bash
-git clone --branch codex/upstream-v1.7.2-fixes https://github.com/LUHANG0/open-ai-canvas.git
+git clone --branch codex/mengceng-v1.8.0 https://github.com/LUHANG0/open-ai-canvas.git
 cd open-ai-canvas
 ```
 

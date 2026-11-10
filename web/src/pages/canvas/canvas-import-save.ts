@@ -1,3 +1,4 @@
+import { translate } from "@/i18n";
 import { CanvasNodeType, type CanvasConnection, type CanvasNodeData } from "@/types/canvas";
 import { CanvasSyncPendingError } from "@/lib/canvas/sync-recovery";
 import { canvasNodeToAsset, findCanvasNodeAsset } from "@/lib/canvas/canvas-node-asset";

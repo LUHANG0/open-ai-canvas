@@ -6,6 +6,7 @@ import localforage from "localforage";
 import { apiClient } from "@/services/api/request";
 import { deleteAssetsWithRemoteSync, initializeRemoteUserDataSession, loadAssetLibraryPage, loadAssetsForUse, resetRemoteUserDataSync, saveRemoteUserDataNow } from "@/services/user-data-sync";
 import { flushAssetStorePersistence, useAssetStore, type Asset } from "@/stores/use-asset-store";
+import { useCanvasStore } from "@/stores/canvas/use-canvas-store";
 import { appQueryClient } from "@/lib/query-client";
 import { collectAssetLibraryIds, deleteAllArchivedAssets, loadAssetLibraryExport } from "@/pages/assets/asset-library-operations";
 import { useUserStore } from "@/stores/use-user-store";
@@ -60,6 +61,8 @@ beforeEach(async () => {
             localStorage: { getItem: (key: string) => storage.get(key) ?? null, setItem: (key: string, value: string) => storage.set(key, value), removeItem: (key: string) => storage.delete(key) },
         },
     });
+    // 同一 bun 进程里其他测试文件可能留下画布；saveRemoteUserDataNow 会把它们当作待保存画布发出 PATCH。
+    useCanvasStore.setState({ projects: [] });
     useAssetStore.setState({ assets: [] });
     await flushAssetStorePersistence();
     await initializeRemoteUserDataSession("batch-test-user");

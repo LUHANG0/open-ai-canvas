@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { App, Button, Progress } from "antd";
 import { AppModal } from "@/components/ui/product/app-modal";
+import { useTranslation } from "react-i18next";
 import { StatusBadge } from "@/components/ui/base/badges";
 import { FileImage, FileText, UploadCloud, X } from "lucide-react";
 
-import { ASSET_CATEGORY_OPTIONS, type AssetCategory } from "@/lib/asset-category";
+import { ASSET_ASSIGNABLE_CATEGORY_OPTIONS, type AssetCategory } from "@/lib/asset-category";
 import { uploadImage } from "@/services/image-storage";
 import { localSavedRemotePendingMessage, saveRemoteUserDataNow } from "@/services/user-data-sync";
 import { flushAssetStorePersistence, useAssetStore } from "@/stores/use-asset-store";
@@ -19,6 +20,7 @@ type BatchItem = { id: string; file: File; status: "queued" | "uploading" | "don
 
 export function AssetBatchUploadModal({ open, defaultFolderId, folders, onClose, afterClose, onComplete }: { open: boolean; defaultFolderId: string; folders: AssetFolder[]; onClose: () => void; afterClose?: () => void; onComplete: () => Promise<void> }) {
     const { message } = App.useApp();
+    const { t } = useTranslation();
     const addAsset = useAssetStore((state) => state.addAsset);
     const [items, setItems] = useState<BatchItem[]>([]);
     const [category, setCategory] = useState<AssetCategory>("material");
@@ -44,7 +46,7 @@ export function AssetBatchUploadModal({ open, defaultFolderId, folders, onClose,
     const doneCount = items.filter((item) => item.status === "done").length;
     const failedItems = items.filter((item) => item.status === "error");
     const hasFiles = items.length > 0;
-    const folderOptions = useMemo(() => [{ label: "未分类", value: "" }, ...folders.map((folder) => ({ label: folder.name, value: folder.id }))], [folders]);
+    const folderOptions = useMemo(() => [{ label: t("library.assets.uncategorized"), value: "" }, ...folders.map((folder) => ({ label: folder.name, value: folder.id }))], [folders, t]);
 
     const chooseFiles = (files: File[]) => {
         if (batchRef.current) return;
@@ -91,7 +93,7 @@ export function AssetBatchUploadModal({ open, defaultFolderId, folders, onClose,
                 } catch (error) {
                     if (!isCurrent()) return;
                     failed++;
-                    setItems((current) => current.map((entry) => entry.id === item.id ? { ...entry, status: "error", error: error instanceof Error ? error.message : "上传失败" } : entry));
+                    setItems((current) => current.map((entry) => entry.id === item.id ? { ...entry, status: "error", error: error instanceof Error ? error.message : t("library.assets.batch.uploadFailed") } : entry));
                 }
             }
         };
@@ -110,7 +112,7 @@ export function AssetBatchUploadModal({ open, defaultFolderId, folders, onClose,
             if (isCurrent()) setUploading(false);
         }
         if (!isCurrent()) return;
-        if (syncError) message.warning(localSavedRemotePendingMessage("部分素材已保存在本地", syncError));
+        if (syncError) message.warning(localSavedRemotePendingMessage(t("library.assets.batch.partialLocal"), syncError));
         // 有失败项时保留弹窗，失败标记与「重试失败项」仍可见；关闭时再刷新列表。
         if (!failed) await onComplete();
     };
@@ -128,7 +130,7 @@ export function AssetBatchUploadModal({ open, defaultFolderId, folders, onClose,
     return <AppModal className="library-modal library-batch-upload-modal" title="上传素材" open={open} onCancel={close} footer={null} destroyOnHidden focusable={afterClose ? { focusTriggerAfterClose: false } : undefined} afterClose={afterClose}>
         <div className="space-y-4">
             <div className="grid gap-3 sm:grid-cols-3">
-                <label className="text-xs font-medium text-foreground/65">业务分类<Select ariaLabel="批量上传业务分类" className="mt-1 w-full" value={category} options={ASSET_CATEGORY_OPTIONS} onChange={(value) => setCategory(value)} /></label>
+                <label className="text-xs font-medium text-foreground/65">业务分类<Select ariaLabel="批量上传业务分类" className="mt-1 w-full" value={category} options={ASSET_ASSIGNABLE_CATEGORY_OPTIONS} onChange={(value) => setCategory(value)} /></label>
                 <label className="text-xs font-medium text-foreground/65">自定义分类<Select ariaLabel="批量上传自定义分类" className="mt-1 w-full" value={folderId} options={folderOptions} onChange={setFolderId} /></label>
                 <label className="text-xs font-medium text-foreground/65">公共标签<Select ariaLabel="批量上传公共标签" mode="tags" className="mt-1 w-full" value={tags} tokenSeparators={[",", "，"]} onChange={setTags} placeholder="输入后回车" /></label>
             </div>
@@ -142,14 +144,14 @@ export function AssetBatchUploadModal({ open, defaultFolderId, folders, onClose,
                 onDragLeave={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setDragging(false); }}
                 onDrop={(event) => { event.preventDefault(); setDragging(false); if (!uploading) chooseFiles(Array.from(event.dataTransfer.files)); }}
             >
-                <UploadCloud className="size-7" /><strong>选择图片或 Word 文档</strong><span>支持拖拽或多选上传，标题默认取文件名</span><span>Word 支持 .docx，上传后可预览、编辑正文并插入画布</span>
+                <UploadCloud className="size-7" /><strong>选择图片或 Word 文档</strong><span>{t("library.assets.batch.chooseHint")}</span><span>Word 支持 .docx，上传后可预览、编辑正文并插入画布</span>
             </button>
             <input ref={inputRef} type="file" hidden accept={ASSET_UPLOAD_ACCEPT} disabled={uploading} multiple onChange={(event) => { chooseFiles(Array.from(event.target.files || [])); event.currentTarget.value = ""; }} />
             {hasFiles ? <div className="space-y-2">
-                <div className="flex items-center justify-between text-xs text-foreground/55"><span>已选择 {items.length} 个 · 成功 {doneCount} 个</span><button type="button" className="text-foreground/45 hover:text-foreground" onClick={() => setItems([])} disabled={uploading}>清空</button></div>
-                <div className="batch-upload-list">{items.map((item) => <div key={item.id} className="batch-upload-item">{isAssetUploadDocument(item.file) ? <FileText className="size-4 shrink-0 text-foreground/45" /> : <FileImage className="size-4 shrink-0 text-foreground/45" />}<span className="min-w-0 flex-1"><span className="block truncate" title={item.file.name}>{item.file.name}</span>{item.status === "error" && item.error ? <span className="block truncate text-[11px] text-red-500" title={item.error}>{item.error}</span> : null}</span>{item.status === "uploading" ? <div className="w-20 shrink-0"><Progress percent={item.percent || 10} size="small" showInfo={false} /></div> : item.status === "done" ? <StatusBadge tone="success" size="sm" label="完成" /> : item.status === "error" ? <StatusBadge tone="error" size="sm" label="失败" title={item.error} /> : <StatusBadge tone="neutral" size="sm" label="待上传" />}<button type="button" aria-label={`移除 ${item.file.name}`} title="移除" className="batch-upload-remove" onClick={() => setItems((current) => current.filter((entry) => entry.id !== item.id))} disabled={uploading}><X className="size-3.5" /></button></div>)}</div>
+                <div className="flex items-center justify-between text-xs text-foreground/55"><span>{t("library.assets.batch.summary", { total: items.length, done: doneCount })}</span><button type="button" className="text-foreground/45 hover:text-foreground" onClick={() => setItems([])} disabled={uploading}>{t("library.assets.batch.clear")}</button></div>
+                <div className="batch-upload-list">{items.map((item) => <div key={item.id} className="batch-upload-item">{isAssetUploadDocument(item.file) ? <FileText className="size-4 shrink-0 text-foreground/45" /> : <FileImage className="size-4 shrink-0 text-foreground/45" />}<span className="min-w-0 flex-1"><span className="block truncate" title={item.file.name}>{item.file.name}</span>{item.status === "error" && item.error ? <span className="block truncate text-[var(--fs-label)] text-red-500" title={item.error}>{item.error}</span> : null}</span>{item.status === "uploading" ? <div className="w-20 shrink-0"><Progress percent={item.percent || 10} size="small" showInfo={false} /></div> : item.status === "done" ? <StatusBadge tone="success" size="sm" label={t("library.assets.batch.done")} /> : item.status === "error" ? <StatusBadge tone="error" size="sm" label={t("library.assets.batch.failed")} title={item.error} /> : <StatusBadge tone="neutral" size="sm" label={t("library.assets.batch.queued")} />}<button type="button" aria-label={t("library.assets.batch.removeItem", { name: item.file.name })} title={t("library.assets.batch.remove")} className="batch-upload-remove" onClick={() => setItems((current) => current.filter((entry) => entry.id !== item.id))} disabled={uploading}><X className="size-3.5" /></button></div>)}</div>
             </div> : null}
-            <div className="flex justify-end gap-2"><Button onClick={close} disabled={uploading}>取消</Button><Button type="primary" icon={<UploadCloud className="size-4" />} onClick={() => void uploadBatch()} disabled={!items.some((item) => item.status === "queued" || item.status === "error")} loading={uploading}>{failedItems.length ? `重试失败项 (${failedItems.length})` : "开始上传"}</Button></div>
+            <div className="flex justify-end gap-2"><Button onClick={close} disabled={uploading}>{t("common.cancel")}</Button><Button type="primary" icon={<UploadCloud className="size-4" />} onClick={() => void uploadBatch()} disabled={!items.some((item) => item.status === "queued" || item.status === "error")} loading={uploading}>{failedItems.length ? t("library.assets.batch.retryFailed", { count: failedItems.length }) : t("library.assets.batch.start")}</Button></div>
         </div>
     </AppModal>;
 }

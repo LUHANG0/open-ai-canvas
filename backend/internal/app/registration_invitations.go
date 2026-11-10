@@ -170,6 +170,9 @@ func (s *Service) ValidateRegistrationInvitation(code string) (*PublicRegistrati
 		return nil, err
 	}
 	settings.FirstUser, settings.RegistrationEnabled, settings.LinuxDOEnabled = false, true, false
+	// Invitation redemption keeps its verified-identity requirement independent of public registration.
+	settings.EmailVerificationRequired = true
+	settings.EmailCodeRequired = settings.EmailRegistration || settings.SMSAndEmailRegistration
 	result.Settings, result.BonusMicrocredits = settings, &item.BonusMicrocredits
 	return result, nil
 }

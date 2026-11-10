@@ -14,6 +14,8 @@ const MEDIA_KEYS = [
     "bytes",
     "durationMs",
     "hasAudio",
+    "waveform",
+    "waveformVersion",
     "naturalWidth",
     "naturalHeight",
     "videoPreview",

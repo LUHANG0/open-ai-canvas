@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { App, Button, Dropdown, Popconfirm, Tooltip } from "antd";
 import type { MenuProps } from "antd";
 import { AppModal } from "@/components/ui/product/app-modal";
@@ -134,6 +135,7 @@ export function AssetLibraryPickerModal({
     const [selected, setSelected] = useState<Set<string>>(new Set());
     const [uploadedItems, setUploadedItems] = useState<AssetLibraryPickerItem[]>([]);
     const [working, setWorking] = useState(false);
+    const { t } = useTranslation();
     const [uploadingCount, setUploadingCount] = useState(0);
     const [error, setError] = useState("");
     const userId = useUserStore((state) => state.user?.id);
@@ -595,7 +597,7 @@ export function AssetLibraryPickerModal({
                                 {uploading ? <LoaderCircle className="animate-spin motion-reduce:animate-none" aria-hidden="true" /> : <Upload aria-hidden="true" />}
                                 <span>
                                     <strong>{uploading ? `正在上传 ${uploadingCount} 个素材` : "上传新素材"}</strong>
-                                    <small>{uploading ? "保存完成后会自动选中" : activeUpload.description}</small>
+                                    <small>{uploading ? t("library.picker.uploadingHint") : activeUpload.description}</small>
                                 </span>
                             </button>
                         </>

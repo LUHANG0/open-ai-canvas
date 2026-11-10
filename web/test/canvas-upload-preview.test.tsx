@@ -26,7 +26,9 @@ test("upload previews stay in page memory, match the exact resource, isolate acc
         for (const mode of ["light", "dark"] as const) {
             const html = renderToStaticMarkup(<CanvasFileUploadContent node={{ ...node, metadata: { ...node.metadata, fileUploadProgress: 50 } }} theme={canvasThemes[mode]} reduceMotion />);
             expect(html).toContain('src="blob:preview-1"');
-            expect(html).toContain("blur(13px)");
+            // Preview sharpening uses opacity so zooming never rerasterizes a blur filter.
+            expect(html).not.toContain("filter:");
+            expect(html).toContain('class="canvas-file-upload-preview" style="opacity:0.22"');
             expect(html).toContain('aria-valuenow="50"');
             expect(html).toContain('data-static="true"');
         }

@@ -29,12 +29,18 @@ func TestTaskBillingActualReadModel(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			summary := taskBillingSummary(model.BillingOrder{AmountMicrocredits: 10_000_000, ActualAmountMicrocredits: tc.actual, Status: tc.status})
+			summary := taskBillingSummary(model.BillingOrder{AmountMicrocredits: 10_000_000, ActualAmountMicrocredits: tc.actual, RefundedAmountMicrocredits: 1_200_000, Status: tc.status})
 			if summary.AmountMicrocredits != 10_000_000 || summary.Status != tc.status {
 				t.Fatalf("original order contract changed: %+v", summary)
 			}
 			if (summary.ActualAmountMicrocredits != nil) != tc.known || (tc.known && *summary.ActualAmountMicrocredits != tc.actual) {
 				t.Fatalf("actual/unknown mismatch: %+v", summary)
+			}
+			if summary.ReservedMicrocredits != summary.AmountMicrocredits || summary.RefundedMicrocredits != 1_200_000 {
+				t.Fatalf("reservation/refund contract mismatch: %+v", summary)
+			}
+			if (summary.ChargedMicrocredits != nil) != tc.known || (tc.known && *summary.ChargedMicrocredits != tc.actual) {
+				t.Fatalf("new and legacy settlement fields disagree: %+v", summary)
 			}
 			raw, err := json.Marshal(summary)
 			if err != nil {

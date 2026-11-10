@@ -193,7 +193,7 @@ func (s *Service) StartVerification(ctx context.Context, actor *model.User, req 
 			return nil, err
 		}
 		setting = resolveEmailSender(setting, s.host.BrandName())
-		if err := s.deliverVerificationEmail(setting, email, req.Purpose, emailCode); err != nil {
+		if err := s.deliverVerificationEmail(setting, email, req.Purpose, emailCode, userID); err != nil {
 			return nil, kernel.NewAppError(503, "邮件发送失败，请稍后重试")
 		}
 	}
@@ -318,9 +318,6 @@ func (s *Service) LoginVerification(req VerificationConfirm) (result *AuthSessio
 		}
 		return nil, err
 	}
-	if err := s.host.EnsureSignupBonus(user.ID); err != nil {
-		return nil, err
-	}
 	event.Method = v.Method
 	return s.createAuthSession(user, event)
 }
@@ -344,4 +341,17 @@ func (s *Service) BindVerification(actor *model.User, req VerificationConfirm) (
 	}
 	result, err := s.PublicAuthUser(user)
 	return &result, err
+}
+
+func verificationHeading(purpose string) string {
+	switch purpose {
+	case "login":
+		return "登录"
+	case "register":
+		return "注册"
+	case "bind":
+		return "绑定邮箱"
+	default:
+		return "身份验证"
+	}
 }

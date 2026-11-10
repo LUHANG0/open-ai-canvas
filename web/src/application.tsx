@@ -21,7 +21,7 @@ createRoot(document.getElementById("root")!).render(
     <React.StrictMode>
         <AppBootstrapReady />
         <AppProviders>
-            <RouterProvider router={router} useTransitions={false} />
+            <RouterProvider router={router} />
         </AppProviders>
     </React.StrictMode>,
 );

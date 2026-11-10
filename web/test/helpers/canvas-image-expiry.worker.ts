@@ -111,6 +111,18 @@ self.onmessage = async ({ data: scenario }) => {
             assert(timers.size === 1 && owner.peekCanvasImage("/clock"), "early callback lost expiry scheduling");
             advance(now + 60_000);
             assert(!owner.peekCanvasImage("/clock") && timers.size === 0, "early callback leaked warm cache");
+        } else if (scenario === "long-deadline") {
+            const maxDelay = 2_147_483_647;
+            const deadline = now + maxDelay + 5000;
+            owner.registerCanvasImageSource("/long-lived", undefined, "original", deadline);
+            assert([...timers.values()].every((timer) => timer.at - now <= maxDelay), "long capability overflowed the native timer range");
+            advance(now + maxDelay);
+            assert(Boolean(owner.canvasImageSourceFor("/long-lived")) && timers.size === 1, "bounded wakeup expired the source before its absolute deadline");
+            now -= maxDelay * 2;
+            fire([...timers.keys()][0]);
+            assert([...timers.values()].every((timer) => timer.at - now <= maxDelay), "backwards clock overflowed the native timer range");
+            advance(deadline);
+            assert(!owner.canvasImageSourceFor("/long-lived") && timers.size === 0, "absolute expiry failed after bounded wakeups");
         } else if (scenario === "scope-release") {
             await prepare("/old");
             const release = owner.retainCanvasImage("/old");

@@ -29,7 +29,8 @@ self.onmessage = async () => {
         mock.module("../../src/services/project-asset-sync", () => ({ ensureCanvasNodeAsset: async ({ node, signal }: any) => { if (signal?.aborted) throw new DOMException("cancelled", "AbortError"); syncs.push(node.id); return { assetId: `asset-${node.id}` }; } }));
         const imageStorage = await import("../../src/services/image-storage");
         mock.module("../../src/services/image-storage", () => ({ ...imageStorage, resolveImageUrl: async () => "", uploadImage: (file: File, progress?: (loaded: number, total: number) => void, options?: any) => { const pending = Promise.withResolvers<any>(); calls.push({ file, ...pending, progress, options }); return pending.promise; } }));
-        mock.module("../../src/services/canvas-image-loader", () => ({ prepareCanvasImage: async () => ({}) }));
+        const imageLoader = await import("../../src/services/canvas-image-loader");
+        mock.module("../../src/services/canvas-image-loader", () => ({ ...imageLoader, prepareCanvasImage: async () => ({}) }));
         const resourceFiles: File[] = [];
         const resources = await import("../../src/services/api/resources");
         mock.module("../../src/services/api/resources", () => ({ ...resources, uploadResourceFile: async (file: File, _kind: string, options: any) => {

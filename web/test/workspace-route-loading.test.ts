@@ -23,9 +23,9 @@ describe("workspace route loading", () => {
         const navigation = source("../src/components/layout/workspace-sidebar-nav.tsx");
 
         for (const route of ["projects", "canvas", "assets", "create"]) {
-            expect(modules).toContain(`${route}: () => import`);
+            expect(modules).toContain(`${route}: preloadableLazy(() => import`);
         }
-        expect(modules).toContain('projectDetail: () => import("@/pages/projects/detail")');
+        expect(modules).toContain('projectDetail: preloadableLazy(() => import("@/pages/projects/detail")');
         expect(modules).toContain('slug === "projects" && segments.length > 1');
         expect(navigation).toContain("onPointerEnter={() => preloadWorkspaceRoute(linkTo)}");
         expect(navigation).toContain("onPointerDown={() => preloadWorkspaceRoute(linkTo)}");
@@ -58,7 +58,8 @@ describe("workspace route loading", () => {
         const canvasLibrary = source("../src/pages/canvas/index.tsx");
         const canvasCard = source("../src/components/canvas/canvas-folder-card.tsx");
 
-        expect(modules).toContain('loadCanvasProjectPage = () => import("@/pages/canvas/project")');
+        expect(modules).toContain('loadCanvasProjectPage = workspaceRoutePages.canvasProject.preload');
+        expect(modules).toContain('canvasProject: preloadableLazy(() => import("@/pages/canvas/project"))');
         expect(router).toContain("lazy(loadCanvasProjectPage)");
         expect(canvasLibrary).toContain("setOpeningProjectId(id)");
         expect(canvasLibrary).toContain("window.requestAnimationFrame(() => navigate(");
@@ -67,7 +68,10 @@ describe("workspace route loading", () => {
     });
 
     test("loads only the active project detail view and keeps canvas-only state out of the global layout", () => {
-        const detail = source("../src/pages/projects/detail.tsx");
+        const dispatcher = source("../src/pages/projects/detail.tsx");
+        expect(dispatcher).toContain('lazy(() => import("./legacy-detail"))');
+        expect(dispatcher).toContain('lazy(() => import("./studio-page"))');
+        const detail = source("../src/pages/projects/legacy-detail.tsx");
         const layout = source("../src/layouts/user-layout.tsx");
         const canvas = source("../src/pages/canvas/index.tsx");
 
@@ -103,7 +107,7 @@ describe("workspace route loading", () => {
     test("defers modal-only markdown and canvas creation runtimes until interaction", () => {
         const changelogButton = source("../src/components/layout/app-changelog-modal.tsx");
         const announcements = source("../src/components/layout/system-announcement-center.tsx");
-        const projectDetail = source("../src/pages/projects/detail.tsx");
+        const projectDetail = source("../src/pages/projects/legacy-detail.tsx");
         const workflow = source("../src/pages/projects/detail/workflow-production-workbench.tsx");
 
         expect(changelogButton).toContain('lazy(() => import("@/components/layout/app-changelog-dialog")');

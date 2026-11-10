@@ -42,7 +42,7 @@ describe("创作消息状态展示", () => {
         expect(cancelled).toContain("已停止");
         expect(cancelled).not.toContain("正在生成…");
         const completed = renderMessage({ status: "done" });
-        expect(completed).toContain("已完成");
+        expect(completed).toContain('aria-busy="false"');
         expect(completed).toContain("没有返回文本内容");
         expect(completed).not.toContain("正在生成…");
     });
@@ -58,9 +58,10 @@ describe("创作消息状态展示", () => {
     test("媒体生成保留原比例和可见文字，结果解析与生成状态分开", () => {
         const pending = renderMessage({ status: "pending", mode: "video", settings: { ratio: "16:9", seconds: "6", quality: "auto", videoQuality: "720p", count: "1" } });
         expect(pending).toContain("aspect-ratio:16 / 9");
-        expect(pending).toContain("正在生成视频");
+        expect(pending).toContain("正在提交");
+        expect(pending).toContain('data-phase="submitting"');
         const resolving = renderMessage({ status: "done", mode: "video", resultStorageKeys: ["resource:video-test"], resultUrls: ["/api/resources/video-test/file"] });
-        expect(resolving).toContain("正在加载生成结果…");
+        expect(resolving).toContain('data-media-state="loading"');
         expect(resolving).not.toContain("没有返回可预览结果");
         expect(resolving).not.toContain("<video");
     });

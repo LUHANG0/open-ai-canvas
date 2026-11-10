@@ -18,3 +18,11 @@ test("续签地址不把播放器淡出回静态预览，只在换媒体或地�
     expect(videoNode).toContain("useEffect(() => { setVideoReady(false); setVideoSize(null); }, [playerKey]);");
     expect(videoNode).toContain("useEffect(() => { if (!url) setVideoReady(false); }, [url]);");
 });
+
+test("视频元数据加载会补齐缺失时长且保留已有时长", () => {
+    // The guarded helper is shared with other metadata consumers. Its behavior
+    // (missing/invalid duration, replacement media, task and account) is covered
+    // by canvas-video-duration.test.ts; ensure the actual player calls it.
+    expect(videoNode).toContain("applyCanvasVideoDuration(current, observed, duration, getActiveUserScope())");
+    expect(videoNode).toContain('video.addEventListener("loadedmetadata", handleLoadedMetadata)');
+});

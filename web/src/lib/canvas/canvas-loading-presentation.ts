@@ -8,7 +8,8 @@ export function canvasLoadingPresentation(node: CanvasNodeData) {
     const terminal = task.status === "succeeded" || task.status === "failed" || task.status === "cancelled";
     const uncertain = Boolean(meta?.taskId) && isGenerationTaskSubmissionUncertain(task);
     const workflow = meta?.imageLayerWorkflow;
-    const title = workflow && !terminal ? "正在拆解图层" : meta?.taskId ? generationTaskStatusLabel(task) : "正在准备";
+    const saving = task.mediaStage && task.mediaStage !== "completed";
+    const title = saving && task.status === "failed" ? "作品保存未完成" : saving && !terminal ? "作品已生成，正在保存" : workflow && !terminal ? "正在拆解图层" : meta?.taskId ? generationTaskStatusLabel(task) : "正在准备";
     const rawStage = workflow && !terminal ? workflow.stage === "planning" ? "拆解规划中" : `拆解中，共 ${workflow.total} 张图`
         : meta?.experimentalLayerPlan?.progress || (meta?.taskId ? (task.mediaStage ? mediaDeliverySummary(task.status, task.mediaStage) : generationTaskStageLabel(task)) : meta?.taskStage || "正在创建任务");
     const redundant = rawStage === title || (title === "生成中" && rawStage === "作品创作中");

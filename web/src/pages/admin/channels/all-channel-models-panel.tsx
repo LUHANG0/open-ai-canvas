@@ -1,6 +1,6 @@
-import { Button, Space } from "antd";
+import { App, Button, Space } from "antd";
 import type { ColumnsType } from "antd/es/table";
-import { Pencil, Search } from "lucide-react";
+import { Pencil, Power, Search } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router";
 
@@ -9,13 +9,15 @@ import { ModelIcon } from "@/components/model-picker";
 import { Select } from "@/components/ui/base/select";
 import { type ModelProtocolDefinition } from "@/lib/model-protocols";
 import { fetchPluginProviderCatalog } from "@/services/api/plugin-catalog";
-import { listAdminAllChannelModels, type AdminChannelModelHealth, type AdminChannelModelListItem } from "@/services/api/wallet";
+import { listAdminAllChannelModels, setAdminChannelModelEnabled, type AdminChannelModelHealth, type AdminChannelModelListItem } from "@/services/api/wallet";
 import type { ModelChannel } from "@/stores/use-config-store";
-import { AdminDataTable, AdminStatusBadge, AdminTableEmpty, PaginationBar } from "../components/admin-ui";
+import { AdminBatchBar, AdminDataTable, AdminStatusBadge, AdminTableEmpty, PaginationBar } from "../components/admin-ui";
 import { AdminSearchInput } from "../components/admin-search-input";
 import { ChannelModelCostSummary } from "../components/channel-model-cost-summary";
 import { ChannelModelEditor } from "../components/channel-model-editor";
 import { ChannelModelHealthCell, channelModelHealthKey } from "../components/channel-model-health";
+import { ChannelModelRepriceDialog } from "../components/channel-model-reprice-dialog";
+import { ChannelModelProtocolDialog } from "../components/channel-model-protocol-dialog";
 
 type StatusFilter = "all" | "enabled" | "disabled" | "unhealthy";
 
@@ -48,6 +50,7 @@ export function AllChannelModelsPanel({
     onChanged: () => Promise<void>;
     onOpenChannel: (channelId: string) => void;
 }) {
+    const { message, modal } = App.useApp();
     const [searchParams, setSearchParams] = useSearchParams();
     const keyword = searchParams.get("q") || "";
     const capability = searchParams.get("capability") || "all";
@@ -59,7 +62,11 @@ export function AllChannelModelsPanel({
     const [retry, setRetry] = useState(0);
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(50);
+    const [togglingId, setTogglingId] = useState<string | null>(null);
     const [editing, setEditing] = useState<AdminChannelModelListItem | null>(null);
+    const [selectedIds, setSelectedIds] = useState<string[]>([]);
+    const [repriceItems, setRepriceItems] = useState<AdminChannelModelListItem[]>([]);
+    const [protocolItems, setProtocolItems] = useState<AdminChannelModelListItem[]>([]);
     const [protocols, setProtocols] = useState<ModelProtocolDefinition[]>([]);
     const [protocolLoading, setProtocolLoading] = useState(true);
     const [protocolError, setProtocolError] = useState("");
@@ -124,6 +131,35 @@ export function AllChannelModelsPanel({
     const paged = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
     const enabledCount = filtered.filter((item) => item.enabled && item.channelEnabled).length;
 
+    const applyEnabled = async (item: AdminChannelModelListItem, enabled: boolean) => {
+        setTogglingId(item.id);
+        try {
+            await setAdminChannelModelEnabled(item.channelId, item.id, enabled);
+            setItems((current) => current.map((entry) => (entry.id === item.id ? { ...entry, enabled } : entry)));
+            await onChanged();
+            message.success(enabled ? "模型已启用" : "模型已停用");
+        } catch (error) {
+            message.error(error instanceof Error ? error.message : "更新模型状态失败");
+        } finally {
+            setTogglingId(null);
+        }
+    };
+
+    const toggleEnabled = (item: AdminChannelModelListItem) => {
+        if (!item.enabled) {
+            void applyEnabled(item, true);
+            return;
+        }
+        modal.confirm({
+            title: `停用 ${item.channelName} 的 ${item.displayName || item.modelKey}？`,
+            content: "停用后新任务不再使用这个渠道的该模型，引用它的前台模型会切换到其他可用线路；配置保留，可随时重新启用。",
+            okText: "确认停用",
+            cancelText: "取消",
+            okButtonProps: { danger: true },
+            onOk: () => applyEnabled(item, false),
+        });
+    };
+
     const openEditor = (item: AdminChannelModelListItem) => setEditing(item);
 
     const editingChannel = editing ? channels.find((channel) => channel.id === editing.channelId) : undefined;
@@ -186,6 +222,9 @@ export function AllChannelModelsPanel({
                 <Space size={4}>
                     <Button size="small" icon={<Pencil className="size-3.5" />} onClick={() => openEditor(item)}>
                         编辑
+                    </Button>
+                    <Button size="small" danger={item.enabled} icon={<Power className="size-3.5" />} loading={togglingId === item.id} disabled={togglingId !== null && togglingId !== item.id} onClick={() => toggleEnabled(item)}>
+                        {item.enabled ? "停用" : "启用"}
                     </Button>
                 </Space>
             ),
@@ -255,7 +294,35 @@ export function AllChannelModelsPanel({
                         </Button>
                     </Space>
                 }
-                table={{ className: "app-data-table", rowKey: "id", size: "small", loading, columns, dataSource: paged, pagination: false, scroll: { x: 1180 } }}
+                batchActions={
+                    <AdminBatchBar count={selectedIds.length} onClear={() => setSelectedIds([])}>
+                        <Button size="small" disabled={loading || Boolean(loadError)} onClick={() => setRepriceItems(items.filter((item) => selectedIds.includes(item.id)))}>
+                            统一调价
+                        </Button>
+                        <Button size="small" disabled={loading || Boolean(loadError)} onClick={() => setProtocolItems(items.filter((item) => selectedIds.includes(item.id)))}>
+                            修改协议
+                        </Button>
+                    </AdminBatchBar>
+                }
+                table={{
+                    className: "app-data-table",
+                    rowKey: "id",
+                    size: "small",
+                    loading,
+                    rowSelection: {
+                        selectedRowKeys: selectedIds,
+                        preserveSelectedRowKeys: true,
+                        onChange: (keys) => {
+                            const next = keys.map(String);
+                            if (next.length > 100) message.warning("单次最多选择 100 个模型");
+                            setSelectedIds(next.slice(0, 100));
+                        },
+                    },
+                    columns,
+                    dataSource: paged,
+                    pagination: false,
+                    scroll: { x: 1220 },
+                }}
                 empty={
                     <AdminTableEmpty
                         filtered={hasFilters && !loadError}
@@ -276,6 +343,31 @@ export function AllChannelModelsPanel({
                     />
                 }
             />
+            {protocolItems.length > 0 && (
+                <ChannelModelProtocolDialog
+                    items={protocolItems}
+                    protocols={protocols}
+                    protocolLoading={protocolLoading}
+                    protocolError={protocolError}
+                    onClose={() => setProtocolItems([])}
+                    onSaved={async () => {
+                        setSelectedIds([]);
+                        setRetry((value) => value + 1);
+                        await onChanged();
+                    }}
+                />
+            )}
+            {repriceItems.length > 0 && (
+                <ChannelModelRepriceDialog
+                    items={repriceItems}
+                    onClose={() => setRepriceItems([])}
+                    onSaved={async () => {
+                        setSelectedIds([]);
+                        setRetry((value) => value + 1);
+                        await onChanged();
+                    }}
+                />
+            )}
             {editing && editingChannel ? (
                 <ChannelModelEditor
                     channel={editingChannel}

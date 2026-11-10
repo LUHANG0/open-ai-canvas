@@ -5,6 +5,7 @@ import { useImperativeHandle, useRef, type Ref } from "react";
 import { Link, useLocation, useSearchParams } from "react-router";
 
 import { BrandLogoFrame } from "@/components/brand/brand-logo";
+import { UserGroupAvatarRing, UserGroupBadge } from "./user-group-badge";
 import { UserAvatar } from "@/components/layout/user-avatar";
 import { Tooltip } from "@/components/ui/base/tooltip";
 import { cn } from "@/lib/utils";
@@ -32,6 +33,7 @@ export function workspaceNavActiveId(pathname: string, section?: string | null) 
 
 const compactTitles: Record<string, string> = {
     home: "对话",
+    ecommerce: "电商",
     projects: "短剧",
     canvas: "画布",
     assets: "素材",
@@ -120,9 +122,9 @@ export function WorkspaceSidebarNav({ collapsed, onNavigate, onOpenSearch, onExp
         <footer className="workspace-navigation-footer">
             {user ? <Popover open={accountOpen} onOpenChange={onAccountOpenChange} trigger="click" placement="topLeft" arrow={false} rootClassName="workspace-account-popover" getPopupContainer={(trigger) => trigger.closest<HTMLElement>('[role="dialog"]') || document.body} content={accountContent}>
                 <button ref={accountButtonRef} type="button" className="workspace-navigation-account" aria-label="打开账户菜单" aria-expanded={accountOpen} title={profileName}>
-                    <UserAvatar user={user} className="workspace-navigation-avatar" />
+                    <UserGroupAvatarRing><UserAvatar user={user} className="workspace-navigation-avatar" /></UserGroupAvatarRing>
                     <span className="workspace-navigation-account-label" aria-hidden="true">账户</span>
-                    <span className="workspace-navigation-account-copy"><strong>{profileName}</strong></span>
+                    <span className="workspace-navigation-account-copy"><strong>{profileName}</strong><UserGroupBadge /></span>
                     <ChevronDown className="workspace-navigation-account-chevron" aria-hidden="true" />
                 </button>
             </Popover> : <Link {...authEntry(location.pathname + location.search + location.hash)} className="workspace-navigation-account" aria-label="登录">

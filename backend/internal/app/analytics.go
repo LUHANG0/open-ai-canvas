@@ -42,6 +42,7 @@ type AnalyticsKPI struct {
 	TotalConsumedMicrocredits int64            `json:"totalConsumedMicrocredits"`
 }
 
+// 成功率在分母为 0 时为 null：没有请求或任务的日子不能画成 0%。
 type AnalyticsTrendPoint struct {
 	Day                  string   `json:"day"`
 	Tasks                int      `json:"tasks"`

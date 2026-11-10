@@ -2,7 +2,7 @@ import { createClientUUID } from "@/lib/client-id";
 import { App, Button, Input, InputNumber, Progress } from "antd";
 import { Switch } from "@/components/ui/base/switch";
 import { EmptyState } from "@/components/ui/product/empty-state";
-import { FileAudio, FileImage, Film, Grip, Play, RotateCcw, Square, Upload, WandSparkles } from "lucide-react";
+import { WandSparkles, FileAudio, FileImage, Film, Grip, Play, RotateCcw, Square, Upload, PenLine } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 
 import { generationErrorMessage } from "@/lib/generation-error";

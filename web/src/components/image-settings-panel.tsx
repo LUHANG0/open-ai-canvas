@@ -76,7 +76,7 @@ export function ImageSettingsPanel({ config, onConfigChange, theme, showTitle = 
                 }}
             >
                 {showTitle ? <h3 className="generation-settings-title">图像设置</h3> : null}
-                {showSize ? <ImageSizePicker profile={profile} size={activeSize} quality={quality} onChange={(size, nextQuality) => applyImageSizeSelection(onConfigChange, size, nextQuality)} /> : null}
+                {showSize ? <ImageSizePicker profile={profile} size={activeSize} quality={quality} imageResolution={normalized.imageResolution} onChange={(size, nextQuality, nextResolution) => applyImageSizeSelection(onConfigChange, size, nextQuality, nextResolution)} /> : null}
                 {showQuality && profile.quality.supported && !imageResolutionUsesQuality(profile) ? <fieldset className="generation-settings-group">
                     <legend>{isGrokResolutionQuality(profile) ? "分辨率" : "图像质量"}</legend>
                     <div className="generation-settings-options">
@@ -106,9 +106,10 @@ export function ImageSettingsPanel({ config, onConfigChange, theme, showTitle = 
     );
 }
 
-export function applyImageSizeSelection(onConfigChange: ImageSettingsPanelProps["onConfigChange"], size: string, quality?: string) {
+export function applyImageSizeSelection(onConfigChange: ImageSettingsPanelProps["onConfigChange"], size: string, quality?: string, resolution?: string) {
     onConfigChange("size", size);
     if (quality) onConfigChange("quality", quality);
+    if (resolution) onConfigChange("imageResolution", resolution);
 }
 
 export function ImageSettingsTheme({ theme, children }: { theme: CanvasTheme; children: ReactNode }) {

@@ -49,6 +49,14 @@ const BASE_CANVAS_SHORTCUTS: CanvasShortcutItem[] = [
         keywords: ["帮助", "说明", "help"],
     },
     {
+        id: "agent",
+        category: "common",
+        title: "打开或收起 Agent",
+        description: "打开后光标直接在输入框里；焦点在 Agent 里时再按一次收起",
+        keys: [[CANVAS_MODIFIER_KEY, "J"]],
+        keywords: ["助手", "AI", "对话", "agent"],
+    },
+    {
         id: "save",
         category: "common",
         title: "保存画布",
@@ -93,7 +101,10 @@ const BASE_CANVAS_SHORTCUTS: CanvasShortcutItem[] = [
         category: "navigation",
         title: "步进缩放画布",
         description: "按固定步长放大或缩小画布",
-        keys: [[CANVAS_MODIFIER_KEY, "+"], [CANVAS_MODIFIER_KEY, "-"]],
+        keys: [
+            [CANVAS_MODIFIER_KEY, "+"],
+            [CANVAS_MODIFIER_KEY, "-"],
+        ],
         keywords: ["放大", "缩小", "zoom"],
     },
     {
@@ -101,7 +112,12 @@ const BASE_CANVAS_SHORTCUTS: CanvasShortcutItem[] = [
         category: "navigation",
         title: "快速调整视图",
         description: "0/1 恢复 100%，2 适应画布，3 适应选择",
-        keys: [[CANVAS_MODIFIER_KEY, "0"], [CANVAS_MODIFIER_KEY, "1"], [CANVAS_MODIFIER_KEY, "2"], [CANVAS_MODIFIER_KEY, "3"]],
+        keys: [
+            [CANVAS_MODIFIER_KEY, "0"],
+            [CANVAS_MODIFIER_KEY, "1"],
+            [CANVAS_MODIFIER_KEY, "2"],
+            [CANVAS_MODIFIER_KEY, "3"],
+        ],
         keywords: ["100%", "适应", "居中", "缩放", "fit"],
     },
     {
@@ -189,7 +205,10 @@ const BASE_CANVAS_SHORTCUTS: CanvasShortcutItem[] = [
         category: "editing",
         title: "重做",
         description: "恢复刚刚撤销的画布编辑",
-        keys: [[CANVAS_MODIFIER_KEY, "Shift", "Z"], [CANVAS_MODIFIER_KEY, "Y"]],
+        keys: [
+            [CANVAS_MODIFIER_KEY, "Shift", "Z"],
+            [CANVAS_MODIFIER_KEY, "Y"],
+        ],
         keywords: ["恢复", "redo"],
     },
     {
@@ -237,9 +256,7 @@ export function filterCanvasShortcuts(query: string, category?: CanvasShortcutCa
         if (!terms.length) return true;
 
         const categoryLabel = CANVAS_SHORTCUT_CATEGORIES.find((entry) => entry.id === shortcut.category)?.label || "";
-        const searchableText = [shortcut.title, shortcut.description, categoryLabel, shortcut.keys.flat().join(" "), ...(shortcut.keywords || [])]
-            .join(" ")
-            .toLocaleLowerCase();
+        const searchableText = [shortcut.title, shortcut.description, categoryLabel, shortcut.keys.flat().join(" "), ...(shortcut.keywords || [])].join(" ").toLocaleLowerCase();
         return terms.every((term) => searchableText.includes(term));
     });
 }

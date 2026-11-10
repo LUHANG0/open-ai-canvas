@@ -192,7 +192,7 @@ export function CanvasNodeLightingPanel({ dataUrl, onClose, onConfirm }: { dataU
     };
     const isPositionActive = (position: { azimuth: number; elevation: number }) => position.azimuth === options.azimuth && position.elevation === options.elevation;
 
-    const secondaryButtonClass = "flex h-8 items-center gap-1.5 rounded-[var(--dock-item-radius)] px-3 text-[var(--fs-label)] font-medium transition hover:bg-black/5 dark:hover:bg-white/10";
+    const secondaryButtonClass = "flex h-8 items-center gap-2 rounded-[var(--dock-item-radius)] px-3 text-[var(--fs-label)] font-medium transition hover:bg-black/5 dark:hover:bg-white/10";
 
     return (
         <div
@@ -224,7 +224,7 @@ export function CanvasNodeLightingPanel({ dataUrl, onClose, onConfirm }: { dataU
                                 type="button"
                                 aria-pressed={viewMode === mode}
                                 onClick={() => setViewMode(mode)}
-                                className="flex-1 rounded-[var(--r-md)] py-1 text-[11px] font-medium transition-colors"
+                                className="flex-1 rounded-[var(--r-md)] py-1 text-[var(--fs-label)] font-medium transition-colors"
                                 style={viewMode === mode ? { background: theme.toolbar.activeBg, color: theme.toolbar.activeText } : { color: theme.node.muted }}
                             >
                                 {mode === "perspective" ? "透视" : "正面"}
@@ -240,7 +240,7 @@ export function CanvasNodeLightingPanel({ dataUrl, onClose, onConfirm }: { dataU
                     />
                 </div>
 
-                <div className="flex min-w-0 flex-1 flex-col justify-between gap-2.5 px-4 py-3">
+                <div className="flex min-w-0 flex-1 flex-col justify-between gap-2 px-4 py-3">
                     <div className="flex items-center justify-between">
                         <span className="text-[var(--fs-tiny)] font-medium" style={{ color: theme.node.muted }}>全局</span>
                         <PanelToggle label="智能模式" checked={options.smartMode} onChange={(checked) => updateOption("smartMode", checked)} theme={theme} />
@@ -249,7 +249,7 @@ export function CanvasNodeLightingPanel({ dataUrl, onClose, onConfirm }: { dataU
                     <div className="flex items-center gap-2">
                         <span className="w-8 shrink-0 text-[var(--fs-tiny)]" style={{ color: theme.node.muted }}>亮度</span>
                         <div className="min-w-0 flex-1"><Slider min={0} max={100} value={options.brightness} onChange={(value) => updateOption("brightness", value)} tooltip={{ formatter: (value) => `${value}%` }} /></div>
-                        <div className="flex h-6 items-center gap-1 rounded-[var(--r-md)] border px-1.5 text-[11px]" style={{ borderColor: theme.toolbar.border, background: theme.toolbar.itemHover, color: theme.node.muted }}>
+                        <div className="flex h-6 items-center gap-1 rounded-[var(--r-md)] border px-2 text-[var(--fs-label)]" style={{ borderColor: theme.toolbar.border, background: theme.toolbar.itemHover, color: theme.node.muted }}>
                             <Sun className="size-3" />
                             <span className="w-7 text-right tabular-nums">{options.brightness}%</span>
                         </div>
@@ -263,7 +263,7 @@ export function CanvasNodeLightingPanel({ dataUrl, onClose, onConfirm }: { dataU
                         <PanelToggle label="轮廓光" checked={options.rimLight} onChange={(checked) => updateOption("rimLight", checked)} theme={theme} />
                     </div>
 
-                    <div className="space-y-1.5">
+                    <div className="space-y-2">
                         <span className="text-[var(--fs-tiny)] font-medium" style={{ color: theme.node.muted }}>主光源</span>
                         <div className="grid grid-cols-3 gap-1">
                             {LIGHT_POSITIONS.map((position) => (
@@ -294,7 +294,7 @@ export function CanvasNodeLightingPanel({ dataUrl, onClose, onConfirm }: { dataU
                     style={{ borderColor: theme.toolbar.border, background: theme.toolbar.itemHover, color: theme.node.text, opacity: options.smartMode ? 1 : 0.55 }}
                 />
                 <span className="text-[var(--fs-tiny)] font-medium" style={{ color: theme.node.muted }}>预设</span>
-                <div className="grid shrink-0 auto-rows-[60px] grid-cols-4 gap-1.5">
+                <div className="grid shrink-0 auto-rows-[60px] grid-cols-4 gap-2">
                     {STYLE_PRESETS.map((preset) => (
                         <button
                             key={preset.id}
@@ -310,7 +310,7 @@ export function CanvasNodeLightingPanel({ dataUrl, onClose, onConfirm }: { dataU
                             }}
                         >
                             <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_30%,rgba(255,255,255,0.22),transparent_36%)]" />
-                            <span className="absolute bottom-1.5 left-2 right-2 text-[11px] font-medium leading-tight text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.55)]">{preset.name}</span>
+                            <span className="absolute bottom-1.5 left-2 right-2 text-[var(--fs-label)] font-medium leading-tight text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.55)]">{preset.name}</span>
                         </button>
                     ))}
                 </div>
@@ -404,7 +404,7 @@ function PromptTemplateDialog({ isOpen, title, description, value, defaultValue,
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-[1100] flex items-center justify-center bg-black/55 backdrop-blur-[2px]" data-canvas-no-zoom onClick={onClose}>
+        <div className="fixed inset-0 z-[var(--z-dialog-popover)] flex items-center justify-center bg-black/55 backdrop-blur-[2px]" data-canvas-no-zoom onClick={onClose}>
             <div
                 className="w-[560px] max-w-[calc(100vw-32px)] rounded-[var(--r-xl)] border shadow-2xl"
                 style={{ background: theme.spatial.elevated, borderColor: theme.toolbar.border, color: theme.node.text }}
@@ -412,7 +412,7 @@ function PromptTemplateDialog({ isOpen, title, description, value, defaultValue,
                 onMouseDown={(event) => event.stopPropagation()}
                 onPointerDown={(event) => event.stopPropagation()}
             >
-                <div className="flex items-center justify-between border-b px-5 py-3.5" style={{ borderColor: theme.toolbar.border }}>
+                <div className="flex items-center justify-between border-b px-5 py-4" style={{ borderColor: theme.toolbar.border }}>
                     <span className="text-sm font-semibold">{title}</span>
                     <button type="button" aria-label="关闭提示词设置" className="grid size-6 place-items-center rounded-[var(--r-md)] transition hover:bg-black/5 dark:hover:bg-white/10" onClick={onClose}><X className="size-4" /></button>
                 </div>
@@ -421,10 +421,10 @@ function PromptTemplateDialog({ isOpen, title, description, value, defaultValue,
                         <div className="rounded-[var(--r-lg)] border px-3 py-2 text-xs leading-5" style={{ borderColor: theme.toolbar.border, background: theme.toolbar.itemHover, color: theme.node.muted }}>{description}</div>
                     ) : null}
                     <div className="rounded-[var(--r-lg)] border px-3 py-2" style={{ borderColor: theme.toolbar.border, background: theme.toolbar.itemHover }}>
-                        <div className="text-[11px] font-medium" style={{ color: theme.node.muted }}>可用占位符</div>
-                        <div className="mt-2 flex flex-wrap gap-1.5">
+                        <div className="text-[var(--fs-label)] font-medium" style={{ color: theme.node.muted }}>可用占位符</div>
+                        <div className="mt-2 flex flex-wrap gap-2">
                             {placeholders.map((placeholder) => (
-                                <span key={placeholder} className="rounded-[var(--r-md)] px-2 py-1 text-[11px]" style={{ background: theme.toolbar.activeBg, color: theme.node.text }}>{placeholder}</span>
+                                <span key={placeholder} className="rounded-[var(--r-md)] px-2 py-1 text-[var(--fs-label)]" style={{ background: theme.toolbar.activeBg, color: theme.node.text }}>{placeholder}</span>
                             ))}
                         </div>
                     </div>
@@ -438,14 +438,14 @@ function PromptTemplateDialog({ isOpen, title, description, value, defaultValue,
                         className="h-48 w-full resize-none rounded-[var(--r-lg)] border px-3 py-2 text-sm leading-6 outline-none transition-colors"
                         style={{ borderColor: theme.toolbar.border, background: theme.toolbar.itemHover, color: theme.node.text }}
                     />
-                    <div className="rounded-[var(--r-lg)] border px-3 py-2 text-[11px] leading-5" style={{ borderColor: theme.toolbar.border, background: theme.toolbar.itemHover, color: theme.node.muted }}>
+                    <div className="rounded-[var(--r-lg)] border px-3 py-2 text-[var(--fs-label)] leading-5" style={{ borderColor: theme.toolbar.border, background: theme.toolbar.itemHover, color: theme.node.muted }}>
                         默认模板：<span style={{ color: theme.node.text }}>{defaultValue}</span>
                     </div>
                 </div>
                 <div className="flex items-center justify-between border-t px-5 py-3" style={{ borderColor: theme.toolbar.border }}>
                     <button
                         type="button"
-                        className="flex items-center gap-1.5 text-xs transition-colors hover:opacity-80"
+                        className="flex items-center gap-2 text-xs transition-colors hover:opacity-80"
                         style={{ color: theme.node.muted }}
                         onClick={() => {
                             setDraft(defaultValue);

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { buildGenerationConfig, runBackendCanvasGenerationTask } from "../src/lib/canvas/canvas-project-generation";
+import { buildImageRetryGenerationConfig, buildGenerationConfig, runBackendCanvasGenerationTask } from "../src/lib/canvas/canvas-project-generation";
 import { applyNodeConfigPatch } from "../src/lib/canvas/canvas-project-domain";
 import { canvasExplicitMediaParameters, canvasGenerationParameterError, canvasModelSwitchPatch } from "../src/lib/canvas/canvas-model-parameter-guard";
 import { readNodeGenerationSpec } from "../src/lib/canvas/generation-contract";
@@ -20,6 +20,55 @@ function fixture(mode: "image" | "video") {
 }
 
 describe("canvas model parameter boundary", () => {
+    test("confirmed removal of an unsupported quality survives canonical save and task submission", async () => {
+        const { config, node } = fixture("image");
+        config.channels[0].interfaceType = "openai-image";
+        for (const cost of config.channels[0].modelCosts!) {
+            cost.protocol = "openai-image";
+            cost.capabilityConfig!.image!.parameters = [];
+            cost.capabilityConfig!.image!.quality = { supported: false, values: [], default: "auto" };
+        }
+        node.metadata!.quality = "high";
+        const current = { ...buildGenerationConfig(config, node, "image", undefined, true), ...canvasExplicitMediaParameters(node, "image") };
+        const proposed = planMediaModelSwitch(current, "guard::b", "image");
+        expect(proposed.changes).toContainEqual({ label: "质量", before: "high", after: "不指定" });
+        const accepted = applyNodeConfigPatch(node, canvasModelSwitchPatch(node, proposed.config, "image"));
+        const restored: CanvasNodeData = JSON.parse(JSON.stringify(accepted));
+        const execution = buildGenerationConfig(config, restored, "image");
+        expect(execution.quality).toBe("");
+        let creates = 0;
+        await expect(runBackendCanvasGenerationTask({ projectId: "fixture", nodeId: restored.id, mode: "image", prompt: "fixture", config: { ...execution, count: "1" } }, {
+            createTask: async () => { creates++; throw new Error("reached isolated task submission"); },
+            waitTask: async () => { throw new Error("must not wait"); }, createId: () => "fixture",
+        })).rejects.toThrow("reached isolated task submission");
+        expect(creates).toBe(1);
+    });
+
+    for (const savedQuality of ["", undefined]) test(`failed image retry keeps normalized unsupported quality (${String(savedQuality)}) and reaches task submission`, async () => {
+        const { config, node } = fixture("image");
+        config.channels[0].interfaceType = "openai-image";
+        for (const cost of config.channels[0].modelCosts!) {
+            cost.protocol = "openai-image";
+            cost.capabilityConfig!.image!.parameters = [];
+            cost.capabilityConfig!.image!.quality = { supported: false, values: [], default: "auto" };
+        }
+        node.metadata!.quality = "";
+        const current = { ...buildGenerationConfig(config, node, "image", undefined, true), ...canvasExplicitMediaParameters(node, "image") };
+        const accepted = applyNodeConfigPatch(node, canvasModelSwitchPatch(node, planMediaModelSwitch(current, "guard::a", "image").config, "image"));
+        const source = buildGenerationConfig(config, JSON.parse(JSON.stringify(accepted)), "image");
+        const failed = JSON.parse(JSON.stringify({ ...accepted.metadata, quality: savedQuality, status: "error", generationType: "generation" }));
+        const retry = buildImageRetryGenerationConfig(config, source, failed);
+        expect(retry.quality).toBe("");
+        expect(retry.size).toBe(source.size);
+        expect(retry.count).toBe("1");
+        let creates = 0;
+        await expect(runBackendCanvasGenerationTask({ projectId: "fixture", nodeId: "failed-child", mode: "image", prompt: "fixture", config: retry }, {
+            createTask: async () => { creates++; throw new Error("reached isolated retry submission"); },
+            waitTask: async () => { throw new Error("must not wait"); }, createId: () => "retry-fixture",
+        })).rejects.toThrow("reached isolated retry submission");
+        expect(creates).toBe(1);
+    });
+
     for (const mode of ["image", "video"] as const) {
         test(`${mode}: accepted compatible parameters survive the existing domain reset and canonical contract`, () => {
             const { config, node } = fixture(mode);

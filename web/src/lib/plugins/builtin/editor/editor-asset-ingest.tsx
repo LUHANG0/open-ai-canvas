@@ -237,8 +237,8 @@ function AssetDetailSheet({
                 shown ? "translate-y-0 opacity-100" : "translate-y-1 opacity-0"
             }`}
         >
-            <div className="flex items-center gap-2 border-b border-[var(--previs-sequencer-border)] px-2.5 py-2">
-                <span className="grid size-5 shrink-0 place-items-center rounded-[5px] bg-[var(--previs-accent)]/15">
+            <div className="flex items-center gap-2 border-b border-[var(--previs-sequencer-border)] px-2 py-2">
+                <span className="grid size-5 shrink-0 place-items-center rounded-[4px] bg-[var(--previs-accent)]/15">
                     <AssetIcon mediaType={asset.mediaType} />
                 </span>
                 <span className="min-w-0 flex-1 truncate text-xs font-medium text-[var(--previs-dock-fg-strong)]">
@@ -254,7 +254,7 @@ function AssetDetailSheet({
                     <X className="size-3.5" />
                 </button>
             </div>
-            <div className="director-scroll min-h-0 flex-1 overflow-y-auto px-2.5 py-2">
+            <div className="director-scroll min-h-0 flex-1 overflow-y-auto px-2 py-2">
                 <MediaPreview asset={asset} />
                 <dl className="mt-2.5 grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
                     <dt className="text-[var(--previs-dock-fg)]/60">媒体类型</dt>
@@ -452,7 +452,7 @@ export function EditorAssetIngest() {
             }}
         >
             {/* 标题行：媒体库 + 导入按钮 */}
-            <div className="flex items-center gap-1.5 p-2 pb-1">
+            <div className="flex items-center gap-2 p-2 pb-1">
                 <input
                     ref={inputRef}
                     type="file"
@@ -503,7 +503,7 @@ export function EditorAssetIngest() {
             {importNote ? <p className="px-2 pb-1 text-xs text-[var(--previs-success)]">{importNote}</p> : null}
 
             <div className="relative min-h-0 flex-1">
-                <div className="director-scroll h-full overflow-y-auto p-1.5">
+                <div className="director-scroll h-full overflow-y-auto p-2">
                 {assets.length === 0 ? (
                     <div className="flex h-full flex-col items-center justify-center gap-2 p-4 text-center">
                         <p className="text-xs text-[var(--previs-dock-fg)]/60">项目暂无资产</p>
@@ -527,7 +527,7 @@ export function EditorAssetIngest() {
                                         type="button"
                                         aria-expanded={open}
                                         onClick={() => setOpenGroups((s) => ({ ...s, [group.id]: !open }))}
-                                        className="group flex h-7 w-full items-center gap-1.5 rounded-md px-1 text-left transition-colors hover:bg-[var(--previs-control-hover)]"
+                                        className="group flex h-7 w-full items-center gap-2 rounded-md px-1 text-left transition-colors hover:bg-[var(--previs-control-hover)]"
                                     >
                                         <span
                                             className={`grid size-4 shrink-0 place-items-center rounded-[5px] transition-colors ${
@@ -551,7 +551,7 @@ export function EditorAssetIngest() {
                                                             aria-expanded={expanded}
                                                             onClick={() => setExpandedId(expanded ? null : asset.id)}
                                                             title={asset.title || asset.storageKey}
-                                                            className={`group flex w-full items-center gap-2 rounded-md px-1 py-[3px] text-left transition-colors ${
+                                                            className={`group flex w-full items-center gap-2 rounded-md px-1 py-1 text-left transition-colors ${
                                                                 added === asset.id ? "bg-[var(--previs-accent)]/15" : "hover:bg-[var(--previs-control-hover)]"
                                                             }`}
                                                         >

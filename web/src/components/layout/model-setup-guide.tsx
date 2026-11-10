@@ -1,12 +1,15 @@
+import { Sparkles } from "lucide-react";
 import { motion, useReducedMotion } from "motion/react";
-import { ArrowRight, Sparkles, X } from "lucide-react";
+import { ArrowRight, X, Plug } from "lucide-react";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import { navigateToSettings } from "@/lib/settings-navigation";
 import { useConfigStore } from "@/stores/use-config-store";
 import { useUserStore } from "@/stores/use-user-store";
 
 export function ModelSetupGuide({ hidden = false }: { hidden?: boolean }) {
+    const { t } = useTranslation();
     const reducedMotion = useReducedMotion();
     const [dismissed, setDismissed] = useState(false);
     const registrationGuide = typeof window !== "undefined" && window.sessionStorage.getItem("yingce:model-setup-guide") === "1";

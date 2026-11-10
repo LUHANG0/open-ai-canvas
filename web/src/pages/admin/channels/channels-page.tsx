@@ -1,6 +1,4 @@
 import { AdminSegmented } from "@/pages/admin/ui/controls";
-import { useChannelModelHealth } from "../components/channel-model-health";
-import { AllChannelModelsPanel } from "./all-channel-models-panel";
 import { AdminModal } from "@/pages/admin/ui/overlays";
 import { App, Button, Form, Input, InputNumber, Spin, Switch } from "antd";
 import { ChevronRight, Copy, Download, Pencil, Plus, Power, Search, Trash2, Upload } from "lucide-react";
@@ -16,6 +14,8 @@ import { useAdminContext } from "../admin-context";
 import { AdminPageFrame } from "../components/admin-shell";
 import { AdminRowActions, AdminStatusBadge, AdminTableEmpty, configuredSecretText } from "../components/admin-ui";
 import { ChannelModelManager } from "../components/channel-model-manager";
+import { formatRate, healthTone, useChannelModelHealth } from "../components/channel-model-health";
+import { AllChannelModelsPanel } from "./all-channel-models-panel";
 import { ChannelOrderDialog } from "../components/channel-order-dialog";
 import { selectChannelWorkspace } from "./channel-workspace-state";
 import { ProviderCatalogWizard } from "./provider-catalog-wizard";
@@ -57,6 +57,14 @@ export default function ChannelsPage() {
     const keyword = searchParams.get("filter") || "";
     const status = normalizeStatus(searchParams.get("status"));
     const selectedChannelId = searchParams.get("channel");
+    const view = searchParams.get("view") === "models" ? "models" : "channels";
+    const { health, loading: healthLoading, reload: reloadHealth } = useChannelModelHealth();
+    // 渠道级 24 小时成功率：按渠道汇总各模型的生成请求，用于左侧列表快速发现异常渠道。
+    const channelHealth = new Map<string, { requests: number; succeeded: number }>();
+    health.forEach((item) => {
+        const current = channelHealth.get(item.channelId) || { requests: 0, succeeded: 0 };
+        channelHealth.set(item.channelId, { requests: current.requests + item.requests24h, succeeded: current.succeeded + item.succeeded24h });
+    });
     const [channels, setChannels] = useState<ModelChannel[]>([]);
     const [loading, setLoading] = useState(true);
     const [loadError, setLoadError] = useState("");
@@ -120,6 +128,7 @@ export default function ChannelsPage() {
     }, []);
 
     const syncChannels = async () => {
+        void reloadHealth();
         await reloadReferences();
         try {
             await refreshSystemChannels();
@@ -300,15 +309,17 @@ export default function ChannelsPage() {
         }
     };
 
+    // 渠道操作全部外露：编辑、复制、导出、启停、删除，危险操作仍二次确认。
     const channelActions = (channel: ModelChannel) => (
         <AdminRowActions
-            primary={{ label: "编辑渠道", icon: <Pencil className="size-3.5" />, onClick: () => openDrawer(channel) }}
+            primary={{ label: "编辑", icon: <Pencil className="size-3.5" />, onClick: () => openDrawer(channel) }}
+            visibleActionCount={4}
             actions={[
-                { key: "duplicate", label: "复制渠道", icon: <Copy className="size-3.5" />, disabled: Boolean(duplicatingChannelId), onClick: () => duplicateChannel(channel) },
-                { key: "export", label: "导出渠道（不含密钥）", icon: <Download className="size-3.5" />, disabled: transferring, onClick: () => exportChannels(channel) },
+                { key: "duplicate", label: "复制", icon: <Copy className="size-3.5" />, disabled: Boolean(duplicatingChannelId), onClick: () => duplicateChannel(channel) },
+                { key: "export", label: "导出", icon: <Download className="size-3.5" />, disabled: transferring, onClick: () => exportChannels(channel) },
                 {
                     key: "toggle",
-                    label: channel.enabled !== false ? "停用渠道" : "启用渠道",
+                    label: channel.enabled !== false ? "停用" : "启用",
                     icon: <Power className="size-3.5" />,
                     danger: channel.enabled !== false,
                     confirm: {
@@ -320,7 +331,7 @@ export default function ChannelsPage() {
                 },
                 {
                     key: "delete",
-                    label: "删除渠道",
+                    label: "删除",
                     icon: <Trash2 className="size-3.5" />,
                     danger: true,
                     confirm: { title: "删除这个系统渠道？", description: "删除后渠道及所属模型将不再显示，API Key 会被清除，历史账单和调用记录继续保留。该操作不能在页面恢复。", okText: "确认删除" },
@@ -413,6 +424,7 @@ export default function ChannelsPage() {
                                 </span>
                                 <span className="admin-channel-item-meta">
                                     <span>{channel.models?.length || 0} 个模型</span>
+                                    <ChannelHealthBadge stats={channelHealth.get(channel.id)} />
                                     <span className="admin-channel-item-status" data-enabled={channel.enabled !== false}>
                                         {channel.enabled !== false ? "已启用" : "已停用"}
                                     </span>
@@ -476,6 +488,7 @@ export default function ChannelsPage() {
                 title={editingChannel ? "编辑系统渠道" : "新增系统渠道"}
                 open={drawerOpen}
                 width={760}
+                centered
                 onCancel={closeDrawer}
                 mask={{ closable: !saving }}
                 destroyOnHidden
@@ -556,6 +569,16 @@ export default function ChannelsPage() {
                 }}
             />
         </AdminPageFrame>
+    );
+}
+
+function ChannelHealthBadge({ stats }: { stats?: { requests: number; succeeded: number } }) {
+    if (!stats || stats.requests === 0) return null;
+    const rate = stats.succeeded / stats.requests;
+    return (
+        <span className="admin-channel-item-health" data-tone={healthTone(rate, stats.requests)} title={`近 24 小时 ${stats.requests} 次生成请求，成功 ${stats.succeeded} 次`}>
+            {formatRate(rate)}
+        </span>
     );
 }
 

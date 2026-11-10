@@ -52,6 +52,8 @@ export function CanvasToolbar({
     onOpenWorkspace,
     onOpenMyAssets,
     onOpenProjectCharacters,
+    onOpenPoseLibrary,
+    compact = false,
 }: {
     selectedCount: number;
     workspaceMode: CanvasWorkspaceMode;
@@ -88,6 +90,8 @@ export function CanvasToolbar({
     onOpenWorkspace?: () => void;
     onOpenMyAssets: () => void;
     onOpenProjectCharacters: () => void;
+    onOpenPoseLibrary?: () => void;
+    compact?: boolean;
 }) {
     const rootRef = useRef<HTMLDivElement>(null);
     const { bringToFront, zIndex } = useCanvasOverlayLayer("main-toolbar", "var(--z-toolbar)");
@@ -166,6 +170,7 @@ export function CanvasToolbar({
         onOpenWorkspace,
     onOpenMyAssets,
         onOpenProjectCharacters,
+    onOpenPoseLibrary,
         onBackgroundModeChange,
         onShowImageInfoChange,
         onToggleAddPanel: (event: ReactMouseEvent<HTMLElement>) => { placePanel(event); setMoreOpen(false); setAppearanceOpen(false); setSettingsOpen(false); setAddOpen((value) => !value); },
@@ -176,7 +181,7 @@ export function CanvasToolbar({
         onAlign: () => {}, onArrange: () => {}, onCreateStoryboard: () => {}, onCreateReferenceGroup: () => {}, onBatchConnect: () => {}, onMergeVideos: () => {}, onSendSelectionToAgent: () => {},
         onNodeInfo: () => {}, onNodeDelete: () => {}, onNodeRetry: () => {}, onNodeEditText: () => {}, onNodeDecreaseFont: () => {}, onNodeIncreaseFont: () => {},
         onNodeToggleDialog: () => {}, onNodeAnnotate: () => {}, onNodeGenerateImage: () => {}, onNodeUpload: () => {}, onNodeDownload: () => {}, onNodeSaveAsset: () => {},
-        onNodeMaskEdit: () => {}, onNodeImageEdit: () => {}, onNodeRemoveBackground: () => {}, onNodeEmotion: () => {}, onNodePortraitTexture: () => {}, onNodeCrop: () => {}, onNodeSplit: () => {}, onNodeUpscale: () => {},
+        onNodeRegionEdit: () => {}, onNodeImageEdit: () => {}, onNodeRemoveBackground: () => {}, onNodeEmotion: () => {}, onNodePortraitTexture: () => {}, onNodeCrop: () => {}, onNodeSplit: () => {}, onNodeUpscale: () => {},
         onNodeSuperResolve: () => {}, onNodeAngle: () => {}, onNodeViewMedia: () => {}, onNodeExtractVideoFrames: () => {}, onNodeExtractAudioFromVideo: () => {}, onNodeTrimVideoSegments: () => {}, onNodeSubtitles: () => {}, onNodeTimeline: () => {}, onNodeReversePrompt: () => {},
         onNodeToggleFreeResize: () => {}, onNodeToggleLocked: () => {}, onNodeCopyPrompt: () => {},
     } as ToolbarHandlers;
@@ -221,7 +226,7 @@ export function CanvasToolbar({
                     />
                 ) : null}
 
-            <FloatingDock ref={dockRef} items={items} className="canvas-floating-dock canvas-desktop-toolbar pointer-events-auto max-w-full" style={canvasDockStyle(theme)} />
+            <FloatingDock ref={dockRef} items={items} size={compact ? "compact" : "default"} className="canvas-floating-dock canvas-desktop-toolbar pointer-events-auto max-w-full" style={canvasDockStyle(theme)} />
             <FloatingDock items={[...compactItems, { id: "toolbar-more", label: "更多画布工具", icon: <MoreHorizontal />, expands: true, active: moreOpen, onClick: () => { setAddOpen(false); setAppearanceOpen(false); setMoreOpen((value) => !value); } }]} className="canvas-floating-dock canvas-compact-toolbar pointer-events-auto" style={canvasDockStyle(theme)} />
             {moreOpen ? <div role="region" aria-label="更多画布工具" data-canvas-wheel-scroll onWheel={(event) => event.stopPropagation()} className="canvas-compact-panel pointer-events-auto"><FloatingDock items={overflowItems} showLabels className="canvas-compact-menu" style={canvasDockStyle(theme)} /></div> : null}
 

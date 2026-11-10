@@ -1,3 +1,4 @@
+import { peekCachedResourceObjectUrl } from "@/services/resource-blob-cache";
 // 画布节点的媒体内容：图片、视频、音频的预览、懒加载与失活占位。
 //
 // 视频只有在进入视口且被激活时才加载真实播放地址（useNearViewport / useVideoPlaybackUrl），
@@ -5,6 +6,7 @@
 
 import { Image as ImageIcon, LoaderCircle, Music2, Play, Video } from "lucide-react";
 import { type ReactNode, type RefObject, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import "./canvas-image-state.css";
 import { useCanvasNodeActions } from "./canvas-node-action-context";
 import { canvasNodeVideoPreviewReference } from "@/lib/canvas/canvas-media-preview";
 import { canvasImageDisplayVariant, canvasImagePixelRatio, subscribeCanvasImagePixelRatio } from "@/lib/canvas/canvas-image-display-source";
@@ -22,7 +24,7 @@ import { resolveVideoMediaUrl } from "@/services/file-storage";
 import { hydrateCanvasVideoPreview } from "@/services/canvas-video-preview";
 import { needsCanvasVideoPosterUpgrade } from "@/lib/canvas/canvas-video-poster-quality";
 import { type CanvasTheme } from "@/lib/canvas-theme";
-import { fitImageMaterialNodeSize, fitImageNodeSize } from "@/lib/canvas/canvas-node-size";
+import { fitImageMaterialNodeSize, fitImageNodeSize, fitVideoNodeToSource } from "@/lib/canvas/canvas-node-size";
 import { getActiveUserScope } from "@/lib/user-scope";
 import { uploadPreviewUrl } from "@/services/canvas-upload-preview";
 import { RetainedCanvasImage } from "./canvas-retained-image";
@@ -41,7 +43,7 @@ export function ImageNodeContent(props: CanvasNodeContentProps) {
             props.node.metadata?.status === "loading" ? (
                 <LoadingContent node={props.node} theme={props.theme} onOpenTaskDetails={props.onOpenTaskDetails} disableMediaEffects={props.disableMediaEffects} />
             ) : props.node.metadata?.status === "error" ? (
-                <ErrorContent node={props.node} theme={props.theme} onRetry={props.onRetry} onReloadResource={props.onReloadResource} />
+                <ErrorContent node={props.node} theme={props.theme} onRetry={props.onRetry} onReloadResource={props.onReloadResource} onOpenTaskDetails={props.onOpenTaskDetails} />
             ) : (
                 <EmptyImageContent {...props} isBatchRoot={false} />
             );
@@ -680,6 +682,11 @@ export function useNodeResourceUrl(node: CanvasNodeData, eager: boolean, variant
             setResolved({ identity, url: "", loading: false });
             return;
         }
+        const localUrl = isLazyVisual ? peekCachedResourceObjectUrl(storageKey) : "";
+        if (localUrl) {
+            setResolved({ identity, url: localUrl, loading: false });
+            return;
+        }
         let cancelled = false;
         setResolved({ identity, url: "", loading: true });
         void getResourceAccess(storageKey, "display", variant)
@@ -771,7 +778,7 @@ export function BatchFrame({
                     {Array.from({ length: Math.min(batchCount - 1, 5) }).map((_, index) => (
                         <div
                             key={index}
-                            className="absolute rounded-[var(--r-lg)] transition-all duration-300 group-hover/batch:translate-x-2"
+                            className="absolute rounded-[var(--r-lg)] transition-[transform,opacity] duration-200"
                             style={{
                                 inset: 0,
                                 background: theme.node.panel,

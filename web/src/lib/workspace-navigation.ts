@@ -32,6 +32,7 @@ export function buildWorkspaceNav(features: FeatureAvailability) {
             primary: false,
             items: [
                 toolItem("projects", "/projects"),
+                ...(features.ecommerceEnabled ? [toolItem("ecommerce", "/ecommerce")] : []),
                 toolItem("assets", "/assets"),
                 ...(features.taskCenterEnabled ? [toolItem("tasks", "/tasks")] : []),
             ],

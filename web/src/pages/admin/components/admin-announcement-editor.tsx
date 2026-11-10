@@ -67,7 +67,7 @@ export function AnnouncementEditor({
                 centered
                 width="min(1120px, calc(100vw - 32px))"
                 onCancel={onClose}
-                rootClassName="admin-modal-root admin-announcement-editor-modal"
+                rootClassName="admin-announcement-editor-modal"
                 forceRender
                 afterOpenChange={(isOpen) => {
                     if (!isOpen) return;
@@ -187,7 +187,7 @@ export function AnnouncementEditor({
                 closable={!saving}
                 keyboard={!saving}
                 destroyOnHidden
-                rootClassName="admin-modal-root admin-announcement-confirm-modal"
+                rootClassName="admin-announcement-confirm-modal"
                 okButtonProps={{ danger: pending?.level === "critical", disabled: publishBlocked }}
             >
                 {pending ? (

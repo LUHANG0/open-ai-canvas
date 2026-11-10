@@ -201,11 +201,18 @@ class CanvasAudioPlaybackController {
         this.audio.muted = sound.muted;
     }
 
+    getCurrentTimeMs(nodeId: string): number {
+        if (this.activeSource?.nodeId === nodeId && this.audio) {
+            return Math.round(Math.max(0, this.audio.currentTime) * 1000);
+        }
+        return this.snapshots.get(nodeId)?.currentTimeMs || 0;
+    }
+
     private ensureAudio() {
         if (this.audio) return this.audio;
         if (typeof Audio === "undefined") throw new Error("当前环境不支持音频播放");
         const audio = new Audio();
-        audio.preload = "metadata";
+        audio.preload = "auto";
         audio.addEventListener("loadedmetadata", () => {
             const active = this.activeSource;
             if (!active) return;
@@ -278,7 +285,7 @@ function sameSource(left: CanvasAudioSource, right: CanvasAudioSource) {
     return left.content === right.content && left.storageKey === right.storageKey && left.mimeType === right.mimeType;
 }
 
-async function resolveAudioSource(source: CanvasAudioSource) {
+export async function resolveAudioSource(source: CanvasAudioSource) {
     if (source.storageKey) {
         const resourceId = resourceIdFromStorageKey(source.storageKey);
         if (resourceId) return resolveResourceAccessURL((await getResourceAccess(source.storageKey, "display", "playback")).url);
@@ -305,3 +312,4 @@ export const stopCanvasAudio = (nodeId?: string) => canvasAudioPlayback.stop(nod
 export const seekCanvasAudio = (nodeId: string, timeMs: number, source?: CanvasAudioSource) => canvasAudioPlayback.seek(nodeId, timeMs, source);
 
 export const setCanvasAudioSound = (nodeId: string, sound: { volume: number; muted: boolean }) => canvasAudioPlayback.setSound(nodeId, sound);
+export const getCanvasAudioCurrentTimeMs = (nodeId: string) => canvasAudioPlayback.getCurrentTimeMs(nodeId);

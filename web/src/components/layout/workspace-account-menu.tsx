@@ -6,6 +6,7 @@ import { Link, useLocation } from "react-router";
 
 import { AppChangelogButton } from "@/components/layout/app-changelog-modal";
 import { WorkspaceAccountCard } from "./workspace-account-card";
+import { UserGroupAvatarRing } from "./user-group-badge";
 import { UserAvatar } from "./user-avatar";
 import { openWorkspaceWallet } from "@/lib/workspace-wallet";
 import { useThemeStore } from "@/stores/use-theme-store";
@@ -90,7 +91,7 @@ export function WorkspaceAccountMenu({ open: menuOpen, onOpenChange: setMenuOpen
             )}
         >
             <button ref={buttonRef} type="button" onKeyDown={observeEscape} className="app-workspace-topbar-icon-button app-workspace-account-trigger" aria-label="账户菜单" aria-expanded={menuOpen} title={user.displayName || user.username}>
-                <UserAvatar user={user} className="size-6" />
+                <UserGroupAvatarRing><UserAvatar user={user} className="size-6" /></UserGroupAvatarRing>
             </button>
         </Popover></>
     ) : <Link {...authEntry(location.pathname + location.search + location.hash)} className="app-workspace-topbar-guest inline-flex items-center gap-1.5 px-1.5 text-xs text-foreground/55" aria-label="登录" title="登录"><CircleUserRound aria-hidden className="size-5" /><span className="hidden sm:inline">游客</span></Link>;

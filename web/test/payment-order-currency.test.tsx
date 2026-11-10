@@ -23,6 +23,8 @@ for (const [key, value] of Object.entries({
 const { act } = await import("react");
 const { createRoot } = await import("react-dom/client");
 const { App, ConfigProvider } = await import("antd");
+const { MemoryRouter } = await import("react-router");
+const { QueryClient, QueryClientProvider } = await import("@tanstack/react-query");
 const { WorkspaceWalletModal } = await import("../src/components/layout/workspace-wallet-modal");
 const { http } = await import("../src/services/api/request");
 
@@ -45,27 +47,36 @@ test("existing order confirmation displays its currency without creating or char
             const host = document.createElement("div");
             document.body.append(host);
             const root = createRoot(host);
+            const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
             get.mockImplementation(async (url) => {
                 if (url === "/wallet") return { account: { availableMicrocredits: 0, reservedMicrocredits: 0 }, entries: [], total: 0, page: 1, pageSize: 20, policy: {} } as never;
                 if (url === "/payments/products") return { products: [] } as never;
                 if (url === "/payments/providers") return { providers: [] } as never;
+                if (url === "/payments/settings") return { settings: { usdCnyRate: "7" } } as never;
+                if (url === "/resources/storage-grants") return { grants: [] } as never;
+                if (url === "/resources/usage") return {} as never;
                 if (url === "/payments/orders/currency-fixture") return { order: { id: "currency-fixture", productName: "币种显示验收", amountFen: 101, currency, creditsMicrocredits: 1000000, status: "closed", checkout: { mode: "" } } } as never;
                 throw new Error(`Unexpected request: ${url}`);
             });
             try {
                 await act(async () =>
                     root.render(
-                        <ConfigProvider theme={{ token: { motion: false } }}>
-                            <App>
-                                <WorkspaceWalletModal open pendingPaymentOrderId="currency-fixture" onClose={() => {}} />
-                            </App>
-                        </ConfigProvider>,
+                        <QueryClientProvider client={client}>
+                            <MemoryRouter>
+                                <ConfigProvider theme={{ token: { motion: false } }}>
+                                    <App>
+                                        <WorkspaceWalletModal open pendingPaymentOrderId="currency-fixture" onClose={() => {}} />
+                                    </App>
+                                </ConfigProvider>
+                            </MemoryRouter>
+                        </QueryClientProvider>,
                     ),
                 );
                 expect(document.querySelector(".workspace-wallet-payment strong")?.textContent).toBe(expected);
                 expect(post).not.toHaveBeenCalled();
             } finally {
                 await act(async () => root.unmount());
+                client.clear();
                 host.remove();
             }
         }

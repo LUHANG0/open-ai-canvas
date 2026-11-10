@@ -11,7 +11,7 @@ import { getAuthSession, getAuthSettings, linuxDOLoginURL, register } from "@/se
 import { LinuxDOIcon } from "./auth-provider-icon";
 import { ApiError } from "@/services/api/request";
 import { VerificationFields } from "@/components/auth/verification-fields";
-import { emptyVerification, methodLabels, verificationMethods, type VerificationMethod } from "@/services/api/verification";
+import { emptyVerification, registrationVerificationRequired, methodLabels, verificationMethods, type VerificationMethod } from "@/services/api/verification";
 import { useAppearanceStore } from "@/stores/use-appearance-store";
 import { useRegistrationInvitation } from "./invitation-context";
 import { formatCredits } from "@/constant/credits";
@@ -81,8 +81,9 @@ export default function RegisterPage() {
     }, [invitation, message, settingsReloadKey]);
 
     const registrationClosed = settings?.registrationEnabled === false;
-    const methods = settings ? verificationMethods(settings, "register") : [];
-    const verificationUnavailable = Boolean(settings && !settings.firstUser && methods.length === 0);
+    const verificationRequired = Boolean(invitation || (settings && registrationVerificationRequired(settings)));
+    const methods = settings && verificationRequired ? verificationMethods(settings, "register") : [];
+    const verificationUnavailable = Boolean(settings && verificationRequired && methods.length === 0);
     const disabled = !settings || registrationClosed || (!invitation && verificationUnavailable);
     const restrictionDescription = invitation && registrationClosed ? restrictionId : undefined;
 
@@ -118,8 +119,8 @@ export default function RegisterPage() {
         setSubmitting(true);
         setSubmitError("");
         try {
-            if (!settings?.firstUser && !verification.ticket) throw new Error("请先获取本次注册验证码");
-            const result = await register({ username, ...(settings?.firstUser ? { email } : verification), displayName, password, acceptedTerms: agreementAccepted, ...(invitation ? { invitationCode: invitation.code } : {}) });
+            if (verificationRequired && !verification.ticket) throw new Error("请先获取本次注册验证码");
+            const result = await register({ username, ...(!verificationRequired ? { email } : { ...verification, email: verification.email || email }), displayName, password, acceptedTerms: agreementAccepted, ...(invitation ? { invitationCode: invitation.code } : {}) });
             const { applyUserSession } = await import("@/lib/user-session");
             await applyUserSession(await getAuthSession());
             if (!settings?.firstUser) window.sessionStorage.setItem("yingce:model-setup-guide", "1");
@@ -152,7 +153,7 @@ export default function RegisterPage() {
         </AuthField>
     </div>;
 
-    const contactFields = settings?.firstUser ? <AuthField label="邮箱（可选）">
+    const contactFields = settings?.firstUser || !verificationRequired ? <AuthField label={settings?.emailRequired && !settings?.firstUser ? "邮箱" : "邮箱（可选）"}>
         <Input
             size="large"
             prefix={<Mail className="auth-scene-icon size-4" />}
@@ -160,6 +161,7 @@ export default function RegisterPage() {
             onChange={(event) => setEmail(event.target.value)}
             placeholder="用于登录与安全验证"
             autoComplete="email"
+            required={!settings?.firstUser && Boolean(settings?.emailRequired)}
             disabled={disabled}
         />
     </AuthField> : <>
@@ -173,6 +175,9 @@ export default function RegisterPage() {
                 autoComplete="email"
                 disabled={disabled}
             />
+        </AuthField> : null}
+        {settings?.emailRequired && method === "sms" ? <AuthField label="邮箱">
+            <Input size="large" type="email" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="email" required disabled={disabled} />
         </AuthField> : null}
         {methods.length > 1 && <SegmentedControl block ariaLabel="注册验证方式" options={methods.map((value) => ({ value, label: methodLabels[value] }))} value={method} disabled={submitting} onChange={(value) => { setMethod(value as VerificationMethod); setVerification({ ...emptyVerification }); }} />}
         {methods.length > 0 && <VerificationFields key={method} purpose="register" method={method} value={verification} onChange={setVerification} disabled={disabled || submitting} invitationCode={invitation?.code} />}

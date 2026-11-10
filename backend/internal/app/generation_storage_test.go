@@ -222,6 +222,7 @@ func TestGenerationStorageAdmissionRejectsBeforeTaskAndCharge(t *testing.T) {
 	s, db := newGenerationStorageTestService(t)
 	profile := mustEncodeModelCapabilityConfig(t, DefaultModelCapabilityConfigForModel(string(model.ChannelInterfaceOpenAIImage), "image-test"))
 	for _, record := range []any{
+		&model.User{ID: "owner", Username: "owner"},
 		&model.ModelChannel{ID: "channel", Scope: model.ChannelScopeSystem, Enabled: true, Name: "isolated"},
 		&model.ChannelModel{ID: "cm", ChannelID: "channel", ModelKey: "image-test", Capability: "image", Protocol: model.ChannelInterfaceOpenAIImage, CapabilityConfigJSON: profile, BillingMode: "fixed_request", UnitPriceMicrocredits: 100, PriceConfigured: true, Enabled: true},
 		&model.ChannelModelPriceTier{ID: "tier", ChannelModelID: "cm", SelectorKey: "{}", SelectorJSON: "{}", BillingMode: "fixed_request", UnitPriceMicrocredits: 100, PriceConfigured: true, Enabled: true},

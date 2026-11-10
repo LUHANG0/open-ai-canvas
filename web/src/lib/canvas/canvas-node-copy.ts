@@ -12,6 +12,45 @@ const VIDEO_VARIANT_RESULT_FIELDS = [
     "fileUpload", "fileUploadProgress", "mediaConversion",
 ] as const satisfies ReadonlyArray<keyof CanvasNodeMetadata>;
 
+const COPIED_MEDIA_RESULT_FIELDS = [
+    "content",
+    "previewContent",
+    "videoPreview",
+    "imageRotation",
+    "storageKey",
+    "mimeType",
+    "bytes",
+    "durationMs",
+    "waveform",
+    "waveformVersion",
+    "hasAudio",
+    "naturalWidth",
+    "naturalHeight",
+    "assetId",
+    "producedModel",
+    "producedModelCandidate",
+] as const satisfies ReadonlyArray<keyof CanvasNodeMetadata>;
+
+type IsolateCopiedNodeMetadataOptions = {
+    videoParameterVariant?: boolean;
+    /** 创建视频参数变体时只复制生成配置，不复制当前媒体结果。 */
+    clearMediaResult?: boolean;
+    /** 视频参数变体的引用节点可以留在画布外，不能因未参与复制而丢失。 */
+    preserveExternalReferences?: boolean;
+    /** 独立视频任务模板不再绑定原短剧对象。 */
+    clearDramaBinding?: boolean;
+};
+
+function clearCopiedMediaResultMetadata(metadata: CanvasNodeMetadata) {
+    COPIED_MEDIA_RESULT_FIELDS.forEach((field) => delete metadata[field]);
+}
+
+/** 剪贴板复制只携带媒体节点的生成配置和引用，不复制已生成的媒体结果。 */
+export function prepareCanvasNodeForClipboard(node: CanvasNodeData): CanvasNodeData {
+    const metadata = node.metadata ? { ...node.metadata, frame: node.metadata.frame ? { ...node.metadata.frame } : undefined } : undefined;
+    return { ...node, position: { ...node.position }, metadata };
+}
+
 export function nextCopiedNodeTitle(sourceTitle: string, existingTitles: Iterable<string>) {
     const sourceMatch = sourceTitle.match(COPY_TITLE_SUFFIX);
     const baseTitle = (sourceMatch?.[1] || sourceTitle.replace(/ Copy$/i, "")).trim() || sourceTitle.trim() || "未命名节点";
@@ -59,14 +98,24 @@ function copyStoryboardRow(row: StoryboardRow, idMap: ReadonlyMap<string, string
  * 副本继承内容和用户引用，但不能继承原节点的任务、批次与结果持久化身份。
  * @param node 原节点，复制过程不会修改它的元数据。
  * @param idMap 本次复制的节点 ID 映射，用于更新副本内部引用。
- * @param options 仅视频参数变体清空旧结果并保留外部参考；普通复制继续继承内容。
+ * @param options 可选的媒体结果清理与外部引用保留策略。
  * @returns 可独立生成与保存的副本元数据。
  */
-export function isolateCopiedNodeMetadata(node: CanvasNodeData, idMap: ReadonlyMap<string, string>, options: { videoParameterVariant?: boolean } = {}): CanvasNodeMetadata {
-    const videoParameterVariant = options.videoParameterVariant && node.type === CanvasNodeType.Video;
-    const metadata = resetGenerationTaskMetadata(node.metadata, !videoParameterVariant && node.metadata?.content ? "success" : "idle");
-    if (videoParameterVariant) {
-        for (const field of VIDEO_VARIANT_RESULT_FIELDS) delete metadata[field];
+export function isolateCopiedNodeMetadata(node: CanvasNodeData, idMap: ReadonlyMap<string, string>, options: IsolateCopiedNodeMetadataOptions = {}): CanvasNodeMetadata {
+    const videoParameterVariant = options.videoParameterVariant === true && node.type === CanvasNodeType.Video;
+    const clearMediaResult = videoParameterVariant || options.clearMediaResult === true;
+    const remapReference = videoParameterVariant || options.preserveExternalReferences ? remapReferenceId : remapOwnedNodeId;
+    const metadata = resetGenerationTaskMetadata(node.metadata, clearMediaResult ? "idle" : node.metadata?.content ? "success" : "idle");
+    if (videoParameterVariant || options.clearDramaBinding) delete metadata.dramaRef;
+    if (videoParameterVariant) for (const field of VIDEO_VARIANT_RESULT_FIELDS) delete metadata[field];
+    if (clearMediaResult && (node.type === CanvasNodeType.Image || node.type === CanvasNodeType.Video || node.type === CanvasNodeType.Audio)) {
+        clearCopiedMediaResultMetadata(metadata);
+        if (node.type === CanvasNodeType.Video) {
+            // 字幕时间轴绑定旧视频时长，参数变体生成新视频后不能继续沿用旧快照。
+            delete metadata.subtitleEntries;
+            delete metadata.subtitleHighlights;
+            delete metadata.subtitleUpdatedAt;
+        }
     }
     // 原节点的提交标记不能证明副本已保存；继承后，普通保存会把新副本误判为未确认结果并排除。
     delete metadata.generationEffectKeys;
@@ -116,7 +165,6 @@ export function isolateCopiedNodeMetadata(node: CanvasNodeData, idMap: ReadonlyM
         metadata.generationResultPlacement = "replace-node";
     }
     metadata.frame = node.metadata?.frame ? { ...node.metadata.frame } : undefined;
-    const remapReference = videoParameterVariant ? remapReferenceId : remapOwnedNodeId;
     metadata.referenceSetId = remapReference(node.metadata?.referenceSetId, idMap);
     metadata.referenceAssetNodeIds = node.metadata?.referenceAssetNodeIds?.map((nodeId) => remapReference(nodeId, idMap)).filter((nodeId): nodeId is string => Boolean(nodeId));
     metadata.videoStartFrameNodeId = remapReferenceId(node.metadata?.videoStartFrameNodeId, idMap);

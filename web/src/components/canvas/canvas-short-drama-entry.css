@@ -99,15 +99,16 @@
 }
 
 .canvas-entry-shell button:focus-visible {
-    box-shadow: 0 0 0 2px var(--canvas-entry-accent);
+    outline: var(--focus-ring-width) solid var(--ring);
+    outline-offset: 2px;
 }
 
 .canvas-entry-eyebrow {
     display: inline-flex;
     align-items: center;
-    gap: var(--space-1-half);
+    gap: var(--space-2);
     height: var(--space-6);
-    padding: 0 var(--space-2-half, 10px);
+    padding: 0 var(--space-2);
     border: 1px solid var(--canvas-entry-hairline);
     border-radius: var(--r-full);
     background: var(--canvas-entry-chip);
@@ -186,14 +187,15 @@
     padding: var(--space-2) var(--space-2) var(--space-2) var(--space-3);
 }
 
+/* 输入框内的命令与发送键沿用统一按钮几何（8px 圆角），标签与灵感示例 chip 仍保留胶囊。 */
 .canvas-entry-ghost {
     display: inline-flex;
     height: var(--space-8);
     align-items: center;
-    gap: var(--space-1-half);
-    padding: 0 var(--space-2-half, 10px);
+    gap: var(--space-2);
+    padding: 0 var(--space-2);
     border: 1px solid var(--canvas-entry-hairline);
-    border-radius: var(--r-full);
+    border-radius: var(--button-radius);
     background: transparent;
     color: var(--canvas-entry-muted);
     font-size: var(--fs-caption);
@@ -217,7 +219,7 @@
     flex-shrink: 0;
     place-items: center;
     border: 0;
-    border-radius: var(--r-full);
+    border-radius: var(--button-radius);
     background: var(--canvas-entry-accent);
     color: var(--canvas-entry-on-accent);
     transition: opacity var(--control-motion-duration) ease, background-color var(--control-motion-duration) ease;
@@ -264,7 +266,7 @@
     min-width: 0;
     align-items: center;
     gap: var(--space-2);
-    padding: var(--space-2-half, 10px) var(--space-3);
+    padding: var(--space-2) var(--space-3);
     border: 1px solid var(--canvas-entry-hairline);
     border-radius: var(--r-xl);
     background: color-mix(in srgb, var(--canvas-entry-surface) 60%, transparent);

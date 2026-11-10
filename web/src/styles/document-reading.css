@@ -36,7 +36,7 @@
 .document-reading a { color: var(--user-ink); text-decoration: underline; text-decoration-color: var(--user-border-strong); text-underline-offset: 3px; text-decoration-skip-ink: auto; transition: color 150ms var(--product-ease), text-decoration-color 150ms var(--product-ease); }
 .document-reading a:hover { text-decoration-color: currentColor; }
 .document-reading strong { font-weight: 650; }
-.document-reading blockquote { margin-block: var(--space-4); border-inline-start: 2px solid var(--user-border-strong); padding-inline-start: var(--space-4); color: var(--user-ink-muted); }
+.document-reading blockquote { margin-block: var(--space-4); border-inline-start: 0; background: var(--user-surface-muted); padding-inline-start: var(--space-4); color: var(--user-ink-muted); }
 .document-reading blockquote > :first-child { margin-top: 0; }
 .document-reading blockquote > :last-child { margin-bottom: 0; }
 .document-reading hr { margin-block: var(--space-6); border: 0; border-block-start: 1px solid var(--user-border); }

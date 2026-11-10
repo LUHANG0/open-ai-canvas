@@ -31,6 +31,8 @@ func TestCloudAgentCanvasPatchesPersistDraftSubmissionAndAllTerminalStates(t *te
 	for _, status := range []model.TaskStatus{model.TaskStatusSucceeded, model.TaskStatusFailed, model.TaskStatusCancelled} {
 		t.Run(string(status), func(t *testing.T) {
 			s, db, args := agentMediaFixture(t)
+			// This test advances terminal writeback directly; do not race the approval waiter.
+			s.closeApprovedCloudAgentMediaWaiters()
 			run, _ := agentMediaRun(t, s, args, "request_approval")
 			if err := s.advanceCloudAgentByID("user", run.ID); err != nil {
 				t.Fatal(err)
@@ -287,6 +289,9 @@ func TestCloudAgentMissingCanvasStillCheckpointsMediaFailure(t *testing.T) {
 		t.Fatal(err)
 	}
 	approveAgentMediaDraft(t, s, run.ID)
+	// This test drives completion manually; wait for the asynchronous approval
+	// waiter to stop before changing the task and removing its canvas.
+	s.closeApprovedCloudAgentMediaWaiters()
 	run, _ = s.repo.CloudAgent("user", run.ID)
 	state, _ := cloudAgentDecode(run)
 	if err := db.Model(&model.Task{}).Where("id = ?", state.MediaTaskID).Update("status", model.TaskStatusFailed).Error; err != nil {

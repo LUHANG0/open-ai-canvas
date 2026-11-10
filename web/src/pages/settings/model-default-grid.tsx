@@ -2,10 +2,11 @@ import { AudioLines, Check, Film, Image, MessageSquareText } from "lucide-react"
 import { Tooltip } from "antd";
 
 import { ModelIcon } from "@/components/model-picker";
+import { configuredModelDisplayName, isDirectSystemModel } from "@/lib/model-selection";
+import { modelChannelLabel } from "@/lib/model-picker-groups";
 import { cn } from "@/lib/utils";
 import {
     filterModelsByCapability,
-    modelDisplayName,
     modelOptionName,
     resolveModelChannel,
     type AiConfig,
@@ -51,8 +52,11 @@ export function ModelDefaultGrid({ config, onChange }: { config: AiConfig; onCha
                                     const channel = resolveModelChannel(config, model);
                                     const selected = config[group.modelKey] === model;
                                     const cost = channel.modelCosts?.find((item) => item.model === modelOptionName(model));
+                                    const groupName = cost?.displayName?.trim() || "未分类";
+                                    const name = isDirectSystemModel(config, model) ? modelChannelLabel(config, model) : configuredModelDisplayName(config, model);
+                                    const subtitle = channel.scope === "system" ? groupName : channel.name || "未命名渠道";
                                     return (
-                                        <Tooltip key={model} title={modelDisplayName(config, model)} trigger={["hover", "focus"]}>
+                                        <Tooltip key={model} title={name} trigger={["hover", "focus"]}>
                                             <button
                                                 type="button"
                                                 role="radio"
@@ -68,9 +72,9 @@ export function ModelDefaultGrid({ config, onChange }: { config: AiConfig; onCha
                                                         <ModelIcon config={config} model={model} />
                                                     </span>
                                                     <span className="min-w-0 flex-1">
-                                                        <span className="settings-model-name block truncate text-sm font-semibold">{modelDisplayName(config, model)}</span>
+                                                        <span className="settings-model-name block truncate text-sm font-semibold" title={name}>{name}</span>
                                                         <span className="settings-model-meta flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1 text-xs text-[var(--user-ink-muted)]">
-                                                            <span className="max-w-full truncate" title={channel.scope === "system" ? "系统模型" : channel.name || "未命名渠道"}>{channel.scope === "system" ? "系统模型" : channel.name || "未命名渠道"}</span>
+                                                            <span className="max-w-full truncate" title={subtitle}>{subtitle}</span>
                                                             <span className="model-default-option-scope">{channel.scope === "system" ? "系统" : "自定义"}</span>
                                                             {creditsEnabled && cost ? <span className="model-default-price">{formatPrice(cost.billingMode === "token" ? (cost.outputTokenPriceMicrocredits || 0) : cost.unitPriceMicrocredits)} /{cost.billingMode === "token" ? "百万 Token" : cost.billingMode === "per_second" ? "秒" : "次"}</span> : null}
                                                         </span>

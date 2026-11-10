@@ -26,7 +26,7 @@ test("image and video context previews accept stored assets but reject empty nod
         for (const type of [CanvasNodeType.Image, CanvasNodeType.Video]) {
             for (const [metadata, enabled] of [[{ storageKey: "resource:asset" }, true], [{ content: "/media" }, true], [{}, false], [{ previewContent: "/poster.jpg" }, false]] as const) {
                 await act(async () => root.render(<CanvasNodeContextMenu {...handlers} menu={{ type: "node", nodeId: "media", x: 20, y: 80 }} node={{ id: "media", type, title: "媒体", position: { x: 0, y: 0 }, width: 320, height: 180, metadata }} canUndo={false} canRedo={false} canPaste={false} />));
-                const preview = [...host.querySelectorAll("button")].find((button) => button.textContent?.includes("放大预览"));
+                const preview = [...host.querySelectorAll("button")].find((button) => button.textContent?.includes("进入全景预览"));
                 expect(preview).toBeDefined();
                 expect(preview!.disabled).toBe(!enabled);
             }

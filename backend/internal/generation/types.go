@@ -1,6 +1,7 @@
 package generation
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"time"
@@ -29,8 +30,33 @@ type Input struct {
 }
 
 type TextOptions struct {
-	Stream   *bool `json:"stream"`
-	Thinking bool  `json:"thinking"`
+	Stream        *bool  `json:"stream"`
+	ThinkingLevel string `json:"thinkingLevel,omitempty"`
+}
+
+// UnmarshalJSON keeps persisted pre-v1.8.2 tasks and older API clients meaningful.
+// An explicit new field takes precedence, including an explicit empty default intent.
+func (o *TextOptions) UnmarshalJSON(data []byte) error {
+	type current TextOptions
+	var wire struct {
+		current
+		Thinking *bool   `json:"thinking"`
+		Level    *string `json:"thinkingLevel"`
+	}
+	if err := json.Unmarshal(data, &wire); err != nil {
+		return err
+	}
+	*o = TextOptions(wire.current)
+	if wire.Level != nil {
+		o.ThinkingLevel = *wire.Level
+	} else if wire.Thinking != nil {
+		if *wire.Thinking {
+			o.ThinkingLevel = "medium"
+		} else {
+			o.ThinkingLevel = "off"
+		}
+	}
+	return nil
 }
 
 type AgentToolRequests struct {
@@ -284,6 +310,8 @@ func (e HTTPError) Error() string {
 		return "模型服务拒绝了请求，请检查模型和参数"
 	case http.StatusUnauthorized, http.StatusForbidden:
 		return "模型服务鉴权失败，请检查 API Key 和模型权限"
+	case http.StatusPaymentRequired:
+		return "模型服务余额不足（HTTP 402），请到渠道供应商充值或更换渠道后重试"
 	case http.StatusNotFound:
 		return "模型或模型接口不存在，请检查渠道配置"
 	case http.StatusRequestTimeout, http.StatusGatewayTimeout:

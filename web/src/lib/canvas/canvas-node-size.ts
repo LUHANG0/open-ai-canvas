@@ -79,6 +79,34 @@ export function imageNodeSizeFromRatio(size: string, baseWidth = 720, baseHeight
     return nodeSizeFromRatio(size, baseWidth, baseHeight, true);
 }
 
+/** 视频节点比例与真实画面相差超过该比例时才重新适配；差得少的节点保持当前尺寸，避免重载时抖动。 */
+const VIDEO_RATIO_TOLERANCE = 0.02;
+
+/**
+ * 让视频节点跟随真实画面比例。
+ *
+ * 占位框按生成参数或默认 16:9 创建；上游没回宽高、比例写成 adaptive 等情况下，
+ * 竖屏视频会被塞进横向盒子。这里用量到的画面尺寸（或首帧尺寸）校正，
+ * 手动拉过、自由比例或锁定的节点保持不动。只看比例：首帧可能是缩小后的图，
+ * 先放大到最大预览框再适配，得到的节点尺寸与原视频一致。
+ */
+export function fitVideoNodeToSource(node: CanvasNodeData, sourceWidth?: number, sourceHeight?: number): CanvasNodeData {
+    if (node.type !== CanvasNodeType.Video) return node;
+    const metadata = node.metadata;
+    if (metadata?.manualSize || metadata?.freeResize || metadata?.locked) return node;
+    if (!sourceWidth || !sourceHeight || sourceWidth <= 1 || sourceHeight <= 1 || node.width <= 0 || node.height <= 0) return node;
+    const sourceRatio = sourceWidth / sourceHeight;
+    if (Math.abs(node.width / node.height - sourceRatio) / sourceRatio <= VIDEO_RATIO_TOLERANCE) return node;
+    const upscale = Math.max(1, VIDEO_NODE_MAX_SIZE.width / sourceWidth, VIDEO_NODE_MAX_SIZE.height / sourceHeight);
+    const size = fitNodeSize(sourceWidth * upscale, sourceHeight * upscale, VIDEO_NODE_MAX_SIZE.width, VIDEO_NODE_MAX_SIZE.height);
+    return {
+        ...node,
+        width: size.width,
+        height: size.height,
+        position: { x: node.position.x + node.width / 2 - size.width / 2, y: node.position.y + node.height / 2 - size.height / 2 },
+    };
+}
+
 export function ensureMediaNodeMinimumSize(node: CanvasNodeData) {
     if (node.type !== CanvasNodeType.Image && node.type !== CanvasNodeType.Video) return node;
     const title = node.title === "New Generation" ? "图片" : node.title === "Video" ? "视频" : node.title;

@@ -46,6 +46,8 @@ type (
 	TapNowImportIssue           = auth.TapNowImportIssue
 	TapNowImportMetadata        = auth.TapNowImportMetadata
 	TapNowImportWarning         = auth.TapNowImportWarning
+	EmailLogQuery               = auth.EmailLogQuery
+	EmailLogPage                = auth.EmailLogPage
 )
 
 type authHost struct {
@@ -94,6 +96,12 @@ func (h authHost) EnsureSignupBonus(userID string) error {
 	return h.svc.ensureSignupBonus(userID)
 }
 
+func (h authHost) BindReferral(inviteeID string, code string) {
+	if h.svc == nil {
+		return
+	}
+	h.svc.bindReferral(inviteeID, code)
+}
 func (h authHost) RecordActivity(userID string, event string, count int) {
 	if h.svc == nil {
 		return
@@ -288,4 +296,12 @@ func (s *Service) UpdateEmailTemplates(actor *model.User, req EmailTemplatesRequ
 }
 func (s *Service) PreviewEmailTemplate(actor *model.User, req EmailTemplatePreviewRequest) (*EmailTemplatePreview, error) {
 	return s.authDomain().PreviewEmailTemplate(actor, req)
+}
+
+func (s *Service) AdminEmailLogs(actor *model.User, query EmailLogQuery, page, pageSize int) (*EmailLogPage, error) {
+	return s.authDomain().AdminEmailLogs(actor, query, page, pageSize)
+}
+
+func (s *Service) SendTestEmail(actor *model.User, recipient string) error {
+	return s.authDomain().SendTestEmail(actor, recipient)
 }

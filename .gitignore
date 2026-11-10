@@ -54,6 +54,11 @@ docs/content/docs/overview/*
 .env*
 !.env.example
 data/
+# Embedded classification dictionary and its provenance are source, not user data.
+!/backend/internal/ecommercecatalog/data/
+!/backend/internal/ecommercecatalog/data/LICENSE.txt
+!/backend/internal/ecommercecatalog/data/categories.json.gz
+!/backend/internal/ecommercecatalog/data/source.json
 .local/
 /.local/docker-compose.postgres.yml
 coverage/

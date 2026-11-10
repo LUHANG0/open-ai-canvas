@@ -1,11 +1,24 @@
 import { useEffect, useRef, useState, type KeyboardEvent, type MouseEvent, type PointerEvent } from "react";
-import { AGENT_LAUNCHER_POSITION_KEY, clampAgentLauncherPosition, moveAgentLauncher, restoreAgentLauncherPosition, type AgentLauncherGesture, type AgentLauncherPosition } from "@/lib/canvas/agent-launcher-position";
+import {
+    AGENT_LAUNCHER_POSITION_KEY,
+    avoidAgentLauncherOverlap,
+    clampAgentLauncherPosition,
+    moveAgentLauncher,
+    restoreAgentLauncherPosition,
+    type AgentLauncherGesture,
+    type AgentLauncherObstacle,
+    type AgentLauncherPosition,
+} from "@/lib/canvas/agent-launcher-position";
 
 const viewport = () => ({ width: window.innerWidth, height: window.innerHeight });
 
-export function useAgentLauncherPosition(onOpen: () => void, width = 76, height = 76) {
+/**
+ * 入口的拖拽、点击与键盘移动。指针处理器（onPointer*）可以挂在入口按钮上，也可以挂在按钮内的身体热区上
+ * （大形象外框不接收指针）；指针捕获落在挂处理器的元素上，因此该元素必须能被命中。
+ */
+export function useAgentLauncherPosition(onOpen: () => void, width = 76, height = 76, obstacles: readonly AgentLauncherObstacle[] = []) {
     const size = { width, height };
-    const [position, setPosition] = useState(() => {
+    const [preferred, setPosition] = useState(() => {
         try {
             return restoreAgentLauncherPosition(localStorage.getItem(AGENT_LAUNCHER_POSITION_KEY), viewport(), size);
         } catch (error) {
@@ -13,6 +26,7 @@ export function useAgentLauncherPosition(onOpen: () => void, width = 76, height 
             return restoreAgentLauncherPosition(null, viewport(), size);
         }
     });
+    const position = avoidAgentLauncherOverlap(preferred, viewport(), size, obstacles);
     const [dragging, setDragging] = useState(false);
     const gestureRef = useRef<(AgentLauncherGesture & { pointerId: number }) | null>(null);
     const suppressClick = useRef(false);
@@ -37,7 +51,13 @@ export function useAgentLauncherPosition(onOpen: () => void, width = 76, height 
         if (event.button !== 0 || !event.isPrimary || gestureRef.current) return;
         suppressClick.current = false;
         gestureRef.current = { pointerId: event.pointerId, x: event.clientX, y: event.clientY, start: position, dragged: false };
-        event.currentTarget.setPointerCapture(event.pointerId);
+        try {
+            event.currentTarget.setPointerCapture(event.pointerId);
+        } catch (error) {
+            // React 重放的按下事件可能晚于指针释放；此时不能开始拖拽，但后续点击仍应打开面板。
+            gestureRef.current = null;
+            if (!error || typeof error !== "object" || !("name" in error) || error.name !== "NotFoundError") throw error;
+        }
     };
     const onPointerMove = (event: PointerEvent<HTMLElement>) => {
         event.stopPropagation();
@@ -59,8 +79,10 @@ export function useAgentLauncherPosition(onOpen: () => void, width = 76, height 
         const next = cancelled ? { dragged: gesture.dragged, position: clampAgentLauncherPosition(position, viewport(), size) } : moveAgentLauncher(gesture, event.clientX, event.clientY, viewport(), size);
         suppressClick.current = cancelled || next.dragged;
         setDragging(false);
-        setPosition(next.position);
-        if (next.dragged) save(next.position);
+        if (next.dragged) {
+            setPosition(next.position);
+            save(next.position);
+        }
         if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
     };
     const onClick = (event: MouseEvent<HTMLElement>) => {

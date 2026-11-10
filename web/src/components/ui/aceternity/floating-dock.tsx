@@ -1,6 +1,7 @@
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { forwardRef, useEffect, useRef, useState, type CSSProperties, type FocusEvent, type MouseEvent, type ReactNode } from "react";
 
+import { translate } from "@/i18n";
 import { cn } from "@/lib/utils";
 
 export type FloatingDockCommand = {
@@ -60,7 +61,7 @@ function coarsePointerQuery(): MediaQueryList | undefined {
  * getBoundingClientRect 并改变宽高，导致整条 dock 重排、相邻按钮抖动；这里改为
  * 固定格子 + 原地颜色反馈与提示气泡。
  */
-export const FloatingDock = forwardRef<HTMLDivElement, FloatingDockProps>(function FloatingDock({ items, size = "default", embedded = false, className, style, ariaLabel = "画布工具", showLabels = false }, forwardedRef) {
+export const FloatingDock = forwardRef<HTMLDivElement, FloatingDockProps>(function FloatingDock({ items, size = "default", embedded = false, className, style, ariaLabel = translate("account.ui.canvasTools"), showLabels = false }, forwardedRef) {
     const reducedMotion = useReducedMotion();
     const [coarsePointer, setCoarsePointer] = useState(() => coarsePointerQuery()?.matches ?? false);
     // 窄屏下允许横向滚动，保证按钮始终可达；此时自定义提示会被裁剪，改用原生 title。
@@ -95,7 +96,7 @@ export const FloatingDock = forwardRef<HTMLDivElement, FloatingDockProps>(functi
                 "aceternity-floating-dock flex items-center",
                 scrollable ? "overflow-x-auto" : "overflow-visible",
                 embedded ? "gap-0.5 px-0.5 shadow-none" : "gap-0.5 border backdrop-blur-2xl",
-                !embedded && (compact ? "rounded-[var(--r-lg)] p-1" : "rounded-[var(--r-xl)] p-1.5"),
+                !embedded && (compact ? "rounded-[var(--r-lg)] p-1" : "rounded-[var(--r-xl)] p-2"),
                 className,
             )}
             style={{ ...style, "--dock-item-size": `${itemSize}px` } as CSSProperties}
@@ -164,7 +165,7 @@ function DockTooltip({ show, label, compact, motionEnabled }: { show: boolean; l
                     transition={{ duration: motionEnabled ? 0.15 : 0, ease: "easeOut" }}
                     className={cn(
                         "aceternity-dock-tooltip pointer-events-none absolute bottom-full left-1/2 z-[var(--dock-tooltip-z)] mb-2 -translate-x-1/2 whitespace-nowrap rounded-md border font-medium shadow-lg",
-                        compact ? "px-1.5 py-0.5 text-[var(--fs-micro)]" : "px-2 py-1 text-[var(--fs-tiny)]",
+                        compact ? "px-2 py-0.5 text-[var(--fs-micro)]" : "px-2 py-1 text-[var(--fs-tiny)]",
                     )}
                 >
                     {label}
@@ -204,7 +205,7 @@ function DockCommandButton({ command, compact, showLabel, nativeTitle, motionEna
                 aria-pressed={pressed}
                 disabled={command.disabled}
                 className={cn(
-                    "aceternity-dock-command is-labeled inline-flex h-[var(--dock-item-size)] shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-[var(--dock-item-radius)] border-0 px-2.5 outline-none",
+                    "aceternity-dock-command is-labeled inline-flex h-[var(--dock-item-size)] shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-[var(--dock-item-radius)] border-0 px-2 outline-none",
                     command.active && "is-active",
                     command.danger && "is-danger",
                 )}
@@ -229,7 +230,7 @@ function DockCommandButton({ command, compact, showLabel, nativeTitle, motionEna
                 disabled={command.disabled}
                 className={cn(
                     "aceternity-dock-command relative grid h-[var(--dock-item-size)] place-items-center rounded-[var(--dock-item-radius)] border-0 outline-none",
-                    command.wide ? "min-w-[var(--dock-precision-width)] px-1.5" : "w-[var(--dock-item-size)]",
+                    command.wide ? "min-w-[var(--dock-precision-width)] px-2" : "w-[var(--dock-item-size)]",
                     command.quiet && "is-quiet",
                     command.active && "is-active",
                     command.danger && "is-danger",

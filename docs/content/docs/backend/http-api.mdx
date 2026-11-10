@@ -3,6 +3,11 @@ title: HTTP API 合同
 description: 信封、错误码与 OpenAPI
 ---
 
+## v1.8.1 参考视频价格与报价增量
+
+渠道模型读写增加 `referenceVideoBilling`；价格档增加 `referenceVideoUnitPriceMicrocredits` / `referenceVideoOutputTokenPriceMicrocredits`，`costPricing` 同步保留独立的参考视频成本。省略开关时更新保留当前设置，新建默认关闭。报价意图可带 `referenceVideoDurationsMs`（与 `inputs.video` 等长、每项 1–3600000 毫秒），只用于估算；真实按秒任务按账号资源实测。报价返回可选 `referenceVideo` 构成，不产生任务、账单或余额写入。完整字段以 `/api/openapi.yaml` 与[视频计费](/docs/backend/video-token-billing)为准。
+
+
 # HTTP API 合同
 
 ## 管理员注册邀请
@@ -590,3 +595,23 @@ install 的 Base URL、协议、能力和成本全部从服务端快照读取，
 客户端上传先调用 `POST /api/resources/direct-uploads`，仅提交文件名、大小、尺寸和前 3072 字节的 Base64 样本。后端在跨实例共享的上传额度预留后创建 pending 资源，固定存储位置，并返回 30 分钟有效的 PostObject 表单授权。授权限定一个随机对象键、准确字节数、检测出的 MIME 和禁止覆盖；浏览器不能获得长期 Secret，也不能自行选择 Bucket 或对象路径。生产 Bucket 必须保持私有、关闭版本控制（OSS 在版本控制开启时忽略禁止覆盖条件），并仅对本站来源开放 POST/GET/HEAD CORS。
 
 文件以表单最后一项直接发往 OSS，不携带平台 Cookie、认证头或账号头。成功后调用 `POST /api/resources/direct-uploads/{id}/complete`；后端只读取最多 3072 字节，检查真实对象总大小、MIME、样本摘要和 ETag，再在事务中发布 ready 状态、消费预留额度。完成确认可重试且不会重复计量；上传中断、取消或账号切换不会误报为保存成功。授权过期重试使用新对象键，旧对象通过延迟 Outbox 清理；放弃的 pending 资源沿用既有不完整资源清理。直传失败不自动经平台转发文件；仅存储类型不支持直传时明确返回 `mode=server`，保留原本地/其他云存储上传路径。
+
+
+## 短剧参考与造型补充（2026-11-08）
+
+| 接口 | 合同 |
+| --- | --- |
+作品圣经遇到可确定的 JSON 分隔符错误时在本地恢复并完整校验，再写入设定；原任务响应保持不变。支持已知资产列表提前闭合、`description` 与 `appearance` 分隔符缺失和末尾多余逗号；截断或歧义结果仍失败。“全部重试”复用已成功任务的原结果，不重复提交资产提取；恢复后后续步骤按作品原有设置继续执行。
+
+
+| `POST /dramas/:id/cast/:castId/looks` | 为角色新增造型（妆造）`{ lookName, appearance, imagePrompt?, fromChapter?, toChapter? }`：造型是角色子行（kind=character、`parentId` 指向角色），承载外观与默认适用章节，每角色最多 6 套。确认只保存为 `imageStatus=draft`，不创建生成任务；用户单独调用 `POST …/cast/:lookId/regenerate` 后，以角色本体图为底图生成。`imagePrompt` 最多 12000 字，留空按外观描述生成 |
+| `PATCH /dramas/:id/looks/:lookId` · `DELETE …` | 修改造型 `{ lookName?, appearance?, imagePrompt?, fromChapter?, toChapter?, restyleSegments? }`，只保存设定并保留现有图片，不自动生成；生成中拒绝修改。删除造型后，引用它的镜头回退到角色本体。自定义造型图复用 `PUT …/cast/:lookId/image`，可上传或从素材库选图，采用后锁定 |
+### 剧情段参考与音色选择
+
+`PATCH /dramas/:id/episodes/:episodeId/segments/:index` 还接受以下字段，省略表示保留该项：
+
+- `referenceImages: [{ resourceId, name }]`：替换本段附加参考图，最多 20 张，`[]` 清空。资源必须属于当前用户、已经入库且为就绪图片；不接受远程 URL。图片排在设定参考之后，统一编号为“参考图N”，受模型和作品的参考图数量限制。预演中这类条目 `kind=image`、`castId` 为空、`resourceId` 为实际资源。界面支持素材库与本地上传，上传单张不超过 20 MB；删除只移除本段引用，原素材保留。引用仍存在时，素材删除及孤儿清理保留该资源。
+- `audioCastIds: string[]`：手动选择角色音色，顺序即优先发送顺序，`[]` 关闭全部。只接受当前作品已绑定声音样本的角色本体；手动保存数量不得超过当前视频模型的 `request.modelMaxAudios`，超限返回 400。
+- `autoAudioReferences: true`：恢复按本段对白自动选择说话角色（支持别名，造型沿用角色本体声音）。段视图的 `audioReferenceMode` 为 `auto/custom`；自动模式超限时按开口顺序发送，剩余音色在 `request.audioReferences[].note` 说明原因。模型不支持、尾帧续接、缺少参考图、样本超时或失效同样显示实际未发送原因。
+
+图片与音色选择写入后使本段提示词和视频过期；手写提示词保留，需核对参考编号。音色开关在点击“保存音色选择”后生效。`GET /dramas/models` 的视频模型附 `maxAudios`，用于换模型时即时提示新上限；参考面板按已保存的模型展示实际发送状态。角色卡显示有无音频并提供授权样本试听；预览不调用生成模型。造型的“确认保存”与“生成造型图”是独立操作，只有后者会创建计费生成任务。

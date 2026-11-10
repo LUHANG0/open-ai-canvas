@@ -2,6 +2,7 @@ import { generationErrorMessage } from "@/lib/generation-error";
 import { http, apiBaseURL, type BackendEnvelope } from "@/services/api/request";
 import { consumeTaskTextStream, createTaskTextStreamParser, type TaskTextStreamEvent } from "@/services/api/task-text-stream";
 import { recordDiagnosticEvent } from "@/services/diagnostics/client-diagnostics";
+import { observeGenerationTaskStatus, observeGenerationTaskStatuses } from "@/services/generation-completion-tracker";
 import { getActiveUserScope } from "@/lib/user-scope";
 
 export type { BackendEnvelope } from "@/services/api/request";
@@ -58,9 +59,15 @@ export type GenerationTask = {
     completedAt?: string;
     createdAt: string;
     updatedAt: string;
+    /** 计费摘要：冻结额与实收分列，只有已结算订单才有 chargedMicrocredits。 */
     billing?: {
         /** Original order/reservation amount; never substitute for actual settled cost. */
         amountMicrocredits: number;
+        reservedMicrocredits: number;
+        /** 已结算（settled）时的实收，已扣除差额退回；其余状态不返回。 */
+        chargedMicrocredits?: number;
+        /** 已退回金额：结算时的差额退回，或失败后整笔退回。 */
+        refundedMicrocredits: number;
         status: TaskBillingStatus;
         /** Present only for settled orders; explicit 0 differs from absent/unknown. */
         actualAmountMicrocredits?: number;
@@ -69,15 +76,17 @@ export type GenerationTask = {
         conversationId?: string;
         messageId?: string;
         nodeId?: string;
+        /** 工作台一次提交拆出的多个任务共用的批次 ID；batchIndex 为 0 时后端省略该字段。 */
+        batchId?: string;
         batchIndex?: number;
         batchCount?: number;
         domainProjectId?: string;
         chapterId?: string;
-		chapterOperation?: "characters" | "storyboard";
-		shotId?: string;
-		workflowStepId?: string;
-		artifactType?: string;
-	};
+        chapterOperation?: "characters" | "storyboard";
+        shotId?: string;
+        workflowStepId?: string;
+        artifactType?: string;
+    };
     created_at?: string;
     updated_at?: string;
 };
@@ -129,12 +138,13 @@ export type CreateTaskInput = {
     prompt: string;
     provider?: string;
     model?: string;
-	logicalModelId?: string;
+    logicalModelId?: string;
     input?: Record<string, unknown>;
 };
 export function createGenerationTask(input: CreateTaskInput) {
     return http.post<GenerationTask>("/tasks", input).then((task) => {
         recordDiagnosticEvent({ level: "info", category: "task", message: "任务已创建", taskId: task.id, projectId: task.projectId });
+        observeGenerationTaskStatus(task);
         notifyCanvasTaskCreated(task);
         // 创建任务时积分已被预占，不能等任务结束后才刷新可用余额。
         window.dispatchEvent(new CustomEvent("wallet:updated"));
@@ -159,9 +169,9 @@ type GenerationTaskListDependencies = {
 const defaultGenerationTaskListDependencies: GenerationTaskListDependencies = {
     listBackendPage: async (page, signal) => ({
         tasks: await http.get<GenerationTask[]>("/tasks", {
-                params: { pageSize: Math.min(page.limit, 100), projectId: page.projectId, activeOnly: page.activeOnly || undefined },
-                signal,
-            }),
+            params: { pageSize: Math.min(page.limit, 100), projectId: page.projectId, activeOnly: page.activeOnly || undefined },
+            signal,
+        }),
     }),
 };
 
@@ -188,6 +198,7 @@ export async function listGenerationTasks(limit = 30, options?: { projectId?: st
         }));
     const backendTasks = await collectGenerationTaskPages(backendPageReader, baseRequest, boundedLimit, signal);
     if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
+    observeGenerationTaskStatuses(backendTasks);
     return backendTasks
         .filter((task) => !options?.projectId || task.projectId === options.projectId)
         .filter((task) => !options?.activeOnly || task.status === "queued" || task.status === "running")
@@ -212,7 +223,13 @@ async function collectGenerationTaskPages<T>(readPage: (request: GenerationTaskP
 }
 
 export function queryGenerationTask(id: string, options?: { signal?: AbortSignal }) {
-    return http.get<GenerationTask>(`/tasks/${encodeURIComponent(id)}`, { signal: options?.signal });
+    return http.get<GenerationTask>(`/tasks/${encodeURIComponent(id)}`, { signal: options?.signal }).then(observedTask);
+}
+
+/** 所有任务读取都汇入完成跟踪，生成完成提醒不依赖某个页面是否还在轮询。 */
+function observedTask(task: GenerationTask) {
+    observeGenerationTaskStatus(task);
+    return task;
 }
 
 type GenerationTaskSubscriptionDependencies = {
@@ -253,7 +270,10 @@ export function createGenerationTaskSubscriptionService(dependencies: Generation
             const terminal = await dependencies.waitTask(id, {
                 initialTask: initial,
                 signal: controller.signal,
-                onTaskUpdate: (task) => { entry.failures = 0; publish(entry, task); },
+                onTaskUpdate: (task) => {
+                    entry.failures = 0;
+                    publish(entry, task);
+                },
             });
             publish(entry, terminal);
         })().catch((error) => {
@@ -333,7 +353,7 @@ export function queryTaskTextReplay(id: string, after = 0) {
 }
 
 export function retryGenerationTask(id: string) {
-    return http.post<GenerationTask>(`/tasks/${encodeURIComponent(id)}/retry`);
+    return http.post<GenerationTask>(`/tasks/${encodeURIComponent(id)}/retry`).then(observedTask);
 }
 
 export function recoverGenerationTaskMedia(id: string) {
@@ -342,6 +362,7 @@ export function recoverGenerationTaskMedia(id: string) {
 
 export function cancelGenerationTask(id: string) {
     return http.post<GenerationTask>(`/tasks/${encodeURIComponent(id)}/cancel`).then((task) => {
+        observeGenerationTaskStatus(task);
         window.dispatchEvent(new CustomEvent("canvas:task-cancelled", { detail: { task } }));
         window.dispatchEvent(new CustomEvent("wallet:updated"));
         return task;
@@ -353,7 +374,7 @@ export function queryFailedVideoProviderTask(id: string) {
 }
 
 export function refreshGenerationTaskStatus(id: string, options?: { signal?: AbortSignal }) {
-    return http.get<GenerationTask>(`/tasks/${encodeURIComponent(id)}`, { signal: options?.signal });
+    return http.get<GenerationTask>(`/tasks/${encodeURIComponent(id)}`, { signal: options?.signal }).then(observedTask);
 }
 
 export function deleteGenerationTask(id: string) {
@@ -419,7 +440,7 @@ function terminalTaskError(task: GenerationTask) {
 }
 
 export type WaitForGenerationTaskOptions = {
-	textEventsSource?: "task" | "agent";
+    textEventsSource?: "task" | "agent";
     signal?: AbortSignal;
     intervalMs?: number;
     timeoutMs?: number;
@@ -575,7 +596,7 @@ async function waitForGenerationTaskTextEvents(id: string, options: WaitForGener
 }
 
 function asTaskTextStreamRecord(value: unknown): Record<string, unknown> {
-    return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
+    return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
 }
 
 function numberValue(value: unknown) {
@@ -595,7 +616,7 @@ class TaskTextStreamFatalError extends Error {
 
 async function taskTextStreamHTTPError(response: Response) {
     try {
-        const payload = await response.json() as { msg?: unknown };
+        const payload = (await response.json()) as { msg?: unknown };
         if (typeof payload.msg === "string" && payload.msg.trim()) return payload.msg;
     } catch {
         // SSE 错误响应可能是空正文或网关 HTML，只返回状态码，避免泄露正文。
@@ -616,9 +637,18 @@ function taskWaitTimeoutMs(task?: GenerationTask) {
 
 function delay(ms: number, signal?: AbortSignal) {
     return new Promise<void>((resolve, reject) => {
-        if (signal?.aborted) { reject(new DOMException("Aborted", "AbortError")); return; }
-        const abort = () => { window.clearTimeout(timer); reject(new DOMException("Aborted", "AbortError")); };
-        const timer = window.setTimeout(() => { signal?.removeEventListener("abort", abort); resolve(); }, ms);
+        if (signal?.aborted) {
+            reject(new DOMException("Aborted", "AbortError"));
+            return;
+        }
+        const abort = () => {
+            window.clearTimeout(timer);
+            reject(new DOMException("Aborted", "AbortError"));
+        };
+        const timer = window.setTimeout(() => {
+            signal?.removeEventListener("abort", abort);
+            resolve();
+        }, ms);
         signal?.addEventListener("abort", abort, { once: true });
     });
 }

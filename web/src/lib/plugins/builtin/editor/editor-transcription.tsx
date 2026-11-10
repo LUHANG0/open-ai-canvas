@@ -124,7 +124,7 @@ export function EditorTranscription() {
                             <select
                                 value={selectedId ?? ""}
                                 onChange={(e) => setSelectedId(e.target.value)}
-                                className="w-full rounded-md border border-[var(--previs-sequencer-border)] bg-[var(--previs-control-hover)] px-2 py-1.5 text-xs text-[var(--previs-dock-fg-strong)] outline-none focus:border-[var(--workspace-accent)]/60 [&>option]:bg-[var(--previs-sequencer-surface-raised)] [&>option]:text-[var(--previs-dock-fg-strong)]"
+                                className="w-full rounded-md border border-[var(--previs-sequencer-border)] bg-[var(--previs-control-hover)] px-2 py-2 text-xs text-[var(--previs-dock-fg-strong)] outline-none focus:border-[var(--workspace-accent)]/60 [&>option]:bg-[var(--previs-sequencer-surface-raised)] [&>option]:text-[var(--previs-dock-fg-strong)]"
                             >
                                 {transcribableAssets.map((a) => (
                                     <option key={a.id} value={a.id}>

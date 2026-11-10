@@ -2,7 +2,7 @@
 // 小批命令直接进入统一 dispatch，大批命令先由用户确认；宿主拒绝无效命令并显示 saveError。
 // 请求显式携带用户选择的文本模型，不能沿用可能指向图片模型的全局默认值。
 import { useRef, useState, useEffect } from "react";
-import { Bot, Loader2, RotateCcw, Send, ShieldAlert } from "lucide-react";
+import { Loader2, RotateCcw, Send, ShieldAlert, Orbit } from "lucide-react";
 import { requestImageQuestion } from "@/services/api/image";
 import type { AiTextMessage } from "@/services/api/image-contracts";
 import { useConfigStore, useEffectiveConfig, modelOptionLabel } from "@/stores/use-config-store";
@@ -256,7 +256,7 @@ export function EditorAiAssistant() {
                         disabled={busy}
                         aria-label="选择文本对话模型"
                         title="选择文本对话模型"
-                        className="h-7 min-w-0 flex-1 rounded-md border border-[var(--previs-sequencer-border)] bg-[var(--previs-control-hover)] px-1.5 text-xs text-[var(--previs-dock-fg)] outline-none focus:border-[var(--previs-accent)] disabled:opacity-50 [&>option]:bg-[var(--previs-sequencer-surface-raised)] [&>option]:text-[var(--previs-dock-fg)]"
+                        className="h-7 min-w-0 flex-1 rounded-md border border-[var(--previs-sequencer-border)] bg-[var(--previs-control-hover)] px-2 text-xs text-[var(--previs-dock-fg)] outline-none focus:border-[var(--previs-accent)] disabled:opacity-50 [&>option]:bg-[var(--previs-sequencer-surface-raised)] [&>option]:text-[var(--previs-dock-fg)]"
                     >
                         {textModels.map((m) => (
                             <option key={m} value={m}>
@@ -277,14 +277,14 @@ export function EditorAiAssistant() {
                 {entries.length === 0 && (
                     <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 p-4 text-center">
                         <div className="grid size-10 place-items-center rounded-full bg-[var(--previs-dock-active-surface)]">
-                            <Bot className="size-4 text-[var(--previs-dock-fg)]/80" />
+                            <Orbit className="size-4 text-[var(--previs-dock-fg)]/80" />
                         </div>
                         <p className="text-xs text-[var(--previs-dock-fg)]/70">AI 剪辑助手</p>
                         <p className="max-w-[240px] text-xs leading-relaxed text-[var(--previs-dock-fg)]/50">
                             基于当前时间线提问，或描述编辑意图（如"把第二段素材换成封面图"）。
                             修改指令会先在宿主侧校验，数量超过 3 条时需你确认后才执行。
                         </p>
-                        <div className="flex max-w-[260px] flex-wrap items-center justify-center gap-1.5">
+                        <div className="flex max-w-[260px] flex-wrap items-center justify-center gap-2">
                             {SUGGESTED_PROMPTS.map((s) => (
                                 <button
                                     key={s}
@@ -317,7 +317,7 @@ export function EditorAiAssistant() {
                                 className="max-w-[92%] self-start whitespace-pre-wrap break-words rounded-xl rounded-bl-sm border border-[var(--previs-sequencer-border)] bg-[var(--previs-sequencer-surface-raised)] px-2.5 py-1.5 text-xs leading-relaxed text-[var(--previs-dock-fg)]"
                             >
                                 {entry.text || (
-                                    <span className="inline-flex items-center gap-1.5 text-[var(--previs-dock-fg)]/60">
+                                    <span className="inline-flex items-center gap-2 text-[var(--previs-dock-fg)]/60">
                                         <Loader2 className="size-3 animate-spin" />
                                         思考中…
                                     </span>
@@ -329,9 +329,9 @@ export function EditorAiAssistant() {
                         return (
                             <div
                                 key={entry.id}
-                                className="max-w-[92%] self-start overflow-hidden rounded-xl rounded-bl-sm border border-[var(--previs-danger)]/40 bg-[var(--previs-danger)]/10 px-2.5 py-1.5"
+                                className="max-w-[92%] self-start overflow-hidden rounded-xl rounded-bl-sm border border-[var(--previs-danger)]/40 bg-[var(--previs-danger)]/10 px-2 py-2"
                             >
-                                <div className="flex items-start gap-1.5">
+                                <div className="flex items-start gap-2">
                                     <ShieldAlert className="mt-0.5 size-3 shrink-0 text-[var(--previs-danger)]" />
                                     <div className="min-w-0">
                                         <p className="text-xs leading-relaxed text-[var(--previs-danger)]">
@@ -361,7 +361,7 @@ export function EditorAiAssistant() {
                             <p className="border-b border-[var(--previs-warning)]/25 px-2.5 py-1.5 text-xs font-medium text-[var(--previs-dock-fg)]">
                                 {PREVIEW_HEAD}
                             </p>
-                            <div className="max-h-44 overflow-y-auto px-2.5 py-1.5">
+                            <div className="max-h-44 overflow-y-auto px-2 py-2">
                                 {entry.plan.commands.map((cmd, i) => (
                                     <p
                                         key={i}
@@ -371,7 +371,7 @@ export function EditorAiAssistant() {
                                     </p>
                                 ))}
                             </div>
-                            <div className="flex items-center justify-end gap-1.5 border-t border-[var(--previs-warning)]/25 px-2.5 py-1.5">
+                            <div className="flex items-center justify-end gap-2 border-t border-[var(--previs-warning)]/25 px-2 py-2">
                                 <button
                                     type="button"
                                     onClick={() => dropPreview(entry.id)}
@@ -393,7 +393,7 @@ export function EditorAiAssistant() {
                     );
                 })}
             </div>
-            <div className="flex shrink-0 items-center gap-2 border-t border-[var(--previs-sequencer-border)] p-2.5">
+            <div className="flex shrink-0 items-center gap-2 border-t border-[var(--previs-sequencer-border)] p-2">
                 <input
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
@@ -405,7 +405,7 @@ export function EditorAiAssistant() {
                     }}
                     disabled={!ready || busy}
                     placeholder={placeholder}
-                    className="min-w-0 flex-1 rounded-md border border-[var(--previs-sequencer-border)] bg-[var(--previs-control-hover)] px-2 py-1.5 text-xs text-[var(--previs-dock-fg)] placeholder:text-[var(--previs-dock-fg)]/40 focus:border-[var(--previs-accent)] focus:outline-none disabled:opacity-50"
+                    className="min-w-0 flex-1 rounded-md border border-[var(--previs-sequencer-border)] bg-[var(--previs-control-hover)] px-2 py-2 text-xs text-[var(--previs-dock-fg)] placeholder:text-[var(--previs-dock-fg)]/40 focus:border-[var(--previs-accent)] focus:outline-none disabled:opacity-50"
                 />
                 <button
                     type="button"

@@ -13,7 +13,7 @@ const { createMemoryRouter, RouterProvider } = await import("react-router");
 const events: string[] = [];
 let logoutResult: Promise<void> = Promise.resolve();
 let cleanupResult: Promise<void> = Promise.resolve();
-mock.module("../src/services/api/auth", () => ({ logout: () => { events.push("logout"); return logoutResult; } }));
+mock.module("../src/services/api/auth", () => ({ logout: () => { events.push("logout"); return logoutResult; }, getAuthSettings: async () => ({ loginMode: "page" }) }));
 mock.module("../src/lib/user-session", () => ({ applyUserSession: async (session: unknown) => { expect(session).toEqual({ user: null }); events.push("clear-session"); await cleanupResult; } }));
 mock.module("antd", () => ({ App: { useApp: () => ({ message: { success: () => events.push("success"), error: (value: string) => events.push(`error:${value}`) } }) }, Popover: ({ content, children, open, onOpenChange }: any) => <div><div onClick={() => onOpenChange(!open)}>{children}</div>{open && content}</div> }));
 mock.module("../src/hooks/use-wallet-balance", () => ({ useWalletBalance: () => ({ availableMicrocredits: null }) }));

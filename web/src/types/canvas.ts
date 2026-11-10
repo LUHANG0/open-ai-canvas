@@ -22,6 +22,8 @@ export type ViewportTransform = {
     k: number;
 };
 
+export type CanvasFrameColor = "blue" | "green" | "violet" | "amber" | "rose" | "teal" | "slate";
+
 export enum CanvasNodeType {
     Image = "image",
     Text = "text",
@@ -254,7 +256,7 @@ export type CanvasSkillSnapshot = {
 
 export type CanvasMediaVersionMedia = Pick<CanvasNodeMetadata,
     "content" | "storageKey" | "previewContent" | "mimeType" | "bytes" | "durationMs" |
-    "hasAudio" | "naturalWidth" | "naturalHeight" |
+    "hasAudio" | "waveform" | "waveformVersion" | "naturalWidth" | "naturalHeight" |
     "videoPreview" | "imageRotation" | "assetId">;
 export type CanvasMediaVersionGeneration = Pick<CanvasNodeMetadata,
     "prompt" | "model" | "producedModel" | "size" | "quality" | "seconds" |
@@ -268,9 +270,24 @@ export type CanvasMediaVersion = {
     generation?: CanvasMediaVersionGeneration;
 };
 
+/**
+ * 从短剧投送到精修画布的对象：设定参考图（cast）、剧情段（segment，挂在段框与段视频上）、成片（final）。
+ * 采用到短剧、侧栏定位和“短剧侧已更新”提示都依赖它；画布只保存绑定与投送时的快照，短剧数据以服务端为准。
+ */
+export type CanvasDramaRef = {
+    projectId: string;
+    kind: "cast" | "segment" | "final";
+    id: string;
+    episodeId?: string;
+    segmentIndex?: number;
+    /** 投送或最近一次同步时短剧侧的当前资源；短剧现状与它不同且与节点媒体也不同，说明短剧侧已更新。 */
+    baseResourceId?: string;
+};
+
 export type CanvasNodeMetadata = {
     /** Credential-free editable generation contract; submitted recipes live with tasks. */
     generationSpec?: GenerationSpec;
+    dramaRef?: CanvasDramaRef;
     /** Namespaced extension ownership for nodes contributed by a unified plugin. */
     pluginId?: string;
     pluginNodeId?: string;
@@ -351,6 +368,8 @@ export type CanvasNodeMetadata = {
     /** 当前画布节点覆盖的工作流动态字段，键为 source:* 或 field:nodeId:fieldName。 */
     workflowParameters?: Record<string, unknown>;
     size?: string;
+    /** 图片尺寸来源：user 为用户在图像设置中选择；default / reference 为模型默认值或参考图比例填入，图生图时继续跟随参考图。缺省且已有 size 按用户选择处理。 */
+    imageSizeSource?: "user" | "default" | "reference";
     quality?: string;
     imageResolution?: string;
     imageParameters?: string;
@@ -442,6 +461,9 @@ export type CanvasNodeMetadata = {
     mimeType?: string;
     bytes?: number;
     durationMs?: number;
+    /** Normalized waveform peak samples (0..1) for audio visualization. */
+    waveform?: number[];
+    waveformVersion?: number;
     /** Whether the video file contains an audio track when this is known. */
     hasAudio?: boolean;
     assetId?: string;
@@ -540,6 +562,7 @@ export type CanvasNodeMetadata = {
     versionOfNodeId?: string;
     versionLabel?: string;
     versionPrimary?: boolean;
+    /** 节点内媒体版本历史；切换版本只替换媒体字段，节点 ID 与连线保持不变。 */
     mediaVersions?: CanvasMediaVersion[];
     currentMediaVersionId?: string;
     copiedFromNodeId?: string;
@@ -567,6 +590,8 @@ export type CanvasNodeMetadata = {
     mediaConversion?: MediaConversionNodeState;
     /** 用户手动拉伸过尺寸；图片按真实比例自动适配时避让它。 */
     manualSize?: boolean;
+    /** 用户手动改过节点名称；原位重新生成时保留，不再换成提示词摘要。 */
+    manualTitle?: boolean;
     storyboard?: StoryboardData;
     storyboardShotDuration?: StoryboardShotDuration;
     storyboardShotCount?: StoryboardShotCount;
@@ -586,6 +611,8 @@ export type CanvasNodeMetadata = {
         collapsed: boolean;
         expandedWidth: number;
         expandedHeight: number;
+        /** 语义色名（如 Agent 搭看板时按幕着色），具体颜色由主题样式映射。 */
+        color?: CanvasFrameColor;
     };
     folder?: {
         style: CanvasFolderStyle;
