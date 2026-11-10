@@ -526,6 +526,10 @@
 .skills-rail-group { display: flex; min-width: 0; flex-direction: column; gap: 1px; }
 .skills-rail-section { display: flex; min-width: 0; flex-direction: column; gap: var(--space-1); }
 .skills-rail-heading { display: flex; min-height: 24px; align-items: center; justify-content: space-between; gap: var(--space-2); padding-left: 8px; }
+.skills-rail-heading-copy { display: grid; min-width: 0; gap: 3px; padding-block: 4px; }
+.skills-rail-heading-copy strong { color: var(--user-ink); font-size: var(--fs-label); font-weight: 600; }
+.skills-rail-heading-copy > span { color: var(--user-ink-soft); font-size: var(--fs-caption); }
+.skills-navigation [data-slot="control-label"] { white-space: nowrap; }
 .skills-rail-item { display: flex; width: 100%; min-width: 0; height: 32px; align-items: center; gap: var(--space-2); padding: 0 8px; border: 0; border-radius: var(--user-radius-button); background: transparent; color: var(--user-ink-muted); font-size: 13px; font-weight: 500; text-align: left; cursor: pointer; transition: background var(--user-motion), color var(--user-motion); }
 .skills-rail-item svg { width: 15px; height: 15px; flex: 0 0 auto; color: var(--user-ink-soft); stroke-width: var(--user-button-icon-stroke); transition: color var(--user-motion); }
 .skills-rail-item-label { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

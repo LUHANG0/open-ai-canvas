@@ -417,58 +417,58 @@ export default function SkillsPage() {
                 </CollectionToolbar>
                 </div>
 
-                <div className="skills-library-layout">
-                    <aside className="skills-library-sidebar" aria-label="技能分类筛选">
-                        <section className="skills-category-section">
-                            <div className="skills-library-sidebar-heading">
-                                <div>
+                <div className="skills-browser">
+                    <aside className="skills-rail" aria-label="技能分类筛选">
+                        <section className="skills-rail-section">
+                            <div className="skills-rail-heading">
+                                <div className="skills-rail-heading-copy">
                                     <strong>技能广场分类</strong>
                                     <span>筛选广场公开技能</span>
                                 </div>
                             </div>
-                            <nav className="skills-library-category-list" aria-label="技能广场分类">
-                                <button type="button" className={`skills-library-category-item${scope === "public" && tag === "all" && (!curation?.enabled || !platformCategory) ? " is-active" : ""}`} aria-pressed={scope === "public" && tag === "all" && (!curation?.enabled || !platformCategory)} onClick={() => { setPlatformCategory(""); selectMarketplaceCategory("all"); }}>
-                                    <span><Sparkles className="size-4" aria-hidden="true" />全部技能</span>
-                                    <span>{marketplaceCategoryTotal}</span>
+                            <nav className="skills-rail-group" aria-label="技能广场分类">
+                                <button type="button" className={`skills-rail-item${scope === "public" && tag === "all" && (!curation?.enabled || !platformCategory) ? " is-active" : ""}`} aria-pressed={scope === "public" && tag === "all" && (!curation?.enabled || !platformCategory)} onClick={() => { setPlatformCategory(""); selectMarketplaceCategory("all"); }}>
+                                    <Sparkles className="size-4" aria-hidden="true" /><span className="skills-rail-item-label">全部技能</span>
+                                    <span className="skills-rail-count">{marketplaceCategoryTotal}</span>
                                 </button>
                                 {browseCategories.map((category) => {
                                     const Icon = curation?.enabled ? curationIcon(curation.roots?.find((root) => root.id === category.value)?.iconKey) : categoryIconOf(category.value);
                                     const active = scope === "public" && (curation?.enabled ? platformCategory === `root:${category.value}` : tag === category.value);
                                     return (
-                                        <button key={category.value} type="button" className={`skills-library-category-item${active ? " is-active" : ""}`} aria-pressed={active} onClick={() => { if (curation?.enabled) { setPlatformCategory(`root:${category.value}`); selectMarketplaceCategory("all"); } else selectMarketplaceCategory(category.value); }}>
-                                            <span><Icon className="size-4" aria-hidden="true" />{category.label}</span>
-                                            <span>{category.count ?? "—"}</span>
+                                        <button key={category.value} type="button" className={`skills-rail-item${active ? " is-active" : ""}`} aria-pressed={active} onClick={() => { if (curation?.enabled) { setPlatformCategory(`root:${category.value}`); selectMarketplaceCategory("all"); } else selectMarketplaceCategory(category.value); }}>
+                                            <Icon className="size-4" aria-hidden="true" /><span className="skills-rail-item-label">{category.label}</span>
+                                            <span className="skills-rail-count">{category.count ?? "—"}</span>
                                         </button>
                                     );
                                 })}
                             </nav>
                         </section>
 
-                        <section className="skills-category-section">
-                            <div className="skills-library-sidebar-heading">
-                                <div>
+                        <section className="skills-rail-section">
+                            <div className="skills-rail-heading">
+                                <div className="skills-rail-heading-copy">
                                     <strong>我的技能分类</strong>
                                 </div>
                                 <Button size="small" icon={<FolderPlus className="size-3.5" />} onClick={(event) => { categoryTriggerRef.current = event.currentTarget; event.currentTarget.focus({ preventScroll: true }); setCategoryName(""); setCategoryScope("personal"); setCategoryEditorOpen(true); }}>新建</Button>
                             </div>
-                            {libraryCategoryError ? <div className="skills-library-category-error" role="alert">{libraryCategoryError}<Button type="link" size="small" onClick={reload}>重试</Button></div> : null}
-                            <nav className="skills-library-category-list" aria-label="我的技能分类">
-                                <button type="button" className={`skills-library-category-item${isLibraryScope && libraryCategoryId === "all" ? " is-active" : ""}`} aria-pressed={isLibraryScope && libraryCategoryId === "all"} onClick={() => selectLibraryCategory("all")}>
-                                    <span><Library className="size-4" aria-hidden="true" />全部技能</span>
-                                    <span>{libraryCategoryList?.totalCount ?? "—"}</span>
+                            {libraryCategoryError ? <div className="skills-rail-error" role="alert">{libraryCategoryError}<Button type="link" size="small" onClick={reload}>重试</Button></div> : null}
+                            <nav className="skills-rail-group" aria-label="我的技能分类">
+                                <button type="button" className={`skills-rail-item${isLibraryScope && libraryCategoryId === "all" ? " is-active" : ""}`} aria-pressed={isLibraryScope && libraryCategoryId === "all"} onClick={() => selectLibraryCategory("all")}>
+                                    <Library className="size-4" aria-hidden="true" /><span className="skills-rail-item-label">全部技能</span>
+                                    <span className="skills-rail-count">{libraryCategoryList?.totalCount ?? "—"}</span>
                                 </button>
-                                <button type="button" className={`skills-library-category-item${isLibraryScope && libraryCategoryId === "__uncategorized__" ? " is-active" : ""}`} aria-pressed={isLibraryScope && libraryCategoryId === "__uncategorized__"} onClick={() => selectLibraryCategory("__uncategorized__")}>
-                                    <span><FolderInput className="size-4" aria-hidden="true" />未分类</span>
-                                    <span>{libraryCategoryList?.uncategorizedCount ?? "—"}</span>
+                                <button type="button" className={`skills-rail-item${isLibraryScope && libraryCategoryId === "__uncategorized__" ? " is-active" : ""}`} aria-pressed={isLibraryScope && libraryCategoryId === "__uncategorized__"} onClick={() => selectLibraryCategory("__uncategorized__")}>
+                                    <FolderInput className="size-4" aria-hidden="true" /><span className="skills-rail-item-label">未分类</span>
+                                    <span className="skills-rail-count">{libraryCategoryList?.uncategorizedCount ?? "—"}</span>
                                 </button>
                                 {libraryCategories.map((category) => (
-                                    <div key={category.id} className={`skills-library-category-row${isLibraryScope && libraryCategoryId === category.id ? " is-active" : ""}`}>
-                                        <button type="button" className={`skills-library-category-item${isLibraryScope && libraryCategoryId === category.id ? " is-active" : ""}`} aria-pressed={isLibraryScope && libraryCategoryId === category.id} onClick={() => selectLibraryCategory(category.id)}>
-                                            <span><FolderInput className="size-4" aria-hidden="true" />{category.name}</span>
-                                            <span>{category.count}</span>
+                                    <div key={category.id} className={`skills-rail-row${isLibraryScope && libraryCategoryId === category.id ? " is-active" : ""}`}>
+                                        <button type="button" className={`skills-rail-item${isLibraryScope && libraryCategoryId === category.id ? " is-active" : ""}`} aria-pressed={isLibraryScope && libraryCategoryId === category.id} onClick={() => selectLibraryCategory(category.id)}>
+                                            <FolderInput className="size-4" aria-hidden="true" /><span className="skills-rail-item-label">{category.name}</span>
+                                            <span className="skills-rail-count">{category.count}</span>
                                         </button>
                                         {category.scope === "personal" || isAdmin ? (
-                                            <button type="button" className="skills-library-category-delete" aria-label={`删除分类${category.name}`} title="删除分类" onClick={() => confirmDeleteLibraryCategory(category)}>
+                                            <button type="button" className="product-icon-button skills-rail-delete" aria-label={`删除分类${category.name}`} title="删除分类" onClick={() => confirmDeleteLibraryCategory(category)}>
                                                 <Trash2 className="size-3.5" aria-hidden="true" />
                                             </button>
                                         ) : null}
@@ -477,7 +477,7 @@ export default function SkillsPage() {
                             </nav>
                         </section>
                     </aside>
-                    <div id="skills-results" role="tabpanel" aria-labelledby={`skills-tab-${scope}`} aria-busy={loading} className="skills-library-results">
+                    <div id="skills-results" role="tabpanel" aria-labelledby={`skills-tab-${scope}`} aria-busy={loading} className="skills-results">
                         <span className="sr-only" role="status">{loading ? "正在加载技能" : loadError ? "技能加载失败" : `找到 ${total} 个技能`}</span>
                         {skillContent}
                     </div>

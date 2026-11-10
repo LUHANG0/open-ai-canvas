@@ -576,3 +576,27 @@ html:not(.dark) .app-product-overlays .creation-control-popover-surface {
 .creation-home .creation-chat-mention-container {
     min-height: 0 !important;
 }
+
+/* Keep conversation actions on their own row when the account controls fill the header. */
+@media (max-width: 900px) {
+    .app-user-workspace .app-workspace-topbar:has(.creation-thread-toolbar) {
+        height: auto !important;
+        flex-wrap: wrap;
+        row-gap: 4px;
+        padding-block: 8px;
+    }
+    .app-user-workspace .app-workspace-topbar:has(.creation-thread-toolbar) .app-workspace-topbar-breadcrumb {
+        flex: 1 1 0;
+    }
+    .app-user-workspace .app-workspace-topbar:has(.creation-thread-toolbar) .app-workspace-topbar-extension {
+        order: 1;
+        flex: 0 0 100%;
+    }
+    .app-user-workspace .app-workspace-topbar-extension .creation-toolbar-shots,
+    .app-user-workspace .app-workspace-topbar-extension .creation-toolbar-actions {
+        flex-shrink: 0;
+    }
+    .app-user-workspace .app-workspace-topbar-extension .creation-rail-trigger {
+        white-space: nowrap;
+    }
+}

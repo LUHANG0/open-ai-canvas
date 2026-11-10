@@ -228,7 +228,7 @@ function TaskSession({ scope, userId }: { scope: string; userId?: string }) {
         />
     );
 
-    const renderTaskGridCard = (task: GenerationTask) => <TaskGridCard key={task.id} task={task} actingId={actingId} onOpen={() => void openTaskDetail(task)} onRetry={() => void runAction(task.id)} />;
+    const renderTaskGridCard = (task: GenerationTask) => <TaskGridCard key={task.id} task={task} effectiveConfig={effectiveConfig} actingId={actingId} onOpen={() => void openTaskDetail(task)} onRetry={() => void runAction(task.id)} />;
 
     useEffect(() => {
         if (!shortDramaEnabled) {
@@ -473,92 +473,144 @@ function TaskSession({ scope, userId }: { scope: string; userId?: string }) {
 
     return (
         <>
-            <WorkspacePage grid className="library-page task-library-page collection-workspace">
+            <WorkspacePage grid className="library-page task-center-page collection-workspace">
                 <div className="studio-band">
                     <PageHeader
                         title="任务记录"
                         description="查看文本、图片和视频生成任务，跟踪进度并处理失败任务。"
-                        meta={<span className="app-projects-header-meta">{taskStats.total} 个任务</span>}
+                        meta={
+                            <span className="app-projects-header-meta">
+                                {t("library.tasks.page.taskCount", { count: taskStats.total })} · {t("library.tasks.filter.today")} {taskStats.today}
+                            </span>
+                        }
                         actions={
                             <Button type="primary" icon={<Plus className="size-3.5" />} onClick={(event) => { createTriggerRef.current = event.currentTarget; event.currentTarget.focus({ preventScroll: true }); setCreateOpen(true); }}>
-                                新建任务
+                                {t("library.tasks.page.newTask")}
                             </Button>
                         }
                     />
-                    <CollectionToolbar
-                        active={Boolean(keyword || projectFilter !== "all" || kindFilter !== "all" || modelFilter !== "all" || statusFilter !== "all")}
-                        onReset={() => { setKeyword(""); setProjectFilter("all"); setKindFilter("all"); setModelFilter("all"); setStatusFilter("all"); setPage(1); }}
-                        trailing={(
-                            <div className="flex flex-wrap items-center gap-2.5">
-                                {viewMode === "list" ? (
-                                    <label className="inline-flex cursor-pointer items-center gap-2 text-xs text-foreground/55">
-                                        <Switch aria-label="按画布分组" size="sm" checked={groupEnabled} onChange={changeGroupEnabled} />
-                                        <span>按画布分组</span>
-                                    </label>
-                                ) : null}
-                                <div className="task-view-switch">
-                                    <SegmentedControl<TaskViewMode>
-                                        indicator="static"
-                                        ariaLabel="任务视图"
-                                        size="sm"
-                                        value={viewMode}
-                                        options={[
-                                            { value: "list", icon: <List className="size-3.5" />, title: "列表视图" },
-                                            { value: "grid", icon: <LayoutGrid className="size-3.5" />, title: "网格视图" },
-                                        ]}
-                                        onChange={changeViewMode}
-                                    />
-                                </div>
-                            </div>
-                        )}
-                    >
-                        <TaskStatusFilterBar stats={taskStats} value={statusFilter} onChange={(value) => { setStatusFilter(value); setPage(1); }} />
-                        <Input id="task-search" name="taskSearch" aria-label="搜索任务" allowClear className="app-list-search" prefix={<Search aria-hidden="true" className="size-4 text-foreground/40" />} value={keyword} placeholder="搜索任务、模型或画布" onChange={(event) => { setKeyword(event.target.value); setPage(1); }} />
-                        <Select ariaLabel="按画布筛选任务" className="w-full sm:w-48" value={projectFilter} onChange={(value) => { setProjectFilter(value); setPage(1); }} options={[{ label: "全部画布", value: "all" }, ...projectOptions]} />
-                        <Select ariaLabel="按类型筛选任务" className="w-full sm:w-32" value={kindFilter} onChange={(value) => { setKindFilter(value as TaskKindFilter); setPage(1); }} options={[{ label: "全部类型", value: "all" }, { label: "文本", value: "text" }, { label: "图片", value: "image" }, { label: "视频", value: "video" }]} />
-                        <Select ariaLabel="按模型筛选任务" className="w-full sm:w-44" value={modelFilter} onChange={(value) => { setModelFilter(value); setPage(1); }} options={[{ label: "全部模型", value: "all" }, ...modelOptions.map((model) => ({ label: model, value: model }))]} />
+                    {/* 第一行：状态切换和视图；第二行：搜索与筛选。分两行排，窄屏不会把控件挤成一团。 */}
+                    <div className="task-center-statusbar">
+                        <TaskStatusFilterBar
+                            stats={taskStats}
+                            value={statusFilter}
+                            onChange={(value) => {
+                                setStatusFilter(value);
+                                setPage(1);
+                            }}
+                        />
+                        <div className="task-center-view-controls">
+                            {viewMode === "list" ? (
+                                <label className="task-center-group-toggle">
+                                    <Switch aria-label="按画布分组" size="sm" checked={groupEnabled} onChange={changeGroupEnabled} />
+                                    <span>{t("library.tasks.page.groupByCanvas")}</span>
+                                </label>
+                            ) : null}
+                            <SegmentedControl<TaskViewMode>
+                                ariaLabel={t("library.tasks.page.viewMode")}
+                                size="sm"
+                                value={viewMode}
+                                options={[
+                                    { value: "list", icon: <List className="size-3.5" />, title: t("library.tasks.page.listView") },
+                                    { value: "grid", icon: <LayoutGrid className="size-3.5" />, title: t("library.tasks.page.gridView") },
+                                ]}
+                                onChange={changeViewMode}
+                            />
+                        </div>
+                    </div>
+                    <CollectionToolbar active={filtersActive} onReset={resetFilters}>
+                        <Input
+                            id="task-search"
+                            name="taskSearch"
+                            aria-label="搜索任务"
+                            allowClear
+                            className="app-list-search task-center-search"
+                            prefix={<Search className="size-4 text-foreground/40" />}
+                            value={keyword}
+                            placeholder={t("library.tasks.page.searchPlaceholder")}
+                            onChange={(event) => {
+                                setKeyword(event.target.value);
+                                setPage(1);
+                            }}
+                        />
+                        <Select
+                            ariaLabel="按画布筛选任务"
+                            className="task-center-filter is-wide"
+                            value={projectFilter}
+                            onChange={(value) => {
+                                setProjectFilter(value);
+                                setPage(1);
+                            }}
+                            options={[{ label: t("library.tasks.page.allCanvases"), value: "all" }, ...projectOptions]}
+                        />
+                        <Select
+                            ariaLabel="按类型筛选任务"
+                            className="task-center-filter"
+                            value={kindFilter}
+                            onChange={(value) => {
+                                setKindFilter(value as TaskKindFilter);
+                                setPage(1);
+                            }}
+                            options={[
+                                { label: t("library.tasks.page.allKinds"), value: "all" },
+                                { label: t("library.tasks.page.kindText"), value: "text" },
+                                { label: t("library.tasks.page.kindImage"), value: "image" },
+                                { label: t("library.tasks.page.kindVideo"), value: "video" },
+                            ]}
+                        />
+                        <Select
+                            ariaLabel="按模型筛选任务"
+                            className="task-center-filter is-wide"
+                            value={modelFilter}
+                            onChange={(value) => {
+                                setModelFilter(value);
+                                setPage(1);
+                            }}
+                            options={[{ label: t("library.tasks.page.allModels"), value: "all" }, ...modelOptions.map((model) => ({ label: model, value: model }))]}
+                        />
                     </CollectionToolbar>
                 </div>
 
-                <div className="collection-content task-collection-content" aria-busy={loading}>
-                    {loading && !tasks.length ? <div className="library-loading-grid" role="status" aria-label="正在加载任务">{Array.from({ length: 8 }, (_, index) => <div key={index} className="library-skeleton" aria-hidden="true" />)}</div> : null}
+                <div className="collection-content task-center-content" aria-busy={loading}>
                     {loadError && tasks.length > 0 ? (
                         <div className="collection-feedback is-error" role="status">
                             <span>任务列表更新失败，当前显示上次加载的记录。</span>
                             <Button size="small" loading={loading} onClick={() => void loadTasks(true)}>重新加载</Button>
                         </div>
                     ) : null}
-                    {!loading || tasks.length ? (
-                        visibleTasks.length ? (
-                            viewMode === "grid" ? (
-                                <div className="task-grid-view">
-                                    {visibleTasks.map(renderTaskGridCard)}
-                                </div>
-                            ) : groupingActive ? (
-                                <div className="task-group-list">
-                                    {visibleTaskGroups.map((group) => (
-                                        <section key={group.key} className="task-group">
-                                            <TaskGroupHeader group={group} retrying={retryingGroup === group.key} onRetryFailed={() => void retryGroupTasks(group.key, group.tasks)} />
-                                            <div className="task-record-list">
-                                                {group.tasks.map(renderTaskRow)}
-                                            </div>
-                                        </section>
-                                    ))}
-                                </div>
-                            ) : (
-                                <div className="task-record-list">{visibleTasks.map(renderTaskRow)}</div>
-                            )
-                        ) : loadError && !tasks.length ? (
-                            <div role="status"><WorkspaceErrorState compact title="任务暂时无法加载" description={loadError} onRetry={() => void loadTasks(true)} /></div>
+                    {loading && !tasks.length ? (
+                        <TaskCenterSkeleton viewMode={viewMode} label={t("library.tasks.page.loading")} />
+                    ) : visibleTasks.length ? (
+                        viewMode === "grid" ? (
+                            <div className="task-center-grid">{visibleTasks.map(renderTaskGridCard)}</div>
+                        ) : groupingActive ? (
+                            <div className="task-center-groups">
+                                {visibleTaskGroups.map((group) => (
+                                    <section key={group.key} className="task-center-group">
+                                        <TaskGroupHeader group={group} retrying={retryingGroup === group.key} onRetryFailed={() => void retryGroupTasks(group.key, group.tasks)} />
+                                        {renderTaskList(group.tasks)}
+                                    </section>
+                                ))}
+                            </div>
                         ) : (
-                            <WorkspaceState
-                                compact
-                                title={taskEmptyState(statusFilter).title}
-                                description={taskEmptyState(statusFilter).description}
-                                action={<Button className="library-primary-action" type="primary" icon={<Plus className="size-3.5" />} onClick={(event) => { createTriggerRef.current = event.currentTarget; event.currentTarget.focus({ preventScroll: true }); setCreateOpen(true); }}>新建任务</Button>}
-                            />
+                            renderTaskList(visibleTasks)
                         )
-                    ) : null}
+                    ) : loadError && !tasks.length ? (
+                        <div role="status"><WorkspaceErrorState compact title="任务暂时无法加载" description={loadError} onRetry={() => void loadTasks(true)} /></div>
+                    ) : tasks.length && filtersActive ? (
+                        <WorkspaceNoResultsState compact query={keyword} onClear={resetFilters} />
+                    ) : (
+                        <WorkspaceState
+                            compact
+                            title={taskEmptyState(statusFilter).title}
+                            description={taskEmptyState(statusFilter).description}
+                            action={
+                                <Button className="library-primary-action" type="primary" icon={<Plus className="size-3.5" />} onClick={(event) => { createTriggerRef.current = event.currentTarget; event.currentTarget.focus({ preventScroll: true }); setCreateOpen(true); }}>
+                                    {t("library.tasks.page.newTask")}
+                                </Button>
+                            }
+                        />
+                    )}
                     {!groupingActive ? (
                         <PaginationBar
                             current={page}

@@ -666,7 +666,6 @@ export default function AssetsPage({ inTrashDialog = false }: { inTrashDialog?: 
                         meta={<span className="app-projects-header-meta assets-header-meta">{totalAssets} 个素材</span>}
                         actions={
                             <div className="assets-header-actions">
-                                <AssetStorageUsage />
                                 {arkEnabled ? <Button icon={<ShieldCheck />} onClick={() => navigate("/settings?section=ark-assets")}>方舟素材认证</Button> : null}
                                 <div className="assets-header-action-buttons">
                                     {viewMode === "trash" ? (
