@@ -972,10 +972,8 @@ html:not(.dark) .creation-home .creation-chat-composer .creation-model-picker.ca
     .model-picker-availability-pill,
     .canvas-model-picker-description { transition: none !important; }
 }
-/* composer 里的模型选择与旁边的参数、参考内容是同一种 34px 浅底按钮（8px 圆角、无边、悬停不浮起）。 */
+/* 创作模型选择的表面状态；尺寸由 creation-product.css 与相邻控件统一。 */
 .app-user-workspace .creation-chat-composer .creation-model-picker.canvas-composer-model-picker {
-    min-height: 40px !important;
-    border-radius: 999px !important;
     background: var(--user-surface-muted) !important;
     color: var(--user-ink-muted) !important;
     transition: var(--control-state-transition) !important;
@@ -985,16 +983,6 @@ html:not(.dark) .creation-home .creation-chat-composer .creation-model-picker.ca
     background: var(--button-tonal-hover-bg) !important;
     color: var(--button-ghost-hover-fg) !important;
     box-shadow: none;
-}
-.app-user-workspace .creation-launchpad .creation-model-picker.canvas-composer-model-picker {
-    min-height: var(--button-height) !important;
-    height: var(--button-height) !important;
-    padding-inline: 10px 12px;
-    font-size: var(--button-font-size-sm);
-    border: 0 !important;
-}
-.app-user-workspace .creation-launchpad .creation-model-picker.canvas-composer-model-picker {
-    width: min(232px, 60cqw) !important;
 }
 /* 模型与渠道共用菜单高度约束，长列表在各自区域滚动。 */
 .app-user-workspace .creation-model-picker-menu.is-brand-list {

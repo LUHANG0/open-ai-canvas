@@ -1,7 +1,6 @@
 import { type ThinkingLevel, type ThinkingRequest } from "@/lib/text-thinking";
 import { ThinkingLevelSlider } from "@/components/thinking-level-slider";
 import { HoverBorderGradient } from "@/components/ui/aceternity/hover-border-gradient";
-import { aceternityMotion } from "@/lib/aceternity-motion";
 import { ImageSizePicker } from "@/components/image-size-picker";
 import { ImageParameterFields } from "@/components/image-parameter-fields";
 import { imageResolutionUsesQuality, imageSizePresets } from "@/lib/image-size-presets";
@@ -10,7 +9,7 @@ import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type
 import { Button, Popover } from "antd";
 import { useWorkspaceTopBarMount } from "@/components/layout/workspace-top-bar-extension";
 import { Tooltip } from "@/components/ui/base/tooltip";
-import { Reorder, LayoutGroup, motion, useReducedMotion } from "motion/react";
+import { Reorder, motion, useReducedMotion } from "motion/react";
 import type { Transition } from "motion/react";
 import { ArrowUp, Brain, WandSparkles, ChevronDown, ChevronLeft, ChevronRight, Clapperboard, Clock3, Film, History, Image as ImageIcon, LoaderCircle, Maximize2, MessageSquareText, Minimize2, Plus, SlidersHorizontal, Trash2, Waves, X, Lightbulb, Orbit, PenLine } from "lucide-react";
 
@@ -397,7 +396,7 @@ export function CreationComposer(props: ComposerProps) {
                 <span className="creation-submit-action" aria-hidden>{showWorkingSpinner ? <LoaderCircle className="size-4 animate-spin" /> : <ArrowUp className="size-4" />}<span>{showWorkingSpinner ? "生成中" : "开始创作"}</span></span>
             </Button>
         </footer>
-        {authenticated ? <GenerationStatusNotice status={generationStatus} className="px-3 pb-2" /> : <div role="status" className="px-3 pb-2 text-[var(--fs-caption)] leading-relaxed">登录后选择模型并查看费用</div>}
+        {authenticated ? <GenerationStatusNotice status={generationStatus} feeShownInline={showCost} className="creation-composer-status" /> : <div role="status" className="creation-composer-status">登录后选择模型并查看费用</div>}
         <CreationMediaPreviewModal url={previewUrl} type={previewType} onClose={() => setPreviewUrl("")} />
     </>;
     const composer = (
@@ -474,26 +473,14 @@ function CreationModeFolderWing({ side }: { side: "start" | "end" }) {
 }
 
 function CreationModeTabs({ mode, onModeChange, orientation = "horizontal" }: { mode: CreationMode; onModeChange: (mode: CreationMode) => void; orientation?: "horizontal" | "vertical" }) {
-    const reducedMotion = useReducedMotion();
-    const indicator = (pressed: boolean) => pressed ? (
-        <motion.span
-            layoutId={`creation-mode-indicator-${orientation}`}
-            className="creation-mode-indicator"
-            aria-hidden
-            transition={reducedMotion ? { duration: 0 } : aceternityMotion.spring.dock}
-        />
-    ) : null;
-    return <LayoutGroup id={`creation-mode-tabs-${orientation}`}>
-        <div className="creation-mode-tabs" role="group" aria-label="创作模式" data-active-mode={mode} data-orientation={orientation} style={{ gridTemplateColumns: orientation === "vertical" ? "minmax(0, 1fr)" : "repeat(3, minmax(0, 1fr))" }}>
+    return <div className="creation-mode-tabs app-control-group" role="group" aria-label="创作模式" data-active-mode={mode} data-orientation={orientation} style={{ gridTemplateColumns: orientation === "vertical" ? "minmax(0, 1fr)" : "repeat(3, minmax(0, 1fr))" }}>
         {creationModeItems.map((item) => (
-            <button key={item.mode} type="button" className="creation-mode-button" data-mode={item.mode} aria-pressed={item.mode === mode} aria-label={`${item.label}生成`} onClick={() => onModeChange(item.mode)}>
-                {indicator(item.mode === mode)}
+            <button key={item.mode} type="button" className="creation-mode-button" data-slot="control-item" data-mode={item.mode} aria-pressed={item.mode === mode} aria-label={`${item.label}生成`} onClick={() => onModeChange(item.mode)}>
                 {item.icon}
                 <span data-slot="control-label">{item.label}</span>
             </button>
         ))}
-        </div>
-    </LayoutGroup>;
+    </div>;
 }
 
 function ModePicker({ mode, onModeChange }: { mode: CreationMode; onModeChange: (mode: CreationMode) => void }) {

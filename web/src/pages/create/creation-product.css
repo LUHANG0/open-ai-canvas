@@ -1,5 +1,6 @@
 /* Creation-specific geometry. Shared controls still use the workspace tokens. */
 .creation-home {
+    --creation-toolbar-height: var(--user-control-height);
     --creation-title-size: 28px;
     --creation-section-title-size: var(--typ-title-md);
     --creation-control-radius: var(--user-radius-control);
@@ -17,7 +18,8 @@
     outline: 2px solid var(--control-focus-ring);
     outline-offset: 2px;
 }
-.app-user-workspace .creation-home .creation-composer-shell:focus-within {
+.app-user-workspace .creation-home .creation-composer-shell:focus-within,
+.app-user-workspace .creation-home .creation-mode-card:focus-within {
     box-shadow: 0 0 0 2px var(--control-focus-ring);
 }
 .creation-home .creation-chat-control:disabled { cursor: not-allowed; opacity: .5; }
@@ -67,15 +69,16 @@
 .creation-history-sync { display: flex; justify-content: flex-end; align-items: center; gap: var(--space-2); padding: var(--space-1) var(--space-4); color: var(--user-ink-muted); font-size: var(--typ-caption); }
 .creation-history-sync button { border: 0; border-radius: var(--user-radius-control); padding: var(--space-1) var(--space-2); background: var(--user-surface-muted); color: var(--user-ink); cursor: pointer; }
 .creation-history-sync button:focus-visible { outline: 2px solid var(--control-focus-ring); outline-offset: 2px; }
-.creation-recent-canvases { margin-top: var(--space-6); }
+.creation-recent-canvases { margin-top: var(--space-8); }
 .creation-section-heading { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); margin-bottom: var(--space-3); }
 .creation-section-heading h2 { display: inline-flex; align-items: center; gap: var(--space-2); margin: 0; color: var(--user-ink); font-size: var(--creation-section-title-size); font-weight: 600; line-height: 1.4; }
 .creation-section-heading h2 svg { width: var(--user-icon-size); height: var(--user-icon-size); color: var(--user-ink-muted); }
-.creation-section-link { display: inline-flex; height: var(--user-control-height-sm); align-items: center; gap: var(--space-1); border-radius: var(--user-radius-button-sm); padding: 0 var(--space-2); color: var(--user-ink-muted); font-size: var(--fs-caption); font-weight: var(--user-button-font-weight); transition: background var(--user-motion), color var(--user-motion); }
+.creation-section-link { display: inline-flex; height: var(--control-item-height); align-items: center; gap: var(--space-1); border-radius: var(--user-radius-control); padding: 0 var(--space-2); color: var(--user-ink-muted); font-size: var(--fs-caption); font-weight: var(--user-button-font-weight); transition: background var(--user-motion), color var(--user-motion); }
 .creation-section-link:hover { background: var(--user-surface-muted); color: var(--user-ink); }
 .creation-section-link svg { width: 14px; height: 14px; }
 .creation-canvas-strip { display: flex; gap: var(--space-3); overflow-x: auto; padding: var(--space-1) var(--space-1) var(--space-2); margin-inline: calc(-1 * var(--space-1)); scroll-snap-type: x proximity; }
 .creation-canvas-strip-item { min-width: 200px; flex: 1 0 200px; scroll-snap-align: start; }
+.creation-canvas-strip:has(.creation-canvas-strip-state) > .creation-canvas-strip-item { flex: 0 0 240px; }
 .creation-canvas-tile { display: flex; align-items: center; gap: var(--space-3); width: 100%; min-width: 0; height: 88px; border: 0; border-radius: var(--user-radius-card); padding: var(--space-3); background: var(--library-surface); color: var(--user-ink); text-align: left; cursor: pointer; transition: background var(--user-motion), transform var(--user-motion); }
 .creation-canvas-tile:hover { background: var(--library-surface-hover); }
 .creation-canvas-tile:disabled { cursor: wait; opacity: .5; transform: none; }
@@ -88,9 +91,9 @@
 .creation-canvas-copy { display: flex; min-width: 0; flex-direction: column; gap: var(--space-1-half); }
 .creation-canvas-copy strong { overflow: hidden; font-size: var(--fs-body); font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
 .creation-canvas-copy small { overflow: hidden; color: var(--user-ink-muted); font-size: var(--fs-caption); text-overflow: ellipsis; white-space: nowrap; font-variant-numeric: tabular-nums; }
-.creation-canvas-strip-state { display: flex; min-width: 0; flex: 4 0 240px; align-items: center; gap: var(--space-3); border-radius: var(--user-radius-card); padding: var(--space-4); color: var(--user-ink-muted); background: var(--library-surface); font-size: var(--fs-caption); }
+.creation-canvas-strip-state { display: flex; min-width: 0; flex: 1 0 260px; max-width: 560px; align-items: center; gap: var(--space-3); border-radius: var(--user-radius-card); padding: var(--space-4); color: var(--user-ink-muted); background: var(--library-surface); font-size: var(--fs-caption); }
 .creation-canvas-strip-state > svg { width: var(--space-5); height: var(--space-5); flex-shrink: 0; }
-.creation-canvas-strip-state button { flex: 0 0 auto; height: var(--user-control-height-sm); margin-left: auto; border: 1px solid var(--user-border); border-radius: var(--user-radius-button-sm); padding: 0 var(--space-2); background: transparent; color: var(--user-ink); font-size: var(--fs-caption); font-weight: var(--user-button-font-weight); cursor: pointer; transition: background var(--user-motion), border-color var(--user-motion); }
+.creation-canvas-strip-state button { flex: 0 0 auto; height: var(--control-item-height); margin-left: auto; border: 1px solid var(--user-border); border-radius: var(--user-radius-control); padding: 0 var(--space-2); background: transparent; color: var(--user-ink); font-size: var(--fs-caption); font-weight: var(--user-button-font-weight); cursor: pointer; transition: background var(--user-motion), border-color var(--user-motion); }
 .creation-canvas-strip-state button:hover:not(:disabled) { border-color: var(--user-border-strong); background: var(--user-surface-muted); }
 .creation-canvas-skeleton { display: flex; height: 72px; align-items: center; gap: var(--space-3); border-radius: var(--user-radius-card); padding: var(--space-2); background: var(--library-surface); }
 .creation-canvas-skeleton > span { width: 56px; height: 56px; flex: 0 0 56px; border-radius: var(--user-radius-media); background: var(--library-cover-surface); }
@@ -113,7 +116,7 @@
     .creation-canvas-tile { transition: none; }
 }
 .creation-mode-tabs { position: relative; isolation: isolate; display: grid; width: min(456px, 100%); margin: 0 auto 20px; padding: 4px; border-radius: 18px; background: var(--user-surface-muted); }
-.creation-mode-button { position: relative; min-width: 0; }
+.creation-mode-button { position: relative; display: inline-flex; align-items: center; justify-content: center; min-width: 0; }
 .creation-mode-button svg { stroke-width: 1.8; }
 .creation-mode-spark {
     width: 5px;
@@ -130,6 +133,13 @@
     border-radius: var(--creation-mode-card-radius);
     background: transparent;
     box-shadow: var(--creation-composer-shadow);
+}
+/* The folder card owns the home frame and focus ring; its body has no second skin. */
+.app-user-workspace .creation-home .creation-mode-panel .creation-composer-shell,
+.app-user-workspace .creation-home .creation-mode-panel .creation-composer-shell:focus-within {
+    padding: 0;
+    border-radius: 0;
+    box-shadow: none;
 }
 .creation-mode-card-inner { display: flex; flex-direction: column; min-width: 0; }
 .creation-mode-folder { position: relative; isolation: isolate; display: grid; grid-template-columns: repeat(var(--creation-mode-count), minmax(0, 1fr)); height: var(--creation-mode-rail-height); overflow: hidden; border-radius: var(--creation-mode-inner-radius) var(--creation-mode-inner-radius) 0 0; background: var(--user-surface-muted); }
@@ -154,18 +164,93 @@
 .creation-submit { margin-left: auto; flex: 0 0 auto; display: inline-flex; gap: 8px; }
 .creation-submit-cost { display: inline-flex; align-items: center; gap: 4px; color: var(--user-ink-muted); font-size: 12px; padding-inline: 8px; }
 .creation-submit-cost svg { width: 14px; height: 14px; }
-/* 开始创作：与 composer 里其他控件同高（34px）的统一主按钮，墨色实底 + 内高光，不做胶囊、扫光或加粗。
-   外层 antd 文字按钮只负责点击与禁用语义，视觉全部画在 .creation-submit-action 上。 */
-@layer utilities {
-    .app-product-workspace .creation-home .creation-submit.ant-btn { height: auto; min-height: 40px; padding: 0; border: 0; background: transparent !important; box-shadow: none; border-radius: var(--user-radius-control); opacity: 1; transform: none; }
-    .app-product-workspace .creation-home .creation-submit.ant-btn .creation-submit-action { position: relative; overflow: hidden; display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; gap: 8px; width: auto; height: 40px; padding: 0 18px; border-radius: var(--user-radius-control); background: var(--creation-command-bg); color: var(--creation-command-fg); transition: background-color var(--user-motion), color var(--user-motion); }
-    .app-product-workspace .creation-home .creation-submit.ant-btn .creation-submit-action span { font-size: var(--typ-caption); font-weight: 600; }
-    .app-product-workspace .creation-home .creation-submit.ant-btn .creation-submit-action svg { width: 17px; height: 17px; color: currentColor; }
-    .app-product-workspace .creation-home .creation-submit.ant-btn:disabled .creation-submit-action { background: var(--user-surface-hover); color: var(--user-ink-muted); }
-    .app-product-workspace .creation-home .creation-submit.ant-btn:not(:disabled):hover .creation-submit-action { background: var(--creation-command-hover-bg); }
-    .app-product-workspace .creation-home .creation-submit.ant-btn:not(:disabled):active .creation-submit-action { background: var(--creation-command-active-bg); }
-    .app-product-workspace .creation-home .creation-chat-composer.is-thread .creation-submit.ant-btn .creation-submit-action { height: 34px; padding: 0 14px; }
+/* One geometry contract for the home and thread toolbars. */
+.app-user-workspace .creation-home .creation-chat-dock {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: var(--space-3);
+    min-height: 0;
+    padding: var(--space-3) var(--space-4);
+    border-top: 0;
+    background: transparent;
 }
+.app-user-workspace .creation-home .creation-chat-controls {
+    display: flex;
+    flex: 1 1 540px;
+    min-width: 0;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2);
+}
+.app-user-workspace .creation-home .creation-chat-controls > * { flex-shrink: 0; max-width: 100%; }
+.app-user-workspace .creation-home .creation-chat-controls > :has(> .creation-model-picker) { width: 232px; min-width: 0; }
+.app-user-workspace .creation-home .creation-chat-composer .creation-chat-control,
+.app-user-workspace .creation-home .creation-chat-composer .creation-model-picker.canvas-composer-model-picker,
+.app-user-workspace .creation-home .creation-voice-trigger.ant-btn {
+    height: var(--creation-toolbar-height) !important;
+    min-height: var(--creation-toolbar-height) !important;
+    border-radius: var(--creation-control-radius) !important;
+    font-size: var(--typ-caption);
+}
+.app-user-workspace .creation-home .creation-chat-composer .creation-chat-control {
+    padding-inline: var(--space-3);
+    white-space: nowrap;
+}
+.app-user-workspace .creation-home .creation-chat-composer .creation-model-picker.canvas-composer-model-picker {
+    width: 100%;
+    padding-inline: var(--space-3);
+    border: 0 !important;
+}
+.app-user-workspace .creation-home .creation-voice-trigger.ant-btn {
+    width: var(--creation-toolbar-height) !important;
+    min-width: var(--creation-toolbar-height) !important;
+}
+.app-user-workspace .creation-home .creation-chat-dock .creation-mode-tabs {
+    display: grid;
+    width: max-content;
+    height: var(--creation-toolbar-height);
+    flex: 0 0 auto;
+    gap: var(--space-half);
+    margin: 0;
+    padding: var(--space-half);
+    border: 0;
+    border-radius: var(--user-radius-control);
+    background: var(--user-surface-muted);
+    transform: none;
+    overflow: visible;
+}
+.app-user-workspace .creation-home .creation-chat-dock .creation-mode-button {
+    height: calc(var(--creation-toolbar-height) - 2 * var(--space-half));
+    min-height: 0;
+    flex-direction: row;
+    gap: var(--space-1);
+    padding: 0 var(--space-2);
+    font-size: var(--typ-caption);
+    border-radius: var(--user-radius-control);
+    white-space: nowrap;
+}
+.app-user-workspace .creation-home .creation-chat-dock .creation-mode-button svg {
+    width: var(--user-icon-size);
+    height: var(--user-icon-size);
+    flex: 0 0 auto;
+}
+.creation-home .creation-thinking-inline { height: var(--creation-toolbar-height); }
+.creation-home .creation-thinking-inline .thinking-level-slider { height: 100%; }
+.creation-composer-status {
+    padding: 0 var(--space-4) var(--space-3);
+    color: var(--user-ink-muted);
+    font-size: var(--fs-caption);
+    line-height: 1.6;
+}
+/* The outer Button keeps click/disabled semantics; only its action paints the primary surface. */
+.app-product-workspace .creation-home .creation-submit.ant-btn { height: var(--creation-toolbar-height); min-height: var(--creation-toolbar-height); padding: 0; border: 0; background: transparent !important; box-shadow: none; border-radius: var(--user-radius-control); opacity: 1; transform: none; }
+.app-product-workspace .creation-home .creation-submit.ant-btn .creation-submit-action { position: relative; overflow: hidden; display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; gap: var(--space-2); width: auto; height: var(--creation-toolbar-height); padding: 0 var(--space-4); border-radius: var(--user-radius-control); background: var(--creation-command-bg); color: var(--creation-command-fg); transition: background-color var(--user-motion), color var(--user-motion); }
+.app-product-workspace .creation-home .creation-submit.ant-btn .creation-submit-action span { font-size: var(--typ-caption); font-weight: 600; }
+.app-product-workspace .creation-home .creation-submit.ant-btn .creation-submit-action svg { width: var(--user-icon-size); height: var(--user-icon-size); color: currentColor; }
+.app-product-workspace .creation-home .creation-submit.ant-btn:disabled .creation-submit-action { background: var(--user-surface-hover); color: var(--user-ink-muted); }
+.app-product-workspace .creation-home .creation-submit.ant-btn:not(:disabled):hover .creation-submit-action { background: var(--creation-command-hover-bg); }
+.app-product-workspace .creation-home .creation-submit.ant-btn:not(:disabled):active .creation-submit-action { background: var(--creation-command-active-bg); }
 .creation-inspiration-filters { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
 .creation-inspiration-filters button { display: inline-flex; align-items: center; gap: 8px; padding: 8px 16px; min-height: 36px; border: 0; border-radius: 999px; color: var(--user-ink-muted); background: transparent; font-size: 13px; transition: background var(--user-motion), color var(--user-motion); }
 .creation-inspiration-filters button span { font-size: 11px; opacity: .65; font-variant-numeric: tabular-nums; }
@@ -193,11 +278,8 @@
     .creation-home .creation-chat-dock { flex-wrap: wrap; gap: 12px; }
     .creation-home .creation-chat-controls { flex: 1 1 100%; width: 100%; }
 }
-/* 语音输入与 composer 其他控件同为 34px 浅底按钮（同 8px 圆角），只在悬停时加深表面。 */
+/* 语音按钮沿用创作工具栏的表面状态。 */
 .app-user-workspace .creation-voice-trigger.ant-btn {
-    width: 36px !important;
-    min-width: 36px !important;
-    height: 36px !important;
     border-radius: var(--creation-control-radius, 999px) !important;
     background: var(--user-surface-muted) !important;
     color: var(--user-ink-muted) !important;

@@ -177,7 +177,7 @@ describe("creation thread chrome", () => {
     test("docks the conversation toolbar into the workspace top bar and keeps a compact thread composer", () => {
         const workspace = readCreateWorkspaceSource();
         const topBar = readFileSync(resolve(import.meta.dir, "../src/components/layout/workspace-top-bar.tsx"), "utf8");
-        const product = readFileSync(resolve(import.meta.dir, "../src/styles/workspace-product.css"), "utf8");
+        const product = readFileSync(resolve(import.meta.dir, "../src/pages/create/creation-product.css"), "utf8");
 
         expect(workspace).toContain("useWorkspaceTopBarMount");
         expect(workspace).toContain("createPortal(toolbar, mount)");

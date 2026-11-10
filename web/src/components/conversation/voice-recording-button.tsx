@@ -31,7 +31,7 @@ export function VoiceRecordingButton({ onTranscribed, disabled, className }: Voi
                 <Button
                     type="text"
                     shape="circle"
-                    className={cn("!h-8 !w-8 !min-w-8", className)}
+                    className={cn("h-8 w-8 min-w-8", className)}
                     disabled={disabled}
                     style={className ? undefined : { color: theme.node.muted }}
                     icon={<Mic className="size-4" />}
