@@ -50,7 +50,7 @@ export function CanvasZoomControls({ scale, onScaleChange, onFitContent, onAutoA
         const shell = root?.closest<HTMLElement>(".canvas-workspace-zoom-controls");
         const main = root?.closest("main");
         const toolbar = main?.querySelector<HTMLElement>(".canvas-main-toolbar");
-        const dock = toolbar?.querySelector<HTMLElement>(":scope > .canvas-floating-dock");
+        const dock = toolbar?.querySelector<HTMLElement>(":scope > .canvas-desktop-toolbar");
         if (!root || !shell || !main || !toolbar || !dock) return;
         // 停靠的 Agent 会让工作区让出右侧宽度（user-layout 写 data-agent-docked）；收起或浮窗时 Agent 悬浮在画布上，不占宽度。
         const workspace = main.closest<HTMLElement>(".app-user-workspace");
@@ -59,8 +59,15 @@ export function CanvasZoomControls({ scale, onScaleChange, onFitContent, onAutoA
         // otherwise it is centered on the canvas like the top bar and only moves right to clear these controls.
         // On the same row this bar has no surface and is shorter than the main toolbar, so align it to the toolbar's middle line.
         const measure = () => {
+            // 手机端固定分两排，交还给响应式 CSS；避免残留桌面端的行内定位。
+            if (window.innerWidth <= 767) {
+                shell.style.removeProperty("bottom");
+                toolbar.style.removeProperty(MAIN_TOOLBAR_SHIFT);
+                return;
+            }
             const container = shell.offsetParent?.getBoundingClientRect();
-            const controls = root.getBoundingClientRect();
+            // HUD 是同组的兄弟元素，节点数量和跟随按钮也必须参与避让。
+            const controls = shell.getBoundingClientRect();
             const bar = dock.getBoundingClientRect();
             if (!container || !bar.width || !bar.height) return;
             // The gap to these controls equals the row's own inset, so both sides of the main toolbar get the same space.
@@ -73,7 +80,7 @@ export function CanvasZoomControls({ scale, onScaleChange, onFitContent, onAutoA
             else toolbar.style.removeProperty(MAIN_TOOLBAR_SHIFT);
         };
         const resize = new ResizeObserver(measure);
-        for (const element of [root, main, toolbar, dock, ...main.querySelectorAll(".canvas-workspace-shell,.canvas-project-sidebar")]) resize.observe(element);
+        for (const element of [shell, root, main, toolbar, dock, ...main.querySelectorAll(".canvas-workspace-shell,.canvas-project-sidebar")]) resize.observe(element);
         const state = new MutationObserver(measure);
         state.observe(main, { attributes: true, attributeFilter: ["class"] });
         if (workspace) state.observe(workspace, { attributes: true, attributeFilter: ["data-agent-docked"] });

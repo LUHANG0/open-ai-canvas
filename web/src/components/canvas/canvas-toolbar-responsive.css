@@ -3,6 +3,10 @@
     display: none;
 }
 
+.canvas-main-toolbar > .canvas-floating-dock {
+    translate: var(--canvas-main-toolbar-shift, 0px) 0;
+}
+
 @media (max-width: 767px) {
     /* Reserve the 64px workspace rail and a row above the 76px agent orb. */
     .canvas-main-toolbar,
@@ -18,6 +22,8 @@
     .canvas-main-with-workspace .canvas-workspace-zoom-controls,
     .canvas-workspace-zoom-controls {
         left: calc(var(--canvas-workspace-inset, 0px) + max(12px, env(safe-area-inset-left, 0px)));
+        /* 主工具条在触屏下高 66px，另留 14px 行间距。 */
+        bottom: calc(env(safe-area-inset-bottom, 0px) + 184px);
     }
     .canvas-main-toolbar .canvas-desktop-toolbar,
     .canvas-zoom-controls .canvas-desktop-toolbar {

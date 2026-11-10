@@ -104,13 +104,30 @@
     pointer-events: none;
 }
 
-/* 画布规模 HUD：缩放控件旁的节点/连线计数与镜头跟随开关。 */
+/* 规模信息归于左上角标题区域，底部仅保留镜头跟随操作。 */
+.canvas-topbar-stats {
+    position: absolute;
+    top: calc(100% + var(--space-2));
+    left: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    padding: var(--space-1) var(--space-3);
+    border: 1px solid;
+    border-radius: var(--r-full);
+    font-size: var(--fs-label, 12px);
+    line-height: 20px;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    backdrop-filter: blur(16px);
+}
+
 .canvas-agent-hud {
     display: inline-flex;
     align-items: center;
-    gap: var(--space-8, 8px);
-    height: 32px;
-    padding: 0 var(--space-8, 8px) 0 var(--space-12, 12px);
+    justify-content: center;
+    width: 44px;
+    height: 44px;
     border: 1px solid;
     border-radius: var(--dock-radius, 999px);
     font-size: var(--fs-label, 12px);
@@ -123,8 +140,8 @@
 .canvas-agent-hud-follow {
     display: inline-grid;
     place-items: center;
-    width: 24px;
-    height: 24px;
+    width: 100%;
+    height: 100%;
     border: 0;
     border-radius: var(--r-sm, 6px);
     background: transparent;

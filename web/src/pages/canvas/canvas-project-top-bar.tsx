@@ -21,6 +21,7 @@ type CanvasTopBarProps = {
     view: CanvasProjectView;
     onViewChange: (view: CanvasProjectView) => void;
     title: string;
+    canvasStats?: { nodeCount: number; connectionCount: number };
     titleDraft: string;
     isTitleEditing: boolean;
     onTitleDraftChange: (value: string) => void;
@@ -50,6 +51,7 @@ export function CanvasTopBar({
     view,
     onViewChange,
     title,
+    canvasStats,
     titleDraft,
     isTitleEditing,
     onTitleDraftChange,
@@ -104,7 +106,7 @@ export function CanvasTopBar({
     return (
         <>
             <div className="canvas-topbar pointer-events-none absolute inset-x-0 top-0 z-[var(--z-toolbar)] flex h-[var(--canvas-topbar-h)] items-center justify-between px-4 sm:px-5">
-                <div className="canvas-topbar-cluster canvas-topbar-project-cluster pointer-events-auto flex min-w-0 items-center gap-2" style={dockStyle}>
+                <div className="canvas-topbar-cluster canvas-topbar-project-cluster pointer-events-auto relative flex min-w-0 items-center gap-2" style={dockStyle}>
                     <CanvasTopBarTooltip label="打开画布菜单">
                         <Dropdown
                             trigger={["click"]}
@@ -183,6 +185,13 @@ export function CanvasTopBar({
                         ) : null}
                     </div>
                     {syncIcon}
+                    {canvasStats ? (
+                        <span className="canvas-topbar-stats" aria-label={`画布概况：${canvasStats.nodeCount} 个节点，${canvasStats.connectionCount} 条连线`} style={{ background: theme.toolbar.panel, borderColor: theme.toolbar.border, color: theme.node.muted }}>
+                            节点 <strong style={{ color: theme.node.text }}>{canvasStats.nodeCount}</strong>
+                            <span aria-hidden="true">·</span>
+                            连线 <strong style={{ color: theme.node.text }}>{canvasStats.connectionCount}</strong>
+                        </span>
+                    ) : null}
                 </div>
 
                 <div className="canvas-topbar-cluster canvas-topbar-tools-cluster pointer-events-auto flex items-center gap-1.5" style={dockStyle}>

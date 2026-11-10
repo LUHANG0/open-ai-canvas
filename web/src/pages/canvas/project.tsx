@@ -2917,6 +2917,7 @@ function CanvasViewportPage() {
                                     view={canvasView}
                                     onViewChange={changeCanvasView}
                                     title={currentProject?.title || "未命名画布"}
+                                    canvasStats={!dramaCanvas ? { nodeCount: nodes.length, connectionCount: connections.length } : undefined}
                                     titleDraft={titleDraft}
                                     isTitleEditing={titleEditing}
                                     onTitleDraftChange={setTitleDraft}
@@ -3363,7 +3364,7 @@ function CanvasViewportPage() {
                                 <CanvasOverlayLayerContainer
                                     overlayId="asset-tray"
                                     fallbackZIndex="var(--z-panel)"
-                                    className="canvas-workspace-zoom-controls absolute bottom-[calc(var(--canvas-inset-y)+var(--space-16))] left-[var(--canvas-inset-x)] flex items-end gap-2 lg:bottom-[var(--canvas-inset-y)]"
+                                    className="canvas-workspace-zoom-controls absolute bottom-[calc(var(--canvas-inset-y)+var(--space-16))] left-[var(--canvas-inset-x)] flex items-center gap-2 lg:bottom-[var(--canvas-inset-y)]"
                                     onMouseDown={(event) => event.stopPropagation()}
                                     onPointerDown={(event) => event.stopPropagation()}
                                     onWheel={(event) => event.stopPropagation()}
@@ -3380,7 +3381,7 @@ function CanvasViewportPage() {
                                         onToggleMiniMap={() => setIsMiniMapOpen((value) => !value)}
                                         onOpenShortcuts={() => setShortcutRequestNonce((value) => value + 1)}
                                     />
-                                    {!dramaCanvas ? <CanvasAgentHud nodeCount={nodes.length} connectionCount={connections.length} followAgent={agentFollowCamera} onFollowAgentChange={setAgentFollowCamera} /> : null}
+                                    {!dramaCanvas ? <CanvasAgentHud followAgent={agentFollowCamera} onFollowAgentChange={setAgentFollowCamera} /> : null}
                                 </CanvasOverlayLayerContainer>
                             ) : null}
 
