@@ -50,6 +50,7 @@ export function assetKindLabel(kind: AssetKind, category?: string) {
 }
 
 export function assetDownloadLabel(asset: LibraryAsset) {
+    if (asset.kind === "text") return "下载原文档";
     if (asset.kind === "video") return "下载视频";
     if (asset.kind === "audio") return "下载音频";
     if (asset.kind === "model") return "下载模型";

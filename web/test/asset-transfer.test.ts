@@ -5,6 +5,7 @@ import { createZip } from "@/lib/zip";
 import { setActiveUserScope } from "@/lib/user-scope";
 import { exportAssets, readAssetPackage } from "@/pages/assets/asset-transfer";
 import type { Asset } from "@/stores/use-asset-store";
+import { assetOriginalDocument } from "@/lib/asset-document";
 
 const image: Asset = {
     id: "source-image",
@@ -86,6 +87,24 @@ test.each(["video", "audio", "model"] as const)("import rebuilds %s bytes in tar
 test("missing source media rejects before any persistent write", async () => {
     const missing = { ...image, id: "missing", data: { ...image.data, storageKey: "resource:missing" } } as Asset;
     await expect(readAssetPackage(await zip([image, missing]))).rejects.toThrow("素材包缺少媒体");
+    expect(writes.size).toBe(0);
+});
+
+test("Word 素材包导入保留正文并将原件重新绑定到目标账号", async () => {
+    const asset: Asset = { ...image, kind: "text", coverUrl: "", data: { content: "第一章\n对白正文" }, metadata: { originalDocument: { storageKey: "resource:word", fileName: "剧本.docx", mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document", bytes: 3 } } };
+    const file = await zip([asset], [{ storageKey: "resource:word", path: "files/image", mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document", bytes: 3 }]);
+    const [imported] = await readAssetPackage(file);
+    const document = assetOriginalDocument(imported);
+    expect(imported.data).toEqual(asset.data);
+    expect(document?.storageKey).toStartWith("file:target-user:");
+    expect(document?.fileName).toBe("剧本.docx");
+    expect(writes.get(document!.storageKey)?.size).toBe(3);
+    expect(assetOriginalDocument(asset)?.storageKey).toBe("resource:word");
+});
+
+test("Word 素材包缺少原件时在任何写入前失败", async () => {
+    const asset: Asset = { ...image, kind: "text", data: { content: "正文" }, metadata: { originalDocument: { storageKey: "resource:word", fileName: "剧本.docx", mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document", bytes: 3 } } };
+    await expect(readAssetPackage(await zip([asset], []))).rejects.toThrow("素材包缺少原文档");
     expect(writes.size).toBe(0);
 });
 

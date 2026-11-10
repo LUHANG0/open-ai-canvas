@@ -13,7 +13,8 @@ function section(startMarker: string, endMarker: string) {
 
 test("批量上传把真实上传进度传给列表，进度条不挤掉文件名", () => {
     const upload = section("const uploadBatch = async", "const close = ");
-    expect(upload).toMatch(/uploadImage\(item\.file, \(loaded, total\) =>/);
+    expect(upload).toContain("uploadImage(item.file, onProgress, scope.options)");
+    expect(upload).toContain("uploadAssetDocument(item.file, { ...scope.options, idempotencyKey:");
     expect(upload).toContain("percent }");
     expect(source).not.toMatch(/<Progress[^>]*className="w-20"/);
     expect(source).toContain('<div className="w-20 shrink-0"><Progress');
@@ -26,7 +27,7 @@ test("上传成功后不再回读远端地址获取尺寸", () => {
 
 test("同步收尾抛错时仍释放上传状态", () => {
     const upload = section("const uploadBatch = async", "const close = ");
-    expect(upload).toMatch(/finally \{ setUploading\(false\); \}/);
+    expect(upload).toContain("if (isCurrent()) setUploading(false)");
     expect(upload).toContain("flushAssetStorePersistence().catch(");
     expect(upload).not.toMatch(/await flushAssetStorePersistence\(\);/);
 });

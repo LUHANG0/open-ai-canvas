@@ -6,6 +6,7 @@ import { FileImage, FileText, Film, Music2, UploadCloud, X } from "lucide-react"
 import { isAudioFile } from "@/lib/canvas/canvas-project-generation";
 
 import { CANVAS_UPLOAD_ACCEPT, isTextUploadFile, uploadNodeType } from "@/lib/canvas/canvas-file-upload";
+import { unsupportedDocumentUploadMessage } from "@/lib/document-upload";
 
 type CanvasUploadModalProps = {
     open: boolean;
@@ -70,7 +71,7 @@ export function CanvasUploadModal({ open, onClose, onUpload }: CanvasUploadModal
                         fileList={fileList}
                         beforeUpload={(file) => {
                             if (isCanvasUploadFile(file)) return false;
-                            message.warning(`“${file.name}”不是支持的图片、视频、音频或 TXT / Markdown 文件`);
+                            message.warning(unsupportedDocumentUploadMessage(file));
                             return Upload.LIST_IGNORE;
                         }}
                         onChange={({ fileList: nextFileList }) => setFileList(nextFileList)}
@@ -90,8 +91,9 @@ export function CanvasUploadModal({ open, onClose, onUpload }: CanvasUploadModal
                                 <span className="inline-flex items-center gap-1"><FileImage className="size-3.5" aria-hidden="true" />图片</span>
                                 <span className="inline-flex items-center gap-1"><Film className="size-3.5" aria-hidden="true" />视频</span>
                                 <span className="inline-flex items-center gap-1"><Music2 className="size-3.5" aria-hidden="true" />音频</span>
-                                <span className="inline-flex items-center gap-1"><FileText className="size-3.5" aria-hidden="true" />TXT / Markdown</span>
+                                <span className="inline-flex items-center gap-1"><FileText className="size-3.5" aria-hidden="true" />Word / TXT / Markdown</span>
                             </div>
+                            <p className="mt-2 text-[var(--fs-label)] text-foreground/45">Word 支持 .docx，正文将转为可编辑文本</p>
                         </div>
                     </Upload.Dragger>
 

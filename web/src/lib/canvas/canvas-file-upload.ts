@@ -1,10 +1,12 @@
 import { fitImageNodeSize, fitNodeSize } from "@/lib/canvas/canvas-node-size";
 import { NODE_DEFAULT_SIZE } from "@/constant/canvas";
 import { CanvasNodeType, type CanvasNodeData, type Position } from "@/types/canvas";
+import { isWordUploadFile, isLegacyWordUploadFile, TEXT_DOCUMENT_UPLOAD_ACCEPT, unsupportedDocumentUploadMessage } from "@/lib/document-upload";
 
-export const CANVAS_UPLOAD_ACCEPT = "image/*,video/*,audio/*,.mp3,.wav,text/plain,text/markdown,.txt,.md,.markdown";
+export const CANVAS_UPLOAD_ACCEPT = `image/*,video/*,audio/*,.mp3,.wav,${TEXT_DOCUMENT_UPLOAD_ACCEPT}`;
 export function isTextUploadFile(file: Pick<File, "name" | "type">) {
-    return /\.(txt|md|markdown)$/i.test(file.name) || file.type === "text/plain" || file.type === "text/markdown";
+    if (isLegacyWordUploadFile(file)) return false;
+    return isWordUploadFile(file) || /\.(txt|md|markdown)$/i.test(file.name) || file.type === "text/plain" || file.type === "text/markdown";
 }
 export function uploadNodeType(file: Pick<File, "name" | "type">) {
     if (file.type.startsWith("image/")) return CanvasNodeType.Image;
@@ -28,7 +30,7 @@ export function uploadPreviewBlur(percent = 0) {
 
 export async function createFileUploadPlaceholder(id: string, file: File, position: Position) {
     const type = uploadNodeType(file);
-    if (!type) throw new Error("请选择图片、视频、音频或 TXT / Markdown 文件");
+    if (!type) throw new Error(unsupportedDocumentUploadMessage(file));
     if (type === CanvasNodeType.Image) return createImageUploadPlaceholder(id, file, position, await readUploadImageSize(file));
     const size = type === CanvasNodeType.Video ? fitNodeSize(...await readUploadVideoSize(file)) : NODE_DEFAULT_SIZE[type];
     return {

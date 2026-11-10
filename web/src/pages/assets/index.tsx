@@ -1,11 +1,13 @@
 import { uploadImage } from "@/services/image-storage";
 import { assetStorageUsageQueryKey, AssetStorageUsage } from "./asset-storage-usage";
 import { readFileAsDataUrl, readImageMeta, formatBytes } from "@/lib/image-utils";
-import { uploadMediaFile } from "@/services/file-storage";
+import { resolveMediaUrl, uploadMediaFile } from "@/services/file-storage";
+import { resourceIdFromStorageKey } from "@/services/api/resources";
 import { exportAssets, readAssetPackage } from "./asset-transfer";
 import { captureAssetLibraryAccount, deleteAllArchivedAssets, loadAssetLibraryExport } from "./asset-library-operations";
 import { WorkspacePage, PageHeader, CollectionGrid, PaginationBar } from "@/components/layout/workspace-page";
-import { Trash2, Plus, Images, FolderOpen, FileUp, Upload, Download, MoreHorizontal, Search, LayoutGrid, FolderPlus, PencilLine, AlertTriangle } from "lucide-react";
+import { Trash2, Plus, FolderOpen, FileUp, Upload, Download, MoreHorizontal, Search, LayoutGrid, FolderPlus, PencilLine, AlertTriangle } from "lucide-react";
+import { assetOriginalDocument } from "@/lib/asset-document";
 import { CollectionToolbar } from "@/components/layout/collection-toolbar";
 import { Select } from "@/components/ui/base/select";
 import { AssetFilterGroup, AssetsBatchBar, AssetsEmptyState, AssetDrawer } from "./asset-library-panels";
@@ -198,6 +200,23 @@ export default function AssetsPage({ inTrashDialog = false }: { inTrashDialog?: 
         setSelecting(false);
         selectionAnchor.current = undefined;
     }, [userId, viewMode, keyword, kindFilter, categoryFilter, folderFilter]);
+
+    useEffect(() => { setPreviewAsset(null); setBatchUploadOpen(false); }, [userId]);
+
+    const openAssetPreview = async (asset: LibraryAsset) => {
+        setPreviewAsset(asset);
+        if (asset.kind !== "text") return;
+        try {
+            const assertCurrent = captureAssetLibraryAccount(userId);
+            // 分页列表不带原文档元数据，打开文本详情时补齐完整记录。
+            await loadAssetsForUse([asset.id], { refresh: true });
+            assertCurrent();
+            const detail = useAssetStore.getState().assets.find((item) => item.id === asset.id);
+            if (detail) setPreviewAsset((current) => current?.id === asset.id ? detail : current);
+        } catch (error) {
+            message.error(error instanceof Error ? error.message : "素材详情读取失败，请重试");
+        }
+    };
 
     const selectAsset = (id: string, selected: boolean, range = false) => {
         if (batchWorking || assetPageQuery.isFetching) return;
@@ -430,6 +449,18 @@ export default function AssetsPage({ inTrashDialog = false }: { inTrashDialog?: 
     };
 
     const downloadImage = async (asset: LibraryAsset) => {
+        const document = assetOriginalDocument(asset);
+        if (document) {
+            try {
+                const assertCurrent = captureAssetLibraryAccount(userId);
+                const url = resourceIdFromStorageKey(document.storageKey) ? "" : await resolveMediaUrl(document.storageKey);
+                assertCurrent();
+                await downloadBrowserMedia({ storageKey: document.storageKey, url, fileName: document.fileName });
+            } catch (error) {
+                message.error(error instanceof Error ? error.message : "原文档下载失败");
+            }
+            return;
+        }
         if (asset.kind !== "image" && asset.kind !== "video" && asset.kind !== "audio" && asset.kind !== "model") return;
         const url = asset.kind === "image" ? asset.data.dataUrl : asset.data.url;
         const extension = asset.kind === "model" ? asset.data.fileName.split(".").pop() || "glb" : asset.data.mimeType.split("/")[1] || "png";
@@ -604,7 +635,7 @@ export default function AssetsPage({ inTrashDialog = false }: { inTrashDialog?: 
                                     ) : (
                                         <>
                                             <Button type="primary" icon={<Plus />} onClick={(event) => openCreate(event.currentTarget)}>新增素材</Button>
-                                            <Button icon={<Images />} onClick={(event) => { batchUploadTriggerRef.current = event.currentTarget; event.currentTarget.focus({ preventScroll: true }); setBatchUploadOpen(true); }}>上传图片</Button>
+                                            <Button icon={<Upload />} onClick={(event) => { batchUploadTriggerRef.current = event.currentTarget; event.currentTarget.focus({ preventScroll: true }); setBatchUploadOpen(true); }}>上传素材</Button>
                                             <Button icon={<Trash2 />} aria-haspopup="dialog" onClick={(event) => {
                                                 trashTriggerRef.current = event.currentTarget;
                                                 event.currentTarget.focus({ preventScroll: true });
@@ -771,7 +802,7 @@ export default function AssetsPage({ inTrashDialog = false }: { inTrashDialog?: 
                                                     isTrash={viewMode === "trash"}
                                                     retentionDays={retentionDays}
                                                     onSelect={(selected, range) => selectAsset(asset.id, selected, range)}
-                                                    onOpen={() => setPreviewAsset(asset)}
+                                                    onOpen={() => void openAssetPreview(asset)}
                                                     onEdit={() => void openEdit(asset)}
                                                     onCopy={copyAssetText}
                                                     onDownload={downloadImage}

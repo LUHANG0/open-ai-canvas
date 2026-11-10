@@ -5,7 +5,7 @@ self.onmessage = async () => {
     const dom = new Window({ url: "http://localhost/" });
     let root: import("react-dom/client").Root | undefined;
     try {
-        for (const [key, value] of Object.entries({ window: dom, document: dom.document, navigator: dom.navigator, HTMLElement: dom.HTMLElement, Element: dom.Element, Node: dom.Node, IS_REACT_ACT_ENVIRONMENT: true })) Object.defineProperty(globalThis, key, { configurable: true, writable: true, value });
+        for (const [key, value] of Object.entries({ window: dom, document: dom.document, DOMParser: dom.DOMParser, navigator: dom.navigator, HTMLElement: dom.HTMLElement, Element: dom.Element, Node: dom.Node, IS_REACT_ACT_ENVIRONMENT: true })) Object.defineProperty(globalThis, key, { configurable: true, writable: true, value });
         let scope = "account-a";
         let user = { user: { id: scope }, hydrated: true };
         const subscribers = new Set<(next: typeof user, previous: typeof user) => void>();
@@ -30,6 +30,13 @@ self.onmessage = async () => {
         const imageStorage = await import("../../src/services/image-storage");
         mock.module("../../src/services/image-storage", () => ({ ...imageStorage, resolveImageUrl: async () => "", uploadImage: (file: File, progress?: (loaded: number, total: number) => void, options?: any) => { const pending = Promise.withResolvers<any>(); calls.push({ file, ...pending, progress, options }); return pending.promise; } }));
         mock.module("../../src/services/canvas-image-loader", () => ({ prepareCanvasImage: async () => ({}) }));
+        const resourceFiles: File[] = [];
+        const resources = await import("../../src/services/api/resources");
+        mock.module("../../src/services/api/resources", () => ({ ...resources, uploadResourceFile: async (file: File, _kind: string, options: any) => {
+            assert(!options.signal.aborted && options.expectedUserId === scope, "document upload lost account/cancellation scope");
+            resourceFiles.push(file);
+            return { id: `document-${resourceFiles.length}`, mimeType: file.type, size: file.size };
+        } }));
         // Dimensions are tested separately with the actual browser decoder contract.
         globalThis.Image = class { naturalWidth = 600; naturalHeight = 400; async decode() {} } as unknown as typeof Image;
         const { act } = await import("react");
@@ -84,6 +91,19 @@ self.onmessage = async () => {
         const syncBeforeDelete = syncs.length;
         await act(async () => { settle(deletedIndex); await replacing; });
         assert(nodes.current.length === 0 && syncs.length === syncBeforeDelete, "upload resurrected a deleted node");
+        const { zipSync, strToU8 } = await import("fflate");
+        const word = new File([zipSync({
+            "[Content_Types].xml": strToU8('<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="xml" ContentType="application/xml"/></Types>'),
+            "word/document.xml": strToU8('<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:r><w:t>第一章 雨夜</w:t><w:br/><w:t>对白正文</w:t></w:r></w:p></w:body></w:document>'),
+        })], "剧本.docx", { type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" });
+        let wordResult: string | null = null;
+        await act(async () => { wordResult = await hook.createFileNode(word, { x: 0, y: 0 }); });
+        const wordNode = nodes.current.find(node => node.id === wordResult);
+        assert(wordNode?.type === CanvasNodeType.Text && wordNode.metadata?.content === "第一章 雨夜\n对白正文" && wordNode.metadata?.prompt === wordNode.metadata?.content, "Word upload did not create editable plain text with line breaks");
+        assert(wordNode?.metadata?.storageKey === "resource:document-1" && resourceFiles[0] === word && !wordNode.metadata.fileUpload, "Word upload failed to retain the original file or complete its node");
+        await act(async () => { await hook.createFileNode(new File(["broken"], "损坏.docx"), { x: 0, y: 0 }); });
+        const corruptNode = nodes.current.find(node => node.id !== wordResult && node.metadata?.fileUpload === "error");
+        assert(corruptNode?.metadata?.fileUpload === "error" && corruptNode.metadata.errorDetails?.includes("无法读取 Word 文档") && resourceFiles.length === 1, "corrupt Word uploaded bytes or lost its retryable error");
         let stopped!: Promise<boolean>;
         const start = calls.length;
         await act(async () => { stopped = hook.handleUploadFiles(["one", "two", "three", "four"].map(file)); });
@@ -100,7 +120,7 @@ self.onmessage = async () => {
         assert(calls.length === accountStart + 3 && syncs.length === beforeSync && notices.length === beforeNotices, "A→B→A revived an old batch");
         await act(async () => root!.unmount()); root = undefined;
         assert(urls.size === 0, `leaked ${urls.size} upload object URLs`);
-        self.postMessage({ bounded: true, ordered: true, partialFailure: true, aggregate: true, edited: true, history: true, cancelled: true, isolated: true, released: true });
+        self.postMessage({ bounded: true, ordered: true, partialFailure: true, aggregate: true, edited: true, history: true, cancelled: true, isolated: true, released: true, word: true, corruptWord: true });
     } catch (error) { self.postMessage({ error: error instanceof Error ? error.stack : String(error) }); }
     finally { if (root) root.unmount(); dom.happyDOM.abort(); }
 };

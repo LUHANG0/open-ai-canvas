@@ -8,6 +8,6 @@ test("canvas uploads overlap safely, preserve editing and history, and stop acro
             worker.onerror = (event) => reject(event.error ?? new Error(event.message));
             worker.postMessage("run");
         });
-        expect(result).toEqual({ bounded: true, ordered: true, partialFailure: true, aggregate: true, edited: true, history: true, cancelled: true, isolated: true, released: true });
+        expect(result).toEqual({ bounded: true, ordered: true, partialFailure: true, aggregate: true, edited: true, history: true, cancelled: true, isolated: true, released: true, word: true, corruptWord: true });
     } finally { worker.terminate(); }
 }, 15000);

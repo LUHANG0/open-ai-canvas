@@ -106,12 +106,12 @@ test("真实进度与遮罩浓度反向关联，不生成未知进度", () => {
     expect(uploadVeilOpacity(100)).toBeCloseTo(0.1);
 });
 
-test("统一识别图片、视频、音频、纯文本文件，不误收 PDF 或 Word", () => {
+test("统一识别图片、视频、音频、文本与 DOCX，不误收 PDF 或旧版 DOC", () => {
     for (const [name, type, expected] of [
         ["image.png", "image/png", CanvasNodeType.Image], ["video.mp4", "video/mp4", CanvasNodeType.Video],
         ["sound.ogg", "audio/ogg", CanvasNodeType.Audio], ["sound.wav", "", CanvasNodeType.Audio],
         ["note.md", "", CanvasNodeType.Text], ["note.txt", "text/plain", CanvasNodeType.Text],
-        ["document.pdf", "application/pdf", null], ["document.docx", "", null],
+        ["document.pdf", "application/pdf", null], ["document.docx", "", CanvasNodeType.Text], ["document.doc", "application/msword", null],
     ] as const) expect(uploadNodeType({ name, type })).toBe(expected);
 });
 

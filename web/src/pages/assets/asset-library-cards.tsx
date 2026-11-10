@@ -10,6 +10,7 @@ import { type AssetKind } from "@/stores/use-asset-store";
 import { AssetMediaPreview } from "@/components/asset-media-preview";
 import { AudioPlayButton, CharacterAssetCover } from "@/components/assets/asset-rich-cover";
 import { assetCategoryLabel } from "@/lib/asset-category";
+import { assetOriginalDocument } from "@/lib/asset-document";
 import { type LibraryAsset, assetKindIcons } from "./asset-library-format";
 import { assetKindLabel, assetProjectLabel, assetSummary, formatAssetClock, formatAssetTime } from "./asset-library-format";
 
@@ -72,7 +73,7 @@ export function AssetCard({
         : [
               ...(asset.kind === "text" || asset.kind === "image" ? [{ key: "edit", icon: <PencilLine className="size-3.5" />, label: "编辑", onClick: onEdit }] : []),
               ...(asset.kind === "text" ? [{ key: "copy", icon: <Copy className="size-3.5" />, label: "复制文本", onClick: () => void onCopy(asset) }] : []),
-              ...(asset.kind === "image" || asset.kind === "video" || asset.kind === "audio" || asset.kind === "model" ? [{ key: "download", icon: <Download className="size-3.5" />, label: "下载", onClick: () => onDownload(asset) }] : []),
+              ...(asset.kind === "image" || asset.kind === "video" || asset.kind === "audio" || asset.kind === "model" || assetOriginalDocument(asset) ? [{ key: "download", icon: <Download className="size-3.5" />, label: asset.kind === "text" ? "下载原文档" : "下载", onClick: () => onDownload(asset) }] : []),
               { key: "move", icon: <FolderOpen className="size-3.5" />, label: "移动到分类", children: folderOptions.map((folder) => ({ key: folder.value || "uncategorized", label: folder.label, onClick: () => onMoveToFolder(folder.value) })) },
               { type: "divider" as const },
               { key: "archive", icon: <Trash2 className="size-3.5 text-amber-500" />, label: "移入回收站", onClick: onArchive },

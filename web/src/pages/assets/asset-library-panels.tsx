@@ -6,6 +6,7 @@ import { Box, CheckCheck, Clapperboard, Copy, Download, FileText, FileUp, Link2,
 import { AudioPlayButton, CharacterAssetCover } from "@/components/assets/asset-rich-cover";
 import { useAppearanceStore } from "@/stores/use-appearance-store";
 import { assetCategoryLabel } from "@/lib/asset-category";
+import { assetOriginalDocument } from "@/lib/asset-document";
 import { formatBytes } from "@/lib/image-utils";
 import { useRef, useState } from "react";
 import { resourceStorageLabel, resourceStorageLocation, resourceStorageTitle } from "@/lib/canvas/resource-storage-status";
@@ -254,7 +255,7 @@ export function AssetDrawer({ asset, onClose, onCopy, onDownload }: { asset: Lib
                     ) : asset.kind === "entity" ? (
                         <CharacterArchive asset={asset} />
                     ) : (
-                        <div className="asset-archive-preview">
+                        <div className={asset.kind === "text" ? undefined : "asset-archive-preview"}>
                             {asset.kind === "text" ? (
                                 <div className="asset-archive-preview-note">{asset.data.content}</div>
                             ) : asset.kind === "audio" ? (
@@ -315,7 +316,7 @@ export function AssetDrawer({ asset, onClose, onCopy, onDownload }: { asset: Lib
                                 复制文本
                             </Button>
                         ) : null}
-                        {asset.kind === "image" || asset.kind === "video" || asset.kind === "audio" || asset.kind === "model" ? (
+                        {asset.kind === "image" || asset.kind === "video" || asset.kind === "audio" || asset.kind === "model" || assetOriginalDocument(asset) ? (
                             <Button type="primary" icon={<Download className="size-4" />} onClick={() => onDownload(asset)}>
                                 {assetDownloadLabel(asset)}
                             </Button>
@@ -379,6 +380,7 @@ export function AssetImageZoom({ asset }: { asset: LibraryAsset & { kind: "image
 }
 
 export function assetArchiveFacts(asset: LibraryAsset) {
+    const document = assetOriginalDocument(asset);
     const facts: Array<{ label: string; value: string }> = [
         { label: "类型", value: assetKindLabel(asset.kind, asset.category) },
         { label: "分类", value: assetCategoryLabel(asset.category) },
@@ -393,6 +395,11 @@ export function assetArchiveFacts(asset: LibraryAsset) {
         facts.push({ label: "大小", value: formatBytes(asset.data.bytes) });
         facts.push({ label: "格式", value: asset.data.mimeType });
         facts.push({ label: "存储", value: resourceStorageLabel(asset.data.storageKey) });
+    }
+    if (document) {
+        facts.push({ label: "原文档", value: document.fileName });
+        facts.push({ label: "原件大小", value: formatBytes(document.bytes) });
+        facts.push({ label: "正文", value: "可编辑文本；原文档单独保留" });
     }
     if (asset.kind !== "entity" || asset.source) facts.push({ label: "来源", value: asset.source || "未标注" });
     facts.push({ label: "创建", value: formatAssetDateTime(asset.createdAt) });

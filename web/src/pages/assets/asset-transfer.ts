@@ -8,6 +8,7 @@ import { isResourceUrl } from "@/services/api/resources";
 import { setMediaBlob } from "@/services/file-storage";
 import { setImageBlob } from "@/services/image-storage";
 import { captureUploadScope } from "@/services/upload-scope";
+import { assetOriginalDocument } from "@/lib/asset-document";
 import type { Asset } from "@/stores/use-asset-store";
 import type { CanvasExportAsset } from "@/types/canvas-export";
 
@@ -18,6 +19,10 @@ export async function exportAssets(assets: Asset[]): Promise<void> {
     const media = assets.filter((asset) => ["image", "video", "audio", "model"].includes(asset.kind));
     const images = new Set<string>();
     const keys: string[] = [];
+    for (const asset of assets) {
+        const document = assetOriginalDocument(asset);
+        if (document) keys.push(document.storageKey);
+    }
     for (const asset of media) {
         if (!("storageKey" in asset.data) || typeof asset.data.storageKey !== "string" || !asset.data.storageKey) continue;
         keys.push(asset.data.storageKey);
@@ -80,6 +85,8 @@ export async function readAssetPackage(file: File): Promise<Asset[]> {
     const keys = new Set(writes.map(({ key }) => key));
     if (keys.size !== writes.length) throw new Error("素材包包含重复文件索引");
     for (const asset of assets) {
+        const document = assetOriginalDocument(asset);
+        if (document && !keys.has(document.storageKey)) throw new Error(`素材包缺少原文档：${asset.title}`);
         if (asset.kind === "text" || asset.kind === "entity") continue;
         if (asset.data.storageKey && !keys.has(asset.data.storageKey)) throw new Error(`素材包缺少媒体：${asset.title}`);
         const url = asset.kind === "image" ? asset.data.dataUrl : asset.data.url;
@@ -108,6 +115,9 @@ export async function readAssetPackage(file: File): Promise<Asset[]> {
             continue;
         }
         if (asset.kind === "text") {
+            const document = assetOriginalDocument(asset);
+            const original = document ? importedMedia.get(document.storageKey) : undefined;
+            if (document && original) asset.metadata = { ...asset.metadata, originalDocument: { ...document, storageKey: original.storageKey } };
             if (isResourceUrl(asset.coverUrl)) asset.coverUrl = "";
             continue;
         }

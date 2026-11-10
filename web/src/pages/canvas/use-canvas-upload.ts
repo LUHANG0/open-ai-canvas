@@ -18,6 +18,7 @@ import { isAudioFile } from "@/lib/canvas/canvas-project-generation";
 import { fitImageNodeSize, fitNodeSize, IMAGE_NODE_MAX_SIZE, VIDEO_NODE_MAX_SIZE } from "@/lib/canvas/canvas-node-size";
 import { recordReplacedMediaVersion } from "@/lib/canvas/canvas-media-versions";
 import { CANVAS_UPLOAD_ACCEPT, createFileUploadPlaceholder, uploadNodeType, uploadPercent } from "@/lib/canvas/canvas-file-upload";
+import { readTextUploadFile, TEXT_DOCUMENT_UPLOAD_ACCEPT, unsupportedDocumentUploadMessage } from "@/lib/document-upload";
 import { resourceIdFromStorageKey, resourceStorageKey, uploadResourceFile } from "@/services/api/resources";
 import { uploadMediaFile } from "@/services/file-storage";
 import { resolveImageUrl, uploadImage } from "@/services/image-storage";
@@ -240,7 +241,9 @@ export function useCanvasUpload({
             if (placeholder.type === CanvasNodeType.Image) {
                 metadata = imageMetadata(await uploadImage(file, onProgress, { signal, expectedUserId: lifetime.scope, knownSize: { width: placeholder.metadata?.naturalWidth || 0, height: placeholder.metadata?.naturalHeight || 0 } }));
             } else if (placeholder.type === CanvasNodeType.Text) {
-                const content = await file.text();
+                progress.update("正在读取文档正文", 1);
+                const content = await readTextUploadFile(file);
+                assertCurrent();
                 const resource = await uploadResourceFile(file, "file", { fileName: file.name, signal, expectedUserId: lifetime.scope }, onProgress);
                 metadata = { content, prompt: content, storageKey: resourceStorageKey(resource.id), mimeType: file.type || "text/plain", bytes: file.size, status: "success" };
             } else {
@@ -401,7 +404,7 @@ export function useCanvasUpload({
                   ? "video/*"
                   : target?.type === CanvasNodeType.Audio
                     ? "audio/*,.mp3,.wav"
-                    : target?.type === CanvasNodeType.Text ? "text/plain,text/markdown,.txt,.md,.markdown" : CANVAS_UPLOAD_ACCEPT;
+                    : target?.type === CanvasNodeType.Text ? TEXT_DOCUMENT_UPLOAD_ACCEPT : CANVAS_UPLOAD_ACCEPT;
         }
         imageInputRef.current?.click();
     }, [nodesRef]);
@@ -414,7 +417,7 @@ export function useCanvasUpload({
     const handleUploadFiles = useCallback(async (files: File[]) => {
         const supportedFiles = files.filter((file) => uploadNodeType(file));
         if (!supportedFiles.length) {
-            message.warning("请选择图片、视频、音频或 TXT / Markdown 文件");
+            message.warning(unsupportedDocumentUploadMessage(files[0]));
             return false;
         }
         const lifetime = lifetimeRef.current;
@@ -630,7 +633,11 @@ export function useCanvasUpload({
         const file = event.target.files?.[0];
         const target = uploadTargetRef.current;
         try {
-            if (!file || !uploadNodeType(file)) return;
+            if (!file) return;
+            if (!uploadNodeType(file)) {
+                message.warning(unsupportedDocumentUploadMessage(file));
+                return;
+            }
             if (target?.nodeId) {
                 const targetNode = nodesRef.current.find((node) => node.id === target.nodeId);
                 const compatible = targetNode && (targetNode.type === uploadNodeType(file)
@@ -678,7 +685,10 @@ export function useCanvasUpload({
             return;
         }
         const files = Array.from(event.dataTransfer.files).filter((item) => uploadNodeType(item));
-        if (!files.length) return;
+        if (!files.length) {
+            if (event.dataTransfer.files.length) message.warning(unsupportedDocumentUploadMessage(event.dataTransfer.files[0]));
+            return;
+        }
         if (files.length > 1) {
             void handleUploadFiles(files);
             return;
